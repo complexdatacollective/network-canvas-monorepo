@@ -77,9 +77,11 @@ function receiveManifest(
 /**
  * Replaces one coordinate, whole.
  *
- * Set rather than typed: a number input discards a lone minus sign as it is
- * entered, so typing a western longitude character by character would test the
- * browser's input buffer rather than this field.
+ * Set rather than typed, because these tests are about what the section does
+ * with a finished coordinate. What the control does with a coordinate as it is
+ * being built — where a lone minus sign reads as no number at all — belongs to
+ * the field, and `fields/geospatial/__tests__/MapCenterField.test.tsx` types
+ * one in character by character.
  */
 function enterCoordinate(label: string, value: string): void {
   fireEvent.change(screen.getByLabelText(label), { target: { value } });

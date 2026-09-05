@@ -27,13 +27,44 @@ export type MapCenterFieldProps = CreateFormFieldProps<
   }
 >;
 
-const coordinate = (value: unknown): string =>
+/** Which half of the pair a control holds. */
+type CoordinateIndex = 0 | 1;
+
+/** The text in both controls, and the centre those two readings were stored as. */
+type CenterDraft = Readonly<{
+  text: readonly [string, string];
+  value: number[] | undefined;
+}>;
+
+const formatCoordinate = (value: unknown): string =>
   typeof value === 'number' && Number.isFinite(value) ? String(value) : '';
 
-const parseCoordinate = (text: string | number | undefined): number | null => {
-  if (text === undefined || text === '') return null;
-  const parsed = typeof text === 'number' ? text : Number(text);
-  return Number.isFinite(parsed) ? parsed : null;
+/** A stored centre as a pair of things, whatever the protocol actually holds. */
+const coordinatesOf = (value: unknown): readonly unknown[] =>
+  Array.isArray(value) ? value : [];
+
+const centerText = (value: unknown): readonly [string, string] => {
+  const coordinates = coordinatesOf(value);
+  return [formatCoordinate(coordinates[0]), formatCoordinate(coordinates[1])];
+};
+
+/** The number one control's reading means, or nothing when it means none. */
+const parseCoordinate = (text: string): number | undefined => {
+  if (text.trim() === '') return undefined;
+  const parsed = Number(text);
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+
+/** Whether a draft still stands for the centre the form is holding. */
+const standsFor = (drafted: number[] | undefined, held: unknown): boolean => {
+  if (drafted === undefined) return held === undefined;
+  const coordinates = coordinatesOf(held);
+  return (
+    coordinates.length === drafted.length &&
+    drafted.every((coordinate, index) =>
+      Object.is(coordinate, coordinates[index]),
+    )
+  );
 };
 
 /**
@@ -47,6 +78,35 @@ const parseCoordinate = (text: string | number | undefined): number | null => {
  * Labelling of the pair belongs to the surrounding field; each control names
  * the coordinate it holds, because "longitude" and "latitude" cannot be told
  * apart by position.
+ *
+ * ## Why the text is kept, and why one draft covers both controls
+ *
+ * A coordinate is built one character at a time, and the first character of
+ * half the world is a minus sign. A number input reports NOTHING for a reading
+ * it cannot read as a number, so `-`, and `-` followed by a decimal point, and
+ * every other half-finished coordinate, arrive here as the empty string. A
+ * control rendered from the parsed number therefore rewrites itself under the
+ * researcher's cursor: the minus sign of `-122.4` disappears as soon as the
+ * first digit lands on it, and the stage saves a starting view in the wrong
+ * hemisphere without anything on screen having said so.
+ *
+ * So the researcher's own text is what is SHOWN, and the numbers are what is
+ * STORED. The draft is kept only while it still stands for the value the form
+ * holds, so a centre set by the map — or by anything else in the editor —
+ * replaces it rather than being overwritten by text the stage no longer has.
+ *
+ * ONE draft covers both controls because a centre is one value: an unreadable
+ * longitude means the form is holding no centre at all, and a per-control
+ * draft would then have nothing left to render the latitude from. Reading the
+ * pair from one draft is what keeps a coordinate the researcher has already
+ * finished on screen while they are still typing the other one.
+ *
+ * There is deliberately no settle-on-blur (which a single-valued numeric
+ * control can afford): the two controls share a fieldset, so moving between
+ * them is a blur, and settling there would take back the coordinate the
+ * researcher had just entered. A half-entered pair is instead reported by the
+ * field's own `required`, which is what the form holds while it is half
+ * entered.
  */
 export default function MapCenterField({
   id,
@@ -66,21 +126,34 @@ export default function MapCenterField({
   const { storeApi } = useStageEditorForm();
   const controlId = useId();
   const [mapOpen, setMapOpen] = useState(false);
+  const [draft, setDraft] = useState<CenterDraft | undefined>(undefined);
   const locked = disabled || readOnly;
 
-  const longitude = value?.[0];
-  const latitude = value?.[1];
+  const text =
+    draft !== undefined && standsFor(draft.value, value)
+      ? draft.text
+      : centerText(value);
 
-  const setCoordinate = (index: 0 | 1, next: number | null) => {
+  const setCoordinate = (
+    index: CoordinateIndex,
+    reading: string | number | undefined,
+  ) => {
     if (locked) return;
-    const other = index === 0 ? latitude : longitude;
-    if (next === null && (other === undefined || !Number.isFinite(other))) {
-      onChange?.(undefined);
-      return;
-    }
-    const pair: number[] = [longitude ?? 0, latitude ?? 0];
-    pair[index] = next ?? 0;
-    onChange?.(pair);
+    const entered = reading === undefined ? '' : String(reading);
+    const next: [string, string] =
+      index === 0 ? [entered, text[1]] : [text[0], entered];
+    const longitude = parseCoordinate(next[0]);
+    const latitude = parseCoordinate(next[1]);
+    // Half a pair is not a centre, and zero is a real place — the Gulf of
+    // Guinea — so an unreadable coordinate is never stood in for. The form
+    // holds no centre until both controls read as numbers, and says so
+    // through its own `required`.
+    const center =
+      longitude === undefined || latitude === undefined
+        ? undefined
+        : [longitude, latitude];
+    setDraft({ text: next, value: center });
+    onChange?.(center);
   };
 
   return (
@@ -108,10 +181,10 @@ export default function MapCenterField({
           <InputField
             id={`${controlId}-longitude`}
             type="number"
-            value={coordinate(longitude)}
+            value={text[0]}
             readOnly={readOnly}
             aria-invalid={ariaInvalid}
-            onChange={(next) => setCoordinate(0, parseCoordinate(next))}
+            onChange={(next) => setCoordinate(0, next)}
           />
         </div>
         <div className="flex min-w-40 flex-1 flex-col gap-1">
@@ -119,10 +192,10 @@ export default function MapCenterField({
           <InputField
             id={`${controlId}-latitude`}
             type="number"
-            value={coordinate(latitude)}
+            value={text[1]}
             readOnly={readOnly}
             aria-invalid={ariaInvalid}
-            onChange={(next) => setCoordinate(1, parseCoordinate(next))}
+            onChange={(next) => setCoordinate(1, next)}
           />
         </div>
       </div>
@@ -146,6 +219,10 @@ export default function MapCenterField({
             storeApi.getState().getValue(zoomFieldName) as unknown,
           )}
           onSave={(nextCenter: MapCenter, nextZoom: number) => {
+            // The map is the other way of setting this value, so whatever the
+            // researcher had half-typed here is no longer what the field is
+            // showing them.
+            setDraft(undefined);
             onChange?.([nextCenter[0], nextCenter[1]]);
             storeApi.getState().setFieldValue(zoomFieldName, nextZoom);
           }}
