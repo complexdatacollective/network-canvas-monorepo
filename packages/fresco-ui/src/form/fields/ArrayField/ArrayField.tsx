@@ -41,7 +41,7 @@ import {
 import { compose, cva, cx } from '../../../utils/cva';
 import type { CreateFormFieldProps } from '../../Field/types';
 import { getInputState } from '../../utils/getInputState';
-import { omitAriaReadOnly } from '../../utils/omitAriaReadOnly';
+import { omitWidgetOnlyAria } from '../../utils/omitWidgetOnlyAria';
 import {
   useArrayFieldItems,
   type ArrayFieldOperation,
@@ -981,10 +981,12 @@ export default function ArrayField<T extends Record<string, unknown>>({
           style={{ borderRadius: 28 }}
           role="list"
           layout
-          // `role="list"` does not allow `aria-readonly`, and this field has no
-          // widget to move it onto — the read-only state shows in the
-          // suppressed add, edit and delete affordances instead.
-          {...omitAriaReadOnly(safeAriaProps)}
+          // `role="list"` allows neither `aria-readonly` nor `aria-required`,
+          // and this field has no widget to move them onto. The read-only
+          // state shows in the suppressed add, edit and delete affordances;
+          // required-ness in the label's marker and the visually hidden
+          // "Required" element this list already names in `aria-describedby`.
+          {...omitWidgetOnlyAria(safeAriaProps)}
         >
           <AnimatePresence mode="popLayout">
             {renderableItems.length === 0 && (

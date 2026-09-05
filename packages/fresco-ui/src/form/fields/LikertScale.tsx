@@ -21,7 +21,7 @@ import {
 import { cx } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
-import { omitAriaReadOnly } from '../utils/omitAriaReadOnly';
+import { omitWidgetOnlyAria } from '../utils/omitWidgetOnlyAria';
 import ScaleValuePopover from './scale/ScaleValuePopover';
 import {
   ROTATED_LABEL_WRAP_CLASS,
@@ -75,7 +75,6 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
     'aria-labelledby': ariaLabelledBy,
     'aria-describedby': ariaDescribedBy,
     'aria-invalid': ariaInvalid,
-    'aria-required': ariaRequired,
     ...rest
   } = props;
 
@@ -169,9 +168,9 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
     <div
       ref={rootRef}
       className={cx('relative w-full', className)}
-      // A roleless layout element does not allow `aria-readonly`; the slider
-      // below carries the state instead.
-      {...omitAriaReadOnly(rest)}
+      // A roleless layout element carries only the global ARIA attributes,
+      // which `aria-readonly` and `aria-required` are not.
+      {...omitWidgetOnlyAria(rest)}
     >
       <div
         className="relative"
@@ -204,9 +203,16 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
           min={0}
           max={Math.max(0, options.length - 1)}
           step={1}
+          // `Slider.Root` renders a `role="group"` wrapper, not the slider:
+          // the widget is the `<input type="range">` nested inside
+          // `Slider.Thumb`, and Base UI forwards only naming attributes to it.
+          // `aria-invalid` is global and valid on the group; `aria-readonly`
+          // and `aria-required` are not, and there is no seam to move them
+          // onto the input. Required-ness still reaches the input through the
+          // `aria-describedby` reference to the "Required" element below, and
+          // the read-only state through the suppressed pointer and key
+          // handlers.
           aria-invalid={ariaInvalid}
-          aria-required={ariaRequired}
-          aria-readonly={readOnly || undefined}
           aria-labelledby={ariaLabelledBy}
           className={sliderRootVariants({ state })}
         >

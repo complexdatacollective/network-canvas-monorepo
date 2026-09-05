@@ -15,7 +15,7 @@ import {
 import { compose, cva, cx, type VariantProps } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
-import { omitAriaReadOnly } from '../utils/omitAriaReadOnly';
+import { omitWidgetOnlyAria } from '../utils/omitWidgetOnlyAria';
 
 // Compose fieldset wrapper variants
 const toggleButtonGroupComposedVariants = compose(
@@ -165,9 +165,12 @@ export default function ToggleButtonGroupField(props: ToggleButtonGroupProps) {
   return (
     <fieldset
       id={id}
-      // A `<fieldset>` is `role="group"`, which does not allow
-      // `aria-readonly`. Each toggle below carries the state instead.
-      {...omitAriaReadOnly(fieldsetProps)}
+      // A `<fieldset>` is `role="group"`, which allows neither `aria-readonly`
+      // nor `aria-required`. Each toggle below carries the read-only state;
+      // the group's required-ness stays with the label's marker and the
+      // "Required" element named in `aria-describedby`, because it is the
+      // answer that is required, not any one toggle.
+      {...omitWidgetOnlyAria(fieldsetProps)}
       className={toggleButtonGroupComposedVariants({
         state: getInputState(props),
         className,
