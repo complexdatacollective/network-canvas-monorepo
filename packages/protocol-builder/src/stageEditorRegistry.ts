@@ -19,40 +19,22 @@
  */
 import type { StageType } from '@codaco/protocol-validation';
 
-import type { StageEditorRegistry } from './stage-editor-contract.ts';
+import { formStageEditors } from './editors/formStageEditors.ts';
+import { nameGeneratorStageEditors } from './editors/nameGeneratorStageEditors.ts';
+import type { StageEditorRegistryPart } from './stage-editor-contract.ts';
 
 /**
- * What one editor family exports: the entries it owns, and nothing else.
- *
- * A family is a group of interfaces that share their hard parts — the three
- * name generators share prompts, panels and alter limits; the two bin
- * interfaces share a variable picker and a sort-order editor — so a family
- * ships as one unit and claims the stage types it covers. Nothing requires the
- * families to know about each other, and nothing requires this module to know
- * how any of them is built.
+ * A family declares its part with `defineStageEditorPart`, and looks for it
+ * here. It is DECLARED beside the editor props in `stage-editor-contract.ts`,
+ * because this module imports every family's part: a family importing the
+ * helper from here would put the two modules in a cycle, and whichever of them
+ * a program reached first would build `REGISTRY_PARTS` out of bindings that
+ * are not initialised yet.
  */
-export type StageEditorRegistryPart = Partial<StageEditorRegistry>;
-
-/**
- * Declares a family's part, keeping the exact set of types it claims.
- *
- * THE WAY TO WRITE A PART. An annotation — `export const part:
- * StageEditorRegistryPart = {…}` — widens the value to the whole partial
- * registry, and every key of that is optional, so `keyof` it is every stage
- * type. The coverage machinery below is built on `keyof`: widen one part and
- * the package believes every interface has an editor, `UnregisteredStageType`
- * collapses to `never`, and both compile-time checks pass while saying
- * nothing. Inferring the type from the object literal instead is what keeps
- * "this family claims exactly these three interfaces" a fact the type system
- * still knows.
- *
- * `type-tests/` compiles the failures this prevents.
- */
-export function defineStageEditorPart<
-  const Part extends StageEditorRegistryPart,
->(part: Part): Part {
-  return part;
-}
+export {
+  defineStageEditorPart,
+  type StageEditorRegistryPart,
+} from './stage-editor-contract.ts';
 
 /**
  * Thrown when two families claim the same interface.
@@ -115,6 +97,8 @@ export function composeStageEditorRegistry(
  */
 const REGISTRY_PARTS = [
   // One imported part per line, alphabetically, each with a trailing comma.
+  formStageEditors,
+  nameGeneratorStageEditors,
 ] as const satisfies readonly StageEditorRegistryPart[];
 
 export const stageEditorRegistry: StageEditorRegistryPart =
@@ -171,18 +155,11 @@ export type UnregisteredStageType = UnregisteredIn<typeof REGISTRY_PARTS>;
  * editor exists for it.
  */
 export const AWAITING_STAGE_EDITORS = [
-  'AlterEdgeForm',
-  'AlterForm',
   'Anonymisation',
   'CategoricalBin',
   'DyadCensus',
-  'EgoForm',
   'FamilyPedigree',
   'Geospatial',
-  'Information',
-  'NameGenerator',
-  'NameGeneratorQuickAdd',
-  'NameGeneratorRoster',
   'Narrative',
   'NarrativePedigree',
   'NetworkComposer',

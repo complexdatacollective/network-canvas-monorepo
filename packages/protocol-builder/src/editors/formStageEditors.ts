@@ -1,4 +1,4 @@
-import { defineStageEditorPart } from '../stageEditorRegistry.ts';
+import { defineStageEditorPart } from '../stage-editor-contract.ts';
 import { AlterEdgeFormStageEditor } from './forms/AlterEdgeFormStageEditor.tsx';
 import { AlterFormStageEditor } from './forms/AlterFormStageEditor.tsx';
 import { EgoFormStageEditor } from './forms/EgoFormStageEditor.tsx';

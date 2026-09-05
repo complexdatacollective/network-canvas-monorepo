@@ -53,6 +53,47 @@ export type StageEditorRegistry = {
   readonly [T in StageType]: StageEditorComponent<T>;
 };
 
+/**
+ * What one editor family exports: the entries it owns, and nothing else.
+ *
+ * A family is a group of interfaces that share their hard parts — the three
+ * name generators share prompts, panels and alter limits; the two bin
+ * interfaces share a variable picker and a sort-order editor — so a family
+ * ships as one unit and claims the stage types it covers. Nothing requires the
+ * families to know about each other, and nothing requires `stageEditorRegistry`
+ * to know how any of them is built.
+ */
+export type StageEditorRegistryPart = Partial<StageEditorRegistry>;
+
+/**
+ * Declares a family's part, keeping the exact set of types it claims.
+ *
+ * THE WAY TO WRITE A PART. An annotation — `export const part:
+ * StageEditorRegistryPart = {…}` — widens the value to the whole partial
+ * registry, and every key of that is optional, so `keyof` it is every stage
+ * type. The coverage machinery in `stageEditorRegistry.ts` is built on
+ * `keyof`: widen one part and the package believes every interface has an
+ * editor, `UnregisteredStageType` collapses to `never`, and both compile-time
+ * checks pass while saying nothing. Inferring the type from the object literal
+ * instead is what keeps "this family claims exactly these three interfaces" a
+ * fact the type system still knows.
+ *
+ * It lives HERE, beside the props a family's editors are written against,
+ * rather than in the registry that composes the parts. The registry imports
+ * every family's part, so a family reaching back into it for this helper puts
+ * the two modules in a cycle — and whichever of them a program happens to
+ * reach first then builds `REGISTRY_PARTS` out of bindings that have not been
+ * initialised yet. `stageEditorRegistry.ts` re-exports it, because that is
+ * where a family looks.
+ *
+ * `type-tests/` compiles the failures this prevents.
+ */
+export function defineStageEditorPart<
+  const Part extends StageEditorRegistryPart,
+>(part: Part): Part {
+  return part;
+}
+
 export type StageEditorDispatcherProps = {
   controller: StageEditorController;
   registry: StageEditorRegistry;

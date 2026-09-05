@@ -3,7 +3,8 @@
   "extends": "@codaco/tsconfig/web.json",
   "compilerOptions": {
     "noEmit": true,
-    "incremental": false
+    "incremental": false,
+    "types": ["vite/client"]
   },
   "include": ["."]
 }

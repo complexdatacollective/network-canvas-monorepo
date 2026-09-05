@@ -1,4 +1,4 @@
-import { defineStageEditorPart } from '../stageEditorRegistry.ts';
+import { defineStageEditorPart } from '../stage-editor-contract.ts';
 import { NameGeneratorQuickAddStageEditor } from './nameGenerators/NameGeneratorQuickAddStageEditor.tsx';
 import { NameGeneratorRosterStageEditor } from './nameGenerators/NameGeneratorRosterStageEditor.tsx';
 import { NameGeneratorStageEditor } from './nameGenerators/NameGeneratorStageEditor.tsx';
