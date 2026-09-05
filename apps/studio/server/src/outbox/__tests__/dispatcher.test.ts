@@ -47,6 +47,9 @@ function adapter() {
     recordUncertain: vi
       .fn<OutboxAdapter<Claim>['recordUncertain']>()
       .mockResolvedValue(true),
+    failureDisposition: vi
+      .fn<OutboxAdapter<Claim>['failureDisposition']>()
+      .mockReturnValue('retryable'),
   } satisfies OutboxAdapter<Claim>;
 }
 
@@ -81,6 +84,41 @@ describe('shared outbox execution', () => {
     vi.restoreAllMocks();
     await pool.end();
   });
+
+  it.each(['permanent', 'uncertain'] as const)(
+    'does not retry a provider outcome classified as %s',
+    async (disposition) => {
+      const work = adapter();
+      const error = new Error('Provider disposition fixture');
+      work.deliver.mockRejectedValue(error);
+      work.failureDisposition.mockReturnValue(disposition);
+      const result = await new OutboxDispatcher({
+        pool,
+        adapter: work,
+      }).runOnce();
+      expect(result).toMatchObject({
+        claimed: 1,
+        completed: 0,
+        retried: 0,
+        failed: disposition === 'permanent' ? 1 : 0,
+        uncertain: disposition === 'uncertain' ? 1 : 0,
+      });
+      expect(work.failureDisposition).toHaveBeenCalledExactlyOnceWith(error);
+      if (disposition === 'uncertain') {
+        expect(work.recordUncertain).toHaveBeenCalledOnce();
+        expect(work.recordFailure).not.toHaveBeenCalled();
+      } else {
+        expect(work.recordFailure).toHaveBeenCalledWith(
+          claim,
+          expect.any(Object),
+          error,
+          null,
+        );
+        expect(work.recordUncertain).not.toHaveBeenCalled();
+      }
+      expect(work.recordComplete).not.toHaveBeenCalled();
+    },
+  );
 
   it('refuses a non-maintenance role before touching work', async () => {
     vi.mocked(pool.query).mockImplementation(async () => ({
@@ -343,6 +381,48 @@ describe('shared outbox execution', () => {
       expect(work.recordUncertain).not.toHaveBeenCalled();
       await vi.advanceTimersByTimeAsync(90);
       expect(work.renewLease).toHaveBeenCalledOnce();
+    },
+  );
+
+  it.each([
+    { renewal: 'error', retained: true },
+    { renewal: 'lost', retained: false },
+  ] as const)(
+    'attempts the uncertainty ownership CAS after heartbeat $renewal',
+    async ({ renewal, retained }) => {
+      const work = adapter();
+      const sending = deferred<void>();
+      work.deliver.mockReturnValue(sending.promise);
+      work.failureDisposition.mockReturnValue('uncertain');
+      work.recordUncertain.mockResolvedValue(retained);
+      if (renewal === 'error')
+        work.renewLease.mockRejectedValue(
+          new Error('temporary database failure'),
+        );
+      else work.renewLease.mockResolvedValue(false);
+      const running = new OutboxDispatcher({
+        pool,
+        adapter: work,
+        leaseMs: 90,
+      }).runOnce();
+      await vi.advanceTimersByTimeAsync(30);
+      expect(work.renewLease).toHaveBeenCalledOnce();
+      const error = new Error('Uncertain delivery');
+      sending.reject(error);
+      await expect(running).resolves.toMatchObject({
+        completed: 0,
+        retried: 0,
+        failed: 0,
+        uncertain: retained ? 1 : 0,
+        leaseLost: retained ? 0 : 1,
+      });
+      expect(work.recordUncertain).toHaveBeenCalledExactlyOnceWith(
+        claim,
+        expect.any(Object),
+        error,
+      );
+      expect(work.recordFailure).not.toHaveBeenCalled();
+      expect(work.recordComplete).not.toHaveBeenCalled();
     },
   );
 

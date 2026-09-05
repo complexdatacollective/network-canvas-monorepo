@@ -6,11 +6,15 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createTenantDb } from '@codaco/studio-sync/tenant';
 
 import {
+  smtpFixture,
+  type SmtpBehavior,
+} from '../../../../../../packages/studio-sync/src/__tests__/smtp-fixture.ts';
+import {
   createScratchSchema,
   provisionScratchSchema,
   reachableDb,
 } from '../../__tests__/support/postgres.ts';
-import type { InvitationMailer } from '../../auth/email.ts';
+import { createMailer, type InvitationMailer } from '../../auth/email.ts';
 import type { OutboxLifecycleEvent } from '../../outbox/instrumentation.ts';
 import { cancelTeamInvitation } from '../commands.ts';
 import {
@@ -26,6 +30,28 @@ const INVITER_ID = 'invitation-delivery-inviter';
 const INVITER_MEMBER_ID = 'invitation-delivery-inviter-member';
 
 type ScratchSchema = Awaited<ReturnType<typeof createScratchSchema>>;
+
+async function seededScratch() {
+  if (!db) throw new Error('unreachable');
+  const scratch = await createScratchSchema(db);
+  await provisionScratchSchema(scratch.pool);
+  await scratch.pool.query(
+    `INSERT INTO "user" (
+         id, name, email, "emailVerified", "createdAt", "updatedAt"
+       ) VALUES ($1, 'Inviting Researcher', 'inviter@example.com', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+    [INVITER_ID],
+  );
+  await scratch.pool.query(
+    `INSERT INTO teams (id, name, slug) VALUES ($1, 'Invitation Delivery Team', $1)`,
+    [TEAM_ID],
+  );
+  await scratch.pool.query(
+    `INSERT INTO team_members (id, team_id, user_id, role)
+       VALUES ($1, $2, $3, 'owner')`,
+    [INVITER_MEMBER_ID, TEAM_ID, INVITER_ID],
+  );
+  return scratch;
+}
 
 async function seedInvitation(
   scratch: ScratchSchema,
@@ -103,24 +129,7 @@ describe.skipIf(!db)('invitation delivery outbox', () => {
   let scratch: ScratchSchema;
 
   beforeAll(async () => {
-    if (!db) throw new Error('unreachable');
-    scratch = await createScratchSchema(db);
-    await provisionScratchSchema(scratch.pool);
-    await scratch.pool.query(
-      `INSERT INTO "user" (
-         id, name, email, "emailVerified", "createdAt", "updatedAt"
-       ) VALUES ($1, 'Inviting Researcher', 'inviter@example.com', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-      [INVITER_ID],
-    );
-    await scratch.pool.query(
-      `INSERT INTO teams (id, name, slug) VALUES ($1, 'Invitation Delivery Team', $1)`,
-      [TEAM_ID],
-    );
-    await scratch.pool.query(
-      `INSERT INTO team_members (id, team_id, user_id, role)
-       VALUES ($1, $2, $3, 'owner')`,
-      [INVITER_MEMBER_ID, TEAM_ID, INVITER_ID],
-    );
+    scratch = await seededScratch();
   });
 
   afterAll(async () => {
@@ -713,4 +722,193 @@ describe.skipIf(!db)('invitation delivery outbox', () => {
     expect(JSON.stringify(events)).not.toContain(invitation.invitationId);
     expect(JSON.stringify(events)).not.toContain(providerError.message);
   });
+});
+
+describe.skipIf(!db)('SMTP invitation delivery outcomes', () => {
+  it('persists post-DATA uncertainty after a transient heartbeat failure and does not send again', async () => {
+    const scratch = await seededScratch();
+    const peer = await smtpFixture('silent_data');
+    try {
+      const invitation = await seedInvitation(scratch);
+      await enqueue(scratch, invitation);
+      await scratch.pool
+        .query(`CREATE FUNCTION fail_smtp_heartbeat() RETURNS trigger LANGUAGE plpgsql AS $body$
+        BEGIN
+          IF NEW.lease_owner = OLD.lease_owner
+            AND NEW.lease_owner IS NOT NULL
+            AND NEW.lease_expires_at IS DISTINCT FROM OLD.lease_expires_at THEN
+            RAISE EXCEPTION 'transient heartbeat failure';
+          END IF;
+          RETURN NEW;
+        END $body$;
+        CREATE TRIGGER fail_smtp_heartbeat BEFORE UPDATE ON team_invitation_deliveries
+        FOR EACH ROW EXECUTE FUNCTION fail_smtp_heartbeat()`);
+      const mailer = createMailer({
+        kind: 'smtp',
+        url: peer.url,
+        from: 'Studio <sender@example.test>',
+      });
+      const heartbeatFailed = deferred();
+      const events: OutboxLifecycleEvent[] = [];
+      const worker = dispatcher(scratch.maintenance, mailer, {
+        observer: (event) => {
+          events.push(event);
+          if (event.kind === 'heartbeat' && event.outcome === 'error')
+            heartbeatFailed.resolve();
+        },
+      });
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      const running = worker.runOnce();
+      await peer.dataReceived;
+      await vi.advanceTimersByTimeAsync(20_001);
+      await heartbeatFailed.promise;
+      await vi.advanceTimersByTimeAsync(20_000);
+      await running;
+      const stored = await scratch.pool.query<{
+        uncertain: boolean;
+        attempts: number;
+        lease_owner: string | null;
+        last_error: string | null;
+      }>(
+        `SELECT uncertain_at IS NOT NULL AS uncertain, attempt_count AS attempts, lease_owner, last_error
+        FROM team_invitation_deliveries WHERE invitation_id = $1`,
+        [invitation.invitationId],
+      );
+      expect(stored.rows).toEqual([
+        {
+          uncertain: true,
+          attempts: 1,
+          lease_owner: null,
+          last_error: 'EMAIL_DELIVERY_UNCERTAIN',
+        },
+      ]);
+      expect(events).toContainEqual(
+        expect.objectContaining({
+          kind: 'dispatch',
+          uncertain: 1,
+          retried: 0,
+          leaseLost: 0,
+        }),
+      );
+      // Force immediate re-eligibility if the uncertainty marker is missing;
+      // this is a real SQL lease-clock boundary, independent of fake JS time.
+      await scratch.pool.query(
+        'DROP TRIGGER fail_smtp_heartbeat ON team_invitation_deliveries',
+      );
+      await scratch.pool.query(
+        `UPDATE team_invitation_deliveries SET lease_expires_at = clock_timestamp() - interval '1 second'
+        WHERE invitation_id = $1 AND lease_owner IS NOT NULL`,
+        [invitation.invitationId],
+      );
+      expect(
+        (await dispatcher(scratch.maintenance, mailer).runOnce()).claimed,
+      ).toBe(0);
+      expect(peer.messages).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+      await peer.close();
+      await scratch.dispose();
+    }
+  });
+
+  it.each([
+    ['disconnect_data', 'uncertain', 'EMAIL_DELIVERY_UNCERTAIN'],
+    ['silent_data', 'uncertain', 'EMAIL_DELIVERY_UNCERTAIN'],
+    ['reject_data_permanent', 'failed', 'EMAIL_DELIVERY_PERMANENT'],
+    ['accept', 'sent', null],
+  ] as const)(
+    'records %s through the actual mailer and never automatically repeats a terminal send',
+    async (behavior, terminal, lastError) => {
+      const scratch = await seededScratch();
+      const peer = await smtpFixture(behavior satisfies SmtpBehavior);
+      try {
+        const invitation = await seedInvitation(scratch, {
+          email: 'private-recipient@example.test',
+        });
+        await enqueue(scratch, invitation);
+        const mailer = createMailer({
+          kind: 'smtp',
+          url: peer.url,
+          from: 'Studio <sender@example.test>',
+        });
+        const events: OutboxLifecycleEvent[] = [];
+        const heartbeatRenewed = deferred();
+        const worker = dispatcher(scratch.maintenance, mailer, {
+          observer: (event) => {
+            events.push(event);
+            if (event.kind === 'heartbeat' && event.outcome === 'renewed')
+              heartbeatRenewed.resolve();
+          },
+        });
+        if (behavior === 'silent_data')
+          vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        const running = worker.runOnce();
+        if (behavior === 'silent_data') {
+          await peer.dataReceived;
+          await vi.advanceTimersByTimeAsync(20_001);
+          await heartbeatRenewed.promise;
+          await vi.advanceTimersByTimeAsync(19_999);
+        }
+        await running;
+        const stored = await scratch.pool.query<{
+          attempts: number;
+          sent: boolean;
+          failed: boolean;
+          uncertain: boolean;
+          last_error: string | null;
+        }>(
+          `SELECT attempt_count AS attempts, sent_at IS NOT NULL AS sent,
+          failed_at IS NOT NULL AS failed, uncertain_at IS NOT NULL AS uncertain, last_error
+         FROM team_invitation_deliveries WHERE invitation_id = $1`,
+          [invitation.invitationId],
+        );
+        expect(stored.rows).toEqual([
+          {
+            attempts: 1,
+            sent: terminal === 'sent',
+            failed: terminal === 'failed',
+            uncertain: terminal === 'uncertain',
+            last_error: lastError,
+          },
+        ]);
+        expect(peer.messages).toHaveLength(1);
+        const rawMessage = peer.messages[0]!;
+        const boundary = rawMessage.indexOf('\r\n\r\n');
+        expect(boundary).toBeGreaterThan(0);
+        const headers = rawMessage
+          .slice(0, boundary)
+          .replace(/\r\n[ \t]+/g, ' ');
+        expect(headers).toContain(
+          `Message-ID: <studio-invitation.${invitation.invitationId}@networkcanvas.local>`,
+        );
+        expect(headers).toContain(
+          'Content-Transfer-Encoding: quoted-printable',
+        );
+        // RFC 2045 soft line breaks do not change this ASCII invitation URL.
+        const body = rawMessage.slice(boundary + 4).replace(/=\r\n/g, '');
+        expect(body).toContain(
+          `https://studio.example.test/invitations/${invitation.invitationId}`,
+        );
+        expect(events).toContainEqual(
+          expect.objectContaining({
+            claimed: 1,
+            retried: 0,
+            uncertain: terminal === 'uncertain' ? 1 : 0,
+          }),
+        );
+        expect(JSON.stringify(stored.rows)).not.toContain(invitation.email);
+        expect(JSON.stringify(events)).not.toContain(invitation.email);
+        const repeated = await dispatcher(
+          scratch.maintenance,
+          mailer,
+        ).runOnce();
+        expect(repeated.claimed).toBe(0);
+        expect(peer.messages).toHaveLength(1);
+      } finally {
+        vi.useRealTimers();
+        await peer.close();
+        await scratch.dispose();
+      }
+    },
+  );
 });

@@ -172,7 +172,7 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
     summary:
       'SMTP transport sign-in and team-invitation email is sent through.',
     deployment:
-      'Unset ⇒ magic-link sends refuse and team invitations cannot be created. A sign-in or invitation link is never written to the log outside development.',
+      'Unset ⇒ magic-link sends refuse and team invitations cannot be created. Accepts smtp:// or smtps:// credentials and host/port only; query options, fragments, and paths are refused. TLS is required except for localhost, 127.0.0.1, and ::1 development relays. Connection and greeting waits are bounded to 10 seconds, socket inactivity to 20 seconds, and the full send to 40 seconds. A sign-in or invitation link is never written to the log outside development.',
     example: 'smtp://user:password@smtp.example.org:587',
   },
   EMAIL_FROM: {
