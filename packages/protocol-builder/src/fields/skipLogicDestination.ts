@@ -59,13 +59,46 @@ export const UNREADABLE_DESTINATION_PROBLEM =
   'The stage this skips to cannot be read. Choose where the interview should continue instead.';
 
 /**
+ * The keys each destination shape is allowed to carry.
+ *
+ * `SkipLogicDestinationSchema` builds both shapes with `strictObject`, so a
+ * key beside these is not surplus detail to be dropped — it is what makes the
+ * value one the protocol schema refuses.
+ */
+const DESTINATION_KEYS: Readonly<
+  Record<SkipLogicDestination['type'], readonly string[]>
+> = Object.freeze({
+  finish: Object.freeze(['type']),
+  stage: Object.freeze(['type', 'stageId']),
+});
+
+/**
+ * Whether the stored object holds only the keys its own shape has.
+ *
+ * Read off the object's own enumerable keys, which is what the schema's
+ * `strictObject` compares against, so this and the validator agree about what
+ * counts as an extra key.
+ */
+const hasNoExtraKeys = (
+  value: object,
+  type: SkipLogicDestination['type'],
+): boolean =>
+  Object.keys(value).every((key) => DESTINATION_KEYS[type].includes(key));
+
+/**
  * A stored value read back as a destination, or `undefined` when it is not one.
  *
- * Tolerant rather than strict. The value arrives from a protocol someone else
- * may have edited, and a destination the schema would reject is a problem to
- * report, never a reason to throw inside a control the researcher needs in
- * order to fix it. `readDestination` is what decides WHICH problem it is;
- * this answers only whether the value is a destination.
+ * Tolerant rather than strict about the SHAPE of the input — the value arrives
+ * from a protocol someone else may have edited, and a destination the schema
+ * would reject is a problem to report, never a reason to throw inside a
+ * control the researcher needs in order to fix it — and exact about what
+ * counts as a destination, because the schema is. A valid discriminator is not
+ * enough: `{ type: 'finish', stageId: 'stale' }` read as a clean `finish`
+ * showed "End the interview" with nothing wrong beside it, over a stored value
+ * whose extra key refused the save with no control to point at.
+ *
+ * `readDestination` is what decides WHICH problem it is; this answers only
+ * whether the value is a destination.
  */
 export const asSkipLogicDestination = (
   value: unknown,
@@ -74,10 +107,14 @@ export const asSkipLogicDestination = (
     return undefined;
   }
   const type = Reflect.get(value, 'type');
-  if (type === 'finish') return { type: 'finish' };
+  if (type === 'finish') {
+    return hasNoExtraKeys(value, 'finish') ? { type: 'finish' } : undefined;
+  }
   if (type !== 'stage') return undefined;
   const stageId = Reflect.get(value, 'stageId');
-  return typeof stageId === 'string' && stageId !== ''
+  return typeof stageId === 'string' &&
+    stageId !== '' &&
+    hasNoExtraKeys(value, 'stage')
     ? { type: 'stage', stageId }
     : undefined;
 };

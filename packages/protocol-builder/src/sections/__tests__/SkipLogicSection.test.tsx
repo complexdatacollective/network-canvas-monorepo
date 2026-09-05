@@ -977,6 +977,67 @@ describe('choosing where the interview continues', () => {
     expect(destination).not.toHaveValue('route:next');
   });
 
+  /**
+   * The same gap on its other axis. The schema's two destination shapes are
+   * `strictObject`s, so a stray key beside a valid discriminator is a
+   * destination it refuses — and a reader that took the discriminator and
+   * dropped the rest showed "End the interview" as a finished answer over a
+   * stored value that could not be saved.
+   */
+  it('reports a destination carrying a key the schema refuses', async () => {
+    renderEditor(
+      createSession({
+        fields: configuredFields({ type: 'finish', stageId: 'stale' }),
+      }),
+    );
+
+    expect(
+      await screen.findByText(
+        'The stage this skips to cannot be read. Choose where the interview should continue instead.',
+      ),
+    ).toBeInTheDocument();
+    const destination = screen.getByRole('combobox', {
+      name: 'When this stage is skipped',
+    });
+    expect(destination).toHaveAttribute('aria-invalid', 'true');
+    expect(destination).not.toHaveValue('route:finish');
+  });
+
+  it('refuses to finish a stage holding one', async () => {
+    const user = setupUser();
+    const onFinish = vi.fn();
+    renderEditor(
+      createSession({
+        onFinish,
+        fields: configuredFields({ type: 'finish', stageId: 'stale' }),
+      }),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    await waitFor(() => expect(onFinish).not.toHaveBeenCalled());
+    expect(
+      screen.getByRole('combobox', { name: 'When this stage is skipped' }),
+    ).toHaveAttribute('aria-invalid', 'true');
+  });
+
+  it('attributes the refusal of an extra key to the destination that holds it', async () => {
+    const session = createSession({
+      fields: configuredFields({ type: 'finish', stageId: 'stale' }),
+    });
+
+    const validation = await session.validate();
+
+    // Reporting is not refusing: the control says which answer to change, and
+    // the schema is what stops the stage being saved. Both have to be true,
+    // or the researcher meets a refusal with no control to point at.
+    expect(validation.status).toBe('invalid');
+    const issues = validation.status === 'invalid' ? validation.issues : [];
+    expect(issues.map((issue) => issue.path.slice(0, 4).join('.'))).toContain(
+      'stages.0.skipLogic.destination',
+    );
+  });
+
   it('attributes the refusal of one to the destination that holds it', async () => {
     const session = createSession({
       fields: configuredFields({ type: 'stage' }),

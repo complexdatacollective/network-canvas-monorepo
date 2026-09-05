@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { SkipLogicDestinationSchema } from '@codaco/protocol-validation';
+
 import {
   asSkipLogicDestination,
   destinationRoute,
@@ -44,6 +46,36 @@ describe('reading a stored destination', () => {
       { type: 'somewhere-else' },
     ]) {
       expect(asSkipLogicDestination(value)).toBeUndefined();
+    }
+  });
+
+  /**
+   * The schema's own two shapes are `strictObject`s, so a key beside them is
+   * a destination it refuses — however good the rest of the object looks.
+   * Read as the shape it resembles, `{ type: 'finish', stageId: 'stale' }`
+   * showed as "End the interview" with nothing wrong, while the stored value
+   * kept the key that refused the save.
+   */
+  it('reads a destination carrying a key the schema refuses as no destination', () => {
+    for (const value of [
+      { type: 'finish', stageId: 'stale' },
+      { type: 'stage', stageId: 'stage-2', action: 'SKIP' },
+    ]) {
+      // The premise, stated rather than assumed: these are values the protocol
+      // schema itself rejects, which is what makes reading them as clean
+      // destinations a save nothing in the editor can explain.
+      expect(SkipLogicDestinationSchema.safeParse(value).success).toBe(false);
+      expect(asSkipLogicDestination(value)).toBeUndefined();
+    }
+  });
+
+  it('keeps reading the two shapes the schema accepts', () => {
+    for (const value of [
+      { type: 'finish' },
+      { type: 'stage', stageId: 'stage-2' },
+    ]) {
+      expect(SkipLogicDestinationSchema.safeParse(value).success).toBe(true);
+      expect(asSkipLogicDestination(value)).toEqual(value);
     }
   });
 
@@ -199,6 +231,10 @@ describe('what is wrong with a destination', () => {
       { type: 'stage' },
       { type: 'stage', stageId: '' },
       { type: 'somewhere-else' },
+      // A valid discriminator carrying a key the schema's `strictObject`
+      // refuses: the one shape that used to read as a finished answer.
+      { type: 'finish', stageId: 'stale' },
+      { type: 'stage', stageId: 'stage-2', action: 'SKIP' },
       'route:next',
       [],
       null,
