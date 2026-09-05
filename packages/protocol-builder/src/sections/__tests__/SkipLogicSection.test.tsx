@@ -919,6 +919,73 @@ describe('a rule set the researcher cannot save', () => {
   });
 
   /**
+   * The protocol schema refuses a filter whose rules repeat an id
+   * (`findDuplicateId`), and no control here asks for one — so a stage holding
+   * two rules under one id can only have arrived by import, by hand-editing,
+   * or from a merge. Nothing used to report it, and the list keyed both rows
+   * by that one id, which made them one row to `ArrayField`.
+   */
+  it('refuses a stage whose rules share an identifier', async () => {
+    const user = setupUser();
+    const onFinish = vi.fn();
+    renderEditor(
+      createSession({
+        onFinish,
+        fields: {
+          label: 'Welcome',
+          title: 'Hello',
+          items: [],
+          skipLogic: {
+            action: 'SHOW',
+            filter: {
+              join: 'AND',
+              rules: [
+                {
+                  id: 'rule-a',
+                  type: 'node',
+                  options: { type: 'person', operator: 'EXISTS' },
+                },
+                {
+                  id: 'rule-a',
+                  type: 'node',
+                  options: {
+                    type: 'person',
+                    attribute: 'age',
+                    operator: 'EXACTLY',
+                    value: 30,
+                  },
+                },
+              ],
+            },
+          },
+        },
+      }),
+    );
+
+    // Both rows are there, and both are marked: neither is the wrong one.
+    expect(
+      await screen.findAllByRole('button', { name: /^Edit rule:/ }),
+    ).toHaveLength(2);
+    expect(
+      screen.getAllByText(
+        'Another rule in this set has the same identifier, so this protocol cannot be saved with both. Edit or delete the rule.',
+      ),
+    ).toHaveLength(2);
+    await waitFor(() =>
+      expect(outlineText()?.[2]).toBe('Skip logicHas a problem'),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    expect(
+      await screen.findByText(
+        '2 of these rules cannot be used as they stand. Open each marked rule to fix it, or delete it.',
+      ),
+    ).toBeInTheDocument();
+    expect(onFinish).not.toHaveBeenCalled();
+  });
+
+  /**
    * The rule dialog refuses every gap, so a rule with no operand cannot have
    * been built here: it arrived by import, by hand-editing, or from another
    * session. The protocol schema accepts it — `value` is optional there — and

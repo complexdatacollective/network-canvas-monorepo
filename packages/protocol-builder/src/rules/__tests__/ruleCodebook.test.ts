@@ -156,22 +156,96 @@ describe('the date picker a rule’s operand inherits', () => {
       parameters: { before: 30 },
     },
     // A month-resolution picker, so a month outside 01-12 has somewhere to be
-    // asked about.
+    // asked about — and with no bounds authored, so the window it offers is
+    // the one the control synthesises.
     joined: {
       name: 'Joined',
       type: 'datetime',
       component: 'DatePicker',
       parameters: { type: 'month' },
     },
+    // The same, one resolution coarser: a bare year dropdown.
+    graduated: {
+      name: 'Graduated',
+      type: 'datetime',
+      component: 'DatePicker',
+      parameters: { type: 'year' },
+    },
     age: { name: 'Age', type: 'number' },
   });
 
   it('carries every bound the attribute’s own picker honours', () => {
+    // Stated as the two dates the picker resolves the authored bounds TO,
+    // which is how it holds them internally and what its dropdowns are built
+    // from: a coarse bound's absent month and day both read as 1, exactly as
+    // `parseYmd` reads them. `compareDateStrings` truncates to the shorter of
+    // the two before comparing, so a `"1800"` operand still sits on the floor
+    // rather than below it.
     expect(ruleVariableDateParameters(variables, 'born')).toEqual({
       type: 'year',
-      min: '1800',
-      max: '1810',
+      min: '1800-01-01',
+      max: '1810-01-01',
     });
+    expect(operandDateProblems(variables, 'born', 'EXACTLY', '1800')).toEqual(
+      [],
+    );
+    expect(operandDateProblems(variables, 'born', 'EXACTLY', '1799')).toEqual([
+      { kind: 'outOfRange', value: '1799' },
+    ]);
+  });
+
+  /**
+   * A month or year DatePicker is not an input anyone types into: it is a pair
+   * of closed dropdowns built from a window the control SYNTHESISES when the
+   * codebook authors none — `DATE_PICKER_DEFAULT_MIN` through today. A stored
+   * operand outside that window names a year the dropdown does not contain, so
+   * no participant answer can ever equal it, and the operand control the rule
+   * editor itself renders cannot select it either.
+   *
+   * `@codaco/interview`'s `buildDatePickerBoundProps` states the same
+   * asymmetry from the submission side: it synthesises nothing for a
+   * DatePicker precisely because "month/year resolutions render closed
+   * dropdown lists that can't accept an out-of-window typed value in the first
+   * place".
+   */
+  it('derives the window a coarse picker offers when the codebook authors none', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime('2026-07-27T12:00:00.000Z');
+    try {
+      expect(ruleVariableDateParameters(variables, 'joined')).toEqual({
+        type: 'month',
+        min: '1920-01-01',
+        max: '2026-07-27',
+      });
+      expect(ruleVariableDateParameters(variables, 'graduated')).toEqual({
+        type: 'year',
+        min: '1920-01-01',
+        max: '2026-07-27',
+      });
+
+      expect(
+        operandDateProblems(variables, 'graduated', 'EXACTLY', '1800'),
+      ).toEqual([{ kind: 'outOfRange', value: '1800' }]);
+      expect(
+        operandDateProblems(variables, 'joined', 'EXACTLY', '1919-12'),
+      ).toEqual([{ kind: 'outOfRange', value: '1919-12' }]);
+      expect(
+        operandDateProblems(variables, 'joined', 'EXACTLY', '2027-01'),
+      ).toEqual([{ kind: 'outOfRange', value: '2027-01' }]);
+
+      // And every date the dropdowns DO offer is left alone.
+      expect(
+        operandDateProblems(variables, 'graduated', 'EXACTLY', '1920'),
+      ).toEqual([]);
+      expect(
+        operandDateProblems(variables, 'joined', 'EXACTLY', '1950-06'),
+      ).toEqual([]);
+      expect(
+        operandDateProblems(variables, 'joined', 'EXACTLY', '2026-07'),
+      ).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('invents no bound the codebook does not hold', () => {

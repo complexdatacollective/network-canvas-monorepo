@@ -4,6 +4,7 @@ import type { RuleDraft } from './rule.ts';
 import type { RuleTargetType } from './ruleCodebook.ts';
 import {
   describeRule,
+  duplicateRuleIds,
   type RuleProblem,
   type RuleProblemCode,
 } from './ruleDescription.ts';
@@ -67,17 +68,30 @@ const isRuleSetJoin = (value: unknown): value is RuleSetJoin =>
   value === 'AND' || value === 'OR';
 
 /**
+ * The stored value as the record a rule set is, or `undefined` when it is not
+ * one at all.
+ *
+ * Narrowed once and read by both the editor's reading of a rule set and the
+ * verdict on its shape, because the two ask different questions of the same
+ * keys: the editor wants the join it could put in a control, and the verdict
+ * wants whatever is actually stored there.
+ */
+const asRuleSetRecord = (value: unknown): object | undefined =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? value
+    : undefined;
+
+/**
  * A field value read back as a rule set.
  *
  * Returns `undefined` — never `null` — for anything that is not one, which is
  * also what a capability that has been switched off leaves behind.
  */
 export const asRuleSetValue = (value: unknown): RuleSetValue | undefined => {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    return undefined;
-  }
-  const rules = Reflect.get(value, 'rules');
-  const join = Reflect.get(value, 'join');
+  const record = asRuleSetRecord(value);
+  if (record === undefined) return undefined;
+  const rules = Reflect.get(record, 'rules');
+  const join = Reflect.get(record, 'join');
   return {
     ...(Array.isArray(rules) ? { rules: rules.filter(isRuleRow) } : {}),
     ...(typeof join === 'string' ? { join } : {}),
@@ -107,15 +121,38 @@ export const ruleSetRules = (value: unknown): readonly RuleDraft[] =>
  * nothing to say about one: reporting "create at least one rule" against a
  * section the researcher deliberately turned off would block the form with an
  * error about a control that is not on screen.
+ *
+ * The join is read from the stored record rather than through
+ * `asRuleSetValue`, which keeps only a join the editor's own control could
+ * hold: the question here is what the SCHEMA will find, and it refuses a
+ * number as surely as it refuses `"XOR"`.
  */
 export const ruleSetProblem = (value: unknown): string | undefined => {
-  const ruleSet = asRuleSetValue(value);
-  if (ruleSet === undefined) return undefined;
+  const record = asRuleSetRecord(value);
+  if (record === undefined) return undefined;
 
-  const rules = ruleSet.rules ?? [];
+  const rules = ruleSetRules(record);
   if (rules.length === 0) return NO_RULES_MESSAGE;
-  if (rules.length > 1 && !isRuleSetJoin(ruleSet.join)) return NO_JOIN_MESSAGE;
-  return undefined;
+
+  const join: unknown = Reflect.get(record, 'join');
+  if (rules.length > 1) {
+    // The join control is on screen, showing nothing selected for a value that
+    // matches neither option, so a set that never chose and a set holding a
+    // value the schema refuses are asked the same question.
+    return isRuleSetJoin(join) ? undefined : NO_JOIN_MESSAGE;
+  }
+
+  // One rule combines with nothing, so no join control is rendered for it and
+  // there is nothing to choose again. `FilterSchema` still declares
+  // `join: z.enum(['OR', 'AND']).optional()`, which refuses any other value
+  // whatever the rule count — so a stale `"XOR"` a hand-edit or a merge left
+  // behind has to be reported here, or the stage saves and the protocol
+  // schema refuses it with nothing on screen to point at. Editing or deleting
+  // a rule rewrites the set through `updateRules`, which drops the join of a
+  // set that is down to one rule; that is the repair the message names.
+  return join === undefined || isRuleSetJoin(join)
+    ? undefined
+    : UNUSABLE_JOIN_MESSAGE;
 };
 
 /**
@@ -168,6 +205,10 @@ const RULE_PROBLEM_SUMMARIES: Readonly<
   // where it sits: nothing about the codebook, and nothing the researcher left
   // half-answered on screen.
   missingId: 'unusable',
+  // The same, one step out: the rule is refused for the company it keeps
+  // rather than for anything about the codebook, and opening it is what fixes
+  // it — so it summarises with the sentence that says exactly that.
+  duplicateId: 'unusable',
 });
 
 const ruleProblemSummary = (problem: RuleProblem): RuleProblemSummary =>
@@ -196,15 +237,26 @@ export const ruleSetIssues = (
   value: unknown,
   codebook: Readonly<Codebook>,
   targets: readonly RuleTargetType[],
-): RuleSetIssue[] =>
-  ruleSetRules(value).flatMap<RuleSetIssue>((rule, index) => {
-    const { problems } = describeRule({ rule, codebook, targets });
+): RuleSetIssue[] => {
+  const rules = ruleSetRules(value);
+  // Worked out once for the set rather than per rule: whether an id is a
+  // duplicate is a question about the rules BESIDE this one, and the protocol
+  // schema refuses the whole filter for it.
+  const duplicateIds = duplicateRuleIds(rules);
+  return rules.flatMap<RuleSetIssue>((rule, index) => {
+    const { problems } = describeRule({
+      rule,
+      codebook,
+      targets,
+      duplicateIds,
+    });
     return problems.map((problem) => ({
       position: index + 1,
       message: problem.message,
       summary: ruleProblemSummary(problem),
     }));
   });
+};
 
 /**
  * The rule-set field's own error text, or `undefined` when it has none.
@@ -298,3 +350,13 @@ const SUMMARY_SENTENCES: Readonly<
  */
 export const NO_RULES_MESSAGE = 'Please create at least one rule.';
 const NO_JOIN_MESSAGE = 'Please choose how these rules should be combined.';
+/**
+ * What a set holding a combination the protocol cannot use says, when there is
+ * no control on screen to choose a different one.
+ *
+ * Names the repair rather than the value: a set of one rule renders no join
+ * control at all, so "choose how these rules combine" would send the
+ * researcher looking for something that is not there.
+ */
+const UNUSABLE_JOIN_MESSAGE =
+  'These rules record a way of combining them that this protocol cannot use. Edit or delete a rule to clear it.';

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { RuleDraft } from '../rule.ts';
 import {
   describeRule,
+  duplicateRuleIds,
   RULE_PROBLEM_CODES,
   type RuleProblemCode,
 } from '../ruleDescription.ts';
@@ -87,6 +88,51 @@ describe('ruleSetProblem', () => {
 
   it('does not ask a single rule how it combines', () => {
     expect(ruleSetProblem({ rules: [presenceRule('a')] })).toBeUndefined();
+  });
+
+  it('leaves a single rule carrying a join the protocol allows alone', () => {
+    // `FilterSchema` holds `join` optional, so one left behind by a deletion
+    // is accepted where it sits — and the next edit to the rules clears it.
+    expect(
+      ruleSetProblem({ join: 'AND', rules: [presenceRule('a')] }),
+    ).toBeUndefined();
+  });
+
+  /**
+   * `FilterSchema` declares `join: z.enum(['OR', 'AND']).optional()`, which
+   * refuses every other value whatever the rule count — the cardinality rule
+   * beside it only adds the requirement that a set of SEVERAL rules hold one.
+   * Asking about the join only once a set has two rules therefore let a stored
+   * set holding one rule and `"XOR"` read as finished, and the join control is
+   * not on screen for a single rule to say otherwise.
+   */
+  it('refuses a join the protocol cannot use, beside a single rule', () => {
+    for (const join of ['XOR', '', 3, null]) {
+      expect(ruleSetProblem({ join, rules: [presenceRule('a')] })).toBe(
+        'These rules record a way of combining them that this protocol cannot use. Edit or delete a rule to clear it.',
+      );
+      // And the field says the same, which is what blocks the stage save.
+      expect(
+        ruleSetValidationMessage(
+          { join, rules: [presenceRule('a')] },
+          codebook,
+          targets,
+        ),
+      ).toBe(
+        'These rules record a way of combining them that this protocol cannot use. Edit or delete a rule to clear it.',
+      );
+    }
+  });
+
+  it('asks a set of several rules to choose again when its join is not one of the two', () => {
+    // The control IS on screen here, showing no selection, so the set is asked
+    // the same question a set that never answered it is asked.
+    expect(
+      ruleSetProblem({
+        join: 'XOR',
+        rules: [presenceRule('a'), presenceRule('b')],
+      }),
+    ).toBe('Please choose how these rules should be combined.');
   });
 });
 
@@ -250,7 +296,28 @@ const RULE_BY_PROBLEM: Readonly<Record<RuleProblemCode, RuleDraft>> =
       type: 'node',
       options: { type: 'person', operator: 'EXISTS' },
     },
+    // Nothing is wrong with this rule on its own — it is the rule BESIDE it,
+    // filed under the same id, that the protocol schema refuses the set for.
+    // `rulesFor` below is what puts the second one there.
+    duplicateId: {
+      id: 'a',
+      type: 'node',
+      options: { type: 'person', operator: 'EXISTS' },
+    },
   });
+
+/**
+ * The set each of those rules is read inside.
+ *
+ * One rule for every problem but one: `duplicateId` is the only thing that can
+ * be wrong with a rule that cannot be seen from the rule, so it takes a second
+ * rule filed under the same id to demonstrate it — a distinct object, as two
+ * rows of a stored protocol are.
+ */
+const rulesFor = (code: RuleProblemCode): RuleDraft[] => {
+  const rule = RULE_BY_PROBLEM[code];
+  return code === 'duplicateId' ? [rule, { ...rule }] : [rule];
+};
 
 /**
  * Every problem a rule can have reaches the researcher, in both places.
@@ -272,24 +339,28 @@ describe('every problem a rule can have', () => {
   // every rule below is about a node except the one that is about the ego,
   // and it is the SET that makes that one a problem.
   it.each(RULE_PROBLEM_CODES)('is reported and refused: %s', (code) => {
-    const rule = RULE_BY_PROBLEM[code];
+    const rules = rulesFor(code);
+    const rule = rules[0]!;
     const problem = describeRule({
       rule,
       codebook,
       targets: filterTargets,
+      duplicateIds: duplicateRuleIds(rules),
     }).problems.find((candidate) => candidate.code === code);
     // The fixture's own proof: a rule that stopped producing this problem
     // would otherwise pass the two assertions below by having no problem at
     // all.
     expect(problem).toBeDefined();
 
+    // A join every set carries, so a set of two rules is not refused for the
+    // combination it never chose instead of for the rule this is about.
     expect(
-      ruleSetIssues({ rules: [rule] }, codebook, filterTargets),
+      ruleSetIssues({ join: 'AND', rules }, codebook, filterTargets),
     ).toContainEqual(
       expect.objectContaining({ position: 1, message: problem?.message }),
     );
     expect(
-      ruleSetValidationMessage({ rules: [rule] }, codebook, filterTargets),
+      ruleSetValidationMessage({ join: 'AND', rules }, codebook, filterTargets),
     ).toEqual(expect.any(String));
   });
 });

@@ -1,5 +1,5 @@
 import { Pencil, Trash2 } from 'lucide-react';
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import { IconButton } from '@codaco/fresco-ui/Button';
 import ArrayField, {
@@ -12,7 +12,7 @@ import type { Codebook } from '@codaco/protocol-validation';
 
 import type { RuleDraft } from './rule.ts';
 import type { RuleTargetType } from './ruleCodebook.ts';
-import { describeRule } from './ruleDescription.ts';
+import { describeRule, duplicateRuleIds } from './ruleDescription.ts';
 import RuleEditorDialog, { type RuleTypeOption } from './RuleEditorDialog.tsx';
 import RulePreview from './RulePreview.tsx';
 
@@ -20,9 +20,10 @@ import RulePreview from './RulePreview.tsx';
  * The rule a row holds, without the list's own bookkeeping — which fresco-ui
  * owns and strips, so a key it adds later cannot reach a saved protocol.
  *
- * A row still being added has no target yet, and every reader here treats an
- * empty target as "not a rule": the row renders nothing and the editor opens
- * on the Entity control.
+ * A target that is not a string is read as no target at all, which is what
+ * `describeRule` reports and what opens the editor on the Entity control. It
+ * is not a reason to hide the row: a stored rule can arrive without a target,
+ * and the row is the only way to reach the editor that could give it one.
  */
 const asRule = (item: Record<string, unknown> | undefined): RuleDraft => {
   const rule = stripManagedProperties(item);
@@ -33,6 +34,7 @@ type RuleListItemProps = ArrayFieldItemProps<RuleDraft> &
   Readonly<{
     codebook: Readonly<Codebook>;
     allowedTargets: readonly RuleTargetType[];
+    duplicateIds: ReadonlySet<string>;
   }>;
 
 function RuleListItem({
@@ -50,6 +52,7 @@ function RuleListItem({
   readOnly,
   codebook,
   allowedTargets,
+  duplicateIds,
 }: RuleListItemProps) {
   const rule = asRule(item);
   const textId = useId();
@@ -57,14 +60,24 @@ function RuleListItem({
   const deleteActionId = useId();
   const interactionDisabled = disabled || readOnly;
   const description = useMemo(
-    () => describeRule({ rule, codebook, targets: allowedTargets }),
-    [allowedTargets, codebook, rule],
+    () =>
+      describeRule({ rule, codebook, targets: allowedTargets, duplicateIds }),
+    [allowedTargets, codebook, duplicateIds, rule],
   );
 
   // External editors own the active row while their dialog is open. Hiding it
   // matches every other dialog-edited list and gives the shared layout
   // animation a single source and destination rather than two copies.
-  if (isBeingEdited || rule.type === '') return null;
+  //
+  // The row a rule with no readable target renders is NOT hidden with it. A
+  // half-added row is already covered — it exists only while its dialog is
+  // open, and is dropped whole when that dialog is cancelled — so the only
+  // rows this used to hide were stored ones, from a protocol authored
+  // elsewhere or merged from a collaborator's edit. `ruleSetIssues` reports
+  // those and the field tells the researcher to open rule N, and nothing here
+  // opens a row by position: the row was the only way in, and hiding it left
+  // the whole rule set unrepairable except by deleting every rule in it.
+  if (isBeingEdited) return null;
 
   return (
     <>
@@ -154,6 +167,8 @@ type RuleEditorSession = Readonly<{
   sourceId: string;
   isNewItem: boolean;
   seed: RuleDraft;
+  /** Read when the session opened, like the seed it belongs to. */
+  idIsShared: boolean;
   open: boolean;
 }>;
 
@@ -161,6 +176,7 @@ type RuleListEditorProps = ArrayFieldEditorProps<RuleDraft> &
   Readonly<{
     ruleTypes: readonly RuleTypeOption[];
     allowedTargets: readonly RuleTargetType[];
+    duplicateIds: ReadonlySet<string>;
   }>;
 
 function RuleListEditor({
@@ -171,6 +187,7 @@ function RuleListEditor({
   getEditorTrigger,
   ruleTypes,
   allowedTargets,
+  duplicateIds,
 }: RuleListEditorProps) {
   const [session, setSession] = useState<RuleEditorSession | null>(null);
 
@@ -191,15 +208,17 @@ function RuleListEditor({
       if (previous?.open === true && previous.sourceId === item._internalId) {
         return previous;
       }
+      const seed = asRule(item);
       return {
         id: (previous?.id ?? 0) + 1,
         sourceId: item._internalId,
         isNewItem,
-        seed: asRule(item),
+        seed,
+        idIsShared: typeof seed.id === 'string' && duplicateIds.has(seed.id),
         open: true,
       };
     });
-  }, [isNewItem, item]);
+  }, [duplicateIds, isNewItem, item]);
 
   if (session === null) return null;
 
@@ -210,6 +229,7 @@ function RuleListEditor({
       seed={session.seed}
       ruleTypes={ruleTypes}
       allowedTargets={allowedTargets}
+      idIsShared={session.idIsShared}
       // `ArrayField` withdraws its save handler when the list stops being
       // editable, and this dialog may already be open when that happens.
       // Turning that absence into a call that does nothing told the researcher
@@ -251,8 +271,53 @@ const createEmptyRule = (): Partial<RuleDraft> => ({});
  * A rule's identity is its own id, so a row keeps its place through an add, a
  * delete and a reorder, and the editor a row opens is the editor for THAT
  * rule rather than for whatever is currently at that index.
+ *
+ * Only an id no other rule in this set holds. `ArrayField` derives one
+ * internal id per row from this and then finds, updates and REMOVES by that
+ * id: two rows answering with the same value are one row to it, so deleting
+ * either deleted both and editing the second edited and displayed the first.
+ * Answering `undefined` hands those rows back to `ArrayField`'s own per-object
+ * identity, which is what every list without a `getId` uses and is unique by
+ * construction. An id that is not a string answers `undefined` for the same
+ * reason: the protocol schema requires a string, the row is already reported
+ * as having none, and two rules holding the same non-string would collide
+ * exactly as two rules holding the same string do.
+ *
+ * The alternative — writing a fresh id onto the second rule as it is read —
+ * was rejected: it edits a stored protocol nobody asked to edit, and it does
+ * it silently, resolving the very thing the researcher has to be told about.
+ * The duplicate is reported on both rows instead (`duplicateId`), and the id
+ * is only rewritten by the editor, on a rule the researcher opened and saved.
  */
-const getRuleId = (rule: RuleDraft) => rule.id;
+const ruleRowId =
+  (duplicateIds: ReadonlySet<string>) =>
+  (rule: RuleDraft): string | undefined =>
+    typeof rule.id === 'string' && !duplicateIds.has(rule.id)
+      ? rule.id
+      : undefined;
+
+const NO_DUPLICATE_IDS: ReadonlySet<string> = new Set<string>();
+
+/**
+ * The ids more than one rule in this set is filed under, held to one identity
+ * for as long as the answer itself does not change.
+ *
+ * The field above rebuilds its `rules` array on every render, so a set derived
+ * straight from it would be a new object every time — and the item and editor
+ * components below are identified by reference, so a new object in their
+ * closure would remount every row on every keystroke elsewhere in the stage.
+ * Recomputed during render and kept when nothing changed, which is the same
+ * shape `ArrayField`'s own external-value sync uses.
+ */
+function useDuplicateRuleIds(rules: readonly RuleDraft[]): ReadonlySet<string> {
+  const held = useRef<ReadonlySet<string>>(NO_DUPLICATE_IDS);
+  const current = duplicateRuleIds(rules);
+  const unchanged =
+    current.size === held.current.size &&
+    [...current].every((id) => held.current.has(id));
+  if (!unchanged) held.current = current;
+  return held.current;
+}
 
 /**
  * The shared editable-list presentation for skip-logic and network-filter
@@ -273,6 +338,8 @@ export default function RuleList({
   disabled = false,
   readOnly = false,
 }: RuleListProps) {
+  const duplicateIds = useDuplicateRuleIds(rules);
+
   // Bound here rather than through a context: the item and editor components
   // are identified by reference, so rebuilding them every render would remount
   // every row. Memoised on exactly what they close over.
@@ -284,10 +351,11 @@ export default function RuleList({
             {...props}
             codebook={codebook}
             allowedTargets={allowedTargets}
+            duplicateIds={duplicateIds}
           />
         );
       },
-    [allowedTargets, codebook],
+    [allowedTargets, codebook, duplicateIds],
   );
 
   const editorComponent = useMemo(
@@ -298,17 +366,20 @@ export default function RuleList({
             {...props}
             ruleTypes={ruleTypes}
             allowedTargets={allowedTargets}
+            duplicateIds={duplicateIds}
           />
         );
       },
-    [allowedTargets, ruleTypes],
+    [allowedTargets, duplicateIds, ruleTypes],
   );
+
+  const getId = useMemo(() => ruleRowId(duplicateIds), [duplicateIds]);
 
   return (
     <ArrayField<RuleDraft>
       value={[...rules]}
       onChange={(nextRules) => onChange(nextRules ?? [])}
-      getId={getRuleId}
+      getId={getId}
       itemTemplate={createEmptyRule}
       itemComponent={itemComponent}
       editorComponent={editorComponent}

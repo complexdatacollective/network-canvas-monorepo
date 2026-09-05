@@ -1186,7 +1186,23 @@ describe('a rule the codebook has moved out from under', () => {
    * is unfinished by definition.
    */
   describe('every problem a rule can have', () => {
-    const DRAFTS: Readonly<Record<RuleProblemCode, RuleDraft>> = {
+    /**
+     * All but one of them. `duplicateId` is not a property of a draft: an id
+     * is a duplicate only relative to the rules beside it, and this dialog is
+     * handed one rule. It is also not something the dialog ever has to refuse
+     * — told that the rule it opened shares its id, it mints a fresh one
+     * before it validates, so the draft it judges cannot carry the problem.
+     * `RuleSetField`'s "gives one of them a new identifier when it is edited
+     * and saved" is where that answer is proved. The placement table still
+     * covers the code, because it is total over `RULE_PROBLEM_CODES` and will
+     * not compile otherwise.
+     */
+    type DraftProblemCode = Exclude<RuleProblemCode, 'duplicateId'>;
+    const DRAFT_PROBLEM_CODES = RULE_PROBLEM_CODES.filter(
+      (code): code is DraftProblemCode => code !== 'duplicateId',
+    );
+
+    const DRAFTS: Readonly<Record<DraftProblemCode, RuleDraft>> = {
       unknownTarget: { id: 'rule-1', type: 'chimera', options: {} },
       missingEntityType: {
         id: 'rule-1',
@@ -1302,7 +1318,7 @@ describe('a rule the codebook has moved out from under', () => {
       RULE_VALUE_FIELD,
     ]);
 
-    it.each(RULE_PROBLEM_CODES)('refuses a rule reported as %s', (code) => {
+    it.each(DRAFT_PROBLEM_CODES)('refuses a rule reported as %s', (code) => {
       const rule = DRAFTS[code];
 
       expect(

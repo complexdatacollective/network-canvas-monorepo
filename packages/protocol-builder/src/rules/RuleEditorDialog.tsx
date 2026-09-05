@@ -482,6 +482,12 @@ const RULE_PROBLEM_PLACEMENTS: Readonly<
   // would save — and stated anyway, because the placement table is what stops
   // a problem being added to the description with nowhere to appear.
   missingId: () => ({ field: TARGET_FIELD, message: MISSING_ID_MESSAGE }),
+  // Unreachable here for the same reason and by the same mechanism: this
+  // dialog is told when the rule it opened shares its id with another, and
+  // mints a fresh one before it validates — so the draft it judges is a rule
+  // no other rule's id collides with. Stated anyway, because the table is
+  // total.
+  duplicateId: () => ({ field: TARGET_FIELD, message: MISSING_ID_MESSAGE }),
 });
 
 /**
@@ -850,6 +856,15 @@ export type RuleEditorDialogProps = Readonly<{
    * take. The dialog then stays open with the draft intact, and the session is
    * not recorded as saved.
    */
+  /**
+   * Whether another rule in the set this was opened from is already filed
+   * under this rule's id.
+   *
+   * Only the set can answer it, and it decides one thing: whether the id this
+   * session commits is the one it opened with. Passed rather than derived
+   * because this dialog is handed one rule, never the set around it.
+   */
+  idIsShared?: boolean;
   onSave: (rule: RuleDraft) => void | DialogFormErrors;
   onCancel: () => void;
   finalFocus?: DialogFormProps['finalFocus'];
@@ -881,6 +896,7 @@ export default function RuleEditorDialog({
   seed,
   ruleTypes,
   allowedTargets,
+  idIsShared = false,
   onSave,
   onCancel,
   finalFocus,
@@ -931,12 +947,20 @@ export default function RuleEditorDialog({
    * by the very dialog that repairs it: nothing on screen asks for an id, so
    * there would be no control to answer.
    *
-   * Only those two cases mint. Any string the rule already has is its
-   * identity, and is kept: the schema accepts it, the row is keyed by it, and
-   * replacing one would quietly rewrite the researcher's protocol.
+   * A string another rule in the same set is already filed under mints too,
+   * and for the same reason: `findDuplicateId` refuses a filter holding one id
+   * twice, so keeping it would save a rule the protocol schema goes on
+   * rejecting. That is the only case in which a rule's own string id is
+   * replaced, and it happens because the researcher opened this rule and
+   * saved it — never behind their back.
+   *
+   * Any other string the rule already has is its identity, and is kept: the
+   * schema accepts it, the row is keyed by it, and replacing one would quietly
+   * rewrite the researcher's protocol.
    */
   const ruleId = useRef<string | undefined>(undefined);
-  ruleId.current ??= typeof seed.id === 'string' ? seed.id : uuid({});
+  ruleId.current ??=
+    typeof seed.id === 'string' && !idIsShared ? seed.id : uuid({});
 
   const validate = useCallback(
     (values: Record<string, FieldValue>): DialogFormErrors | undefined =>

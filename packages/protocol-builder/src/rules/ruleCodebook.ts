@@ -13,7 +13,10 @@ import {
   type Variables,
   type VariableType,
 } from '@codaco/protocol-validation';
-import { relativeDatePickerWindow } from '@codaco/shared-consts';
+import {
+  datePickerWindows,
+  relativeDatePickerWindow,
+} from '@codaco/shared-consts';
 
 import {
   canAuthorRuleForType,
@@ -195,10 +198,18 @@ export const ruleVariableType = (
  * that let the researcher pick it.
  *
  * The two datetime variable shapes say it differently, and both are read the
- * way the INTERVIEW reads them. A `DatePicker` names its resolution and, when
- * the researcher authored them, its bounds verbatim; with none authored it is
- * left unbounded, because that is what the control does and inventing its
- * 1920-to-today default would refuse dates the participant can enter. A
+ * way the INTERVIEW reads them. A `DatePicker` names its resolution and its
+ * bounds, and what an UNAUTHORED bound means there depends on which control
+ * the resolution renders. At full resolution it is a native date input with no
+ * `min`/`max` attribute, and the interview validates a submitted answer
+ * against the authored side alone, so an absent bound is genuinely no bound:
+ * inventing the control's 1920-to-today default would refuse dates a
+ * participant can still enter. At month or year resolution the control is a
+ * pair of closed dropdowns, and it builds them from that default window
+ * whether or not the codebook authored one — there is no year in the list
+ * outside it, so an operand outside it is a comparison nothing can satisfy.
+ * That derivation is `datePickerWindows` in `@codaco/shared-consts`, the same
+ * function fresco-ui's `DatePickerField` builds its dropdowns from. A
  * `RelativeDatePicker` names no `min`/`max` at all — it names an anchor and a
  * span either side of it — and is ALWAYS bounded: the anchor defaults to
  * today and the span to the shared before/after constants, so the same window
@@ -260,8 +271,34 @@ export const ruleVariableDateParameters = (
 
   if (parameters === undefined) return DEFAULT_DATE_PARAMETERS;
   const resolution: unknown = Reflect.get(parameters, 'type');
+  const type = isDateFormat(resolution) ? resolution : DEFAULT_DATE_FORMAT;
+
+  // A month or year picker renders two closed dropdowns rather than an input
+  // anyone types into, and it builds them from a window it SYNTHESISES when
+  // the codebook authors none — so a rule operand outside that window names a
+  // year the list does not contain, and no answer can ever equal it. The
+  // window is `datePickerWindows`' coarse pair, the same derivation the
+  // control itself renders from, judged as of today because today's is the
+  // window the interview will offer the next participant.
+  if (type !== 'full') {
+    const { coarse } = datePickerWindows(
+      {
+        ...dateBound(parameters, 'min'),
+        ...dateBound(parameters, 'max'),
+      },
+      todayYmd(),
+    );
+    return { type, min: coarse.min, max: coarse.max };
+  }
+
+  // A full-resolution picker is a native date input, and an unauthored bound
+  // there is not a bound at all: the input carries no `min`/`max` attribute,
+  // the interview validates a submitted answer against the authored side
+  // alone (`buildDatePickerBoundProps`), and the schema's own contradiction
+  // analyser models it as contributing no interval. Inventing one here would
+  // refuse dates a participant can still enter.
   return {
-    type: isDateFormat(resolution) ? resolution : DEFAULT_DATE_FORMAT,
+    type,
     ...dateBound(parameters, 'min'),
     ...dateBound(parameters, 'max'),
   };

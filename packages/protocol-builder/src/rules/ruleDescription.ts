@@ -115,9 +115,42 @@ export const RULE_PROBLEM_CODES = [
   'unusableDate',
   'incomplete',
   'missingId',
+  'duplicateId',
 ] as const;
 
 export type RuleProblemCode = (typeof RULE_PROBLEM_CODES)[number];
+
+/**
+ * The ids held by more than one rule in a set.
+ *
+ * The one thing wrong with a rule that cannot be seen from the rule: an id is
+ * a duplicate only relative to the other rules beside it, so the set has to
+ * work it out and hand it in. Stated here, next to the description that
+ * reports it, because every reader of a set — the rule list, the field's own
+ * verdict, and a host printing a stage out — has to reach the same answer.
+ *
+ * Only string ids count. A rule holding no id, or something that is not a
+ * string, is already reported as `missingId`, and calling two of those
+ * duplicates of each other would mark the same rule twice for one fault.
+ *
+ * The id is read without asking whether the row is a readable rule at all: a
+ * rule that does not say what it is about still occupies its id, and the
+ * schema counts it when it looks for a duplicate.
+ */
+export const duplicateRuleIds = (
+  rules: readonly unknown[],
+): ReadonlySet<string> => {
+  const seen = new Set<string>();
+  const duplicated = new Set<string>();
+  for (const rule of rules) {
+    if (typeof rule !== 'object' || rule === null) continue;
+    const id: unknown = Reflect.get(rule, 'id');
+    if (typeof id !== 'string') continue;
+    if (seen.has(id)) duplicated.add(id);
+    seen.add(id);
+  }
+  return duplicated;
+};
 
 export type RuleProblem = Readonly<{
   code: RuleProblemCode;
@@ -190,6 +223,19 @@ export type DescribeRuleInput = Readonly<{
    * nothing.
    */
   targets?: readonly RuleTargetType[];
+  /**
+   * The ids held by more than one rule in the set this rule sits in, from
+   * `duplicateRuleIds`.
+   *
+   * The other thing only the SET can answer. The protocol schema refuses a
+   * filter whose rules repeat an id (`findDuplicateId`), and no rule can tell
+   * on its own that its id is a repeat. A caller that says nothing — a host
+   * printing one rule out of a validated protocol, or the dialog judging the
+   * draft it is about to save — reports no duplicate, which is right: a
+   * validated protocol has none, and the dialog mints a fresh id rather than
+   * committing a second copy of one.
+   */
+  duplicateIds?: ReadonlySet<string>;
 }>;
 
 /**
@@ -318,6 +364,7 @@ export function describeRule({
   rule,
   codebook,
   targets,
+  duplicateIds,
 }: DescribeRuleInput): RuleDescription {
   const problems: RuleProblem[] = [];
 
@@ -575,6 +622,14 @@ export function describeRule({
   // researcher repairs simply by opening the rule and finishing it again.
   if (typeof rule.id !== 'string') {
     problems.push({ code: 'missingId', message: MISSING_ID_MESSAGE });
+  } else if (duplicateIds?.has(rule.id) === true) {
+    // The same id, twice in one set. `findDuplicateId` refuses the protocol
+    // for it, and the rule ITSELF looks perfect — so this is the one problem
+    // that cannot be found without the rules beside it, and the one the
+    // researcher has no other way of seeing. Reported on BOTH rows, because
+    // neither is the wrong one: repairing either repairs the set, and the
+    // editor mints a fresh id for whichever is opened and saved.
+    problems.push({ code: 'duplicateId', message: DUPLICATE_ID_MESSAGE });
   }
 
   const attributePresence = attribute !== undefined && isExistenceOperator;
@@ -760,5 +815,7 @@ const INCOMPLETE_MESSAGE =
   'This rule is not complete. Edit it to fill in every part, or delete it.';
 const MISSING_ID_MESSAGE =
   'This rule has no identifier, so this protocol cannot be saved with it. Edit the rule to give it one, or delete the rule.';
+const DUPLICATE_ID_MESSAGE =
+  'Another rule in this set has the same identifier, so this protocol cannot be saved with both. Edit or delete the rule.';
 /** What an operand no reader can make sense of is printed as. */
 const UNREADABLE_OPERAND = '(a value this editor cannot read)';
