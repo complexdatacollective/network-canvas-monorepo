@@ -9,6 +9,9 @@ import {
   useState,
 } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
@@ -26,6 +29,56 @@ import { PinUnlockForm } from './PinUnlockForm';
 import { RecoverByResettingDialog } from './RecoverByResettingDialog';
 import { UnlockEmblem } from './UnlockEmblem';
 import { UnlockLayout } from './UnlockLayout';
+
+const messages = defineMessages({
+  biometricAuthenticationIsAlreadyInProgress: {
+    id: 'interviewer.authenticationDialog.biometricAuthenticationIsAlreadyInProgress',
+    defaultMessage: 'Biometric authentication is already in progress.',
+    description: 'User-facing message in Interviewer Authentication Dialog.',
+  },
+  recoverWithPassphrase: {
+    id: 'interviewer.authenticationDialog.recoverWithPassphrase',
+    defaultMessage: 'Recover with passphrase',
+    description: 'Visible copy in Interviewer Authentication Dialog.',
+  },
+  recoverByResetting: {
+    id: 'interviewer.authenticationDialog.recoverByResetting',
+    defaultMessage: 'Recover by resetting',
+    description: 'Visible copy in Interviewer Authentication Dialog.',
+  },
+  unlock: {
+    id: 'interviewer.authenticationDialog.unlock',
+    defaultMessage: 'Unlock',
+    description: 'Visible copy in Interviewer Authentication Dialog.',
+  },
+  unlockWithBiometrics: {
+    id: 'interviewer.authenticationDialog.unlockWithBiometrics',
+    defaultMessage: 'Unlock with biometrics',
+    description: 'The submitLabel label in Interviewer Authentication Dialog.',
+  },
+  unlocking: {
+    id: 'interviewer.authenticationDialog.unlocking',
+    defaultMessage: 'Unlocking…',
+    description:
+      'The submittingText label in Interviewer Authentication Dialog.',
+  },
+  incorrectPassphrase: {
+    id: 'interviewer.authenticationDialog.incorrectPassphrase',
+    defaultMessage: 'Incorrect passphrase.',
+    description: 'User-facing message in Interviewer Authentication Dialog.',
+  },
+  recovery: {
+    id: 'interviewer.authenticationDialog.recovery',
+    defaultMessage: 'Enter your recovery passphrase.',
+    description: 'Administration text in Interviewer AuthenticationDialog.',
+  },
+  limitedRecovery: {
+    id: 'interviewer.authenticationDialog.limitedRecovery',
+    defaultMessage:
+      "Biometric authentication isn't available in this installed app. Enter your recovery passphrase instead.",
+    description: 'Administration text in Interviewer AuthenticationDialog.',
+  },
+});
 
 type AuthenticationDialogBaseProps = {
   /** Whether the dialog is visible. */
@@ -57,11 +110,8 @@ type AuthenticationDialogCancellationProps =
 export type AuthenticationDialogProps = AuthenticationDialogBaseProps &
   AuthenticationDialogCancellationProps;
 
-const RECOVERY_DESCRIPTION = 'Enter your recovery passphrase.';
-const LIMITED_RECOVERY_DESCRIPTION =
-  "Biometric authentication isn't available in this installed app. Enter your recovery passphrase instead.";
-
 export function AuthenticationDialog(props: AuthenticationDialogProps) {
+  const intl = useAppIntl();
   const {
     open = true,
     title,
@@ -140,7 +190,9 @@ export function AuthenticationDialog(props: AuthenticationDialogProps) {
     if (biometricAttemptPending.current !== null) {
       return {
         ok: false,
-        message: 'Biometric authentication is already in progress.',
+        message: intl.formatMessage(
+          messages.biometricAuthenticationIsAlreadyInProgress,
+        ),
       };
     }
 
@@ -157,7 +209,7 @@ export function AuthenticationDialog(props: AuthenticationDialogProps) {
         }
       }
     }
-  }, [authenticateBiometric, runAuthenticationAttempt]);
+  }, [intl, authenticateBiometric, runAuthenticationAttempt]);
 
   useLayoutEffect(() => {
     mountedRef.current = true;
@@ -237,17 +289,17 @@ export function AuthenticationDialog(props: AuthenticationDialogProps) {
   };
   const cancelButton = showCancel ? (
     <Button type="button" onClick={cancelAuthentication}>
-      Cancel
+      {intl.formatMessage(commonMessages.cancel)}
     </Button>
   ) : null;
   const recoveryButton = allowRecovery ? (
     auth.mode === 'biometric' ? (
       <Button type="button" color="secondary" onClick={openRecoveryDialog}>
-        Recover with passphrase
+        {intl.formatMessage(messages.recoverWithPassphrase)}
       </Button>
     ) : allowDestructiveRecovery ? (
       <Button type="button" color="destructive" onClick={openResetDialog}>
-        Recover by resetting
+        {intl.formatMessage(messages.recoverByResetting)}
       </Button>
     ) : null
   ) : null;
@@ -271,11 +323,11 @@ export function AuthenticationDialog(props: AuthenticationDialogProps) {
               {cancelButton}
               <SubmitButton
                 form={formId}
-                submittingText="Unlocking…"
+                submittingText={intl.formatMessage(messages.unlocking)}
                 className="phone-landscape:self-center"
                 data-testid="unlock-submit"
               >
-                Unlock
+                {intl.formatMessage(messages.unlock)}
               </SubmitButton>
             </>
           }
@@ -307,11 +359,11 @@ export function AuthenticationDialog(props: AuthenticationDialogProps) {
               {cancelButton}
               <SubmitButton
                 form={formId}
-                submittingText="Unlocking…"
+                submittingText={intl.formatMessage(messages.unlocking)}
                 className="phone-landscape:self-center"
                 data-testid="unlock-submit"
               >
-                Unlock
+                {intl.formatMessage(messages.unlock)}
               </SubmitButton>
             </>
           }
@@ -339,7 +391,13 @@ export function AuthenticationDialog(props: AuthenticationDialogProps) {
                 }
                 return {
                   success: false,
-                  formErrors: [result.message ?? 'Incorrect passphrase.'],
+                  formErrors: [
+                    createMessageError(
+                      result.localizedMessage?.descriptor ??
+                        messages.incorrectPassphrase,
+                      result.localizedMessage?.values,
+                    ),
+                  ],
                 };
               }}
             >
@@ -369,7 +427,7 @@ export function AuthenticationDialog(props: AuthenticationDialogProps) {
             {description}
           </BaseDialog.Description>
           <BiometricUnlockForm
-            submitLabel="Unlock with biometrics"
+            submitLabel={intl.formatMessage(messages.unlockWithBiometrics)}
             disabled={biometricPending}
             onSubmit={async () => {
               return attemptBiometric();
@@ -387,7 +445,7 @@ export function AuthenticationDialog(props: AuthenticationDialogProps) {
         <FormStoreProvider>
           <Dialog
             open
-            title="Recover with passphrase"
+            title={intl.formatMessage(messages.recoverWithPassphrase)}
             closeDialog={closeRecoveryDialog}
             footer={
               <>
@@ -397,14 +455,17 @@ export function AuthenticationDialog(props: AuthenticationDialogProps) {
                     color="destructive"
                     onClick={openResetDialog}
                   >
-                    Recover by resetting
+                    {intl.formatMessage(messages.recoverByResetting)}
                   </Button>
                 ) : null}
                 <Button type="button" onClick={closeRecoveryDialog}>
-                  Cancel
+                  {intl.formatMessage(commonMessages.cancel)}
                 </Button>
-                <SubmitButton form={recoveryFormId} submittingText="Unlocking…">
-                  Unlock
+                <SubmitButton
+                  form={recoveryFormId}
+                  submittingText={intl.formatMessage(messages.unlocking)}
+                >
+                  {intl.formatMessage(messages.unlock)}
                 </SubmitButton>
               </>
             }
@@ -415,7 +476,9 @@ export function AuthenticationDialog(props: AuthenticationDialogProps) {
               }
             >
               <BaseDialog.Description render={<Paragraph emphasis="muted" />}>
-                {limited ? LIMITED_RECOVERY_DESCRIPTION : RECOVERY_DESCRIPTION}
+                {intl.formatMessage(
+                  limited ? messages.limitedRecovery : messages.recovery,
+                )}
               </BaseDialog.Description>
               <FormWithoutProvider
                 id={recoveryFormId}
@@ -433,7 +496,13 @@ export function AuthenticationDialog(props: AuthenticationDialogProps) {
                   }
                   return {
                     success: false,
-                    formErrors: [result.message ?? 'Incorrect passphrase.'],
+                    formErrors: [
+                      createMessageError(
+                        result.localizedMessage?.descriptor ??
+                          messages.incorrectPassphrase,
+                        result.localizedMessage?.values,
+                      ),
+                    ],
                   };
                 }}
               >

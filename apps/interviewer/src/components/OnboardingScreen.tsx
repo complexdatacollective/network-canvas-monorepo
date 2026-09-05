@@ -1,12 +1,32 @@
 import { motion } from 'motion/react';
 import { useCallback, useRef } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import ncMarkUrl from '~/assets/NC-Flat.png';
 
 import { useSetupWizard } from './SetupWizardDialog';
+
+const messages = defineMessages({
+  welcomeToNetworkCanvasInterviewer: {
+    id: 'interviewer.onboardingScreen.welcomeToNetworkCanvasInterviewer',
+    defaultMessage: 'Welcome to Network Canvas Interviewer',
+    description: 'Visible copy in Interviewer Onboarding Screen.',
+  },
+  letSSetUpThisDevice: {
+    id: 'interviewer.onboardingScreen.letSSetUpThisDevice',
+    defaultMessage: "Let's set up this device.",
+    description: 'Visible copy in Interviewer Onboarding Screen.',
+  },
+  getStarted: {
+    id: 'interviewer.onboardingScreen.getStarted',
+    defaultMessage: 'Get started',
+    description: 'Visible copy in Interviewer Onboarding Screen.',
+  },
+});
 
 const containerVariants = {
   hidden: {},
@@ -53,6 +73,7 @@ const buttonVariants = {
 } as const;
 
 export function OnboardingScreenView({ onBegin }: { onBegin: () => void }) {
+  const intl = useAppIntl();
   return (
     <motion.div
       variants={containerVariants}
@@ -66,15 +87,17 @@ export function OnboardingScreenView({ onBegin }: { onBegin: () => void }) {
       />
       <motion.div variants={textVariants}>
         <Heading level="h1" margin="none" className="font-black tracking-tight">
-          Welcome to Network Canvas Interviewer
+          {intl.formatMessage(messages.welcomeToNetworkCanvasInterviewer)}
         </Heading>
       </motion.div>
       <motion.div variants={textVariants}>
-        <Paragraph margin="none">Let's set up this device.</Paragraph>
+        <Paragraph margin="none">
+          {intl.formatMessage(messages.letSSetUpThisDevice)}
+        </Paragraph>
       </motion.div>
       <motion.div variants={buttonVariants} className="mt-2">
         <Button type="button" color="primary" onClick={onBegin}>
-          Get started
+          {intl.formatMessage(messages.getStarted)}
         </Button>
       </motion.div>
     </motion.div>

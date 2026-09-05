@@ -13,7 +13,18 @@ const makeSubmit = (outcome: Outcome) => async () => {
   await new Promise((r) => setTimeout(r, 150));
   return outcome === 'success'
     ? { ok: true }
-    : { ok: false, message: 'Authenticator not recognised.' };
+    : {
+        ok: false,
+        message: 'Biometric authentication failed',
+        localizedMessage: {
+          descriptor: {
+            id: 'interviewer.vault.biometricAuthentication',
+            defaultMessage: 'Biometric authentication failed',
+            description:
+              'Biometric failure returned by the real vault operation.',
+          },
+        },
+      };
 };
 
 const meta: Meta<StoryArgs> = {
@@ -51,7 +62,7 @@ export const Failure: Story = {
   play: async ({ canvas, userEvent }) => {
     await userEvent.click(await canvas.findByRole('button'));
     await expect(await canvas.findByRole('alert')).toHaveTextContent(
-      'Authenticator not recognised.',
+      'Biometric authentication failed',
     );
   },
 };

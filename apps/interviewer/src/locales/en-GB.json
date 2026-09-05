@@ -1,0 +1,6 @@
+{
+  "interviewer.setupWizardDialog.appAuthorization": "App Authorisation",
+  "interviewer.setupWizardDialog.appAuthorizationEnsuresThatOnlyAuthorizedUsers": "App authorisation ensures that only authorised users can access the app, and perform certain sensitive actions (such as exporting data, and entering/leaving interviews). It also requires re-authentication after a specific configurable period of inactivity.",
+  "interviewer.setupWizardDialog.lockBehavior": "Lock behaviour",
+  "interviewer.setupWizardDialog.securingYourResearchDataIsVitalInterviewer": "Securing your research data is vital. Interviewer implements two layers of protection: secure data storage, and app authorisation checks."
+}

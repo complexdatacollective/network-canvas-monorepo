@@ -86,6 +86,7 @@ export default defineConfig({
             // down: a shorter specifier does not resolve from this root,
             // and an entry Vite cannot resolve is ignored in silence.
             '@codaco/fresco-ui > @codaco/app-i18n > @formatjs/icu-messageformat-parser',
+            '@codaco/fresco-ui > @codaco/app-i18n > @formatjs/intl-localematcher',
             '@codaco/fresco-ui > @codaco/app-i18n > react-intl',
             '@codaco/fresco-ui > @codaco/app-i18n > react-intl/server',
             '@base-ui/react',

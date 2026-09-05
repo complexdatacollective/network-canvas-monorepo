@@ -62,6 +62,8 @@ const KIND_PRIORITY = {
 } as const;
 
 type BuildDeckArgs = {
+  // Display ordering only: slot/hash identity always retains the authored name.
+  locale?: string;
   protocols: ProtocolWithCounts[];
   showSampleCard: boolean;
   showDevelopmentCard: boolean;
@@ -72,6 +74,7 @@ type BuildDeckArgs = {
 // entries sorted by name; the import trigger is always the last card and
 // never participates in slot merging.
 export function buildDeck({
+  locale = 'en',
   protocols,
   showSampleCard,
   showDevelopmentCard,
@@ -129,10 +132,9 @@ export function buildDeck({
     }
   }
 
+  const collator = new Intl.Collator(locale, { sensitivity: 'base' });
   const sorted = Array.from(bySlot.values()).toSorted((a, b) =>
-    entryName(a).localeCompare(entryName(b), undefined, {
-      sensitivity: 'base',
-    }),
+    collator.compare(entryName(a), entryName(b)),
   );
 
   return [...sorted, { kind: 'import' }];

@@ -3,6 +3,8 @@ import { X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useMemo } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import { DataTable } from '@codaco/fresco-ui/DataTable/DataTable';
 import { getInterviewProgress } from '@codaco/interview';
@@ -15,6 +17,48 @@ import { useDataViewUrlState } from './useDataViewUrlState';
 import { useSessionMutations } from './useSessionMutations';
 import { useSessionQuery } from './useSessionQuery';
 import { useSessionSelection } from './useSessionSelection';
+
+const messages = defineMessages({
+  allStrongSelectedCountStrongMatchingInterviewsAre: {
+    id: 'interviewer.dataView.allStrongSelectedCountStrongMatchingInterviewsAre',
+    defaultMessage:
+      '{selectedCount, plural, one {The <strong>#</strong> matching interview is selected.} other {All <strong>#</strong> matching interviews are selected.}}',
+    description: 'Visible copy in Interviewer Data View.',
+  },
+  clearSelection: {
+    id: 'interviewer.dataView.clearSelection',
+    defaultMessage: 'Clear selection',
+    description:
+      'Action that deselects interviews without deleting or changing them.',
+  },
+  allStrongLengthStrongOnThisPage: {
+    id: 'interviewer.dataView.allStrongLengthStrongOnThisPage',
+    defaultMessage:
+      '{length, plural, one {The <strong>#</strong> interview on this page is selected.} other {All <strong>#</strong> on this page are selected.}}',
+    description: 'Visible copy in Interviewer Data View.',
+  },
+  selectAllTotalCountMatching: {
+    id: 'interviewer.dataView.selectAllTotalCountMatching',
+    defaultMessage:
+      '{totalCount, plural, one {Select the # match →} other {Select all # matching →}}',
+    description: 'Visible copy in Interviewer Data View.',
+  },
+  loadingInterviews: {
+    id: 'interviewer.dataView.loadingInterviews',
+    defaultMessage: 'Loading interviews…',
+    description: 'User-facing message in Interviewer Data View.',
+  },
+  noInterviewsMatchThisFilter: {
+    id: 'interviewer.dataView.noInterviewsMatchThisFilter',
+    defaultMessage: 'No interviews match this filter.',
+    description: 'User-facing message in Interviewer Data View.',
+  },
+  noInterviewsRecordedYet: {
+    id: 'interviewer.dataView.noInterviewsRecordedYet',
+    defaultMessage: 'No interviews recorded yet.',
+    description: 'User-facing message in Interviewer Data View.',
+  },
+});
 
 type DataViewProps = {
   protocols: ProtocolWithCounts[];
@@ -67,6 +111,7 @@ const bannerVariants = {
 } as const;
 
 export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
+  const intl = useAppIntl();
   // Total interview steps (including the engine's appended finish stage) by
   // protocol hash, for the progress column's "step X of Y" label. Derived via
   // getInterviewProgress so the host never hard-codes the +1 for the finish
@@ -93,10 +138,11 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
       .map((p) => p.name)
       .filter((n): n is string => typeof n === 'string' && n.length > 0);
     const seen = new Set<string>(names);
+    const collator = new Intl.Collator(intl.locale);
     return Array.from(seen)
-      .toSorted((a, b) => a.localeCompare(b))
+      .toSorted((a, b) => collator.compare(a, b))
       .map((name) => ({ value: name, label: name }));
-  }, [protocols]);
+  }, [intl.locale, protocols]);
 
   const {
     columnFilters,
@@ -231,8 +277,13 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
               {isAllMatchingSelected ? (
                 <>
                   <span>
-                    All <strong>{selectedCount}</strong> matching interviews are
-                    selected.
+                    {intl.formatMessage(
+                      messages.allStrongSelectedCountStrongMatchingInterviewsAre,
+                      {
+                        strong: (chunks) => <strong>{chunks}</strong>,
+                        selectedCount: selectedCount,
+                      },
+                    )}
                   </span>
                   <Button
                     variant="link"
@@ -241,14 +292,19 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
                     className="font-heading text-sea-green gap-1 font-extrabold tracking-wide uppercase"
                     icon={<X size={14} aria-hidden />}
                   >
-                    Clear selection
+                    {intl.formatMessage(messages.clearSelection)}
                   </Button>
                 </>
               ) : (
                 <>
                   <span>
-                    All <strong>{rows.length}</strong> on this page are
-                    selected.
+                    {intl.formatMessage(
+                      messages.allStrongLengthStrongOnThisPage,
+                      {
+                        strong: (chunks) => <strong>{chunks}</strong>,
+                        length: rows.length,
+                      },
+                    )}
                   </span>
                   <Button
                     variant="link"
@@ -256,7 +312,9 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
                     onClick={expandSelectionToAll}
                     className="font-heading text-sea-green font-extrabold tracking-wide uppercase"
                   >
-                    Select all {totalCount} matching →
+                    {intl.formatMessage(messages.selectAllTotalCountMatching, {
+                      totalCount: totalCount,
+                    })}
                   </Button>
                 </>
               )}
@@ -274,10 +332,10 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
           bodyScroll
           emptyText={
             !loaded
-              ? 'Loading interviews…'
+              ? intl.formatMessage(messages.loadingInterviews)
               : columnFilters.length > 0 || globalFilter.length > 0
-                ? 'No interviews match this filter.'
-                : 'No interviews recorded yet.'
+                ? intl.formatMessage(messages.noInterviewsMatchThisFilter)
+                : intl.formatMessage(messages.noInterviewsRecordedYet)
           }
         />
       </motion.div>

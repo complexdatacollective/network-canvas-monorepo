@@ -1,12 +1,67 @@
 import { Check, Copy } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import type useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { ScrollArea as ScrollableArea } from '@codaco/fresco-ui/ScrollArea';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { ExternalLink } from '~/components/ExternalLink';
+
+const messages = defineMessages({
+  protocolValidationErrors: {
+    id: 'interviewer.protocolValidationDetailsDialog.protocolValidationErrors',
+    defaultMessage: 'Protocol validation errors',
+    description:
+      'The aria-label label in Interviewer Protocol Validation Details Dialog.',
+  },
+  ifYouWouldLikeSupportPostYour: {
+    id: 'interviewer.protocolValidationDetailsDialog.ifYouWouldLikeSupportPostYour',
+    defaultMessage:
+      'If you would like support, post your protocol along with these errors on the <link>community forum</link>, or email <link1>info@networkcanvas.com</link1> with this information.',
+    description:
+      'Visible copy in Interviewer Protocol Validation Details Dialog.',
+  },
+  validationErrorsCopiedToClipboard: {
+    id: 'interviewer.protocolValidationDetailsDialog.validationErrorsCopiedToClipboard',
+    defaultMessage: 'Validation errors copied to clipboard.',
+    description:
+      'User-facing message in Interviewer Protocol Validation Details Dialog.',
+  },
+  validationErrorsCouldNotBeCopied: {
+    id: 'interviewer.protocolValidationDetailsDialog.validationErrorsCouldNotBeCopied',
+    defaultMessage: 'Validation errors could not be copied.',
+    description:
+      'User-facing message in Interviewer Protocol Validation Details Dialog.',
+  },
+  copied: {
+    id: 'interviewer.protocolValidationDetailsDialog.copied',
+    defaultMessage: 'Copied',
+    description:
+      'User-facing message in Interviewer Protocol Validation Details Dialog.',
+  },
+  copy: {
+    id: 'interviewer.protocolValidationDetailsDialog.copy',
+    defaultMessage: 'Copy',
+    description:
+      'User-facing message in Interviewer Protocol Validation Details Dialog.',
+  },
+  title: {
+    id: 'interviewer.protocolValidationDetailsDialog.title',
+    defaultMessage: 'Protocol validation failed',
+    description:
+      'Administration text in Interviewer ProtocolValidationDetailsDialog.',
+  },
+  description: {
+    id: 'interviewer.protocolValidationDetailsDialog.description',
+    defaultMessage: 'Details of the validation errors can be found below:',
+    description:
+      'Administration text in Interviewer ProtocolValidationDetailsDialog.',
+  },
+});
 
 export type ProtocolValidationIssue = {
   path: string;
@@ -23,10 +78,6 @@ type ProtocolValidationDetailsDialogViewProps =
     open: boolean;
     onClose: () => void;
   };
-
-const DIALOG_TITLE = 'Protocol validation failed';
-const DIALOG_DESCRIPTION =
-  'Details of the validation errors can be found below:';
 
 function createValidationDetailsDialogId() {
   return `protocol-validation-details-${globalThis.crypto?.randomUUID?.() ?? Date.now().toString()}`;
@@ -64,17 +115,18 @@ export function ProtocolValidationDetailsDialogBody({
   issues,
   message,
 }: ProtocolValidationDetailsDialogOptions) {
+  const intl = useAppIntl();
   const visibleIssues = displayIssues(issues, message);
 
   return (
     <div className="flex flex-col gap-4">
       <ScrollableArea
-        aria-label="Protocol validation errors"
+        aria-label={intl.formatMessage(messages.protocolValidationErrors)}
         className="inset-surface bg-surface-1 text-surface-1-contrast publish-colors h-64! flex-none overflow-hidden rounded-sm"
         fade={false}
         viewportClassName="my-1.5 mr-1.5 px-4 py-2.5"
       >
-        <ol className="list-decimal space-y-3 pl-5 text-sm">
+        <ol lang="en" dir="ltr" className="list-decimal space-y-3 ps-5 text-sm">
           {visibleIssues.map((issue, index) => (
             <li key={`${issue.path}-${issue.message}-${index}`}>
               <div className="font-monospace text-surface-1-contrast/70 text-xs break-all">
@@ -87,16 +139,18 @@ export function ProtocolValidationDetailsDialogBody({
       </ScrollableArea>
 
       <Paragraph>
-        If you would like support, post your protocol along with these errors on
-        the{' '}
-        <ExternalLink href="https://community.networkcanvas.com">
-          community forum
-        </ExternalLink>
-        , or email{' '}
-        <ExternalLink href="mailto:info@networkcanvas.com">
-          info@networkcanvas.com
-        </ExternalLink>{' '}
-        with this information.
+        {intl.formatMessage(messages.ifYouWouldLikeSupportPostYour, {
+          link: (chunks) => (
+            <ExternalLink href="https://community.networkcanvas.com">
+              {chunks}
+            </ExternalLink>
+          ),
+          link1: (chunks) => (
+            <ExternalLink href="mailto:info@networkcanvas.com">
+              {chunks}
+            </ExternalLink>
+          ),
+        })}
       </Paragraph>
     </div>
   );
@@ -109,6 +163,7 @@ function ProtocolValidationDetailsDialogFooter({
   copyText: string;
   onClose: () => void;
 }) {
+  const intl = useAppIntl();
   const [copyStatus, setCopyStatus] = useState<'idle' | 'copied' | 'failed'>(
     'idle',
   );
@@ -131,10 +186,10 @@ function ProtocolValidationDetailsDialogFooter({
         margin="none"
       >
         {copyStatus === 'copied'
-          ? 'Validation errors copied to clipboard.'
+          ? intl.formatMessage(messages.validationErrorsCopiedToClipboard)
           : null}
         {copyStatus === 'failed'
-          ? 'Validation errors could not be copied.'
+          ? intl.formatMessage(messages.validationErrorsCouldNotBeCopied)
           : null}
       </Paragraph>
       <Button
@@ -147,10 +202,12 @@ function ProtocolValidationDetailsDialogFooter({
         }
         onClick={copyToClipboard}
       >
-        {copyStatus === 'copied' ? 'Copied' : 'Copy'}
+        {copyStatus === 'copied'
+          ? intl.formatMessage(messages.copied)
+          : intl.formatMessage(messages.copy)}
       </Button>
       <Button color="primary" onClick={onClose}>
-        Close
+        {intl.formatMessage(commonMessages.close)}
       </Button>
     </>
   );
@@ -162,6 +219,7 @@ export function ProtocolValidationDetailsDialogView({
   open,
   onClose,
 }: ProtocolValidationDetailsDialogViewProps) {
+  const intl = useAppIntl();
   const copyText = useMemo(
     () => getProtocolValidationDetailsCopyText({ issues, message }),
     [issues, message],
@@ -169,8 +227,8 @@ export function ProtocolValidationDetailsDialogView({
 
   return (
     <Dialog
-      title={DIALOG_TITLE}
-      description={DIALOG_DESCRIPTION}
+      title={intl.formatMessage(messages.title)}
+      description={intl.formatMessage(messages.description)}
       accent="destructive"
       open={open}
       closeDialog={onClose}
@@ -197,8 +255,8 @@ export function openProtocolValidationDetailsDialog(
   void dialog.openDialog({
     id: dialogId,
     type: 'custom',
-    title: DIALOG_TITLE,
-    description: DIALOG_DESCRIPTION,
+    title: <AppMessage message={messages.title} />,
+    description: <AppMessage message={messages.description} />,
     intent: 'destructive',
     className: 'max-w-3xl',
     children: <ProtocolValidationDetailsDialogBody {...options} />,

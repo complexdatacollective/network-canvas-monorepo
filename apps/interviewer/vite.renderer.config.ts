@@ -6,6 +6,8 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import type { Plugin, UserConfig } from 'vite';
 
+import { appI18n } from '@codaco/app-i18n/vite';
+
 import { POSTHOG_HOST } from './src/lib/analytics/config';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -131,6 +133,7 @@ export function createRendererConfig({
       // pre-bundling so Vite transforms them through its own pipeline rather
       // than attempting to pre-bundle them.
       exclude: [
+        '@codaco/app-i18n',
         '@codaco/fresco-ui',
         '@codaco/interview',
         '@codaco/network-exporters',
@@ -140,6 +143,7 @@ export function createRendererConfig({
       ],
     },
     plugins: [
+      ...appI18n(),
       react(),
       tailwindcss(),
       injectCspMeta(),

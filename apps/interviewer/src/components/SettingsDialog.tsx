@@ -2,6 +2,7 @@ import {
   FlaskConical,
   Info,
   LineChart,
+  Languages,
   Route,
   Shield,
   ShieldAlert,
@@ -9,8 +10,12 @@ import {
   Trash2,
   Upload as UploadIcon,
 } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { createElement, useCallback, useEffect, useRef, useState } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
@@ -36,6 +41,7 @@ import SecurityBehaviorControls, {
 } from '~/components/SecurityBehaviorControls';
 import { SettingsRow } from '~/components/SettingsRow';
 import { useSetupWizard } from '~/components/SetupWizardDialog';
+import { LanguageSettings } from '~/i18n/LanguageSettings';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
 import { APP_VERSION } from '~/lib/appVersion';
 import { useAuth } from '~/lib/auth/AuthContext';
@@ -56,6 +62,397 @@ import {
 } from '~/lib/storage';
 import { generateSyntheticSessions } from '~/lib/synthetic/generate';
 
+// Decorative unknown-value marker; the adjacent description names the state.
+const EMPTY_STORAGE_VALUE = '—';
+
+const messages = defineMessages({
+  storageUsage: {
+    id: 'interviewer.settingsDialog.storageUsage',
+    defaultMessage: 'Storage usage',
+    description: 'The label label in Interviewer Settings Dialog.',
+  },
+  couldNotRefreshSyntheticSessionInfo: {
+    id: 'interviewer.settingsDialog.couldNotRefreshSyntheticSessionInfo',
+    defaultMessage: 'Could not refresh synthetic session info',
+    description: 'User-facing message in Interviewer Settings Dialog.',
+  },
+  theProtocolListAndSessionCountAbove: {
+    id: 'interviewer.settingsDialog.theProtocolListAndSessionCountAbove',
+    defaultMessage:
+      'The protocol list and session count above may not match what is actually stored on this device. Reopen Settings to refresh them.',
+    description: 'User-facing message in Interviewer Settings Dialog.',
+  },
+  generationFailed: {
+    id: 'interviewer.settingsDialog.generationFailed',
+    defaultMessage: 'Generation failed',
+    description: 'User-facing message in Interviewer Settings Dialog.',
+  },
+  thisCannotBeUndone: {
+    id: 'interviewer.settingsDialog.thisCannotBeUndone',
+    defaultMessage: 'This cannot be undone.',
+    description: 'User-facing message in Interviewer Settings Dialog.',
+  },
+  unknown: {
+    id: 'interviewer.settingsDialog.unknown',
+    defaultMessage: 'Unknown',
+    description:
+      'Storage estimate shown when the browser cannot report device usage.',
+  },
+  settings: {
+    id: 'interviewer.settingsDialog.settings',
+    defaultMessage: 'Settings',
+    description: 'Visible copy in Interviewer Settings Dialog.',
+  },
+  settingsSections: {
+    id: 'interviewer.settingsDialog.settingsSections',
+    defaultMessage: 'Settings sections',
+    description: 'The aria-label label in Interviewer Settings Dialog.',
+  },
+  appVersion: {
+    id: 'interviewer.settingsDialog.appVersion',
+    defaultMessage: 'App version',
+    description: 'The title label in Interviewer Settings Dialog.',
+  },
+  networkCanvasInterviewer: {
+    id: 'interviewer.settingsDialog.networkCanvasInterviewer',
+    defaultMessage: 'Network Canvas Interviewer',
+    description: 'The desc label in Interviewer Settings Dialog.',
+  },
+  storage: {
+    id: 'interviewer.settingsDialog.storage',
+    defaultMessage: 'Storage',
+    description: 'The title label in Interviewer Settings Dialog.',
+  },
+  offlineStorage: {
+    id: 'interviewer.settingsDialog.offlineStorage',
+    defaultMessage: 'Offline storage',
+    description: 'The title label in Interviewer Settings Dialog.',
+  },
+  installationID: {
+    id: 'interviewer.settingsDialog.installationID',
+    defaultMessage: 'Installation ID',
+    description: 'The title label in Interviewer Settings Dialog.',
+  },
+  uniquePerDeviceIdentifier: {
+    id: 'interviewer.settingsDialog.uniquePerDeviceIdentifier',
+    defaultMessage: 'Unique per-device identifier',
+    description: 'The desc label in Interviewer Settings Dialog.',
+  },
+  showSampleProtocolOnHomeScreen: {
+    id: 'interviewer.settingsDialog.showSampleProtocolOnHomeScreen',
+    defaultMessage: 'Show sample protocol on home screen',
+    description: 'The label label in Interviewer Settings Dialog.',
+  },
+  reShowsTheOneClickSampleProtocol: {
+    id: 'interviewer.settingsDialog.reShowsTheOneClickSampleProtocol',
+    defaultMessage:
+      'Re-shows the one-click sample protocol card next to the Import card.',
+    description: 'The hint label in Interviewer Settings Dialog.',
+  },
+  allowStageNavigation: {
+    id: 'interviewer.settingsDialog.allowStageNavigation',
+    defaultMessage: 'Allow stage navigation',
+    description: 'The label label in Interviewer Settings Dialog.',
+  },
+  letParticipantsMoveBetweenStagesByTapping: {
+    id: 'interviewer.settingsDialog.letParticipantsMoveBetweenStagesByTapping',
+    defaultMessage:
+      'Let participants move between stages by tapping the progress bar during an interview, which opens a stages menu.',
+    description: 'The hint label in Interviewer Settings Dialog.',
+  },
+  whenOffParticipantsCanOnlyMoveForwards: {
+    id: 'interviewer.settingsDialog.whenOffParticipantsCanOnlyMoveForwards',
+    defaultMessage:
+      'When off, participants can only move forwards and backwards one stage at a time. Turning this on lets them jump directly to any stage, which is useful for piloting a protocol but is usually left off for real interviews.',
+    description: 'Visible copy in Interviewer Settings Dialog.',
+  },
+  exportGraphML: {
+    id: 'interviewer.settingsDialog.exportGraphML',
+    defaultMessage: 'Export GraphML',
+    description: 'The label label in Interviewer Settings Dialog.',
+  },
+  includeGraphMLFilesInInterviewExports: {
+    id: 'interviewer.settingsDialog.includeGraphMLFilesInInterviewExports',
+    defaultMessage: 'Include GraphML files in interview exports.',
+    description: 'The hint label in Interviewer Settings Dialog.',
+  },
+  exportCSV: {
+    id: 'interviewer.settingsDialog.exportCSV',
+    defaultMessage: 'Export CSV',
+    description: 'The label label in Interviewer Settings Dialog.',
+  },
+  includeCSVFilesAttributesEdgesEgoIn: {
+    id: 'interviewer.settingsDialog.includeCSVFilesAttributesEdgesEgoIn',
+    defaultMessage:
+      'Include CSV files (attributes, edges, ego) in interview exports.',
+    description: 'The hint label in Interviewer Settings Dialog.',
+  },
+  exportNodePositionsAsScreenCoordinatePixels: {
+    id: 'interviewer.settingsDialog.exportNodePositionsAsScreenCoordinatePixels',
+    defaultMessage: 'Export node positions as screen-coordinate pixels',
+    description: 'The label label in Interviewer Settings Dialog.',
+  },
+  sociogramNodePositionsAreExportedInPixel: {
+    id: 'interviewer.settingsDialog.sociogramNodePositionsAreExportedInPixel',
+    defaultMessage:
+      'Sociogram node positions are exported in pixel coordinates relative to the layout below.',
+    description: 'The hint label in Interviewer Settings Dialog.',
+  },
+  screenLayoutWidth: {
+    id: 'interviewer.settingsDialog.screenLayoutWidth',
+    defaultMessage: 'Screen layout width',
+    description: 'The label label in Interviewer Settings Dialog.',
+  },
+  pixels: {
+    id: 'interviewer.settingsDialog.pixels',
+    defaultMessage: 'Pixels',
+    description: 'The hint label in Interviewer Settings Dialog.',
+  },
+  screenLayoutHeight: {
+    id: 'interviewer.settingsDialog.screenLayoutHeight',
+    defaultMessage: 'Screen layout height',
+    description: 'The label label in Interviewer Settings Dialog.',
+  },
+  enableAnalytics: {
+    id: 'interviewer.settingsDialog.enableAnalytics',
+    defaultMessage: 'Enable analytics',
+    description: 'The label label in Interviewer Settings Dialog.',
+  },
+  sendAnonymousUsageAndErrorDataTo: {
+    id: 'interviewer.settingsDialog.sendAnonymousUsageAndErrorDataTo',
+    defaultMessage:
+      'Send anonymous usage and error data to help the Network Canvas team improve the app.',
+    description: 'The hint label in Interviewer Settings Dialog.',
+  },
+  whenAnalyticsAreEnabledTheAppSends: {
+    id: 'interviewer.settingsDialog.whenAnalyticsAreEnabledTheAppSends',
+    defaultMessage:
+      'When analytics are enabled, the app sends a small amount of anonymous information about how it is used — for example which interview stages and features are exercised, when protocols are imported, when data is exported, and details of any errors or crashes. This helps us find bugs and decide what to improve.',
+    description: 'Visible copy in Interviewer Settings Dialog.',
+  },
+  noParticipantDataIsEverCollected: {
+    id: 'interviewer.settingsDialog.noParticipantDataIsEverCollected',
+    defaultMessage: 'No participant data is ever collected.',
+    description: 'Visible copy in Interviewer Settings Dialog.',
+  },
+  networkDataResponsesCaseIDsProtocolContents: {
+    id: 'interviewer.settingsDialog.networkDataResponsesCaseIDsProtocolContents',
+    defaultMessage:
+      'Network data, responses, case IDs, protocol contents, and asset files never leave this device. Analytics also contain no user-identifiable information.',
+    description: 'Visible copy in Interviewer Settings Dialog.',
+  },
+  enableAppSecurity: {
+    id: 'interviewer.settingsDialog.enableAppSecurity',
+    defaultMessage: 'Enable app security',
+    description: 'The title label in Interviewer Settings Dialog.',
+  },
+  runTheGetStartedWizardToConfigure: {
+    id: 'interviewer.settingsDialog.runTheGetStartedWizardToConfigure',
+    defaultMessage:
+      'Run the Get started wizard to configure a device lock and choose your security preferences.',
+    description: 'The desc label in Interviewer Settings Dialog.',
+  },
+  getStarted: {
+    id: 'interviewer.settingsDialog.getStarted',
+    defaultMessage: 'Get started',
+    description:
+      'Action that opens security setup for a device currently used without a lock.',
+  },
+  useTheLockButtonInTheTop: {
+    id: 'interviewer.settingsDialog.useTheLockButtonInTheTop',
+    defaultMessage: 'Use the lock button in the top bar to lock immediately.',
+    description: 'Visible copy in Interviewer Settings Dialog.',
+  },
+  generateSyntheticInterviewSessionsToValidateThe: {
+    id: 'interviewer.settingsDialog.generateSyntheticInterviewSessionsToValidateThe',
+    defaultMessage:
+      'Generate synthetic interview sessions to validate the export pipeline. Synthetic sessions appear in the regular Sessions list and export identically to real sessions.',
+    description: 'Visible copy in Interviewer Settings Dialog.',
+  },
+  protocol: {
+    id: 'interviewer.settingsDialog.protocol',
+    defaultMessage: 'Protocol',
+    description:
+      'Research protocol selector used when generating synthetic interview sessions.',
+  },
+  importAProtocolFirst: {
+    id: 'interviewer.settingsDialog.importAProtocolFirst',
+    defaultMessage: 'Import a protocol first.',
+    description: 'User-facing message in Interviewer Settings Dialog.',
+  },
+  theProtocolUsedToShapeGeneratedSessions: {
+    id: 'interviewer.settingsDialog.theProtocolUsedToShapeGeneratedSessions',
+    defaultMessage: 'The protocol used to shape generated sessions.',
+    description: 'User-facing message in Interviewer Settings Dialog.',
+  },
+  numberOfSessions: {
+    id: 'interviewer.settingsDialog.numberOfSessions',
+    defaultMessage: 'Number of sessions',
+    description: 'The label label in Interviewer Settings Dialog.',
+  },
+  simulateParticipantDropOut: {
+    id: 'interviewer.settingsDialog.simulateParticipantDropOut',
+    defaultMessage: 'Simulate participant drop-out',
+    description: 'The label label in Interviewer Settings Dialog.',
+  },
+  someSessionsWillBeLeftIncompleteTo: {
+    id: 'interviewer.settingsDialog.someSessionsWillBeLeftIncompleteTo',
+    defaultMessage:
+      'Some sessions will be left incomplete to mirror real-world data.',
+    description: 'The hint label in Interviewer Settings Dialog.',
+  },
+  respectSkipLogicAndFiltering: {
+    id: 'interviewer.settingsDialog.respectSkipLogicAndFiltering',
+    defaultMessage: 'Respect skip logic and filtering',
+    description: 'The label label in Interviewer Settings Dialog.',
+  },
+  applyProtocolSkipLogicAndStageFilters: {
+    id: 'interviewer.settingsDialog.applyProtocolSkipLogicAndStageFilters',
+    defaultMessage:
+      'Apply protocol skip logic and stage filters during generation.',
+    description: 'The hint label in Interviewer Settings Dialog.',
+  },
+  generating: {
+    id: 'interviewer.settingsDialog.generating',
+    defaultMessage: 'Generating…',
+    description: 'User-facing message in Interviewer Settings Dialog.',
+  },
+  generate: {
+    id: 'interviewer.settingsDialog.generate',
+    defaultMessage: 'Generate',
+    description:
+      'Action that creates the requested number of synthetic interview sessions.',
+  },
+  generationProgress: {
+    id: 'interviewer.settingsDialog.generationProgress',
+    defaultMessage: 'Generation progress',
+    description: 'The label label in Interviewer Settings Dialog.',
+  },
+  currentTotalInterviewsGenerated: {
+    id: 'interviewer.settingsDialog.currentTotalInterviewsGenerated',
+    defaultMessage:
+      '{current, number} / {total, plural, one {# interview generated} other {# interviews generated}}',
+    description:
+      'Progress below the synthetic data generation button. current is the number already generated, and total is the requested number; the noun agrees with the requested total.',
+  },
+  deleteSyntheticData: {
+    id: 'interviewer.settingsDialog.deleteSyntheticData',
+    defaultMessage: 'Delete synthetic data',
+    description: 'The title label in Interviewer Settings Dialog.',
+  },
+  deleteAll: {
+    id: 'interviewer.settingsDialog.deleteAll',
+    defaultMessage: 'Delete All',
+    description:
+      'Action that deletes all generated synthetic sessions, preserving real interview sessions.',
+  },
+  persisted: {
+    id: 'interviewer.settingsDialog.persisted',
+    defaultMessage: 'Persisted',
+    description:
+      'Storage badge when the browser has granted persistent device storage.',
+  },
+  about: {
+    id: 'interviewer.settingsDialog.about',
+    defaultMessage: 'About',
+    description: 'Administration text in Interviewer SettingsDialog.',
+  },
+  language: {
+    id: 'interviewer.settingsDialog.language',
+    defaultMessage: 'Language',
+    description:
+      'Navigation tab for the device administration language preference.',
+  },
+  interview: {
+    id: 'interviewer.settingsDialog.interview',
+    defaultMessage: 'Interview',
+    description:
+      'Navigation tab for interview behavior preferences, separate from participant answers.',
+  },
+  dataExport: {
+    id: 'interviewer.settingsDialog.dataExport',
+    defaultMessage: 'Data export',
+    description: 'Administration text in Interviewer SettingsDialog.',
+  },
+  privacy: {
+    id: 'interviewer.settingsDialog.privacy',
+    defaultMessage: 'Privacy',
+    description: 'Administration text in Interviewer SettingsDialog.',
+  },
+  security: {
+    id: 'interviewer.settingsDialog.security',
+    defaultMessage: 'Security',
+    description:
+      'Navigation tab for device authentication, lock behavior and data-reset controls.',
+  },
+  syntheticData: {
+    id: 'interviewer.settingsDialog.syntheticData',
+    defaultMessage: 'Synthetic data',
+    description: 'Administration text in Interviewer SettingsDialog.',
+  },
+  generated: {
+    id: 'interviewer.settingsDialog.generated',
+    defaultMessage:
+      '{count, plural, one {Generated # synthetic session} other {Generated # synthetic sessions}}',
+    description:
+      'Success toast after generating synthetic interviews; count is the number created.',
+  },
+  deleteSynthetic: {
+    id: 'interviewer.settingsDialog.deleteSynthetic',
+    defaultMessage:
+      '{count, plural, one {Delete # synthetic session?} other {Delete # synthetic sessions?}}',
+    description:
+      'Confirmation heading before permanently deleting generated interviews.',
+  },
+  deleted: {
+    id: 'interviewer.settingsDialog.deleted',
+    defaultMessage:
+      '{count, plural, one {Deleted # synthetic session} other {Deleted # synthetic sessions}}',
+    description: 'Administration text in Interviewer SettingsDialog.',
+  },
+  syntheticCount: {
+    id: 'interviewer.settingsDialog.syntheticCount',
+    defaultMessage:
+      '{count, plural, one {There is currently # synthetic session on this device.} other {There are currently # synthetic sessions on this device.}}',
+    description: 'Administration text in Interviewer SettingsDialog.',
+  },
+  storageUsed: {
+    id: 'interviewer.settingsDialog.storageUsed',
+    defaultMessage:
+      '{hasPercent, select, true {{used} of {total} ({percent})} other {{used} of {total}}}',
+    description: 'Administration text in Interviewer SettingsDialog.',
+  },
+  storageProtected: {
+    id: 'interviewer.settingsDialog.storageProtected',
+    defaultMessage:
+      '{hasUsage, select, true {Offline storage: protected from eviction · {used} used} other {Offline storage: protected from eviction}}',
+    description: 'Administration text in Interviewer SettingsDialog.',
+  },
+  storageBestEffort: {
+    id: 'interviewer.settingsDialog.storageBestEffort',
+    defaultMessage:
+      'Offline storage: best-effort — it may be cleared under storage pressure',
+    description: 'Administration text in Interviewer SettingsDialog.',
+  },
+  bestEffort: {
+    id: 'interviewer.settingsDialog.bestEffort',
+    defaultMessage: 'Best-effort',
+    description:
+      'Storage badge when the browser may evict app data under storage pressure.',
+  },
+  deleteFailedHelp: {
+    id: 'interviewer.settingsDialog.deleteFailedHelp',
+    defaultMessage: 'Synthetic data could not be deleted. Please try again.',
+    description:
+      'Retry guidance retained in the synthetic data deletion confirmation after device storage fails.',
+  },
+  generationFailedHelp: {
+    id: 'interviewer.settingsDialog.generationFailedHelp',
+    defaultMessage: 'Synthetic data could not be generated. Please try again.',
+    description: 'Administration text in Interviewer SettingsDialog.',
+  },
+});
+
 type SettingsDialogProps = {
   open: boolean;
   onClose: () => void;
@@ -65,6 +462,7 @@ type SettingsDialogProps = {
 };
 
 type Section =
+  | 'language'
   | 'about'
   | 'interview'
   | 'data'
@@ -73,31 +471,40 @@ type Section =
   | 'synthetic';
 
 function StorageProgress({ value }: { value: number }) {
+  const intl = useAppIntl();
   const clamped = Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0;
   return (
     <ProgressBar
       orientation="horizontal"
       percentProgress={clamped * 100}
-      label="Storage usage"
+      label={intl.formatMessage(messages.storageUsage)}
       className="text-sea-green h-2"
     />
   );
 }
 
-const NAV_ITEMS: { id: Section; label: string; icon: typeof Info }[] = [
-  { id: 'about', label: 'About', icon: Info },
-  { id: 'interview', label: 'Interview', icon: Route },
-  { id: 'data', label: 'Data export', icon: UploadIcon },
-  { id: 'privacy', label: 'Privacy', icon: LineChart },
-  { id: 'security', label: 'Security', icon: Shield },
-  { id: 'synthetic', label: 'Synthetic data', icon: FlaskConical },
+const NAV_ITEMS: {
+  id: Section;
+  label: MessageDescriptor;
+  icon: typeof Info;
+}[] = [
+  { id: 'about', label: messages.about, icon: Info },
+  { id: 'language', label: messages.language, icon: Languages },
+  { id: 'interview', label: messages.interview, icon: Route },
+  { id: 'data', label: messages.dataExport, icon: UploadIcon },
+  { id: 'privacy', label: messages.privacy, icon: LineChart },
+  { id: 'security', label: messages.security, icon: Shield },
+  { id: 'synthetic', label: messages.syntheticData, icon: FlaskConical },
 ];
+
+const NARROW_SETTINGS_QUERY = '(max-width: 639px)';
 
 export function SettingsDialog({
   open,
   onClose,
   onDataChange,
 }: SettingsDialogProps) {
+  const intl = useAppIntl();
   const auth = useAuth();
   const analytics = useAnalytics();
   const toast = useToast();
@@ -107,6 +514,17 @@ export function SettingsDialog({
   }, [toast.add]);
   const { confirm } = useDialog();
   const { openSetupWizard } = useSetupWizard({ preserveExistingData: true });
+  const [narrow, setNarrow] = useState(
+    () => globalThis.matchMedia?.(NARROW_SETTINGS_QUERY).matches ?? false,
+  );
+  useEffect(() => {
+    const media = globalThis.matchMedia?.(NARROW_SETTINGS_QUERY);
+    if (!media) return undefined;
+    const update = () => setNarrow(media.matches);
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
   const [section, setSection] = useState<Section>('about');
   const [settings, setSettings] = useState<StoredSettings | null>(null);
   const [storage, setStorage] = useState<StorageEstimate>({
@@ -173,9 +591,12 @@ export function SettingsDialog({
       await reloadSynthetic();
     } catch {
       addToastRef.current({
-        title: 'Could not refresh synthetic session info',
-        description:
-          'The protocol list and session count above may not match what is actually stored on this device. Reopen Settings to refresh them.',
+        title: createElement(AppMessage, {
+          message: messages.couldNotRefreshSyntheticSessionInfo,
+        }),
+        description: createElement(AppMessage, {
+          message: messages.theProtocolListAndSessionCountAbove,
+        }),
         variant: 'destructive',
         timeout: 0,
       });
@@ -240,7 +661,10 @@ export function SettingsDialog({
         onProgress: (current, total) => setProgress({ current, total }),
       });
       toast.add({
-        title: `Generated ${created} synthetic session${created === 1 ? '' : 's'}`,
+        title: createElement(AppMessage, {
+          message: messages.generated,
+          values: { count: created },
+        }),
         variant: 'success',
       });
     } catch (error) {
@@ -250,17 +674,20 @@ export function SettingsDialog({
       // a researcher to read and act on it, so it doesn't auto-dismiss.
       if (error instanceof SyntheticDataConstraintError) {
         toast.add({
-          title: 'Generation failed',
+          title: createElement(AppMessage, {
+            message: messages.generationFailed,
+          }),
           description: <GenerationFailureDescription error={error} />,
           variant: 'destructive',
           timeout: 0,
         });
       } else {
-        const message =
-          error instanceof Error ? error.message : 'Unknown error';
+        console.error('Synthetic data generation failed', error);
         toast.add({
-          title: 'Generation failed',
-          description: message,
+          title: createElement(AppMessage, {
+            message: messages.generationFailed,
+          }),
+          description: <AppMessage message={messages.generationFailedHelp} />,
           variant: 'destructive',
           timeout: 0,
         });
@@ -283,9 +710,19 @@ export function SettingsDialog({
   const handleDeleteSynthetic = useCallback(async () => {
     if (syntheticCount === 0) return;
     await confirm({
-      title: `Delete ${syntheticCount} synthetic session${syntheticCount === 1 ? '' : 's'}?`,
-      description: 'This cannot be undone.',
-      confirmLabel: 'Delete',
+      title: createElement(AppMessage, {
+        message: messages.deleteSynthetic,
+        values: {
+          count: syntheticCount,
+        },
+      }),
+      description: createElement(AppMessage, {
+        message: messages.thisCannotBeUndone,
+      }),
+      confirmLabel: createElement(AppMessage, {
+        message: commonMessages.delete,
+      }),
+      describeError: () => <AppMessage message={messages.deleteFailedHelp} />,
       intent: 'destructive',
       onConfirm: async () => {
         setIsDeleting(true);
@@ -302,7 +739,10 @@ export function SettingsDialog({
         try {
           const deleted = await deleteSyntheticSessions();
           toast.add({
-            title: `Deleted ${deleted} synthetic session${deleted === 1 ? '' : 's'}`,
+            title: createElement(AppMessage, {
+              message: messages.deleted,
+              values: { count: deleted },
+            }),
             variant: 'success',
           });
         } finally {
@@ -323,22 +763,26 @@ export function SettingsDialog({
   const storagePercent = storage.percent !== null ? storage.percent / 100 : 0;
   const storageHasValues = storage.usage !== null && storage.quota !== null;
   const storageLabel = storageHasValues
-    ? `${formatBytes(storage.usage)} of ${formatBytes(storage.quota)}${
-        storage.percent !== null ? ` (${storage.percent.toFixed(1)}%)` : ''
-      }`
-    : 'Unknown';
-  // `persisted` = the browser has promised not to evict this origin's data;
-  // `best-effort` = it may be cleared under storage pressure.
+    ? intl.formatMessage(messages.storageUsed, {
+        used: formatBytes(storage.usage, intl),
+        total: formatBytes(storage.quota, intl),
+        hasPercent: String(storage.percent !== null),
+        percent: intl.formatNumber((storage.percent ?? 0) / 100, {
+          style: 'percent',
+          minimumFractionDigits: 1,
+          maximumFractionDigits: 1,
+        }),
+      })
+    : intl.formatMessage(messages.unknown);
   const durabilityLabel =
     storagePersisted === null
       ? null
       : storagePersisted
-        ? `Offline storage: protected from eviction${
-            storage.usage !== null
-              ? ` · ${formatBytes(storage.usage)} used`
-              : ''
-          }`
-        : 'Offline storage: best-effort — it may be cleared under storage pressure';
+        ? intl.formatMessage(messages.storageProtected, {
+            hasUsage: String(storage.usage !== null),
+            used: formatBytes(storage.usage, intl),
+          })
+        : intl.formatMessage(messages.storageBestEffort);
 
   const protocolOptions = protocols.map((p) => ({
     value: p.hash,
@@ -371,12 +815,13 @@ export function SettingsDialog({
       scroll={false}
       title={
         <Heading level="h3" margin="none">
-          Settings
+          {intl.formatMessage(messages.settings)}
         </Heading>
       }
     >
       <Tabs
-        aria-label="Settings sections"
+        aria-label={intl.formatMessage(messages.settingsSections)}
+        layout={narrow ? 'top' : 'side'}
         value={section}
         onValueChange={(next) => {
           const item = NAV_ITEMS.find((i) => i.id === next);
@@ -384,7 +829,7 @@ export function SettingsDialog({
         }}
         tabs={NAV_ITEMS.map((item) => ({
           value: item.id,
-          label: item.label,
+          label: createElement(AppMessage, { message: item.label }),
           icon: item.icon,
         }))}
         className="min-h-0 flex-1"
@@ -397,8 +842,8 @@ export function SettingsDialog({
             {settings ? (
               <>
                 <SettingsRow
-                  title="App version"
-                  desc="Network Canvas Interviewer"
+                  title={intl.formatMessage(messages.appVersion)}
+                  desc={intl.formatMessage(messages.networkCanvasInterviewer)}
                   control={
                     <span className="font-monospace text-text/60 text-xs tracking-[0.02em]">
                       {APP_VERSION}
@@ -406,7 +851,7 @@ export function SettingsDialog({
                   }
                 />
                 <SettingsRow
-                  title="Storage"
+                  title={intl.formatMessage(messages.storage)}
                   desc={storageLabel}
                   control={
                     storageHasValues ? (
@@ -417,15 +862,18 @@ export function SettingsDialog({
                         <StorageProgress value={storagePercent} />
                       </div>
                     ) : (
-                      <span className="font-monospace text-text/60 text-xs tracking-[0.02em]">
-                        —
+                      <span
+                        aria-hidden
+                        className="font-monospace text-text/60 text-xs tracking-[0.02em]"
+                      >
+                        {EMPTY_STORAGE_VALUE}
                       </span>
                     )
                   }
                 />
                 {durabilityLabel ? (
                   <SettingsRow
-                    title="Offline storage"
+                    title={intl.formatMessage(messages.offlineStorage)}
                     desc={durabilityLabel}
                     control={
                       <span
@@ -438,14 +886,16 @@ export function SettingsDialog({
                         ) : (
                           <ShieldAlert className="size-3.5" aria-hidden />
                         )}
-                        {storagePersisted ? 'Persisted' : 'Best-effort'}
+                        {storagePersisted
+                          ? intl.formatMessage(messages.persisted)
+                          : intl.formatMessage(messages.bestEffort)}
                       </span>
                     }
                   />
                 ) : null}
                 <SettingsRow
-                  title="Installation ID"
-                  desc="Unique per-device identifier"
+                  title={intl.formatMessage(messages.installationID)}
+                  desc={intl.formatMessage(messages.uniquePerDeviceIdentifier)}
                   control={
                     <span className="font-monospace text-text/60 text-xs tracking-[0.02em]">
                       {installationId}
@@ -454,8 +904,12 @@ export function SettingsDialog({
                 />
                 <UnconnectedField
                   name="showSampleProtocol"
-                  label="Show sample protocol on home screen"
-                  hint="Re-shows the one-click sample protocol card next to the Import card."
+                  label={intl.formatMessage(
+                    messages.showSampleProtocolOnHomeScreen,
+                  )}
+                  hint={intl.formatMessage(
+                    messages.reShowsTheOneClickSampleProtocol,
+                  )}
                   inline
                   component={ToggleField}
                   value={!settings.sampleProtocolDismissed}
@@ -467,13 +921,19 @@ export function SettingsDialog({
             ) : null}
           </TabsPanel>
 
+          <TabsPanel value="language">
+            <LanguageSettings />
+          </TabsPanel>
+
           <TabsPanel value="interview">
             {settings ? (
               <>
                 <UnconnectedField
                   name="allowStageNavigation"
-                  label="Allow stage navigation"
-                  hint="Let participants move between stages by tapping the progress bar during an interview, which opens a stages menu."
+                  label={intl.formatMessage(messages.allowStageNavigation)}
+                  hint={intl.formatMessage(
+                    messages.letParticipantsMoveBetweenStagesByTapping,
+                  )}
                   inline
                   component={ToggleField}
                   value={settings.allowStageNavigation}
@@ -482,10 +942,9 @@ export function SettingsDialog({
                   }
                 />
                 <Paragraph intent="smallText" emphasis="muted">
-                  When off, participants can only move forwards and backwards
-                  one stage at a time. Turning this on lets them jump directly
-                  to any stage, which is useful for piloting a protocol but is
-                  usually left off for real interviews.
+                  {intl.formatMessage(
+                    messages.whenOffParticipantsCanOnlyMoveForwards,
+                  )}
                 </Paragraph>
               </>
             ) : null}
@@ -496,8 +955,10 @@ export function SettingsDialog({
               <>
                 <UnconnectedField
                   name="exportGraphML"
-                  label="Export GraphML"
-                  hint="Include GraphML files in interview exports."
+                  label={intl.formatMessage(messages.exportGraphML)}
+                  hint={intl.formatMessage(
+                    messages.includeGraphMLFilesInInterviewExports,
+                  )}
                   inline
                   component={ToggleField}
                   value={settings.exportGraphML}
@@ -507,8 +968,10 @@ export function SettingsDialog({
                 />
                 <UnconnectedField
                   name="exportCSV"
-                  label="Export CSV"
-                  hint="Include CSV files (attributes, edges, ego) in interview exports."
+                  label={intl.formatMessage(messages.exportCSV)}
+                  hint={intl.formatMessage(
+                    messages.includeCSVFilesAttributesEdgesEgoIn,
+                  )}
                   inline
                   component={ToggleField}
                   value={settings.exportCSV}
@@ -518,8 +981,12 @@ export function SettingsDialog({
                 />
                 <UnconnectedField
                   name="useScreenLayoutCoordinates"
-                  label="Export node positions as screen-coordinate pixels"
-                  hint="Sociogram node positions are exported in pixel coordinates relative to the layout below."
+                  label={intl.formatMessage(
+                    messages.exportNodePositionsAsScreenCoordinatePixels,
+                  )}
+                  hint={intl.formatMessage(
+                    messages.sociogramNodePositionsAreExportedInPixel,
+                  )}
                   inline
                   component={ToggleField}
                   value={settings.useScreenLayoutCoordinates}
@@ -530,8 +997,8 @@ export function SettingsDialog({
                 <UnconnectedField
                   inline
                   name="screenLayoutWidth"
-                  label="Screen layout width"
-                  hint="Pixels"
+                  label={intl.formatMessage(messages.screenLayoutWidth)}
+                  hint={intl.formatMessage(messages.pixels)}
                   component={InputField}
                   type="number"
                   min={1}
@@ -546,8 +1013,8 @@ export function SettingsDialog({
                 <UnconnectedField
                   inline
                   name="screenLayoutHeight"
-                  label="Screen layout height"
-                  hint="Pixels"
+                  label={intl.formatMessage(messages.screenLayoutHeight)}
+                  hint={intl.formatMessage(messages.pixels)}
                   component={InputField}
                   type="number"
                   min={1}
@@ -567,8 +1034,10 @@ export function SettingsDialog({
             <>
               <UnconnectedField
                 name="analyticsEnabled"
-                label="Enable analytics"
-                hint="Send anonymous usage and error data to help the Network Canvas team improve the app."
+                label={intl.formatMessage(messages.enableAnalytics)}
+                hint={intl.formatMessage(
+                  messages.sendAnonymousUsageAndErrorDataTo,
+                )}
                 inline
                 component={ToggleField}
                 value={analytics.enabled}
@@ -577,18 +1046,20 @@ export function SettingsDialog({
                 }
               />
               <Paragraph intent="smallText" emphasis="muted">
-                When analytics are enabled, the app sends a small amount of
-                anonymous information about how it is used — for example which
-                interview stages and features are exercised, when protocols are
-                imported, when data is exported, and details of any errors or
-                crashes. This helps us find bugs and decide what to improve.
+                {intl.formatMessage(
+                  messages.whenAnalyticsAreEnabledTheAppSends,
+                )}
               </Paragraph>
               <Alert variant="info">
-                <AlertTitle>No participant data is ever collected.</AlertTitle>
+                <AlertTitle>
+                  {intl.formatMessage(
+                    messages.noParticipantDataIsEverCollected,
+                  )}
+                </AlertTitle>
                 <AlertDescription>
-                  Network data, responses, case IDs, protocol contents, and
-                  asset files never leave this device. Analytics also contain no
-                  user-identifiable information.
+                  {intl.formatMessage(
+                    messages.networkDataResponsesCaseIDsProtocolContents,
+                  )}
                 </AlertDescription>
               </Alert>
             </>
@@ -600,8 +1071,10 @@ export function SettingsDialog({
                 <ManageAuthenticator />
                 {hasNoDeviceLock ? (
                   <SettingsRow
-                    title="Enable app security"
-                    desc="Run the Get started wizard to configure a device lock and choose your security preferences."
+                    title={intl.formatMessage(messages.enableAppSecurity)}
+                    desc={intl.formatMessage(
+                      messages.runTheGetStartedWizardToConfigure,
+                    )}
                     control={
                       <Button
                         onClick={handleStartSetup}
@@ -609,7 +1082,7 @@ export function SettingsDialog({
                           <ShieldCheck className="size-4" aria-hidden="true" />
                         }
                       >
-                        Get started
+                        {intl.formatMessage(messages.getStarted)}
                       </Button>
                     }
                   />
@@ -617,7 +1090,7 @@ export function SettingsDialog({
                 {auth.kind === 'unlocked' && auth.mode !== 'none' ? (
                   <>
                     <Alert variant="info">
-                      Use the lock button in the top bar to lock immediately.
+                      {intl.formatMessage(messages.useTheLockButtonInTheTop)}
                     </Alert>
                     <SecurityBehaviorControls
                       value={behavior}
@@ -633,18 +1106,20 @@ export function SettingsDialog({
           <TabsPanel value="synthetic">
             <>
               <Paragraph intent="smallText" emphasis="muted">
-                Generate synthetic interview sessions to validate the export
-                pipeline. Synthetic sessions appear in the regular Sessions list
-                and export identically to real sessions.
+                {intl.formatMessage(
+                  messages.generateSyntheticInterviewSessionsToValidateThe,
+                )}
               </Paragraph>
 
               <UnconnectedField
                 name="syntheticProtocol"
-                label="Protocol"
+                label={intl.formatMessage(messages.protocol)}
                 hint={
                   noProtocols
-                    ? 'Import a protocol first.'
-                    : 'The protocol used to shape generated sessions.'
+                    ? intl.formatMessage(messages.importAProtocolFirst)
+                    : intl.formatMessage(
+                        messages.theProtocolUsedToShapeGeneratedSessions,
+                      )
                 }
                 component={SelectField}
                 options={protocolOptions}
@@ -656,7 +1131,7 @@ export function SettingsDialog({
               />
               <UnconnectedField
                 name="syntheticCount"
-                label="Number of sessions"
+                label={intl.formatMessage(messages.numberOfSessions)}
                 data-testid="synthetic-count"
                 component={InputField}
                 type="number"
@@ -673,8 +1148,10 @@ export function SettingsDialog({
               />
               <UnconnectedField
                 name="simulateDropOut"
-                label="Simulate participant drop-out"
-                hint="Some sessions will be left incomplete to mirror real-world data."
+                label={intl.formatMessage(messages.simulateParticipantDropOut)}
+                hint={intl.formatMessage(
+                  messages.someSessionsWillBeLeftIncompleteTo,
+                )}
                 inline
                 component={ToggleField}
                 value={simulateDropOut}
@@ -685,8 +1162,12 @@ export function SettingsDialog({
               />
               <UnconnectedField
                 name="respectSkipLogicAndFiltering"
-                label="Respect skip logic and filtering"
-                hint="Apply protocol skip logic and stage filters during generation."
+                label={intl.formatMessage(
+                  messages.respectSkipLogicAndFiltering,
+                )}
+                hint={intl.formatMessage(
+                  messages.applyProtocolSkipLogicAndStageFilters,
+                )}
                 inline
                 component={ToggleField}
                 value={respectSkipLogicAndFiltering}
@@ -705,7 +1186,9 @@ export function SettingsDialog({
                   icon={<FlaskConical className="size-4" aria-hidden />}
                   data-testid="synthetic-generate"
                 >
-                  {isGenerating ? 'Generating…' : 'Generate'}
+                  {isGenerating
+                    ? intl.formatMessage(messages.generating)
+                    : intl.formatMessage(messages.generate)}
                 </Button>
               </div>
 
@@ -714,18 +1197,23 @@ export function SettingsDialog({
                   <ProgressBar
                     orientation="horizontal"
                     percentProgress={percentProgress}
-                    label="Generation progress"
+                    label={intl.formatMessage(messages.generationProgress)}
                     className="text-sea-green h-2"
                   />
                   <div className="text-text/60 mt-2 text-sm">
-                    {progress.current} / {progress.total} interviews generated
+                    {intl.formatMessage(
+                      messages.currentTotalInterviewsGenerated,
+                      { current: progress.current, total: progress.total },
+                    )}
                   </div>
                 </div>
               ) : null}
 
               <SettingsRow
-                title="Delete synthetic data"
-                desc={`There ${syntheticCount === 1 ? 'is' : 'are'} currently ${syntheticCount} synthetic session${syntheticCount === 1 ? '' : 's'} on this device.`}
+                title={intl.formatMessage(messages.deleteSyntheticData)}
+                desc={intl.formatMessage(messages.syntheticCount, {
+                  count: syntheticCount,
+                })}
                 control={
                   <Button
                     color="destructive"
@@ -733,7 +1221,7 @@ export function SettingsDialog({
                     disabled={syntheticCount === 0 || isDeleting}
                     icon={<Trash2 className="size-4" aria-hidden />}
                   >
-                    Delete All
+                    {intl.formatMessage(messages.deleteAll)}
                   </Button>
                 }
               />

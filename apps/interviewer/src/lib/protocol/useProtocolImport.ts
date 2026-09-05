@@ -1,5 +1,7 @@
-import { useCallback, useState } from 'react';
+import { createElement, useCallback, useState } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppMessage } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
@@ -16,6 +18,42 @@ import {
 } from './importProtocol';
 import { openProtocolValidationDetailsDialog } from './ProtocolValidationDetailsDialog';
 import { SAMPLE_PROTOCOL } from './sampleProtocol';
+
+const messages = defineMessages({
+  protocolImported: {
+    id: 'interviewer.protocolImport.protocolImported',
+    defaultMessage: 'Protocol imported',
+    description: 'User-facing message in Interviewer Protocol Import.',
+  },
+  importFailed: {
+    id: 'interviewer.protocolImport.importFailed',
+    defaultMessage: 'Import failed',
+    description: 'User-facing message in Interviewer Protocol Import.',
+  },
+  cannotReadSelectedFile: {
+    id: 'interviewer.protocolImport.cannotReadSelectedFile',
+    defaultMessage:
+      'This protocol file could not be read. Check that it is still available and select it again.',
+    description:
+      'Retry guidance when the browser cannot read a selected file before import starts, for example after it was moved or disconnected. Does not claim the protocol contents are invalid.',
+  },
+  viewDetails: {
+    id: 'interviewer.protocolImport.viewDetails',
+    defaultMessage: 'View details',
+    description: 'User-facing message in Interviewer Protocol Import.',
+  },
+  anUnexpectedErrorOccurred: {
+    id: 'interviewer.protocolImport.anUnexpectedErrorOccurred',
+    defaultMessage: 'An unexpected error occurred.',
+    description: 'User-facing message in Interviewer Protocol Import.',
+  },
+  importSuccess: {
+    id: 'interviewer.protocolImport.importSuccess',
+    defaultMessage:
+      '{migrated, select, true {{name} was migrated to the current schema.} other {{name} is ready to use.}}',
+    description: 'Administration text in Interviewer useProtocolImport.',
+  },
+});
 
 export type ImportRequest = { source: 'file'; file: File; label: string };
 
@@ -85,10 +123,24 @@ export function useProtocolImport({ onInstalled }: UseProtocolImportOptions) {
     async (request: StartImportRequest) => {
       const id = crypto.randomUUID();
 
-      const fileBuffer =
-        request.source === 'file'
-          ? new Uint8Array(await request.file.arrayBuffer())
-          : null;
+      let fileBuffer: Uint8Array | null = null;
+      if (request.source === 'file') {
+        try {
+          fileBuffer = new Uint8Array(await request.file.arrayBuffer());
+        } catch (error) {
+          console.error('The selected protocol file could not be read', error);
+          toast.add({
+            title: createElement(AppMessage, {
+              message: messages.importFailed,
+            }),
+            description: createElement(AppMessage, {
+              message: messages.cannotReadSelectedFile,
+            }),
+            variant: 'destructive',
+          });
+          return;
+        }
+      }
       const peekedName = fileBuffer ? await peekProtocolName(fileBuffer) : null;
       const fileLabel =
         request.source === 'file'
@@ -157,10 +209,16 @@ export function useProtocolImport({ onInstalled }: UseProtocolImportOptions) {
             protocol_hash: result.hash,
           });
           toast.add({
-            title: 'Protocol imported',
-            description: result.migrated
-              ? `${result.protocol.name} was migrated to the current schema.`
-              : `${result.protocol.name} is ready to use.`,
+            title: createElement(AppMessage, {
+              message: messages.protocolImported,
+            }),
+            description: createElement(AppMessage, {
+              message: messages.importSuccess,
+              values: {
+                name: result.protocol.name,
+                migrated: String(result.migrated),
+              },
+            }),
             variant: 'success',
           });
         } else {
@@ -177,11 +235,18 @@ export function useProtocolImport({ onInstalled }: UseProtocolImportOptions) {
                 }
               : null;
           toast.add({
-            title: 'Import failed',
-            description: result.message,
+            title: createElement(AppMessage, {
+              message: messages.importFailed,
+            }),
+            description: createElement(AppMessage, {
+              message: result.localizedMessage.descriptor,
+              values: result.localizedMessage.values,
+            }),
             variant: 'destructive',
             ...(validationDetails && {
-              cancelLabel: 'View details',
+              cancelLabel: createElement(AppMessage, {
+                message: messages.viewDetails,
+              }),
               onCancel: () =>
                 openProtocolValidationDetailsDialog(dialog, validationDetails),
             }),
@@ -191,13 +256,15 @@ export function useProtocolImport({ onInstalled }: UseProtocolImportOptions) {
 
       window.setTimeout(() => {
         void run().catch((error: unknown) => {
+          console.error('Protocol import failed', error);
           setPendingImports((prev) => prev.filter((entry) => entry.id !== id));
           toast.add({
-            title: 'Import failed',
-            description:
-              error instanceof Error
-                ? error.message
-                : 'An unexpected error occurred.',
+            title: createElement(AppMessage, {
+              message: messages.importFailed,
+            }),
+            description: createElement(AppMessage, {
+              message: messages.anUnexpectedErrorOccurred,
+            }),
             variant: 'destructive',
           });
         });

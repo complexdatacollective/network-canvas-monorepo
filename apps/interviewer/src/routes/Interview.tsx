@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useRoute, useSearch } from 'wouter';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import Surface from '@codaco/fresco-ui/layout/Surface';
@@ -19,6 +21,7 @@ import {
 } from '@codaco/interview';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import { InterviewComplete } from '~/components/InterviewComplete';
+import { ParticipantLanguageBoundary } from '~/i18n/ParticipantLanguageBoundary';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
 import { POSTHOG_APP_KEY, POSTHOG_APP_NAME } from '~/lib/analytics/config';
 import { APP_VERSION } from '~/lib/appVersion';
@@ -38,6 +41,47 @@ import {
 import type { StoredSession } from '~/lib/db/types';
 import { getInstallationId } from '~/lib/installationId';
 import { useHistoryBackGuard } from '~/lib/pwa/useHistoryBackGuard';
+
+const messages = defineMessages({
+  interviewUnavailable: {
+    id: 'interviewer.interview.interviewUnavailable',
+    defaultMessage: 'Interview unavailable',
+    description: 'Visible copy in Interviewer Interview.',
+  },
+  theProtocolThisInterviewUsesCouldNot: {
+    id: 'interviewer.interview.theProtocolThisInterviewUsesCouldNot',
+    defaultMessage:
+      'The protocol this interview uses could not be updated to work with this version of the app, so this interview cannot be continued. Its responses remain available on the data screen. To start new interviews, repair the protocol in Architect and import it again.',
+    description: 'Visible copy in Interviewer Interview.',
+  },
+  returnHome: {
+    id: 'interviewer.interview.returnHome',
+    defaultMessage: 'Return home',
+    description: 'Visible copy in Interviewer Interview.',
+  },
+  interviewNotFound: {
+    id: 'interviewer.interview.interviewNotFound',
+    defaultMessage: 'Interview not found',
+    description: 'Visible copy in Interviewer Interview.',
+  },
+  thisInterviewMayHaveBeenDeletedOr: {
+    id: 'interviewer.interview.thisInterviewMayHaveBeenDeletedOr',
+    defaultMessage:
+      'This interview may have been deleted, or the protocol it used is no longer installed.',
+    description: 'Visible copy in Interviewer Interview.',
+  },
+  readOnlyReview: {
+    id: 'interviewer.interview.readOnlyReview',
+    defaultMessage: 'Read-only review',
+    description: 'Visible copy in Interviewer Interview.',
+  },
+  changesMadeWhileReviewingThisInterviewWill: {
+    id: 'interviewer.interview.changesMadeWhileReviewingThisInterviewWill',
+    defaultMessage:
+      'Changes made while reviewing this interview will not be saved.',
+    description: 'Visible copy in Interviewer Interview.',
+  },
+});
 
 // Inset the vertical navigation rail past the top device safe area so, on an
 // installed PWA, its buttons stay clear of the status bar / iPadOS window
@@ -88,6 +132,7 @@ const discardSessionChanges: SyncHandler = () => Promise.resolve();
 const discardFinish: FinishHandler = () => Promise.resolve();
 
 export function InterviewRoute({ sessionId }: { sessionId: string }) {
+  const intl = useAppIntl();
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
   const [, navigate] = useLocation();
   const search = useSearch();
@@ -342,7 +387,11 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   );
 
   if (finished) {
-    return <InterviewComplete onExit={() => void handleExit()} />;
+    return (
+      <ParticipantLanguageBoundary>
+        <InterviewComplete onExit={() => void handleExit()} />
+      </ParticipantLanguageBoundary>
+    );
   }
 
   if (state.kind === 'loading') {
@@ -362,12 +411,11 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
           shadow="lg"
           className="flex flex-col items-center gap-4 text-center"
         >
-          <Heading level="h1">Interview unavailable</Heading>
+          <Heading level="h1">
+            {intl.formatMessage(messages.interviewUnavailable)}
+          </Heading>
           <Paragraph>
-            The protocol this interview uses could not be updated to work with
-            this version of the app, so this interview cannot be continued. Its
-            responses remain available on the data screen. To start new
-            interviews, repair the protocol in Architect and import it again.
+            {intl.formatMessage(messages.theProtocolThisInterviewUsesCouldNot)}
           </Paragraph>
           <Button
             onClick={() => {
@@ -375,7 +423,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
               goHome();
             }}
           >
-            Return home
+            {intl.formatMessage(messages.returnHome)}
           </Button>
         </Surface>
       </div>
@@ -391,10 +439,11 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
           shadow="lg"
           className="flex flex-col items-center gap-4 text-center"
         >
-          <Heading level="h1">Interview not found</Heading>
+          <Heading level="h1">
+            {intl.formatMessage(messages.interviewNotFound)}
+          </Heading>
           <Paragraph>
-            This interview may have been deleted, or the protocol it used is no
-            longer installed.
+            {intl.formatMessage(messages.thisInterviewMayHaveBeenDeletedOr)}
           </Paragraph>
           <Button
             onClick={() => {
@@ -405,7 +454,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
               goHome();
             }}
           >
-            Return home
+            {intl.formatMessage(messages.returnHome)}
           </Button>
         </Surface>
       </div>
@@ -425,32 +474,36 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
           density="compact"
           className="fixed top-[calc(1rem+env(safe-area-inset-top))] left-1/2 z-50 m-0! w-[min(32rem,calc(100%-2rem))] -translate-x-1/2"
         >
-          <AlertTitle>Read-only review</AlertTitle>
+          <AlertTitle>{intl.formatMessage(messages.readOnlyReview)}</AlertTitle>
           <AlertDescription>
-            Changes made while reviewing this interview will not be saved.
+            {intl.formatMessage(
+              messages.changesMadeWhileReviewingThisInterviewWill,
+            )}
           </AlertDescription>
         </Alert>
       )}
-      <Shell
-        payload={state.payload}
-        currentStep={currentStep}
-        onStepChange={handleStepChange}
-        onSync={readOnly ? discardSessionChanges : handleSync}
-        onFinish={readOnly ? discardFinish : handleFinish}
-        onRequestAsset={state.resolver}
-        analytics={analytics}
-        posthogClient={posthogClient ?? undefined}
-        disableAnalytics={readOnly || !analyticsEnabled}
-        reviewMode={readOnly}
-        initialStageOverrideIndex={state.initialStageOverrideIndex}
-        finishConfirmationDescription="Finishing ends this interview. A researcher can mark it unfinished later if changes are needed."
-        onExit={() => void handleExit()}
-        allowStageNavigation={allowStageNavigation}
-        allowUserScaling
-        initialTextScale={initialTextScale}
-        onTextScaleChange={handleTextScaleChange}
-        navigationClassnames={NAVIGATION_SAFE_AREA_CLASSNAMES}
-      />
+      <ParticipantLanguageBoundary>
+        <Shell
+          payload={state.payload}
+          currentStep={currentStep}
+          onStepChange={handleStepChange}
+          onSync={readOnly ? discardSessionChanges : handleSync}
+          onFinish={readOnly ? discardFinish : handleFinish}
+          onRequestAsset={state.resolver}
+          analytics={analytics}
+          posthogClient={posthogClient ?? undefined}
+          disableAnalytics={readOnly || !analyticsEnabled}
+          reviewMode={readOnly}
+          initialStageOverrideIndex={state.initialStageOverrideIndex}
+          finishConfirmationDescription="Finishing ends this interview. A researcher can mark it unfinished later if changes are needed."
+          onExit={() => void handleExit()}
+          allowStageNavigation={allowStageNavigation}
+          allowUserScaling
+          initialTextScale={initialTextScale}
+          onTextScaleChange={handleTextScaleChange}
+          navigationClassnames={NAVIGATION_SAFE_AREA_CLASSNAMES}
+        />
+      </ParticipantLanguageBoundary>
     </div>
   );
 }

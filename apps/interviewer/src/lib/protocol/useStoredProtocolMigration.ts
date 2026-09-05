@@ -1,42 +1,76 @@
-import { useEffect, useRef, useState } from 'react';
+import { createElement, useEffect, useRef, useState } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppMessage } from '@codaco/app-i18n/react';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import { migrateStoredProtocols } from '~/lib/db/api';
 import type { StoredProtocolMigrationResult } from '~/lib/db/migrateStoredProtocols';
+
+const messages = defineMessages({
+  updatedTitle: {
+    id: 'interviewer.storedProtocolMigration.updatedTitle',
+    defaultMessage:
+      '{count, plural, one {Protocol updated} other {Protocols updated}}',
+    description:
+      'Administration text in Interviewer useStoredProtocolMigration.',
+  },
+  updatedDescription: {
+    id: 'interviewer.storedProtocolMigration.updatedDescription',
+    defaultMessage:
+      '{count, plural, one {{name} was migrated to the current schema.} other {# protocols were migrated to the current schema.}}',
+    description:
+      'Administration text in Interviewer useStoredProtocolMigration.',
+  },
+  failedTitle: {
+    id: 'interviewer.storedProtocolMigration.failedTitle',
+    defaultMessage:
+      '{count, plural, one {Protocol could not be updated} other {Protocols could not be updated}}',
+    description:
+      'Administration text in Interviewer useStoredProtocolMigration.',
+  },
+  failedDescription: {
+    id: 'interviewer.storedProtocolMigration.failedDescription',
+    defaultMessage:
+      '{count, plural, one {{name} could not be migrated to the current schema. Its interviews cannot be continued, though their responses remain on the data screen. Repair it in Architect and import it again to start new interviews.} other {# protocols could not be migrated to the current schema. Their interviews cannot be continued, though their responses remain on the data screen. Repair them in Architect and import them again to start new interviews.}}',
+    description:
+      'Administration text in Interviewer useStoredProtocolMigration.',
+  },
+});
 
 // 'pending' until the sweep has run for the current unlocked session,
 // 'settled' once it has resolved — whether it migrated anything, failed on a
 // row, or found nothing to do.
 export type StoredProtocolMigrationPhase = 'pending' | 'settled';
 
-function migratedToast(names: string[]): {
-  title: string;
-  description: string;
-} {
-  const [first] = names;
-  if (names.length === 1 && first !== undefined) {
-    return {
-      title: 'Protocol updated',
-      description: `${first} was migrated to the current schema.`,
-    };
-  }
+function migratedToast(names: string[]) {
   return {
-    title: 'Protocols updated',
-    description: `${names.length} protocols were migrated to the current schema.`,
+    title: createElement(AppMessage, {
+      message: messages.updatedTitle,
+      values: { count: names.length },
+    }),
+    description: createElement(AppMessage, {
+      message: messages.updatedDescription,
+      values: {
+        count: names.length,
+        name: names[0] ?? '',
+      },
+    }),
   };
 }
 
-function failedToast(names: string[]): { title: string; description: string } {
-  const [first] = names;
-  if (names.length === 1 && first !== undefined) {
-    return {
-      title: 'Protocol could not be updated',
-      description: `${first} could not be migrated to the current schema. Its interviews cannot be continued, though their responses remain on the data screen. Repair it in Architect and import it again to start new interviews.`,
-    };
-  }
+function failedToast(names: string[]) {
   return {
-    title: 'Protocols could not be updated',
-    description: `${names.length} protocols could not be migrated to the current schema. Their interviews cannot be continued, though their responses remain on the data screen. Repair them in Architect and import them again to start new interviews.`,
+    title: createElement(AppMessage, {
+      message: messages.failedTitle,
+      values: { count: names.length },
+    }),
+    description: createElement(AppMessage, {
+      message: messages.failedDescription,
+      values: {
+        count: names.length,
+        name: names[0] ?? '',
+      },
+    }),
   };
 }
 

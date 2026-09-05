@@ -1,0 +1,1782 @@
+{
+  "interviewer.appErrorBoundary.reload": {
+    "defaultMessage": "Reload",
+    "description": "Visible copy in Interviewer App Error Boundary."
+  },
+  "interviewer.appErrorBoundary.theAppHitAnUnexpectedErrorYour": {
+    "defaultMessage": "The app hit an unexpected error. Your collected data is saved on this device and is not affected. Try reloading to continue.",
+    "description": "The description label in Interviewer App Error Boundary."
+  },
+  "interviewer.appUpdatePill.updateCaveat": {
+    "defaultMessage": "Your saved responses are kept when the update is applied.",
+    "description": "Administration text in Interviewer AppUpdatePill."
+  },
+  "interviewer.appUpdatePill.version": {
+    "defaultMessage": "Interviewer {version}",
+    "description": "Administration text in Interviewer AppUpdatePill."
+  },
+  "interviewer.authenticationDialog.biometricAuthenticationIsAlreadyInProgress": {
+    "defaultMessage": "Biometric authentication is already in progress.",
+    "description": "User-facing message in Interviewer Authentication Dialog."
+  },
+  "interviewer.authenticationDialog.incorrectPassphrase": {
+    "defaultMessage": "Incorrect passphrase.",
+    "description": "User-facing message in Interviewer Authentication Dialog."
+  },
+  "interviewer.authenticationDialog.limitedRecovery": {
+    "defaultMessage": "Biometric authentication isn't available in this installed app. Enter your recovery passphrase instead.",
+    "description": "Administration text in Interviewer AuthenticationDialog."
+  },
+  "interviewer.authenticationDialog.recoverByResetting": {
+    "defaultMessage": "Recover by resetting",
+    "description": "Visible copy in Interviewer Authentication Dialog."
+  },
+  "interviewer.authenticationDialog.recoverWithPassphrase": {
+    "defaultMessage": "Recover with passphrase",
+    "description": "Visible copy in Interviewer Authentication Dialog."
+  },
+  "interviewer.authenticationDialog.recovery": {
+    "defaultMessage": "Enter your recovery passphrase.",
+    "description": "Administration text in Interviewer AuthenticationDialog."
+  },
+  "interviewer.authenticationDialog.unlock": {
+    "defaultMessage": "Unlock",
+    "description": "Visible copy in Interviewer Authentication Dialog."
+  },
+  "interviewer.authenticationDialog.unlockWithBiometrics": {
+    "defaultMessage": "Unlock with biometrics",
+    "description": "The submitLabel label in Interviewer Authentication Dialog."
+  },
+  "interviewer.authenticationDialog.unlocking": {
+    "defaultMessage": "Unlocking…",
+    "description": "The submittingText label in Interviewer Authentication Dialog."
+  },
+  "interviewer.biometric.limitedWindow": {
+    "defaultMessage": "Biometric unlock isn't available in the installed app on macOS, because Chrome can't reach your Mac's saved passkeys from an app window. Use a PIN or passphrase instead.",
+    "description": "Administration text in Interviewer useBiometric."
+  },
+  "interviewer.biometric.unsupported": {
+    "defaultMessage": "This browser or device does not support biometric unlock. Use a PIN or passphrase instead.",
+    "description": "Administration text in Interviewer useBiometric."
+  },
+  "interviewer.biometricUnlockForm.unlockFailed": {
+    "defaultMessage": "Unlock failed",
+    "description": "User-facing message in Interviewer Biometric Unlock Form."
+  },
+  "interviewer.biometricUnlockForm.unlockWithAuthenticator": {
+    "defaultMessage": "Unlock with authenticator",
+    "description": "User-facing message in Interviewer Biometric Unlock Form."
+  },
+  "interviewer.biometricUnlockForm.waitingForAuthenticator": {
+    "defaultMessage": "Waiting for authenticator…",
+    "description": "User-facing message in Interviewer Biometric Unlock Form."
+  },
+  "interviewer.dataView.allStrongLengthStrongOnThisPage": {
+    "defaultMessage": "{length, plural, one {The <strong>#</strong> interview on this page is selected.} other {All <strong>#</strong> on this page are selected.}}",
+    "description": "Visible copy in Interviewer Data View."
+  },
+  "interviewer.dataView.allStrongSelectedCountStrongMatchingInterviewsAre": {
+    "defaultMessage": "{selectedCount, plural, one {The <strong>#</strong> matching interview is selected.} other {All <strong>#</strong> matching interviews are selected.}}",
+    "description": "Visible copy in Interviewer Data View."
+  },
+  "interviewer.dataView.clearSelection": {
+    "defaultMessage": "Clear selection",
+    "description": "Action that deselects interviews without deleting or changing them."
+  },
+  "interviewer.dataView.loadingInterviews": {
+    "defaultMessage": "Loading interviews…",
+    "description": "User-facing message in Interviewer Data View."
+  },
+  "interviewer.dataView.noInterviewsMatchThisFilter": {
+    "defaultMessage": "No interviews match this filter.",
+    "description": "User-facing message in Interviewer Data View."
+  },
+  "interviewer.dataView.noInterviewsRecordedYet": {
+    "defaultMessage": "No interviews recorded yet.",
+    "description": "User-facing message in Interviewer Data View."
+  },
+  "interviewer.dataView.selectAllTotalCountMatching": {
+    "defaultMessage": "{totalCount, plural, one {Select the # match →} other {Select all # matching →}}",
+    "description": "Visible copy in Interviewer Data View."
+  },
+  "interviewer.dataViewColumns.caseID": {
+    "defaultMessage": "Case ID",
+    "description": "The title label in Interviewer Data View Columns."
+  },
+  "interviewer.dataViewColumns.exportStatus": {
+    "defaultMessage": "Export status",
+    "description": "The title label in Interviewer Data View Columns."
+  },
+  "interviewer.dataViewColumns.interviewActions": {
+    "defaultMessage": "Interview actions",
+    "description": "Visible copy in Interviewer Data View Columns."
+  },
+  "interviewer.dataViewColumns.markCaseUnfinished": {
+    "defaultMessage": "Mark {caseId} unfinished",
+    "description": "Administration text in Interviewer useDataViewColumns."
+  },
+  "interviewer.dataViewColumns.markUnfinished": {
+    "defaultMessage": "Mark unfinished",
+    "description": "Row action that makes a finished interview editable again."
+  },
+  "interviewer.dataViewColumns.notExported": {
+    "defaultMessage": "Not exported",
+    "description": "Visible copy in Interviewer Data View Columns."
+  },
+  "interviewer.dataViewColumns.progress": {
+    "defaultMessage": "Progress",
+    "description": "The title label in Interviewer Data View Columns."
+  },
+  "interviewer.dataViewColumns.protocol": {
+    "defaultMessage": "Protocol",
+    "description": "The title label in Interviewer Data View Columns."
+  },
+  "interviewer.dataViewColumns.resume": {
+    "defaultMessage": "Resume",
+    "description": "Row action that opens an unfinished interview for further data collection."
+  },
+  "interviewer.dataViewColumns.review": {
+    "defaultMessage": "Review",
+    "description": "Row action that opens a finished interview without saving changes."
+  },
+  "interviewer.dataViewColumns.selectAllInterviewsOnThisPage": {
+    "defaultMessage": "Select all interviews on this page",
+    "description": "The aria-label label in Interviewer Data View Columns."
+  },
+  "interviewer.dataViewColumns.selectCase": {
+    "defaultMessage": "Select {caseId}",
+    "description": "Administration text in Interviewer useDataViewColumns."
+  },
+  "interviewer.dataViewColumns.started": {
+    "defaultMessage": "Started",
+    "description": "The title label in Interviewer Data View Columns."
+  },
+  "interviewer.dataViewColumns.stepProgress": {
+    "defaultMessage": "{hasTotal, select, true {step {step, number} of {total, number}} other {step {step, number} of ?}}",
+    "description": "Accessible progress label on an interview data row. step and total are stage counts; hasTotal is false only when the protocol is unavailable, represented by the invariant question mark."
+  },
+  "interviewer.dataViewColumns.updated": {
+    "defaultMessage": "Updated",
+    "description": "The title label in Interviewer Data View Columns."
+  },
+  "interviewer.dataViewToolbar.all": {
+    "defaultMessage": "All",
+    "description": "Filter option that includes interviews in every completion state."
+  },
+  "interviewer.dataViewToolbar.caseID": {
+    "defaultMessage": "Case ID",
+    "description": "Visible copy in Interviewer Data View Toolbar."
+  },
+  "interviewer.dataViewToolbar.clearAllFilters": {
+    "defaultMessage": "Clear all filters",
+    "description": "Visible copy in Interviewer Data View Toolbar."
+  },
+  "interviewer.dataViewToolbar.complete": {
+    "defaultMessage": "Complete",
+    "description": "Filter option for interviews marked finished; this is a state, not an instruction to complete a task."
+  },
+  "interviewer.dataViewToolbar.deleteSelected": {
+    "defaultMessage": "Delete {count, number} selected",
+    "description": "Administration text in Interviewer DataViewToolbar."
+  },
+  "interviewer.dataViewToolbar.deleting": {
+    "defaultMessage": "Deleting…",
+    "description": "User-facing message in Interviewer Data View Toolbar."
+  },
+  "interviewer.dataViewToolbar.exportSelected": {
+    "defaultMessage": "Export {count, number} selected",
+    "description": "Administration text in Interviewer DataViewToolbar."
+  },
+  "interviewer.dataViewToolbar.exportStatus": {
+    "defaultMessage": "Export status",
+    "description": "Visible copy in Interviewer Data View Toolbar."
+  },
+  "interviewer.dataViewToolbar.exported": {
+    "defaultMessage": "Exported",
+    "description": "User-facing message in Interviewer Data View Toolbar."
+  },
+  "interviewer.dataViewToolbar.exporting": {
+    "defaultMessage": "Exporting…",
+    "description": "User-facing message in Interviewer Data View Toolbar."
+  },
+  "interviewer.dataViewToolbar.filterCount": {
+    "defaultMessage": "{count, plural, =0 {Filter} other {Filter · #}}",
+    "description": "Administration text in Interviewer DataViewToolbar."
+  },
+  "interviewer.dataViewToolbar.filters": {
+    "defaultMessage": "Filters",
+    "description": "Visible copy in Interviewer Data View Toolbar."
+  },
+  "interviewer.dataViewToolbar.inProgress": {
+    "defaultMessage": "In progress",
+    "description": "User-facing message in Interviewer Data View Toolbar."
+  },
+  "interviewer.dataViewToolbar.matchByCaseID": {
+    "defaultMessage": "Match by Case ID...",
+    "description": "The placeholder label in Interviewer Data View Toolbar."
+  },
+  "interviewer.dataViewToolbar.notExported": {
+    "defaultMessage": "Not exported",
+    "description": "User-facing message in Interviewer Data View Toolbar."
+  },
+  "interviewer.dataViewToolbar.protocol": {
+    "defaultMessage": "Protocol",
+    "description": "Filter field selecting an installed research protocol."
+  },
+  "interviewer.dataViewToolbar.searchCaseIDOrProtocol": {
+    "defaultMessage": "Search case ID or protocol...",
+    "description": "The placeholder label in Interviewer Data View Toolbar."
+  },
+  "interviewer.dataViewToolbar.searchCaseIDOrProtocol2": {
+    "defaultMessage": "Search case ID or protocol",
+    "description": "The aria-label label in Interviewer Data View Toolbar."
+  },
+  "interviewer.dataViewToolbar.started": {
+    "defaultMessage": "Started",
+    "description": "Date filter for when an interview first began."
+  },
+  "interviewer.dataViewToolbar.statusCount": {
+    "defaultMessage": "{label} · {count, number}",
+    "description": "Administration text in Interviewer DataViewToolbar."
+  },
+  "interviewer.dataViewToolbar.statusFilter": {
+    "defaultMessage": "Status filter",
+    "description": "The aria-label label in Interviewer Data View Toolbar."
+  },
+  "interviewer.dataViewToolbar.updated": {
+    "defaultMessage": "Updated",
+    "description": "Date filter for the most recent change to an interview."
+  },
+  "interviewer.deckCard.cardName": {
+    "defaultMessage": "{active, select, true {{name} (active)} other {{name}}}",
+    "description": "Accessible protocol-card name, where name is researcher-authored data."
+  },
+  "interviewer.deckCard.deleteProtocol": {
+    "defaultMessage": "Delete Protocol",
+    "description": "User-facing message in Interviewer Deck Card."
+  },
+  "interviewer.deckCard.interviewCount": {
+    "defaultMessage": "{count, plural, one {# interview} other {# interviews}}",
+    "description": "Administration text in Interviewer DeckCard."
+  },
+  "interviewer.deckCard.loadingProtocol": {
+    "defaultMessage": "Loading protocol",
+    "description": "User-facing message in Interviewer Deck Card."
+  },
+  "interviewer.deckCard.protocol": {
+    "defaultMessage": "Protocol",
+    "description": "Fallback protocol label while the real researcher-authored protocol name is unavailable."
+  },
+  "interviewer.deckCard.requiresInternet": {
+    "defaultMessage": "Requires Internet",
+    "description": "Protocol card badge warning that an interview stage needs an internet connection."
+  },
+  "interviewer.deckSlotCard.dismissTheSampleProtocol": {
+    "defaultMessage": "Dismiss the sample protocol",
+    "description": "User-facing message in Interviewer Deck Slot Card."
+  },
+  "interviewer.deckSlotCard.extracting": {
+    "defaultMessage": "Extracting…",
+    "description": "Pending protocol card while the imported archive is being unpacked."
+  },
+  "interviewer.deckSlotCard.installDevelopmentProtocol": {
+    "defaultMessage": "Install development protocol",
+    "description": "Visible copy in Interviewer Deck Slot Card."
+  },
+  "interviewer.deckSlotCard.installSampleProtocol": {
+    "defaultMessage": "Install sample protocol",
+    "description": "Visible copy in Interviewer Deck Slot Card."
+  },
+  "interviewer.deckSlotCard.saving": {
+    "defaultMessage": "Saving…",
+    "description": "Pending protocol card while validated protocol content is saved on this device."
+  },
+  "interviewer.deckSlotCard.startNewInterview": {
+    "defaultMessage": "Start new interview",
+    "description": "Visible copy in Interviewer Deck Slot Card."
+  },
+  "interviewer.deleteProtocol.exported": {
+    "defaultMessage": "The protocol \"{name}\" will be permanently deleted. {count, plural, =0 {} one {# interview record will also be deleted. } other {# interview records will also be deleted. }}This cannot be undone. Do you want to continue?",
+    "description": "Destructive confirmation when all records have already been exported; name is researcher-authored protocol metadata."
+  },
+  "interviewer.deleteProtocol.unexported": {
+    "defaultMessage": "{count, plural, one {# interview record has not been exported and will be permanently lost if you delete this protocol. Export it first if you want to keep the data. This cannot be undone.} other {# interview records have not been exported and will be permanently lost if you delete this protocol. Export them first if you want to keep the data. This cannot be undone.}}",
+    "description": "Destructive confirmation prioritizing interview records that have never been exported."
+  },
+  "interviewer.developmentProtocol.description": {
+    "defaultMessage": "The Network Canvas development protocol — exercises every stage type and is bundled into development builds for testing.",
+    "description": "Development-only administration teaser for the bundled development protocol."
+  },
+  "interviewer.exportDialog.archiveReady": {
+    "defaultMessage": "Archive ready",
+    "description": "Export dialog heading once the archive is built but has not yet been saved."
+  },
+  "interviewer.exportDialog.contains": {
+    "defaultMessage": "{count, plural, one {Contains # interview.} other {Contains # interviews.}}",
+    "description": "Administration text in Interviewer ExportDialog."
+  },
+  "interviewer.exportDialog.copied": {
+    "defaultMessage": "Copied",
+    "description": "Acknowledgment on the export-error copy button after the clipboard write succeeds."
+  },
+  "interviewer.exportDialog.copyDetails": {
+    "defaultMessage": "Copy details",
+    "description": "Action that copies the original technical export error for support."
+  },
+  "interviewer.exportDialog.downloadAction": {
+    "defaultMessage": "Download",
+    "description": "Action that downloads the already-built data archive using the browser."
+  },
+  "interviewer.exportDialog.downloadDescription": {
+    "defaultMessage": "Download the archive. Interviews are marked as exported once the download starts.",
+    "description": "Administration text in Interviewer ExportDialog."
+  },
+  "interviewer.exportDialog.errorDetailsCopiedToClipboard": {
+    "defaultMessage": "Error details copied to clipboard.",
+    "description": "User-facing message in Interviewer Export Dialog."
+  },
+  "interviewer.exportDialog.errorDetailsCouldNotBeCopied": {
+    "defaultMessage": "Error details could not be copied.",
+    "description": "User-facing message in Interviewer Export Dialog."
+  },
+  "interviewer.exportDialog.exportFailed": {
+    "defaultMessage": "Export failed",
+    "description": "User-facing message in Interviewer Export Dialog."
+  },
+  "interviewer.exportDialog.exportProgress": {
+    "defaultMessage": "Export progress",
+    "description": "The label label in Interviewer Export Dialog."
+  },
+  "interviewer.exportDialog.exporting": {
+    "defaultMessage": "{count, plural, one {Exporting # interview} other {Exporting # interviews}}",
+    "description": "Administration text in Interviewer ExportDialog."
+  },
+  "interviewer.exportDialog.failedDescription": {
+    "defaultMessage": "The interview archive could not be created. Your saved interview data is unchanged. Copy the error details below if you need support.",
+    "description": "Administration text in Interviewer ExportDialog."
+  },
+  "interviewer.exportDialog.filesProgress": {
+    "defaultMessage": "{current, number} of {total, number} files",
+    "description": "Administration text in Interviewer ExportDialog."
+  },
+  "interviewer.exportDialog.incomplete": {
+    "defaultMessage": "{count, plural, one {# interview could not be exported completely and may be missing from this archive.} other {# interviews could not be exported completely and may be missing from this archive.}}",
+    "description": "Administration text in Interviewer ExportDialog."
+  },
+  "interviewer.exportDialog.saveAction": {
+    "defaultMessage": "Save…",
+    "description": "Action that opens a device file picker to save the already-built data archive."
+  },
+  "interviewer.exportDialog.saveDescription": {
+    "defaultMessage": "Choose where to save the archive. Interviews are marked as exported once the file is saved.",
+    "description": "Administration text in Interviewer ExportDialog."
+  },
+  "interviewer.exportDialog.shareAction": {
+    "defaultMessage": "Share…",
+    "description": "Action that opens the device share sheet for the already-built data archive."
+  },
+  "interviewer.exportDialog.shareDescription": {
+    "defaultMessage": "Share the archive to save or send it. Interviews are marked as exported once sharing completes.",
+    "description": "Administration text in Interviewer ExportDialog."
+  },
+  "interviewer.exportDialog.yourInterviewDataIsUnchangedAndStored": {
+    "defaultMessage": "Your interview data is unchanged and stored on this device. If this keeps happening, post the copied error details on the <link>community forum</link>, or email <link1>info@networkcanvas.com</link1> with this information.",
+    "description": "Visible copy in Interviewer Export Dialog."
+  },
+  "interviewer.generationFailureDescription.conflict": {
+    "defaultMessage": "{entity, select, ego {Participant} node {Node \"{entityType}\"} edge {Edge \"{entityType}\"} other {{entityType}}}, {variables} ({rules}): {reason}",
+    "description": "One synthetic generation conflict. entity selects the codebook entity; entityType and variable names are unchanged researcher-authored names. rules is a localized list and reason is a complete localized repair explanation."
+  },
+  "interviewer.generationFailureDescription.summary": {
+    "defaultMessage": "Synthetic data could not be generated. Review the conflicting rules below and adjust the protocol in Architect.",
+    "description": "Actionable summary of synthetic data generation refusal, above the specific conflicting rules and repair guidance."
+  },
+  "interviewer.home.couldNotDeleteProtocol": {
+    "defaultMessage": "Could not delete protocol",
+    "description": "User-facing message in Interviewer Home."
+  },
+  "interviewer.home.deleteFailedHelp": {
+    "defaultMessage": "The protocol could not be deleted. Please try again.",
+    "description": "Administration text in Interviewer Home."
+  },
+  "interviewer.home.deleteProtocol": {
+    "defaultMessage": "Delete Protocol",
+    "description": "User-facing message in Interviewer Home."
+  },
+  "interviewer.home.deleteThisProtocol": {
+    "defaultMessage": "Delete this protocol?",
+    "description": "User-facing message in Interviewer Home."
+  },
+  "interviewer.home.protocolDeleted": {
+    "defaultMessage": "Protocol deleted",
+    "description": "User-facing message in Interviewer Home."
+  },
+  "interviewer.importTriggerCard.authoring": {
+    "defaultMessage": "Protocols are authored in <link>Architect</link>.",
+    "description": "Explains where protocols are created; Architect is a product name and link."
+  },
+  "interviewer.importTriggerCard.chooseANetcanvasProtocolFile": {
+    "defaultMessage": "Choose a .netcanvas protocol file",
+    "description": "User-facing message in Interviewer Import Trigger Card."
+  },
+  "interviewer.importTriggerCard.drop": {
+    "defaultMessage": "Drop a <extension>.netcanvas</extension> file, or click to browse",
+    "description": "Import instructions; preserve the literal .netcanvas file extension inside the styled tag."
+  },
+  "interviewer.importTriggerCard.importAProtocol": {
+    "defaultMessage": "Import a protocol",
+    "description": "The aria-label label in Interviewer Import Trigger Card."
+  },
+  "interviewer.installBanner.chromiumManual": {
+    "defaultMessage": "{browserName} rarely removes Network Canvas data automatically, but interview data stored in a browser tab is not guaranteed. Before collecting data, use the install icon in the browser's address bar to install Interviewer and protect your interview data from being deleted.",
+    "description": "Administration text in Interviewer InstallBanner."
+  },
+  "interviewer.installBanner.chromiumPrompt": {
+    "defaultMessage": "{browserName} rarely removes Network Canvas data automatically, but interview data stored in a browser tab is not guaranteed. Install Interviewer now, before collecting data, to protect your interview data from being deleted.",
+    "description": "Administration text in Interviewer InstallBanner."
+  },
+  "interviewer.installBanner.installInterviewer": {
+    "defaultMessage": "Install Interviewer",
+    "description": "The aria-label label in Interviewer Install Banner."
+  },
+  "interviewer.installBanner.storagePressure": {
+    "defaultMessage": "{browserName} may remove Network Canvas data when this device runs low on storage. Before collecting data, allow persistent storage when {browserName} asks and install Interviewer if your device supports it to protect your interview data from being deleted.",
+    "description": "Administration text in Interviewer InstallBanner."
+  },
+  "interviewer.installBanner.webKit": {
+    "defaultMessage": "{usesWebKit, select, true {{browserName} uses WebKit, which is known to remove Network Canvas data after 7 days of inactivity.} other {{browserName} is known to remove Network Canvas data after 7 days of inactivity.}} Install Interviewer now, before collecting data, to protect your interview data from being deleted: {target, select, dock {choose Share → Add to Dock.} other {choose Share → Add to Home Screen.}}",
+    "description": "Administration text in Interviewer InstallBanner."
+  },
+  "interviewer.interview.changesMadeWhileReviewingThisInterviewWill": {
+    "defaultMessage": "Changes made while reviewing this interview will not be saved.",
+    "description": "Visible copy in Interviewer Interview."
+  },
+  "interviewer.interview.interviewNotFound": {
+    "defaultMessage": "Interview not found",
+    "description": "Visible copy in Interviewer Interview."
+  },
+  "interviewer.interview.interviewUnavailable": {
+    "defaultMessage": "Interview unavailable",
+    "description": "Visible copy in Interviewer Interview."
+  },
+  "interviewer.interview.readOnlyReview": {
+    "defaultMessage": "Read-only review",
+    "description": "Visible copy in Interviewer Interview."
+  },
+  "interviewer.interview.returnHome": {
+    "defaultMessage": "Return home",
+    "description": "Visible copy in Interviewer Interview."
+  },
+  "interviewer.interview.theProtocolThisInterviewUsesCouldNot": {
+    "defaultMessage": "The protocol this interview uses could not be updated to work with this version of the app, so this interview cannot be continued. Its responses remain available on the data screen. To start new interviews, repair the protocol in Architect and import it again.",
+    "description": "Visible copy in Interviewer Interview."
+  },
+  "interviewer.interview.thisInterviewMayHaveBeenDeletedOr": {
+    "defaultMessage": "This interview may have been deleted, or the protocol it used is no longer installed.",
+    "description": "Visible copy in Interviewer Interview."
+  },
+  "interviewer.interviewComplete.exit": {
+    "defaultMessage": "Exit",
+    "description": "Participant completion-screen action handing control back to the researcher, with authentication if required."
+  },
+  "interviewer.interviewComplete.interviewComplete": {
+    "defaultMessage": "Interview complete",
+    "description": "Visible copy in Interviewer Interview Complete."
+  },
+  "interviewer.interviewComplete.thankYouThisInterviewIsFinishedAnd": {
+    "defaultMessage": "Thank you. This interview is finished and its responses can no longer be changed. Please hand the device back to the researcher.",
+    "description": "Visible copy in Interviewer Interview Complete."
+  },
+  "interviewer.language.automatic": {
+    "defaultMessage": "Automatic (browser)",
+    "description": "Language option that follows this device browser preferences instead of storing an explicit choice."
+  },
+  "interviewer.language.failed": {
+    "defaultMessage": "The language changed for this session, but the preference could not be saved. Your browser may be blocking device storage.",
+    "description": "Error announced when the language applies immediately but cannot persist across reloads."
+  },
+  "interviewer.language.hint": {
+    "defaultMessage": "Choose the language for Interviewer administration on this device. This does not change protocol content, interview language, or collected data.",
+    "description": "Explains that the device administration preference is separate from participant language and research data."
+  },
+  "interviewer.language.label": {
+    "defaultMessage": "App language",
+    "description": "Label for the administration language selector in Interviewer settings."
+  },
+  "interviewer.language.saved": {
+    "defaultMessage": "Language preference saved on this device.",
+    "description": "Status announced after persisting the administration language choice."
+  },
+  "interviewer.launchFailureToast.couldNotOpenFile": {
+    "defaultMessage": "Could not open file",
+    "description": "User-facing message in Interviewer Launch Failure Toast."
+  },
+  "interviewer.launchFailureToast.filesUnreadable": {
+    "defaultMessage": "{count, plural, one {# launched file could not be read. The file may have been moved, deleted, or become unavailable since it was opened.} other {# launched files could not be read. The files may have been moved, deleted, or become unavailable since they were opened.}}",
+    "description": "Administration text in Interviewer useLaunchFailureToast."
+  },
+  "interviewer.lockScreen.authenticateToUnlockAndPickUpWhere": {
+    "defaultMessage": "Authenticate to unlock and pick up where you left off.",
+    "description": "The description label in Interviewer Lock Screen."
+  },
+  "interviewer.lockScreen.welcomeBack": {
+    "defaultMessage": "Welcome back",
+    "description": "The title label in Interviewer Lock Screen."
+  },
+  "interviewer.manageAuthenticator.atLeast12CharactersCombiningUppercaseLowercase": {
+    "defaultMessage": "At least 12 characters, combining uppercase, lowercase, numbers, and symbols.",
+    "description": "The hint label in Interviewer Manage Authenticator."
+  },
+  "interviewer.manageAuthenticator.authenticator": {
+    "defaultMessage": "Authenticator",
+    "description": "Settings heading for the enrolled device unlock credential."
+  },
+  "interviewer.manageAuthenticator.biometricMethod": {
+    "defaultMessage": "Biometric (with recovery passphrase)",
+    "description": "Administration text in Interviewer ManageAuthenticator."
+  },
+  "interviewer.manageAuthenticator.changePIN": {
+    "defaultMessage": "Change PIN",
+    "description": "User-facing message in Interviewer Manage Authenticator."
+  },
+  "interviewer.manageAuthenticator.changePassphrase": {
+    "defaultMessage": "Change passphrase",
+    "description": "User-facing message in Interviewer Manage Authenticator."
+  },
+  "interviewer.manageAuthenticator.confirmNewPIN": {
+    "defaultMessage": "Confirm new PIN",
+    "description": "The label label in Interviewer Manage Authenticator."
+  },
+  "interviewer.manageAuthenticator.confirmNewPassphrase": {
+    "defaultMessage": "Confirm new passphrase",
+    "description": "The label label in Interviewer Manage Authenticator."
+  },
+  "interviewer.manageAuthenticator.currentPIN": {
+    "defaultMessage": "Current PIN",
+    "description": "The label label in Interviewer Manage Authenticator."
+  },
+  "interviewer.manageAuthenticator.currentPassphrase": {
+    "defaultMessage": "Current passphrase",
+    "description": "The label label in Interviewer Manage Authenticator."
+  },
+  "interviewer.manageAuthenticator.destroyAllProtocolsSessionsAndStoredCredentials": {
+    "defaultMessage": "Destroy all protocols, sessions, and stored credentials on this device, then restart setup.",
+    "description": "The desc label in Interviewer Manage Authenticator."
+  },
+  "interviewer.manageAuthenticator.destroyDeviceData": {
+    "defaultMessage": "Destroy device data",
+    "description": "Destructive confirmation action that permanently wipes all protocols and interview data on this device."
+  },
+  "interviewer.manageAuthenticator.deviceLock": {
+    "defaultMessage": "Device lock",
+    "description": "User-facing message in Interviewer Manage Authenticator."
+  },
+  "interviewer.manageAuthenticator.mode": {
+    "defaultMessage": "Mode",
+    "description": "Label of the currently enrolled method used to unlock this device."
+  },
+  "interviewer.manageAuthenticator.newPIN": {
+    "defaultMessage": "New PIN",
+    "description": "The label label in Interviewer Manage Authenticator."
+  },
+  "interviewer.manageAuthenticator.newPassphrase": {
+    "defaultMessage": "New passphrase",
+    "description": "The label label in Interviewer Manage Authenticator."
+  },
+  "interviewer.manageAuthenticator.noDeviceLockIsConfiguredDataOn": {
+    "defaultMessage": "No device lock is configured. Data on this device is not encrypted at the app layer. Use the Get started wizard below to enable app security and encrypt data stored by Interviewer.",
+    "description": "Visible copy in Interviewer Manage Authenticator."
+  },
+  "interviewer.manageAuthenticator.noLock": {
+    "defaultMessage": "No device lock",
+    "description": "Administration text in Interviewer ManageAuthenticator."
+  },
+  "interviewer.manageAuthenticator.pINChanged": {
+    "defaultMessage": "PIN changed",
+    "description": "User-facing message in Interviewer Manage Authenticator."
+  },
+  "interviewer.manageAuthenticator.passphraseChanged": {
+    "defaultMessage": "Passphrase changed",
+    "description": "User-facing message in Interviewer Manage Authenticator."
+  },
+  "interviewer.manageAuthenticator.passphraseMethod": {
+    "defaultMessage": "Passphrase",
+    "description": "Administration text in Interviewer ManageAuthenticator."
+  },
+  "interviewer.manageAuthenticator.passphrasesDoNotMatch": {
+    "defaultMessage": "Passphrases do not match.",
+    "description": "Visible copy in Interviewer Manage Authenticator."
+  },
+  "interviewer.manageAuthenticator.pinMethod": {
+    "defaultMessage": "PIN",
+    "description": "Administration text in Interviewer ManageAuthenticator."
+  },
+  "interviewer.manageAuthenticator.replaceYour8DigitPINWithA": {
+    "defaultMessage": "Replace your 8-digit PIN with a new one. Your data stays intact.",
+    "description": "User-facing message in Interviewer Manage Authenticator."
+  },
+  "interviewer.manageAuthenticator.replaceYourPassphraseWithANewOne": {
+    "defaultMessage": "Replace your passphrase with a new one. Your data stays intact.",
+    "description": "User-facing message in Interviewer Manage Authenticator."
+  },
+  "interviewer.manageAuthenticator.resetDevice": {
+    "defaultMessage": "Reset device",
+    "description": "User-facing message in Interviewer Manage Authenticator."
+  },
+  "interviewer.manageAuthenticator.resetDeviceAndWipeData": {
+    "defaultMessage": "Reset device and wipe data?",
+    "description": "User-facing message in Interviewer Manage Authenticator."
+  },
+  "interviewer.manageAuthenticator.revoke": {
+    "defaultMessage": "Revoke",
+    "description": "User-facing message in Interviewer Manage Authenticator."
+  },
+  "interviewer.manageAuthenticator.revokeDeviceLock": {
+    "defaultMessage": "Revoke device lock",
+    "description": "User-facing message in Interviewer Manage Authenticator."
+  },
+  "interviewer.manageAuthenticator.revokeDeviceLockAndWipeData": {
+    "defaultMessage": "Revoke device lock and wipe data?",
+    "description": "User-facing message in Interviewer Manage Authenticator."
+  },
+  "interviewer.manageAuthenticator.saveNewPIN": {
+    "defaultMessage": "Save new PIN",
+    "description": "User-facing message in Interviewer Manage Authenticator."
+  },
+  "interviewer.manageAuthenticator.saveNewPassphrase": {
+    "defaultMessage": "Save new passphrase",
+    "description": "User-facing message in Interviewer Manage Authenticator."
+  },
+  "interviewer.manageAuthenticator.saving": {
+    "defaultMessage": "Saving…",
+    "description": "User-facing message in Interviewer Manage Authenticator."
+  },
+  "interviewer.manageAuthenticator.theTwoNewPINsDoNotMatch": {
+    "defaultMessage": "The two new PINs do not match.",
+    "description": "User-facing message in Interviewer Manage Authenticator."
+  },
+  "interviewer.manageAuthenticator.theTwoNewPassphrasesDoNotMatch": {
+    "defaultMessage": "The two new passphrases do not match.",
+    "description": "User-facing message in Interviewer Manage Authenticator."
+  },
+  "interviewer.manageAuthenticator.thisWillDestroyAllDataOnThis": {
+    "defaultMessage": "This will destroy all data on this device. Continue?",
+    "description": "User-facing message in Interviewer Manage Authenticator."
+  },
+  "interviewer.manageAuthenticator.toChangeYourUnlockMethodResetThe": {
+    "defaultMessage": "To change your unlock method, reset the device and run setup again. Resetting destroys all data on this device.",
+    "description": "Visible copy in Interviewer Manage Authenticator."
+  },
+  "interviewer.manageAuthenticator.unknownMethod": {
+    "defaultMessage": "Unknown",
+    "description": "Administration text in Interviewer ManageAuthenticator."
+  },
+  "interviewer.manageAuthenticator.weCouldNotChangeYourPIN": {
+    "defaultMessage": "We could not change your PIN.",
+    "description": "User-facing message in Interviewer Manage Authenticator."
+  },
+  "interviewer.manageAuthenticator.weCouldNotChangeYourPassphrase": {
+    "defaultMessage": "We could not change your passphrase.",
+    "description": "User-facing message in Interviewer Manage Authenticator."
+  },
+  "interviewer.manageAuthenticator.yourNewPINMustBeExactly8": {
+    "defaultMessage": "Your new PIN must be exactly 8 digits.",
+    "description": "User-facing message in Interviewer Manage Authenticator."
+  },
+  "interviewer.manageAuthenticator.yourNewPassphraseMustBeAtLeast": {
+    "defaultMessage": "Your new passphrase must be at least 12 characters and combine uppercase, lowercase, numbers, and symbols.",
+    "description": "User-facing message in Interviewer Manage Authenticator."
+  },
+  "interviewer.newSessionForm.caseID": {
+    "defaultMessage": "Case ID",
+    "description": "The label label in Interviewer New Session Form."
+  },
+  "interviewer.newSessionForm.caseIDIsRequired": {
+    "defaultMessage": "Case ID is required",
+    "description": "User-facing message in Interviewer New Session Form."
+  },
+  "interviewer.newSessionForm.startAnyway": {
+    "defaultMessage": "Start anyway",
+    "description": "User-facing message in Interviewer New Session Form."
+  },
+  "interviewer.newSessionForm.startInterview": {
+    "defaultMessage": "Start interview",
+    "description": "Visible copy in Interviewer New Session Form."
+  },
+  "interviewer.newSessionForm.thisProtocolCouldNotBeUpdatedTo": {
+    "defaultMessage": "This protocol could not be updated to work with this version of the app, so new interviews cannot be started from it. Responses already collected remain available on the data screen. Repair the protocol in Architect and import it again.",
+    "description": "Visible copy in Interviewer New Session Form."
+  },
+  "interviewer.newSessionForm.thisProtocolIncludesAMapStageThat": {
+    "defaultMessage": "This protocol includes a map stage that needs an internet connection. The map will not load until you reconnect. You can still start the interview and complete the other stages.",
+    "description": "User-facing message in Interviewer New Session Form."
+  },
+  "interviewer.newSessionForm.thisWillBeShownOnTheResume": {
+    "defaultMessage": "This will be shown on the resume interview screen to help you quickly identify this session.",
+    "description": "The hint label in Interviewer New Session Form."
+  },
+  "interviewer.newSessionForm.youAppearToBeOffline": {
+    "defaultMessage": "You appear to be offline",
+    "description": "User-facing message in Interviewer New Session Form."
+  },
+  "interviewer.noRecoveryNotice.biometric": {
+    "defaultMessage": "Biometric unlock is protected by a recovery passphrase you set during setup. Keep that passphrase safe: if you lose both your biometric and the recovery passphrase, data on this device cannot be recovered.",
+    "description": "Administration text in Interviewer NoRecoveryNotice."
+  },
+  "interviewer.noRecoveryNotice.noRecovery": {
+    "defaultMessage": "No recovery",
+    "description": "Visible copy in Interviewer No Recovery Notice."
+  },
+  "interviewer.noRecoveryNotice.passphrase": {
+    "defaultMessage": "If you forget your passphrase, all data on this device — including imported protocols and recorded interviews — will become permanently inaccessible. There is no way to recover, reset, or bypass app security. The 'Reset all app data' menu option lets you start over with a blank app, but existing data cannot be recovered.",
+    "description": "Administration text in Interviewer NoRecoveryNotice."
+  },
+  "interviewer.noRecoveryNotice.pin": {
+    "defaultMessage": "If you forget your PIN, all data on this device — including imported protocols and recorded interviews — will become permanently inaccessible. There is no way to recover, reset, or bypass app security. The 'Reset all app data' menu option lets you start over with a blank app, but existing data cannot be recovered.",
+    "description": "Administration text in Interviewer NoRecoveryNotice."
+  },
+  "interviewer.notFound.pageNotFound": {
+    "defaultMessage": "Page not found",
+    "description": "Visible copy in Interviewer Not Found."
+  },
+  "interviewer.notFound.returnHome": {
+    "defaultMessage": "Return home",
+    "description": "Visible copy in Interviewer Not Found."
+  },
+  "interviewer.notFound.thePageYouWereLookingForDoes": {
+    "defaultMessage": "The page you were looking for does not exist.",
+    "description": "Visible copy in Interviewer Not Found."
+  },
+  "interviewer.onboardingScreen.getStarted": {
+    "defaultMessage": "Get started",
+    "description": "Visible copy in Interviewer Onboarding Screen."
+  },
+  "interviewer.onboardingScreen.letSSetUpThisDevice": {
+    "defaultMessage": "Let's set up this device.",
+    "description": "Visible copy in Interviewer Onboarding Screen."
+  },
+  "interviewer.onboardingScreen.welcomeToNetworkCanvasInterviewer": {
+    "defaultMessage": "Welcome to Network Canvas Interviewer",
+    "description": "Visible copy in Interviewer Onboarding Screen."
+  },
+  "interviewer.passwordUnlockField.enterPassphrase": {
+    "defaultMessage": "Enter passphrase",
+    "description": "The placeholder label in Interviewer Password Unlock Field."
+  },
+  "interviewer.passwordUnlockField.passphrase": {
+    "defaultMessage": "Passphrase",
+    "description": "The label label in Interviewer Password Unlock Field."
+  },
+  "interviewer.pinUnlockField.pIN": {
+    "defaultMessage": "PIN",
+    "description": "The label label in Interviewer Pin Unlock Field."
+  },
+  "interviewer.pinUnlockForm.incorrectPIN": {
+    "defaultMessage": "Incorrect PIN.",
+    "description": "User-facing message in Interviewer Pin Unlock Form."
+  },
+  "interviewer.protocolDeck.cancelStartingInterview": {
+    "defaultMessage": "Cancel starting interview",
+    "description": "The aria-label label in Interviewer Protocol Deck."
+  },
+  "interviewer.protocolDeck.goToCard": {
+    "defaultMessage": "Go to card {number, number}",
+    "description": "Accessible name of a numbered protocol-deck navigation button."
+  },
+  "interviewer.protocolDeck.importAProtocolCardSelected": {
+    "defaultMessage": "Import a protocol card selected",
+    "description": "User-facing message in Interviewer Protocol Deck."
+  },
+  "interviewer.protocolDeck.nextProtocol": {
+    "defaultMessage": "Next protocol",
+    "description": "The aria-label label in Interviewer Protocol Deck."
+  },
+  "interviewer.protocolDeck.previousProtocol": {
+    "defaultMessage": "Previous protocol",
+    "description": "The aria-label label in Interviewer Protocol Deck."
+  },
+  "interviewer.protocolDeck.protocolDeck": {
+    "defaultMessage": "Protocol deck",
+    "description": "The aria-label label in Interviewer Protocol Deck."
+  },
+  "interviewer.protocolImport.anUnexpectedErrorOccurred": {
+    "defaultMessage": "An unexpected error occurred.",
+    "description": "User-facing message in Interviewer Protocol Import."
+  },
+  "interviewer.protocolImport.cannotOpen": {
+    "defaultMessage": "This protocol could not be opened.",
+    "description": "Fallback guidance when an unrecognized file extraction error prevents import."
+  },
+  "interviewer.protocolImport.cannotReadSelectedFile": {
+    "defaultMessage": "This protocol file could not be read. Check that it is still available and select it again.",
+    "description": "Retry guidance when the browser cannot read a selected file before import starts, for example after it was moved or disconnected. Does not claim the protocol contents are invalid."
+  },
+  "interviewer.protocolImport.cannotSave": {
+    "defaultMessage": "This protocol could not be saved. This device may be out of space.",
+    "description": "Import failure after validation when device storage rejects the save; suggests the likely remedy."
+  },
+  "interviewer.protocolImport.cannotUpgrade": {
+    "defaultMessage": "This protocol could not be upgraded to the current version.",
+    "description": "Fallback guidance when an unrecognized protocol migration error prevents import."
+  },
+  "interviewer.protocolImport.importFailed": {
+    "defaultMessage": "Import failed",
+    "description": "User-facing message in Interviewer Protocol Import."
+  },
+  "interviewer.protocolImport.importSuccess": {
+    "defaultMessage": "{migrated, select, true {{name} was migrated to the current schema.} other {{name} is ready to use.}}",
+    "description": "Administration text in Interviewer useProtocolImport."
+  },
+  "interviewer.protocolImport.invalidProtocol": {
+    "defaultMessage": "Protocol failed schema validation.",
+    "description": "Summary above copyable technical details when an imported protocol fails validation."
+  },
+  "interviewer.protocolImport.protocolImported": {
+    "defaultMessage": "Protocol imported",
+    "description": "User-facing message in Interviewer Protocol Import."
+  },
+  "interviewer.protocolImport.unsupportedVersion": {
+    "defaultMessage": "Protocol schema version {version} cannot be migrated to {targetVersion}.",
+    "description": "Import refusal when the embedded interview engine cannot run or migrate the protocol schema version. Version values are technical schema identifiers."
+  },
+  "interviewer.protocolImport.viewDetails": {
+    "defaultMessage": "View details",
+    "description": "User-facing message in Interviewer Protocol Import."
+  },
+  "interviewer.protocolValidationDetailsDialog.copied": {
+    "defaultMessage": "Copied",
+    "description": "User-facing message in Interviewer Protocol Validation Details Dialog."
+  },
+  "interviewer.protocolValidationDetailsDialog.copy": {
+    "defaultMessage": "Copy",
+    "description": "User-facing message in Interviewer Protocol Validation Details Dialog."
+  },
+  "interviewer.protocolValidationDetailsDialog.description": {
+    "defaultMessage": "Details of the validation errors can be found below:",
+    "description": "Administration text in Interviewer ProtocolValidationDetailsDialog."
+  },
+  "interviewer.protocolValidationDetailsDialog.ifYouWouldLikeSupportPostYour": {
+    "defaultMessage": "If you would like support, post your protocol along with these errors on the <link>community forum</link>, or email <link1>info@networkcanvas.com</link1> with this information.",
+    "description": "Visible copy in Interviewer Protocol Validation Details Dialog."
+  },
+  "interviewer.protocolValidationDetailsDialog.protocolValidationErrors": {
+    "defaultMessage": "Protocol validation errors",
+    "description": "The aria-label label in Interviewer Protocol Validation Details Dialog."
+  },
+  "interviewer.protocolValidationDetailsDialog.title": {
+    "defaultMessage": "Protocol validation failed",
+    "description": "Administration text in Interviewer ProtocolValidationDetailsDialog."
+  },
+  "interviewer.protocolValidationDetailsDialog.validationErrorsCopiedToClipboard": {
+    "defaultMessage": "Validation errors copied to clipboard.",
+    "description": "User-facing message in Interviewer Protocol Validation Details Dialog."
+  },
+  "interviewer.protocolValidationDetailsDialog.validationErrorsCouldNotBeCopied": {
+    "defaultMessage": "Validation errors could not be copied.",
+    "description": "User-facing message in Interviewer Protocol Validation Details Dialog."
+  },
+  "interviewer.recoverByResettingDialog.deleting": {
+    "defaultMessage": "Deleting…",
+    "description": "The submittingText label in Interviewer Recover By Resetting Dialog."
+  },
+  "interviewer.recoverByResettingDialog.permanentlyDelete": {
+    "defaultMessage": "Permanently delete",
+    "description": "Visible copy in Interviewer Recover By Resetting Dialog."
+  },
+  "interviewer.recoverByResettingDialog.resetAllAppData": {
+    "defaultMessage": "Reset all app data?",
+    "description": "The title label in Interviewer Recover By Resetting Dialog."
+  },
+  "interviewer.recoverByResettingDialog.theAppDataCouldNotBeReset": {
+    "defaultMessage": "The app data could not be reset.",
+    "description": "User-facing message in Interviewer Recover By Resetting Dialog."
+  },
+  "interviewer.recoverByResettingDialog.thisPermanentlyDeletesEveryProtocolAndRecorded": {
+    "defaultMessage": "This permanently deletes every protocol and recorded interview on this device. It cannot be undone, and the existing data cannot be recovered.",
+    "description": "The description label in Interviewer Recover By Resetting Dialog."
+  },
+  "interviewer.resumePill.identity": {
+    "defaultMessage": "{protocol} – {caseId}",
+    "description": "Protocol name and case identifier on the resume shortcut; both values are unchanged research content."
+  },
+  "interviewer.resumePill.resumeLastInterview": {
+    "defaultMessage": "Resume last interview",
+    "description": "Visible copy in Interviewer Resume Pill."
+  },
+  "interviewer.resumePill.untitled": {
+    "defaultMessage": "Untitled",
+    "description": "User-facing message in Interviewer Resume Pill."
+  },
+  "interviewer.sampleProtocol.description": {
+    "defaultMessage": "A complete reference protocol from the Network Canvas team — useful for exploring how stages, prompts, and codebooks fit together.",
+    "description": "Administration teaser description before installing the bundled sample. The actual protocol content remains unchanged."
+  },
+  "interviewer.securityBehaviorControls.autoLockAfter": {
+    "defaultMessage": "Auto-lock after",
+    "description": "The label label in Interviewer Security Behavior Controls."
+  },
+  "interviewer.securityBehaviorControls.hours": {
+    "defaultMessage": "{count, plural, one {# hour} other {# hours}}",
+    "description": "Administration text in Interviewer SecurityBehaviorControls."
+  },
+  "interviewer.securityBehaviorControls.howLongTheAppMaySitIdle": {
+    "defaultMessage": "How long the app may sit idle before automatically locking.",
+    "description": "The hint label in Interviewer Security Behavior Controls."
+  },
+  "interviewer.securityBehaviorControls.minutes": {
+    "defaultMessage": "{count, plural, one {# minute} other {# minutes}}",
+    "description": "Administration text in Interviewer SecurityBehaviorControls."
+  },
+  "interviewer.securityBehaviorControls.requireUnlockBeforeExportingData": {
+    "defaultMessage": "Require unlock before exporting data",
+    "description": "The label label in Interviewer Security Behavior Controls."
+  },
+  "interviewer.securityBehaviorControls.requireUnlockWhenEnteringAnInterview": {
+    "defaultMessage": "Require unlock when entering an interview",
+    "description": "The label label in Interviewer Security Behavior Controls."
+  },
+  "interviewer.securityBehaviorControls.requireUnlockWhenExitingAnInterview": {
+    "defaultMessage": "Require unlock when exiting an interview",
+    "description": "The label label in Interviewer Security Behavior Controls."
+  },
+  "interviewer.sessionMutations.couldNotMarkInterviewUnfinished": {
+    "defaultMessage": "Could not mark interview unfinished",
+    "description": "User-facing message in Interviewer Session Mutations."
+  },
+  "interviewer.sessionMutations.deleteDescription": {
+    "defaultMessage": "{count, plural, one {This record will be permanently removed from this device. This cannot be undone.} other {These records will be permanently removed from this device. This cannot be undone.}}",
+    "description": "Administration text in Interviewer useSessionMutations."
+  },
+  "interviewer.sessionMutations.deleteFailed": {
+    "defaultMessage": "Delete failed",
+    "description": "User-facing message in Interviewer Session Mutations."
+  },
+  "interviewer.sessionMutations.deleteSelected": {
+    "defaultMessage": "{count, plural, one {Delete # interview?} other {Delete # interviews?}}",
+    "description": "Administration text in Interviewer useSessionMutations."
+  },
+  "interviewer.sessionMutations.deleted": {
+    "defaultMessage": "{count, plural, one {Deleted # interview} other {Deleted # interviews}}",
+    "description": "Administration text in Interviewer useSessionMutations."
+  },
+  "interviewer.sessionMutations.exportComplete": {
+    "defaultMessage": "Export complete",
+    "description": "User-facing message in Interviewer Session Mutations."
+  },
+  "interviewer.sessionMutations.exportFailed": {
+    "defaultMessage": "Export failed",
+    "description": "User-facing message in Interviewer Session Mutations."
+  },
+  "interviewer.sessionMutations.interviewMarkedUnfinished": {
+    "defaultMessage": "Interview marked unfinished",
+    "description": "User-facing message in Interviewer Session Mutations."
+  },
+  "interviewer.sessionMutations.markUnfinished": {
+    "defaultMessage": "Mark unfinished?",
+    "description": "User-facing message in Interviewer Session Mutations."
+  },
+  "interviewer.sessionMutations.markUnfinished2": {
+    "defaultMessage": "Mark unfinished",
+    "description": "User-facing message in Interviewer Session Mutations."
+  },
+  "interviewer.sessionMutations.operationFailed": {
+    "defaultMessage": "The operation could not be completed. Your interview data remains on this device. Please try again.",
+    "description": "Administration text in Interviewer useSessionMutations."
+  },
+  "interviewer.sessionMutations.resumable": {
+    "defaultMessage": "{caseId} can now be resumed.",
+    "description": "Administration text in Interviewer useSessionMutations."
+  },
+  "interviewer.sessionMutations.thisInterviewWillBecomeEditableAndCan": {
+    "defaultMessage": "This interview will become editable and can be resumed. Its existing responses and export history will be kept.",
+    "description": "User-facing message in Interviewer Session Mutations."
+  },
+  "interviewer.sessionMutations.zipArchive": {
+    "defaultMessage": "ZIP archive",
+    "description": "File type description in the native Save As picker for an exported interview archive. ZIP is the file format name."
+  },
+  "interviewer.settingsDialog.about": {
+    "defaultMessage": "About",
+    "description": "Administration text in Interviewer SettingsDialog."
+  },
+  "interviewer.settingsDialog.allowStageNavigation": {
+    "defaultMessage": "Allow stage navigation",
+    "description": "The label label in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.appVersion": {
+    "defaultMessage": "App version",
+    "description": "The title label in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.applyProtocolSkipLogicAndStageFilters": {
+    "defaultMessage": "Apply protocol skip logic and stage filters during generation.",
+    "description": "The hint label in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.bestEffort": {
+    "defaultMessage": "Best-effort",
+    "description": "Storage badge when the browser may evict app data under storage pressure."
+  },
+  "interviewer.settingsDialog.couldNotRefreshSyntheticSessionInfo": {
+    "defaultMessage": "Could not refresh synthetic session info",
+    "description": "User-facing message in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.currentTotalInterviewsGenerated": {
+    "defaultMessage": "{current, number} / {total, plural, one {# interview generated} other {# interviews generated}}",
+    "description": "Progress below the synthetic data generation button. current is the number already generated, and total is the requested number; the noun agrees with the requested total."
+  },
+  "interviewer.settingsDialog.dataExport": {
+    "defaultMessage": "Data export",
+    "description": "Administration text in Interviewer SettingsDialog."
+  },
+  "interviewer.settingsDialog.deleteAll": {
+    "defaultMessage": "Delete All",
+    "description": "Action that deletes all generated synthetic sessions, preserving real interview sessions."
+  },
+  "interviewer.settingsDialog.deleteFailedHelp": {
+    "defaultMessage": "Synthetic data could not be deleted. Please try again.",
+    "description": "Retry guidance retained in the synthetic data deletion confirmation after device storage fails."
+  },
+  "interviewer.settingsDialog.deleteSynthetic": {
+    "defaultMessage": "{count, plural, one {Delete # synthetic session?} other {Delete # synthetic sessions?}}",
+    "description": "Confirmation heading before permanently deleting generated interviews."
+  },
+  "interviewer.settingsDialog.deleteSyntheticData": {
+    "defaultMessage": "Delete synthetic data",
+    "description": "The title label in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.deleted": {
+    "defaultMessage": "{count, plural, one {Deleted # synthetic session} other {Deleted # synthetic sessions}}",
+    "description": "Administration text in Interviewer SettingsDialog."
+  },
+  "interviewer.settingsDialog.enableAnalytics": {
+    "defaultMessage": "Enable analytics",
+    "description": "The label label in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.enableAppSecurity": {
+    "defaultMessage": "Enable app security",
+    "description": "The title label in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.exportCSV": {
+    "defaultMessage": "Export CSV",
+    "description": "The label label in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.exportGraphML": {
+    "defaultMessage": "Export GraphML",
+    "description": "The label label in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.exportNodePositionsAsScreenCoordinatePixels": {
+    "defaultMessage": "Export node positions as screen-coordinate pixels",
+    "description": "The label label in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.generate": {
+    "defaultMessage": "Generate",
+    "description": "Action that creates the requested number of synthetic interview sessions."
+  },
+  "interviewer.settingsDialog.generateSyntheticInterviewSessionsToValidateThe": {
+    "defaultMessage": "Generate synthetic interview sessions to validate the export pipeline. Synthetic sessions appear in the regular Sessions list and export identically to real sessions.",
+    "description": "Visible copy in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.generated": {
+    "defaultMessage": "{count, plural, one {Generated # synthetic session} other {Generated # synthetic sessions}}",
+    "description": "Success toast after generating synthetic interviews; count is the number created."
+  },
+  "interviewer.settingsDialog.generating": {
+    "defaultMessage": "Generating…",
+    "description": "User-facing message in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.generationFailed": {
+    "defaultMessage": "Generation failed",
+    "description": "User-facing message in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.generationFailedHelp": {
+    "defaultMessage": "Synthetic data could not be generated. Please try again.",
+    "description": "Administration text in Interviewer SettingsDialog."
+  },
+  "interviewer.settingsDialog.generationProgress": {
+    "defaultMessage": "Generation progress",
+    "description": "The label label in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.getStarted": {
+    "defaultMessage": "Get started",
+    "description": "Action that opens security setup for a device currently used without a lock."
+  },
+  "interviewer.settingsDialog.importAProtocolFirst": {
+    "defaultMessage": "Import a protocol first.",
+    "description": "User-facing message in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.includeCSVFilesAttributesEdgesEgoIn": {
+    "defaultMessage": "Include CSV files (attributes, edges, ego) in interview exports.",
+    "description": "The hint label in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.includeGraphMLFilesInInterviewExports": {
+    "defaultMessage": "Include GraphML files in interview exports.",
+    "description": "The hint label in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.installationID": {
+    "defaultMessage": "Installation ID",
+    "description": "The title label in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.interview": {
+    "defaultMessage": "Interview",
+    "description": "Navigation tab for interview behavior preferences, separate from participant answers."
+  },
+  "interviewer.settingsDialog.language": {
+    "defaultMessage": "Language",
+    "description": "Navigation tab for the device administration language preference."
+  },
+  "interviewer.settingsDialog.letParticipantsMoveBetweenStagesByTapping": {
+    "defaultMessage": "Let participants move between stages by tapping the progress bar during an interview, which opens a stages menu.",
+    "description": "The hint label in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.networkCanvasInterviewer": {
+    "defaultMessage": "Network Canvas Interviewer",
+    "description": "The desc label in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.networkDataResponsesCaseIDsProtocolContents": {
+    "defaultMessage": "Network data, responses, case IDs, protocol contents, and asset files never leave this device. Analytics also contain no user-identifiable information.",
+    "description": "Visible copy in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.noParticipantDataIsEverCollected": {
+    "defaultMessage": "No participant data is ever collected.",
+    "description": "Visible copy in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.numberOfSessions": {
+    "defaultMessage": "Number of sessions",
+    "description": "The label label in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.offlineStorage": {
+    "defaultMessage": "Offline storage",
+    "description": "The title label in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.persisted": {
+    "defaultMessage": "Persisted",
+    "description": "Storage badge when the browser has granted persistent device storage."
+  },
+  "interviewer.settingsDialog.pixels": {
+    "defaultMessage": "Pixels",
+    "description": "The hint label in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.privacy": {
+    "defaultMessage": "Privacy",
+    "description": "Administration text in Interviewer SettingsDialog."
+  },
+  "interviewer.settingsDialog.protocol": {
+    "defaultMessage": "Protocol",
+    "description": "Research protocol selector used when generating synthetic interview sessions."
+  },
+  "interviewer.settingsDialog.reShowsTheOneClickSampleProtocol": {
+    "defaultMessage": "Re-shows the one-click sample protocol card next to the Import card.",
+    "description": "The hint label in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.respectSkipLogicAndFiltering": {
+    "defaultMessage": "Respect skip logic and filtering",
+    "description": "The label label in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.runTheGetStartedWizardToConfigure": {
+    "defaultMessage": "Run the Get started wizard to configure a device lock and choose your security preferences.",
+    "description": "The desc label in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.screenLayoutHeight": {
+    "defaultMessage": "Screen layout height",
+    "description": "The label label in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.screenLayoutWidth": {
+    "defaultMessage": "Screen layout width",
+    "description": "The label label in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.security": {
+    "defaultMessage": "Security",
+    "description": "Navigation tab for device authentication, lock behavior and data-reset controls."
+  },
+  "interviewer.settingsDialog.sendAnonymousUsageAndErrorDataTo": {
+    "defaultMessage": "Send anonymous usage and error data to help the Network Canvas team improve the app.",
+    "description": "The hint label in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.settings": {
+    "defaultMessage": "Settings",
+    "description": "Visible copy in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.settingsSections": {
+    "defaultMessage": "Settings sections",
+    "description": "The aria-label label in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.showSampleProtocolOnHomeScreen": {
+    "defaultMessage": "Show sample protocol on home screen",
+    "description": "The label label in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.simulateParticipantDropOut": {
+    "defaultMessage": "Simulate participant drop-out",
+    "description": "The label label in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.sociogramNodePositionsAreExportedInPixel": {
+    "defaultMessage": "Sociogram node positions are exported in pixel coordinates relative to the layout below.",
+    "description": "The hint label in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.someSessionsWillBeLeftIncompleteTo": {
+    "defaultMessage": "Some sessions will be left incomplete to mirror real-world data.",
+    "description": "The hint label in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.storage": {
+    "defaultMessage": "Storage",
+    "description": "The title label in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.storageBestEffort": {
+    "defaultMessage": "Offline storage: best-effort — it may be cleared under storage pressure",
+    "description": "Administration text in Interviewer SettingsDialog."
+  },
+  "interviewer.settingsDialog.storageProtected": {
+    "defaultMessage": "{hasUsage, select, true {Offline storage: protected from eviction · {used} used} other {Offline storage: protected from eviction}}",
+    "description": "Administration text in Interviewer SettingsDialog."
+  },
+  "interviewer.settingsDialog.storageUsage": {
+    "defaultMessage": "Storage usage",
+    "description": "The label label in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.storageUsed": {
+    "defaultMessage": "{hasPercent, select, true {{used} of {total} ({percent})} other {{used} of {total}}}",
+    "description": "Administration text in Interviewer SettingsDialog."
+  },
+  "interviewer.settingsDialog.syntheticCount": {
+    "defaultMessage": "{count, plural, one {There is currently # synthetic session on this device.} other {There are currently # synthetic sessions on this device.}}",
+    "description": "Administration text in Interviewer SettingsDialog."
+  },
+  "interviewer.settingsDialog.syntheticData": {
+    "defaultMessage": "Synthetic data",
+    "description": "Administration text in Interviewer SettingsDialog."
+  },
+  "interviewer.settingsDialog.theProtocolListAndSessionCountAbove": {
+    "defaultMessage": "The protocol list and session count above may not match what is actually stored on this device. Reopen Settings to refresh them.",
+    "description": "User-facing message in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.theProtocolUsedToShapeGeneratedSessions": {
+    "defaultMessage": "The protocol used to shape generated sessions.",
+    "description": "User-facing message in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.thisCannotBeUndone": {
+    "defaultMessage": "This cannot be undone.",
+    "description": "User-facing message in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.uniquePerDeviceIdentifier": {
+    "defaultMessage": "Unique per-device identifier",
+    "description": "The desc label in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.unknown": {
+    "defaultMessage": "Unknown",
+    "description": "Storage estimate shown when the browser cannot report device usage."
+  },
+  "interviewer.settingsDialog.useTheLockButtonInTheTop": {
+    "defaultMessage": "Use the lock button in the top bar to lock immediately.",
+    "description": "Visible copy in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.whenAnalyticsAreEnabledTheAppSends": {
+    "defaultMessage": "When analytics are enabled, the app sends a small amount of anonymous information about how it is used — for example which interview stages and features are exercised, when protocols are imported, when data is exported, and details of any errors or crashes. This helps us find bugs and decide what to improve.",
+    "description": "Visible copy in Interviewer Settings Dialog."
+  },
+  "interviewer.settingsDialog.whenOffParticipantsCanOnlyMoveForwards": {
+    "defaultMessage": "When off, participants can only move forwards and backwards one stage at a time. Turning this on lets them jump directly to any stage, which is useful for piloting a protocol but is usually left off for real interviews.",
+    "description": "Visible copy in Interviewer Settings Dialog."
+  },
+  "interviewer.setupWizardDialog.appAuthorization": {
+    "defaultMessage": "App Authorization",
+    "description": "Visible copy in Interviewer Setup Wizard Dialog."
+  },
+  "interviewer.setupWizardDialog.appAuthorizationEnsuresThatOnlyAuthorizedUsers": {
+    "defaultMessage": "App authorization ensures that only authorized users can access the app, and perform certain sensitive actions (such as exporting data, and entering/leaving interviews). It also requires re-authentication after a specific configurable period of inactivity.",
+    "description": "Visible copy in Interviewer Setup Wizard Dialog."
+  },
+  "interviewer.setupWizardDialog.chooseAnAuthenticationMethod": {
+    "defaultMessage": "Choose an authentication method",
+    "description": "User-facing message in Interviewer Setup Wizard Dialog."
+  },
+  "interviewer.setupWizardDialog.chooseBetweenTheOptionsBelowToDetermine": {
+    "defaultMessage": "Choose between the options below to determine how you will be prompted to unlock the app.",
+    "description": "User-facing message in Interviewer Setup Wizard Dialog."
+  },
+  "interviewer.setupWizardDialog.decideWhenTheAppReLocks": {
+    "defaultMessage": "Decide when the app re-locks.",
+    "description": "User-facing message in Interviewer Setup Wizard Dialog."
+  },
+  "interviewer.setupWizardDialog.exitSetup": {
+    "defaultMessage": "Exit setup?",
+    "description": "Confirmation title when abandoning optional security setup opened from Settings."
+  },
+  "interviewer.setupWizardDialog.exitSetup2": {
+    "defaultMessage": "Exit setup",
+    "description": "Action that leaves optional security setup while keeping an already-configured device lock."
+  },
+  "interviewer.setupWizardDialog.finish": {
+    "defaultMessage": "Finish",
+    "description": "Final action of security setup that applies the chosen device preferences."
+  },
+  "interviewer.setupWizardDialog.goBackToWizard": {
+    "defaultMessage": "Go back to wizard",
+    "description": "User-facing message in Interviewer Setup Wizard Dialog."
+  },
+  "interviewer.setupWizardDialog.goodNews": {
+    "defaultMessage": "Good news!",
+    "description": "Visible copy in Interviewer Setup Wizard Dialog."
+  },
+  "interviewer.setupWizardDialog.helpImproveTheApp": {
+    "defaultMessage": "Help improve the app",
+    "description": "User-facing message in Interviewer Setup Wizard Dialog."
+  },
+  "interviewer.setupWizardDialog.ifYouHaveAlreadyConfiguredADevice": {
+    "defaultMessage": "If you have already configured a device lock, it will remain active. Otherwise, Interviewer will continue without app security.",
+    "description": "User-facing message in Interviewer Setup Wizard Dialog."
+  },
+  "interviewer.setupWizardDialog.ifYouNeedHelpOrHaveQuestions": {
+    "defaultMessage": "If you need help or have questions, please reach out to the Network Canvas team at <link>info@networkcanvas.com</link>, or visit our <link1>community forum</link1>.",
+    "description": "Visible copy in Interviewer Setup Wizard Dialog."
+  },
+  "interviewer.setupWizardDialog.ifYouSetUpAPINPassphrase": {
+    "defaultMessage": "If you set up a PIN, passphrase, or biometric lock next, your data is encrypted on this device with a key derived from it. The key never leaves your device, so your data stays unreadable without it.",
+    "description": "Visible copy in Interviewer Setup Wizard Dialog."
+  },
+  "interviewer.setupWizardDialog.lockBehavior": {
+    "defaultMessage": "Lock behavior",
+    "description": "User-facing message in Interviewer Setup Wizard Dialog."
+  },
+  "interviewer.setupWizardDialog.pleaseNoteThatTheseSecurityFeaturesShould": {
+    "defaultMessage": "Please note that these security features should be used <em>in addition</em> to general device security best practices, such as enabling device-level storage encryption, using a strong device password, keeping your operating system up to date, and being cautious about installing untrusted apps or files.",
+    "description": "Visible copy in Interviewer Setup Wizard Dialog."
+  },
+  "interviewer.setupWizardDialog.reloadInterviewerToRefreshThisDeviceS": {
+    "defaultMessage": "Reload Interviewer to refresh this device’s security status.",
+    "description": "User-facing message in Interviewer Setup Wizard Dialog."
+  },
+  "interviewer.setupWizardDialog.secureDataStorage": {
+    "defaultMessage": "Secure Data Storage",
+    "description": "Visible copy in Interviewer Setup Wizard Dialog."
+  },
+  "interviewer.setupWizardDialog.secureDataStorageProtectsYourInterviewData": {
+    "defaultMessage": "Secure data storage protects your interview data by encrypting it, so that even if someone gains access to your device or its files, they won't be able to read your data.",
+    "description": "Visible copy in Interviewer Setup Wizard Dialog."
+  },
+  "interviewer.setupWizardDialog.secureThisDevice": {
+    "defaultMessage": "🔑 Secure this device",
+    "description": "User-facing message in Interviewer Setup Wizard Dialog."
+  },
+  "interviewer.setupWizardDialog.securingYourData": {
+    "defaultMessage": "Securing your data",
+    "description": "User-facing message in Interviewer Setup Wizard Dialog."
+  },
+  "interviewer.setupWizardDialog.securingYourResearchDataIsVitalInterviewer": {
+    "defaultMessage": "Securing your research data is vital. Interviewer implements two layers of protection: secure data storage, and app authorization checks.",
+    "description": "Visible copy in Interviewer Setup Wizard Dialog."
+  },
+  "interviewer.setupWizardDialog.securityStatusCouldNotBeRefreshed": {
+    "defaultMessage": "Security status could not be refreshed",
+    "description": "User-facing message in Interviewer Setup Wizard Dialog."
+  },
+  "interviewer.setupWizardDialog.setUpYourMethod": {
+    "defaultMessage": "Set up your method",
+    "description": "User-facing message in Interviewer Setup Wizard Dialog."
+  },
+  "interviewer.setupWizardDialog.settingUpYourDevice": {
+    "defaultMessage": "Setting up your device",
+    "description": "User-facing message in Interviewer Setup Wizard Dialog."
+  },
+  "interviewer.setupWizardDialog.settingUpYourDeviceIsQuickAnd": {
+    "defaultMessage": "Setting up your device is quick and easy, and will take no more than a few minutes.",
+    "description": "Visible copy in Interviewer Setup Wizard Dialog."
+  },
+  "interviewer.setupWizardDialog.setupCouldNotBeCompleted": {
+    "defaultMessage": "Setup could not be completed",
+    "description": "User-facing message in Interviewer Setup Wizard Dialog."
+  },
+  "interviewer.setupWizardDialog.setupCouldNotBeOpened": {
+    "defaultMessage": "Setup could not be opened",
+    "description": "User-facing message in Interviewer Setup Wizard Dialog."
+  },
+  "interviewer.setupWizardDialog.skipTheWizard": {
+    "defaultMessage": "Skip the wizard?",
+    "description": "User-facing message in Interviewer Setup Wizard Dialog."
+  },
+  "interviewer.setupWizardDialog.skipWizard": {
+    "defaultMessage": "Skip Wizard",
+    "description": "Action that requests skipping first-run security setup and using the app without a device lock."
+  },
+  "interviewer.setupWizardDialog.somethingWentWrongWhileSettingUpThis": {
+    "defaultMessage": "Something went wrong while setting up this device. Please try again.",
+    "description": "User-facing message in Interviewer Setup Wizard Dialog."
+  },
+  "interviewer.setupWizardDialog.storedSettingsCouldNotBeReadPlease": {
+    "defaultMessage": "Stored settings could not be read. Please try again.",
+    "description": "User-facing message in Interviewer Setup Wizard Dialog."
+  },
+  "interviewer.setupWizardDialog.thereAreTwoSimpleStepsSettingUp": {
+    "defaultMessage": "There are two simple steps: setting up app security, and confirming your app preferences. This wizard will guide you through both. You can change all of these settings later from the Settings screen.",
+    "description": "Visible copy in Interviewer Setup Wizard Dialog."
+  },
+  "interviewer.setupWizardDialog.useAppWithoutSecurity": {
+    "defaultMessage": "Use app without security",
+    "description": "User-facing message in Interviewer Setup Wizard Dialog."
+  },
+  "interviewer.setupWizardDialog.yourDeviceWillBeLeftUnsecuredAnd": {
+    "defaultMessage": "Your device will be left unsecured, and default preferences will be assumed. Are you sure you want to skip the setup wizard?",
+    "description": "User-facing message in Interviewer Setup Wizard Dialog."
+  },
+  "interviewer.statusRow.encrypted": {
+    "defaultMessage": "Encrypted",
+    "description": "Visible copy in Interviewer Status Row."
+  },
+  "interviewer.statusRow.encryptedInterviewDataIsEncryptedAtRest": {
+    "defaultMessage": "Encrypted. Interview data is encrypted at rest with your enrolled unlock method.",
+    "description": "Visible copy in Interviewer Status Row."
+  },
+  "interviewer.statusRow.installedStorage": {
+    "defaultMessage": "{hasUsage, select, true {Storage best effort. Installed-app data is kept separate from browsing data and is not cleared routinely, but it is not guaranteed against eviction if disk space runs low. Export interviews regularly. {used} stored.} other {Storage best effort. Installed-app data is kept separate from browsing data and is not cleared routinely, but it is not guaranteed against eviction if disk space runs low. Export interviews regularly.}}",
+    "description": "Administration text in Interviewer StatusRow."
+  },
+  "interviewer.statusRow.interviewerAPPVERSION": {
+    "defaultMessage": "Interviewer {APP_VERSION}",
+    "description": "Visible copy in Interviewer Status Row."
+  },
+  "interviewer.statusRow.notEncrypted": {
+    "defaultMessage": "Not encrypted",
+    "description": "Visible copy in Interviewer Status Row."
+  },
+  "interviewer.statusRow.notEncryptedNoAppSecurityIsEnrolled": {
+    "defaultMessage": "Not encrypted. No app security is enrolled — data is stored unencrypted. Enrol a PIN, passphrase, or biometric in Settings to encrypt it.",
+    "description": "Visible copy in Interviewer Status Row."
+  },
+  "interviewer.statusRow.persistentStorage": {
+    "defaultMessage": "{hasUsage, select, true {Storage persistent. {used} stored.} other {Storage persistent.}}",
+    "description": "Administration text in Interviewer StatusRow."
+  },
+  "interviewer.statusRow.storageBestEffort": {
+    "defaultMessage": "Storage best effort",
+    "description": "Visible copy in Interviewer Status Row."
+  },
+  "interviewer.statusRow.storageNotPersistent": {
+    "defaultMessage": "Storage not persistent",
+    "description": "Visible copy in Interviewer Status Row."
+  },
+  "interviewer.statusRow.storagePersistent": {
+    "defaultMessage": "Storage persistent",
+    "description": "Visible copy in Interviewer Status Row."
+  },
+  "interviewer.statusRow.strongInterviewCountStrongInterviews": {
+    "defaultMessage": "{interviewCount, plural, one {<strong>#</strong> interview} other {<strong>#</strong> interviews}}",
+    "description": "Administration text in Interviewer StatusRow."
+  },
+  "interviewer.statusRow.strongProtocolCountStrongProtocols": {
+    "defaultMessage": "{protocolCount, plural, one {<strong>#</strong> protocol} other {<strong>#</strong> protocols}}",
+    "description": "Administration text in Interviewer StatusRow."
+  },
+  "interviewer.statusRow.temporaryStorage": {
+    "defaultMessage": "{hasUsage, select, true {Storage not persistent. {used} stored.} other {Storage not persistent.}}",
+    "description": "Administration text in Interviewer StatusRow."
+  },
+  "interviewer.step2MethodPicker.aPasswordOfAtLeast12Characters": {
+    "defaultMessage": "A password of at least 12 characters.",
+    "description": "User-facing message in Interviewer Step2Method Picker."
+  },
+  "interviewer.step2MethodPicker.an8DigitNumericPIN": {
+    "defaultMessage": "An 8-digit numeric PIN.",
+    "description": "User-facing message in Interviewer Step2Method Picker."
+  },
+  "interviewer.step2MethodPicker.biometricAuthentication": {
+    "defaultMessage": "Biometric authentication",
+    "description": "User-facing message in Interviewer Step2Method Picker."
+  },
+  "interviewer.step2MethodPicker.biometricDescription": {
+    "defaultMessage": "{macInstalledLimitation, select, true {Use Face ID, Touch ID, Windows Hello, or another biometric sensor on this device. Note: on macOS, Chrome cannot use biometrics from the installed app — there you would unlock with your recovery passphrase.} other {Use Face ID, Touch ID, Windows Hello, or another biometric sensor on this device.}}",
+    "description": "Administration text in Interviewer Step2MethodPicker."
+  },
+  "interviewer.step2MethodPicker.continueWithoutSecurity": {
+    "defaultMessage": "Continue without security?",
+    "description": "User-facing message in Interviewer Step2Method Picker."
+  },
+  "interviewer.step2MethodPicker.continueWithoutSecurity2": {
+    "defaultMessage": "Continue without security",
+    "description": "User-facing message in Interviewer Step2Method Picker."
+  },
+  "interviewer.step2MethodPicker.noSecurityNotRecommended": {
+    "defaultMessage": "No security (not recommended)",
+    "description": "User-facing message in Interviewer Step2Method Picker."
+  },
+  "interviewer.step2MethodPicker.pINCode": {
+    "defaultMessage": "PIN code",
+    "description": "User-facing message in Interviewer Step2Method Picker."
+  },
+  "interviewer.step2MethodPicker.passphrase": {
+    "defaultMessage": "Passphrase",
+    "description": "User-facing message in Interviewer Step2Method Picker."
+  },
+  "interviewer.step2MethodPicker.skipAppSecurityYourDataWillNot": {
+    "defaultMessage": "Skip app security. Your data will not be protected by the app.",
+    "description": "User-facing message in Interviewer Step2Method Picker."
+  },
+  "interviewer.step2MethodPicker.thisDeviceLockIsAlreadyProtectingStored": {
+    "defaultMessage": "This device lock is already protecting stored data. Finish setup before changing it from the Security settings.",
+    "description": "Visible copy in Interviewer Step2Method Picker."
+  },
+  "interviewer.step2MethodPicker.yourDataWillNotBeProtectedBy": {
+    "defaultMessage": "Your data will not be protected by an app lock or encryption managed by this app. Anyone with access to this device may be able to view collected data.",
+    "description": "User-facing message in Interviewer Step2Method Picker."
+  },
+  "interviewer.step3BiometricConfigure.atLeast12CharactersCombiningUppercaseLowercase": {
+    "defaultMessage": "At least 12 characters combining uppercase, lowercase, numbers, and symbols.",
+    "description": "The hint label in Interviewer Step3Biometric Configure."
+  },
+  "interviewer.step3BiometricConfigure.biometricSetupFailed": {
+    "defaultMessage": "Biometric setup failed.",
+    "description": "User-facing message in Interviewer Step3Biometric Configure."
+  },
+  "interviewer.step3BiometricConfigure.biometricUnlockUsesYourDeviceSFace": {
+    "defaultMessage": "Biometric unlock uses your device's Face ID, Touch ID, or Windows Hello. When you continue, you'll be prompted to register it.",
+    "description": "Visible copy in Interviewer Step3Biometric Configure."
+  },
+  "interviewer.step3BiometricConfigure.confirmRecoveryPassphrase": {
+    "defaultMessage": "Confirm recovery passphrase",
+    "description": "The label label in Interviewer Step3Biometric Configure."
+  },
+  "interviewer.step3BiometricConfigure.enterRecoveryPassphrase": {
+    "defaultMessage": "Enter recovery passphrase",
+    "description": "The placeholder label in Interviewer Step3Biometric Configure."
+  },
+  "interviewer.step3BiometricConfigure.ifYourBiometricEverBecomesUnavailableYou": {
+    "defaultMessage": "If your biometric ever becomes unavailable — you reset Face ID, replace the device, or remove the credential — this passphrase is the only way to unlock your data. Store it somewhere safe.",
+    "description": "Visible copy in Interviewer Step3Biometric Configure."
+  },
+  "interviewer.step3BiometricConfigure.passphrasesDoNotMatch": {
+    "defaultMessage": "Passphrases do not match.",
+    "description": "Visible copy in Interviewer Step3Biometric Configure."
+  },
+  "interviewer.step3BiometricConfigure.recoveryPassphrase": {
+    "defaultMessage": "Recovery passphrase",
+    "description": "The label label in Interviewer Step3Biometric Configure."
+  },
+  "interviewer.step3BiometricConfigure.setARecoveryPassphrase": {
+    "defaultMessage": "Set a recovery passphrase",
+    "description": "Visible copy in Interviewer Step3Biometric Configure."
+  },
+  "interviewer.step3Configure.biometricConfigured": {
+    "defaultMessage": "Biometric configured.",
+    "description": "User-facing message in Interviewer Step3Configure."
+  },
+  "interviewer.step3Configure.change": {
+    "defaultMessage": "Change",
+    "description": "Action that goes back to choose a different authentication method during setup."
+  },
+  "interviewer.step3Configure.pINConfigured": {
+    "defaultMessage": "PIN configured.",
+    "description": "User-facing message in Interviewer Step3Configure."
+  },
+  "interviewer.step3Configure.passphraseConfigured": {
+    "defaultMessage": "Passphrase configured.",
+    "description": "User-facing message in Interviewer Step3Configure."
+  },
+  "interviewer.step3PassphraseConfigure.aPasswordOfAtLeast12Characters": {
+    "defaultMessage": "A password of at least 12 characters that combines uppercase, lowercase, numbers, and symbols.",
+    "description": "The hint label in Interviewer Step3Passphrase Configure."
+  },
+  "interviewer.step3PassphraseConfigure.confirmPassphrase": {
+    "defaultMessage": "Confirm passphrase",
+    "description": "The label label in Interviewer Step3Passphrase Configure."
+  },
+  "interviewer.step3PassphraseConfigure.enterPassphrase": {
+    "defaultMessage": "Enter passphrase",
+    "description": "The label label in Interviewer Step3Passphrase Configure."
+  },
+  "interviewer.step3PassphraseConfigure.iUnderstandThereIsNoRecovery": {
+    "defaultMessage": "I understand there is no recovery.",
+    "description": "The label label in Interviewer Step3Passphrase Configure."
+  },
+  "interviewer.step3PassphraseConfigure.passphraseSetupFailed": {
+    "defaultMessage": "Passphrase setup failed.",
+    "description": "User-facing message in Interviewer Step3Passphrase Configure."
+  },
+  "interviewer.step3PassphraseConfigure.passphrasesDoNotMatch": {
+    "defaultMessage": "Passphrases do not match.",
+    "description": "Visible copy in Interviewer Step3Passphrase Configure."
+  },
+  "interviewer.step3PinConfigure.an8DigitNumericPIN": {
+    "defaultMessage": "An 8-digit numeric PIN.",
+    "description": "The hint label in Interviewer Step3Pin Configure."
+  },
+  "interviewer.step3PinConfigure.confirmPIN": {
+    "defaultMessage": "Confirm PIN",
+    "description": "The label label in Interviewer Step3Pin Configure."
+  },
+  "interviewer.step3PinConfigure.enterPIN": {
+    "defaultMessage": "Enter PIN",
+    "description": "The label label in Interviewer Step3Pin Configure."
+  },
+  "interviewer.step3PinConfigure.iUnderstandThereIsNoRecovery": {
+    "defaultMessage": "I understand there is no recovery",
+    "description": "The label label in Interviewer Step3Pin Configure."
+  },
+  "interviewer.step3PinConfigure.pINSetupFailed": {
+    "defaultMessage": "PIN setup failed.",
+    "description": "User-facing message in Interviewer Step3Pin Configure."
+  },
+  "interviewer.step5Analytics.finish": {
+    "defaultMessage": "Finish",
+    "description": "Final wizard action that applies the analytics preference and completes device setup."
+  },
+  "interviewer.step5Analytics.networkDataInterviewResponsesCaseIDsAnd": {
+    "defaultMessage": "Network data, interview responses, case IDs, and protocol contents never leave this device. Analytics contain no user-identifiable information — events are tied only to a random per-device installation ID, never your name, email, or any account. You can change this any time in Settings → Privacy.",
+    "description": "Visible copy in Interviewer Step5Analytics."
+  },
+  "interviewer.step5Analytics.noParticipantOrPersonalDataIsCollected": {
+    "defaultMessage": "No participant or personal data is collected",
+    "description": "Visible copy in Interviewer Step5Analytics."
+  },
+  "interviewer.step5Analytics.sendAnonymousAnalytics": {
+    "defaultMessage": "Send anonymous analytics",
+    "description": "The label label in Interviewer Step5Analytics."
+  },
+  "interviewer.step5Analytics.youCanHelpUsImproveNetworkCanvas": {
+    "defaultMessage": "You can help us improve Network Canvas Interviewer by sending anonymous usage and error data. This tells us which features are used and details of any errors or crashes, so we can fix bugs and decide what to build next.",
+    "description": "Visible copy in Interviewer Step5Analytics."
+  },
+  "interviewer.stepUpAuthDialog.authenticateToContinue": {
+    "defaultMessage": "Authenticate to continue.",
+    "description": "The description label in Interviewer Step Up Auth Dialog."
+  },
+  "interviewer.stepUpAuthDialog.confirmYourIdentity": {
+    "defaultMessage": "Confirm your identity",
+    "description": "The title label in Interviewer Step Up Auth Dialog."
+  },
+  "interviewer.storage.size": {
+    "defaultMessage": "{value} {unit}",
+    "description": "Formatted storage size and stable byte unit such as MB; value is already locale-formatted."
+  },
+  "interviewer.storage.unknown": {
+    "defaultMessage": "unknown",
+    "description": "Storage size when the browser cannot report device usage."
+  },
+  "interviewer.storedProtocolMigration.failedDescription": {
+    "defaultMessage": "{count, plural, one {{name} could not be migrated to the current schema. Its interviews cannot be continued, though their responses remain on the data screen. Repair it in Architect and import it again to start new interviews.} other {# protocols could not be migrated to the current schema. Their interviews cannot be continued, though their responses remain on the data screen. Repair them in Architect and import them again to start new interviews.}}",
+    "description": "Administration text in Interviewer useStoredProtocolMigration."
+  },
+  "interviewer.storedProtocolMigration.failedTitle": {
+    "defaultMessage": "{count, plural, one {Protocol could not be updated} other {Protocols could not be updated}}",
+    "description": "Administration text in Interviewer useStoredProtocolMigration."
+  },
+  "interviewer.storedProtocolMigration.updatedDescription": {
+    "defaultMessage": "{count, plural, one {{name} was migrated to the current schema.} other {# protocols were migrated to the current schema.}}",
+    "description": "Administration text in Interviewer useStoredProtocolMigration."
+  },
+  "interviewer.storedProtocolMigration.updatedTitle": {
+    "defaultMessage": "{count, plural, one {Protocol updated} other {Protocols updated}}",
+    "description": "Administration text in Interviewer useStoredProtocolMigration."
+  },
+  "interviewer.topActionBar.lockApp": {
+    "defaultMessage": "Lock app",
+    "description": "The aria-label label in Interviewer Top Action Bar."
+  },
+  "interviewer.topActionBar.settings": {
+    "defaultMessage": "Settings",
+    "description": "The aria-label label in Interviewer Top Action Bar."
+  },
+  "interviewer.vault.biometricAuthentication": {
+    "defaultMessage": "Biometric authentication failed",
+    "description": "Administration text in Interviewer vault."
+  },
+  "interviewer.vault.biometricEnrolment": {
+    "defaultMessage": "Biometric enrolment failed",
+    "description": "Administration text in Interviewer vault."
+  },
+  "interviewer.vault.biometricUnconfigured": {
+    "defaultMessage": "Biometric authentication is not configured on this device",
+    "description": "Administration text in Interviewer vault."
+  },
+  "interviewer.vault.passphraseLength": {
+    "defaultMessage": "Passphrase must be at least {count, number} characters",
+    "description": "Administration text in Interviewer vault."
+  },
+  "interviewer.vault.passphraseStrength": {
+    "defaultMessage": "Passphrase must be stronger — combine uppercase, lowercase, numbers, and symbols",
+    "description": "Administration text in Interviewer vault."
+  },
+  "interviewer.vault.passphraseUnconfigured": {
+    "defaultMessage": "Passphrase is not configured on this device",
+    "description": "Administration text in Interviewer vault."
+  },
+  "interviewer.vault.pinLength": {
+    "defaultMessage": "PIN must be exactly {count, number} digits",
+    "description": "Administration text in Interviewer vault."
+  },
+  "interviewer.vault.pinUnconfigured": {
+    "defaultMessage": "PIN is not configured on this device",
+    "description": "Administration text in Interviewer vault."
+  },
+  "interviewer.vault.recoveryUnavailable": {
+    "defaultMessage": "Recovery is not available for this vault",
+    "description": "Administration text in Interviewer vault."
+  },
+  "interviewer.vault.vaultChanged": {
+    "defaultMessage": "The device lock changed while unlocking. Please try again.",
+    "description": "Administration text in Interviewer vault."
+  },
+  "interviewer.vault.wrongCurrentPassphrase": {
+    "defaultMessage": "Current passphrase is incorrect",
+    "description": "Administration text in Interviewer vault."
+  },
+  "interviewer.vault.wrongCurrentPin": {
+    "defaultMessage": "Current PIN is incorrect",
+    "description": "Administration text in Interviewer vault."
+  },
+  "interviewer.vault.wrongPassphrase": {
+    "defaultMessage": "Incorrect passphrase",
+    "description": "Administration text in Interviewer vault."
+  },
+  "interviewer.vault.wrongPin": {
+    "defaultMessage": "Incorrect PIN",
+    "description": "Administration text in Interviewer vault."
+  },
+  "interviewer.vaultRecoveryScreen.canTReadThisDeviceSSecurity": {
+    "defaultMessage": "Can't read this device's security settings",
+    "description": "The title label in Interviewer Vault Recovery Screen."
+  },
+  "interviewer.vaultRecoveryScreen.reload": {
+    "defaultMessage": "Reload",
+    "description": "Visible copy in Interviewer Vault Recovery Screen."
+  },
+  "interviewer.vaultRecoveryScreen.resetAllAppData": {
+    "defaultMessage": "Reset all app data",
+    "description": "Visible copy in Interviewer Vault Recovery Screen."
+  },
+  "interviewer.vaultRecoveryScreen.theSecurityConfigurationStoredOnThisDevice": {
+    "defaultMessage": "The security configuration stored on this device could not be read. This can happen if the app was updated and then rolled back, so a newer version wrote settings this version doesn’t understand.",
+    "description": "Visible copy in Interviewer Vault Recovery Screen."
+  },
+  "interviewer.vaultRecoveryScreen.tryStrongReloadStrongFirstIfA": {
+    "defaultMessage": "Try <strong>Reload</strong> first — if a newer version of the app is available it may be able to read these settings. If reloading doesn’t help, you can reset the app to start over, but any data already on this device will be lost.",
+    "description": "Visible copy in Interviewer Vault Recovery Screen."
+  },
+  "interviewer.viewSwitcher.data": {
+    "defaultMessage": "Data",
+    "description": "Home navigation choice for viewing and managing collected interview records."
+  },
+  "interviewer.viewSwitcher.homeView": {
+    "defaultMessage": "Home view",
+    "description": "The aria-label label in Interviewer View Switcher."
+  },
+  "interviewer.viewSwitcher.protocols": {
+    "defaultMessage": "Protocols",
+    "description": "Home navigation choice for the deck of installed research protocols."
+  },
+  "interviewer.webauthn.enrolmentCancelled": {
+    "defaultMessage": "Biometric enrolment was cancelled",
+    "description": "Administration text in Interviewer webauthn."
+  },
+  "interviewer.webauthn.missingSecret": {
+    "defaultMessage": "This device did not return a biometric secret (PRF)",
+    "description": "Administration text in Interviewer webauthn."
+  },
+  "interviewer.webauthn.unsupportedSecret": {
+    "defaultMessage": "This device's authenticator can't create the biometric secret (PRF) needed to encrypt your data. Choose a PIN or passphrase instead.",
+    "description": "Administration text in Interviewer webauthn."
+  },
+  "interviewer.webauthn.unusableCredential": {
+    "defaultMessage": "This device did not return a usable credential",
+    "description": "Administration text in Interviewer webauthn."
+  },
+  "interviewer.webauthn.verificationCancelled": {
+    "defaultMessage": "Biometric verification was cancelled",
+    "description": "Administration text in Interviewer webauthn."
+  }
+}

@@ -4,6 +4,8 @@ import type React from 'react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link } from 'wouter';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import {
   Popover,
   PopoverContent,
@@ -21,6 +23,81 @@ import {
 } from '~/lib/storage';
 
 import AppUpdatePill from './AppUpdate/AppUpdatePill';
+
+const messages = defineMessages({
+  interviewerAPPVERSION: {
+    id: 'interviewer.statusRow.interviewerAPPVERSION',
+    defaultMessage: 'Interviewer {APP_VERSION}',
+    description: 'Visible copy in Interviewer Status Row.',
+  },
+  strongProtocolCountStrongProtocols: {
+    id: 'interviewer.statusRow.strongProtocolCountStrongProtocols',
+    defaultMessage:
+      '{protocolCount, plural, one {<strong>#</strong> protocol} other {<strong>#</strong> protocols}}',
+    description: 'Administration text in Interviewer StatusRow.',
+  },
+  strongInterviewCountStrongInterviews: {
+    id: 'interviewer.statusRow.strongInterviewCountStrongInterviews',
+    defaultMessage:
+      '{interviewCount, plural, one {<strong>#</strong> interview} other {<strong>#</strong> interviews}}',
+    description: 'Administration text in Interviewer StatusRow.',
+  },
+  notEncryptedNoAppSecurityIsEnrolled: {
+    id: 'interviewer.statusRow.notEncryptedNoAppSecurityIsEnrolled',
+    defaultMessage:
+      'Not encrypted. No app security is enrolled — data is stored unencrypted. Enrol a PIN, passphrase, or biometric in Settings to encrypt it.',
+    description: 'Visible copy in Interviewer Status Row.',
+  },
+  encryptedInterviewDataIsEncryptedAtRest: {
+    id: 'interviewer.statusRow.encryptedInterviewDataIsEncryptedAtRest',
+    defaultMessage:
+      'Encrypted. Interview data is encrypted at rest with your enrolled unlock method.',
+    description: 'Visible copy in Interviewer Status Row.',
+  },
+  storagePersistent: {
+    id: 'interviewer.statusRow.storagePersistent',
+    defaultMessage: 'Storage persistent',
+    description: 'Visible copy in Interviewer Status Row.',
+  },
+  storageBestEffort: {
+    id: 'interviewer.statusRow.storageBestEffort',
+    defaultMessage: 'Storage best effort',
+    description: 'Visible copy in Interviewer Status Row.',
+  },
+  storageNotPersistent: {
+    id: 'interviewer.statusRow.storageNotPersistent',
+    defaultMessage: 'Storage not persistent',
+    description: 'Visible copy in Interviewer Status Row.',
+  },
+  notEncrypted: {
+    id: 'interviewer.statusRow.notEncrypted',
+    defaultMessage: 'Not encrypted',
+    description: 'Visible copy in Interviewer Status Row.',
+  },
+  encrypted: {
+    id: 'interviewer.statusRow.encrypted',
+    defaultMessage: 'Encrypted',
+    description: 'Visible copy in Interviewer Status Row.',
+  },
+  installedStorage: {
+    id: 'interviewer.statusRow.installedStorage',
+    defaultMessage:
+      '{hasUsage, select, true {Storage best effort. Installed-app data is kept separate from browsing data and is not cleared routinely, but it is not guaranteed against eviction if disk space runs low. Export interviews regularly. {used} stored.} other {Storage best effort. Installed-app data is kept separate from browsing data and is not cleared routinely, but it is not guaranteed against eviction if disk space runs low. Export interviews regularly.}}',
+    description: 'Administration text in Interviewer StatusRow.',
+  },
+  persistentStorage: {
+    id: 'interviewer.statusRow.persistentStorage',
+    defaultMessage:
+      '{hasUsage, select, true {Storage persistent. {used} stored.} other {Storage persistent.}}',
+    description: 'Administration text in Interviewer StatusRow.',
+  },
+  temporaryStorage: {
+    id: 'interviewer.statusRow.temporaryStorage',
+    defaultMessage:
+      '{hasUsage, select, true {Storage not persistent. {used} stored.} other {Storage not persistent.}}',
+    description: 'Administration text in Interviewer StatusRow.',
+  },
+});
 
 type Durability = { persisted: boolean; usage: number | null };
 
@@ -206,7 +283,7 @@ export function StatusRowView({
   mode,
   durability,
   installed,
-  versionSlot = <span>Interviewer {APP_VERSION}</span>,
+  versionSlot,
 }: {
   protocolCount: number;
   interviewCount: number;
@@ -215,6 +292,7 @@ export function StatusRowView({
   installed: boolean;
   versionSlot?: React.ReactNode;
 }) {
+  const intl = useAppIntl();
   return (
     <motion.div
       variants={variants}
@@ -225,13 +303,21 @@ export function StatusRowView({
         className="tablet-landscape:inline-flex hidden cursor-pointer items-center gap-3.5 text-current no-underline"
       >
         <span>
-          <strong className="text-text font-bold">{protocolCount}</strong>{' '}
-          protocols
+          {intl.formatMessage(messages.strongProtocolCountStrongProtocols, {
+            strong: (chunks) => (
+              <strong className="text-text font-bold">{chunks}</strong>
+            ),
+            protocolCount: protocolCount,
+          })}
         </span>
         <span aria-hidden className="h-[3px] w-[3px] rounded-full bg-current" />
         <span>
-          <strong className="text-text font-bold">{interviewCount}</strong>{' '}
-          interviews
+          {intl.formatMessage(messages.strongInterviewCountStrongInterviews, {
+            strong: (chunks) => (
+              <strong className="text-text font-bold">{chunks}</strong>
+            ),
+            interviewCount: interviewCount,
+          })}
         </span>
       </Link>
       <div className="flex items-center gap-6">
@@ -247,13 +333,13 @@ export function StatusRowView({
               chip={
                 <>
                   <ShieldAlert className={statusIconClassName} />
-                  <span className={compactLabelClassName}>Not encrypted</span>
+                  <span className={compactLabelClassName}>
+                    {intl.formatMessage(messages.notEncrypted)}
+                  </span>
                 </>
               }
             >
-              Not encrypted. No app security is enrolled — data is stored
-              unencrypted. Enrol a PIN, passphrase, or biometric in Settings to
-              encrypt it.
+              {intl.formatMessage(messages.notEncryptedNoAppSecurityIsEnrolled)}
             </StatusChipPopover>
           ) : (
             <StatusChipPopover
@@ -262,12 +348,15 @@ export function StatusRowView({
               chip={
                 <>
                   <ShieldCheck className={statusIconClassName} />
-                  <span className={compactLabelClassName}>Encrypted</span>
+                  <span className={compactLabelClassName}>
+                    {intl.formatMessage(messages.encrypted)}
+                  </span>
                 </>
               }
             >
-              Encrypted. Interview data is encrypted at rest with your enrolled
-              unlock method.
+              {intl.formatMessage(
+                messages.encryptedInterviewDataIsEncryptedAtRest,
+              )}
             </StatusChipPopover>
           )
         ) : null}
@@ -284,7 +373,7 @@ export function StatusRowView({
                 <span className="text-primary inline-flex items-center gap-1.5">
                   <HardDrive className={statusIconClassName} />
                   <span className={compactLabelClassName}>
-                    Storage persistent
+                    {intl.formatMessage(messages.storagePersistent)}
                   </span>
                 </span>
               ) : installed ? (
@@ -295,46 +384,39 @@ export function StatusRowView({
                 <>
                   <HardDrive className={statusIconClassName} />
                   <span className={compactLabelClassName}>
-                    Storage best effort
+                    {intl.formatMessage(messages.storageBestEffort)}
                   </span>
                 </>
               ) : (
                 <span className="text-warning inline-flex items-center gap-1.5">
                   <HardDrive className={statusIconClassName} />
                   <span className={compactLabelClassName}>
-                    Storage not persistent
+                    {intl.formatMessage(messages.storageNotPersistent)}
                   </span>
                 </span>
               )
             }
           >
-            {!durability.persisted && installed ? (
-              <>
-                Storage best effort. Installed-app data is kept separate from
-                browsing data and is not cleared routinely, but it is not
-                guaranteed against eviction if disk space runs low. Export
-                interviews regularly.
-                {durability.usage !== null
-                  ? ` ${formatBytes(durability.usage)} stored.`
-                  : ''}
-              </>
-            ) : durability.persisted ? (
-              <>
-                Storage persistent.
-                {durability.usage !== null
-                  ? ` ${formatBytes(durability.usage)} stored.`
-                  : ''}
-              </>
-            ) : durability.usage !== null ? (
-              <>
-                Storage not persistent. {formatBytes(durability.usage)} stored.
-              </>
-            ) : (
-              <>Storage not persistent.</>
+            {intl.formatMessage(
+              !durability.persisted && installed
+                ? messages.installedStorage
+                : durability.persisted
+                  ? messages.persistentStorage
+                  : messages.temporaryStorage,
+              {
+                hasUsage: String(durability.usage !== null),
+                used: formatBytes(durability.usage, intl),
+              },
             )}
           </StatusChipPopover>
         ) : null}
-        {versionSlot}
+        {versionSlot ?? (
+          <span>
+            {intl.formatMessage(messages.interviewerAPPVERSION, {
+              APP_VERSION,
+            })}
+          </span>
+        )}
       </div>
     </motion.div>
   );

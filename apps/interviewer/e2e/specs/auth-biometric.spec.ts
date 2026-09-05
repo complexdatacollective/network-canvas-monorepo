@@ -75,7 +75,7 @@ test.describe('biometric vault', () => {
     // The refusal is observed, not just inferred: the authenticator's
     // rejection surfaces in the unlock form's error alert…
     await expect(page.getByRole('alert')).toContainText(
-      /not allowed|timed out/i,
+      'Biometric authentication failed',
     );
     // …and the app is still locked.
     await expect(
