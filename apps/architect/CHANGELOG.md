@@ -1,5 +1,65 @@
 # @codaco/architect
 
+## 8.2.5
+
+### Patch Changes
+
+- 2e4621d: Stop the rule builder marking its container with `aria-required`. The rule
+  builders behind a stage's Skip Logic and Filter sections are regions of controls
+  rather than a single input, so the form's identity lands on a `role="group"`
+  element — and `group` is not a role that supports `aria-required`, so axe
+  reported a critical `aria-allowed-attr` failure on every editor that mounted a
+  required rule set. ARIA 1.2 made `aria-invalid` global, so the group keeps that.
+  The requirement still reaches assistive technology the way it already did: the
+  visible marker on the "Rules" label and the visually hidden "Required" element
+  the group's `aria-describedby` names.
+- 23dcf99: Analytics now reports a session-scoped pseudonym for every entity id, rather
+  than the interview's own `_uid`.
+
+  The event taxonomy admits `node_id` and `edge_id` on the premise that they are
+  random values minted at creation time, derived from nothing a participant
+  supplied. Roster nodes break that premise: an external-data row is keyed as
+  `${subjectType}_${hash({ node, index })}`, a deterministic, unkeyed digest of
+  the row's own content, and the node is added to the network under exactly that
+  key. Anyone holding the roster could recompute the digest and so recognise
+  which roster row an event was about, and because the digest does not vary the
+  same person carried the same identifier in every interview — so events from
+  separate sessions about one person could be joined together.
+
+  Each session now mints a random pseudonym per entity, held in memory and never
+  persisted or transmitted. Events within a session still join on the entity,
+  which is all these properties are for; nothing joins across sessions or back to
+  a roster row. The substitution happens at the tracker, the single boundary every
+  event passes through, so no emitter can reintroduce a raw identifier. When
+  events fire, and which events fire, is unchanged.
+
+- a13f261: Every module that runs a React hook now declares `'use client'`, so a Next App
+  Router application can import this runtime from a Server Component.
+
+  Seventy-four modules were missing the directive: the navigation, node list, node
+  drawer and panel components, the canvas layers and their layout hooks, the
+  protocol form, and the Anonymisation, CategoricalBin, DyadCensus, EgoForm,
+  FamilyPedigree, Geospatial, NameGenerator, NameGeneratorRoster, Narrative,
+  NarrativePedigree, NetworkComposer, OneToManyDyadCensus, OrdinalBin, SlidesForm
+  and Sociogram interfaces. An unmarked module is treated as server code, so
+  reaching one from a Server Component's import graph failed the build rather than
+  rendering.
+
+  The published bundles now carry the directive too. Bundling had been erasing it,
+  so even the modules that already declared it arrived at npm consumers unmarked.
+  `dist/index.js` and the lazily loaded Geospatial chunks are now marked;
+  `dist/contract.js` and `dist/protocol-schema-version.js` are unmarked, as their
+  server safety intends, and stay that way only for as long as no module carrying
+  the directive is reachable from them.
+
+  Architect, Interviewer and Fresco are released alongside because each bundles
+  this runtime. Nothing about how an interview looks or behaves changes.
+
+- Updated dependencies ([b0fa87a](https://github.com/complexdatacollective/network-canvas-monorepo/commit/b0fa87ac6614959484cdb1e4d6457513e9898a56), [15c8259](https://github.com/complexdatacollective/network-canvas-monorepo/commit/15c825972e5097cd8d8559d47e5ba4584398edee), [c100092](https://github.com/complexdatacollective/network-canvas-monorepo/commit/c100092b303b1b02afe2876d8dbbc84af06865b2), [c358132](https://github.com/complexdatacollective/network-canvas-monorepo/commit/c3581329466d44b3733a09bb459d07a1787486ef), [208fcea](https://github.com/complexdatacollective/network-canvas-monorepo/commit/208fceaf736d8354d16046b6e9953b1d598f65a1), [3abf9e4](https://github.com/complexdatacollective/network-canvas-monorepo/commit/3abf9e4442b6086c5c5937d16212a9bdc8425cab), [23dcf99](https://github.com/complexdatacollective/network-canvas-monorepo/commit/23dcf99e80d3e95b9e71543afb2e40842d1527e1), [a13f261](https://github.com/complexdatacollective/network-canvas-monorepo/commit/a13f2610b7834e2fe27ae4e1e8423612b990c304), [a5626f5](https://github.com/complexdatacollective/network-canvas-monorepo/commit/a5626f51040d092c56417694296bcde8d51faad9))
+  - @codaco/fresco-ui@6.5.0
+  - @codaco/tailwind-config@1.5.0
+  - @codaco/interview@9.0.2
+
 ## 8.2.4
 
 ### Patch Changes
