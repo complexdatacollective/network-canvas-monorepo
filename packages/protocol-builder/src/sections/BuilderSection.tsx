@@ -1,3 +1,4 @@
+import { isEqual } from 'es-toolkit/compat';
 import {
   type ReactNode,
   useCallback,
@@ -52,7 +53,8 @@ export type BuilderSectionProps = Readonly<{
   disabled?: boolean;
   capability?: SectionCapability;
   /**
-   * Something the capability's values only mean anything against.
+   * Something the capability's values only mean anything against. Compared by
+   * value, so a caller may build it inline.
    *
    * When it changes, the capability is switched off and everything it owns is
    * cleared — without asking, because the values did not become wrong through
@@ -158,9 +160,13 @@ export default function BuilderSection({
     [capability, clearStageValue, configured, confirm],
   );
 
-  // Only on a CHANGE. The first render is a stage being opened on what it was
-  // saved with, and resetting there would empty a section the researcher has
-  // not touched.
+  // Only on a CHANGE, and a change of VALUE. The first render is a stage being
+  // opened on what it was saved with, and resetting there would empty a
+  // section the researcher has not touched. Compared structurally for the same
+  // reason: what a section resets on is usually an object — a subject, a chosen
+  // resource — and a caller that builds it inline hands a new one on every
+  // render, so comparing references would empty the section on any re-render
+  // at all.
   //
   // The panel is remounted rather than closed, because its open state is its
   // own — a caller can seed it but cannot close it — and a section left open
@@ -173,7 +179,7 @@ export default function BuilderSection({
   useEffect(() => {
     const before = previousResetOn.current;
     previousResetOn.current = resetOn;
-    if (before === resetOn) return;
+    if (isEqual(before, resetOn)) return;
     for (const path of capability?.fields ?? NO_FIELDS) clearStageValue(path);
     setSwitchedOn(false);
     setResetGeneration((generation) => generation + 1);

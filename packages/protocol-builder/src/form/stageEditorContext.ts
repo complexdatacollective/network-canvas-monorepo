@@ -5,7 +5,11 @@ import type { Command } from '@codaco/studio-sync/apply';
 
 import type { StageEditorController } from '../controller.ts';
 import type { ProtocolBuilderProtocolContext } from '../protocol-context.ts';
-import type { StageFormDraft, StageIdentity } from '../session.ts';
+import type {
+  StageCreation,
+  StageFormDraft,
+  StageIdentity,
+} from '../session.ts';
 import type { SectionOutlineStore } from './outlineStore.ts';
 
 /**
@@ -50,6 +54,16 @@ export type StageEditorFormContextValue = Readonly<{
   applyOwnCommands(commands: readonly Command[]): StageFormDraft;
   /** Session-owned; never a form field. */
   identity: StageIdentity;
+  /**
+   * Set while the session is CREATING this stage, and `undefined` for one the
+   * interview already contains.
+   *
+   * The signal a section needs to behave differently for a stage that does not
+   * exist yet: `StageNameSection` proposes a name only for one of these, and
+   * `SkipLogicSection` offers destinations from `position` because a stage the
+   * stage order does not list has no place of its own to read.
+   */
+  creation: StageCreation | undefined;
   /** Tolerant, typed metadata derived from authoritative protocol sections. */
   protocolContext: ProtocolBuilderProtocolContext;
   readOnly: boolean;

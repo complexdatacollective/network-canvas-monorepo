@@ -311,3 +311,53 @@ describe('a block field the researcher left empty', () => {
     ]);
   });
 });
+
+/**
+ * Which of the two transforms runs first is the whole of this rule. The
+ * family's collapse decides what `content` becomes, and an emptied slot is how
+ * a researcher clears it — so stripping absent values first would take the
+ * empty slot away before the collapse could read it, and the block would go on
+ * showing the prose they just deleted.
+ */
+describe('a block whose active slot the researcher emptied', () => {
+  it('loses the content it held, rather than keeping the old one', async () => {
+    const harness = renderStageEditor({
+      stage: {
+        id: 'information-emptied',
+        type: 'Information',
+        fields: {
+          label: 'Information',
+          title: 'Welcome',
+          items: [{ id: 'block-text', type: 'text', content: 'Read this.' }],
+        },
+      },
+      sections: (
+        <PageContentSection
+          ItemEditor={TestMediaItemEditor}
+          ItemPreview={TestMediaItemPreview}
+          itemSelector={expandMediaItem}
+          normalizeItem={collapseMediaItem}
+        />
+      ),
+    });
+
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Edit block' }),
+    );
+    await harness.user.clear(
+      await screen.findByRole('textbox', { name: 'Block text' }),
+    );
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    // The block the researcher is looking at is empty…
+    expect(await screen.findByText('Empty block')).toBeInTheDocument();
+    expect(screen.queryByText('Read this.')).not.toBeInTheDocument();
+    // …and so is the block the stage holds, which is what a save would carry.
+    expect(harness.session.getSnapshot().editedSection.fields.items).toEqual([
+      { id: 'block-text', type: 'text' },
+    ]);
+  });
+});

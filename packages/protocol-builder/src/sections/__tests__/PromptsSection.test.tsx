@@ -5,7 +5,10 @@ import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import PromptsSection from '../PromptsSection.tsx';
 import StageNameSection from '../StageNameSection.tsx';
 import {
+  dropUnusedAssignments,
   ExplodingRowEditor,
+  refuseADuplicateQuestion,
+  SEEDED_QUESTION,
   TestPromptEditor,
   TestPromptPreview,
 } from './rowFixtures.tsx';
@@ -374,5 +377,141 @@ describe('what a row editor is given to work with', () => {
     expect(
       screen.getByText('Who are the people you know?'),
     ).toBeInTheDocument();
+  });
+});
+
+/**
+ * The two things a family hands this section about its own prompt: a rule only
+ * it can state, and what the row becomes once the dialog collected it. Both
+ * are forwarded to the list field, and neither is this section's to decide.
+ */
+describe('what a family says about its own prompt', () => {
+  it('lets a family rule refuse a row the shared ones would take', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: (
+        <PromptsSection
+          PromptEditor={TestPromptEditor}
+          PromptPreview={TestPromptPreview}
+          requiresSubject={false}
+          editorValidate={refuseADuplicateQuestion}
+        />
+      ),
+    });
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create new prompt' }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Prompt text' }),
+      SEEDED_QUESTION,
+    );
+    await harness.user.click(screen.getByRole('button', { name: 'Add' }));
+
+    // Refused in the family's words, with the dialog still open over the draft.
+    expect(
+      await screen.findByText('Another prompt already asks this.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    // And nothing was added: the list still holds the one prompt it opened on.
+    expect(screen.getAllByText(SEEDED_QUESTION).length).toBeGreaterThanOrEqual(
+      1,
+    );
+    expect(harness.session.getSnapshot().editedSection.fields.prompts).toEqual([
+      { id: 'name-generator-prompt-1', text: SEEDED_QUESTION },
+    ]);
+  });
+
+  /**
+   * The same rule, against the prompt that already asks the question: it is
+   * given the row as the dialog opened on it, so an unchanged pick is not a
+   * duplicate of itself.
+   */
+  it('does not refuse the row that was already like that', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: (
+        <PromptsSection
+          PromptEditor={TestPromptEditor}
+          PromptPreview={TestPromptPreview}
+          requiresSubject={false}
+          editorValidate={refuseADuplicateQuestion}
+        />
+      ),
+    });
+
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Edit prompt' }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Negative label' }),
+      'Nobody',
+    );
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    expect(harness.session.getSnapshot().editedSection.fields.prompts).toEqual([
+      {
+        id: 'name-generator-prompt-1',
+        text: SEEDED_QUESTION,
+        negativeLabel: 'Nobody',
+      },
+    ]);
+  });
+
+  /**
+   * A protocol authored elsewhere can hand this stage a prompt carrying an
+   * empty list. The shared rule keeps it — only the field that owns a list can
+   * tell "emptied on purpose" from "never used" — so dropping it is the
+   * family's decision, and this section has to let the family make it.
+   */
+  it('lets a family collapse the row the shared rule would leave alone', async () => {
+    const harness = renderStageEditor({
+      stage: {
+        id: 'name-generator-assigning',
+        type: 'NameGenerator',
+        fields: {
+          label: 'Name Generator',
+          subject: { entity: 'node', type: 'person' },
+          form: {
+            title: 'Add a person',
+            fields: [{ variable: 'name', prompt: 'Name?' }],
+          },
+          prompts: [
+            {
+              id: 'prompt-a',
+              text: SEEDED_QUESTION,
+              additionalAttributes: [],
+            },
+          ],
+        },
+      },
+      sections: (
+        <PromptsSection
+          PromptEditor={TestPromptEditor}
+          PromptPreview={TestPromptPreview}
+          normalizeRow={dropUnusedAssignments}
+        />
+      ),
+    });
+
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Edit prompt' }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Prompt text' }),
+      ' Anyone else?',
+    );
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    expect(request?.stageDocument.prompts).toEqual([
+      { id: 'prompt-a', text: `${SEEDED_QUESTION} Anyone else?` },
+    ]);
   });
 });

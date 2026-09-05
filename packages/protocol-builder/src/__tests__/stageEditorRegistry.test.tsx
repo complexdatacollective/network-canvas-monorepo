@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { describe, expect, it, vi } from 'vitest';
@@ -25,6 +26,20 @@ const InformationEditor: StageEditorComponent<'Information'> = ({
 const EgoFormEditor: StageEditorComponent<'EgoForm'> = ({
   stageType,
 }: StageEditorProps<'EgoForm'>) => <p>{stageType} editor</p>;
+
+/**
+ * An editor that renders the host's chrome and nothing else, so a test can
+ * read whether the slot reached it — and what it was called with.
+ */
+const ChromeEditor: StageEditorComponent<'Information'> = ({
+  controller,
+  actions,
+}: StageEditorProps<'Information'>) => (
+  <p>
+    {actions?.({ controller, formId: controller.formId, readOnly: false }) ??
+      'no chrome'}
+  </p>
+);
 
 describe('composing the registry from family parts', () => {
   it('merges the parts each family exports', () => {
@@ -105,18 +120,91 @@ describe('composing the registry from family parts', () => {
 });
 
 /**
+ * Nineteen families are still to land, on branches of their own, and each of
+ * them edits the same two lists in `stageEditorRegistry.ts`. Written as one
+ * entry per line in a fixed alphabetical order, three concurrent one-line
+ * changes touch three different lines and merge; written any other way — a
+ * list collapsed onto one line, two entries sharing a line, an order nobody
+ * agrees on — every one of those merges is a conflict somebody resolves by
+ * hand, in the file whose whole job is to say which interfaces have an editor.
+ *
+ * Read out of the source rather than out of the values, because the shape is
+ * the point: the values are identical either way.
+ */
+describe('the two lists a family edits', () => {
+  const source = readFileSync(
+    join(process.cwd(), 'src', 'stageEditorRegistry.ts'),
+    'utf8',
+  );
+
+  /** The lines between a list's own brackets, comments and blanks dropped. */
+  const entriesOf = (name: string): string[] => {
+    const body = new RegExp(
+      `const ${name} = \\[\\n([\\s\\S]*?)\\n\\] as const`,
+    ).exec(source)?.[1];
+    if (body === undefined) {
+      throw new Error(
+        `${name} is not written as a list whose bracket opens on its own line, so a family adding an entry to it cannot be merged with another family doing the same.`,
+      );
+    }
+    return body
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line !== '' && !line.startsWith('//'));
+  };
+
+  it.each([
+    {
+      name: 'REGISTRY_PARTS',
+      // An imported part, never an inline object: a family's part is declared
+      // in the family's own module, and one identifier is one line.
+      entry: /^[A-Za-z_$][\w$]*,$/,
+      shape: 'an imported part name followed by a comma',
+    },
+    {
+      name: 'AWAITING_STAGE_EDITORS',
+      entry: /^'[A-Za-z]+',$/,
+      shape: 'a quoted stage type followed by a comma',
+    },
+  ])('writes one entry per line in $name', ({ name, entry, shape }) => {
+    for (const line of entriesOf(name)) {
+      expect(line, `${name} lines hold ${shape}`).toMatch(entry);
+    }
+  });
+
+  it.each(['REGISTRY_PARTS', 'AWAITING_STAGE_EDITORS'])(
+    'keeps %s in one agreed order',
+    (name) => {
+      const entries = entriesOf(name);
+      expect(entries).toEqual([...entries].toSorted());
+    },
+  );
+
+  it('says how to add a family, where a family will look', () => {
+    // Two lines, and which two. A recipe that stops matching the file is worse
+    // than none, so it is checked rather than trusted.
+    expect(source).toMatch(/ADDING A FAMILY IS TWO LINES/);
+    expect(source).toMatch(/add it to `REGISTRY_PARTS`/);
+    expect(source).toMatch(/from `AWAITING_STAGE_EDITORS`/);
+  });
+});
+
+/**
  * The coverage machinery is a set of TYPES, so the only thing that can test it
  * is a compiler. `type-tests/` holds one project of deliberately wrong
- * registries; this compiles it and reads which files the compiler refused.
+ * registries and editors; this compiles it and reads which files the compiler
+ * refused.
  *
- * The control matters as much as the probes: `valid.ts` proves the machinery
+ * The controls matter as much as the probes: `valid.ts` proves the machinery
  * is not simply refusing everything, and its `ClaimsExactlyTheseTwo` proves
  * `defineStageEditorPart` keeps a part's exact key set — the fact all three
- * probes rest on, and the one an annotated `const part: StageEditorRegistryPart`
- * destroys.
+ * registry probes rest on, and the one an annotated `const part:
+ * StageEditorRegistryPart` destroys. `actionsSlot.ts` is the control for the
+ * fourth probe: an editor may ignore the host's action chrome or forward it,
+ * and only one that INSISTS on it is refused.
  */
 describe('the compile-time coverage checks', () => {
-  it('refuses a missing entry, a stale entry and a duplicate claim', () => {
+  it('refuses a missing entry, a stale entry, a duplicate claim and an editor that insists on chrome', () => {
     const packageRoot = join(import.meta.dirname, '..', '..');
     let output = '';
     try {
@@ -135,6 +223,7 @@ describe('the compile-time coverage checks', () => {
     expect(filesWithErrors(output)).toEqual([
       'type-tests/duplicateEntry.ts',
       'type-tests/missingEntry.ts',
+      'type-tests/requiredActions.ts',
       'type-tests/staleEntry.ts',
     ]);
   });
@@ -205,6 +294,40 @@ describe('dispatching to a named editor', () => {
     } finally {
       consoleError.mockRestore();
     }
+  });
+
+  /**
+   * A host that reaches an editor through the dispatcher never names the
+   * component, so this is the only route its own save button has into the
+   * editor's slot. An editor mounted without one has to render nothing rather
+   * than fail, because a spectator view is given no chrome at all.
+   */
+  it('hands the host’s action chrome to the editor it chose', () => {
+    const withoutChrome = renderStageEditor({
+      stageId: 'information-1',
+      registry: { Information: ChromeEditor },
+    });
+    expect(withoutChrome.getByText('no chrome')).toBeInTheDocument();
+
+    const withChrome = renderStageEditor({
+      stageId: 'information-1',
+      registry: { Information: ChromeEditor },
+      actions: ({ formId, readOnly }) => `chrome for ${formId}, ${readOnly}`,
+    });
+    expect(
+      withChrome.getByText('chrome for stage-form, false'),
+    ).toBeInTheDocument();
+  });
+
+  /** The same slot, when a host names the editor instead of dispatching. */
+  it('hands it to a named editor mounted directly', () => {
+    const harness = renderStageEditor({
+      stageId: 'information-1',
+      editor: ChromeEditor,
+      actions: ({ formId }) => `chrome for ${formId}`,
+    });
+
+    expect(harness.getByText('chrome for stage-form')).toBeInTheDocument();
   });
 
   /**

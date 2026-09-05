@@ -6,7 +6,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { createElement } from 'react';
+import { createElement, useContext } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type * as DialogModule from '@codaco/fresco-ui/dialogs/Dialog';
@@ -24,6 +24,7 @@ import { DialogFormField } from '../../DialogForm.tsx';
 import ProtocolArrayField from '../../ProtocolArrayField.tsx';
 import StageEditorShell from '../../StageEditorShell.tsx';
 import DialogArrayField from '../DialogArrayField.tsx';
+import { ArrayFieldBindingContext } from '../useArrayFieldCommands.ts';
 
 /**
  * `layoutId` is a Motion prop, so it leaves no trace in the DOM: what the row
@@ -503,5 +504,78 @@ describe('a row editor open while the draft moves beneath it', () => {
     // One commit, not two. The save already running answers for both.
     expect(onBeforeSave).toHaveBeenCalledTimes(1);
     expect(session.getSnapshot().pendingCommands).toHaveLength(1);
+  });
+});
+
+/**
+ * A list a family renders INSIDE the row dialog — a prompt's sort rules, a
+ * block's options — is part of one row of the list around it, and that outer
+ * list is what holds the document key.
+ *
+ * Left inherited, that key is what the inner list would commit its own
+ * insertions and reorderings against: adding a sort rule would insert a row
+ * into the array of prompts. It also must not commit anything at all until the
+ * dialog saves, which is the same rule `ProtocolArrayField` states for a list
+ * that finds itself in a nested form store — this closes the same gap for one
+ * that never goes through `ProtocolArrayField` at all.
+ */
+describe('a list nested inside a row dialog', () => {
+  function ReportedBinding() {
+    const binding = useContext(ArrayFieldBindingContext);
+    return (
+      <p>
+        Bound to:{' '}
+        {binding === null
+          ? 'no list at all'
+          : (binding.documentKey ?? 'no document key')}
+      </p>
+    );
+  }
+
+  function NestingPromptFields() {
+    return (
+      <>
+        <ReportedBinding />
+        <PromptFields />
+      </>
+    );
+  }
+
+  it('is bound to no document key of its own', async () => {
+    const user = userEvent.setup();
+    const session = createSession({ prompts: [{ id: 'a', text: 'Alpha' }] });
+
+    function Host() {
+      const controller = useStageEditorController(session, 'stage-form');
+      return (
+        <StageEditorShell controller={controller}>
+          <BuilderSection title="Prompts">
+            <ProtocolArrayField
+              name="prompts"
+              label="Prompts"
+              component={DialogArrayField}
+              addButtonLabel="Create new prompt"
+              editorTitle="Edit prompt"
+              addTitle="Add prompt"
+              itemLabel="prompt"
+              previewComponent={PromptPreview}
+              editorFieldsComponent={NestingPromptFields}
+            />
+          </BuilderSection>
+        </StageEditorShell>
+      );
+    }
+
+    render(
+      <DialogProvider>
+        <Host />
+      </DialogProvider>,
+    );
+
+    await editRow(user, 0);
+
+    expect(
+      await screen.findByText('Bound to: no document key'),
+    ).toBeInTheDocument();
   });
 });

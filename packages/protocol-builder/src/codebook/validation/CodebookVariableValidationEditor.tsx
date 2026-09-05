@@ -15,10 +15,10 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import type { CodebookSubject } from '../../protocol-context.ts';
 import type { CompoundEditRequest, CompoundEditResult } from '../../session.ts';
+import { compoundFailureMessage } from '../compoundFailureCopy.ts';
 import {
   AuxiliaryCodebookDraftSession,
   buildUpdateVariableRequest,
-  type AuxiliaryCodebookDraftFailure,
 } from '../editing.ts';
 import {
   isValidationWithListValue,
@@ -77,16 +77,6 @@ const withVariableValidation = (
     ...Object.entries(document),
     ['variables', Object.fromEntries(variables)],
   ]);
-};
-
-const failureMessage = (failure: AuxiliaryCodebookDraftFailure): string => {
-  if (failure.kind === 'error') return failure.message;
-  if (failure.result.status === 'failed') return failure.result.message;
-  const blocker = failure.result.blockedSections[0];
-  if (blocker?.holder !== undefined) {
-    return `${blocker.holder.displayName} is currently editing a section needed for this change.`;
-  }
-  return 'A section needed for this change is currently being edited.';
 };
 
 const missingTargetIssue = (
@@ -317,7 +307,7 @@ export default function CodebookVariableValidationEditor({
             >
               <AlertTitle>Could not save validation</AlertTitle>
               <AlertDescription>
-                {failureMessage(snapshot.lastFailure)}
+                {compoundFailureMessage(snapshot.lastFailure)}
               </AlertDescription>
             </Alert>
           )}
