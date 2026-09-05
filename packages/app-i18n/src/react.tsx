@@ -18,7 +18,7 @@ import type { IntlShape } from 'react-intl';
 
 import { PSEUDO_LOCALE } from './locales.ts';
 import type { AppLocale, CatalogMessages } from './locales.ts';
-import { createAppIntl } from './messages.ts';
+import { createAppIntl, formatMessageError } from './messages.ts';
 import type { AppIntlErrorHandler, MessageDescriptor } from './messages.ts';
 import { createPseudoIntl } from './pseudo.ts';
 
@@ -198,4 +198,10 @@ export function AppMessage({
 }>) {
   const intl = useAppIntl();
   return <>{intl.formatMessage(message, values)}</>;
+}
+
+/** A stored string error that follows the active locale without rerunning its operation. */
+export function AppErrorMessage({ error }: Readonly<{ error: string }>) {
+  const intl = useAppIntl();
+  return <>{formatMessageError(error, intl) ?? error}</>;
 }

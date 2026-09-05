@@ -11,6 +11,7 @@ import {
 } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
+import { formatMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
 import {
@@ -351,6 +352,15 @@ export function useField(config: UseFieldConfig): UseFieldResult {
     if (intlRef.current === intl) return;
     if (fieldErrors && fieldErrors.length > 0) {
       intlRef.current = intl;
+      // Submission errors carry their own descriptors and reformat in the
+      // renderer. Revalidating locally would erase a server refusal even
+      // though the user has not edited or resubmitted the field.
+      if (
+        fieldErrors.some(
+          (error) => formatMessageError(error, intl) !== undefined,
+        )
+      )
+        return;
       validateResolvedField();
     }
   }, [intl, fieldErrors, validateResolvedField]);

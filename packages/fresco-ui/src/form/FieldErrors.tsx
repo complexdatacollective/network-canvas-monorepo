@@ -2,6 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+import { formatMessageError } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import Paragraph from '../typography/Paragraph';
 import { cx } from '../utils/cva';
 
@@ -29,7 +32,10 @@ export default function FieldErrors({
   show: boolean;
   variant?: 'text' | 'box';
 }) {
-  const liveMessages = show ? (errors ?? []) : [];
+  const intl = useAppIntl();
+  const liveMessages = show
+    ? (errors ?? []).map((error) => formatMessageError(error, intl) ?? error)
+    : [];
   // JSON.stringify, not a plain join: a join delimiter can appear inside a
   // message itself (a protocol author's custom validation text, say), which
   // would let two genuinely different message lists hash to the same string.

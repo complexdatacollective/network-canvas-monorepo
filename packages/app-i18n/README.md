@@ -58,6 +58,17 @@ Formatting to a string when an operation starts freezes the old language.
 Fresco UI dialog titles, descriptions, action labels, and `describeError`
 callbacks accept these nodes.
 
+For existing string-only error/result contracts, `createMessageError` from
+`@codaco/app-i18n/messages` preserves a plain-text descriptor and its named values
+without capturing the active locale. It retains both source defaults and compiled
+ICU AST. Fresco UI's existing field/form error renderers resolve these messages at
+display time and preserve server refusals during a language switch. Use
+`AppErrorMessage` from `@codaco/app-i18n/react` for other stored string errors, or
+`formatMessageError(error, intl) ?? error` in a string renderer. Ordinary
+validation/diagnostic text remains unchanged. A transported list uses
+`{ dependencies: { list: dependencyIds } }`, so conjunctions are formatted in the
+reader's language rather than captured before the switch.
+
 ## Host responsibilities
 
 Mount `AppI18nProvider` with the active locale, supported registry, and merged

@@ -16,6 +16,8 @@ import type { CatalogMessages } from './locales.ts';
 
 export { defineMessage, defineMessages };
 export type { IntlShape, MessageDescriptor };
+export { createMessageError, formatMessageError } from './messageErrors.ts';
+export type { MessageErrorValues } from './messageErrors.ts';
 
 export type AppIntlErrorHandler = NonNullable<IntlConfig['onError']>;
 

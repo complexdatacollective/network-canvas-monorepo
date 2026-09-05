@@ -2,6 +2,7 @@ import { getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { ecosystemLocales } from '@codaco/app-i18n/locales';
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 
 import {
@@ -9,6 +10,7 @@ import {
   arabicNumber as arabic,
   sourceTemplate,
 } from '../../__tests__/catalogFixtures';
+import { frescoUiCatalogs } from '../../locales/catalogs';
 import { DataTablePagination } from '../DataTablePagination';
 
 type Row = { name: string };
@@ -17,7 +19,7 @@ const PAGE_OF_ID = 'frescoUi.dataTablePagination.pageOf';
 
 const CATALOG = { [PAGE_OF_ID]: sourceTemplate(PAGE_OF_ID) };
 
-const Harness = () => {
+const Harness = ({ locale = 'ar-EG' }: { locale?: string }) => {
   const table = useReactTable<Row>({
     data: [{ name: 'Ada' }],
     columns: [{ accessorKey: 'name', header: 'Name' }],
@@ -29,9 +31,9 @@ const Harness = () => {
 
   return (
     <AppI18nProvider
-      locale="ar-EG"
-      locales={[ARABIC]}
-      messages={CATALOG}
+      locale={locale}
+      locales={[...ecosystemLocales, ARABIC]}
+      messages={locale === 'ar-EG' ? CATALOG : frescoUiCatalogs[locale]}
       manageDocument={false}
     >
       <DataTablePagination table={table} />
@@ -74,4 +76,15 @@ describe('the pagination bar under a locale with its own digits', () => {
     expect(labels).toContain(arabic(100));
     expect(labels.join(' ')).not.toMatch(/[0-9]/);
   });
+});
+
+it('names the page-size control in the current language', () => {
+  const { rerender } = render(<Harness locale="es" />);
+  expect(
+    screen.getByRole('combobox', { name: 'Filas por página' }),
+  ).toHaveValue('25');
+  rerender(<Harness locale="en" />);
+  expect(screen.getByRole('combobox', { name: 'Rows per page' })).toHaveValue(
+    '25',
+  );
 });

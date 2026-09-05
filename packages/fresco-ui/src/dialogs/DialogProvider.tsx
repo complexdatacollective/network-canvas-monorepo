@@ -14,7 +14,11 @@ import { flushSync } from 'react-dom';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { defineMessages } from '@codaco/app-i18n/messages';
-import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
+import {
+  AppErrorMessage,
+  AppMessage,
+  useAppIntl,
+} from '@codaco/app-i18n/react';
 
 import { Button } from '../Button';
 import type { FieldValue } from '../form/Field/types';
@@ -553,7 +557,7 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
             dialogId,
             options.describeError?.(e) ??
               (e instanceof Error ? (
-                e.message
+                <AppErrorMessage error={e.message} />
               ) : (
                 <AppMessage message={messages.errorOccurred} />
               )),
@@ -581,7 +585,7 @@ const DialogProvider: React.FC<{ children: React.ReactNode }> = ({
             dialogId,
             options.describeError?.(e) ??
               (e instanceof Error ? (
-                e.message
+                <AppErrorMessage error={e.message} />
               ) : (
                 <AppMessage message={messages.errorOccurred} />
               )),
