@@ -1,6 +1,8 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { sectionId } from '@codaco/studio-sync/taxonomy';
+
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import QuickAddSection from '../QuickAddSection.tsx';
 
@@ -185,5 +187,104 @@ describe('what a quick-add name generator records', () => {
 
     await waitFor(() => expect(offered()).toContain('alias'));
     expect(harness.pendingCommands()).toHaveLength(before);
+  });
+});
+
+/**
+ * Architect renders the chosen attribute's own validation editor beneath the
+ * picker (`sections/QuickAdd/QuickAdd.tsx`), because quick add's whole
+ * bargain is that the attribute's rules are honoured as the participant types.
+ * The one rule the ROLE itself requires is that the answer exists at all: the
+ * typed value is everything the participant gave, and a node created without
+ * it has no name.
+ *
+ * So the section states that rule where the choice is made, rather than
+ * leaving the researcher to notice it in the codebook — and offers to add it,
+ * as the compound edit a codebook write from a stage editor has to be.
+ */
+describe('a quick-add attribute that need not be answered', () => {
+  const personVariable = (
+    harness: ReturnType<typeof renderStageEditor>,
+    variableId: string,
+  ) => {
+    const person =
+      harness.session.getSnapshot().protocolSections[
+        sectionId({ kind: 'codebookNode', typeId: 'person' })
+      ];
+    if (person === undefined) throw new Error('the person type is gone');
+    return (
+      person.variables as Record<
+        string,
+        { validation?: Record<string, unknown> }
+      >
+    )[variableId];
+  };
+
+  it('says so, and adds the rule when the researcher accepts', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-quick-add-1',
+      sections: quickAdd,
+    });
+
+    expect(
+      await screen.findByText('This attribute can be left empty'),
+    ).toBeInTheDocument();
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Require an answer' }),
+    );
+
+    await waitFor(() =>
+      expect(personVariable(harness, 'name')).toMatchObject({
+        // The rule it already carried survives: this adds one, it does not
+        // replace the attribute's rules with its own.
+        validation: { unique: true, required: true },
+      }),
+    );
+    expect(
+      screen.queryByText('This attribute can be left empty'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('says nothing about an attribute that already requires an answer', async () => {
+    const harness = renderStageEditor({
+      stage: {
+        id: 'quick-add-already-required',
+        type: 'NameGeneratorQuickAdd',
+        fields: {
+          label: 'Quick add',
+          subject: { entity: 'node', type: 'person' },
+          quickAdd: 'name',
+          prompts: [{ id: 'prompt-1', text: 'Add someone' }],
+        },
+      },
+      sections: quickAdd,
+    });
+
+    await screen.findByRole('combobox', { name: /Attribute filled in/ });
+    harness.receiveCodebookUpdate({
+      node: {
+        person: {
+          name: 'person',
+          color: 'node-color-seq-1',
+          icon: 'add-a-person',
+          shape: { default: 'circle' },
+          variables: {
+            name: {
+              name: 'name',
+              type: 'text',
+              component: 'Text',
+              validation: { required: true },
+            },
+          },
+        },
+      },
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText('This attribute can be left empty'),
+      ).not.toBeInTheDocument(),
+    );
   });
 });

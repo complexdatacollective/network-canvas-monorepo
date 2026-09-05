@@ -2,8 +2,6 @@ import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
-import { InformationStageEditor } from '../forms/InformationStageEditor.tsx';
-import { NameGeneratorStageEditor } from '../nameGenerators/NameGeneratorStageEditor.tsx';
 
 /** See each editor's own test for why the rich-text editor is stood in for. */
 vi.mock('../../fields/RichTextField.tsx', () => ({
@@ -31,16 +29,10 @@ const READ_ONLY_REFUSAL =
   'This stage is read-only, so your changes were not saved. Take over editing and try again.';
 
 const FAMILIES = [
-  {
-    family: 'form',
-    stageId: 'information-1',
-    editor: InformationStageEditor,
-    settleLabel: 'Page heading',
-  },
+  { family: 'form', stageId: 'information-1', settleLabel: 'Page heading' },
   {
     family: 'name generator',
     stageId: 'name-generator-1',
-    editor: NameGeneratorStageEditor,
     settleLabel: 'Form title',
   },
 ] as const;
@@ -59,8 +51,10 @@ const FAMILIES = [
 describe('the save control an editor falls back to', () => {
   it.each(FAMILIES)(
     'stays pressable for a $family spectator, and says why the stage did not save',
-    async ({ stageId, editor, settleLabel }) => {
-      const harness = renderStageEditor({ stageId, editor });
+    async ({ stageId, settleLabel }) => {
+      // Through the package's own dispatcher, so each family's editor arrives
+      // with whatever save control it actually falls back to.
+      const harness = renderStageEditor({ stageId });
       await screen.findByRole('textbox', { name: settleLabel });
 
       harness.setReadOnly();
