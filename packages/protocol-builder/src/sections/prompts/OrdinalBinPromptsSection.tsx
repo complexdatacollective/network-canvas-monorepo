@@ -153,6 +153,24 @@ export default function OrdinalBinPromptsSection({
     subjectForRow: () => subject,
   });
 
+  /*
+    TODO(S itemTemplate): pass
+      itemTemplate={() => ({ color: 'ord-color-seq-1' })}
+    to `PromptsSection` once it forwards `itemTemplate` to `DialogArrayField`
+    — S is adding that passthrough on `feat/protocol-builder-editor-sections`,
+    and `DialogArrayField` already takes it.
+
+    Architect seeds a new ordinal prompt with the first swatch of the schema's
+    sequence (`OrdinalBinPrompts/OrdinalBinPrompts.tsx`:
+    `const template = () => ({ color: 'ord-color-seq-1' })`), so a researcher
+    who never looks at the gradient still writes a valid prompt. Here the
+    gradient is required and unseeded, so a new prompt is refused until they
+    pick one — correct, but a step Architect does not ask for.
+
+    The test that proves the seed is skipped beside the refusal it replaces,
+    in `__tests__/OrdinalBinPromptsSection.test.tsx`.
+  */
+
   return (
     <PromptsSection
       PromptEditor={OrdinalBinPromptEditor}

@@ -44,6 +44,47 @@ describe('the questions an ordinal bin asks', () => {
     expect(screen.getByRole('radio', { name: 'Sea Green' })).toBeChecked();
   });
 
+  /**
+   * SKIPPED until S's `itemTemplate` passthrough lands on `PromptsSection`
+   * (branch `feat/protocol-builder-editor-sections`; `DialogArrayField`
+   * already accepts `itemTemplate`, `PromptsSection` does not forward it).
+   * The `TODO(S itemTemplate)` in `OrdinalBinPromptsSection.tsx` names the
+   * template to pass.
+   *
+   * Architect seeds a new ordinal prompt with the first swatch of the schema's
+   * sequence, so a researcher who never looks at the gradient still writes a
+   * valid prompt. Unskipping this REPLACES the refusal tested below: once the
+   * gradient is seeded there is no prompt with no gradient to refuse.
+   */
+  it.skip('seeds a new prompt with the first swatch, as Architect does', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create new prompt' }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Prompt text' }),
+      'How often do you talk?',
+    );
+    await harness.user.selectOptions(
+      screen.getByRole('combobox', { name: 'Attribute' }),
+      'contactFreq',
+    );
+
+    // Already chosen, so the prompt is complete without the researcher
+    // touching the gradient at all.
+    expect(screen.getByRole('radio', { name: 'Sea Green' })).toBeChecked();
+    await harness.user.click(screen.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    expect(prompts(request?.stageDocument ?? {}).at(-1)?.color).toBe(
+      'ord-color-seq-1',
+    );
+  });
+
   it('refuses a prompt with no gradient, and says which one', async () => {
     const harness = renderStageEditor(openEditor());
 
