@@ -18,7 +18,10 @@
     "./rls": "./src/rls.ts",
     "./schema": "./src/schema.ts",
     "./taxonomy": "./src/taxonomy.ts",
-    "./tenant": "./src/tenant.ts"
+    "./tenant": "./src/tenant.ts",
+    "./section-validation": "./src/section-validation.ts",
+    "./template-metadata": "./src/template-metadata.ts",
+    "./template-exchange": "./src/template-exchange.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -26,9 +29,14 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@codaco/protocol-validation": "workspace:^",
     "@noble/hashes": "^2.3.0",
+    "crc-32": "^1.2.2",
     "drizzle-orm": "catalog:",
-    "pg": "^8.22.0"
+    "fflate": "^0.8.3",
+    "file-type": "^22.0.2",
+    "pg": "^8.22.0",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@codaco/tsconfig": "workspace:^",

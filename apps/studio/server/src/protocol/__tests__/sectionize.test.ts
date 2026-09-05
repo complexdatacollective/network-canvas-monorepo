@@ -6,9 +6,9 @@ import {
 } from '@codaco/protocol-validation';
 import { contentHash } from '@codaco/studio-sync/apply';
 import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
+import { validateSection } from '@codaco/studio-sync/section-validation';
 
 import { sectionizeProtocol } from '../sectionize.ts';
-import { validateSection } from '../validate.ts';
 import { versionContentHash } from '../version-hash.ts';
 import { FIXTURES, baseProtocol, readFixtureProtocol } from './helpers.ts';
 
