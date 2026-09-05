@@ -4,7 +4,12 @@ import { v4 as uuid } from 'uuid';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import { useResourceGateway } from '../context.tsx';
-import type { ResourceDescriptor } from '../gateway.ts';
+import type {
+  ProtocolBuilderResourceGateway,
+  ResourceDescriptor,
+  ResourceResult,
+  StageUploadRequest,
+} from '../gateway.ts';
 import ResourceFailureNotice from './ResourceFailureNotice.tsx';
 import {
   acceptedExtensions,
@@ -18,6 +23,41 @@ import { useResourceAttempt } from './useResourceAttempt.ts';
 
 const UNREADABLE_MESSAGE =
   'That file could not be read. Choose it again, or try a different file.';
+
+/**
+ * Imports one file: stages the bytes, then asks the host to read back what it
+ * staged.
+ *
+ * A host that will hold any bytes is not a host that can tell a roster from a
+ * text file, and staging is where the researcher finds out — a field left
+ * pointing at content the interview cannot read is a protocol that fails when
+ * it is used, and nothing in the manifest says so. So the import is not
+ * finished until the host has read the resource: only then is there something
+ * a field may point at.
+ *
+ * Content the host cannot read is dropped again rather than left staged. The
+ * researcher is going to choose another file, and this one would otherwise sit
+ * at the host until the finish walked away from it. A host that could not
+ * answer at all keeps its staged resource, because repeating the identical
+ * request is exactly what "try again" then means.
+ */
+async function importFile(
+  gateway: ProtocolBuilderResourceGateway,
+  request: StageUploadRequest,
+): Promise<ResourceResult<ResourceDescriptor>> {
+  const staged = await gateway.stageUpload(request);
+  if (staged.status !== 'ok') return staged;
+
+  const inspected = await gateway.inspect(staged.data.id);
+  if (inspected.status === 'ok') return staged;
+  if (inspected.failure.reason === 'invalid-content') {
+    await gateway.discardStaged(staged.data.id);
+  }
+  return Object.freeze({
+    status: 'failed' as const,
+    failure: inspected.failure,
+  });
+}
 
 export type ResourceUploadControlProps = Readonly<{
   /** Which kinds this control will accept, and what it stages them as. */
@@ -44,7 +84,7 @@ export default function ResourceUploadControl({
   disabled = false,
 }: ResourceUploadControlProps) {
   const gateway = useResourceGateway();
-  const { begin, busy, clear, failure, retry } = useResourceAttempt();
+  const { begin, busy, failure, retry } = useResourceAttempt();
   const inputId = useId();
   const [rejected, setRejected] = useState<string | undefined>(undefined);
   const [status, setStatus] = useState('');
@@ -53,26 +93,29 @@ export default function ResourceUploadControl({
   const stageFile = useCallback(
     async (file: File) => {
       setRejected(undefined);
+      // Claimed before anything about this file is decided, because the claim
+      // is the researcher's choice rather than its consequence. Reading a
+      // large first choice can still be under way when a second one is made,
+      // and the field must end up holding the file chosen last — including
+      // when that file is one this field cannot hold, which supersedes the
+      // earlier choice just as surely as an accepted one does. Claiming also
+      // takes away what the previous choice left on screen, so the refusal
+      // below is the only thing the researcher is being told.
+      const claim = begin();
+
       const contentKind = contentKindForFile(kind, file.name);
       if (contentKind === undefined) {
         setRejected(unsupportedFileMessage(kind));
         return;
       }
 
-      // Claimed before the file is read, because reading is part of importing
-      // this file: a large first choice can still be reading when a smaller
-      // second one is already staged, and the file the researcher chose last
-      // is the one the field must end up holding.
-      const claim = begin();
-
       let bytes: Uint8Array;
       try {
         bytes = new Uint8Array(await file.arrayBuffer());
       } catch {
         // A file the researcher has already moved off is not something to
-        // report, and clearing would disown the import that replaced it.
+        // report at all: the import that replaced it is what is happening now.
         if (!claim.current()) return;
-        clear();
         setRejected(UNREADABLE_MESSAGE);
         return;
       }
@@ -85,7 +128,7 @@ export default function ResourceUploadControl({
       setStatus('');
       claim.run(
         () =>
-          gateway.stageUpload({
+          importFile(gateway, {
             requestId,
             kind: contentKind,
             name: source,
@@ -99,7 +142,7 @@ export default function ResourceUploadControl({
         },
       );
     },
-    [begin, clear, gateway, kind, onStaged],
+    [begin, gateway, kind, onStaged],
   );
 
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {

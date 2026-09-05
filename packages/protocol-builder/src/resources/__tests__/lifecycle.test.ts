@@ -122,6 +122,27 @@ async function stageImage(
   return expectOk(result);
 }
 
+/**
+ * A file the host will hold but cannot read as the kind it claims to be: bytes
+ * named `.json` that are not a network. Staging succeeds — the host has the
+ * bytes — and only `inspect` can say the roster is unusable.
+ */
+async function stageUnreadableRoster(
+  gateway: ProtocolBuilderResourceGateway,
+  requestId = 'request-unreadable-roster',
+): Promise<ResourceDescriptor> {
+  return expectOk(
+    await gateway.stageUpload({
+      requestId,
+      kind: 'network',
+      name: 'Community roster',
+      source: `${requestId}.json`,
+      contentType: 'application/json',
+      bytes: new TextEncoder().encode('not a roster at all'),
+    }),
+  );
+}
+
 function expectOk<T>(result: ResourceResult<T>): T {
   if (result.status !== 'ok') {
     throw new Error(`expected an ok result, got ${result.failure.reason}`);
@@ -467,6 +488,7 @@ describe('finishStagedResources', () => {
       gateway: tracker.gateway,
       promotionId: 'promotion-1',
       stageDocument: informationStage(referenced.id),
+      stageIndex: 0,
       staged: tracker.staged(),
       secretHandle: (resourceId) => tracker.secretHandle(resourceId),
       applyStage: (manifest) => {
@@ -510,6 +532,7 @@ describe('finishStagedResources', () => {
       gateway: tracker.gateway,
       promotionId: 'promotion-1',
       stageDocument: geospatialStage(secret.descriptor.id),
+      stageIndex: 0,
       staged: tracker.staged(),
       secretHandle: (resourceId) => tracker.secretHandle(resourceId),
       applyStage: (request) => {
@@ -542,6 +565,7 @@ describe('finishStagedResources', () => {
       gateway: tracker.gateway,
       promotionId: 'promotion-1',
       stageDocument: informationStage(referenced.id),
+      stageIndex: 0,
       staged: tracker.staged(),
       secretHandle: (resourceId) => tracker.secretHandle(resourceId),
       applyStage: () => Promise.reject(failure),
@@ -567,6 +591,7 @@ describe('finishStagedResources', () => {
         gateway: tracker.gateway,
         promotionId: 'promotion-1',
         stageDocument,
+        stageIndex: 0,
         staged: tracker.staged(),
         secretHandle: (resourceId) => tracker.secretHandle(resourceId),
         applyStage,
@@ -606,6 +631,7 @@ describe('finishStagedResources', () => {
       gateway: tracker.gateway,
       promotionId: 'promotion-1',
       stageDocument: informationStage(),
+      stageIndex: 0,
       staged: tracker.staged(),
       secretHandle: (resourceId) => tracker.secretHandle(resourceId),
       applyStage,
@@ -632,6 +658,7 @@ describe('finishStagedResources', () => {
       gateway: tracker.gateway,
       promotionId: 'promotion-1',
       stageDocument: informationStage(promoted.id),
+      stageIndex: 0,
       staged: tracker.staged(),
       secretHandle: (resourceId) => tracker.secretHandle(resourceId),
       applyStage: () => Promise.resolve(),
@@ -665,6 +692,7 @@ describe('finishStagedResources', () => {
       gateway: tracker.gateway,
       promotionId: 'promotion-1',
       stageDocument: informationStage(),
+      stageIndex: 0,
       staged: tracker.staged(),
       secretHandle: (resourceId) => tracker.secretHandle(resourceId),
       applyStage: () => Promise.resolve(),
@@ -679,6 +707,63 @@ describe('finishStagedResources', () => {
     expect(host.getStagingResidue()).not.toEqual([]);
   });
 
+  it('refuses to promote a referenced resource the host cannot read', async () => {
+    const host = new InMemoryResourceGateway();
+    const { tracker } = createTracker(host);
+    const roster = await stageUnreadableRoster(tracker.gateway);
+    const applyStage = vi.fn(() => Promise.resolve());
+
+    const outcome = await finishStagedResources({
+      gateway: tracker.gateway,
+      promotionId: 'promotion-1',
+      stageDocument: informationStage(roster.id),
+      stageIndex: 2,
+      staged: tracker.staged(),
+      secretHandle: (resourceId) => tracker.secretHandle(resourceId),
+      applyStage,
+    });
+
+    // Committing this stage would leave the protocol holding a roster the
+    // interview cannot read, which is not a state a save may reach.
+    expect(outcome).toMatchObject({
+      status: 'unreadable-resources',
+      issues: [
+        { path: ['stages', 2, 'items', 0, 'content'], resourceId: roster.id },
+      ],
+    });
+    if (outcome.status !== 'unreadable-resources') {
+      throw new Error('the finish was not refused');
+    }
+    // The host's own words, so the researcher is told what is wrong with the
+    // file rather than that "something" is.
+    expect(outcome.issues[0]?.message).toContain(
+      'the selected file is not a readable network',
+    );
+    // Nothing was committed and nothing was thrown away: the researcher can
+    // choose another file and finish again.
+    expect(applyStage).not.toHaveBeenCalled();
+    expect(host.getCommittedManifest()).toEqual({});
+    expect(tracker.staged()).toEqual([roster]);
+  });
+
+  it('promotes a referenced resource the host can still read', async () => {
+    const host = new InMemoryResourceGateway();
+    const { tracker } = createTracker(host);
+    const image = await stageImage(tracker.gateway, 'request-readable');
+
+    const outcome = await finishStagedResources({
+      gateway: tracker.gateway,
+      promotionId: 'promotion-1',
+      stageDocument: informationStage(image.id),
+      stageIndex: 0,
+      staged: tracker.staged(),
+      secretHandle: (resourceId) => tracker.secretHandle(resourceId),
+      applyStage: () => Promise.resolve(),
+    });
+
+    expect(outcome).toMatchObject({ status: 'finished' });
+  });
+
   it('keeps what a stage that promotes nothing abandoned when its apply fails', async () => {
     const host = new InMemoryResourceGateway();
     const { tracker } = createTracker(host);
@@ -689,6 +774,7 @@ describe('finishStagedResources', () => {
       gateway: tracker.gateway,
       promotionId: 'promotion-1',
       stageDocument: informationStage(),
+      stageIndex: 0,
       staged: tracker.staged(),
       secretHandle: (resourceId) => tracker.secretHandle(resourceId),
       applyStage: () => Promise.reject(failure),

@@ -56,6 +56,16 @@ export default function ResourceSecretControl({
   /** Whether the id above has already been sent to the host. */
   const submitted = useRef(false);
 
+  /** Drops what was said about a field the researcher is now correcting. */
+  const clearError = (field: 'name' | 'value') => {
+    setErrors((current) => {
+      if (current[field] === undefined) return current;
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+  };
+
   /**
    * Editing after a submission starts a new intent, so it gets a new id.
    *
@@ -66,9 +76,16 @@ export default function ResourceSecretControl({
    * id: repeating the previous call is no longer what "try again" means, and
    * the key that first call may have staged is unreferenced, so the finish
    * discards it.
+   *
+   * A submission still in flight is superseded on exactly the same terms. It
+   * is the one case where the researcher can see the value they are replacing
+   * and the host has not answered yet, and leaving it alone is what loses the
+   * correction: the answer, whenever it came, would clear the inputs and name
+   * the key the researcher had already moved off — or offer to repeat it.
    */
-  const editing = () => {
-    if (!submitted.current || busy) return;
+  const editing = (field: 'name' | 'value') => {
+    clearError(field);
+    if (!submitted.current) return;
     submitted.current = false;
     requestId.current = uuid();
     clear();
@@ -116,7 +133,7 @@ export default function ResourceSecretControl({
         component={InputField}
         value={name}
         onChange={(value: unknown) => {
-          editing();
+          editing('name');
           setName(asString(value));
         }}
         disabled={disabled}
@@ -132,7 +149,7 @@ export default function ResourceSecretControl({
         autoComplete="off"
         value={secret}
         onChange={(value: unknown) => {
-          editing();
+          editing('value');
           setSecret(asString(value));
         }}
         disabled={disabled}

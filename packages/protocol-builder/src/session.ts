@@ -710,6 +710,10 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       gateway: resources.gateway,
       promotionId: this.promotionId,
       stageDocument: document,
+      stageIndex: stageIndexForValidation(
+        this.snapshot.protocolSections,
+        this.snapshot.editedSection.identity.id,
+      ),
       // Closes the staging window as it reads it: an upload or secret that
       // lands while this promotion is in flight is one this finish already
       // decided against, and no later one would ever look at it.
@@ -718,6 +722,19 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       applyStage,
     });
 
+    if (outcome.status === 'unreadable-resources') {
+      // The draft is invalid for the same reason a dangling reference makes it
+      // invalid — a field naming a resource the protocol cannot use — so it is
+      // reported the same way, on the field's own path.
+      throw new InvalidProtocolDraftError(
+        attributeValidationIssues(
+          outcome.issues,
+          this.snapshot.protocolSections,
+          this.snapshot.attribution,
+          this.snapshot.manifestRevision,
+        ),
+      );
+    }
     if (outcome.status === 'apply-failed') throw outcome.error;
     if (outcome.status === 'promotion-failed') {
       throw new ResourcePromotionError(outcome.failure);

@@ -92,6 +92,14 @@ export default function ResourcePickerControl({
    * researcher has to notice and put back.
    */
   const [askedForResource, setAskedForResource] = useState(false);
+  /**
+   * Whether the call the attempt below is running is the discard rather than
+   * the download. It answers the one question about a call in flight that
+   * `busy` cannot: whether the answer still to come will change what this
+   * field holds. Read only while the attempt is busy, so it does not have to
+   * be unset when the call it describes settles.
+   */
+  const [discarding, setDiscarding] = useState(false);
 
   const copy = RESOURCE_PICKER_COPY[kind];
   const usesInterviewNetwork = canUseExisting && value === INTERVIEW_NETWORK;
@@ -103,6 +111,20 @@ export default function ResourcePickerControl({
     useResourceInspection(selectedId);
   const descriptor: ResourceDescriptor | undefined = inspection?.descriptor;
   const locked = disabled || readOnly;
+  /**
+   * Whether another resource may be chosen right now.
+   *
+   * Not while a discard of the resource this field holds is undecided.
+   * Choosing again disowns that call, so the discard the host goes on to carry
+   * out would no longer clear the field, and the field would be left naming a
+   * resource the host has deleted — a stage that cannot be saved, reached by
+   * an action the researcher was told had worked.
+   *
+   * A download in flight is not the same thing: its answer is a file, and a
+   * researcher who has moved on from a slow one has lost nothing, so it does
+   * not hold the field's own choice up.
+   */
+  const canBrowse = !locked && !(action.busy && discarding);
 
   const handleSelect = (chosen: ResourceDescriptor) => {
     setBrowserOpen(false);
@@ -134,6 +156,7 @@ export default function ResourcePickerControl({
       return;
     }
     setRefusal(undefined);
+    setDiscarding(true);
     action.run(
       () => gateway.discardStaged(selectedId),
       () => {
@@ -147,6 +170,7 @@ export default function ResourcePickerControl({
 
   const handleDownload = () => {
     if (selectedId === undefined || descriptor === undefined) return;
+    setDiscarding(false);
     action.run(
       () => gateway.download(selectedId),
       (content) => {
@@ -167,6 +191,7 @@ export default function ResourcePickerControl({
       return;
     }
     if (next === 'resource') {
+      if (!canBrowse) return;
       // Only the asking is recorded: the field keeps the interview network
       // until a file is actually chosen, so closing the browser without
       // choosing one leaves the stage exactly as the researcher found it.
@@ -320,7 +345,7 @@ export default function ResourcePickerControl({
             type="button"
             color="primary"
             className="self-start"
-            disabled={locked}
+            disabled={!canBrowse}
             onClick={() => setBrowserOpen(true)}
           >
             {selectedId === undefined ? copy.selectAction : copy.changeAction}

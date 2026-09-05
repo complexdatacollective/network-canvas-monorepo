@@ -38,10 +38,13 @@ export const PREVIEW_RENEWAL_LEAD_MS = 5_000;
  *
  * A lease that says when it ends is renewed shortly before it does, because a
  * stage editor is left open far longer than a signed URL lives and an image
- * that silently stops loading looks like a resource the protocol lost. The new
- * URL replaces the old one in place, which restarts an audio or video element
- * that happens to be playing — a lease that expires under it would stop it
- * anyway, and only a host that issues expiring URLs pays either cost.
+ * that silently stops loading looks like a resource the protocol lost. The
+ * renewal runs alongside the lease it replaces rather than in place of it: the
+ * old URL goes on rendering, and is released, only once the new one has
+ * arrived. Swapping the moment the renewal *begins* would stop an audio or
+ * video element seconds before anything was actually wrong with it, and would
+ * throw away the rest of a working lease whenever the host was slow to answer
+ * or could not answer at all.
  */
 export default function ResourcePreview({
   resourceId,
@@ -60,6 +63,9 @@ export default function ResourcePreview({
 
   useEffect(() => {
     let released = false;
+    // The lease being rendered right now. A renewal runs alongside it rather
+    // than in place of it, so this is replaced only once its replacement has
+    // actually arrived.
     let resolved: ResolvedPreview | undefined;
     let renewal: ReturnType<typeof setTimeout> | undefined;
     setPreview(undefined);
@@ -67,24 +73,42 @@ export default function ResourcePreview({
 
     const load = async () => {
       const result = await gateway.resolvePreview(resourceId);
-      if (result.status === 'failed') {
-        if (!released) setFailure(result.failure);
-        return;
-      }
       if (released) {
-        result.data.release();
+        if (result.status === 'ok') result.data.release();
         return;
       }
+      if (result.status === 'failed') {
+        const inUse = resolved;
+        // Nothing is on screen, so the failure is all there is to show.
+        if (inUse === undefined) {
+          setFailure(result.failure);
+          return;
+        }
+        // A renewal failed, but the lease it was renewing still works for a
+        // moment. Replacing a playing image or track with an error message
+        // while its own URL is still good throws that time away for nothing;
+        // the researcher is told when there is really nothing left to show.
+        const remaining =
+          inUse.expiresAt === undefined ? 0 : inUse.expiresAt - Date.now();
+        if (remaining <= 0) {
+          setFailure(result.failure);
+          return;
+        }
+        renewal = setTimeout(() => setFailure(result.failure), remaining);
+        return;
+      }
+      const previous = resolved;
       resolved = result.data;
       setPreview(result.data);
+      // Let go of the old lease only now: releasing it first is what stops
+      // playback the moment a renewal begins rather than when it lands.
+      previous?.release();
 
       const { expiresAt } = result.data;
       if (expiresAt === undefined) return;
       const lead = expiresAt - Date.now() - PREVIEW_RENEWAL_LEAD_MS;
       if (lead <= 0) return;
-      renewal = setTimeout(() => {
-        setAttempt((current) => current + 1);
-      }, lead);
+      renewal = setTimeout(() => void load(), lead);
     };
 
     void load();

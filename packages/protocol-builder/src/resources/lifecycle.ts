@@ -371,6 +371,15 @@ export type StagedResourceFinishOutcome =
       /** Abandoned resources the host would not drop. Usually empty. */
       discardFailures: readonly StagedResourceDiscardFailure[];
     }>
+  /**
+   * The draft references staged resources the host will not vouch for, so
+   * nothing was promoted, applied, or discarded. Report `issues` to the
+   * researcher as the draft's own validation problems.
+   */
+  | Readonly<{
+      status: 'unreadable-resources';
+      issues: readonly DanglingResourceReference[];
+    }>
   /** The caller's own apply failed; nothing was promoted. Rethrow `error`. */
   | Readonly<{ status: 'apply-failed'; error: unknown }>
   /** The gateway rolled its promotion back; nothing was committed. */
@@ -386,6 +395,12 @@ export type StagedResourceFinishOptions = Readonly<{
   promotionId: string;
   /** The draft being finished, including its session-owned id and type. */
   stageDocument: SectionDoc;
+  /**
+   * Where the stage sits in the canonical protocol, from
+   * {@link stageIndexForValidation}, so a resource this finish refuses is
+   * reported on the same path the schema would have used for the same field.
+   */
+  stageIndex: number;
   staged: readonly ResourceDescriptor[];
   secretHandle(resourceId: string): StagedSecretHandle | undefined;
   /**
@@ -406,11 +421,26 @@ export type StagedResourceFinishOptions = Readonly<{
  * *inside* the promotion: a gateway that cannot complete the caller's apply
  * undoes its own moves and reports a retryable failure, leaving staging intact
  * for a retry.
+ *
+ * Nothing is promoted until the host has read every resource being promoted.
+ * Staging only says the host is holding bytes; whether they are usable as the
+ * kind the manifest is about to claim is something only the host can say, and
+ * a committed stage pointing at an unreadable roster is a protocol that fails
+ * when the interview loads it — with a manifest entry that looks perfectly
+ * valid. So the finish asks, and refuses rather than committing.
  */
 export async function finishStagedResources(
   options: StagedResourceFinishOptions,
 ): Promise<StagedResourceFinishOutcome> {
   const plan = planStagedResourceFinish(options.stageDocument, options.staged);
+
+  const unreadable = await unreadableResourceIssues(options, plan.promote);
+  if (unreadable.length > 0) {
+    return Object.freeze({
+      status: 'unreadable-resources' as const,
+      issues: unreadable,
+    });
+  }
 
   if (plan.promote.length === 0) {
     try {
@@ -576,6 +606,42 @@ export function mergeDraftValidationIssues(
     ...schemaIssues,
     ...resourceIssues.filter((issue) => !covered.has(pathKey(issue.path))),
   ]);
+}
+
+/**
+ * The resources a finish is about to promote that the host will not vouch for,
+ * as validation problems on the fields that name them.
+ *
+ * Every failed inspection counts, not only `invalid-content`: this is the last
+ * moment before the protocol commits to the resource, and a host that cannot
+ * answer for it has not said it is usable. A transient failure reads as the
+ * host's own message on the field, and finishing again is what repeats the
+ * question — which is exactly what the researcher would want to do.
+ */
+async function unreadableResourceIssues(
+  options: StagedResourceFinishOptions,
+  promoting: readonly string[],
+): Promise<readonly DanglingResourceReference[]> {
+  if (promoting.length === 0) return Object.freeze([]);
+  const references = collectStageResourceReferences(options.stageDocument);
+  const issues: DanglingResourceReference[] = [];
+
+  for (const resourceId of promoting) {
+    const inspected = await options.gateway.inspect(resourceId);
+    if (inspected.status === 'ok') continue;
+    for (const reference of references) {
+      if (reference.resourceId !== resourceId) continue;
+      issues.push(
+        Object.freeze({
+          code: 'custom',
+          path: ['stages', options.stageIndex, ...reference.path],
+          message: `The resource ("${resourceId}") this stage uses cannot be saved: ${inspected.failure.message}`,
+          resourceId,
+        }),
+      );
+    }
+  }
+  return Object.freeze(issues);
 }
 
 /**

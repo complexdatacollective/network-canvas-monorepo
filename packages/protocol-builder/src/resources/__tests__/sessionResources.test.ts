@@ -10,6 +10,7 @@ import {
 } from '../../compound-edit/InMemoryCompoundHost.ts';
 import {
   createStageIdentity,
+  InvalidProtocolDraftError,
   ProtocolBuilderSessionStore,
   ResourcePromotionError,
   SessionReadOnlyError,
@@ -495,6 +496,50 @@ describe('a session that stages resources', () => {
       status: 'valid',
       issues: [],
     });
+  });
+
+  it('refuses to finish a stage whose staged roster the host cannot read', async () => {
+    const { gateway, host, onFinish, session } = createFixture({
+      stage: 'NameGeneratorRoster',
+    });
+    // The host holds the bytes, so staging succeeded. Only reading them says
+    // this file is not a roster at all.
+    const roster = expectOk(
+      await sessionGateway(session).stageUpload({
+        requestId: 'unreadable-roster',
+        kind: 'network',
+        name: 'Community roster',
+        source: 'community.json',
+        contentType: 'application/json',
+        bytes: new TextEncoder().encode('not a roster at all'),
+      }),
+    );
+    session.dispatch([{ op: 'set', key: 'dataSource', value: roster.id }]);
+
+    const refusal = await session.finish().then(
+      () => undefined,
+      (thrown: unknown) => thrown,
+    );
+
+    if (!(refusal instanceof InvalidProtocolDraftError)) {
+      throw new Error('the finish was not refused');
+    }
+    // On the canonical path of the field that names it, and attributed to the
+    // stage that owns it, exactly as a schema problem with the same value is.
+    expect(refusal.issues).toMatchObject([
+      { path: ['stages', 0, 'dataSource'], sectionId: stageSection },
+    ]);
+    expect(refusal.issues[0]?.message).toContain(
+      'the selected file is not a readable network',
+    );
+    // Nothing was committed, and the researcher's import is still there to be
+    // replaced or discarded.
+    expect(onFinish).not.toHaveBeenCalled();
+    expect(host.getSnapshot().manifestRevision.sequence).toBe(7n);
+    expect(gateway.getCommittedManifest()).toEqual({});
+    expect(
+      session.getSnapshot().stagedResources.map((entry) => entry.id),
+    ).toEqual([roster.id]);
   });
 
   it('withholds a command naming a staged resource from a live-applying host', async () => {

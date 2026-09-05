@@ -50,7 +50,10 @@ export type ResourceAttempt = Readonly<{
     operation: () => Promise<ResourceResult<T>>,
     onSuccess?: (data: T) => void,
   ) => void;
-  /** Takes the next place in the order before the call itself is ready. */
+  /**
+   * Takes the next place in the order before the call itself is ready, and
+   * drops whatever the call it supersedes left on screen.
+   */
   begin: () => ResourceAttemptClaim;
   clear: () => void;
 }>;
@@ -125,6 +128,10 @@ export function useResourceAttempt(): ResourceAttempt {
     // choice, and the call is only its consequence.
     sequence.current += 1;
     const attempt = sequence.current;
+    // What was on screen was about the choice this one replaces, so it goes
+    // with it — including its retry, which would otherwise repeat the earlier
+    // call and let it win over the choice that superseded it.
+    setState(IDLE);
     const current = (): boolean => sequence.current === attempt;
     return Object.freeze({
       current,
