@@ -188,7 +188,7 @@ describe.skipIf(!db)('self-hosted first-run bootstrap', () => {
         expect(
           await migrateDatabase(scratch.pool, migrations, SCHEMA_FINGERPRINT),
         ).toEqual(
-          (path === 'fresh' ? migrations : [bootstrap]).map(
+          (path === 'fresh' ? migrations : migrations.slice(2)).map(
             (migration) => migration.manifest.id,
           ),
         );

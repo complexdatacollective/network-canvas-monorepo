@@ -15,11 +15,14 @@ import {
 } from './db/pool.ts';
 import { checkSchema, type SchemaState } from './db/schema.ts';
 import { readEncryptionEnv, readEnv } from './env.ts';
+import { getSetupStatus } from './instance/bootstrap.ts';
 import { logOperational } from './observability/logger.ts';
+import { createOperationalApp } from './observability/operational-app.ts';
 import { observeWebSocketServer } from './observability/requests.ts';
 import { createObservability } from './observability/runtime.ts';
 import { initializeEncryption } from './pii/initialize.ts';
 import type { EncryptionKeys } from './pii/keys.ts';
+import { acquireWebLease } from './runtime/web-lease.ts';
 import {
   type InvitationDeliveryWorker,
   startInvitationDeliveryWorker,
@@ -49,13 +52,16 @@ const env = (() => {
     return process.exit(1);
   }
 })();
-const pool = env.db ? createPool(env.db) : undefined;
+const servesWeb = env.role !== 'worker';
+const pool = env.db && servesWeb ? createPool(env.db) : undefined;
 const maintenancePool = env.db ? createMaintenancePool(env.db) : undefined;
+const schemaPool = pool ?? maintenancePool;
 const assetStore = env.s3 ? createAssetStore(env.s3) : undefined;
 let invitationDeliveryWorker: InvitationDeliveryWorker | undefined;
 
 function startDatabaseWorkers(): void {
   if (
+    env.role === 'web' ||
     invitationDeliveryWorker ||
     !maintenancePool ||
     !env.auth ||
@@ -90,10 +96,10 @@ function exitIfFatal(state: SchemaState): void {
 // A configured database must be current before keys can be verified. Local
 // development waits for its explicit reset, but does not start authentication,
 // workers or the listener while the database or its keys are unavailable.
-if (pool) {
+if (schemaPool) {
   for (;;) {
     try {
-      const state = await checkSchema(pool);
+      const state = await checkSchema(schemaPool);
       if (state.kind === 'current') break;
       exitIfFatal(state);
       logOperational(
@@ -126,35 +132,55 @@ if (maintenancePool) {
   }
 }
 
+const webLease = pool
+  ? await acquireWebLease(pool, () => {
+      logOperational('STUDIO_WEB_LEASE_LOST');
+      process.exit(1);
+    }).catch(() => {
+      logOperational('STUDIO_WEB_REPLICA_REFUSED');
+      return process.exit(1);
+    })
+  : undefined;
+
 const observability = createObservability({
-  pool,
+  pool: schemaPool,
   maintenancePool,
   assetStore,
   monitorProcess: true,
 });
 startDatabaseWorkers();
 
-const app = createApp(env, {
-  encryptionKeys,
-  assetStore,
-  observability,
-  invitationDeliveryAvailable: Boolean(
-    env.auth && env.auth.mailer.kind !== 'refuse',
-  ),
-  pool,
-});
+const app = servesWeb
+  ? createApp(env, {
+      encryptionKeys,
+      assetStore,
+      observability,
+      invitationDeliveryAvailable: Boolean(
+        env.auth && env.auth.mailer.kind !== 'refuse',
+      ),
+      pool,
+    })
+  : createOperationalApp(env, observability);
 
-mountClient(app, env);
+if (servesWeb)
+  mountClient(
+    app,
+    env,
+    async () =>
+      (await getSetupStatus(pool, env.bootstrapToken)).state === 'complete',
+  );
 
-const wsServer = new WebSocketServer({ noServer: true });
-observeWebSocketServer(wsServer);
+const wsServer = servesWeb
+  ? new WebSocketServer({ noServer: true })
+  : undefined;
+if (wsServer) observeWebSocketServer(wsServer);
 
 const server = serve(
   {
     fetch: app.fetch,
     port: env.port,
     hostname: env.host,
-    websocket: { server: wsServer },
+    ...(wsServer ? { websocket: { server: wsServer } } : {}),
   },
   () => logOperational('STUDIO_SERVER_STARTED'),
 );
@@ -171,31 +197,44 @@ function shutdown() {
   shuttingDown = true;
   observability.stop();
   setTimeout(() => process.exit(1), 10_000).unref();
-  const closing = [...wsServer.clients].map(
+  // Stop queue claims and accepting HTTP work immediately, before waiting
+  // for active WebSocket close handshakes or an in-flight delivery attempt.
+  const workerStopped = invitationDeliveryWorker?.stop();
+  const httpClosed = new Promise<void>((resolve, reject) => {
+    server.close((error) => (error ? reject(error) : resolve()));
+  });
+  const closing = [...(wsServer?.clients ?? [])].map(
     (client) =>
       new Promise<void>((done) => {
         client.once('close', () => done());
         client.close(1001, 'Server shutting down');
       }),
   );
-  void Promise.all(closing).then(() => {
-    server.close(() => {
-      // Suppression summaries use the application pool, so give their
-      // bounded flush a chance to become immutable before closing database
-      // resources. The outer ten-second backstop still caps total shutdown.
-      void Promise.all([
-        invitationDeliveryWorker?.stop(),
-        flushDeniedAuditSummaries(),
-      ])
-        .catch(() => undefined)
-        .then(() => Promise.all([pool?.end(), maintenancePool?.end()]))
-        .catch(() => logOperational('STUDIO_SHUTDOWN_FAILED'))
-        .finally(() => {
-          process.exit(0);
-        });
-    });
-    return undefined;
-  });
+  wsServer?.close();
+  void (async () => {
+    let exitCode = 0;
+    try {
+      await Promise.all([httpClosed, workerStopped, ...closing]);
+      // Requests may append suppression summaries until HTTP has drained.
+      // Keep the application pool open until that final bounded flush ends.
+      if (!(await flushDeniedAuditSummaries()))
+        throw new Error('Audit summaries did not flush.');
+    } catch {
+      logOperational('STUDIO_SHUTDOWN_FAILED');
+      exitCode = 1;
+    } finally {
+      webLease?.stop();
+      const ended = await Promise.allSettled([
+        pool?.end(),
+        maintenancePool?.end(),
+      ]);
+      if (ended.some((result) => result.status === 'rejected')) {
+        logOperational('STUDIO_SHUTDOWN_FAILED');
+        exitCode = 1;
+      }
+      process.exit(exitCode);
+    }
+  })();
 }
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);

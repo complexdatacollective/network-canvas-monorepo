@@ -134,6 +134,7 @@ async function rotateParticipant(
       throw new ProtectedDataError();
     },
   });
+  const rowKeyId = keys.currentId('pii-enc');
   const ciphertexts: (Buffer | null)[] = [];
   for (const column of PARTICIPANT_PII_COLUMNS) {
     const stored = row[column];
@@ -149,7 +150,7 @@ async function rotateParticipant(
     });
     try {
       ciphertexts.push(
-        protection.encryptParticipant(field, plaintext).envelope,
+        protection.encryptParticipant(field, plaintext, rowKeyId).envelope,
       );
     } finally {
       plaintext.fill(0);
@@ -168,13 +169,7 @@ async function rotateParticipant(
     // byte unchanged. Ciphertext rotation never invalidates suppression.
     await client.query(
       'UPDATE participants SET email_ciphertext = $3, phone_ciphertext = $4, name_ciphertext = $5, attributes_ciphertext = $6, pii_key_id = $7, pii_algorithm = $8 WHERE id = $1 AND team_id = $2',
-      [
-        row.id,
-        row.team_id,
-        ...ciphertexts,
-        keys.currentId('pii-enc'),
-        'aes-256-gcm.v1',
-      ],
+      [row.id, row.team_id, ...ciphertexts, rowKeyId, 'aes-256-gcm.v1'],
     );
     return {
       result: undefined,

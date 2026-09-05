@@ -56,6 +56,13 @@ export type VariableDoc = {
 };
 
 export const CATALOGUE: Record<VariableName, VariableDoc> = {
+  STUDIO_ROLE: {
+    group: 'Process',
+    summary: 'Run web requests, durable workers, or both from the same image.',
+    deployment:
+      'Unset ⇒ both. worker exposes only liveness, readiness and protected metrics. Run exactly one web or both process per database; additional worker replicas coordinate through database leases.',
+    example: 'both',
+  },
   STUDIO_ENCRYPTION_KEYSET: {
     group: 'Database',
     summary:

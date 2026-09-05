@@ -114,7 +114,7 @@ export function sealOAuthFields(
         {
           kind: 'oauth',
           userId: identity.userId,
-          accountId: identity.id,
+          accountRowId: identity.id,
           column: spec.field,
         },
         Buffer.from(value),
@@ -163,7 +163,7 @@ export async function readOAuthFields<T>(
     const target: IntegrationField = {
       kind: 'oauth',
       userId: bound.userId,
-      accountId: bound.id,
+      accountRowId: bound.id,
       column: spec.field,
     };
     const protection = createDataProtection(keys, {

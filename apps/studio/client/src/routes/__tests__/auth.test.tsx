@@ -940,17 +940,16 @@ describe('self-hosted first-run setup', () => {
     expect(rpcClient.setup.complete).not.toHaveBeenCalled();
   });
 
-  it('submits once, removes secret controls, and focuses the durable completion confirmation', async () => {
+  it('submits once, removes setup secrets, and moves to sign-in', async () => {
     ready();
-    vi.mocked(rpcClient.setup.complete).mockResolvedValue({
-      state: 'complete',
+    vi.mocked(rpcClient.setup.complete).mockImplementation(async () => {
+      currentSetup = { state: 'complete' };
+      return { state: 'complete' };
     });
-    renderAt('/setup');
+    const router = renderAt('/setup');
     await fillSetup();
     fireEvent.click(screen.getByRole('button', { name: 'Create instance' }));
-    const confirmation = await screen.findByText(
-      'Setup is complete. Sign in to continue.',
-    );
+    await screen.findByRole('heading', { name: 'Sign in' });
     expect(rpcClient.setup.complete).toHaveBeenCalledExactlyOnceWith({
       token: validToken,
       instanceName: 'Field research',
@@ -958,13 +957,17 @@ describe('self-hosted first-run setup', () => {
       ownerEmail: 'owner@example.com',
       ownerPassword: 'test-only setup password',
     });
-    await waitFor(() => expect(confirmation).toHaveFocus());
+    expect(router.state.location.pathname).toBe('/sign-in');
     expect(screen.queryByLabelText(/^Setup token/)).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'Create instance' }),
+    ).toBeNull();
     expect(screen.queryByLabelText(/^Password/)).toBeNull();
-    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute(
-      'href',
-      '/sign-in',
-    );
+    await act(() => router.navigate({ to: '/setup' }));
+    expect(
+      await screen.findByRole('heading', { name: 'Page not found' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText(/^Setup token/)).toBeNull();
   });
 
   it('keeps an invalid token error on its field and lets the operator correct and retry it', async () => {
@@ -989,7 +992,7 @@ describe('self-hosted first-run setup', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Create instance' }));
     expect(
-      await screen.findByText('Setup is complete. Sign in to continue.'),
+      await screen.findByRole('heading', { name: 'Sign in' }),
     ).toBeInTheDocument();
     expect(rpcClient.setup.complete).toHaveBeenCalledTimes(2);
   });
@@ -1030,7 +1033,7 @@ describe('self-hosted first-run setup', () => {
     expect(screen.queryByText('internal secret detail')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Create instance' }));
     expect(
-      await screen.findByText('Setup is complete. Sign in to continue.'),
+      await screen.findByRole('heading', { name: 'Sign in' }),
     ).toBeInTheDocument();
     expect(rpcClient.setup.complete).toHaveBeenCalledTimes(2);
   });
@@ -1044,6 +1047,17 @@ describe('self-hosted first-run setup', () => {
       screen.queryByRole('button', { name: 'Create instance' }),
     ).toBeNull();
     expect(setupReads).toBe(0);
+  });
+
+  it('renders not found when a completed self-hosted instance is reopened', async () => {
+    ready();
+    currentSetup = { state: 'complete' };
+    renderAt('/setup');
+    expect(
+      await screen.findByRole('heading', { name: 'Page not found' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText(/^Setup token/)).toBeNull();
+    expect(rpcClient.setup.complete).not.toHaveBeenCalled();
   });
 
   it('lets an existing development owner sign in when first-run setup is unavailable', async () => {

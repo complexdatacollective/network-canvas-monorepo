@@ -1,7 +1,7 @@
 import { ORPCError } from '@orpc/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
-import { useEffect, useRef } from 'react';
+import { Link, useNavigate } from '@tanstack/react-router';
+import { useEffect, useState } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -55,12 +55,6 @@ const messages = defineMessages({
       'First-run setup is unavailable. If you already have an account, sign in. Otherwise, contact the person configuring this server.',
     description:
       'Shown when the server has existing accounts or is not configured for first-run setup.',
-  },
-  complete: {
-    id: 'studio.setup.complete',
-    defaultMessage: 'Setup is complete. Sign in to continue.',
-    description:
-      'Confirmation after setup, also shown when reopening the completed setup page.',
   },
   signIn: {
     id: 'studio.setup.signIn',
@@ -166,20 +160,26 @@ export default function Setup() {
   const intl = useAppIntl();
   const queryClient = useQueryClient();
   const status = useQuery(orpc.setup.status.queryOptions({ retry: false }));
-  const completion = useRef<HTMLParagraphElement>(null);
+  const navigate = useNavigate();
+  const [submitted, setSubmitted] = useState(false);
   const complete = status.data?.state === 'complete';
   useEffect(() => {
-    if (complete) completion.current?.focus();
-  }, [complete]);
-  const recordComplete = () =>
+    if (submitted) void navigate({ to: '/sign-in', replace: true });
+  }, [submitted, navigate]);
+  const recordComplete = () => {
+    setSubmitted(true);
     queryClient.setQueryData(orpc.setup.status.queryOptions().queryKey, {
       state: 'complete',
     });
+  };
   const namePattern = {
     regex: '\\S',
     hint: intl.formatMessage(messages.nameHint),
     errorMessage: intl.formatMessage(messages.nameInvalid),
   };
+
+  if (complete && !submitted) return <SetupNotFound />;
+  if (submitted) return null;
 
   return (
     <main
@@ -205,17 +205,12 @@ export default function Setup() {
             </Button>
           </>
         )}
-        {complete && (
-          <Paragraph ref={completion} role="status" tabIndex={-1}>
-            {intl.formatMessage(messages.complete)}
-          </Paragraph>
-        )}
         {status.data?.state === 'unavailable' && (
           <Paragraph role="status">
             {intl.formatMessage(messages.unavailable)}
           </Paragraph>
         )}
-        {(complete || status.data?.state === 'unavailable') && (
+        {status.data?.state === 'unavailable' && (
           <Link
             to="/sign-in"
             className="focusable text-primary underline underline-offset-4"

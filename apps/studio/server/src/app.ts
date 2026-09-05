@@ -1,6 +1,6 @@
 import { upgradeWebSocket } from '@hono/node-server';
 import { RPCHandler } from '@orpc/server/fetch';
-import { type Context, Hono } from 'hono';
+import type { Context } from 'hono';
 import type pg from 'pg';
 
 import { SOCIAL_PROVIDERS } from '@codaco/studio-rpc';
@@ -16,7 +16,6 @@ import { createAuthService } from './auth/create.ts';
 import { requireSameOrigin, requireWsOrigin } from './auth/csrf.ts';
 import {
   createPrincipalMiddleware,
-  type PrincipalVariables,
   requirePrincipal,
 } from './auth/principal.ts';
 import type { AuthService } from './auth/service.ts';
@@ -27,11 +26,8 @@ import {
   logOperational,
   type OperationalLogger,
 } from './observability/logger.ts';
-import { observeRequests } from './observability/requests.ts';
-import {
-  authorizeMetrics,
-  createObservability,
-} from './observability/runtime.ts';
+import { createOperationalApp } from './observability/operational-app.ts';
+import { createObservability } from './observability/runtime.ts';
 import type { EncryptionKeys } from './pii/keys.ts';
 import { createRpcRouter } from './rpc.ts';
 
@@ -59,36 +55,19 @@ type CreateAppDeps = {
   assetStore?: AssetStore;
   observability?: ReturnType<typeof createObservability>;
   logger?: OperationalLogger;
-  /** True only for an entrypoint that starts a supported outbox dispatcher. */
+  /** A supported dispatcher is configured, locally or in a separate worker. */
   invitationDeliveryAvailable?: boolean;
   pool?: pg.Pool;
 };
 
 export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
-  const app = new Hono<PrincipalVariables>();
-
-  // Unexpected failures on the machine surfaces (e.g. the database down
-  // during a session lookup) must still leave as problem JSON, not Hono's
-  // text/plain default.
-  app.onError((_error, c) => {
-    return c.json({ title: 'Internal Server Error', status: 500 }, 500, {
-      'Content-Type': 'application/problem+json',
-    });
-  });
   const pool = deps.pool ?? (env.db ? createPool(env.db) : undefined);
   const auth = deps.auth ?? createAuthService(env, pool, deps.encryptionKeys);
   const assetStore =
     deps.assetStore ?? (env.s3 ? createAssetStore(env.s3) : undefined);
   const observability =
     deps.observability ?? createObservability({ pool, assetStore });
-  app.use(
-    '*',
-    observeRequests({
-      trustedProxies: env.trustedProxies,
-      logger: deps.logger,
-      record: observability.metrics.request,
-    }),
-  );
+  const app = createOperationalApp(env, observability, deps.logger);
   const enabled = Boolean(env.db && env.auth);
   const authCaps: AuthCapabilities = {
     enabled,
@@ -106,25 +85,6 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
   // Which topology this deployment is. The client reads it from `status`;
   // src/client-assets.ts enforces the same classification at the HTTP layer.
   const deployment = getDeploymentStatus(env.deploymentMode);
-
-  app.get('/healthz', (c) => c.json({ status: 'ok' }));
-  app.get('/readyz', async (c) => {
-    const readiness = await observability.readiness.check();
-    return c.json(readiness, readiness.status === 'ready' ? 200 : 503, {
-      'Cache-Control': 'no-store',
-    });
-  });
-  app.get('/metrics', async (c) => {
-    c.header('Cache-Control', 'no-store');
-    if (!env.metricsToken)
-      return c.json({ title: 'Not Found', status: 404 }, 404);
-    if (!authorizeMetrics(c.req.header('authorization'), env.metricsToken))
-      return c.json({ title: 'Unauthorized', status: 401 }, 401, {
-        'WWW-Authenticate': 'Bearer',
-      });
-    const metrics = await observability.metrics.scrape();
-    return c.body(metrics.body, 200, { 'Content-Type': metrics.contentType });
-  });
 
   // Registered before the problem-JSON catch-alls below, which would
   // otherwise swallow the /api prefix.

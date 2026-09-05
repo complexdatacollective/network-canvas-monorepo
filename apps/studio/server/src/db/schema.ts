@@ -33,7 +33,10 @@ import {
 import { TEMPLATE_SIDECAR_SQL, TEMPLATE_TABLES } from '../template/schema.ts';
 import { TOKEN_SIDECAR_SQL, TOKEN_TABLES } from '../token/schema.ts';
 import { WEBHOOK_SIDECAR_SQL, WEBHOOK_TABLES } from '../webhook/schema.ts';
-import { ACCESS_SIDECAR_SQL } from './access.ts';
+import {
+  ACCESS_SIDECAR_SQL,
+  FINGERPRINT_ACCESS_SIDECAR_SQL,
+} from './access.ts';
 import { AUTH_TABLES } from './auth-schema.ts';
 import { SCHEMA_FINGERPRINT } from './fingerprint.generated.ts';
 
@@ -85,6 +88,7 @@ export const SCHEMA = {
 export const SIDECARS = [
   SYNC_SIDECAR_SQL,
   ACCESS_SIDECAR_SQL,
+  FINGERPRINT_ACCESS_SIDECAR_SQL,
   PROTOCOL_SIDECAR_SQL,
   ASSET_SIDECAR_SQL,
   STUDY_SIDECAR_SQL,

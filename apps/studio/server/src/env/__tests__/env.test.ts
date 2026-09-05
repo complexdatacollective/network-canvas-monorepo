@@ -47,6 +47,17 @@ describe('bootstrap configuration', () => {
 });
 
 describe('operational configuration', () => {
+  it('defaults to one combined process and accepts only explicit runtime roles', () => {
+    vi.stubEnv('STUDIO_ROLE', '');
+    expect(readEnv().role).toBe('both');
+    for (const role of ['web', 'worker', 'both']) {
+      vi.stubEnv('STUDIO_ROLE', role);
+      expect(readEnv().role).toBe(role);
+    }
+    vi.stubEnv('STUDIO_ROLE', 'background');
+    expect(() => readEnv()).toThrow('Invalid environment variables');
+  });
+
   it('keeps metrics off until a separate credential is configured', () => {
     vi.stubEnv('STUDIO_METRICS_TOKEN', '');
     expect(readEnv().metricsToken).toBeUndefined();
