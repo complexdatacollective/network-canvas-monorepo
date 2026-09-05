@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react';
+import { useMemo, useState, type FocusEvent, type ReactNode } from 'react';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
@@ -70,6 +70,45 @@ type NumericValueFieldProps = CreateFormFieldProps<
   { size?: 'sm' | 'md' | 'lg' | 'xl' }
 >;
 
+/** The text the researcher has entered, and the number it was read as. */
+type NumericDraft = Readonly<{ text: string; value: number | undefined }>;
+
+/**
+ * The text a numeric operand control shows, and what typing into it does.
+ *
+ * The text a number is BUILT from is not the text that number reads back as:
+ * `1.0` is the number 1 and `-0` is the number 0, so a control rendered from
+ * the parsed number rewrites the input under the researcher's cursor. The
+ * decimal point was taken back out of `1.0` before the last digit of `1.05`
+ * arrived — which saved 15 — and the minus sign of `-0` disappeared as soon as
+ * the first digit followed it.
+ *
+ * So the researcher's own text is what is shown while they are typing, and the
+ * NUMBER is what is committed. The draft is kept only while it still stands
+ * for the value the form holds: an operand emptied by the cascade, or set
+ * anywhere else in the editor, replaces it rather than being overwritten by
+ * text the rule no longer has. Leaving the field drops the draft, so the field
+ * settles on the number it stored rather than going on showing text the form
+ * is not holding.
+ */
+const useNumericDraft = (
+  value: number | undefined,
+  /** Stores the number this text means, and answers with what it stored. */
+  commit: (value: number | undefined) => number | undefined,
+) => {
+  const [draft, setDraft] = useState<NumericDraft | undefined>(undefined);
+  return {
+    text:
+      draft !== undefined && draft.value === value
+        ? draft.text
+        : formatNumber(value),
+    change: (next: string | undefined) => {
+      setDraft({ text: next ?? '', value: commit(parseNumber(next)) });
+    },
+    settle: () => setDraft(undefined),
+  };
+};
+
 /**
  * `InputField` is string-valued — it emits `event.target.value` verbatim, even
  * for `type="number"` — while a rule's numeric operand has to round-trip as a
@@ -78,16 +117,28 @@ type NumericValueFieldProps = CreateFormFieldProps<
 const DecimalValueField = ({
   value,
   onChange,
+  onBlur,
   ...props
-}: NumericValueFieldProps) => (
-  <InputField
-    {...props}
-    type="number"
-    step="any"
-    value={formatNumber(value)}
-    onChange={(next) => onChange?.(parseNumber(next))}
-  />
-);
+}: NumericValueFieldProps) => {
+  const draft = useNumericDraft(value, (next) => {
+    onChange?.(next);
+    return next;
+  });
+
+  return (
+    <InputField
+      {...props}
+      type="number"
+      step="any"
+      value={draft.text}
+      onChange={draft.change}
+      onBlur={(event: FocusEvent) => {
+        draft.settle();
+        onBlur?.(event);
+      }}
+    />
+  );
+};
 
 /**
  * A whole number, never a fraction: a value that is not one is not committed,
@@ -103,21 +154,30 @@ const DecimalValueField = ({
 const WholeNumberValueField = ({
   value,
   onChange,
+  onBlur,
   ...props
-}: NumericValueFieldProps) => (
-  <InputField
-    {...props}
-    type="number"
-    step={1}
-    value={formatNumber(value)}
-    onChange={(next) => {
-      const parsed = parseNumber(next);
-      onChange?.(
-        parsed !== undefined && Number.isInteger(parsed) ? parsed : undefined,
-      );
-    }}
-  />
-);
+}: NumericValueFieldProps) => {
+  const draft = useNumericDraft(value, (next) => {
+    const whole =
+      next !== undefined && Number.isInteger(next) ? next : undefined;
+    onChange?.(whole);
+    return whole;
+  });
+
+  return (
+    <InputField
+      {...props}
+      type="number"
+      step={1}
+      value={draft.text}
+      onChange={draft.change}
+      onBlur={(event: FocusEvent) => {
+        draft.settle();
+        onBlur?.(event);
+      }}
+    />
+  );
+};
 
 type RuleValueFieldProps = Readonly<{
   label: string;
