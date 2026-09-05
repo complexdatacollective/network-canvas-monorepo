@@ -485,6 +485,32 @@ describe('rules the codebook can no longer account for', () => {
       ),
     ).toBeInTheDocument();
   });
+
+  it('reports an operator a rule about presence cannot use', () => {
+    renderEditor(
+      createSession({
+        rules: [
+          {
+            id: 'rule-a',
+            type: 'node',
+            // No attribute, so the only operators the schema allows are the
+            // two that ask whether the type is there. An imported or
+            // hand-edited protocol can hold this, and nothing else marks it
+            // before the whole stage is saved.
+            options: { type: 'person', operator: 'EXACTLY', value: 3 },
+          },
+        ],
+      }),
+    );
+
+    expect(
+      screen.getByText(
+        'This rule asks whether an entity type is present, but uses an operator that cannot ask that. Edit or delete the rule.',
+      ),
+    ).toBeInTheDocument();
+    // The rule still reads, so the researcher can see which one to fix.
+    expect(ruleRowSentence()).toBe('Person exactly 3');
+  });
 });
 
 describe('a codebook that changes underneath the editor', () => {

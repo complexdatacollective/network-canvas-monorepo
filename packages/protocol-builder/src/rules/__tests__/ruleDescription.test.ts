@@ -335,6 +335,79 @@ describe('describeRule', () => {
     });
   });
 
+  describe('an operator a rule about presence cannot use', () => {
+    it('reports one the schema would reject', () => {
+      const description = describeRule({
+        rule: {
+          id: 'rule-21',
+          type: 'node',
+          // A rule with no attribute asks only whether the type is there, and
+          // the schema's type-level set is EXISTS/NOT_EXISTS. A hand-edited or
+          // imported protocol can hold this, and the row is where the
+          // researcher has to be able to see it.
+          options: { type: 'person', operator: 'EXACTLY', value: 3 },
+        },
+        codebook,
+      });
+
+      expect(description.problems).toContainEqual({
+        code: 'invalidOperator',
+        message:
+          'This rule asks whether an entity type is present, but uses an operator that cannot ask that. Edit or delete the rule.',
+      });
+    });
+
+    it('says nothing about a presence operator', () => {
+      const description = describeRule({
+        rule: {
+          id: 'rule-22',
+          type: 'node',
+          options: { type: 'person', operator: 'NOT_EXISTS' },
+        },
+        codebook,
+      });
+
+      expect(description.problems).toEqual([]);
+    });
+
+    it('leaves an attribute rule to the attribute-type check', () => {
+      const description = describeRule({
+        rule: {
+          id: 'rule-23',
+          type: 'node',
+          // The same operator, against an attribute that allows it. A presence
+          // check that reached this rule would refuse a rule that is correct.
+          options: {
+            type: 'person',
+            attribute: 'age',
+            operator: 'EXACTLY',
+            value: 3,
+          },
+        },
+        codebook,
+      });
+
+      expect(description.problems).toEqual([]);
+    });
+
+    it('says nothing more about a rule whose target it cannot read', () => {
+      const description = describeRule({
+        rule: {
+          id: 'rule-24',
+          type: 'chimera',
+          options: { type: 'person', operator: 'EXACTLY', value: 3 },
+        },
+        codebook,
+      });
+
+      // Which operators are legal depends on what the rule is about, and this
+      // rule does not say. The unreadable target is already reported.
+      expect(description.problems.map((problem) => problem.code)).not.toContain(
+        'invalidOperator',
+      );
+    });
+  });
+
   describe('references the codebook can no longer account for', () => {
     it('reports a deleted attribute rather than throwing', () => {
       const description = describeRule({

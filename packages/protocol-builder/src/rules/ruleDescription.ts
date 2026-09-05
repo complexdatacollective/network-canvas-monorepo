@@ -425,6 +425,25 @@ export function describeRule({
     });
   }
 
+  // The same question, asked of a rule that names no attribute at all. Its
+  // operator IS the whole predicate, so the only ones the schema allows are
+  // the two that ask whether the type is there — anything else is a
+  // comparison against nothing, and the row is where the researcher has to see
+  // it. Asked only once the target is readable: which operators are legal
+  // depends on what the rule is about, and a rule that does not say is already
+  // reported for that.
+  if (
+    isPresenceRule &&
+    target !== undefined &&
+    operatorId !== undefined &&
+    !isPresenceOperator(operatorId)
+  ) {
+    problems.push({
+      code: 'invalidOperator',
+      message: INVALID_PRESENCE_OPERATOR_MESSAGE,
+    });
+  }
+
   // The same retype seen from the other side. An operator can outlive a change
   // of attribute type where the operand it was entered for cannot — `EXACTLY`
   // is legal for a number and for a multi-select alike, but one answers with a
@@ -610,6 +629,8 @@ const MISSING_ATTRIBUTE_MESSAGE =
   'This rule refers to an attribute that is no longer in the codebook. Edit or delete the rule.';
 const INVALID_OPERATOR_MESSAGE =
   'This rule uses an operator that is not valid for its attribute type. Edit or delete the rule.';
+const INVALID_PRESENCE_OPERATOR_MESSAGE =
+  'This rule asks whether an entity type is present, but uses an operator that cannot ask that. Edit or delete the rule.';
 const INVALID_OPERAND_MESSAGE =
   'This rule compares its attribute against a value of the wrong kind for the attribute’s type. Edit or delete the rule.';
 const MISSING_OPTION_MESSAGE =
