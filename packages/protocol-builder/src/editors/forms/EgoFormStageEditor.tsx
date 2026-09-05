@@ -6,7 +6,7 @@ import IntroductionSection from '../../sections/IntroductionSection.tsx';
 import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
 import StageNameSection from '../../sections/StageNameSection.tsx';
 import type { StageEditorProps } from '../../stage-editor-contract.ts';
-import { saveStageAction } from './saveStageAction.tsx';
+import { saveStageAction } from '../saveStageAction.tsx';
 
 /**
  * A form the participant fills in about themselves.

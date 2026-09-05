@@ -1,7 +1,5 @@
 import type { ReactNode } from 'react';
 
-import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
-
 import type { StageEditorController } from '../../controller.ts';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import StageEditorShell from '../../form/StageEditorShell.tsx';
@@ -10,10 +8,8 @@ import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
 import StageNameSection, {
   type StageNameSectionProps,
 } from '../../sections/StageNameSection.tsx';
-import type {
-  StageEditorActionContext,
-  StageEditorActions,
-} from '../../stage-editor-contract.ts';
+import type { StageEditorActions } from '../../stage-editor-contract.ts';
+import { saveStageAction } from '../saveStageAction.tsx';
 import { usePanelsForAutoName } from './usePanelsForAutoName.ts';
 
 export type NameGeneratorFrameProps = Readonly<{
@@ -33,7 +29,8 @@ export type NameGeneratorFrameProps = Readonly<{
   /**
    * The host's action chrome, forwarded from whichever editor mounted the
    * frame. Left out — by a host that renders none, and by the package's own
-   * tests and stories — the frame supplies the save control below.
+   * tests and stories — the shared `saveStageAction` fills the slot, the same
+   * one the form family falls back to.
    */
   actions?: StageEditorActions;
   /**
@@ -65,7 +62,10 @@ export default function NameGeneratorFrame({
   children,
 }: NameGeneratorFrameProps) {
   return (
-    <StageEditorShell controller={controller} actions={actions ?? saveStage}>
+    <StageEditorShell
+      controller={controller}
+      actions={actions ?? saveStageAction}
+    >
       {/*
         Two headings rather than one that reads the panels conditionally: which
         of them an interface gets is fixed for the life of the editor, and a
@@ -82,22 +82,6 @@ export default function NameGeneratorFrame({
     </StageEditorShell>
   );
 }
-
-/**
- * The frame's own save control, for a mount that was given no chrome.
- *
- * Deliberately not disabled while the session is read-only. Every control
- * above it already is, and a spectator who presses this is asking a question —
- * the shell answers it with the reason the stage cannot be saved and what to do
- * about it, which a disabled button says to nobody. It is also the only honest
- * state: access can be taken away between the render that read it and the
- * submit itself.
- */
-const saveStage = ({ formId }: StageEditorActionContext) => (
-  <div className="flex justify-end">
-    <SubmitButton form={formId}>Save stage</SubmitButton>
-  </div>
-);
 
 /**
  * The heading of a stage whose side panels qualify its proposed name.

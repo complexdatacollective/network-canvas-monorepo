@@ -185,15 +185,16 @@ describe('the editor for a page of content', () => {
 
     harness.setReadOnly();
 
-    const save = await screen.findByRole('button', { name: 'Save stage' });
-    await waitFor(() => expect(save).toBeDisabled());
-    expect(
-      screen.getByRole('textbox', { name: 'Page heading' }),
-    ).toBeDisabled();
+    await waitFor(() =>
+      expect(
+        screen.getByRole('textbox', { name: 'Page heading' }),
+      ).toBeDisabled(),
+    );
 
-    // A disabled button is chrome, not the guarantee. Submitting the form
-    // itself is what a keyboard, a stale render, or another host's own button
-    // can still do.
+    // The shell's refusal is the guarantee, not the chrome above it: a
+    // keyboard, a stale render, or another host's own button can all still
+    // submit the form. See `fallbackSaveControl.test.tsx` for why the save
+    // control this editor falls back to stays pressable.
     const form = harness.baseElement.querySelector('form');
     if (form === null) throw new Error('the editor rendered no form');
     fireEvent.submit(form);

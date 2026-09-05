@@ -11,7 +11,7 @@ import PageContentSection from '../../sections/PageContentSection.tsx';
 import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
 import StageNameSection from '../../sections/StageNameSection.tsx';
 import type { StageEditorProps } from '../../stage-editor-contract.ts';
-import { saveStageAction } from './saveStageAction.tsx';
+import { saveStageAction } from '../saveStageAction.tsx';
 
 /**
  * A page the participant reads, rather than a task they do.
