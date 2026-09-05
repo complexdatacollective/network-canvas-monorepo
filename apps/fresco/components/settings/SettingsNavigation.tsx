@@ -1,8 +1,19 @@
 'use client';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
+
+const messages = defineMessages({
+  onThisPage: {
+    id: 'fresco.settings.SettingsNavigation.onThisPage',
+    defaultMessage: 'On this page',
+    description:
+      'Researcher-facing settings / SettingsNavigation: On this page',
+  },
+});
 
 export type SettingsSection = {
   id: string;
@@ -32,6 +43,8 @@ export default function SettingsNavigation({
   sections,
   className,
 }: SettingsNavigationProps) {
+  const intl = useAppIntl();
+
   return (
     <Surface
       as="nav"
@@ -44,7 +57,7 @@ export default function SettingsNavigation({
     >
       {/* margin="none" applies m-0! (important), so spacing must use padding */}
       <Heading level="h4" variant="all-caps" margin="none" className="pb-3">
-        On this page
+        {intl.formatMessage(messages.onThisPage)}
       </Heading>
       <ul className="space-y-0.5">
         {sections.map((section) => (

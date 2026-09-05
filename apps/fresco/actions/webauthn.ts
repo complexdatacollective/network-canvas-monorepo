@@ -13,7 +13,17 @@ import {
 } from '@simplewebauthn/server';
 import { cookies } from 'next/headers';
 
+import {
+  createAppIntl,
+  createMessageError,
+  defineMessages,
+} from '@codaco/app-i18n/messages';
 import { env } from '~/env';
+import { isFrescoLocale } from '~/i18n/locales';
+import {
+  formatPasskeyName,
+  getPasskeyActivityValues,
+} from '~/i18n/passkeyNames';
 import { addEvent } from '~/lib/activityFeed';
 import { requireApiAuth } from '~/lib/auth/guards';
 import { createSessionCookie } from '~/lib/auth/session';
@@ -27,10 +37,107 @@ import { safeUpdateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
 import { checkRateLimit, recordLoginAttempt } from '~/lib/rateLimit';
 import { isAppConfigured } from '~/queries/appSettings';
-import { strongPasswordSchema } from '~/schemas/users';
+import { createUsersSchemas } from '~/schemas/users';
 import { getClientIp } from '~/utils/getClientIp';
-import { STRONG_PASSWORD_MESSAGE } from '~/utils/isStrongPassword';
+import { passwordMessages } from '~/utils/isStrongPassword';
 import { hashPassword, verifyPassword } from '~/utils/password';
+
+// Original audit prose stays in English; structured values localize at display time.
+const auditIntl = createAppIntl({ locale: 'en' });
+
+const messages = defineMessages({
+  copyChallengeExpiredPleaseTryAgain: {
+    id: 'fresco.actions.webauthn.copyChallengeExpiredPleaseTryAgain',
+    defaultMessage: 'Challenge expired. Please try again.',
+    description:
+      'Researcher-facing actions / webauthn: Challenge expired. Please try again.',
+  },
+  copyRegistrationVerificationFailed2: {
+    id: 'fresco.actions.webauthn.copyRegistrationVerificationFailed2',
+    defaultMessage: 'Registration verification failed.',
+    description:
+      'Researcher-facing actions / webauthn: Registration verification failed.',
+  },
+  copySetupIsAlreadyComplete: {
+    id: 'fresco.actions.webauthn.copySetupIsAlreadyComplete',
+    defaultMessage: 'Setup is already complete.',
+    description:
+      'Researcher-facing actions / webauthn: Setup is already complete.',
+  },
+  copyUsernameMustBeAtLeast4Characters: {
+    id: 'fresco.actions.webauthn.copyUsernameMustBeAtLeast4Characters',
+    defaultMessage: 'Username must be at least 4 characters.',
+    description:
+      'Researcher-facing actions / webauthn: Username must be at least 4 characters.',
+  },
+  copyUsernameAlreadyTaken: {
+    id: 'fresco.actions.webauthn.copyUsernameAlreadyTaken',
+    defaultMessage: 'Username already taken.',
+    description:
+      'Researcher-facing actions / webauthn: Username already taken.',
+  },
+  copyPasskeyNotRecognized: {
+    id: 'fresco.actions.webauthn.copyPasskeyNotRecognized',
+    defaultMessage: 'Passkey not recognized.',
+    description:
+      'Researcher-facing actions / webauthn: Passkey not recognized.',
+  },
+  copyVerificationFailed: {
+    id: 'fresco.actions.webauthn.copyVerificationFailed',
+    defaultMessage: 'Verification failed.',
+    description: 'Researcher-facing actions / webauthn: Verification failed.',
+  },
+  copyTooManyAttemptsPleaseTryAgainLater: {
+    id: 'fresco.actions.webauthn.copyTooManyAttemptsPleaseTryAgainLater',
+    defaultMessage: 'Too many attempts. Please try again later.',
+    description:
+      'Researcher-facing actions / webauthn: Too many attempts. Please try again later.',
+  },
+  copyAuthenticationFailed: {
+    id: 'fresco.actions.webauthn.copyAuthenticationFailed',
+    defaultMessage: 'Authentication failed.',
+    description: 'Researcher-facing actions / webauthn: Authentication failed.',
+  },
+  copyPasskeyNotFound: {
+    id: 'fresco.actions.webauthn.copyPasskeyNotFound',
+    defaultMessage: 'Passkey not found.',
+    description: 'Researcher-facing actions / webauthn: Passkey not found.',
+  },
+  copyCannotRemoveYourOnlyPasskeyWithoutA: {
+    id: 'fresco.actions.webauthn.copyCannotRemoveYourOnlyPasskeyWithoutA',
+    defaultMessage: 'Cannot remove your only passkey without a password set.',
+    description:
+      'Researcher-facing actions / webauthn: Cannot remove your only passkey without a password set.',
+  },
+  copyCannotResetYourOwnAuthentication: {
+    id: 'fresco.actions.webauthn.copyCannotResetYourOwnAuthentication',
+    defaultMessage: 'Cannot reset your own authentication.',
+    description:
+      'Researcher-facing actions / webauthn: Cannot reset your own authentication.',
+  },
+  copyUserNotFound: {
+    id: 'fresco.actions.webauthn.copyUserNotFound',
+    defaultMessage: 'User not found.',
+    description: 'Researcher-facing actions / webauthn: User not found.',
+  },
+  copyAccountIsAlreadyInPasskeyMode: {
+    id: 'fresco.actions.webauthn.copyAccountIsAlreadyInPasskeyMode',
+    defaultMessage: 'Account is already in passkey mode.',
+    description:
+      'Researcher-facing actions / webauthn: Account is already in passkey mode.',
+  },
+  copyIncorrectPassword: {
+    id: 'fresco.actions.webauthn.copyIncorrectPassword',
+    defaultMessage: 'Incorrect password.',
+    description: 'Researcher-facing actions / webauthn: Incorrect password.',
+  },
+  copyAccountIsAlreadyInPasswordMode: {
+    id: 'fresco.actions.webauthn.copyAccountIsAlreadyInPasswordMode',
+    defaultMessage: 'Account is already in password mode.',
+    description:
+      'Researcher-facing actions / webauthn: Account is already in password mode.',
+  },
+});
 
 const CHALLENGE_COOKIE_NAME = 'webauthn_challenge';
 
@@ -100,7 +207,10 @@ export async function verifyRegistration(data: {
 
   const challenge = await getAndClearChallengeCookie();
   if (!challenge) {
-    return { error: 'Challenge expired. Please try again.', data: null };
+    return {
+      error: createMessageError(messages.copyChallengeExpiredPleaseTryAgain),
+      data: null,
+    };
   }
 
   let verification;
@@ -113,23 +223,26 @@ export async function verifyRegistration(data: {
       requireUserVerification: config.requireUserVerification,
     });
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unknown error';
     // eslint-disable-next-line no-console
-    console.error('[WebAuthn] Registration verification error:', message);
+    console.error('[WebAuthn] Registration verification error:', e);
     return {
-      error: `Registration verification failed: ${message}`,
+      error: createMessageError(messages.copyRegistrationVerificationFailed2),
       data: null,
     };
   }
 
   if (!verification.verified || !verification.registrationInfo) {
-    return { error: 'Registration verification failed.', data: null };
+    return {
+      error: createMessageError(messages.copyRegistrationVerificationFailed2),
+      data: null,
+    };
   }
 
   const { credential, credentialDeviceType, credentialBackedUp, aaguid } =
     verification.registrationInfo;
 
-  const friendlyName = getAuthenticatorName(aaguid, credentialDeviceType);
+  const friendlyName = getAuthenticatorName(aaguid);
+  const passkeyName = { friendlyName, deviceType: credentialDeviceType };
 
   const newCredential = await prisma.webAuthnCredential.create({
     data: {
@@ -147,7 +260,14 @@ export async function verifyRegistration(data: {
 
   void addEvent(
     'Passkey Registered',
-    `User ${session.user.username} registered a passkey (${friendlyName})`,
+    `User ${session.user.username} registered a passkey (${formatPasskeyName(auditIntl, passkeyName)})`,
+    {
+      kind: 'passkeyRegistered',
+      values: {
+        username: session.user.username,
+        ...getPasskeyActivityValues(passkeyName),
+      },
+    },
   );
   safeUpdateTag('getUsers');
 
@@ -167,11 +287,17 @@ export async function verifyRegistration(data: {
 export async function generateSignupRegistrationOptions(username: string) {
   // Passkey account creation is also blocked once the app is configured.
   if (await isAppConfigured()) {
-    return { error: 'Setup is already complete.', data: null };
+    return {
+      error: createMessageError(messages.copySetupIsAlreadyComplete),
+      data: null,
+    };
   }
 
   if (!username || username.length < 4) {
-    return { error: 'Username must be at least 4 characters.', data: null };
+    return {
+      error: createMessageError(messages.copyUsernameMustBeAtLeast4Characters),
+      data: null,
+    };
   }
 
   const config = await getWebAuthnConfig();
@@ -192,22 +318,32 @@ export async function generateSignupRegistrationOptions(username: string) {
 export async function signupWithPasskey(data: {
   username: string;
   credential: RegistrationResponseJSON;
+  locale?: unknown;
 }) {
-  const { username, credential } = data;
+  const { username, credential, locale } = data;
 
   if (await isAppConfigured()) {
-    return { error: 'Setup is already complete.', data: null };
+    return {
+      error: createMessageError(messages.copySetupIsAlreadyComplete),
+      data: null,
+    };
   }
 
   if (!username || username.length < 4) {
-    return { error: 'Username must be at least 4 characters.', data: null };
+    return {
+      error: createMessageError(messages.copyUsernameMustBeAtLeast4Characters),
+      data: null,
+    };
   }
 
   const config = await getWebAuthnConfig();
 
   const challenge = await getAndClearChallengeCookie();
   if (!challenge) {
-    return { error: 'Challenge expired. Please try again.', data: null };
+    return {
+      error: createMessageError(messages.copyChallengeExpiredPleaseTryAgain),
+      data: null,
+    };
   }
 
   let verification;
@@ -220,11 +356,17 @@ export async function signupWithPasskey(data: {
       requireUserVerification: config.requireUserVerification,
     });
   } catch {
-    return { error: 'Registration verification failed.', data: null };
+    return {
+      error: createMessageError(messages.copyRegistrationVerificationFailed2),
+      data: null,
+    };
   }
 
   if (!verification.verified || !verification.registrationInfo) {
-    return { error: 'Registration verification failed.', data: null };
+    return {
+      error: createMessageError(messages.copyRegistrationVerificationFailed2),
+      data: null,
+    };
   }
 
   const {
@@ -234,13 +376,15 @@ export async function signupWithPasskey(data: {
     aaguid,
   } = verification.registrationInfo;
 
-  const friendlyName = getAuthenticatorName(aaguid, credentialDeviceType);
+  const friendlyName = getAuthenticatorName(aaguid);
+  const passkeyName = { friendlyName, deviceType: credentialDeviceType };
 
   let user;
   try {
     user = await prisma.user.create({
       data: {
         username,
+        locale: isFrescoLocale(locale) ? locale : null,
         key: {
           create: {
             id: `username:${username}`,
@@ -264,14 +408,21 @@ export async function signupWithPasskey(data: {
       },
     });
   } catch {
-    return { error: 'Username already taken.', data: null };
+    return {
+      error: createMessageError(messages.copyUsernameAlreadyTaken),
+      data: null,
+    };
   }
 
   await createSessionCookie(user.id);
 
   void addEvent(
     'User Created',
-    `User ${username} created an account with a passkey (${friendlyName})`,
+    `User ${username} created an account with a passkey (${formatPasskeyName(auditIntl, passkeyName)})`,
+    {
+      kind: 'accountCreatedWithPasskey',
+      values: { username, ...getPasskeyActivityValues(passkeyName) },
+    },
   );
 
   return { error: null, data: { success: true } };
@@ -287,7 +438,10 @@ export async function verifyPasskeyReauth(data: {
 
   const challenge = await getAndClearChallengeCookie();
   if (!challenge) {
-    return { error: 'Challenge expired. Please try again.', data: null };
+    return {
+      error: createMessageError(messages.copyChallengeExpiredPleaseTryAgain),
+      data: null,
+    };
   }
 
   const storedCredential = await prisma.webAuthnCredential.findUnique({
@@ -295,7 +449,10 @@ export async function verifyPasskeyReauth(data: {
   });
 
   if (storedCredential?.user_id !== session.user.userId) {
-    return { error: 'Passkey not recognized.', data: null };
+    return {
+      error: createMessageError(messages.copyPasskeyNotRecognized),
+      data: null,
+    };
   }
 
   let verification;
@@ -314,11 +471,17 @@ export async function verifyPasskeyReauth(data: {
       },
     });
   } catch {
-    return { error: 'Verification failed.', data: null };
+    return {
+      error: createMessageError(messages.copyVerificationFailed),
+      data: null,
+    };
   }
 
   if (!verification.verified) {
-    return { error: 'Verification failed.', data: null };
+    return {
+      error: createMessageError(messages.copyVerificationFailed),
+      data: null,
+    };
   }
 
   await prisma.webAuthnCredential.update({
@@ -355,7 +518,9 @@ export async function verifyAuthentication(data: {
   const rateLimitResult = await checkRateLimit(null, ipAddress);
   if (!rateLimitResult.allowed) {
     return {
-      error: 'Too many attempts. Please try again later.',
+      error: createMessageError(
+        messages.copyTooManyAttemptsPleaseTryAgainLater,
+      ),
       data: null,
       rateLimited: true,
       retryAfter: rateLimitResult.retryAfter,
@@ -366,7 +531,10 @@ export async function verifyAuthentication(data: {
 
   const challenge = await getAndClearChallengeCookie();
   if (!challenge) {
-    return { error: 'Challenge expired. Please try again.', data: null };
+    return {
+      error: createMessageError(messages.copyChallengeExpiredPleaseTryAgain),
+      data: null,
+    };
   }
 
   const storedCredential = await prisma.webAuthnCredential.findUnique({
@@ -376,7 +544,10 @@ export async function verifyAuthentication(data: {
 
   if (!storedCredential) {
     await recordLoginAttempt(null, ipAddress, false);
-    return { error: 'Passkey not recognized.', data: null };
+    return {
+      error: createMessageError(messages.copyPasskeyNotRecognized),
+      data: null,
+    };
   }
 
   let verification;
@@ -396,12 +567,18 @@ export async function verifyAuthentication(data: {
     });
   } catch {
     await recordLoginAttempt(storedCredential.user.username, ipAddress, false);
-    return { error: 'Authentication failed.', data: null };
+    return {
+      error: createMessageError(messages.copyAuthenticationFailed),
+      data: null,
+    };
   }
 
   if (!verification.verified) {
     await recordLoginAttempt(storedCredential.user.username, ipAddress, false);
-    return { error: 'Authentication failed.', data: null };
+    return {
+      error: createMessageError(messages.copyAuthenticationFailed),
+      data: null,
+    };
   }
 
   await prisma.webAuthnCredential.update({
@@ -418,6 +595,7 @@ export async function verifyAuthentication(data: {
   void addEvent(
     'User Login',
     `User ${storedCredential.user.username} logged in`,
+    { kind: 'userLogin', values: { username: storedCredential.user.username } },
   );
 
   return { error: null, data: { success: true } };
@@ -452,7 +630,10 @@ export async function removePasskey(credentialDbId: string) {
   });
 
   if (credential?.user_id !== session.user.userId) {
-    return { error: 'Passkey not found.', data: null };
+    return {
+      error: createMessageError(messages.copyPasskeyNotFound),
+      data: null,
+    };
   }
 
   const [passkeyCount, key] = await Promise.all([
@@ -467,7 +648,9 @@ export async function removePasskey(credentialDbId: string) {
 
   if (passkeyCount <= 1 && !key?.hashed_password) {
     return {
-      error: 'Cannot remove your only passkey without a password set.',
+      error: createMessageError(
+        messages.copyCannotRemoveYourOnlyPasskeyWithoutA,
+      ),
       data: null,
     };
   }
@@ -476,7 +659,17 @@ export async function removePasskey(credentialDbId: string) {
 
   void addEvent(
     'Passkey Removed',
-    `User ${session.user.username} removed a passkey${credential.friendlyName ? ` (${credential.friendlyName})` : ''}`,
+    `User ${session.user.username} removed a passkey${formatPasskeyName(auditIntl, credential) ? ` (${formatPasskeyName(auditIntl, credential)})` : ''}`,
+    {
+      kind: 'passkeyRemoved',
+      values: {
+        username: session.user.username,
+        nameMode: formatPasskeyName(auditIntl, credential)
+          ? 'named'
+          : 'unnamed',
+        ...getPasskeyActivityValues(credential),
+      },
+    },
   );
   safeUpdateTag('getUsers');
 
@@ -489,7 +682,10 @@ export async function resetAuthForUser(userId: string) {
   const session = await requireApiAuth();
 
   if (session.user.userId === userId) {
-    return { error: 'Cannot reset your own authentication.', data: null };
+    return {
+      error: createMessageError(messages.copyCannotResetYourOwnAuthentication),
+      data: null,
+    };
   }
 
   const targetUser = await prisma.user.findUnique({
@@ -498,7 +694,7 @@ export async function resetAuthForUser(userId: string) {
   });
 
   if (!targetUser) {
-    return { error: 'User not found.', data: null };
+    return { error: createMessageError(messages.copyUserNotFound), data: null };
   }
 
   const tempPassword = randomBytes(12).toString('base64url');
@@ -517,6 +713,10 @@ export async function resetAuthForUser(userId: string) {
   void addEvent(
     'Auth Reset',
     `User ${session.user.username} reset authentication for ${targetUser.username}`,
+    {
+      kind: 'authReset',
+      values: { username: session.user.username, target: targetUser.username },
+    },
   );
   safeUpdateTag('getUsers');
 
@@ -537,17 +737,26 @@ export async function switchToPasskeyMode(data: {
   });
 
   if (!key?.hashed_password) {
-    return { error: 'Account is already in passkey mode.', data: null };
+    return {
+      error: createMessageError(messages.copyAccountIsAlreadyInPasskeyMode),
+      data: null,
+    };
   }
 
   const valid = await verifyPassword(data.currentPassword, key.hashed_password);
   if (!valid) {
-    return { error: 'Incorrect password.', data: null };
+    return {
+      error: createMessageError(messages.copyIncorrectPassword),
+      data: null,
+    };
   }
 
   const challenge = await getAndClearChallengeCookie();
   if (!challenge) {
-    return { error: 'Challenge expired. Please try again.', data: null };
+    return {
+      error: createMessageError(messages.copyChallengeExpiredPleaseTryAgain),
+      data: null,
+    };
   }
 
   let verification;
@@ -560,17 +769,19 @@ export async function switchToPasskeyMode(data: {
       requireUserVerification: config.requireUserVerification,
     });
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unknown error';
     // eslint-disable-next-line no-console
-    console.error('[WebAuthn] Registration verification error:', message);
+    console.error('[WebAuthn] Registration verification error:', e);
     return {
-      error: `Registration verification failed: ${message}`,
+      error: createMessageError(messages.copyRegistrationVerificationFailed2),
       data: null,
     };
   }
 
   if (!verification.verified || !verification.registrationInfo) {
-    return { error: 'Registration verification failed.', data: null };
+    return {
+      error: createMessageError(messages.copyRegistrationVerificationFailed2),
+      data: null,
+    };
   }
 
   const {
@@ -580,7 +791,8 @@ export async function switchToPasskeyMode(data: {
     aaguid,
   } = verification.registrationInfo;
 
-  const friendlyName = getAuthenticatorName(aaguid, credentialDeviceType);
+  const friendlyName = getAuthenticatorName(aaguid);
+  const passkeyName = { friendlyName, deviceType: credentialDeviceType };
 
   await prisma.$transaction([
     prisma.key.update({
@@ -612,7 +824,14 @@ export async function switchToPasskeyMode(data: {
 
   void addEvent(
     'Switched to Passkey Mode',
-    `User ${session.user.username} switched to passkey-only authentication (${friendlyName})`,
+    `User ${session.user.username} switched to passkey-only authentication (${formatPasskeyName(auditIntl, passkeyName)})`,
+    {
+      kind: 'switchedToPasskey',
+      values: {
+        username: session.user.username,
+        ...getPasskeyActivityValues(passkeyName),
+      },
+    },
   );
   safeUpdateTag('getUsers');
 
@@ -620,6 +839,8 @@ export async function switchToPasskeyMode(data: {
 }
 
 export async function switchToPasswordMode(newPassword: string) {
+  const { strongPasswordSchema } = createUsersSchemas(createMessageError);
+
   const session = await requireApiAuth();
 
   const key = await prisma.key.findFirst({
@@ -627,7 +848,10 @@ export async function switchToPasswordMode(newPassword: string) {
   });
 
   if (key?.hashed_password) {
-    return { error: 'Account is already in password mode.', data: null };
+    return {
+      error: createMessageError(messages.copyAccountIsAlreadyInPasswordMode),
+      data: null,
+    };
   }
 
   // The dialog applies this strength check client-side, but this Server Action
@@ -636,7 +860,7 @@ export async function switchToPasswordMode(newPassword: string) {
   const parsedPassword = strongPasswordSchema.safeParse(newPassword);
   if (!parsedPassword.success) {
     return {
-      error: STRONG_PASSWORD_MESSAGE,
+      error: createMessageError(passwordMessages.strong),
       data: null,
     };
   }
@@ -656,6 +880,7 @@ export async function switchToPasswordMode(newPassword: string) {
   void addEvent(
     'Switched to Password Mode',
     `User ${session.user.username} switched to password authentication`,
+    { kind: 'switchedToPassword', values: { username: session.user.username } },
   );
   safeUpdateTag('getUsers');
 

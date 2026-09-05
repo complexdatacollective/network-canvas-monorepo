@@ -1,7 +1,10 @@
+import { defineMessages } from '@codaco/app-i18n/messages';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Link from '~/components/Link';
 import SettingsCard from '~/components/settings/SettingsCard';
 import SettingsField from '~/components/settings/SettingsField';
+import { getServerIntl } from '~/i18n/server';
+import { storageMessages } from '~/i18n/storageMessages';
 import { getStorageEnvStatus } from '~/lib/storage/config';
 import { getAppSetting } from '~/queries/appSettings';
 import { getStorageProvider } from '~/queries/storageProvider';
@@ -9,7 +12,57 @@ import { getStorageProvider } from '~/queries/storageProvider';
 import UpdateS3Settings from './UpdateS3Settings';
 import UpdateUploadThingToken from './UpdateUploadThingToken';
 
+const messages = defineMessages({
+  uploadThingHelp: {
+    id: 'fresco.settings.storage.uploadThingHelp',
+    defaultMessage:
+      'The API key used to communicate with UploadThing. See the <link>deployment documentation</link> for details.',
+    description:
+      'Researcher-facing settings.storage: The API key used to communicate with UploadThing. See the <link>deployment documentation</link> for details.',
+  },
+
+  storage: {
+    id: 'fresco.settings.StorageProviderSection.storage',
+    defaultMessage: 'Storage',
+    description: 'Researcher-facing settings / StorageProviderSection: Storage',
+  },
+  storageProvider: {
+    id: 'fresco.settings.StorageProviderSection.storageProvider',
+    defaultMessage: 'Storage Provider',
+    description:
+      'Researcher-facing settings / StorageProviderSection: Storage Provider',
+  },
+  filesAreStoredUsing: {
+    id: 'fresco.settings.StorageProviderSection.filesAreStoredUsing',
+    defaultMessage: 'Files are stored using {value1}.',
+    description:
+      'Researcher-facing settings / StorageProviderSection: Files are stored using value.',
+  },
+  storageIsConfiguredViaEnvironmentVariablesAnd: {
+    id: 'fresco.settings.StorageProviderSection.storageIsConfiguredViaEnvironmentVariablesAnd',
+    defaultMessage:
+      'Storage is configured via environment variables ( {value1}) and cannot be edited here. Remove these variables to manage storage from this dashboard.',
+    description:
+      'Researcher-facing settings / StorageProviderSection: Storage is configured via environment variables ( value) and cannot be edited here. Remove these variables to manage sto',
+  },
+  theStorageProviderTypeCannotBeChanged: {
+    id: 'fresco.settings.StorageProviderSection.theStorageProviderTypeCannotBeChanged',
+    defaultMessage:
+      'The storage provider type cannot be changed once the application has been deployed. You can update the credentials below.',
+    description:
+      'Researcher-facing settings / StorageProviderSection: The storage provider type cannot be changed once the application has been deployed. You can update the credentials below',
+  },
+  uploadThingAPIKey: {
+    id: 'fresco.settings.StorageProviderSection.uploadThingAPIKey',
+    defaultMessage: 'UploadThing API Key',
+    description:
+      'Researcher-facing settings / StorageProviderSection: UploadThing API Key',
+  },
+});
+
 export default async function StorageProviderSection() {
+  const intl = await getServerIntl();
+
   const [provider, s3Endpoint, s3PublicUrl, s3Bucket, s3Region] =
     await Promise.all([
       getStorageProvider(),
@@ -21,7 +74,9 @@ export default async function StorageProviderSection() {
 
   const envStatus = getStorageEnvStatus();
   const providerLabel =
-    provider === 's3' ? 'S3 / S3-Compatible' : 'UploadThing';
+    provider === 's3'
+      ? intl.formatMessage(storageMessages.s3Label)
+      : 'UploadThing';
 
   const activeProviderEnvManaged =
     provider === 's3'
@@ -30,16 +85,23 @@ export default async function StorageProviderSection() {
 
   if (activeProviderEnvManaged) {
     return (
-      <SettingsCard id="storage" title="Storage" divideChildren>
+      <SettingsCard
+        id="storage"
+        title={intl.formatMessage(messages.storage)}
+        divideChildren
+      >
         <SettingsField
-          label="Storage Provider"
-          description={`Files are stored using ${providerLabel}.`}
+          label={intl.formatMessage(messages.storageProvider)}
+          description={intl.formatMessage(messages.filesAreStoredUsing, {
+            value1: providerLabel,
+          })}
         >
           <Alert variant="info">
             <AlertDescription>
-              Storage is configured via environment variables (
-              {envStatus.setVariables.join(', ')}) and cannot be edited here.
-              Remove these variables to manage storage from this dashboard.
+              {intl.formatMessage(
+                messages.storageIsConfiguredViaEnvironmentVariablesAnd,
+                { value1: intl.formatList(envStatus.setVariables) },
+              )}
             </AlertDescription>
           </Alert>
         </SettingsField>
@@ -48,33 +110,38 @@ export default async function StorageProviderSection() {
   }
 
   return (
-    <SettingsCard id="storage" title="Storage" divideChildren>
+    <SettingsCard
+      id="storage"
+      title={intl.formatMessage(messages.storage)}
+      divideChildren
+    >
       <SettingsField
-        label="Storage Provider"
-        description={`Files are stored using ${providerLabel}.`}
+        label={intl.formatMessage(messages.storageProvider)}
+        description={intl.formatMessage(messages.filesAreStoredUsing, {
+          value1: providerLabel,
+        })}
       >
         <Alert variant="info">
           <AlertDescription>
-            The storage provider type cannot be changed once the application has
-            been deployed. You can update the credentials below.
+            {intl.formatMessage(messages.theStorageProviderTypeCannotBeChanged)}
           </AlertDescription>
         </Alert>
       </SettingsField>
 
       {provider === 'uploadthing' && (
         <SettingsField
-          label="UploadThing API Key"
-          description={
-            <>
-              The API key used to communicate with UploadThing. See the{' '}
+          label={intl.formatMessage(messages.uploadThingAPIKey)}
+          description={intl.formatMessage(messages.uploadThingHelp, {
+            link: (chunks) => (
               <Link href="https://documentation.networkcanvas.com/en/fresco/deployment/guide#create-a-storage-bucket-using-uploadthing">
-                deployment documentation
-              </Link>{' '}
-              for details.
-            </>
-          }
+                {chunks}
+              </Link>
+            ),
+          })}
         >
-          <UpdateUploadThingToken />
+          <UpdateUploadThingToken
+            label={intl.formatMessage(messages.uploadThingAPIKey)}
+          />
         </SettingsField>
       )}
 

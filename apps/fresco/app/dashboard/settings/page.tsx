@@ -1,11 +1,15 @@
 import { Suspense } from 'react';
 
+import type { IntlShape } from '@codaco/app-i18n/messages';
+import { defineMessages } from '@codaco/app-i18n/messages';
 import PageHeader from '@codaco/fresco-ui/typography/PageHeader';
 import { SettingsCardSkeleton } from '~/components/settings/SettingsCard';
 import SettingsNavigation, {
   type SettingsSection,
 } from '~/components/settings/SettingsNavigation';
 import { env } from '~/env';
+import LanguageSetting from '~/i18n/LanguageSetting';
+import { getServerIntl } from '~/i18n/server';
 import { requirePageAuth } from '~/lib/auth/guards';
 import { requireAppNotExpired } from '~/queries/appSettings';
 
@@ -18,21 +22,90 @@ import StorageProviderSection from './_components/StorageProviderSection';
 import SyntheticInterviewDataServer from './_components/SyntheticInterviewDataServer';
 import UserManagementSection from './_components/UserManagementSection';
 
-function getSettingsSections(): SettingsSection[] {
+const messages = defineMessages({
+  developer: {
+    id: 'fresco.settings.navigation.developer',
+    defaultMessage: 'Developer Tools',
+    description: 'Researcher-facing settings.navigation: Developer Tools',
+  },
+
+  synthetic: {
+    id: 'fresco.settings.navigation.synthetic',
+    defaultMessage: 'Synthetic Interview Data',
+    description:
+      'Researcher-facing settings.navigation: Synthetic Interview Data',
+  },
+
+  api: {
+    id: 'fresco.settings.navigation.api',
+    defaultMessage: 'API Tokens',
+    description: 'Researcher-facing settings.navigation: API Tokens',
+  },
+
+  privacy: {
+    id: 'fresco.settings.navigation.privacy',
+    defaultMessage: 'Privacy',
+    description: 'Researcher-facing settings.navigation: Privacy',
+  },
+
+  interviews: {
+    id: 'fresco.settings.navigation.interviews',
+    defaultMessage: 'Interview Settings',
+    description: 'Researcher-facing settings.navigation: Interview Settings',
+  },
+
+  storage: {
+    id: 'fresco.settings.navigation.storage',
+    defaultMessage: 'Storage',
+    description: 'Researcher-facing settings.navigation: Storage',
+  },
+
+  users: {
+    id: 'fresco.settings.navigation.users',
+    defaultMessage: 'User Management',
+    description: 'Researcher-facing settings.navigation: User Management',
+  },
+
+  appDetails: {
+    id: 'fresco.settings.navigation.appDetails',
+    defaultMessage: 'App Details',
+    description: 'Researcher-facing settings.navigation: App Details',
+  },
+
+  settings: {
+    id: 'fresco.settings.page.settings',
+    defaultMessage: 'Settings',
+    description: 'Researcher-facing settings / page: Settings',
+  },
+  hereYouCanConfigureYourInstallationOf: {
+    id: 'fresco.settings.page.hereYouCanConfigureYourInstallationOf',
+    defaultMessage: 'Here you can configure your installation of Fresco.',
+    description:
+      'Researcher-facing settings / page: Here you can configure your installation of Fresco.',
+  },
+});
+
+function getSettingsSections(intl: IntlShape): SettingsSection[] {
   const sections: SettingsSection[] = [
-    { id: 'app-details', title: 'App Details' },
-    { id: 'user-management', title: 'User Management' },
-    { id: 'storage', title: 'Storage' },
-    { id: 'interview-settings', title: 'Interview Settings' },
-    { id: 'privacy', title: 'Privacy' },
-    { id: 'api-tokens', title: 'API Tokens' },
-    { id: 'synthetic-interview-data', title: 'Synthetic Interview Data' },
+    { id: 'app-details', title: intl.formatMessage(messages.appDetails) },
+    { id: 'user-management', title: intl.formatMessage(messages.users) },
+    { id: 'storage', title: intl.formatMessage(messages.storage) },
+    {
+      id: 'interview-settings',
+      title: intl.formatMessage(messages.interviews),
+    },
+    { id: 'privacy', title: intl.formatMessage(messages.privacy) },
+    { id: 'api-tokens', title: intl.formatMessage(messages.api) },
+    {
+      id: 'synthetic-interview-data',
+      title: intl.formatMessage(messages.synthetic),
+    },
   ];
 
   if (env.NODE_ENV === 'development' || !env.SANDBOX_MODE) {
     sections.push({
       id: 'developer-tools',
-      title: 'Developer Tools',
+      title: intl.formatMessage(messages.developer),
       variant: 'destructive',
     });
   }
@@ -40,8 +113,9 @@ function getSettingsSections(): SettingsSection[] {
   return sections;
 }
 
-function SettingsContentSkeleton() {
-  const sections = getSettingsSections();
+async function SettingsContentSkeleton() {
+  const intl = await getServerIntl();
+  const sections = getSettingsSections(intl);
 
   return (
     <div className="mx-auto max-w-full">
@@ -64,14 +138,21 @@ function SettingsContentSkeleton() {
   );
 }
 
-export default function Settings() {
+export default async function Settings() {
+  const intl = await getServerIntl();
+
   return (
     <>
       <PageHeader
-        headerText="Settings"
-        subHeaderText="Here you can configure your installation of Fresco."
+        headerText={intl.formatMessage(messages.settings)}
+        subHeaderText={intl.formatMessage(
+          messages.hereYouCanConfigureYourInstallationOf,
+        )}
         data-testid="settings-page-header"
       />
+      <div className="mx-auto w-full max-w-5xl">
+        <LanguageSetting />
+      </div>
       <Suspense fallback={<SettingsContentSkeleton />}>
         <SettingsContent />
       </Suspense>
@@ -80,9 +161,10 @@ export default function Settings() {
 }
 
 async function SettingsContent() {
+  const intl = await getServerIntl();
   await requireAppNotExpired();
   const session = await requirePageAuth();
-  const sections = getSettingsSections();
+  const sections = getSettingsSections(intl);
 
   return (
     <div className="mx-auto max-w-full">

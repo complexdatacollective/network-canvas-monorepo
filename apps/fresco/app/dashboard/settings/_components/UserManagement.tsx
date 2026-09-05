@@ -9,6 +9,14 @@ import { useRouter } from 'next/navigation';
 import { use, useCallback, useState } from 'react';
 import { z } from 'zod/mini';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import type { IntlShape } from '@codaco/app-i18n/messages';
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import {
+  AppErrorMessage,
+  AppMessage,
+  useAppIntl,
+} from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import { Button } from '@codaco/fresco-ui/Button';
 import { DataTableColumnHeader } from '@codaco/fresco-ui/DataTable/ColumnHeader';
@@ -48,10 +56,393 @@ import SettingsField from '~/components/settings/SettingsField';
 import { useClientDataTable } from '~/hooks/useClientDataTable';
 import { type GetUsersReturnType } from '~/queries/users';
 import {
-  PASSWORD_CHARACTER_RULES,
+  getPasswordRules,
+  passwordMessages,
   PASSWORD_MIN_LENGTH,
-  PASSWORD_MIN_LENGTH_MESSAGE,
 } from '~/utils/isStrongPassword';
+
+const messages = defineMessages({
+  deleteCount: {
+    id: 'fresco.settings.UserManagement.deleteCount',
+    defaultMessage:
+      '{count, plural, one {Delete # user} other {Delete # users}}',
+    description:
+      'Researcher-facing settings.UserManagement: count, plural, one Delete # user other Delete # users',
+  },
+
+  passwordAuth: {
+    id: 'fresco.settings.users.passwordAuth',
+    defaultMessage: 'Password',
+    description: 'Researcher-facing settings.users: Password',
+  },
+
+  passwordTwoFactor: {
+    id: 'fresco.settings.users.passwordTwoFactor',
+    defaultMessage: 'Password + 2FA',
+    description: 'Researcher-facing settings.users: Password + 2FA',
+  },
+
+  passkeyAuth: {
+    id: 'fresco.settings.users.passkeyAuth',
+    defaultMessage: 'Passkey',
+    description: 'Researcher-facing settings.users: Passkey',
+  },
+
+  usernameTaken: {
+    id: 'fresco.settings.users.usernameTaken',
+    defaultMessage: 'Username is already taken',
+    description: 'Researcher-facing settings.users: Username is already taken',
+  },
+
+  usernameSpaces: {
+    id: 'fresco.settings.users.usernameSpaces',
+    defaultMessage: 'Username cannot contain spaces',
+    description:
+      'Researcher-facing settings.users: Username cannot contain spaces',
+  },
+
+  usernameMinimum: {
+    id: 'fresco.settings.users.usernameMinimum',
+    defaultMessage: 'Username must be at least 4 characters',
+    description:
+      'Researcher-facing settings.users: Username must be at least 4 characters',
+  },
+
+  copyYouCannotDeleteYourOwnAccount: {
+    id: 'fresco.settings.UserManagement.copyYouCannotDeleteYourOwnAccount',
+    defaultMessage: 'You cannot delete your own account',
+    description:
+      'Researcher-facing settings / UserManagement: You cannot delete your own account',
+  },
+  copyDeleteUser: {
+    id: 'fresco.settings.UserManagement.copyDeleteUser',
+    defaultMessage: 'Delete User',
+    description: 'Researcher-facing settings / UserManagement: Delete User',
+  },
+  copyDeleteMultipleUsers: {
+    id: 'fresco.settings.UserManagement.copyDeleteMultipleUsers',
+    defaultMessage: 'Delete Multiple Users',
+    description:
+      'Researcher-facing settings / UserManagement: Delete Multiple Users',
+  },
+  copyAreYouSureYouWantToDelete: {
+    id: 'fresco.settings.UserManagement.copyAreYouSureYouWantToDelete',
+    defaultMessage:
+      'Are you sure you want to delete the user "{value1}"? This action cannot be undone.',
+    description:
+      'Researcher-facing settings / UserManagement: Are you sure you want to delete the user "value"? This action cannot be undone.',
+  },
+  copyAreYouSureYouWantToDelete2: {
+    id: 'fresco.settings.UserManagement.copyAreYouSureYouWantToDelete2',
+    defaultMessage:
+      'Are you sure you want to delete {value1, plural, one {# user} other {# users}}? This action cannot be undone.',
+    description:
+      'Researcher-facing settings / UserManagement: Are you sure you want to delete value users? This action cannot be undone.',
+  },
+  copyPasswordsDoNotMatch: {
+    id: 'fresco.settings.UserManagement.copyPasswordsDoNotMatch',
+    defaultMessage: 'Passwords do not match',
+    description:
+      'Researcher-facing settings / UserManagement: Passwords do not match',
+  },
+  copyNewPasswordsDoNotMatch: {
+    id: 'fresco.settings.UserManagement.copyNewPasswordsDoNotMatch',
+    defaultMessage: 'New passwords do not match',
+    description:
+      'Researcher-facing settings / UserManagement: New passwords do not match',
+  },
+  copyFailedToStartRegistration: {
+    id: 'fresco.settings.UserManagement.copyFailedToStartRegistration',
+    defaultMessage: 'Failed to start registration',
+    description:
+      'Researcher-facing settings / UserManagement: Failed to start registration',
+  },
+  copyPasskeyCreationCancelled: {
+    id: 'fresco.settings.UserManagement.copyPasskeyCreationCancelled',
+    defaultMessage: 'Passkey creation cancelled.',
+    description:
+      'Researcher-facing settings / UserManagement: Passkey creation cancelled.',
+  },
+  copyPasskeyCreationFailed: {
+    id: 'fresco.settings.UserManagement.copyPasskeyCreationFailed',
+    defaultMessage: 'Passkey creation failed.',
+    description:
+      'Researcher-facing settings / UserManagement: Passkey creation failed.',
+  },
+  copyFailedToStartVerification: {
+    id: 'fresco.settings.UserManagement.copyFailedToStartVerification',
+    defaultMessage: 'Failed to start verification',
+    description:
+      'Researcher-facing settings / UserManagement: Failed to start verification',
+  },
+  copyVerificationFailed: {
+    id: 'fresco.settings.UserManagement.copyVerificationFailed',
+    defaultMessage: 'Verification failed',
+    description:
+      'Researcher-facing settings / UserManagement: Verification failed',
+  },
+  copyVerifying: {
+    id: 'fresco.settings.UserManagement.copyVerifying',
+    defaultMessage: 'Verifying...',
+    description: 'Researcher-facing settings / UserManagement: Verifying...',
+  },
+  copyVerifyWithPasskey: {
+    id: 'fresco.settings.UserManagement.copyVerifyWithPasskey',
+    defaultMessage: 'Verify with passkey',
+    description:
+      'Researcher-facing settings / UserManagement: Verify with passkey',
+  },
+  selectAll: {
+    id: 'fresco.settings.UserManagement.selectAll',
+    defaultMessage: 'Select all',
+    description: 'Researcher-facing settings / UserManagement: Select all',
+  },
+  selectRow: {
+    id: 'fresco.settings.UserManagement.selectRow',
+    defaultMessage: 'Select row',
+    description: 'Researcher-facing settings / UserManagement: Select row',
+  },
+  username: {
+    id: 'fresco.settings.UserManagement.username',
+    defaultMessage: 'Username',
+    description: 'Researcher-facing settings / UserManagement: Username',
+  },
+  you: {
+    id: 'fresco.settings.UserManagement.you',
+    defaultMessage: '(you)',
+    description: 'Researcher-facing settings / UserManagement: (you)',
+  },
+  authMethod: {
+    id: 'fresco.settings.UserManagement.authMethod',
+    defaultMessage: 'Auth Method',
+    description: 'Researcher-facing settings / UserManagement: Auth Method',
+  },
+  actions: {
+    id: 'fresco.settings.UserManagement.actions',
+    defaultMessage: 'Actions',
+    description: 'Researcher-facing settings / UserManagement: Actions',
+  },
+  resetAuth: {
+    id: 'fresco.settings.UserManagement.resetAuth',
+    defaultMessage: 'Reset Auth',
+    description: 'Researcher-facing settings / UserManagement: Reset Auth',
+  },
+  deleteUser: {
+    id: 'fresco.settings.UserManagement.deleteUser',
+    defaultMessage: 'Delete User',
+    description: 'Researcher-facing settings / UserManagement: Delete User',
+  },
+  areYouSureYouWantToDelete: {
+    id: 'fresco.settings.UserManagement.areYouSureYouWantToDelete',
+    defaultMessage:
+      'Are you sure you want to delete the user "{value1}"? This action cannot be undone.',
+    description:
+      'Researcher-facing settings / UserManagement: Are you sure you want to delete the user "value"? This action cannot be undone.',
+  },
+  resetAuthentication: {
+    id: 'fresco.settings.UserManagement.resetAuthentication',
+    defaultMessage: 'Reset Authentication',
+    description:
+      'Researcher-facing settings / UserManagement: Reset Authentication',
+  },
+  thisWillRemoveAllPasskeys2FAAnd: {
+    id: 'fresco.settings.UserManagement.thisWillRemoveAllPasskeys2FAAnd',
+    defaultMessage:
+      'This will remove all passkeys, 2FA, and recovery codes for {value1}, and set a temporary password. They will need to set up their authentication again.',
+    description:
+      'Researcher-facing settings / UserManagement: This will remove all passkeys, 2FA, and recovery codes for value, and set a temporary password. They will need to set up',
+  },
+  loggedInAs: {
+    id: 'fresco.settings.UserManagement.loggedInAs',
+    defaultMessage: 'Logged in as:',
+    description: 'Researcher-facing settings / UserManagement: Logged in as:',
+  },
+  changePassword: {
+    id: 'fresco.settings.UserManagement.changePassword',
+    defaultMessage: 'Change Password',
+    description: 'Researcher-facing settings / UserManagement: Change Password',
+  },
+  securityWarning: {
+    id: 'fresco.settings.UserManagement.securityWarning',
+    defaultMessage: 'Security Warning',
+    description:
+      'Researcher-facing settings / UserManagement: Security Warning',
+  },
+  yourAccountIsOnlyProtectedByA: {
+    id: 'fresco.settings.UserManagement.yourAccountIsOnlyProtectedByA',
+    defaultMessage:
+      'Your account is only protected by a password. Enable two-factor authentication for stronger security.',
+    description:
+      'Researcher-facing settings / UserManagement: Your account is only protected by a password. Enable two-factor authentication for stronger security.',
+  },
+  switchToPasskeyAuthentication: {
+    id: 'fresco.settings.UserManagement.switchToPasskeyAuthentication',
+    defaultMessage: 'Switch to Passkey Authentication',
+    description:
+      'Researcher-facing settings / UserManagement: Switch to Passkey Authentication',
+  },
+  removeYourPasswordAndTwoFactorAuthentication: {
+    id: 'fresco.settings.UserManagement.removeYourPasswordAndTwoFactorAuthentication',
+    defaultMessage:
+      'Remove your password and two-factor authentication, and use a passkey to sign in instead.',
+    description:
+      'Researcher-facing settings / UserManagement: Remove your password and two-factor authentication, and use a passkey to sign in instead.',
+  },
+  switchToPasskey: {
+    id: 'fresco.settings.UserManagement.switchToPasskey',
+    defaultMessage: 'Switch to Passkey',
+    description:
+      'Researcher-facing settings / UserManagement: Switch to Passkey',
+  },
+  youAreTheOnlyUserIfYou: {
+    id: 'fresco.settings.UserManagement.youAreTheOnlyUserIfYou',
+    defaultMessage:
+      'You are the only user. If you lose access to your passkey, you will be locked out. Consider adding another user or backing up your passkey.',
+    description:
+      'Researcher-facing settings / UserManagement: You are the only user. If you lose access to your passkey, you will be locked out. Consider adding another user or backi',
+  },
+  switchToPasswordAuthentication: {
+    id: 'fresco.settings.UserManagement.switchToPasswordAuthentication',
+    defaultMessage: 'Switch to Password Authentication',
+    description:
+      'Researcher-facing settings / UserManagement: Switch to Password Authentication',
+  },
+  removeAllPasskeysAndSwitchToPassword: {
+    id: 'fresco.settings.UserManagement.removeAllPasskeysAndSwitchToPassword',
+    defaultMessage:
+      'Remove all passkeys and switch to password-based authentication.',
+    description:
+      'Researcher-facing settings / UserManagement: Remove all passkeys and switch to password-based authentication.',
+  },
+  switchToPassword: {
+    id: 'fresco.settings.UserManagement.switchToPassword',
+    defaultMessage: 'Switch to Password',
+    description:
+      'Researcher-facing settings / UserManagement: Switch to Password',
+  },
+  allUsers: {
+    id: 'fresco.settings.UserManagement.allUsers',
+    defaultMessage: 'All Users',
+    description: 'Researcher-facing settings / UserManagement: All Users',
+  },
+  addUser: {
+    id: 'fresco.settings.UserManagement.addUser',
+    defaultMessage: 'Add User',
+    description: 'Researcher-facing settings / UserManagement: Add User',
+  },
+  noUsersCreatedYet: {
+    id: 'fresco.settings.UserManagement.noUsersCreatedYet',
+    defaultMessage: 'No users created yet.',
+    description:
+      'Researcher-facing settings / UserManagement: No users created yet.',
+  },
+  deleteSelected: {
+    id: 'fresco.settings.UserManagement.deleteSelected',
+    defaultMessage: 'Delete Selected',
+    description: 'Researcher-facing settings / UserManagement: Delete Selected',
+  },
+  updateYourAccountPassword: {
+    id: 'fresco.settings.UserManagement.updateYourAccountPassword',
+    defaultMessage: 'Update your account password.',
+    description:
+      'Researcher-facing settings / UserManagement: Update your account password.',
+  },
+  updatePassword: {
+    id: 'fresco.settings.UserManagement.updatePassword',
+    defaultMessage: 'Update Password',
+    description: 'Researcher-facing settings / UserManagement: Update Password',
+  },
+  passwordUpdatedSuccessfully: {
+    id: 'fresco.settings.UserManagement.passwordUpdatedSuccessfully',
+    defaultMessage: 'Password updated successfully!',
+    description:
+      'Researcher-facing settings / UserManagement: Password updated successfully!',
+  },
+  currentPassword: {
+    id: 'fresco.settings.UserManagement.currentPassword',
+    defaultMessage: 'Current Password',
+    description:
+      'Researcher-facing settings / UserManagement: Current Password',
+  },
+  newPassword: {
+    id: 'fresco.settings.UserManagement.newPassword',
+    defaultMessage: 'New Password',
+    description: 'Researcher-facing settings / UserManagement: New Password',
+  },
+  atLeast8CharactersWithLowercaseUppercase: {
+    id: 'fresco.settings.UserManagement.atLeast8CharactersWithLowercaseUppercase',
+    defaultMessage:
+      'At least 8 characters with lowercase, uppercase, number, and symbol',
+    description:
+      'Researcher-facing settings / UserManagement: At least 8 characters with lowercase, uppercase, number, and symbol',
+  },
+  confirmNewPassword: {
+    id: 'fresco.settings.UserManagement.confirmNewPassword',
+    defaultMessage: 'Confirm New Password',
+    description:
+      'Researcher-facing settings / UserManagement: Confirm New Password',
+  },
+  createUser: {
+    id: 'fresco.settings.UserManagement.createUser',
+    defaultMessage: 'Create User',
+    description: 'Researcher-facing settings / UserManagement: Create User',
+  },
+  atLeast4CharactersNoSpaces: {
+    id: 'fresco.settings.UserManagement.atLeast4CharactersNoSpaces',
+    defaultMessage: 'At least 4 characters, no spaces',
+    description:
+      'Researcher-facing settings / UserManagement: At least 4 characters, no spaces',
+  },
+  mustBeUnique: {
+    id: 'fresco.settings.UserManagement.mustBeUnique',
+    defaultMessage: 'Must be unique',
+    description: 'Researcher-facing settings / UserManagement: Must be unique',
+  },
+  password: {
+    id: 'fresco.settings.UserManagement.password',
+    defaultMessage: 'Password',
+    description: 'Researcher-facing settings / UserManagement: Password',
+  },
+  confirmPassword: {
+    id: 'fresco.settings.UserManagement.confirmPassword',
+    defaultMessage: 'Confirm Password',
+    description:
+      'Researcher-facing settings / UserManagement: Confirm Password',
+  },
+  temporaryPassword: {
+    id: 'fresco.settings.UserManagement.temporaryPassword',
+    defaultMessage: 'Temporary Password',
+    description:
+      'Researcher-facing settings / UserManagement: Temporary Password',
+  },
+  theUserSAuthenticationHasBeenReset: {
+    id: 'fresco.settings.UserManagement.theUserSAuthenticationHasBeenReset',
+    defaultMessage:
+      "The user's authentication has been reset. Share this temporary password with them so they can sign in and set up their account again.",
+    description:
+      "Researcher-facing settings / UserManagement: The user's authentication has been reset. Share this temporary password with them so they can sign in and set up their a",
+  },
+  enterYourCurrentPasswordThenRegisterA: {
+    id: 'fresco.settings.UserManagement.enterYourCurrentPasswordThenRegisterA',
+    defaultMessage:
+      'Enter your current password, then register a passkey. Your password and two-factor authentication will be removed.',
+    description:
+      'Researcher-facing settings / UserManagement: Enter your current password, then register a passkey. Your password and two-factor authentication will be removed.',
+  },
+  allYourPasskeysWillBeRemovedAnd: {
+    id: 'fresco.settings.UserManagement.allYourPasskeysWillBeRemovedAnd',
+    defaultMessage:
+      'All your passkeys will be removed and replaced with a password.',
+    description:
+      'Researcher-facing settings / UserManagement: All your passkeys will be removed and replaced with a password.',
+  },
+  verifyYourIdentityWithAPasskeyTo: {
+    id: 'fresco.settings.UserManagement.verifyYourIdentityWithAPasskeyTo',
+    defaultMessage: 'Verify your identity with a passkey to continue.',
+    description:
+      'Researcher-facing settings / UserManagement: Verify your identity with a passkey to continue.',
+  },
+});
 
 type UserRow = GetUsersReturnType[number];
 
@@ -74,36 +465,8 @@ type UserManagementProps = {
   sandboxMode: boolean;
 };
 
-const usernameSchema = z
-  .string()
-  .check(z.minLength(4, 'Username must be at least 4 characters'))
-  .check(z.refine((s) => !s.includes(' '), 'Username cannot contain spaces'));
-
-const usernameUniqueSchema = z.string().check(
-  z.refine(async (username) => {
-    if (!username || username.length < 4 || username.includes(' ')) {
-      return true; // Let the basic validation handle these cases
-    }
-    const result = await checkUsernameAvailable(username);
-    return result.available;
-  }, 'Username is already taken'),
-);
-
-// Built from the shared rule in ~/utils/isStrongPassword rather than restating
-// it: the server enforces the same rule through `strongPasswordSchema`, which
-// cannot be imported here (schemas/ is server-only, and client code uses
-// zod/mini). Each check stays separate so the form reports precisely which
-// requirement is unmet.
-const passwordSchema = z
-  .string()
-  .check(
-    z.minLength(PASSWORD_MIN_LENGTH, PASSWORD_MIN_LENGTH_MESSAGE),
-    ...PASSWORD_CHARACTER_RULES.map(({ pattern, message }) =>
-      z.regex(pattern, message),
-    ),
-  );
-
 function makeUserColumns(
+  intl: IntlShape,
   currentUserId: string,
   userCount: number,
   onDeleteUser: (user: UserRow) => void,
@@ -118,7 +481,7 @@ function makeUserColumns(
           onCheckedChange={(value: boolean) =>
             table.toggleAllPageRowsSelected(value)
           }
-          aria-label="Select all"
+          aria-label={intl.formatMessage(messages.selectAll)}
         />
       ),
       cell: ({ row }) => {
@@ -127,7 +490,7 @@ function makeUserColumns(
           <Checkbox
             checked={row.getIsSelected()}
             onCheckedChange={(value: boolean) => row.toggleSelected(value)}
-            aria-label="Select row"
+            aria-label={intl.formatMessage(messages.selectRow)}
             disabled={isCurrentUser}
           />
         );
@@ -140,7 +503,10 @@ function makeUserColumns(
       accessorKey: 'username',
       sortingFn: 'text',
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Username" />
+        <DataTableColumnHeader
+          column={column}
+          title={intl.formatMessage(messages.username)}
+        />
       ),
       cell: ({ row }) => {
         const isCurrentUser = row.original.id === currentUserId;
@@ -151,7 +517,9 @@ function makeUserColumns(
           >
             <span>{row.original.username}</span>
             {isCurrentUser && (
-              <span className="text-sm text-current/50">(you)</span>
+              <span className="text-sm text-current/50">
+                {intl.formatMessage(messages.you)}
+              </span>
             )}
           </div>
         );
@@ -161,22 +529,28 @@ function makeUserColumns(
       id: 'authMethod',
       enableSorting: false,
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Auth Method" />
+        <DataTableColumnHeader
+          column={column}
+          title={intl.formatMessage(messages.authMethod)}
+        />
       ),
       cell: ({ row }) => {
         const hasPasskeys = row.original.webAuthnCredentials.length > 0;
         const has2FA = row.original.totpCredential?.verified === true;
 
-        if (hasPasskeys) return 'Passkey';
-        if (has2FA) return 'Password + 2FA';
-        return 'Password';
+        if (hasPasskeys) return intl.formatMessage(messages.passkeyAuth);
+        if (has2FA) return intl.formatMessage(messages.passwordTwoFactor);
+        return intl.formatMessage(messages.passwordAuth);
       },
     },
     {
       id: 'actions',
       enableSorting: false,
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Actions" />
+        <DataTableColumnHeader
+          column={column}
+          title={intl.formatMessage(messages.actions)}
+        />
       ),
       cell: ({ row }) => {
         const isCurrentUser = row.original.id === currentUserId;
@@ -192,7 +566,7 @@ function makeUserColumns(
                 size="sm"
                 data-testid={`reset-auth-${row.original.username}`}
               >
-                Reset Auth
+                {intl.formatMessage(messages.resetAuth)}
               </Button>
             )}
             <Button
@@ -202,7 +576,7 @@ function makeUserColumns(
               disabled={isCurrentUser || isLastUser}
               data-testid={`delete-user-${row.original.username}`}
             >
-              Delete
+              {intl.formatMessage(commonMessages.delete)}
             </Button>
           </div>
         );
@@ -220,8 +594,52 @@ export default function UserManagement({
   hasPasswordPromise,
   sandboxMode,
 }: UserManagementProps) {
-  // TanStack Table: consumers must also opt out so React Compiler doesn't memoize JSX that depends on the table ref.
   'use no memo';
+
+  const intl = useAppIntl();
+  const usernameSchema = z
+    .string({ error: createMessageError(messages.usernameMinimum) })
+    .check(z.minLength(4, createMessageError(messages.usernameMinimum)))
+    .check(
+      z.refine(
+        (s) => !s.includes(' '),
+        createMessageError(messages.usernameSpaces),
+      ),
+    );
+
+  const usernameUniqueSchema = z
+    .string({ error: createMessageError(messages.usernameMinimum) })
+    .check(
+      z.refine(async (username) => {
+        if (!username || username.length < 4 || username.includes(' ')) {
+          return true; // Let the basic validation handle these cases
+        }
+        const result = await checkUsernameAvailable(username);
+        return result.available;
+      }, createMessageError(messages.usernameTaken)),
+    );
+
+  // Built from the shared rule in ~/utils/isStrongPassword rather than restating
+  // it: the server enforces the same rule through `strongPasswordSchema`, which
+  // cannot be imported here (schemas/ is server-only, and client code uses
+  // zod/mini). Each check stays separate so the form reports precisely which
+  // requirement is unmet.
+  const passwordSchema = z
+    .string({ error: createMessageError(passwordMessages.strong) })
+    .check(
+      z.minLength(
+        PASSWORD_MIN_LENGTH,
+        createMessageError(passwordMessages.minimum, {
+          count: PASSWORD_MIN_LENGTH,
+        }),
+      ),
+      ...getPasswordRules(createMessageError).map(({ pattern, message }) =>
+        z.regex(pattern, message),
+      ),
+    );
+
+  // TanStack Table: consumers must also opt out so React Compiler doesn't memoize JSX that depends on the table ref.
+
   const router = useRouter();
   const users = use(usersPromise);
   const hasTwoFactor = use(hasTwoFactorPromise);
@@ -260,9 +678,16 @@ export default function UserManagement({
   const handleDeleteUser = useCallback(
     (user: UserRow) => {
       void confirm({
-        title: 'Delete User',
-        description: `Are you sure you want to delete the user "${user.username}"? This action cannot be undone.`,
-        confirmLabel: 'Delete User',
+        title: <AppMessage message={messages.deleteUser} />,
+        description: (
+          <AppMessage
+            message={messages.areYouSureYouWantToDelete}
+            values={{
+              value1: user.username,
+            }}
+          />
+        ),
+        confirmLabel: <AppMessage message={messages.deleteUser} />,
         intent: 'destructive',
         onConfirm: () => doDeleteUsers([user]),
       });
@@ -275,9 +700,14 @@ export default function UserManagement({
   const handleResetAuth = useCallback(
     (user: UserRow) => {
       void confirm({
-        title: 'Reset Authentication',
-        description: `This will remove all passkeys, 2FA, and recovery codes for ${user.username}, and set a temporary password. They will need to set up their authentication again.`,
-        confirmLabel: 'Reset Auth',
+        title: <AppMessage message={messages.resetAuthentication} />,
+        description: (
+          <AppMessage
+            message={messages.thisWillRemoveAllPasskeys2FAAnd}
+            values={{ value1: user.username }}
+          />
+        ),
+        confirmLabel: <AppMessage message={messages.resetAuth} />,
         intent: 'destructive',
         onConfirm: async () => {
           const result = await resetAuthForUser(user.id);
@@ -293,6 +723,7 @@ export default function UserManagement({
   );
 
   const columns = makeUserColumns(
+    intl,
     currentUserId,
     users.length,
     handleDeleteUser,
@@ -306,19 +737,44 @@ export default function UserManagement({
       );
 
       if (deletableUsers.length === 0) {
-        setError('You cannot delete your own account');
+        setError(
+          createMessageError(messages.copyYouCannotDeleteYourOwnAccount),
+        );
         return;
       }
 
       const isSingle = deletableUsers.length === 1;
       void confirm({
-        title: isSingle ? 'Delete User' : 'Delete Multiple Users',
-        description: isSingle
-          ? `Are you sure you want to delete the user "${deletableUsers[0]?.username}"? This action cannot be undone.`
-          : `Are you sure you want to delete ${deletableUsers.length} users? This action cannot be undone.`,
-        confirmLabel: isSingle
-          ? 'Delete User'
-          : `Delete ${deletableUsers.length} Users`,
+        title: isSingle ? (
+          <AppMessage message={messages.copyDeleteUser} />
+        ) : (
+          <AppMessage message={messages.copyDeleteMultipleUsers} />
+        ),
+        description: isSingle ? (
+          <AppMessage
+            message={messages.copyAreYouSureYouWantToDelete}
+            values={{
+              value1: deletableUsers[0]?.username,
+            }}
+          />
+        ) : (
+          <AppMessage
+            message={messages.copyAreYouSureYouWantToDelete2}
+            values={{
+              value1: deletableUsers.length,
+            }}
+          />
+        ),
+        confirmLabel: isSingle ? (
+          <AppMessage message={messages.copyDeleteUser} />
+        ) : (
+          <AppMessage
+            message={messages.deleteCount}
+            values={{
+              count: deletableUsers.length,
+            }}
+          />
+        ),
         intent: 'destructive',
         onConfirm: () => doDeleteUsers(deletableUsers),
       });
@@ -347,7 +803,7 @@ export default function UserManagement({
     if (password !== confirmPassword) {
       return {
         success: false,
-        formErrors: ['Passwords do not match'],
+        formErrors: [createMessageError(messages.copyPasswordsDoNotMatch)],
       };
     }
 
@@ -377,7 +833,7 @@ export default function UserManagement({
     if (newPassword !== confirmNewPassword) {
       return {
         success: false,
-        formErrors: ['New passwords do not match'],
+        formErrors: [createMessageError(messages.copyNewPasswordsDoNotMatch)],
       };
     }
 
@@ -412,7 +868,10 @@ export default function UserManagement({
     if (genError || !data) {
       return {
         success: false,
-        formErrors: [genError ?? 'Failed to start registration'],
+        formErrors: [
+          genError ??
+            createMessageError(messages.copyFailedToStartRegistration),
+        ],
       };
     }
 
@@ -421,9 +880,17 @@ export default function UserManagement({
       credential = await startRegistration({ optionsJSON: data.options });
     } catch (e) {
       if (e instanceof Error && e.name === 'NotAllowedError') {
-        return { success: false, formErrors: ['Passkey creation cancelled.'] };
+        return {
+          success: false,
+          formErrors: [
+            createMessageError(messages.copyPasskeyCreationCancelled),
+          ],
+        };
       }
-      return { success: false, formErrors: ['Passkey creation failed.'] };
+      return {
+        success: false,
+        formErrors: [createMessageError(messages.copyPasskeyCreationFailed)],
+      };
     }
 
     const result = await switchToPasskeyMode({ currentPassword, credential });
@@ -446,7 +913,8 @@ export default function UserManagement({
         await generateAuthenticationOptions();
       if (genError || !regData) {
         setSwitchToPasswordReauthError(
-          genError ?? 'Failed to start verification',
+          genError ??
+            createMessageError(messages.copyFailedToStartVerification),
         );
         setSwitchToPasswordReauthLoading(false);
         return;
@@ -471,7 +939,9 @@ export default function UserManagement({
         setSwitchToPasswordReauthLoading(false);
         return;
       }
-      setSwitchToPasswordReauthError('Verification failed');
+      setSwitchToPasswordReauthError(
+        createMessageError(messages.copyVerificationFailed),
+      );
       setSwitchToPasswordReauthLoading(false);
     }
   };
@@ -487,7 +957,7 @@ export default function UserManagement({
     if (newPassword !== confirmNewPassword) {
       return {
         success: false,
-        formErrors: ['Passwords do not match'],
+        formErrors: [createMessageError(messages.copyPasswordsDoNotMatch)],
       };
     }
 
@@ -514,7 +984,7 @@ export default function UserManagement({
               </div>
               <div className="min-w-0">
                 <Paragraph intent="smallText" margin="none">
-                  Logged in as:
+                  {intl.formatMessage(messages.loggedInAs)}
                 </Paragraph>
                 <Heading level="h4" margin="none">
                   {currentUsername}
@@ -528,16 +998,17 @@ export default function UserManagement({
                 className="tablet-landscape:w-auto w-full"
                 color="primary"
               >
-                Change Password
+                {intl.formatMessage(messages.changePassword)}
               </Button>
             )}
           </div>
           {hasPassword && !hasTwoFactor && !sandboxMode && (
             <Alert variant="warning" className="my-0">
-              <AlertTitle>Security Warning</AlertTitle>
+              <AlertTitle>
+                {intl.formatMessage(messages.securityWarning)}
+              </AlertTitle>
               <AlertDescription>
-                Your account is only protected by a password. Enable two-factor
-                authentication for stronger security.
+                {intl.formatMessage(messages.yourAccountIsOnlyProtectedByA)}
               </AlertDescription>
             </Alert>
           )}
@@ -552,15 +1023,19 @@ export default function UserManagement({
             />
             {!sandboxMode && (
               <SettingsField
-                label="Switch to Passkey Authentication"
-                description="Remove your password and two-factor authentication, and use a passkey to sign in instead."
+                label={intl.formatMessage(
+                  messages.switchToPasskeyAuthentication,
+                )}
+                description={intl.formatMessage(
+                  messages.removeYourPasswordAndTwoFactorAuthentication,
+                )}
                 control={
                   <Button
                     onClick={() => setShowSwitchToPasskey(true)}
                     size="sm"
                     color="destructive"
                   >
-                    Switch to Passkey
+                    {intl.formatMessage(messages.switchToPasskey)}
                   </Button>
                 }
               />
@@ -577,24 +1052,26 @@ export default function UserManagement({
               <div className="py-4">
                 <Alert variant="info" className="my-0">
                   <AlertDescription>
-                    You are the only user. If you lose access to your passkey,
-                    you will be locked out. Consider adding another user or
-                    backing up your passkey.
+                    {intl.formatMessage(messages.youAreTheOnlyUserIfYou)}
                   </AlertDescription>
                 </Alert>
               </div>
             )}
             {!sandboxMode && (
               <SettingsField
-                label="Switch to Password Authentication"
-                description="Remove all passkeys and switch to password-based authentication."
+                label={intl.formatMessage(
+                  messages.switchToPasswordAuthentication,
+                )}
+                description={intl.formatMessage(
+                  messages.removeAllPasskeysAndSwitchToPassword,
+                )}
                 control={
                   <Button
                     onClick={() => setShowSwitchToPassword(true)}
                     size="sm"
                     color="destructive"
                   >
-                    Switch to Password
+                    {intl.formatMessage(messages.switchToPassword)}
                   </Button>
                 }
               />
@@ -604,20 +1081,22 @@ export default function UserManagement({
       </Surface>
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <Heading level="label">All Users</Heading>
+          <Heading level="label">
+            {intl.formatMessage(messages.allUsers)}
+          </Heading>
           <Button
             onClick={() => setIsCreating(true)}
             size="sm"
             color="primary"
             icon={<Plus />}
           >
-            Add User
+            {intl.formatMessage(messages.addUser)}
           </Button>
         </div>
 
         <DataTable
           table={table}
-          emptyText="No users created yet."
+          emptyText={intl.formatMessage(messages.noUsersCreatedYet)}
           showPagination={false}
           floatingBar={
             <DataTableFloatingBar table={table}>
@@ -630,7 +1109,7 @@ export default function UserManagement({
                 color="destructive"
                 icon={<Trash className="size-4" />}
               >
-                Delete Selected
+                {intl.formatMessage(messages.deleteSelected)}
               </Button>
             </DataTableFloatingBar>
           }
@@ -643,8 +1122,8 @@ export default function UserManagement({
             setIsChangingPassword(false);
             setPasswordChangeSuccess(false);
           }}
-          title="Change Password"
-          description="Update your account password."
+          title={intl.formatMessage(messages.changePassword)}
+          description={intl.formatMessage(messages.updateYourAccountPassword)}
           footer={
             passwordChangeSuccess ? null : (
               <>
@@ -655,10 +1134,10 @@ export default function UserManagement({
                     setPasswordChangeSuccess(false);
                   }}
                 >
-                  Cancel
+                  {intl.formatMessage(commonMessages.cancel)}
                 </Button>
                 <SubmitButton form="changePasswordForm">
-                  Update Password
+                  {intl.formatMessage(messages.updatePassword)}
                 </SubmitButton>
               </>
             )
@@ -666,7 +1145,7 @@ export default function UserManagement({
         >
           {passwordChangeSuccess ? (
             <div className="text-success text-center">
-              Password updated successfully!
+              {intl.formatMessage(messages.passwordUpdatedSuccessfully)}
             </div>
           ) : (
             <FormWithoutProvider
@@ -685,26 +1164,28 @@ export default function UserManagement({
               />
               <Field
                 name="currentPassword"
-                label="Current Password"
+                label={intl.formatMessage(messages.currentPassword)}
                 component={PasswordField}
                 required
                 autoComplete="current-password"
               />
               <Field
                 name="newPassword"
-                label="New Password"
+                label={intl.formatMessage(messages.newPassword)}
                 component={PasswordField}
                 showStrengthMeter
                 required
                 autoComplete="new-password"
                 custom={{
                   schema: passwordSchema,
-                  hint: 'At least 8 characters with lowercase, uppercase, number, and symbol',
+                  hint: intl.formatMessage(
+                    messages.atLeast8CharactersWithLowercaseUppercase,
+                  ),
                 }}
               />
               <Field
                 name="confirmNewPassword"
-                label="Confirm New Password"
+                label={intl.formatMessage(messages.confirmNewPassword)}
                 component={PasswordField}
                 required
                 autoComplete="new-password"
@@ -722,7 +1203,7 @@ export default function UserManagement({
             setIsCreating(false);
             setError(null);
           }}
-          title="Add User"
+          title={intl.formatMessage(messages.addUser)}
           footer={
             <>
               <Button
@@ -732,19 +1213,23 @@ export default function UserManagement({
                   setError(null);
                 }}
               >
-                Cancel
+                {intl.formatMessage(commonMessages.cancel)}
               </Button>
-              <SubmitButton form="createUserForm">Create User</SubmitButton>
+              <SubmitButton form="createUserForm">
+                {intl.formatMessage(messages.createUser)}
+              </SubmitButton>
             </>
           }
         >
           <FormWithoutProvider onSubmit={handleCreateUser} id="createUserForm">
             {error && (
-              <div className="text-destructive mb-4 text-sm">{error}</div>
+              <div className="text-destructive mb-4 text-sm">
+                <AppErrorMessage error={error} />
+              </div>
             )}
             <Field
               name="username"
-              label="Username"
+              label={intl.formatMessage(messages.username)}
               component={InputField}
               required
               autoComplete="off"
@@ -754,18 +1239,18 @@ export default function UserManagement({
               custom={[
                 {
                   schema: usernameSchema,
-                  hint: 'At least 4 characters, no spaces',
+                  hint: intl.formatMessage(messages.atLeast4CharactersNoSpaces),
                 },
                 {
                   schema: usernameUniqueSchema,
-                  hint: 'Must be unique',
+                  hint: intl.formatMessage(messages.mustBeUnique),
                 },
               ]}
               autoFocus
             />
             <Field
               name="password"
-              label="Password"
+              label={intl.formatMessage(messages.password)}
               component={PasswordField}
               showStrengthMeter
               showValidationHints
@@ -773,12 +1258,14 @@ export default function UserManagement({
               autoComplete="off"
               custom={{
                 schema: passwordSchema,
-                hint: 'At least 8 characters with lowercase, uppercase, number, and symbol',
+                hint: intl.formatMessage(
+                  messages.atLeast8CharactersWithLowercaseUppercase,
+                ),
               }}
             />
             <Field
               name="confirmPassword"
-              label="Confirm Password"
+              label={intl.formatMessage(messages.confirmPassword)}
               component={PasswordField}
               required
               autoComplete="off"
@@ -789,11 +1276,13 @@ export default function UserManagement({
       <Dialog
         open={tempPassword !== null}
         closeDialog={() => setTempPassword(null)}
-        title="Temporary Password"
-        description="The user's authentication has been reset. Share this temporary password with them so they can sign in and set up their account again."
+        title={intl.formatMessage(messages.temporaryPassword)}
+        description={intl.formatMessage(
+          messages.theUserSAuthenticationHasBeenReset,
+        )}
         footer={
           <Button color="primary" onClick={() => setTempPassword(null)}>
-            Done
+            {intl.formatMessage(commonMessages.done)}
           </Button>
         }
       >
@@ -808,18 +1297,20 @@ export default function UserManagement({
         <Dialog
           open={showSwitchToPasskey}
           closeDialog={() => setShowSwitchToPasskey(false)}
-          title="Switch to Passkey Authentication"
-          description="Enter your current password, then register a passkey. Your password and two-factor authentication will be removed."
+          title={intl.formatMessage(messages.switchToPasskeyAuthentication)}
+          description={intl.formatMessage(
+            messages.enterYourCurrentPasswordThenRegisterA,
+          )}
           footer={
             <>
               <Button
                 type="button"
                 onClick={() => setShowSwitchToPasskey(false)}
               >
-                Cancel
+                {intl.formatMessage(commonMessages.cancel)}
               </Button>
               <SubmitButton form="switchToPasskeyForm" color="destructive">
-                Switch to Passkey
+                {intl.formatMessage(messages.switchToPasskey)}
               </SubmitButton>
             </>
           }
@@ -840,7 +1331,7 @@ export default function UserManagement({
             />
             <Field
               name="currentPassword"
-              label="Current Password"
+              label={intl.formatMessage(messages.currentPassword)}
               component={PasswordField}
               required
               autoComplete="current-password"
@@ -858,8 +1349,10 @@ export default function UserManagement({
             setSwitchToPasswordReauthError(null);
             setSwitchToPasswordReauthLoading(false);
           }}
-          title="Switch to Password Authentication"
-          description="All your passkeys will be removed and replaced with a password."
+          title={intl.formatMessage(messages.switchToPasswordAuthentication)}
+          description={intl.formatMessage(
+            messages.allYourPasskeysWillBeRemovedAnd,
+          )}
           footer={
             switchToPasswordReauthed ? (
               <>
@@ -871,10 +1364,10 @@ export default function UserManagement({
                     setSwitchToPasswordReauthError(null);
                   }}
                 >
-                  Cancel
+                  {intl.formatMessage(commonMessages.cancel)}
                 </Button>
                 <SubmitButton form="switchToPasswordForm" color="destructive">
-                  Switch to Password
+                  {intl.formatMessage(messages.switchToPassword)}
                 </SubmitButton>
               </>
             ) : null
@@ -897,19 +1390,21 @@ export default function UserManagement({
               />
               <Field
                 name="newPassword"
-                label="New Password"
+                label={intl.formatMessage(messages.newPassword)}
                 component={PasswordField}
                 showStrengthMeter
                 required
                 autoComplete="new-password"
                 custom={{
                   schema: passwordSchema,
-                  hint: 'At least 8 characters with lowercase, uppercase, number, and symbol',
+                  hint: intl.formatMessage(
+                    messages.atLeast8CharactersWithLowercaseUppercase,
+                  ),
                 }}
               />
               <Field
                 name="confirmNewPassword"
-                label="Confirm New Password"
+                label={intl.formatMessage(messages.confirmNewPassword)}
                 component={PasswordField}
                 required
                 autoComplete="new-password"
@@ -919,11 +1414,11 @@ export default function UserManagement({
           ) : (
             <div className="flex flex-col items-center gap-4 py-4">
               <Paragraph className="text-center">
-                Verify your identity with a passkey to continue.
+                {intl.formatMessage(messages.verifyYourIdentityWithAPasskeyTo)}
               </Paragraph>
               {switchToPasswordReauthError && (
                 <p className="text-destructive text-sm">
-                  {switchToPasswordReauthError}
+                  <AppErrorMessage error={switchToPasswordReauthError} />
                 </p>
               )}
               <Button
@@ -932,8 +1427,8 @@ export default function UserManagement({
                 color="primary"
               >
                 {switchToPasswordReauthLoading
-                  ? 'Verifying...'
-                  : 'Verify with passkey'}
+                  ? intl.formatMessage(messages.copyVerifying)
+                  : intl.formatMessage(messages.copyVerifyWithPasskey)}
               </Button>
             </div>
           )}

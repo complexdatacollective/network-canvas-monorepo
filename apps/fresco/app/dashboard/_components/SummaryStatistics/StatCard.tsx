@@ -1,5 +1,7 @@
+'use client';
 import { use } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { Skeleton } from '@codaco/fresco-ui/Skeleton';
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -23,7 +25,9 @@ function StatCard({
   render: string;
   icon: React.ReactNode;
 }) {
+  const intl = useAppIntl();
   const data = use(dataPromise);
+  const count = data[render];
 
   return (
     <Surface className={statCardClasses} spacing="none">
@@ -38,7 +42,7 @@ function StatCard({
           {title}
         </Heading>
         <Heading level="h1" margin="none">
-          {data[render]}
+          {count === undefined ? undefined : intl.formatNumber(count)}
         </Heading>
       </div>
     </Surface>

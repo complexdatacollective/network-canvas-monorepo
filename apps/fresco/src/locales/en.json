@@ -1,0 +1,3366 @@
+{
+  "fresco.ActivityFeed.ActivityFeedToolbar.filterByActivityDetails": {
+    "defaultMessage": "Filter by activity details...",
+    "description": "Researcher-facing ActivityFeed / ActivityFeedToolbar: Filter by activity details..."
+  },
+  "fresco.ActivityFeed.ActivityFeedToolbar.filterType": {
+    "defaultMessage": "Filter Type...",
+    "description": "Researcher-facing ActivityFeed / ActivityFeedToolbar: Filter Type..."
+  },
+  "fresco.ActivityFeed.ActivityFeedToolbar.noTypeFound": {
+    "defaultMessage": "No type found.",
+    "description": "Researcher-facing ActivityFeed / ActivityFeedToolbar: No type found."
+  },
+  "fresco.ActivityFeed.ActivityFeedToolbar.searchType": {
+    "defaultMessage": "Search Type...",
+    "description": "Researcher-facing ActivityFeed / ActivityFeedToolbar: Search Type..."
+  },
+  "fresco.ActivityFeed.ColumnDefinition.details": {
+    "defaultMessage": "Details",
+    "description": "Researcher-facing ActivityFeed / ColumnDefinition: Details"
+  },
+  "fresco.ActivityFeed.ColumnDefinition.time": {
+    "defaultMessage": "Time",
+    "description": "Researcher-facing ActivityFeed / ColumnDefinition: Time"
+  },
+  "fresco.ActivityFeed.ColumnDefinition.type": {
+    "defaultMessage": "Type",
+    "description": "Researcher-facing ActivityFeed / ColumnDefinition: Type"
+  },
+  "fresco.ActivityFeed.ExportActivityFeed.activityFeedExportedSuccessfully": {
+    "defaultMessage": "Activity feed exported successfully",
+    "description": "Researcher-facing ActivityFeed / ExportActivityFeed: Activity feed exported successfully"
+  },
+  "fresco.ActivityFeed.ExportActivityFeed.anErrorOccurredWhileExportingTheActivity": {
+    "defaultMessage": "An error occurred while exporting the activity feed",
+    "description": "Researcher-facing ActivityFeed / ExportActivityFeed: An error occurred while exporting the activity feed"
+  },
+  "fresco.ActivityFeed.ExportActivityFeed.error": {
+    "defaultMessage": "Error",
+    "description": "Researcher-facing ActivityFeed / ExportActivityFeed: Error"
+  },
+  "fresco.ActivityFeed.ExportActivityFeed.exportCSV": {
+    "defaultMessage": "Export CSV",
+    "description": "Researcher-facing ActivityFeed / ExportActivityFeed: Export CSV"
+  },
+  "fresco.ActivityFeed.ExportActivityFeed.success": {
+    "defaultMessage": "Success",
+    "description": "Researcher-facing ActivityFeed / ExportActivityFeed: Success"
+  },
+  "fresco.ApiTokenManagement.aPITokenCreated": {
+    "defaultMessage": "API Token Created",
+    "description": "Researcher-facing ApiTokenManagement: API Token Created"
+  },
+  "fresco.ApiTokenManagement.areYouSureYouWantToDelete": {
+    "defaultMessage": "Are you sure you want to delete this API token? Any applications using this token will no longer be able to authenticate.",
+    "description": "Researcher-facing ApiTokenManagement: Are you sure you want to delete this API token? Any applications using this token will no longer be able to authenticate"
+  },
+  "fresco.ApiTokenManagement.copiedToClipboard": {
+    "defaultMessage": "Copied to clipboard",
+    "description": "Researcher-facing ApiTokenManagement: Copied to clipboard"
+  },
+  "fresco.ApiTokenManagement.copyCreateToken": {
+    "defaultMessage": "Create Token",
+    "description": "Researcher-facing ApiTokenManagement: Create Token"
+  },
+  "fresco.ApiTokenManagement.copyCreating": {
+    "defaultMessage": "Creating...",
+    "description": "Researcher-facing ApiTokenManagement: Creating..."
+  },
+  "fresco.ApiTokenManagement.copyDeleteToken": {
+    "defaultMessage": "Delete Token",
+    "description": "Researcher-facing ApiTokenManagement: Delete Token"
+  },
+  "fresco.ApiTokenManagement.copyDeleting": {
+    "defaultMessage": "Deleting...",
+    "description": "Researcher-facing ApiTokenManagement: Deleting..."
+  },
+  "fresco.ApiTokenManagement.copyNever": {
+    "defaultMessage": "Never",
+    "description": "Researcher-facing ApiTokenManagement: Never"
+  },
+  "fresco.ApiTokenManagement.copyToClipboard": {
+    "defaultMessage": "Copy to Clipboard",
+    "description": "Researcher-facing ApiTokenManagement: Copy to Clipboard"
+  },
+  "fresco.ApiTokenManagement.createANewAPITokenForAuthenticating": {
+    "defaultMessage": "Create a new API token for authenticating Interview Data API requests.",
+    "description": "Researcher-facing ApiTokenManagement: Create a new API token for authenticating Interview Data API requests."
+  },
+  "fresco.ApiTokenManagement.createAPIToken": {
+    "defaultMessage": "Create API Token",
+    "description": "Researcher-facing ApiTokenManagement: Create API Token"
+  },
+  "fresco.ApiTokenManagement.createNewToken": {
+    "defaultMessage": "Create New Token",
+    "description": "Researcher-facing ApiTokenManagement: Create New Token"
+  },
+  "fresco.ApiTokenManagement.created": {
+    "defaultMessage": "Created",
+    "description": "Researcher-facing ApiTokenManagement: Created"
+  },
+  "fresco.ApiTokenManagement.deleteAPIToken": {
+    "defaultMessage": "Delete API Token",
+    "description": "Researcher-facing ApiTokenManagement: Delete API Token"
+  },
+  "fresco.ApiTokenManagement.description": {
+    "defaultMessage": "Description",
+    "description": "Researcher-facing ApiTokenManagement: Description"
+  },
+  "fresco.ApiTokenManagement.descriptionOptional": {
+    "defaultMessage": "Description (optional)",
+    "description": "Researcher-facing ApiTokenManagement: Description (optional)"
+  },
+  "fresco.ApiTokenManagement.eGDevelopmentToken": {
+    "defaultMessage": "e.g., Development token",
+    "description": "Researcher-facing ApiTokenManagement: e.g., Development token"
+  },
+  "fresco.ApiTokenManagement.lastUsed": {
+    "defaultMessage": "Last Used",
+    "description": "Researcher-facing ApiTokenManagement: Last Used"
+  },
+  "fresco.ApiTokenManagement.noAPITokensCreatedYet": {
+    "defaultMessage": "No API tokens created yet.",
+    "description": "Researcher-facing ApiTokenManagement: No API tokens created yet."
+  },
+  "fresco.ApiTokenManagement.status": {
+    "defaultMessage": "Status",
+    "description": "Researcher-facing ApiTokenManagement: Status"
+  },
+  "fresco.ApiTokenManagement.untitled": {
+    "defaultMessage": "Untitled",
+    "description": "Researcher-facing ApiTokenManagement: Untitled"
+  },
+  "fresco.ApiTokenManagement.yourAPIToken": {
+    "defaultMessage": "Your API Token",
+    "description": "Researcher-facing ApiTokenManagement: Your API Token"
+  },
+  "fresco.ApiTokenManagement.yourTokenHasBeenCreatedAndIs": {
+    "defaultMessage": "Your token has been created and is displayed below. Save this token somewhere safe now - you won't be able to see it again after you close this dialog.",
+    "description": "Researcher-facing ApiTokenManagement: Your token has been created and is displayed below. Save this token somewhere safe now - you won't be able to see it aga"
+  },
+  "fresco.ExportProgressProvider.copyYourExportHasDownloaded": {
+    "defaultMessage": "Your export has downloaded.",
+    "description": "Researcher-facing ExportProgressProvider: Your export has downloaded."
+  },
+  "fresco.ExportProgressProvider.copyYourExportHasDownloadedInterviewSCould": {
+    "defaultMessage": "Your export has downloaded. {value1, plural, one {# interview could not be exported.} other {# interviews could not be exported.}}",
+    "description": "Researcher-facing ExportProgressProvider: Your export has downloaded. value interview(s) could not be exported."
+  },
+  "fresco.ExportProgressProvider.exportCancelled": {
+    "defaultMessage": "Export cancelled",
+    "description": "Researcher-facing ExportProgressProvider: Export cancelled"
+  },
+  "fresco.ExportProgressProvider.exportComplete": {
+    "defaultMessage": "Export complete",
+    "description": "Researcher-facing ExportProgressProvider: Export complete"
+  },
+  "fresco.ExportProgressProvider.exportDownloaded": {
+    "defaultMessage": "Export downloaded",
+    "description": "Researcher-facing ExportProgressProvider: Export downloaded"
+  },
+  "fresco.ExportProgressProvider.exportError": {
+    "defaultMessage": "The export could not be completed. Please try again.",
+    "description": "Researcher-facing ExportProgressProvider: The export could not be completed. Please try again."
+  },
+  "fresco.ExportProgressProvider.exportFailed": {
+    "defaultMessage": "Export failed",
+    "description": "Researcher-facing ExportProgressProvider: Export failed"
+  },
+  "fresco.ExportProgressProvider.exportingInterviews": {
+    "defaultMessage": "Exporting interviews",
+    "description": "Researcher-facing ExportProgressProvider: Exporting interviews"
+  },
+  "fresco.ExportProgressProvider.theExportWasCancelled": {
+    "defaultMessage": "The export was cancelled.",
+    "description": "Researcher-facing ExportProgressProvider: The export was cancelled."
+  },
+  "fresco.ExportProgressProvider.yourExportDownloadedButItsStatusCould": {
+    "defaultMessage": "Your export downloaded, but its status could not be updated. Refresh to see the latest.",
+    "description": "Researcher-facing ExportProgressProvider: Your export downloaded, but its status could not be updated. Refresh to see the latest."
+  },
+  "fresco.ImportToastContent.complete": {
+    "defaultMessage": "Import complete",
+    "description": "Researcher-facing ImportToastContent: Import complete"
+  },
+  "fresco.ImportToastContent.duplicates": {
+    "defaultMessage": "Checking duplicates...",
+    "description": "Researcher-facing ImportToastContent: Checking duplicates..."
+  },
+  "fresco.ImportToastContent.extracting": {
+    "defaultMessage": "Extracting assets...",
+    "description": "Researcher-facing ImportToastContent: Extracting assets..."
+  },
+  "fresco.ImportToastContent.failed": {
+    "defaultMessage": "Import failed",
+    "description": "Researcher-facing ImportToastContent: Import failed"
+  },
+  "fresco.ImportToastContent.parsing": {
+    "defaultMessage": "Reading file...",
+    "description": "Researcher-facing ImportToastContent: Reading file..."
+  },
+  "fresco.ImportToastContent.saving": {
+    "defaultMessage": "Saving...",
+    "description": "Researcher-facing ImportToastContent: Saving..."
+  },
+  "fresco.ImportToastContent.uploadingAssets": {
+    "defaultMessage": "Uploading assets...",
+    "description": "Researcher-facing ImportToastContent: Uploading assets..."
+  },
+  "fresco.ImportToastContent.uploadingProtocol": {
+    "defaultMessage": "Uploading protocol...",
+    "description": "Researcher-facing ImportToastContent: Uploading protocol..."
+  },
+  "fresco.ImportToastContent.validating": {
+    "defaultMessage": "Validating...",
+    "description": "Researcher-facing ImportToastContent: Validating..."
+  },
+  "fresco.InterviewsTable.ActionsDropdown.actions": {
+    "defaultMessage": "Actions",
+    "description": "Researcher-facing InterviewsTable / ActionsDropdown: Actions"
+  },
+  "fresco.InterviewsTable.ActionsDropdown.enterInterview": {
+    "defaultMessage": "Enter Interview",
+    "description": "Researcher-facing InterviewsTable / ActionsDropdown: Enter Interview"
+  },
+  "fresco.InterviewsTable.ActionsDropdown.export": {
+    "defaultMessage": "Export",
+    "description": "Researcher-facing InterviewsTable / ActionsDropdown: Export"
+  },
+  "fresco.InterviewsTable.ActionsDropdown.openMenu": {
+    "defaultMessage": "Open menu",
+    "description": "Researcher-facing InterviewsTable / ActionsDropdown: Open menu"
+  },
+  "fresco.InterviewsTable.Columns.complete": {
+    "defaultMessage": "Complete",
+    "description": "Researcher-facing InterviewsTable / Columns: Complete"
+  },
+  "fresco.InterviewsTable.Columns.edges": {
+    "defaultMessage": "{value1} (edges)",
+    "description": "Researcher-facing InterviewsTable / Columns: value (edges)"
+  },
+  "fresco.InterviewsTable.Columns.entityType": {
+    "defaultMessage": "Entity Type",
+    "description": "Researcher-facing InterviewsTable / Columns: Entity Type"
+  },
+  "fresco.InterviewsTable.Columns.exportStatus": {
+    "defaultMessage": "Export Status",
+    "description": "Researcher-facing InterviewsTable / Columns: Export Status"
+  },
+  "fresco.InterviewsTable.Columns.exported": {
+    "defaultMessage": "Exported",
+    "description": "Researcher-facing InterviewsTable / Columns: Exported"
+  },
+  "fresco.InterviewsTable.Columns.inProgress": {
+    "defaultMessage": "In Progress",
+    "description": "Researcher-facing InterviewsTable / Columns: In Progress"
+  },
+  "fresco.InterviewsTable.Columns.network": {
+    "defaultMessage": "Network",
+    "description": "Researcher-facing InterviewsTable / Columns: Network"
+  },
+  "fresco.InterviewsTable.Columns.nodes": {
+    "defaultMessage": "{value1} (nodes)",
+    "description": "Researcher-facing InterviewsTable / Columns: value (nodes)"
+  },
+  "fresco.InterviewsTable.Columns.notExported": {
+    "defaultMessage": "Not Exported",
+    "description": "Researcher-facing InterviewsTable / Columns: Not Exported"
+  },
+  "fresco.InterviewsTable.Columns.notExported2": {
+    "defaultMessage": "Not exported",
+    "description": "Researcher-facing InterviewsTable / Columns: Not exported"
+  },
+  "fresco.InterviewsTable.Columns.notStarted": {
+    "defaultMessage": "Not Started",
+    "description": "Researcher-facing InterviewsTable / Columns: Not Started"
+  },
+  "fresco.InterviewsTable.Columns.participantIcon": {
+    "defaultMessage": "Participant icon",
+    "description": "Researcher-facing InterviewsTable / Columns: Participant icon"
+  },
+  "fresco.InterviewsTable.Columns.participantIdentifier": {
+    "defaultMessage": "Participant Identifier",
+    "description": "Researcher-facing InterviewsTable / Columns: Participant Identifier"
+  },
+  "fresco.InterviewsTable.Columns.progress": {
+    "defaultMessage": "Progress",
+    "description": "Researcher-facing InterviewsTable / Columns: Progress"
+  },
+  "fresco.InterviewsTable.Columns.protocolIcon": {
+    "defaultMessage": "Protocol icon",
+    "description": "Researcher-facing InterviewsTable / Columns: Protocol icon"
+  },
+  "fresco.InterviewsTable.Columns.protocolName": {
+    "defaultMessage": "Protocol Name",
+    "description": "Researcher-facing InterviewsTable / Columns: Protocol Name"
+  },
+  "fresco.InterviewsTable.Columns.selectRow": {
+    "defaultMessage": "Select row",
+    "description": "Researcher-facing InterviewsTable / Columns: Select row"
+  },
+  "fresco.InterviewsTable.Columns.started": {
+    "defaultMessage": "Started",
+    "description": "Researcher-facing InterviewsTable / Columns: Started"
+  },
+  "fresco.InterviewsTable.Columns.updated": {
+    "defaultMessage": "Updated",
+    "description": "Researcher-facing InterviewsTable / Columns: Updated"
+  },
+  "fresco.InterviewsTable.InterviewsSelectionBar.deleteSelected": {
+    "defaultMessage": "Delete Selected",
+    "description": "Researcher-facing InterviewsTable / InterviewsSelectionBar: Delete Selected"
+  },
+  "fresco.InterviewsTable.InterviewsSelectionBar.deselectAll": {
+    "defaultMessage": "Deselect all",
+    "description": "Researcher-facing InterviewsTable / InterviewsSelectionBar: Deselect all"
+  },
+  "fresco.InterviewsTable.InterviewsSelectionBar.exportSelected": {
+    "defaultMessage": "Export Selected",
+    "description": "Researcher-facing InterviewsTable / InterviewsSelectionBar: Export Selected"
+  },
+  "fresco.InterviewsTable.InterviewsSelectionBar.selectAll": {
+    "defaultMessage": "Select all {value1, number}",
+    "description": "Researcher-facing InterviewsTable / InterviewsSelectionBar: Select all value"
+  },
+  "fresco.InterviewsTable.InterviewsSelectionBar.selected": {
+    "defaultMessage": "{value1, plural, one {# selected} other {# selected}}",
+    "description": "Researcher-facing InterviewsTable / InterviewsSelectionBar: value selected"
+  },
+  "fresco.InterviewsTable.InterviewsTable.error": {
+    "defaultMessage": "Error",
+    "description": "Researcher-facing InterviewsTable / InterviewsTable: Error"
+  },
+  "fresco.InterviewsTable.InterviewsTable.exportAllCompletedInterviews": {
+    "defaultMessage": "Export all completed interviews",
+    "description": "Researcher-facing InterviewsTable / InterviewsTable: Export all completed interviews"
+  },
+  "fresco.InterviewsTable.InterviewsTable.exportAllInterviews": {
+    "defaultMessage": "Export all interviews",
+    "description": "Researcher-facing InterviewsTable / InterviewsTable: Export all interviews"
+  },
+  "fresco.InterviewsTable.InterviewsTable.exportAllUnexportedInterviews": {
+    "defaultMessage": "Export all unexported interviews",
+    "description": "Researcher-facing InterviewsTable / InterviewsTable: Export all unexported interviews"
+  },
+  "fresco.InterviewsTable.InterviewsTable.exportInterviewData": {
+    "defaultMessage": "Export Interview Data",
+    "description": "Researcher-facing InterviewsTable / InterviewsTable: Export Interview Data"
+  },
+  "fresco.InterviewsTable.InterviewsTable.filterByIdentifier": {
+    "defaultMessage": "Filter by identifier...",
+    "description": "Researcher-facing InterviewsTable / InterviewsTable: Filter by identifier..."
+  },
+  "fresco.InterviewsTable.NetworkSummary.noNodesOrEdges": {
+    "defaultMessage": "No nodes or edges",
+    "description": "Researcher-facing InterviewsTable / NetworkSummary: No nodes or edges"
+  },
+  "fresco.MobileNavDrawer.closeNavigationMenu": {
+    "defaultMessage": "Close navigation menu",
+    "description": "Researcher-facing MobileNavDrawer: Close navigation menu"
+  },
+  "fresco.MobileNavDrawer.dashboard": {
+    "defaultMessage": "Dashboard",
+    "description": "Researcher-facing MobileNavDrawer: Dashboard"
+  },
+  "fresco.MobileNavDrawer.interviews": {
+    "defaultMessage": "Interviews",
+    "description": "Researcher-facing MobileNavDrawer: Interviews"
+  },
+  "fresco.MobileNavDrawer.mobileNavigation": {
+    "defaultMessage": "Mobile navigation",
+    "description": "Researcher-facing MobileNavDrawer: Mobile navigation"
+  },
+  "fresco.MobileNavDrawer.openNavigationMenu": {
+    "defaultMessage": "Open navigation menu",
+    "description": "Researcher-facing MobileNavDrawer: Open navigation menu"
+  },
+  "fresco.MobileNavDrawer.participants": {
+    "defaultMessage": "Participants",
+    "description": "Researcher-facing MobileNavDrawer: Participants"
+  },
+  "fresco.MobileNavDrawer.protocols": {
+    "defaultMessage": "Protocols",
+    "description": "Researcher-facing MobileNavDrawer: Protocols"
+  },
+  "fresco.MobileNavDrawer.settings": {
+    "defaultMessage": "Settings",
+    "description": "Researcher-facing MobileNavDrawer: Settings"
+  },
+  "fresco.MobileNavDrawer.signOut": {
+    "defaultMessage": "Sign out",
+    "description": "Researcher-facing MobileNavDrawer: Sign out"
+  },
+  "fresco.NavigationBar.dashboard": {
+    "defaultMessage": "Dashboard",
+    "description": "Researcher-facing NavigationBar: Dashboard"
+  },
+  "fresco.NavigationBar.interviews": {
+    "defaultMessage": "Interviews",
+    "description": "Researcher-facing NavigationBar: Interviews"
+  },
+  "fresco.NavigationBar.participants": {
+    "defaultMessage": "Participants",
+    "description": "Researcher-facing NavigationBar: Participants"
+  },
+  "fresco.NavigationBar.protocols": {
+    "defaultMessage": "Protocols",
+    "description": "Researcher-facing NavigationBar: Protocols"
+  },
+  "fresco.NavigationBar.settings": {
+    "defaultMessage": "Settings",
+    "description": "Researcher-facing NavigationBar: Settings"
+  },
+  "fresco.NetlifyBadge.deploysByNetlify": {
+    "defaultMessage": "Deploys by Netlify",
+    "description": "Researcher-facing NetlifyBadge: Deploys by Netlify"
+  },
+  "fresco.OnboardSteps.ConfigureStorage.configureStorage": {
+    "defaultMessage": "Configure Storage",
+    "description": "Researcher-facing OnboardSteps / ConfigureStorage: Configure Storage"
+  },
+  "fresco.OnboardSteps.ConfigureStorage.frescoNeedsAStorageProviderForProtocol": {
+    "defaultMessage": "Fresco needs a storage provider for protocol assets and data exports. Choose between UploadThing (managed service) or an S3-compatible bucket (self-hosted or cloud).",
+    "description": "Researcher-facing OnboardSteps / ConfigureStorage: Fresco needs a storage provider for protocol assets and data exports. Choose between UploadThing (managed service) or an"
+  },
+  "fresco.OnboardSteps.CreateAccount.createAnAdminAccount": {
+    "defaultMessage": "Create an Admin Account",
+    "description": "Researcher-facing OnboardSteps / CreateAccount: Create an Admin Account"
+  },
+  "fresco.OnboardSteps.Documentation.aboutFresco": {
+    "defaultMessage": "About Fresco",
+    "description": "Researcher-facing OnboardSteps / Documentation: About Fresco"
+  },
+  "fresco.OnboardSteps.Documentation.aboutFrescoVisitOurDocumentationSiteTo": {
+    "defaultMessage": "About Fresco — visit our documentation site to learn more (opens in a new tab)",
+    "description": "Researcher-facing OnboardSteps / Documentation: About Fresco — visit our documentation site to learn more (opens in a new tab)"
+  },
+  "fresco.OnboardSteps.Documentation.documentation": {
+    "defaultMessage": "Documentation",
+    "description": "Researcher-facing OnboardSteps / Documentation: Documentation"
+  },
+  "fresco.OnboardSteps.Documentation.goToTheDashboard": {
+    "defaultMessage": "Go to the dashboard!",
+    "description": "Researcher-facing OnboardSteps / Documentation: Go to the dashboard!"
+  },
+  "fresco.OnboardSteps.Documentation.readOurGuideOnTheBasicWorkflow": {
+    "defaultMessage": "Read our guide on the basic workflow for using Fresco to conduct your study.",
+    "description": "Researcher-facing OnboardSteps / Documentation: Read our guide on the basic workflow for using Fresco to conduct your study."
+  },
+  "fresco.OnboardSteps.Documentation.thisIsTheEndOfTheOnboarding": {
+    "defaultMessage": "This is the end of the onboarding process. You are now ready to use Fresco! For further help and information, consider using the resources below.",
+    "description": "Researcher-facing OnboardSteps / Documentation: This is the end of the onboarding process. You are now ready to use Fresco! For further help and information, consider u"
+  },
+  "fresco.OnboardSteps.Documentation.usingFresco": {
+    "defaultMessage": "Using Fresco",
+    "description": "Researcher-facing OnboardSteps / Documentation: Using Fresco"
+  },
+  "fresco.OnboardSteps.Documentation.usingFrescoVisitOurDocumentationSiteFor": {
+    "defaultMessage": "Using Fresco — visit our documentation site for a usage guide (opens in a new tab)",
+    "description": "Researcher-facing OnboardSteps / Documentation: Using Fresco — visit our documentation site for a usage guide (opens in a new tab)"
+  },
+  "fresco.OnboardSteps.Documentation.visitOurDocumentationSiteToLearnMore": {
+    "defaultMessage": "Visit our documentation site to learn more about Fresco.",
+    "description": "Researcher-facing OnboardSteps / Documentation: Visit our documentation site to learn more about Fresco."
+  },
+  "fresco.OnboardSteps.UploadProtocol.ifYouDonAposTHaveA": {
+    "defaultMessage": "If you don't have a protocol yet, you can upload one later from the dashboard.",
+    "description": "Researcher-facing OnboardSteps / UploadProtocol: If you don't have a protocol yet, you can upload one later from the dashboard."
+  },
+  "fresco.OnboardSteps.UploadProtocol.ifYouHaveAlreadyCreatedANetwork": {
+    "defaultMessage": "If you have already created a Network Canvas protocol ( <tag1>.netcanvas</tag1>) you can import it now.",
+    "description": "Researcher-facing OnboardSteps / UploadProtocol: If you have already created a Network Canvas protocol ( .netcanvas) you can import it now."
+  },
+  "fresco.OnboardSteps.UploadProtocol.importProtocols": {
+    "defaultMessage": "Import Protocols",
+    "description": "Researcher-facing OnboardSteps / UploadProtocol: Import Protocols"
+  },
+  "fresco.ParticipantModal.error": {
+    "defaultMessage": "Error",
+    "description": "Researcher-facing ParticipantModal: Error"
+  },
+  "fresco.ParticipantsTable.ActionsDropdown.actions": {
+    "defaultMessage": "Actions",
+    "description": "Researcher-facing ParticipantsTable / ActionsDropdown: Actions"
+  },
+  "fresco.ParticipantsTable.ActionsDropdown.edit": {
+    "defaultMessage": "Edit",
+    "description": "Researcher-facing ParticipantsTable / ActionsDropdown: Edit"
+  },
+  "fresco.ParticipantsTable.ActionsDropdown.openMenu": {
+    "defaultMessage": "Open menu",
+    "description": "Researcher-facing ParticipantsTable / ActionsDropdown: Open menu"
+  },
+  "fresco.ParticipantsTable.Columns.identifier": {
+    "defaultMessage": "Identifier",
+    "description": "Researcher-facing ParticipantsTable / Columns: Identifier"
+  },
+  "fresco.ParticipantsTable.Columns.interviews": {
+    "defaultMessage": "Interviews",
+    "description": "Researcher-facing ParticipantsTable / Columns: Interviews"
+  },
+  "fresco.ParticipantsTable.Columns.label": {
+    "defaultMessage": "Label",
+    "description": "Researcher-facing ParticipantsTable / Columns: Label"
+  },
+  "fresco.ParticipantsTable.Columns.protocolIcon": {
+    "defaultMessage": "Protocol icon",
+    "description": "Researcher-facing ParticipantsTable / Columns: Protocol icon"
+  },
+  "fresco.ParticipantsTable.Columns.selectRow": {
+    "defaultMessage": "Select row",
+    "description": "Researcher-facing ParticipantsTable / Columns: Select row"
+  },
+  "fresco.ParticipantsTable.Columns.uniqueParticipantURL": {
+    "defaultMessage": "Unique Participant URL",
+    "description": "Researcher-facing ParticipantsTable / Columns: Unique Participant URL"
+  },
+  "fresco.ParticipantsTable.GenerateParticipantURLButton.copyCopyingURLToClipboard": {
+    "defaultMessage": "Copying URL to clipboard...",
+    "description": "Researcher-facing ParticipantsTable / GenerateParticipantURLButton: Copying URL to clipboard..."
+  },
+  "fresco.ParticipantsTable.GenerateParticipantURLButton.copyURLCopiedToClipboard": {
+    "defaultMessage": "URL copied to clipboard!",
+    "description": "Researcher-facing ParticipantsTable / GenerateParticipantURLButton: URL copied to clipboard!"
+  },
+  "fresco.ParticipantsTable.GenerateParticipantURLButton.copyUniqueURL": {
+    "defaultMessage": "Copy Unique URL",
+    "description": "Researcher-facing ParticipantsTable / GenerateParticipantURLButton: Copy Unique URL"
+  },
+  "fresco.ParticipantsTable.GenerateParticipantURLButton.failedToCopyURLToClipboard": {
+    "defaultMessage": "Failed to copy URL to clipboard.",
+    "description": "Researcher-facing ParticipantsTable / GenerateParticipantURLButton: Failed to copy URL to clipboard."
+  },
+  "fresco.ParticipantsTable.GenerateParticipantURLButton.selectAProtocol": {
+    "defaultMessage": "Select a Protocol...",
+    "description": "Researcher-facing ParticipantsTable / GenerateParticipantURLButton: Select a Protocol..."
+  },
+  "fresco.ParticipantsTable.GenerateParticipantURLButton.selectAProtocolAndTheURLWill": {
+    "defaultMessage": "Select a protocol, and the URL will be copied to your clipboard.",
+    "description": "Researcher-facing ParticipantsTable / GenerateParticipantURLButton: Select a protocol, and the URL will be copied to your clipboard."
+  },
+  "fresco.ParticipantsTable.ParticipantsSelectionBar.deleteSelected": {
+    "defaultMessage": "Delete Selected",
+    "description": "Researcher-facing ParticipantsTable / ParticipantsSelectionBar: Delete Selected"
+  },
+  "fresco.ParticipantsTable.ParticipantsSelectionBar.deselectAll": {
+    "defaultMessage": "Deselect all",
+    "description": "Researcher-facing ParticipantsTable / ParticipantsSelectionBar: Deselect all"
+  },
+  "fresco.ParticipantsTable.ParticipantsSelectionBar.exportSelected": {
+    "defaultMessage": "Export Selected",
+    "description": "Researcher-facing ParticipantsTable / ParticipantsSelectionBar: Export Selected"
+  },
+  "fresco.ParticipantsTable.ParticipantsSelectionBar.selectAll": {
+    "defaultMessage": "Select all {value1, number}",
+    "description": "Researcher-facing ParticipantsTable / ParticipantsSelectionBar: Select all value"
+  },
+  "fresco.ParticipantsTable.ParticipantsSelectionBar.selected": {
+    "defaultMessage": "{value1, plural, one {# selected} other {# selected}}",
+    "description": "Researcher-facing ParticipantsTable / ParticipantsSelectionBar: value selected"
+  },
+  "fresco.ParticipantsTable.ParticipantsTableClient.error": {
+    "defaultMessage": "Error",
+    "description": "Researcher-facing ParticipantsTable / ParticipantsTableClient: Error"
+  },
+  "fresco.ParticipantsTable.ParticipantsTableClient.exportParticipants": {
+    "defaultMessage": "Export Participants",
+    "description": "Researcher-facing ParticipantsTable / ParticipantsTableClient: Export Participants"
+  },
+  "fresco.ParticipantsTable.ParticipantsTableClient.filterByIdentifier": {
+    "defaultMessage": "Filter by identifier...",
+    "description": "Researcher-facing ParticipantsTable / ParticipantsTableClient: Filter by identifier..."
+  },
+  "fresco.ProtocolImport.ProtocolImportDropzone.browseFiles": {
+    "defaultMessage": "Browse files",
+    "description": "Researcher-facing ProtocolImport / ProtocolImportDropzone: Browse files"
+  },
+  "fresco.ProtocolImport.ProtocolImportDropzone.copyDropFilesHere": {
+    "defaultMessage": "Drop files here",
+    "description": "Researcher-facing ProtocolImport / ProtocolImportDropzone: Drop files here"
+  },
+  "fresco.ProtocolImport.ProtocolImportDropzone.copyImportProtocols": {
+    "defaultMessage": "Import protocols",
+    "description": "Researcher-facing ProtocolImport / ProtocolImportDropzone: Import protocols"
+  },
+  "fresco.ProtocolImport.ProtocolImportDropzone.dragDropFilesHere": {
+    "defaultMessage": "Drag & drop <tag1>{value1}</tag1> files here",
+    "description": "Researcher-facing ProtocolImport / ProtocolImportDropzone: Drag & drop value files here"
+  },
+  "fresco.ProtocolImport.ProtocolImportPopover.importProtocols": {
+    "defaultMessage": "Import protocols",
+    "description": "Researcher-facing ProtocolImport / ProtocolImportPopover: Import protocols"
+  },
+  "fresco.ProtocolsTable.ActionsDropdown.actions": {
+    "defaultMessage": "Actions",
+    "description": "Researcher-facing ProtocolsTable / ActionsDropdown: Actions"
+  },
+  "fresco.ProtocolsTable.ActionsDropdown.copyDownloadingProtocol": {
+    "defaultMessage": "Downloading protocol...",
+    "description": "Researcher-facing ProtocolsTable / ActionsDropdown: Downloading protocol..."
+  },
+  "fresco.ProtocolsTable.ActionsDropdown.copyFailedToDownloadProtocolFile": {
+    "defaultMessage": "Failed to download protocol file",
+    "description": "Researcher-facing ProtocolsTable / ActionsDropdown: Failed to download protocol file"
+  },
+  "fresco.ProtocolsTable.ActionsDropdown.copyProtocolDownloaded": {
+    "defaultMessage": "Protocol downloaded!",
+    "description": "Researcher-facing ProtocolsTable / ActionsDropdown: Protocol downloaded!"
+  },
+  "fresco.ProtocolsTable.ActionsDropdown.download": {
+    "defaultMessage": "Download",
+    "description": "Researcher-facing ProtocolsTable / ActionsDropdown: Download"
+  },
+  "fresco.ProtocolsTable.ActionsDropdown.failedToDownloadProtocol": {
+    "defaultMessage": "Failed to download protocol.",
+    "description": "Researcher-facing ProtocolsTable / ActionsDropdown: Failed to download protocol."
+  },
+  "fresco.ProtocolsTable.ActionsDropdown.openMenu": {
+    "defaultMessage": "Open menu",
+    "description": "Researcher-facing ProtocolsTable / ActionsDropdown: Open menu"
+  },
+  "fresco.ProtocolsTable.AnonymousRecruitmentURLButton.copyCopyingURLToClipboard": {
+    "defaultMessage": "Copying URL to clipboard...",
+    "description": "Researcher-facing ProtocolsTable / AnonymousRecruitmentURLButton: Copying URL to clipboard..."
+  },
+  "fresco.ProtocolsTable.AnonymousRecruitmentURLButton.copyURLCopiedToClipboard": {
+    "defaultMessage": "URL copied to clipboard!",
+    "description": "Researcher-facing ProtocolsTable / AnonymousRecruitmentURLButton: URL copied to clipboard!"
+  },
+  "fresco.ProtocolsTable.AnonymousRecruitmentURLButton.failedToCopyURLToClipboard": {
+    "defaultMessage": "Failed to copy URL to clipboard.",
+    "description": "Researcher-facing ProtocolsTable / AnonymousRecruitmentURLButton: Failed to copy URL to clipboard."
+  },
+  "fresco.ProtocolsTable.Columns.anonymousParticipationURL": {
+    "defaultMessage": "Anonymous Participation URL",
+    "description": "Researcher-facing ProtocolsTable / Columns: Anonymous Participation URL"
+  },
+  "fresco.ProtocolsTable.Columns.imported": {
+    "defaultMessage": "Imported",
+    "description": "Researcher-facing ProtocolsTable / Columns: Imported"
+  },
+  "fresco.ProtocolsTable.Columns.modified": {
+    "defaultMessage": "Modified",
+    "description": "Researcher-facing ProtocolsTable / Columns: Modified"
+  },
+  "fresco.ProtocolsTable.Columns.name": {
+    "defaultMessage": "Name",
+    "description": "Researcher-facing ProtocolsTable / Columns: Name"
+  },
+  "fresco.ProtocolsTable.Columns.protocolIcon": {
+    "defaultMessage": "Protocol icon",
+    "description": "Researcher-facing ProtocolsTable / Columns: Protocol icon"
+  },
+  "fresco.ProtocolsTable.Columns.selectAll": {
+    "defaultMessage": "Select all",
+    "description": "Researcher-facing ProtocolsTable / Columns: Select all"
+  },
+  "fresco.ProtocolsTable.Columns.selectRow": {
+    "defaultMessage": "Select row",
+    "description": "Researcher-facing ProtocolsTable / Columns: Select row"
+  },
+  "fresco.ProtocolsTable.ProtocolsTableClient.byName": {
+    "defaultMessage": "by name",
+    "description": "Researcher-facing ProtocolsTable / ProtocolsTableClient: by name"
+  },
+  "fresco.ProtocolsTable.ProtocolsTableClient.deleteSelected": {
+    "defaultMessage": "Delete Selected",
+    "description": "Researcher-facing ProtocolsTable / ProtocolsTableClient: Delete Selected"
+  },
+  "fresco.RecoveryCodes.copyCopied": {
+    "defaultMessage": "Copied!",
+    "description": "Researcher-facing RecoveryCodes: Copied!"
+  },
+  "fresco.RecoveryCodes.copyCopyToClipboard": {
+    "defaultMessage": "Copy to clipboard",
+    "description": "Researcher-facing RecoveryCodes: Copy to clipboard"
+  },
+  "fresco.RecoveryCodes.copyEachCodeCanOnlyBeUsedOnce": {
+    "defaultMessage": "Each code can only be used once.",
+    "description": "Researcher-facing RecoveryCodes: Each code can only be used once."
+  },
+  "fresco.RecoveryCodes.copyFrescoRecoveryCodes": {
+    "defaultMessage": "Fresco Recovery Codes",
+    "description": "Researcher-facing RecoveryCodes: Fresco Recovery Codes"
+  },
+  "fresco.RecoveryCodes.copySaveTheseCodesInASafePlace": {
+    "defaultMessage": "Save these codes in a safe place.",
+    "description": "Researcher-facing RecoveryCodes: Save these codes in a safe place."
+  },
+  "fresco.RecoveryCodes.downloadAsText": {
+    "defaultMessage": "Download as text",
+    "description": "Researcher-facing RecoveryCodes: Download as text"
+  },
+  "fresco.RecoveryCodes.saveTheseRecoveryCodesInASafe": {
+    "defaultMessage": "Save these recovery codes in a safe place. Each code can only be used once. If you lose access to your authenticator app, you can use these codes to sign in.",
+    "description": "Researcher-facing RecoveryCodes: Save these recovery codes in a safe place. Each code can only be used once. If you lose access to your authenticator app"
+  },
+  "fresco.RecoveryCodes.saveYourRecoveryCodes": {
+    "defaultMessage": "Save your recovery codes",
+    "description": "Researcher-facing RecoveryCodes: Save your recovery codes"
+  },
+  "fresco.RecruitmentTestSection.selectAParticipant": {
+    "defaultMessage": "Select a Participant...",
+    "description": "Researcher-facing RecruitmentTestSection: Select a Participant..."
+  },
+  "fresco.RecruitmentTestSection.selectAProtocol": {
+    "defaultMessage": "Select a Protocol...",
+    "description": "Researcher-facing RecruitmentTestSection: Select a Protocol..."
+  },
+  "fresco.RecruitmentTestSection.startInterviewWithGET": {
+    "defaultMessage": "Start Interview with GET",
+    "description": "Researcher-facing RecruitmentTestSection: Start Interview with GET"
+  },
+  "fresco.RecruitmentTestSection.startInterviewWithPOST": {
+    "defaultMessage": "Start Interview with POST",
+    "description": "Researcher-facing RecruitmentTestSection: Start Interview with POST"
+  },
+  "fresco.RecruitmentTestSectionServer.recruitmentTest": {
+    "defaultMessage": "Recruitment Test",
+    "description": "Researcher-facing RecruitmentTestSectionServer: Recruitment Test"
+  },
+  "fresco.RecruitmentTestSectionServer.thisSectionAllowsYouToTestRecruitment": {
+    "defaultMessage": "This section allows you to test recruitment.",
+    "description": "Researcher-facing RecruitmentTestSectionServer: This section allows you to test recruitment."
+  },
+  "fresco.ResetButton.areYouSure": {
+    "defaultMessage": "Are you sure?",
+    "description": "Researcher-facing ResetButton: Are you sure?"
+  },
+  "fresco.ResetButton.copyDeleteAllData": {
+    "defaultMessage": "Delete all data",
+    "description": "Researcher-facing ResetButton: Delete all data"
+  },
+  "fresco.ResetButton.copyResetting": {
+    "defaultMessage": "Resetting...",
+    "description": "Researcher-facing ResetButton: Resetting..."
+  },
+  "fresco.ResetButton.resetAllAppData": {
+    "defaultMessage": "Reset all app data",
+    "description": "Researcher-facing ResetButton: Reset all app data"
+  },
+  "fresco.ResetButton.thisActionWillDeleteALLApplicationData": {
+    "defaultMessage": "This action will delete ALL application data, including interviews and protocols. This action cannot be undone. Do you want to continue?",
+    "description": "Researcher-facing ResetButton: This action will delete ALL application data, including interviews and protocols. This action cannot be undone. Do you w"
+  },
+  "fresco.S3ConfigForm.aKIAIOSFODNN7EXAMPLE": {
+    "defaultMessage": "AKIAIOSFODNN7EXAMPLE",
+    "description": "Researcher-facing S3ConfigForm: AKIAIOSFODNN7EXAMPLE"
+  },
+  "fresco.S3ConfigForm.accessKeyID": {
+    "defaultMessage": "Access Key ID",
+    "description": "Researcher-facing S3ConfigForm: Access Key ID"
+  },
+  "fresco.S3ConfigForm.bucketName": {
+    "defaultMessage": "Bucket Name",
+    "description": "Researcher-facing S3ConfigForm: Bucket Name"
+  },
+  "fresco.S3ConfigForm.copyAnUnexpectedErrorOccurred": {
+    "defaultMessage": "An unexpected error occurred",
+    "description": "Researcher-facing S3ConfigForm: An unexpected error occurred"
+  },
+  "fresco.S3ConfigForm.copySaving": {
+    "defaultMessage": "Saving...",
+    "description": "Researcher-facing S3ConfigForm: Saving..."
+  },
+  "fresco.S3ConfigForm.endpointURL": {
+    "defaultMessage": "Endpoint URL",
+    "description": "Researcher-facing S3ConfigForm: Endpoint URL"
+  },
+  "fresco.S3ConfigForm.myFrescoBucket": {
+    "defaultMessage": "my-fresco-bucket",
+    "description": "Researcher-facing S3ConfigForm: my-fresco-bucket"
+  },
+  "fresco.S3ConfigForm.publicURL": {
+    "defaultMessage": "Public URL",
+    "description": "Researcher-facing S3ConfigForm: Public URL"
+  },
+  "fresco.S3ConfigForm.region": {
+    "defaultMessage": "Region",
+    "description": "Researcher-facing S3ConfigForm: Region"
+  },
+  "fresco.S3ConfigForm.required": {
+    "defaultMessage": "Required",
+    "description": "Researcher-facing S3ConfigForm: Required"
+  },
+  "fresco.S3ConfigForm.saveAndContinue": {
+    "defaultMessage": "Save and continue",
+    "description": "Researcher-facing S3ConfigForm: Save and continue"
+  },
+  "fresco.S3ConfigForm.secretAccessKey": {
+    "defaultMessage": "Secret Access Key",
+    "description": "Researcher-facing S3ConfigForm: Secret Access Key"
+  },
+  "fresco.S3ConfigForm.theS3CompatibleEndpointURL": {
+    "defaultMessage": "The S3-compatible endpoint URL",
+    "description": "Researcher-facing S3ConfigForm: The S3-compatible endpoint URL"
+  },
+  "fresco.S3ConfigForm.theURLBrowsersUseToReachThis": {
+    "defaultMessage": "The URL browsers use to reach this storage. For MinIO behind your reverse proxy, this is your Fresco domain (see deployment docs). For AWS S3 or R2, this is usually the same as the Endpoint URL.",
+    "description": "Researcher-facing S3ConfigForm: The URL browsers use to reach this storage. For MinIO behind your reverse proxy, this is your Fresco domain (see deploym"
+  },
+  "fresco.S3ConfigForm.theseS3SettingsAreConfiguredViaEnvironment": {
+    "defaultMessage": "These S3 settings are configured via environment variables and cannot be changed here.",
+    "description": "Researcher-facing S3ConfigForm: These S3 settings are configured via environment variables and cannot be changed here."
+  },
+  "fresco.S3ConfigForm.usEast1": {
+    "defaultMessage": "us-east-1",
+    "description": "Researcher-facing S3ConfigForm: us-east-1"
+  },
+  "fresco.S3ConfigForm.wJalrXUtnFEMIK7MDENGBPxRfiCYEXAMPLEKEY": {
+    "defaultMessage": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+    "description": "Researcher-facing S3ConfigForm: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+  },
+  "fresco.SandboxCredentials.admin": {
+    "defaultMessage": "admin",
+    "description": "Researcher-facing SandboxCredentials: admin"
+  },
+  "fresco.SandboxCredentials.administrator1": {
+    "defaultMessage": "Administrator1!",
+    "description": "Researcher-facing SandboxCredentials: Administrator1!"
+  },
+  "fresco.SandboxCredentials.allUploadedDataIsPublic": {
+    "defaultMessage": "All uploaded data is public.",
+    "description": "Researcher-facing SandboxCredentials: All uploaded data is public."
+  },
+  "fresco.SandboxCredentials.password": {
+    "defaultMessage": "Password:",
+    "description": "Researcher-facing SandboxCredentials: Password:"
+  },
+  "fresco.SandboxCredentials.sandboxCredentials": {
+    "defaultMessage": "Sandbox Credentials",
+    "description": "Researcher-facing SandboxCredentials: Sandbox Credentials"
+  },
+  "fresco.SandboxCredentials.theSandboxIsASharedExampleEnvironment": {
+    "defaultMessage": "The sandbox is a shared example environment not intended for real interviews.",
+    "description": "Researcher-facing SandboxCredentials: The sandbox is a shared example environment not intended for real interviews."
+  },
+  "fresco.SandboxCredentials.username": {
+    "defaultMessage": "Username:",
+    "description": "Researcher-facing SandboxCredentials: Username:"
+  },
+  "fresco.SignInForm.0123456789abcdef0123": {
+    "defaultMessage": "0123456789abcdef0123",
+    "description": "Researcher-facing SignInForm: 0123456789abcdef0123"
+  },
+  "fresco.SignInForm.backToSignIn": {
+    "defaultMessage": "Back to sign in",
+    "description": "Researcher-facing SignInForm: Back to sign in"
+  },
+  "fresco.SignInForm.copyCodeIsRequired": {
+    "defaultMessage": "Code is required",
+    "description": "Researcher-facing SignInForm: Code is required"
+  },
+  "fresco.SignInForm.copyFailedToStartPasskeyAuthentication": {
+    "defaultMessage": "Failed to start passkey authentication",
+    "description": "Researcher-facing SignInForm: Failed to start passkey authentication"
+  },
+  "fresco.SignInForm.copyPasskeyAuthenticationFailed": {
+    "defaultMessage": "Passkey authentication failed",
+    "description": "Researcher-facing SignInForm: Passkey authentication failed"
+  },
+  "fresco.SignInForm.copySignIn": {
+    "defaultMessage": "Sign in",
+    "description": "Researcher-facing SignInForm: Sign in"
+  },
+  "fresco.SignInForm.copySignInWithAPasskey": {
+    "defaultMessage": "Sign in with a passkey",
+    "description": "Researcher-facing SignInForm: Sign in with a passkey"
+  },
+  "fresco.SignInForm.copyTooManyAttemptsTryAgainInSeconds": {
+    "defaultMessage": "Too many attempts. Try again in {value1, plural, one {# second} other {# seconds}}.",
+    "description": "Researcher-facing SignInForm: Too many attempts. Try again in value seconds."
+  },
+  "fresco.SignInForm.copyTryAgainInS": {
+    "defaultMessage": "Try again in {value1, plural, one {# second} other {# seconds}}",
+    "description": "Researcher-facing SignInForm: Try again in values"
+  },
+  "fresco.SignInForm.copyUseARecoveryCodeInstead": {
+    "defaultMessage": "Use a recovery code instead",
+    "description": "Researcher-facing SignInForm: Use a recovery code instead"
+  },
+  "fresco.SignInForm.copyUseAuthenticatorAppInstead": {
+    "defaultMessage": "Use authenticator app instead",
+    "description": "Researcher-facing SignInForm: Use authenticator app instead"
+  },
+  "fresco.SignInForm.copyUsernameAndRecoveryCodeAreRequired": {
+    "defaultMessage": "Username and recovery code are required",
+    "description": "Researcher-facing SignInForm: Username and recovery code are required"
+  },
+  "fresco.SignInForm.copyVerificationFailed": {
+    "defaultMessage": "Verification failed",
+    "description": "Researcher-facing SignInForm: Verification failed"
+  },
+  "fresco.SignInForm.copyWaitingForPasskey": {
+    "defaultMessage": "Waiting for passkey...",
+    "description": "Researcher-facing SignInForm: Waiting for passkey..."
+  },
+  "fresco.SignInForm.enterOneOfYourRecoveryCodes": {
+    "defaultMessage": "Enter one of your recovery codes",
+    "description": "Researcher-facing SignInForm: Enter one of your recovery codes"
+  },
+  "fresco.SignInForm.enterYour6DigitCodeFromYour": {
+    "defaultMessage": "Enter your 6-digit code from your authenticator app",
+    "description": "Researcher-facing SignInForm: Enter your 6-digit code from your authenticator app"
+  },
+  "fresco.SignInForm.enterYourPassword": {
+    "defaultMessage": "Enter your password",
+    "description": "Researcher-facing SignInForm: Enter your password"
+  },
+  "fresco.SignInForm.enterYourUsername": {
+    "defaultMessage": "Enter your username",
+    "description": "Researcher-facing SignInForm: Enter your username"
+  },
+  "fresco.SignInForm.or": {
+    "defaultMessage": "or",
+    "description": "Researcher-facing SignInForm: or"
+  },
+  "fresco.SignInForm.password": {
+    "defaultMessage": "Password",
+    "description": "Researcher-facing SignInForm: Password"
+  },
+  "fresco.SignInForm.recoveryCode": {
+    "defaultMessage": "Recovery code",
+    "description": "Researcher-facing SignInForm: Recovery code"
+  },
+  "fresco.SignInForm.requiredCode": {
+    "defaultMessage": "Code is required",
+    "description": "Researcher-facing SignInForm: Code is required"
+  },
+  "fresco.SignInForm.requiredRecovery": {
+    "defaultMessage": "Recovery code is required",
+    "description": "Researcher-facing SignInForm: Recovery code is required"
+  },
+  "fresco.SignInForm.requiredUsername": {
+    "defaultMessage": "Username is required",
+    "description": "Researcher-facing SignInForm: Username is required"
+  },
+  "fresco.SignInForm.signIn": {
+    "defaultMessage": "Sign in",
+    "description": "Researcher-facing SignInForm: Sign in"
+  },
+  "fresco.SignInForm.signingIn": {
+    "defaultMessage": "Signing in...",
+    "description": "Researcher-facing SignInForm: Signing in..."
+  },
+  "fresco.SignInForm.troubleSigningIn": {
+    "defaultMessage": "Trouble signing in?",
+    "description": "Researcher-facing SignInForm: Trouble signing in?"
+  },
+  "fresco.SignInForm.username": {
+    "defaultMessage": "Username",
+    "description": "Researcher-facing SignInForm: Username"
+  },
+  "fresco.SignInForm.verify": {
+    "defaultMessage": "Verify",
+    "description": "Researcher-facing SignInForm: Verify"
+  },
+  "fresco.SignInForm.verifying": {
+    "defaultMessage": "Verifying...",
+    "description": "Researcher-facing SignInForm: Verifying..."
+  },
+  "fresco.SignUpForm.atLeast4CharactersNoSpaces": {
+    "defaultMessage": "At least 4 characters, no spaces",
+    "description": "Researcher-facing SignUpForm: At least 4 characters, no spaces"
+  },
+  "fresco.SignUpForm.atLeast8CharactersWithLowercaseUppercase": {
+    "defaultMessage": "At least 8 characters with lowercase, uppercase, number and symbol",
+    "description": "Researcher-facing SignUpForm: At least 8 characters with lowercase, uppercase, number and symbol"
+  },
+  "fresco.SignUpForm.authenticationMethod": {
+    "defaultMessage": "Authentication method",
+    "description": "Researcher-facing SignUpForm: Authentication method"
+  },
+  "fresco.SignUpForm.confirmPassword": {
+    "defaultMessage": "Confirm password",
+    "description": "Researcher-facing SignUpForm: Confirm password"
+  },
+  "fresco.SignUpForm.copyFailedToStartPasskeyRegistration": {
+    "defaultMessage": "Failed to start passkey registration",
+    "description": "Researcher-facing SignUpForm: Failed to start passkey registration"
+  },
+  "fresco.SignUpForm.copyPasskeyRegistrationFailed": {
+    "defaultMessage": "Passkey registration failed",
+    "description": "Researcher-facing SignUpForm: Passkey registration failed"
+  },
+  "fresco.SignUpForm.copyUsernameIsRequired": {
+    "defaultMessage": "Username is required",
+    "description": "Researcher-facing SignUpForm: Username is required"
+  },
+  "fresco.SignUpForm.createAccount": {
+    "defaultMessage": "Create account",
+    "description": "Researcher-facing SignUpForm: Create account"
+  },
+  "fresco.SignUpForm.passkey": {
+    "defaultMessage": "Passkey",
+    "description": "Researcher-facing SignUpForm: Passkey"
+  },
+  "fresco.SignUpForm.password": {
+    "defaultMessage": "Password",
+    "description": "Researcher-facing SignUpForm: Password"
+  },
+  "fresco.SignUpForm.traditionalUsernameAndPasswordRequiresAStrong": {
+    "defaultMessage": "Traditional username and password. Requires a strong password.",
+    "description": "Researcher-facing SignUpForm: Traditional username and password. Requires a strong password."
+  },
+  "fresco.SignUpForm.useBiometricsOrYourDeviceSecurityTo": {
+    "defaultMessage": "Use biometrics or your device security to sign in. No password to remember — the most secure option.",
+    "description": "Researcher-facing SignUpForm: Use biometrics or your device security to sign in. No password to remember — the most secure option."
+  },
+  "fresco.SignUpForm.username": {
+    "defaultMessage": "Username",
+    "description": "Researcher-facing SignUpForm: Username"
+  },
+  "fresco.SignUpForm.username2": {
+    "defaultMessage": "username...",
+    "description": "Researcher-facing SignUpForm: username..."
+  },
+  "fresco.SignUpForm.yourUsernameShouldBeAtLeast4": {
+    "defaultMessage": "Your username should be at least 4 characters, and must not contain any spaces.",
+    "description": "Researcher-facing SignUpForm: Your username should be at least 4 characters, and must not contain any spaces."
+  },
+  "fresco.StorageProviderSelector.s3Description": {
+    "defaultMessage": "Self-hosted or cloud object storage (AWS S3, MinIO, Cloudflare R2, Backblaze B2).",
+    "description": "Researcher-facing StorageProviderSelector: Self-hosted or cloud object storage (AWS S3, MinIO, Cloudflare R2, Backblaze B2)."
+  },
+  "fresco.StorageProviderSelector.theStorageProviderIsSetToVia": {
+    "defaultMessage": "The storage provider is set to {value1} via the STORAGE_PROVIDER environment variable.",
+    "description": "Researcher-facing StorageProviderSelector: The storage provider is set to value via the STORAGE_PROVIDER environment variable."
+  },
+  "fresco.StorageProviderSelector.uploadThingDescription": {
+    "defaultMessage": "Third-party managed storage. Easy to set up — just paste your API token.",
+    "description": "Researcher-facing StorageProviderSelector: Third-party managed storage. Easy to set up — just paste your API token."
+  },
+  "fresco.SummaryStatistics.SummaryStatistics.interviews": {
+    "defaultMessage": "Interviews",
+    "description": "Researcher-facing SummaryStatistics / SummaryStatistics: Interviews"
+  },
+  "fresco.SummaryStatistics.SummaryStatistics.participantIcon": {
+    "defaultMessage": "Participant icon",
+    "description": "Researcher-facing SummaryStatistics / SummaryStatistics: Participant icon"
+  },
+  "fresco.SummaryStatistics.SummaryStatistics.participants": {
+    "defaultMessage": "Participants",
+    "description": "Researcher-facing SummaryStatistics / SummaryStatistics: Participants"
+  },
+  "fresco.SummaryStatistics.SummaryStatistics.protocols": {
+    "defaultMessage": "Protocols",
+    "description": "Researcher-facing SummaryStatistics / SummaryStatistics: Protocols"
+  },
+  "fresco.TwoFactorSettings.disabling": {
+    "defaultMessage": "Disabling...",
+    "description": "Researcher-facing TwoFactorSettings: Disabling..."
+  },
+  "fresco.TwoFactorSettings.regenerating": {
+    "defaultMessage": "Regenerating...",
+    "description": "Researcher-facing TwoFactorSettings: Regenerating..."
+  },
+  "fresco.TwoFactorSetup.canTScanTheQRCodeEnter": {
+    "defaultMessage": "Can't scan the QR code? Enter this secret manually:",
+    "description": "Researcher-facing TwoFactorSetup: Can't scan the QR code? Enter this secret manually:"
+  },
+  "fresco.TwoFactorSetup.copyCopied": {
+    "defaultMessage": "Copied!",
+    "description": "Researcher-facing TwoFactorSetup: Copied!"
+  },
+  "fresco.TwoFactorSetup.copyCopy": {
+    "defaultMessage": "Copy",
+    "description": "Researcher-facing TwoFactorSetup: Copy"
+  },
+  "fresco.TwoFactorSetup.copyIVeSavedMyRecoveryCodes": {
+    "defaultMessage": "I've saved my recovery codes",
+    "description": "Researcher-facing TwoFactorSetup: I've saved my recovery codes"
+  },
+  "fresco.TwoFactorSetup.copyVerify": {
+    "defaultMessage": "Verify",
+    "description": "Researcher-facing TwoFactorSetup: Verify"
+  },
+  "fresco.TwoFactorSetup.enterThe6DigitCodeFromYour": {
+    "defaultMessage": "Enter the 6-digit code from your authenticator app to verify setup.",
+    "description": "Researcher-facing TwoFactorSetup: Enter the 6-digit code from your authenticator app to verify setup."
+  },
+  "fresco.TwoFactorSetup.enterYour6DigitCodeFromYour": {
+    "defaultMessage": "Enter your 6-digit code from your authenticator app",
+    "description": "Researcher-facing TwoFactorSetup: Enter your 6-digit code from your authenticator app"
+  },
+  "fresco.TwoFactorSetup.generatingSecret": {
+    "defaultMessage": "Generating secret...",
+    "description": "Researcher-facing TwoFactorSetup: Generating secret..."
+  },
+  "fresco.TwoFactorSetup.qRCodeForAuthenticatorApp": {
+    "defaultMessage": "QR code for authenticator app",
+    "description": "Researcher-facing TwoFactorSetup: QR code for authenticator app"
+  },
+  "fresco.TwoFactorSetup.requiredCode": {
+    "defaultMessage": "Code is required",
+    "description": "Researcher-facing TwoFactorSetup: Code is required"
+  },
+  "fresco.TwoFactorSetup.saveRecoveryCodes": {
+    "defaultMessage": "Save Recovery Codes",
+    "description": "Researcher-facing TwoFactorSetup: Save Recovery Codes"
+  },
+  "fresco.TwoFactorSetup.scanTheQRCodeWithYourAuthenticator": {
+    "defaultMessage": "Scan the QR code with your authenticator app, then enter the code to verify.",
+    "description": "Researcher-facing TwoFactorSetup: Scan the QR code with your authenticator app, then enter the code to verify."
+  },
+  "fresco.TwoFactorSetup.setUpTwoFactorAuthentication": {
+    "defaultMessage": "Set Up Two-Factor Authentication",
+    "description": "Researcher-facing TwoFactorSetup: Set Up Two-Factor Authentication"
+  },
+  "fresco.TwoFactorSetup.setupFailed": {
+    "defaultMessage": "Two-factor authentication setup failed. Try again.",
+    "description": "Fallback for an unexpected error while preparing or verifying two-factor authentication setup."
+  },
+  "fresco.TwoFactorSetup.singleAccountWarning": {
+    "defaultMessage": "Single account warning",
+    "description": "Researcher-facing TwoFactorSetup: Single account warning"
+  },
+  "fresco.TwoFactorSetup.verifyCode": {
+    "defaultMessage": "Verify Code",
+    "description": "Researcher-facing TwoFactorSetup: Verify Code"
+  },
+  "fresco.TwoFactorSetup.youAreTheOnlyUserAccountIf": {
+    "defaultMessage": "You are the only user account. If you lose access to your authenticator app and recovery codes, there will be no way to recover your account. Consider creating a second user account first.",
+    "description": "Researcher-facing TwoFactorSetup: You are the only user account. If you lose access to your authenticator app and recovery codes, there will be no way to "
+  },
+  "fresco.TwoFactorVerify.0123456789abcdef0123": {
+    "defaultMessage": "0123456789abcdef0123",
+    "description": "Researcher-facing TwoFactorVerify: 0123456789abcdef0123"
+  },
+  "fresco.TwoFactorVerify.copyCodeIsRequired": {
+    "defaultMessage": "Code is required",
+    "description": "Researcher-facing TwoFactorVerify: Code is required"
+  },
+  "fresco.TwoFactorVerify.copyUseARecoveryCodeInstead": {
+    "defaultMessage": "Use a recovery code instead",
+    "description": "Researcher-facing TwoFactorVerify: Use a recovery code instead"
+  },
+  "fresco.TwoFactorVerify.copyUseAuthenticatorAppInstead": {
+    "defaultMessage": "Use authenticator app instead",
+    "description": "Researcher-facing TwoFactorVerify: Use authenticator app instead"
+  },
+  "fresco.TwoFactorVerify.enterOneOfYourRecoveryCodes": {
+    "defaultMessage": "Enter one of your recovery codes",
+    "description": "Researcher-facing TwoFactorVerify: Enter one of your recovery codes"
+  },
+  "fresco.TwoFactorVerify.enterYour6DigitCodeFromYour": {
+    "defaultMessage": "Enter your 6-digit code from your authenticator app",
+    "description": "Researcher-facing TwoFactorVerify: Enter your 6-digit code from your authenticator app"
+  },
+  "fresco.TwoFactorVerify.requiredCode": {
+    "defaultMessage": "Code is required",
+    "description": "Researcher-facing TwoFactorVerify: Code is required"
+  },
+  "fresco.TwoFactorVerify.requiredRecovery": {
+    "defaultMessage": "Recovery code is required",
+    "description": "Researcher-facing TwoFactorVerify: Recovery code is required"
+  },
+  "fresco.UpdateSettingsValue.copyFailedToSaveSetting": {
+    "defaultMessage": "Failed to save setting",
+    "description": "Researcher-facing UpdateSettingsValue: Failed to save setting"
+  },
+  "fresco.UpdateSettingsValue.copySaving": {
+    "defaultMessage": "Saving...",
+    "description": "Researcher-facing UpdateSettingsValue: Saving..."
+  },
+  "fresco.UpdateSettingsValue.invalid": {
+    "defaultMessage": "Invalid: {details}",
+    "description": "Researcher-facing UpdateSettingsValue: Invalid: details"
+  },
+  "fresco.UpdateSettingsValue.reset": {
+    "defaultMessage": "Reset",
+    "description": "Researcher-facing UpdateSettingsValue: Reset"
+  },
+  "fresco.UpdateUploadThingTokenAlert.configurationUpdateRequired": {
+    "defaultMessage": "Configuration update required",
+    "description": "Researcher-facing UpdateUploadThingTokenAlert: Configuration update required"
+  },
+  "fresco.UpdateUploadThingTokenAlert.youNeedToAddANewUploadThing": {
+    "defaultMessage": "You need to add a new UploadThing API key before you can upload protocols. See the <tag1> upgrade documentation </tag1> for more information.",
+    "description": "Researcher-facing UpdateUploadThingTokenAlert: You need to add a new UploadThing API key before you can upload protocols. See the  upgrade documentation  for more info"
+  },
+  "fresco.UploadThingModal.copyTheTokenByClickingTheCopy": {
+    "defaultMessage": "Copy the token by clicking the Copy button (see screenshot below).",
+    "description": "Researcher-facing UploadThingModal: Copy the token by clicking the Copy button (see screenshot below)."
+  },
+  "fresco.UploadThingModal.ensureYouHaveTheSDKV7Tab": {
+    "defaultMessage": "Ensure you have the <tag1>SDK v7+</tag1> tab selected.",
+    "description": "Researcher-facing UploadThingModal: Ensure you have the SDK v7+ tab selected."
+  },
+  "fresco.UploadThingModal.pasteTheTokenIntoTheFieldBelow": {
+    "defaultMessage": "Paste the token into the field below and click \"save and continue\".",
+    "description": "Researcher-facing UploadThingModal: Paste the token into the field below and click \"save and continue\"."
+  },
+  "fresco.UploadThingModal.requiredEnvironmentVariableUpdate": {
+    "defaultMessage": "Required Environment Variable Update",
+    "description": "Researcher-facing UploadThingModal: Required Environment Variable Update"
+  },
+  "fresco.UploadThingModal.selectTheAPIKeysTab": {
+    "defaultMessage": "Select the API Keys tab.",
+    "description": "Researcher-facing UploadThingModal: Select the API Keys tab."
+  },
+  "fresco.UploadThingModal.selectYourProject": {
+    "defaultMessage": "Select your project.",
+    "description": "Researcher-facing UploadThingModal: Select your project."
+  },
+  "fresco.UploadThingModal.theFrescoUpdateYouInstalledRequiresA": {
+    "defaultMessage": "The Fresco update you installed requires a new UploadThing API key. Until you add it, you will not be able to upload new protocols. Existing protocols will continue to function.",
+    "description": "Researcher-facing UploadThingModal: The Fresco update you installed requires a new UploadThing API key. Until you add it, you will not be able"
+  },
+  "fresco.UploadThingModal.updatingTheKeyShouldTakeAMatter": {
+    "defaultMessage": "Updating the key should take a matter of minutes, and can be completed using the following steps:",
+    "description": "Researcher-facing UploadThingModal: Updating the key should take a matter of minutes, and can be completed using the following steps:"
+  },
+  "fresco.UploadThingModal.uploadThingAPIKeyDashboard": {
+    "defaultMessage": "UploadThing API key dashboard",
+    "description": "Researcher-facing UploadThingModal: UploadThing API key dashboard"
+  },
+  "fresco.UploadThingModal.visitTheUploadThingDashboard": {
+    "defaultMessage": "Visit the <tag1> UploadThing dashboard </tag1>",
+    "description": "Researcher-facing UploadThingModal: Visit the  UploadThing dashboard "
+  },
+  "fresco.UploadThingTokenForm.copyAnUnexpectedErrorOccurred": {
+    "defaultMessage": "An unexpected error occurred",
+    "description": "Researcher-facing UploadThingTokenForm: An unexpected error occurred"
+  },
+  "fresco.UploadThingTokenForm.copyAndPasteTheFullTokenFrom": {
+    "defaultMessage": "Copy and paste the full token from your UploadThing dashboard.",
+    "description": "Researcher-facing UploadThingTokenForm: Copy and paste the full token from your UploadThing dashboard."
+  },
+  "fresco.UploadThingTokenForm.copyFailedToSetStorageProvider": {
+    "defaultMessage": "Failed to set storage provider.",
+    "description": "Researcher-facing UploadThingTokenForm: Failed to set storage provider."
+  },
+  "fresco.UploadThingTokenForm.copySaving": {
+    "defaultMessage": "Saving...",
+    "description": "Researcher-facing UploadThingTokenForm: Saving..."
+  },
+  "fresco.UploadThingTokenForm.pasteTheFullTokenIncludingTheUPLOADTHING": {
+    "defaultMessage": "Paste the full token including the UPLOADTHING_TOKEN= prefix",
+    "description": "Researcher-facing UploadThingTokenForm: Paste the full token including the UPLOADTHING_TOKEN= prefix"
+  },
+  "fresco.UploadThingTokenForm.saveAndContinue": {
+    "defaultMessage": "Save and continue",
+    "description": "Researcher-facing UploadThingTokenForm: Save and continue"
+  },
+  "fresco.UploadThingTokenForm.theUploadThingTokenIsConfiguredViaAn": {
+    "defaultMessage": "The UploadThing token is configured via an environment variable and cannot be changed here.",
+    "description": "Researcher-facing UploadThingTokenForm: The UploadThing token is configured via an environment variable and cannot be changed here."
+  },
+  "fresco.UploadThingTokenForm.uPLOADTHINGTOKEN": {
+    "defaultMessage": "UPLOADTHING_TOKEN",
+    "description": "Researcher-facing UploadThingTokenForm: UPLOADTHING_TOKEN"
+  },
+  "fresco.UploadThingTokenForm.uPLOADTHINGTOKEN2": {
+    "defaultMessage": "UPLOADTHING_TOKEN=******************",
+    "description": "Researcher-facing UploadThingTokenForm: UPLOADTHING_TOKEN=******************"
+  },
+  "fresco.UserMenu.signOut": {
+    "defaultMessage": "Sign out",
+    "description": "Researcher-facing UserMenu: Sign out"
+  },
+  "fresco.VersionSection.anErrorOccurredWhileFetchingTheLatest": {
+    "defaultMessage": "An error occurred while fetching the latest version information.",
+    "description": "Researcher-facing VersionSection: An error occurred while fetching the latest version information."
+  },
+  "fresco.VersionSection.appVersion": {
+    "defaultMessage": "App Version",
+    "description": "Researcher-facing VersionSection: App Version"
+  },
+  "fresco.VersionSection.checkingForUpdates": {
+    "defaultMessage": "Checking for updates...",
+    "description": "Researcher-facing VersionSection: Checking for updates..."
+  },
+  "fresco.VersionSection.errorFetchingUpdateInformation": {
+    "defaultMessage": "Error fetching update information",
+    "description": "Researcher-facing VersionSection: Error fetching update information"
+  },
+  "fresco.VersionSection.majorUpdate": {
+    "defaultMessage": "Major update",
+    "description": "Researcher-facing VersionSection: Major update"
+  },
+  "fresco.VersionSection.ofFrescoIsAvailable": {
+    "defaultMessage": "{value1} of Fresco is available!",
+    "description": "Researcher-facing VersionSection: value of Fresco is available!"
+  },
+  "fresco.VersionSection.thisUpdateIsAMajorVersionBump": {
+    "defaultMessage": "This update is a major version bump. A new major version may change the interview experience, or require additional configuration before the app can continue to be used. It should NOT be done while collecting data. If you are actively collecting data, please wait until data collection is complete before updating.",
+    "description": "Researcher-facing VersionSection: This update is a major version bump. A new major version may change the interview experience, or require additional conf"
+  },
+  "fresco.VersionSection.toUpgradeYourFrescoVersionYouWill": {
+    "defaultMessage": "To upgrade your Fresco version, you will need to sync your fork with the latest version of the Fresco repository. For more information, please refer to the <tag1> upgrade documentation. </tag1>",
+    "description": "Researcher-facing VersionSection: To upgrade your Fresco version, you will need to sync your fork with the latest version of the Fresco repository. For mo"
+  },
+  "fresco.VersionSection.viewFullReleaseNotes": {
+    "defaultMessage": "View Full Release Notes",
+    "description": "Researcher-facing VersionSection: View Full Release Notes"
+  },
+  "fresco.VersionSection.youAreCurrentlyRunningFresco": {
+    "defaultMessage": "You are currently running Fresco {value1} ({value2}).",
+    "description": "Researcher-facing VersionSection: You are currently running Fresco value (value)."
+  },
+  "fresco.VersionSection.youAreRunningTheLatestVersionOf": {
+    "defaultMessage": "You are running the latest version of Fresco.",
+    "description": "Researcher-facing VersionSection: You are running the latest version of Fresco."
+  },
+  "fresco.VersionSection.youAreUpToDate": {
+    "defaultMessage": "You are up to date",
+    "description": "Researcher-facing VersionSection: You are up to date"
+  },
+  "fresco.actions.apiTokens.copyFailedToCreateAPIToken": {
+    "defaultMessage": "Failed to create API token",
+    "description": "Researcher-facing actions / apiTokens: Failed to create API token"
+  },
+  "fresco.actions.apiTokens.copyFailedToDeleteAPIToken": {
+    "defaultMessage": "Failed to delete API token",
+    "description": "Researcher-facing actions / apiTokens: Failed to delete API token"
+  },
+  "fresco.actions.apiTokens.copyFailedToUpdateAPIToken": {
+    "defaultMessage": "Failed to update API token",
+    "description": "Researcher-facing actions / apiTokens: Failed to update API token"
+  },
+  "fresco.actions.appSettings.copyCannotSetAppSettingToNull": {
+    "defaultMessage": "Cannot set app setting to null",
+    "description": "Researcher-facing actions / appSettings: Cannot set app setting to null"
+  },
+  "fresco.actions.appSettings.copyCannotSetAppSettingToUndefined": {
+    "defaultMessage": "Cannot set app setting to undefined",
+    "description": "Researcher-facing actions / appSettings: Cannot set app setting to undefined"
+  },
+  "fresco.actions.appSettings.copyFailedToUpdateAppSettings": {
+    "defaultMessage": "Failed to update this setting.",
+    "description": "Researcher-facing actions / appSettings: Failed to update appSettings: value: value"
+  },
+  "fresco.actions.appSettings.copyInvalidAppSetting": {
+    "defaultMessage": "Invalid app setting: {value1}",
+    "description": "Researcher-facing actions / appSettings: Invalid app setting: value"
+  },
+  "fresco.actions.appSettings.copyInvalidValueForAppSetting": {
+    "defaultMessage": "Invalid value for app setting {value1}",
+    "description": "Researcher-facing actions / appSettings: Invalid value for app setting value"
+  },
+  "fresco.actions.appSettings.copyStorageIsConfiguredViaEnvironmentVariablesAnd": {
+    "defaultMessage": "Storage is configured via environment variables and cannot be changed here.",
+    "description": "Researcher-facing actions / appSettings: Storage is configured via environment variables and cannot be changed here."
+  },
+  "fresco.actions.appSettings.copyTheUploadThingTokenIsConfiguredViaThe": {
+    "defaultMessage": "The UploadThing token is configured via the UPLOADTHING_TOKEN environment variable and cannot be changed here.",
+    "description": "Researcher-facing actions / appSettings: The UploadThing token is configured via the UPLOADTHING_TOKEN environment variable and cannot be changed here."
+  },
+  "fresco.actions.appSettings.copyTokenIsMissingRequiredFieldsApiKeyAppId": {
+    "defaultMessage": "Token is missing required fields (apiKey, appId).",
+    "description": "Researcher-facing actions / appSettings: Token is missing required fields (apiKey, appId)."
+  },
+  "fresco.actions.appSettings.copyTokenIsNotValidMakeSureYou": {
+    "defaultMessage": "Token is not valid. Make sure you copied the full token.",
+    "description": "Researcher-facing actions / appSettings: Token is not valid. Make sure you copied the full token."
+  },
+  "fresco.actions.appSettings.copyTokenVerificationFailed": {
+    "defaultMessage": "Token verification failed. Check the token and try again.",
+    "description": "Researcher-facing actions / appSettings: Token verification failed: value"
+  },
+  "fresco.actions.auth.copyIncorrectUsernameOrPassword": {
+    "defaultMessage": "Incorrect username or password",
+    "description": "Researcher-facing actions / auth: Incorrect username or password"
+  },
+  "fresco.actions.auth.copyInvalidFormSubmission": {
+    "defaultMessage": "Invalid form submission",
+    "description": "Researcher-facing actions / auth: Invalid form submission"
+  },
+  "fresco.actions.auth.copyInvalidUsernameOrRecoveryCode": {
+    "defaultMessage": "Invalid username or recovery code",
+    "description": "Researcher-facing actions / auth: Invalid username or recovery code"
+  },
+  "fresco.actions.auth.copyServerConfigurationErrorPleaseContactAnAdmin": {
+    "defaultMessage": "Server configuration error. Please contact an admin.",
+    "description": "Researcher-facing actions / auth: Server configuration error. Please contact an admin."
+  },
+  "fresco.actions.auth.copySetupIsAlreadyComplete": {
+    "defaultMessage": "Setup is already complete.",
+    "description": "Researcher-facing actions / auth: Setup is already complete."
+  },
+  "fresco.actions.auth.copyTooManyAttemptsPleaseTryAgainLater": {
+    "defaultMessage": "Too many attempts. Please try again later.",
+    "description": "Researcher-facing actions / auth: Too many attempts. Please try again later."
+  },
+  "fresco.actions.auth.copyUnauthorized": {
+    "defaultMessage": "Unauthorized",
+    "description": "Researcher-facing actions / auth: Unauthorized"
+  },
+  "fresco.actions.auth.copyUsernameAlreadyTaken": {
+    "defaultMessage": "Username already taken",
+    "description": "Researcher-facing actions / auth: Username already taken"
+  },
+  "fresco.actions.interviews.copyAnonymousParticipant": {
+    "defaultMessage": "Anonymous Participant",
+    "description": "Researcher-facing actions / interviews: Anonymous Participant"
+  },
+  "fresco.actions.interviews.copyAnonymousRecruitmentIsNotEnabled": {
+    "defaultMessage": "Anonymous recruitment is not enabled",
+    "description": "Researcher-facing actions / interviews: Anonymous recruitment is not enabled"
+  },
+  "fresco.actions.interviews.copyFailedToCommitExport": {
+    "defaultMessage": "Failed to commit export",
+    "description": "Researcher-facing actions / interviews: Failed to commit export"
+  },
+  "fresco.actions.interviews.copyFailedToCreateInterview": {
+    "defaultMessage": "Failed to create interview",
+    "description": "Researcher-facing actions / interviews: Failed to create interview"
+  },
+  "fresco.actions.interviews.copyFailedToDeleteInterviews": {
+    "defaultMessage": "Failed to delete interviews",
+    "description": "Researcher-facing actions / interviews: Failed to delete interviews"
+  },
+  "fresco.actions.interviews.copyFailedToLoadIncompleteInterviews": {
+    "defaultMessage": "Failed to load incomplete interviews",
+    "description": "Researcher-facing actions / interviews: Failed to load incomplete interviews"
+  },
+  "fresco.actions.interviews.copyFailedToResolveInterviews": {
+    "defaultMessage": "Failed to resolve interviews",
+    "description": "Researcher-facing actions / interviews: Failed to resolve interviews"
+  },
+  "fresco.actions.interviews.copyInvalidParticipantIdentifier": {
+    "defaultMessage": "Invalid participant identifier",
+    "description": "Researcher-facing actions / interviews: Invalid participant identifier"
+  },
+  "fresco.actions.interviews.copyProtocolIsStoredUnderASchemaVersion": {
+    "defaultMessage": "Protocol is stored under a schema version this deployment cannot run. Repair it in Architect and upload it again.",
+    "description": "Researcher-facing actions / interviews: Protocol is stored under a schema version this deployment cannot run. Repair it in Architect and upload it again."
+  },
+  "fresco.actions.interviews.copyProtocolNotFound": {
+    "defaultMessage": "Protocol not found",
+    "description": "Researcher-facing actions / interviews: Protocol not found"
+  },
+  "fresco.actions.participants.copyFailedToCreateParticipant": {
+    "defaultMessage": "Failed to create participant",
+    "description": "Researcher-facing actions / participants: Failed to create participant"
+  },
+  "fresco.actions.participants.copyFailedToResolveParticipants": {
+    "defaultMessage": "Failed to resolve participants",
+    "description": "Researcher-facing actions / participants: Failed to resolve participants"
+  },
+  "fresco.actions.participants.copyFailedToUpdateParticipant": {
+    "defaultMessage": "Failed to update participant",
+    "description": "Researcher-facing actions / participants: Failed to update participant"
+  },
+  "fresco.actions.protocols.copyFailedToCleanUpUploadedFiles": {
+    "defaultMessage": "Failed to clean up uploaded files",
+    "description": "Researcher-facing actions / protocols: Failed to clean up uploaded files"
+  },
+  "fresco.actions.protocols.copyFailedToDeleteProtocols": {
+    "defaultMessage": "Failed to delete protocols",
+    "description": "Researcher-facing actions / protocols: Failed to delete protocols"
+  },
+  "fresco.actions.protocols.copyTheProtocolYouAttemptedToAddAlready": {
+    "defaultMessage": "The protocol you attempted to add already exists in the database. Please remove it and try again.",
+    "description": "Researcher-facing actions / protocols: The protocol you attempted to add already exists in the database. Please remove it and try again."
+  },
+  "fresco.actions.protocols.copyThereWasAnErrorAddingYourProtocol": {
+    "defaultMessage": "There was an error adding your protocol to the database. See the error details for more information.",
+    "description": "Researcher-facing actions / protocols: There was an error adding your protocol to the database. See the error details for more information."
+  },
+  "fresco.actions.storageProvider.copyCannotChangeStorageConfigurationAfterProtocolsHave": {
+    "defaultMessage": "Cannot change storage configuration after protocols have been uploaded.",
+    "description": "Researcher-facing actions / storageProvider: Cannot change storage configuration after protocols have been uploaded."
+  },
+  "fresco.actions.storageProvider.copyCannotChangeStorageProviderAfterProtocolsHave": {
+    "defaultMessage": "Cannot change storage provider after protocols have been uploaded.",
+    "description": "Researcher-facing actions / storageProvider: Cannot change storage provider after protocols have been uploaded."
+  },
+  "fresco.actions.storageProvider.copyCouldNotConnectToS3Bucket": {
+    "defaultMessage": "Could not connect to the S3 bucket. Check the endpoint, bucket name, and credentials.",
+    "description": "Researcher-facing actions / storageProvider: Could not connect to S3 bucket: value"
+  },
+  "fresco.actions.storageProvider.copyS3StorageIsConfiguredViaEnvironmentVariables": {
+    "defaultMessage": "S3 storage is configured via environment variables and cannot be changed here.",
+    "description": "Researcher-facing actions / storageProvider: S3 storage is configured via environment variables and cannot be changed here."
+  },
+  "fresco.actions.storageProvider.copyTheStorageProviderIsConfiguredViaThe": {
+    "defaultMessage": "The storage provider is configured via the STORAGE_PROVIDER environment variable and cannot be changed here.",
+    "description": "Researcher-facing actions / storageProvider: The storage provider is configured via the STORAGE_PROVIDER environment variable and cannot be changed here."
+  },
+  "fresco.actions.storageProvider.copyTheStorageProviderIsPinnedToUploadThing": {
+    "defaultMessage": "The storage provider is pinned to UploadThing via the STORAGE_PROVIDER environment variable.",
+    "description": "Researcher-facing actions / storageProvider: The storage provider is pinned to UploadThing via the STORAGE_PROVIDER environment variable."
+  },
+  "fresco.actions.syntheticinterviews.copyFailedToDeleteSyntheticData": {
+    "defaultMessage": "Failed to delete synthetic data",
+    "description": "Researcher-facing actions / syntheticinterviews: Failed to delete synthetic data"
+  },
+  "fresco.actions.totp.copyCannotResetYourOwnTwoFactorAuthentication": {
+    "defaultMessage": "Cannot reset your own two-factor authentication",
+    "description": "Researcher-facing actions / totp: Cannot reset your own two-factor authentication"
+  },
+  "fresco.actions.totp.copyFresco": {
+    "defaultMessage": "Fresco ({value1})",
+    "description": "Researcher-facing actions / totp: Fresco (value)"
+  },
+  "fresco.actions.totp.copyInvalidCode": {
+    "defaultMessage": "Invalid code",
+    "description": "Researcher-facing actions / totp: Invalid code"
+  },
+  "fresco.actions.totp.copyInvalidCodeFormat": {
+    "defaultMessage": "Invalid code format",
+    "description": "Researcher-facing actions / totp: Invalid code format"
+  },
+  "fresco.actions.totp.copyInvalidRecoveryCode": {
+    "defaultMessage": "Invalid recovery code",
+    "description": "Researcher-facing actions / totp: Invalid recovery code"
+  },
+  "fresco.actions.totp.copyInvalidVerificationCode": {
+    "defaultMessage": "Invalid verification code",
+    "description": "Researcher-facing actions / totp: Invalid verification code"
+  },
+  "fresco.actions.totp.copyNoPendingTOTPSetupFound": {
+    "defaultMessage": "No pending TOTP setup found",
+    "description": "Researcher-facing actions / totp: No pending TOTP setup found"
+  },
+  "fresco.actions.totp.copyTwoFactorAuthenticationIsNotEnabled": {
+    "defaultMessage": "Two-factor authentication is not enabled",
+    "description": "Researcher-facing actions / totp: Two-factor authentication is not enabled"
+  },
+  "fresco.actions.twoFactor.copyInvalidCodeFormat": {
+    "defaultMessage": "Invalid code format",
+    "description": "Researcher-facing actions / twoFactor: Invalid code format"
+  },
+  "fresco.actions.twoFactor.copyInvalidRecoveryCode": {
+    "defaultMessage": "Invalid recovery code",
+    "description": "Researcher-facing actions / twoFactor: Invalid recovery code"
+  },
+  "fresco.actions.twoFactor.copyInvalidSubmission": {
+    "defaultMessage": "Invalid submission",
+    "description": "Researcher-facing actions / twoFactor: Invalid submission"
+  },
+  "fresco.actions.twoFactor.copyInvalidVerificationCode": {
+    "defaultMessage": "Invalid verification code",
+    "description": "Researcher-facing actions / twoFactor: Invalid verification code"
+  },
+  "fresco.actions.twoFactor.copyServerConfigurationErrorPleaseContactAnAdmin": {
+    "defaultMessage": "Server configuration error. Please contact an admin.",
+    "description": "Researcher-facing actions / twoFactor: Server configuration error. Please contact an admin."
+  },
+  "fresco.actions.twoFactor.copyTooManyAttemptsPleaseSignInAgain": {
+    "defaultMessage": "Too many attempts. Please sign in again.",
+    "description": "Researcher-facing actions / twoFactor: Too many attempts. Please sign in again."
+  },
+  "fresco.actions.twoFactor.copyTwoFactorAuthenticationIsNotConfigured": {
+    "defaultMessage": "Two-factor authentication is not configured",
+    "description": "Researcher-facing actions / twoFactor: Two-factor authentication is not configured"
+  },
+  "fresco.actions.twoFactor.copyTwoFactorSessionExpiredPleaseSignIn": {
+    "defaultMessage": "Two-factor session expired. Please sign in again.",
+    "description": "Researcher-facing actions / twoFactor: Two-factor session expired. Please sign in again."
+  },
+  "fresco.actions.twoFactor.copyUserNotFound": {
+    "defaultMessage": "User not found",
+    "description": "Researcher-facing actions / twoFactor: User not found"
+  },
+  "fresco.actions.users.copyCannotDeleteAllUsersAtLeastOne": {
+    "defaultMessage": "Cannot delete all users. At least one user must remain.",
+    "description": "Researcher-facing actions / users: Cannot delete all users. At least one user must remain."
+  },
+  "fresco.actions.users.copyCurrentPasswordIsIncorrect": {
+    "defaultMessage": "Current password is incorrect",
+    "description": "Researcher-facing actions / users: Current password is incorrect"
+  },
+  "fresco.actions.users.copyFailedToCreateUserUsernameMayAlready": {
+    "defaultMessage": "Failed to create user. Username may already exist.",
+    "description": "Researcher-facing actions / users: Failed to create user. Username may already exist."
+  },
+  "fresco.actions.users.copyFailedToDeleteUsers": {
+    "defaultMessage": "Failed to delete users",
+    "description": "Researcher-facing actions / users: Failed to delete users"
+  },
+  "fresco.actions.users.copyFailedToUpdatePassword": {
+    "defaultMessage": "Failed to update password",
+    "description": "Researcher-facing actions / users: Failed to update password"
+  },
+  "fresco.actions.users.copyInvalidData": {
+    "defaultMessage": "Invalid data",
+    "description": "Researcher-facing actions / users: Invalid data"
+  },
+  "fresco.actions.users.copyInvalidFormData": {
+    "defaultMessage": "Invalid form data",
+    "description": "Researcher-facing actions / users: Invalid form data"
+  },
+  "fresco.actions.users.copyNoValidUsersToDelete": {
+    "defaultMessage": "No valid users to delete",
+    "description": "Researcher-facing actions / users: No valid users to delete"
+  },
+  "fresco.actions.webauthn.copyAccountIsAlreadyInPasskeyMode": {
+    "defaultMessage": "Account is already in passkey mode.",
+    "description": "Researcher-facing actions / webauthn: Account is already in passkey mode."
+  },
+  "fresco.actions.webauthn.copyAccountIsAlreadyInPasswordMode": {
+    "defaultMessage": "Account is already in password mode.",
+    "description": "Researcher-facing actions / webauthn: Account is already in password mode."
+  },
+  "fresco.actions.webauthn.copyAuthenticationFailed": {
+    "defaultMessage": "Authentication failed.",
+    "description": "Researcher-facing actions / webauthn: Authentication failed."
+  },
+  "fresco.actions.webauthn.copyCannotRemoveYourOnlyPasskeyWithoutA": {
+    "defaultMessage": "Cannot remove your only passkey without a password set.",
+    "description": "Researcher-facing actions / webauthn: Cannot remove your only passkey without a password set."
+  },
+  "fresco.actions.webauthn.copyCannotResetYourOwnAuthentication": {
+    "defaultMessage": "Cannot reset your own authentication.",
+    "description": "Researcher-facing actions / webauthn: Cannot reset your own authentication."
+  },
+  "fresco.actions.webauthn.copyChallengeExpiredPleaseTryAgain": {
+    "defaultMessage": "Challenge expired. Please try again.",
+    "description": "Researcher-facing actions / webauthn: Challenge expired. Please try again."
+  },
+  "fresco.actions.webauthn.copyIncorrectPassword": {
+    "defaultMessage": "Incorrect password.",
+    "description": "Researcher-facing actions / webauthn: Incorrect password."
+  },
+  "fresco.actions.webauthn.copyPasskeyNotFound": {
+    "defaultMessage": "Passkey not found.",
+    "description": "Researcher-facing actions / webauthn: Passkey not found."
+  },
+  "fresco.actions.webauthn.copyPasskeyNotRecognized": {
+    "defaultMessage": "Passkey not recognized.",
+    "description": "Researcher-facing actions / webauthn: Passkey not recognized."
+  },
+  "fresco.actions.webauthn.copyRegistrationVerificationFailed2": {
+    "defaultMessage": "Registration verification failed.",
+    "description": "Researcher-facing actions / webauthn: Registration verification failed."
+  },
+  "fresco.actions.webauthn.copySetupIsAlreadyComplete": {
+    "defaultMessage": "Setup is already complete.",
+    "description": "Researcher-facing actions / webauthn: Setup is already complete."
+  },
+  "fresco.actions.webauthn.copyTooManyAttemptsPleaseTryAgainLater": {
+    "defaultMessage": "Too many attempts. Please try again later.",
+    "description": "Researcher-facing actions / webauthn: Too many attempts. Please try again later."
+  },
+  "fresco.actions.webauthn.copyUserNotFound": {
+    "defaultMessage": "User not found.",
+    "description": "Researcher-facing actions / webauthn: User not found."
+  },
+  "fresco.actions.webauthn.copyUsernameAlreadyTaken": {
+    "defaultMessage": "Username already taken.",
+    "description": "Researcher-facing actions / webauthn: Username already taken."
+  },
+  "fresco.actions.webauthn.copyUsernameMustBeAtLeast4Characters": {
+    "defaultMessage": "Username must be at least 4 characters.",
+    "description": "Researcher-facing actions / webauthn: Username must be at least 4 characters."
+  },
+  "fresco.actions.webauthn.copyVerificationFailed": {
+    "defaultMessage": "Verification failed.",
+    "description": "Researcher-facing actions / webauthn: Verification failed."
+  },
+  "fresco.activity.APITokenCreated": {
+    "defaultMessage": "API Token Created",
+    "description": "Localized display label for the stable API Token Created activity event type. Never persist the translated label."
+  },
+  "fresco.activity.APITokenDeleted": {
+    "defaultMessage": "API Token Deleted",
+    "description": "Localized display label for the stable API Token Deleted activity event type. Never persist the translated label."
+  },
+  "fresco.activity.APITokenUpdated": {
+    "defaultMessage": "API Token Updated",
+    "description": "Localized display label for the stable API Token Updated activity event type. Never persist the translated label."
+  },
+  "fresco.activity.AuthReset": {
+    "defaultMessage": "Auth Reset",
+    "description": "Localized display label for the stable Auth Reset activity event type. Never persist the translated label."
+  },
+  "fresco.activity.DataExported": {
+    "defaultMessage": "Data Exported",
+    "description": "Localized display label for the stable Data Exported activity event type. Never persist the translated label."
+  },
+  "fresco.activity.InterviewCompleted": {
+    "defaultMessage": "Interview Completed",
+    "description": "Localized display label for the stable Interview Completed activity event type. Never persist the translated label."
+  },
+  "fresco.activity.InterviewOpened": {
+    "defaultMessage": "Interview Opened",
+    "description": "Localized display label for the stable Interview Opened activity event type. Never persist the translated label."
+  },
+  "fresco.activity.InterviewStarted": {
+    "defaultMessage": "Interview Started",
+    "description": "Localized display label for the stable Interview Started activity event type. Never persist the translated label."
+  },
+  "fresco.activity.InterviewsDeleted": {
+    "defaultMessage": "Interviews Deleted",
+    "description": "Localized display label for the stable Interview(s) Deleted activity event type. Never persist the translated label."
+  },
+  "fresco.activity.ParticipantsAdded": {
+    "defaultMessage": "Participants Added",
+    "description": "Localized display label for the stable Participant(s) Added activity event type. Never persist the translated label."
+  },
+  "fresco.activity.ParticipantsRemoved": {
+    "defaultMessage": "Participants Removed",
+    "description": "Localized display label for the stable Participant(s) Removed activity event type. Never persist the translated label."
+  },
+  "fresco.activity.PasskeyLogin": {
+    "defaultMessage": "Passkey Login",
+    "description": "Localized display label for the stable Passkey Login activity event type. Never persist the translated label."
+  },
+  "fresco.activity.PasskeyRegistered": {
+    "defaultMessage": "Passkey Registered",
+    "description": "Localized display label for the stable Passkey Registered activity event type. Never persist the translated label."
+  },
+  "fresco.activity.PasskeyRemoved": {
+    "defaultMessage": "Passkey Removed",
+    "description": "Localized display label for the stable Passkey Removed activity event type. Never persist the translated label."
+  },
+  "fresco.activity.PasswordChanged": {
+    "defaultMessage": "Password Changed",
+    "description": "Localized display label for the stable Password Changed activity event type. Never persist the translated label."
+  },
+  "fresco.activity.PasswordRemoved": {
+    "defaultMessage": "Password Removed",
+    "description": "Localized display label for the stable Password Removed activity event type. Never persist the translated label."
+  },
+  "fresco.activity.PasswordSet": {
+    "defaultMessage": "Password Set",
+    "description": "Localized display label for the stable Password Set activity event type. Never persist the translated label."
+  },
+  "fresco.activity.ProtocolInstalled": {
+    "defaultMessage": "Protocol Installed",
+    "description": "Localized display label for the stable Protocol Installed activity event type. Never persist the translated label."
+  },
+  "fresco.activity.ProtocolUninstalled": {
+    "defaultMessage": "Protocol Uninstalled",
+    "description": "Localized display label for the stable Protocol Uninstalled activity event type. Never persist the translated label."
+  },
+  "fresco.activity.RecoveryCodeLogin": {
+    "defaultMessage": "Recovery Code Login",
+    "description": "Localized display label for the stable Recovery Code Login activity event type. Never persist the translated label."
+  },
+  "fresco.activity.RecoveryCodeUsed": {
+    "defaultMessage": "Recovery Code Used",
+    "description": "Localized display label for the stable Recovery Code Used activity event type. Never persist the translated label."
+  },
+  "fresco.activity.RecoveryCodesRegenerated": {
+    "defaultMessage": "Recovery Codes Regenerated",
+    "description": "Localized display label for the stable Recovery Codes Regenerated activity event type. Never persist the translated label."
+  },
+  "fresco.activity.SettingChanged": {
+    "defaultMessage": "Setting Changed",
+    "description": "Localized display label for the stable Setting Changed activity event type. Never persist the translated label."
+  },
+  "fresco.activity.SwitchedtoPasskeyMode": {
+    "defaultMessage": "Switched to Passkey Mode",
+    "description": "Localized display label for the stable Switched to Passkey Mode activity event type. Never persist the translated label."
+  },
+  "fresco.activity.SwitchedtoPasswordMode": {
+    "defaultMessage": "Switched to Password Mode",
+    "description": "Localized display label for the stable Switched to Password Mode activity event type. Never persist the translated label."
+  },
+  "fresco.activity.SyntheticDataDeleted": {
+    "defaultMessage": "Synthetic Data Deleted",
+    "description": "Localized display label for the stable Synthetic Data Deleted activity event type. Never persist the translated label."
+  },
+  "fresco.activity.SyntheticDataGenerated": {
+    "defaultMessage": "Synthetic Data Generated",
+    "description": "Localized display label for the stable Synthetic Data Generated activity event type. Never persist the translated label."
+  },
+  "fresco.activity.TwoFactorDisabled": {
+    "defaultMessage": "Two-Factor Disabled",
+    "description": "Localized display label for the stable Two-Factor Disabled activity event type. Never persist the translated label."
+  },
+  "fresco.activity.TwoFactorEnabled": {
+    "defaultMessage": "Two-Factor Enabled",
+    "description": "Localized display label for the stable Two-Factor Enabled activity event type. Never persist the translated label."
+  },
+  "fresco.activity.TwoFactorLogin": {
+    "defaultMessage": "Two-Factor Login",
+    "description": "Localized display label for the stable Two-Factor Login activity event type. Never persist the translated label."
+  },
+  "fresco.activity.TwoFactorReset": {
+    "defaultMessage": "Two-Factor Reset",
+    "description": "Localized display label for the stable Two-Factor Reset activity event type. Never persist the translated label."
+  },
+  "fresco.activity.UserCreated": {
+    "defaultMessage": "User Created",
+    "description": "Localized display label for the stable User Created activity event type. Never persist the translated label."
+  },
+  "fresco.activity.UserDeleted": {
+    "defaultMessage": "User Deleted",
+    "description": "Localized display label for the stable User Deleted activity event type. Never persist the translated label."
+  },
+  "fresco.activity.UserLogin": {
+    "defaultMessage": "User Login",
+    "description": "Localized display label for the stable User Login activity event type. Never persist the translated label."
+  },
+  "fresco.activity.detail.accountCreatedWithPasskey": {
+    "defaultMessage": "User {username} created an account with a passkey ({passkey}).",
+    "description": "Initial account creation with a passkey. User-controlled values are literal data, not translated copy."
+  },
+  "fresco.activity.detail.apiTokenCreated": {
+    "defaultMessage": "User {username} created {descriptionMode, select, named {API token “{token}”} other {an untitled API token}}.",
+    "description": "API token creation; token is an optional user-authored description, never the secret. User-controlled values are literal data, not translated copy."
+  },
+  "fresco.activity.detail.apiTokenDeleted": {
+    "defaultMessage": "User {username} deleted API token {token}.",
+    "description": "API token deletion; token is the record identifier, never the secret. User-controlled values are literal data, not translated copy."
+  },
+  "fresco.activity.detail.apiTokenUpdated": {
+    "defaultMessage": "User {username} updated API token {token}.",
+    "description": "API token update; token is the record identifier, never the secret. User-controlled values are literal data, not translated copy."
+  },
+  "fresco.activity.detail.authReset": {
+    "defaultMessage": "User {username} reset authentication for {target}.",
+    "description": "An administrator resets another account’s authentication. User-controlled values are literal data, not translated copy."
+  },
+  "fresco.activity.detail.dataExported": {
+    "defaultMessage": "User {username} exported data for {count, plural, one {# interview} other {# interviews}}.",
+    "description": "A successfully committed interview export. User-controlled values are literal data, not translated copy."
+  },
+  "fresco.activity.detail.interviewCompleted": {
+    "defaultMessage": "Participant “{participant}” completed an interview.",
+    "description": "A participant completed their interview; participant is their stable display value. User-controlled values are literal data, not translated copy."
+  },
+  "fresco.activity.detail.interviewOpened": {
+    "defaultMessage": "{actor, select, researcher {Interview “{interview}” was opened by user “{username}”.} other {Interview “{interview}” was opened.}}",
+    "description": "An interview is opened by a signed-in researcher or an unauthenticated participant. Preserve the interview identifier and username as literal data."
+  },
+  "fresco.activity.detail.interviewStarted": {
+    "defaultMessage": "Participant “{participant}” started an interview.",
+    "description": "A participant started an interview; participant is their stable display value. User-controlled values are literal data, not translated copy."
+  },
+  "fresco.activity.detail.interviewsDeleted": {
+    "defaultMessage": "User {username} deleted {count, plural, one {# interview} other {# interviews}}.",
+    "description": "Interviews deleted in one action. User-controlled values are literal data, not translated copy."
+  },
+  "fresco.activity.detail.participantsAdded": {
+    "defaultMessage": "User {username} added {count, plural, one {# participant} other {# participants}}.",
+    "description": "Participants added in one action or CSV import. User-controlled values are literal data, not translated copy."
+  },
+  "fresco.activity.detail.participantsRemoved": {
+    "defaultMessage": "User {username} removed {count, plural, one {# participant} other {# participants}}.",
+    "description": "Participants removed in one action. User-controlled values are literal data, not translated copy."
+  },
+  "fresco.activity.detail.passkeyRegistered": {
+    "defaultMessage": "User {username} registered a passkey ({passkey}).",
+    "description": "A passkey is registered; passkey is its stored friendly name. User-controlled values are literal data, not translated copy."
+  },
+  "fresco.activity.detail.passkeyRemoved": {
+    "defaultMessage": "User {username} removed {nameMode, select, named {passkey “{passkey}”} other {a passkey}}.",
+    "description": "A passkey is removed, with an optional stored friendly name. User-controlled values are literal data, not translated copy."
+  },
+  "fresco.activity.detail.passwordChanged": {
+    "defaultMessage": "User {username} changed their password.",
+    "description": "A researcher changes their own password. User-controlled values are literal data, not translated copy."
+  },
+  "fresco.activity.detail.protocolInstalled": {
+    "defaultMessage": "User {username} installed protocol “{protocol}”.",
+    "description": "A protocol was imported; protocol is its original file/name. User-controlled values are literal data, not translated copy."
+  },
+  "fresco.activity.detail.protocolUninstalled": {
+    "defaultMessage": "User {username} uninstalled protocol “{protocol}”.",
+    "description": "A protocol was removed; protocol is its original file/name. User-controlled values are literal data, not translated copy."
+  },
+  "fresco.activity.detail.recoveryCodesRegenerated": {
+    "defaultMessage": "User {username} regenerated recovery codes.",
+    "description": "A researcher generates replacement recovery codes. User-controlled values are literal data, not translated copy."
+  },
+  "fresco.activity.detail.recoveryLogin": {
+    "defaultMessage": "User {username} logged in with a recovery code.",
+    "description": "Sign-in using a recovery code. User-controlled values are literal data, not translated copy."
+  },
+  "fresco.activity.detail.settingChanged": {
+    "defaultMessage": "User {username} changed “{setting}” to “{value}”.",
+    "description": "A setting changes; setting is a stable configuration key, value preserves existing secret redaction. User-controlled values are literal data, not translated copy."
+  },
+  "fresco.activity.detail.switchedToPasskey": {
+    "defaultMessage": "User {username} switched to passkey-only authentication ({passkey}).",
+    "description": "A researcher switches to using a passkey only. User-controlled values are literal data, not translated copy."
+  },
+  "fresco.activity.detail.switchedToPassword": {
+    "defaultMessage": "User {username} switched to password authentication.",
+    "description": "A researcher switches to password authentication. User-controlled values are literal data, not translated copy."
+  },
+  "fresco.activity.detail.syntheticDeleted": {
+    "defaultMessage": "User {username} deleted {interviews, plural, one {# synthetic interview} other {# synthetic interviews}} and {participants, plural, one {# test participant} other {# test participants}}.",
+    "description": "Removal of generated test data; both counts are independent. User-controlled values are literal data, not translated copy."
+  },
+  "fresco.activity.detail.syntheticGenerated": {
+    "defaultMessage": "User {username} generated {count, plural, one {# synthetic interview} other {# synthetic interviews}} for protocol “{protocol}”.",
+    "description": "Generated test interviews for a named protocol. User-controlled values are literal data, not translated copy."
+  },
+  "fresco.activity.detail.twoFactorDisabled": {
+    "defaultMessage": "User {username} disabled two-factor authentication.",
+    "description": "A researcher disables two-factor authentication. User-controlled values are literal data, not translated copy."
+  },
+  "fresco.activity.detail.twoFactorEnabled": {
+    "defaultMessage": "User {username} enabled two-factor authentication.",
+    "description": "A researcher enables two-factor authentication. User-controlled values are literal data, not translated copy."
+  },
+  "fresco.activity.detail.twoFactorReset": {
+    "defaultMessage": "User {username} reset two-factor authentication for {target}.",
+    "description": "An administrator resets another account’s two-factor authentication. User-controlled values are literal data, not translated copy."
+  },
+  "fresco.activity.detail.userCreated": {
+    "defaultMessage": "User {username} created user {target}.",
+    "description": "An administrator creates another researcher account. User-controlled values are literal data, not translated copy."
+  },
+  "fresco.activity.detail.userLogin": {
+    "defaultMessage": "User {username} logged in.",
+    "description": "A successful researcher sign-in. User-controlled values are literal data, not translated copy."
+  },
+  "fresco.activity.detail.usersDeleted": {
+    "defaultMessage": "User {username} deleted {count, plural, one {user} other {users}}: {users}.",
+    "description": "Accounts deleted by a researcher; users is a locale-formatted list. User-controlled values are literal data, not translated copy."
+  },
+  "fresco.apiToken.activeToken": {
+    "defaultMessage": "Active token: {name}",
+    "description": "Accessible label for an API token activation switch. Name is its description, never its secret."
+  },
+  "fresco.dashboard.metadata.pageDescription": {
+    "defaultMessage": "Fresco.",
+    "description": "Researcher-facing dashboard.metadata: Fresco."
+  },
+  "fresco.dashboard.metadata.pageTitle": {
+    "defaultMessage": "Network Canvas Fresco - Dashboard",
+    "description": "Researcher-facing dashboard.metadata: Network Canvas Fresco - Dashboard"
+  },
+  "fresco.deleteInterviews.confirm": {
+    "defaultMessage": "{count, plural, one {Delete interview} other {Delete interviews}}",
+    "description": "Confirm deletion button; count is the selection size."
+  },
+  "fresco.deleteInterviews.deleting": {
+    "defaultMessage": "Deleting…",
+    "description": "Busy state while deleting interviews."
+  },
+  "fresco.deleteInterviews.description": {
+    "defaultMessage": "This action cannot be undone. This will permanently delete <strong>{count, plural, one {# interview} other {# interviews}}</strong>.",
+    "description": "Permanent deletion warning; count is the number of selected interviews."
+  },
+  "fresco.deleteInterviews.title": {
+    "defaultMessage": "Are you absolutely sure?",
+    "description": "Permanent interview deletion confirmation title."
+  },
+  "fresco.deleteInterviews.unexported": {
+    "defaultMessage": "{count, plural, one {The selected interview <strong>has not yet been exported.</strong>} other {One or more of the selected interviews <strong>have not yet been exported.</strong>}}",
+    "description": "Warns about unexported data before deleting selected interviews."
+  },
+  "fresco.deleteInterviews.warning": {
+    "defaultMessage": "Warning",
+    "description": "Heading for a warning about unexported interview data."
+  },
+  "fresco.deleteParticipants.confirm": {
+    "defaultMessage": "Permanently Delete",
+    "description": "Confirmation button for permanent deletion."
+  },
+  "fresco.deleteParticipants.deleting": {
+    "defaultMessage": "Deleting…",
+    "description": "Busy state while deleting selected participants."
+  },
+  "fresco.deleteParticipants.description": {
+    "defaultMessage": "This action cannot be undone. This will permanently delete {count, plural, one {# participant} other {# participants}}.",
+    "description": "Permanent deletion warning; count is the selection size."
+  },
+  "fresco.deleteParticipants.exported": {
+    "defaultMessage": "{count, plural, one {The selected participant has interview data that will also be deleted.} other {One or more of the selected participants have interview data that will also be deleted.}} This data is marked as having been exported, but you may wish to confirm this before proceeding.",
+    "description": "Warning for related interview data marked as exported."
+  },
+  "fresco.deleteParticipants.title": {
+    "defaultMessage": "Are you absolutely sure?",
+    "description": "Permanent participant deletion confirmation title."
+  },
+  "fresco.deleteParticipants.unexported": {
+    "defaultMessage": "{count, plural, one {The selected participant has interview data that <strong>has not yet been exported.</strong> Deleting this participant will also delete the interview data.} other {One or more of the selected participants have interview data that <strong>has not yet been exported.</strong> Deleting these participants will also delete the interview data.}}",
+    "description": "Warns about deleting related unexported interview data."
+  },
+  "fresco.deleteParticipants.warning": {
+    "defaultMessage": "Warning",
+    "description": "Heading for a warning about related interview data."
+  },
+  "fresco.deleteProtocols.confirm": {
+    "defaultMessage": "Permanently Delete",
+    "description": "Confirmation button for permanent deletion."
+  },
+  "fresco.deleteProtocols.deleting": {
+    "defaultMessage": "Deleting…",
+    "description": "Busy state while deleting selected protocols."
+  },
+  "fresco.deleteProtocols.description": {
+    "defaultMessage": "This action cannot be undone. This will permanently delete {count, plural, one {# protocol} other {# protocols}}.",
+    "description": "Permanent deletion warning; count is the selection size."
+  },
+  "fresco.deleteProtocols.exported": {
+    "defaultMessage": "{count, plural, one {The selected protocol has interview data that will also be deleted.} other {One or more of the selected protocols have interview data that will also be deleted.}} This data is marked as having been exported, but you may wish to confirm this before proceeding.",
+    "description": "Warning for related interview data marked as exported."
+  },
+  "fresco.deleteProtocols.title": {
+    "defaultMessage": "Are you absolutely sure?",
+    "description": "Permanent protocol deletion confirmation title."
+  },
+  "fresco.deleteProtocols.unexported": {
+    "defaultMessage": "{count, plural, one {The selected protocol has interview data that <strong>has not yet been exported.</strong> Deleting this protocol will also delete the interview data.} other {One or more of the selected protocols have interview data that <strong>has not yet been exported.</strong> Deleting these protocols will also delete the interview data.}}",
+    "description": "Warns about deleting related unexported interview data."
+  },
+  "fresco.deleteProtocols.warning": {
+    "defaultMessage": "Warning",
+    "description": "Heading for a warning about related interview data."
+  },
+  "fresco.error.copyDebugInformation": {
+    "defaultMessage": "Copy Debug Information",
+    "description": "Researcher-facing error: Copy Debug Information"
+  },
+  "fresco.error.debugInformationCopiedToClipboard": {
+    "defaultMessage": "Debug information copied to clipboard",
+    "description": "Researcher-facing error: Debug information copied to clipboard"
+  },
+  "fresco.error.frescoEncounteredAnErrorWhileTryingTo": {
+    "defaultMessage": "Fresco encountered an error while trying to load the page, and could not continue.",
+    "description": "Researcher-facing error: Fresco encountered an error while trying to load the page, and could not continue."
+  },
+  "fresco.error.success": {
+    "defaultMessage": "Success",
+    "description": "Researcher-facing error: Success"
+  },
+  "fresco.error.thisErrorHasBeenAutomaticallyReportedTo": {
+    "defaultMessage": "This error has been automatically reported to us, but if you would like to provide further information that you think might be useful please contact us. You can also use the retry button to attempt to load the page again.",
+    "description": "Researcher-facing error: This error has been automatically reported to us, but if you would like to provide further information that you think mi"
+  },
+  "fresco.expired.page.devModeResetConfiguration": {
+    "defaultMessage": "Dev mode: Reset Configuration",
+    "description": "Researcher-facing expired / page: Dev mode: Reset Configuration"
+  },
+  "fresco.expired.page.installationExpired": {
+    "defaultMessage": "Installation expired",
+    "description": "Researcher-facing expired / page: Installation expired"
+  },
+  "fresco.expired.page.pleaseRedeployANewInstanceOfFresco": {
+    "defaultMessage": "Please redeploy a new instance of Fresco to continue using the software.",
+    "description": "Researcher-facing expired / page: Please redeploy a new instance of Fresco to continue using the software."
+  },
+  "fresco.expired.page.youDidNotConfigureThisDeploymentOf": {
+    "defaultMessage": "You did not configure this deployment of Fresco in time, and it has now been locked down for your security.",
+    "description": "Researcher-facing expired / page: You did not configure this deployment of Fresco in time, and it has now been locked down for your security."
+  },
+  "fresco.export.progressCount": {
+    "defaultMessage": "{current, number} / {total, number}",
+    "description": "Current and total number of interviews in a running export."
+  },
+  "fresco.globalerror.copyCopied": {
+    "defaultMessage": "Copied!",
+    "description": "Researcher-facing globalerror: Copied!"
+  },
+  "fresco.globalerror.copyCopyDebugInformation": {
+    "defaultMessage": "Copy Debug Information",
+    "description": "Researcher-facing globalerror: Copy Debug Information"
+  },
+  "fresco.globalerror.errorRobot": {
+    "defaultMessage": "Error robot",
+    "description": "Researcher-facing globalerror: Error robot"
+  },
+  "fresco.globalerror.frescoEncounteredASeriousErrorAndIs": {
+    "defaultMessage": "Fresco encountered a serious error and is unable to continue.",
+    "description": "Researcher-facing globalerror: Fresco encountered a serious error and is unable to continue."
+  },
+  "fresco.globalerror.thereAposSAProblemWithFresco": {
+    "defaultMessage": "There's a problem with Fresco.",
+    "description": "Researcher-facing globalerror: There's a problem with Fresco."
+  },
+  "fresco.globalerror.thisCouldIndicateAProblemWithYour": {
+    "defaultMessage": "This could indicate a problem with your deployment, or it could be a bug in the application. We've been notified and will investigate the issue, but please feel free to reach out via our <tag1> community website </tag1> .",
+    "description": "Researcher-facing globalerror: This could indicate a problem with your deployment, or it could be a bug in the application. We've been notified an"
+  },
+  "fresco.hooks.useProtocolImport.copyAssetUploadFailed": {
+    "defaultMessage": "Asset upload failed",
+    "description": "Researcher-facing hooks / useProtocolImport: Asset upload failed"
+  },
+  "fresco.hooks.useProtocolImport.copyImportCompleted": {
+    "defaultMessage": "Import completed!",
+    "description": "Researcher-facing hooks / useProtocolImport: Import completed!"
+  },
+  "fresco.hooks.useProtocolImport.protocolAlreadyExistsDeleteTheExistingProtocol": {
+    "defaultMessage": "Protocol already exists. Delete the existing protocol first before importing again.",
+    "description": "Researcher-facing hooks / useProtocolImport: Protocol already exists. Delete the existing protocol first before importing again."
+  },
+  "fresco.hooks.useProtocolImport.protocolImportedSuccessfully": {
+    "defaultMessage": "Protocol imported successfully",
+    "description": "Researcher-facing hooks / useProtocolImport: Protocol imported successfully"
+  },
+  "fresco.interviews.ExportCSVInterviewURLs.anErrorOccurredWhileExportingIncompleteInterview": {
+    "defaultMessage": "An error occurred while exporting incomplete interview URLs",
+    "description": "Researcher-facing interviews / ExportCSVInterviewURLs: An error occurred while exporting incomplete interview URLs"
+  },
+  "fresco.interviews.ExportCSVInterviewURLs.copyAnErrorOccurredWhileExportingIncompleteInterview": {
+    "defaultMessage": "An error occurred while exporting incomplete interview URLs",
+    "description": "Researcher-facing interviews / ExportCSVInterviewURLs: An error occurred while exporting incomplete interview URLs"
+  },
+  "fresco.interviews.ExportCSVInterviewURLs.copyExport": {
+    "defaultMessage": "Export",
+    "description": "Researcher-facing interviews / ExportCSVInterviewURLs: Export"
+  },
+  "fresco.interviews.ExportCSVInterviewURLs.copyExporting": {
+    "defaultMessage": "Exporting...",
+    "description": "Researcher-facing interviews / ExportCSVInterviewURLs: Exporting..."
+  },
+  "fresco.interviews.ExportCSVInterviewURLs.error": {
+    "defaultMessage": "Error",
+    "description": "Researcher-facing interviews / ExportCSVInterviewURLs: Error"
+  },
+  "fresco.interviews.ExportCSVInterviewURLs.incompleteInterviewURLsCSVExportedSuccessfully": {
+    "defaultMessage": "Incomplete interview URLs CSV exported successfully",
+    "description": "Researcher-facing interviews / ExportCSVInterviewURLs: Incomplete interview URLs CSV exported successfully"
+  },
+  "fresco.interviews.ExportCSVInterviewURLs.success": {
+    "defaultMessage": "Success",
+    "description": "Researcher-facing interviews / ExportCSVInterviewURLs: Success"
+  },
+  "fresco.interviews.ExportInterviewsDialog.beforeExportingPleaseConfirmTheExportOptions": {
+    "defaultMessage": "Before exporting, please confirm the export options that you wish to use. These options are identical to those found in Interviewer.",
+    "description": "Researcher-facing interviews / ExportInterviewsDialog: Before exporting, please confirm the export options that you wish to use. These options are identical to those found in "
+  },
+  "fresco.interviews.ExportInterviewsDialog.confirmFileExportOptions": {
+    "defaultMessage": "Confirm File Export Options",
+    "description": "Researcher-facing interviews / ExportInterviewsDialog: Confirm File Export Options"
+  },
+  "fresco.interviews.ExportInterviewsDialog.startExportProcess": {
+    "defaultMessage": "Start export process",
+    "description": "Researcher-facing interviews / ExportInterviewsDialog: Start export process"
+  },
+  "fresco.interviews.ExportOptionsView.byDefaultInterviewerExportsSociogramNodeCoordinates": {
+    "defaultMessage": "By default Interviewer exports sociogram node coordinates as normalized X/Y values (a number between 0 and 1 for each axis, with the origin in the top left). Enabling this option will store coordinates as screen space pixel values, with the same origin.",
+    "description": "Researcher-facing interviews / ExportOptionsView: By default Interviewer exports sociogram node coordinates as normalized X/Y values (a number between 0 and 1 for each ax"
+  },
+  "fresco.interviews.ExportOptionsView.cSVIsAWidelyUsedFormatFor": {
+    "defaultMessage": "CSV is a widely used format for storing network data, but this wider compatibility comes at the expense of robustness. If you enable this format, your networks will be exported as an <tag1>attribute list file</tag1> for each node type, an <tag2>edge list file</tag2> for each edge type, and an <tag3>ego attribute file</tag3> that also contains session data.",
+    "description": "Researcher-facing interviews / ExportOptionsView: CSV is a widely used format for storing network data, but this wider compatibility comes at the expense of robustness. I"
+  },
+  "fresco.interviews.ExportOptionsView.exportCSVFiles": {
+    "defaultMessage": "Export CSV Files",
+    "description": "Researcher-facing interviews / ExportOptionsView: Export CSV Files"
+  },
+  "fresco.interviews.ExportOptionsView.exportGraphMLFiles": {
+    "defaultMessage": "Export GraphML Files",
+    "description": "Researcher-facing interviews / ExportOptionsView: Export GraphML Files"
+  },
+  "fresco.interviews.ExportOptionsView.graphMLIsTheMainFileFormatUsed": {
+    "defaultMessage": "GraphML is the main file format used by the Network Canvas software. GraphML files can be used to manually import your data into Server, and can be opened by many other pieces of network analysis software.",
+    "description": "Researcher-facing interviews / ExportOptionsView: GraphML is the main file format used by the Network Canvas software. GraphML files can be used to manually import your d"
+  },
+  "fresco.interviews.ExportOptionsView.useScreenLayoutCoordinates": {
+    "defaultMessage": "Use Screen Layout Coordinates",
+    "description": "Researcher-facing interviews / ExportOptionsView: Use Screen Layout Coordinates"
+  },
+  "fresco.interviews.GenerateInterviewURLs.error": {
+    "defaultMessage": "Error",
+    "description": "Researcher-facing interviews / GenerateInterviewURLs: Error"
+  },
+  "fresco.interviews.GenerateInterviewURLs.exportIncompleteInterviewURLs": {
+    "defaultMessage": "Export Incomplete Interview URLs",
+    "description": "Researcher-facing interviews / GenerateInterviewURLs: Export Incomplete Interview URLs"
+  },
+  "fresco.interviews.GenerateInterviewURLs.generateACSVThatContainsUniqueInterview": {
+    "defaultMessage": "Generate a CSV that contains unique interview URLs for all incomplete interviews by protocol.",
+    "description": "Researcher-facing interviews / GenerateInterviewURLs: Generate a CSV that contains unique interview URLs for all incomplete interviews by protocol."
+  },
+  "fresco.interviews.GenerateInterviewURLs.selectAProtocol": {
+    "defaultMessage": "Select a Protocol...",
+    "description": "Researcher-facing interviews / GenerateInterviewURLs: Select a Protocol..."
+  },
+  "fresco.interviews.networkSummary.entityCount": {
+    "defaultMessage": "{name} ({count, number})",
+    "description": "Researcher-defined entity type name and number of entities. Preserve the name value."
+  },
+  "fresco.interviews.page.interviews": {
+    "defaultMessage": "Interviews",
+    "description": "Researcher-facing interviews / page: Interviews"
+  },
+  "fresco.interviews.page.viewAndManageYourInterviewData": {
+    "defaultMessage": "View and manage your interview data.",
+    "description": "Researcher-facing interviews / page: View and manage your interview data."
+  },
+  "fresco.language.automatic": {
+    "defaultMessage": "Automatic (browser language)",
+    "description": "Language choice which follows browser language preferences."
+  },
+  "fresco.language.description": {
+    "defaultMessage": "Choose the language for Fresco. This does not change interview languages or research data.",
+    "description": "Explains the scope of the application language preference."
+  },
+  "fresco.language.failed": {
+    "defaultMessage": "The language preference could not be saved. Please try again.",
+    "description": "Error announced after a preference write fails and the previous language is restored."
+  },
+  "fresco.language.label": {
+    "defaultMessage": "Language",
+    "description": "Researcher application language preference label."
+  },
+  "fresco.language.saving": {
+    "defaultMessage": "Saving language preference…",
+    "description": "Status while saving the language preference to the current account or device."
+  },
+  "fresco.navigation.brand": {
+    "defaultMessage": "Fresco",
+    "description": "Product name. Keep Fresco unchanged in all languages."
+  },
+  "fresco.notfound.pageNotFound": {
+    "defaultMessage": "Page not found.",
+    "description": "Researcher-facing notfound: Page not found."
+  },
+  "fresco.page.dashboard": {
+    "defaultMessage": "Dashboard",
+    "description": "Researcher-facing page: Dashboard"
+  },
+  "fresco.page.interviews": {
+    "defaultMessage": "Interviews",
+    "description": "Researcher-facing page: Interviews"
+  },
+  "fresco.page.participantIcon": {
+    "defaultMessage": "Participant icon",
+    "description": "Researcher-facing page: Participant icon"
+  },
+  "fresco.page.participants": {
+    "defaultMessage": "Participants",
+    "description": "Researcher-facing page: Participants"
+  },
+  "fresco.page.protocols": {
+    "defaultMessage": "Protocols",
+    "description": "Researcher-facing page: Protocols"
+  },
+  "fresco.page.recentActivity": {
+    "defaultMessage": "Recent Activity",
+    "description": "Researcher-facing page: Recent Activity"
+  },
+  "fresco.page.thisTableSummarizesTheMostRecentActivity": {
+    "defaultMessage": "This table summarizes the most recent activity within Fresco. Use it to keep track of new protocols, interviews, and participants.",
+    "description": "Researcher-facing page: This table summarizes the most recent activity within Fresco. Use it to keep track of new protocols, interviews, and par"
+  },
+  "fresco.page.welcomeToFrescoThisPageProvidesAn": {
+    "defaultMessage": "Welcome to Fresco! This page provides an overview of your recent activity and key metrics.",
+    "description": "Researcher-facing page: Welcome to Fresco! This page provides an overview of your recent activity and key metrics."
+  },
+  "fresco.participants.AddParticipantButton.addParticipant": {
+    "defaultMessage": "Add Participant",
+    "description": "Researcher-facing participants / AddParticipantButton: Add Participant"
+  },
+  "fresco.participants.ExportParticipants.ExportParticipants.anErrorOccurredWhileExportingParticipants": {
+    "defaultMessage": "An error occurred while exporting participants",
+    "description": "Researcher-facing participants / ExportParticipants / ExportParticipants: An error occurred while exporting participants"
+  },
+  "fresco.participants.ExportParticipants.ExportParticipants.error": {
+    "defaultMessage": "Error",
+    "description": "Researcher-facing participants / ExportParticipants / ExportParticipants: Error"
+  },
+  "fresco.participants.ExportParticipants.ExportParticipants.participantsExportedSuccessfully": {
+    "defaultMessage": "Participants exported successfully",
+    "description": "Researcher-facing participants / ExportParticipants / ExportParticipants: Participants exported successfully"
+  },
+  "fresco.participants.ExportParticipants.ExportParticipants.success": {
+    "defaultMessage": "Success",
+    "description": "Researcher-facing participants / ExportParticipants / ExportParticipants: Success"
+  },
+  "fresco.participants.ImportParticipants.anErrorOccurredWhileImportingParticipants": {
+    "defaultMessage": "An error occurred while importing participants",
+    "description": "Researcher-facing participants / ImportParticipants: An error occurred while importing participants"
+  },
+  "fresco.participants.ImportParticipants.browseFiles": {
+    "defaultMessage": "Browse files",
+    "description": "Researcher-facing participants / ImportParticipants: Browse files"
+  },
+  "fresco.participants.ImportParticipants.copyDropFileHere": {
+    "defaultMessage": "Drop file here",
+    "description": "Researcher-facing participants / ImportParticipants: Drop file here"
+  },
+  "fresco.participants.ImportParticipants.copyImportParticipants": {
+    "defaultMessage": "Import participants",
+    "description": "Researcher-facing participants / ImportParticipants: Import participants"
+  },
+  "fresco.participants.ImportParticipants.dragDropACsvFileHere": {
+    "defaultMessage": "Drag & drop a <tag1>.csv</tag1> file here",
+    "description": "Researcher-facing participants / ImportParticipants: Drag & drop a .csv file here"
+  },
+  "fresco.participants.ImportParticipants.error": {
+    "defaultMessage": "Error",
+    "description": "Researcher-facing participants / ImportParticipants: Error"
+  },
+  "fresco.participants.ImportParticipants.fileMustBeAValidCSVWith": {
+    "defaultMessage": "File must be a valid CSV with label or identifier columns",
+    "description": "Researcher-facing participants / ImportParticipants: File must be a valid CSV with label or identifier columns"
+  },
+  "fresco.participants.ImportParticipants.importCompletedWithCollisions": {
+    "defaultMessage": "Import completed with collisions",
+    "description": "Researcher-facing participants / ImportParticipants: Import completed with collisions"
+  },
+  "fresco.participants.ImportParticipants.importParticipants": {
+    "defaultMessage": "Import Participants",
+    "description": "Researcher-facing participants / ImportParticipants: Import Participants"
+  },
+  "fresco.participants.ImportParticipants.participantsHaveBeenImportedSuccessfully": {
+    "defaultMessage": "Participants have been imported successfully",
+    "description": "Researcher-facing participants / ImportParticipants: Participants have been imported successfully"
+  },
+  "fresco.participants.ImportParticipants.participantsImported": {
+    "defaultMessage": "Participants imported",
+    "description": "Researcher-facing participants / ImportParticipants: Participants imported"
+  },
+  "fresco.participants.ImportParticipants.yourParticipantsWereImportedSuccessfullyButSome": {
+    "defaultMessage": "Your participants were imported successfully, but some identifiers collided with existing participants and were not imported.",
+    "description": "Researcher-facing participants / ImportParticipants: Your participants were imported successfully, but some identifiers collided with existing participants and were not impo"
+  },
+  "fresco.participants.ParticipantModal.copyAddParticipant": {
+    "defaultMessage": "Add Participant",
+    "description": "Researcher-facing participants / ParticipantModal: Add Participant"
+  },
+  "fresco.participants.ParticipantModal.copyEditParticipant": {
+    "defaultMessage": "Edit Participant",
+    "description": "Researcher-facing participants / ParticipantModal: Edit Participant"
+  },
+  "fresco.participants.ParticipantModal.copySubmit": {
+    "defaultMessage": "Submit",
+    "description": "Researcher-facing participants / ParticipantModal: Submit"
+  },
+  "fresco.participants.ParticipantModal.copyUpdate": {
+    "defaultMessage": "Update",
+    "description": "Researcher-facing participants / ParticipantModal: Update"
+  },
+  "fresco.participants.ParticipantModal.enterAnIdentifier": {
+    "defaultMessage": "Enter an identifier...",
+    "description": "Researcher-facing participants / ParticipantModal: Enter an identifier..."
+  },
+  "fresco.participants.ParticipantModal.enterOptionalLabel": {
+    "defaultMessage": "Enter optional label...",
+    "description": "Researcher-facing participants / ParticipantModal: Enter optional label..."
+  },
+  "fresco.participants.ParticipantModal.generate": {
+    "defaultMessage": "Generate",
+    "description": "Researcher-facing participants / ParticipantModal: Generate"
+  },
+  "fresco.participants.ParticipantModal.label": {
+    "defaultMessage": "Label",
+    "description": "Researcher-facing participants / ParticipantModal: Label"
+  },
+  "fresco.participants.ParticipantModal.optionalHumanReadableLabel": {
+    "defaultMessage": "Optional human-readable label",
+    "description": "Researcher-facing participants / ParticipantModal: Optional human-readable label"
+  },
+  "fresco.participants.ParticipantModal.participantIdentifier": {
+    "defaultMessage": "Participant Identifier",
+    "description": "Researcher-facing participants / ParticipantModal: Participant Identifier"
+  },
+  "fresco.participants.ParticipantModal.participantIdentifiers": {
+    "defaultMessage": "Participant Identifiers",
+    "description": "Researcher-facing participants / ParticipantModal: Participant Identifiers"
+  },
+  "fresco.participants.ParticipantModal.participantIdentifiersAreUsedByFrescoTo": {
+    "defaultMessage": "Participant identifiers are used by Fresco to onboard participants. They might be exposed to the participant during this process via the participation URL, and so must <tag1>not</tag1> contain any sensitive information, and must not be easy for other participants to guess (e.g. sequential numbers, or easily guessable strings).",
+    "description": "Researcher-facing participants / ParticipantModal: Participant identifiers are used by Fresco to onboard participants. They might be exposed to the participant during this"
+  },
+  "fresco.participants.ParticipantModal.thisCouldBeAStudyIDA": {
+    "defaultMessage": "This could be a study ID, a number, or any other unique identifier. It should be unique for each participant, and should not be easy to guess",
+    "description": "Researcher-facing participants / ParticipantModal: This could be a study ID, a number, or any other unique identifier. It should be unique for each participant, and should"
+  },
+  "fresco.participants.ParticipantModal.thisIdentifierIsAlreadyInUse": {
+    "defaultMessage": "This identifier is already in use.",
+    "description": "Researcher-facing participants / ParticipantModal: This identifier is already in use."
+  },
+  "fresco.participants.ParticipantModal.thisOptionalFieldAllowsYouToProvide": {
+    "defaultMessage": "This optional field allows you to provide a human readable label. This could be a name, or an internal project label for this participant. It does not need to be unique, and will not be exposed to participants.",
+    "description": "Researcher-facing participants / ParticipantModal: This optional field allows you to provide a human readable label. This could be a name, or an internal project label for"
+  },
+  "fresco.participants.ParticipantModal.uniqueIdentifierForThisParticipant": {
+    "defaultMessage": "Unique identifier for this participant",
+    "description": "Researcher-facing participants / ParticipantModal: Unique identifier for this participant"
+  },
+  "fresco.participants.page.participants": {
+    "defaultMessage": "Participants",
+    "description": "Researcher-facing participants / page: Participants"
+  },
+  "fresco.participants.page.viewAndManageYourParticipants": {
+    "defaultMessage": "View and manage your participants.",
+    "description": "Researcher-facing participants / page: View and manage your participants."
+  },
+  "fresco.participants.table.interviewCounts": {
+    "defaultMessage": "{total, number} ({completed, plural, one {# completed} other {# completed}})",
+    "description": "Total interviews and completed interviews for one participant."
+  },
+  "fresco.passkeyName.device": {
+    "defaultMessage": "Security key",
+    "description": "Generic name for an unknown authenticator whose credential is bound to one device. Vendor and stored friendly names remain unchanged."
+  },
+  "fresco.passkeyName.synced": {
+    "defaultMessage": "Synced passkey",
+    "description": "Generic name for an unknown authenticator whose passkey is synchronized across devices. Vendor and stored friendly names remain unchanged."
+  },
+  "fresco.protocolImport.checkAssets": {
+    "defaultMessage": "Could not check for existing assets.",
+    "description": "Researcher-facing protocolImport: Could not check for existing assets."
+  },
+  "fresco.protocolImport.files.unreadable": {
+    "defaultMessage": "The file could not be read.",
+    "description": "Researcher-facing protocolImport.files: The file could not be read."
+  },
+  "fresco.protocolImport.importedName": {
+    "defaultMessage": "{name} has been imported.",
+    "description": "Researcher-facing protocolImport: name has been imported."
+  },
+  "fresco.protocolImport.operationalFailure": {
+    "defaultMessage": "The protocol could not be imported. Check your connection and storage configuration, then try again.",
+    "description": "Retry guidance for lookup, storage, or persistence failures after reading a protocol; does not claim that the protocol file is invalid."
+  },
+  "fresco.protocolImport.protocolMismatch": {
+    "defaultMessage": "The uploaded protocol file did not match the requested file.",
+    "description": "Researcher-facing protocolImport: The uploaded protocol file did not match the requested file."
+  },
+  "fresco.protocolImport.validation.invalidProtocol": {
+    "defaultMessage": "The uploaded file does not contain a valid protocol.",
+    "description": "Researcher-facing protocolImport.validation: The uploaded file does not contain a valid protocol."
+  },
+  "fresco.protocolImport.validation.missingDependencies": {
+    "defaultMessage": "Migration failed: missing {dependencies}.",
+    "description": "Researcher-facing protocolImport.validation: Migration failed: missing dependencies."
+  },
+  "fresco.protocolImport.validation.unsupportedVersion": {
+    "defaultMessage": "Protocol version not supported. Fresco supports {count, plural, one {version} other {versions}} {versions}.",
+    "description": "Researcher-facing protocolImport.validation: Protocol version not supported. Fresco supports count, plural, one version other versions versions."
+  },
+  "fresco.protocolImport.validation.validationFailed": {
+    "defaultMessage": "The protocol is invalid. Please check the protocol structure.",
+    "description": "Researcher-facing protocolImport.validation: The protocol is invalid. Please check the protocol structure."
+  },
+  "fresco.protocolSize.tooLarge": {
+    "defaultMessage": "This protocol is {size, number} MB. Protocols must be {limit, number} MB or smaller to import.",
+    "description": "Researcher-facing protocolSize: This protocol is size, number MB. Protocols must be limit, number MB or smaller to import."
+  },
+  "fresco.protocols.AnonymousRecruitmentWarning.anonymousRecruitmentIsEnabledThisMeansThat": {
+    "defaultMessage": "Anonymous recruitment is enabled. This means that participants can self-enroll in your study without needing to be invited, by visiting the protocol-specific onboarding link. To disable anonymous recruitment, visit <tag1>the settings page</tag1>.",
+    "description": "Researcher-facing protocols / AnonymousRecruitmentWarning: Anonymous recruitment is enabled. This means that participants can self-enroll in your study without needing to be invit"
+  },
+  "fresco.protocols.AnonymousRecruitmentWarning.pleaseNote": {
+    "defaultMessage": "Please Note",
+    "description": "Researcher-facing protocols / AnonymousRecruitmentWarning: Please Note"
+  },
+  "fresco.protocols.page.protocols": {
+    "defaultMessage": "Protocols",
+    "description": "Researcher-facing protocols / page: Protocols"
+  },
+  "fresco.protocols.page.uploadAndManageYourInterviewProtocols": {
+    "defaultMessage": "Upload and manage your interview protocols.",
+    "description": "Researcher-facing protocols / page: Upload and manage your interview protocols."
+  },
+  "fresco.settings.ApiTokensSection.aPITokens": {
+    "defaultMessage": "API Tokens",
+    "description": "Researcher-facing settings / ApiTokensSection: API Tokens"
+  },
+  "fresco.settings.ApiTokensSection.aPITokensAreUsedToAuthenticateRequests": {
+    "defaultMessage": "API tokens are used to authenticate requests to the Interview Data API.",
+    "description": "Researcher-facing settings / ApiTokensSection: API tokens are used to authenticate requests to the Interview Data API."
+  },
+  "fresco.settings.ApiTokensSection.enableAReadOnlyAPIForAccessing": {
+    "defaultMessage": "Enable a read-only API for accessing interview data. Requires an API token for authentication.",
+    "description": "Researcher-facing settings / ApiTokensSection: Enable a read-only API for accessing interview data. Requires an API token for authentication."
+  },
+  "fresco.settings.ApiTokensSection.interviewDataAPI": {
+    "defaultMessage": "Interview Data API",
+    "description": "Researcher-facing settings / ApiTokensSection: Interview Data API"
+  },
+  "fresco.settings.ApiTokensSection.manageTokens": {
+    "defaultMessage": "Manage Tokens",
+    "description": "Researcher-facing settings / ApiTokensSection: Manage Tokens"
+  },
+  "fresco.settings.ConfigurationSection.appDetails": {
+    "defaultMessage": "App Details",
+    "description": "Researcher-facing settings / ConfigurationSection: App Details"
+  },
+  "fresco.settings.ConfigurationSection.installationID": {
+    "defaultMessage": "Installation ID",
+    "description": "Researcher-facing settings / ConfigurationSection: Installation ID"
+  },
+  "fresco.settings.ConfigurationSection.thisIsTheUniqueIdentifierForYour": {
+    "defaultMessage": "This is the unique identifier for your installation of Fresco. This ID is used to track analytics data and for other internal purposes.",
+    "description": "Researcher-facing settings / ConfigurationSection: This is the unique identifier for your installation of Fresco. This ID is used to track analytics data and for other int"
+  },
+  "fresco.settings.DeveloperToolsSection.deleteAllDataAndResetFrescoTo": {
+    "defaultMessage": "Delete all data and reset Fresco to its default state.",
+    "description": "Researcher-facing settings / DeveloperToolsSection: Delete all data and reset Fresco to its default state."
+  },
+  "fresco.settings.DeveloperToolsSection.developerTools": {
+    "defaultMessage": "Developer Tools",
+    "description": "Researcher-facing settings / DeveloperToolsSection: Developer Tools"
+  },
+  "fresco.settings.DeveloperToolsSection.resetSettings": {
+    "defaultMessage": "Reset Settings",
+    "description": "Researcher-facing settings / DeveloperToolsSection: Reset Settings"
+  },
+  "fresco.settings.InterviewSettingsSection.anonymousRecruitment": {
+    "defaultMessage": "Anonymous Recruitment",
+    "description": "Researcher-facing settings / InterviewSettingsSection: Anonymous Recruitment"
+  },
+  "fresco.settings.InterviewSettingsSection.disableSmallScreenWarning": {
+    "defaultMessage": "Disable Small Screen Warning",
+    "description": "Researcher-facing settings / InterviewSettingsSection: Disable Small Screen Warning"
+  },
+  "fresco.settings.InterviewSettingsSection.ensureThatYouTestYourInterviewThoroughly": {
+    "defaultMessage": "Ensure that you test your interview thoroughly on a small screen when disabling this warning. Fresco is designed to work best on larger screens, and using it on a small screen may lead to a poor user experience for participants.",
+    "description": "Researcher-facing settings / InterviewSettingsSection: Ensure that you test your interview thoroughly on a small screen when disabling this warning. Fresco is designed to work"
+  },
+  "fresco.settings.InterviewSettingsSection.freezeCompletedInterviews": {
+    "defaultMessage": "Freeze Completed Interviews",
+    "description": "Researcher-facing settings / InterviewSettingsSection: Freeze Completed Interviews"
+  },
+  "fresco.settings.InterviewSettingsSection.ifAnonymousRecruitmentIsEnabledYouMay": {
+    "defaultMessage": "If anonymous recruitment is enabled, you may generate an anonymous participation URL. This URL can be shared with participants to allow them to self-enroll in your study.",
+    "description": "Researcher-facing settings / InterviewSettingsSection: If anonymous recruitment is enabled, you may generate an anonymous participation URL. This URL can be shared with partic"
+  },
+  "fresco.settings.InterviewSettingsSection.ifThisOptionIsEnabledTheWarning": {
+    "defaultMessage": "If this option is enabled, the warning about using Fresco on a small screen will be disabled.",
+    "description": "Researcher-facing settings / InterviewSettingsSection: If this option is enabled, the warning about using Fresco on a small screen will be disabled."
+  },
+  "fresco.settings.InterviewSettingsSection.interviewSettings": {
+    "defaultMessage": "Interview Settings",
+    "description": "Researcher-facing settings / InterviewSettingsSection: Interview Settings"
+  },
+  "fresco.settings.InterviewSettingsSection.limitInterviews": {
+    "defaultMessage": "Limit Interviews",
+    "description": "Researcher-facing settings / InterviewSettingsSection: Limit Interviews"
+  },
+  "fresco.settings.InterviewSettingsSection.whenEnabledCompletedInterviewsWillSilentlyReject": {
+    "defaultMessage": "When enabled, completed interviews will silently reject any further data sync updates. This prevents modifications to submitted data if an interview is re-opened.",
+    "description": "Researcher-facing settings / InterviewSettingsSection: When enabled, completed interviews will silently reject any further data sync updates. This prevents modifications to su"
+  },
+  "fresco.settings.PasskeySettings.added": {
+    "defaultMessage": "Added {value1}",
+    "description": "Researcher-facing settings / PasskeySettings: Added value"
+  },
+  "fresco.settings.PasskeySettings.copyAddPasskey": {
+    "defaultMessage": "Add passkey",
+    "description": "Researcher-facing settings / PasskeySettings: Add passkey"
+  },
+  "fresco.settings.PasskeySettings.copyDeviceBound": {
+    "defaultMessage": "Device-bound",
+    "description": "Researcher-facing settings / PasskeySettings: Device-bound"
+  },
+  "fresco.settings.PasskeySettings.copyFailedToStartRegistration": {
+    "defaultMessage": "Failed to start registration",
+    "description": "Researcher-facing settings / PasskeySettings: Failed to start registration"
+  },
+  "fresco.settings.PasskeySettings.copyPasskeyRegistrationFailed": {
+    "defaultMessage": "Passkey registration failed",
+    "description": "Researcher-facing settings / PasskeySettings: Passkey registration failed"
+  },
+  "fresco.settings.PasskeySettings.copyRegisterAPasskeyForTheHighestLevel": {
+    "defaultMessage": "Register a passkey for the highest level of security. You will sign in without a password using biometrics or a security key.",
+    "description": "Researcher-facing settings / PasskeySettings: Register a passkey for the highest level of security. You will sign in without a password using biometrics or a security key."
+  },
+  "fresco.settings.PasskeySettings.copyRegistering": {
+    "defaultMessage": "Registering...",
+    "description": "Researcher-facing settings / PasskeySettings: Registering..."
+  },
+  "fresco.settings.PasskeySettings.copySetAPasswordBeforeRemovingYourOnly": {
+    "defaultMessage": "Set a password before removing your only passkey",
+    "description": "Researcher-facing settings / PasskeySettings: Set a password before removing your only passkey"
+  },
+  "fresco.settings.PasskeySettings.copySynced": {
+    "defaultMessage": "Synced",
+    "description": "Researcher-facing settings / PasskeySettings: Synced"
+  },
+  "fresco.settings.PasskeySettings.lastUsed": {
+    "defaultMessage": "Last used {value1}",
+    "description": "Researcher-facing settings / PasskeySettings: Last used value"
+  },
+  "fresco.settings.PasskeySettings.passkeys": {
+    "defaultMessage": "Passkeys",
+    "description": "Researcher-facing settings / PasskeySettings: Passkeys"
+  },
+  "fresco.settings.PasskeySettings.registeredCount": {
+    "defaultMessage": "{count, plural, one {# passkey registered.} other {# passkeys registered.}}",
+    "description": "Researcher-facing settings.PasskeySettings: count, plural, one # passkey registered. other # passkeys registered."
+  },
+  "fresco.settings.PasskeySettings.remove": {
+    "defaultMessage": "Remove",
+    "description": "Researcher-facing settings / PasskeySettings: Remove"
+  },
+  "fresco.settings.PasskeySettings.removePasskey": {
+    "defaultMessage": "Remove Passkey",
+    "description": "Researcher-facing settings / PasskeySettings: Remove Passkey"
+  },
+  "fresco.settings.PasskeySettings.removeYouWonTBeAbleTo": {
+    "defaultMessage": "{nameMode, select, named {Remove \"{name}\"?} other {Remove this unnamed passkey?}} You won't be able to sign in with it anymore.",
+    "description": "Researcher-facing settings / PasskeySettings: Remove \"value\"? You won't be able to sign in with it anymore."
+  },
+  "fresco.settings.PrivacySection.disableAnalytics": {
+    "defaultMessage": "Disable Analytics",
+    "description": "Researcher-facing settings / PrivacySection: Disable Analytics"
+  },
+  "fresco.settings.PrivacySection.ifThisOptionIsEnabledNoAnonymous": {
+    "defaultMessage": "If this option is enabled, no anonymous analytics data will be sent to the Network Canvas team.",
+    "description": "Researcher-facing settings / PrivacySection: If this option is enabled, no anonymous analytics data will be sent to the Network Canvas team."
+  },
+  "fresco.settings.PrivacySection.privacy": {
+    "defaultMessage": "Privacy",
+    "description": "Researcher-facing settings / PrivacySection: Privacy"
+  },
+  "fresco.settings.ReadOnlyEnvAlert.thisSettingIsControlledByYourEnv": {
+    "defaultMessage": "This setting is controlled by your <tag1>.env</tag1> file, and so can only be changed by modifying that file.",
+    "description": "Researcher-facing settings / ReadOnlyEnvAlert: This setting is controlled by your .env file, and so can only be changed by modifying that file."
+  },
+  "fresco.settings.SettingsNavigation.onThisPage": {
+    "defaultMessage": "On this page",
+    "description": "Researcher-facing settings / SettingsNavigation: On this page"
+  },
+  "fresco.settings.StorageProviderSection.filesAreStoredUsing": {
+    "defaultMessage": "Files are stored using {value1}.",
+    "description": "Researcher-facing settings / StorageProviderSection: Files are stored using value."
+  },
+  "fresco.settings.StorageProviderSection.storage": {
+    "defaultMessage": "Storage",
+    "description": "Researcher-facing settings / StorageProviderSection: Storage"
+  },
+  "fresco.settings.StorageProviderSection.storageIsConfiguredViaEnvironmentVariablesAnd": {
+    "defaultMessage": "Storage is configured via environment variables ( {value1}) and cannot be edited here. Remove these variables to manage storage from this dashboard.",
+    "description": "Researcher-facing settings / StorageProviderSection: Storage is configured via environment variables ( value) and cannot be edited here. Remove these variables to manage sto"
+  },
+  "fresco.settings.StorageProviderSection.storageProvider": {
+    "defaultMessage": "Storage Provider",
+    "description": "Researcher-facing settings / StorageProviderSection: Storage Provider"
+  },
+  "fresco.settings.StorageProviderSection.theStorageProviderTypeCannotBeChanged": {
+    "defaultMessage": "The storage provider type cannot be changed once the application has been deployed. You can update the credentials below.",
+    "description": "Researcher-facing settings / StorageProviderSection: The storage provider type cannot be changed once the application has been deployed. You can update the credentials below"
+  },
+  "fresco.settings.StorageProviderSection.uploadThingAPIKey": {
+    "defaultMessage": "UploadThing API Key",
+    "description": "Researcher-facing settings / StorageProviderSection: UploadThing API Key"
+  },
+  "fresco.settings.SyntheticInterviewDataSection.copyDeleteAll": {
+    "defaultMessage": "Delete All",
+    "description": "Researcher-facing settings / SyntheticInterviewDataSection: Delete All"
+  },
+  "fresco.settings.SyntheticInterviewDataSection.copyDeleting": {
+    "defaultMessage": "Deleting...",
+    "description": "Researcher-facing settings / SyntheticInterviewDataSection: Deleting..."
+  },
+  "fresco.settings.SyntheticInterviewDataSection.copyGenerate": {
+    "defaultMessage": "Generate",
+    "description": "Researcher-facing settings / SyntheticInterviewDataSection: Generate"
+  },
+  "fresco.settings.SyntheticInterviewDataSection.copyGenerating": {
+    "defaultMessage": "Generating...",
+    "description": "Researcher-facing settings / SyntheticInterviewDataSection: Generating..."
+  },
+  "fresco.settings.SyntheticInterviewDataSection.deleteTestInterviews": {
+    "defaultMessage": "Delete Test Interviews",
+    "description": "Researcher-facing settings / SyntheticInterviewDataSection: Delete Test Interviews"
+  },
+  "fresco.settings.SyntheticInterviewDataSection.evaluateSkipLogicRulesAndStageNetwork": {
+    "defaultMessage": "Evaluate skip logic rules and stage network filters during generation. Stages will be skipped or see filtered nodes based on the network state at that point.",
+    "description": "Researcher-facing settings / SyntheticInterviewDataSection: Evaluate skip logic rules and stage network filters during generation. Stages will be skipped or see filtered nodes base"
+  },
+  "fresco.settings.SyntheticInterviewDataSection.generateSyntheticInterviewDataForTestingSelect": {
+    "defaultMessage": "Generate synthetic interview data for testing. Select a protocol and specify how many interviews to create.",
+    "description": "Researcher-facing settings / SyntheticInterviewDataSection: Generate synthetic interview data for testing. Select a protocol and specify how many interviews to create."
+  },
+  "fresco.settings.SyntheticInterviewDataSection.generateTestInterviews": {
+    "defaultMessage": "Generate Test Interviews",
+    "description": "Researcher-facing settings / SyntheticInterviewDataSection: Generate Test Interviews"
+  },
+  "fresco.settings.SyntheticInterviewDataSection.generationComplete": {
+    "defaultMessage": "Generation complete",
+    "description": "Researcher-facing settings / SyntheticInterviewDataSection: Generation complete"
+  },
+  "fresco.settings.SyntheticInterviewDataSection.generationFailed": {
+    "defaultMessage": "Generation failed",
+    "description": "Researcher-facing settings / SyntheticInterviewDataSection: Generation failed"
+  },
+  "fresco.settings.SyntheticInterviewDataSection.interviewGenerationProgress": {
+    "defaultMessage": "Interview generation progress",
+    "description": "Researcher-facing settings / SyntheticInterviewDataSection: Interview generation progress"
+  },
+  "fresco.settings.SyntheticInterviewDataSection.interviewsGenerated": {
+    "defaultMessage": "{value1, number} / {value2, plural, one {# interview generated} other {# interviews generated}}",
+    "description": "Researcher-facing settings / SyntheticInterviewDataSection: value / value interviews generated"
+  },
+  "fresco.settings.SyntheticInterviewDataSection.respectSkipLogicAndFiltering": {
+    "defaultMessage": "Respect skip logic and filtering",
+    "description": "Researcher-facing settings / SyntheticInterviewDataSection: Respect skip logic and filtering"
+  },
+  "fresco.settings.SyntheticInterviewDataSection.selectAProtocol": {
+    "defaultMessage": "Select a Protocol...",
+    "description": "Researcher-facing settings / SyntheticInterviewDataSection: Select a Protocol..."
+  },
+  "fresco.settings.SyntheticInterviewDataSection.simulateParticipantDropOut": {
+    "defaultMessage": "Simulate participant drop-out",
+    "description": "Researcher-facing settings / SyntheticInterviewDataSection: Simulate participant drop-out"
+  },
+  "fresco.settings.SyntheticInterviewDataSection.successfullyGeneratedSyntheticInterviews": {
+    "defaultMessage": "Successfully generated {value1, plural, one {# synthetic interview} other {# synthetic interviews}}.",
+    "description": "Researcher-facing settings / SyntheticInterviewDataSection: Successfully generated value synthetic interviews."
+  },
+  "fresco.settings.SyntheticInterviewDataSection.syntheticInterviewData": {
+    "defaultMessage": "Synthetic Interview Data",
+    "description": "Researcher-facing settings / SyntheticInterviewDataSection: Synthetic Interview Data"
+  },
+  "fresco.settings.SyntheticInterviewDataSection.thereAreCurrentlySyntheticInterviewsAndTest": {
+    "defaultMessage": "There are currently {value1, plural, one {# synthetic interview} other {# synthetic interviews}} and {value2, plural, one {# test participant} other {# test participants}}.",
+    "description": "Researcher-facing settings / SyntheticInterviewDataSection: There are currently value synthetic interviews and value test participants."
+  },
+  "fresco.settings.SyntheticInterviewDataSection.whenEnabledParticipantsHaveAnIncreasingChance": {
+    "defaultMessage": "When enabled, participants have an increasing chance of abandoning the interview at each stage.",
+    "description": "Researcher-facing settings / SyntheticInterviewDataSection: When enabled, participants have an increasing chance of abandoning the interview at each stage."
+  },
+  "fresco.settings.TwoFactorSettings.disable": {
+    "defaultMessage": "Disable",
+    "description": "Researcher-facing settings / TwoFactorSettings: Disable"
+  },
+  "fresco.settings.TwoFactorSettings.disableTwoFactorAuthentication": {
+    "defaultMessage": "Disable Two-Factor Authentication",
+    "description": "Researcher-facing settings / TwoFactorSettings: Disable Two-Factor Authentication"
+  },
+  "fresco.settings.TwoFactorSettings.enterYourCurrentAuthenticatorCodeOrA": {
+    "defaultMessage": "Enter your current authenticator code or a recovery code to disable two-factor authentication.",
+    "description": "Researcher-facing settings / TwoFactorSettings: Enter your current authenticator code or a recovery code to disable two-factor authentication."
+  },
+  "fresco.settings.TwoFactorSettings.enterYourCurrentAuthenticatorCodeToGenerate": {
+    "defaultMessage": "Enter your current authenticator code to generate new recovery codes. Your existing codes will be invalidated.",
+    "description": "Researcher-facing settings / TwoFactorSettings: Enter your current authenticator code to generate new recovery codes. Your existing codes will be invalidated."
+  },
+  "fresco.settings.TwoFactorSettings.ifYouCanAposTAccessYour": {
+    "defaultMessage": "If you can't access your authenticator app, you need to use a recovery code to disable two-factor authentication. If you don't have any valid recovery codes, you will need another user to disable two-factor authentication for you.",
+    "description": "Researcher-facing settings / TwoFactorSettings: If you can't access your authenticator app, you need to use a recovery code to disable two-factor authentication. I"
+  },
+  "fresco.settings.TwoFactorSettings.ifYouCanAposTAccessYour2": {
+    "defaultMessage": "If you can't access your authenticator app, you need to disable two-factor authentication using an existing recovery code before you generate new codes. If you don't have any valid recovery codes, you will need another user to disable two-factor authentication for you.",
+    "description": "Researcher-facing settings / TwoFactorSettings: If you can't access your authenticator app, you need to disable two-factor authentication using an existing recover"
+  },
+  "fresco.settings.TwoFactorSettings.newRecoveryCodes": {
+    "defaultMessage": "New Recovery Codes",
+    "description": "Researcher-facing settings / TwoFactorSettings: New Recovery Codes"
+  },
+  "fresco.settings.TwoFactorSettings.regenerate": {
+    "defaultMessage": "Regenerate",
+    "description": "Researcher-facing settings / TwoFactorSettings: Regenerate"
+  },
+  "fresco.settings.TwoFactorSettings.regenerateRecoveryCodes": {
+    "defaultMessage": "Regenerate Recovery Codes",
+    "description": "Researcher-facing settings / TwoFactorSettings: Regenerate Recovery Codes"
+  },
+  "fresco.settings.TwoFactorSettings.toggleTwoFactorAuthentication": {
+    "defaultMessage": "Toggle two-factor authentication",
+    "description": "Researcher-facing settings / TwoFactorSettings: Toggle two-factor authentication"
+  },
+  "fresco.settings.TwoFactorSettings.twoFactorAuthentication": {
+    "defaultMessage": "Two-Factor Authentication",
+    "description": "Researcher-facing settings / TwoFactorSettings: Two-Factor Authentication"
+  },
+  "fresco.settings.TwoFactorSettings.twoFactorAuthentication2FAAddsAnExtra": {
+    "defaultMessage": "Two factor authentication (2FA) adds an extra layer of security to your account by requiring a second form of verification in addition to your password. This can be a code from an authenticator app or a recovery code.",
+    "description": "Researcher-facing settings / TwoFactorSettings: Two factor authentication (2FA) adds an extra layer of security to your account by requiring a second form of verificati"
+  },
+  "fresco.settings.TwoFactorSettings.yourPreviousRecoveryCodesHaveBeenInvalidated": {
+    "defaultMessage": "Your previous recovery codes have been invalidated. Save these new codes.",
+    "description": "Researcher-facing settings / TwoFactorSettings: Your previous recovery codes have been invalidated. Save these new codes."
+  },
+  "fresco.settings.UpdateInstallationId.copyInstallationIDCannotBeEmpty": {
+    "defaultMessage": "Installation ID cannot be empty",
+    "description": "Researcher-facing settings / UpdateInstallationId: Installation ID cannot be empty"
+  },
+  "fresco.settings.UpdateS3Settings.copyFailedToSaveSetting": {
+    "defaultMessage": "Failed to save setting",
+    "description": "Researcher-facing settings / UpdateS3Settings: Failed to save setting"
+  },
+  "fresco.settings.UpdateS3Settings.copySaving": {
+    "defaultMessage": "Saving...",
+    "description": "Researcher-facing settings / UpdateS3Settings: Saving..."
+  },
+  "fresco.settings.UpdateS3Settings.reset": {
+    "defaultMessage": "Reset",
+    "description": "Researcher-facing settings / UpdateS3Settings: Reset"
+  },
+  "fresco.settings.UpdateUploadThingToken.savedTokenIsHidden": {
+    "defaultMessage": "•••••••• (saved token is hidden)",
+    "description": "Researcher-facing settings / UpdateUploadThingToken: •••••••• (saved token is hidden)"
+  },
+  "fresco.settings.UserManagement.actions": {
+    "defaultMessage": "Actions",
+    "description": "Researcher-facing settings / UserManagement: Actions"
+  },
+  "fresco.settings.UserManagement.addUser": {
+    "defaultMessage": "Add User",
+    "description": "Researcher-facing settings / UserManagement: Add User"
+  },
+  "fresco.settings.UserManagement.allUsers": {
+    "defaultMessage": "All Users",
+    "description": "Researcher-facing settings / UserManagement: All Users"
+  },
+  "fresco.settings.UserManagement.allYourPasskeysWillBeRemovedAnd": {
+    "defaultMessage": "All your passkeys will be removed and replaced with a password.",
+    "description": "Researcher-facing settings / UserManagement: All your passkeys will be removed and replaced with a password."
+  },
+  "fresco.settings.UserManagement.areYouSureYouWantToDelete": {
+    "defaultMessage": "Are you sure you want to delete the user \"{value1}\"? This action cannot be undone.",
+    "description": "Researcher-facing settings / UserManagement: Are you sure you want to delete the user \"value\"? This action cannot be undone."
+  },
+  "fresco.settings.UserManagement.atLeast4CharactersNoSpaces": {
+    "defaultMessage": "At least 4 characters, no spaces",
+    "description": "Researcher-facing settings / UserManagement: At least 4 characters, no spaces"
+  },
+  "fresco.settings.UserManagement.atLeast8CharactersWithLowercaseUppercase": {
+    "defaultMessage": "At least 8 characters with lowercase, uppercase, number, and symbol",
+    "description": "Researcher-facing settings / UserManagement: At least 8 characters with lowercase, uppercase, number, and symbol"
+  },
+  "fresco.settings.UserManagement.authMethod": {
+    "defaultMessage": "Auth Method",
+    "description": "Researcher-facing settings / UserManagement: Auth Method"
+  },
+  "fresco.settings.UserManagement.changePassword": {
+    "defaultMessage": "Change Password",
+    "description": "Researcher-facing settings / UserManagement: Change Password"
+  },
+  "fresco.settings.UserManagement.confirmNewPassword": {
+    "defaultMessage": "Confirm New Password",
+    "description": "Researcher-facing settings / UserManagement: Confirm New Password"
+  },
+  "fresco.settings.UserManagement.confirmPassword": {
+    "defaultMessage": "Confirm Password",
+    "description": "Researcher-facing settings / UserManagement: Confirm Password"
+  },
+  "fresco.settings.UserManagement.copyAreYouSureYouWantToDelete": {
+    "defaultMessage": "Are you sure you want to delete the user \"{value1}\"? This action cannot be undone.",
+    "description": "Researcher-facing settings / UserManagement: Are you sure you want to delete the user \"value\"? This action cannot be undone."
+  },
+  "fresco.settings.UserManagement.copyAreYouSureYouWantToDelete2": {
+    "defaultMessage": "Are you sure you want to delete {value1, plural, one {# user} other {# users}}? This action cannot be undone.",
+    "description": "Researcher-facing settings / UserManagement: Are you sure you want to delete value users? This action cannot be undone."
+  },
+  "fresco.settings.UserManagement.copyDeleteMultipleUsers": {
+    "defaultMessage": "Delete Multiple Users",
+    "description": "Researcher-facing settings / UserManagement: Delete Multiple Users"
+  },
+  "fresco.settings.UserManagement.copyDeleteUser": {
+    "defaultMessage": "Delete User",
+    "description": "Researcher-facing settings / UserManagement: Delete User"
+  },
+  "fresco.settings.UserManagement.copyFailedToStartRegistration": {
+    "defaultMessage": "Failed to start registration",
+    "description": "Researcher-facing settings / UserManagement: Failed to start registration"
+  },
+  "fresco.settings.UserManagement.copyFailedToStartVerification": {
+    "defaultMessage": "Failed to start verification",
+    "description": "Researcher-facing settings / UserManagement: Failed to start verification"
+  },
+  "fresco.settings.UserManagement.copyNewPasswordsDoNotMatch": {
+    "defaultMessage": "New passwords do not match",
+    "description": "Researcher-facing settings / UserManagement: New passwords do not match"
+  },
+  "fresco.settings.UserManagement.copyPasskeyCreationCancelled": {
+    "defaultMessage": "Passkey creation cancelled.",
+    "description": "Researcher-facing settings / UserManagement: Passkey creation cancelled."
+  },
+  "fresco.settings.UserManagement.copyPasskeyCreationFailed": {
+    "defaultMessage": "Passkey creation failed.",
+    "description": "Researcher-facing settings / UserManagement: Passkey creation failed."
+  },
+  "fresco.settings.UserManagement.copyPasswordsDoNotMatch": {
+    "defaultMessage": "Passwords do not match",
+    "description": "Researcher-facing settings / UserManagement: Passwords do not match"
+  },
+  "fresco.settings.UserManagement.copyVerificationFailed": {
+    "defaultMessage": "Verification failed",
+    "description": "Researcher-facing settings / UserManagement: Verification failed"
+  },
+  "fresco.settings.UserManagement.copyVerifyWithPasskey": {
+    "defaultMessage": "Verify with passkey",
+    "description": "Researcher-facing settings / UserManagement: Verify with passkey"
+  },
+  "fresco.settings.UserManagement.copyVerifying": {
+    "defaultMessage": "Verifying...",
+    "description": "Researcher-facing settings / UserManagement: Verifying..."
+  },
+  "fresco.settings.UserManagement.copyYouCannotDeleteYourOwnAccount": {
+    "defaultMessage": "You cannot delete your own account",
+    "description": "Researcher-facing settings / UserManagement: You cannot delete your own account"
+  },
+  "fresco.settings.UserManagement.createUser": {
+    "defaultMessage": "Create User",
+    "description": "Researcher-facing settings / UserManagement: Create User"
+  },
+  "fresco.settings.UserManagement.currentPassword": {
+    "defaultMessage": "Current Password",
+    "description": "Researcher-facing settings / UserManagement: Current Password"
+  },
+  "fresco.settings.UserManagement.deleteCount": {
+    "defaultMessage": "{count, plural, one {Delete # user} other {Delete # users}}",
+    "description": "Researcher-facing settings.UserManagement: count, plural, one Delete # user other Delete # users"
+  },
+  "fresco.settings.UserManagement.deleteSelected": {
+    "defaultMessage": "Delete Selected",
+    "description": "Researcher-facing settings / UserManagement: Delete Selected"
+  },
+  "fresco.settings.UserManagement.deleteUser": {
+    "defaultMessage": "Delete User",
+    "description": "Researcher-facing settings / UserManagement: Delete User"
+  },
+  "fresco.settings.UserManagement.enterYourCurrentPasswordThenRegisterA": {
+    "defaultMessage": "Enter your current password, then register a passkey. Your password and two-factor authentication will be removed.",
+    "description": "Researcher-facing settings / UserManagement: Enter your current password, then register a passkey. Your password and two-factor authentication will be removed."
+  },
+  "fresco.settings.UserManagement.loggedInAs": {
+    "defaultMessage": "Logged in as:",
+    "description": "Researcher-facing settings / UserManagement: Logged in as:"
+  },
+  "fresco.settings.UserManagement.mustBeUnique": {
+    "defaultMessage": "Must be unique",
+    "description": "Researcher-facing settings / UserManagement: Must be unique"
+  },
+  "fresco.settings.UserManagement.newPassword": {
+    "defaultMessage": "New Password",
+    "description": "Researcher-facing settings / UserManagement: New Password"
+  },
+  "fresco.settings.UserManagement.noUsersCreatedYet": {
+    "defaultMessage": "No users created yet.",
+    "description": "Researcher-facing settings / UserManagement: No users created yet."
+  },
+  "fresco.settings.UserManagement.password": {
+    "defaultMessage": "Password",
+    "description": "Researcher-facing settings / UserManagement: Password"
+  },
+  "fresco.settings.UserManagement.passwordUpdatedSuccessfully": {
+    "defaultMessage": "Password updated successfully!",
+    "description": "Researcher-facing settings / UserManagement: Password updated successfully!"
+  },
+  "fresco.settings.UserManagement.removeAllPasskeysAndSwitchToPassword": {
+    "defaultMessage": "Remove all passkeys and switch to password-based authentication.",
+    "description": "Researcher-facing settings / UserManagement: Remove all passkeys and switch to password-based authentication."
+  },
+  "fresco.settings.UserManagement.removeYourPasswordAndTwoFactorAuthentication": {
+    "defaultMessage": "Remove your password and two-factor authentication, and use a passkey to sign in instead.",
+    "description": "Researcher-facing settings / UserManagement: Remove your password and two-factor authentication, and use a passkey to sign in instead."
+  },
+  "fresco.settings.UserManagement.resetAuth": {
+    "defaultMessage": "Reset Auth",
+    "description": "Researcher-facing settings / UserManagement: Reset Auth"
+  },
+  "fresco.settings.UserManagement.resetAuthentication": {
+    "defaultMessage": "Reset Authentication",
+    "description": "Researcher-facing settings / UserManagement: Reset Authentication"
+  },
+  "fresco.settings.UserManagement.securityWarning": {
+    "defaultMessage": "Security Warning",
+    "description": "Researcher-facing settings / UserManagement: Security Warning"
+  },
+  "fresco.settings.UserManagement.selectAll": {
+    "defaultMessage": "Select all",
+    "description": "Researcher-facing settings / UserManagement: Select all"
+  },
+  "fresco.settings.UserManagement.selectRow": {
+    "defaultMessage": "Select row",
+    "description": "Researcher-facing settings / UserManagement: Select row"
+  },
+  "fresco.settings.UserManagement.switchToPasskey": {
+    "defaultMessage": "Switch to Passkey",
+    "description": "Researcher-facing settings / UserManagement: Switch to Passkey"
+  },
+  "fresco.settings.UserManagement.switchToPasskeyAuthentication": {
+    "defaultMessage": "Switch to Passkey Authentication",
+    "description": "Researcher-facing settings / UserManagement: Switch to Passkey Authentication"
+  },
+  "fresco.settings.UserManagement.switchToPassword": {
+    "defaultMessage": "Switch to Password",
+    "description": "Researcher-facing settings / UserManagement: Switch to Password"
+  },
+  "fresco.settings.UserManagement.switchToPasswordAuthentication": {
+    "defaultMessage": "Switch to Password Authentication",
+    "description": "Researcher-facing settings / UserManagement: Switch to Password Authentication"
+  },
+  "fresco.settings.UserManagement.temporaryPassword": {
+    "defaultMessage": "Temporary Password",
+    "description": "Researcher-facing settings / UserManagement: Temporary Password"
+  },
+  "fresco.settings.UserManagement.theUserSAuthenticationHasBeenReset": {
+    "defaultMessage": "The user's authentication has been reset. Share this temporary password with them so they can sign in and set up their account again.",
+    "description": "Researcher-facing settings / UserManagement: The user's authentication has been reset. Share this temporary password with them so they can sign in and set up their a"
+  },
+  "fresco.settings.UserManagement.thisWillRemoveAllPasskeys2FAAnd": {
+    "defaultMessage": "This will remove all passkeys, 2FA, and recovery codes for {value1}, and set a temporary password. They will need to set up their authentication again.",
+    "description": "Researcher-facing settings / UserManagement: This will remove all passkeys, 2FA, and recovery codes for value, and set a temporary password. They will need to set up"
+  },
+  "fresco.settings.UserManagement.updatePassword": {
+    "defaultMessage": "Update Password",
+    "description": "Researcher-facing settings / UserManagement: Update Password"
+  },
+  "fresco.settings.UserManagement.updateYourAccountPassword": {
+    "defaultMessage": "Update your account password.",
+    "description": "Researcher-facing settings / UserManagement: Update your account password."
+  },
+  "fresco.settings.UserManagement.username": {
+    "defaultMessage": "Username",
+    "description": "Researcher-facing settings / UserManagement: Username"
+  },
+  "fresco.settings.UserManagement.verifyYourIdentityWithAPasskeyTo": {
+    "defaultMessage": "Verify your identity with a passkey to continue.",
+    "description": "Researcher-facing settings / UserManagement: Verify your identity with a passkey to continue."
+  },
+  "fresco.settings.UserManagement.you": {
+    "defaultMessage": "(you)",
+    "description": "Researcher-facing settings / UserManagement: (you)"
+  },
+  "fresco.settings.UserManagement.youAreTheOnlyUserIfYou": {
+    "defaultMessage": "You are the only user. If you lose access to your passkey, you will be locked out. Consider adding another user or backing up your passkey.",
+    "description": "Researcher-facing settings / UserManagement: You are the only user. If you lose access to your passkey, you will be locked out. Consider adding another user or backi"
+  },
+  "fresco.settings.UserManagement.yourAccountIsOnlyProtectedByA": {
+    "defaultMessage": "Your account is only protected by a password. Enable two-factor authentication for stronger security.",
+    "description": "Researcher-facing settings / UserManagement: Your account is only protected by a password. Enable two-factor authentication for stronger security."
+  },
+  "fresco.settings.UserManagementSection.userManagement": {
+    "defaultMessage": "User Management",
+    "description": "Researcher-facing settings / UserManagementSection: User Management"
+  },
+  "fresco.settings.installationId.regenerate": {
+    "defaultMessage": "Regenerate installation ID",
+    "description": "Accessible label for the button that creates a new installation identifier."
+  },
+  "fresco.settings.interviews.completedLimit": {
+    "defaultMessage": "If this option is enabled, each participant can only have one <strong>completed</strong> interview for each protocol, although they may have multiple incomplete interviews. Once an interview is completed, starting a new interview or resuming any other incomplete interview is prevented.",
+    "description": "Explains the completed-interview limit and that completion prevents both starting another interview and resuming any other incomplete interview."
+  },
+  "fresco.settings.navigation.api": {
+    "defaultMessage": "API Tokens",
+    "description": "Researcher-facing settings.navigation: API Tokens"
+  },
+  "fresco.settings.navigation.appDetails": {
+    "defaultMessage": "App Details",
+    "description": "Researcher-facing settings.navigation: App Details"
+  },
+  "fresco.settings.navigation.developer": {
+    "defaultMessage": "Developer Tools",
+    "description": "Researcher-facing settings.navigation: Developer Tools"
+  },
+  "fresco.settings.navigation.interviews": {
+    "defaultMessage": "Interview Settings",
+    "description": "Researcher-facing settings.navigation: Interview Settings"
+  },
+  "fresco.settings.navigation.privacy": {
+    "defaultMessage": "Privacy",
+    "description": "Researcher-facing settings.navigation: Privacy"
+  },
+  "fresco.settings.navigation.storage": {
+    "defaultMessage": "Storage",
+    "description": "Researcher-facing settings.navigation: Storage"
+  },
+  "fresco.settings.navigation.synthetic": {
+    "defaultMessage": "Synthetic Interview Data",
+    "description": "Researcher-facing settings.navigation: Synthetic Interview Data"
+  },
+  "fresco.settings.navigation.users": {
+    "defaultMessage": "User Management",
+    "description": "Researcher-facing settings.navigation: User Management"
+  },
+  "fresco.settings.page.hereYouCanConfigureYourInstallationOf": {
+    "defaultMessage": "Here you can configure your installation of Fresco.",
+    "description": "Researcher-facing settings / page: Here you can configure your installation of Fresco."
+  },
+  "fresco.settings.page.settings": {
+    "defaultMessage": "Settings",
+    "description": "Researcher-facing settings / page: Settings"
+  },
+  "fresco.settings.passkeys.never": {
+    "defaultMessage": "Never",
+    "description": "Researcher-facing settings.passkeys: Never"
+  },
+  "fresco.settings.s3.accessKey": {
+    "defaultMessage": "Access Key ID",
+    "description": "Researcher-facing settings.s3: Access Key ID"
+  },
+  "fresco.settings.s3.bucket": {
+    "defaultMessage": "Bucket Name",
+    "description": "Researcher-facing settings.s3: Bucket Name"
+  },
+  "fresco.settings.s3.endpoint": {
+    "defaultMessage": "Endpoint URL",
+    "description": "Researcher-facing settings.s3: Endpoint URL"
+  },
+  "fresco.settings.s3.publicURL": {
+    "defaultMessage": "Public URL",
+    "description": "Researcher-facing settings.s3: Public URL"
+  },
+  "fresco.settings.s3.region": {
+    "defaultMessage": "Region",
+    "description": "Researcher-facing settings.s3: Region"
+  },
+  "fresco.settings.s3.secret": {
+    "defaultMessage": "Secret Access Key",
+    "description": "Researcher-facing settings.s3: Secret Access Key"
+  },
+  "fresco.settings.storage.uploadThingHelp": {
+    "defaultMessage": "The API key used to communicate with UploadThing. See the <link>deployment documentation</link> for details.",
+    "description": "Researcher-facing settings.storage: The API key used to communicate with UploadThing. See the <link>deployment documentation</link> for details."
+  },
+  "fresco.settings.synthetic.countLabel": {
+    "defaultMessage": "Number of interviews",
+    "description": "Accessible label for the synthetic interview count field."
+  },
+  "fresco.settings.users.passkeyAuth": {
+    "defaultMessage": "Passkey",
+    "description": "Researcher-facing settings.users: Passkey"
+  },
+  "fresco.settings.users.passwordAuth": {
+    "defaultMessage": "Password",
+    "description": "Researcher-facing settings.users: Password"
+  },
+  "fresco.settings.users.passwordTwoFactor": {
+    "defaultMessage": "Password + 2FA",
+    "description": "Researcher-facing settings.users: Password + 2FA"
+  },
+  "fresco.settings.users.usernameMinimum": {
+    "defaultMessage": "Username must be at least 4 characters",
+    "description": "Researcher-facing settings.users: Username must be at least 4 characters"
+  },
+  "fresco.settings.users.usernameSpaces": {
+    "defaultMessage": "Username cannot contain spaces",
+    "description": "Researcher-facing settings.users: Username cannot contain spaces"
+  },
+  "fresco.settings.users.usernameTaken": {
+    "defaultMessage": "Username is already taken",
+    "description": "Researcher-facing settings.users: Username is already taken"
+  },
+  "fresco.setup.Setup.configureStorage": {
+    "defaultMessage": "Configure Storage",
+    "description": "Researcher-facing setup / Setup: Configure Storage"
+  },
+  "fresco.setup.Setup.createAccount": {
+    "defaultMessage": "Create Account",
+    "description": "Researcher-facing setup / Setup: Create Account"
+  },
+  "fresco.setup.Setup.documentation": {
+    "defaultMessage": "Documentation",
+    "description": "Researcher-facing setup / Setup: Documentation"
+  },
+  "fresco.setup.Setup.uploadProtocol": {
+    "defaultMessage": "Upload Protocol",
+    "description": "Researcher-facing setup / Setup: Upload Protocol"
+  },
+  "fresco.signin.metadata.pageDescription": {
+    "defaultMessage": "Sign in to Fresco.",
+    "description": "Researcher-facing signin.metadata: Sign in to Fresco."
+  },
+  "fresco.signin.metadata.pageTitle": {
+    "defaultMessage": "Fresco - Sign In",
+    "description": "Researcher-facing signin.metadata: Fresco - Sign In"
+  },
+  "fresco.signin.page.signInToFresco": {
+    "defaultMessage": "Sign In To Fresco",
+    "description": "Researcher-facing signin / page: Sign In To Fresco"
+  },
+  "fresco.storage.s3Label": {
+    "defaultMessage": "S3 / S3-Compatible",
+    "description": "Label for S3 and compatible object storage providers."
+  },
+  "fresco.syntheticGeneration.conflictSubject": {
+    "defaultMessage": "{entity, select, ego {Ego attributes: {variables}} node {Attributes on node type {type}: {variables}} edge {Attributes on edge type {type}: {variables}} other {Attributes: {variables}}}",
+    "description": "Identifies affected codebook attributes. Type and variable names are unchanged researcher data; variables is a locale-formatted list."
+  },
+  "fresco.syntheticGeneration.constraints": {
+    "defaultMessage": "Synthetic interviews could not be generated with these validation rules. Review the affected attributes below.",
+    "description": "Introduces actionable constraint conflicts reported by the shared synthetic generation engine."
+  },
+  "fresco.syntheticGeneration.deleteFailed": {
+    "defaultMessage": "Could not delete synthetic data. Try again.",
+    "description": "Fallback when the synthetic data deletion request fails without a specific refusal."
+  },
+  "fresco.syntheticGeneration.interrupted": {
+    "defaultMessage": "Interview generation could not finish. Try again. Some interviews may already have been created.",
+    "description": "Operational generation or stream failure; a partial batch may have been saved."
+  },
+  "fresco.syntheticGeneration.invalidRequest": {
+    "defaultMessage": "The interview generation request is invalid. Reload the page and try again.",
+    "description": "Recovery guidance for malformed generation JSON or invalid generation options."
+  },
+  "fresco.syntheticGeneration.missingProtocol": {
+    "defaultMessage": "This protocol is no longer available. Select another protocol.",
+    "description": "The selected protocol was not found when generation started."
+  },
+  "fresco.syntheticGeneration.refreshFailed": {
+    "defaultMessage": "Could not refresh the latest data. Reload the page.",
+    "description": "The generation request finished but cache invalidation failed; do not imply that saved interviews were lost."
+  },
+  "fresco.syntheticGeneration.signInRequired": {
+    "defaultMessage": "Sign in to generate synthetic interviews.",
+    "description": "Generation request refused because there is no authenticated researcher session."
+  },
+  "fresco.syntheticGeneration.technicalDetails": {
+    "defaultMessage": "Technical details",
+    "description": "Disclosure label for the original, untranslated generation diagnostic."
+  },
+  "fresco.tableFilters.NuqsClearFilterslabel": {
+    "defaultMessage": "Clear Filters",
+    "description": "Researcher-facing tableFilters: Clear Filters"
+  },
+  "fresco.tableFilters.NuqsFacetedFilteremptyMessage": {
+    "defaultMessage": "No options found.",
+    "description": "Researcher-facing tableFilters: No options found."
+  },
+  "fresco.tableFilters.NuqsFacetedFilterplaceholder": {
+    "defaultMessage": "Filter...",
+    "description": "Researcher-facing tableFilters: Filter..."
+  },
+  "fresco.tableFilters.NuqsFacetedFiltersearchPlaceholder": {
+    "defaultMessage": "Search...",
+    "description": "Researcher-facing tableFilters: Search..."
+  },
+  "fresco.tableFilters.NuqsSearchFilterplaceholder": {
+    "defaultMessage": "Filter...",
+    "description": "Researcher-facing tableFilters: Filter..."
+  },
+  "fresco.upload.failed": {
+    "defaultMessage": "Upload failed.",
+    "description": "Researcher-facing upload: Upload failed."
+  },
+  "fresco.upload.httpStatus": {
+    "defaultMessage": "Upload failed with status {status}.",
+    "description": "Researcher-facing upload: Upload failed with status status."
+  },
+  "fresco.upload.missingUrl": {
+    "defaultMessage": "No upload URL was returned for {name}.",
+    "description": "Researcher-facing upload: No upload URL was returned for name."
+  },
+  "fresco.upload.prepare": {
+    "defaultMessage": "Failed to prepare upload.",
+    "description": "Researcher-facing upload: Failed to prepare upload."
+  },
+  "fresco.validation.auth.validation1": {
+    "defaultMessage": "Username must be at least 4 characters",
+    "description": "Form validation for auth: Username must be at least 4 characters"
+  },
+  "fresco.validation.auth.validation2": {
+    "defaultMessage": "Username cannot contain spaces",
+    "description": "Form validation for auth: Username cannot contain spaces"
+  },
+  "fresco.validation.auth.validation3": {
+    "defaultMessage": "Password must contain at least 1 lowercase, 1 uppercase, 1 number, and 1 symbol",
+    "description": "Form validation for auth: Password must contain at least 1 lowercase, 1 uppercase, 1 number, and 1 symbol"
+  },
+  "fresco.validation.auth.validation4": {
+    "defaultMessage": "Passwords do not match",
+    "description": "Form validation for auth: Passwords do not match"
+  },
+  "fresco.validation.auth.validation5": {
+    "defaultMessage": "Username cannot be empty",
+    "description": "Form validation for auth: Username cannot be empty"
+  },
+  "fresco.validation.auth.validation6": {
+    "defaultMessage": "Password cannot be empty",
+    "description": "Form validation for auth: Password cannot be empty"
+  },
+  "fresco.validation.participant.validation1": {
+    "defaultMessage": "Identifier cannot be empty",
+    "description": "Form validation for participant: Identifier cannot be empty"
+  },
+  "fresco.validation.participant.validation2": {
+    "defaultMessage": "Identifier too long. Maximum of 255 characters.",
+    "description": "Form validation for participant: Identifier too long. Maximum of 255 characters."
+  },
+  "fresco.validation.participant.validation3": {
+    "defaultMessage": "Identifier requires one or more non-whitespace characters.",
+    "description": "Form validation for participant: Identifier requires one or more non-whitespace characters."
+  },
+  "fresco.validation.participant.validation4": {
+    "defaultMessage": "Identifier too long. Maximum of 255 characters.",
+    "description": "Form validation for participant: Identifier too long. Maximum of 255 characters."
+  },
+  "fresco.validation.participant.validation5": {
+    "defaultMessage": "Label requires one or more non-whitespace characters.",
+    "description": "Form validation for participant: Label requires one or more non-whitespace characters."
+  },
+  "fresco.validation.participant.validation6": {
+    "defaultMessage": "Invalid CSV",
+    "description": "Form validation for participant: Invalid CSV"
+  },
+  "fresco.validation.participant.validation7": {
+    "defaultMessage": "Invalid CSV. Every row must have either a label or an identifier",
+    "description": "Form validation for participant: Invalid CSV. Every row must have either a label or an identifier"
+  },
+  "fresco.validation.password.lower": {
+    "defaultMessage": "Password must contain at least 1 lowercase letter",
+    "description": "Password strength validation rule: Password must contain at least 1 lowercase letter"
+  },
+  "fresco.validation.password.minimum": {
+    "defaultMessage": "Password must be at least {count, number} characters",
+    "description": "Password strength validation rule: Password must be at least {count, number} characters"
+  },
+  "fresco.validation.password.number": {
+    "defaultMessage": "Password must contain at least 1 number",
+    "description": "Password strength validation rule: Password must contain at least 1 number"
+  },
+  "fresco.validation.password.strong": {
+    "defaultMessage": "Password must be at least 8 characters and contain at least 1 lowercase, 1 uppercase, 1 number, and 1 symbol",
+    "description": "Password strength validation rule: Password must be at least 8 characters and contain at least 1 lowercase, 1 uppercase, 1 number, and 1 symbol"
+  },
+  "fresco.validation.password.symbol": {
+    "defaultMessage": "Password must contain at least 1 symbol",
+    "description": "Password strength validation rule: Password must contain at least 1 symbol"
+  },
+  "fresco.validation.password.upper": {
+    "defaultMessage": "Password must contain at least 1 uppercase letter",
+    "description": "Password strength validation rule: Password must contain at least 1 uppercase letter"
+  },
+  "fresco.validation.s3Settings.validation1": {
+    "defaultMessage": "Endpoint URL is required.",
+    "description": "Form validation for s3Settings: Endpoint URL is required."
+  },
+  "fresco.validation.s3Settings.validation2": {
+    "defaultMessage": "Endpoint must be a valid http(s) URL and may not target a private, loopback, or link-local address.",
+    "description": "Form validation for s3Settings: Endpoint must be a valid http(s) URL and may not target a private, loopback, or link-local address."
+  },
+  "fresco.validation.s3Settings.validation3": {
+    "defaultMessage": "Public URL must be a valid URL.",
+    "description": "Form validation for s3Settings: Public URL must be a valid URL."
+  },
+  "fresco.validation.s3Settings.validation4": {
+    "defaultMessage": "Bucket name is required.",
+    "description": "Form validation for s3Settings: Bucket name is required."
+  },
+  "fresco.validation.s3Settings.validation5": {
+    "defaultMessage": "Region is required.",
+    "description": "Form validation for s3Settings: Region is required."
+  },
+  "fresco.validation.s3Settings.validation6": {
+    "defaultMessage": "Access Key ID is required.",
+    "description": "Form validation for s3Settings: Access Key ID is required."
+  },
+  "fresco.validation.s3Settings.validation7": {
+    "defaultMessage": "Secret Access Key is required.",
+    "description": "Form validation for s3Settings: Secret Access Key is required."
+  },
+  "fresco.validation.totp.validation1": {
+    "defaultMessage": "Code must be exactly 6 digits",
+    "description": "Form validation for totp: Code must be exactly 6 digits"
+  },
+  "fresco.validation.totp.validation2": {
+    "defaultMessage": "Code must be exactly 6 digits",
+    "description": "Form validation for totp: Code must be exactly 6 digits"
+  },
+  "fresco.validation.totp.validation3": {
+    "defaultMessage": "Two-factor token is required",
+    "description": "Form validation for totp: Two-factor token is required"
+  },
+  "fresco.validation.totp.validation4": {
+    "defaultMessage": "Code cannot be empty",
+    "description": "Form validation for totp: Code cannot be empty"
+  },
+  "fresco.validation.totp.validation5": {
+    "defaultMessage": "Code is required",
+    "description": "Form validation for totp: Code is required"
+  },
+  "fresco.validation.totp.validation6": {
+    "defaultMessage": "Must be a 6-digit code or a recovery code",
+    "description": "Form validation for totp: Must be a 6-digit code or a recovery code"
+  },
+  "fresco.validation.uploadThing.minimumToken": {
+    "defaultMessage": "UPLOADTHING_TOKEN must have at least 10 characters.",
+    "description": "Researcher-facing validation.uploadThing: UPLOADTHING_TOKEN must have at least 10 characters."
+  },
+  "fresco.validation.users.validation1": {
+    "defaultMessage": "At least one user ID is required",
+    "description": "Form validation for users: At least one user ID is required"
+  },
+  "fresco.validation.users.validation2": {
+    "defaultMessage": "Current password is required",
+    "description": "Form validation for users: Current password is required"
+  },
+  "fresco.validation.users.validation3": {
+    "defaultMessage": "Passwords do not match",
+    "description": "Form validation for users: Passwords do not match"
+  }
+}

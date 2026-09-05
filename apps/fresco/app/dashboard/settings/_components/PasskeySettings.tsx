@@ -4,6 +4,12 @@ import { startRegistration } from '@simplewebauthn/browser';
 import { KeyRound, Plus, Trash } from 'lucide-react';
 import { useState } from 'react';
 
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import {
+  AppErrorMessage,
+  AppMessage,
+  useAppIntl,
+} from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import { Button } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
@@ -14,6 +20,102 @@ import {
   verifyRegistration,
 } from '~/actions/webauthn';
 import SettingsField from '~/components/settings/SettingsField';
+import { formatPasskeyName } from '~/i18n/passkeyNames';
+
+const messages = defineMessages({
+  registeredCount: {
+    id: 'fresco.settings.PasskeySettings.registeredCount',
+    defaultMessage:
+      '{count, plural, one {# passkey registered.} other {# passkeys registered.}}',
+    description:
+      'Researcher-facing settings.PasskeySettings: count, plural, one # passkey registered. other # passkeys registered.',
+  },
+
+  never: {
+    id: 'fresco.settings.passkeys.never',
+    defaultMessage: 'Never',
+    description: 'Researcher-facing settings.passkeys: Never',
+  },
+
+  copyFailedToStartRegistration: {
+    id: 'fresco.settings.PasskeySettings.copyFailedToStartRegistration',
+    defaultMessage: 'Failed to start registration',
+    description:
+      'Researcher-facing settings / PasskeySettings: Failed to start registration',
+  },
+  copyPasskeyRegistrationFailed: {
+    id: 'fresco.settings.PasskeySettings.copyPasskeyRegistrationFailed',
+    defaultMessage: 'Passkey registration failed',
+    description:
+      'Researcher-facing settings / PasskeySettings: Passkey registration failed',
+  },
+  copyRegisterAPasskeyForTheHighestLevel: {
+    id: 'fresco.settings.PasskeySettings.copyRegisterAPasskeyForTheHighestLevel',
+    defaultMessage:
+      'Register a passkey for the highest level of security. You will sign in without a password using biometrics or a security key.',
+    description:
+      'Researcher-facing settings / PasskeySettings: Register a passkey for the highest level of security. You will sign in without a password using biometrics or a security key.',
+  },
+  copyRegistering: {
+    id: 'fresco.settings.PasskeySettings.copyRegistering',
+    defaultMessage: 'Registering...',
+    description: 'Researcher-facing settings / PasskeySettings: Registering...',
+  },
+  copyAddPasskey: {
+    id: 'fresco.settings.PasskeySettings.copyAddPasskey',
+    defaultMessage: 'Add passkey',
+    description: 'Researcher-facing settings / PasskeySettings: Add passkey',
+  },
+  copySynced: {
+    id: 'fresco.settings.PasskeySettings.copySynced',
+    defaultMessage: 'Synced',
+    description: 'Researcher-facing settings / PasskeySettings: Synced',
+  },
+  copyDeviceBound: {
+    id: 'fresco.settings.PasskeySettings.copyDeviceBound',
+    defaultMessage: 'Device-bound',
+    description: 'Researcher-facing settings / PasskeySettings: Device-bound',
+  },
+  copySetAPasswordBeforeRemovingYourOnly: {
+    id: 'fresco.settings.PasskeySettings.copySetAPasswordBeforeRemovingYourOnly',
+    defaultMessage: 'Set a password before removing your only passkey',
+    description:
+      'Researcher-facing settings / PasskeySettings: Set a password before removing your only passkey',
+  },
+  removePasskey: {
+    id: 'fresco.settings.PasskeySettings.removePasskey',
+    defaultMessage: 'Remove Passkey',
+    description: 'Researcher-facing settings / PasskeySettings: Remove Passkey',
+  },
+  removeYouWonTBeAbleTo: {
+    id: 'fresco.settings.PasskeySettings.removeYouWonTBeAbleTo',
+    defaultMessage:
+      '{nameMode, select, named {Remove "{name}"?} other {Remove this unnamed passkey?}} You won\'t be able to sign in with it anymore.',
+    description:
+      'Researcher-facing settings / PasskeySettings: Remove "value"? You won\'t be able to sign in with it anymore.',
+  },
+  remove: {
+    id: 'fresco.settings.PasskeySettings.remove',
+    defaultMessage: 'Remove',
+    description: 'Researcher-facing settings / PasskeySettings: Remove',
+  },
+  passkeys: {
+    id: 'fresco.settings.PasskeySettings.passkeys',
+    defaultMessage: 'Passkeys',
+    description: 'Researcher-facing settings / PasskeySettings: Passkeys',
+  },
+  added: {
+    id: 'fresco.settings.PasskeySettings.added',
+    defaultMessage: 'Added {value1}',
+    description: 'Researcher-facing settings / PasskeySettings: Added value',
+  },
+  lastUsed: {
+    id: 'fresco.settings.PasskeySettings.lastUsed',
+    defaultMessage: 'Last used {value1}',
+    description:
+      'Researcher-facing settings / PasskeySettings: Last used value',
+  },
+});
 
 type Passkey = {
   id: string;
@@ -30,12 +132,12 @@ type PasskeySettingsProps = {
   hasPassword: boolean;
 };
 
-function formatDate(date: Date | null) {
-  if (!date) return 'Never';
-  return new Date(date).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
+function RemovePasskeyDescription({ passkey }: { passkey: Passkey }) {
+  const intl = useAppIntl();
+  const name = formatPasskeyName(intl, passkey);
+  return intl.formatMessage(messages.removeYouWonTBeAbleTo, {
+    nameMode: name ? 'named' : 'unnamed',
+    name,
   });
 }
 
@@ -44,6 +146,8 @@ export default function PasskeySettings({
   sandboxMode,
   hasPassword,
 }: PasskeySettingsProps) {
+  const intl = useAppIntl();
+
   const [passkeys, setPasskeys] = useState<Passkey[]>(initialPasskeys);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,7 +160,10 @@ export default function PasskeySettings({
     try {
       const { error: genError, data } = await generateRegistrationOptions();
       if (genError || !data) {
-        setError(genError ?? 'Failed to start registration');
+        setError(
+          genError ??
+            createMessageError(messages.copyFailedToStartRegistration),
+        );
         return;
       }
 
@@ -88,7 +195,7 @@ export default function PasskeySettings({
       if (e instanceof Error && e.name === 'NotAllowedError') {
         return;
       }
-      setError('Passkey registration failed');
+      setError(createMessageError(messages.copyPasskeyRegistrationFailed));
     } finally {
       setLoading(false);
     }
@@ -96,9 +203,9 @@ export default function PasskeySettings({
 
   const handleRemovePasskey = (passkey: Passkey) => {
     void confirm({
-      title: 'Remove Passkey',
-      description: `Remove "${passkey.friendlyName ?? 'Unnamed passkey'}"? You won't be able to sign in with it anymore.`,
-      confirmLabel: 'Remove',
+      title: <AppMessage message={messages.removePasskey} />,
+      description: <RemovePasskeyDescription passkey={passkey} />,
+      confirmLabel: <AppMessage message={messages.remove} />,
       onConfirm: async () => {
         const result = await removePasskey(passkey.id);
         if (result.error) {
@@ -112,11 +219,13 @@ export default function PasskeySettings({
 
   return (
     <SettingsField
-      label="Passkeys"
+      label={intl.formatMessage(messages.passkeys)}
       description={
         passkeys.length === 0
-          ? 'Register a passkey for the highest level of security. You will sign in without a password using biometrics or a security key.'
-          : `${String(passkeys.length)} passkey${passkeys.length === 1 ? '' : 's'} registered.`
+          ? intl.formatMessage(messages.copyRegisterAPasskeyForTheHighestLevel)
+          : intl.formatMessage(messages.registeredCount, {
+              count: passkeys.length,
+            })
       }
       testId="passkey-field"
       control={
@@ -127,11 +236,17 @@ export default function PasskeySettings({
           color="primary"
           icon={<Plus />}
         >
-          {loading ? 'Registering...' : 'Add passkey'}
+          {loading
+            ? intl.formatMessage(messages.copyRegistering)
+            : intl.formatMessage(messages.copyAddPasskey)}
         </Button>
       }
     >
-      {error && <p className="text-destructive mb-3 text-sm">{error}</p>}
+      {error && (
+        <p className="text-destructive mb-3 text-sm">
+          <AppErrorMessage error={error} />
+        </p>
+      )}
 
       {passkeys.length > 0 && (
         <div className="flex flex-col gap-2">
@@ -140,27 +255,41 @@ export default function PasskeySettings({
               spacing="xs"
               key={passkey.id}
               data-testid="passkey-item"
-              className="flex items-center justify-between"
+              className="tablet-portrait:flex-row tablet-portrait:items-center tablet-portrait:justify-between flex flex-col items-start gap-3"
             >
-              <div className="flex items-center gap-6">
-                <KeyRound className="size-6" />
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">
-                      {passkey.friendlyName ?? 'Unnamed passkey'}
+              <div className="flex min-w-0 items-start gap-3">
+                <KeyRound className="size-6 shrink-0" />
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-medium wrap-break-word">
+                      {formatPasskeyName(intl, passkey)}
                     </span>
                     <Badge variant="outline">
                       {passkey.deviceType === 'multiDevice'
-                        ? 'Synced'
-                        : 'Device-bound'}
+                        ? intl.formatMessage(messages.copySynced)
+                        : intl.formatMessage(messages.copyDeviceBound)}
                     </Badge>
                   </div>
-                  <div className="flex gap-3 text-xs">
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
                     <span data-testid="passkey-date-created">
-                      Added {formatDate(passkey.createdAt)}
+                      {intl.formatMessage(messages.added, {
+                        value1: intl.formatDate(passkey.createdAt, {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                        }),
+                      })}
                     </span>
                     <span data-testid="passkey-date-used">
-                      Last used {formatDate(passkey.lastUsedAt)}
+                      {intl.formatMessage(messages.lastUsed, {
+                        value1: passkey.lastUsedAt
+                          ? intl.formatDate(passkey.lastUsedAt, {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                            })
+                          : intl.formatMessage(messages.never),
+                      })}
                     </span>
                   </div>
                 </div>
@@ -168,19 +297,22 @@ export default function PasskeySettings({
               <Button
                 variant="text"
                 size="sm"
+                className="tablet-portrait:shrink-0 tablet-portrait:self-center self-end"
                 onClick={() => handleRemovePasskey(passkey)}
                 disabled={
                   sandboxMode || (passkeys.length === 1 && !hasPassword)
                 }
                 title={
                   passkeys.length === 1 && !hasPassword
-                    ? 'Set a password before removing your only passkey'
+                    ? intl.formatMessage(
+                        messages.copySetAPasswordBeforeRemovingYourOnly,
+                      )
                     : undefined
                 }
                 icon={<Trash />}
                 color="destructive"
               >
-                Remove
+                {intl.formatMessage(messages.remove)}
               </Button>
             </Surface>
           ))}

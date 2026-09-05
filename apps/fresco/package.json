@@ -21,12 +21,14 @@
     "test:storybook": "SKIP_ENV_VALIDATION=true vitest run --project=storybook",
     "test:watch": "SKIP_ENV_VALIDATION=true vitest --project=units",
     "typecheck": "SKIP_ENV_VALIDATION=true tsc --noEmit",
-    "vercel-build": "pnpm build:platform"
+    "vercel-build": "pnpm build:platform",
+    "i18n:extract": "node scripts/extract-i18n.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1101.0",
     "@aws-sdk/s3-request-presigner": "^3.1101.0",
     "@base-ui/react": "catalog:",
+    "@codaco/app-i18n": "workspace:^",
     "@codaco/fresco-ui": "workspace:^",
     "@codaco/interview": "workspace:^",
     "@codaco/network-exporters": "workspace:^",

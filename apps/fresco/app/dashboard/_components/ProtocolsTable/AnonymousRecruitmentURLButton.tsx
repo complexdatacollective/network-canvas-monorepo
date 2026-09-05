@@ -3,8 +3,31 @@
 import { Copy } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppMessage } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import { useToast } from '@codaco/fresco-ui/Toast';
+
+const messages = defineMessages({
+  copyCopyingURLToClipboard: {
+    id: 'fresco.ProtocolsTable.AnonymousRecruitmentURLButton.copyCopyingURLToClipboard',
+    defaultMessage: 'Copying URL to clipboard...',
+    description:
+      'Researcher-facing ProtocolsTable / AnonymousRecruitmentURLButton: Copying URL to clipboard...',
+  },
+  copyURLCopiedToClipboard: {
+    id: 'fresco.ProtocolsTable.AnonymousRecruitmentURLButton.copyURLCopiedToClipboard',
+    defaultMessage: 'URL copied to clipboard!',
+    description:
+      'Researcher-facing ProtocolsTable / AnonymousRecruitmentURLButton: URL copied to clipboard!',
+  },
+  failedToCopyURLToClipboard: {
+    id: 'fresco.ProtocolsTable.AnonymousRecruitmentURLButton.failedToCopyURLToClipboard',
+    defaultMessage: 'Failed to copy URL to clipboard.',
+    description:
+      'Researcher-facing ProtocolsTable / AnonymousRecruitmentURLButton: Failed to copy URL to clipboard.',
+  },
+});
 
 export const AnonymousRecruitmentURLButton = ({
   protocolId,
@@ -26,9 +49,19 @@ export const AnonymousRecruitmentURLButton = ({
     }
 
     void promise(navigator.clipboard.writeText(url), {
-      loading: 'Copying URL to clipboard...',
-      success: 'URL copied to clipboard!',
-      error: 'Failed to copy URL to clipboard.',
+      loading: {
+        description: (
+          <AppMessage message={messages.copyCopyingURLToClipboard} />
+        ),
+      },
+      success: {
+        description: <AppMessage message={messages.copyURLCopiedToClipboard} />,
+      },
+      error: {
+        description: (
+          <AppMessage message={messages.failedToCopyURLToClipboard} />
+        ),
+      },
     });
   };
 
