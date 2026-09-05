@@ -1,5 +1,7 @@
 import { type ComponentType, useMemo } from 'react';
 
+import { useDialogFormId } from '../form/DialogForm.tsx';
+
 /** One row of a list a section owns, as the stage document holds it. */
 export type RowValues = Record<string, unknown>;
 
@@ -9,7 +11,14 @@ export type RowEditorProps = Readonly<{
   item: RowValues;
   /** Its index in the committed list; absent for a row being added. */
   editIndex?: number;
-  /** DOM id of the dialog's own form, for a control rendered outside it. */
+  /**
+   * DOM id of the dialog's own form, for a control rendered outside it.
+   *
+   * The id the dialog actually rendered, not the name it was configured with:
+   * a `form=` attribute resolves by id, and the two differ by a per-mount
+   * suffix that exists precisely so a dialog animating closed cannot capture
+   * the submit of the one that replaced it.
+   */
   form: string;
 }>;
 
@@ -47,10 +56,17 @@ export function useRowRenderers(
         props: Record<string, unknown>,
       ) {
         const editIndex = props.editIndex;
+        // Asked of the dialog rather than taken from the props: the list field
+        // knows the form's NAME, and the dialog is the only thing that knows
+        // the id it gave the element. The prop is the fallback for a renderer
+        // mounted outside a dialog at all.
+        const dialogFormId = useDialogFormId();
         return (
           <Editor
             item={rowOf(props.item)}
-            form={typeof props.form === 'string' ? props.form : ''}
+            form={
+              dialogFormId ?? (typeof props.form === 'string' ? props.form : '')
+            }
             {...(typeof editIndex === 'number' ? { editIndex } : {})}
           />
         );

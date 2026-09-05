@@ -86,8 +86,26 @@ function SectionOutlineItem({ section }: { section: OutlineSection }) {
       getFieldErrors: (name) => state.getFieldErrors(name),
     }),
   );
+  // Asked separately, and as a boolean, because a selector answering with an
+  // object would hand the store a new value on every read.
+  const hasFieldError = useFormStore((state) =>
+    section.fields.some(
+      (field) => (state.getFieldErrors(field.name)?.length ?? 0) > 0,
+    ),
+  );
   const presentation = STATUS_PRESENTATION[status];
   const StatusIcon = presentation.icon;
+  // The section's own words come first. A control showing a message beside
+  // itself has already said what is wrong in the vocabulary of the thing being
+  // edited, and repeating the schema's version of it underneath would be two
+  // accounts of one fault. The session's words are added only when nothing
+  // else on the page can explain the state — a reference to a resource the
+  // protocol does not have, a type a collaborator deleted — because then this
+  // is the only place it is written down.
+  const announced =
+    status === 'error' && !hasFieldError && section.issues.length > 0
+      ? `${presentation.label}. ${section.issues.join(' ')}`
+      : presentation.label;
 
   return (
     <button
@@ -100,7 +118,13 @@ function SectionOutlineItem({ section }: { section: OutlineSection }) {
         className={cx('size-4 shrink-0', presentation.className)}
       />
       <span className="truncate">{section.title}</span>
-      <span className="sr-only">{presentation.label}</span>
+      {/*
+        The status, and — when the problem is one only the session can see —
+        what it is. A dangling resource reference has no field showing a
+        message beside it, so the outline is the only place it is written down,
+        and reading it must not depend on seeing the colour of an icon.
+      */}
+      <span className="sr-only">{announced}</span>
     </button>
   );
 }

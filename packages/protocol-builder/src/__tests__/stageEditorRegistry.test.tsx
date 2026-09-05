@@ -1,3 +1,6 @@
+import { execFileSync } from 'node:child_process';
+import { join } from 'node:path';
+
 import { describe, expect, it, vi } from 'vitest';
 
 import { missingStageEditors, STAGE_TYPES } from '../stage-editor-contract.ts';
@@ -9,6 +12,8 @@ import { UnregisteredStageTypeError } from '../StageEditor.tsx';
 import {
   AWAITING_STAGE_EDITORS,
   composeStageEditorRegistry,
+  defineStageEditorPart,
+  DuplicateStageEditorError,
   stageEditorRegistry,
 } from '../stageEditorRegistry.ts';
 import { renderStageEditor } from '../testing/renderStageEditor.tsx';
@@ -24,8 +29,8 @@ const EgoFormEditor: StageEditorComponent<'EgoForm'> = ({
 describe('composing the registry from family parts', () => {
   it('merges the parts each family exports', () => {
     const registry = composeStageEditorRegistry(
-      { Information: InformationEditor },
-      { EgoForm: EgoFormEditor },
+      defineStageEditorPart({ Information: InformationEditor }),
+      defineStageEditorPart({ EgoForm: EgoFormEditor }),
     );
 
     expect(Object.keys(registry).toSorted()).toEqual([
@@ -63,7 +68,95 @@ describe('composing the registry from family parts', () => {
       ].toSorted(),
     ).toEqual([...STAGE_TYPES].toSorted());
   });
+
+  /**
+   * Nothing chooses between two families that both think they own an
+   * interface: whichever won would edit stages the other family's researchers
+   * are looking at, and the disagreement would never surface.
+   */
+  it('refuses an interface two families both claim', () => {
+    expect(() =>
+      composeStageEditorRegistry(
+        { Information: InformationEditor },
+        { EgoForm: EgoFormEditor },
+        { Information: InformationEditor },
+      ),
+    ).toThrow(DuplicateStageEditorError);
+    expect(() =>
+      composeStageEditorRegistry(
+        { Information: InformationEditor },
+        { Information: InformationEditor },
+      ),
+    ).toThrow(/"Information"/);
+  });
+
+  /**
+   * A key present but holding nothing claims nothing, which is the same
+   * reading `missingStageEditors` takes of the composed registry.
+   */
+  it('does not count an entry a part left empty as a claim', () => {
+    const registry = composeStageEditorRegistry(
+      { Information: undefined },
+      { Information: InformationEditor },
+    );
+
+    expect(registry.Information).toBe(InformationEditor);
+  });
 });
+
+/**
+ * The coverage machinery is a set of TYPES, so the only thing that can test it
+ * is a compiler. `type-tests/` holds one project of deliberately wrong
+ * registries; this compiles it and reads which files the compiler refused.
+ *
+ * The control matters as much as the probes: `valid.ts` proves the machinery
+ * is not simply refusing everything, and its `ClaimsExactlyTheseTwo` proves
+ * `defineStageEditorPart` keeps a part's exact key set — the fact all three
+ * probes rest on, and the one an annotated `const part: StageEditorRegistryPart`
+ * destroys.
+ */
+describe('the compile-time coverage checks', () => {
+  it('refuses a missing entry, a stale entry and a duplicate claim', () => {
+    const packageRoot = join(import.meta.dirname, '..', '..');
+    let output = '';
+    try {
+      execFileSync(
+        'node_modules/.bin/tsc',
+        ['--noEmit', '-p', 'type-tests/tsconfig.json'],
+        { cwd: packageRoot, encoding: 'utf8', stdio: 'pipe' },
+      );
+    } catch (error: unknown) {
+      output = compilerOutput(error);
+    }
+
+    // Read as a set of files rather than as messages: the wording of a TS
+    // diagnostic is not ours to depend on, but which file it lands in is
+    // exactly what each probe is about.
+    expect(filesWithErrors(output)).toEqual([
+      'type-tests/duplicateEntry.ts',
+      'type-tests/missingEntry.ts',
+      'type-tests/staleEntry.ts',
+    ]);
+  });
+});
+
+function compilerOutput(error: unknown): string {
+  if (typeof error !== 'object' || error === null) return '';
+  const stdout = Reflect.get(error, 'stdout');
+  const stderr = Reflect.get(error, 'stderr');
+  return `${typeof stdout === 'string' ? stdout : ''}${
+    typeof stderr === 'string' ? stderr : ''
+  }`;
+}
+
+function filesWithErrors(output: string): string[] {
+  const files = new Set<string>();
+  for (const line of output.split('\n')) {
+    const match = /^(\S+?)\(\d+,\d+\): error TS\d+:/.exec(line);
+    if (match?.[1] !== undefined) files.add(match[1]);
+  }
+  return [...files].toSorted();
+}
 
 describe('dispatching to a named editor', () => {
   it('renders the editor the registry names for the open stage', () => {

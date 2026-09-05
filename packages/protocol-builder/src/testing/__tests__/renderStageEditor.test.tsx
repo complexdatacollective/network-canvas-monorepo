@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import InterviewerGuidanceSection from '../../sections/InterviewerGuidanceSection.tsx';
 import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
 import StageNameSection from '../../sections/StageNameSection.tsx';
+import SubjectSection from '../../sections/SubjectSection.tsx';
 import { fixtureStageIds, loadFixtureStage } from '../protocolFixture.ts';
 import { renderStageEditor } from '../renderStageEditor.tsx';
 
@@ -62,7 +63,9 @@ describe('the stage-editor test harness', () => {
       sections: commonSections,
     });
 
-    const request = await harness.roundTrip();
+    const request = await harness.roundTrip({
+      unowned: ['subject', 'form', 'prompts'],
+    });
 
     expect(Object.keys(request.stageDocument).toSorted()).toEqual(
       ['id', 'type', 'label', 'subject', 'form', 'prompts'].toSorted(),
@@ -79,6 +82,48 @@ describe('the stage-editor test harness', () => {
     });
 
     expect(await harness.submit()).toBeNull();
+  });
+
+  /**
+   * A key nothing renders survives the round trip untouched, by design, so no
+   * comparison can ever see it missing. The editor is simply short a section,
+   * and the researcher cannot see or change something their protocol holds.
+   */
+  it('names the keys no mounted section edits', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: <SubjectSection entity="node" />,
+    });
+
+    expect(harness.ownedKeys()).toEqual(['subject']);
+    await expect(harness.roundTrip()).rejects.toThrow(
+      /keys: label, form, prompts/,
+    );
+
+    // Declared, the same mount round-trips: the list is a statement an editor
+    // makes about itself, not an escape from the check.
+    await harness.roundTrip({ unowned: ['label', 'form', 'prompts'] });
+  });
+
+  /**
+   * A refusal reported as the last request that DID save is a refusal no test
+   * can see: `submit()` answers truthfully, and `roundTrip()` compares against
+   * a save that never happened.
+   */
+  it('does not read a refused save as the one before it', async () => {
+    const harness = renderStageEditor({
+      stageId: 'information-1',
+      sections: commonSections,
+    });
+    const unowned = ['title', 'items'];
+
+    await harness.roundTrip({ unowned });
+    harness.setReadOnly();
+
+    expect(await harness.submit()).toBeNull();
+    await expect(harness.roundTrip({ unowned })).rejects.toThrow(
+      /did not save/,
+    );
   });
 
   it('hands editing away and takes it back', async () => {

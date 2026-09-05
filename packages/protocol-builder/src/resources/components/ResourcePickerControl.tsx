@@ -150,12 +150,6 @@ export default function ResourcePickerControl({
               ariaLabelledBy ?? (id === undefined ? undefined : `${id}-label`),
             'aria-describedby': ariaDescribedBy,
             'aria-label': ariaLabel,
-            // The group is the only thing standing for this field in the
-            // accessibility tree when there is no radio group to carry the
-            // state, so a refused save has to mark it: without this the field
-            // shows its message but nothing reports it as invalid, and
-            // `focusFirstError` has nothing to reach.
-            'aria-invalid': ariaInvalid,
           })}
       data-name={name}
       onBlur={onBlur}

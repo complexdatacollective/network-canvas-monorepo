@@ -138,6 +138,24 @@ const DialogFormInitialValuesContext =
   createContext<Readonly<Record<string, FieldValue>>>(NO_INITIAL_VALUES);
 
 /**
+ * The DOM id of the `<form>` this dialog actually rendered.
+ *
+ * The caller's `formId` is only the STEM: a dialog stays mounted while it
+ * animates closed, so a second dialog of the same kind opened in that window
+ * would render a second `<form>` under the same name, and a `form=` attribute
+ * resolves by id to the FIRST match in document order — the old, closing one.
+ * The rendered id therefore carries a per-mount suffix, and anything that
+ * needs to associate a control with this form has to ask for the id rather
+ * than assume the stem.
+ */
+const DialogFormIdContext = createContext<string | null>(null);
+
+/** The DOM id of the enclosing `DialogForm`'s `<form>`, if there is one. */
+export function useDialogFormId(): string | null {
+  return useContext(DialogFormIdContext);
+}
+
+/**
  * A field inside a `DialogForm`, seeded from the dialog's `initialValues`.
  *
  * The stage editor's own `ProtocolField` reads its starting value from the
@@ -348,39 +366,41 @@ function DialogFormBody({
         </>
       }
     >
-      <DialogFormInitialValuesContext value={initialValues}>
-        {aside ? (
-          // Every responsive rule below stays anchored to `Dialog`'s own
-          // container. Making this panel a container instead would have its
-          // descendants query the narrower pane width while the panel itself
-          // still queries the dialog, so the split and the handle's visibility
-          // would answer to two different widths.
-          <ResizableFlexPanel
-            storageKey={`${formId}-workspace-split`}
-            defaultBasis={50}
-            min={30}
-            max={70}
-            stickyHandle
-            aria-label="Resize form and preview panes"
-            className="[&>button>span]:bg-text/30 @min-[60rem]:[&>button:hover>span]:bg-text/50 @min-[60rem]:[&>button:focus-visible>span]:bg-text/50 w-full min-w-0 flex-col items-start gap-8 @min-[60rem]:flex-row @min-[60rem]:gap-0 [&>button]:hidden @min-[60rem]:[&>button]:flex"
-          >
-            <FormWithoutProvider
-              id={domFormId}
-              onSubmit={handleSubmit}
-              className="min-w-0 @min-[60rem]:pr-4"
+      <DialogFormIdContext value={domFormId}>
+        <DialogFormInitialValuesContext value={initialValues}>
+          {aside ? (
+            // Every responsive rule below stays anchored to `Dialog`'s own
+            // container. Making this panel a container instead would have its
+            // descendants query the narrower pane width while the panel itself
+            // still queries the dialog, so the split and the handle's visibility
+            // would answer to two different widths.
+            <ResizableFlexPanel
+              storageKey={`${formId}-workspace-split`}
+              defaultBasis={50}
+              min={30}
+              max={70}
+              stickyHandle
+              aria-label="Resize form and preview panes"
+              className="[&>button>span]:bg-text/30 @min-[60rem]:[&>button:hover>span]:bg-text/50 @min-[60rem]:[&>button:focus-visible>span]:bg-text/50 w-full min-w-0 flex-col items-start gap-8 @min-[60rem]:flex-row @min-[60rem]:gap-0 [&>button]:hidden @min-[60rem]:[&>button]:flex"
             >
+              <FormWithoutProvider
+                id={domFormId}
+                onSubmit={handleSubmit}
+                className="min-w-0 @min-[60rem]:pr-4"
+              >
+                {children}
+              </FormWithoutProvider>
+              <aside className="z-10 min-w-0 @min-[60rem]:sticky @min-[60rem]:top-0 @min-[60rem]:pl-4">
+                {aside}
+              </aside>
+            </ResizableFlexPanel>
+          ) : (
+            <FormWithoutProvider id={domFormId} onSubmit={handleSubmit}>
               {children}
             </FormWithoutProvider>
-            <aside className="z-10 min-w-0 @min-[60rem]:sticky @min-[60rem]:top-0 @min-[60rem]:pl-4">
-              {aside}
-            </aside>
-          </ResizableFlexPanel>
-        ) : (
-          <FormWithoutProvider id={domFormId} onSubmit={handleSubmit}>
-            {children}
-          </FormWithoutProvider>
-        )}
-      </DialogFormInitialValuesContext>
+          )}
+        </DialogFormInitialValuesContext>
+      </DialogFormIdContext>
     </Dialog>
   );
 }

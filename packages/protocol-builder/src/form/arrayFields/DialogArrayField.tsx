@@ -37,6 +37,7 @@ import {
   useStageEditorForm,
   type StageFormStoreApi,
 } from '../stageEditorContext.ts';
+import RowEditorBoundary from './RowEditorBoundary.tsx';
 import { useArrayFieldCommands } from './useArrayFieldCommands.ts';
 
 /**
@@ -765,13 +766,20 @@ function DialogEditor({
       aside={editorPreview}
     >
       <DialogStoreCapture apiRef={storeApiRef} />
-      {createElement(editorFieldsComponent, {
-        ...itemValues,
-        ...editorProps,
-        item: itemValues,
-        editIndex,
-        form: editFormName,
-      })}
+      {/*
+       * The fields are a family's own code, mounted by machinery that knows
+       * nothing about them. One of them throwing must cost the researcher this
+       * dialog, not the stage editor behind it and everything typed into it.
+       */}
+      <RowEditorBoundary>
+        {createElement(editorFieldsComponent, {
+          ...itemValues,
+          ...editorProps,
+          item: itemValues,
+          editIndex,
+          form: editFormName,
+        })}
+      </RowEditorBoundary>
     </DialogForm>
   );
 }
