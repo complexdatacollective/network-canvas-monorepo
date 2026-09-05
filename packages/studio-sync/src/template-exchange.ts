@@ -149,6 +149,14 @@ const binaryMedia = new Map<string, TemplateArtifactAsset['media_class']>([
   ['video/ogg', 'video'],
 ]);
 
+// Normalize only the pinned detector's aliases. Publisher declarations still
+// have to use the canonical allowlist, and audio/video remain distinct.
+const detectedMediaAliases = new Map([
+  ['audio/ogg; codecs=opus', 'audio/ogg'],
+  ['audio/x-m4a', 'audio/mp4'],
+  ['video/x-m4v', 'video/mp4'],
+]);
+
 async function screenAsset(asset: TemplateArtifactAsset): Promise<void> {
   if (asset.bytes.byteLength !== asset.byte_size) invalid();
   requireHash(asset.bytes, asset.hash);
@@ -193,8 +201,10 @@ async function screenAsset(asset: TemplateArtifactAsset): Promise<void> {
     }
   } else if (binaryMedia.get(asset.media_type) === asset.media_class) {
     try {
+      const detected = (await fileTypeFromBuffer(asset.bytes))?.mime;
       admitted =
-        (await fileTypeFromBuffer(asset.bytes))?.mime === asset.media_type;
+        detected !== undefined &&
+        (detectedMediaAliases.get(detected) ?? detected) === asset.media_type;
     } catch {
       admitted = false;
     }
