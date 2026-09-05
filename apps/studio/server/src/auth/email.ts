@@ -1,6 +1,5 @@
-import nodemailer from 'nodemailer';
-
 import type { TeamRole } from '@codaco/studio-rpc';
+import { createSmtpEmailSender } from '@codaco/studio-sync/email-sender';
 
 import type { MailerEnv } from '../env.ts';
 
@@ -38,20 +37,10 @@ export function createConsoleMailer(): StudioMailer {
 }
 
 function createSmtpMailer(smtpUrl: string, from: string): StudioMailer {
-  // Magic-link sends happen inside the sign-in request, and nodemailer's
-  // defaults (2 minutes to connect, 10 minutes of socket inactivity) would
-  // hold that request open long past the point the person gave up. These
-  // bounds also keep an invitation attempt within its worker's 60-second
-  // lease under ordinary transport failures.
-  const transport = nodemailer.createTransport({
-    url: smtpUrl,
-    connectionTimeout: 10_000,
-    greetingTimeout: 10_000,
-    socketTimeout: 20_000,
-  });
+  const sender = createSmtpEmailSender({ url: smtpUrl });
   return {
     sendMagicLink: async ({ email, url }) => {
-      await transport.sendMail({
+      await sender.send({
         from,
         to: email,
         subject: 'Sign in to Network Canvas Studio',
@@ -74,7 +63,7 @@ function createSmtpMailer(smtpUrl: string, from: string): StudioMailer {
       role,
       teamLabel,
     }) => {
-      await transport.sendMail({
+      await sender.send({
         from,
         to: email,
         messageId,
