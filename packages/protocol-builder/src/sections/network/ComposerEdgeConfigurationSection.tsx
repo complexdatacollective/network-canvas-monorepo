@@ -1,10 +1,11 @@
-import { useMemo, useRef, useState } from 'react';
+import { useId, useMemo, useRef, useState } from 'react';
 import { v4 as uuid } from 'uuid';
 
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
+import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import CodebookEntityEditor from '../../codebook/components/CodebookEntityEditor.tsx';
@@ -14,6 +15,7 @@ import { useStageValue } from '../../form/stageFormHooks.ts';
 import BuilderSection from '../BuilderSection.tsx';
 import { NEW_ENTITY_DRAFT } from '../SubjectSection.tsx';
 import { type EdgeTypeOption, useEdgeTypeOptions } from './codebookOptions.ts';
+import ComposerFormFieldsList from './ComposerFormFieldsList.tsx';
 import { useSetStageFieldValue } from './CreateVariableAction.tsx';
 import { checkboxOptions } from './rowValues.ts';
 
@@ -47,6 +49,10 @@ const isEdgeEntry = (value: unknown): value is EdgeEntry => {
 
 const readEntries = (value: unknown): EdgeEntry[] =>
   Array.isArray(value) ? value.filter(isEdgeEntry) : [];
+
+/** One field of a connection's form, as tolerantly as a stored one arrives. */
+const isFormFieldRow = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /**
  * The entries for exactly these types, keeping every entry that survives.
@@ -151,6 +157,12 @@ export type ComposerEdgeConfigurationCopy = Readonly<{
   /** Visible text and accessible name of the create control. */
   createLabel: string;
   createDescription: string;
+  /** Names the nested per-connection form section in the outline. */
+  formsTitle: string;
+  formsDescription: string;
+  formFieldsHint: string;
+  formFieldItemLabel: string;
+  formFieldsEmptyMessage: string;
 }>;
 
 const DEFAULT_COPY: ComposerEdgeConfigurationCopy = {
@@ -165,6 +177,14 @@ const DEFAULT_COPY: ComposerEdgeConfigurationCopy = {
   createLabel: 'Create a new connection type',
   createDescription:
     'Create a connection type, and let the participant draw it on this stage',
+  formsTitle: 'Connection attributes',
+  formsDescription:
+    'Optionally ask the participant more about each connection they draw. Each connection type is asked about separately, because each records its own attributes.',
+  formFieldsHint:
+    'The participant answers these in the panel that opens when they select a connection of this kind. Drag to reorder them.',
+  formFieldItemLabel: 'connection attribute field',
+  formFieldsEmptyMessage:
+    'No attributes yet for this connection type. Create one to ask the participant something about each connection they draw.',
 };
 
 export type ComposerEdgeConfigurationSectionProps = Readonly<{
@@ -172,13 +192,19 @@ export type ComposerEdgeConfigurationSectionProps = Readonly<{
 }>;
 
 /**
- * The connections this canvas lets the participant draw.
+ * The connections this canvas lets the participant draw, and what it asks
+ * about each of them.
  *
  * The stage's `edges` and nothing else. The types come from the editor's own
  * protocol context, so a connection type a collaborator adds or renames while
  * the editor is open appears here without this section asking for it, and a
  * researcher who needs a type the protocol does not have yet can create one
  * without leaving the stage.
+ *
+ * An entry carries a form as well as a type, and the two are authored one
+ * after the other: tick the kinds of connection, then say what each of them
+ * records. Both write the same `edges` value — see `EdgeTypeForms` for why the
+ * forms are not fields of their own.
  */
 export default function ComposerEdgeConfigurationSection({
   copy,
@@ -197,7 +223,125 @@ export default function ComposerEdgeConfigurationSection({
         emptyMessage={words.emptyMessage}
       />
       <CreateEdgeType words={words} />
+      <EdgeTypeForms words={words} />
     </BuilderSection>
+  );
+}
+
+/** The entries with one entry's `form` replaced, or removed when it is empty. */
+const withEdgeForm = (
+  entries: readonly EdgeEntry[],
+  entryId: string,
+  fields: readonly Record<string, unknown>[],
+): EdgeEntry[] =>
+  entries.map((entry) => {
+    if (entry.id !== entryId) return entry;
+    if (fields.length === 0) {
+      // A form with no fields is spelled by the key not being there. An empty
+      // one would say something else — a configured form holding nothing —
+      // which is not what the researcher did.
+      const { form: _form, ...rest } = entry;
+      return rest;
+    }
+    const existing = entry.form;
+    const form =
+      typeof existing === 'object' && existing !== null ? existing : {};
+    return { ...entry, form: { ...form, fields } };
+  });
+
+/**
+ * The attributes the participant fills in for each kind of connection.
+ *
+ * One list per ticked connection type, because each writes the attributes of
+ * its OWN edge type: a form field on a "knows" connection may not record
+ * something only a "family" connection has.
+ *
+ * Deliberately not a form field per entry. `edges` is one value with one field
+ * registered for it — that is what stops an unticked type's configuration from
+ * resurrecting itself out of a dormant `edges[2].form` on the next save — so
+ * these lists write back through the same value the tick list does, exactly as
+ * any other list nested inside a row.
+ */
+function EdgeTypeForms({
+  words,
+}: Readonly<{ words: ComposerEdgeConfigurationCopy }>) {
+  const entries = readEntries(useStageValue(EDGES_FIELD));
+  const options = useEdgeTypeOptions();
+  const setStageFieldValue = useSetStageFieldValue();
+
+  if (entries.length === 0) return null;
+
+  return (
+    <BuilderSection
+      title={words.formsTitle}
+      description={words.formsDescription}
+    >
+      {entries.map((entry) => {
+        const typeName =
+          options.find((option) => option.value === entry.subject.type)
+            ?.label ?? entry.subject.type;
+        return (
+          <EdgeTypeForm
+            key={entry.id}
+            entry={entry}
+            typeName={typeName}
+            words={words}
+            onChange={(fields) =>
+              setStageFieldValue(
+                EDGES_FIELD,
+                withEdgeForm(entries, entry.id, fields ?? []),
+              )
+            }
+          />
+        );
+      })}
+    </BuilderSection>
+  );
+}
+
+/** One connection type's form, named by the type it belongs to. */
+function EdgeTypeForm({
+  entry,
+  typeName,
+  words,
+  onChange,
+}: Readonly<{
+  entry: EdgeEntry;
+  typeName: string;
+  words: ComposerEdgeConfigurationCopy;
+  onChange: (fields: Record<string, unknown>[] | undefined) => void;
+}>) {
+  const headingId = useId();
+  const form = entry.form;
+  const fields =
+    typeof form === 'object' && form !== null
+      ? Reflect.get(form, 'fields')
+      : undefined;
+
+  return (
+    <div
+      role="group"
+      aria-labelledby={headingId}
+      className="flex flex-col gap-4"
+    >
+      <Heading level="h4" id={headingId} margin="none">
+        {`Attributes for "${typeName}" connections`}
+      </Heading>
+      <Paragraph margin="none" emphasis="muted">
+        {words.formFieldsHint}
+      </Paragraph>
+      <ComposerFormFieldsList
+        name={`edges-${entry.id}-form`}
+        subject={entry.subject}
+        value={Array.isArray(fields) ? fields.filter(isFormFieldRow) : []}
+        onChange={onChange}
+        addButtonLabel={`Create new attribute field for "${typeName}" connections`}
+        addTitle={`Create attribute field for "${typeName}" connections`}
+        editorTitle={`Edit attribute field for "${typeName}" connections`}
+        itemLabel={words.formFieldItemLabel}
+        emptyStateMessage={words.formFieldsEmptyMessage}
+      />
+    </div>
   );
 }
 

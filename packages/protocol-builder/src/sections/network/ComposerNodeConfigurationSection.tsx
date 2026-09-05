@@ -11,6 +11,7 @@ import {
   crossClassPickIssue,
   validatedElsewhereMessage,
 } from '../../form/arrayFields/crossClassPick.ts';
+import ProtocolArrayField from '../../form/ProtocolArrayField.tsx';
 import ProtocolField from '../../form/ProtocolField.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
@@ -25,6 +26,7 @@ import {
   useVariableOptions,
   useVariableRoleMap,
 } from './codebookOptions.ts';
+import ComposerFormFieldsList from './ComposerFormFieldsList.tsx';
 import CreateVariableAction, {
   useSetStageFieldValue,
 } from './CreateVariableAction.tsx';
@@ -39,6 +41,7 @@ const LAYOUT_VARIABLE_FIELD = 'layoutVariable';
  */
 const BEHAVIOURS_FIELD = 'behaviours';
 const CONVEX_HULL_FIELD = 'convexHullVariable';
+const NODE_FORM_FIELD = 'nodeForm.fields';
 
 /**
  * The refusal a VALIDATED writer earns by taking an attribute something else
@@ -68,6 +71,18 @@ export type ComposerNodeConfigurationCopy = Readonly<{
   hullLabel: string;
   hullHint: string;
   createHullLabel: string;
+  /** Names the nested form-fields section in the outline. */
+  formSectionTitle: string;
+  formSectionDescription: string;
+  formFieldsLabel: string;
+  formFieldsHint: string;
+  /** Visible text and accessible name of the add button. */
+  addFormFieldLabel: string;
+  addFormFieldTitle: string;
+  editFormFieldTitle: string;
+  /** Noun used in row affordances ("Edit field", "Remove field"). */
+  formFieldItemLabel: string;
+  formFieldsEmptyMessage: string;
 }>;
 
 const DEFAULT_COPY: ComposerNodeConfigurationCopy = {
@@ -91,6 +106,18 @@ const DEFAULT_COPY: ComposerNodeConfigurationCopy = {
   hullHint:
     'Nodes sharing a value of this attribute are drawn inside a shaded outline. The participant sets those values on the canvas, so this attribute is written without the codebook checking it.',
   createHullLabel: 'Create a new grouping attribute',
+  formSectionTitle: 'Node attributes',
+  formSectionDescription:
+    'Optionally let the participant fill in more about each node after they have added it.',
+  formFieldsLabel: 'Form fields',
+  formFieldsHint:
+    'The participant answers these in the panel that opens when they select a node. Drag to reorder them.',
+  addFormFieldLabel: 'Create new node attribute field',
+  addFormFieldTitle: 'Create node attribute field',
+  editFormFieldTitle: 'Edit node attribute field',
+  formFieldItemLabel: 'node attribute field',
+  formFieldsEmptyMessage:
+    'No node attributes yet. Create one to ask the participant something about each node.',
 };
 
 export type ComposerNodeConfigurationSectionProps = Readonly<{
@@ -261,6 +288,34 @@ export default function ComposerNodeConfigurationSection({
           setStageFieldValue(CONVEX_HULL_FIELD, variableId)
         }
       />
+
+      <BuilderSection
+        title={words.formSectionTitle}
+        description={words.formSectionDescription}
+        disabled={waiting}
+        capability={{
+          fields: [NODE_FORM_FIELD],
+          confirmClear: {
+            title: 'This will delete the node form',
+            description:
+              'Every field you have added to it will be removed, and the panel that opens when a participant selects a node will have nothing to ask.',
+            confirmLabel: 'Delete the form',
+          },
+        }}
+      >
+        <ProtocolArrayField<typeof ComposerFormFieldsList>
+          name={NODE_FORM_FIELD}
+          component={ComposerFormFieldsList}
+          subject={subject}
+          label={words.formFieldsLabel}
+          hint={words.formFieldsHint}
+          addButtonLabel={words.addFormFieldLabel}
+          addTitle={words.addFormFieldTitle}
+          editorTitle={words.editFormFieldTitle}
+          itemLabel={words.formFieldItemLabel}
+          emptyStateMessage={words.formFieldsEmptyMessage}
+        />
+      </BuilderSection>
     </BuilderSection>
   );
 }

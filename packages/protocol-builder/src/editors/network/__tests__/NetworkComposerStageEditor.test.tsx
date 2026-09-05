@@ -54,11 +54,12 @@ describe('the network composer stage editor', () => {
   it('composes its sections in the order the decisions are made', async () => {
     const harness = openFixture();
 
-    await waitFor(() => expect(harness.outline()).toHaveLength(7));
+    await waitFor(() => expect(harness.outline()).toHaveLength(8));
     expect(harness.outline().map((section) => section.title)).toEqual([
       'Stage name',
       'Node type',
       'Adding and arranging nodes',
+      'Node attributes',
       'Connections',
       'Background',
       'Skip logic',
