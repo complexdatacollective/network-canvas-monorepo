@@ -131,4 +131,28 @@ describe('the census and bin editor family', () => {
       ]);
     },
   );
+
+  /**
+   * The same five stages with no registry named at all, which is how a host
+   * that has not composed one of its own reaches an editor.
+   *
+   * The test above proves the part maps each interface to the right editor;
+   * this proves the part is WIRED IN — that `REGISTRY_PARTS` lists it and
+   * `AWAITING_STAGE_EDITORS` no longer does. Without it the family could be
+   * complete and correct and still leave every one of these stages throwing
+   * `UnregisteredStageTypeError` in every host.
+   */
+  it.each(FAMILY)(
+    'reaches that editor for a $stageType stage through the package’s own registry',
+    async ({ stageId, outline }) => {
+      const harness = renderStageEditor({ stageId });
+
+      await waitFor(() =>
+        expect(harness.outline()).toHaveLength(outline.length),
+      );
+      expect(harness.outline().map((section) => section.title)).toEqual([
+        ...outline,
+      ]);
+    },
+  );
 });
