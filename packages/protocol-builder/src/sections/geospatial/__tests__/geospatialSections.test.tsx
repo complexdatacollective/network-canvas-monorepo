@@ -14,7 +14,7 @@ import {
   expectMapboxMocked,
   mapsBuilt,
   resetMapboxMock,
-} from '../../../fields/geospatial/__tests__/mapboxMock.ts';
+} from '../../../testing/mapboxMock.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,

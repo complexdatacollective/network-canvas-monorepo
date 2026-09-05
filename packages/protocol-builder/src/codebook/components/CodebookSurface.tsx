@@ -200,7 +200,11 @@ export default function CodebookSurface({
 
       {context.issues.length > 0 && (
         <Alert variant="warning" appearance="soft">
-          <AlertTitle>Some codebook data could not be displayed</AlertTitle>
+          {/* The surface's own title is the `h2` above, and each entity below
+              opens at `h3`, so this alert sits between them. */}
+          <AlertTitle headingLevel="h3">
+            Some codebook data could not be displayed
+          </AlertTitle>
           <AlertDescription>
             <ul
               className="list-disc space-y-1 pl-5"

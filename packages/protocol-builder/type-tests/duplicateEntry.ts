@@ -1,8 +1,8 @@
+import { defineStageEditorPart } from '../src/stage-editor-contract.ts';
 import {
   type Assert,
-  defineStageEditorPart,
   type PartsAreDisjoint,
-} from '../src/stageEditorParts.ts';
+} from '../src/stageEditorRegistry.ts';
 import { InformationEditor } from './fixtures.ts';
 
 /**

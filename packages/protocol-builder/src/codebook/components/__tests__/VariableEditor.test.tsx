@@ -16,6 +16,7 @@ import type {
   CompoundEditRequest,
   CompoundEditResult,
 } from '../../../session.ts';
+import type { AuxiliaryCodebookSubmitResult } from '../../editing.ts';
 import VariableEditor, {
   type VariableEditorProps,
 } from '../VariableEditor.tsx';
@@ -50,11 +51,20 @@ const REFUSED = {
     'The protocol would not be valid with this change, so nothing was saved.',
   'threw':
     'This change could not be saved, and nothing was altered. Wait a moment and try again.',
+  'invalid-request':
+    'This change could not be sent, and nothing was saved. Close this editor and try again.',
 } as const;
 
 /** What a host says. None of it reaches the researcher. */
 const HOST_WORDS =
   'Expected object, received undefined at codebook.node.person';
+
+/**
+ * What a surface that refused the draft itself says, in the shape
+ * `findDraftContradictions` writes. This one DOES reach the researcher.
+ */
+const CONTRADICTION =
+  '“Minimum selected” requires 3 answers, but this attribute has only 2 options to choose from.';
 
 const APPLIED: CompoundEditResult = {
   status: 'applied',
@@ -848,6 +858,71 @@ describe('VariableEditor', () => {
     ).toHaveValue('choice');
     expect(onSubmitRequest).not.toHaveBeenCalled();
     expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  /**
+   * The one refusal shown in the words it arrived in.
+   *
+   * A contradiction — an attribute whose committed rules could not be
+   * satisfied by the options it is being left with — is legal to the codebook
+   * schema and to the host, so nothing downstream refuses it. The surface that
+   * detects it says so, and what it says names the rule and the values that
+   * cannot both hold, which is more than `compoundFailureCopy` could write
+   * about it.
+   *
+   * The control is the second case: the SAME sentence, reported the way it was
+   * before this channel existed, is discarded and the researcher gets the copy
+   * for a request that could not be sent. That is the bug the status exists to
+   * fix, so the test would pass on the old code for the wrong reason without
+   * it.
+   */
+  it.each([
+    {
+      caseName: 'a contradiction the surface refused itself',
+      result: {
+        status: 'contradiction',
+        message: CONTRADICTION,
+      } satisfies AuxiliaryCodebookSubmitResult,
+      shown: CONTRADICTION,
+      hidden: REFUSED['invalid-request'],
+    },
+    {
+      caseName: 'the same sentence sent as a failed result',
+      result: {
+        status: 'failed',
+        reason: 'invalid-request',
+        message: CONTRADICTION,
+      } satisfies AuxiliaryCodebookSubmitResult,
+      shown: REFUSED['invalid-request'],
+      hidden: CONTRADICTION,
+    },
+  ])('reports $caseName', async ({ result, shown, hidden }) => {
+    const user = userEvent.setup();
+    const onComplete = vi.fn();
+
+    render(
+      <VariableEditor
+        {...createProps({
+          initialDraft: { name: '', type: 'text' },
+          onSubmitRequest: () => result,
+          onComplete,
+        })}
+      />,
+    );
+
+    const name = screen.getByRole('textbox', { name: /attribute name/i });
+    await user.type(name, 'preserved');
+    await user.click(screen.getByRole('button', { name: 'Create attribute' }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(shown);
+    expect(alert).not.toHaveTextContent(hidden);
+    // Refused either way: the draft stays put and the editor stays open.
+    expect(name).toHaveValue('preserved');
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole('button', { name: 'Create attribute' }),
+    ).toBeEnabled();
   });
 
   it.each([

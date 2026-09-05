@@ -12,7 +12,6 @@ import {
   type ProtocolBuilderResourceGateway,
 } from '../../../resources/gateway.ts';
 import { InMemoryResourceGateway } from '../../../resources/InMemoryResourceGateway.ts';
-import MapPreviewDialog from '../MapPreviewDialog.tsx';
 import {
   emitMapEvent,
   expectMapboxMocked,
@@ -21,7 +20,8 @@ import {
   mapsRemoved,
   resetMapboxMock,
   setMapView,
-} from './mapboxMock.ts';
+} from '../../../testing/mapboxMock.ts';
+import MapPreviewDialog from '../MapPreviewDialog.tsx';
 
 /** The key's value, which must never reach the editor or the map. */
 const SECRET = 'pk.this-value-must-never-leave-the-host';

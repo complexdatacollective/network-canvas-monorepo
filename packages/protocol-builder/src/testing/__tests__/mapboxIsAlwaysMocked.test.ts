@@ -3,7 +3,7 @@ import { join, relative } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { expectMapboxMocked } from './mapboxMock.ts';
+import { expectMapboxMocked } from '../mapboxMock.ts';
 
 /**
  * Nothing in this package may reach the real Mapbox SDK.
@@ -18,9 +18,10 @@ import { expectMapboxMocked } from './mapboxMock.ts';
  * `vi.mock` in each file that can reach the SDK, because which files those are
  * is not a fact about the map. `stageEditorRegistry.ts` imports every editor
  * family, so anything mounting the package's dispatcher — most of this suite,
- * and every stage editor story — has the geospatial editor, and therefore the
- * SDK, in its module graph. A rule each of those files had to remember would
- * be forgotten by exactly the file at risk.
+ * and every stage editor story — will have the geospatial editor, and
+ * therefore the SDK, in its module graph the moment that family lands. A rule
+ * each of those files had to remember would be forgotten by exactly the file
+ * at risk.
  *
  * So this file checks the two things that make the alias true rather than
  * counting per-file mock declarations: that both runners are configured to
@@ -64,12 +65,12 @@ const shortName = (file: string) => relative(packageSource, file);
 
 describe('the Mapbox SDK in this package', () => {
   /**
-   * One production module draws a map, and the mock names the specifier so it
-   * can prove it replaced it. A third importer means something new can reach
-   * the SDK — and, more to the point, a second production one would mean the
-   * alias has a second route to cover, so it is named here deliberately.
+   * Two modules name the SDK: the mock that replaces it, and the map preview
+   * the geospatial family draws. That is the point of writing the list down —
+   * a new importer means the alias has another route to cover, so it is named
+   * deliberately here rather than discovered by a bill.
    */
-  it('is named by the map preview, and by the mock that replaces it', () => {
+  it('is named by the mock that replaces it, and by the one map that draws it', () => {
     const importers = files
       .filter((file) => IMPORTS_MAPBOX.test(contents.get(file) ?? ''))
       .map(shortName)
@@ -77,15 +78,12 @@ describe('the Mapbox SDK in this package', () => {
 
     expect(importers).toEqual([
       'fields/geospatial/MapPreviewDialog.tsx',
-      'fields/geospatial/__tests__/mapboxMock.ts',
+      'testing/mapboxMock.ts',
     ]);
   });
 
   it.each([
-    {
-      runner: 'vitest.config.ts',
-      mock: 'src/fields/geospatial/__tests__/mapboxMock.ts',
-    },
+    { runner: 'vitest.config.ts', mock: 'src/testing/mapboxMock.ts' },
     { runner: '.storybook/main.ts', mock: 'mapboxMock.ts' },
   ])('is swapped for a mock by $runner', ({ runner, mock }) => {
     const config = readFileSync(join(packageRoot, runner), 'utf8');

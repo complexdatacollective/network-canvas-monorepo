@@ -25,12 +25,12 @@ const here = dirname(fileURLToPath(import.meta.url));
  * editor, and therefore the SDK, in its module graph. A rule each of those
  * files has to remember would be forgotten by exactly the file at risk. This
  * is the same mechanism, for the same reason, as the alias in
- * `.storybook/main.ts`; `__tests__/mapboxIsAlwaysMocked.test.ts` holds both in
- * place.
+ * `.storybook/main.ts`; `src/testing/__tests__/mapboxIsAlwaysMocked.test.ts`
+ * holds both in place.
  */
 const MAPBOX_ALIAS = {
   find: /^mapbox-gl(\/esm)?$/,
-  replacement: join(here, 'src/fields/geospatial/__tests__/mapboxMock.ts'),
+  replacement: join(here, 'src/testing/mapboxMock.ts'),
 };
 
 export default defineConfig({

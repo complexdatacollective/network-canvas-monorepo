@@ -7,13 +7,17 @@
  * visual comparison — and the account is the project's own, not a story's.
  *
  * The package's tests replace the same module for the same reason (see
- * `src/fields/geospatial/__tests__/mapboxMock.ts`, and the static check beside
- * it that no test file can reach the real SDK). This is that guard's Storybook
- * half: `.storybook/main.ts` aliases `mapbox-gl/esm` here, so a story that
- * opens the starting-view preview gets this instead — no story, and no story
- * file, has to remember to ask for it.
+ * `src/testing/mapboxMock.ts`, and `src/testing/__tests__/
+ * mapboxIsAlwaysMocked.test.ts`, which holds both replacements in place). This
+ * is that guard's Storybook half: `.storybook/main.ts` aliases `mapbox-gl` and
+ * `mapbox-gl/esm` here, so a story that opens a starting-view preview gets
+ * this instead — no story, and no story file, has to remember to ask for it.
  *
- * It behaves the way the preview dialog needs a map to behave: it reports the
+ * A separate file from the test mock rather than the same one, because that
+ * one imports `vitest` to record what it built, and nothing in a browser
+ * bundle can.
+ *
+ * It behaves the way a preview dialog needs a map to behave: it reports the
  * view it was opened at, it announces that it loaded, and it moves when told
  * to. It draws a labelled placeholder rather than pretending to be a map,
  * because a story showing a convincing but fictional map of somewhere would be

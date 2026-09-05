@@ -19,6 +19,7 @@ import { compoundFailureMessage } from '../compoundFailureCopy.ts';
 import {
   AuxiliaryCodebookDraftSession,
   buildUpdateVariableRequest,
+  type AuxiliaryCodebookSubmitResult,
 } from '../editing.ts';
 import {
   isValidationWithListValue,
@@ -106,9 +107,17 @@ export type CodebookVariableValidationEditorProps = Readonly<{
   allSubjectVariables: Readonly<UnknownRecord>;
   requestMetadata: CodebookVariableValidationRequestMetadata;
   readOnly?: boolean;
+  /**
+   * Sends the compound edit, and may refuse it instead.
+   *
+   * A host that knows the draft contradicts rules already committed answers
+   * `{ status: 'contradiction', message }` rather than a `failed` result: the
+   * sentence is already written for the researcher, and the editor shows it
+   * verbatim. See `AuxiliaryCodebookContradiction`.
+   */
   onSubmitRequest(
     request: CompoundEditRequest,
-  ): Promise<CompoundEditResult> | CompoundEditResult;
+  ): Promise<AuxiliaryCodebookSubmitResult> | AuxiliaryCodebookSubmitResult;
   onComplete?(result: Extract<CompoundEditResult, { status: 'applied' }>): void;
 }>;
 

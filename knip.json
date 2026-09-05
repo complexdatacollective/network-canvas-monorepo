@@ -104,12 +104,9 @@
     // for one, so no test and no story can build a real map — which is exactly
     // the shape knip cannot follow. Declared as entries so the mocks and their
     // own exports count as used; the aliases themselves are held in place by
-    // src/fields/geospatial/__tests__/mapboxIsAlwaysMocked.test.ts.
+    // src/testing/__tests__/mapboxIsAlwaysMocked.test.ts.
     "packages/protocol-builder": {
-      "entry": [
-        ".storybook/mapboxMock.ts",
-        "src/fields/geospatial/__tests__/mapboxMock.ts"
-      ],
+      "entry": [".storybook/mapboxMock.ts", "src/testing/mapboxMock.ts"],
       "ignore": ["type-tests/**"]
     },
     "packages/protocol-validation": {},

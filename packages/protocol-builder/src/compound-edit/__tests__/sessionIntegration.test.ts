@@ -63,10 +63,24 @@ function createSession(
      * may have moved the authoritative revision on.
      */
     applyLive?: boolean;
+    /**
+     * Opens the session on a stage that is being CREATED, the way a host opens
+     * a new one: the interview holds no section for it and does not list it in
+     * the stage order, and only the candidate the session validates puts it
+     * where it is about to live. See `StageCreation`.
+     */
+    creating?: boolean;
   }> = {},
 ) {
+  const creating = options.creating === true;
   const host = new InMemoryCompoundHost({
-    protocolSections: initialSections,
+    protocolSections: creating
+      ? {
+          [settingsSection]: initialSections[settingsSection]!,
+          [stageOrderSection]: { stages: [] },
+          [assetsSection]: {},
+        }
+      : initialSections,
     manifestRevision: { sequence: 7n, hash: 'revision-7' },
     leases: [primaryLease, ...(options.additionalLeases ?? [])],
   });
@@ -125,8 +139,13 @@ function createSession(
     ...(options.resources === true
       ? { resourceGateway: new InMemoryResourceGateway() }
       : {}),
+    ...(creating ? { creation: { position: 0 } } : {}),
     buildCandidate: ({ stageDocument, protocolSections: sections }) =>
-      assembleProtocolSections({ ...sections, [stageSection]: stageDocument }),
+      assembleProtocolSections({
+        ...sections,
+        [stageSection]: stageDocument,
+        ...(creating ? { [stageOrderSection]: { stages: ['stage-1'] } } : {}),
+      }),
     onCommands,
     onCompoundEdit,
     // The same host, applying the stage's own batches: a finish is what
@@ -325,6 +344,37 @@ describe('compound host and protocol-builder session integration', () => {
 
     expect(host.getSnapshot()).toEqual(hostBefore);
     expect(session.getSnapshot()).toBe(sessionBefore);
+  });
+
+  /**
+   * The same edit, made while the stage itself is still being created.
+   *
+   * The full protocol the host answers with cannot contain a stage the
+   * interview does not have, so the answer omits it — and a session that read
+   * that omission as a broken answer would refuse the result the host has
+   * already applied, leaving the codebook ahead of the editor that wrote it.
+   */
+  it('publishes a codebook revision from a stage the interview does not contain yet', async () => {
+    const { host, session } = createSession({ creating: true });
+    session.dispatch(insertBlock('one', 0));
+
+    await expect(
+      session.requestCompoundEdit(createPlaceOnly),
+    ).resolves.toMatchObject({ status: 'applied' });
+
+    expect(host.getSnapshot().protocolSections[placeSection]).toMatchObject({
+      name: 'Place',
+    });
+    expect(session.getSnapshot().protocolSections).toEqual(
+      host.getSnapshot().protocolSections,
+    );
+    expect(session.getSnapshot().manifestRevision).toEqual(
+      host.getSnapshot().manifestRevision,
+    );
+    // Nothing the host said was about this stage, so the researcher's unsaved
+    // batch is still theirs to send.
+    expect(stageItems(session)).toEqual([block('one')]);
+    expect(session.getSnapshot().pendingCommands).toHaveLength(1);
   });
 });
 
@@ -567,6 +617,79 @@ describe('a compound edit made while the stage has unsaved changes', () => {
 
     expect(session.getSnapshot().pendingCommands).toEqual(pendingBefore);
     expect(host.getSnapshot().protocolSections[placeSection]).toBeUndefined();
+  });
+});
+
+/**
+ * The one authoritative stage document a caller can read is the snapshot's own
+ * copy of the stage section, and everything that has to name the host's stage
+ * reads it: a compound edit hashes it to say which document its stage commands
+ * apply to, and `protocolContext.orderedStages` is where a skip destination's
+ * list and an auto-named stage's existing names come from. So it has to move
+ * when the host's stage does.
+ */
+describe('the stage document a session hands out after an acknowledgement', () => {
+  it('holds what the host holds', () => {
+    const { host, session, settleAcknowledgements } = createSession({
+      applyLive: true,
+    });
+    session.dispatch([{ op: 'set', key: 'label', value: 'Places' }]);
+    settleAcknowledgements();
+
+    expect(session.getSnapshot().protocolSections[stageSection]).toEqual(
+      host.getSnapshot().protocolSections[stageSection],
+    );
+  });
+
+  it('renames the stage the skip destinations and auto-naming read', () => {
+    const { session, settleAcknowledgements } = createSession({
+      applyLive: true,
+    });
+    session.dispatch([{ op: 'set', key: 'label', value: 'Places' }]);
+    settleAcknowledgements();
+
+    expect(
+      session
+        .getSnapshot()
+        .protocolContext.orderedStages.map((stage) => stage.label),
+    ).toEqual(['Places']);
+  });
+
+  /**
+   * And a compound edit built from it is applied rather than refused: the hash
+   * a caller can name is the hash the host is holding.
+   */
+  it('names a document the host will accept a stage edit against', async () => {
+    const { host, session, settleAcknowledgements } = createSession({
+      applyLive: true,
+    });
+    session.dispatch([{ op: 'set', key: 'label', value: 'Places' }]);
+    settleAcknowledgements();
+
+    // Exactly what `withStageSectionEdit` does: read the authoritative stage
+    // out of the snapshot and hash it.
+    const authoritative =
+      session.getSnapshot().protocolSections[stageSection] ?? {};
+    await expect(
+      session.requestCompoundEdit({
+        id: 'rename-and-create-place',
+        description: 'Rename the stage and create a place',
+        edits: [
+          {
+            kind: 'update',
+            sectionId: stageSection,
+            expectedContentHash: contentHash(authoritative),
+            commands: [{ op: 'set', key: 'title', value: 'Places nearby' }],
+          },
+          request.edits[1]!,
+        ],
+      }),
+    ).resolves.toMatchObject({ status: 'applied' });
+
+    expect(host.getSnapshot().protocolSections[stageSection]).toMatchObject({
+      label: 'Places',
+      title: 'Places nearby',
+    });
   });
 });
 

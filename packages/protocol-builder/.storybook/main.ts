@@ -15,8 +15,8 @@ const here = dirname(fileURLToPath(import.meta.url));
  * account — from a Storybook that is built on every push and replayed by every
  * visual comparison. Replaced here rather than per story so that a story
  * mounting a section that mounts a field that draws a map is covered without
- * naming the SDK, which is the same reasoning behind the static check the
- * package's tests are held to.
+ * naming the SDK, which is the same reasoning behind the alias in
+ * `vitest.config.ts`.
  */
 const MAPBOX_ALIAS = {
   find: /^mapbox-gl(\/esm)?$/,

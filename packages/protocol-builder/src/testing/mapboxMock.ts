@@ -15,7 +15,14 @@ import { expect, vi } from 'vitest';
  * geospatial editor in its module graph, and a rule each of those files had to
  * remember would be forgotten by exactly the file at risk.
  *
- * The exports below are the SDK's own surface, as `MapPreviewDialog` uses it.
+ * Kept in `src/testing/` rather than beside the editor that draws a map,
+ * because the alias is a fact about the whole package and every editor family
+ * lands on a branch of its own: a target inside one family's directory does
+ * not exist on the other branches, so their runs would resolve the alias to
+ * nothing. `.storybook/mapboxMock.ts` is the same replacement for stories,
+ * separate only because it cannot import `vitest`.
+ *
+ * The exports below are the SDK's own surface, as a map preview uses it.
  * Everything else here is the recording the tests read.
  */
 export type MapboxMapOptions = Readonly<{
@@ -111,7 +118,7 @@ export function emitMapEvent(event: string): void {
  *
  * Shared rather than built per map, because everything a test asks about a map
  * — where it is, what it registered, whether it was torn down — is kept in the
- * recording above, and the dialog only ever holds one at a time.
+ * recording above, and a preview only ever holds one at a time.
  */
 const instance = {
   addControl: () => {
@@ -130,10 +137,10 @@ const instance = {
 };
 
 /**
- * The SDK's own two exports, which is all `MapPreviewDialog` uses.
+ * The SDK's own two exports, which is all a map preview uses.
  *
  * Spies rather than plain functions: `expectMapboxMocked` reads
- * `vi.isMockFunction` to prove the module reaching the dialog is this one and
+ * `vi.isMockFunction` to prove the module reaching the editor is this one and
  * not the real SDK, which no other property of the value could establish.
  */
 const MapboxMapMock = vi.fn(function MapboxMap(options: MapboxMapOptions) {
@@ -150,12 +157,14 @@ const NavigationControlMock = vi.fn(function NavigationControl() {
 export { MapboxMapMock as Map, NavigationControlMock as NavigationControl };
 
 /**
- * Refuses to continue unless the SDK reaching the editor is the mock.
+ * Refuses to continue unless the SDK reaching the editors is the mock.
  *
- * Asked of the specifier the dialog itself imports, so a change to the alias,
- * to the specifier, or to vitest's module resolution is caught here rather
- * than by a billing alert. It is what makes the alias a checked fact in a test
- * that draws a map rather than a line of configuration nobody reads.
+ * Asked of the specifier a map preview itself imports, so a change to the
+ * alias, to the specifier, or to vitest's module resolution is caught here
+ * rather than by a billing alert. It is what makes the alias a checked fact
+ * rather than a line of configuration nobody reads — and the only half of the
+ * guard that still means something on a branch where no editor draws a map
+ * yet.
  */
 export async function expectMapboxMocked(): Promise<void> {
   const mapbox = await import('mapbox-gl/esm');
