@@ -27,14 +27,16 @@ import ArrayField, {
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
-import { ensureError } from '@codaco/shared-consts';
 
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
+import DialogForm, {
+  type DialogFormErrors,
+  type DialogFormValidate,
+} from '../DialogForm.tsx';
 import {
   useStageEditorForm,
   type StageFormStoreApi,
 } from '../stageEditorContext.ts';
-import ArrayItemDialog, { type FormLevelValidate } from './ArrayItemDialog.tsx';
 import { useArrayFieldCommands } from './useArrayFieldCommands.ts';
 
 /**
@@ -249,6 +251,45 @@ const mergeEditedRow = (
 const rowRemovedMessage = (itemLabel: string) =>
   `This ${itemLabel} was removed while your changes were being saved, so there is nothing left to save them to. Copy anything you want to keep, then cancel and add a new ${itemLabel}.`;
 
+/**
+ * Said when the stage stopped accepting writes while the editor was open. It
+ * echoes the stage form's own read-only wording, because it is the same lease
+ * that has gone: the researcher's next move is to take editing back, and the
+ * draft stays on screen meanwhile.
+ */
+const readOnlyMessage = (itemLabel: string) =>
+  `This stage is read-only, so this ${itemLabel} was not saved. Take over editing and try again.`;
+
+/**
+ * Said when `onBeforeSave` refuses without saying why. A refusal that reports
+ * nothing would otherwise read as a success and close the dialog over work
+ * that was never committed.
+ */
+const saveRefusedMessage = (itemLabel: string) =>
+  `This ${itemLabel} could not be saved. Check your changes and try again.`;
+
+/**
+ * A pre-save refusal, in the shape the dialog renders: form-level messages
+ * above the fields, field-level ones attached to the control they name.
+ */
+const refusalFrom = (
+  failure: Extract<FormSubmissionResult, { success: false }>,
+  itemLabel: string,
+): DialogFormErrors => {
+  const formErrors = failure.formErrors ?? [];
+  // The flattened shape a failed submission is written in leaves every key
+  // optional, and a key holding nothing has no message to attach to a control.
+  const fieldErrors = Object.fromEntries(
+    Object.entries(failure.fieldErrors ?? {}).filter(
+      (entry): entry is [string, string[]] => entry[1] !== undefined,
+    ),
+  );
+  if (formErrors.length === 0 && Object.keys(fieldErrors).length === 0) {
+    return { formErrors: [saveRefusedMessage(itemLabel)] };
+  }
+  return { formErrors, fieldErrors };
+};
+
 type DialogArrayContextValue = {
   addTitle: string;
   /**
@@ -431,7 +472,7 @@ function DialogEditor({
     normalizeItem,
     onBeforeSave,
   } = useDialogArrayContext();
-  const { protocolContext } = useStageEditorForm();
+  const { protocolContext, readOnly } = useStageEditorForm();
 
   // `item` is undefined between edits. The last session stays mounted so the
   // dialog can animate closed, but every session gets its own `id` — and so
@@ -494,7 +535,7 @@ function DialogEditor({
       : stripManagedProperties(session.item);
   }, [selectedItem, session]);
 
-  const saveInFlightRef = useRef(false);
+  const activeSaveRef = useRef<Promise<void | DialogFormErrors> | null>(null);
   const storeApiRef = useRef<StageFormStoreApi | null>(null);
   const mountedRef = useRef(true);
   const activeItemRef = useRef(sessionItem);
@@ -503,6 +544,12 @@ function DialogEditor({
   isNewItemRef.current = session?.isNewItem ?? false;
   const itemValuesRef = useRef(itemValues);
   itemValuesRef.current = itemValues;
+  /**
+   * Read as a getter rather than closed over, because access can be revoked
+   * while the editor sits open — and again while a save is in flight.
+   */
+  const readOnlyRef = useRef(readOnly);
+  readOnlyRef.current = readOnly;
 
   useEffect(() => {
     mountedRef.current = true;
@@ -511,100 +558,111 @@ function DialogEditor({
     };
   }, []);
 
-  const handleCancel = useCallback(() => {
-    if (!saveInFlightRef.current) onCancel();
-  }, [onCancel]);
-
-  const handleSave = useCallback(
+  const performSave = useCallback(
     async (
       values: Record<string, FieldValue>,
-    ): Promise<FormSubmissionResult> => {
-      // fresco-ui disables the submit button while submitting, but a keyboard
-      // submit can still re-enter; the row must only be committed once.
-      if (saveInFlightRef.current) return { success: true };
-      saveInFlightRef.current = true;
+    ): Promise<void | DialogFormErrors> => {
       const itemAtSaveStart = activeItemRef.current;
       const wasNewRow = isNewItemRef.current;
 
-      try {
-        let valueToSave: unknown = mergeEditedRow(
-          itemValuesRef.current,
-          storeApiRef.current,
-          values,
-        );
-        if (onBeforeSave) {
-          const transformedValue = await onBeforeSave(valueToSave);
-          if (isFailedSubmission(transformedValue)) return transformedValue;
-          if (transformedValue !== undefined) valueToSave = transformedValue;
-        }
-
-        const rowToCommit = normalizeItem(valueToSave) as ArrayItem;
-
-        // The happy path: this editor is still the one editing this row, so
-        // the list's own save handles the commit — including a draft's
-        // promotion to a confirmed row, and closing the editor.
-        if (mountedRef.current && activeItemRef.current === itemAtSaveStart) {
-          onSave?.(rowToCommit);
-          return { success: true };
-        }
-
-        // Otherwise the editor moved to a different session, or unmounted,
-        // while the pre-save work was in flight. `onSave` commits to whichever
-        // row the list is editing NOW, so it cannot be trusted here — but the
-        // researcher's edit must not be thrown away either. Commit it to the
-        // row it was actually made on, addressed by that row's own id.
-        if (
-          itemAtSaveStart &&
-          commitDetachedRow(itemAtSaveStart, rowToCommit, wasNewRow)
-        ) {
-          // The list never ran its own save, so nothing has cleared the
-          // editing state; close the editor the way a normal save would.
-          onCancel();
-          return { success: true };
-        }
-
-        // Nothing can be committed: the row has left the array, or it carries
-        // no id and ArrayField's positional fallback has already handed its
-        // editing session to a neighbour. Writing anywhere now would be a
-        // write onto a different row, so the save reports what happened.
-        //
-        // Be clear-eyed about where that report goes. Every route here has
-        // already torn down the form that submitted, so these errors are set
-        // on a store that no longer renders. The truthful result is returned
-        // regardless — a caller that can still show it should, and the outcome
-        // is "not saved" either way. What this path must never do is report a
-        // save that did not happen as a success, which is what silently closes
-        // the dialog over a discarded edit.
-        return {
-          success: false,
-          formErrors: [rowRemovedMessage(itemLabel)],
-        };
-      } catch (error) {
-        return {
-          success: false,
-          formErrors: [ensureError(error).message],
-        };
-      } finally {
-        saveInFlightRef.current = false;
+      /**
+       * A stage that has stopped accepting writes must not take a save and
+       * look like it worked. Every commit route below is silent about it:
+       * `ArrayField` withholds its own save handler entirely while the list is
+       * read-only, and the structural commit answers that it wrote when the
+       * form declined to issue the commands. Both leave the dialog closing
+       * over an edit that reached nothing.
+       */
+      if (readOnlyRef.current) {
+        return { formErrors: [readOnlyMessage(itemLabel)] };
       }
+
+      let valueToSave: unknown = mergeEditedRow(
+        itemValuesRef.current,
+        storeApiRef.current,
+        values,
+      );
+      if (onBeforeSave) {
+        const transformedValue = await onBeforeSave(valueToSave);
+        if (isFailedSubmission(transformedValue)) {
+          return refusalFrom(transformedValue, itemLabel);
+        }
+        if (transformedValue !== undefined) valueToSave = transformedValue;
+      }
+
+      const rowToCommit = normalizeItem(valueToSave) as ArrayItem;
+
+      // Asked again on the far side of the pre-save work: the lease can go
+      // while that is in flight, and by then the answer above is stale.
+      if (readOnlyRef.current) {
+        return { formErrors: [readOnlyMessage(itemLabel)] };
+      }
+
+      // The happy path: this editor is still the one editing this row, so
+      // the list's own save handles the commit — including a draft's
+      // promotion to a confirmed row. The dialog closes itself once this
+      // resolves with nothing to report.
+      if (mountedRef.current && activeItemRef.current === itemAtSaveStart) {
+        onSave?.(rowToCommit);
+        return undefined;
+      }
+
+      // Otherwise the editor moved to a different session, or unmounted,
+      // while the pre-save work was in flight. `onSave` commits to whichever
+      // row the list is editing NOW, so it cannot be trusted here — but the
+      // researcher's edit must not be thrown away either. Commit it to the
+      // row it was actually made on, addressed by that row's own id.
+      if (
+        itemAtSaveStart &&
+        commitDetachedRow(itemAtSaveStart, rowToCommit, wasNewRow)
+      ) {
+        return undefined;
+      }
+
+      // Nothing can be committed: the row has left the array, or it carries
+      // no id and ArrayField's positional fallback has already handed its
+      // editing session to a neighbour. Writing anywhere now would be a
+      // write onto a different row, so the save reports what happened.
+      //
+      // What this path must never do is report a save that did not happen as
+      // a success, which is what silently closes the dialog over a discarded
+      // edit — so the refusal is returned, and the dialog keeps the draft on
+      // screen with the reason above it.
+      return { formErrors: [rowRemovedMessage(itemLabel)] };
     },
-    [
-      commitDetachedRow,
-      itemLabel,
-      normalizeItem,
-      onBeforeSave,
-      onCancel,
-      onSave,
-    ],
+    [commitDetachedRow, itemLabel, normalizeItem, onBeforeSave, onSave],
   );
 
-  const validate = useMemo<FormLevelValidate | undefined>(() => {
+  const handleSave = useCallback(
+    (values: Record<string, FieldValue>): Promise<void | DialogFormErrors> => {
+      // The dialog disables its submit control while a save runs, but a
+      // keyboard submit still reaches the form's own handler; the row must be
+      // committed once. The save already running answers for both, so the
+      // second submit reports exactly what the first one did.
+      const inFlight = activeSaveRef.current;
+      if (inFlight !== null) return inFlight;
+
+      const save = performSave(values);
+      activeSaveRef.current = save;
+      return save.finally(() => {
+        activeSaveRef.current = null;
+      });
+    },
+    [performSave],
+  );
+
+  const validate = useMemo<DialogFormValidate | undefined>(() => {
     if (!editorValidate) return undefined;
-    return (values, context) =>
-      toFieldErrors(
-        editorValidate(values, { ...context, initialValues: itemValues }),
+    return (values) => {
+      const fieldErrors = toFieldErrors(
+        editorValidate(values, {
+          ...(editIndex === undefined ? {} : { editIndex }),
+          initialValues: itemValues,
+        }),
       );
-  }, [editorValidate, itemValues]);
+      return fieldErrors === undefined ? undefined : { fieldErrors };
+    };
+  }, [editIndex, editorValidate, itemValues]);
 
   if (!session) return null;
 
@@ -619,16 +677,27 @@ function DialogEditor({
     : undefined;
 
   return (
-    <ArrayItemDialog
+    <DialogForm
       key={session.id}
       open={session.open}
-      onClose={handleCancel}
+      /**
+       * Reached on a cancel the researcher has nothing to lose by — or has
+       * confirmed — and again once a save has succeeded. The list has already
+       * cleared its own editing state by then, so the second call is the
+       * no-op that closing an editor twice should be.
+       */
+      onClose={onCancel}
       title={session.isNewItem ? addTitle : editorTitle}
       formId={editFormName}
+      /**
+       * What the row holds now, for any field inside the editor that reads its
+       * starting value from the dialog rather than stating one itself. A
+       * field's own `initialValue` still wins.
+       */
+      initialValues={itemValues as Record<string, FieldValue>}
       submitLabel={session.isNewItem ? 'Add' : 'Save'}
       onSubmit={handleSave}
       validate={validate}
-      editIndex={editIndex}
       size={editorDialogSize}
       /**
        * A row hides its own controls while it is being edited, so the Edit
@@ -654,7 +723,7 @@ function DialogEditor({
         editIndex,
         form: editFormName,
       })}
-    </ArrayItemDialog>
+    </DialogForm>
   );
 }
 
