@@ -1,9 +1,11 @@
-import { type ComponentType, useMemo } from 'react';
+import { type ComponentType, useCallback, useMemo, useState } from 'react';
 
+import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import Section from '@codaco/fresco-ui/Section';
 
+import { useCreateCodebookVariable } from '../codebook/useCodebookVariableEdits.ts';
 import {
   buildVariableRoleMap,
   excludeInterfaceOwned,
@@ -13,7 +15,6 @@ import {
 } from '../codebook/variableRoles.ts';
 import { draftFormFieldVariableIds } from '../codebook/variableValidation.ts';
 import RichTextField from '../fields/RichTextField.tsx';
-import { VariablePickerControl } from '../fields/VariablePicker.tsx';
 import { withoutAbsentValues } from '../form/absentValues.ts';
 import AssignAttributes, {
   committedAttributeVariableIds,
@@ -25,6 +26,7 @@ import ProtocolArrayField from '../form/ProtocolArrayField.tsx';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useStageValue } from '../form/stageFormHooks.ts';
 import { variablesForSubject } from '../protocol-context.ts';
+import { CreatableVariablePickerControl } from './CreatableVariablePicker.tsx';
 import PromptsSection, { type PromptsCopy } from './PromptsSection.tsx';
 import type { RowEditorProps, RowPreviewProps } from './rowRenderers.tsx';
 import { useStageSubject } from './useStageSubject.ts';
@@ -39,9 +41,20 @@ const NO_VARIABLES: ReadonlySet<string> = new Set();
 
 // The picker is handed to the rows as an open-record renderer, because a row
 // knows nothing about what any control takes. Adapted once, here.
-const VariablePicker = VariablePickerControl as ComponentType<
+const VariablePicker = CreatableVariablePickerControl as ComponentType<
   Record<string, unknown>
 >;
+
+/**
+ * What a stamp writes, so what an attribute invented for one has to be.
+ *
+ * The interview sets the configured value on the node as it is created, with
+ * nobody to answer anything — so a stamp is a flag, and the researcher is
+ * asked only for its name. `Toggle` is how the codebook editors offer a
+ * boolean, and an attribute created here has to read the same way there.
+ */
+const STAMP_TYPE = 'boolean';
+const STAMP_COMPONENT = 'Toggle';
 
 const asString = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : undefined;
@@ -178,6 +191,33 @@ function AdditionalAttributes({
     subject,
   ]);
 
+  // Answered as a variable id, or as nothing at all: the row commits its own
+  // `variable` cell only when the codebook write actually landed, so a refusal
+  // leaves the row naming nothing rather than an attribute that does not
+  // exist. The refusal is kept and shown, because the row cannot carry one —
+  // it is handed a variable id or nothing — and a create that silently did
+  // nothing would leave the researcher pressing the button again.
+  const createVariable = useCreateCodebookVariable(subject);
+  const [createProblem, setCreateProblem] = useState<string | undefined>(
+    undefined,
+  );
+  const createStampVariable = useCallback(
+    async (variableName: string) => {
+      const outcome = await createVariable({
+        name: variableName,
+        type: STAMP_TYPE,
+        component: STAMP_COMPONENT,
+      });
+      if (outcome.status === 'refused') {
+        setCreateProblem(outcome.message);
+        return undefined;
+      }
+      setCreateProblem(undefined);
+      return outcome.variableId;
+    },
+    [createVariable],
+  );
+
   const validation = useMemo(
     () =>
       makeAssignAttributesValidation({
@@ -225,6 +265,7 @@ function AdditionalAttributes({
         subject={subject}
         variableOptions={variableOptions}
         variablePickerComponent={VariablePicker}
+        onCreateVariable={createStampVariable}
         draftValidatedVariables={draftValidatedVariables}
         committedVariableIds={committedVariableIds}
         // The rows' own rules are display-only (see `RowField`), so the
@@ -232,6 +273,11 @@ function AdditionalAttributes({
         // what it has just refused in red.
         custom={validation.custom}
       />
+      {createProblem !== undefined && (
+        <Alert variant="destructive" className="my-7">
+          <AlertDescription>{createProblem}</AlertDescription>
+        </Alert>
+      )}
     </Section>
   );
 }

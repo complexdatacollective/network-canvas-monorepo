@@ -1,6 +1,8 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { sectionId } from '@codaco/studio-sync/taxonomy';
+
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import NameGeneratorPromptsSection from '../NameGeneratorPromptsSection.tsx';
 
@@ -247,5 +249,102 @@ describe("a name generator's prompts", () => {
       screen.getByText('Who are the people you know?'),
     ).toBeInTheDocument();
     await harness.roundTrip({ unowned: ['label', 'subject', 'form'] });
+  });
+
+  /**
+   * A stamp is a flag, and the flag a researcher wants to set almost never
+   * exists yet — deciding to mark these people is the same thought as
+   * inventing the attribute to mark them with. Architect offers it on every
+   * attribute row, so a researcher who has to leave the prompt, open the
+   * codebook and come back has been sent away by this builder alone.
+   *
+   * The codebook write and the stage that references it are one compound edit,
+   * which the in-memory host here applies exactly as a real one would — so
+   * this also proves both halves can land together.
+   */
+  it('creates the boolean attribute a stamp needs, and selects it', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: prompts,
+    });
+
+    const dialog = await openPrompt(harness, 'Edit prompt');
+    await harness.user.click(
+      dialog.getByRole('button', { name: 'Add new attribute to assign' }),
+    );
+    await harness.user.type(
+      await dialog.findByRole('textbox', { name: 'Create a new attribute' }),
+      'nominated_early',
+    );
+    await harness.user.click(
+      dialog.getByRole('button', { name: 'Create the attribute' }),
+    );
+
+    const picker = await dialog.findByRole('combobox', {
+      name: 'Create or select an attribute',
+    });
+    await waitFor(() =>
+      expect(
+        within(picker).getByRole('option', { name: 'nominated_early' }),
+      ).toBeInTheDocument(),
+    );
+    const created = (picker as HTMLSelectElement).value;
+    expect(created).not.toBe('');
+
+    // A stamp is written straight onto the node, so it has to be a boolean
+    // the interview can set — the type is the section's, not the researcher's.
+    const person =
+      harness.session.getSnapshot().protocolSections[
+        sectionId({ kind: 'codebookNode', typeId: 'person' })
+      ];
+    if (person === undefined) throw new Error('the person type is gone');
+    expect(
+      (person.variables as Record<string, { type?: string }>)[created],
+    ).toMatchObject({ name: 'nominated_early', type: 'boolean' });
+
+    await harness.user.click(dialog.getByRole('radio', { name: 'True' }));
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    const request = await harness.submit();
+    const rows = request?.stageDocument.prompts;
+    expect(Array.isArray(rows) && rows[0]).toMatchObject({
+      additionalAttributes: [{ variable: created, value: true }],
+    });
+  });
+
+  /**
+   * A row is handed a variable id or nothing, so it cannot carry a refusal —
+   * and a create that quietly did nothing leaves the researcher pressing the
+   * button again. The codebook refuses a name it cannot store (a space, here)
+   * in its own words, and those are the words that appear.
+   */
+  it('says why an attribute it could not create was not created', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: prompts,
+    });
+
+    const dialog = await openPrompt(harness, 'Edit prompt');
+    await harness.user.click(
+      dialog.getByRole('button', { name: 'Add new attribute to assign' }),
+    );
+    await harness.user.type(
+      await dialog.findByRole('textbox', { name: 'Create a new attribute' }),
+      'nominated early',
+    );
+    await harness.user.click(
+      dialog.getByRole('button', { name: 'Create the attribute' }),
+    );
+
+    expect(
+      await dialog.findByRole('alert', undefined, { timeout: 2000 }),
+    ).toHaveTextContent(/draft is invalid/);
+    const picker = dialog.getByRole('combobox', {
+      name: 'Create or select an attribute',
+    });
+    expect((picker as HTMLSelectElement).value).toBe('');
   });
 });
