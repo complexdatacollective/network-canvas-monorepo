@@ -3,6 +3,7 @@ import pg from 'pg';
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 
 import type { DbEnv } from '../env.ts';
+import { logOperational } from '../observability/logger.ts';
 
 // The pool is lazy — no connection is made until the first query — so
 // creating it with the dev defaults never requires a running database.
@@ -30,10 +31,7 @@ function connect(db: DbEnv, role?: string): pg.Pool {
   // `error` event into an uncaught exception, so without this listener a
   // routine database restart takes the server down. node-postgres has already
   // discarded the client by the time this runs; the next checkout reconnects.
-  pool.on('error', (error) => {
-    // oxlint-disable-next-line no-console -- server-side failure diagnostics
-    console.error('Postgres pool error on an idle client:', error);
-  });
+  pool.on('error', () => logOperational('STUDIO_DATABASE_IDLE_ERROR'));
   return pool;
 }
 
