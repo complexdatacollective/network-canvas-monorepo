@@ -11,6 +11,36 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
+describe('operational configuration', () => {
+  it('keeps metrics off until a separate credential is configured', () => {
+    vi.stubEnv('STUDIO_METRICS_TOKEN', '');
+    expect(readEnv().metricsToken).toBeUndefined();
+    vi.stubEnv(
+      'STUDIO_METRICS_TOKEN',
+      'operator-token-of-at-least-32-characters',
+    );
+    expect(readEnv().metricsToken).toBe(
+      'operator-token-of-at-least-32-characters',
+    );
+  });
+
+  it.each(['short', ' '.repeat(32), 'a'.repeat(31) + '\n'])(
+    'refuses unusable metrics credentials',
+    (token) => {
+      vi.stubEnv('STUDIO_METRICS_TOKEN', token);
+      expect(() => readEnv()).toThrow('Invalid environment variables');
+    },
+  );
+
+  it.each(['proxy.example.test', '10.0.0.0/33', '::1/129'])(
+    'refuses invalid proxy entries %s',
+    (proxy) => {
+      vi.stubEnv('TRUSTED_PROXIES', proxy);
+      expect(() => readEnv()).toThrow('Invalid environment variables');
+    },
+  );
+});
+
 describe('development defaults', () => {
   it('configures the whole stack from the committed file', () => {
     const env = readEnv();

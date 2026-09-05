@@ -1,14 +1,19 @@
+import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { serveStatic } from '@hono/node-server/serve-static';
-import type { Context, Hono } from 'hono';
+import {
+  serveStatic,
+  type ServeStaticOptions,
+} from '@hono/node-server/serve-static';
+import type { Context, Hono, MiddlewareHandler } from 'hono';
 
 import { gatedSurfacePaths } from '@codaco/studio-rpc/surfaces';
 
 import type { PrincipalVariables } from './auth/principal.ts';
 import type { StudioEnv } from './env.ts';
+import { logOperational } from './observability/logger.ts';
 
 // Serving the built client, and refusing the paths this deployment's topology
 // does not have. Extracted from src/index.ts because that module cannot be
@@ -101,6 +106,21 @@ export function mountClient(
     ? resolve(process.cwd(), env.clientDist)
     : fileURLToPath(new URL('../client', import.meta.url));
 
+  if (!existsSync(clientRoot))
+    logOperational('STUDIO_CLIENT_ASSETS_UNAVAILABLE');
+  const serveWhenPresent = (
+    options: ServeStaticOptions<PrincipalVariables>,
+  ): MiddlewareHandler<PrincipalVariables> => {
+    let serve: MiddlewareHandler<PrincipalVariables> | undefined;
+    return (c, next) => {
+      // The adapter otherwise prints the configured path at construction.
+      // Defer construction until a development build appears, retaining the
+      // existing ability to serve a client built after the server starts.
+      if (!serve && existsSync(clientRoot)) serve = serveStatic(options);
+      return serve ? serve(c, next) : next();
+    };
+  };
+
   // The deployment-mode gate, registered BEFORE both serveStatic mounts,
   // which would otherwise answer these with the shell at 200 — the SPA
   // fallback cannot tell a route this topology does not have from one it
@@ -135,12 +155,12 @@ export function mountClient(
     return shell === undefined ? c.body(null, 404) : c.html(shell, 404);
   });
 
-  app.use('*', serveStatic({ root: clientRoot, onFound: setCacheHeader }));
+  app.use('*', serveWhenPresent({ root: clientRoot, onFound: setCacheHeader }));
   // SPA fallback: unmatched GET paths serve the app shell so client-side
   // routes deep-link correctly.
   app.get(
     '*',
-    serveStatic({
+    serveWhenPresent({
       root: clientRoot,
       path: 'index.html',
       onFound: setCacheHeader,

@@ -1,5 +1,3 @@
-import { randomUUID } from 'node:crypto';
-
 import { upgradeWebSocket } from '@hono/node-server';
 import { RPCHandler } from '@orpc/server/fetch';
 import { type Context, Hono } from 'hono';
@@ -8,7 +6,11 @@ import type pg from 'pg';
 import { SOCIAL_PROVIDERS } from '@codaco/studio-rpc';
 
 import { createApiV1 } from './api.ts';
-import { createAssetRoutes, createAssetStore } from './assets.ts';
+import {
+  createAssetRoutes,
+  createAssetStore,
+  type AssetStore,
+} from './assets.ts';
 import { BETTER_AUTH_ORGANIZATION_ROUTE_POLICIES } from './audit/better-auth-policy.ts';
 import { createAuthService } from './auth/create.ts';
 import { requireSameOrigin, requireWsOrigin } from './auth/csrf.ts';
@@ -21,6 +23,15 @@ import type { AuthService } from './auth/service.ts';
 import { createPool } from './db/pool.ts';
 import { type AuthCapabilities, getDeploymentStatus } from './domain.ts';
 import { readEnv } from './env.ts';
+import {
+  logOperational,
+  type OperationalLogger,
+} from './observability/logger.ts';
+import { observeRequests } from './observability/requests.ts';
+import {
+  authorizeMetrics,
+  createObservability,
+} from './observability/runtime.ts';
 import { createRpcRouter } from './rpc.ts';
 
 // The app WebSocket endpoint. In development the Vite dev server proxies this
@@ -43,6 +54,9 @@ const BETTER_AUTH_ORGANIZATION_MUTATION_POLICIES: ReadonlyMap<
 
 type CreateAppDeps = {
   auth?: AuthService;
+  assetStore?: AssetStore;
+  observability?: ReturnType<typeof createObservability>;
+  logger?: OperationalLogger;
   /** True only for an entrypoint that starts a supported outbox dispatcher. */
   invitationDeliveryAvailable?: boolean;
   pool?: pg.Pool;
@@ -54,15 +68,25 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
   // Unexpected failures on the machine surfaces (e.g. the database down
   // during a session lookup) must still leave as problem JSON, not Hono's
   // text/plain default.
-  app.onError((error, c) => {
-    // oxlint-disable-next-line no-console -- server-side failure diagnostics
-    console.error(error);
+  app.onError((_error, c) => {
     return c.json({ title: 'Internal Server Error', status: 500 }, 500, {
       'Content-Type': 'application/problem+json',
     });
   });
   const pool = deps.pool ?? (env.db ? createPool(env.db) : undefined);
   const auth = deps.auth ?? createAuthService(env, pool);
+  const assetStore =
+    deps.assetStore ?? (env.s3 ? createAssetStore(env.s3) : undefined);
+  const observability =
+    deps.observability ?? createObservability({ pool, assetStore });
+  app.use(
+    '*',
+    observeRequests({
+      trustedProxies: env.trustedProxies,
+      logger: deps.logger,
+      record: observability.metrics.request,
+    }),
+  );
   const enabled = Boolean(env.db && env.auth);
   const authCaps: AuthCapabilities = {
     enabled,
@@ -82,6 +106,23 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
   const deployment = getDeploymentStatus(env.deploymentMode);
 
   app.get('/healthz', (c) => c.json({ status: 'ok' }));
+  app.get('/readyz', async (c) => {
+    const readiness = await observability.readiness.check();
+    return c.json(readiness, readiness.status === 'ready' ? 200 : 503, {
+      'Cache-Control': 'no-store',
+    });
+  });
+  app.get('/metrics', async (c) => {
+    c.header('Cache-Control', 'no-store');
+    if (!env.metricsToken)
+      return c.json({ title: 'Not Found', status: 404 }, 404);
+    if (!authorizeMetrics(c.req.header('authorization'), env.metricsToken))
+      return c.json({ title: 'Unauthorized', status: 401 }, 401, {
+        'WWW-Authenticate': 'Bearer',
+      });
+    const metrics = await observability.metrics.scrape();
+    return c.body(metrics.body, 200, { 'Content-Type': metrics.contentType });
+  });
 
   // Registered before the problem-JSON catch-alls below, which would
   // otherwise swallow the /api prefix.
@@ -122,7 +163,7 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     createPrincipalMiddleware(auth),
     requirePrincipal(),
   );
-  app.route('/storage', createAssetRoutes(env.s3 && createAssetStore(env.s3)));
+  app.route('/storage', createAssetRoutes(assetStore));
 
   // The SPA's typed procedures (oRPC v2, decision recorded on #1244),
   // implementing the @codaco/studio-rpc boundary contract.
@@ -143,7 +184,7 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
   app.use('/rpc/*', async (c, next) => {
     const { matched, response } = await rpcHandler.handle(c.req.raw, {
       prefix: '/rpc',
-      context: { principal: c.get('principal'), requestId: randomUUID() },
+      context: { principal: c.get('principal'), requestId: c.get('requestId') },
     });
     if (matched) return c.newResponse(response.body, response);
     await next();
@@ -157,7 +198,14 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     c.json({ title: 'Not Found', status: 404 }, 404, {
       'Content-Type': 'application/problem+json',
     });
-  for (const prefix of ['/api', '/rpc', '/storage']) {
+  for (const prefix of [
+    '/api',
+    '/rpc',
+    '/storage',
+    '/healthz',
+    '/readyz',
+    '/metrics',
+  ]) {
     app.all(prefix, notFound);
     app.all(`${prefix}/*`, notFound);
   }
@@ -172,11 +220,23 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
   app.use(WS_PATH, requirePrincipal());
   app.get(
     WS_PATH,
-    upgradeWebSocket(() => ({
-      onMessage(event, ws) {
-        ws.send(String(event.data));
-      },
-    })),
+    upgradeWebSocket(
+      () => ({
+        onOpen() {
+          observability.metrics.socketOpened();
+        },
+        onClose() {
+          observability.metrics.socketClosed();
+        },
+        onError() {
+          logOperational('STUDIO_WEBSOCKET_ERROR');
+        },
+        onMessage(event, ws) {
+          ws.send(String(event.data));
+        },
+      }),
+      { onError: () => logOperational('STUDIO_WEBSOCKET_ERROR') },
+    ),
   );
 
   return app;

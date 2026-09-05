@@ -1,0 +1,76 @@
+rule_files:
+  - operator-rules.yml
+evaluation_interval: 1m
+tests:
+  - name: Unready infrastructure does not inflate the application error ratio
+    interval: 1m
+    input_series:
+      - series: 'studio_http_requests_total{job="studio",instance="server",route="/readyz",status="503",method="GET"}'
+        values: 0+60x20
+      - series: 'studio_http_requests_total{job="studio",instance="server",route="/rpc/studies/list",status="200",method="POST"}'
+        values: 0+60x20
+      - series: 'studio_http_requests_total{job="studio",instance="server",route="/rpc/studies/list",status="500",method="POST"}'
+        values: 0+0x20
+      - series: 'studio_outbox_oldest_ready_seconds{job="studio",instance="server",queue="message_deliveries"}'
+        values: 0+0x20
+      - series: 'studio_outbox_jobs{job="studio",instance="server",queue="message_deliveries",state="uncertain"}'
+        values: 0+0x20
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: StudioApplicationErrors
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: StudioQueueStalled
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: StudioUncertainDelivery
+        exp_alerts: []
+  - name: Sustained failures and uncertain acknowledgements reach only operators
+    interval: 1m
+    input_series:
+      - series: 'studio_http_requests_total{job="studio",instance="server",route="/rpc/studies/list",status="500",method="POST"}'
+        values: 0+60x20
+      - series: 'studio_outbox_oldest_ready_seconds{job="studio",instance="server",queue="message_deliveries"}'
+        values: 600+0x20
+      - series: 'studio_outbox_jobs{job="studio",instance="server",queue="message_deliveries",state="uncertain"}'
+        values: 1+0x20
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: StudioQueueStalled
+        exp_alerts: []
+      - eval_time: 5m
+        alertname: StudioQueueStalled
+        exp_alerts:
+          - exp_labels:
+              job: studio
+              instance: server
+              queue: message_deliveries
+              audience: operators
+              severity: warning
+            exp_annotations:
+              summary: Studio has delivery or recompute work waiting to run
+              description: Check worker availability and delivery-provider health for the affected queue.
+      - eval_time: 1m
+        alertname: StudioUncertainDelivery
+        exp_alerts:
+          - exp_labels:
+              job: studio
+              instance: server
+              queue: message_deliveries
+              state: uncertain
+              audience: operators
+              severity: warning
+            exp_annotations:
+              summary: Studio has delivery acknowledgements requiring reconciliation
+              description: The provider accepted a delivery but database finalization failed. Do not blindly resend uncertain work.
+      - eval_time: 10m
+        alertname: StudioApplicationErrors
+        exp_alerts:
+          - exp_labels:
+              job: studio
+              instance: server
+              audience: operators
+              severity: critical
+            exp_annotations:
+              summary: Studio application requests are failing
+              description: Investigate request logs by request_id and the fixed route labels. Do not copy request payloads into an incident.

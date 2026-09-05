@@ -29,6 +29,7 @@ import {
   AUDIT_TEAM_LOCK_KEY_SQL,
 } from '../../audit/store.ts';
 import type { SessionPrincipal } from '../../auth/service.ts';
+import { operationalLogger } from '../../observability/logger.ts';
 import {
   acceptTeamInvitation,
   cancelTeamInvitation,
@@ -1608,7 +1609,7 @@ describe.skipIf(!db)('audited team commands', () => {
     await seedIdentity(pool, teamId, member);
     const requestId = randomUUID();
     const warning = vi
-      .spyOn(process, 'emitWarning')
+      .spyOn(operationalLogger, 'diagnostic')
       .mockImplementation(() => undefined);
     await pool.query(`
       CREATE FUNCTION reject_test_audit_insert() RETURNS trigger AS $$
@@ -1638,31 +1639,9 @@ describe.skipIf(!db)('audited team commands', () => {
       `);
     }
 
-    expect(warning).toHaveBeenCalledTimes(1);
-    expect(warning.mock.calls[0]![0]).toBe(
-      'Required immutable audit event append failed; transaction will roll back.',
-    );
-    expect(warning.mock.calls[0]![1]).toMatchObject({
-      type: 'StudioAuditError',
-      code: 'STUDIO_AUDIT_APPEND_FAILED',
-    });
-    const warningOptions = warning.mock.calls[0]![1];
-    if (typeof warningOptions !== 'object' || warningOptions === null) {
-      throw new Error('expected structured audit warning options');
-    }
-    const detail = Reflect.get(warningOptions, 'detail');
-    if (typeof detail !== 'string') {
-      throw new Error('expected structured audit warning detail');
-    }
-    expect(JSON.parse(detail)).toEqual({
-      eventType: 'team.member.role_changed',
-      eventVersion: 1,
-      outcome: 'succeeded',
-      teamId,
-      requestId,
-      causeName: 'error',
-      causeMessage: 'test audit insert rejected',
-    });
+    expect(warning.mock.calls).toEqual([
+      ['STUDIO_AUDIT_APPEND_FAILED', { teamId, requestId }],
+    ]);
     warning.mockRestore();
 
     const state = await pool.query<{ role: string }>(
@@ -1686,7 +1665,7 @@ describe.skipIf(!db)('audited team commands', () => {
     await seedIdentity(pool, teamId, member);
     const requestId = randomUUID();
     const warning = vi
-      .spyOn(process, 'emitWarning')
+      .spyOn(operationalLogger, 'diagnostic')
       .mockImplementation(() => undefined);
     await pool.query(`
       CREATE FUNCTION reject_test_denial_audit_insert() RETURNS trigger AS $$
@@ -1716,24 +1695,9 @@ describe.skipIf(!db)('audited team commands', () => {
       `);
     }
 
-    expect(warning).toHaveBeenCalledTimes(1);
-    const warningOptions = warning.mock.calls[0]![1];
-    if (typeof warningOptions !== 'object' || warningOptions === null) {
-      throw new Error('expected structured audit warning options');
-    }
-    const detail = Reflect.get(warningOptions, 'detail');
-    if (typeof detail !== 'string') {
-      throw new Error('expected structured audit warning detail');
-    }
-    expect(JSON.parse(detail)).toEqual({
-      eventType: 'team.member.role_change_denied',
-      eventVersion: 1,
-      outcome: 'denied',
-      teamId,
-      requestId,
-      causeName: 'error',
-      causeMessage: 'test denial audit insert rejected',
-    });
+    expect(warning.mock.calls).toEqual([
+      ['STUDIO_AUDIT_APPEND_FAILED', { teamId, requestId }],
+    ]);
     warning.mockRestore();
 
     expect(

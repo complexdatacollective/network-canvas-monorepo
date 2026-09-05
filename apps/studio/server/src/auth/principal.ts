@@ -3,7 +3,7 @@ import { createMiddleware } from 'hono/factory';
 import type { AuthService, Principal } from './service.ts';
 
 export type PrincipalVariables = {
-  Variables: { principal: Principal | null };
+  Variables: { principal: Principal | null; requestId: string };
 };
 
 export function createPrincipalMiddleware(auth: AuthService) {
