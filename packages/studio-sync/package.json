@@ -13,6 +13,7 @@
   "exports": {
     "./apply": "./src/apply.ts",
     "./client": "./src/client.ts",
+    "./postgres-pool": "./src/postgres-pool.ts",
     "./protocol-document": "./src/protocol-document.ts",
     "./server": "./src/server.ts",
     "./rls": "./src/rls.ts",
@@ -28,7 +29,8 @@
   "dependencies": {
     "@noble/hashes": "^2.3.0",
     "drizzle-orm": "catalog:",
-    "pg": "^8.22.0"
+    "pg": "^8.22.0",
+    "pg-connection-string": "^2.14.0"
   },
   "devDependencies": {
     "@codaco/tsconfig": "workspace:^",

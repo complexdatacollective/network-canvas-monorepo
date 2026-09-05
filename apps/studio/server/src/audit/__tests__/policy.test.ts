@@ -321,6 +321,7 @@ describe('audit mutation policy', () => {
   });
 
   it('classifies the exact configured Better Auth organization route inventory', async () => {
+    // Reads endpoint metadata only; this pool never opens a connection.
     const pool = new pg.Pool();
     const env: AuthEnv = {
       baseUrl: 'http://studio.test',
