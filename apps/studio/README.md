@@ -357,8 +357,8 @@ rather than another team's rows, and a write aimed at another team is refused.
 Row-level security is _forced_, so the table owner is not exempt; a superuser
 always is, which is why the server never runs as the connecting login.
 `createPool` starts every session as `studio_app`, a `NOLOGIN` role with
-neither `SUPERUSER` nor `BYPASSRLS`, which the schema apply creates and grants
-the login the right to assume (`role=` is a startup parameter: a missing role
+neither `SUPERUSER` nor `BYPASSRLS` and no parent memberships. Operator
+provisioning grants the runtime login the right to assume it (`role=` is a startup parameter: a missing role
 refuses the connection, and `RESET ROLE` returns to it). That holds in
 development too, where the login is the container's superuser. Garbage
 collection is the one deliberately cross-team caller: it runs on a
@@ -501,9 +501,10 @@ fails `pnpm typecheck`.
 
 ### Database
 
-| Variable       | What it is                                             | Development default                                    | Real deployment                                                                                                                                                                                          |
-| -------------- | ------------------------------------------------------ | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL` | Postgres connection string, `pg.Pool`’s native format. | `postgres://postgres:spike@127.0.0.1:54318/studio_dev` | Unset ⇒ no database; auth and sync refuse while the server still boots. The login owns the schema and needs `CREATEROLE` for the initial migration; the server runs as the `studio_app` role it creates. |
+| Variable                         | What it is                                             | Development default                                    | Real deployment                                                                                                                                                                                                                                                             |
+| -------------------------------- | ------------------------------------------------------ | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                   | Postgres connection string, `pg.Pool`’s native format. | `postgres://postgres:spike@127.0.0.1:54318/studio_dev` | Unset ⇒ no database; auth and sync refuse while the server still boots. Use a dedicated deployment login. The migration connection owns the database and schema; the runtime connection assumes `studio_app` or `studio_maintenance`.                                       |
+| `STUDIO_DATABASE_ALLOWED_LOGINS` | JSON array of this deployment’s database login names.  | —                                                      | Required by `migrate` only. Enroll the database owner, migration login, runtime login, and any separately provisioned backup login. Provision explicit CONNECT before admitting database connections. Migration refuses PUBLIC, shared-role, missing, or unexpected access. |
 
 ### Authentication
 
@@ -542,7 +543,7 @@ docker run --rm -p 3000:3000 network-canvas-studio
 ### Database schema and development seeding
 
 Run the image's `migrate` command **once per deployment**, before starting its
-replicas. It requires only `DATABASE_URL` and ships with the image; no operator
+replicas. It requires `DATABASE_URL` and `STUDIO_DATABASE_ALLOWED_LOGINS` and ships with the image; no operator
 checkout or schema-generation tools are needed. Follow the backup and upgrade
 sequence in [Database migrations](MIGRATIONS.md).
 
@@ -553,6 +554,13 @@ sequence in [Database migrations](MIGRATIONS.md).
   anyway and keeps retrying, because only there is the cause a container that
   has not finished starting or a `dev-pg` schema provision that has not
   landed yet (`dev-pg` applies the schema itself when the database has none).
+- **Provision database access before migration.** Use dedicated migration and
+  runtime logins for each deployment. Commit their explicit CONNECT grants
+  with database admission disabled, then enable admission and list those login
+  names in `STUDIO_DATABASE_ALLOWED_LOGINS`. Migration refuses unexpected
+  access and leftover outside connections; it never terminates sessions or
+  repairs enrollment. Follow the SQL and recovery procedure in
+  [Database migrations](MIGRATIONS.md#provision-database-access-before-migration).
 - **The initial migration needs runtime roles.** With `CREATEROLE`, the login creates the
   `studio_app` and `studio_maintenance` roles the server runs as (see
   [Tenancy](#tenancy)) and grants itself the right to assume them. If your
@@ -560,8 +568,8 @@ sequence in [Database migrations](MIGRATIONS.md).
   once and grants the database owner permission to assume them:
 
   ```sql
-  CREATE ROLE studio_app NOLOGIN NOSUPERUSER NOBYPASSRLS;
-  CREATE ROLE studio_maintenance NOLOGIN NOSUPERUSER NOBYPASSRLS;
+  CREATE ROLE studio_app NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB NOREPLICATION;
+  CREATE ROLE studio_maintenance NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB NOREPLICATION;
   GRANT studio_app, studio_maintenance TO <login> WITH SET TRUE, INHERIT FALSE;
   ```
 
@@ -692,12 +700,12 @@ The server reads its object store from `S3_ENDPOINT`, `S3_REGION`,
 none (partial configuration fails fast). Unset means asset routes refuse
 with 503. See [Environment](#environment).
 
-The Postgres login in `DATABASE_URL` owns the schema and needs `CREATEROLE`
-the first time it is applied (see
-[Database schema and seeding](#database-schema-and-seeding)); the server
-itself runs as `studio_app` (see [Tenancy](#tenancy)). A self-host is one
-team, or a few, under exactly the enforcement the managed service runs — there
-is no single-tenant code path.
+Set the server's `DATABASE_URL` to its dedicated, unprivileged runtime login.
+The explicit migration command uses the database owner's credentials in its
+own `DATABASE_URL` and verifies `STUDIO_DATABASE_ALLOWED_LOGINS` against the
+committed provisioning grants (see [Database migrations](MIGRATIONS.md)). The
+server runs as `studio_app` (see [Tenancy](#tenancy)). A self-host is one team,
+or a few, under the same enforcement as the managed service.
 
 ### What deploys when
 
