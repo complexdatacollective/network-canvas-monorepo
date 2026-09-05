@@ -1,12 +1,14 @@
 import type {
   Codebook,
   ColorReference,
+  DateFormat,
   FilterOperator,
   NodeShape,
   VariableType,
 } from '@codaco/protocol-validation';
 
 import {
+  isCompilablePattern,
   isFilterOperator,
   isPresenceOperator,
   operatorsWithOptionCount,
@@ -21,6 +23,8 @@ import {
   isOperandValidForAttributeType,
   isOperatorValidForAttributeType,
   isRuleTargetType,
+  type OperandDateProblem,
+  operandDateProblems,
   operandOptionProblems,
   type RuleTargetType,
   ruleVariable,
@@ -99,12 +103,15 @@ export type RuleDescriptionOperand = Readonly<{
  */
 export const RULE_PROBLEM_CODES = [
   'unknownTarget',
+  'targetNotOffered',
   'missingEntityType',
   'missingAttribute',
   'invalidOperator',
   'invalidOperand',
+  'invalidPattern',
   'missingOption',
   'unusableOption',
+  'unusableDate',
   'incomplete',
 ] as const;
 
@@ -168,6 +175,19 @@ export type DescribeRuleInput = Readonly<{
   /** A stored or in-progress rule. Any shape; nothing here trusts it. */
   rule: unknown;
   codebook: Readonly<Codebook>;
+  /**
+   * What the rule set holding this rule may be about, when it is being read
+   * inside one.
+   *
+   * The protocol schema accepts an ego, node or edge rule in a filter's shape
+   * and then refuses some of them by WHERE the filter sits: an ego rule is
+   * degenerate inside a stage's node/edge filter, so the schema rejects it
+   * there and accepts it in skip logic. Which is which is a property of the
+   * rule set, not of the rule, so the set has to say — and a set that says
+   * nothing (a host printing a rule out of a validated protocol) constrains
+   * nothing.
+   */
+  targets?: readonly RuleTargetType[];
 }>;
 
 /**
@@ -295,6 +315,7 @@ const operandItems = (
 export function describeRule({
   rule,
   codebook,
+  targets,
 }: DescribeRuleInput): RuleDescription {
   const problems: RuleProblem[] = [];
 
@@ -321,6 +342,21 @@ export function describeRule({
   const target = isRuleTargetType(rule.type) ? rule.type : undefined;
   if (target === undefined) {
     problems.push({ code: 'unknownTarget', message: UNKNOWN_TARGET_MESSAGE });
+  }
+
+  // A rule that is about something this rule set is not allowed to ask about.
+  // The editor does not offer the target here, so the rule was authored
+  // elsewhere — and the protocol schema refuses it at the very end, naming a
+  // position in an array rather than the row the researcher can act on.
+  if (
+    target !== undefined &&
+    targets !== undefined &&
+    !targets.includes(target)
+  ) {
+    problems.push({
+      code: 'targetNotOffered',
+      message: TARGET_NOT_OFFERED_MESSAGES[target],
+    });
   }
 
   const entityTypeId =
@@ -462,6 +498,22 @@ export function describeRule({
     });
   }
 
+  // A `contains` operand is a regular expression, and one that will not
+  // compile is a rule that does not ask what it says: the interview swallows
+  // the compile error on purpose, so that one malformed pattern cannot break
+  // navigation, and then silently matches nothing — or, for "does not
+  // contain", everything — for every participant. Nothing downstream of the
+  // builder can report it, because a pattern that will not compile is still a
+  // string, which is all the protocol schema asks of one.
+  if (
+    matchesPattern &&
+    typeof options.value === 'string' &&
+    options.value !== '' &&
+    !isCompilablePattern(options.value)
+  ) {
+    problems.push({ code: 'invalidPattern', message: INVALID_PATTERN_MESSAGE });
+  }
+
   // The same codebook drift again, one step finer. The attribute is still
   // there and still option-bearing, and the operand is still an option value —
   // it is just no longer one this attribute offers, because a collaborator
@@ -488,6 +540,22 @@ export function describeRule({
     problems.push({
       code: 'unusableOption',
       message: unusableOptionMessage(unusable.describedAs),
+    });
+  }
+
+  // The same codebook drift once more, for the other attribute whose answers
+  // are a known set rather than anything of the right type: a datetime
+  // attribute records dates at one resolution and between two bounds, and a
+  // rule written before either was changed compares against a date no
+  // participant can now record.
+  const [dateProblem] =
+    attribute !== undefined && !attribute.missing && operatorId !== undefined
+      ? operandDateProblems(variables, attributeId, operatorId, options.value)
+      : [];
+  if (dateProblem !== undefined) {
+    problems.push({
+      code: 'unusableDate',
+      message: unusableDateMessage(dateProblem),
     });
   }
 
@@ -633,8 +701,37 @@ const INVALID_PRESENCE_OPERATOR_MESSAGE =
   'This rule asks whether an entity type is present, but uses an operator that cannot ask that. Edit or delete the rule.';
 const INVALID_OPERAND_MESSAGE =
   'This rule compares its attribute against a value of the wrong kind for the attribute’s type. Edit or delete the rule.';
+const INVALID_PATTERN_MESSAGE =
+  'This rule compares its attribute against a pattern that is not a valid regular expression, so the interview cannot apply the rule. Edit or delete the rule.';
 const MISSING_OPTION_MESSAGE =
   'This rule compares its attribute against an option that is no longer one of that attribute’s choices. Edit or delete the rule.';
+
+/**
+ * What a rule set that cannot be about this target says, in whole sentences.
+ *
+ * One per target rather than a sentence built around the name of one: the
+ * entity class is an internal token, and "This rule is about a ego" is what
+ * interpolating it produces.
+ */
+const TARGET_NOT_OFFERED_MESSAGES: Readonly<Record<RuleTargetType, string>> =
+  Object.freeze({
+    ego: 'This rule is about the ego, which these rules cannot ask about. Edit or delete the rule.',
+    node: 'This rule is about a node, which these rules cannot ask about. Edit or delete the rule.',
+    edge: 'This rule is about an edge, which these rules cannot ask about. Edit or delete the rule.',
+  });
+
+/** How a date attribute records an answer, in the researcher's own words. */
+const DATE_RESOLUTION_NAMES: Readonly<Record<DateFormat, string>> =
+  Object.freeze({
+    full: 'a full date',
+    month: 'a month and a year',
+    year: 'a year',
+  });
+
+const unusableDateMessage = (problem: OperandDateProblem): string =>
+  problem.kind === 'wrongResolution'
+    ? `This rule compares its attribute against “${problem.value}”, but the attribute is now answered with ${DATE_RESOLUTION_NAMES[problem.resolution]}, so the rule can never match. Edit or delete the rule.`
+    : `This rule compares its attribute against “${problem.value}”, which is outside the dates that attribute can record. Edit or delete the rule.`;
 const unusableOptionMessage = (describedAs: string) =>
   `This rule compares its attribute against ${describedAs}, which cannot be one of that attribute’s choices. Edit or delete the rule.`;
 const INCOMPLETE_MESSAGE =

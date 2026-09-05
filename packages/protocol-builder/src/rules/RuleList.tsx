@@ -11,6 +11,7 @@ import ArrayField, {
 import type { Codebook } from '@codaco/protocol-validation';
 
 import type { RuleDraft } from './rule.ts';
+import type { RuleTargetType } from './ruleCodebook.ts';
 import { describeRule } from './ruleDescription.ts';
 import RuleEditorDialog, { type RuleTypeOption } from './RuleEditorDialog.tsx';
 import RulePreview from './RulePreview.tsx';
@@ -29,7 +30,10 @@ const asRule = (item: Record<string, unknown> | undefined): RuleDraft => {
 };
 
 type RuleListItemProps = ArrayFieldItemProps<RuleDraft> &
-  Readonly<{ codebook: Readonly<Codebook> }>;
+  Readonly<{
+    codebook: Readonly<Codebook>;
+    allowedTargets: readonly RuleTargetType[];
+  }>;
 
 function RuleListItem({
   item,
@@ -45,6 +49,7 @@ function RuleListItem({
   disabled,
   readOnly,
   codebook,
+  allowedTargets,
 }: RuleListItemProps) {
   const rule = asRule(item);
   const textId = useId();
@@ -52,8 +57,8 @@ function RuleListItem({
   const deleteActionId = useId();
   const interactionDisabled = disabled || readOnly;
   const description = useMemo(
-    () => describeRule({ rule, codebook }),
-    [codebook, rule],
+    () => describeRule({ rule, codebook, targets: allowedTargets }),
+    [allowedTargets, codebook, rule],
   );
 
   // External editors own the active row while their dialog is open. Hiding it
@@ -153,7 +158,10 @@ type RuleEditorSession = Readonly<{
 }>;
 
 type RuleListEditorProps = ArrayFieldEditorProps<RuleDraft> &
-  Readonly<{ ruleTypes: readonly RuleTypeOption[] }>;
+  Readonly<{
+    ruleTypes: readonly RuleTypeOption[];
+    allowedTargets: readonly RuleTargetType[];
+  }>;
 
 function RuleListEditor({
   item,
@@ -162,6 +170,7 @@ function RuleListEditor({
   onCancel,
   getEditorTrigger,
   ruleTypes,
+  allowedTargets,
 }: RuleListEditorProps) {
   const [session, setSession] = useState<RuleEditorSession | null>(null);
 
@@ -200,6 +209,7 @@ function RuleListEditor({
       open={item !== undefined && session.open}
       seed={session.seed}
       ruleTypes={ruleTypes}
+      allowedTargets={allowedTargets}
       // `ArrayField` withdraws its save handler when the list stops being
       // editable, and this dialog may already be open when that happens.
       // Turning that absence into a call that does nothing told the researcher
@@ -222,6 +232,12 @@ export type RuleListProps = Readonly<{
   rules: readonly RuleDraft[];
   codebook: Readonly<Codebook>;
   ruleTypes: readonly RuleTypeOption[];
+  /**
+   * What a rule in this set may be about, which is narrower than what a rule
+   * can BE: a rule the set cannot hold is marked on its own row rather than
+   * left for the protocol schema to refuse.
+   */
+  allowedTargets: readonly RuleTargetType[];
   addButtonLabel: string;
   onChange: (rules: RuleDraft[]) => void;
   hasError?: boolean;
@@ -250,6 +266,7 @@ export default function RuleList({
   rules,
   codebook,
   ruleTypes,
+  allowedTargets,
   addButtonLabel,
   onChange,
   hasError = false,
@@ -262,17 +279,29 @@ export default function RuleList({
   const itemComponent = useMemo(
     () =>
       function BoundRuleListItem(props: ArrayFieldItemProps<RuleDraft>) {
-        return <RuleListItem {...props} codebook={codebook} />;
+        return (
+          <RuleListItem
+            {...props}
+            codebook={codebook}
+            allowedTargets={allowedTargets}
+          />
+        );
       },
-    [codebook],
+    [allowedTargets, codebook],
   );
 
   const editorComponent = useMemo(
     () =>
       function BoundRuleListEditor(props: ArrayFieldEditorProps<RuleDraft>) {
-        return <RuleListEditor {...props} ruleTypes={ruleTypes} />;
+        return (
+          <RuleListEditor
+            {...props}
+            ruleTypes={ruleTypes}
+            allowedTargets={allowedTargets}
+          />
+        );
       },
-    [ruleTypes],
+    [allowedTargets, ruleTypes],
   );
 
   return (

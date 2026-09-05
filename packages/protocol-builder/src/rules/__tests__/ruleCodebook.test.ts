@@ -8,6 +8,7 @@ import {
 
 import { operatorsForSubject, ruleVariableTypes } from '../operators.ts';
 import {
+  operandDateProblems,
   operandOptionProblems,
   ruleEntityTypeExists,
   ruleEntityTypeOptions,
@@ -177,6 +178,68 @@ describe('the date picker a rule’s operand inherits', () => {
       type: 'full',
     });
   });
+
+  /**
+   * The same picker read from the other side: a date a rule ALREADY holds,
+   * against the picker the attribute has now.
+   *
+   * The resolution and the bounds are ordinary edits to the variable, made
+   * long after the rule was written and by someone who cannot see it — and
+   * nothing else can catch the result. The operand table asks only that a
+   * date operand be text, the protocol schema asks the same, and the
+   * interview compares the operand against the stored answer verbatim.
+   */
+  describe('a date the rule already holds', () => {
+    it('reports one recorded at a resolution the attribute no longer uses', () => {
+      expect(
+        operandDateProblems(variables, 'born', 'EXACTLY', '2020-05'),
+      ).toEqual([
+        { kind: 'wrongResolution', value: '2020-05', resolution: 'year' },
+      ]);
+      // The other direction of the same retype: an attribute answered with a
+      // full date, holding a rule written when it recorded years.
+      expect(operandDateProblems(variables, 'seen', 'EXACTLY', '2020')).toEqual(
+        [{ kind: 'wrongResolution', value: '2020', resolution: 'full' }],
+      );
+    });
+
+    it('reports one outside the dates the attribute can record', () => {
+      expect(operandDateProblems(variables, 'born', 'EXACTLY', '1799')).toEqual(
+        [{ kind: 'outOfRange', value: '1799' }],
+      );
+      expect(operandDateProblems(variables, 'born', 'EXACTLY', '1811')).toEqual(
+        [{ kind: 'outOfRange', value: '1811' }],
+      );
+    });
+
+    it('says nothing about a date the attribute can still record', () => {
+      // Including both bounds themselves, which are dates the picker offers.
+      for (const value of ['1800', '1805', '1810']) {
+        expect(
+          operandDateProblems(variables, 'born', 'EXACTLY', value),
+        ).toEqual([]);
+      }
+      expect(
+        operandDateProblems(variables, 'seen', 'EXACTLY', '2020-05-14'),
+      ).toEqual([]);
+    });
+
+    it('says nothing about an operand that is not a date at all', () => {
+      // A pattern comparison's operand is a regular expression, which is text
+      // at any resolution — `.*` is not a date the picker has to be able to
+      // record, and reporting it would refuse a rule that works.
+      expect(operandDateProblems(variables, 'born', 'CONTAINS', '18')).toEqual(
+        [],
+      );
+      // A rule against an attribute that is not a date, and one whose operand
+      // has not been entered yet: unfinished, and reported as unfinished.
+      expect(operandDateProblems(variables, 'age', 'EXACTLY', 5)).toEqual([]);
+      expect(
+        operandDateProblems(variables, 'born', 'EXACTLY', undefined),
+      ).toEqual([]);
+      expect(operandDateProblems(variables, 'born', 'EXACTLY', '')).toEqual([]);
+    });
+  });
 });
 
 /**
@@ -269,6 +332,7 @@ describe('reading the codebook for a rule', () => {
       { value: 'age', label: 'Age', type: 'number', usable: true },
       { value: 'mood', label: 'Mood', type: 'categorical', usable: true },
       { value: 'note', label: 'Note', type: 'text', usable: true },
+      { value: 'born', label: 'Born', type: 'datetime', usable: true },
       { value: 'home', label: 'Home', type: 'layout', usable: false },
     ]);
   });

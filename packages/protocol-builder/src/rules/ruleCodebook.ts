@@ -16,6 +16,7 @@ import {
   isFilterOperator,
   isVariableType,
   operandDrawsOnOptions,
+  operandIsDate,
   operandRequirement,
   operatorLabel,
   operatorsAsOptions,
@@ -457,6 +458,98 @@ export const operandOptionProblems = (
     }
     return authored.has(item) ? [] : [{ kind: 'unknownOption', value: item }];
   });
+};
+
+/**
+ * What is wrong with a date a rule compares an attribute against.
+ *
+ * `wrongResolution` — the attribute no longer records dates at this precision,
+ * so no answer can ever equal the operand: a variable retyped from a full date
+ * to a year records `"2020"`, and a rule holding `"2020-05-14"` beside it
+ * compares against a string no participant can produce.
+ * `outOfRange` — the operand is a date of the right shape that the attribute's
+ * own picker cannot record, because its bounds have moved.
+ */
+export type OperandDateProblem =
+  | Readonly<{ kind: 'wrongResolution'; value: string; resolution: DateFormat }>
+  | Readonly<{ kind: 'outOfRange'; value: string }>;
+
+/**
+ * What an answer looks like at each resolution the schema has.
+ *
+ * A total mapping over `DateFormat`, so a resolution added to the schema
+ * arrives here as a typecheck failure rather than as a stored operand nothing
+ * checks.
+ */
+const DATE_RESOLUTION_PATTERNS: Readonly<Record<DateFormat, RegExp>> =
+  Object.freeze({
+    full: /^\d{4}-\d{2}-\d{2}$/,
+    month: /^\d{4}-\d{2}$/,
+    year: /^\d{4}$/,
+  });
+
+/**
+ * Two ISO date strings compared as the bound that would refuse one is.
+ *
+ * Truncated to the shorter of the two before comparing, which is what
+ * fresco-ui's own `min`/`max` validation does (`compareDateStrings`): a bound
+ * and an answer may be at different resolutions, and a year overlapping a
+ * full-date bound is inside it. Stated the same way here so a stored operand
+ * is reported by exactly the rule that would have refused it on entry.
+ */
+const compareDateStrings = (a: string, b: string): number => {
+  const length = Math.min(a.length, b.length);
+  const left = a.slice(0, length);
+  const right = b.slice(0, length);
+  if (left < right) return -1;
+  return left > right ? 1 : 0;
+};
+
+/**
+ * Everything wrong with the date this rule compares against.
+ *
+ * The companion to `operandOptionProblems`, for the other kind of attribute
+ * whose answers are a KNOWN set rather than anything of the right type: a
+ * datetime attribute records dates at one resolution, between two bounds, and
+ * both are ordinary edits to the variable — made in the codebook editor, long
+ * after the rule was written, by someone who cannot see the rule.
+ *
+ * Nothing else catches this. The operand table asks only that a date operand
+ * be text, the protocol schema asks the same, and the interview compares the
+ * operand against the stored answer verbatim — so a rule left holding
+ * `"2020-05-14"` against an attribute now answered `"2020"` reads perfectly
+ * and can never match again.
+ *
+ * Empty for every comparison whose operand is not a date at all — a pattern
+ * comparison against a datetime attribute is a regular expression — and for an
+ * operand that is not there yet, which is an unfinished rule reported as one.
+ */
+export const operandDateProblems = (
+  variables: Readonly<Variables>,
+  variableId: string | undefined,
+  operator: string,
+  value: unknown,
+): OperandDateProblem[] => {
+  const variableType = ruleVariableType(variables, variableId);
+  if (!operandIsDate(variableType, operator)) return [];
+  // A date operand that is not text at all is not a date to check against the
+  // picker; it is the wrong kind of value, which `isOperandValidForAttributeType`
+  // reports.
+  if (typeof value !== 'string' || value === '') return [];
+
+  const parameters = ruleVariableDateParameters(variables, variableId);
+  if (!DATE_RESOLUTION_PATTERNS[parameters.type].test(value)) {
+    return [{ kind: 'wrongResolution', value, resolution: parameters.type }];
+  }
+
+  const { min, max } = parameters;
+  if (min !== undefined && compareDateStrings(value, min) < 0) {
+    return [{ kind: 'outOfRange', value }];
+  }
+  if (max !== undefined && compareDateStrings(value, max) > 0) {
+    return [{ kind: 'outOfRange', value }];
+  }
+  return [];
 };
 
 /**

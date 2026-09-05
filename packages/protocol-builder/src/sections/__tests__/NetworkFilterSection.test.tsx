@@ -4,12 +4,13 @@ import { describe, expect, it, vi } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
-import type { StageType } from '@codaco/protocol-validation';
+import type { Codebook, StageType } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { useStageEditorController } from '../../controller.ts';
 import StageEditorShell from '../../form/StageEditorShell.tsx';
+import { ruleSetIssues, ruleSetTargets } from '../../rules/ruleSet.ts';
 import {
   createStageIdentity,
   type FinishRequest,
@@ -35,12 +36,16 @@ const personDefinition: SectionDoc = {
 const baseSections: Record<string, SectionDoc> = {
   [settingsSection]: { name: 'Filter editing', schemaVersion: 8 },
   [stageOrderSection]: { stages: ['stage-1'] },
+  [sectionId({ kind: 'codebookEgo' })]: {
+    variables: { egoName: { name: 'EgoName', type: 'text' } },
+  },
   [personSection]: personDefinition,
   [friendSection]: { name: 'Friend', color: 'edge-color-seq-3' },
   [bestSection]: { name: 'Best friend', color: 'edge-color-seq-4' },
 };
 
-const codebook = {
+const codebook: Codebook = {
+  ego: { variables: { egoName: { name: 'EgoName', type: 'text' } } },
   node: {
     person: {
       name: 'Person',
@@ -484,6 +489,66 @@ describe('rules that contradict the rest of the stage', () => {
     expect(
       screen.getByText('Filter rules hide configured values'),
     ).toBeInTheDocument();
+  });
+});
+
+/**
+ * A stage's node/edge filter cannot ask about the ego: the protocol schema
+ * refuses one there and accepts it in skip logic, because an ego rule inside a
+ * filter either keeps every entity or none. The editor already declines to
+ * OFFER an ego rule here, so a stored one arrived from a protocol authored
+ * elsewhere — and until the rule set said which targets it may HOLD, nothing
+ * on screen knew that the rule in front of the researcher was the problem.
+ */
+describe('a rule this filter cannot be about', () => {
+  const egoFilterFields: SectionDoc = {
+    ...alterFormFields,
+    filter: {
+      rules: [
+        {
+          id: 'rule-a',
+          type: 'ego',
+          options: {
+            attribute: 'egoName',
+            operator: 'EXACTLY',
+            value: 'Ada',
+          },
+        },
+      ],
+    },
+  };
+
+  it('marks a stored ego rule on its own row and refuses the stage', async () => {
+    const user = userEvent.setup();
+    const onFinish = vi.fn();
+    renderEditor(createSession({ onFinish, fields: egoFilterFields }));
+
+    expect(
+      await screen.findByText(
+        'This rule is about the ego, which these rules cannot ask about. Edit or delete the rule.',
+      ),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(outlineText()).toContain('Stage filterHas a problem'),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    expect(
+      await screen.findByText(
+        'Rule 1 cannot be used as it stands. Open it to fix it, or delete it.',
+      ),
+    ).toBeInTheDocument();
+    expect(onFinish).not.toHaveBeenCalled();
+  });
+
+  it('leaves the same rule alone in a rule set that may hold it', () => {
+    // The rule is not broken; it is in the wrong kind of rule set. Skip logic
+    // is the kind that may ask about the ego, and reporting it there would
+    // send the researcher to fix a rule the schema accepts.
+    expect(
+      ruleSetIssues(egoFilterFields.filter, codebook, ruleSetTargets('query')),
+    ).toEqual([]);
   });
 });
 

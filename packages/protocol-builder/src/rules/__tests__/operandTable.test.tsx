@@ -32,6 +32,7 @@ import {
 import type { RuleDraft } from '../rule.ts';
 import { isOperandValidForAttributeType } from '../ruleCodebook.ts';
 import RuleEditorDialog, { type RuleTypeOption } from '../RuleEditorDialog.tsx';
+import { ruleSetTargets } from '../ruleSet.ts';
 
 /**
  * One attribute of every type the schema has, so the sweep below covers the
@@ -147,6 +148,7 @@ function Editor({ onSave }: { onSave: (rule: RuleDraft) => void }) {
         open={open}
         seed={{ type: '' }}
         ruleTypes={RULE_TYPES}
+        allowedTargets={ruleSetTargets('filter')}
         onSave={(rule) => {
           onSave(rule);
           setOpen(false);

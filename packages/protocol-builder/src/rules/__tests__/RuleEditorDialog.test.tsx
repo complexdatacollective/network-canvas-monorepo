@@ -34,7 +34,7 @@ import RuleEditorDialog, {
   ruleDraftRefusal,
   type RuleTypeOption,
 } from '../RuleEditorDialog.tsx';
-import type { RuleSetValue } from '../ruleSet.ts';
+import { type RuleSetValue, ruleSetTargets } from '../ruleSet.ts';
 import { QueryRuleSetField } from '../RuleSetField.tsx';
 import { RULE_VALUE_FIELD } from '../RuleValueField.tsx';
 import { testCodebook } from './fixtures.ts';
@@ -84,6 +84,15 @@ const RULE_TYPES: readonly RuleTypeOption[] = [
   },
   { label: 'Ego - match one of the ego attributes.', value: 'ego' },
 ];
+
+/**
+ * The targets a skip-logic query may hold — the rule set this dialog is
+ * mounted from throughout this file, and every target the schema allows.
+ */
+const QUERY_TARGETS = ruleSetTargets('query');
+
+/** A network filter, which the schema does not let hold an ego rule. */
+const FILTER_TARGETS = ruleSetTargets('filter');
 
 const baseSections: Record<string, SectionDoc> = {
   [settingsSection]: { name: 'Rule editing', schemaVersion: 8 },
@@ -245,6 +254,7 @@ function StandaloneEditor({ layoutId }: { layoutId?: string }) {
         open={open}
         seed={{ type: '' }}
         ruleTypes={RULE_TYPES}
+        allowedTargets={QUERY_TARGETS}
         onSave={() => setOpen(false)}
         onCancel={() => setOpen(false)}
         {...(layoutId === undefined ? {} : { layoutId })}
@@ -287,6 +297,7 @@ function SpiedEditor({
         open={open}
         seed={seed}
         ruleTypes={RULE_TYPES}
+        allowedTargets={QUERY_TARGETS}
         onSave={(rule) => {
           onSave(rule);
           setOpen(false);
@@ -1210,6 +1221,33 @@ describe('a rule the codebook has moved out from under', () => {
         type: 'node',
         options: { type: 'person', attribute: 'age', operator: 'GREATER_THAN' },
       },
+      // Nothing about this rule is wrong; the rule set it is sitting in is
+      // one the schema does not let it sit in.
+      targetNotOffered: {
+        type: 'ego',
+        options: { attribute: 'egoName', operator: 'EXACTLY', value: 'Ada' },
+      },
+      // A comparison pattern that will not compile. The interview swallows
+      // the compile error on purpose, so nothing downstream reports it.
+      invalidPattern: {
+        type: 'node',
+        options: {
+          type: 'person',
+          attribute: 'note',
+          operator: 'CONTAINS',
+          value: '(unclosed',
+        },
+      },
+      // A full date against an attribute whose picker now records years.
+      unusableDate: {
+        type: 'node',
+        options: {
+          type: 'person',
+          attribute: 'born',
+          operator: 'EXACTLY',
+          value: '2020-05-14',
+        },
+      },
     };
 
     /** The controls this dialog names, which is where a refusal has to land. */
@@ -1225,10 +1263,14 @@ describe('a rule the codebook has moved out from under', () => {
       const rule = DRAFTS[code];
 
       expect(
-        describeRule({ rule, codebook: testCodebook }).problems[0]?.code,
+        describeRule({
+          rule,
+          codebook: testCodebook,
+          targets: FILTER_TARGETS,
+        }).problems[0]?.code,
       ).toBe(code);
 
-      const refusal = ruleDraftRefusal(rule, testCodebook);
+      const refusal = ruleDraftRefusal(rule, testCodebook, FILTER_TARGETS);
       const fields = Object.entries(refusal?.fieldErrors ?? {});
       expect(fields).toHaveLength(1);
       const [field, message] = fields[0]!;

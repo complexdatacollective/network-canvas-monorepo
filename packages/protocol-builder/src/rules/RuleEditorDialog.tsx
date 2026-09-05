@@ -11,7 +11,11 @@ import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Section from '@codaco/fresco-ui/Section';
-import type { Codebook, VariableType } from '@codaco/protocol-validation';
+import type {
+  Codebook,
+  DateFormat,
+  VariableType,
+} from '@codaco/protocol-validation';
 
 import { EntitySelectControl } from '../fields/EntitySelectField.tsx';
 import { VariablePickerControl } from '../fields/VariablePicker.tsx';
@@ -21,14 +25,12 @@ import DialogForm, {
 } from '../form/DialogForm.tsx';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { protocolAuthoringLinks } from '../interfaces/documentation.ts';
-import {
-  isFilterOperator,
-  operatorsWithRegExp,
-  type RuleOperatorOption,
-} from './operators.ts';
+import type { RuleOperatorOption } from './operators.ts';
 import { incompleteRulePart, type RuleDraft, type RulePart } from './rule.ts';
 import {
   isRuleTargetType,
+  type OperandDateProblem,
+  operandDateProblems,
   type OperandOptionProblem,
   operandOptionProblems,
   type RuleChoiceOption,
@@ -261,6 +263,26 @@ const staleRuleOptions = (
 };
 
 /**
+ * The dates this draft compares against that its attribute can no longer
+ * record. Asked of the whole draft for the same reason as the options above:
+ * which dates exist is a question about the ATTRIBUTE, read live.
+ */
+const staleRuleDates = (
+  codebook: Readonly<Codebook>,
+  rule: RuleDraft,
+): OperandDateProblem[] => {
+  const target = isRuleTargetType(rule.type) ? rule.type : undefined;
+  if (target === undefined) return [];
+  const variables = ruleVariables(codebook, target, draftString(rule, 'type'));
+  return operandDateProblems(
+    variables,
+    draftString(rule, 'attribute'),
+    draftString(rule, 'operator') ?? '',
+    rule.options?.value,
+  );
+};
+
+/**
  * An operand as it reads in the refusal. Quoted when it is text, so the reason
  * `"1"` was refused against the option whose value is `1` is legible.
  */
@@ -296,6 +318,42 @@ const staleOptionsMessage = (
   );
   return `This rule compares against ${asList(missing)}, which this attribute no longer offers. Choose from the options it does.`;
 };
+
+/** How a date attribute records an answer, in the researcher's own words. */
+const DATE_RESOLUTION_NAMES: Readonly<Record<DateFormat, string>> =
+  Object.freeze({
+    full: 'a full date',
+    month: 'a month and a year',
+    year: 'a year',
+  });
+
+/**
+ * Why a date operand is refused, in the voice of the control holding it.
+ *
+ * Two sentences, because the two problems send the researcher to different
+ * places: one says the attribute records a different KIND of date now, the
+ * other that this date is outside the range it records at all.
+ */
+const staleDatesMessage = (problems: readonly OperandDateProblem[]): string => {
+  const [problem] = problems;
+  if (problem === undefined) return INVALID_OPERAND_MESSAGE;
+  return problem.kind === 'wrongResolution'
+    ? `This attribute is now answered with ${DATE_RESOLUTION_NAMES[problem.resolution]}, so “${problem.value}” can never match it. Choose a date it can record.`
+    : `“${problem.value}” is outside the dates this attribute can record, so the rule can never match. Choose a date inside them.`;
+};
+
+/**
+ * What a rule set that cannot be about this target says, in whole sentences.
+ *
+ * One per target rather than a sentence built around the name of one: the
+ * entity class is an internal token, and interpolating it produces "a ego".
+ */
+const TARGET_NOT_OFFERED_MESSAGES: Readonly<Record<RuleTargetType, string>> =
+  Object.freeze({
+    ego: 'These rules cannot ask about the ego. Choose another target.',
+    node: 'These rules cannot ask about a node. Choose another target.',
+    edge: 'These rules cannot ask about an edge. Choose another target.',
+  });
 
 /** The control the researcher has to visit to supply each part of a rule. */
 const RULE_PART_FIELDS: Readonly<Record<RulePart, string>> = Object.freeze({
@@ -341,6 +399,15 @@ const RULE_PROBLEM_PLACEMENTS: Readonly<
     field: TARGET_FIELD,
     message: INCOMPLETE_RULE_MESSAGE,
   }),
+  // A target this rule set is not allowed to be about. The radio group already
+  // shows it as an option that cannot be chosen; this is what stops the rule
+  // being finished while it is still selected.
+  targetNotOffered: (rule) => ({
+    field: TARGET_FIELD,
+    message: isRuleTargetType(rule.type)
+      ? TARGET_NOT_OFFERED_MESSAGES[rule.type]
+      : INCOMPLETE_RULE_MESSAGE,
+  }),
   missingEntityType: (rule) =>
     rule.type === 'ego'
       ? { field: TARGET_FIELD, message: MISSING_EGO_MESSAGE }
@@ -365,6 +432,13 @@ const RULE_PROBLEM_PLACEMENTS: Readonly<
     field: RULE_VALUE_FIELD,
     message: INVALID_OPERAND_MESSAGE,
   }),
+  // A pattern operand the interview could not compile. It used to be checked
+  // here and nowhere else, which meant a stored rule holding one was refused
+  // only if the researcher happened to reopen that exact rule and submit it.
+  invalidPattern: () => ({
+    field: RULE_VALUE_FIELD,
+    message: INVALID_REG_EXP_MESSAGE,
+  }),
   // Both option problems name the VALUES they are about, which is the one
   // thing the row's summary cannot do from a list. Whether an operand is still
   // one of its attribute's options is the editor's question to ask at all: the
@@ -380,6 +454,13 @@ const RULE_PROBLEM_PLACEMENTS: Readonly<
     field: RULE_VALUE_FIELD,
     message: staleOptionsMessage(staleRuleOptions(codebook, rule)),
   }),
+  // The same question asked of a date: which dates an attribute can record is
+  // a property of ITS picker, so the refusal names the date and says what the
+  // attribute records now.
+  unusableDate: (rule, codebook) => ({
+    field: RULE_VALUE_FIELD,
+    message: staleDatesMessage(staleRuleDates(codebook, rule)),
+  }),
   // Reported by the control that holds the gap rather than as a sentence about
   // the rule that names no control at all.
   incomplete: (rule) => ({
@@ -394,30 +475,28 @@ const RULE_PROBLEM_PLACEMENTS: Readonly<
  *
  * Pure, and separate from the component, because it is the whole of what
  * "Finish and Close" decides: the dialog only hands it the values the fields
- * currently hold and the codebook the session holds right now.
+ * currently hold, the codebook the session holds right now, and the targets
+ * the rule set it belongs to may be about.
+ *
+ * Everything it decides comes from `describeRule`, which is the whole point:
+ * the row, the rule-set field and this dialog read one description, so a rule
+ * the list marks as broken cannot be finished from the editor holding it. A
+ * pattern that will not compile used to be checked here and nowhere else, so
+ * a stored rule carrying one was refused only if the researcher happened to
+ * reopen that exact rule.
  */
 export const ruleDraftRefusal = (
   rule: RuleDraft,
   codebook: Readonly<Codebook>,
+  allowedTargets: readonly RuleTargetType[],
 ): DialogFormErrors | undefined => {
-  const operator = rule.options?.operator;
-
-  // A `contains` operand is a regular expression, and one that does not
-  // compile matches nothing at all. The one check the rule description cannot
-  // make: a pattern that will not compile is still a string, which is all the
-  // protocol schema asks of it — and a rule the schema accepts is not one the
-  // description reports.
-  if (
-    isFilterOperator(operator) &&
-    operatorsWithRegExp.has(operator) &&
-    !isValidRegExp(rule.options?.value)
-  ) {
-    return { fieldErrors: { [RULE_VALUE_FIELD]: INVALID_REG_EXP_MESSAGE } };
-  }
-
   // One refusal, however many problems the rule has: the dialog focuses the
   // first control it names, and the researcher fixes them one at a time.
-  const [problem] = describeRule({ rule, codebook }).problems;
+  const [problem] = describeRule({
+    rule,
+    codebook,
+    targets: allowedTargets,
+  }).problems;
   if (problem === undefined) return undefined;
 
   const { field, message } = RULE_PROBLEM_PLACEMENTS[problem.code](
@@ -738,6 +817,16 @@ export type RuleEditorDialogProps = Readonly<{
   seed: RuleDraft;
   ruleTypes: readonly RuleTypeOption[];
   /**
+   * What a rule in the set this was opened from may be ABOUT.
+   *
+   * Narrower than the schema's rule shapes and wider than `ruleTypes`: a set
+   * that does not offer to BUILD edge rules is still one the schema lets an
+   * edge rule sit in, while an ego rule inside a stage's node/edge filter is
+   * one it refuses. Only the second is a refusal, so the two lists are
+   * separate.
+   */
+  allowedTargets: readonly RuleTargetType[];
+  /**
    * Takes the finished rule, or REFUSES it.
    *
    * A caller that cannot accept the rule right now — a list that has stopped
@@ -776,6 +865,7 @@ export default function RuleEditorDialog({
   open,
   seed,
   ruleTypes,
+  allowedTargets,
   onSave,
   onCancel,
   finalFocus,
@@ -813,9 +903,16 @@ export default function RuleEditorDialog({
    * which is what let a rule pointed at a deleted entity type be saved from
    * here and marked broken by the row a moment later.
    */
+  const targetsRef = useRef(allowedTargets);
+  targetsRef.current = allowedTargets;
+
   const validate = useCallback(
     (values: Record<string, FieldValue>): DialogFormErrors | undefined =>
-      ruleDraftRefusal(ruleDraftFromValues(values), codebookRef.current),
+      ruleDraftRefusal(
+        ruleDraftFromValues(values),
+        codebookRef.current,
+        targetsRef.current,
+      ),
     [],
   );
 
@@ -882,17 +979,6 @@ export default function RuleEditorDialog({
       />
     </DialogForm>
   );
-}
-
-function isValidRegExp(value: unknown): boolean {
-  if (typeof value !== 'string') return false;
-  try {
-    // eslint-disable-next-line no-new -- compiling it IS the check
-    new RegExp(value);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 const INVALID_REG_EXP_MESSAGE =

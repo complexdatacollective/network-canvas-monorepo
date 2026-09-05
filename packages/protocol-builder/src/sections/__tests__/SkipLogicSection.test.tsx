@@ -50,6 +50,17 @@ const finalStage: SectionDoc = {
  */
 const personVariables = {
   age: { name: 'Age', type: 'number' },
+  // Text, because the comparison operators whose operand is a regular
+  // expression are offered against it.
+  note: { name: 'Note', type: 'text' },
+  // A date recorded to the day, so a rule can hold one and the variable can
+  // then be retyped to record something coarser.
+  born: {
+    name: 'Born',
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters: { type: 'full' },
+  },
   mood: {
     name: 'Mood',
     type: 'categorical',
@@ -575,6 +586,137 @@ describe('a rule set the researcher cannot save', () => {
       'aria-invalid',
       'true',
     );
+    expect(onFinish).not.toHaveBeenCalled();
+  });
+
+  /**
+   * A comparison pattern that will not compile, which nothing outside the
+   * builder can report: the protocol schema asks only that the operand be a
+   * string, and the interview swallows the compile error on purpose so that
+   * one malformed rule cannot break navigation — after which the rule matches
+   * nothing (or, for "does not contain", everything) for every participant.
+   * It used to be caught only by reopening that exact rule and submitting it.
+   */
+  it('refuses a rule whose comparison pattern will not compile', async () => {
+    const user = setupUser();
+    const onFinish = vi.fn();
+    renderEditor(
+      createSession({
+        onFinish,
+        fields: {
+          label: 'Welcome',
+          title: 'Hello',
+          items: [],
+          skipLogic: {
+            action: 'SHOW',
+            filter: {
+              rules: [
+                {
+                  id: 'rule-a',
+                  type: 'node',
+                  options: {
+                    type: 'person',
+                    attribute: 'note',
+                    operator: 'CONTAINS',
+                    // An unterminated character class.
+                    value: '[unclosed',
+                  },
+                },
+              ],
+            },
+          },
+        },
+      }),
+    );
+
+    expect(
+      await screen.findByText(
+        'This rule compares its attribute against a pattern that is not a valid regular expression, so the interview cannot apply the rule. Edit or delete the rule.',
+      ),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(outlineText()?.[2]).toBe('Skip logicHas a problem'),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    expect(
+      await screen.findByText(
+        'Rule 1 cannot be used as it stands. Open it to fix it, or delete it.',
+      ),
+    ).toBeInTheDocument();
+    expect(onFinish).not.toHaveBeenCalled();
+  });
+
+  /**
+   * A datetime attribute records answers at ONE resolution, and retyping it is
+   * an ordinary codebook edit made by someone who cannot see this rule. The
+   * operand is still a string, still the shape the schema and the operand
+   * table ask for, and can never equal an answer again.
+   */
+  it('refuses a rule whose date the attribute can no longer record', async () => {
+    const user = setupUser();
+    const onFinish = vi.fn();
+    const session = createSession({
+      onFinish,
+      fields: {
+        label: 'Welcome',
+        title: 'Hello',
+        items: [],
+        skipLogic: {
+          action: 'SHOW',
+          filter: {
+            rules: [
+              {
+                id: 'rule-a',
+                type: 'node',
+                options: {
+                  type: 'person',
+                  attribute: 'born',
+                  operator: 'EXACTLY',
+                  value: '2020-05-14',
+                },
+              },
+            ],
+          },
+        },
+      },
+    });
+    renderEditor(session);
+    await waitFor(() => expect(outlineText()?.[2]).toBe('Skip logicFinished'));
+
+    act(() => {
+      session.receiveAuthoritativeUpdate({
+        // The attribute is still a datetime and the operator is still legal
+        // for one. Only the dates it records have changed.
+        protocolSections: personWith({
+          born: {
+            name: 'Born',
+            type: 'datetime',
+            component: 'DatePicker',
+            parameters: { type: 'year' },
+          },
+        }),
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+    });
+
+    expect(
+      await screen.findByText(
+        'This rule compares its attribute against “2020-05-14”, but the attribute is now answered with a year, so the rule can never match. Edit or delete the rule.',
+      ),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(outlineText()?.[2]).toBe('Skip logicHas a problem'),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    expect(
+      await screen.findByText(
+        "Rule 1 no longer works with this protocol's codebook. Open it to fix it, or delete it.",
+      ),
+    ).toBeInTheDocument();
     expect(onFinish).not.toHaveBeenCalled();
   });
 

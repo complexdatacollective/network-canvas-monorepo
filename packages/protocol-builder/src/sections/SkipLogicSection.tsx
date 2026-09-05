@@ -86,7 +86,7 @@ export default function SkipLogicSection({
   copy,
 }: SkipLogicSectionProps) {
   const words = { ...DEFAULT_COPY, ...copy };
-  const rulesValidation = useRuleSetValidation(SKIP_LOGIC_RULES_FIELD);
+  const rulesValidation = useRuleSetValidation(SKIP_LOGIC_RULES_FIELD, 'query');
 
   return (
     <BuilderSection

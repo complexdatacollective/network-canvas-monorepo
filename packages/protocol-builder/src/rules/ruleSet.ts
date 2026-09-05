@@ -1,6 +1,7 @@
 import type { Codebook } from '@codaco/protocol-validation';
 
 import type { RuleDraft } from './rule.ts';
+import type { RuleTargetType } from './ruleCodebook.ts';
 import {
   describeRule,
   type RuleProblem,
@@ -9,6 +10,41 @@ import {
 
 /** How several rules in one set combine. */
 export type RuleSetJoin = 'AND' | 'OR';
+
+/**
+ * What a rule set is for.
+ *
+ * A network filter narrows the entities a stage works on; a query asks a
+ * yes/no question about the whole network.
+ */
+export type RuleSetVariant = 'filter' | 'query';
+
+/**
+ * What a rule set of each kind may be ABOUT.
+ *
+ * The protocol schema's own rule, and the reason this is a property of the set
+ * rather than of the rule: `validateFilterRules` is called with ego rules
+ * refused for a stage's node/edge filter and allowed for skip logic, because
+ * an ego rule inside a filter is degenerate at runtime — it either keeps every
+ * entity or none. The editor already declines to OFFER an ego rule in a
+ * filter; this is what lets a rule that arrived some other way be reported
+ * rather than saved and refused by the schema with no row to point at.
+ *
+ * Which targets a set builds and which it may HOLD are different questions,
+ * and only this one belongs here: a rule set that does not offer edge rules is
+ * still a rule set the schema lets one sit in, so an edge rule in one is the
+ * researcher's own rule and not a problem to report.
+ */
+const RULE_SET_TARGETS: Readonly<
+  Record<RuleSetVariant, readonly RuleTargetType[]>
+> = Object.freeze({
+  filter: Object.freeze(['node', 'edge'] as const),
+  query: Object.freeze(['node', 'edge', 'ego'] as const),
+});
+
+export const ruleSetTargets = (
+  variant: RuleSetVariant,
+): readonly RuleTargetType[] => RULE_SET_TARGETS[variant];
 
 /**
  * The stored shape of a filter or skip-logic field: one opaque object value
@@ -86,18 +122,21 @@ export const ruleSetProblem = (value: unknown): string | undefined => {
  * Which sentence the FIELD summarises a problem with.
  *
  * `codebook` — the rule was finished, and the protocol moved out from under
- * it. `unfinished` — the rule was never completed, whichever editor left it
- * that way.
+ * it. `unusable` — the rule is exactly as it was written and cannot be applied
+ * where it is, which is nothing to do with the codebook: an ego rule inside a
+ * stage filter, or a comparison pattern that will not compile. `unfinished` —
+ * the rule was never completed, whichever editor left it that way.
  */
-export type RuleProblemSummary = 'codebook' | 'unfinished';
+export type RuleProblemSummary = 'codebook' | 'unusable' | 'unfinished';
 
 /**
  * What the editor makes of each thing that can be wrong with a rule.
  *
  * EVERY problem `describeRule` can find is shown on the rule's own row and
  * refuses the stage save. Nothing is filtered out, so the only decision left
- * per code is which of the two sentences above summarises it — and this record
- * cannot compile without a decision for every member of `RULE_PROBLEM_CODES`.
+ * per code is which of the three sentences above summarises it — and this
+ * record cannot compile without a decision for every member of
+ * `RULE_PROBLEM_CODES`.
  *
  * It replaces a hand-written list of the codes worth reporting, which had
  * missed `incomplete` and `unknownTarget`: an imported rule whose
@@ -115,12 +154,15 @@ const RULE_PROBLEM_SUMMARIES: Readonly<
   Record<RuleProblemCode, RuleProblemSummary>
 > = Object.freeze({
   unknownTarget: 'unfinished',
+  targetNotOffered: 'unusable',
   missingEntityType: 'codebook',
   missingAttribute: 'codebook',
   invalidOperator: 'codebook',
   invalidOperand: 'codebook',
+  invalidPattern: 'unusable',
   missingOption: 'codebook',
   unusableOption: 'codebook',
+  unusableDate: 'codebook',
   incomplete: 'unfinished',
 });
 
@@ -149,9 +191,10 @@ export type RuleSetIssue = Readonly<{
 export const ruleSetIssues = (
   value: unknown,
   codebook: Readonly<Codebook>,
+  targets: readonly RuleTargetType[],
 ): RuleSetIssue[] =>
   ruleSetRules(value).flatMap<RuleSetIssue>((rule, index) => {
-    const { problems } = describeRule({ rule, codebook });
+    const { problems } = describeRule({ rule, codebook, targets });
     return problems.map((problem) => ({
       position: index + 1,
       message: problem.message,
@@ -168,11 +211,12 @@ export const ruleSetIssues = (
 export const ruleSetValidationMessage = (
   value: unknown,
   codebook: Readonly<Codebook>,
+  targets: readonly RuleTargetType[],
 ): string | undefined => {
   const shape = ruleSetProblem(value);
   if (shape !== undefined) return shape;
 
-  const issues = ruleSetIssues(value, codebook);
+  const issues = ruleSetIssues(value, codebook, targets);
   const first = issues[0];
   if (first === undefined) return undefined;
   // Counted by ROW, not by problem. One rule can carry several — losing its
@@ -180,16 +224,11 @@ export const ruleSetValidationMessage = (
   // so a count of problems tells the researcher to open two rules when there
   // is only one to open.
   const brokenRules = new Set(issues.map((issue) => issue.position));
-  // A set whose every problem is an unfinished rule is described as one. Any
-  // codebook drift among them takes the sentence over, because that is the
-  // half the researcher cannot work out for themselves: a rule they left
-  // half-written is one they know about, and a rule a collaborator broke
-  // under them is not.
-  const summary: RuleProblemSummary = issues.every(
-    (issue) => issue.summary === 'unfinished',
-  )
-    ? 'unfinished'
-    : 'codebook';
+  const summary = issues.reduce<RuleProblemSummary>(
+    (worst, issue) =>
+      SUMMARY_RANK[issue.summary] < SUMMARY_RANK[worst] ? issue.summary : worst,
+    'unfinished',
+  );
   const sentences = SUMMARY_SENTENCES[summary];
   return brokenRules.size === 1
     ? sentences.one(first.position)
@@ -202,6 +241,18 @@ export const ruleSetValidationMessage = (
  * type", "an attribute", "an operator") belongs on the marked rule itself,
  * where the researcher is looking when they open it.
  */
+/**
+ * Which of several kinds of problem the set's one sentence describes.
+ *
+ * In this order because it is the order of what the researcher cannot work out
+ * for themselves: a rule a collaborator broke under them first, then a rule
+ * that cannot be applied as it stands, then a rule they left half-written and
+ * already know about. A total mapping, so a summary added without a place in
+ * that order fails to compile rather than silently sorting last.
+ */
+const SUMMARY_RANK: Readonly<Record<RuleProblemSummary, number>> =
+  Object.freeze({ codebook: 0, unusable: 1, unfinished: 2 });
+
 const SUMMARY_SENTENCES: Readonly<
   Record<
     RuleProblemSummary,
@@ -211,6 +262,12 @@ const SUMMARY_SENTENCES: Readonly<
     }>
   >
 > = Object.freeze({
+  unusable: {
+    one: (position) =>
+      `Rule ${position} cannot be used as it stands. Open it to fix it, or delete it.`,
+    several: (count) =>
+      `${count} of these rules cannot be used as they stand. Open each marked rule to fix it, or delete it.`,
+  },
   codebook: {
     one: (position) =>
       `Rule ${position} no longer works with this protocol's codebook. Open it to fix it, or delete it.`,

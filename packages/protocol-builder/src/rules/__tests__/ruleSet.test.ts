@@ -10,11 +10,22 @@ import {
   asRuleSetValue,
   ruleSetIssues,
   ruleSetProblem,
+  ruleSetTargets,
   ruleSetValidationMessage,
 } from '../ruleSet.ts';
 import { testCodebook } from './fixtures.ts';
 
 const codebook = testCodebook;
+
+/**
+ * A skip-logic query, which may hold every target the schema allows — so
+ * these are tests about the rules themselves. Which targets a set of the
+ * other kind allows has its own tests, and its own problem code.
+ */
+const targets = ruleSetTargets('query');
+
+/** A network filter, which the schema does not let hold an ego rule. */
+const filterTargets = ruleSetTargets('filter');
 
 const presenceRule = (id: string) => ({
   id,
@@ -81,7 +92,9 @@ describe('ruleSetProblem', () => {
 
 describe('ruleSetIssues', () => {
   it('finds nothing wrong with rules the codebook accounts for', () => {
-    expect(ruleSetIssues({ rules: [presenceRule('a')] }, codebook)).toEqual([]);
+    expect(
+      ruleSetIssues({ rules: [presenceRule('a')] }, codebook, targets),
+    ).toEqual([]);
   });
 
   it('names the position of a rule whose attribute was deleted', () => {
@@ -91,6 +104,7 @@ describe('ruleSetIssues', () => {
         rules: [presenceRule('a'), danglingAttributeRule('b')],
       },
       codebook,
+      targets,
     );
 
     expect(issues).toEqual([
@@ -114,6 +128,7 @@ describe('ruleSetIssues', () => {
       ruleSetIssues(
         { rules: [{ id: 'a', type: 'node', options: { type: 'person' } }] },
         codebook,
+        targets,
       ),
     ).toEqual([
       {
@@ -197,6 +212,38 @@ const RULE_BY_PROBLEM: Readonly<Record<RuleProblemCode, RuleDraft>> =
       type: 'node',
       options: { type: 'person', attribute: 'age', operator: 'EXACTLY' },
     },
+    // Nothing about this rule is wrong; where it is sitting is. A stage's
+    // node/edge filter cannot ask about the ego, and the protocol schema
+    // refuses one there.
+    targetNotOffered: {
+      id: 'a',
+      type: 'ego',
+      options: { attribute: 'egoName', operator: 'EXACTLY', value: 'Ada' },
+    },
+    // A comparison pattern the interview cannot compile. The schema accepts
+    // it — an uncompilable pattern is still a string — and the interview
+    // swallows the compile error, so this is the only place it is caught.
+    invalidPattern: {
+      id: 'a',
+      type: 'node',
+      options: {
+        type: 'person',
+        attribute: 'note',
+        operator: 'CONTAINS',
+        value: '(unclosed',
+      },
+    },
+    // A date recorded the way the attribute used to be answered.
+    unusableDate: {
+      id: 'a',
+      type: 'node',
+      options: {
+        type: 'person',
+        attribute: 'born',
+        operator: 'EXACTLY',
+        value: '2020-05-14',
+      },
+    },
   });
 
 /**
@@ -215,28 +262,35 @@ describe('every problem a rule can have', () => {
     );
   });
 
+  // Read as a network filter, which is the narrower of the two rule sets:
+  // every rule below is about a node except the one that is about the ego,
+  // and it is the SET that makes that one a problem.
   it.each(RULE_PROBLEM_CODES)('is reported and refused: %s', (code) => {
     const rule = RULE_BY_PROBLEM[code];
-    const problem = describeRule({ rule, codebook }).problems.find(
-      (candidate) => candidate.code === code,
-    );
+    const problem = describeRule({
+      rule,
+      codebook,
+      targets: filterTargets,
+    }).problems.find((candidate) => candidate.code === code);
     // The fixture's own proof: a rule that stopped producing this problem
     // would otherwise pass the two assertions below by having no problem at
     // all.
     expect(problem).toBeDefined();
 
-    expect(ruleSetIssues({ rules: [rule] }, codebook)).toContainEqual(
+    expect(
+      ruleSetIssues({ rules: [rule] }, codebook, filterTargets),
+    ).toContainEqual(
       expect.objectContaining({ position: 1, message: problem?.message }),
     );
-    expect(ruleSetValidationMessage({ rules: [rule] }, codebook)).toEqual(
-      expect.any(String),
-    );
+    expect(
+      ruleSetValidationMessage({ rules: [rule] }, codebook, filterTargets),
+    ).toEqual(expect.any(String));
   });
 });
 
 describe('ruleSetValidationMessage', () => {
   it('reports the shape problem before looking at the codebook', () => {
-    expect(ruleSetValidationMessage({ rules: [] }, codebook)).toBe(
+    expect(ruleSetValidationMessage({ rules: [] }, codebook, targets)).toBe(
       'Please create at least one rule.',
     );
   });
@@ -246,6 +300,7 @@ describe('ruleSetValidationMessage', () => {
       ruleSetValidationMessage(
         { join: 'OR', rules: [presenceRule('a'), danglingAttributeRule('b')] },
         codebook,
+        targets,
       ),
     ).toBe(
       "Rule 2 no longer works with this protocol's codebook. Open it to fix it, or delete it.",
@@ -260,6 +315,7 @@ describe('ruleSetValidationMessage', () => {
           rules: [danglingAttributeRule('a'), danglingAttributeRule('b')],
         },
         codebook,
+        targets,
       ),
     ).toBe(
       "2 of these rules no longer work with this protocol's codebook. Open each marked rule to fix it, or delete it.",
@@ -279,12 +335,16 @@ describe('ruleSetValidationMessage', () => {
         value: 30,
       },
     };
-    expect(ruleSetIssues({ rules: [orphanedRule] }, codebook)).toEqual([
-      expect.objectContaining({ position: 1 }),
-      expect.objectContaining({ position: 1 }),
-    ]);
+    expect(ruleSetIssues({ rules: [orphanedRule] }, codebook, targets)).toEqual(
+      [
+        expect.objectContaining({ position: 1 }),
+        expect.objectContaining({ position: 1 }),
+      ],
+    );
 
-    expect(ruleSetValidationMessage({ rules: [orphanedRule] }, codebook)).toBe(
+    expect(
+      ruleSetValidationMessage({ rules: [orphanedRule] }, codebook, targets),
+    ).toBe(
       "Rule 1 no longer works with this protocol's codebook. Open it to fix it, or delete it.",
     );
   });
@@ -310,6 +370,7 @@ describe('ruleSetValidationMessage', () => {
           ],
         },
         codebook,
+        targets,
       ),
     ).toBe(
       "Rule 1 no longer works with this protocol's codebook. Open it to fix it, or delete it.",
@@ -337,6 +398,7 @@ describe('ruleSetValidationMessage', () => {
           ],
         },
         codebook,
+        targets,
       ),
     ).toBe(
       "Rule 1 no longer works with this protocol's codebook. Open it to fix it, or delete it.",
@@ -363,6 +425,7 @@ describe('ruleSetValidationMessage', () => {
           ],
         },
         codebook,
+        targets,
       ),
     ).toBe(
       'Rule 1 is not finished. Open it to fill in every part, or delete it.',
@@ -379,6 +442,7 @@ describe('ruleSetValidationMessage', () => {
       ruleSetValidationMessage(
         { join: 'AND', rules: [unfinished('a'), unfinished('b')] },
         codebook,
+        targets,
       ),
     ).toBe(
       '2 of these rules are not finished. Open each marked rule to fill in every part, or delete it.',
@@ -406,6 +470,7 @@ describe('ruleSetValidationMessage', () => {
           ],
         },
         codebook,
+        targets,
       ),
     ).toBe(
       "2 of these rules no longer work with this protocol's codebook. Open each marked rule to fix it, or delete it.",
@@ -414,7 +479,11 @@ describe('ruleSetValidationMessage', () => {
 
   it('passes a healthy rule set', () => {
     expect(
-      ruleSetValidationMessage({ rules: [presenceRule('a')] }, codebook),
+      ruleSetValidationMessage(
+        { rules: [presenceRule('a')] },
+        codebook,
+        targets,
+      ),
     ).toBeUndefined();
   });
 });

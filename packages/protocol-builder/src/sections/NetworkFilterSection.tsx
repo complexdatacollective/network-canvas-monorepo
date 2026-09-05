@@ -93,7 +93,7 @@ export default function NetworkFilterSection({
   const words = { ...DEFAULT_COPY[subject], ...copy };
   const filter = useStageValue(FILTER_FIELD);
   const prompts = useStageValue('prompts');
-  const rulesValidation = useRuleSetValidation(FILTER_FIELD);
+  const rulesValidation = useRuleSetValidation(FILTER_FIELD, 'filter');
 
   const configuredEdgeTypes = useMemo(
     () => promptEdgeTypes(prompts),

@@ -121,6 +121,30 @@ const operatorsOfKind = (
 export const operatorsWithRegExp: ReadonlySet<FilterOperator> =
   operatorsOfKind('string');
 
+/**
+ * Whether a pattern operand is one the interview could compile.
+ *
+ * Asked here rather than only where a pattern is entered, because the
+ * interview deliberately never asks: `safeRegExp` in `@codaco/network-query`
+ * swallows the compile error so that one malformed rule cannot break
+ * navigation, and an uncompilable pattern then quietly matches nothing (or,
+ * for `does not contain`, everything) for every participant. Authoring is the
+ * only place it can be caught, so it is caught wherever a rule is read rather
+ * than only when its own dialog is submitted.
+ *
+ * Compiled with no flags, exactly as the runtime compiles it.
+ */
+export const isCompilablePattern = (value: unknown): boolean => {
+  if (typeof value !== 'string') return false;
+  try {
+    // eslint-disable-next-line no-new -- compiling it IS the check
+    new RegExp(value);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 /** Operators whose operand counts selected options rather than comparing one. */
 export const operatorsWithOptionCount: ReadonlySet<FilterOperator> =
   operatorsOfKind('integer');
@@ -461,6 +485,30 @@ export const operandDrawsOnOptions = (
   return (
     requirement.control === 'option' || requirement.control === 'optionList'
   );
+};
+
+/**
+ * Whether this comparison's operand is a DATE — one recorded the way the
+ * attribute's own picker records dates — rather than text that happens to look
+ * like one.
+ *
+ * Read off the same operand table as `operandDrawsOnOptions`, and for the same
+ * reason: the comparisons whose operand has to BE a date are exactly the ones
+ * the editor offers a date picker for. A pattern comparison against a datetime
+ * attribute is not one of them — its operand is a regular expression, which is
+ * text at any resolution.
+ *
+ * Only the fact is stated here. WHICH dates the attribute can record is a
+ * question about the codebook, and this module deliberately knows nothing
+ * about one; `operandDateProblems` in `ruleCodebook.ts` asks it.
+ */
+export const operandIsDate = (
+  variableType: VariableType | undefined,
+  operator: unknown,
+): boolean => {
+  const requirement = operandRequirement(variableType, operator);
+  if (requirement === undefined || requirement.kind === 'none') return false;
+  return requirement.control === 'date';
 };
 
 /**

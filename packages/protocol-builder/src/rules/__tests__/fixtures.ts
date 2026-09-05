@@ -25,6 +25,16 @@ export const testCodebook: Readonly<Codebook> = Object.freeze({
           ],
         },
         note: { name: 'Note', type: 'text' },
+        // A date attribute whose picker records years, between two bounds:
+        // the two things a rule's date operand has to still agree with, and
+        // both of them ordinary edits to the variable long after a rule was
+        // written against it.
+        born: {
+          name: 'Born',
+          type: 'datetime',
+          component: 'DatePicker',
+          parameters: { type: 'year', min: '1800', max: '1810' },
+        },
         // Answered with a point on the sociogram, which no rule can compare
         // against: an attribute the codebook still describes and no rule can
         // be built on.
