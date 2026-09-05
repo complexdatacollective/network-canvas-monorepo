@@ -106,7 +106,10 @@ quoted as the option chosen.
     rather than the single line with messy connections … a hierarchical
     graph layout similar to what we implemented for the family pedigree
     layout." Architect's timeline is a layered graph, not a list with
-    arrows.
+    arrows. Refined on the first graph draft: "have the optional modules
+    either side of the center line, with the otherwise line passing straight
+    down the middle." The default path is the spine; outcomes open to either
+    side of it.
 
 Technical positions recorded without a product question are marked
 "(recommendation)" where they appear below.
@@ -546,15 +549,22 @@ compatibility boundary.
 
 Architect's timeline becomes a hierarchical graph drawn top to bottom
 (decision 14). Each sequence is laid out with the same layered method the
-Family Pedigree interface uses: every item is assigned a layer by longest
-path from the sequence's first item, items are ordered within a layer by
-document order so the fall-through path stays in one column and branches
-open to its right, an edge that skips layers gets a placeholder in each
-skipped layer so it is routed around the items it bypasses rather than
-across them, and coordinates are assigned by centring each item under the
-items that lead to it. A group is one node of its parent's graph whose box
-contains its own layout, so a group's contents are visibly inside it and
-move with it. The illustration in §17 shows the intended shape; the rules
+Family Pedigree interface uses, with one rule that is specific to
+interviews: **the default path is the spine.** Starting from the sequence's
+first item and following each item's default edge (a stage's fall-through, a
+group's exit, a decision point's "otherwise") traces the route the interview
+takes when nothing diverts it; those items sit on one centre line. Every
+item is assigned a layer by longest path from the first item. A decision
+point's outcomes open to either side of its own lane, alternating left,
+right, left in outcome order, and an item that is not on the spine stays in
+the lane of whatever leads to it until it rejoins. An edge that skips layers
+gets a placeholder in each skipped layer, so the "otherwise" edge of a
+decision point runs straight down the middle between the modules it
+bypasses rather than across them, and a skip-this-stage edge passes beside
+the stage it skips. Within a layer the spine item is centred on the centre
+line and side items pack outward from it, nearest lane first. A group is one
+node of its parent's graph whose box contains its own layout with its own
+spine, so a group's contents are visibly inside it and move with it. The illustration in §17 shows the intended shape; the rules
 are:
 
 - **Stages** are nodes with the document-order number, the label, and the
@@ -891,60 +901,59 @@ stage, with `otherwise: { kind: 'next' }`.
 
 ## 17. Timeline illustration
 
-The Architect timeline for the example above, laid out as the layered graph
-§12 describes. Stages carry their document-order number; each sequence's
-fall-through path runs down one column and branches open to the right; the
-"otherwise" edge from Substance use is routed around the two modules rather
-than through them; groups are boxes containing their own layout. The
-interactive mock-up that accompanies this spec renders the same protocol.
+The Architect timeline for the example above, laid out as §12 describes.
+The default path is the centre line: Introduction, About you, the
+eligibility check's "otherwise", People you know, Relationships, the
+substance-use check's "otherwise" running straight down between the two
+modules, Closing questions, Thank you. Outcomes open to either side: "Under
+18" leaves to the left and ends at "Not eligible"; the Drug use module sits
+left and the Alcohol module right, and both rejoin at Closing questions.
+Stages carry their document-order number; groups are boxes containing their
+own layout. The interactive mock-up that accompanies this spec renders the
+same protocol.
 
 ```text
-                 ┌───────────────────────┐
-                 │ 1  Introduction       │
-                 └───────────┬───────────┘
-                 ┌───────────┴───────────┐
-                 │ 2  About you          │
-                 └───────────┬───────────┘
-                 ┌───────────┴───────────┐
-                 │ ◆  Eligibility check  │
-                 └─────┬───────────┬─────┘
-             otherwise │           │ Under 18
-                 ┌─────┴─────────┐ │  ┌────────────────────────┐
-                 │ 3  People you │ └──┤ ■ 11  Not eligible     │
-                 │    know       │    │       Finish · ineligible│
-                 └───────┬───────┘    └────────────────────────┘
-                 ┌───────┴───────┐
-                 │ 4  Relation-  │
-                 │    ships      │
-                 └───────┬───────┘
-                 ┌───────┴───────┐
-                 │ ◆ Substance   │
-                 │   use         │
-                 └─┬─────┬─────┬─┘
-        Uses drugs │     │     │ otherwise
-   ┌───────────────┴─┐ ┌─┴───────────────┐   │
-   │ ▣ Drug use      │ │ ▣ Alcohol       │   │
-   │   module        │ │   module        │   │
-   │ ┌─────────────┐ │ │ ┌─────────────┐ │   │
-   │ │ 5 Substances│ │ │ │ 8 Drinking  │ │   │
-   │ │   used      │ │ │ │   patterns  │ │   │
-   │ └──────┬──────┘ │ │ └──────┬──────┘ │   │
-   │ ┌──────┴──────┐ │ │        │        │   │
-   │ │ 6 Used with │ │ │  exit → continue│   │
-   │ └──────┬──────┘ │ └────────┬────────┘   │
-   │ ┌──────┴──────┐ │          │            │
-   │ │ 7 Frequency │ │          │            │
-   │ └──────┬──────┘ │          │            │
-   │   exit → 9      │          │            │
-   └────────┬────────┘          │            │
-            └──────────┬────────┴────────────┘
-                 ┌─────┴─────────────────┐
-                 │ 9  Closing questions  │
-                 └───────────┬───────────┘
-                 ┌───────────┴───────────┐
-                 │ ■ 10  Thank you       │
-                 │       Finish · completed│
-                 └───────────────────────┘
+                          ┌───────────────────────┐
+                          │ 1  Introduction       │
+                          └───────────┬───────────┘
+                          ┌───────────┴───────────┐
+                          │ 2  About you          │
+                          └───────────┬───────────┘
+                          ┌───────────┴───────────┐
+                          │ ◆  Eligibility check  │
+                          └──────┬────────┬───────┘
+                       Under 18 ╱         │ otherwise
+      ┌────────────────────────┴┐   ┌─────┴─────────────────┐
+      │ ■ 11  Not eligible      │   │ 3  People you know    │
+      │       Finish · ineligible│   └───────────┬───────────┘
+      └─────────────────────────┘   ┌───────────┴───────────┐
+                                    │ 4  Relationships      │
+                                    └───────────┬───────────┘
+                                    ┌───────────┴───────────┐
+                                    │ ◆  Substance use      │
+                                    └───┬───────┬───────┬───┘
+                           Uses drugs ╱         │        ╲ Drinks alcohol
+        ┌────────────────────────────┴┐         │       ┌─┴──────────────────────┐
+        │ ▣ Drug use module           │         │       │ ▣ Alcohol module       │
+        │ ┌─────────────────────────┐ │         │       │ ┌────────────────────┐ │
+        │ │ 5  Substances used      │ │         │       │ │ 8  Drinking        │ │
+        │ └───────────┬─────────────┘ │  other- │       │ │    patterns        │ │
+        │ ┌───────────┴─────────────┐ │  wise   │       │ └─────────┬──────────┘ │
+        │ │ 6  Used with            │ │         │       │  Exit → continue       │
+        │ └───────────┬─────────────┘ │         │       └───────────┬────────────┘
+        │ ┌───────────┴─────────────┐ │         │                   │
+        │ │ 7  Frequency            │ │         │                   │
+        │ └───────────┬─────────────┘ │         │                   │
+        │  Exit → 9 Closing questions │         │                   │
+        └───────────────┬─────────────┘         │                   │
+                        ╲ exit                  │                  ╱
+                                    ┌───────────┴───────────┐
+                                    │ 9  Closing questions  │
+                                    └───────────┬───────────┘
+                                    ┌───────────┴───────────┐
+                                    │ ■ 10  Thank you       │
+                                    │       Finish · completed│
+                                    └───────────────────────┘
 ```
 
 ## 18. Sequencing
