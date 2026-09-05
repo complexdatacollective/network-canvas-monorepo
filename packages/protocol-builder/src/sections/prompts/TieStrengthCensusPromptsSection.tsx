@@ -24,7 +24,16 @@ const PICKS: readonly CrossClassPick[] = Object.freeze([
   { path: 'edgeVariable', writerClass: 'unvalidated' },
 ]);
 
-/** What fits on the scale alongside the decline answer. */
+/**
+ * How many points the scale itself can carry.
+ *
+ * The decline answer is drawn beside them and is not counted, because it is
+ * not one of the attribute's values — it is always there, whatever the
+ * attribute holds, so counting it would only shift this number by one and
+ * would make the warning say something about a control it cannot see.
+ * Architect counts the same way, though its wording claims otherwise
+ * (`TieStrengthCensusPrompts/PromptFields.tsx`).
+ */
 const SCALE_LIMIT = 5;
 
 const PROMPTS_COPY: Partial<PromptsCopy> = {
@@ -96,7 +105,7 @@ function TieStrengthCensusPromptEditor({ item }: RowEditorProps) {
           {...(committed === '' ? {} : { committedValue: committed })}
           optionLimit={SCALE_LIMIT}
           optionLimitTitle="More answers than fit on one screen"
-          optionLimitDescription="This interface is designed for up to five answers including the decline answer. Beyond that they become hard to read and hard to tap, which costs data quality."
+          optionLimitDescription="This interface is designed for up to five points on the scale, with the decline answer beside them. Beyond that they become hard to read and hard to tap, which costs data quality."
         />
       )}
       <Section

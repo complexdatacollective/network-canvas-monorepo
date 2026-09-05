@@ -465,6 +465,95 @@ describe('a codebook that changes while a bin prompt is open', () => {
   });
 });
 
+/**
+ * How many bins the participant is shown, which is not how many values the
+ * attribute has: the follow-up bin is a bin too.
+ *
+ * Ported from Architect's `CategoricalBinPrompts/PromptFields.tsx`, which
+ * counts `currentVariableOptions.length + (currentOtherVariable ? 1 : 0)`
+ * against the same eight.
+ */
+describe('a categorical bin with more bins than fit on one screen', () => {
+  const WARNING = 'More bins than fit on one screen';
+
+  /** Opens the prompt with `count` values in the codebook, and reads the alert. */
+  async function warnsWith(count: number, followUpBin: boolean) {
+    const harness = renderStageEditor({
+      stage: {
+        type: 'CategoricalBin',
+        fields: {
+          label: 'Categorical Bin',
+          subject: { entity: 'node', type: 'person' },
+          prompts: [
+            {
+              id: 'prompt-a',
+              text: 'What kind of contact?',
+              variable: 'contactType',
+              ...(followUpBin
+                ? {
+                    otherVariable: 'relationship_to_ego',
+                    otherOptionLabel: 'Other',
+                    otherVariablePrompt: 'Which?',
+                  }
+                : {}),
+            },
+          ],
+        },
+      },
+      sections: <CategoricalBinPromptsSection />,
+    });
+    harness.receiveCodebookUpdate({
+      node: {
+        person: {
+          ...personDocument(harness),
+          variables: {
+            ...personVariables(harness),
+            contactType: {
+              name: 'contactType',
+              type: 'categorical',
+              options: Array.from({ length: count }, (_unused, index) => ({
+                label: `Option ${index + 1}`,
+                value: `option_${index + 1}`,
+              })),
+            },
+          },
+        },
+      },
+    });
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    await screen.findByRole('combobox', { name: 'Attribute' });
+    if (followUpBin) {
+      await waitFor(() =>
+        expect(
+          screen.getByRole('switch', { name: 'A bin for anything else' }),
+        ).toBeChecked(),
+      );
+    }
+    return screen.queryByText(WARNING) !== null;
+  }
+
+  it('warns about nine values on their own', async () => {
+    expect(await warnsWith(9, false)).toBe(true);
+  });
+
+  /**
+   * The bin the follow-up question fills is drawn on the same screen as the
+   * rest, so eight values and a follow-up bin is nine bins — which is what
+   * the warning's own words already promise to count.
+   */
+  it('warns about eight values and a follow-up bin', async () => {
+    expect(await warnsWith(8, true)).toBe(true);
+  });
+
+  /** And says nothing about the eight bins the interface is designed for. */
+  it('says nothing about eight values on their own', async () => {
+    expect(await warnsWith(8, false)).toBe(false);
+  });
+});
+
 function personDocument(harness: {
   session: { getSnapshot(): { protocolSections: Record<string, unknown> } };
 }): Record<string, unknown> {

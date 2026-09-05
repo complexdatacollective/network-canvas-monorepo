@@ -84,6 +84,14 @@ export type PromptAttributeFieldProps = Readonly<{
   committedValue?: string;
   /** The number of values this interface is designed to show at once. */
   optionLimit?: number;
+  /**
+   * Values the interface draws beside this attribute's own, which take up the
+   * same room and count against the same limit — a Categorical Bin's follow-up
+   * bin is a ninth bin on a screen designed for eight. Nothing here can know
+   * about them: they are the caller's own fields, and whether they are in use
+   * changes while the prompt is open.
+   */
+  extraCountedOptions?: number;
   optionLimitTitle?: string;
   optionLimitDescription?: ReactNode;
 }>;
@@ -118,6 +126,7 @@ export default function PromptAttributeField({
   emptyMessage,
   committedValue,
   optionLimit,
+  extraCountedOptions = 0,
   optionLimitTitle,
   optionLimitDescription,
 }: PromptAttributeFieldProps) {
@@ -152,8 +161,9 @@ export default function PromptAttributeField({
   const latestDraft = useRef<CodebookVariableDraft | null>(null);
 
   const optionCount =
-    lockedOptions?.length ??
-    optionCountOf(variablesIn(codebookDocument)[picked ?? '']);
+    (lockedOptions?.length ??
+      optionCountOf(variablesIn(codebookDocument)[picked ?? ''])) +
+    extraCountedOptions;
   const overLimit = optionLimit !== undefined && optionCount > optionLimit;
   const editableOptions =
     picked !== undefined &&

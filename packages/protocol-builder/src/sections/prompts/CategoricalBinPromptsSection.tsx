@@ -71,11 +71,19 @@ function CategoricalBinGuidance() {
 function CategoricalBinPromptEditor({ item }: RowEditorProps) {
   const subject = useStageSubject();
   const sortableProperties = useSortVariablePool(subject);
-  const { variable } = useFormValue(['variable'] as const);
+  const { variable, otherVariable } = useFormValue([
+    'variable',
+    'otherVariable',
+  ] as const);
   const chosen = typeof variable === 'string' && variable !== '';
   const committed = typeof item.variable === 'string' ? item.variable : '';
   const committedOther =
     typeof item.otherVariable === 'string' ? item.otherVariable : '';
+  // Read live rather than from the row: switching the follow-up bin on adds a
+  // bin to the screen the researcher is looking at, so the warning about how
+  // many bins fit has to answer for it before the prompt is saved.
+  const followUpBins =
+    typeof otherVariable === 'string' && otherVariable !== '' ? 1 : 0;
 
   return (
     <>
@@ -99,6 +107,7 @@ function CategoricalBinPromptEditor({ item }: RowEditorProps) {
         emptyMessage="This type has no categorical attributes yet. Create one to say what the bins are."
         {...(committed === '' ? {} : { committedValue: committed })}
         optionLimit={BIN_LIMIT}
+        extraCountedOptions={followUpBins}
         optionLimitTitle="More bins than fit on one screen"
         optionLimitDescription="This interface is designed for up to eight bins, including a follow-up bin. Beyond that the bins become hard to read and hard to drop into, which costs data quality. Consider grouping the values and asking for the detail in a later question."
       />
