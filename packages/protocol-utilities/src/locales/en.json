@@ -16,7 +16,7 @@
     "description": "Researcher-facing explanation and repair guidance when synthetic interview data cannot be generated: drawExhausted."
   },
   "protocolUtilities.constraint.duplicateFixedValues": {
-    "defaultMessage": "The protocol or roster assigns the same value to multiple nodes or links, but the value must be unique. Change the fixed values or the uniqueness rule.",
+    "defaultMessage": "The same value is assigned to multiple nodes or links, but the value must be unique. Change the fixed values or the uniqueness rule.",
     "description": "Researcher-facing explanation and repair guidance when synthetic interview data cannot be generated: duplicateFixedValues."
   },
   "protocolUtilities.constraint.emptyDateRange": {
@@ -28,11 +28,11 @@
     "description": "Researcher-facing explanation and repair guidance when synthetic interview data cannot be generated: fixedCompletion."
   },
   "protocolUtilities.constraint.fixedValueRejected": {
-    "defaultMessage": "A question assigns fixed values that these validation rules reject. Change the fixed values or the conflicting rules.",
+    "defaultMessage": "The assigned fixed values conflict with these validation rules. Change the fixed values or the conflicting rules.",
     "description": "Researcher-facing explanation and repair guidance when synthetic interview data cannot be generated: fixedValueRejected."
   },
   "protocolUtilities.constraint.incompatibleDateControls": {
-    "defaultMessage": "Forms use incompatible date controls for the same attribute. Give those controls a common date range and resolution.",
+    "defaultMessage": "Forms use incompatible input controls for the same attribute. Use controls that allow a common set of values.",
     "description": "Researcher-facing explanation and repair guidance when synthetic interview data cannot be generated: incompatibleDateControls."
   },
   "protocolUtilities.constraint.inheritancePatterns": {
