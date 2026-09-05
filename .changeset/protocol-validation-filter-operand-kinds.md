@@ -35,3 +35,12 @@ in the field hold rules naming an option a collaborator has since renamed or
 deleted, and refusing to LOAD one would lock the researcher out of the very
 editor that could fix it. Whether an operand is still one of the attribute's
 options is an editor rule, reported on the rule by the protocol builder.
+
+`collectEntityTypeReferencesFromSchema` is exported alongside the existing
+`collectEntityTypeReferences`, which now calls it. It takes any fragment of the
+schema and any value shaped like it, so a caller holding one stage rather than
+a whole protocol — a stage editor — can ask which codebook node and edge types
+that stage names, and get every field the schema tags as an entity-type
+reference instead of the two or three paths the caller happened to know about.
+It is the entity-type counterpart of the `collectEntityAttributeReferencesFromSchema`
+that was already exported.
