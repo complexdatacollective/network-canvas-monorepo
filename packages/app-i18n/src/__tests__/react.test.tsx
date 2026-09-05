@@ -1,12 +1,17 @@
 // @vitest-environment jsdom
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { useEffect } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { commonMessages } from '../common.ts';
 import { defineAppLocales, pseudoAppLocale } from '../locales.ts';
 import { defineMessages } from '../messages.ts';
-import { AppI18nProvider, useAppIntl, useAppLocale } from '../react.tsx';
+import {
+  AppI18nProvider,
+  AppMessage,
+  useAppIntl,
+  useAppLocale,
+} from '../react.tsx';
 
 const registry = defineAppLocales([
   { locale: 'en', label: 'English', direction: 'ltr' },
@@ -349,5 +354,49 @@ describe('useAppLocale without a provider', () => {
       return null;
     }
     expect(() => render(<Bare />)).toThrow(/AppI18nProvider/);
+  });
+});
+
+describe('AppMessage', () => {
+  it('renders whole plurals and rich text without a provider', () => {
+    const view = render(
+      <>
+        <p>
+          <AppMessage message={messages.count} values={{ count: 2 }} />
+        </p>
+        <p>
+          <AppMessage
+            message={messages.guide}
+            values={{ link: (chunks) => <a href="/guide">{chunks}</a> }}
+          />
+        </p>
+      </>,
+    );
+    expect(within(view.container).getByText('2 results')).toBeDefined();
+    expect(
+      within(view.container).getByRole('link', { name: 'the guide' }),
+    ).toBeDefined();
+  });
+
+  it('updates a queued message node when the provider changes', () => {
+    const queued = (
+      <AppMessage message={messages.greeting} values={{ name: 'Ada' }} />
+    );
+    const view = render(
+      <AppI18nProvider locale="en" locales={registry}>
+        {queued}
+      </AppI18nProvider>,
+    );
+    expect(view.container.textContent).toBe('Hello Ada');
+    view.rerender(
+      <AppI18nProvider
+        locale="ar"
+        locales={registry}
+        messages={{ 'demo.greeting': 'مرحبا {name}' }}
+      >
+        {queued}
+      </AppI18nProvider>,
+    );
+    expect(view.container.textContent).toBe('مرحبا Ada');
   });
 });
