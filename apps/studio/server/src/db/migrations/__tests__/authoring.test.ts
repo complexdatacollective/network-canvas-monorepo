@@ -13,10 +13,18 @@ import { SCHEMA_FINGERPRINT } from '../../fingerprint.generated.ts';
 import { SCHEMA, SIDECARS } from '../../schema.ts';
 import { jsonHash, readMigrations, sha256 } from '../artifact.ts';
 
-it('authors a second checksummed migration from an existing current-version Drizzle snapshot', async () => {
+it('authors a second current-version migration with explicit column addition and removal, never a guessed rename', async () => {
   const root = await mkdtemp(join(tmpdir(), 'studio-migration-authoring-'));
   try {
     const snapshot = await generateDrizzleJson(SCHEMA);
+    const locale = snapshot.ddl.find(
+      (entry) =>
+        entry.entityType === 'columns' &&
+        entry.table === 'user' &&
+        entry.name === 'locale',
+    );
+    if (!locale)
+      throw new Error('Expected locale column in the current schema');
     snapshot.ddl = snapshot.ddl.filter(
       (entry) =>
         !(
@@ -28,6 +36,7 @@ it('authors a second checksummed migration from an existing current-version Driz
             entry.name === 'user_locale_length_check')
         ),
     );
+    snapshot.ddl.push({ ...locale, name: 'obsolete_locale' });
     const statements = await generateMigration(
       await generateDrizzleJson({}),
       snapshot,
@@ -62,6 +71,8 @@ it('authors a second checksummed migration from an existing current-version Driz
       fingerprint: SCHEMA_FINGERPRINT,
     });
     expect(history[1]?.sql).toContain('ADD COLUMN "locale"');
+    expect(history[1]?.sql).toContain('DROP COLUMN "obsolete_locale"');
+    expect(history[1]?.sql).not.toContain('RENAME');
     expect(history[1]?.snapshot.ddl).toEqual(
       (await generateDrizzleJson(SCHEMA)).ddl,
     );

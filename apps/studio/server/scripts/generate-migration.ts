@@ -71,7 +71,12 @@ export async function generateMigrationFiles({
     SCHEMA,
     previous ? oldSnapshot.id : undefined,
   );
-  const statements = await generateMigration(oldSnapshot, snapshot);
+  // Pinned rc.4 needs the repository patch to expose a noninteractive policy.
+  // Never guess a rename: copying existing data belongs in reviewed before/
+  // after SQL, especially when a new column changes its storage format.
+  const statements = await generateMigration(oldSnapshot, snapshot, {
+    renames: 'none',
+  });
   const sql =
     [before, statements.join('\n'), after].filter(Boolean).join('\n') + '\n';
   const sidecars = SIDECARS.join('\n') + '\n';
