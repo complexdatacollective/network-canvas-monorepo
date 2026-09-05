@@ -402,9 +402,17 @@ describe('a stage document holding something that is not a list', () => {
         const held = session.getSnapshot().editedSection.fields
           .additionalAttributes as unknown;
         expect(Array.isArray(held)).toBe(true);
-        expect(held as unknown[]).toContainEqual({});
-        // The rows the researcher could see are what the list keeps: one more
-        // than it showed, never a salvage of the foreign value's contents.
+        // The list the value already WAS, plus the row, LAST. A value that is
+        // not a list at all is replaced by the empty list the editor drew and
+        // never salvaged for rows; a list holding a hole keeps every entry
+        // where it stands, because the position an operation names is a
+        // position among the rows DRAWN and the command carries a position in
+        // the document. Reading one as the other lands the new row in front of
+        // entries the researcher could not see.
+        expect(held as unknown[]).toEqual([
+          ...(Array.isArray(heldBefore) ? (heldBefore as unknown[]) : []),
+          {},
+        ]);
         expect(held as unknown[]).toHaveLength(rowsBefore + 1);
       });
       // And the editor is still alive, with a row on screen for the

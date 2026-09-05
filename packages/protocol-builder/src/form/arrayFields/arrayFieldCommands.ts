@@ -19,6 +19,63 @@ export const readRows = (value: unknown): ArrayRow[] =>
 const sameList = (left: readonly unknown[], right: readonly unknown[]) =>
   canonicalize(left) === canonicalize(right);
 
+const NO_ROWS: readonly never[] = [];
+
+/**
+ * The rows the editor DREW, out of the value the list field was handed — and
+ * the rule for a list that holds a HOLE.
+ *
+ * A hole is an entry that is not a row at all: `null`, `undefined`, a string
+ * left behind by an import or a migration. It is a document row the editor
+ * does not render, and everything below turns on that, because an
+ * `ArrayFieldOperation` numbers rows by their position among the ones DRAWN
+ * while every command it becomes carries a position in the DOCUMENT —
+ * `insertItem(key, index)`, `removeItem(key, index)`,
+ * `moveItem(key, from, to)`. The two are the same numbering only while the
+ * document holds nothing but rows.
+ *
+ * So the rule is:
+ *
+ *   a position is never replayed as a document index. It names a row among
+ *   the ones the editor drew, and that row is mapped to its own place in the
+ *   document — through the WHOLE array, holes included — before any command
+ *   is built. A list the editor drew no rows for can therefore only be
+ *   appended to.
+ *
+ * `resolveRowIndex` is that mapping (by the row's own id, else by position
+ * while the two lists are still one list, else by content); `resolveInsertIndex`
+ * is it for an append, which is `current.length` — the end of the document,
+ * not the end of the rows on screen.
+ *
+ * Which rows were drawn is fresco-ui's answer, not ours: `ArrayField` refuses
+ * a value with ANY non-object entry and renders the empty list (`isItemList` —
+ * `useArrayFieldItems` keys its internal ids on the row objects in a WeakMap,
+ * where a primitive is not merely the wrong shape but an illegal key). That is
+ * mirrored here rather than guessed at, because reading an operation's index
+ * in a numbering the editor never used is the whole defect: for
+ * `[null, { … }]` the editor draws nothing, so its Add reports index 0, and
+ * replaying that lands the new row at the TOP of the document — in front of a
+ * row the researcher could not even see.
+ *
+ * A hole is NOT repaired away the way a foreign value is (see `readArray` in
+ * `useArrayFieldCommands`). That rule replaces a value because the command
+ * would otherwise throw out of `asList`, and because nothing inside it is a
+ * row any reader could render. Neither is true here: `insertItem` applies to a
+ * holed list perfectly well, and the entries beside the hole are real rows the
+ * researcher authored, which `readRows` still shows. Replacing the value with
+ * the drawn rows would delete those — a salvage in reverse — and it would move
+ * the indices the operation was resolved against, which is exactly what that
+ * rule forbids. The hole stays where it is, and the edit is expressed against
+ * the document as it stands.
+ */
+function renderedRows<T extends ArrayRow>(
+  rendered: readonly T[],
+): readonly T[] {
+  return rendered.every((row) => typeof row === 'object' && row !== null)
+    ? rendered
+    : NO_ROWS;
+}
+
 /**
  * Where a row the editor was showing lives in the array the session holds NOW.
  *
@@ -43,6 +100,12 @@ const sameList = (left: readonly unknown[], right: readonly unknown[]) =>
  *
  * `undefined` means the row cannot be found, and the caller must issue NO
  * command rather than one addressed at whatever now occupies that index.
+ *
+ * `rendered` is the rows the editor DREW — `renderedRows` above, applied once
+ * at `commandsForOperation` — so a hole never reaches here. That is what lets
+ * `getId` be asked about a row unguarded, and what keeps `sameList`'s position
+ * shortcut honest: it may answer "the same list" only when the numbering the
+ * operation came from and the document's own are the same numbering.
  */
 export function resolveRowIndex<T extends ArrayRow>(
   current: readonly unknown[],
@@ -224,14 +287,21 @@ function reseatRecord(
  * re-seated on what the session holds for THAT row (see `reseatEditedRow`), so
  * a change that arrived from elsewhere survives the write whether it arrived
  * as a new row or as a new property of the row being replaced.
+ *
+ * `value` is what the list field was HANDED, which is not always what it drew:
+ * the one place the drawn rows are settled is here, so every consumer of this
+ * module resolves in the numbering its operation was made in. See
+ * `renderedRows`.
  */
 export function commandsForOperation<T extends ArrayRow>(
   key: string,
   current: readonly unknown[],
-  rendered: readonly T[],
+  value: readonly T[],
   operation: ArrayFieldOperation<T>,
   getId?: ArrayRowIdentity<T>,
 ): Command[] {
+  const rendered = renderedRows(value);
+
   if (operation.type === 'insert') {
     const index = resolveInsertIndex(current, rendered, operation.index, getId);
     return [{ op: 'insertItem', key, index, item: operation.item }];

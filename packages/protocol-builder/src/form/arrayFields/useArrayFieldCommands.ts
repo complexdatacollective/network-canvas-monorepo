@@ -81,6 +81,16 @@ type BoundArray = Readonly<{
  *
  * Nullish is not foreign: an absent key is the empty list to `asList` exactly
  * as it is to every reader here, so it needs no repair.
+ *
+ * Neither is a LIST WITH A HOLE IN IT — `[null, { … }]`, an entry an import or
+ * a migration left as something that is not a row. `asList` takes it, so no
+ * command addressed at it can throw, and the entries beside the hole are real
+ * rows the researcher authored. Replacing it would delete those for an edit
+ * that only asked to add one, and would move the indices the operation was
+ * resolved against — both of them the very things the rule above refuses to
+ * do. A hole is a document row the editor does not render, and it is answered
+ * where that matters, at the index resolver: see `renderedRows` in
+ * `arrayFieldCommands`.
  */
 const readArray = (key: string, value: unknown): BoundArray => {
   if (Array.isArray(value)) return { current: [...value], repair: [] };
@@ -185,6 +195,12 @@ export function useArrayFieldCommands<T extends ArrayRow>(
         refusedRef.current = true;
         return false;
       }
+      // The rows the researcher can SEE, which is the forgiving read: a hole
+      // the document keeps is dropped from the form value, so the list comes
+      // back on screen instead of the whole thing staying blank because of one
+      // entry nobody can edit. The document and the control are then numbered
+      // differently, which is exactly why nothing downstream replays a
+      // position — see `renderedRows` in `arrayFieldCommands`.
       onChangeRef.current?.(readRows(draft[key]) as T[]);
       return true;
     },

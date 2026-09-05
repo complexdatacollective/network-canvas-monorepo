@@ -246,6 +246,194 @@ describe('a list bound to a key the document does not hold as a list', () => {
   });
 });
 
+/**
+ * A hole is an entry the document holds that is not a row at all — `null`,
+ * `undefined`, a string an import or a migration left behind. It is a document
+ * row the editor does not render, and `ArrayField` refuses a value holding one
+ * outright: the WHOLE list draws as empty, so its Add reports index 0 however
+ * many rows the document has.
+ *
+ * Every command carries a position in the DOCUMENT, so what these pin is that
+ * a position is never replayed as a document index.
+ */
+describe('a list the document holds with a hole in it', () => {
+  // The only operation an editor that drew no rows can report.
+  const addFirstRow = { type: 'insert', index: 0, item: { id: 'n' } } as const;
+
+  it('appends past a leading hole rather than landing in front of it', () => {
+    const session = createSession({ prompts: [null, A] });
+    // What the field was handed, and therefore what `ArrayField` refused to
+    // draw. Read as the rows on screen, index 0 is "before Alpha".
+    const commands = renderCommands(
+      session,
+      [null as unknown as Row, A],
+      'prompts',
+      vi.fn(),
+    );
+
+    act(() => {
+      commands.onOperation?.(addFirstRow);
+    });
+
+    expect(session.getSnapshot().editedSection.fields.prompts).toEqual([
+      null,
+      A,
+      { id: 'n' },
+    ]);
+    expect(
+      session.getSnapshot().pendingCommands.map((batch) => batch.commands),
+    ).toEqual([
+      [{ op: 'insertItem', key: 'prompts', index: 2, item: { id: 'n' } }],
+    ]);
+  });
+
+  it('appends past a trailing hole', () => {
+    const session = createSession({ prompts: [A, null] });
+    const commands = renderCommands(
+      session,
+      [A, null as unknown as Row],
+      'prompts',
+      vi.fn(),
+    );
+
+    act(() => {
+      commands.onOperation?.(addFirstRow);
+    });
+
+    expect(session.getSnapshot().editedSection.fields.prompts).toEqual([
+      A,
+      null,
+      { id: 'n' },
+    ]);
+  });
+
+  it('appends past a hole between two rows', () => {
+    const session = createSession({ prompts: [A, null, B] });
+    const commands = renderCommands(
+      session,
+      [A, null as unknown as Row, B],
+      'prompts',
+      vi.fn(),
+    );
+
+    act(() => {
+      commands.onOperation?.(addFirstRow);
+    });
+
+    expect(session.getSnapshot().editedSection.fields.prompts).toEqual([
+      A,
+      null,
+      B,
+      { id: 'n' },
+    ]);
+  });
+
+  it('issues nothing for an operation naming a row the editor never drew', () => {
+    const session = createSession({ prompts: [null, A] });
+    const onChange = vi.fn();
+    const commands = renderCommands(
+      session,
+      [null as unknown as Row, A],
+      'prompts',
+      onChange,
+    );
+
+    act(() => {
+      commands.onOperation?.({ type: 'remove', index: 1 });
+    });
+    act(() => {
+      commands.onOperation?.({ type: 'move', from: 1, to: 0 });
+    });
+
+    // The list drew no rows, so nothing on screen could have been dragged or
+    // deleted. Reading index 1 as Alpha's row would be a write the researcher
+    // never made — and asking a row's id of a hole throws out of the click
+    // handler on the way there.
+    expect(session.getSnapshot().editedSection.fields.prompts).toEqual([
+      null,
+      A,
+    ]);
+    expect(session.getSnapshot().pendingCommands).toEqual([]);
+    expect(onChange).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * The list came back on screen — the hook writes the rows the researcher can
+ * see back to the form (`readRows`, which drops the hole), while the document
+ * keeps it. From here the control and the document are numbered differently,
+ * which is the ordinary state of this editor after any write over a holed
+ * list.
+ */
+describe('a list drawn without the hole its document still holds', () => {
+  it('inserts before the row on screen, at its document index', () => {
+    const session = createSession({ prompts: [null, A, B] });
+    const commands = renderCommands(session, [A, B], 'prompts', vi.fn());
+
+    act(() => {
+      commands.onOperation?.({ type: 'insert', index: 1, item: { id: 'n' } });
+    });
+
+    expect(session.getSnapshot().editedSection.fields.prompts).toEqual([
+      null,
+      A,
+      { id: 'n' },
+      B,
+    ]);
+  });
+
+  it('appends to the end of the document, not the end of the rows drawn', () => {
+    const session = createSession({ prompts: [null, A, B] });
+    const commands = renderCommands(session, [A, B], 'prompts', vi.fn());
+
+    act(() => {
+      commands.onOperation?.({ type: 'insert', index: 2, item: { id: 'n' } });
+    });
+
+    expect(session.getSnapshot().editedSection.fields.prompts).toEqual([
+      null,
+      A,
+      B,
+      { id: 'n' },
+    ]);
+  });
+
+  it('removes the row it names at its document index', () => {
+    const session = createSession({ prompts: [null, A, B] });
+    const commands = renderCommands(session, [A, B], 'prompts', vi.fn());
+
+    act(() => {
+      commands.onOperation?.({ type: 'remove', index: 0 });
+    });
+
+    expect(session.getSnapshot().editedSection.fields.prompts).toEqual([
+      null,
+      B,
+    ]);
+    expect(
+      session.getSnapshot().pendingCommands.map((batch) => batch.commands),
+    ).toEqual([[{ op: 'removeItem', key: 'prompts', index: 1 }]]);
+  });
+
+  it('moves a row between document indices, leaving the hole where it is', () => {
+    const session = createSession({ prompts: [null, A, B] });
+    const commands = renderCommands(session, [A, B], 'prompts', vi.fn());
+
+    act(() => {
+      commands.onOperation?.({ type: 'move', from: 1, to: 0 });
+    });
+
+    // Bravo above Alpha, and the hole still the document's first entry — a
+    // move the researcher made among the rows on screen cannot reach past
+    // them.
+    expect(session.getSnapshot().editedSection.fields.prompts).toEqual([
+      null,
+      B,
+      A,
+    ]);
+  });
+});
+
 describe('a list with no document key of its own', () => {
   it('withholds the list operations, so it commits as an ordinary value', () => {
     const session = createSession({ prompts: [A, B] });
