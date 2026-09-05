@@ -12,6 +12,11 @@ import {
   readRows,
   reseatEditedRow,
 } from './arrayFieldCommands.ts';
+import {
+  type ArrayWriteRefusal,
+  DEFAULT_ITEM_LABEL,
+  writeRefusalMessage,
+} from './arrayWriteRefusal.ts';
 
 /**
  * Which key of the stage document a list editor is bound to, or `undefined`
@@ -99,6 +104,22 @@ const readArray = (key: string, value: unknown): BoundArray => {
 };
 
 /**
+ * What the list's form value becomes when it is brought level with the
+ * document: the rows the researcher can SEE, which is the forgiving read.
+ *
+ * A hole the document keeps is dropped from the form value, so the list comes
+ * back on screen instead of the whole thing staying blank because of one entry
+ * nobody can edit. The document and the control are then numbered differently,
+ * which is exactly why nothing downstream replays a position — see
+ * `renderedRows` in `arrayFieldCommands`.
+ *
+ * One function for both routes, so a write and a refusal cannot come to
+ * disagree about what "the document's rows" means.
+ */
+const renderableRows = <T extends ArrayRow>(value: unknown): T[] =>
+  readRows(value) as T[];
+
+/**
  * Whether a command needs the field to already hold a list. A whole-key `set`
  * replaces the foreign value itself, and a repair in front of one would make
  * two history entries out of a single edit.
@@ -107,27 +128,6 @@ const addressesAList = (command: Command) =>
   command.op === 'insertItem' ||
   command.op === 'removeItem' ||
   command.op === 'moveItem';
-
-/**
- * Why a list write did not reach the document.
- *
- * The three are separate because they ask the researcher for different things:
- * a lease is taken back, a removed row is gone for good, and a row that cannot
- * be told from its neighbours is still there to be edited once the list is
- * looked at again.
- */
-export type ArrayWriteRefusal =
-  /** The session declined the commands — a read-only stage, a lost lease. */
-  | 'session-refused'
-  /** The row this write was addressed at is not in the array any more. */
-  | 'row-removed'
-  /**
-   * The row could not be told apart from the array as it now stands. Rows
-   * without ids of their own are matched by content, and a match that is
-   * ambiguous — or a list numbered differently from the document behind it —
-   * resolves to no row rather than to a guess. See `resolveRowIndex`.
-   */
-  | 'row-unresolved';
 
 /**
  * What became of a list write.
@@ -193,15 +193,24 @@ export type ArrayFieldCommands<T extends ArrayRow> = Readonly<{
  * edits, deletes or reorders the wrong row.
  *
  * The list's form value is then brought level with what the session ended up
- * holding, so a row that arrived from elsewhere appears in the control rather
- * than being written back out of existence by the next save.
+ * holding — and with what it went on holding when a write was refused, because
+ * `ArrayField` renders the edit out of its own state before anything is
+ * written and re-reads the value only when the value changes. Either way the
+ * rows on screen are the document's, so a write that reached nothing cannot go
+ * on looking like one that landed.
+ *
+ * `itemLabel` is the noun a refusal is said in. Lists that edit a row at a time
+ * name theirs; the always-editing inline lists take the generic default,
+ * because the same list component is a sort rule here and a display property
+ * there.
  */
 export function useArrayFieldCommands<T extends ArrayRow>(
   rendered: readonly T[],
   onChange?: (next: T[]) => void,
   getId?: ArrayRowIdentity<T>,
+  itemLabel: string = DEFAULT_ITEM_LABEL,
 ): ArrayFieldCommands<T> {
-  const { applyOwnCommands } = useStageEditorForm();
+  const { applyOwnCommands, reportRefusedWrite } = useStageEditorForm();
   const documentKey = useContext(ArrayFieldBindingContext)?.documentKey;
 
   // Read at commit time rather than closed over. A dialog's save can land
@@ -254,13 +263,7 @@ export function useArrayFieldCommands<T extends ArrayRow>(
           : commands,
       );
       if (sessionRefused) return refused('session-refused');
-      // The rows the researcher can SEE, which is the forgiving read: a hole
-      // the document keeps is dropped from the form value, so the list comes
-      // back on screen instead of the whole thing staying blank because of one
-      // entry nobody can edit. The document and the control are then numbered
-      // differently, which is exactly why nothing downstream replays a
-      // position — see `renderedRows` in `arrayFieldCommands`.
-      onChangeRef.current?.(readRows(draft[key]) as T[]);
+      onChangeRef.current?.(renderableRows<T>(draft[key]));
       return WRITTEN;
     },
     [applyOwnCommands],
@@ -282,10 +285,27 @@ export function useArrayFieldCommands<T extends ArrayRow>(
     [applyCommit],
   );
 
+  /**
+   * Whether a `writeThrough` is COLLECTING whatever this dispatch writes.
+   *
+   * The one thing that decides who answers for a refusal. A dispatch a caller
+   * is collecting is a dispatch that caller reports — the row dialog puts the
+   * reason above the draft it is keeping open — and reporting it here as well
+   * would say the same thing twice, in two places, about one refused write.
+   * A dispatch nobody is collecting has no such caller, and the answer would
+   * otherwise go nowhere at all.
+   */
+  const collectingRef = useRef(false);
+
   const writeThrough = useCallback(
     (dispatch: () => void): ArrayWriteOutcome => {
       lastWriteRef.current = undefined;
-      dispatch();
+      collectingRef.current = true;
+      try {
+        dispatch();
+      } finally {
+        collectingRef.current = false;
+      }
       const outcome = lastWriteRef.current;
       lastWriteRef.current = undefined;
       if (outcome !== undefined) return outcome;
@@ -305,10 +325,29 @@ export function useArrayFieldCommands<T extends ArrayRow>(
     [documentKey],
   );
 
+  /**
+   * One committed list operation — an add, a removal, a reorder, a cell edit.
+   *
+   * The outcome is ACTED ON here rather than returned, because there is nowhere
+   * to return it to: `ArrayField`'s `onOperation` answers nothing, and for the
+   * inline lists — the always-editing ones, with no dialog over them — this is
+   * the only route to the document there is. A refusal discarded here is an
+   * edit the researcher watches land on a list that never took it, because
+   * `ArrayField` drew it out of its own state before this ran and re-reads the
+   * value only when the value changes.
+   *
+   * So a refusal nobody is collecting does both halves of saying so: the reason
+   * goes into the stage form's own error region, and the list's value is put
+   * back to the rows the document actually holds, which is what brings the rows
+   * on screen back with it. A row the researcher is EDITING survives that:
+   * `ArrayField` re-seats its editing session on the value it receives and only
+   * gives it up when the row it is editing is no longer there — which, for a
+   * refused write, is exactly the case where there is no longer a row to edit.
+   */
   const handleOperation = useCallback(
     (key: string, operation: ArrayFieldOperation<T>) => {
       const bound = readCurrent(key);
-      commit(
+      const outcome = commit(
         key,
         bound,
         commandsForOperation(
@@ -320,8 +359,22 @@ export function useArrayFieldCommands<T extends ArrayRow>(
         ),
         'row-unresolved',
       );
+      if (outcome.kind === 'written' || collectingRef.current) return;
+      reportRefusedWrite(writeRefusalMessage(outcome.reason, itemLabel));
+      // What the document still holds, read exactly as a written operation
+      // reads it, so a refusal and a write cannot leave the control saying
+      // different things about the same document.
+      //
+      // Not when the document holds something that is NOT a list, though. The
+      // empty list is what the editor drew for such a value, but writing it
+      // into the form value would replace the value on the next submit — for an
+      // edit that was refused, which is precisely the discard `readArray`'s
+      // rule refuses to make. A repair rides with a write or not at all.
+      if (bound.repair.length === 0) {
+        onChangeRef.current?.(renderableRows<T>(bound.current));
+      }
     },
-    [commit, readCurrent],
+    [commit, itemLabel, readCurrent, reportRefusedWrite],
   );
 
   // Built here rather than guarded inside the handler, so that "this list has

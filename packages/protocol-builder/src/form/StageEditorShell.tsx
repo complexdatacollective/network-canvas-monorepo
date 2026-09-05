@@ -136,6 +136,21 @@ function StageEditorFormBody({
   }, [readOnly]);
 
   /**
+   * The one way a refused structural write is said out loud, wherever the
+   * refusal was decided.
+   *
+   * `applyOwnCommands` below names the refusals it can see for itself — both
+   * of the read-only routes — and a list editor names the ones it cannot: a
+   * batch the list decided not to dispatch, because the row it named is gone
+   * or cannot be told from the rows beside it, reaches the session as nothing
+   * at all. Held apart from the state setter so a caller cannot pass an updater
+   * and read the message it is replacing.
+   */
+  const reportRefusedWrite = useCallback((message: string) => {
+    setRefusedWrite(message);
+  }, []);
+
+  /**
    * The draft moved for a reason that is not this form's own submit, so the
    * controls on screen are showing something that is no longer agreed. They
    * are written to rather than rebuilt: rebuilding would discard everything
@@ -229,9 +244,16 @@ function StageEditorFormBody({
       if (commands.length === 0) return { draft: before, refused: false };
       // A stage already known to be read-only when this handler was built. The
       // write never reaches the session, so it is a refusal like the caught one
-      // below — said the same way, so a caller cannot have to know which of the
-      // two it met.
-      if (readOnly) return { draft: before, refused: true };
+      // below — said the same way, and SAID, so a caller cannot have to know
+      // which of the two it met. Reachable only while every control the write
+      // could come from is disabled, which is a reason to keep the two branches
+      // identical rather than a reason to let one of them stay quiet: the
+      // difference between them is where the lease went, and that is not
+      // something the researcher is being asked about.
+      if (readOnly) {
+        reportRefusedWrite(READ_ONLY_MESSAGE);
+        return { draft: before, refused: true };
+      }
 
       let next: StageFormDraft;
       try {
@@ -253,7 +275,7 @@ function StageEditorFormBody({
         // `readArray` in `useArrayFieldCommands` for the rule that keeps a
         // list command applicable.
         if (!(error instanceof SessionReadOnlyError)) throw error;
-        setRefusedWrite(READ_ONLY_MESSAGE);
+        reportRefusedWrite(READ_ONLY_MESSAGE);
         return { draft: before, refused: true };
       }
 
@@ -274,7 +296,7 @@ function StageEditorFormBody({
         flushed.current = content;
       return { draft: next, refused: false };
     },
-    [committedFields, controller, flushed, readOnly],
+    [committedFields, controller, flushed, readOnly, reportRefusedWrite],
   );
 
   const { formProps, formErrors } = useForm({
@@ -319,6 +341,7 @@ function StageEditorFormBody({
             storeApi,
             committedFields,
             applyOwnCommands,
+            reportRefusedWrite,
             identity: snapshot.editedSection.identity,
             protocolContext: snapshot.protocolContext,
             readOnly,
@@ -331,6 +354,7 @@ function StageEditorFormBody({
       formId,
       outline,
       readOnly,
+      reportRefusedWrite,
       snapshot.editedSection.identity,
       snapshot.protocolContext,
       storeApi,

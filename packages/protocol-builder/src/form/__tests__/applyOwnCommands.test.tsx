@@ -122,6 +122,25 @@ describe('the form’s own structural writes', () => {
     expect(heading()).toHaveValue('Welcome to the study');
   });
 
+  it('reports a stage that was already read-only in the same words as one that becomes it', async () => {
+    const session = createSession(true);
+    const { apply } = renderEditor(session);
+    await screen.findByRole('textbox', { name: 'Page heading' });
+
+    apply([{ op: 'set', key: 'title', value: 'Written anyway' }]);
+
+    // The two ways a write is refused for the lease — the stage was already
+    // read-only when this handler was built, or the lease went between that
+    // render and the dispatch — are the same news about the same form, and a
+    // caller cannot be asked to know which of them it met. Answering `refused`
+    // and saying nothing is the one that reads as the editor being broken.
+    expect(
+      await screen.findByText(
+        'This stage is read-only, so your changes were not saved. Take over editing and try again.',
+      ),
+    ).toBeInTheDocument();
+  });
+
   it('says so rather than throwing when the lease goes before the write lands', async () => {
     const session = createSession();
     const { raw } = renderEditor(session);

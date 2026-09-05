@@ -226,6 +226,10 @@ describe('a list bound to a key the document does not hold as a list', () => {
       text: 'a legacy object',
     });
     expect(session.getSnapshot().pendingCommands).toEqual([]);
+    // A refused operation puts the control back to the rows the document holds
+    // — but only when the document holds rows. Writing the empty list into the
+    // form value here would replace the legacy object at the next submit, which
+    // is the same discard by a slower route.
     expect(onChange).not.toHaveBeenCalled();
   });
 
@@ -356,7 +360,13 @@ describe('a list the document holds with a hole in it', () => {
       A,
     ]);
     expect(session.getSnapshot().pendingCommands).toEqual([]);
-    expect(onChange).not.toHaveBeenCalled();
+    // Nothing was written, so the control is handed the rows the document
+    // still holds — the hole dropped, exactly as a written operation drops it.
+    // `ArrayField` renders each mutation out of its own state before this runs
+    // and re-reads the value only when the value changes, so this is the whole
+    // of what puts a refused edit back off the screen.
+    expect(onChange).toHaveBeenCalledTimes(2);
+    expect(onChange).toHaveBeenLastCalledWith([A]);
   });
 });
 

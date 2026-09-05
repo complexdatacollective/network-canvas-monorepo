@@ -69,6 +69,22 @@ export type StageEditorFormContextValue = Readonly<{
    * refused.
    */
   applyOwnCommands(commands: readonly Command[]): OwnCommandsResult;
+  /**
+   * Puts a refused structural write in front of the researcher, in the form's
+   * own error region.
+   *
+   * `applyOwnCommands` reports the refusals IT can name — the ones about the
+   * lease — because a caller cannot be asked to know which of the two read-only
+   * routes it met. The refusals it cannot name are the ones about the array a
+   * write was resolved against: a removed row, a row that cannot be told from
+   * its neighbours. Those reach the session as a batch that was simply never
+   * dispatched, so only the list that built it knows there was anything to say.
+   *
+   * For the writes that happen in a click handler, which has nowhere to return
+   * an answer to. A row dialog reports its own instead, above the draft it is
+   * keeping open.
+   */
+  reportRefusedWrite(message: string): void;
   /** Session-owned; never a form field. */
   identity: StageIdentity;
   /** Tolerant, typed metadata derived from authoritative protocol sections. */

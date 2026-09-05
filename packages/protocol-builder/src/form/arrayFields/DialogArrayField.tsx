@@ -46,11 +46,16 @@ import {
 } from '../stageEditorContext.ts';
 import { reseatEditedRow } from './arrayFieldCommands.ts';
 import {
+  DEFAULT_ITEM_LABEL,
+  readOnlyMessage,
+  rowRemovedMessage,
+  writeRefusalMessage,
+} from './arrayWriteRefusal.ts';
+import {
   ArrayFieldBindingContext,
   useArrayFieldCommands,
   type ArrayFieldBinding,
   type ArrayWriteOutcome,
-  type ArrayWriteRefusal,
 } from './useArrayFieldCommands.ts';
 import {
   rowRemovalControlProps,
@@ -299,23 +304,6 @@ const NESTED_IN_A_ROW: ArrayFieldBinding = Object.freeze({
 });
 
 /**
- * The researcher-facing account of a save that landed after its row was gone.
- * This is an authoring tool, so it says what happened and what to do next
- * rather than reporting a failure.
- */
-const rowRemovedMessage = (itemLabel: string) =>
-  `This ${itemLabel} was removed while your changes were being saved, so there is nothing left to save them to. Copy anything you want to keep, then cancel and add a new ${itemLabel}.`;
-
-/**
- * Said when the stage stopped accepting writes while the editor was open. It
- * echoes the stage form's own read-only wording, because it is the same lease
- * that has gone: the researcher's next move is to take editing back, and the
- * draft stays on screen meanwhile.
- */
-const readOnlyMessage = (itemLabel: string) =>
-  `This stage is read-only, so this ${itemLabel} was not saved. Take over editing and try again.`;
-
-/**
  * Said when the LIST stopped accepting changes while the editor was open —
  * a section whose prerequisite is no longer chosen, a list disabled by
  * something else on the stage. `ArrayField` withdraws its own save handler
@@ -333,36 +321,6 @@ const listDisabledMessage = (itemLabel: string) =>
  */
 const saveRefusedMessage = (itemLabel: string) =>
   `This ${itemLabel} could not be saved. Check your changes and try again.`;
-
-/**
- * Said when the commit resolved to no row at all.
- *
- * The row has not necessarily gone: a row carrying no id of its own is found
- * by its content, and only while exactly one row matches — two rows the
- * researcher cannot tell apart are two rows this save describes identically,
- * and writing to either would be a guess that lands the edit on a row they
- * never opened. So the list is what has to be looked at, not the row.
- */
-const rowUnresolvedMessage = (itemLabel: string) =>
-  `This list changed while you were editing, so this ${itemLabel} could not be matched to a row in it and nothing was saved. Copy anything you want to keep, then check the list and make the change again.`;
-
-/**
- * What a refused list write is called on screen.
- *
- * Exhaustive over the reasons the write path can give, in one place, so a
- * reason added there has to be answered here rather than reaching the
- * researcher as silence — or as the wrong thing to do about it.
- */
-const WRITE_REFUSAL_MESSAGES: Readonly<
-  Record<ArrayWriteRefusal, (itemLabel: string) => string>
-> = Object.freeze({
-  'session-refused': readOnlyMessage,
-  'row-removed': rowRemovedMessage,
-  'row-unresolved': rowUnresolvedMessage,
-});
-
-const writeRefusalMessage = (reason: ArrayWriteRefusal, itemLabel: string) =>
-  WRITE_REFUSAL_MESSAGES[reason](itemLabel);
 
 /**
  * A pre-save refusal, in the shape the dialog renders: form-level messages
@@ -1068,7 +1026,7 @@ export default function DialogArrayField<T extends ArrayItem>({
   editorPreviewProps,
   editorProps,
   editorValidate,
-  itemLabel = 'item',
+  itemLabel = DEFAULT_ITEM_LABEL,
   itemSelector,
   itemTemplate = () => ({}),
   normalizeItem = (itemValue) => itemValue,
@@ -1103,7 +1061,7 @@ export default function DialogArrayField<T extends ArrayItem>({
     onOperation,
     commitDetachedRow: commitById,
     writeThrough,
-  } = useArrayFieldCommands<T>(rows, onChange, resolveItemId);
+  } = useArrayFieldCommands<T>(rows, onChange, resolveItemId, itemLabel);
 
   const commitDetachedRow = useCallback(
     (
