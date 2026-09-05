@@ -16,9 +16,6 @@ export type CheckboxChoice = Readonly<{ value: string; label: string }>;
 export const asText = (value: unknown): string | undefined =>
   typeof value === 'string' && value !== '' ? value : undefined;
 
-export const asBoolean = (value: unknown): boolean | undefined =>
-  typeof value === 'boolean' ? value : undefined;
-
 export const asIdList = (value: unknown): string[] | undefined =>
   Array.isArray(value)
     ? value.filter((entry): entry is string => typeof entry === 'string')
@@ -31,15 +28,6 @@ export const asNestedText = (
 ): string | undefined => {
   if (typeof value !== 'object' || value === null) return undefined;
   return asText(Reflect.get(value, key));
-};
-
-/** A boolean held inside a container the row may not have at all. */
-export const asNestedBoolean = (
-  value: unknown,
-  key: string,
-): boolean | undefined => {
-  if (typeof value !== 'object' || value === null) return undefined;
-  return asBoolean(Reflect.get(value, key));
 };
 
 /** A list of ids held inside a container the row may not have at all. */

@@ -31,12 +31,12 @@ import {
   useStableIdList,
 } from './rowValues.ts';
 
-export const TEXT_FIELD = 'text';
-export const LAYOUT_VARIABLE_FIELD = 'layout.layoutVariable';
-export const DISPLAY_EDGES_FIELD = 'edges.display';
-export const CREATE_EDGE_FIELD = 'edges.create';
-export const HIGHLIGHT_VARIABLE_FIELD = 'highlight.variable';
-export const ALLOW_HIGHLIGHTING_FIELD = 'highlight.allowHighlighting';
+const TEXT_FIELD = 'text';
+const LAYOUT_VARIABLE_FIELD = 'layout.layoutVariable';
+const DISPLAY_EDGES_FIELD = 'edges.display';
+const CREATE_EDGE_FIELD = 'edges.create';
+const HIGHLIGHT_VARIABLE_FIELD = 'highlight.variable';
+const ALLOW_HIGHLIGHTING_FIELD = 'highlight.allowHighlighting';
 
 /**
  * What tapping a node does.

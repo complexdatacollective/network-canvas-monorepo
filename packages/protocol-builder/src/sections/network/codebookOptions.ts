@@ -58,7 +58,7 @@ export function useStageSubject(): CodebookSubject | undefined {
 }
 
 /** A subject the codebook can be read against, or nothing. */
-export function readSubject(value: unknown): CodebookSubject | undefined {
+function readSubject(value: unknown): CodebookSubject | undefined {
   if (typeof value !== 'object' || value === null) return undefined;
   const entity = Reflect.get(value, 'entity');
   if (entity === 'ego') return { entity: 'ego' };
@@ -78,7 +78,7 @@ export function readSubject(value: unknown): CodebookSubject | undefined {
  * alphabetical list, and the codebook's own order is an artefact of when each
  * one was added.
  */
-export function variableOptions(
+function variableOptions(
   context: ProtocolBuilderProtocolContext,
   subject: CodebookSubject,
   types: readonly VariableType[],
@@ -98,7 +98,7 @@ export function variableOptions(
 }
 
 /** Every edge type the protocol defines. */
-export function edgeTypeOptions(
+function edgeTypeOptions(
   context: ProtocolBuilderProtocolContext,
 ): EdgeTypeOption[] {
   return Object.entries(context.codebook.edge ?? {})

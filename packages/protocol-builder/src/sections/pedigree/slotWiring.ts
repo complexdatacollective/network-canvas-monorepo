@@ -36,11 +36,11 @@ import { variablesForSubject } from '../../protocol-context.ts';
  * label is the package's first validated slot picker; the two are paired
  * through `crossClassMessage` below so neither can be used without the other.
  */
-export const unvalidatedElsewhereMessage = (variableName: string): string =>
+const unvalidatedElsewhereMessage = (variableName: string): string =>
   `"${variableName}" is written without validation by another stage, so it cannot be used as a form field`;
 
 /** The refusal a picker earns, keyed by the picker's OWN writer class. */
-export const crossClassMessage: Readonly<
+const crossClassMessage: Readonly<
   Record<WriterClass, (variableName: string) => string>
 > = Object.freeze({
   unvalidated: validatedElsewhereMessage,

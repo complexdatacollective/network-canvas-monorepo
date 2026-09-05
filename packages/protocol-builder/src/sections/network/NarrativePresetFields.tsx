@@ -25,11 +25,11 @@ import {
   useStableIdList,
 } from './rowValues.ts';
 
-export const LABEL_FIELD = 'label';
-export const LAYOUT_VARIABLE_FIELD = 'layoutVariable';
-export const GROUP_VARIABLE_FIELD = 'groupVariable';
-export const DISPLAY_EDGES_FIELD = 'edges.display';
-export const HIGHLIGHT_FIELD = 'highlight';
+const LABEL_FIELD = 'label';
+const LAYOUT_VARIABLE_FIELD = 'layoutVariable';
+const GROUP_VARIABLE_FIELD = 'groupVariable';
+const DISPLAY_EDGES_FIELD = 'edges.display';
+const HIGHLIGHT_FIELD = 'highlight';
 
 /**
  * One saved way of looking at the network.

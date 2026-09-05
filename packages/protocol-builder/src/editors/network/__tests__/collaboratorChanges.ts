@@ -14,7 +14,7 @@ import type { StageEditorHarness } from '../../../testing/renderStageEditor.tsx'
  * assert not only that a problem was reported but that the researcher is told
  * whose change caused it — nothing they did to this stage did.
  */
-export const COLLABORATOR = Object.freeze({
+const COLLABORATOR = Object.freeze({
   sessionId: 'other-tab',
   displayName: 'Dana',
 });
