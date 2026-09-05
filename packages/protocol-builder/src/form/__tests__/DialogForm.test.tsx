@@ -1,8 +1,9 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { type ReactNode, useState } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { createElement, type ReactNode, useState } from 'react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type * as DialogModule from '@codaco/fresco-ui/dialogs/Dialog';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -11,9 +12,36 @@ import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 
 import DialogForm, {
+  type DialogFormErrors,
   DialogFormField,
   type DialogFormProps,
 } from '../DialogForm.tsx';
+
+/**
+ * `layoutId` is a Motion prop, so it leaves no trace in the DOM: what a
+ * consumer needs to know is that the dialog RECEIVED it, which is what this
+ * records. Fresco's own `Dialog` is still the thing that renders — the mock is
+ * a passthrough, so every test in this file exercises the real component.
+ */
+const dialogRenders = vi.hoisted(() =>
+  vi.fn<(props: { layoutId?: string }) => void>(),
+);
+
+vi.mock('@codaco/fresco-ui/dialogs/Dialog', async (importOriginal) => {
+  const actual = await importOriginal<typeof DialogModule>();
+  const RealDialog = actual.default;
+  return {
+    ...actual,
+    default: (props: DialogModule.DialogProps) => {
+      dialogRenders(props);
+      return createElement(RealDialog, props);
+    },
+  };
+});
+
+beforeEach(() => {
+  dialogRenders.mockClear();
+});
 
 type EditorOptions = Partial<Omit<DialogFormProps, 'open'>>;
 
@@ -63,6 +91,55 @@ describe('DialogForm', () => {
     renderEditor({ initialValues: { label: 'Older than 65' } });
 
     await waitFor(() => expect(ruleLabel()).toHaveValue('Older than 65'));
+  });
+
+  it("prefers a field's own initial value to the dialog's", async () => {
+    renderEditor({
+      initialValues: { label: 'From the dialog', variable: 'age' },
+      children: (
+        <>
+          <DialogFormField
+            name="label"
+            label="Rule label"
+            component={InputField}
+            initialValue="From the field"
+          />
+          <DialogFormField
+            name="variable"
+            label="Attribute"
+            component={InputField}
+          />
+        </>
+      ),
+    });
+
+    await waitFor(() => expect(ruleLabel()).toHaveValue('From the field'));
+    // The sibling that states nothing of its own still opens on the dialog's
+    // value, so the field above is winning a contest rather than the dialog's
+    // values going unread.
+    expect(screen.getByRole('textbox', { name: 'Attribute' })).toHaveValue(
+      'age',
+    );
+  });
+
+  it('hands the dialog the shared-element identity it was opened with', async () => {
+    renderEditor({
+      layoutId: 'rule-row-7',
+      style: { borderRadius: 28 },
+    });
+
+    // `layoutId` pairs this dialog with the array row it morphs out of. It is
+    // a Motion prop and reaches no DOM attribute, so the dialog's own record
+    // of what it was handed is what there is to read; the inline geometry that
+    // travels with the morph is asserted the way fresco-ui asserts its own.
+    await waitFor(() =>
+      expect(dialogRenders).toHaveBeenCalledWith(
+        expect.objectContaining({ layoutId: 'rule-row-7' }),
+      ),
+    );
+    expect(await screen.findByRole('dialog')).toHaveStyle({
+      borderRadius: '28px',
+    });
   });
 
   it('submits the draft once, with the values on screen', async () => {
@@ -139,6 +216,106 @@ describe('DialogForm', () => {
 
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
     expect(onSubmit).toHaveBeenLastCalledWith({ label: 'Age band' });
+  });
+
+  it('keeps a refused save on screen, says why, and takes a corrected retry', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    const onSubmit = vi
+      .fn<
+        (values: Record<string, FieldValue>) => DialogFormErrors | undefined
+      >()
+      .mockReturnValueOnce({
+        formErrors: ['That rule cannot be saved while the stage is locked.'],
+      })
+      .mockReturnValue(undefined);
+    renderEditor({ onSubmit, onClose });
+
+    await user.type(ruleLabel(), 'Age');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(
+      await screen.findByText(
+        'That rule cannot be saved while the stage is locked.',
+      ),
+    ).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(ruleLabel()).toHaveValue('Age');
+
+    await user.type(ruleLabel(), ' band');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+    expect(onSubmit).toHaveBeenLastCalledWith({ label: 'Age band' });
+  });
+
+  it('attaches a refused save to the field it names, and focuses it', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    const onSubmit = vi.fn((): DialogFormErrors => ({
+      fieldErrors: { variable: 'That attribute is used by another rule.' },
+    }));
+    // Two fields, and the refusal names the SECOND: focus landing there is the
+    // error being attached to the control it belongs to, rather than the
+    // dialog simply focusing whatever comes first.
+    renderEditor({
+      onSubmit,
+      onClose,
+      children: (
+        <>
+          <DialogFormField
+            name="label"
+            label="Rule label"
+            component={InputField}
+          />
+          <DialogFormField
+            name="variable"
+            label="Attribute"
+            component={InputField}
+          />
+        </>
+      ),
+    });
+
+    await user.type(ruleLabel(), 'Age');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(
+      await screen.findByText('That attribute is used by another rule.'),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Attribute' })).toHaveFocus(),
+    );
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('closes when a save answers with an empty result', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    const onSubmit = vi.fn((): DialogFormErrors => ({}));
+    renderEditor({ onSubmit, onClose });
+
+    await user.type(ruleLabel(), 'Age');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+    expect(onSubmit).toHaveBeenCalledWith({ label: 'Age' });
+  });
+
+  it('closes when a save answers with empty error lists', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    const onSubmit = vi.fn((): DialogFormErrors => ({
+      formErrors: [],
+      fieldErrors: {},
+    }));
+    renderEditor({ onSubmit, onClose });
+
+    await user.type(ruleLabel(), 'Age');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+    expect(onSubmit).toHaveBeenCalledWith({ label: 'Age' });
   });
 
   it('falls back to a generic message when a failed save carries none', async () => {
