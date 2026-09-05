@@ -37,26 +37,35 @@ const STORIES = [
     name: 'Categorical Bin',
     meta: categoricalBin,
     spectating: categoricalBinSpectating,
+    codebookControls: ['Create a new attribute'],
   },
   {
     name: 'Ordinal Bin',
     meta: ordinalBin,
     spectating: ordinalBinSpectating,
+    codebookControls: ['Create a new attribute'],
   },
   {
     name: 'Dyad Census',
     meta: dyadCensus,
     spectating: dyadCensusSpectating,
+    codebookControls: ['Create a new connection type'],
   },
   {
     name: 'One to Many Dyad Census',
     meta: oneToManyDyadCensus,
     spectating: oneToManyDyadCensusSpectating,
+    codebookControls: ['Create a new connection type'],
   },
   {
     name: 'Tie-Strength Census',
     meta: tieStrengthCensus,
     spectating: tieStrengthCensusSpectating,
+    // Both, because the scale hangs off the connection this prompt creates.
+    codebookControls: [
+      'Create a new connection type',
+      'Create a new attribute',
+    ],
   },
 ] as const;
 
@@ -103,12 +112,57 @@ describe('the census and bin editor stories', () => {
     },
   );
 
+  /**
+   * The controls in each prompt that write to the CODEBOOK rather than to the
+   * stage, reachable in the story an author opens.
+   *
+   * This is the half that makes the spectator assertion below mean anything:
+   * these labels are the ones that must be missing there, and a label that had
+   * been renamed or a control that had been dropped would go on being missing
+   * for a spectator forever.
+   */
   it.each(STORIES)(
-    'opens the $name story read-only for a spectator',
-    ({ meta, spectating }) => {
+    'reaches the codebook controls in a $name prompt as an author',
+    async ({ meta, codebookControls }) => {
+      render(<StageEditorStoryHost {...meta.args} />);
+      const user = userEvent.setup();
+
+      await user.click(screen.getByRole('button', { name: 'Edit prompt' }));
+      await screen.findByRole('dialog');
+
+      for (const name of codebookControls) {
+        expect(await screen.findByRole('button', { name })).toBeInTheDocument();
+      }
+    },
+  );
+
+  /**
+   * A spectator can read the stage and change nothing — including the
+   * codebook, which is a different protocol section and would otherwise be
+   * reachable from inside a prompt while the stage itself stayed untouched.
+   *
+   * A disabled Save alone does not say that: every control that writes the
+   * codebook does so through a compound edit of its own, which no stage save
+   * is involved in. So both halves are asserted — the controls that lead into
+   * a prompt are inert, and the codebook controls a prompt would have held are
+   * nowhere on the page.
+   */
+  it.each(STORIES)(
+    'offers a spectator of the $name story nothing that writes',
+    ({ meta, spectating, codebookControls }) => {
       render(<StageEditorStoryHost {...meta.args} {...spectating.args} />);
 
       expect(screen.getByRole('button', { name: 'Save stage' })).toBeDisabled();
+      for (const name of [
+        'Create new prompt',
+        'Edit prompt',
+        'Remove prompt',
+      ]) {
+        expect(screen.getByRole('button', { name })).toBeDisabled();
+      }
+      for (const name of codebookControls) {
+        expect(screen.queryByRole('button', { name })).not.toBeInTheDocument();
+      }
     },
   );
 });
