@@ -1,6 +1,6 @@
 import type pg from 'pg';
 
-import { TENANT_ROLES } from '@codaco/studio-sync/rls';
+import { BACKUP_ROLE, TENANT_ROLES } from '@codaco/studio-sync/rls';
 import {
   runtimeRolesSql,
   validateRoleNames,
@@ -12,7 +12,18 @@ export async function enforceMigrationSecurity(
   allowedLogins: readonly string[],
 ): Promise<void> {
   validateRoleNames(allowedLogins);
-  await client.query(runtimeRolesSql(Object.values(TENANT_ROLES)));
+  // Backup identity provisioning belongs to its own versioned sidecar. Check
+  // it when present without creating a future role on an older installation.
+  const optionalRoles = await client.query<{ rolname: string }>(
+    'SELECT rolname FROM pg_roles WHERE rolname = $1',
+    [BACKUP_ROLE],
+  );
+  await client.query(
+    runtimeRolesSql([
+      ...Object.values(TENANT_ROLES),
+      ...optionalRoles.rows.map(({ rolname }) => rolname),
+    ]),
+  );
   const identity = await client.query<{
     operator: string;
     current: string;
@@ -36,18 +47,24 @@ export async function enforceMigrationSecurity(
       'The Studio database owner must be explicitly enrolled in STUDIO_DATABASE_ALLOWED_LOGINS.',
     );
   }
+  // Ownership and the migration connection are administrative capabilities.
+  // They may belong to distinct enrolled logins; neither is a runtime identity.
+  const administrators = [operator.operator, operator.owner];
+  const restrictedLogins = allowedLogins.filter(
+    (login) => !administrators.includes(login),
+  );
   const logins = await client.query<{ rolname: string; safe: boolean }>(
-    `SELECT rolname, rolcanlogin AND (rolname = session_user OR NOT (
-      rolsuper OR rolbypassrls OR rolcreaterole OR rolcreatedb OR rolreplication
+    `SELECT rolname, rolcanlogin AND (rolname = ANY($2::text[]) OR NOT (
+      rolsuper OR rolbypassrls OR rolcreaterole OR rolcreatedb OR rolreplication OR rolinherit
     )) AS safe FROM pg_roles WHERE rolname = ANY($1::text[])`,
-    [allowedLogins],
+    [allowedLogins, administrators],
   );
   if (
     logins.rows.length !== allowedLogins.length ||
     logins.rows.some(({ safe }) => !safe)
   ) {
     throw new Error(
-      'Enrolled Studio identities must exist and allow LOGIN; non-operator logins must not hold database administration or replication attributes.',
+      'Enrolled Studio identities must exist and allow LOGIN; runtime and backup logins must be NOINHERIT and lack database administration or replication attributes.',
     );
   }
   // An outside role able to become an enrolled login can restore CONNECT or
@@ -65,6 +82,79 @@ export async function enforceMigrationSecurity(
   if (memberships.rows[0]?.present) {
     throw new Error(
       'Enrolled Studio logins must not have memberships granted to unenrolled roles.',
+    );
+  }
+  // SET ROLE NONE restores session_user despite the pool's pinned startup
+  // role. A login must therefore carry only SET access to the reviewed roles:
+  // no owner/login/built-in chains, inherited privileges, or role administration.
+  const scopedMemberships = await client.query<{ safe: boolean }>(
+    `SELECT NOT EXISTS (
+      SELECT 1 FROM pg_auth_members membership
+        JOIN pg_roles login ON login.oid = membership.member
+        JOIN pg_roles parent ON parent.oid = membership.roleid
+      WHERE login.rolname = ANY($1::text[]) AND (
+        NOT parent.rolname = ANY($2::text[]) OR membership.admin_option
+        OR membership.inherit_option OR NOT membership.set_option
+        OR (parent.rolname = $3 AND EXISTS (
+          SELECT 1 FROM pg_auth_members sibling
+          WHERE sibling.member = login.oid AND sibling.roleid <> parent.oid
+        ))
+      )
+    ) AS safe`,
+    [
+      restrictedLogins,
+      [...Object.values(TENANT_ROLES), BACKUP_ROLE],
+      BACKUP_ROLE,
+    ],
+  );
+  if (scopedMemberships.rows[0]?.safe !== true) {
+    throw new Error(
+      'Runtime and backup login memberships must grant only SET access to the reviewed Studio roles, without inheritance or administration; backup membership must be separate from runtime membership.',
+    );
+  }
+  const loginAccess = await client.query<{ safe: boolean }>(
+    `WITH logins AS (
+      SELECT oid FROM pg_roles WHERE rolname = ANY($1::text[])
+    ), identities AS (
+      SELECT oid FROM pg_roles WHERE rolname = ANY($1::text[]) OR rolname = ANY($2::text[])
+    ), namespaces AS (
+      SELECT oid FROM pg_namespace WHERE nspname !~ '^pg_' AND nspname <> 'information_schema'
+    ) SELECT NOT EXISTS (
+      SELECT 1 FROM identities login WHERE
+        has_database_privilege(login.oid, current_database(), 'CREATE,CONNECT WITH GRANT OPTION,TEMPORARY WITH GRANT OPTION')
+        OR EXISTS (
+          SELECT 1 FROM pg_shdepend dependency
+          WHERE dependency.refclassid = 'pg_authid'::regclass AND dependency.refobjid = login.oid
+            AND dependency.deptype = 'o'
+            AND dependency.dbid IN (0, (SELECT oid FROM pg_database WHERE datname = current_database()))
+        )
+        OR EXISTS (
+          SELECT 1 FROM namespaces WHERE has_schema_privilege(login.oid, oid, 'CREATE')
+        )
+        OR EXISTS (
+          SELECT 1 FROM pg_proc routine WHERE routine.pronamespace IN (SELECT oid FROM namespaces)
+            AND routine.prosecdef AND has_function_privilege(login.oid, routine.oid, 'EXECUTE')
+        )
+    ) AND NOT EXISTS (
+      SELECT 1 FROM logins login WHERE EXISTS (
+          SELECT 1 FROM pg_class object WHERE object.relnamespace IN (SELECT oid FROM namespaces)
+            AND CASE WHEN object.relkind IN ('r', 'p', 'v', 'm', 'f') THEN (
+              has_table_privilege(login.oid, object.oid, 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,MAINTAIN')
+              OR has_any_column_privilege(login.oid, object.oid, 'SELECT,INSERT,UPDATE,REFERENCES')
+            ) ELSE false END
+        )
+        OR EXISTS (
+          SELECT 1 FROM pg_class object WHERE object.relnamespace IN (SELECT oid FROM namespaces)
+            AND CASE WHEN object.relkind = 'S'
+              THEN has_sequence_privilege(login.oid, object.oid, 'SELECT,USAGE,UPDATE')
+              ELSE false END
+        )
+    ) AS safe`,
+    [restrictedLogins, [...Object.values(TENANT_ROLES), BACKUP_ROLE]],
+  );
+  if (loginAccess.rows[0]?.safe !== true) {
+    throw new Error(
+      'Runtime and backup identities must own no database objects and hold no access outside their reviewed Studio roles: remove direct or PUBLIC login data grants, CREATE, CONNECT grant options, and executable SECURITY DEFINER routines.',
     );
   }
   // CONNECT is checked only at connection admission. Enrollment must already

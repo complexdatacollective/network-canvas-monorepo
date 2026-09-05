@@ -11,8 +11,10 @@ checkout, pnpm, or drizzle-kit.
 Use a dedicated PostgreSQL 18 database and deployment-specific login credentials.
 Its `public` schema must initially be empty, including functions, types, and
 extension objects. Install optional database extensions in their own schema.
-The migration login owns the database and Studio's objects. Use a separate,
-unprivileged runtime login. Both need permission to assume the existing
+The migration login normally owns the database and Studio's objects. A separate
+enrolled database owner is also supported when it grants the operator the
+ownership privileges needed to administer the schema. These are administrative
+identities; use separate, unprivileged runtime and backup logins. Both need permission to assume the existing
 `studio_app` and `studio_maintenance` runtime roles. An administrator can
 pre-create these roles; `CREATEROLE` is needed only when the migration operator
 creates them. On a shared cluster, have the administrator provision the roles
@@ -36,8 +38,8 @@ it or terminate sessions.
 For example, after provisioning dedicated login roles and their credentials,
 run this from an administrator connection to a different database. These role
 and database names are examples; use your deployment's actual identifiers.
-Runtime login credentials must not have database administration or replication
-attributes, and must not be shared with another Studio deployment.
+Runtime and backup logins must be NOINHERIT, lack database administration and
+replication attributes, and not be shared with another Studio deployment.
 
 ```sql
 CREATE ROLE studio_app NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB NOREPLICATION;
@@ -62,11 +64,30 @@ listing exactly those names in the migration environment:
 STUDIO_DATABASE_ALLOWED_LOGINS=["studio_migrator","studio_runtime"]
 ```
 
-Keep backup privileges and credentials separate from runtime membership.
+Runtime logins may hold only SET TRUE, INHERIT FALSE, ADMIN FALSE memberships
+in `studio_app` and `studio_maintenance`. A separately provisioned backup login
+may instead hold only that membership in `studio_backup`; backup and runtime
+memberships cannot be combined. The backup role is validated when present;
+its provisioning and SELECT policies belong to the backup schema migration.
+Unknown roles, built-in roles, other enrolled logins, and owner-role membership
+are refused for runtime and backup credentials, even when a membership's SET
+and INHERIT options are disabled. Administrative owner/operator membership is
+permitted separately.
+
+Runtime and backup logins must hold no direct or PUBLIC data privileges in
+application schemas, including table/column, view, materialized-view, foreign-table,
+and sequence grants. Access belongs to their reviewed NOLOGIN roles. Both the
+logins and those roles must own no database objects, have no database/schema
+CREATE or CONNECT grant options, and be unable to execute user-defined SECURITY
+DEFINER routines. This prevents SET ROLE NONE, object ownership, or a view/function
+from bypassing the intended privileges. PostgreSQL catalog access and ordinary
+invoker functions remain available. Correct unexpected grants explicitly before
+migrating; the migration does not silently enroll those extra capabilities.
+
 Enrolled logins must not have memberships granted to an unenrolled role:
 SET-only membership can impersonate an owner even without inherited privileges.
 Studio refuses PUBLIC or shared-role CONNECT, unexpected direct or inherited
-CONNECT, missing explicit CONNECT, unsafe non-operator login attributes, and
+CONNECT, missing explicit CONNECT, unsafe runtime or backup login attributes, and
 existing sessions from unenrolled non-superuser logins. Cluster superusers are
 trusted administrators and bypass database ACLs; never use their credentials
 for a deployed runtime.
