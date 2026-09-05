@@ -27,9 +27,9 @@ const DIRECTIVE = /^\s*(['"])use client\1/;
  * Base UI's `useRender` merges props and picks an element type; it calls no
  * React hook, which is why Base UI ships it with no directive of its own.
  * `typography/Heading.tsx` and `NativeLink.tsx` rely on that, and
- * `typography/__tests__/TypographyServer.test.tsx` pins it for Heading by
- * rendering it through `renderToStaticMarkup`. Marking either would cost a
- * server-rendered primitive for nothing.
+ * `serverSafeComponents.test.tsx` pins both by rendering them through
+ * `renderToStaticMarkup`. Marking either would cost a server-rendered
+ * primitive for nothing.
  *
  * Only add a name here after reading its implementation — a hook-shaped name
  * is not evidence either way.
@@ -52,11 +52,20 @@ const stripComments = (text: string): string =>
 
 /**
  * `useThing(` or `React.useThing(`, but not some object's `.useThing(`.
+ *
+ * A type argument may sit between the name and the call — `useMemo<Labels>(…)`
+ * is a hook call as much as `useMemo(…)` is — so `<` counts as an opening
+ * bracket here. Requiring `(` missed that shape entirely; no module in this
+ * package escaped on it, but `@codaco/interview`'s `forms/buildVariableLabels`
+ * did, so the sibling guard in that package matches this one. The prefix is
+ * reserved for hooks by convention, so a `use[A-Z]` name followed by `<` is a
+ * generic call rather than a comparison.
+ *
  * Declarations are removed first so that a module which only *defines* a
  * hook-named helper, without calling a hook, is not mistaken for one that
  * runs one.
  */
-const HOOK_CALL = /(?<![\w.$])(?:React\.)?use[A-Z]\w*(?=\s*\()/g;
+const HOOK_CALL = /(?<![\w.$])(?:React\.)?use[A-Z]\w*(?=\s*[(<])/g;
 
 const hooksCalledBy = (text: string): string[] =>
   stripComments(text)

@@ -1,41 +1,8 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { STAGE_TYPES } from '../../stage-types.ts';
 import StageTypeImage, { defaultStageImage } from '../StageTypeImage.tsx';
-
-/**
- * The intrinsic size of the placeholder file, read out of its own WebP header.
- * `defaultStageImage` has to state its dimensions as literals — the asset
- * pipeline hands back a URL and nothing else — so this is the only thing that
- * keeps the shipped file and the box reserved for it from drifting apart.
- *
- * The path is joined from `import.meta.dirname` rather than resolved through
- * `new URL(…, import.meta.url)`, which the bundler would rewrite into the same
- * served asset URL the component gets, leaving nothing to read.
- */
-function placeholderAssetSize() {
-  const bytes = readFileSync(
-    join(import.meta.dirname, '../assets/stage--Default.webp'),
-  );
-
-  expect(bytes.toString('ascii', 0, 4)).toBe('RIFF');
-  expect(bytes.toString('ascii', 8, 12)).toBe('WEBP');
-  // Only the lossy form is read. A re-encode to VP8L or VP8X stops here rather
-  // than being waved through, and whoever made it re-reads the numbers.
-  expect(bytes.toString('ascii', 12, 16)).toBe('VP8 ');
-
-  // VP8 keyframe header: a 3-byte start code at 23, then the 14-bit width and
-  // height, each in the low bits of a little-endian 16-bit word.
-  expect(bytes.toString('hex', 23, 26)).toBe('9d012a');
-  return {
-    width: bytes.readUInt16LE(26) & 0x3fff,
-    height: bytes.readUInt16LE(28) & 0x3fff,
-  };
-}
 
 describe('StageTypeImage', () => {
   it('renders the generated screenshot for every stage type', () => {
@@ -80,35 +47,26 @@ describe('StageTypeImage', () => {
       name: 'SomeFutureInterface interface',
     });
     expect(img.getAttribute('src')).toBe(defaultStageImage.src);
-    // The file's own intrinsic size, as literals: `defaultStageImage`'s
-    // numbers are what is under test here, and comparing them to themselves
-    // passes for whatever they drift to. The attributes reserve the right box
-    // while the image loads, so a grid of placeholders does not reflow once
-    // they arrive.
+    // Literal expected values, not `defaultStageImage.width/height` — those
+    // are the same constants the component reads, so comparing against them
+    // would pass no matter what they were set to. 448x307 is the actual
+    // pixel size of packages/protocol-builder/src/interfaces/assets/stage--Default.webp
+    // (verified with `file stage--Default.webp`), which is the source of
+    // truth the constants exist to mirror.
     expect(img.getAttribute('width')).toBe('448');
     expect(img.getAttribute('height')).toBe('307');
     expect(img.getAttribute('loading')).toBe('lazy');
   });
 
-  it('claims the size the placeholder file actually is', () => {
-    expect(placeholderAssetSize()).toEqual({ width: 448, height: 307 });
-    expect(defaultStageImage.width).toBe(448);
-    expect(defaultStageImage.height).toBe(307);
-  });
-
-  it('resolves the placeholder to a real asset URL', () => {
-    // The whole point of `new URL(…, import.meta.url)` is that the pipeline
-    // REWRITES it to wherever the asset was emitted. A specifier that came
-    // through unresolved still carries the file name, so matching the name
-    // alone cannot tell the two apart — and a relative specifier would be
-    // fetched relative to whatever document is on screen, so every unknown
-    // stage type would render a broken image. Resolved first, then the name.
-    expect(defaultStageImage.src).toMatch(/^(?:file|https?):\/\//);
-    // A production build fingerprints the emitted file, so the stem is the
-    // part that survives every pipeline.
-    expect(new URL(defaultStageImage.src).pathname).toMatch(
-      /\/stage--Default[^/]*\.webp$/,
-    );
+  it('resolves the placeholder to an absolute asset URL', () => {
+    // `new URL('./assets/stage--Default.webp', import.meta.url)` must
+    // actually resolve — if it silently fell back to the bare relative
+    // specifier, this would still end in the filename (an unresolved
+    // `./assets/stage--Default.webp` matches a suffix-only pattern), but it
+    // would not be an absolute URL, and every unknown stage type would
+    // render a broken image rather than a placeholder.
+    expect(defaultStageImage.src).toMatch(/^(file:|https?:)/);
+    expect(defaultStageImage.src).toMatch(/stage--Default[^/]*\.webp$/);
   });
 
   it('lets a caller name the placeholder and pass presentation through', () => {

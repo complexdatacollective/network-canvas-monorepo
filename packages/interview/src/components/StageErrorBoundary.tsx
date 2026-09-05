@@ -1,3 +1,5 @@
+'use client';
+
 import React, { Component, type ReactNode } from 'react';
 
 import Icon from '@codaco/fresco-ui/Icon';

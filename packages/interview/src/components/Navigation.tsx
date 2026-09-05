@@ -1,3 +1,5 @@
+'use client';
+
 import { Drawer } from '@base-ui/react/drawer';
 import {
   ChevronDown,

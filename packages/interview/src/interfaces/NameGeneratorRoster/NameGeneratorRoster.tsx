@@ -1,3 +1,5 @@
+'use client';
+
 import { AnimatePresence } from 'motion/react';
 import { useCallback, useEffect, useId, useMemo, useRef } from 'react';
 
