@@ -56,6 +56,8 @@ export type StageEditorRegistry = {
 export type StageEditorDispatcherProps = {
   controller: StageEditorController;
   registry: StageEditorRegistry;
+  /** Handed on to whichever editor the registry names. See `StageEditor`. */
+  actions?: StageEditorActions;
 };
 
 export function defineStageEditorRegistry<T extends StageEditorRegistry>(
