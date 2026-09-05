@@ -65,6 +65,39 @@ material. Merely reusing a configured key ID with the wrong root fails. Startup
 never registers a missing proof for an ID already used by ciphertext/indexes.
 Unused newly configured IDs receive proofs in the same locked transaction.
 
+The Node entrypoint runs this gate before constructing authentication, starting
+workers or accepting traffic. Local development waits for a current schema;
+missing or mismatched keys are fatal in every mode. The operator command uses
+the same gate with the maintenance pool. The static Netlify function has no
+database, authentication or decrypting worker and reads no encryption settings.
+
+Set `STUDIO_ENCRYPTION_KEYSET` to JSON such as:
+
+```json
+{
+  "roots": [{ "id": "root-2026", "reference": "STUDIO_ENCRYPTION_ROOT_2026" }],
+  "pii": {
+    "current": "2026",
+    "keys": [{ "id": "2026", "rootId": "root-2026" }]
+  },
+  "integration": {
+    "current": "2026",
+    "keys": [{ "id": "2026", "rootId": "root-2026" }]
+  },
+  "blindIndex": {
+    "current": "contact-v1",
+    "keys": [{ "id": "contact-v1", "rootId": "root-2026" }]
+  }
+}
+```
+
+The named `STUDIO_ENCRYPTION_ROOT_2026` secret must contain a newly generated
+32-byte root encoded as canonical base64. Store it in the deployment's secret
+facility and independent operator backup custody. Neither the JSON above nor
+the repository supplies a production root. Only explicitly referenced
+`STUDIO_ENCRYPTION_ROOT_*` variables are read; unrelated environment values are
+unavailable to the loader. Never pass roots as command-line arguments.
+
 Proofs are immutable and retained after live rotation. Automatic key retirement
 is deliberately unsupported: until a future explicit operator retirement
 procedure exists, retain every recorded root, including roots needed only by
@@ -79,8 +112,10 @@ recovery are separate requirements.
 The explicit synthetic-data seed registers the same proofs under the actual
 maintenance role before writing ciphertext. It restores its owner role before
 seeding and preserves the evidence tables during a reseed. Its public keyset
-in `development.ts` is only for local synthetic fixtures; production startup
-must never select it as a missing-secret fallback.
+in `development.ts` is selected only with explicit `STUDIO_DEV_DEFAULTS=true`
+and a verified local database. All seed/reset entrypoints use the same resolver
+and require configured roots for remote targets. The operator encryption
+command always requires explicit roots, even when that development flag is set.
 
 ## Authorized reads and writes
 
@@ -91,7 +126,8 @@ in one audited transaction. Reads lock and recheck the precise ciphertext and
 its identity, decrypt inside the audit transaction, and return plaintext only
 after commit. Denied reads record no participant ID, contact or name. Equality
 lookup returns only the stable participant handle and checks retained index
-versions under the same explicit grant and RLS.
+versions under the same explicit grant and RLS. It commits a lookup audit with
+the contact kind and result count, never the address or blind index.
 
 `auth/encrypted-adapter.ts` is Better Auth's live persistence adapter. It
 seals token values before Drizzle sees them, handles nested `includeAccounts`
@@ -144,21 +180,50 @@ handles, scheduling and provenance frozen. Old writers must be stopped before
 a rotation is declared complete; a remaining-row scan restarts a pass if an old
 replica wrote behind the cursor. No roots or proof evidence are removed.
 
+The built image exposes `encryption verify`, `encryption rotate --limit 100`
+and `encryption migrate-legacy --limit 100`. Locally the equivalent is
+`pnpm --filter @codaco/studio-server encryption <operation>`; the script loads
+only the deployment `.env`, and requires just `DATABASE_URL` and the encryption
+settings. It does not require mail, OAuth provider or session-signing settings.
+
+Each operation returns one JSON result. Save a rotation result's `cursor` and
+pass its JSON unchanged as `--cursor` on the next invocation. For legacy
+conversion, pass a non-null `afterId` as `--after-id`. Repeat until `remaining`
+is zero; a null cursor with remaining legacy rows means start another pass.
+Failure exits nonzero with a fixed diagnostic and leaves the last returned
+cursor safe to replay. Commands never start listeners or background dispatchers.
+
+For an ordinary rotation, first stop old writers, create a new root and new
+PII/integration key IDs, retain every historical entry and leave `blindIndex`
+unchanged. Deploy the complete keyset to the operator and all replicas, run
+verification and bounded rotation, then resume traffic using the new current
+IDs. Annual managed rotation and a pre-rotation backup restore belong in the
+managed operations schedule. Self-host operators choose their cadence.
+
+`__tests__/restore.test.ts` takes a real `pg_dump` of an isolated schema,
+rotates the source to a new root, and restores the old dump into a new database.
+It verifies participant/OAuth/webhook recovery, unchanged global suppression,
+absence of protected plaintext/root material in the dump, and refusal of
+missing historical IDs or wrong roots. It uses the repository's local/CI
+`postgres:18` Docker service and its matching PostgreSQL clients. Restored reads
+use the production application and maintenance pool constructors. This is
+engineering restore evidence using the development superuser. A managed
+non-superuser backup needs its own verified backup identity: the schema owner
+faces forced RLS, and the runtime maintenance role deliberately cannot read
+the global credential audit. Do not broaden runtime grants to bypass that
+deployment requirement.
+
 ## Integration still required before issue closure
 
-- Connect the agreed environment root loader and fatal key gate in every web
-  and worker entrypoint; pass verified keys to the auth and maintenance services.
-  The current storage slice supplies these functions, not deployment secrets.
-- Expose the bounded maintenance operations in the operator command/image and
-  record the managed annual rotation schedule. Self-host cadence remains the
-  operator's choice.
+- Provision deployment roots and independent operator backups, configure the
+  managed annual rotation schedule, and verify the deployment's backup identity.
 - Route future participant RPC/REST, exports and messaging features through
   these stores. They must mask by projecting `participant_code` before any
   decrypt, and use the worker-only global suppression check. This slice adds no
   unrelated participant API or full messaging/webhook dispatcher.
-- Run actual pre-rotation/correct-key/missing-key/wrong-root backup restores,
-  database-only dump inspection, and the full deployment's object-store restore
-  drill. Confirm encrypted provider volumes/storage and log redaction on the
+- Repeat the pre-rotation/correct-key/missing-key/wrong-root restore against the
+  deployed backup mechanism and run the full object-store restore drill.
+  Confirm encrypted provider volumes/storage and log redaction on the
   managed deployment and document those requirements for self-hosting.
 
 Run `pnpm --filter @codaco/studio-server test src/pii` for the engine and real

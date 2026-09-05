@@ -56,6 +56,14 @@ export type VariableDoc = {
 };
 
 export const CATALOGUE: Record<VariableName, VariableDoc> = {
+  STUDIO_ENCRYPTION_KEYSET: {
+    group: 'Database',
+    summary:
+      'Versioned encryption keyset JSON; contains key IDs and namespaced environment references, never root material.',
+    deployment:
+      'Required when a database is configured. Every roots[].reference must name a STUDIO_ENCRYPTION_ROOT_* environment value holding a canonical base64 32-byte root. Studio verifies stored key proofs before auth, workers or traffic. Operator commands never choose public defaults; explicit local development may use the public fixture keyset. See server/src/pii/README.md for configuration and backup custody.',
+    example: 'REPLACE_WITH_KEYSET_JSON',
+  },
   NODE_ENV: {
     group: 'Process',
     summary:

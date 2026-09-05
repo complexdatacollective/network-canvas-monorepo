@@ -4,7 +4,8 @@ import { parseArgs } from 'node:util';
 import { createOwnerPool } from '../src/db/pool.ts';
 import { checkSchema, schemaProblemMessage } from '../src/db/schema.ts';
 import { seed, type SeedScale } from '../src/db/seed.ts';
-import { readEnv } from '../src/env.ts';
+import { readEncryptionEnv, readEnv } from '../src/env.ts';
+import { loadEncryptionKeys } from '../src/pii/keys.ts';
 import { confirmDestructiveTarget } from './target-guard.ts';
 
 // The deploy-time seed step, run once per deployment rather than once per
@@ -32,6 +33,11 @@ const scale: SeedScale = values.scale;
 
 const env = readEnv();
 const { db } = confirmDestructiveTarget(env, values.force, 'wipe and reseed');
+const encryption = readEncryptionEnv(env);
+const encryptionKeys = await loadEncryptionKeys(
+  encryption.configuration,
+  encryption.loadRootKey,
+);
 
 const pool = createOwnerPool(db);
 
@@ -41,7 +47,11 @@ try {
     console.error(schemaProblemMessage(state));
     process.exit(1);
   }
-  await seed(pool, { adminPassword: env.seedAdminPassword, scale });
+  await seed(pool, {
+    adminPassword: env.seedAdminPassword,
+    scale,
+    encryptionKeys,
+  });
   console.log('Seed complete.');
 } finally {
   await pool.end();

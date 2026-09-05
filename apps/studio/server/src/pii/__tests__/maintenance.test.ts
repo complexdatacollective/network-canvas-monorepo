@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createTenantDb } from '@codaco/studio-sync/tenant';
 
+import { seedTeam } from '../../__tests__/support/postgres.ts';
 import { runAuditedSystemMutation } from '../../audit/command.ts';
 import type { AuditEventInput } from '../../audit/events.ts';
 import { createBetterAuthInstance } from '../../auth/better-auth.ts';
@@ -278,6 +279,8 @@ describe('bounded encryption maintenance and retained suppression', () => {
         ),
       ).rejects.toThrow('system audit requires the maintenance database role');
       expect(called).toBe(false);
+      const otherTeam = randomUUID();
+      await seedTeam(scratch.pool, otherTeam);
 
       for (const defect of ['empty', 'wrong-team'] as const) {
         await expect(
@@ -315,7 +318,7 @@ describe('bounded encryption maintenance and retained suppression', () => {
                 },
               ];
               if (defect === 'empty') events.pop();
-              else events[0] = { ...events[0], teamId: randomUUID() };
+              else events[0] = { ...events[0], teamId: otherTeam };
               return { result: undefined, events };
             },
           ),

@@ -53,6 +53,7 @@ export const serverSchemas = {
   S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
 
   DATABASE_URL: z.string().min(1).optional(),
+  STUDIO_ENCRYPTION_KEYSET: z.string().min(1).max(32_768).optional(),
 
   /**
    * 32 bytes of base64 is 44 characters, so the documented

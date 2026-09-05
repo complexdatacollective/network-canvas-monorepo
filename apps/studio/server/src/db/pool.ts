@@ -1,4 +1,5 @@
 import pg from 'pg';
+import { parseIntoClientConfig } from 'pg-connection-string';
 
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 
@@ -21,11 +22,34 @@ const CONNECTION_TIMEOUT_MS = 10_000;
 // in development, where the login is the superuser. Garbage collection pins
 // the maintenance role the same way as durable delivery workers do.
 function connect(db: DbEnv, role?: string): pg.Pool {
-  const pool = new pg.Pool({
-    connectionString: db.url,
+  // pg gives URL fields precedence over an options object. Parse once before
+  // pinning the role, retaining host/TLS settings and other startup options.
+  const parsed = role === undefined ? undefined : parseIntoClientConfig(db.url);
+  const onConnect =
+    role === undefined
+      ? undefined
+      : async (client: pg.ClientBase) => {
+          const result = await client.query<{ role: string }>(
+            'SELECT current_user AS role',
+          );
+          if (result.rows[0]?.role !== role)
+            throw new Error('STUDIO_DATABASE_ROLE_MISMATCH');
+        };
+  const configuration = {
+    ...parsed,
+    // A URL can itself carry a connectionString query parameter. Never let
+    // the driver parse that nested value and override the pinned fields.
+    connectionString: role === undefined ? db.url : undefined,
     connectionTimeoutMillis: CONNECTION_TIMEOUT_MS,
-    ...(role === undefined ? {} : { options: `-c role=${role}` }),
-  });
+    options:
+      role === undefined
+        ? undefined
+        : `${parsed?.options ? `${parsed.options} ` : ''}-c role=${role}`,
+    // pg-pool awaits this hook before handing out a client; its connect event
+    // does not await async listeners. Fail closed if startup parsing changes.
+    onConnect,
+  };
+  const pool = new pg.Pool(configuration);
   // A client that dies while idle (database restart, network partition) emits
   // `error` on the pool with no query to reject. Node turns an unhandled
   // `error` event into an uncaught exception, so without this listener a

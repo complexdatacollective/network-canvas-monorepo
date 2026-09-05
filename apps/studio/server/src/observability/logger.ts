@@ -4,6 +4,8 @@ import pino, { type DestinationStream } from 'pino';
 
 const DIAGNOSTICS = {
   STUDIO_CONFIGURATION_INVALID: 'error',
+  STUDIO_ENCRYPTION_INVALID: 'error',
+  STUDIO_ENCRYPTION_MAINTENANCE_FAILED: 'error',
   STUDIO_PROCESS_FAILED: 'error',
   STUDIO_CLIENT_ASSETS_UNAVAILABLE: 'warn',
   STUDIO_DATABASE_IDLE_ERROR: 'error',

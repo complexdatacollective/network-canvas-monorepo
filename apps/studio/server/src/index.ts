@@ -1,3 +1,5 @@
+import { setTimeout as delay } from 'node:timers/promises';
+
 import { serve } from '@hono/node-server';
 import { WebSocketServer } from 'ws';
 
@@ -11,15 +13,13 @@ import {
   createPool,
   isMissingRoleError,
 } from './db/pool.ts';
-import {
-  checkSchema,
-  type SchemaProblem,
-  type SchemaState,
-} from './db/schema.ts';
-import { readEnv } from './env.ts';
+import { checkSchema, type SchemaState } from './db/schema.ts';
+import { readEncryptionEnv, readEnv } from './env.ts';
 import { logOperational } from './observability/logger.ts';
 import { observeWebSocketServer } from './observability/requests.ts';
 import { createObservability } from './observability/runtime.ts';
+import { initializeEncryption } from './pii/initialize.ts';
+import type { EncryptionKeys } from './pii/keys.ts';
 import {
   type InvitationDeliveryWorker,
   startInvitationDeliveryWorker,
@@ -52,12 +52,6 @@ const env = (() => {
 const pool = env.db ? createPool(env.db) : undefined;
 const maintenancePool = env.db ? createMaintenancePool(env.db) : undefined;
 const assetStore = env.s3 ? createAssetStore(env.s3) : undefined;
-const observability = createObservability({
-  pool,
-  maintenancePool,
-  assetStore,
-  monitorProcess: true,
-});
 let invitationDeliveryWorker: InvitationDeliveryWorker | undefined;
 
 function startDatabaseWorkers(): void {
@@ -93,67 +87,55 @@ function exitIfFatal(state: SchemaState): void {
   }
 }
 
-// A configured database that cannot be reached is a deployment mistake and
-// fails the boot; only the development lane comes up anyway. Keyed on the
-// development marker rather than `NODE_ENV`, so a deployment that forgot
-// `NODE_ENV=production` does not inherit the retry and boot green with no
-// database.
+// A configured database must be current before keys can be verified. Local
+// development waits for its explicit reset, but does not start authentication,
+// workers or the listener while the database or its keys are unavailable.
 if (pool) {
-  // One attempt at a time: an attempt against an unreachable host can
-  // outlive its tick, and stacking them would exhaust the pool. A mismatch
-  // found mid-retry still takes the process down.
-  const waitUntilCurrent = () => {
-    let attempting = false;
-    const retry = setInterval(() => {
-      if (attempting) return;
-      attempting = true;
-      void checkSchema(pool)
-        .then((state) => {
-          exitIfFatal(state);
-          if (state.kind === 'current') {
-            clearInterval(retry);
-            startDatabaseWorkers();
-            logOperational('STUDIO_SCHEMA_CURRENT');
-          }
-          return undefined;
-        })
-        .catch(() => undefined)
-        .finally(() => {
-          attempting = false;
-        });
-    }, 3000);
-    retry.unref();
-  };
-
-  const waitForSchema = (state: SchemaProblem) => {
-    exitIfFatal(state);
-    logOperational(
-      state.kind === 'absent' ? 'STUDIO_SCHEMA_ABSENT' : 'STUDIO_SCHEMA_STALE',
-    );
-    waitUntilCurrent();
-  };
-
-  try {
-    const state = await checkSchema(pool);
-    if (state.kind === 'current') {
-      startDatabaseWorkers();
-    } else {
-      waitForSchema(state);
-    }
-  } catch (error) {
-    // The pool runs as a role the schema apply creates, so a never-applied
-    // database refuses the connection before the fingerprint can be read.
-    if (isMissingRoleError(error)) {
-      waitForSchema({ kind: 'absent' });
-    } else {
-      logOperational('STUDIO_DATABASE_UNREACHABLE');
+  for (;;) {
+    try {
+      const state = await checkSchema(pool);
+      if (state.kind === 'current') break;
+      exitIfFatal(state);
+      logOperational(
+        state.kind === 'absent'
+          ? 'STUDIO_SCHEMA_ABSENT'
+          : 'STUDIO_SCHEMA_STALE',
+      );
+    } catch (error) {
+      logOperational(
+        isMissingRoleError(error)
+          ? 'STUDIO_SCHEMA_ABSENT'
+          : 'STUDIO_DATABASE_UNREACHABLE',
+      );
       if (!env.devDefaults) process.exit(1);
-      waitUntilCurrent();
     }
+    await delay(3000);
   }
 }
 
+let encryptionKeys: EncryptionKeys | undefined;
+if (maintenancePool) {
+  try {
+    encryptionKeys = await initializeEncryption({
+      maintenancePool,
+      ...readEncryptionEnv(env),
+    });
+  } catch {
+    logOperational('STUDIO_ENCRYPTION_INVALID');
+    process.exit(1);
+  }
+}
+
+const observability = createObservability({
+  pool,
+  maintenancePool,
+  assetStore,
+  monitorProcess: true,
+});
+startDatabaseWorkers();
+
 const app = createApp(env, {
+  encryptionKeys,
   assetStore,
   observability,
   invitationDeliveryAvailable: Boolean(

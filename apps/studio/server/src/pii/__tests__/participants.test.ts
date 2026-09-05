@@ -49,6 +49,10 @@ describe('authorized and audited participant PII', () => {
         ['attributes_ciphertext', JSON.stringify(contacts.attributes)],
       ] as const;
       for (const [column, expected] of fields) {
+        expect(
+          row[column].includes(Buffer.from(expected)),
+          `${column} contains plaintext bytes`,
+        ).toBe(false);
         const value = await readParticipantPiiField(keys, context, {
           ...target,
           column,

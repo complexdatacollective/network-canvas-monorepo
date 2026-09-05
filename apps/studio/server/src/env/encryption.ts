@@ -47,6 +47,7 @@ export function resolveEncryptionEnv(
       };
     throw new KeyConfigurationError();
   }
+  if (raw.length > 32_768) throw new KeyConfigurationError();
   try {
     const configuration: unknown = JSON.parse(raw);
     const selected = references.parse(configuration);

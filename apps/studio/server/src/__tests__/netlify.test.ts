@@ -46,6 +46,13 @@ const SITE_MISCONFIGURATIONS: ReadonlyArray<
     { PUBLIC_URL: 'networkcanvas-studio.netlify.app' },
   ],
   ['a signing secret under the length floor', { BETTER_AUTH_SECRET: 'short' }],
+  [
+    'an invalid encryption keyset and root',
+    {
+      STUDIO_ENCRYPTION_KEYSET: 'invalid'.repeat(5000),
+      STUDIO_ENCRYPTION_ROOT_UNUSED: 'synthetic-invalid-root',
+    },
+  ],
 ];
 
 async function loadHandler(
