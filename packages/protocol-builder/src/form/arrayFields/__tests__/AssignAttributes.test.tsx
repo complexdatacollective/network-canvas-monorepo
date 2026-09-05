@@ -111,7 +111,9 @@ function CreatingVariablePicker({
 
 function renderAttributeList(
   session: ProtocolBuilderSessionStore,
-  committed: readonly AttributeValue[],
+  // Whatever the stage document holds at the array's key — the same value the
+  // list itself is handed, and no more vetted here than it is there.
+  committed: unknown,
   extra?: Readonly<{
     picker?: ComponentType<Record<string, unknown>>;
     onCreateVariable?: (variableName: string) => Promise<string | undefined>;
@@ -331,7 +333,11 @@ describe('a stage document holding something that is not a list', () => {
         additionalAttributes: foreign,
       } as SectionDoc);
 
-      renderAttributeList(session, []);
+      // The host builds the cross-class gate's escape set from this same
+      // value, in its own render path and with no more vetting than the list
+      // gets — so a shape that throws while it is read takes the editor down
+      // before the render-tolerant list below ever draws.
+      renderAttributeList(session, foreign);
 
       // The editor is on screen, so the render committed and whatever comes
       // next — a cascade, a reseed, the researcher's own edit — can still run.
@@ -380,7 +386,7 @@ describe('a stage document holding something that is not a list', () => {
         prompts: [{ id: 'p1', text: 'Who?' }],
         additionalAttributes: foreign,
       } as SectionDoc);
-      renderAttributeList(session, []);
+      renderAttributeList(session, foreign);
 
       const add = await screen.findByRole('button', {
         name: 'Add new attribute to assign',
@@ -429,11 +435,12 @@ describe('a stage document holding something that is not a list', () => {
 /**
  * Creating a codebook variable is a round trip through the host, and the list
  * carries on moving while it runs. These rows carry no id of their own, so
- * `ArrayField` identifies them by an internal id it REUSES BY POSITION
- * whenever the value is replaced — an insertion above hands a row's update
- * handle to whichever row has taken its place. The deletion path already
- * answers this by re-checking the row it was opened on
- * (`useConfirmRowRemoval`); the creation path is the same window.
+ * `ArrayField` identifies them by an internal id it infers from each row's
+ * content whenever the value is replaced — which holds a row's update handle
+ * on it however the list moves around it, and cannot hold it there when the
+ * row's own content is what changed. The deletion path already answers this by
+ * re-checking the row it was opened on (`useConfirmRowRemoval`); the creation
+ * path is the same window.
  */
 describe('a variable created while the list is moving', () => {
   const openList = (
@@ -488,13 +495,11 @@ describe('a variable created while the list is moving', () => {
       await screen.findByRole('button', { name: 'Create an attribute' }),
     );
 
-    // A row arrives above the one the creation was started from. Its update
-    // handle now names the newcomer, and stamping the new attribute through it
-    // would overwrite an assignment the researcher never looked at.
-    const arrived: AttributeValue[] = [
-      { variable: 'worried', value: false },
-      { variable: 'helpful', value: true },
-    ];
+    // The row the creation was started from is itself edited from elsewhere.
+    // Its update handle still names this row — it is the row's own content
+    // that moved — so stamping the new attribute through it would overwrite an
+    // assignment the researcher never looked at.
+    const arrived: AttributeValue[] = [{ variable: 'helpful', value: false }];
     act(() => {
       session.dispatch([
         { op: 'set', key: 'additionalAttributes', value: arrived },
@@ -514,6 +519,53 @@ describe('a variable created while the list is moving', () => {
       await screen.findByText(/was replaced while it was being created/),
     ).toBeInTheDocument();
     expect(attributesOf(session)).toEqual(arrived);
+  });
+
+  /**
+   * And the row that has NOT moved keeps its assignment, however far the list
+   * has moved around it: an arriving row is matched to the id of the row it
+   * IS, so the handle the creation is holding still names the row the
+   * researcher started from. Refusing here would leave a created attribute
+   * unassigned for a change that never touched the row it was created from.
+   */
+  it('assigns it to that row even when another row arrives above it', async () => {
+    const user = userEvent.setup();
+    let finishCreation: (id: string) => void = () => undefined;
+    const created = new Promise<string | undefined>((resolve) => {
+      finishCreation = resolve;
+    });
+    const session = openList(
+      [{ variable: 'helpful', value: true }],
+      () => created,
+    );
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Create an attribute' }),
+    );
+
+    const arrived: AttributeValue[] = [
+      { variable: 'worried', value: false },
+      { variable: 'helpful', value: true },
+    ];
+    act(() => {
+      session.dispatch([
+        { op: 'set', key: 'additionalAttributes', value: arrived },
+      ]);
+    });
+    await waitFor(() => expect(attributesOf(session)).toEqual(arrived));
+
+    await act(async () => {
+      finishCreation('reassuring');
+      await created;
+    });
+
+    await waitFor(() =>
+      expect(attributesOf(session)).toEqual([
+        { variable: 'worried', value: false },
+        { variable: 'reassuring', value: true },
+      ]),
+    );
+    expect(screen.queryByText(/was created but not assigned/)).toBeNull();
   });
 
   /**
@@ -554,9 +606,74 @@ describe('a variable created while the list is moving', () => {
     ).toBeInTheDocument();
     expect(attributesOf(session)).toEqual(attributes);
   });
+
+  /**
+   * The third thing the round trip can outlive, and the one neither guard
+   * above can see: the row leaving the list altogether. Both of them re-read
+   * values this control is handed on every render — and a row that has gone
+   * stops being rendered, so the last values it saw stand for good. The row
+   * reads as unchanged, the handler as live, and the assignment lands on
+   * nothing. Only the write itself can answer for that.
+   */
+  it('says where the attribute went when the row it was created from has gone', async () => {
+    const user = userEvent.setup();
+    let finishCreation: (id: string) => void = () => undefined;
+    const created = new Promise<string | undefined>((resolve) => {
+      finishCreation = resolve;
+    });
+    const session = openList(
+      [{ variable: 'helpful', value: true }],
+      () => created,
+    );
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Create an attribute' }),
+    );
+
+    // A collaborator deletes the row while the host is still creating the
+    // variable.
+    act(() => {
+      session.dispatch([{ op: 'set', key: 'additionalAttributes', value: [] }]);
+    });
+    await waitFor(() => expect(attributesOf(session)).toEqual([]));
+
+    await act(async () => {
+      finishCreation('reassuring');
+      await created;
+    });
+
+    expect(
+      await screen.findByText(/no longer in this list/),
+    ).toBeInTheDocument();
+    expect(attributesOf(session)).toEqual([]);
+  });
 });
 
 describe('committedAttributeVariableIds', () => {
+  it('reads past an entry that is not a row at all', () => {
+    // The hole an import, a migration or a mid-cascade reseed leaves in a
+    // list — the shape every other reader in this package is written to
+    // tolerate. A host builds this set inside its own `useMemo`, during
+    // render, so destructuring one takes the editor down before the list that
+    // could repair it is drawn.
+    expect([
+      ...committedAttributeVariableIds([
+        null,
+        'worried',
+        { variable: 'helpful', value: true },
+      ]),
+    ]).toEqual(['helpful']);
+  });
+
+  it('answers with nothing for a value that is not a list', () => {
+    // Not a list, so it holds no committed pick to escape the cross-class
+    // gate with. Erring towards the gate FIRING is the safe direction: the
+    // escape only ever excuses a contradiction the protocol already saved.
+    expect([
+      ...committedAttributeVariableIds({ variable: 'helpful', value: true }),
+    ]).toEqual([]);
+  });
+
   it('holds only the picks a row has actually made', () => {
     // This set is the cross-class gate's escape hatch, and `has` is the only
     // question ever asked of it. An unfinished row has picked nothing, so it

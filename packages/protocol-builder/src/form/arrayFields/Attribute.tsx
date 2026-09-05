@@ -26,6 +26,7 @@ import {
 import type { CodebookSubject } from '../../protocol-context.ts';
 import { variablesForSubject } from '../../protocol-context.ts';
 import { useStageEditorForm } from '../stageEditorContext.ts';
+import { readRows } from './arrayFieldCommands.ts';
 import {
   crossClassPickIssue,
   draftValidatedElsewhereMessage,
@@ -129,6 +130,21 @@ const listClosedMessage = (variableName: string) =>
   `“${variableName}” was created, but this list stopped accepting changes while it was being created, so nothing has been assigned to it. Select “${variableName}” in the row you want it in once the list can be edited.`;
 
 /**
+ * Said when the assignment reached no row at all.
+ *
+ * The third thing the round trip can outlive, and the one re-checking this
+ * control cannot see: the row leaving the list altogether. Both checks above
+ * read values this control is handed on every render, and a row that has gone
+ * stops being rendered — `ArrayField` even keeps its editor mounted on frozen
+ * props while it animates out — so the row it last saw still reads as
+ * unchanged and the handler it last had still reads as live. Both pass, and
+ * the assignment lands on nothing. `onUpdate` answering for itself is what
+ * turns that into something to say.
+ */
+const rowGoneMessage = (variableName: string) =>
+  `“${variableName}” was created, but the row it was created from is no longer in this list, so nothing has been assigned to it. Select “${variableName}” in the row you want it in.`;
+
+/**
  * Every variable id an array's COMMITTED value holds.
  *
  * Rows carry no stable identity. `committedValue` is frozen when the dialog
@@ -143,13 +159,23 @@ const listClosedMessage = (variableName: string) =>
  * the LIVE value (it keeps field paths attached to items during drag
  * previews); reading the live value here would escape every fresh pick and the
  * gate would never fire at all.
+ *
+ * The argument is whatever the stage document holds at the array's key, not
+ * something a caller has already vetted — a host builds this from that value
+ * inside its own `useMemo`, in its own render path. An import, a migration or
+ * a mid-cascade reseed can leave a list holding an entry that is not a row at
+ * all, and destructuring one throws out of that render, taking down the
+ * editor before the render-tolerant control this whole package is built around
+ * ever draws. So it reads its rows the way every other reader here does, with
+ * `readRows` — see `renderedRows` in `arrayFieldCommands`, and fresco-ui's
+ * render-tolerance contract (#1433).
  */
 export const committedAttributeVariableIds = (
-  committedValue: readonly AttributeValue[] = [],
+  committedValue?: unknown,
 ): ReadonlySet<string> =>
   new Set(
-    committedValue
-      .map(({ variable }) => variable)
+    readRows(committedValue)
+      .map((row) => row.variable)
       .filter(
         (variable): variable is string =>
           typeof variable === 'string' && variable !== '',
@@ -290,11 +316,12 @@ export default function Attribute({
         // Creating a codebook variable is a round trip through the host, and
         // the list carries on moving while it runs — a collaborator's
         // insertion, an undo, a rollback after a lost lease. These rows carry
-        // no id of their own, so `onUpdate` is bound to an internal id that
-        // `ArrayField` REUSES BY POSITION whenever the value is replaced: an
-        // insertion above hands this row's handle to whichever row has taken
-        // its place, and the new variable is stamped onto an attribute the
-        // researcher never looked at.
+        // no id of their own, so `onUpdate` is bound to an internal id
+        // `ArrayField` infers from the row's content when the value is
+        // replaced: a row that has itself been edited meanwhile — or one of
+        // two rows nothing can tell apart — leaves this handle naming a row
+        // the researcher never looked at, and the new variable is stamped onto
+        // that one's attribute.
         //
         // Content is the only identity such a row has, and it is enough for
         // the same reason it is enough in `useConfirmRowRemoval`: two rows the
@@ -313,19 +340,32 @@ export default function Attribute({
             stripManagedProperties(rowRef.current),
             createdFrom,
           );
-          if (!stillTheSameRow || assign === undefined) {
+          const unassigned = async (description: string) => {
             await openDialog({
               type: 'acknowledge',
               intent: 'warning',
               title: `“${variableName}” was created but not assigned`,
-              description: stillTheSameRow
-                ? listClosedMessage(variableName)
-                : rowReplacedMessage(variableName),
+              description,
               actions: { primary: { label: 'Continue', value: true } },
             });
+          };
+
+          if (!stillTheSameRow || assign === undefined) {
+            await unassigned(
+              stillTheSameRow
+                ? listClosedMessage(variableName)
+                : rowReplacedMessage(variableName),
+            );
             return;
           }
-          assign({ variable: created });
+          // The last thing the two guards above cannot see: a row that has
+          // left the list while this control was still rendering it, or was
+          // rendering nothing at all. Neither refreshes the values those
+          // guards read, so the write itself is what has to answer — see
+          // `onUpdate` in fresco-ui's `ArrayFieldItemProps`.
+          if (assign({ variable: created }) === false) {
+            await unassigned(rowGoneMessage(variableName));
+          }
         })();
       }
     : undefined;
