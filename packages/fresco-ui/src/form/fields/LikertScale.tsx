@@ -21,6 +21,7 @@ import {
 import { cx } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
+import { omitAriaReadOnly } from '../utils/omitAriaReadOnly';
 import ScaleValuePopover from './scale/ScaleValuePopover';
 import {
   ROTATED_LABEL_WRAP_CLASS,
@@ -165,7 +166,13 @@ export default function LikertScaleField(props: LikertScaleFieldProps) {
   };
 
   return (
-    <div ref={rootRef} className={cx('relative w-full', className)} {...rest}>
+    <div
+      ref={rootRef}
+      className={cx('relative w-full', className)}
+      // A roleless layout element does not allow `aria-readonly`; the slider
+      // below carries the state instead.
+      {...omitAriaReadOnly(rest)}
+    >
       <div
         className="relative"
         style={

@@ -19,6 +19,7 @@ import {
 import { cx } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
+import { omitAriaReadOnly } from '../utils/omitAriaReadOnly';
 import ScaleValuePopover from './scale/ScaleValuePopover';
 import { useSliderActive } from './scale/useSliderActive';
 
@@ -183,7 +184,9 @@ export default function VisualAnalogScaleField(
       // text and the muted thumb otherwise only express in ways a test cannot
       // read together. Also the styling seam if this state ever needs more.
       data-unanswered={hasValue ? undefined : 'true'}
-      {...rest}
+      // A roleless layout element does not allow `aria-readonly`; the slider
+      // below carries the state instead.
+      {...omitAriaReadOnly(rest)}
     >
       <div className="relative">
         <Slider.Root

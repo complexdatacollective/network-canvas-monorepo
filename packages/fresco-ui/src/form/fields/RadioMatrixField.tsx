@@ -11,6 +11,7 @@ import {
 import { cx } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
+import { omitAriaReadOnly } from '../utils/omitAriaReadOnly';
 import { RadioItem } from './RadioGroup';
 
 export type RadioMatrixRow = { id: string; label: string };
@@ -109,7 +110,9 @@ export default function RadioMatrixField(props: RadioMatrixFieldProps) {
       )}
     >
       <fieldset
-        {...rest}
+        // A `<fieldset>` is `role="group"`, which does not allow
+        // `aria-readonly`. Each row's radio group carries the state instead.
+        {...omitAriaReadOnly(rest)}
         id={id}
         aria-invalid={rest['aria-invalid'] ?? undefined}
         className={cx(
