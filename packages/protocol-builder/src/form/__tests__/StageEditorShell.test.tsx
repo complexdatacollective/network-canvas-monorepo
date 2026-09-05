@@ -370,6 +370,8 @@ describe('StageEditorShell', () => {
       validate: () => session.validate(),
       requestCompoundEdit: (request) => session.requestCompoundEdit(request),
       finish: () => session.finish(),
+      cancel: () => session.cancel(),
+      getResourceGateway: () => session.getResourceGateway(),
     };
 
     render(
@@ -1616,6 +1618,8 @@ describe('StageEditorShell', () => {
       validate: () => session.validate(),
       requestCompoundEdit: (request) => session.requestCompoundEdit(request),
       finish: () => session.finish(),
+      cancel: () => session.cancel(),
+      getResourceGateway: () => session.getResourceGateway(),
     };
 
     render(
