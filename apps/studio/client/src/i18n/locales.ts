@@ -4,16 +4,27 @@ import {
   pseudoAppLocale,
 } from '@codaco/app-i18n/locales';
 import type { AppLocale } from '@codaco/app-i18n/locales';
+import { SUPPORTED_STUDIO_LOCALES } from '@codaco/studio-rpc';
 
 /**
  * The locales Studio ships a UI in (2026-09-04 localization design §5.1).
  *
- * Today Studio's registry is exactly the ecosystem set — `en` and `en-GB` —
- * and the guard test pins it to `SUPPORTED_STUDIO_LOCALES` from
- * `@codaco/studio-rpc`, the list the server validates a stored preference
- * against. The three lists move together in the PR that adds a locale.
+ * The RPC contract controls Studio's supported subset. The ecosystem can
+ * grow when another app adds a translation without Studio advertising copy
+ * it has not translated or a preference its server will refuse to store.
+ * Locale metadata still comes from the shared registry.
  */
-export const studioProductionLocales = defineAppLocales(ecosystemLocales);
+export const studioProductionLocales = defineAppLocales(
+  SUPPORTED_STUDIO_LOCALES.map((locale) => {
+    const metadata = ecosystemLocales.find((entry) => entry.locale === locale);
+    if (metadata === undefined) {
+      throw new Error(
+        `Studio locale ${locale} is absent from ecosystemLocales`,
+      );
+    }
+    return { ...metadata, locale };
+  }),
+);
 
 /**
  * The registry the app mounts. Development builds append the accented,

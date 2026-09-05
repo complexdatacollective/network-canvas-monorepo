@@ -1,6 +1,7 @@
 import type { CatalogMessages } from '@codaco/app-i18n/locales';
 
 import enGbOverrides from './en-GB.json';
+import es from './es.json';
 
 /**
  * This package's own message catalogs, one entry per non-source locale of
@@ -17,4 +18,5 @@ import enGbOverrides from './en-GB.json';
  */
 export const frescoUiCatalogs: Readonly<Record<string, CatalogMessages>> = {
   'en-GB': enGbOverrides as CatalogMessages,
+  es,
 };

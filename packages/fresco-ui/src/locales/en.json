@@ -779,6 +779,14 @@
     "defaultMessage": "Medium data-loss risk",
     "description": "Context label announced before a medium-risk browser-storage warning."
   },
+  "frescoUi.timeAgo.justNow": {
+    "defaultMessage": "just now",
+    "description": "Relative timestamp for an event less than one minute ago."
+  },
+  "frescoUi.toast.notifications": {
+    "defaultMessage": "Notifications",
+    "description": "Accessible name of the region containing status notifications and alerts."
+  },
   "frescoUi.validation.differentFromError": {
     "defaultMessage": "Your answer must be different from your earlier answer.",
     "description": "Error for a must-differ comparison when the other answer has no visible label."
@@ -872,11 +880,11 @@
     "description": "Hint and error for a date/time maximum; {max} is the formatted bound."
   },
   "frescoUi.validation.maxLengthError": {
-    "defaultMessage": "Too long. Enter fewer than {max, number} characters.",
+    "defaultMessage": "{max, plural, one {Too long. Enter at most # character.} other {Too long. Enter at most # characters.}}",
     "description": "Error shown when text exceeds its maximum length."
   },
   "frescoUi.validation.maxLengthHint": {
-    "defaultMessage": "Enter at most {max, number} characters.",
+    "defaultMessage": "{max, plural, one {Enter at most # character.} other {Enter at most # characters.}}",
     "description": "Hint summarising a maximum text length rule."
   },
   "frescoUi.validation.maxSelectedError": {
@@ -900,11 +908,11 @@
     "description": "Hint and error for a date/time minimum; {min} is the formatted bound."
   },
   "frescoUi.validation.minLengthError": {
-    "defaultMessage": "Too short. Enter at least {min, number} characters.",
+    "defaultMessage": "{min, plural, one {Too short. Enter at least # character.} other {Too short. Enter at least # characters.}}",
     "description": "Error shown when text is shorter than its minimum length."
   },
   "frescoUi.validation.minLengthHint": {
-    "defaultMessage": "Enter at least {min, number} characters.",
+    "defaultMessage": "{min, plural, one {Enter at least # character.} other {Enter at least # characters.}}",
     "description": "Hint summarising a minimum text length rule."
   },
   "frescoUi.validation.minSelectedError": {

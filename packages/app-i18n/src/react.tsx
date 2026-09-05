@@ -18,8 +18,8 @@ import type { IntlShape } from 'react-intl';
 
 import { PSEUDO_LOCALE } from './locales.ts';
 import type { AppLocale, CatalogMessages } from './locales.ts';
-import { createAppIntl } from './messages.ts';
-import type { AppIntlErrorHandler } from './messages.ts';
+import { createAppIntl, formatMessageError } from './messages.ts';
+import type { AppIntlErrorHandler, MessageDescriptor } from './messages.ts';
 import { createPseudoIntl } from './pseudo.ts';
 
 type AppI18nContextValue = Readonly<{
@@ -181,4 +181,27 @@ export function useAppLocale(): Readonly<{
     locales: context.locales,
     setLocale: context.setLocale,
   };
+}
+
+/**
+ * A subscribed message node for queued notifications and dialogs. Keeping the
+ * descriptor in a React node lets existing content follow a locale switch;
+ * formatting to a string when a task starts would freeze the old language.
+ * Like useAppIntl, this renders English defaults without a provider.
+ */
+export function AppMessage({
+  message,
+  values,
+}: Readonly<{
+  message: MessageDescriptor;
+  values?: Parameters<IntlShape['formatMessage']>[1];
+}>) {
+  const intl = useAppIntl();
+  return <>{intl.formatMessage(message, values)}</>;
+}
+
+/** A stored string error that follows the active locale without rerunning its operation. */
+export function AppErrorMessage({ error }: Readonly<{ error: string }>) {
+  const intl = useAppIntl();
+  return <>{formatMessageError(error, intl) ?? error}</>;
 }

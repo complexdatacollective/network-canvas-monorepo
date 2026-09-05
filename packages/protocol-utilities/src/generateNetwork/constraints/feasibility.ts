@@ -42,7 +42,7 @@ import {
   unwrittenNodeVariables,
   worstCaseEntityCounts,
 } from './entityCounts.ts';
-import type { ConstraintConflict } from './error.ts';
+import type { ConstraintConflict, ConstraintReasonCode } from './error.ts';
 import { comparatorFoldEmptied } from './generateEntityAttributes.ts';
 import {
   differentFromGroups,
@@ -617,6 +617,7 @@ function comparatorComponents(edges: readonly ComparatorEdge[]): string[][] {
 }
 
 type DelegatedConflict = {
+  reasonCode: ConstraintReasonCode;
   variableIds: string[];
   rules: string[];
   reason: string;
@@ -651,6 +652,7 @@ function adaptDelegatedContradiction(
         return {
           variableIds,
           rules: ['required', 'maxSelected'],
+          reasonCode: 'requiredEmptySelection',
           reason:
             'maxSelected 0 permits only an empty selection, which required rejects',
         };
@@ -663,6 +665,7 @@ function adaptDelegatedContradiction(
         return {
           variableIds,
           rules: ['required', 'maxLength'],
+          reasonCode: 'requiredEmptyText',
           reason:
             'maxLength 0 permits only an empty string, which required rejects',
         };
@@ -670,6 +673,7 @@ function adaptDelegatedContradiction(
       return {
         variableIds,
         rules: strippedRules,
+        reasonCode: contradiction.class,
         reason: contradiction.message,
       };
     }
@@ -691,6 +695,7 @@ function adaptDelegatedContradiction(
       return {
         variableIds,
         rules: strippedRules,
+        reasonCode: 'invertedBounds',
         reason: `${minimum.rule} ${minimumValue} exceeds ${maximum.rule} ${maximumValue}`,
       };
     }
@@ -707,6 +712,7 @@ function adaptDelegatedContradiction(
       return {
         variableIds,
         rules: strippedRules,
+        reasonCode: 'minSelectedExceedsOptions',
         reason: `minSelected ${minimum} exceeds the ${optionCount} available options`,
       };
     }
@@ -716,6 +722,7 @@ function adaptDelegatedContradiction(
     return {
       variableIds,
       rules: ['sameAs', 'differentFrom'],
+      reasonCode: 'conflictingReferencePair',
       reason: 'these attributes are required to be both equal and different',
     };
   }
@@ -728,6 +735,7 @@ function adaptDelegatedContradiction(
           (id) => entity.get(id)?.constraints[rule] !== undefined,
         ),
       ),
+      reasonCode: 'strictComparatorCycle',
       reason:
         'these attributes reference each other in a cycle that no assignment can satisfy',
     };
@@ -761,6 +769,7 @@ function adaptDelegatedContradiction(
               ...held,
               ...crossings.flatMap((crossing) => crossing.rules),
             ],
+            reasonCode: 'sharedBounds',
             reason:
               'these attributes are held to a single value, but their bounds do not ' +
               `overlap: ${crossings.map((crossing) => crossing.detail).join('; ')}`,
@@ -789,6 +798,7 @@ function adaptDelegatedContradiction(
           return {
             variableIds,
             rules: ['sameAs'],
+            reasonCode: 'disjointOptions',
             reason: `the options offered by ${offerings
               .map(
                 ({ name, values }) =>
@@ -809,6 +819,7 @@ function adaptDelegatedContradiction(
           (id) => entity.get(id)?.constraints[rule] !== undefined,
         ),
       ),
+      reasonCode: 'disjointBounds',
       reason:
         'the comparisons between these attributes do not fit inside the bounds they declare',
     };
@@ -818,6 +829,7 @@ function adaptDelegatedContradiction(
   return {
     variableIds,
     rules: [...new Set([...solvedRules, ...strippedRules])],
+    reasonCode: contradiction.class,
     reason:
       contradiction.class === 'sameAsGroupConflict'
         ? contradiction.message
@@ -920,6 +932,7 @@ function analyseEntity(
     variableIds: string[],
     rules: string[],
     reason: string,
+    reasonCode: ConstraintReasonCode,
   ): void => {
     for (const id of variableIds) implicated.add(groupOf.get(id) ?? id);
     conflicts.push({
@@ -934,6 +947,7 @@ function analyseEntity(
       variableNames: namesOf(entity, variableIds),
       rules,
       reason,
+      reasonCode,
     });
   };
 
@@ -948,7 +962,12 @@ function analyseEntity(
       groupOf,
       membersOf,
     );
-    report(delegated.variableIds, delegated.rules, delegated.reason);
+    report(
+      delegated.variableIds,
+      delegated.rules,
+      delegated.reason,
+      delegated.reasonCode,
+    );
   }
 
   // A value a prompt fixes is settled before anything is drawn: the protocol
@@ -972,6 +991,7 @@ function analyseEntity(
       broken.variableIds.length === 1
         ? `a prompt fixes this attribute to ${fixedTo}, which ${broken.rule} does not allow`
         : `a prompt fixes these attributes to ${fixedTo}, which ${broken.rule} cannot hold`,
+      'fixedValueRejected',
     );
   }
 
@@ -997,6 +1017,7 @@ function analyseEntity(
         [id],
         ['minLength'],
         `minLength ${constraints.minLength} exceeds the ${MAX_TEXT_DRAW_LENGTH} characters a generated value can hold`,
+        'textGenerationLimit',
       );
     }
 
@@ -1013,6 +1034,7 @@ function analyseEntity(
         [id],
         ['maxLength'],
         `maxLength ${constraints.maxLength} permits no string at all`,
+        'negativeTextMaximum',
       );
     }
 
@@ -1026,6 +1048,7 @@ function analyseEntity(
         [id],
         ['maxSelected'],
         `maxSelected ${constraints.maxSelected} permits no selection at all`,
+        'negativeSelectionMaximum',
       );
     }
 
@@ -1039,6 +1062,7 @@ function analyseEntity(
         [id],
         ['parameters'],
         `the date range ${window.min} to ${window.max} is empty`,
+        'emptyDateRange',
       );
     }
 
@@ -1049,7 +1073,12 @@ function analyseEntity(
 
     if (constraints.unique) {
       if (scope.entity === 'ego') {
-        report([id], ['unique'], 'unique is not supported on ego attributes');
+        report(
+          [id],
+          ['unique'],
+          'unique is not supported on ego attributes',
+          'uniqueEgo',
+        );
       } else {
         // Measured against the group's intersected rules, because that is what
         // the generator draws against: a variable held equal to a narrower one
@@ -1076,6 +1105,7 @@ function analyseEntity(
             members,
             ['unique'],
             `only ${size} distinct values are possible${members.length > 1 ? ' once these attributes are held equal' : ''}, but up to ${holders} ${scope.entity}s of this type can be generated`,
+            'insufficientUniqueValues',
           );
         }
 
@@ -1129,6 +1159,7 @@ function analyseEntity(
                 : []),
             ],
             `${writers} ${verb} ${members.length > 1 ? 'these attributes, which are held equal,' : 'this'} to ${detail}, but unique allows one ${scope.entity} to hold a value`,
+            'duplicateFixedValues',
           );
         }
       }
@@ -1176,6 +1207,9 @@ function analyseEntity(
       component.some((group) => incomparable.has(group))
         ? 'a number is compared against a date here, which no assignment can satisfy'
         : 'the comparisons between these attributes do not fit inside the bounds they declare',
+      component.some((group) => incomparable.has(group))
+        ? 'numberDateComparison'
+        : 'disjointBounds',
     );
   }
 
@@ -1197,6 +1231,7 @@ function analyseEntity(
       involvesComparator
         ? 'these attributes reference each other in a cycle that no assignment can satisfy'
         : 'these attributes are required to be both equal and different',
+      involvesComparator ? 'strictComparatorCycle' : 'conflictingReferencePair',
     );
   }
 
@@ -1223,6 +1258,7 @@ function analyseEntity(
       ids,
       solvedComponentRules(entity, ids),
       'no combination of values these rules allow can satisfy all of them at once',
+      'noSolution',
     );
   }
 
@@ -1308,6 +1344,7 @@ function analyseEntity(
         ids,
         [...solvedComponentRules(entity, ids), 'additionalAttributes'],
         `a prompt fixes ${stated.join(' and ')}, and no combination of values these rules allow can complete the rest around ${stated.length > 1 ? 'them' : 'it'}`,
+        'fixedCompletion',
       );
     }
 
@@ -1360,6 +1397,7 @@ function analyseEntity(
         ids,
         [...solvedComponentRules(entity, ids), 'additionalAttributes'],
         `a prompt fixes ${stated.join(' and ')}, and every value the draw can give ${drawn.join(' and ')} breaks a comparison against ${stated.length > 1 ? 'them' : 'it'}`,
+        'fixedCompletion',
       );
     }
   }

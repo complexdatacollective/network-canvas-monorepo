@@ -92,6 +92,7 @@ function diseasesForStage(
                 ),
               ],
               rules: ['inheritancePattern'],
+              reasonCode: 'inheritancePatterns',
               reason:
                 `NarrativePedigree stages assign both ${existingPattern} and ` +
                 `${disease.inheritancePattern} to the same disease attribute`,
@@ -150,6 +151,7 @@ function assertFixedValuesAccepted(
           variableName(ctx, ref, id),
         ),
         rules: [broken.rule],
+        reasonCode: 'pedigreeFixedValue',
         reason:
           'the FamilyPedigree data model requires the fixed semantic value ' +
           broken.values.map(String).join(' and '),

@@ -38,12 +38,11 @@ export type ValidationFunction<T extends ValidationParameter> = (
   // host gets localized copy while the strings that then flow through the
   // form store, `onSubmitInvalid`, and Zod issues stay plain strings and the
   // rule signature stays callable without it. Absent (external callers, the
-  // provider-less default), messages render their English defaultMessage —
-  // byte-identical to the pre-conversion literals.
+  // provider-less default), messages render their English defaultMessage.
   intl?: IntlShape,
 ) => (formValues: Record<string, FieldValue>) => z.ZodMiniType;
 
-// A number written as `{x, number}` is formatted in the locale of the message
+// A number written as `{x, number}` or an ICU plural's `#` is formatted in the locale of the message
 // it sits in; a bare `{x}` is interpolated with `String(value)`, so its digits
 // and grouping stay as the source language wrote them however the sentence
 // around it reads. Character counts are quantities and take the typed form.
@@ -59,22 +58,26 @@ const messages = defineMessages({
   },
   maxLengthHint: {
     id: 'frescoUi.validation.maxLengthHint',
-    defaultMessage: 'Enter at most {max, number} characters.',
+    defaultMessage:
+      '{max, plural, one {Enter at most # character.} other {Enter at most # characters.}}',
     description: 'Hint summarising a maximum text length rule.',
   },
   maxLengthError: {
     id: 'frescoUi.validation.maxLengthError',
-    defaultMessage: 'Too long. Enter fewer than {max, number} characters.',
+    defaultMessage:
+      '{max, plural, one {Too long. Enter at most # character.} other {Too long. Enter at most # characters.}}',
     description: 'Error shown when text exceeds its maximum length.',
   },
   minLengthHint: {
     id: 'frescoUi.validation.minLengthHint',
-    defaultMessage: 'Enter at least {min, number} characters.',
+    defaultMessage:
+      '{min, plural, one {Enter at least # character.} other {Enter at least # characters.}}',
     description: 'Hint summarising a minimum text length rule.',
   },
   minLengthError: {
     id: 'frescoUi.validation.minLengthError',
-    defaultMessage: 'Too short. Enter at least {min, number} characters.',
+    defaultMessage:
+      '{min, plural, one {Too short. Enter at least # character.} other {Too short. Enter at least # characters.}}',
     description: 'Error shown when text is shorter than its minimum length.',
   },
   minValueHint: {
@@ -352,7 +355,7 @@ export const required =
   };
 
 /**
- * Require that a string be shorter than a maximum length.
+ * Require that a string be no longer than a maximum length.
  *
  * The one rule in this file that deliberately does NOT use `isUnanswered`:
  * an empty string is a present value here and trivially satisfies any bound,
@@ -394,7 +397,7 @@ const maxLength: ValidationFunction<number> = (max, _context, intl) => () => {
 };
 
 /**
- * Require that a string be longer than a minimum length.
+ * Require that a string be at least a minimum length.
  *
  * Short-circuits on `isUnanswered` — the file's single definition of emptiness
  * — so this optional rule only applies once a value is present; `required`

@@ -13,13 +13,23 @@
   ],
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./messages": "./src/messages.ts",
+    "./locales": "./src/locales/catalogs.ts"
   },
   "publishConfig": {
     "exports": {
       ".": {
         "types": "./dist/index.d.ts",
         "default": "./dist/index.js"
+      },
+      "./messages": {
+        "types": "./dist/messages.d.ts",
+        "import": "./dist/messages.js"
+      },
+      "./locales": {
+        "types": "./dist/locales.d.ts",
+        "import": "./dist/locales.js"
       }
     },
     "access": "public"
@@ -29,7 +39,8 @@
     "typecheck": "tsc --build --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "clean": "rm -rf .turbo node_modules dist"
+    "clean": "rm -rf .turbo node_modules dist",
+    "i18n:extract": "node scripts/extract-i18n.mjs"
   },
   "dependencies": {
     "@codaco/network-query": "workspace:^",
@@ -40,11 +51,20 @@
     "uuid": "catalog:"
   },
   "devDependencies": {
+    "@codaco/app-i18n": "workspace:^",
     "@codaco/fresco-ui": "workspace:^",
     "@codaco/tsconfig": "workspace:^",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plugin-dts": "catalog:",
     "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "@codaco/app-i18n": "workspace:^"
+  },
+  "peerDependenciesMeta": {
+    "@codaco/app-i18n": {
+      "optional": true
+    }
   }
 }

@@ -379,6 +379,7 @@ describe('generateEntityAttributes', () => {
         variableIds: ['b'],
         variableNames: ['Second Choice'],
         rules: ['minSelected', 'maxSelected', 'differentFrom'],
+        reasonCode: 'drawExhausted',
         reason:
           'no value satisfies these rules alongside the values chosen for the attributes they refer to',
       },

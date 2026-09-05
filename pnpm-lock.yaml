@@ -2665,6 +2665,9 @@ importers:
         specifier: 'catalog:'
         version: 4.4.3
     devDependencies:
+      '@codaco/app-i18n':
+        specifier: workspace:^
+        version: link:../app-i18n
       '@codaco/tsconfig':
         specifier: workspace:^
         version: link:../../tooling/typescript
@@ -2745,6 +2748,9 @@ importers:
         specifier: 'catalog:'
         version: 14.0.1
     devDependencies:
+      '@codaco/app-i18n':
+        specifier: workspace:^
+        version: link:../app-i18n
       '@codaco/fresco-ui':
         specifier: workspace:^
         version: link:../fresco-ui
@@ -2842,6 +2848,9 @@ importers:
         specifier: 'catalog:'
         version: 14.0.1
     devDependencies:
+      '@codaco/app-i18n':
+        specifier: workspace:^
+        version: link:../app-i18n
       '@codaco/fresco-ui':
         specifier: workspace:^
         version: link:../fresco-ui
@@ -2873,6 +2882,9 @@ importers:
         specifier: 'catalog:'
         version: 4.4.3
     devDependencies:
+      '@codaco/app-i18n':
+        specifier: workspace:^
+        version: link:../app-i18n
       '@codaco/tsconfig':
         specifier: workspace:^
         version: link:../../tooling/typescript

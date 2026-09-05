@@ -89,6 +89,7 @@ export default defineConfig({
             '@base-ui/react/toolbar',
             '@codaco/fresco-ui > @codaco/app-i18n > @formatjs/icu-messageformat-parser',
             '@codaco/fresco-ui > @codaco/app-i18n > react-intl',
+            '@codaco/fresco-ui > @codaco/app-i18n > react-intl/server',
             '@codaco/fresco-ui > @radix-ui/react-slot',
             '@codaco/fresco-ui > comlink',
             '@codaco/fresco-ui > cva',

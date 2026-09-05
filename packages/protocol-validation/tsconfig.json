@@ -6,6 +6,6 @@
     "allowJs": false,
     "checkJs": false
   },
-  "include": ["."],
+  "include": [".", "src/**/*.json"],
   "exclude": ["dist", "node_modules"]
 }

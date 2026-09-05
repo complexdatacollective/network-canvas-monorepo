@@ -17,7 +17,7 @@ export type WizardContextType = {
   setStepData: (data: Record<string, unknown>) => void;
   setNextEnabled: (enabled: boolean) => void;
   setBackEnabled: (enabled: boolean) => void;
-  setNextLabel: (label: string) => void;
+  setNextLabel: (label: React.ReactNode) => void;
   setBeforeNext: (handler: BeforeNextHandler | null) => void;
   goToStep: (step: number) => void;
 };

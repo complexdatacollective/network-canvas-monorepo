@@ -1,5 +1,7 @@
 import { useId } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
@@ -36,12 +38,31 @@ export type StageNameCopy = Readonly<{
   position: (index: number, total: number) => string;
 }>;
 
-const DEFAULT_COPY: StageNameCopy = {
-  sectionTitle: 'Stage name',
-  fieldLabel: 'Stage name',
-  placeholder: 'Enter stage name...',
-  position: (index, total) => `Stage ${index} of ${total}`,
-};
+const messages = defineMessages({
+  stageName: {
+    id: 'protocolBuilder.stageName.name',
+    defaultMessage: 'Stage name',
+    description:
+      'Section heading and accessible field label for the researcher-authored stage name.',
+  },
+  placeholder: {
+    id: 'protocolBuilder.stageName.placeholder',
+    defaultMessage: 'Enter stage name...',
+    description: 'Placeholder for the researcher-authored stage name field.',
+  },
+  position: {
+    id: 'protocolBuilder.stageName.position',
+    defaultMessage: 'Stage {index, number} of {total, number}',
+    description:
+      'The current stage position in the interview. index is one-based.',
+  },
+  documentation: {
+    id: 'protocolBuilder.stageName.documentation',
+    defaultMessage: 'Documentation',
+    description:
+      'Link to the documentation for this type of interview interface.',
+  },
+});
 
 export type StageNameSectionProps = Readonly<{
   /** Where this stage sits in the interview, for orientation. */
@@ -79,10 +100,19 @@ export default function StageNameSection({
   copy,
 }: StageNameSectionProps) {
   const { identity } = useStageEditorForm();
-  const words = { ...DEFAULT_COPY, ...copy };
+  const intl = useAppIntl();
+  const words: StageNameCopy = {
+    sectionTitle: intl.formatMessage(messages.stageName),
+    fieldLabel: intl.formatMessage(messages.stageName),
+    placeholder: intl.formatMessage(messages.placeholder),
+    position: (index, total) =>
+      intl.formatMessage(messages.position, { index, total }),
+    ...copy,
+  };
   const { sectionId } = useOutlineSection(words.sectionTitle);
   const headingId = useId();
-  const interfaceName = interfaceDisplayName(identity.type) ?? identity.type;
+  const interfaceName =
+    interfaceDisplayName(identity.type, intl) ?? identity.type;
   const { onLabelBlur } = useAutoStageName({
     isNewStage: autoName !== undefined,
     panels: autoName?.panels,
@@ -136,7 +166,7 @@ export default function StageNameSection({
             target="_blank"
             rel="noopener noreferrer"
           >
-            Documentation
+            {intl.formatMessage(messages.documentation)}
           </NativeLink>
         )}
       </div>
