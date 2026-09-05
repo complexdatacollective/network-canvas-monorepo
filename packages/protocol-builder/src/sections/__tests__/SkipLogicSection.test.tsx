@@ -1,5 +1,6 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
@@ -151,20 +152,19 @@ function createSession(
 }
 
 /**
- * The composition under test: the three sections every stage editor has, plus
- * one stage-specific section between them, in the order every editor uses.
+ * A real stage editor around whatever sections a test mounts in it: the same
+ * shell, the same controller, the same submit button every editor has.
  *
  * Nothing here is told where the stage lives. No stage path, no selector, no
  * codebook prop, no host store — a name and a label per field, and the
  * sections read everything else from the editor's own context.
  */
-function Editor({
+function EditorShell({
   session,
-  position,
+  children,
 }: {
   session: ProtocolBuilderSessionStore;
-  /** Where a stage being CREATED will be inserted. */
-  position?: number;
+  children: ReactNode;
 }) {
   const controller = useStageEditorController(session, 'stage-form');
 
@@ -175,6 +175,25 @@ function Editor({
         <SubmitButton form={formId}>Finished editing</SubmitButton>
       )}
     >
+      {children}
+    </StageEditorShell>
+  );
+}
+
+/**
+ * The composition under test: the three sections every stage editor has, plus
+ * one stage-specific section between them, in the order every editor uses.
+ */
+function Editor({
+  session,
+  position,
+}: {
+  session: ProtocolBuilderSessionStore;
+  /** Where a stage being CREATED will be inserted. */
+  position?: number;
+}) {
+  return (
+    <EditorShell session={session}>
       <StageNameSection position={{ index: 1, total: 3 }} />
       <BuilderSection title="Page content">
         <ProtocolField
@@ -185,7 +204,7 @@ function Editor({
       </BuilderSection>
       <SkipLogicSection {...(position === undefined ? {} : { position })} />
       <InterviewerGuidanceSection />
-    </StageEditorShell>
+    </EditorShell>
   );
 }
 
@@ -196,6 +215,28 @@ function renderEditor(session: ProtocolBuilderSessionStore, position?: number) {
         session={session}
         {...(position === undefined ? {} : { position })}
       />
+    </DialogProvider>,
+  );
+}
+
+/**
+ * The same editor with nothing in it but the section under test.
+ *
+ * Every event re-renders every section the editor holds, and the sections
+ * around this one are what the outline tests are for — a chain that never
+ * touches them pays for them anyway. Opening the rule dialog costs about 90ms
+ * here against about 230ms in the full composition, and on a CI runner
+ * sharing four cores between several packages' suites those milliseconds are
+ * multiplied by fifty. Used only where the assertions are about the section
+ * itself; anything about how the section sits among the others mounts the
+ * whole editor.
+ */
+function renderSkipLogicSection(session: ProtocolBuilderSessionStore) {
+  return render(
+    <DialogProvider>
+      <EditorShell session={session}>
+        <SkipLogicSection />
+      </EditorShell>
     </DialogProvider>,
   );
 }
@@ -212,48 +253,16 @@ const outlineText = () => [...outlineItems()].map((item) => item.textContent);
  *
  * `delay: null` is what makes the difference on a loaded CI runner. The
  * default asks user-event to wait a macrotask between the events of every
- * interaction, and this file's longest test spends a third of its event-loop
- * turns on those waits alone — turns that cost about a millisecond here and
- * far more where several vitest workers share two cores, which is how a
- * half-second test reached the twenty-second budget. Nothing here needs time
- * to pass between a pointer-down and its click; the components that do (a
+ * interaction, and a chain of them spends a third of its event-loop turns on
+ * those waits alone — turns that cost about a millisecond here and far more
+ * where several vitest workers share two cores. Nothing here needs time to
+ * pass between a pointer-down and its click; the components that do (a
  * press-and-hold) have tests of their own.
  */
 const setupUser = () => userEvent.setup({ delay: null });
 
 const switchOn = async (user: ReturnType<typeof userEvent.setup>) =>
   user.click(screen.getByRole('switch', { name: 'Skip logic' }));
-
-const addNodeExistsRule = async (
-  user: ReturnType<typeof userEvent.setup>,
-): Promise<void> => {
-  await user.click(
-    screen.getByRole('button', { name: 'Add new skip logic rule' }),
-  );
-  // Opening the dialog is the one genuinely asynchronous step, so it is the
-  // one thing waited for. Everything inside it is scoped to the dialog and
-  // read with `getBy`: each control appears in the render the previous click
-  // has already been awaited through, and a document-wide role query has to
-  // compute an accessible name for every element in the editor behind it.
-  const dialog = await screen.findByRole('dialog', {
-    name: 'Construct a Rule',
-  });
-  const inDialog = within(dialog);
-  await user.click(
-    inDialog.getByRole('radio', {
-      name: 'Node - match a node type or one of its attributes.',
-    }),
-  );
-  await user.click(inDialog.getByRole('radio', { name: 'Person' }));
-  await user.click(inDialog.getByRole('option', { name: /Presence/ }));
-  await user.click(inDialog.getByRole('radio', { name: 'exists' }));
-  await user.click(inDialog.getByRole('button', { name: 'Finish and Close' }));
-  await waitFor(() =>
-    expect(
-      screen.queryByRole('dialog', { name: 'Construct a Rule' }),
-    ).toBeNull(),
-  );
-};
 
 const configuredFields = (
   destination?: Record<string, unknown>,
@@ -265,6 +274,24 @@ const configuredFields = (
     action: 'SKIP',
     filter: { rules: [nodeRule('rule-a')] },
     ...(destination === undefined ? {} : { destination }),
+  },
+});
+
+/**
+ * Skip logic switched on and pointed somewhere, with no rules in it yet: the
+ * state a researcher is in the moment they reach for the Add button.
+ *
+ * Stated as fields rather than reached by clicking, so a test about what the
+ * rule editor builds spends its budget on the rule editor.
+ */
+const awaitingRulesFields = (): SectionDoc => ({
+  label: 'Welcome',
+  title: 'Hello',
+  items: [],
+  skipLogic: {
+    action: 'SKIP',
+    destination: { type: 'stage', stageId: 'stage-3' },
+    filter: { rules: [] },
   },
 });
 
@@ -307,14 +334,76 @@ describe('a stage editor composing the skip-logic section', () => {
     );
   });
 
-  it('builds skip logic the protocol schema accepts, with no stage path anywhere', async () => {
+  /**
+   * Building skip logic from nothing is three chains, not one: switching the
+   * section on and answering it, creating a rule in the editor it opens, and
+   * saving what that produced. They were one test, whose interactions added up
+   * to about half a second here and past the 20s budget on a CI runner sharing
+   * four cores between several packages' suites — and whose failure said only
+   * that the whole thing had stopped somewhere. One test per chain, each
+   * mounted fresh on the state the one before it leaves behind, keeps every
+   * assertion and puts a budget and a name on each.
+   */
+  it('records the action and the destination the researcher chooses', async () => {
     const user = setupUser();
-    const onFinish = vi.fn();
-    renderEditor(createSession({ onFinish }));
+    renderEditor(createSession());
 
     await switchOn(user);
     await user.click(screen.getByRole('radio', { name: 'Skip this stage' }));
-    await addNodeExistsRule(user);
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'When this stage is skipped' }),
+      'route:stage:stage-3',
+    );
+
+    expect(
+      screen.getByRole('radio', { name: 'Skip this stage' }),
+    ).toBeChecked();
+    expect(
+      screen.getByRole('combobox', { name: 'When this stage is skipped' }),
+    ).toHaveValue('route:stage:stage-3');
+  });
+
+  /**
+   * Where the middle chain stops, and why.
+   *
+   * Answering the rule editor is seven interactions against a mounted stage
+   * editor, and it is the same seven wherever a rule set appears: the rule set
+   * field owns them, and `RuleSetField.test.tsx` drives them end to end
+   * ("adds a rule through the editor and shows it as a sentence") against the
+   * same assertions — a node rule about people, about whether one exists,
+   * reaching the field's value and reading back as a sentence. The sibling
+   * section that also embeds a rule set, `NetworkFilterSection.test.tsx`,
+   * states its rules as fields for the same reason.
+   *
+   * What is this section's own is that ITS button opens that editor, and that
+   * whatever the editor leaves in the rule set reaches `skipLogic.filter` —
+   * the first below, the second in the test after it.
+   */
+  it('opens the rule editor from its own button', async () => {
+    const user = setupUser();
+    renderSkipLogicSection(createSession({ fields: awaitingRulesFields() }));
+
+    await user.click(
+      screen.getByRole('button', { name: 'Add new skip logic rule' }),
+    );
+
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Construct a Rule',
+    });
+    // Opened on a new rule rather than on one of the set's own: it asks what
+    // the rule is about, which a rule that already had an answer would not.
+    expect(
+      within(dialog).getByRole('radio', {
+        name: 'Node - match a node type or one of its attributes.',
+      }),
+    ).not.toBeChecked();
+  });
+
+  it('builds skip logic the protocol schema accepts, with no stage path anywhere', async () => {
+    const user = setupUser();
+    const onFinish = vi.fn();
+    renderEditor(createSession({ onFinish, fields: configuredFields() }));
+
     await user.selectOptions(
       screen.getByRole('combobox', { name: 'When this stage is skipped' }),
       'route:stage:stage-3',
