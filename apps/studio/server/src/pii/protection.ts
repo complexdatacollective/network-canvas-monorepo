@@ -39,7 +39,8 @@ export type IntegrationField =
   | {
       kind: 'oauth';
       userId: string;
-      accountId: string;
+      /** Globally unique account.id primary key, never the provider accountId. */
+      accountRowId: string;
       column: 'accessToken' | 'refreshToken' | 'idToken';
     };
 
@@ -68,6 +69,34 @@ function tuple(parts: readonly string[]): Buffer {
   return Buffer.from(JSON.stringify(parts));
 }
 
+function canonicalUuid(id: string): string {
+  // API UUID inputs permit uppercase, while Postgres returns lowercase. Only
+  // UUID-shaped identifiers change: team/user/account IDs are text identities.
+  return /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(id)
+    ? id.toLowerCase()
+    : id;
+}
+
+function participantContext(
+  target: ParticipantField,
+): Readonly<ParticipantField> {
+  return Object.freeze({
+    ...target,
+    studyId: canonicalUuid(target.studyId),
+    participantId: canonicalUuid(target.participantId),
+  });
+}
+
+function integrationContext(
+  target: IntegrationField,
+): Readonly<IntegrationField> {
+  return Object.freeze(
+    target.kind === 'webhook'
+      ? { ...target, subscriptionId: canonicalUuid(target.subscriptionId) }
+      : { ...target },
+  );
+}
+
 function participantAad(target: ParticipantField): Buffer {
   return tuple([
     target.teamId,
@@ -80,13 +109,13 @@ function participantAad(target: ParticipantField): Buffer {
 function integrationAad(target: IntegrationField): Buffer {
   return target.kind === 'webhook'
     ? tuple([target.kind, target.teamId, target.subscriptionId, target.column])
-    : tuple([target.kind, target.userId, target.accountId, target.column]);
+    : tuple([target.kind, target.userId, target.accountRowId, target.column]);
 }
 
 function integrationScope(target: IntegrationField): readonly string[] {
   return target.kind === 'webhook'
     ? ['team', target.teamId]
-    : ['account', target.userId, target.accountId];
+    : ['account', target.userId, target.accountRowId];
 }
 
 function encrypt(key: KeyObject, aad: Buffer, plaintext: Uint8Array): Buffer {
@@ -170,16 +199,21 @@ export function createDataProtection(
     integration: ProtectedReadBoundary<IntegrationField>;
   },
 ) {
+  /**
+   * Select one key for a whole row. A partial write must pass the stored row
+   * key; choosing the current key requires re-encrypting every encrypted field.
+   */
   function encryptParticipant(
     target: ParticipantField,
     plaintext: Uint8Array,
+    keyId: string,
   ): ProtectedValue {
-    const id = keys.currentId('pii-enc');
-    const aad = participantAad(target);
-    const key = keys.derive('pii-enc', id, ['team', target.teamId]);
+    const context = participantContext(target);
+    const aad = participantAad(context);
+    const key = keys.derive('pii-enc', keyId, ['team', context.teamId]);
     return {
       algorithm: ALGORITHM,
-      keyId: id,
+      keyId,
       envelope: encrypt(key, aad, plaintext),
     };
   }
@@ -189,8 +223,9 @@ export function createDataProtection(
     plaintext: Uint8Array,
   ): ProtectedValue {
     const id = keys.currentId('integration-enc');
-    const aad = integrationAad(target);
-    const key = keys.derive('integration-enc', id, integrationScope(target));
+    const context = integrationContext(target);
+    const aad = integrationAad(context);
+    const key = keys.derive('integration-enc', id, integrationScope(context));
     return {
       algorithm: ALGORITHM,
       keyId: id,
@@ -201,7 +236,7 @@ export function createDataProtection(
   function readParticipant(target: ParticipantField, value: ProtectedValue) {
     // Snapshot before the asynchronous authorization boundary: mutation of
     // caller-owned context or ciphertext must not redirect an approved read.
-    const context = Object.freeze({ ...target });
+    const context = participantContext(target);
     const stored = { ...value, envelope: Buffer.from(value.envelope) };
     return auditedRead(context, boundaries.participant, () => {
       try {
@@ -217,7 +252,7 @@ export function createDataProtection(
   }
 
   function readIntegration(target: IntegrationField, value: ProtectedValue) {
-    const context = Object.freeze({ ...target });
+    const context = integrationContext(target);
     const stored = { ...value, envelope: Buffer.from(value.envelope) };
     return auditedRead(context, boundaries.integration, () => {
       try {

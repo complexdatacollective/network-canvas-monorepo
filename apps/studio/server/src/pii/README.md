@@ -30,18 +30,33 @@ in all three independently versioned namespaces:
 
 HKDF-SHA256 derives 32 bytes with an empty salt and the UTF-8 JSON info tuple
 `["studio-encryption.v1", purpose, keyId, ...scope]`. Participant PII and webhook
-secrets use `["team", teamId]`; OAuth uses `["account", userId, accountId]`;
-indexes use `["deployment"]`. The root itself is never an encryption/HMAC key.
+credentials use the scope `["team", teamId]`. OAuth accounts belong to users,
+so their credential scope is `["account", userId, accountRowId]`. Blind indexes use
+`["deployment"]`. JSON arrays frame the tuples unambiguously, including IDs
+containing delimiter characters. `accountRowId` is the globally unique
+`account.id` primary key, not the provider's external `account.accountId`:
+different providers can issue the same external ID to the same user.
 
 AES-256-GCM uses a fresh random 12-byte nonce and a full 16-byte authentication
-tag. A stored value has an algorithm (`aes-256-gcm.v1`), a namespace key ID and
-one `bytea` envelope: `version byte (1) || nonce || ciphertext || tag`.
-Participant AAD is `[teamId, studyId, participantId, columnName]`. Integration
-AAD is `["webhook", teamId, subscriptionId, "secret_ciphertext"]` or
-`["oauth", userId, accountId, columnName]`, encoded as UTF-8 JSON tuples.
-Independent WebCrypto tests verify this format and derivation. The implementation
-uses Node crypto and the existing Interviewer vault's authenticated-encryption
-conventions; it introduces no custom cryptographic algorithms.
+tag. Stored values carry `algorithm: "aes-256-gcm.v1"`, the namespace's key ID,
+and one `bytea` envelope: `version byte (1) || nonce || ciphertext || tag`.
+Participant AAD is the UTF-8 JSON tuple
+`[teamId, studyId, participantId, columnName]`. Integration AAD is
+`["webhook", teamId, subscriptionId, "secret_ciphertext"]` or
+`["oauth", userId, accountRowId, columnName]`. UUID-shaped study, participant,
+and webhook subscription identifiers are lowercased before both encryption and
+the frozen read-boundary context, matching the database spelling of UUIDs
+accepted by the API. Team, user, and account row IDs are case-sensitive text
+and retain their exact spelling, even when shaped like UUIDs.
+
+`encryptParticipant(target, plaintext, keyId)` requires an explicit selected
+PII key. The participant table has one algorithm/key pair for the entire row:
+choose `keys.currentId('pii-enc')` once for a new row or full-row replacement,
+then use it for every encrypted field and persist that same metadata pair.
+Partial updates must retain the stored row key ID. Rotation must re-encrypt all
+non-null participant ciphertext fields together and atomically update the
+row-wide metadata; writing one field with the new current key would leave the
+other fields unreadable. An unavailable selected key refuses the write.
 
 Email addresses are trimmed, lowercased and validated. Phone input must contain
 an explicit international `+` prefix; formatting punctuation is removed before
