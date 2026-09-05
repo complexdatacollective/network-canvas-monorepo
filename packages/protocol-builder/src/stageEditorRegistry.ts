@@ -16,43 +16,19 @@
  * line, in alphabetical order, each with a trailing comma, so that families
  * landing on separate branches change separate lines. `__tests__/
  * stageEditorRegistry.test.tsx` holds that shape in place.
+ *
+ * A FAMILY DECLARES ITS PART IN `stage-editor-contract.ts`, never here. This
+ * module imports every family's part, so a part module that imported anything
+ * from this one would close a cycle: whichever of the two a program reaches
+ * first, the other is half-evaluated, and `REGISTRY_PARTS` reads a binding
+ * that does not hold its part yet. The contract is a leaf — it imports the
+ * controller and the stage types and nothing else — which is what makes it
+ * safe for a part to import, and it is where the rest of what a family writes
+ * against already lives.
  */
 import type { StageType } from '@codaco/protocol-validation';
 
-import type { StageEditorRegistry } from './stage-editor-contract.ts';
-
-/**
- * What one editor family exports: the entries it owns, and nothing else.
- *
- * A family is a group of interfaces that share their hard parts — the three
- * name generators share prompts, panels and alter limits; the two bin
- * interfaces share a variable picker and a sort-order editor — so a family
- * ships as one unit and claims the stage types it covers. Nothing requires the
- * families to know about each other, and nothing requires this module to know
- * how any of them is built.
- */
-export type StageEditorRegistryPart = Partial<StageEditorRegistry>;
-
-/**
- * Declares a family's part, keeping the exact set of types it claims.
- *
- * THE WAY TO WRITE A PART. An annotation — `export const part:
- * StageEditorRegistryPart = {…}` — widens the value to the whole partial
- * registry, and every key of that is optional, so `keyof` it is every stage
- * type. The coverage machinery below is built on `keyof`: widen one part and
- * the package believes every interface has an editor, `UnregisteredStageType`
- * collapses to `never`, and both compile-time checks pass while saying
- * nothing. Inferring the type from the object literal instead is what keeps
- * "this family claims exactly these three interfaces" a fact the type system
- * still knows.
- *
- * `type-tests/` compiles the failures this prevents.
- */
-export function defineStageEditorPart<
-  const Part extends StageEditorRegistryPart,
->(part: Part): Part {
-  return part;
-}
+import type { StageEditorRegistryPart } from './stage-editor-contract.ts';
 
 /**
  * Thrown when two families claim the same interface.

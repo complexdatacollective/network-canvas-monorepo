@@ -1,4 +1,4 @@
-import { defineStageEditorPart } from '../stageEditorRegistry.ts';
+import { defineStageEditorPart } from '../stage-editor-contract.ts';
 import { CategoricalBinStageEditor } from './census/CategoricalBinStageEditor.tsx';
 import { DyadCensusStageEditor } from './census/DyadCensusStageEditor.tsx';
 import { OneToManyDyadCensusStageEditor } from './census/OneToManyDyadCensusStageEditor.tsx';

@@ -4,7 +4,11 @@ import { join } from 'node:path';
 
 import { describe, expect, it, vi } from 'vitest';
 
-import { missingStageEditors, STAGE_TYPES } from '../stage-editor-contract.ts';
+import {
+  defineStageEditorPart,
+  missingStageEditors,
+  STAGE_TYPES,
+} from '../stage-editor-contract.ts';
 import type {
   StageEditorComponent,
   StageEditorProps,
@@ -13,7 +17,6 @@ import { UnregisteredStageTypeError } from '../StageEditor.tsx';
 import {
   AWAITING_STAGE_EDITORS,
   composeStageEditorRegistry,
-  defineStageEditorPart,
   DuplicateStageEditorError,
   stageEditorRegistry,
 } from '../stageEditorRegistry.ts';
