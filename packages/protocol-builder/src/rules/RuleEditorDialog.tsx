@@ -28,6 +28,7 @@ import { protocolAuthoringLinks } from '../interfaces/documentation.ts';
 import type { RuleOperatorOption } from './operators.ts';
 import { incompleteRulePart, type RuleDraft, type RulePart } from './rule.ts';
 import {
+  assertNoSuchDateProblem,
   isRuleTargetType,
   type OperandDateProblem,
   operandDateProblems,
@@ -330,16 +331,24 @@ const DATE_RESOLUTION_NAMES: Readonly<Record<DateFormat, string>> =
 /**
  * Why a date operand is refused, in the voice of the control holding it.
  *
- * Two sentences, because the two problems send the researcher to different
- * places: one says the attribute records a different KIND of date now, the
- * other that this date is outside the range it records at all.
+ * One sentence per problem, because the three send the researcher to different
+ * places: the attribute records a different KIND of date now, the date is
+ * outside the range it records at all, or the date is not one the calendar
+ * has.
  */
 const staleDatesMessage = (problems: readonly OperandDateProblem[]): string => {
   const [problem] = problems;
   if (problem === undefined) return INVALID_OPERAND_MESSAGE;
-  return problem.kind === 'wrongResolution'
-    ? `This attribute is now answered with ${DATE_RESOLUTION_NAMES[problem.resolution]}, so “${problem.value}” can never match it. Choose a date it can record.`
-    : `“${problem.value}” is outside the dates this attribute can record, so the rule can never match. Choose a date inside them.`;
+  switch (problem.kind) {
+    case 'wrongResolution':
+      return `This attribute is now answered with ${DATE_RESOLUTION_NAMES[problem.resolution]}, so “${problem.value}” can never match it. Choose a date it can record.`;
+    case 'impossibleDate':
+      return `“${problem.value}” is not a date on the calendar, so the rule can never match. Choose a real date.`;
+    case 'outOfRange':
+      return `“${problem.value}” is outside the dates this attribute can record, so the rule can never match. Choose a date inside them.`;
+    default:
+      return assertNoSuchDateProblem(problem);
+  }
 };
 
 /**
@@ -467,6 +476,12 @@ const RULE_PROBLEM_PLACEMENTS: Readonly<
     field: RULE_PART_FIELDS[incompleteRulePart(rule) ?? 'target'],
     message: INCOMPLETE_RULE_MESSAGE,
   }),
+  // No control on screen holds a rule's id, so the refusal lands on the first
+  // question the rule answers. Unreachable from this dialog by construction —
+  // it mints an id before it validates, so the draft it judges is the rule it
+  // would save — and stated anyway, because the placement table is what stops
+  // a problem being added to the description with nowhere to appear.
+  missingId: () => ({ field: TARGET_FIELD, message: MISSING_ID_MESSAGE }),
 });
 
 /**
@@ -906,10 +921,27 @@ export default function RuleEditorDialog({
   const targetsRef = useRef(allowedTargets);
   targetsRef.current = allowedTargets;
 
+  /**
+   * The id this session's rule will be filed under.
+   *
+   * Decided once per editing session rather than at submit time, so the draft
+   * the dialog VALIDATES is the rule it would save. A rule arriving with no id
+   * — or with something that is not a string, which the protocol schema
+   * refuses just as flatly — is repaired here, and would otherwise be refused
+   * by the very dialog that repairs it: nothing on screen asks for an id, so
+   * there would be no control to answer.
+   *
+   * Only those two cases mint. Any string the rule already has is its
+   * identity, and is kept: the schema accepts it, the row is keyed by it, and
+   * replacing one would quietly rewrite the researcher's protocol.
+   */
+  const ruleId = useRef<string | undefined>(undefined);
+  ruleId.current ??= typeof seed.id === 'string' ? seed.id : uuid({});
+
   const validate = useCallback(
     (values: Record<string, FieldValue>): DialogFormErrors | undefined =>
       ruleDraftRefusal(
-        ruleDraftFromValues(values),
+        { id: ruleId.current, ...ruleDraftFromValues(values) },
         codebookRef.current,
         targetsRef.current,
       ),
@@ -919,7 +951,7 @@ export default function RuleEditorDialog({
   const handleSubmit = useCallback(
     (values: Record<string, FieldValue>): DialogFormErrors | undefined => {
       const refused = onSave({
-        id: seed.id ?? uuid({}),
+        id: ruleId.current,
         ...ruleDraftFromValues(values),
       });
       // Recorded only once the rule has actually been taken. Marking a refused
@@ -929,7 +961,7 @@ export default function RuleEditorDialog({
       saved.current = true;
       return undefined;
     },
-    [onSave, seed.id],
+    [onSave],
   );
 
   const handleClose = useCallback(() => {
@@ -985,6 +1017,8 @@ const INVALID_REG_EXP_MESSAGE =
   'This is not a valid regular expression. Correct it, or choose a different operator.';
 const INCOMPLETE_RULE_MESSAGE =
   'This rule cannot be saved until this question is answered.';
+const MISSING_ID_MESSAGE =
+  'This rule has no identifier. Answer this question again to give it one.';
 
 /**
  * A reference the codebook has lost, named rather than described.

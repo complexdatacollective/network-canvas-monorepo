@@ -490,6 +490,52 @@ describe('rules that contradict the rest of the stage', () => {
       screen.getByText('Filter rules hide configured values'),
     ).toBeInTheDocument();
   });
+
+  /**
+   * The Sociogram's `edges.create` is not the only way a prompt names an edge
+   * type. DyadCensus, TieStrengthCensus and OneToManyDyadCensus each carry a
+   * required top-level `createEdge`, and the interfaces then read their edges
+   * through `getNetworkEdges` — which is derived from the FILTERED network, so
+   * an edge the stage filter hides reads as one that does not exist and the
+   * participant is asked to create it again.
+   */
+  const dyadCensusFields = (filter: unknown): SectionDoc => ({
+    label: 'Pairs',
+    subject: { entity: 'node', type: 'person' },
+    prompts: [
+      { id: 'prompt-1', text: 'Do you know each other?', createEdge: 'friend' },
+    ],
+    introductionPanel: { title: 'Pairs', text: 'A few questions.' },
+    ...(filter === undefined ? {} : { filter }),
+  });
+
+  it('warns when the rules would hide an edge a DyadCensus prompt creates', () => {
+    renderEditor(
+      createSession({
+        type: 'DyadCensus',
+        fields: dyadCensusFields(edgeRule('best', 'EXISTS')),
+      }),
+      'edge',
+    );
+
+    expect(
+      screen.getByText('Filter rules hide configured values'),
+    ).toBeInTheDocument();
+  });
+
+  it('stays quiet when those rules let the created edge through', () => {
+    renderEditor(
+      createSession({
+        type: 'DyadCensus',
+        fields: dyadCensusFields(edgeRule('friend', 'EXISTS')),
+      }),
+      'edge',
+    );
+
+    expect(
+      screen.queryByText('Filter rules hide configured values'),
+    ).toBeNull();
+  });
 });
 
 /**

@@ -137,7 +137,13 @@ function createSession() {
   });
 }
 
-function Editor({ onSave }: { onSave: (rule: RuleDraft) => void }) {
+function Editor({
+  onSave,
+  seed = { type: '' },
+}: {
+  onSave: (rule: RuleDraft) => void;
+  seed?: RuleDraft;
+}) {
   const [session] = useState(() => createSession());
   const controller = useStageEditorController(session, 'stage-form');
   const [open, setOpen] = useState(true);
@@ -146,7 +152,7 @@ function Editor({ onSave }: { onSave: (rule: RuleDraft) => void }) {
     <StageEditorShell controller={controller}>
       <RuleEditorDialog
         open={open}
-        seed={{ type: '' }}
+        seed={seed}
         ruleTypes={RULE_TYPES}
         allowedTargets={ruleSetTargets('filter')}
         onSave={(rule) => {
@@ -159,11 +165,11 @@ function Editor({ onSave }: { onSave: (rule: RuleDraft) => void }) {
   );
 }
 
-const renderEditor = () => {
+const renderEditor = (seed?: RuleDraft) => {
   const onSave = vi.fn<(rule: RuleDraft) => void>();
   render(
     <DialogProvider>
-      <Editor onSave={onSave} />
+      <Editor onSave={onSave} seed={seed} />
     </DialogProvider>,
   );
   return onSave;
@@ -186,8 +192,13 @@ const ENTER_OPERAND: Readonly<
   boolean: async (user) => {
     await user.click(await screen.findByRole('radio', { name: 'Yes' }));
   },
+  // Keyed by control, so this one answers for every option-bearing attribute
+  // it is offered against: the categorical `Mood` and, for a membership
+  // comparison, the ordinal `Band`.
   optionList: async (user) => {
-    await user.click(await screen.findByRole('checkbox', { name: 'Happy' }));
+    await user.click(
+      await screen.findByRole('checkbox', { name: /^(Happy|Low)$/ }),
+    );
   },
   option: async (user) => {
     await user.click(await screen.findByRole('radio', { name: 'Low' }));
@@ -393,9 +404,31 @@ describe('an operand the rule already holds', () => {
     const requirement = valueRequirement('categorical', 'INCLUDES');
     expect(requirement.parse('happy')).toEqual(['happy']);
     expect(requirement.parse(1)).toEqual([1]);
-    // An ordinal answers with ONE option, so its control holds the value as it
-    // stands rather than wrapping it.
-    expect(valueRequirement('ordinal', 'INCLUDES').parse(1)).toBe(1);
+    expect(valueRequirement('ordinal', 'INCLUDES').parse(1)).toEqual([1]);
+  });
+
+  /**
+   * An ordinal is ANSWERED with one option, but `INCLUDES`/`EXCLUDES` ask
+   * whether that answer is among a set — and the interview matches an array
+   * operand against a single ordinal answer by membership
+   * (`predicate.ts`: `value.includes(variableValue)`). So the set is the
+   * operand, and the control that enters one is the multi-select.
+   */
+  it('gives an ordinal membership rule the set its operand is', () => {
+    for (const operator of ['INCLUDES', 'EXCLUDES'] as const) {
+      const requirement = valueRequirement('ordinal', operator);
+      expect(requirement.control).toBe('optionList');
+      // The stored set survives being read back into the control...
+      expect(requirement.parse([1, 2])).toEqual([1, 2]);
+      // ...and is one the interview could compare, so the row says nothing.
+      expect(requirement.holds([1, 2])).toBe(true);
+      expect(isOperandValidForAttributeType(operator, 'ordinal', [1, 2])).toBe(
+        true,
+      );
+    }
+    // Equality against the same attribute is unchanged: it compares against
+    // the one option an answer IS.
+    expect(valueRequirement('ordinal', 'EXACTLY').control).toBe('option');
   });
 
   it('still opens a selection that was never made on nothing', () => {
@@ -413,6 +446,57 @@ describe('an operand the rule already holds', () => {
     expect(
       valueRequirement('categorical', 'INCLUDES').parse([true, 'happy']),
     ).toEqual(['happy']);
+  });
+});
+
+/**
+ * The rule this editor used to be unable to hand back.
+ *
+ * An ordinal `INCLUDES ['low', 'high']` is accepted by the protocol schema and
+ * matched by the interview (`predicate.ts` compares an array operand against a
+ * single ordinal answer by membership), so refusing it would be the editor
+ * refusing a rule that works — the one thing the ruling on issue #1548 says it
+ * must not do. It opened in a radio group, which read the array as no
+ * selection at all: `required` then blocked the untouched rule from being
+ * saved back, and picking one option to get past that saved that option over
+ * the whole set.
+ */
+describe('an ordinal rule already comparing against a set of options', () => {
+  const storedSet: RuleDraft = {
+    id: 'rule-a',
+    type: 'node',
+    options: {
+      type: 'person',
+      attribute: 'band',
+      operator: 'INCLUDES',
+      value: [1, 2],
+    },
+  };
+
+  it('opens on the whole set and saves it back untouched', async () => {
+    const user = userEvent.setup();
+    const onSave = renderEditor(storedSet);
+
+    expect(await screen.findByRole('checkbox', { name: 'Low' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'High' })).toBeChecked();
+
+    // Nothing is touched before finishing: the operand's own `required` has to
+    // read the stored set as an answer, or the rule cannot be saved as it is.
+    await user.click(screen.getByRole('button', { name: 'Finish and Close' }));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    expect(onSave.mock.calls[0]?.[0]?.options?.value).toEqual([1, 2]);
+  });
+
+  it('narrows the set only when the researcher unpicks part of it', async () => {
+    const user = userEvent.setup();
+    const onSave = renderEditor(storedSet);
+
+    await user.click(await screen.findByRole('checkbox', { name: 'High' }));
+    await user.click(screen.getByRole('button', { name: 'Finish and Close' }));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    expect(onSave.mock.calls[0]?.[0]?.options?.value).toEqual([1]);
   });
 });
 

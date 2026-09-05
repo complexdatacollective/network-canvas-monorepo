@@ -1,15 +1,19 @@
+import { todayYmd } from '@codaco/fresco-ui/form/utils/ymd';
 import {
   type Codebook,
   type ColorReference,
   DATE_FORMATS_KEYS,
+  DATE_RESOLUTION,
   type DateFormat,
   DEFAULT_TYPE as DEFAULT_DATE_FORMAT,
+  isValidDateAtResolution,
   type NodeShape,
   OperatorsByVariableType,
   type Variable,
   type Variables,
   type VariableType,
 } from '@codaco/protocol-validation';
+import { relativeDatePickerWindow } from '@codaco/shared-consts';
 
 import {
   canAuthorRuleForType,
@@ -190,11 +194,25 @@ export const ruleVariableType = (
  * an operand outside them is a rule that can never match, entered in a control
  * that let the researcher pick it.
  *
- * Read structurally, because only one of the two datetime variable shapes
- * carries any of this: a relative date picker records a full date and names no
- * bounds. `full` is the schema's own default when a picker names no
- * resolution, and a bound is carried only when the codebook holds one — the
- * date control's own unbounded default is not a bound to invent here.
+ * The two datetime variable shapes say it differently, and both are read the
+ * way the INTERVIEW reads them. A `DatePicker` names its resolution and, when
+ * the researcher authored them, its bounds verbatim; with none authored it is
+ * left unbounded, because that is what the control does and inventing its
+ * 1920-to-today default would refuse dates the participant can enter. A
+ * `RelativeDatePicker` names no `min`/`max` at all — it names an anchor and a
+ * span either side of it — and is ALWAYS bounded: the anchor defaults to
+ * today and the span to the shared before/after constants, so the same window
+ * is derived whether the codebook authored one or not. That derivation is
+ * `relativeDatePickerWindow` in `@codaco/shared-consts`, the same function
+ * `@codaco/interview`'s `buildDatePickerBoundProps` turns into the hard bounds
+ * a submitted answer is validated against — so a rule operand is judged
+ * against exactly the dates a participant could have answered with.
+ *
+ * An unanchored relative window moves with the clock, so the same stored
+ * operand can fall out of it as time passes. It is judged against the window
+ * as of TODAY rather than as of the day the rule was written, because today's
+ * is the window the interview will apply to the next answer — which is the
+ * only one that decides whether the rule can still match.
  */
 export type RuleDateParameters = Readonly<{
   type: DateFormat;
@@ -212,16 +230,35 @@ const dateBound = (parameters: object, bound: 'min' | 'max') => {
   return typeof value === 'string' && value !== '' ? { [bound]: value } : {};
 };
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+/** A variable's `parameters`, as a record whatever the codebook holds there. */
+const variableParameters = (
+  variable: Readonly<Variable>,
+): Record<string, unknown> | undefined => {
+  const parameters: unknown = Reflect.get(variable, 'parameters');
+  return isRecord(parameters) ? parameters : undefined;
+};
+
 export const ruleVariableDateParameters = (
   variables: Readonly<Variables>,
   variableId: string | undefined,
 ): RuleDateParameters => {
   const variable = ruleVariable(variables, variableId);
   if (variable?.type !== 'datetime') return DEFAULT_DATE_PARAMETERS;
-  const parameters: unknown = Reflect.get(variable, 'parameters');
-  if (typeof parameters !== 'object' || parameters === null) {
-    return DEFAULT_DATE_PARAMETERS;
+  const parameters = variableParameters(variable);
+
+  // A relative picker records a full date, and its window is derived rather
+  // than authored — so an absent `parameters` record is still bounded.
+  if (Reflect.get(variable, 'component') === 'RelativeDatePicker') {
+    return {
+      type: DEFAULT_DATE_FORMAT,
+      ...relativeDatePickerWindow(parameters, todayYmd()),
+    };
   }
+
+  if (parameters === undefined) return DEFAULT_DATE_PARAMETERS;
   const resolution: unknown = Reflect.get(parameters, 'type');
   return {
     type: isDateFormat(resolution) ? resolution : DEFAULT_DATE_FORMAT,
@@ -467,26 +504,29 @@ export const operandOptionProblems = (
  * so no answer can ever equal the operand: a variable retyped from a full date
  * to a year records `"2020"`, and a rule holding `"2020-05-14"` beside it
  * compares against a string no participant can produce.
+ * `impossibleDate` — the operand is the right shape for the resolution and
+ * still not a date: `2020-02-31` and `2020-13-01` are neither on the calendar
+ * nor enterable in the native date control, which sanitises them to nothing,
+ * so no answer can ever equal one.
  * `outOfRange` — the operand is a date of the right shape that the attribute's
  * own picker cannot record, because its bounds have moved.
  */
 export type OperandDateProblem =
   | Readonly<{ kind: 'wrongResolution'; value: string; resolution: DateFormat }>
+  | Readonly<{ kind: 'impossibleDate'; value: string }>
   | Readonly<{ kind: 'outOfRange'; value: string }>;
 
 /**
- * What an answer looks like at each resolution the schema has.
- *
- * A total mapping over `DateFormat`, so a resolution added to the schema
- * arrives here as a typecheck failure rather than as a stored operand nothing
- * checks.
+ * A date problem nobody has written words for, which TypeScript proves cannot
+ * happen: a kind added above arrives as a typecheck failure at each of the two
+ * places that has to say it — the row and the dialog — rather than as a rule
+ * marked with an empty sentence.
  */
-const DATE_RESOLUTION_PATTERNS: Readonly<Record<DateFormat, RegExp>> =
-  Object.freeze({
-    full: /^\d{4}-\d{2}-\d{2}$/,
-    month: /^\d{4}-\d{2}$/,
-    year: /^\d{4}$/,
-  });
+export const assertNoSuchDateProblem = (problem: never): never => {
+  throw new Error(
+    `No message is written for the date problem ${JSON.stringify(problem)}.`,
+  );
+};
 
 /**
  * Two ISO date strings compared as the bound that would refuse one is.
@@ -538,8 +578,18 @@ export const operandDateProblems = (
   if (typeof value !== 'string' || value === '') return [];
 
   const parameters = ruleVariableDateParameters(variables, variableId);
-  if (!DATE_RESOLUTION_PATTERNS[parameters.type].test(value)) {
+  // Asked in two steps, from the schema's own statements about a date, because
+  // the two failures are different things to tell a researcher: a date at the
+  // wrong PRECISION is one the attribute stopped recording, while a date that
+  // is the right precision and still not on the calendar was never a date at
+  // all. `DATE_RESOLUTION`/`isValidDateAtResolution` are what the protocol
+  // schema holds an authored picker BOUND to, so a rule operand and a codebook
+  // bound are read by one definition of a date rather than by two.
+  if (!DATE_RESOLUTION[parameters.type].pattern.test(value)) {
     return [{ kind: 'wrongResolution', value, resolution: parameters.type }];
+  }
+  if (!isValidDateAtResolution(value, parameters.type)) {
+    return [{ kind: 'impossibleDate', value }];
   }
 
   const { min, max } = parameters;

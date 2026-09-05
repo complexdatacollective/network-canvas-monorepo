@@ -1,8 +1,14 @@
 import { useMemo } from 'react';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
+import {
+  collectEntityTypeReferencesFromSchema,
+  stageSchema,
+  type StageType,
+} from '@codaco/protocol-validation';
 
 import ProtocolField from '../form/ProtocolField.tsx';
+import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useStageValue } from '../form/stageFormHooks.ts';
 import { type RuleDraftOptions, ruleDraftOptions } from '../rules/rule.ts';
 import {
@@ -91,13 +97,14 @@ export default function NetworkFilterSection({
   copy,
 }: NetworkFilterSectionProps) {
   const words = { ...DEFAULT_COPY[subject], ...copy };
+  const { identity } = useStageEditorForm();
   const filter = useStageValue(FILTER_FIELD);
   const prompts = useStageValue('prompts');
   const rulesValidation = useRuleSetValidation(FILTER_FIELD, 'filter');
 
   const configuredEdgeTypes = useMemo(
-    () => promptEdgeTypes(prompts),
-    [prompts],
+    () => promptEdgeTypes(identity.type, prompts),
+    [identity.type, prompts],
   );
   const hidesConfiguredEdges =
     configuredEdgeTypes.length > 0 &&
@@ -138,32 +145,38 @@ export default function NetworkFilterSection({
 }
 
 /**
- * Every edge type this stage's prompts create or display.
+ * Every edge type this stage's prompts name.
  *
- * Read tolerantly from the draft rather than from a typed prompt list: the
- * prompts belong to sections this one knows nothing about, and a stage part
- * way through being configured holds whatever the researcher has entered so
- * far.
+ * Asked of the SCHEMA rather than read from the two or three paths this
+ * section happens to know. A Sociogram prompt names its edge types under
+ * `edges.create`/`edges.display`; DyadCensus, TieStrengthCensus and
+ * OneToManyDyadCensus each name theirs at a top-level `createEdge`, which is a
+ * different field and not a synonym — so a hand-written pair of paths saw
+ * nothing at all for those three interfaces, and the warning that a filter
+ * hides the edge they create never fired. `entityTypeReference` is the
+ * schema's own tag for a field holding a codebook type id, and
+ * `collectEntityTypeReferencesFromSchema` finds every one of them, so an
+ * interface that gains an edge-type field is covered the moment its schema is
+ * tagged.
+ *
+ * Read tolerantly, from a fragment rather than a whole protocol: the prompts
+ * belong to sections this one knows nothing about, and a stage part way
+ * through being configured holds whatever the researcher has entered so far.
+ * Restricted to the prompts, because the stage's own SUBJECT is an edge type
+ * on some interfaces and is not something a rule "hides" — the filter is what
+ * decides which of its entities reach the stage.
  */
-function promptEdgeTypes(prompts: unknown): string[] {
+function promptEdgeTypes(stageType: StageType, prompts: unknown): string[] {
   if (!Array.isArray(prompts)) return [];
 
-  const types: string[] = [];
-  for (const prompt of prompts) {
-    if (typeof prompt !== 'object' || prompt === null) continue;
-    const edges = Reflect.get(prompt, 'edges');
-    if (typeof edges !== 'object' || edges === null) continue;
-
-    const create = Reflect.get(edges, 'create');
-    if (typeof create === 'string' && create !== '') types.push(create);
-
-    const display = Reflect.get(edges, 'display');
-    if (!Array.isArray(display)) continue;
-    for (const entry of display) {
-      if (typeof entry === 'string' && entry !== '') types.push(entry);
-    }
-  }
-  return types;
+  return collectEntityTypeReferencesFromSchema(stageSchema, {
+    type: stageType,
+    prompts,
+  }).flatMap((hit) =>
+    hit.entity === 'edge' && hit.path[0] === 'prompts' && hit.typeId !== ''
+      ? [hit.typeId]
+      : [],
+  );
 }
 
 /**

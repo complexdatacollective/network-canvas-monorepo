@@ -164,6 +164,10 @@ const RULE_PROBLEM_SUMMARIES: Readonly<
   unusableOption: 'codebook',
   unusableDate: 'codebook',
   incomplete: 'unfinished',
+  // The rule is exactly as it was written, and the protocol schema refuses it
+  // where it sits: nothing about the codebook, and nothing the researcher left
+  // half-answered on screen.
+  missingId: 'unusable',
 });
 
 const ruleProblemSummary = (problem: RuleProblem): RuleProblemSummary =>

@@ -511,6 +511,31 @@ describe('rules the codebook can no longer account for', () => {
     // The rule still reads, so the researcher can see which one to fix.
     expect(ruleRowSentence()).toBe('Person exactly 3');
   });
+
+  /**
+   * The one part of a rule no control on screen asks for. Both branches of
+   * `filterRuleSchema` require `id: z.string()`, so a rule without one is
+   * refused when the whole stage is saved — by an issue naming a position in
+   * an array, long after the row that holds it has scrolled past.
+   */
+  it('reports a rule that has no identifier', () => {
+    renderEditor(
+      createSession({
+        rules: [
+          // Every part the editor asks for is answered; the id is not there.
+          { type: 'node', options: { type: 'person', operator: 'EXISTS' } },
+        ],
+      }),
+    );
+
+    expect(
+      screen.getByText(
+        'This rule has no identifier, so this protocol cannot be saved with it. Edit the rule to give it one, or delete the rule.',
+      ),
+    ).toBeInTheDocument();
+    // And still reads, so the researcher can see which one to open.
+    expect(ruleRowSentence()).toBe('Person exists');
+  });
 });
 
 describe('a codebook that changes underneath the editor', () => {

@@ -17,6 +17,7 @@ import {
 } from './operators.ts';
 import { isCompleteRule, isRuleDraft, ruleDraftOptions } from './rule.ts';
 import {
+  assertNoSuchDateProblem,
   codebookLabel,
   DEFAULT_EDGE_COLOR,
   DEFAULT_NODE_COLOR,
@@ -113,6 +114,7 @@ export const RULE_PROBLEM_CODES = [
   'unusableOption',
   'unusableDate',
   'incomplete',
+  'missingId',
 ] as const;
 
 export type RuleProblemCode = (typeof RULE_PROBLEM_CODES)[number];
@@ -563,6 +565,18 @@ export function describeRule({
     problems.push({ code: 'incomplete', message: INCOMPLETE_MESSAGE });
   }
 
+  // The one part of a rule no control asks for. Both branches of
+  // `filterRuleSchema` require `id: z.string()`, so a rule that has none — or
+  // holds something that is not a string — is refused when the STAGE is saved,
+  // by an issue naming a position in an array rather than the row the
+  // researcher can act on. The editor mints one for every rule it commits, so
+  // this arrives from a protocol authored elsewhere or merged from a
+  // collaborator's edit; reported last because it is the only problem here the
+  // researcher repairs simply by opening the rule and finishing it again.
+  if (typeof rule.id !== 'string') {
+    problems.push({ code: 'missingId', message: MISSING_ID_MESSAGE });
+  }
+
   const attributePresence = attribute !== undefined && isExistenceOperator;
   const columns = attribute !== undefined && operand !== undefined;
 
@@ -728,13 +742,23 @@ const DATE_RESOLUTION_NAMES: Readonly<Record<DateFormat, string>> =
     year: 'a year',
   });
 
-const unusableDateMessage = (problem: OperandDateProblem): string =>
-  problem.kind === 'wrongResolution'
-    ? `This rule compares its attribute against “${problem.value}”, but the attribute is now answered with ${DATE_RESOLUTION_NAMES[problem.resolution]}, so the rule can never match. Edit or delete the rule.`
-    : `This rule compares its attribute against “${problem.value}”, which is outside the dates that attribute can record. Edit or delete the rule.`;
+const unusableDateMessage = (problem: OperandDateProblem): string => {
+  switch (problem.kind) {
+    case 'wrongResolution':
+      return `This rule compares its attribute against “${problem.value}”, but the attribute is now answered with ${DATE_RESOLUTION_NAMES[problem.resolution]}, so the rule can never match. Edit or delete the rule.`;
+    case 'impossibleDate':
+      return `This rule compares its attribute against “${problem.value}”, which is not a date on the calendar, so the rule can never match. Edit or delete the rule.`;
+    case 'outOfRange':
+      return `This rule compares its attribute against “${problem.value}”, which is outside the dates that attribute can record. Edit or delete the rule.`;
+    default:
+      return assertNoSuchDateProblem(problem);
+  }
+};
 const unusableOptionMessage = (describedAs: string) =>
   `This rule compares its attribute against ${describedAs}, which cannot be one of that attribute’s choices. Edit or delete the rule.`;
 const INCOMPLETE_MESSAGE =
   'This rule is not complete. Edit it to fill in every part, or delete it.';
+const MISSING_ID_MESSAGE =
+  'This rule has no identifier, so this protocol cannot be saved with it. Edit the rule to give it one, or delete the rule.';
 /** What an operand no reader can make sense of is printed as. */
 const UNREADABLE_OPERAND = '(a value this editor cannot read)';

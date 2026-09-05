@@ -1150,6 +1150,33 @@ describe('a rule the codebook has moved out from under', () => {
   });
 
   /**
+   * A rule with no id is the one problem the dialog REPAIRS rather than
+   * refuses: nothing on screen asks for an id, so refusing the save would
+   * leave the researcher with a rule they could neither fix nor keep. The id
+   * is minted for the editing session, before the draft is validated, so the
+   * rule the dialog judges is the rule it would save.
+   */
+  it('gives a rule that arrived without an identifier one, and finishes', async () => {
+    const user = userEvent.setup();
+    renderRuleList([
+      { type: 'node', options: { type: 'person', operator: 'EXISTS' } },
+    ]);
+
+    await openExistingRule(user);
+    await finishAndClose(user);
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: RULE_EDITOR }),
+      ).not.toBeInTheDocument(),
+    );
+    const [saved] = probedRuleSet()?.rules ?? [];
+    expect(typeof saved?.id).toBe('string');
+    expect(saved?.id).not.toBe('');
+    expect(saved?.options).toEqual({ type: 'person', operator: 'EXISTS' });
+  });
+
+  /**
    * The dialog's placement table is total over `RULE_PROBLEM_CODES`, so a new
    * problem cannot be added to the rule description and left with nowhere to
    * appear in the editor. Each draft below carries the code under test and,
@@ -1160,12 +1187,14 @@ describe('a rule the codebook has moved out from under', () => {
    */
   describe('every problem a rule can have', () => {
     const DRAFTS: Readonly<Record<RuleProblemCode, RuleDraft>> = {
-      unknownTarget: { type: 'chimera', options: {} },
+      unknownTarget: { id: 'rule-1', type: 'chimera', options: {} },
       missingEntityType: {
+        id: 'rule-1',
         type: 'node',
         options: { type: 'ghost', operator: 'EXISTS' },
       },
       missingAttribute: {
+        id: 'rule-1',
         type: 'node',
         options: {
           type: 'person',
@@ -1175,6 +1204,7 @@ describe('a rule the codebook has moved out from under', () => {
         },
       },
       invalidOperator: {
+        id: 'rule-1',
         type: 'node',
         // A pattern comparison against an option-bearing attribute: the schema
         // does not allow it, while the operand it was given is still a
@@ -1187,6 +1217,7 @@ describe('a rule the codebook has moved out from under', () => {
         },
       },
       invalidOperand: {
+        id: 'rule-1',
         type: 'node',
         // A multi-select is answered with the list of options that were
         // selected, so a lone option value is not a shape it can be compared
@@ -1200,6 +1231,7 @@ describe('a rule the codebook has moved out from under', () => {
         },
       },
       missingOption: {
+        id: 'rule-1',
         type: 'node',
         options: {
           type: 'person',
@@ -1209,6 +1241,7 @@ describe('a rule the codebook has moved out from under', () => {
         },
       },
       unusableOption: {
+        id: 'rule-1',
         type: 'node',
         options: {
           type: 'person',
@@ -1218,18 +1251,21 @@ describe('a rule the codebook has moved out from under', () => {
         },
       },
       incomplete: {
+        id: 'rule-1',
         type: 'node',
         options: { type: 'person', attribute: 'age', operator: 'GREATER_THAN' },
       },
       // Nothing about this rule is wrong; the rule set it is sitting in is
       // one the schema does not let it sit in.
       targetNotOffered: {
+        id: 'rule-1',
         type: 'ego',
         options: { attribute: 'egoName', operator: 'EXACTLY', value: 'Ada' },
       },
       // A comparison pattern that will not compile. The interview swallows
       // the compile error on purpose, so nothing downstream reports it.
       invalidPattern: {
+        id: 'rule-1',
         type: 'node',
         options: {
           type: 'person',
@@ -1240,6 +1276,7 @@ describe('a rule the codebook has moved out from under', () => {
       },
       // A full date against an attribute whose picker now records years.
       unusableDate: {
+        id: 'rule-1',
         type: 'node',
         options: {
           type: 'person',
@@ -1247,6 +1284,12 @@ describe('a rule the codebook has moved out from under', () => {
           operator: 'EXACTLY',
           value: '2020-05-14',
         },
+      },
+      // The only part of a rule no control on screen asks for — and the one
+      // the protocol schema requires of every rule in both of its shapes.
+      missingId: {
+        type: 'node',
+        options: { type: 'person', operator: 'EXISTS' },
       },
     };
 

@@ -244,6 +244,12 @@ const RULE_BY_PROBLEM: Readonly<Record<RuleProblemCode, RuleDraft>> =
         value: '2020-05-14',
       },
     },
+    // Every part the editor asks for is answered; the one part it never asks
+    // for, and the protocol schema requires, is not there.
+    missingId: {
+      type: 'node',
+      options: { type: 'person', operator: 'EXISTS' },
+    },
   });
 
 /**

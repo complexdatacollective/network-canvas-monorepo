@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   type Codebook,
@@ -147,6 +147,22 @@ describe('the date picker a rule’s operand inherits', () => {
       component: 'RelativeDatePicker',
       parameters: { anchor: '2020-01-01', before: 30, after: 30 },
     },
+    // The same picker with nothing authored on it, which is where the window
+    // is derived from the clock rather than from the codebook.
+    called: {
+      name: 'Called',
+      type: 'datetime',
+      component: 'RelativeDatePicker',
+      parameters: { before: 30 },
+    },
+    // A month-resolution picker, so a month outside 01-12 has somewhere to be
+    // asked about.
+    joined: {
+      name: 'Joined',
+      type: 'datetime',
+      component: 'DatePicker',
+      parameters: { type: 'month' },
+    },
     age: { name: 'Age', type: 'number' },
   });
 
@@ -164,10 +180,33 @@ describe('the date picker a rule’s operand inherits', () => {
     });
   });
 
-  it('gives a relative date picker the full date it records, and no bounds', () => {
+  /**
+   * A relative date picker names no `min`/`max` of its own — it names a window
+   * — and the interview turns that window into the hard bounds a submitted
+   * answer is validated against (`buildDatePickerBoundProps`). Reading the
+   * parameters verbatim found no bound and left the rule editor free to
+   * compare against a date no participant can ever give.
+   */
+  it('derives the window a relative date picker actually offers', () => {
     expect(ruleVariableDateParameters(variables, 'met')).toEqual({
       type: 'full',
+      min: '2019-12-02',
+      max: '2020-01-31',
     });
+  });
+
+  it('anchors an unanchored relative date picker on today, as the picker does', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime('2026-07-27T12:00:00.000Z');
+    try {
+      expect(ruleVariableDateParameters(variables, 'called')).toEqual({
+        type: 'full',
+        min: '2026-06-27',
+        max: '2026-07-27',
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('gives anything that is not a date attribute the default picker', () => {
@@ -222,6 +261,72 @@ describe('the date picker a rule’s operand inherits', () => {
       expect(
         operandDateProblems(variables, 'seen', 'EXACTLY', '2020-05-14'),
       ).toEqual([]);
+    });
+
+    it('reports one outside a relative picker’s window', () => {
+      expect(
+        operandDateProblems(variables, 'met', 'EXACTLY', '2019-12-01'),
+      ).toEqual([{ kind: 'outOfRange', value: '2019-12-01' }]);
+      expect(
+        operandDateProblems(variables, 'met', 'EXACTLY', '2020-02-01'),
+      ).toEqual([{ kind: 'outOfRange', value: '2020-02-01' }]);
+      // Both ends of the window are dates the picker offers.
+      for (const value of ['2019-12-02', '2020-01-01', '2020-01-31']) {
+        expect(operandDateProblems(variables, 'met', 'EXACTLY', value)).toEqual(
+          [],
+        );
+      }
+    });
+
+    /**
+     * A rule names the anchor its picker had when it was written; an
+     * UNANCHORED relative picker re-derives its window from the clock on every
+     * answer, so the same operand slides out of range as time passes. The
+     * editor reports against the window as of today — which is the window the
+     * interview will apply to the next answer — rather than against the one
+     * that was current when the rule was authored.
+     */
+    it('judges an unanchored window as of today, not as of the day the rule was written', () => {
+      vi.useFakeTimers();
+      try {
+        vi.setSystemTime('2026-07-27T12:00:00.000Z');
+        expect(
+          operandDateProblems(variables, 'called', 'EXACTLY', '2026-07-01'),
+        ).toEqual([]);
+
+        vi.setSystemTime('2026-09-01T12:00:00.000Z');
+        expect(
+          operandDateProblems(variables, 'called', 'EXACTLY', '2026-07-01'),
+        ).toEqual([{ kind: 'outOfRange', value: '2026-07-01' }]);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    /**
+     * A date of the right shape that the calendar does not have. The native
+     * date and month controls sanitise these away rather than committing
+     * them, so no participant answer can ever equal one — but the protocol
+     * schema holds a rule operand as `unknown`, so an imported or hand-edited
+     * protocol reaches here with one.
+     */
+    it('reports one the calendar does not have', () => {
+      expect(
+        operandDateProblems(variables, 'seen', 'EXACTLY', '2020-02-31'),
+      ).toEqual([{ kind: 'impossibleDate', value: '2020-02-31' }]);
+      expect(
+        operandDateProblems(variables, 'seen', 'EXACTLY', '2020-13-01'),
+      ).toEqual([{ kind: 'impossibleDate', value: '2020-13-01' }]);
+      expect(
+        operandDateProblems(variables, 'joined', 'EXACTLY', '2020-13'),
+      ).toEqual([{ kind: 'impossibleDate', value: '2020-13' }]);
+      // A leap day IS on the calendar, in a leap year and not otherwise.
+      expect(
+        operandDateProblems(variables, 'seen', 'EXACTLY', '2020-02-29'),
+      ).toEqual([]);
+      expect(
+        operandDateProblems(variables, 'seen', 'EXACTLY', '2021-02-29'),
+      ).toEqual([{ kind: 'impossibleDate', value: '2021-02-29' }]);
     });
 
     it('says nothing about an operand that is not a date at all', () => {

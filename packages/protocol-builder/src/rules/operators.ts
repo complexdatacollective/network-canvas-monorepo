@@ -150,13 +150,19 @@ export const operatorsWithOptionCount: ReadonlySet<FilterOperator> =
   operatorsOfKind('integer');
 
 /**
- * Operators that ask whether an answer CONTAINS an option rather than whether
- * it equals one.
+ * Operators that ask whether an answer is one of a SET of options rather than
+ * whether it equals one.
  *
- * A runtime fact rather than a schema one, and the reason it is stated: the
- * interview's predicate takes either a single option or a list of them for
- * these two and resolves the difference itself, so a rule authored before the
- * editor emitted a list still matches. Equality has no such latitude.
+ * A runtime fact rather than a schema one, and the reason it is stated twice
+ * over. The interview's predicate takes either a single option or a list of
+ * them on EITHER side and resolves the difference itself — so a rule authored
+ * before the editor emitted a list still matches, and a list compared against
+ * a single-option answer matches when the answer is in the list. Equality has
+ * no such latitude.
+ *
+ * That is why these two, and only these two, decide the operand's shape as
+ * well as what counts as a valid one: the set is the operand, whatever shape a
+ * single ANSWER has.
  */
 const MEMBERSHIP_OPERATORS: ReadonlySet<FilterOperator> =
   new Set<FilterOperator>(['INCLUDES', 'EXCLUDES']);
@@ -458,10 +464,37 @@ export const operandRequirement = (
   // STRING beside a relational operator is a value the validator refuses.
   if (operandKind === 'number' && shape !== 'number') return undefined;
 
-  const control = controlForShape(shape);
+  const control = controlForShape(operandShape(shape, operator));
   if (control === undefined) return undefined;
   return valueRequirement(control, operandKind, operator);
 };
+
+/**
+ * The shape the OPERAND takes, which is the answer's shape except where the
+ * operator compares against a set.
+ *
+ * An ordinal attribute is answered with one option and a categorical with the
+ * list of options that were selected, so equality against each takes the shape
+ * of its own answer. `INCLUDES`/`EXCLUDES` ask something different — whether
+ * the answer is among these options — and the interview matches an array
+ * operand against a single ordinal answer by membership, so the operand is a
+ * set either way.
+ *
+ * Deriving it here rather than overriding only `holds` is what keeps the
+ * single-select control off an operand it cannot hold: an ordinal
+ * `INCLUDES ['low', 'high']` is schema-valid and matches at runtime, and the
+ * radio group it used to open in read the array as no selection at all —
+ * blocking a re-save of the untouched rule on `required`, or, once the
+ * researcher picked one option to get past that, saving the one they picked
+ * over the set they had.
+ */
+const operandShape = (
+  shape: AnswerShape,
+  operator: FilterOperator,
+): AnswerShape =>
+  MEMBERSHIP_OPERATORS.has(operator) && shape === 'option'
+    ? 'optionList'
+    : shape;
 
 /**
  * Whether this comparison's operand is PICKED FROM the attribute's own
