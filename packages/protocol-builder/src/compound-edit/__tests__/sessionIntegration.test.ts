@@ -8,6 +8,8 @@ import { InMemoryResourceGateway } from '../../resources/InMemoryResourceGateway
 import {
   createStageIdentity,
   ProtocolBuilderSessionStore,
+  stageDraftFromDocument,
+  type PendingCommandBatch,
   type ProtocolBuilderPresence,
 } from '../../session.ts';
 import {
@@ -52,6 +54,14 @@ function createSession(
     additionalLeases?: readonly InMemoryCompoundHostLease[];
     /** Opens the session with a gateway, so a batch can be withheld. */
     resources?: boolean;
+    /**
+     * Applies every batch to the host as it is made, rather than buffering
+     * them until finish — the host model that shows collaborators an edit while
+     * it is being made. The acknowledgement it owes back is deferred, which is
+     * where a real transport puts it: by the time it arrives, something else
+     * may have moved the authoritative revision on.
+     */
+    applyLive?: boolean;
   }> = {},
 ) {
   const host = new InMemoryCompoundHost({
@@ -59,7 +69,44 @@ function createSession(
     manifestRevision: { sequence: 7n, hash: 'revision-7' },
     leases: [primaryLease, ...(options.additionalLeases ?? [])],
   });
-  const onCommands = vi.fn();
+  const owedAcknowledgements: (() => void)[] = [];
+  let liveApplies = 0;
+  const onCommands = vi.fn((batch: PendingCommandBatch) => {
+    if (options.applyLive !== true) return;
+    const sections = host.getSnapshot().protocolSections;
+    const result = host.submit({
+      id: `live-${++liveApplies}`,
+      description: 'Apply a batch as it is made',
+      edits: [
+        {
+          kind: 'update',
+          sectionId: stageSection,
+          expectedContentHash: contentHash(sections[stageSection] ?? {}),
+          commands: [...batch.commands],
+        },
+      ],
+      authority: {
+        sectionId: stageSection,
+        leaseOwner: 'owner-primary',
+        leaseEpoch: 4n,
+      },
+    });
+    if (result.status !== 'applied') {
+      throw new Error(
+        result.status === 'failed' ? result.message : 'the stage is held',
+      );
+    }
+    const applied = result.update;
+    owedAcknowledgements.push(() => {
+      const document = applied.protocolSections[stageSection];
+      if (document === undefined) throw new Error('the host lost the stage');
+      session.acknowledge({
+        fields: stageDraftFromDocument(document).fields,
+        throughBatchId: batch.id,
+        manifestRevision: applied.manifestRevision,
+      });
+    });
+  });
   let finishes = 0;
   const session = new ProtocolBuilderSessionStore({
     identity: createStageIdentity('Information', () => 'stage-1'),
@@ -108,7 +155,15 @@ function createSession(
       }
     },
   });
-  return { host, onCommands, session };
+  return {
+    host,
+    onCommands,
+    session,
+    /** Delivers every acknowledgement the live host still owes this session. */
+    settleAcknowledgements: () => {
+      for (const acknowledge of owedAcknowledgements.splice(0)) acknowledge();
+    },
+  };
 }
 
 /** Stages an image in this session, and answers with its id. */
@@ -160,6 +215,35 @@ const createPlaceOnly = {
   description: 'Create a place',
   edits: [request.edits[1]!],
 };
+
+/** A second codebook-only request, for two compounds back to back. */
+const createVenueOnly = {
+  id: 'create-venue',
+  description: 'Create a venue',
+  edits: [
+    {
+      kind: 'create' as const,
+      sectionId: sectionId({ kind: 'codebookNode', typeId: 'venue' }),
+      document: {
+        name: 'Venue',
+        color: 'node-color-seq-3',
+        shape: { default: 'circle' },
+        variables: {},
+      },
+    },
+  ],
+};
+
+/** One block of an Information stage's page, as the schema stores it. */
+const block = (id: string) => ({ id, type: 'text', content: `Block ${id}` });
+
+const insertBlock = (id: string, index: number) =>
+  [
+    { op: 'insertItem' as const, key: 'items', index, item: block(id) },
+  ] as const;
+
+const stageItems = (session: ProtocolBuilderSessionStore): unknown =>
+  session.getSnapshot().editedSection.fields.items;
 
 describe('compound host and protocol-builder session integration', () => {
   it('publishes one authoritative stage-and-codebook revision without echo', async () => {
@@ -454,5 +538,186 @@ describe('a compound edit made while the stage has unsaved changes', () => {
 
     expect(session.getSnapshot().pendingCommands).toEqual(pendingBefore);
     expect(host.getSnapshot().protocolSections[placeSection]).toBeUndefined();
+  });
+});
+
+/**
+ * Which of this session's batches the host already holds is not something the
+ * session may assume, because the two host models disagree about it. A host
+ * that buffers `onCommands` until finish holds none of them; a host that
+ * applies each batch as it is made holds every one it has been given. Both
+ * answer a codebook-only request with a full protocol snapshot, and the stage
+ * in it is the only evidence of which host this is — so it is read rather than
+ * guessed. Replaying batches a live host already applied adds every inserted
+ * row a second time; leaving them pending sends them again at finish.
+ */
+describe('a codebook-only compound against each kind of host', () => {
+  it('acknowledges by content what a live-applying host already holds', async () => {
+    const { host, session } = createSession({ applyLive: true });
+    session.dispatch(insertBlock('one', 0));
+
+    await expect(
+      session.requestCompoundEdit(createPlaceOnly),
+    ).resolves.toMatchObject({ status: 'applied' });
+
+    // Once, not twice: the row the host applied live is the row on screen.
+    expect(stageItems(session)).toEqual([block('one')]);
+    expect(host.getSnapshot().protocolSections[stageSection]).toMatchObject({
+      items: [block('one')],
+    });
+    // And nothing is owed any more, so finish will not send it again.
+    expect(session.getSnapshot().pendingCommands).toEqual([]);
+  });
+
+  /**
+   * The acknowledgement the host owed arrives against the revision the compound
+   * apply has already superseded, so it is dropped. Acknowledging the batch by
+   * content above is what stops that dropping it forever.
+   */
+  it('does not strand the batch when the late acknowledgement is dropped', async () => {
+    const { host, session, settleAcknowledgements } = createSession({
+      applyLive: true,
+    });
+    session.dispatch(insertBlock('one', 0));
+    await expect(
+      session.requestCompoundEdit(createPlaceOnly),
+    ).resolves.toMatchObject({ status: 'applied' });
+
+    settleAcknowledgements();
+
+    expect(session.getSnapshot().pendingCommands).toEqual([]);
+    expect(stageItems(session)).toEqual([block('one')]);
+    await session.finish();
+    expect(host.getSnapshot().protocolSections[stageSection]).toMatchObject({
+      items: [block('one')],
+    });
+  });
+
+  it('keeps the researcher’s undo history over what the host already holds', async () => {
+    const { session } = createSession({ applyLive: true });
+    const historyBefore = session.getSnapshot().history;
+    session.dispatch(insertBlock('one', 0));
+
+    await expect(
+      session.requestCompoundEdit(createPlaceOnly),
+    ).resolves.toMatchObject({ status: 'applied' });
+
+    expect(session.getSnapshot().history).toMatchObject({
+      canUndo: true,
+      generation: historyBefore.generation,
+    });
+    session.undo();
+    expect(stageItems(session)).toEqual([]);
+  });
+
+  it('leaves the same batch pending for a host that buffers it', async () => {
+    const { host, onCommands, session } = createSession();
+    session.dispatch(insertBlock('one', 0));
+
+    await expect(
+      session.requestCompoundEdit(createPlaceOnly),
+    ).resolves.toMatchObject({ status: 'applied' });
+
+    expect(onCommands).toHaveBeenCalledOnce();
+    expect(session.getSnapshot().pendingCommands).toHaveLength(1);
+    expect(stageItems(session)).toEqual([block('one')]);
+    expect(host.getSnapshot().protocolSections[stageSection]).toEqual(
+      initialStage,
+    );
+
+    // Still owed, so the finish carries it — exactly once.
+    await session.finish();
+    expect(host.getSnapshot().protocolSections[stageSection]).toMatchObject({
+      items: [block('one')],
+    });
+  });
+
+  it('reconciles two compounds back to back against a live host', async () => {
+    const { host, session } = createSession({ applyLive: true });
+    session.dispatch(insertBlock('one', 0));
+    await expect(
+      session.requestCompoundEdit(createPlaceOnly),
+    ).resolves.toMatchObject({ status: 'applied' });
+    session.dispatch(insertBlock('two', 1));
+
+    await expect(
+      session.requestCompoundEdit(createVenueOnly),
+    ).resolves.toMatchObject({ status: 'applied' });
+
+    expect(stageItems(session)).toEqual([block('one'), block('two')]);
+    expect(session.getSnapshot().pendingCommands).toEqual([]);
+    expect(host.getSnapshot().protocolSections[stageSection]).toMatchObject({
+      items: [block('one'), block('two')],
+    });
+    expect(session.getSnapshot().history.canUndo).toBe(true);
+  });
+
+  it('reconciles two compounds back to back against a buffering host', async () => {
+    const { host, session } = createSession();
+    session.dispatch(insertBlock('one', 0));
+    await expect(
+      session.requestCompoundEdit(createPlaceOnly),
+    ).resolves.toMatchObject({ status: 'applied' });
+    session.dispatch(insertBlock('two', 1));
+
+    await expect(
+      session.requestCompoundEdit(createVenueOnly),
+    ).resolves.toMatchObject({ status: 'applied' });
+
+    expect(session.getSnapshot().pendingCommands).toHaveLength(2);
+    expect(stageItems(session)).toEqual([block('one'), block('two')]);
+    expect(session.getSnapshot().history.canUndo).toBe(true);
+
+    await session.finish();
+    expect(host.getSnapshot().protocolSections[stageSection]).toMatchObject({
+      items: [block('one'), block('two')],
+    });
+  });
+
+  /**
+   * The stage came back as neither — not the base these batches were built
+   * against, and not that base with any run of them applied. Something else
+   * moved it, and a session that adopted it would be replaying the
+   * researcher's batches onto a document they were not written for.
+   */
+  it('refuses a stage it cannot account for, and loses nothing local', async () => {
+    const { host, session } = createSession();
+    session.dispatch([{ op: 'set', key: 'title', value: 'Places nearby' }]);
+    const before = session.getSnapshot();
+    const sections = host.getSnapshot().protocolSections;
+    expect(
+      host.submit({
+        id: 'collaborator-rename',
+        description: 'Rename the stage from another session',
+        edits: [
+          {
+            kind: 'update',
+            sectionId: stageSection,
+            expectedContentHash: contentHash(sections[stageSection] ?? {}),
+            commands: [{ op: 'set', key: 'label', value: 'Renamed elsewhere' }],
+          },
+        ],
+        authority: {
+          sectionId: stageSection,
+          leaseOwner: 'owner-primary',
+          leaseEpoch: 4n,
+        },
+      }),
+    ).toMatchObject({ status: 'applied' });
+
+    await expect(
+      session.requestCompoundEdit(createPlaceOnly),
+    ).resolves.toMatchObject({ status: 'failed', reason: 'stale-base' });
+
+    expect(session.getSnapshot().pendingCommands).toEqual(
+      before.pendingCommands,
+    );
+    expect(session.getSnapshot().editedSection.fields).toEqual(
+      before.editedSection.fields,
+    );
+    expect(session.getSnapshot().history).toEqual(before.history);
+    expect(session.getSnapshot().manifestRevision).toEqual(
+      before.manifestRevision,
+    );
   });
 });
