@@ -15,23 +15,17 @@ import { resolveFieldPath } from '@codaco/fresco-ui/form/FieldNamespace';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import type { StageType } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
-import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { InMemoryCompoundHost } from '../compound-edit/InMemoryCompoundHost.ts';
+import type { InMemoryCompoundHost } from '../compound-edit/InMemoryCompoundHost.ts';
 import { useStageEditorController } from '../controller.ts';
 import StageEditorShell from '../form/StageEditorShell.tsx';
 import { getInterfaceTemplate } from '../interfaces/templates.ts';
-import {
-  InMemoryResourceGateway,
-  type InMemoryResourceSeed,
-} from '../resources/InMemoryResourceGateway.ts';
-import {
-  createStageIdentity,
-  type FinishRequest,
-  type PendingCommandBatch,
+import type { InMemoryResourceGateway } from '../resources/InMemoryResourceGateway.ts';
+import type {
+  FinishRequest,
+  PendingCommandBatch,
   ProtocolBuilderSessionStore,
-  type StageCreation,
 } from '../session.ts';
 import type {
   StageEditorActions,
@@ -40,21 +34,16 @@ import type {
 } from '../stage-editor-contract.ts';
 import StageEditor from '../StageEditor.tsx';
 import {
-  fixtureAssetContent,
-  fixtureAssetManifest,
-  fixtureProtocolSections,
-  loadFixtureStage,
-} from './protocolFixture.ts';
+  FIXTURE_SESSION_OWNER,
+  openFixtureStageSession,
+  type SeededStage,
+} from './fixtureSession.ts';
+import { loadFixtureStage } from './protocolFixture.ts';
 
 const DEFAULT_SUBMIT_LABEL = 'Save stage';
 
 /** DOM id of the stage form the harness mounts. See `HarnessEditor`. */
 const STAGE_FORM_ID = 'stage-form';
-
-const OWNER = 'harness-tab';
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /**
  * A change to the codebook made somewhere other than this editor.
@@ -213,87 +202,14 @@ export function renderStageEditor<T extends StageType = StageType>(
   options: RenderStageEditorOptions<T> = {},
 ): StageEditorHarness {
   const seeded = seedFrom(options);
-  const stageSectionId = sectionId({ kind: 'stage', stageId: seeded.id });
-  const baseSections = fixtureProtocolSections();
-  const stageOrderSectionId = sectionId({ kind: 'stageOrder' });
-  // A stage the fixture does not contain still has to be part of the protocol
-  // it is validated inside, or every save fails on the stage order — unless it
-  // is being CREATED, which is exactly the case where the protocol does not
-  // hold it yet. See `candidateSections`.
-  const protocolSections: Record<string, SectionDoc> = { ...baseSections };
-  if (seeded.creation === undefined) {
-    protocolSections[stageSectionId] = {
-      id: seeded.id,
-      type: seeded.type,
-      ...seeded.fields,
-    };
-    protocolSections[stageOrderSectionId] = {
-      stages: stageOrderWith(baseSections, seeded.id),
-    };
-  }
-  const assetManifest: Record<string, unknown> = {
-    ...fixtureAssetManifest(),
-    ...options.assets,
-  };
-  protocolSections[sectionId({ kind: 'assets' })] = assetManifest;
-
-  const manifestRevision = { sequence: 1n, hash: 'revision-1' };
-  const host = new InMemoryCompoundHost({
-    protocolSections,
-    manifestRevision,
-    leases: [
-      {
-        sectionId: stageSectionId,
-        leaseOwner: OWNER,
-        leaseEpoch: 1n,
-        holder: {
-          sessionId: OWNER,
-          userId: 'researcher',
-          displayName: 'Researcher',
-          sectionId: stageSectionId,
-          mode: 'editing',
-        },
-      },
-    ],
-  });
-  const gateway = new InMemoryResourceGateway({
-    committed: manifestResources(assetManifest),
-  });
-
   const finishRequests: FinishRequest[] = [];
-  const session = new ProtocolBuilderSessionStore({
-    identity: createStageIdentity(seeded.type, () => seeded.id),
-    fields: seeded.fields,
-    ...(seeded.creation === undefined ? {} : { creation: seeded.creation }),
-    protocolSections,
-    manifestRevision,
-    access:
-      options.readOnly === true
-        ? { mode: 'readOnly', reason: 'spectator' }
-        : { mode: 'editable', leaseOwner: OWNER, leaseEpoch: 1n },
-    resourceGateway: gateway,
-    // A stage being created is validated where it is about to live: the host
-    // puts it into the stage order at its insertion position before it judges
-    // the protocol, so the draft is judged as the interview it is joining —
-    // and a skip destination naming a stage it would come AFTER is refused
-    // here rather than after the researcher has saved.
-    buildCandidate: ({ stageDocument, protocolSections: sections }) =>
-      assembleProtocolSections({
-        ...sections,
-        [stageSectionId]: stageDocument,
-        ...(seeded.creation === undefined
-          ? {}
-          : {
-              [stageOrderSectionId]: {
-                stages: stageOrderInserting(
-                  sections,
-                  seeded.id,
-                  seeded.creation.position,
-                ),
-              },
-            }),
-      }),
-    onCompoundEdit: (submission) => host.submit(submission),
+  // The same session a story is opened over, built once in `fixtureSession`:
+  // a test and a story that assembled the protocol differently would disagree
+  // about what the editor is mounted over.
+  const { session, host, gateway } = openFixtureStageSession({
+    seeded,
+    ...(options.assets === undefined ? {} : { assets: options.assets }),
+    ...(options.readOnly === undefined ? {} : { readOnly: options.readOnly }),
     onFinish: (request) => {
       finishRequests.push(request);
     },
@@ -414,7 +330,11 @@ export function renderStageEditor<T extends StageType = StageType>(
         session.setAccess(
           readOnly
             ? { mode: 'readOnly', reason: 'lease-lost' }
-            : { mode: 'editable', leaseOwner: OWNER, leaseEpoch: 2n },
+            : {
+                mode: 'editable',
+                leaseOwner: FIXTURE_SESSION_OWNER,
+                leaseEpoch: 2n,
+              },
         );
       });
     },
@@ -478,14 +398,6 @@ function HarnessEditor<T extends StageType>({
   );
 }
 
-type SeededStage = Readonly<{
-  id: string;
-  type: StageType;
-  fields: SectionDoc;
-  /** Set only for a stage the harness is CREATING. */
-  creation?: StageCreation;
-}>;
-
 function seedFrom<T extends StageType>(
   options: RenderStageEditorOptions<T>,
 ): SeededStage {
@@ -512,35 +424,6 @@ function seedFrom<T extends StageType>(
   return loadFixtureStage(options.stageId);
 }
 
-/** The interview's stage order, with the edited stage in it exactly once. */
-function stageOrderWith(
-  sections: Readonly<Record<string, SectionDoc>>,
-  stageId: string,
-): string[] {
-  const stages = stageOrderOf(sections);
-  return stages.includes(stageId) ? stages : [...stages, stageId];
-}
-
-/** The interview's stage order with a stage being created inserted into it. */
-function stageOrderInserting(
-  sections: Readonly<Record<string, SectionDoc>>,
-  stageId: string,
-  position: number,
-): string[] {
-  const stages = stageOrderOf(sections).filter((entry) => entry !== stageId);
-  const index = Math.min(Math.max(position, 0), stages.length);
-  return [...stages.slice(0, index), stageId, ...stages.slice(index)];
-}
-
-function stageOrderOf(
-  sections: Readonly<Record<string, SectionDoc>>,
-): string[] {
-  const order = sections[sectionId({ kind: 'stageOrder' })]?.stages;
-  return Array.isArray(order)
-    ? order.filter((entry): entry is string => typeof entry === 'string')
-    : [];
-}
-
 function patchedCodebook(
   sections: Readonly<Record<string, SectionDoc>>,
   patch: CodebookPatch,
@@ -562,51 +445,6 @@ function patchedCodebook(
     else next[id] = patch.ego;
   }
   return next;
-}
-
-/**
- * A manifest's assets, as resources a gateway already holds.
- *
- * An asset the fixture ships a file for is seeded with that file, because an
- * editor asks the gateway what is INSIDE a data file — a roster's columns are
- * the material its card, sort and search sections offer. Everything else gets
- * a placeholder body: those editors read only a resource's kind, name and
- * size, and the bytes belong to the host.
- */
-function manifestResources(
-  manifest: Readonly<Record<string, unknown>>,
-): InMemoryResourceSeed[] {
-  return Object.entries(manifest).flatMap(
-    ([id, entry]): InMemoryResourceSeed[] => {
-      if (!isRecord(entry)) return [];
-      const name = typeof entry.name === 'string' ? entry.name : id;
-      const kind = entry.type;
-      if (kind === 'apikey') {
-        return [{ kind: 'apikey' as const, id, name, value: 'fixture-secret' }];
-      }
-      if (
-        kind !== 'audio' &&
-        kind !== 'geojson' &&
-        kind !== 'image' &&
-        kind !== 'network' &&
-        kind !== 'video'
-      ) {
-        return [];
-      }
-      const source =
-        typeof entry.source === 'string' ? entry.source : `${id}.json`;
-      return [
-        {
-          kind,
-          id,
-          name,
-          source,
-          contentType: 'application/json',
-          bytes: fixtureAssetContent(source) ?? new TextEncoder().encode('{}'),
-        },
-      ];
-    },
-  );
 }
 
 /**
