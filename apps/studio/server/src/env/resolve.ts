@@ -46,6 +46,8 @@ export type StudioEnv = {
   auth: AuthEnv | undefined;
   devDefaults: boolean;
   deploymentMode: DeploymentMode;
+  /** Only authorizes the empty instance first-run setup RPC. */
+  bootstrapToken?: string;
   /** Only the seed command reads it; unset means the development password. */
   seedAdminPassword: string | undefined;
 };
@@ -254,6 +256,7 @@ export function resolve(raw: RawEnv): StudioEnv {
     auth: resolveAuth(raw, db, devDefaults),
     devDefaults,
     deploymentMode: raw.STUDIO_DEPLOYMENT_MODE ?? DEFAULT_DEPLOYMENT_MODE,
+    bootstrapToken: raw.STUDIO_BOOTSTRAP_TOKEN,
     seedAdminPassword: raw.STUDIO_SEED_ADMIN_PASSWORD,
   };
 }

@@ -34,6 +34,11 @@ import {
   getInstanceStatus,
 } from './domain.ts';
 import {
+  completeSetup,
+  getSetupStatus,
+  SetupError,
+} from './instance/bootstrap.ts';
+import {
   correlateAuthorizedTeam,
   logOperational,
 } from './observability/logger.ts';
@@ -313,10 +318,17 @@ export function createRpcRouter(
     auth: AuthService;
     deployment: DeploymentStatus;
     invitationDeliveryAvailable: boolean;
+    bootstrapToken?: string;
     pool?: pg.Pool;
   },
 ) {
-  const { auth, deployment, invitationDeliveryAvailable, pool } = deps;
+  const {
+    auth,
+    deployment,
+    invitationDeliveryAvailable,
+    bootstrapToken,
+    pool,
+  } = deps;
   // Tenancy is checked per request against an explicit teamId in the
   // procedure input — never the session's active team. A non-member and a
   // nonexistent team both read FORBIDDEN, so the check is not an existence
@@ -426,6 +438,29 @@ export function createRpcRouter(
 
   return {
     status: os.status.handler(() => getInstanceStatus(caps, deployment)),
+    setup: {
+      status: os.setup.status.handler(() => {
+        if (deployment.mode !== 'self-hosted') throw new ORPCError('NOT_FOUND');
+        return getSetupStatus(pool, caps.enabled ? bootstrapToken : undefined);
+      }),
+      complete: os.setup.complete.handler(async ({ input, context }) => {
+        if (deployment.mode !== 'self-hosted') throw new ORPCError('NOT_FOUND');
+        if (!caps.enabled || !pool) throw new ORPCError('SERVICE_UNAVAILABLE');
+        try {
+          return await completeSetup(
+            pool,
+            bootstrapToken,
+            input,
+            context.requestId,
+          );
+        } catch (error) {
+          if (!(error instanceof SetupError)) throw error;
+          throw new ORPCError(
+            error.code === 'UNAVAILABLE' ? 'SERVICE_UNAVAILABLE' : error.code,
+          );
+        }
+      }),
+    },
     me: os.me.use(requireUser).handler(async ({ context }) => ({
       userId: context.principal.userId,
       email: context.principal.email,

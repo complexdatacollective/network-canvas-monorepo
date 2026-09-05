@@ -50,6 +50,14 @@ const CommonTeamAccessFailedV1EventSchema =
     outcome: z.literal('failed'),
   }).strict();
 
+const TeamCreatedV1EventSchema = CommonTeamAccessSucceededV1EventSchema.extend({
+  eventType: z.literal('team.created'),
+  subjectType: z.literal('team'),
+  subjectId: IdentifierSchema,
+  subjectLabel: LabelSchema,
+  details: z.strictObject({ source: z.literal('instance_setup') }),
+}).strict();
+
 const TeamMemberRoleChangedV1EventSchema =
   CommonTeamAccessSucceededV1EventSchema.extend({
     eventType: z.literal('team.member.role_changed'),
@@ -407,6 +415,7 @@ const WebhookCredentialV1EventSchema = CommonUserEventSchema.extend({
 // discriminator once two retained versions of the same immutable event exist.
 export const AuditEventInputSchema = z.union([
   AuditReadDeniedV1EventSchema,
+  TeamCreatedV1EventSchema,
   TeamMemberRoleChangedV1EventSchema,
   TeamMemberRoleChangeDeniedV1EventSchema,
   TeamMemberRoleChangeFailedV1EventSchema,
@@ -646,6 +655,21 @@ export const AUDIT_EVENT_REGISTRY = {
     sensitiveFields: [],
     createsAlert: false,
     fixture: { ...FIXTURE_WEBHOOK_COMMON, eventType: 'webhook.secret.rotated' },
+  },
+  'team.created@1': {
+    inputSchema: TeamCreatedV1EventSchema,
+    title: 'Team created',
+    detailFields: ['source'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_TEAM_ACCESS_V1_COMMON,
+      eventType: 'team.created',
+      subjectType: 'team',
+      subjectId: 'fixture-team',
+      subjectLabel: 'Fixture team',
+      details: { source: 'instance_setup' },
+    },
   },
   'audit.read_denied@1': {
     inputSchema: AuditReadDeniedV1EventSchema,

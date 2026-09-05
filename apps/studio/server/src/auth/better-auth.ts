@@ -9,8 +9,8 @@ import type { DeploymentMode } from '@codaco/studio-rpc/surfaces';
 
 import { AUTH_TABLES } from '../db/auth-schema.ts';
 import type { AuthEnv } from '../env.ts';
-import type { EncryptionKeys } from '../pii/keys.ts';
 import { logOperational } from '../observability/logger.ts';
+import type { EncryptionKeys } from '../pii/keys.ts';
 import type { MagicLinkMailer } from './email.ts';
 import { encryptedAuthAdapter } from './encrypted-adapter.ts';
 import { selfHostedEnrollmentHooks } from './enrollment.ts';
@@ -136,11 +136,9 @@ export function createBetterAuthInstance(
           returned: false,
         },
       },
-      // A Google or Microsoft sign-in whose verified email matches an
-      // existing (verified, e.g. magic-link) user joins that user rather
-      // than erroring: both IdPs verify addresses, so the claim is trusted
-      // as ownership proof even where the id token omits `email_verified`
-      // (some Entra tenants).
+      // Managed deployments retain their provider trust policy. Self-hosted
+      // linking requires an actual verified-email claim, including for an
+      // existing owner: some Entra tenants omit it and must use a magic link.
       accountLinking: {
         enabled: true,
         trustedProviders:

@@ -103,7 +103,9 @@ it('preserves populated legacy credentials and index bytes through migration0002
 
     await expect(
       migrateDatabase(scratch.pool, migrations, SCHEMA_FINGERPRINT),
-    ).resolves.toEqual(['0002_pii_encryption']);
+    ).resolves.toEqual(
+      migrations.slice(1).map((migration) => migration.manifest.id),
+    );
     expect(
       (
         await scratch.pool.query(

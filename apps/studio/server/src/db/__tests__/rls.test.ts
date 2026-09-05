@@ -163,6 +163,7 @@ describe.skipIf(!db)('row-level security', () => {
         'encryption_key_verifications',
         'credential_audit_events',
         'participant_contact_optouts',
+        'studio_instance',
       ].toSorted(),
     );
     for (const row of others) {

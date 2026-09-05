@@ -1,7 +1,7 @@
 {
   "dialect": "postgres",
-  "id": "e1ad16fd-fa64-4216-ba3c-ccdd6196635e",
-  "prevIds": ["9b62084d-edb6-4c82-937b-c99b4b00f159"],
+  "id": "274265f7-da51-4328-bdf4-49b32b01033d",
+  "prevIds": ["e1ad16fd-fa64-4216-ba3c-ccdd6196635e"],
   "version": "8",
   "ddl": [
     {
@@ -349,6 +349,12 @@
     {
       "isRlsEnabled": false,
       "name": "credential_audit_events",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "studio_instance",
       "entityType": "tables",
       "schema": "public"
     },
@@ -8503,6 +8509,71 @@
       "name": "id",
       "entityType": "columns",
       "schema": "public",
+      "table": "studio_instance"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "name",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "studio_instance"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "initial_owner_user_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "studio_instance"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "initial_team_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "studio_instance"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "completed_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "studio_instance"
+    },
+    {
+      "type": "boolean",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "true",
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
       "table": "schemaFingerprint"
     },
     {
@@ -11744,6 +11815,32 @@
       "table": "team_invitation_deliveries"
     },
     {
+      "nameExplicit": false,
+      "columns": ["initial_owner_user_id"],
+      "schemaTo": "public",
+      "tableTo": "user",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "SET NULL",
+      "name": "studio_instance_initial_owner_user_id_user_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "studio_instance"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["initial_team_id"],
+      "schemaTo": "public",
+      "tableTo": "teams",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "SET NULL",
+      "name": "studio_instance_initial_team_id_teams_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "studio_instance"
+    },
+    {
       "columns": ["team_id", "hash"],
       "nameExplicit": false,
       "name": "sections_pkey",
@@ -12205,6 +12302,14 @@
       "name": "credential_audit_events_pkey",
       "schema": "public",
       "table": "credential_audit_events",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "studio_instance_pkey",
+      "schema": "public",
+      "table": "studio_instance",
       "entityType": "pks"
     },
     {
@@ -13961,6 +14066,20 @@
       "entityType": "checks",
       "schema": "public",
       "table": "credential_audit_events"
+    },
+    {
+      "value": "\"id\"",
+      "name": "studio_instance_singleton_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "studio_instance"
+    },
+    {
+      "value": "char_length(\"name\") BETWEEN 1 AND 120 AND \"name\" ~ '[^[:space:]]'",
+      "name": "studio_instance_name_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "studio_instance"
     },
     {
       "value": "\"id\"",
