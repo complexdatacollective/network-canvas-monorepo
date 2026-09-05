@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -207,6 +207,20 @@ const outlineItems = () =>
 
 const outlineText = () => [...outlineItems()].map((item) => item.textContent);
 
+/**
+ * What drives this editor, set up once so every test drives it the same way.
+ *
+ * `delay: null` is what makes the difference on a loaded CI runner. The
+ * default asks user-event to wait a macrotask between the events of every
+ * interaction, and this file's longest test spends a third of its event-loop
+ * turns on those waits alone — turns that cost about a millisecond here and
+ * far more where several vitest workers share two cores, which is how a
+ * half-second test reached the twenty-second budget. Nothing here needs time
+ * to pass between a pointer-down and its click; the components that do (a
+ * press-and-hold) have tests of their own.
+ */
+const setupUser = () => userEvent.setup({ delay: null });
+
 const switchOn = async (user: ReturnType<typeof userEvent.setup>) =>
   user.click(screen.getByRole('switch', { name: 'Skip logic' }));
 
@@ -216,16 +230,24 @@ const addNodeExistsRule = async (
   await user.click(
     screen.getByRole('button', { name: 'Add new skip logic rule' }),
   );
-  await screen.findByRole('dialog', { name: 'Construct a Rule' });
+  // Opening the dialog is the one genuinely asynchronous step, so it is the
+  // one thing waited for. Everything inside it is scoped to the dialog and
+  // read with `getBy`: each control appears in the render the previous click
+  // has already been awaited through, and a document-wide role query has to
+  // compute an accessible name for every element in the editor behind it.
+  const dialog = await screen.findByRole('dialog', {
+    name: 'Construct a Rule',
+  });
+  const inDialog = within(dialog);
   await user.click(
-    screen.getByRole('radio', {
+    inDialog.getByRole('radio', {
       name: 'Node - match a node type or one of its attributes.',
     }),
   );
-  await user.click(await screen.findByRole('radio', { name: 'Person' }));
-  await user.click(await screen.findByRole('option', { name: /Presence/ }));
-  await user.click(await screen.findByRole('radio', { name: 'exists' }));
-  await user.click(screen.getByRole('button', { name: 'Finish and Close' }));
+  await user.click(inDialog.getByRole('radio', { name: 'Person' }));
+  await user.click(inDialog.getByRole('option', { name: /Presence/ }));
+  await user.click(inDialog.getByRole('radio', { name: 'exists' }));
+  await user.click(inDialog.getByRole('button', { name: 'Finish and Close' }));
   await waitFor(() =>
     expect(
       screen.queryByRole('dialog', { name: 'Construct a Rule' }),
@@ -274,7 +296,7 @@ describe('a stage editor composing the skip-logic section', () => {
   });
 
   it('reports a switched-on section whose required fields are empty as unfinished', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     renderEditor(createSession());
     await waitFor(() => expect(outlineItems()).toHaveLength(4));
 
@@ -286,7 +308,7 @@ describe('a stage editor composing the skip-logic section', () => {
   });
 
   it('builds skip logic the protocol schema accepts, with no stage path anywhere', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const onFinish = vi.fn();
     renderEditor(createSession({ onFinish }));
 
@@ -331,7 +353,7 @@ describe('the rules inside skip logic', () => {
   };
 
   it('keeps the surviving rule when one is deleted', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const onFinish = vi.fn();
     renderEditor(createSession({ fields: twoRuleFields, onFinish }));
 
@@ -348,7 +370,7 @@ describe('the rules inside skip logic', () => {
   });
 
   it('moves a rule without changing which rule it is', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const onFinish = vi.fn();
     renderEditor(createSession({ fields: twoRuleFields, onFinish }));
 
@@ -398,7 +420,7 @@ describe('a rule set the researcher cannot save', () => {
   });
 
   it('refuses two rules that never said how they combine', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const onFinish = vi.fn();
     renderEditor(
       createSession({
@@ -436,7 +458,7 @@ describe('a rule set the researcher cannot save', () => {
   });
 
   it('refuses a rule set the researcher has emptied', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const onFinish = vi.fn();
     renderEditor(
       createSession({
@@ -468,7 +490,7 @@ describe('a rule set the researcher cannot save', () => {
   });
 
   it('refuses a rule whose attribute a collaborator has deleted', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const onFinish = vi.fn();
     const session = createSession({ onFinish, fields: attributeRuleFields });
     renderEditor(session);
@@ -503,7 +525,7 @@ describe('a rule set the researcher cannot save', () => {
   });
 
   it('refuses a rule whose operator the attribute’s new type does not allow', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const onFinish = vi.fn();
     const session = createSession({ onFinish, fields: attributeRuleFields });
     renderEditor(session);
@@ -538,7 +560,7 @@ describe('a rule set the researcher cannot save', () => {
   });
 
   it('refuses a rule naming an option a collaborator has renamed', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const onFinish = vi.fn();
     const session = createSession({
       onFinish,
@@ -607,7 +629,7 @@ describe('a rule set the researcher cannot save', () => {
   });
 
   it('asks for the rules a switched-on skip logic has none of', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const onFinish = vi.fn();
     renderEditor(createSession({ onFinish }));
 
@@ -750,7 +772,7 @@ describe('choosing where the interview continues', () => {
  */
 describe('saving a stage whose destination is no longer reachable', () => {
   it('refuses a destination whose stage has left the interview', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const onFinish = vi.fn();
     renderEditor(
       createSession({
@@ -771,7 +793,7 @@ describe('saving a stage whose destination is no longer reachable', () => {
   });
 
   it('refuses a destination the interview now reaches first', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const onFinish = vi.fn();
     renderEditor(
       createSession({
@@ -815,7 +837,7 @@ describe('saving a stage whose destination is no longer reachable', () => {
   });
 
   it('saves the same stage once the destination is chosen again', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const onFinish = vi.fn();
     renderEditor(
       createSession({
@@ -843,7 +865,7 @@ describe('saving a stage whose destination is no longer reachable', () => {
 
 describe('switching skip logic off', () => {
   it('removes it from the stage entirely', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const onFinish = vi.fn();
     renderEditor(
       createSession({
@@ -865,7 +887,7 @@ describe('switching skip logic off', () => {
   });
 
   it('asks first, and keeps everything when the answer is no', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     renderEditor(
       createSession({
         fields: configuredFields({ type: 'stage', stageId: 'stage-3' }),
@@ -891,7 +913,7 @@ describe('switching skip logic off', () => {
   });
 
   it('asks about a destination even when no rules have been created', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     renderEditor(createSession());
 
     await switchOn(user);
@@ -909,7 +931,7 @@ describe('switching skip logic off', () => {
   });
 
   it('switches back on with an editable, empty rule set', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     renderEditor(
       createSession({
         fields: configuredFields({ type: 'stage', stageId: 'stage-3' }),
