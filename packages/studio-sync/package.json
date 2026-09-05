@@ -13,6 +13,7 @@
   "exports": {
     "./apply": "./src/apply.ts",
     "./client": "./src/client.ts",
+    "./postgres-pool": "./src/postgres-pool.ts",
     "./protocol-document": "./src/protocol-document.ts",
     "./server": "./src/server.ts",
     "./rls": "./src/rls.ts",
@@ -36,6 +37,7 @@
     "fflate": "^0.8.3",
     "file-type": "^22.0.2",
     "pg": "^8.22.0",
+    "pg-connection-string": "^2.14.0",
     "zod": "catalog:"
   },
   "devDependencies": {
