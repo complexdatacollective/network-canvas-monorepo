@@ -1,3 +1,5 @@
+'use client';
+
 import { useMemo } from 'react';
 
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';

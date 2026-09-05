@@ -1,3 +1,5 @@
+'use client';
+
 import { Toggle } from '@base-ui/react';
 import { Plus } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';

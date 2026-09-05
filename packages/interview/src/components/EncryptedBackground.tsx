@@ -1,3 +1,5 @@
+'use client';
+
 import isChromatic from 'chromatic/isChromatic';
 import { useEffect, useRef, useState } from 'react';
 

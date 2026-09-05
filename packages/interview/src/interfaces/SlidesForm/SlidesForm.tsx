@@ -1,3 +1,5 @@
+'use client';
+
 import { AnimatePresence, motion, useScroll, useTransform } from 'motion/react';
 import {
   forwardRef,
