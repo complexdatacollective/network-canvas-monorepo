@@ -343,10 +343,11 @@ describe('creating the type a stage needs without leaving it', () => {
 
   /**
    * The reason a researcher needs a new type is usually the work they have
-   * just done, so the create has to survive an unsaved stage. The prompt they
-   * added travels with the create and lands in the same host revision.
+   * just done, so the create has to survive an unsaved stage — WITHOUT saving
+   * it. The prompt stays theirs to finish and save; the codebook change goes
+   * to the host on its own.
    */
-  it('works after the stage has been edited, carrying that edit with it', async () => {
+  it('works after the stage has been edited, and leaves that edit unsaved', async () => {
     const harness = renderStageEditor({
       stageId: 'name-generator-1',
       sections: nodeSubjectAndPrompts,
@@ -377,7 +378,53 @@ describe('creating the type a stage needs without leaving it', () => {
     expect(await screen.findByRole('radio', { name: 'Place' })).toBeChecked();
     const sections = harness.host.getSnapshot().protocolSections;
     expect(codebookNodeNames(sections)).toContain('Place');
-    expect(sections['stage:name-generator-1']?.prompts).toHaveLength(2);
+    // The host's stage is exactly what it was: the create claimed nothing
+    // about it, so the prompt the researcher wrote was never saved for them.
+    expect(sections['stage:name-generator-1']?.prompts).toHaveLength(1);
+  });
+
+  /**
+   * The whole point of the rule. Changing the subject throws the old type's
+   * configuration away, which is precisely when a researcher discovers they
+   * need a type that does not exist — and precisely when the stage cannot be
+   * saved. A create that folded the stage into its request would be refused
+   * here, in the protocol schema's words, for a stage nobody asked to save.
+   */
+  it('creates a type while the stage is too incomplete to save', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: nodeSubjectAndPrompts,
+    });
+
+    await harness.user.click(
+      screen.getByRole('radio', { name: 'family member' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByText('Who are the people you know?'),
+      ).not.toBeInTheDocument(),
+    );
+    expect(await harness.submit()).toBeNull();
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create a new node type' }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Node type name' }),
+      'Place',
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save entity' }),
+    );
+
+    expect(await screen.findByRole('radio', { name: 'Place' })).toBeChecked();
+    expect(
+      codebookNodeNames(harness.host.getSnapshot().protocolSections),
+    ).toContain('Place');
+    // Nothing was said about the entity that could not be saved.
+    expect(
+      screen.queryByText('Could not save this entity'),
+    ).not.toBeInTheDocument();
   });
 
   it('refuses a name the protocol already uses', async () => {
