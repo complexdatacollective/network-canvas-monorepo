@@ -8,6 +8,10 @@ import {
   stageWithImageBackground,
 } from '../../../sections/network/__tests__/canvasFixtures.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import {
+  expectOpenedAsANewStage,
+  NEW_STAGE_POSITION,
+} from '../../__tests__/creationSignal.ts';
 import { NarrativeStageEditor } from '../NarrativeStageEditor.tsx';
 import {
   deleteNodeVariable,
@@ -40,6 +44,22 @@ const openNewStage = () =>
   });
 
 describe('the narrative stage editor', () => {
+  /**
+   * A stage the host is CREATING, opened the way a host opens one: from this
+   * interface's own template, not yet in the interview, and carrying the
+   * position it is about to be inserted at. Everything an editor does
+   * differently for a new stage follows from that one signal, which the
+   * shared sections read from the editor's context rather than from a prop.
+   */
+  it('opens a stage being created on the creation the session carries', async () => {
+    renderStageEditor({
+      create: { type: 'Narrative', position: NEW_STAGE_POSITION },
+      editor: narrativeEditor,
+    });
+
+    await expectOpenedAsANewStage('Narrative');
+  });
+
   it('saves the stage it opened, unchanged', async () => {
     const harness = openFixture();
 

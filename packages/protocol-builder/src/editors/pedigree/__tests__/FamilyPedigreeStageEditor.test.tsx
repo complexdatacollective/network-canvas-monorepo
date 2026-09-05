@@ -10,6 +10,10 @@ import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../../testing/renderStageEditor.tsx';
+import {
+  expectOpenedAsANewStage,
+  NEW_STAGE_POSITION,
+} from '../../__tests__/creationSignal.ts';
 import { pedigreeAndAnonymisationStageEditors } from '../../pedigreeAndAnonymisationStageEditors.ts';
 import {
   familyPedigreeEditor,
@@ -90,6 +94,22 @@ const outlineStateOf = (harness: StageEditorHarness, title: string) =>
   harness.outline().find((section) => section.title === title)?.state;
 
 describe('the family pedigree stage editor', () => {
+  /**
+   * A stage the host is CREATING, opened the way a host opens one: from this
+   * interface's own template, not yet in the interview, and carrying the
+   * position it is about to be inserted at. Everything an editor does
+   * differently for a new stage follows from that one signal, which the
+   * shared sections read from the editor's context rather than from a prop.
+   */
+  it('opens a stage being created on the creation the session carries', async () => {
+    renderStageEditor({
+      create: { type: 'FamilyPedigree', position: NEW_STAGE_POSITION },
+      editor: familyPedigreeEditor,
+    });
+
+    await expectOpenedAsANewStage('Family Pedigree');
+  });
+
   it('claims exactly this interface in its family', () => {
     expect(pedigreeAndAnonymisationStageEditors.FamilyPedigree).toBeDefined();
   });

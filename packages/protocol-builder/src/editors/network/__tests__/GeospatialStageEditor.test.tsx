@@ -7,6 +7,10 @@ import {
   resetMapboxMock,
 } from '../../../fields/geospatial/__tests__/mapboxMock.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import {
+  expectOpenedAsANewStage,
+  NEW_STAGE_POSITION,
+} from '../../__tests__/creationSignal.ts';
 import { GeospatialStageEditor } from '../GeospatialStageEditor.tsx';
 import {
   deleteNodeVariable,
@@ -28,6 +32,22 @@ const openFixture = () =>
   renderStageEditor({ stageId: 'geospatial-1', editor: geospatialEditor });
 
 describe('the geospatial stage editor', () => {
+  /**
+   * A stage the host is CREATING, opened the way a host opens one: from this
+   * interface's own template, not yet in the interview, and carrying the
+   * position it is about to be inserted at. Everything an editor does
+   * differently for a new stage follows from that one signal, which the
+   * shared sections read from the editor's context rather than from a prop.
+   */
+  it('opens a stage being created on the creation the session carries', async () => {
+    renderStageEditor({
+      create: { type: 'Geospatial', position: NEW_STAGE_POSITION },
+      editor: geospatialEditor,
+    });
+
+    await expectOpenedAsANewStage('Geospatial');
+  });
+
   it('runs against a mocked Mapbox SDK, and builds no map by mounting', async () => {
     await expectMapboxMocked();
     openFixture();

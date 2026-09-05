@@ -12,6 +12,10 @@ import {
 } from '../../../sections/network/__tests__/canvasFixtures.ts';
 import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import {
+  expectOpenedAsANewStage,
+  NEW_STAGE_POSITION,
+} from '../../__tests__/creationSignal.ts';
 import { shimMarkdownEditorMeasurement } from '../../pedigree/__tests__/editorFixtures.tsx';
 import { SociogramStageEditor } from '../SociogramStageEditor.tsx';
 import {
@@ -82,6 +86,22 @@ const openWithEveryBehaviour = () => {
 };
 
 describe('the sociogram stage editor', () => {
+  /**
+   * A stage the host is CREATING, opened the way a host opens one: from this
+   * interface's own template, not yet in the interview, and carrying the
+   * position it is about to be inserted at. Everything an editor does
+   * differently for a new stage follows from that one signal, which the
+   * shared sections read from the editor's context rather than from a prop.
+   */
+  it('opens a stage being created on the creation the session carries', async () => {
+    renderStageEditor({
+      create: { type: 'Sociogram', position: NEW_STAGE_POSITION },
+      editor: sociogramEditor,
+    });
+
+    await expectOpenedAsANewStage('Sociogram');
+  });
+
   it('saves the stage it opened, unchanged', async () => {
     const harness = openFixture();
 
