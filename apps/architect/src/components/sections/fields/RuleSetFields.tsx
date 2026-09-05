@@ -35,18 +35,22 @@ const useRuleSetCodebook = () =>
  * adapter used to — left the label pointing at nothing and the rule builder
  * anonymous and unmarked to assistive technology, while the visible "Rules *"
  * and its error message sat right beside it.
+ *
+ * The bag's `aria-required` is the one thing not forwarded. `group` is not a
+ * role that supports it — axe flags it there as a critical `aria-allowed-attr`
+ * failure — so the requirement is announced through the description alone,
+ * which already names the "Required" marker. `aria-invalid` is global and
+ * stays.
  */
 const toRuleSetGroupProps = ({
   id,
   'aria-labelledby': ariaLabelledBy,
   'aria-describedby': ariaDescribedBy,
-  'aria-required': ariaRequired,
   'aria-invalid': ariaInvalid,
 }: RuleSetFieldProps): RuleSetGroupProps => ({
   id,
   'aria-labelledby': ariaLabelledBy,
   'aria-describedby': ariaDescribedBy,
-  'aria-required': ariaRequired,
   'aria-invalid': ariaInvalid,
 });
 
