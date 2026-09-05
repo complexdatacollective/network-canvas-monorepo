@@ -1,11 +1,4 @@
-import { isEqual } from 'es-toolkit/compat';
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useSyncExternalStore,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 
 import type {
   Codebook,
@@ -17,6 +10,7 @@ import type {
 } from '@codaco/protocol-validation';
 
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
+import { useStageValue } from '../form/stageFormHooks.ts';
 import type { ProtocolBuilderProtocolContext } from '../protocol-context.ts';
 import { computeAutoNameUpdate } from './computeAutoNameUpdate.ts';
 import { generateStageLabel, STAGE_TYPE_NAMES } from './generateStageLabel.ts';
@@ -164,58 +158,31 @@ type StageNameSources = Readonly<{
 /**
  * The draft as it stands right now, for the four values a name is built from.
  *
- * Each is resolved in the order the stage editor resolves any value, and each
- * step earns its place:
+ * Each is read through the package's one draft-value hook rather than through
+ * a resolution of its own, so a proposed name sees exactly what every other
+ * section sees — including a subject that only the committed draft holds
+ * because the section owning it has not been opened yet, which would otherwise
+ * cost the proposal its subject name.
  *
- * 1. the field's own state — registered, or dormant because its section is
- *    collapsed or switched off;
- * 2. the assembled form values, for a container such as `subject` whose parts
- *    register as leaves;
- * 3. the committed draft, for a value no field has registered at all. Without
- *    it a stage's subject would be invisible until whatever section owns it
- *    happened to be open, and the proposal would silently lose the subject
- *    name.
- *
- * Read from the stage form's own store rather than through `useFormStore`, so
- * it keeps reading the stage while a dialog opened over the editor has a form
- * store of its own.
+ * Parsed inside one memo keyed on the RAW values. Each reader builds a fresh
+ * object or array, and the generated name is derived from the result, so
+ * parsing on every render would re-derive the name on every render.
  */
 function useStageNameSources(): StageNameSources {
-  const { storeApi, committedFields } = useStageEditorForm();
-  const cache = useRef<StageNameSources | null>(null);
+  const rawLabel = useStageValue('label');
+  const rawSubject = useStageValue('subject');
+  const rawItems = useStageValue('items');
+  const rawNominationPrompts = useStageValue('nominationPrompts');
 
-  const subscribe = useCallback(
-    (onStoreChange: () => void) => storeApi.subscribe(onStoreChange),
-    [storeApi],
+  return useMemo(
+    () => ({
+      label: readLabel(rawLabel),
+      subject: readSubject(rawSubject),
+      items: readItems(rawItems),
+      nominationPrompts: readNominationPrompts(rawNominationPrompts),
+    }),
+    [rawItems, rawLabel, rawNominationPrompts, rawSubject],
   );
-
-  const getSnapshot = useCallback((): StageNameSources => {
-    const state = storeApi.getState();
-    const values = state.getFormValues();
-    const read = (key: string): unknown => {
-      const field = state.getFieldState(key);
-      if (field !== undefined) return field.value;
-      const assembled: unknown = values[key];
-      return assembled === undefined ? committedFields[key] : assembled;
-    };
-
-    const next: StageNameSources = {
-      label: readLabel(read('label')),
-      subject: readSubject(read('subject')),
-      items: readItems(read('items')),
-      nominationPrompts: readNominationPrompts(read('nominationPrompts')),
-    };
-
-    // useSyncExternalStore re-renders on every changed identity, and the
-    // assembled values are a fresh object on every call, so an unchanged draft
-    // has to come back as the same object.
-    const cached = cache.current;
-    if (cached !== null && isEqual(cached, next)) return cached;
-    cache.current = next;
-    return next;
-  }, [committedFields, storeApi]);
-
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
 
 function readLabel(value: unknown): string {
