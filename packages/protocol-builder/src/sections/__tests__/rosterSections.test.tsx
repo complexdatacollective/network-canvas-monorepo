@@ -295,4 +295,55 @@ describe('how a participant searches a roster', () => {
     expect(request).not.toBeNull();
     expect(request?.stageDocument.searchOptions).toBeUndefined();
   });
+
+  /**
+   * Switching search on and saving straight away is the commonest way to reach
+   * it, and it is exactly the case each half used to excuse the other in: with
+   * both empty, neither rule fired and the save left the section for the
+   * schema to refuse as `searchOptions.matchProperties` against a path.
+   */
+  it('refuses a search switched on and left empty, in the section’s own words', async () => {
+    const harness = renderStageEditor({
+      stage: rosterWith({ dataSource: 'roster_data' }),
+      sections: <SearchOptionsSection />,
+    });
+
+    await harness.user.click(
+      await screen.findByRole('switch', { name: 'Roster search' }),
+    );
+    await screen.findByRole('group', { name: /Attributes a search matches/ });
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      screen.getByText(
+        'Choose at least one attribute for a search to match against.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Choose how closely a search must match.'),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * The other half of the same hole. A stage arriving with attributes and no
+   * tolerance is refused by the schema as `searchOptions.fuzziness`, and used
+   * to pass here because the empty tolerance excused itself whenever it was
+   * the missing half.
+   */
+  it('refuses attributes chosen with no tolerance', async () => {
+    const harness = renderStageEditor({
+      stage: rosterWith({
+        dataSource: 'roster_data',
+        searchOptions: { matchProperties: ['name'] },
+      }),
+      sections: <SearchOptionsSection />,
+    });
+
+    await screen.findByRole('checkbox', { name: 'name' });
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      screen.getByText('Choose how closely a search must match.'),
+    ).toBeInTheDocument();
+  });
 });

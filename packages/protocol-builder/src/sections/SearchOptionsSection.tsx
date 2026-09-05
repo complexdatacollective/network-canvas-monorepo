@@ -3,7 +3,6 @@ import { type ComponentType, useMemo } from 'react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
 import LikertScaleField from '@codaco/fresco-ui/form/fields/LikertScale';
-import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 
 import ProtocolField from '../form/ProtocolField.tsx';
@@ -41,47 +40,34 @@ const CheckboxGroup = CheckboxGroupField as ComponentType<
 >;
 const LikertScale = LikertScaleField as ComponentType<Record<string, unknown>>;
 
-const readSearchOptions = (values: Record<string, FieldValue>) => {
-  const searchOptions = values.searchOptions;
-  const options =
-    typeof searchOptions === 'object' && searchOptions !== null
-      ? searchOptions
-      : {};
-  const matchProperties = Reflect.get(options, 'matchProperties');
-  return {
-    matched: Array.isArray(matchProperties) ? matchProperties.length : 0,
-    tolerance: Reflect.get(options, 'fuzziness'),
-  };
-};
-
 /**
- * Both halves, or neither.
+ * Both halves are required, and neither excuses the other.
  *
- * Search is optional and switching it off clears both paths, so an empty pair
- * passes — that is what "this roster is not searched" looks like. What cannot
- * stand is half of it: a search with nothing to match against finds nobody
- * whatever the participant types, and a set of attributes with no tolerance is
- * refused by the schema as `searchOptions.fuzziness` against a path.
+ * Search is optional, and "this roster is not searched" is said by switching
+ * the capability off — which clears both paths and unmounts both controls, so
+ * neither rule runs at all. Once the capability is ON, every half of it has to
+ * be answered: a search with nothing to match against finds nobody whatever
+ * the participant types, and either half missing is refused by the schema as
+ * `searchOptions.matchProperties` or `searchOptions.fuzziness` against a path,
+ * long after the researcher has moved on.
  *
- * Each rule reads the OTHER value out of the form values it is handed rather
- * than out of a closure: a field's validation is memoised for the field's
- * lifetime, so a closed-over sibling would be pinned to its first render.
+ * Each rule therefore judges only its OWN value. Reading the sibling to excuse
+ * an empty half is what let the commonest case through: switching search on
+ * and saving straight away leaves both empty, and two rules that excuse each
+ * other say nothing about a pair that is entirely missing.
  */
 const matchValidation = messageRuleValidation([
-  (value, values) => {
-    const matched = Array.isArray(value) ? value.length : 0;
-    if (matched > 0) return undefined;
-    return typeof readSearchOptions(values).tolerance === 'number'
-      ? 'Choose at least one attribute for a search to match against.'
-      : undefined;
-  },
+  (value) =>
+    Array.isArray(value) && value.length > 0
+      ? undefined
+      : 'Choose at least one attribute for a search to match against.',
 ]);
 
 const toleranceValidation = messageRuleValidation([
   // `0` is an answer — the strictest setting — so the test is on the TYPE, not
   // on truthiness.
-  (value, values) =>
-    typeof value === 'number' || readSearchOptions(values).matched === 0
+  (value) =>
+    typeof value === 'number'
       ? undefined
       : 'Choose how closely a search must match.',
 ]);
@@ -118,11 +104,11 @@ export type SearchOptionsSectionProps = Readonly<{
 /**
  * How a participant finds someone in a long roster.
  *
- * Optional, because a roster of a dozen people is read rather than searched.
- * Once it is on, both halves are required: a search with nothing to match
- * against finds nobody, and the schema refuses it — as
- * `searchOptions.matchProperties` against a path, long after the researcher
- * has moved on.
+ * Optional, because a roster of a dozen people is read rather than searched —
+ * which is what switching the capability off says, clearing both paths and
+ * unmounting both controls. Once it is on, both halves are required, and each
+ * says so on its own control rather than waiting for the schema to refuse a
+ * path.
  */
 export default function SearchOptionsSection({
   copy,
