@@ -37,7 +37,10 @@ import {
   requiredRow,
   uniqueRowAttribute,
 } from './rowValidators.ts';
-import { useConfirmRowRemoval } from './useConfirmRowRemoval.ts';
+import {
+  rowRemovalControlProps,
+  useConfirmRowRemoval,
+} from './useConfirmRowRemoval.ts';
 
 export type OptionValue = VariableOptions[number];
 
@@ -118,9 +121,16 @@ export default function Option({
   isBeingEdited,
   disabled,
   readOnly,
+  getAddTrigger,
 }: ArrayFieldItemProps<OptionValue>) {
   const { arrayName, allValues, showArrayError } = useOptionsContext();
-  const confirmRemoval = useConfirmRowRemoval(item, 'option', onDelete);
+  const { rowRef, confirmRemoval } = useConfirmRowRemoval({
+    item,
+    itemLabel: 'option',
+    index,
+    onDelete,
+    getAddTrigger,
+  });
   const interactionDisabled = disabled || readOnly;
   const rowFieldName = `${arrayName}[${committedIndex ?? index}]`;
 
@@ -175,6 +185,7 @@ export default function Option({
 
     return (
       <div
+        ref={rowRef}
         className={cx(
           'flex items-center gap-3',
           ROW_CLASSES,
@@ -214,6 +225,7 @@ export default function Option({
             onClick={onEdit}
           />
           <IconButton
+            {...rowRemovalControlProps}
             icon={<Trash2 />}
             aria-label={`Remove option ${index + 1}`}
             color="destructive"
@@ -227,6 +239,7 @@ export default function Option({
 
   return (
     <div
+      ref={rowRef}
       className={cx(
         'flex flex-col gap-4',
         ROW_CLASSES,
@@ -248,6 +261,7 @@ export default function Option({
           onClick={handleFinishEditing}
         />
         <IconButton
+          {...rowRemovalControlProps}
           icon={<Trash2 />}
           aria-label={`Remove option ${index + 1}`}
           color="destructive"

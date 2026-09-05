@@ -22,7 +22,10 @@ import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers
 import RowField from './RowField.tsx';
 import { requiredRow } from './rowValidators.ts';
 import { useArrayFieldCommands } from './useArrayFieldCommands.ts';
-import { useConfirmRowRemoval } from './useConfirmRowRemoval.ts';
+import {
+  rowRemovalControlProps,
+  useConfirmRowRemoval,
+} from './useConfirmRowRemoval.ts';
 
 // Row background reads `--rule-bg` so callers (e.g. Validations error state)
 // can flip it without re-defining the row layout.
@@ -139,9 +142,16 @@ function MultiSelectRow({
   onDelete,
   disabled,
   readOnly,
+  getAddTrigger,
 }: ArrayFieldItemProps<ItemValue>) {
   const { arrayName, properties, options, allValues } = useMultiSelectContext();
-  const confirmRemoval = useConfirmRowRemoval(item, 'item', onDelete);
+  const { rowRef, confirmRemoval } = useConfirmRowRemoval({
+    item,
+    itemLabel: 'item',
+    index,
+    onDelete,
+    getAddTrigger,
+  });
   const interactionDisabled = disabled || readOnly;
   const rowValues = stripManagedProperties(item);
   // Bind field paths to the committed position, not the live (possibly
@@ -174,7 +184,7 @@ function MultiSelectRow({
   };
 
   return (
-    <div className={`group ${MULTI_SELECT_RULE_CLASSES}`}>
+    <div ref={rowRef} className={`group ${MULTI_SELECT_RULE_CLASSES}`}>
       {isSortable && (
         <div className={MULTI_SELECT_CONTROL_CLASSES}>
           <ArrayFieldDragHandle
@@ -231,6 +241,7 @@ function MultiSelectRow({
       </div>
       <div className={MULTI_SELECT_CONTROL_CLASSES}>
         <IconButton
+          {...rowRemovalControlProps}
           icon={<Trash2 />}
           aria-label="Remove item"
           color="destructive"

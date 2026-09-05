@@ -18,7 +18,9 @@ import { useStageEditorController } from '../../../controller.ts';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
 import {
   createStageIdentity,
+  type ProtocolBuilderSession,
   ProtocolBuilderSessionStore,
+  SessionReadOnlyError,
 } from '../../../session.ts';
 import { DialogFormField } from '../../DialogForm.tsx';
 import ProtocolArrayField from '../../ProtocolArrayField.tsx';
@@ -70,8 +72,44 @@ function createSession(fields: SectionDoc) {
   });
 }
 
-const promptsOf = (session: ProtocolBuilderSessionStore): Prompt[] =>
+const promptsOf = (session: ProtocolBuilderSession): Prompt[] =>
   (session.getSnapshot().editedSection.fields.prompts ?? []) as Prompt[];
+
+/**
+ * A session whose next write is refused, while the snapshot still says the
+ * stage is editable — the lease taken back between the render a handler was
+ * built in and the dispatch that runs it.
+ *
+ * `setAccess` cannot stand in for it: it re-renders, so the editor's own
+ * read-only check answers first and the dispatch is never reached. This is the
+ * only arrangement in which the refusal happens INSIDE the list's own save.
+ */
+function withRevocableDispatch(store: ProtocolBuilderSessionStore) {
+  let revoked = false;
+  const session: ProtocolBuilderSession = {
+    subscribe: (listener) => store.subscribe(listener),
+    getSnapshot: () => store.getSnapshot(),
+    getServerSnapshot: () => store.getServerSnapshot(),
+    dispatch: (commands) => {
+      if (revoked) throw new SessionReadOnlyError();
+      store.dispatch(commands);
+    },
+    undo: () => store.undo(),
+    redo: () => store.redo(),
+    validate: () => store.validate(),
+    requestCompoundEdit: (request) => store.requestCompoundEdit(request),
+    finish: () => store.finish(),
+    cancel: () => store.cancel(),
+    getResourceGateway: () => store.getResourceGateway(),
+  };
+
+  return {
+    session,
+    revoke: () => {
+      revoked = true;
+    },
+  };
+}
 
 function PromptPreview({ text }: Record<string, unknown>) {
   return <span>{typeof text === 'string' ? text : ''}</span>;
@@ -90,6 +128,25 @@ function PromptFields() {
 /** The optional pane beside the fields, for the row the dialog opened on. */
 function PromptEditorPreview({ text }: Record<string, unknown>) {
   return <span>Preview of {typeof text === 'string' ? text : ''}</span>;
+}
+
+/**
+ * Two fields, so a change from elsewhere can reach a key this editor RENDERS
+ * without reaching the one the researcher is typing in. One field cannot tell
+ * "the dialog is holding a stale copy of this key" apart from "the researcher
+ * decided this key", which is the whole question the interleavings below ask.
+ */
+function PromptFieldsWithHelp() {
+  return (
+    <>
+      <DialogFormField name="text" label="Prompt text" component={InputField} />
+      <DialogFormField
+        name="helpText"
+        label="Help text"
+        component={InputField}
+      />
+    </>
+  );
 }
 
 type Rule = { id: string; label: string };
@@ -144,7 +201,7 @@ function PromptFieldsWithRuleList() {
 }
 
 function renderPromptList(
-  session: ProtocolBuilderSessionStore,
+  session: ProtocolBuilderSession,
   extra?: Readonly<{
     withPreview?: boolean;
     onBeforeSave?: (value: unknown) => unknown;
@@ -668,6 +725,180 @@ describe('a row editor open while the draft moves beneath it', () => {
     // One commit, not two. The save already running answers for both.
     expect(onBeforeSave).toHaveBeenCalledTimes(1);
     expect(session.getSnapshot().pendingCommands).toHaveLength(1);
+  });
+});
+
+/**
+ * The row a save commits, against everything that can move while the editor
+ * that composed it is open.
+ *
+ * One state machine, so one table rather than a test per defect. A save is
+ * built from three things that drift apart: the values the dialog OPENED on,
+ * the values the row holds when Save is pressed, and the values it holds when
+ * the commit finally dispatches. The rule that has to hold across every
+ * interleaving is the same one `reseatEditedRow` states — only what the
+ * researcher actually DECIDED is written, and everything that arrived
+ * meanwhile survives.
+ */
+const OPENED_ON: Prompt & Record<string, unknown> = {
+  id: 'a',
+  text: 'Alpha',
+  helpText: 'Original help',
+  additionalAttributes: [],
+};
+
+const ATTRIBUTES = [{ variable: 'v1', value: true }];
+
+type Interleaving = Readonly<{
+  name: string;
+  /** When the change from elsewhere reaches the row. */
+  when: 'before Save' | 'while the save is in flight';
+  /** The row, as something else writes it. */
+  arrival: Record<string, unknown>;
+  /** What the researcher types into the prompt text, if anything. */
+  typed?: string;
+  expected: Record<string, unknown>;
+}>;
+
+const INTERLEAVINGS: readonly Interleaving[] = [
+  {
+    name: 'keeps an arrival on a rendered key the researcher never touched',
+    when: 'before Save',
+    arrival: { ...OPENED_ON, helpText: 'Help from elsewhere' },
+    typed: 'Alpha edited',
+    expected: {
+      ...OPENED_ON,
+      text: 'Alpha edited',
+      helpText: 'Help from elsewhere',
+    },
+  },
+  {
+    name: 'keeps an arrival when the researcher typed nothing at all',
+    when: 'before Save',
+    arrival: { ...OPENED_ON, text: 'Alpha from elsewhere' },
+    expected: { ...OPENED_ON, text: 'Alpha from elsewhere' },
+  },
+  {
+    name: 'lets the researcher win on the very key the arrival touched',
+    when: 'before Save',
+    arrival: { ...OPENED_ON, text: 'Alpha from elsewhere' },
+    typed: 'Alpha edited',
+    expected: { ...OPENED_ON, text: 'Alpha edited' },
+  },
+  {
+    name: 'keeps an arrival on a key the editor never renders',
+    when: 'before Save',
+    arrival: { ...OPENED_ON, additionalAttributes: ATTRIBUTES },
+    typed: 'Alpha edited',
+    expected: {
+      ...OPENED_ON,
+      text: 'Alpha edited',
+      additionalAttributes: ATTRIBUTES,
+    },
+  },
+  {
+    name: 'keeps an arrival on a rendered key that landed mid-save',
+    when: 'while the save is in flight',
+    arrival: { ...OPENED_ON, helpText: 'Help from elsewhere' },
+    typed: 'Alpha edited',
+    expected: {
+      ...OPENED_ON,
+      text: 'Alpha edited',
+      helpText: 'Help from elsewhere',
+    },
+  },
+  {
+    name: 'keeps an arrival on an unrendered key that landed mid-save',
+    when: 'while the save is in flight',
+    arrival: { ...OPENED_ON, additionalAttributes: ATTRIBUTES },
+    typed: 'Alpha edited',
+    expected: {
+      ...OPENED_ON,
+      text: 'Alpha edited',
+      additionalAttributes: ATTRIBUTES,
+    },
+  },
+];
+
+describe('the row a save commits', () => {
+  it.each(INTERLEAVINGS)('$when: $name', async (interleaving) => {
+    const { when, arrival, typed, expected } = interleaving;
+    const user = userEvent.setup();
+    const session = createSession({ prompts: [OPENED_ON] });
+
+    let release: () => void = () => undefined;
+    const inFlight = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    renderPromptList(session, {
+      editorFieldsComponent: PromptFieldsWithHelp,
+      ...(when === 'before Save'
+        ? {}
+        : {
+            onBeforeSave: async (value: unknown) => {
+              await inFlight;
+              return value;
+            },
+          }),
+    });
+
+    const text = await editRow(user, 0);
+    await waitFor(() => expect(text).toHaveValue('Alpha'));
+    if (typed !== undefined) {
+      await user.clear(text);
+      await user.type(text, typed);
+    }
+
+    const arrive = async () => {
+      act(() => {
+        session.dispatch([{ op: 'set', key: 'prompts', value: [arrival] }]);
+      });
+      await waitFor(() => expect(promptsOf(session)).toEqual([arrival]));
+    };
+
+    if (when === 'before Save') {
+      await arrive();
+      await user.click(screen.getByRole('button', { name: 'Save' }));
+    } else {
+      await user.click(screen.getByRole('button', { name: 'Save' }));
+      await arrive();
+      await act(async () => {
+        release();
+        await inFlight;
+      });
+    }
+
+    await waitFor(() => expect(promptsOf(session)).toEqual([expected]));
+  });
+
+  it('keeps the editor open when the write is refused as it dispatches', async () => {
+    const user = userEvent.setup();
+    const store = createSession({ prompts: [{ id: 'a', text: 'Alpha' }] });
+    const { session, revoke } = withRevocableDispatch(store);
+    renderPromptList(session);
+
+    const text = await editRow(user, 0);
+    await waitFor(() => expect(text).toHaveValue('Alpha'));
+    await user.clear(text);
+    await user.type(text, 'Alpha edited');
+
+    // The lease goes without the form hearing about it: both pre-save checks
+    // read what this render built and both say the save may proceed, so the
+    // refusal happens inside the list's own save, where the only thing that
+    // can report it is the commit path itself.
+    revoke();
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(
+      await screen.findByText(
+        'This stage is read-only, so this prompt was not saved. Take over editing and try again.',
+      ),
+    ).toBeInTheDocument();
+    // A refusal reported as a success is what closes the dialog over a
+    // discarded draft, so the draft is still here to be rescued.
+    expect(promptText()).toHaveValue('Alpha edited');
+    expect(promptsOf(store)).toEqual([{ id: 'a', text: 'Alpha' }]);
+    expect(store.getSnapshot().pendingCommands).toEqual([]);
   });
 });
 

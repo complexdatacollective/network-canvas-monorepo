@@ -42,6 +42,7 @@ import {
   stageDraftFromSubmission,
 } from './stageDraftFromSubmission.ts';
 import {
+  type OwnCommandsResult,
   StageEditorFormContext,
   type StageFormStoreApi,
 } from './stageEditorContext.ts';
@@ -216,7 +217,7 @@ function StageEditorFormBody({
    * resetting the row dialog that issued the write.
    */
   const applyOwnCommands = useCallback(
-    (commands: readonly Command[]): StageFormDraft => {
+    (commands: readonly Command[]): OwnCommandsResult => {
       // An empty batch is how a list editor READS the draft the session holds
       // right now — which is the point of asking rather than reading the
       // snapshot it rendered against — so it must leave no marker at all. One
@@ -225,7 +226,12 @@ function StageEditorFormBody({
       // there is nothing to write: it dispatches nothing, so it cannot be
       // refused.
       const before = controller.applyCommands([]);
-      if (readOnly || commands.length === 0) return before;
+      if (commands.length === 0) return { draft: before, refused: false };
+      // A stage already known to be read-only when this handler was built. The
+      // write never reaches the session, so it is a refusal like the caught one
+      // below — said the same way, so a caller cannot have to know which of the
+      // two it met.
+      if (readOnly) return { draft: before, refused: true };
 
       let next: StageFormDraft;
       try {
@@ -239,7 +245,7 @@ function StageEditorFormBody({
         // reported the same way and in the same words.
         if (!(error instanceof SessionReadOnlyError)) throw error;
         setRefusedWrite(READ_ONLY_MESSAGE);
-        return before;
+        return { draft: before, refused: true };
       }
 
       const content = canonicalize(next);
@@ -257,7 +263,7 @@ function StageEditorFormBody({
       // stays standing to be spent on some later arrival at the same content.
       if (content !== started && started === expected)
         flushed.current = content;
-      return next;
+      return { draft: next, refused: false };
     },
     [committedFields, controller, flushed, readOnly],
   );

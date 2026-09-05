@@ -42,7 +42,10 @@ import {
   useArrayFieldCommands,
   type ArrayFieldBinding,
 } from './useArrayFieldCommands.ts';
-import { useConfirmRowRemoval } from './useConfirmRowRemoval.ts';
+import {
+  rowRemovalControlProps,
+  useConfirmRowRemoval,
+} from './useConfirmRowRemoval.ts';
 
 /**
  * COMPOSITION: this is a *field component*, rendered as
@@ -208,14 +211,18 @@ function DialogStoreCapture({
  *
  * The dialog form only reports the fields it actually RENDERED, so properties
  * the editor never registers — `id` above all — are carried over from the row
- * being edited. That carry-over alone would also resurrect a value the
+ * the dialog OPENED on, which is what its fields registered against. What the
+ * row holds NOW belongs to the re-seat that follows this, not here: judged
+ * against a newer row, an untouched field reads as a deliberate edit and is
+ * written back over whatever reached the row meanwhile. That carry-over alone
+ * would also resurrect a value the
  * researcher explicitly cleared this session, because clearing a field in a
  * section that then collapses leaves the field unregistered, and so absent
  * from the submitted values rather than present-and-empty.
  *
  * The store's dormant entries are the record of what became of those unmounted
  * fields. An entry whose value has diverged from the value its field
- * registered with is a real edit and is applied over the committed row —
+ * registered with is a real edit and is applied over the opened-on row —
  * `undefined` meaning "cleared", which DELETES the key. An entry still equal to
  * its own `initialValue` is an untouched field that merely unmounted (a
  * section that became disabled, a branch that stopped rendering) and is
@@ -223,19 +230,19 @@ function DialogStoreCapture({
  * the row never had.
  */
 const mergeEditedRow = (
-  committed: ArrayItem,
+  openedOn: ArrayItem,
   storeApi: StageFormStoreApi | null,
   submitted: Record<string, FieldValue>,
 ): ArrayItem => {
   const dormant = storeApi?.getState().dormantValues;
-  if (!dormant || dormant.size === 0) return { ...committed, ...submitted };
+  if (!dormant || dormant.size === 0) return { ...openedOn, ...submitted };
 
   // Start with the mounted fields' submitted snapshot, then replay genuine
   // dormant edits at their exact paths. A shallow submitted object such as
   // `{ edges: { create } }` must not erase a dormant sibling written at
   // `edges.display`; the two fields cannot be both mounted and dormant at the
   // same time, so the dormant path is the authoritative value for that leaf.
-  const merged = cloneDeep({ ...committed, ...submitted });
+  const merged = cloneDeep({ ...openedOn, ...submitted });
   for (const [name, field] of dormant) {
     if (isEqual(field.value, field.initialValue)) continue;
     if (field.value === undefined) {
@@ -345,6 +352,12 @@ type DialogArrayContextValue = {
   onBeforeSave?: (value: unknown) => unknown;
   previewComponent: Renderer;
   previewProps?: Record<string, unknown>;
+  /**
+   * Whether the session refused the commit the editor just issued through the
+   * list's own save handler — which answers nothing, so this is the only thing
+   * that can tell a refusal from a save.
+   */
+  takeWriteRefusal: () => boolean;
 };
 
 // The renderers must be stable module-level components — ArrayField mounts
@@ -378,49 +391,23 @@ function DialogItem({
   getAddTrigger,
 }: ArrayFieldItemProps<ArrayItem>) {
   const { itemLabel, previewComponent, previewProps } = useDialogArrayContext();
-  const confirmRemoval = useConfirmRowRemoval(item, itemLabel, onDelete);
-  const rowRef = useRef<HTMLDivElement>(null);
+  const { rowRef, confirmRemoval } = useConfirmRowRemoval({
+    item,
+    itemLabel,
+    index,
+    onDelete,
+    getAddTrigger,
+  });
   const interactionDisabled = disabled || readOnly;
   const itemValue = stripManagedProperties(item);
 
   const handleDelete = () => {
-    // Resolved now, while the row is still in the document: after the confirm
-    // the row is gone, and `closest()` from a detached node walks a detached
-    // tree. The list element itself survives.
-    const list = rowRef.current?.closest('[role="list"]') ?? null;
-
     confirmRemoval({
       title: `Remove this ${itemLabel}?`,
       description: `This ${itemLabel} will be removed from the list.`,
       confirmLabel: `Remove ${itemLabel}`,
       cancelLabel: 'Cancel',
       intent: 'destructive',
-      // Cancel returns focus to the Remove control, which is untouched. Confirm
-      // destroys it along with the row, so name a surviving target: whichever
-      // row has taken this one's place, else the list's add button — which is
-      // the only control left when the row just removed was the last one.
-      // Answering `null` there would leave focus on `<body>`, which Base UI
-      // resolves to the first tabbable element in the document, sending the
-      // researcher back to the page header from the middle of a form.
-      finalFocus: () => {
-        if (list?.isConnected) {
-          // `itemLabel` is caller-supplied, and this runs inside Base UI's
-          // layout-effect cleanup — an unescaped quote would throw a
-          // SyntaxError out of an unmount.
-          const remaining = list.querySelectorAll<HTMLElement>(
-            `[aria-label="${CSS.escape(`Remove ${itemLabel}`)}"]`,
-          );
-          // The row that has taken this one's place, or the last one if this
-          // was the last row.
-          const neighbour = remaining[Math.min(index, remaining.length - 1)];
-          if (neighbour) return neighbour;
-        }
-        // Nothing is left in the list, and both remembered openers point at
-        // the Remove button that has just been destroyed with the row. The add
-        // button is the one control that survives an emptied list, and it is
-        // where the researcher is going next anyway.
-        return getAddTrigger();
-      },
     });
   };
 
@@ -459,6 +446,7 @@ function DialogItem({
         onClick={onEdit}
       />
       <IconButton
+        {...rowRemovalControlProps}
         icon={<Trash2 />}
         aria-label={`Remove ${itemLabel}`}
         color="destructive"
@@ -512,6 +500,7 @@ function DialogEditor({
     itemSelector,
     normalizeItem,
     onBeforeSave,
+    takeWriteRefusal,
   } = useDialogArrayContext();
   const { protocolContext, readOnly } = useStageEditorForm();
 
@@ -523,17 +512,30 @@ function DialogEditor({
   const [session, setSession] = useState<EditorSession | null>(null);
 
   const activeSaveRef = useRef<Promise<void | DialogFormErrors> | null>(null);
+  /**
+   * A refusal this editor is SHOWING, which owns the dialog exactly as a save
+   * still running does.
+   *
+   * Every refusal leaves the list without an editing session — a refused
+   * commit still cleared it, and a removed row never had one — so the answer
+   * being on screen rather than still being computed is no reason to close
+   * over it. It is the same answer, and the draft it asks the researcher to
+   * rescue is the same draft.
+   */
+  const refusedSaveRef = useRef(false);
   const rowId = rowIdentityOf(item);
 
   useEffect(() => {
     setSession((previous) => {
       if (!item) {
-        // A save in flight owns the dialog. The list clears its editing state
-        // the moment the row it was editing leaves the array, and closing here
-        // would take the editor down over an answer the researcher has not
-        // read — the row-removed refusal that save is about to report, and the
-        // draft it is asking them to rescue.
-        if (activeSaveRef.current !== null) return previous;
+        // A save owns the dialog. The list clears its editing state the moment
+        // the row it was editing leaves the array, and closing here would take
+        // the editor down over an answer the researcher has not read — the
+        // refusal that save reported or is about to, and the draft it is
+        // asking them to rescue.
+        if (activeSaveRef.current !== null || refusedSaveRef.current) {
+          return previous;
+        }
         return previous?.open ? { ...previous, open: false } : previous;
       }
       if (
@@ -595,6 +597,32 @@ function DialogEditor({
   const storeApiRef = useRef<StageFormStoreApi | null>(null);
   const mountedRef = useRef(true);
   /**
+   * The row's values as this editing session OPENED on them, which is what
+   * every field in the dialog registered its `initialValue` from and therefore
+   * the only thing a submitted value can be judged against.
+   *
+   * Not the row as it stands now. The list refreshes `itemValues` whenever the
+   * row's committed values move — which is right, so a save is re-seated on
+   * what arrived — but the dialog's own store deliberately keeps the draft the
+   * researcher is looking at. Judged against the newer row, every untouched
+   * field the arrival touched reads as a deliberate edit and is written
+   * straight back over it. The store cannot answer this on its own either: a
+   * field re-registers when its `initialValue` changes, so the arrival marks
+   * untouched fields dirty, and "left alone" and "typed back to what it was"
+   * are the same state by then. Both resolve toward keeping the arrival, which
+   * is the direction that loses nobody's work: the researcher's draft is still
+   * on screen.
+   */
+  const sessionBaseRef = useRef<ArrayItem>(itemValues);
+  const sessionBaseIdRef = useRef<number | null>(null);
+  if (session !== null && sessionBaseIdRef.current !== session.id) {
+    sessionBaseIdRef.current = session.id;
+    sessionBaseRef.current = itemValues;
+    // A different row is being edited, so nothing the previous one was told
+    // is still on screen to be kept open for.
+    refusedSaveRef.current = false;
+  }
+  /**
    * The row the LIST is editing right now, which is not the same question as
    * which row this session opened on: the list drops its editing state as soon
    * as that row leaves the array, and rebuilds the object whenever its value
@@ -635,8 +663,8 @@ function DialogEditor({
       const itemAtSaveStart = activeItemRef.current;
       const rowIdAtSaveStart = rowIdentityOf(itemAtSaveStart);
       const wasNewRow = isNewItemRef.current;
-      /** The row's values as they stood when this save was composed. */
-      const baseValues = itemValuesRef.current;
+      /** The row's values the draft in this dialog was composed against. */
+      const baseValues = sessionBaseRef.current;
 
       /**
        * A stage or a list that has stopped accepting writes must not take a
@@ -703,7 +731,15 @@ function DialogEditor({
       // resolves with nothing to report.
       if (mountedRef.current && activeItemRef.current === itemAtSaveStart) {
         onSaveRef.current?.(rowToCommit);
-        return undefined;
+        // `ArrayField`'s save handler answers nothing, and the session can
+        // still refuse the write it dispatches: a lease taken back after the
+        // checks above read what this render built. Returning nothing here
+        // would report that refusal as a save and close the dialog over the
+        // draft, leaving the reason on a form the researcher can no longer
+        // see the editor in front of.
+        return takeWriteRefusal()
+          ? { formErrors: [readOnlyMessage(itemLabel)] }
+          : undefined;
       }
 
       // Otherwise the editor moved to a different session, or unmounted,
@@ -718,18 +754,28 @@ function DialogEditor({
         return undefined;
       }
 
-      // Nothing can be committed: the row has left the array, or it carries
-      // no id and ArrayField's positional fallback has already handed its
-      // editing session to a neighbour. Writing anywhere now would be a
-      // write onto a different row, so the save reports what happened.
+      // Nothing was committed. Either the session refused the write, or the
+      // row has left the array (or carries no id, and ArrayField's positional
+      // fallback has already handed its editing session to a neighbour) —
+      // which are different things to tell the researcher: one asks them to
+      // take editing back, the other says there is nothing left to save to.
       //
       // What this path must never do is report a save that did not happen as
       // a success, which is what silently closes the dialog over a discarded
       // edit — so the refusal is returned, and the dialog keeps the draft on
       // screen with the reason above it.
+      if (takeWriteRefusal()) {
+        return { formErrors: [readOnlyMessage(itemLabel)] };
+      }
       return { formErrors: [rowRemovedMessage(itemLabel)] };
     },
-    [commitDetachedRow, itemLabel, normalizeItem, onBeforeSave],
+    [
+      commitDetachedRow,
+      itemLabel,
+      normalizeItem,
+      onBeforeSave,
+      takeWriteRefusal,
+    ],
   );
 
   const handleSave = useCallback(
@@ -743,8 +789,21 @@ function DialogEditor({
       const inFlight = activeSaveRef.current;
       if (inFlight !== null) return inFlight;
 
-      const save = performSave(values);
+      // Held open from BEFORE the work starts, because `performSave` runs
+      // synchronously as far as its first await and the commit it makes there
+      // is what clears the list's editing state — so nothing raised after it
+      // hands back a promise is raised in time. Only a save that answers with
+      // nothing lets go of the editor.
+      refusedSaveRef.current = true;
+      const save = performSave(values).then((result) => {
+        // `performSave` answers with nothing when the row was committed, and
+        // with the reason it was not otherwise — which is the reason now on
+        // screen, and what keeps this editor open over it.
+        refusedSaveRef.current = result !== undefined;
+        return result;
+      });
       activeSaveRef.current = save;
+
       return save.finally(() => {
         activeSaveRef.current = null;
       });
@@ -762,6 +821,9 @@ function DialogEditor({
    * save never reaches it, so the draft and the reason stay on screen.
    */
   const handleClose = useCallback(() => {
+    // Whatever the last save had to say, the researcher has answered it by
+    // closing the editor.
+    refusedSaveRef.current = false;
     setSession((previous) =>
       previous?.open ? { ...previous, open: false } : previous,
     );
@@ -904,8 +966,11 @@ export default function DialogArrayField<T extends ArrayItem>({
   );
 
   const rows = useMemo(() => value ?? [], [value]);
-  const { onOperation, commitDetachedRow: commitById } =
-    useArrayFieldCommands<T>(rows, onChange, resolveItemId);
+  const {
+    onOperation,
+    commitDetachedRow: commitById,
+    takeWriteRefusal,
+  } = useArrayFieldCommands<T>(rows, onChange, resolveItemId);
 
   const commitDetachedRow = useCallback(
     (
@@ -936,6 +1001,7 @@ export default function DialogArrayField<T extends ArrayItem>({
       onBeforeSave,
       previewComponent,
       previewProps,
+      takeWriteRefusal,
     }),
     [
       addTitle,
@@ -956,6 +1022,7 @@ export default function DialogArrayField<T extends ArrayItem>({
       previewComponent,
       previewProps,
       requestedEditFormName,
+      takeWriteRefusal,
     ],
   );
 

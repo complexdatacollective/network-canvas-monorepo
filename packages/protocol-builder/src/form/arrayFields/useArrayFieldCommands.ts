@@ -52,6 +52,17 @@ export type ArrayFieldCommands<T extends ArrayRow> = Readonly<{
     isNewRow: boolean,
     base?: ArrayRow,
   ) => boolean;
+  /**
+   * Whether the session REFUSED this list's last write, read once and
+   * forgotten.
+   *
+   * For the one caller that cannot see the answer any other way: a row dialog
+   * commits through `ArrayField`'s own save handler, which returns nothing, so
+   * by the time control comes back the only record of the refusal is here. It
+   * is read-and-clear because it describes one write, and a refusal left
+   * standing would be spent on some later save that was never refused.
+   */
+  takeWriteRefusal: () => boolean;
 }>;
 
 /**
@@ -86,19 +97,35 @@ export function useArrayFieldCommands<T extends ArrayRow>(
   getIdRef.current = getId;
 
   const readCurrent = useCallback(
-    (key: string) => readArray(applyOwnCommands([])[key]),
+    (key: string) => readArray(applyOwnCommands([]).draft[key]),
     [applyOwnCommands],
   );
 
+  /** Whether the session refused the write this list made most recently. */
+  const refusedRef = useRef(false);
+
   const commit = useCallback(
     (key: string, commands: readonly Command[]) => {
+      // Written for every attempt, so that a refusal cannot outlive the write
+      // it describes and be read as the verdict on a later one.
+      refusedRef.current = false;
       if (commands.length === 0) return false;
-      const next = applyOwnCommands(commands);
-      onChangeRef.current?.(readRows(next[key]) as T[]);
+      const { draft, refused } = applyOwnCommands(commands);
+      if (refused) {
+        refusedRef.current = true;
+        return false;
+      }
+      onChangeRef.current?.(readRows(draft[key]) as T[]);
       return true;
     },
     [applyOwnCommands],
   );
+
+  const takeWriteRefusal = useCallback(() => {
+    const refused = refusedRef.current;
+    refusedRef.current = false;
+    return refused;
+  }, []);
 
   const handleOperation = useCallback(
     (operation: ArrayFieldOperation<T>) => {
@@ -163,7 +190,8 @@ export function useArrayFieldCommands<T extends ArrayRow>(
     () => ({
       onOperation: documentKey === undefined ? undefined : handleOperation,
       commitDetachedRow,
+      takeWriteRefusal,
     }),
-    [commitDetachedRow, documentKey, handleOperation],
+    [commitDetachedRow, documentKey, handleOperation, takeWriteRefusal],
   );
 }

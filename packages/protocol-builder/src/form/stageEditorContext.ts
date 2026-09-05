@@ -17,6 +17,24 @@ export type StageFormStoreApi = NonNullable<
   ContextType<typeof FormStoreContext>
 >;
 
+/**
+ * What a structural write did.
+ *
+ * The draft alone cannot say. A write the session refuses is answered with the
+ * draft it already held, which is indistinguishable from a write that changed
+ * nothing — and a lease can be taken back between the render a handler was
+ * built in and the click that runs it, so a caller's own `readOnly` is not the
+ * answer either. A list editor committing from a click handler can live with
+ * the refusal being reported in the form's error region; a row dialog cannot,
+ * because closing over a draft the session declined discards it.
+ */
+export type OwnCommandsResult = Readonly<{
+  /** The draft the session holds after the batch; unchanged when refused. */
+  draft: StageFormDraft;
+  /** Whether the session declined the write because it is read-only. */
+  refused: boolean;
+}>;
+
 export type StageEditorFormContextValue = Readonly<{
   /** DOM id of the stage `<form>`, for a submit control rendered outside it. */
   formId: string;
@@ -46,8 +64,11 @@ export type StageEditorFormContextValue = Readonly<{
    * this exists: a draft that arrives from elsewhere is written back over the
    * controls on screen, and a write the form made itself must not be mistaken
    * for one of those — it would undo everything typed since.
+   *
+   * An empty batch is a READ of the draft the session holds now, and is never
+   * refused.
    */
-  applyOwnCommands(commands: readonly Command[]): StageFormDraft;
+  applyOwnCommands(commands: readonly Command[]): OwnCommandsResult;
   /** Session-owned; never a form field. */
   identity: StageIdentity;
   /** Tolerant, typed metadata derived from authoritative protocol sections. */
