@@ -731,9 +731,61 @@ describe('describeRule', () => {
         },
         codebook,
       });
-      // A non-primitive operand contributes nothing to the sentence rather
-      // than being stringified into it.
-      expect(description.operand).toBeUndefined();
+      // An operand no control could have entered is still an operand this rule
+      // holds, and is written out as it stands. Dropping it read the rule back
+      // as "Person where Age is exactly" — a sentence about a comparison the
+      // rule does not make, and the one rule the researcher most needs to see.
+      expect(description.operand?.items).toEqual(['{"nested":true}']);
+      expect(description.text).toBe(
+        'Person where Age is exactly equal to {"nested":true}',
+      );
+    });
+
+    it('never reads a boolean operand as the option that shares its name', () => {
+      // The v8 migration turns a boolean OPTION into its string form and
+      // leaves the operands that name it alone, so a migrated protocol holds
+      // `[true]` beside the option `"true"`. The interview compares by
+      // identity and can never match them — printing the option's own label
+      // over the boolean claimed the opposite.
+      const description = describeRule({
+        rule: {
+          id: 'rule-13',
+          type: 'node',
+          options: {
+            type: 'person',
+            attribute: 'consent',
+            operator: 'INCLUDES',
+            value: [true],
+          },
+        },
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-2',
+              shape: { default: 'square' },
+              variables: {
+                consent: {
+                  name: 'Consent',
+                  type: 'categorical',
+                  options: [
+                    { label: 'Consented', value: 'true' },
+                    { label: 'Declined', value: 'false' },
+                  ],
+                },
+              },
+            },
+          },
+        },
+      });
+
+      expect(description.operand?.items).toEqual(['true']);
+      expect(description.problems.map((problem) => problem.code)).toContain(
+        'unusableOption',
+      );
+      expect(description.problems.map((problem) => problem.message)).toContain(
+        'This rule compares its attribute against a true/false value, which cannot be one of that attribute’s choices. Edit or delete the rule.',
+      );
     });
   });
 });

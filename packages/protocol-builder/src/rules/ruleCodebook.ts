@@ -345,7 +345,45 @@ export const isOperandValidForAttributeType = (
 };
 
 /**
- * The option values this rule names that its attribute no longer offers.
+ * What is wrong with one value a rule compares against an option-bearing
+ * attribute.
+ *
+ * `unknownOption` — the value is the SHAPE an option has, and is simply not
+ * one of the options this attribute authors any more.
+ * `unusableValue` — the value is not a shape an option can have AT ALL. An
+ * option's value is a string or a number, so nothing else can ever equal one:
+ * the v7→v8 migration rewrites a boolean option DEFINITION to its string form
+ * (`true` becomes `"true"`) without rewriting the rule operands that name it,
+ * which leaves `[true]` beside the option `"true"` and a comparison the
+ * interview's `===` can never satisfy.
+ */
+export type OperandOptionProblem =
+  | Readonly<{ kind: 'unknownOption'; value: string | number }>
+  | Readonly<{ kind: 'unusableValue'; describedAs: string }>;
+
+/**
+ * What a value that cannot be an option is, in words a researcher can read.
+ *
+ * Named rather than counted: "a true/false value" says which of their rules to
+ * look at, where "an invalid value" would send them through all of them.
+ */
+const describeUnusableValue = (value: unknown): string => {
+  if (value === null || value === undefined) return 'an empty value';
+  if (Array.isArray(value)) return 'a list';
+  if (typeof value === 'boolean') return 'a true/false value';
+  if (typeof value === 'object') return 'an object';
+  return 'a value an option cannot have';
+};
+
+/** Whether this operand is one the rule has simply not been given yet. */
+const isUnenteredOperand = (value: unknown): boolean =>
+  value === undefined ||
+  value === null ||
+  value === '' ||
+  (Array.isArray(value) && value.length === 0);
+
+/**
+ * Everything wrong with the option values this rule names.
  *
  * The third way the codebook can move under a rule, and the one neither
  * `isOperatorValidForAttributeType` nor `isOperandValidForAttributeType`
@@ -355,24 +393,30 @@ export const isOperandValidForAttributeType = (
  * about the rule looks wrong; it just cannot match an answer any participant
  * can give.
  *
- * Compared by identity against the values the codebook holds, which is how the
- * interview compares them: the option whose value is the number `1` is not
- * matched by the string `"1"`, and `ruleVariableChoices` keeps the authored
- * type for exactly this reason.
+ * The value's SHAPE is checked before its membership, and a value that is not
+ * a string or a number is reported rather than skipped. Excluding it from the
+ * membership test instead — which is what a type guard in the filter did —
+ * hid the one operand that is guaranteed never to match: a boolean the v8
+ * migration left beside the string option it became.
+ *
+ * Membership is by identity, which is how the interview compares them: the
+ * option whose value is the number `1` is not matched by the string `"1"`, and
+ * `ruleVariableChoices` keeps the authored type for exactly this reason.
  *
  * Returns the offending values rather than a verdict, so a caller can say
  * which option went missing. Empty for every comparison whose operand is not
  * picked from an option list at all, and for an operand that is not there yet
  * — an unfinished rule is reported as unfinished.
  */
-export const missingOperandOptions = (
+export const operandOptionProblems = (
   variables: Readonly<Variables>,
   variableId: string | undefined,
   operator: string,
   value: unknown,
-): (string | number)[] => {
+): OperandOptionProblem[] => {
   const variableType = ruleVariableType(variables, variableId);
   if (!operandDrawsOnOptions(variableType, operator)) return [];
+  if (isUnenteredOperand(value)) return [];
 
   const authored = new Set<string | number>(
     (ruleVariableChoices(variables, variableId) ?? []).map(
@@ -380,11 +424,14 @@ export const missingOperandOptions = (
     ),
   );
   const items: unknown[] = Array.isArray(value) ? value : [value];
-  return items.filter(
-    (item): item is string | number =>
-      (typeof item === 'string' || typeof item === 'number') &&
-      !authored.has(item),
-  );
+  return items.flatMap<OperandOptionProblem>((item) => {
+    if (typeof item !== 'string' && typeof item !== 'number') {
+      return [
+        { kind: 'unusableValue', describedAs: describeUnusableValue(item) },
+      ];
+    }
+    return authored.has(item) ? [] : [{ kind: 'unknownOption', value: item }];
+  });
 };
 
 /**

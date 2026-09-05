@@ -14,7 +14,6 @@ import type { RuleDraft } from './rule.ts';
 import { describeRule } from './ruleDescription.ts';
 import RuleEditorDialog, { type RuleTypeOption } from './RuleEditorDialog.tsx';
 import RulePreview from './RulePreview.tsx';
-import { isCodebookRuleProblem } from './ruleSet.ts';
 
 /**
  * The rule a row holds, without the list's own bookkeeping — which fresco-ui
@@ -96,21 +95,22 @@ function RuleListItem({
           <div className="min-w-0 flex-1">
             <RulePreview id={textId} description={description} />
             {/*
-              A rule the codebook can no longer account for is reported on the
-              row itself, where the researcher can act on it, rather than only
-              as a field-level error that names a position in a list.
+              Everything wrong with a rule is reported on the row itself, where
+              the researcher can act on it, rather than only as a field-level
+              error that names a position in a list. Every problem, not a
+              chosen few: the row and the rule set's own field validation read
+              the same list, so a rule the field refuses is exactly a rule the
+              row marks.
             */}
-            {description.problems
-              .filter(isCodebookRuleProblem)
-              .map((problem) => (
-                <p
-                  key={problem.code}
-                  className="text-destructive text-sm"
-                  data-rule-problem={problem.code}
-                >
-                  {problem.message}
-                </p>
-              ))}
+            {description.problems.map((problem) => (
+              <p
+                key={problem.code}
+                className="text-destructive text-sm"
+                data-rule-problem={problem.code}
+              >
+                {problem.message}
+              </p>
+            ))}
           </div>
           <div className="flex shrink-0 items-center justify-end gap-3">
             <IconButton

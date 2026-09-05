@@ -776,6 +776,65 @@ describe('a rule set the researcher cannot save', () => {
     expect(onFinish).not.toHaveBeenCalled();
   });
 
+  /**
+   * The rule dialog refuses every gap, so a rule with no operand cannot have
+   * been built here: it arrived by import, by hand-editing, or from another
+   * session. The protocol schema accepts it — `value` is optional there — and
+   * the interview then runs `EXACTLY` with nothing to compare, which is a
+   * presence test the researcher never wrote. The editor is the only thing
+   * that can say so.
+   */
+  it('refuses a stored rule whose operator was never given its operand', async () => {
+    const user = setupUser();
+    const onFinish = vi.fn();
+    renderEditor(
+      createSession({
+        onFinish,
+        fields: {
+          label: 'Welcome',
+          title: 'Hello',
+          items: [],
+          skipLogic: {
+            action: 'SHOW',
+            filter: {
+              rules: [
+                {
+                  id: 'rule-a',
+                  type: 'node',
+                  options: {
+                    type: 'person',
+                    attribute: 'age',
+                    operator: 'EXACTLY',
+                  },
+                },
+              ],
+            },
+          },
+        },
+      }),
+    );
+
+    // On the row, where the researcher can act on it, and in the outline, so
+    // the section stops claiming to be finished.
+    expect(
+      await screen.findByText(
+        'This rule is not complete. Edit it to fill in every part, or delete it.',
+      ),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(outlineText()?.[2]).toBe('Skip logicHas a problem'),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    expect(
+      await screen.findByText(
+        'Rule 1 is not finished. Open it to fill in every part, or delete it.',
+      ),
+    ).toBeInTheDocument();
+    expect(onFinish).not.toHaveBeenCalled();
+  });
+
   it('asks for the rules a switched-on skip logic has none of', async () => {
     const user = setupUser();
     const onFinish = vi.fn();

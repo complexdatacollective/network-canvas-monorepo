@@ -364,6 +364,56 @@ describe('the operand every offered rule starts empty', () => {
   );
 });
 
+/**
+ * What each control makes of an operand the rule ALREADY holds.
+ *
+ * The third thing the operand table decides, beside the control and the empty
+ * value, and the one a stored protocol depends on: a rule opened on a value
+ * its control reads as nothing shows the researcher a choice their rule had
+ * already made, and saves the blank back over it.
+ */
+describe('an operand the rule already holds', () => {
+  const valueRequirement = (
+    variableType: VariableType,
+    operator: FilterOperator,
+  ) => {
+    const requirement = operandRequirement(variableType, operator);
+    if (requirement?.kind !== 'value') {
+      throw new Error(`No operand is entered for ${variableType} ${operator}.`);
+    }
+    return requirement;
+  };
+
+  it('keeps the lone option a membership rule was authored with', () => {
+    // `INCLUDES`/`EXCLUDES` take one option or a list of them and the
+    // interview resolves the difference itself, so a rule written before this
+    // editor emitted a list holds a bare option value.
+    const requirement = valueRequirement('categorical', 'INCLUDES');
+    expect(requirement.parse('happy')).toEqual(['happy']);
+    expect(requirement.parse(1)).toEqual([1]);
+    // An ordinal answers with ONE option, so its control holds the value as it
+    // stands rather than wrapping it.
+    expect(valueRequirement('ordinal', 'INCLUDES').parse(1)).toBe(1);
+  });
+
+  it('still opens a selection that was never made on nothing', () => {
+    const requirement = valueRequirement('categorical', 'INCLUDES');
+    expect(requirement.parse(undefined)).toEqual([]);
+    expect(requirement.parse('')).toEqual([]);
+    expect(requirement.parse([])).toEqual([]);
+  });
+
+  it('leaves out a member no option control could show', () => {
+    // No checkbox can be checked for a boolean the v8 migration left beside
+    // the string option it became, so the control cannot show it — and the
+    // rule's own row reports it, which is what keeps the omission from being
+    // the only thing the researcher is told.
+    expect(
+      valueRequirement('categorical', 'INCLUDES').parse([true, 'happy']),
+    ).toEqual(['happy']);
+  });
+});
+
 describe('an attribute the protocol can hold no operand for', () => {
   it('offers a layout attribute no operator, and so does not offer it at all', () => {
     // Every operator the schema allows a layout attribute compares the operand

@@ -8,7 +8,7 @@ import {
 
 import { operatorsForSubject, ruleVariableTypes } from '../operators.ts';
 import {
-  missingOperandOptions,
+  operandOptionProblems,
   ruleEntityTypeExists,
   ruleEntityTypeOptions,
   ruleOperatorOptions,
@@ -321,24 +321,27 @@ describe('an operand naming an option the attribute no longer offers', () => {
 
   it('names the option that went missing', () => {
     expect(
-      missingOperandOptions(variables, 'mood', 'EXACTLY', 'retired'),
-    ).toEqual(['retired']);
+      operandOptionProblems(variables, 'mood', 'EXACTLY', 'retired'),
+    ).toEqual([{ kind: 'unknownOption', value: 'retired' }]);
   });
 
   it('says nothing about an option the attribute still authors', () => {
     expect(
-      missingOperandOptions(variables, 'mood', 'EXACTLY', 'happy'),
+      operandOptionProblems(variables, 'mood', 'EXACTLY', 'happy'),
     ).toEqual([]);
   });
 
   it('checks every member of a list operand', () => {
     expect(
-      missingOperandOptions(variables, 'mood', 'INCLUDES', [
+      operandOptionProblems(variables, 'mood', 'INCLUDES', [
         'happy',
         'retired',
         'lapsed',
       ]),
-    ).toEqual(['retired', 'lapsed']);
+    ).toEqual([
+      { kind: 'unknownOption', value: 'retired' },
+      { kind: 'unknownOption', value: 'lapsed' },
+    ]);
   });
 
   it('holds the option to the type the codebook authored it with', () => {
@@ -365,40 +368,101 @@ describe('an operand naming an option the attribute no longer offers', () => {
     };
     const ordinal = ruleVariables(numericOptions, 'node', 'person');
 
-    expect(missingOperandOptions(ordinal, 'strength', 'EXACTLY', 1)).toEqual(
+    expect(operandOptionProblems(ordinal, 'strength', 'EXACTLY', 1)).toEqual(
       [],
     );
-    expect(missingOperandOptions(ordinal, 'strength', 'EXACTLY', '1')).toEqual([
-      '1',
+    expect(operandOptionProblems(ordinal, 'strength', 'EXACTLY', '1')).toEqual([
+      { kind: 'unknownOption', value: '1' },
     ]);
     // The widening that let a number attribute take a fraction has no business
     // here: an ordinal answers with one of its own options.
-    expect(missingOperandOptions(ordinal, 'strength', 'EXACTLY', 0.5)).toEqual([
-      0.5,
+    expect(operandOptionProblems(ordinal, 'strength', 'EXACTLY', 0.5)).toEqual([
+      { kind: 'unknownOption', value: 0.5 },
     ]);
   });
 
   it('says nothing about a comparison whose operand is not an option', () => {
     // A number attribute's operand is typed out, not picked, so there is no
     // option list to hold it to; a presence rule compares nothing at all.
-    expect(missingOperandOptions(variables, 'age', 'EXACTLY', 41)).toEqual([]);
+    expect(operandOptionProblems(variables, 'age', 'EXACTLY', 41)).toEqual([]);
     expect(
-      missingOperandOptions(variables, 'mood', 'EXISTS', 'retired'),
+      operandOptionProblems(variables, 'mood', 'EXISTS', 'retired'),
     ).toEqual([]);
   });
 
   it('says nothing about an operand that has not been entered yet', () => {
     expect(
-      missingOperandOptions(variables, 'mood', 'EXACTLY', undefined),
+      operandOptionProblems(variables, 'mood', 'EXACTLY', undefined),
     ).toEqual([]);
-    expect(missingOperandOptions(variables, 'mood', 'INCLUDES', [])).toEqual(
+    expect(operandOptionProblems(variables, 'mood', 'INCLUDES', [])).toEqual(
       [],
     );
+    // The three other spellings of "nothing has been entered": a null the
+    // schema tolerates, and the empty values the two option controls hold
+    // before anything is picked.
+    expect(operandOptionProblems(variables, 'mood', 'EXACTLY', null)).toEqual(
+      [],
+    );
+    expect(operandOptionProblems(variables, 'mood', 'EXACTLY', '')).toEqual([]);
   });
 
   it('says nothing about an attribute the codebook has lost', () => {
     expect(
-      missingOperandOptions(variables, 'favouriteColour', 'EXACTLY', 'blue'),
+      operandOptionProblems(variables, 'favouriteColour', 'EXACTLY', 'blue'),
     ).toEqual([]);
+  });
+});
+
+/**
+ * The v7→v8 migration coerces a boolean OPTION DEFINITION to its string form
+ * (`true` becomes `"true"`) and leaves the rule operands that name it alone,
+ * so a migrated protocol can hold `[true]` beside the option `"true"`. The
+ * interview compares by identity, and `true !== "true"`: the rule reads
+ * perfectly and can never match.
+ *
+ * Excluding such a value from the membership test — which a type guard in the
+ * filter did — reported nothing at all about the one operand guaranteed never
+ * to match.
+ */
+describe('an operand that is not the shape an option can have', () => {
+  const variables = ruleVariables(codebook, 'node', 'person');
+
+  it('reports a boolean left behind by the migration', () => {
+    expect(
+      operandOptionProblems(variables, 'mood', 'INCLUDES', [true]),
+    ).toEqual([{ kind: 'unusableValue', describedAs: 'a true/false value' }]);
+  });
+
+  it('reports a null member rather than skipping it', () => {
+    expect(
+      operandOptionProblems(variables, 'mood', 'INCLUDES', [null]),
+    ).toEqual([{ kind: 'unusableValue', describedAs: 'an empty value' }]);
+  });
+
+  it('reports an object member', () => {
+    expect(operandOptionProblems(variables, 'mood', 'INCLUDES', [{}])).toEqual([
+      { kind: 'unusableValue', describedAs: 'an object' },
+    ]);
+  });
+
+  it('reports a bare value that is not a list at all', () => {
+    expect(operandOptionProblems(variables, 'mood', 'INCLUDES', true)).toEqual([
+      { kind: 'unusableValue', describedAs: 'a true/false value' },
+    ]);
+  });
+
+  it('reports every member of a mixed operand, in its own voice', () => {
+    expect(
+      operandOptionProblems(variables, 'mood', 'INCLUDES', [
+        'happy',
+        true,
+        'retired',
+        [1],
+      ]),
+    ).toEqual([
+      { kind: 'unusableValue', describedAs: 'a true/false value' },
+      { kind: 'unknownOption', value: 'retired' },
+      { kind: 'unusableValue', describedAs: 'a list' },
+    ]);
   });
 });

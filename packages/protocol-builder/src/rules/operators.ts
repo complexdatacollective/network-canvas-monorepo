@@ -11,31 +11,37 @@ import {
 } from '@codaco/protocol-validation';
 
 /**
- * How each operator reads in the researcher's own words, in the order the
- * editor offers them.
+ * How each operator reads in the researcher's own words.
  *
  * Whole phrases, not fragments assembled around the operand: "is greater than
  * or exactly" is one string a translator can move around its operand, while
  * "is" + "greater than" + "or exactly" is three that only compose in English.
+ *
+ * A total mapping over the schema's own operator set rather than a list of the
+ * ones this editor happens to know: an operator added to `AllOperators` and
+ * not named here used to disappear from the list the researcher is offered
+ * with nothing to say so, because a list can be short and still typecheck.
  */
-const OPERATOR_LABELS: readonly (readonly [FilterOperator, string])[] = [
-  ['EXACTLY', 'is exactly'],
-  ['EXISTS', 'exists'],
-  ['NOT_EXISTS', 'does not exist'],
-  ['NOT', 'is not'],
-  ['GREATER_THAN', 'is greater than'],
-  ['GREATER_THAN_OR_EQUAL', 'is greater than or exactly'],
-  ['LESS_THAN', 'is less than'],
-  ['LESS_THAN_OR_EQUAL', 'is less than or exactly'],
-  ['CONTAINS', 'contains'],
-  ['DOES_NOT_CONTAIN', 'does not contain'],
-  ['INCLUDES', 'includes'],
-  ['EXCLUDES', 'excludes'],
-  ['OPTIONS_GREATER_THAN', 'number of selected options is greater than'],
-  ['OPTIONS_LESS_THAN', 'number of selected options is less than'],
-  ['OPTIONS_EQUALS', 'number of selected options is exactly'],
-  ['OPTIONS_NOT_EQUALS', 'number of selected options is not'],
-];
+const OPERATOR_LABELS: Readonly<Record<FilterOperator, string>> = Object.freeze(
+  {
+    EXACTLY: 'is exactly',
+    EXISTS: 'exists',
+    NOT_EXISTS: 'does not exist',
+    NOT: 'is not',
+    GREATER_THAN: 'is greater than',
+    GREATER_THAN_OR_EQUAL: 'is greater than or exactly',
+    LESS_THAN: 'is less than',
+    LESS_THAN_OR_EQUAL: 'is less than or exactly',
+    CONTAINS: 'contains',
+    DOES_NOT_CONTAIN: 'does not contain',
+    INCLUDES: 'includes',
+    EXCLUDES: 'excludes',
+    OPTIONS_GREATER_THAN: 'number of selected options is greater than',
+    OPTIONS_LESS_THAN: 'number of selected options is less than',
+    OPTIONS_EQUALS: 'number of selected options is exactly',
+    OPTIONS_NOT_EQUALS: 'number of selected options is not',
+  },
+);
 
 export type RuleOperatorOption = Readonly<{
   value: FilterOperator;
@@ -44,12 +50,17 @@ export type RuleOperatorOption = Readonly<{
   disabled?: boolean;
 }>;
 
+/**
+ * Every operator, in the schema's own order.
+ *
+ * Enumerated from `AllOperators` rather than from the label table's key order,
+ * so the list is exactly as long as the schema's and cannot be shortened by an
+ * editing slip here.
+ */
 export const operatorsAsOptions: readonly RuleOperatorOption[] =
-  OPERATOR_LABELS.map(([value, label]) => Object.freeze({ value, label }));
-
-const OPERATOR_LABELS_BY_VALUE: ReadonlyMap<FilterOperator, string> = new Map(
-  OPERATOR_LABELS,
-);
+  AllOperators.options.map((value) =>
+    Object.freeze({ value, label: OPERATOR_LABELS[value] }),
+  );
 
 /**
  * How this operator reads, whether or not the editor offers it.
@@ -59,7 +70,7 @@ const OPERATOR_LABELS_BY_VALUE: ReadonlyMap<FilterOperator, string> = new Map(
  * as the token the protocol files it under.
  */
 export const operatorLabel = (operator: FilterOperator): string =>
-  OPERATOR_LABELS_BY_VALUE.get(operator) ?? operator;
+  OPERATOR_LABELS[operator];
 
 const OPERATOR_NAMES: ReadonlySet<string> = new Set(AllOperators.options);
 
@@ -263,21 +274,40 @@ const asText = (value: unknown): string => {
   return '';
 };
 
+/**
+ * A single-option operand read back into its control.
+ *
+ * A value no option control can hold opens the control on nothing, which its
+ * own `required` then refuses — and `operandOptionProblems` has already
+ * reported it on the row, so the researcher is told what is wrong rather than
+ * left with an empty control over a rule that looked answered.
+ */
 const asOption = (value: unknown): string | number =>
   typeof value === 'string' || typeof value === 'number' ? value : '';
 
 /**
  * A multi-select operand is the set of selected option values, so anything
  * that is not one of those survives the trip only as noise. Non-primitive
- * members are dropped rather than stringified.
+ * members are dropped rather than stringified — and reported by
+ * `operandOptionProblems`, which is what keeps the drop from being silent.
+ *
+ * A LONE option value is kept rather than dropped. `INCLUDES`/`EXCLUDES`
+ * accept one option or a list of them and the interview resolves the
+ * difference itself, so a rule authored before this editor emitted a list
+ * holds a bare `"happy"` — opening it on an empty selection showed the
+ * researcher a choice their rule had already made, and saved the blank back
+ * over it.
  */
-const asSelection = (value: unknown): (string | number)[] =>
-  Array.isArray(value)
-    ? value.filter(
-        (item): item is string | number =>
-          typeof item === 'string' || typeof item === 'number',
-      )
-    : [];
+const asSelection = (value: unknown): (string | number)[] => {
+  if (Array.isArray(value)) {
+    return value.filter(
+      (item): item is string | number =>
+        typeof item === 'string' || typeof item === 'number',
+    );
+  }
+  if (typeof value === 'number') return [value];
+  return typeof value === 'string' && value !== '' ? [value] : [];
+};
 
 const isFiniteNumber = (value: unknown): boolean =>
   typeof value === 'number' && Number.isFinite(value);

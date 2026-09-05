@@ -29,7 +29,8 @@ import {
 import { incompleteRulePart, type RuleDraft, type RulePart } from './rule.ts';
 import {
   isRuleTargetType,
-  missingOperandOptions,
+  type OperandOptionProblem,
+  operandOptionProblems,
   type RuleChoiceOption,
   type RuleDateParameters,
   type RuleEntityTarget,
@@ -246,11 +247,11 @@ const draftString = (
 const staleRuleOptions = (
   codebook: Readonly<Codebook>,
   rule: RuleDraft,
-): (string | number)[] => {
+): OperandOptionProblem[] => {
   const target = isRuleTargetType(rule.type) ? rule.type : undefined;
   if (target === undefined) return [];
   const variables = ruleVariables(codebook, target, draftString(rule, 'type'));
-  return missingOperandOptions(
+  return operandOptionProblems(
     variables,
     draftString(rule, 'attribute'),
     draftString(rule, 'operator') ?? '',
@@ -265,13 +266,34 @@ const staleRuleOptions = (
 const describeStaleOption = (value: string | number): string =>
   typeof value === 'string' ? `"${value}"` : String(value);
 
-const staleOptionsMessage = (values: readonly (string | number)[]): string => {
-  const described = values.map(describeStaleOption);
-  const list =
-    described.length <= 1
-      ? (described[0] ?? '')
-      : `${described.slice(0, -1).join(', ')} and ${described.at(-1) ?? ''}`;
-  return `This rule compares against ${list}, which this attribute no longer offers. Choose from the options it does.`;
+const asList = (described: readonly string[]): string =>
+  described.length <= 1
+    ? (described[0] ?? '')
+    : `${described.slice(0, -1).join(', ')} and ${described.at(-1) ?? ''}`;
+
+/**
+ * Why the operand is refused, in whichever of the two voices applies.
+ *
+ * A value that is not the SHAPE of an option — a boolean the v8 migration left
+ * beside the string option it became — never was one of this attribute's
+ * choices, so telling the researcher it is "no longer offered" would send them
+ * looking through the option list for something that was never in it.
+ */
+const staleOptionsMessage = (
+  problems: readonly OperandOptionProblem[],
+): string => {
+  const unusable = problems.flatMap((problem) =>
+    problem.kind === 'unusableValue' ? [problem.describedAs] : [],
+  );
+  if (unusable.length > 0) {
+    return `This rule compares against ${asList(unusable)}, which cannot be one of this attribute’s options. Choose from the options it offers.`;
+  }
+  const missing = problems.flatMap((problem) =>
+    problem.kind === 'unknownOption'
+      ? [describeStaleOption(problem.value)]
+      : [],
+  );
+  return `This rule compares against ${asList(missing)}, which this attribute no longer offers. Choose from the options it does.`;
 };
 
 /** The control the researcher has to visit to supply each part of a rule. */

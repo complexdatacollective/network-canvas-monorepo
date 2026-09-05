@@ -1,6 +1,7 @@
 import type {
   Codebook,
   ColorReference,
+  FilterOperator,
   NodeShape,
   VariableType,
 } from '@codaco/protocol-validation';
@@ -18,7 +19,7 @@ import {
   isOperandValidForAttributeType,
   isOperatorValidForAttributeType,
   isRuleTargetType,
-  missingOperandOptions,
+  operandOptionProblems,
   type RuleTargetType,
   ruleVariable,
   ruleVariableChoices,
@@ -84,14 +85,28 @@ export type RuleDescriptionOperand = Readonly<{
   authoredLabels: boolean;
 }>;
 
-export type RuleProblemCode =
-  | 'unknownTarget'
-  | 'missingEntityType'
-  | 'missingAttribute'
-  | 'invalidOperator'
-  | 'invalidOperand'
-  | 'missingOption'
-  | 'incomplete';
+/**
+ * Everything that can be wrong with a rule, as one closed list.
+ *
+ * Enumerated rather than only unioned so that the decision about what the
+ * editor DOES with each of them can be a total mapping over this list — see
+ * `RULE_PROBLEM_SUMMARIES` in `ruleSet.ts`. The two places that used to name
+ * the reportable subset by hand each missed a code, twice: an allowlist cannot
+ * be checked against a union, and a rule the row never marked was a rule the
+ * researcher had no way of seeing.
+ */
+export const RULE_PROBLEM_CODES = [
+  'unknownTarget',
+  'missingEntityType',
+  'missingAttribute',
+  'invalidOperator',
+  'invalidOperand',
+  'missingOption',
+  'unusableOption',
+  'incomplete',
+] as const;
+
+export type RuleProblemCode = (typeof RULE_PROBLEM_CODES)[number];
 
 export type RuleProblem = Readonly<{
   code: RuleProblemCode;
@@ -159,9 +174,13 @@ export type DescribeRuleInput = Readonly<{
  * An ego rule reads "Ego has Age that is greater than 30"; an alter rule reads
  * "Person where Age is greater than 30". Whole phrases either way — assembling
  * one from "that" plus the alter wording only composes in English.
+ *
+ * Total over the schema's own operator set, so an operator added to
+ * `AllOperators` arrives here as a typecheck failure rather than as a sentence
+ * reading the token the protocol files it under.
  */
 const OPERATOR_TEXT: Readonly<
-  Record<string, Readonly<{ alter: string; ego: string }>>
+  Record<FilterOperator, Readonly<{ alter: string; ego: string }>>
 > = Object.freeze({
   // These two introduce the attribute instead of following it — "Person
   // without Age", "Ego has EgoName" — so each voice states the whole
@@ -213,12 +232,47 @@ const PRESENCE_OPERATOR_TEXT: Readonly<Record<string, string>> = Object.freeze({
 
 const EGO_LABEL = 'Ego';
 
-const operandItems = (value: unknown): (string | number)[] => {
+/**
+ * A stored value that is not a string or a number, written out as it stands.
+ *
+ * Never thrown from and never empty: this is the last thing between a stored
+ * operand and a sentence that does not mention it.
+ */
+const operandLiteral = (item: unknown): string => {
+  if (typeof item === 'boolean') return item ? 'true' : 'false';
+  try {
+    return JSON.stringify(item) ?? UNREADABLE_OPERAND;
+  } catch {
+    return UNREADABLE_OPERAND;
+  }
+};
+
+/**
+ * The operands a rule compares, each ready to be read out.
+ *
+ * Two things this deliberately does NOT do. It does not drop a value it cannot
+ * recognise — a rule comparing against `[true]` or `[null]` reads as one that
+ * compares against nothing at all if it does, which is the one rule the
+ * researcher most needs to see. And it substitutes an option's LABEL only for
+ * a value that is genuinely one of the shapes an option has: the boolean
+ * `true` was previously stringified first and then looked up, so a rule that
+ * can never match the option `"true"` was printed under that option's own
+ * label.
+ *
+ * `undefined` is the exception, and is absence rather than a value: an operand
+ * that was never entered has nothing to read, and is reported as unfinished.
+ */
+const operandItems = (
+  value: unknown,
+  label: (item: string | number) => string | number,
+): (string | number)[] => {
   const items = Array.isArray(value) ? value : [value];
   return items.flatMap<string | number>((item) => {
-    if (typeof item === 'string' || typeof item === 'number') return [item];
-    if (typeof item === 'boolean') return [item ? 'true' : 'false'];
-    return [];
+    if (typeof item === 'string' || typeof item === 'number') {
+      return [label(item)];
+    }
+    if (item === undefined) return [];
+    return [operandLiteral(item)];
   });
 };
 
@@ -334,14 +388,14 @@ export function describeRule({
     isFilterOperator(operatorId) && operatorsWithOptionCount.has(operatorId);
   const matchesPattern =
     isFilterOperator(operatorId) && operatorsWithRegExp.has(operatorId);
-  const rawItems = isExistenceOperator ? [] : operandItems(options.value);
+  const rawItems = isExistenceOperator
+    ? []
+    : operandItems(options.value, countsOptions ? (item) => item : labelFor);
   const operand: RuleDescriptionOperand | undefined =
     rawItems.length === 0
       ? undefined
       : Object.freeze({
-          items: Object.freeze(
-            countsOptions ? rawItems : rawItems.map(labelFor),
-          ),
+          items: Object.freeze(rawItems),
           authoredLabels: authoredLabels && !countsOptions && !matchesPattern,
         });
 
@@ -385,14 +439,28 @@ export function describeRule({
   // it is just no longer one this attribute offers, because a collaborator
   // renamed or deleted that option. The rule reads perfectly and can never
   // match, so nothing but this reports it.
-  if (
-    attribute !== undefined &&
-    !attribute.missing &&
-    operatorId !== undefined &&
-    missingOperandOptions(variables, attributeId, operatorId, options.value)
-      .length > 0
-  ) {
+  //
+  // Reported in two voices, because the operand can fail in two ways: it names
+  // an option this attribute does not have, or it is not the kind of value an
+  // option can be at all. The second is not a subset of the first — a boolean
+  // left behind by the v8 migration compares against a string option — and
+  // saying so in the same sentence would send the researcher looking for an
+  // option that never existed.
+  const optionProblems =
+    attribute !== undefined && !attribute.missing && operatorId !== undefined
+      ? operandOptionProblems(variables, attributeId, operatorId, options.value)
+      : [];
+  if (optionProblems.some((problem) => problem.kind === 'unknownOption')) {
     problems.push({ code: 'missingOption', message: MISSING_OPTION_MESSAGE });
+  }
+  const unusable = optionProblems.find(
+    (problem) => problem.kind === 'unusableValue',
+  );
+  if (unusable !== undefined) {
+    problems.push({
+      code: 'unusableOption',
+      message: unusableOptionMessage(unusable.describedAs),
+    });
   }
 
   if (!isCompleteRule(rule)) {
@@ -469,8 +537,11 @@ function operatorText(
   if (context.isPresenceRule) {
     return PRESENCE_OPERATOR_TEXT[operatorId] ?? operatorId.toLowerCase();
   }
+  // An operator the schema itself does not have is read as its own token: a
+  // hand-edited protocol can hold one, and printing it is what lets the
+  // researcher see which rule to fix.
+  if (!isFilterOperator(operatorId)) return operatorId.toLowerCase();
   const phrasing = OPERATOR_TEXT[operatorId];
-  if (phrasing === undefined) return operatorId.toLowerCase();
   return context.isEgo ? phrasing.ego : phrasing.alter;
 }
 
@@ -529,5 +600,9 @@ const INVALID_OPERAND_MESSAGE =
   'This rule compares its attribute against a value of the wrong kind for the attribute’s type. Edit or delete the rule.';
 const MISSING_OPTION_MESSAGE =
   'This rule compares its attribute against an option that is no longer one of that attribute’s choices. Edit or delete the rule.';
+const unusableOptionMessage = (describedAs: string) =>
+  `This rule compares its attribute against ${describedAs}, which cannot be one of that attribute’s choices. Edit or delete the rule.`;
 const INCOMPLETE_MESSAGE =
   'This rule is not complete. Edit it to fill in every part, or delete it.';
+/** What an operand no reader can make sense of is printed as. */
+const UNREADABLE_OPERAND = '(a value this editor cannot read)';
