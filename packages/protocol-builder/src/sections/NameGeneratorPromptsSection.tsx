@@ -71,7 +71,7 @@ const asAttributes = (value: unknown): AttributeValue[] =>
  * ordinary connected fields of THAT form: the row is committed as a whole when
  * the dialog saves, and no cell of it is ever registered on the stage.
  */
-export function NameGeneratorPromptEditor({ item }: RowEditorProps) {
+function NameGeneratorPromptEditor({ item }: RowEditorProps) {
   return (
     <>
       <Section
@@ -237,7 +237,7 @@ function AdditionalAttributes({
 }
 
 /** How one prompt reads in the list when its dialog is closed. */
-export function NameGeneratorPromptPreview({ item }: RowPreviewProps) {
+function NameGeneratorPromptPreview({ item }: RowPreviewProps) {
   const text = asString(item.text);
   const stamps = asAttributes(item.additionalAttributes).length;
 

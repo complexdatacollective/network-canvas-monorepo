@@ -474,7 +474,7 @@ function hasUnvalidatedUseFor(
  * connected fields of THAT form — the row is committed whole when the dialog
  * saves, and no cell of it is ever registered on the stage.
  */
-export function FormFieldEditor({ item, editIndex }: RowEditorProps) {
+function FormFieldEditor({ item, editIndex }: RowEditorProps) {
   const subject = useSubjectFromRow();
   const inventing = useInventingAttribute(item);
 
@@ -665,7 +665,7 @@ function AttributePicker({
 }
 
 /** How one field reads in the list when its dialog is closed. */
-export function FormFieldPreview({ item }: RowPreviewProps) {
+function FormFieldPreview({ item }: RowPreviewProps) {
   const { protocolContext } = useStageEditorForm();
   const subject = useSubjectFromRow();
   const variableId = asString(item.variable) ?? '';

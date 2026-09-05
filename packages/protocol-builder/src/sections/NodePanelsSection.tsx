@@ -189,7 +189,7 @@ const newPanel = () => ({ dataSource: INTERVIEW_NETWORK });
  * connected fields of THAT form — the panel is committed whole when the dialog
  * saves, and no part of it is ever registered on the stage.
  */
-export function PanelEditor({ item }: RowEditorProps) {
+function PanelEditor({ item }: RowEditorProps) {
   const dataSource =
     asString(useRowValue('dataSource') ?? item.dataSource) ?? INTERVIEW_NETWORK;
   const usesInterviewNetwork = dataSource === INTERVIEW_NETWORK;
@@ -317,7 +317,7 @@ function usePanelFilterValidation() {
 }
 
 /** How one panel reads in the list when its dialog is closed. */
-export function PanelPreview({ item }: RowPreviewProps) {
+function PanelPreview({ item }: RowPreviewProps) {
   const { protocolContext } = useStageEditorForm();
   const dataSource = asString(item.dataSource) ?? INTERVIEW_NETWORK;
   const rules = ruleSetRules(item.filter).length;
