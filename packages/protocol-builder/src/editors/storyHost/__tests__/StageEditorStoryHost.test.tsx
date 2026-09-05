@@ -2,11 +2,11 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
-import { AnonymisationStageEditor } from '../AnonymisationStageEditor.tsx';
-import { FamilyPedigreeStageEditor } from '../FamilyPedigreeStageEditor.tsx';
-import { NarrativePedigreeStageEditor } from '../NarrativePedigreeStageEditor.tsx';
-import { PedigreeStoryHost } from '../pedigreeStoryHost.tsx';
-import { shimMarkdownEditorMeasurement } from './editorFixtures.tsx';
+import { shimMarkdownEditorMeasurement } from '../../pedigree/__tests__/editorFixtures.tsx';
+import { AnonymisationStageEditor } from '../../pedigree/AnonymisationStageEditor.tsx';
+import { FamilyPedigreeStageEditor } from '../../pedigree/FamilyPedigreeStageEditor.tsx';
+import { NarrativePedigreeStageEditor } from '../../pedigree/NarrativePedigreeStageEditor.tsx';
+import { StageEditorStoryHost } from '../StageEditorStoryHost.tsx';
 
 shimMarkdownEditorMeasurement();
 
@@ -19,12 +19,17 @@ shimMarkdownEditorMeasurement();
  * These run the same three journeys against the same host, so the plays cannot
  * rot silently between builds. They are deliberately the SAME assertions, not
  * a paraphrase: a selector that only matches here proves nothing about them.
+ *
+ * Driven with the pedigree editors on purpose. The host is shared with the
+ * canvas ones, and one of those draws a map: mounting it would pull the Mapbox
+ * SDK into this file's module graph, which `mapboxIsAlwaysMocked` reads and
+ * should go on reporting honestly.
  */
-describe('the Storybook host the pedigree stories run in', () => {
+describe('the Storybook host every stage editor’s stories run in', () => {
   it('saves a rewritten anonymisation explanation', async () => {
     const user = userEvent.setup();
     render(
-      <PedigreeStoryHost
+      <StageEditorStoryHost
         stageId="anonymisation-1"
         renderEditor={({ controller, actions }) => (
           <AnonymisationStageEditor
@@ -53,7 +58,7 @@ describe('the Storybook host the pedigree stories run in', () => {
   it('saves a tightened pedigree boundary', async () => {
     const user = userEvent.setup();
     render(
-      <PedigreeStoryHost
+      <StageEditorStoryHost
         stageId="family-pedigree-1"
         renderEditor={({ controller, actions }) => (
           <FamilyPedigreeStageEditor
@@ -82,7 +87,7 @@ describe('the Storybook host the pedigree stories run in', () => {
   it('saves at-risk statuses switched on', async () => {
     const user = userEvent.setup();
     render(
-      <PedigreeStoryHost
+      <StageEditorStoryHost
         stageId="narrative-pedigree-1"
         renderEditor={({ controller, actions }) => (
           <NarrativePedigreeStageEditor
@@ -110,7 +115,7 @@ describe('the Storybook host the pedigree stories run in', () => {
   /** A spectator's chrome says so rather than offering a save that is refused. */
   it('disables the host’s save control for a spectator', () => {
     render(
-      <PedigreeStoryHost
+      <StageEditorStoryHost
         stageId="anonymisation-1"
         readOnly
         renderEditor={({ controller, actions }) => (

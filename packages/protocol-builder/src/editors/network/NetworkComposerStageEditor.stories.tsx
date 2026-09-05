@@ -3,12 +3,12 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 
+import { StageEditorStoryHost } from '../storyHost/StageEditorStoryHost.tsx';
 import { NetworkComposerStageEditor } from './NetworkComposerStageEditor.tsx';
-import { NetworkStoryHost } from './networkStoryHost.tsx';
 
 const meta = {
   title: 'Protocol Builder/Editors/Network composer',
-  component: NetworkStoryHost,
+  component: StageEditorStoryHost,
   args: {
     stageId: 'network-composer-1',
     renderEditor: ({ controller, actions }) => (
@@ -29,7 +29,7 @@ const meta = {
     },
   },
   tags: ['autodocs'],
-} satisfies Meta<typeof NetworkStoryHost>;
+} satisfies Meta<typeof StageEditorStoryHost>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;

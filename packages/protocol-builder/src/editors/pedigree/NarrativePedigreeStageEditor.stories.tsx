@@ -3,12 +3,12 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 
+import { StageEditorStoryHost } from '../storyHost/StageEditorStoryHost.tsx';
 import { NarrativePedigreeStageEditor } from './NarrativePedigreeStageEditor.tsx';
-import { PedigreeStoryHost } from './pedigreeStoryHost.tsx';
 
 const meta = {
   title: 'Protocol Builder/Editors/Narrative Pedigree',
-  component: PedigreeStoryHost,
+  component: StageEditorStoryHost,
   args: {
     // The fixture protocol runs "family-pedigree-1" before this stage, which
     // is what makes it a source this stage may read: without a Family Pedigree
@@ -33,7 +33,7 @@ const meta = {
     },
   },
   tags: ['autodocs'],
-} satisfies Meta<typeof PedigreeStoryHost>;
+} satisfies Meta<typeof StageEditorStoryHost>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
