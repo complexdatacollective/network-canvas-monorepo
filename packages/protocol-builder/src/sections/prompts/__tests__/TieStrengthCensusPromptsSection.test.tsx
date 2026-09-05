@@ -81,6 +81,74 @@ describe('the questions a tie-strength census asks about a pair', () => {
     ).toBeInTheDocument();
   });
 
+  /**
+   * The scale names an attribute OF the connection type, so changing the
+   * connection type leaves the prompt naming an attribute the new one does not
+   * have.
+   *
+   * Left in place it is unsaveable and unexplained: the picker kept the stale
+   * pick on offer as "no longer in the codebook" — which is not true, it
+   * belongs to the other connection type — the row dialog accepted it, and the
+   * refusal only arrived at the stage save, in the schema's words about a
+   * codebook the researcher was not looking at. Cleared, the prompt says what
+   * it needs, in the dialog the researcher is still in.
+   */
+  it('clears the scale when the connection type changes under it', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    expect(
+      await screen.findByRole('combobox', { name: 'Attribute' }),
+    ).toHaveValue('closeness');
+
+    await harness.user.click(
+      screen.getByRole('radio', { name: 'family_edge' }),
+    );
+
+    // The new connection type has no ordinal attributes at all, so the picker
+    // has nothing to offer and nothing left over from the old one.
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('option', { name: /closeness/ }),
+      ).not.toBeInTheDocument(),
+    );
+
+    // And the prompt refuses here, naming the pick it is missing, rather than
+    // being accepted and refused by the stage save.
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(
+      await screen.findByText(
+        'Choose the attribute the participant answers on.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  /**
+   * The other side of the same rule: reopening a prompt is not a change of
+   * connection type, so the scale it was saved with survives being looked at.
+   */
+  it('keeps the scale when the connection type is left alone', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    await screen.findByRole('combobox', { name: 'Attribute' });
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    expect(prompts(request?.stageDocument ?? {})[0]).toMatchObject({
+      createEdge: 'knows',
+      edgeVariable: 'closeness',
+    });
+  });
+
   it('refuses a prompt with no way to decline, and says which one', async () => {
     const harness = renderStageEditor(openEditor());
 

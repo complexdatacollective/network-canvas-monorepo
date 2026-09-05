@@ -1,4 +1,7 @@
+import { useEffect, useRef } from 'react';
+
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Section from '@codaco/fresco-ui/Section';
 import type { VariableType } from '@codaco/protocol-validation';
@@ -57,6 +60,48 @@ function TieStrengthGuidance() {
 }
 
 /**
+ * Throws away the scale when the connection it describes changes.
+ *
+ * `edgeVariable` names an attribute OF `createEdge`, so a prompt that keeps
+ * its scale across a change of connection type names an attribute the new type
+ * does not have. Nothing downstream can rescue that: the picker keeps the
+ * current pick on offer so that reopening a prompt never loses it, and it can
+ * only report the stale one as no longer in the codebook — which is not what
+ * happened, the attribute is still there on the connection type the researcher
+ * just moved away from. The prompt is then accepted by its own dialog and
+ * refused by the stage save, in the schema's words about a codebook the
+ * researcher is not looking at.
+ *
+ * The same rule the subject section applies one level up, where changing what
+ * a stage is about throws away everything that described the old subject
+ * (`useResetStageOnSubjectChange`) — and an observer effect for the same
+ * reason: a caller's `onChange` on a Fresco field REPLACES the store's own
+ * write rather than running beside it.
+ *
+ * The connection type ARRIVING is not a change of connection type. A prompt
+ * opened on a saved row and a brand-new one both begin with nothing here, and
+ * clearing on that first value would throw the saved scale away the moment the
+ * researcher opened the prompt to read it.
+ */
+function useClearScaleOnConnectionChange(createEdge: unknown): void {
+  const clearValue = useFormStore((state) => state.clearValue);
+  const seenEdge = useRef(createEdge);
+
+  useEffect(() => {
+    const previousEdge = seenEdge.current;
+    seenEdge.current = createEdge;
+    if (
+      previousEdge === undefined ||
+      previousEdge === '' ||
+      previousEdge === createEdge
+    ) {
+      return;
+    }
+    clearValue('edgeVariable');
+  }, [clearValue, createEdge]);
+}
+
+/**
  * One Tie-Strength Census question: what to ask, what an answer connects, how
  * strong that connection is said to be, and how the participant says there is
  * none.
@@ -66,6 +111,8 @@ function TieStrengthCensusPromptEditor({ item }: RowEditorProps) {
   const edgeSubject = edgeSubjectOf(createEdge);
   const committed =
     typeof item.edgeVariable === 'string' ? item.edgeVariable : '';
+
+  useClearScaleOnConnectionChange(createEdge);
 
   return (
     <>
