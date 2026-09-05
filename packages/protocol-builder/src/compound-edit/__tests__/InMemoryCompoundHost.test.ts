@@ -626,6 +626,7 @@ describe('InMemoryCompoundHost', () => {
       variableId: 'local',
       protocolContext: {
         codebook: { node: {}, edge: {} },
+        assets: {},
         orderedStages: [],
         issues: [],
       },

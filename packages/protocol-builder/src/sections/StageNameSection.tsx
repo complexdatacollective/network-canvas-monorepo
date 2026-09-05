@@ -13,6 +13,10 @@ import {
 } from '../form/stageEditorContext.ts';
 import { useOutlineSection } from '../form/useOutlineSection.ts';
 import { interfaceDisplayName } from '../interfaces/interfaceNames.ts';
+import {
+  type AutoStageNamePanel,
+  useAutoStageName,
+} from '../naming/useAutoStageName.ts';
 
 /** The character limit is the control's own; it is not a validation rule. */
 const STAGE_NAME_LIMIT = 50;
@@ -46,6 +50,17 @@ export type StageNameSectionProps = Readonly<{
   documentationUrl?: string;
   /** A stage being created starts with its name focused. */
   autoFocus?: boolean;
+  /**
+   * Propose a name for a stage being created, derived from what it is being
+   * configured to do, until the researcher names it themselves.
+   *
+   * Present means propose, so an editor opening an existing stage simply
+   * leaves it out: an existing stage's name is already the researcher's.
+   * `panels` is supplied by the editor rather than read from the draft,
+   * because a name generator's panels are held in the form as per-index
+   * leaves that only the section writing them can assemble.
+   */
+  autoName?: Readonly<{ panels?: readonly AutoStageNamePanel[] }>;
   copy?: Partial<StageNameCopy>;
 }>;
 
@@ -60,6 +75,7 @@ export default function StageNameSection({
   position,
   documentationUrl,
   autoFocus = false,
+  autoName,
   copy,
 }: StageNameSectionProps) {
   const { identity } = useStageEditorForm();
@@ -67,6 +83,10 @@ export default function StageNameSection({
   const { sectionId } = useOutlineSection(words.sectionTitle);
   const headingId = useId();
   const interfaceName = interfaceDisplayName(identity.type) ?? identity.type;
+  const { onLabelBlur } = useAutoStageName({
+    isNewStage: autoName !== undefined,
+    panels: autoName?.panels,
+  });
 
   return (
     <section
@@ -105,6 +125,7 @@ export default function StageNameSection({
           characterLimit={STAGE_NAME_LIMIT}
           required
           autoFocus={autoFocus}
+          onFieldBlur={onLabelBlur}
         />
       </SectionScopeContext>
       <div className="mt-2 flex flex-wrap items-center gap-5 text-sm">

@@ -126,6 +126,61 @@ export function useClearStageValue(): (path: string) => void {
 }
 
 /**
+ * What the stage draft currently holds at one path.
+ *
+ * The one way anything in this package reads a draft value it does not own a
+ * field for: a filter checking the prompts it might contradict, a proposed
+ * name reading the stage's subject. Sections address values by path and
+ * nothing else — no stage path handed down from a host, no selector, no store
+ * of the host's own.
+ *
+ * Resolution is the form store's own, through `hasValue`/`getValue`: a field
+ * registered AT the path, the values assembled from fields registered above or
+ * below it, then a field parked at it by progressive disclosure. Only when the
+ * form holds none of those does the committed draft answer — before a
+ * section's fields have registered, the draft is the only place the value is,
+ * and a section that has not been opened yet would otherwise read every value
+ * inside it as empty.
+ *
+ * Deliberately not built on `useStageHasAnyValue`'s machinery, which answers a
+ * different question: whether a path holds an ANSWER, where an empty string,
+ * an empty list and a container of blanks are all "nothing". That distinction
+ * decides whether a capability is switched on. This one reports the value as
+ * it is.
+ *
+ * Addressed structurally, so a protocol-authored key containing a dot or a
+ * space is read as one name rather than as a route through the document. Reads
+ * the stage form specifically, so it keeps working inside a dialog that has
+ * mounted a form store of its own.
+ */
+export function useStageValue(path: string): unknown {
+  const { storeApi, committedFields } = useStageEditorForm();
+
+  const subscribe = useCallback(
+    (onStoreChange: () => void) => storeApi.subscribe(onStoreChange),
+    [storeApi],
+  );
+
+  const getSnapshot = useCallback((): unknown => {
+    const target = safePath(path);
+    if (target === null) return undefined;
+
+    const state = storeApi.getState();
+    const pathOperations = state.pathOperations;
+    if (pathOperations === undefined) {
+      return state.hasValue(path)
+        ? state.getValue(path)
+        : getValue(committedFields, target);
+    }
+    return pathOperations.hasValue(target)
+      ? pathOperations.getValue(target)
+      : getValue(committedFields, target);
+  }, [committedFields, path, storeApi]);
+
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+}
+
+/**
  * Whether any of these paths currently holds a value.
  *
  * How an optional capability decides whether it is already switched on. It
