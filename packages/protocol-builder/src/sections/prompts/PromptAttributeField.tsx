@@ -9,14 +9,17 @@ import Section from '@codaco/fresco-ui/Section';
 import type { VariableType } from '@codaco/protocol-validation';
 
 import VariableEditor from '../../codebook/components/VariableEditor.tsx';
-import type { CodebookVariableDraft } from '../../codebook/editing.ts';
+import type {
+  AuxiliaryCodebookSubmitResult,
+  CodebookVariableDraft,
+} from '../../codebook/editing.ts';
 import type { WriterClass } from '../../codebook/variableRoles.ts';
 import { findDraftContradictions } from '../../codebook/variableValidation.ts';
 import { VariablePickerControl } from '../../fields/VariablePicker.tsx';
 import { DialogFormField } from '../../form/DialogForm.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
-import type { CompoundEditRequest, CompoundEditResult } from '../../session.ts';
+import type { CompoundEditRequest } from '../../session.ts';
 import {
   useCodebookSectionDocument,
   useLockedOptions,
@@ -162,10 +165,19 @@ export default function PromptAttributeField({
    * be satisfied by — one told to require three answers cannot be left with
    * two to choose from. The same check the codebook's field editors run, asked
    * here because this is where the values change.
+   *
+   * Answered as a `contradiction` rather than as a refused compound edit: the
+   * whole vocabulary of `CompoundEditFailureReason` is about what went wrong
+   * between the editor and the host, and `compoundFailureMessage` rewrites all
+   * of it, because a host's words are written for whoever reads a log. This
+   * sentence names the rule and the values that cannot both hold, so it is
+   * already written for the researcher, and the status is what lets the editor
+   * show it rather than "This change could not be sent". See
+   * `AuxiliaryCodebookContradiction`.
    */
   const submitVariableEdit = async (
     request: CompoundEditRequest,
-  ): Promise<CompoundEditResult> => {
+  ): Promise<AuxiliaryCodebookSubmitResult> => {
     const draft = latestDraft.current;
     if (draft !== null && typeof draft.type === 'string') {
       const contradiction = findDraftContradictions({
@@ -176,11 +188,7 @@ export default function PromptAttributeField({
         options: draft.options,
       })[0];
       if (contradiction !== undefined) {
-        return {
-          status: 'failed',
-          reason: 'invalid-request',
-          message: contradiction.message,
-        };
+        return { status: 'contradiction', message: contradiction.message };
       }
     }
     return controller.requestCompoundEdit(request);

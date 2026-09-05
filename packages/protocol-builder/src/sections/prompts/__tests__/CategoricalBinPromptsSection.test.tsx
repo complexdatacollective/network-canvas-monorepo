@@ -281,6 +281,67 @@ describe('creating a bin attribute from inside a prompt', () => {
     // session with nothing half-applied to send on.
     expect(harness.pendingCommands()).toEqual([]);
   });
+
+  /**
+   * Values the attribute's own committed rules could never be satisfied by
+   * never reach the host.
+   *
+   * An attribute told to require three answers cannot be left with two values
+   * to choose from, and the refusal happens here rather than at the host: a
+   * host applying a compound edit is not asked to reason about validation
+   * rules, so by the time one could refuse this, it would be refusing it for
+   * the wrong reason.
+   */
+  it('never asks the host to leave the values a committed rule needs', async () => {
+    const harness = renderStageEditor(openEditor());
+    const submit = vi.spyOn(harness.host, 'submit');
+
+    // The attribute the prompt already bins by is given a rule its three
+    // values can only just satisfy.
+    harness.receiveCodebookUpdate({
+      node: {
+        person: {
+          ...personDocument(harness),
+          variables: {
+            ...personVariables(harness),
+            contactType: {
+              ...(personVariables(harness).contactType as object),
+              validation: { minSelected: 3 },
+            },
+          },
+        },
+      },
+    });
+    const before = personVariables(harness);
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', {
+        name: "Change this attribute's values",
+      }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Remove option 3' }),
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save attribute' }),
+    );
+
+    // Refused, and the researcher is told so with the editor still holding
+    // their draft.
+    await screen.findByRole('alert');
+    expect(
+      screen.getByRole('button', { name: 'Save attribute' }),
+    ).toBeInTheDocument();
+
+    // Nothing was sent and nothing was kept: the codebook still holds the
+    // three values the rule needs.
+    expect(submit).not.toHaveBeenCalled();
+    expect(personVariables(harness)).toEqual(before);
+    expect(harness.pendingCommands()).toEqual([]);
+  });
 });
 
 /**
