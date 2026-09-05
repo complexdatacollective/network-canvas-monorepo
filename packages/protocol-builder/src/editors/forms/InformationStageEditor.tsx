@@ -9,7 +9,7 @@ import {
 import InterviewerGuidanceSection from '../../sections/InterviewerGuidanceSection.tsx';
 import PageContentSection from '../../sections/PageContentSection.tsx';
 import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
-import StageNameSection from '../../sections/StageNameSection.tsx';
+import StageHeading from '../../sections/StageHeading.tsx';
 import type { StageEditorProps } from '../../stage-editor-contract.ts';
 import { saveStageAction } from '../saveStageAction.tsx';
 
@@ -36,7 +36,7 @@ export function InformationStageEditor({
       controller={controller}
       actions={actions ?? saveStageAction}
     >
-      <StageNameSection
+      <StageHeading
         documentationUrl={interfaceDocumentationUrl('information')}
       />
       <PageContentSection

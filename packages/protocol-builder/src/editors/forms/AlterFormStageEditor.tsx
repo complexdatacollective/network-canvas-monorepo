@@ -4,7 +4,7 @@ import FormFieldsSection from '../../sections/FormFieldsSection.tsx';
 import InterviewerGuidanceSection from '../../sections/InterviewerGuidanceSection.tsx';
 import IntroductionSection from '../../sections/IntroductionSection.tsx';
 import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
-import StageNameSection from '../../sections/StageNameSection.tsx';
+import StageHeading from '../../sections/StageHeading.tsx';
 import SubjectSection from '../../sections/SubjectSection.tsx';
 import type { StageEditorProps } from '../../stage-editor-contract.ts';
 import { saveStageAction } from '../saveStageAction.tsx';
@@ -26,7 +26,7 @@ export function AlterFormStageEditor({
       controller={controller}
       actions={actions ?? saveStageAction}
     >
-      <StageNameSection
+      <StageHeading
         documentationUrl={interfaceDocumentationUrl('per-alter-form')}
       />
       <SubjectSection entity="node" filter />

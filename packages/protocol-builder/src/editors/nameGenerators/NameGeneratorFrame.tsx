@@ -1,13 +1,10 @@
 import type { ReactNode } from 'react';
 
 import type { StageEditorController } from '../../controller.ts';
-import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import StageEditorShell from '../../form/StageEditorShell.tsx';
 import InterviewerGuidanceSection from '../../sections/InterviewerGuidanceSection.tsx';
 import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
-import StageNameSection, {
-  type StageNameSectionProps,
-} from '../../sections/StageNameSection.tsx';
+import StageHeading from '../../sections/StageHeading.tsx';
 import type { StageEditorActions } from '../../stage-editor-contract.ts';
 import { saveStageAction } from '../saveStageAction.tsx';
 import { usePanelsForAutoName } from './usePanelsForAutoName.ts';
@@ -52,7 +49,9 @@ export type NameGeneratorFrameProps = Readonly<{
  *
  * It lives beside the name generators rather than above them because they are
  * the first family to land. The moment a second family needs it, it moves up —
- * there is nothing about it that is specific to naming people.
+ * there is nothing about it that is specific to naming people. The heading has
+ * already made that move: every interface says where its stage sits, so
+ * `StageHeading` sits with the sections rather than inside this frame.
  */
 export default function NameGeneratorFrame({
   controller,
@@ -99,43 +98,6 @@ function PanelledStageHeading({
     <StageHeading
       documentationUrl={documentationUrl}
       {...(panels === undefined ? {} : { autoName: { panels } })}
-    />
-  );
-}
-
-/**
- * The stage's name, with where it sits in the interview.
- *
- * A component of its own because the position is read from the protocol the
- * editor is already holding rather than passed in by a host: the interview's
- * stage order is protocol content, and an editor that took it as a prop could
- * be told something the protocol disagrees with. A stage the order does not
- * contain yet — one being created — simply has no position to state.
- */
-function StageHeading({
-  documentationUrl,
-  autoName,
-}: Readonly<{
-  documentationUrl: string;
-  autoName?: StageNameSectionProps['autoName'];
-}>) {
-  const { identity, protocolContext } = useStageEditorForm();
-  const index = protocolContext.orderedStages.findIndex(
-    (stage) => stage.id === identity.id,
-  );
-
-  return (
-    <StageNameSection
-      documentationUrl={documentationUrl}
-      {...(autoName === undefined ? {} : { autoName })}
-      {...(index === -1
-        ? {}
-        : {
-            position: {
-              index: index + 1,
-              total: protocolContext.orderedStages.length,
-            },
-          })}
     />
   );
 }

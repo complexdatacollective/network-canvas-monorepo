@@ -2,6 +2,7 @@ import { screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { stageEditorRegistry } from '../../stageEditorRegistry.ts';
+import { fixtureStageIds } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import { AlterEdgeFormStageEditor } from '../forms/AlterEdgeFormStageEditor.tsx';
 import { AlterFormStageEditor } from '../forms/AlterFormStageEditor.tsx';
@@ -119,6 +120,30 @@ describe('the interfaces the form and name-generator families claim', () => {
       expect(screen.getByRole('textbox', { name: 'Stage name' })).toHaveValue(
         label,
       );
+    },
+  );
+
+  /**
+   * Orientation is not an interface's own decision.
+   *
+   * The position line used to be a name-generator frame's private component,
+   * so three of these seven said where the researcher was in the interview and
+   * four did not — the same protocol, opened from the same timeline, orienting
+   * the researcher or not depending on which stage they clicked. It is read
+   * from the protocol the editor is already holding, so the expected number is
+   * derived from the stage order rather than written out here.
+   */
+  it.each(CLAIMS)(
+    'says where $stageId sits in the interview',
+    ({ stageId }) => {
+      const order = fixtureStageIds();
+      renderStageEditor({ stageId });
+
+      expect(
+        screen.getByText(
+          `Stage ${order.indexOf(stageId) + 1} of ${order.length}`,
+        ),
+      ).toBeInTheDocument();
     },
   );
 });
