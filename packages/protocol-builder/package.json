@@ -24,7 +24,10 @@
     "./fields/RichTextField": "./src/fields/RichTextField.tsx",
     "./fields/StageNameInput": "./src/fields/StageNameInput.tsx",
     "./interfaces/documentation": "./src/interfaces/documentation.ts",
+    "./interfaces/initialValues": "./src/interfaces/initialValues.ts",
     "./interfaces/interfaceNames": "./src/interfaces/interfaceNames.ts",
+    "./interfaces/StageTypeImage": "./src/interfaces/StageTypeImage.tsx",
+    "./interfaces/templates": "./src/interfaces/templates.ts",
     "./markdown/markdownAdapter": "./src/markdown/markdownAdapter.ts",
     "./protocol-context": "./src/protocol-context.ts",
     "./resources/InMemoryResourceGateway": "./src/resources/InMemoryResourceGateway.ts",
@@ -50,6 +53,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@codaco/interface-images": "workspace:^",
     "@codaco/protocol-validation": "workspace:^",
     "@codaco/shared-consts": "workspace:^",
     "@codaco/studio-sync": "workspace:^",
@@ -62,6 +66,7 @@
   },
   "devDependencies": {
     "@codaco/fresco-ui": "workspace:^",
+    "@codaco/protocols": "workspace:^",
     "@codaco/tailwind-config": "workspace:^",
     "@codaco/tsconfig": "workspace:^",
     "@codaco/vitest-config": "workspace:^",

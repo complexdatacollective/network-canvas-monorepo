@@ -37,10 +37,18 @@ export type ResourceGatewayContractHarness = Readonly<{
   /** Arrange the next download to fail transiently, exactly once. */
   failNextDownloadTransiently(): void;
   /**
-   * Host storage details (bucket or key prefixes, database names, endpoints)
-   * that must never appear in anything the gateway returns.
+   * Stage a resource this adapter can hold but cannot write a schema-valid
+   * manifest entry for — content that arrived with no filename is the ordinary
+   * case — and return its id. Promotion must refuse it rather than move its
+   * bytes behind an entry the protocol format rejects.
    */
-  storageMarkers?: readonly string[];
+  stageUnmanifestableResource(): Promise<string> | string;
+  /**
+   * Host storage details (bucket or key prefixes, database names, endpoints)
+   * that must never appear in anything the gateway returns. Required: a
+   * harness that named none would leave the leak test asserting nothing.
+   */
+  storageMarkers: readonly string[];
 }>;
 
 /** The committed resource every harness must seed before the contract runs. */
@@ -505,8 +513,36 @@ export function describeResourceGatewayContract(
       ]);
     });
 
+    it('refuses to promote a resource it cannot write a valid manifest entry for', async () => {
+      const resourceId = await harness().stageUnmanifestableResource();
+      const applyManifest = vi.fn((): ManifestApplyOutcome => ({
+        status: 'applied',
+      }));
+
+      const failure = expectFailure(
+        await gateway().promote({
+          id: 'promotion-unmanifestable',
+          resourceIds: [resourceId],
+          applyManifest,
+        }),
+      );
+
+      // The schema decides, before anything moves: an entry it rejects would
+      // commit bytes the protocol cannot name, which no rollback undoes once
+      // the revision is published.
+      expect(failure.reason).toBe('invalid-content');
+      expect(failure.resourceId).toBe(resourceId);
+      expect(applyManifest).not.toHaveBeenCalled();
+      expect(Object.keys(harness().committedManifest())).toEqual([
+        RESOURCE_GATEWAY_CONTRACT_SEED.committedImage.id,
+      ]);
+    });
+
     it('keeps host storage details out of every failure it reports', async () => {
-      const markers = harness().storageMarkers ?? [];
+      const markers = harness().storageMarkers;
+      // Without markers the loop below would assert nothing, and an adapter
+      // could leak every key it has and still pass.
+      expect(markers).not.toEqual([]);
       const staged = await stageImage();
       harness().failNextDownloadTransiently();
 

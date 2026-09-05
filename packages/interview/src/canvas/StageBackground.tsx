@@ -1,3 +1,5 @@
+'use client';
+
 import type { Stage } from '@codaco/protocol-validation';
 
 import ConcentricCircles from '../components/ConcentricCircles';

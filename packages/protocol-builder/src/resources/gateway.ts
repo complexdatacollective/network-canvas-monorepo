@@ -24,6 +24,31 @@ import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
  *    entry is the host adapter's job at promotion time, which is where
  *    Architect writes the protocol format's `apiKey` asset and Studio can keep
  *    the value server-side instead.
+ *
+ * ## Host adapter notes
+ *
+ * Things an adapter author needs that the types cannot say, recorded here
+ * because each of them is a decision about a specific host rather than about
+ * this port:
+ *
+ * - **Residue is defined per adapter.** `discardAllStaged` must leave no
+ *   residue, but what counts as residue depends on how the host stores bytes.
+ *   An adapter over a content-addressed store discards the *pins* it took, not
+ *   the blocks: two sessions staging the same file share the content, and
+ *   deleting it because one of them cancelled would empty the other's staging.
+ *   The contract's `stagingResidue` harness control is where an adapter says
+ *   what its own residue is.
+ * - **Studio has no secret store yet.** `stageSecret`'s editor half is
+ *   host-neutral, but its server half is not: Studio has nowhere to put the
+ *   value, so a Studio adapter cannot yet resolve a handle at promotion the
+ *   way Architect does by writing an `apiKey` asset. Until it has one, a
+ *   Studio adapter should fail `stageSecret` with `unsupported-kind` rather
+ *   than keep secret material somewhere unintended.
+ * - **Studio's delivery serves some kinds as attachments.** `svg`, `mov`,
+ *   `m4a`, and `aiff` are served with a download disposition, so a
+ *   `resolvePreview` URL for them will not render in an `img`, `video`, or
+ *   `audio` element. Previewing those kinds in Studio needs a delivery change
+ *   there; it is not something this port or an adapter can work around.
  */
 export type ProtocolBuilderResourceGateway = {
   /** Committed manifest resources plus everything staged in this session. */

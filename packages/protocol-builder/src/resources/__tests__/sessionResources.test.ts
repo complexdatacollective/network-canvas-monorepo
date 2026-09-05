@@ -18,7 +18,11 @@ import {
   type ProtocolBuilderPresence,
   type StageFormDraft,
 } from '../../session.ts';
-import type { ResourceDescriptor, ResourceResult } from '../gateway.ts';
+import type {
+  ProtocolBuilderResourceGateway,
+  ResourceDescriptor,
+  ResourceResult,
+} from '../gateway.ts';
 import {
   InMemoryResourceGateway,
   type InMemoryResourceGatewayOptions,
@@ -70,6 +74,18 @@ type SessionFixtureOptions = Readonly<{
    * the mistake the atomic apply exists to prevent.
    */
   omitResourceManifest?: boolean;
+  /** Resources the protocol already carries when the session opens. */
+  committedAssets?: Readonly<Record<string, SectionDoc>>;
+  /**
+   * Holds every staging call at the host until it resolves, so a test can put
+   * an upload or a secret in flight across a cancel.
+   */
+  stagingGate?: Promise<void>;
+  /**
+   * Runs inside the finish apply, where the promotion has moved the bytes and
+   * nothing has committed the manifest yet.
+   */
+  duringApply?: (session: ProtocolBuilderSessionStore) => Promise<void>;
 }>;
 
 function createFixture(options: SessionFixtureOptions = {}) {
@@ -79,7 +95,7 @@ function createFixture(options: SessionFixtureOptions = {}) {
     [settingsSection]: { name: 'Resource lifecycle', schemaVersion: 8 },
     [stageOrderSection]: { stages: ['stage-1'] },
     [stageSection]: { id: 'stage-1', type: stageType, ...fields },
-    [assetsSection]: {},
+    [assetsSection]: { ...options.committedAssets },
     ...(stageType === 'NameGeneratorRoster'
       ? {
           [personSection]: {
@@ -96,10 +112,39 @@ function createFixture(options: SessionFixtureOptions = {}) {
     manifestRevision: { sequence: 7n, hash: 'revision-7' },
     leases: [lease],
   });
+  // Assigned once the session exists; only ever read from inside a finish.
+  let sessionInstance: ProtocolBuilderSessionStore | undefined;
   const gateway = new InMemoryResourceGateway(options.gateway);
+  const gate = options.stagingGate;
+  // The port the session is given: the host itself, or the host behind a gate
+  // that keeps its staging calls in flight until the test releases them.
+  const sessionGatewayPort: ProtocolBuilderResourceGateway =
+    gate === undefined
+      ? gateway
+      : {
+          list: (listOptions) => gateway.list(listOptions),
+          inspect: (resourceId) => gateway.inspect(resourceId),
+          download: (resourceId) => gateway.download(resourceId),
+          resolvePreview: (resourceId) => gateway.resolvePreview(resourceId),
+          discardStaged: (resourceId) => gateway.discardStaged(resourceId),
+          discardAllStaged: () => gateway.discardAllStaged(),
+          promote: (request) => gateway.promote(request),
+          stageUpload: async (request) => {
+            await gate;
+            return gateway.stageUpload(request);
+          },
+          stageSecret: async (request) => {
+            await gate;
+            return gateway.stageSecret(request);
+          },
+        };
+  const onCommands = vi.fn();
   let finishes = 0;
   const onFinish = vi.fn(
-    ({ pendingCommands, resourceManifest }: FinishRequest) => {
+    async ({ pendingCommands, resourceManifest }: FinishRequest) => {
+      if (options.duringApply !== undefined && sessionInstance !== undefined) {
+        await options.duringApply(sessionInstance);
+      }
       const sections = host.getSnapshot().protocolSections;
       const stageCommands = pendingCommands.flatMap((batch) => [
         ...batch.commands,
@@ -148,15 +193,18 @@ function createFixture(options: SessionFixtureOptions = {}) {
     protocolSections: host.getSnapshot().protocolSections,
     manifestRevision: host.getSnapshot().manifestRevision,
     access: { mode: 'editable', leaseOwner: 'owner-primary', leaseEpoch: 4n },
-    resourceGateway: gateway,
+    resourceGateway: sessionGatewayPort,
     buildCandidate: ({ stageDocument, protocolSections: sections }) =>
       assembleProtocolSections({ ...sections, [stageSection]: stageDocument }),
+    onCommands,
     onFinish,
   });
+  sessionInstance = session;
 
   return {
     gateway,
     host,
+    onCommands,
     onFinish,
     session,
     resources: sessionGateway(session),
@@ -444,6 +492,239 @@ describe('a session that stages resources', () => {
       status: 'valid',
       issues: [],
     });
+  });
+
+  it('withholds a command naming a staged resource from a live-applying host', async () => {
+    const { onCommands, session } = createFixture({
+      committedAssets: {
+        'committed-backdrop': {
+          type: 'image',
+          id: 'committed-backdrop',
+          name: 'Committed backdrop',
+          source: 'committed-backdrop.png',
+        },
+      },
+    });
+    const staged = await stageImage(session, 'first');
+
+    // A committed resource is already in the protocol, so a host may apply a
+    // command naming it the moment it is made.
+    session.dispatch([
+      {
+        op: 'set',
+        key: 'items',
+        value: informationItems('committed-backdrop'),
+      },
+    ]);
+    expect(onCommands).toHaveBeenCalledTimes(1);
+
+    session.dispatch([
+      {
+        op: 'set',
+        key: 'items',
+        value: informationItems('committed-backdrop', staged.id),
+      },
+    ]);
+    session.dispatch([{ op: 'set', key: 'title', value: 'Renamed' }]);
+
+    // The staged id has no manifest entry until finish promotes it, so a host
+    // applying it live would commit a stage pointing at nothing. The batch
+    // after it waits too: acknowledging that one alone would drop the held
+    // batch the host never received.
+    expect(onCommands).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(onCommands.mock.calls)).not.toContain(staged.id);
+    // Held, not lost: the researcher's unsaved work is still pending.
+    expect(
+      session.getSnapshot().pendingCommands.map((batch) => batch.id),
+    ).toEqual([1, 2, 3]);
+  });
+
+  it('delivers the withheld commands with the manifest in the finish apply', async () => {
+    const { host, onCommands, onFinish, session } = createFixture();
+    const staged = await stageImage(session, 'first');
+    session.dispatch([
+      { op: 'set', key: 'items', value: informationItems(staged.id) },
+    ]);
+    expect(onCommands).not.toHaveBeenCalled();
+
+    await session.finish();
+
+    const request = onFinish.mock.calls[0]?.[0];
+    expect(
+      request?.pendingCommands.flatMap((batch) => [...batch.commands]),
+    ).toEqual([
+      { op: 'set', key: 'items', value: informationItems(staged.id) },
+    ]);
+    expect(
+      request?.resourceManifest?.commands.map((command) => command.key),
+    ).toEqual([staged.id]);
+    // One revision carried the held command and the manifest entry together.
+    expect(host.getSnapshot().manifestRevision.sequence).toBe(8n);
+    expect(host.getSnapshot().protocolSections[stageSection]).toMatchObject({
+      items: informationItems(staged.id),
+    });
+
+    // Nothing is being held back any more, so the next batch flows live again.
+    session.dispatch([{ op: 'set', key: 'title', value: 'Renamed' }]);
+    expect(onCommands).toHaveBeenCalledTimes(1);
+  });
+
+  it('drops the withheld commands when the session is cancelled', async () => {
+    const { onCommands, session } = createFixture();
+    const staged = await stageImage(session, 'first');
+    session.dispatch([{ op: 'set', key: 'title', value: 'Renamed' }]);
+    session.dispatch([
+      { op: 'set', key: 'items', value: informationItems(staged.id) },
+    ]);
+
+    expect(await session.cancel()).toMatchObject({ status: 'ok' });
+
+    // The staging is gone, so the edit that referenced it goes with it — the
+    // host never had either.
+    expect(
+      session.getSnapshot().pendingCommands.map((batch) => batch.id),
+    ).toEqual([1]);
+    expect(session.getSnapshot().editedSection.fields.items).toEqual([]);
+    expect(session.getSnapshot().editedSection.fields.title).toBe('Renamed');
+    expect(onCommands).toHaveBeenCalledTimes(1);
+  });
+
+  it('discards an upload still in flight when the session is cancelled', async () => {
+    let release = (): void => undefined;
+    const stagingGate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { gateway, session } = createFixture({ stagingGate });
+    const staging = sessionGateway(session).stageUpload({
+      requestId: 'in-flight',
+      kind: 'image',
+      name: 'In flight',
+      source: 'in-flight.png',
+      contentType: 'image/png',
+      bytes: Uint8Array.from([1, 2, 3, 4]),
+    });
+
+    expect(await session.cancel()).toMatchObject({ status: 'ok' });
+    release();
+    const landed = await staging;
+
+    expect(expectFailure(landed).reason).toBe('not-found');
+    expect(session.getSnapshot().stagedResources).toEqual([]);
+    expect(gateway.getStagingResidue()).toEqual([]);
+  });
+
+  it('discards a secret still in flight when the session is cancelled', async () => {
+    let release = (): void => undefined;
+    const stagingGate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { gateway, session } = createFixture({ stagingGate });
+    const staging = sessionGateway(session).stageSecret({
+      requestId: 'in-flight',
+      name: 'Mapbox token',
+      value: SECRET_VALUE,
+    });
+
+    expect(await session.cancel()).toMatchObject({ status: 'ok' });
+    release();
+    const landed = await staging;
+
+    expect(expectFailure(landed).reason).toBe('not-found');
+    expect(session.getSnapshot().stagedResources).toEqual([]);
+    // The key would otherwise stay with the host, for a session that is over.
+    expect(gateway.getStagingResidue()).toEqual([]);
+  });
+
+  it('refuses a discard that arrives while the finish is committing the resource', async () => {
+    const attempts: ResourceResult<undefined>[] = [];
+    const { gateway, session } = createFixture({
+      stage: 'NameGeneratorRoster',
+      duringApply: async (current) => {
+        const staged = current.getSnapshot().stagedResources[0];
+        if (staged === undefined) throw new Error('nothing was staged');
+        attempts.push(await sessionGateway(current).discardStaged(staged.id));
+        attempts.push(await current.cancel());
+      },
+    });
+    const roster = await stageRoster(session, 'roster-request');
+    session.dispatch([{ op: 'set', key: 'dataSource', value: roster.id }]);
+
+    await session.finish();
+
+    // The bytes are moving and their manifest entry is in this very apply:
+    // dropping the resource now would commit a stage pointing at nothing.
+    for (const attempt of attempts) {
+      expect(attempt).toMatchObject({
+        status: 'failed',
+        failure: { reason: 'unavailable', retryable: true },
+      });
+    }
+    expect(attempts).toHaveLength(2);
+    expect(Object.keys(gateway.getCommittedManifest())).toEqual([roster.id]);
+    // The promoted resource is still resolvable while the host catches up.
+    await expect(session.validate()).resolves.toMatchObject({
+      status: 'valid',
+    });
+  });
+
+  it('promotes an uncertain finish once, and gives the next finish its own promotion', async () => {
+    const { gateway, session } = createFixture();
+    const first = await stageImage(session, 'first');
+    session.dispatch([
+      { op: 'set', key: 'items', value: informationItems(first.id) },
+    ]);
+    const promote = vi.spyOn(gateway, 'promote');
+    gateway.failNextPromotionPartially();
+
+    await expect(session.finish()).rejects.toBeInstanceOf(
+      ResourcePromotionError,
+    );
+    await session.finish();
+
+    const promotionIds = promote.mock.calls.map(([request]) => request.id);
+    // A retried finish is the same intent: a gateway that already promoted it
+    // must be able to recognise it rather than promote a second copy.
+    expect(promotionIds[0]).toBe(promotionIds[1]);
+
+    const second = await stageImage(session, 'second');
+    session.dispatch([
+      {
+        op: 'set',
+        key: 'items',
+        value: informationItems(first.id, second.id),
+      },
+    ]);
+    await session.finish();
+
+    // A finish that succeeded is spent: reusing its id would hand back the
+    // finished promotion and commit nothing of this one.
+    expect(promotionIds[2]).not.toBe(promotionIds[0]);
+    expect(Object.keys(gateway.getCommittedManifest())).toEqual([
+      first.id,
+      second.id,
+    ]);
+  });
+
+  it('gives a fresh session its own promotion id', async () => {
+    const first = createFixture();
+    const firstPromote = vi.spyOn(first.gateway, 'promote');
+    const firstImage = await stageImage(first.session, 'first');
+    first.session.dispatch([
+      { op: 'set', key: 'items', value: informationItems(firstImage.id) },
+    ]);
+    await first.session.finish();
+
+    const second = createFixture();
+    const secondPromote = vi.spyOn(second.gateway, 'promote');
+    const secondImage = await stageImage(second.session, 'first');
+    second.session.dispatch([
+      { op: 'set', key: 'items', value: informationItems(secondImage.id) },
+    ]);
+    await second.session.finish();
+
+    expect(secondPromote.mock.calls[0]?.[0].id).not.toBe(
+      firstPromote.mock.calls[0]?.[0].id,
+    );
   });
 
   it('never lets a staged secret value into the snapshot', async () => {

@@ -56,6 +56,30 @@ export type StagedResourceTracker = Readonly<{
   promotedAwaitingManifest(
     manifestSection: SectionDoc | undefined,
   ): readonly ResourceDescriptor[];
+  /**
+   * Ends this session's staging and discards everything it staged.
+   *
+   * Staging that is still in flight is covered: an upload or a secret that
+   * lands after this is discarded at the host instead of being registered,
+   * because the call that started it belongs to a session that is over and
+   * nothing else would ever drop it.
+   *
+   * Refused while a promotion is in flight, because that promotion's manifest
+   * apply is mid-way through committing exactly these resources: discarding
+   * them now would leave the committed stage pointing at bytes this session
+   * threw away.
+   */
+  cancel(): Promise<ResourceResult<undefined>>;
+  /**
+   * Notes that a finish committed this session's staged resources.
+   *
+   * A finish promotes the resources the draft referenced *when it began*, so
+   * an upload or secret still in flight at that point is neither promoted nor
+   * discarded by it; keeping it would leave the host holding staging the
+   * finish already decided against. Staging started after the finish is an
+   * ordinary part of the next edit and is kept as usual.
+   */
+  finished(): void;
 }>;
 
 export type StagedResourceTrackerOptions = Readonly<{
@@ -81,6 +105,17 @@ export function createStagedResourceTracker(
   }>;
   const entries = new Map<string, Entry>();
   const host = options.gateway;
+  /** Ids of a promotion that is in flight; they cannot be discarded. */
+  const promoting = new Set<string>();
+  /** True once the session cancelled: nothing staged after it is kept. */
+  let cancelled = false;
+  /**
+   * Bumped whenever this session stops staging (a cancel, or a finish that has
+   * already chosen what it promotes). A staging call captures it before its
+   * await, so a result that lands into a later window can be told apart from
+   * one the session is still waiting for.
+   */
+  let stagingWindow = 0;
 
   const remember = (
     descriptor: ResourceDescriptor,
@@ -94,12 +129,42 @@ export function createStagedResourceTracker(
     options.onStagedChanged();
   };
 
+  /**
+   * Registers what the host staged, unless this session stopped staging while
+   * the call was in flight. Nothing else would ever drop such a resource — the
+   * finish that ran promoted the resources it knew about, and a cancelled
+   * session discards once — so it is dropped at the host here.
+   */
+  const keepStagedResult = async (
+    stagedDuring: number,
+    descriptor: ResourceDescriptor,
+    handle?: StagedSecretHandle,
+  ): Promise<boolean> => {
+    if (!cancelled && stagedDuring === stagingWindow) {
+      remember(descriptor, handle);
+      return true;
+    }
+    await host.discardStaged(descriptor.id);
+    return false;
+  };
+
   const forget = (resourceIds: Iterable<string>): void => {
     let changed = false;
     for (const resourceId of resourceIds) {
       changed = entries.delete(resourceId) || changed;
     }
     if (changed) options.onStagedChanged();
+  };
+
+  // A promoted resource is no longer staging, so a discard-everything leaves it
+  // alone: it is committed, and the session goes on resolving it until the
+  // host's revision carries its manifest entry.
+  const forgetAllStaged = (): void => {
+    forget(
+      [...entries.values()]
+        .filter((entry) => !entry.promoted)
+        .map((entry) => entry.descriptor.id),
+    );
   };
 
   // A promoted resource stops being staged but stays known, so it goes on
@@ -125,39 +190,45 @@ export function createStagedResourceTracker(
       request: StageUploadRequest,
     ): Promise<ResourceResult<ResourceDescriptor>> {
       if (!options.isEditable()) return readOnlyFailure();
+      const stagedDuring = stagingWindow;
       const result = await host.stageUpload(request);
-      if (result.status === 'ok') remember(result.data);
-      return result;
+      if (result.status !== 'ok') return result;
+      return (await keepStagedResult(stagedDuring, result.data))
+        ? result
+        : stagingEndedFailure(result.data.id, 'file');
     },
 
     async stageSecret(
       request: StageSecretRequest,
     ): Promise<ResourceResult<StagedSecret>> {
       if (!options.isEditable()) return readOnlyFailure();
+      const stagedDuring = stagingWindow;
       const result = await host.stageSecret(request);
-      if (result.status === 'ok') {
-        remember(result.data.descriptor, result.data.handle);
-      }
-      return result;
+      if (result.status !== 'ok') return result;
+      return (await keepStagedResult(
+        stagedDuring,
+        result.data.descriptor,
+        result.data.handle,
+      ))
+        ? result
+        : stagingEndedFailure(result.data.descriptor.id, 'secret');
     },
 
     async discardStaged(
       resourceId: string,
     ): Promise<ResourceResult<undefined>> {
+      if (promoting.has(resourceId)) {
+        return promotionInFlightFailure(resourceId);
+      }
       const result = await host.discardStaged(resourceId);
       if (result.status === 'ok') forget([resourceId]);
       return result;
     },
 
     async discardAllStaged(): Promise<ResourceResult<undefined>> {
+      if (promoting.size > 0) return promotionInFlightFailure();
       const result = await host.discardAllStaged();
-      if (result.status === 'ok') {
-        forget(
-          [...entries.values()]
-            .filter((entry) => !entry.promoted)
-            .map((entry) => entry.descriptor.id),
-        );
-      }
+      if (result.status === 'ok') forgetAllStaged();
       return result;
     },
 
@@ -165,16 +236,39 @@ export function createStagedResourceTracker(
       request: ResourcePromotionRequest,
     ): Promise<ResourceResult<ResourcePromotion>> {
       if (!options.isEditable()) return readOnlyFailure();
-      const result = await host.promote(request);
-      if (result.status === 'ok') {
-        markPromoted(result.data.promoted.map((descriptor) => descriptor.id));
+      // Held for exactly as long as the promotion is undecided, so a discard
+      // arriving from the manifest apply — an editor cancelling mid-save — is
+      // refused rather than deleting a resource the apply is committing.
+      for (const resourceId of request.resourceIds) promoting.add(resourceId);
+      try {
+        const result = await host.promote(request);
+        if (result.status === 'ok') {
+          markPromoted(result.data.promoted.map((descriptor) => descriptor.id));
+        }
+        return result;
+      } finally {
+        for (const resourceId of request.resourceIds) {
+          promoting.delete(resourceId);
+        }
       }
-      return result;
     },
   };
 
   return Object.freeze({
     gateway,
+    cancel: async (): Promise<ResourceResult<undefined>> => {
+      if (promoting.size > 0) return promotionInFlightFailure();
+      // Set before the discard is awaited: staging that lands while the host
+      // is clearing up belongs to a session that is already over.
+      cancelled = true;
+      stagingWindow += 1;
+      const result = await host.discardAllStaged();
+      if (result.status === 'ok') forgetAllStaged();
+      return result;
+    },
+    finished: () => {
+      stagingWindow += 1;
+    },
     staged: () =>
       Object.freeze(
         [...entries.values()]
@@ -461,5 +555,34 @@ function readOnlyFailure<T>(): ResourceResult<T> {
   return resourceFailure(
     'read-only',
     'this protocol is open for viewing only, so its resources cannot change',
+  );
+}
+
+/**
+ * A discard refused because the resources are mid-promotion. Retryable, and
+ * true to what the researcher can do: once the save settles, an unwanted
+ * resource can be discarded like any other.
+ */
+function promotionInFlightFailure<T>(resourceId?: string): ResourceResult<T> {
+  return resourceFailure(
+    'unavailable',
+    'these resources are being saved right now, so they cannot be discarded until the save finishes',
+    resourceId === undefined ? {} : { resourceId },
+  );
+}
+
+/**
+ * What a staging call gets when its own session stopped staging before the
+ * result arrived: the resource was discarded at the host, so the id it names
+ * really does resolve to nothing.
+ */
+function stagingEndedFailure<T>(
+  resourceId: string,
+  subject: 'file' | 'secret',
+): ResourceResult<T> {
+  return resourceFailure(
+    'not-found',
+    `this editing session ended before the ${subject} finished staging, so it was not kept`,
+    { resourceId },
   );
 }

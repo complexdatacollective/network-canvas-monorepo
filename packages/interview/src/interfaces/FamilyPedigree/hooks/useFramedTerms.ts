@@ -1,3 +1,5 @@
+'use client';
+
 import { useFamilyPedigreeStore } from '../FamilyPedigreeContext';
 import { FRAMING_TERMS, type FramingTerms } from '../framingTerms';
 

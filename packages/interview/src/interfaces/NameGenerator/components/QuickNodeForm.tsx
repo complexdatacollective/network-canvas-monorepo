@@ -1,3 +1,5 @@
+'use client';
+
 import { motion, type Variants } from 'motion/react';
 import { useCallback, useState } from 'react';
 

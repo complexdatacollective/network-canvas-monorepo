@@ -4,7 +4,24 @@ import InterfacePicture, {
 import manifest, {
   type InterfaceType,
 } from '@codaco/interface-images/manifest';
-import { defaultStageImage } from '~/images/timeline';
+
+/**
+ * Placeholder for stage types that have no generated screenshot in
+ * `@codaco/interface-images` — a type not yet implemented in the interview
+ * package, or one an imported `.netcanvas` names that this build has never
+ * heard of. Dimensions must match the file.
+ *
+ * Exported so a host can warm the browser cache for it alongside the
+ * generated screenshots.
+ */
+export const defaultStageImage = {
+  // `new URL(…, import.meta.url)` rather than a bundler-specific asset import:
+  // this module is consumed as source by hosts with different pipelines, and
+  // it is the form `@codaco/interface-images`' own manifest already uses.
+  src: new URL('./assets/stage--Default.webp', import.meta.url).href,
+  width: 448,
+  height: 307,
+};
 
 const isInterfaceType = (type: string): type is InterfaceType =>
   Object.hasOwn(manifest, type);

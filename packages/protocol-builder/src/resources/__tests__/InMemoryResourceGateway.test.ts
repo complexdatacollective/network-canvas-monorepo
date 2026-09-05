@@ -52,6 +52,9 @@ function createHarness(): ResourceGatewayContractHarness {
     failNextDownloadTransiently: () => {
       gateway.failNext('download', { reason: 'unavailable' });
     },
+    // A file this host holds but cannot name: the manifest entry it would
+    // write has no `source`, which the protocol schema rejects.
+    stageUnmanifestableResource: () => gateway.stageUnnamedContent().id,
     // Internal keys this adapter uses for staging; a failure that named one
     // would be leaking host storage detail into the editor.
     storageMarkers: ['content:', 'request:', 'preview-', 'staged-secret-'],
