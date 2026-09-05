@@ -19,6 +19,7 @@ import {
   defineMessages,
 } from '@codaco/app-i18n/messages';
 import { env } from '~/env';
+import { isFrescoLocale } from '~/i18n/locales';
 import {
   formatPasskeyName,
   getPasskeyActivityValues,
@@ -317,8 +318,9 @@ export async function generateSignupRegistrationOptions(username: string) {
 export async function signupWithPasskey(data: {
   username: string;
   credential: RegistrationResponseJSON;
+  locale?: unknown;
 }) {
-  const { username, credential } = data;
+  const { username, credential, locale } = data;
 
   if (await isAppConfigured()) {
     return {
@@ -382,6 +384,7 @@ export async function signupWithPasskey(data: {
     user = await prisma.user.create({
       data: {
         username,
+        locale: isFrescoLocale(locale) ? locale : null,
         key: {
           create: {
             id: `username:${username}`,

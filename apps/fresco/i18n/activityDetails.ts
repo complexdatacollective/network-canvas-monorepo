@@ -59,6 +59,13 @@ const activityDetailMessages = defineMessages({
     description:
       'A participant started an interview; participant is their stable display value. User-controlled values are literal data, not translated copy.',
   },
+  interviewOpened: {
+    id: 'fresco.activity.detail.interviewOpened',
+    defaultMessage:
+      '{actor, select, researcher {Interview “{interview}” was opened by user “{username}”.} other {Interview “{interview}” was opened.}}',
+    description:
+      'An interview is opened by a signed-in researcher or an unauthenticated participant. Preserve the interview identifier and username as literal data.',
+  },
   apiTokenCreated: {
     id: 'fresco.activity.detail.apiTokenCreated',
     defaultMessage:
@@ -212,9 +219,14 @@ const activityValueSchemas = {
   }),
   interviewCompleted: z.strictObject({ participant: z.string() }),
   interviewStarted: z.strictObject({ participant: z.string() }),
+  interviewOpened: z.strictObject({
+    actor: z.enum(['researcher', 'participant']),
+    interview: z.string(),
+    username: z.string(),
+  }),
   apiTokenCreated: z.strictObject({
     username: z.string(),
-    descriptionMode: z.string(),
+    descriptionMode: z.enum(['named', 'unnamed']),
     token: z.string(),
   }),
   apiTokenUpdated: z.strictObject({ username: z.string(), token: z.string() }),
@@ -241,7 +253,7 @@ const activityValueSchemas = {
   }),
   passkeyRemoved: z.strictObject({
     username: z.string(),
-    nameMode: z.string(),
+    nameMode: z.enum(['named', 'unnamed']),
     passkey: z.string(),
     passkeyDeviceType: z.optional(z.enum(['multiDevice', 'singleDevice'])),
   }),

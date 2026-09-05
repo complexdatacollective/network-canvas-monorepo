@@ -5,7 +5,7 @@ import {
   startRegistration,
 } from '@simplewebauthn/browser';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useMediaQuery } from 'usehooks-ts';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
@@ -26,6 +26,7 @@ import {
   generateSignupRegistrationOptions,
   signupWithPasskey,
 } from '~/actions/webauthn';
+import { useFrescoLocale } from '~/i18n/FrescoI18nProvider';
 import { createAuthSchemas } from '~/schemas/auth';
 
 const messages = defineMessages({
@@ -122,6 +123,11 @@ type SignUpFormProps = {
 
 export const SignUpForm = ({ sandboxMode = false }: SignUpFormProps) => {
   const intl = useAppIntl();
+  const { preference } = useFrescoLocale();
+  const latestPreference = useRef(preference);
+  useLayoutEffect(() => {
+    latestPreference.current = preference;
+  }, [preference]);
   const { createUserSchema } = createAuthSchemas(createMessageError);
 
   const router = useRouter();
@@ -150,7 +156,7 @@ export const SignUpForm = ({ sandboxMode = false }: SignUpFormProps) => {
   };
 
   const handlePasswordSignup: FormSubmitHandler = async (data) => {
-    const result = await signup(data);
+    const result = await signup(data, latestPreference.current);
 
     return {
       success: false,
@@ -192,7 +198,11 @@ export const SignUpForm = ({ sandboxMode = false }: SignUpFormProps) => {
       });
 
       // Step 3: Atomic signup — creates user + stores passkey + session
-      const result = await signupWithPasskey({ username, credential });
+      const result = await signupWithPasskey({
+        username,
+        credential,
+        locale: latestPreference.current,
+      });
 
       if (result.error) {
         setPasskeyLoading(false);

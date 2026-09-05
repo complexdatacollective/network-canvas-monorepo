@@ -130,4 +130,43 @@ describe('Fresco researcher message catalogs', () => {
       }),
     ).toBe('Language');
   });
+
+  it('uses British self-enrol wording on both recruitment surfaces', () => {
+    const recruitment = Object.entries(en).filter(([, message]) =>
+      message.defaultMessage.includes('self-enroll'),
+    );
+    expect(recruitment).toHaveLength(2);
+    const intl = createAppIntl({
+      locale: 'en-GB',
+      messages: frescoCatalogs['en-GB'],
+    });
+    for (const [id, message] of recruitment) {
+      const descriptor = { ...message, id };
+      const rendered = intl.formatMessage(descriptor, {
+        tag1: (chunks) => chunks.join(''),
+      });
+      expect(rendered).toContain('self-enrol');
+      expect(rendered).not.toContain('self-enroll');
+    }
+  });
+
+  it('preserves the completed-interview lockout guidance in English and Spanish', () => {
+    const id = 'fresco.settings.interviews.completedLimit';
+    const message = en[id];
+    if (!message) throw new Error('Expected completed-interview guidance');
+    const values = { strong: (chunks: string[]) => chunks.join('') };
+    expect(
+      createAppIntl({ locale: 'en' }).formatMessage({ ...message, id }, values),
+    ).toContain(
+      'starting a new interview or resuming any other incomplete interview is prevented',
+    );
+    expect(
+      createAppIntl({
+        locale: 'es',
+        messages: frescoCatalogs.es,
+      }).formatMessage({ ...message, id }, values),
+    ).toContain(
+      'no podrá iniciar una entrevista nueva ni reanudar ninguna otra entrevista incompleta',
+    );
+  });
 });

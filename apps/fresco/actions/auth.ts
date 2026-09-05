@@ -7,6 +7,7 @@ import z from 'zod';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import { type FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
+import { isFrescoLocale } from '~/i18n/locales';
 import { addEvent } from '~/lib/activityFeed';
 import { getServerSession } from '~/lib/auth/guards';
 import { createSessionCookie, SESSION_COOKIE_NAME } from '~/lib/auth/session';
@@ -92,7 +93,10 @@ async function getDummyPasswordHash(): Promise<string> {
   return dummyPasswordHash;
 }
 
-export async function signup(formData: unknown) {
+export async function signup(
+  formData: unknown,
+  localePreference: unknown = null,
+) {
   const { createUserSchema } = createAuthSchemas(createMessageError);
 
   // Account creation must be impossible once the app is configured. This is
@@ -127,6 +131,7 @@ export async function signup(formData: unknown) {
     user = await prisma.user.create({
       data: {
         username,
+        locale: isFrescoLocale(localePreference) ? localePreference : null,
         key: {
           create: {
             id: `username:${username}`,

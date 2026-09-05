@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest';
 import { createAppIntl } from '@codaco/app-i18n/messages';
 import { AppI18nProvider, useAppIntl } from '@codaco/app-i18n/react';
 import { fetchActivityFeedTableColumnDefs } from '~/app/dashboard/_components/ActivityFeed/ColumnDefinition';
+import { formatActivityType } from '~/app/dashboard/_components/ActivityFeed/messages';
 import {
   formatActivityDetails,
   type ActivityLocalization,
@@ -56,6 +57,14 @@ function View({ locale }: { locale: string }) {
 }
 
 describe('localized activity records', () => {
+  it.each(['Historical Type', 'constructor', 'toString'])(
+    'preserves an unknown type label verbatim: %s',
+    (type) => {
+      const intl = createAppIntl({ locale: 'es', messages: frescoCatalogs.es });
+      expect(formatActivityType(intl, type)).toBe(type);
+    },
+  );
+
   it('formats structured details in the active locale and escapes literal user values', () => {
     const view = render(<View locale="en" />);
     expect(
@@ -80,6 +89,18 @@ describe('localized activity records', () => {
     { kind: 'userLogin', values: {} },
     { kind: 'userLogin', values: { username: 'Ada', extra: 'unexpected' } },
     { kind: 'participantsAdded', values: { username: 'Ada', count: 'two' } },
+    {
+      kind: 'apiTokenCreated',
+      values: {
+        username: 'Ada',
+        descriptionMode: 'future',
+        token: 'Named token',
+      },
+    },
+    {
+      kind: 'passkeyRemoved',
+      values: { username: 'Ada', nameMode: 'future', passkey: 'Named key' },
+    },
   ])(
     'preserves historical or unrecognized audit content verbatim: %j',
     (localization) => {
@@ -87,6 +108,52 @@ describe('localized activity records', () => {
       expect(
         formatActivityDetails(intl, { message: legacy, localization }),
       ).toBe(legacy);
+    },
+  );
+
+  it.each([
+    [
+      'researcher',
+      'Interview “interview-42” was opened by user “Ada”.',
+      '«Ada» abrió la entrevista «interview-42».',
+    ],
+    [
+      'participant',
+      'Interview “interview-42” was opened.',
+      'Se abrió la entrevista «interview-42».',
+    ],
+  ])(
+    'formats an interview opened by a %s without changing the original record',
+    (actor, english, spanish) => {
+      const activity = {
+        message: 'Original interview-open audit record',
+        localization: {
+          kind: 'interviewOpened',
+          values: { actor, username: 'Ada', interview: 'interview-42' },
+        },
+      };
+      expect(
+        formatActivityDetails(createAppIntl({ locale: 'en' }), activity),
+      ).toBe(english);
+      expect(
+        formatActivityDetails(
+          createAppIntl({ locale: 'es', messages: frescoCatalogs.es }),
+          activity,
+        ),
+      ).toBe(spanish);
+      expect(activity.message).toBe('Original interview-open audit record');
+      expect(
+        formatActivityDetails(
+          createAppIntl({ locale: 'es', messages: frescoCatalogs.es }),
+          {
+            ...activity,
+            localization: {
+              ...activity.localization,
+              values: { ...activity.localization.values, actor: 'future' },
+            },
+          },
+        ),
+      ).toBe(activity.message);
     },
   );
 

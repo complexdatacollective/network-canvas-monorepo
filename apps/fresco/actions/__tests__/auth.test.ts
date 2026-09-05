@@ -460,6 +460,35 @@ describe('signup', () => {
     vi.clearAllMocks();
   });
 
+  it.each([
+    [undefined, null],
+    [null, null],
+    ['es', 'es'],
+    ['en-GB', 'en-GB'],
+    ['unsupported', null],
+    [42, null],
+  ])(
+    'preserves the explicit setup preference %s when creating the user',
+    async (preference, expected) => {
+      mockIsAppConfigured.mockResolvedValue(false);
+      mockCreateUserSchemaSafeParse.mockReturnValue({
+        success: true,
+        data: { username: 'Researcher', password: 'Sup3rSecret!' },
+      });
+      mockUserCreate.mockResolvedValue({ id: 'new-user' });
+      await signup(
+        { username: 'Researcher', password: 'Sup3rSecret!' },
+        preference,
+      );
+      expect(mockUserCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ locale: expected }),
+        }),
+      );
+      expect(mockCreateSessionCookie).toHaveBeenCalledWith('new-user');
+    },
+  );
+
   it('refuses to create an account once the app is configured', async () => {
     mockIsAppConfigured.mockResolvedValue(true);
 

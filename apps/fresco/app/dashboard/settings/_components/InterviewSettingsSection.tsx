@@ -16,9 +16,9 @@ const messages = defineMessages({
   completedLimit: {
     id: 'fresco.settings.interviews.completedLimit',
     defaultMessage:
-      'If this option is enabled, each participant can only have one <strong>completed</strong> interview for each protocol, although they may have multiple incomplete interviews.',
+      'If this option is enabled, each participant can only have one <strong>completed</strong> interview for each protocol, although they may have multiple incomplete interviews. Once an interview is completed, starting a new interview or resuming any other incomplete interview is prevented.',
     description:
-      'Explains the limit on completed interviews while preserving incomplete interviews.',
+      'Explains the completed-interview limit and that completion prevents both starting another interview and resuming any other incomplete interview.',
   },
 
   interviewSettings: {

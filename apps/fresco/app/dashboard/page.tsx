@@ -154,7 +154,7 @@ async function DashboardContent({
   const cache = await searchParamsCache.parse(searchParamsPromise);
 
   const summaryPromise = getSummaryStatistics();
-  const activitiesPromise = fetchActivities(cache);
+  const activitiesPromise = fetchActivities(cache, intl.locale);
 
   return (
     <>

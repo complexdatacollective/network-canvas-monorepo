@@ -316,6 +316,7 @@ const eventMessages: Readonly<Record<string, MessageDescriptor>> = {
 };
 
 export function formatActivityType(intl: IntlShape, type: string): string {
+  if (!Object.hasOwn(eventMessages, type)) return type;
   const message = eventMessages[type];
   return message ? intl.formatMessage(message) : type;
 }

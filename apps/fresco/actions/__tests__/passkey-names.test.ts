@@ -123,6 +123,43 @@ it('records device identity when removing a passkey with a generated name', asyn
   );
 });
 
+it.each([
+  [undefined, null],
+  [null, null],
+  ['es', 'es'],
+  ['en-GB', 'en-GB'],
+  ['unsupported', null],
+  [42, null],
+])(
+  'preserves the explicit setup preference %s during passkey account creation',
+  async (locale, expected) => {
+    verify.mockResolvedValue({
+      verified: true,
+      registrationInfo: {
+        credential: {
+          id: 'credential-id',
+          publicKey: new Uint8Array([1]),
+          counter: 0,
+        },
+        credentialDeviceType: 'multiDevice',
+        credentialBackedUp: false,
+        aaguid: 'unknown',
+      },
+    });
+    const result = await signupWithPasskey({
+      username: 'Researcher',
+      credential,
+      locale,
+    });
+    expect(result.error).toBeNull();
+    expect(createUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ locale: expected }),
+      }),
+    );
+  },
+);
+
 describe.each(['additional', 'signup', 'switch'])(
   '%s passkey registration names',
   (path) => {
