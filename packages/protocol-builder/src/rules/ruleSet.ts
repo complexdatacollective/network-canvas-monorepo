@@ -1,7 +1,11 @@
 import type { Codebook } from '@codaco/protocol-validation';
 
 import type { RuleDraft } from './rule.ts';
-import { describeRule } from './ruleDescription.ts';
+import {
+  describeRule,
+  type RuleProblem,
+  type RuleProblemCode,
+} from './ruleDescription.ts';
 
 /** How several rules in one set combine. */
 export type RuleSetJoin = 'AND' | 'OR';
@@ -23,7 +27,7 @@ export const JOIN_OPTIONS: readonly Readonly<{
   Object.freeze({ value: 'OR' as const, label: 'Any rule can match' }),
 ]);
 
-export const isRuleSetJoin = (value: unknown): value is RuleSetJoin =>
+const isRuleSetJoin = (value: unknown): value is RuleSetJoin =>
   value === 'AND' || value === 'OR';
 
 /**
@@ -75,10 +79,26 @@ export type RuleSetIssue = Readonly<{
 }>;
 
 /**
+ * The problems a rule can only have because the codebook moved under it.
+ *
+ * Shared with the list, so a rule the field refuses is exactly a rule the row
+ * marks — and a code added to one is reported by both.
+ */
+const CODEBOOK_RULE_PROBLEMS: readonly RuleProblemCode[] = Object.freeze([
+  'missingAttribute',
+  'missingEntityType',
+  'invalidOperator',
+]);
+
+export const isCodebookRuleProblem = (problem: RuleProblem): boolean =>
+  CODEBOOK_RULE_PROBLEMS.includes(problem.code);
+
+/**
  * Every rule in this set that the codebook can no longer account for.
  *
- * A rule naming a deleted attribute or a deleted entity type is a problem to
- * REPORT: the researcher has to open it and choose again, or delete it. It is
+ * A rule naming a deleted attribute or a deleted entity type — or comparing an
+ * attribute whose type has since changed under it — is a problem to REPORT:
+ * the researcher has to open it and choose again, or delete it. It is
  * emphatically not a reason to throw — a collaborator deleting a variable
  * would otherwise take the whole stage editor down with it, and the rule the
  * researcher needs to fix would be the one thing they could not see.
@@ -90,15 +110,9 @@ export const ruleSetCodebookIssues = (
   ruleSetRules(value).flatMap<RuleSetIssue>((rule, index) => {
     const { problems } = describeRule({ rule, codebook });
     // Incompleteness is the editor's own business — every control inside the
-    // rule dialog already refuses to save without it — while a dangling
-    // reference appears from OUTSIDE the editor and has nothing else to report
-    // it.
-    const dangling = problems.filter(
-      (problem) =>
-        problem.code === 'missingAttribute' ||
-        problem.code === 'missingEntityType',
-    );
-    return dangling.map((problem) => ({
+    // rule dialog already refuses to save without it — while these appear from
+    // OUTSIDE the editor and have nothing else to report them.
+    return problems.filter(isCodebookRuleProblem).map((problem) => ({
       position: index + 1,
       message: problem.message,
     }));
@@ -122,11 +136,11 @@ export const ruleSetValidationMessage = (
   if (first === undefined) return undefined;
   // Whole sentences with a number in them, rather than a position glued onto
   // the rule's own message: the specific wording ("a node type", "an
-  // attribute") belongs on the marked rule itself, where the researcher is
-  // looking when they open it.
+  // attribute", "an operator") belongs on the marked rule itself, where the
+  // researcher is looking when they open it.
   return issues.length === 1
-    ? `Rule ${first.position} refers to part of the codebook that no longer exists. Open it to choose again, or delete it.`
-    : `${issues.length} of these rules refer to parts of the codebook that no longer exist. Open each marked rule to choose again, or delete it.`;
+    ? `Rule ${first.position} no longer works with this protocol's codebook. Open it to fix it, or delete it.`
+    : `${issues.length} of these rules no longer work with this protocol's codebook. Open each marked rule to fix it, or delete it.`;
 };
 
 const NO_RULES_MESSAGE = 'Please create at least one rule.';

@@ -51,7 +51,8 @@
     "lucide-react": "catalog:",
     "remark-parse": "^11.0.0",
     "unified": "^11.0.5",
-    "uuid": "catalog:"
+    "uuid": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@codaco/fresco-ui": "workspace:^",

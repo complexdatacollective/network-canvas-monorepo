@@ -81,6 +81,30 @@ describe('describeRule', () => {
     });
   });
 
+  it('does not read a pattern against a multi-select attribute as prose', () => {
+    const description = describeRule({
+      rule: {
+        id: 'rule-21',
+        type: 'node',
+        options: {
+          type: 'person',
+          attribute: 'mood',
+          operator: 'CONTAINS',
+          value: '.*happy.*',
+        },
+      },
+      codebook,
+    });
+
+    // The option labels of a categorical attribute ARE authored prose, but
+    // this operand is not one of them: it is a regular expression, and
+    // Markdown eats the very characters that make it one.
+    expect(description.operand).toEqual({
+      items: ['.*happy.*'],
+      authoredLabels: false,
+    });
+  });
+
   it('reads an option-count operand as a number, not an option label', () => {
     const description = describeRule({
       rule: {
@@ -150,6 +174,163 @@ describe('describeRule', () => {
     });
     expect(description.attribute?.type).toBe('scalar');
     expect(description.text).toBe('Friend where Closeness is greater than 3');
+  });
+
+  /**
+   * The editor no longer offers `EXISTS`/`NOT_EXISTS` against an attribute —
+   * an unanswered attribute is already covered by the presence rule above it —
+   * but protocols authored before it stopped still hold them, and Architect
+   * reads them as "Person where Age" / "Person without Age". The operator IS
+   * the word that introduces the attribute here, so writing the connector as
+   * well and then repeating the operator after the name produced "Person where
+   * Age where".
+   */
+  describe('a rule about whether an attribute was answered', () => {
+    it('reads an alter rule the way Architect does', () => {
+      const description = describeRule({
+        rule: {
+          id: 'rule-13',
+          type: 'node',
+          options: { type: 'person', attribute: 'age', operator: 'EXISTS' },
+        },
+        codebook,
+      });
+
+      expect(description.text).toBe('Person where Age');
+      expect(description.attributePresence).toBe(true);
+      expect(description.columns).toBe(false);
+      expect(description.problems).toEqual([]);
+    });
+
+    it('reads its negative the way Architect does', () => {
+      const description = describeRule({
+        rule: {
+          id: 'rule-14',
+          type: 'node',
+          options: { type: 'person', attribute: 'age', operator: 'NOT_EXISTS' },
+        },
+        codebook,
+      });
+
+      expect(description.text).toBe('Person without Age');
+      expect(description.attributePresence).toBe(true);
+    });
+
+    it('addresses the same rule about the ego in the ego voice', () => {
+      const description = describeRule({
+        rule: {
+          id: 'rule-15',
+          type: 'ego',
+          options: { attribute: 'egoName', operator: 'EXISTS' },
+        },
+        codebook,
+      });
+
+      expect(description.text).toBe('Ego has EgoName');
+      expect(description.attributePresence).toBe(true);
+    });
+
+    it('leaves a legacy operand out of the sentence', () => {
+      const description = describeRule({
+        rule: {
+          id: 'rule-16',
+          type: 'node',
+          options: {
+            type: 'person',
+            attribute: 'age',
+            operator: 'EXISTS',
+            // Nothing is compared, so an operand a legacy protocol left behind
+            // is not part of what the rule says.
+            value: 30,
+          },
+        },
+        codebook,
+      });
+
+      expect(description.operand).toBeUndefined();
+      expect(description.text).toBe('Person where Age');
+    });
+
+    it('does not report the operator the schema still accepts as invalid', () => {
+      const description = describeRule({
+        rule: {
+          id: 'rule-17',
+          type: 'node',
+          options: { type: 'person', attribute: 'note', operator: 'EXISTS' },
+        },
+        codebook,
+      });
+
+      // The editor's own list of offered operators is narrower than the
+      // schema's. Marking a rule the schema accepts would send the researcher
+      // to fix something that is not broken.
+      expect(description.problems).toEqual([]);
+    });
+  });
+
+  describe('an operator the attribute type does not allow', () => {
+    it('reports a rule the schema would reject', () => {
+      const description = describeRule({
+        rule: {
+          id: 'rule-18',
+          type: 'node',
+          options: {
+            type: 'person',
+            attribute: 'note',
+            operator: 'GREATER_THAN',
+            value: 3,
+          },
+        },
+        codebook,
+      });
+
+      expect(description.problems).toContainEqual({
+        code: 'invalidOperator',
+        message:
+          'This rule uses an operator that is not valid for its attribute type. Edit or delete the rule.',
+      });
+    });
+
+    it('says nothing about an operator the attribute type allows', () => {
+      const description = describeRule({
+        rule: {
+          id: 'rule-19',
+          type: 'node',
+          options: {
+            type: 'person',
+            attribute: 'age',
+            operator: 'GREATER_THAN',
+            value: 3,
+          },
+        },
+        codebook,
+      });
+
+      expect(description.problems).toEqual([]);
+    });
+
+    it('says nothing about an attribute the codebook no longer describes', () => {
+      const description = describeRule({
+        rule: {
+          id: 'rule-20',
+          type: 'node',
+          options: {
+            type: 'person',
+            attribute: 'favouriteColour',
+            operator: 'GREATER_THAN',
+            value: 3,
+          },
+        },
+        codebook,
+      });
+
+      // Nothing is known about what a deleted attribute's operator ought to
+      // be, and the deletion is already reported. A second message about the
+      // same rule would be one more thing to read and nothing more to do.
+      expect(description.problems.map((problem) => problem.code)).toEqual([
+        'missingAttribute',
+      ]);
+    });
   });
 
   describe('references the codebook can no longer account for', () => {

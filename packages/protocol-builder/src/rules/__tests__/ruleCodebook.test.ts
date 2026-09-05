@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { VariableTypesKeys } from '@codaco/protocol-validation';
+import { type Codebook, VariableTypesKeys } from '@codaco/protocol-validation';
 
 import { operatorsByType, ruleVariableTypes } from '../operators.ts';
 import {
@@ -43,6 +43,97 @@ describe('the rule variable-type catalogue', () => {
       'NOT',
       'CONTAINS',
       'DOES_NOT_CONTAIN',
+    ]);
+  });
+
+  it('offers a categorical attribute the operators that count its options', () => {
+    // Only a multi-select attribute HAS a number of selected options, so these
+    // four are offered for it and for nothing else.
+    expect(
+      ruleOperatorOptions('categorical').map(({ value }) => value),
+    ).toEqual([
+      'EXACTLY',
+      'NOT',
+      'INCLUDES',
+      'EXCLUDES',
+      'OPTIONS_GREATER_THAN',
+      'OPTIONS_LESS_THAN',
+      'OPTIONS_EQUALS',
+      'OPTIONS_NOT_EQUALS',
+    ]);
+    expect(ruleOperatorOptions('ordinal').map(({ value }) => value)).toEqual([
+      'EXACTLY',
+      'NOT',
+      'INCLUDES',
+      'EXCLUDES',
+    ]);
+  });
+});
+
+/**
+ * A codebook holds shapes the editor's own fixtures do not: an edge authored
+ * without a colour, entities and attributes whose researcher-facing name has
+ * been emptied, a boolean variable carrying the labels its control puts on
+ * true and false.
+ */
+describe('codebook entries that are legal but sparse', () => {
+  const sparseCodebook: Readonly<Codebook> = Object.freeze({
+    node: {
+      blank: {
+        name: '',
+        color: 'node-color-seq-4',
+        shape: { default: 'circle' },
+        variables: {
+          unnamed: { name: '', type: 'text' },
+          agrees: {
+            name: 'Agrees',
+            type: 'boolean',
+            options: [
+              { label: 'Yes', value: true },
+              { label: 'No', value: false },
+            ],
+          },
+          rank: {
+            name: 'Rank',
+            type: 'ordinal',
+            options: [{ label: '', value: 1 }],
+          },
+        },
+      },
+    },
+    // No colour: the schema leaves an edge's colour optional.
+    edge: { plain: { name: '' } },
+  });
+
+  it('falls back to the first edge colour when an edge has none', () => {
+    expect(ruleEntityTypeOptions(sparseCodebook, 'edge')).toEqual([
+      { value: 'plain', label: 'plain', color: 'edge-color-seq-1' },
+    ]);
+  });
+
+  it('names an entity type and an attribute by id when neither has a name', () => {
+    // A blank label would leave the researcher with a rule they cannot read,
+    // and a radio with no accessible name at all.
+    expect(ruleEntityTypeOptions(sparseCodebook, 'node')[0]?.label).toBe(
+      'blank',
+    );
+    expect(
+      ruleVariableOptions(ruleVariables(sparseCodebook, 'node', 'blank')),
+    ).toContainEqual({ value: 'unnamed', label: 'unnamed', type: 'text' });
+  });
+
+  it('does not offer a boolean control’s own labels as rule operands', () => {
+    // A boolean variable carries `options`, but they are what its input
+    // control prints for true and false — comparing the attribute against the
+    // word "Yes" is a rule that matches nothing.
+    const variables = ruleVariables(sparseCodebook, 'node', 'blank');
+    expect(ruleVariableChoices(variables, 'agrees')).toBeUndefined();
+  });
+
+  it('names an authored option by its value when it has no label', () => {
+    const variables = ruleVariables(sparseCodebook, 'node', 'blank');
+    expect(ruleVariableChoices(variables, 'rank')).toEqual([
+      { value: 1, label: '1' },
     ]);
   });
 });

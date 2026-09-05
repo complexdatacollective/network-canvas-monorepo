@@ -614,8 +614,8 @@ export default function RuleEditorDialog({
 
       // A `contains` operand is a regular expression, and one that does not
       // compile matches nothing at all. Checked here rather than as a field
-      // rule because expressing it as one needs a schema builder the package
-      // does not depend on; the field it belongs to is still the field that
+      // rule because whether it applies at all depends on the OPERATOR, which
+      // is a different field; the field it belongs to is still the field that
       // reports it.
       if (
         isFilterOperator(operator) &&

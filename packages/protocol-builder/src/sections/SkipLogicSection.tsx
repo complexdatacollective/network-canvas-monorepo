@@ -3,7 +3,11 @@ import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import SkipLogicDestinationField from '../fields/SkipLogicDestinationField.tsx';
 import ProtocolField from '../form/ProtocolField.tsx';
 import { QueryRuleSetField } from '../rules/RuleSetField.tsx';
+import { useRuleSetValidation } from '../rules/useRuleSetValidation.ts';
 import BuilderSection, { type SectionCapability } from './BuilderSection.tsx';
+
+/** Where the schema keeps a stage's skip-logic rules. */
+const SKIP_LOGIC_RULES_FIELD = 'skipLogic.filter';
 
 /**
  * What this host calls a stage.
@@ -43,7 +47,7 @@ const DEFAULT_COPY: SkipLogicCopy = {
  * pieces missing.
  */
 const SKIP_LOGIC_CAPABILITY: SectionCapability = {
-  fields: ['skipLogic.action', 'skipLogic.filter', 'skipLogic.destination'],
+  fields: ['skipLogic.action', SKIP_LOGIC_RULES_FIELD, 'skipLogic.destination'],
   confirmClear: {
     title: 'This will clear your skip logic',
     description:
@@ -81,6 +85,7 @@ export default function SkipLogicSection({
   copy,
 }: SkipLogicSectionProps) {
   const words = { ...DEFAULT_COPY, ...copy };
+  const rulesValidation = useRuleSetValidation(SKIP_LOGIC_RULES_FIELD);
 
   return (
     <BuilderSection
@@ -100,11 +105,12 @@ export default function SkipLogicSection({
         required
       />
       <ProtocolField<typeof QueryRuleSetField>
-        name="skipLogic.filter"
+        name={SKIP_LOGIC_RULES_FIELD}
         label="Rules"
         hint="Create one or more rules to determine when the action should occur."
         component={QueryRuleSetField}
         required
+        custom={rulesValidation}
       />
       <ProtocolField<typeof SkipLogicDestinationField>
         name="skipLogic.destination"

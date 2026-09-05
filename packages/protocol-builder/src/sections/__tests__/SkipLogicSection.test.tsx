@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -111,6 +111,7 @@ function createSession(
   options: Readonly<{
     fields?: SectionDoc;
     order?: readonly string[];
+    sections?: Record<string, SectionDoc>;
     onFinish?: (request: FinishRequest) => void;
   }> = {},
 ) {
@@ -119,7 +120,7 @@ function createSession(
   return new ProtocolBuilderSessionStore({
     identity: createStageIdentity('Information', () => 'stage-1'),
     fields: options.fields ?? { label: 'Welcome', title: 'Hello', items: [] },
-    protocolSections: protocolSections(order),
+    protocolSections: options.sections ?? protocolSections(order),
     manifestRevision: { sequence: 1n, hash: 'revision-1' },
     access: { mode: 'editable', leaseOwner: 'tab-1', leaseEpoch: 1n },
     buildCandidate: ({ stageDocument }) => ({
@@ -140,7 +141,14 @@ function createSession(
  * codebook prop, no host store — a name and a label per field, and the
  * sections read everything else from the editor's own context.
  */
-function Editor({ session }: { session: ProtocolBuilderSessionStore }) {
+function Editor({
+  session,
+  position,
+}: {
+  session: ProtocolBuilderSessionStore;
+  /** Where a stage being CREATED will be inserted. */
+  position?: number;
+}) {
   const controller = useStageEditorController(session, 'stage-form');
 
   return (
@@ -158,16 +166,19 @@ function Editor({ session }: { session: ProtocolBuilderSessionStore }) {
           component={InputField}
         />
       </BuilderSection>
-      <SkipLogicSection />
+      <SkipLogicSection {...(position === undefined ? {} : { position })} />
       <InterviewerGuidanceSection />
     </StageEditorShell>
   );
 }
 
-function renderEditor(session: ProtocolBuilderSessionStore) {
+function renderEditor(session: ProtocolBuilderSessionStore, position?: number) {
   return render(
     <DialogProvider>
-      <Editor session={session} />
+      <Editor
+        session={session}
+        {...(position === undefined ? {} : { position })}
+      />
     </DialogProvider>,
   );
 }
@@ -334,6 +345,204 @@ describe('the rules inside skip logic', () => {
   });
 });
 
+/**
+ * A rule set can be wrong in ways no control inside it can see. Each of these
+ * used to reach the protocol schema first — or nothing at all until the stage
+ * was saved — and be reported in the schema's own words against a path rather
+ * than in the section that holds the rules.
+ */
+describe('a rule set the researcher cannot save', () => {
+  const attributeRuleFields: SectionDoc = {
+    label: 'Welcome',
+    title: 'Hello',
+    items: [],
+    skipLogic: {
+      action: 'SHOW',
+      filter: {
+        rules: [
+          {
+            id: 'rule-a',
+            type: 'node',
+            options: {
+              type: 'person',
+              attribute: 'age',
+              operator: 'GREATER_THAN',
+              value: 30,
+            },
+          },
+        ],
+      },
+    },
+  };
+
+  const personWith = (variables: Record<string, unknown>) => ({
+    ...protocolSections(),
+    [personSection]: { ...personDefinition, variables },
+  });
+
+  it('refuses two rules that never said how they combine', async () => {
+    const user = userEvent.setup();
+    const onFinish = vi.fn();
+    renderEditor(
+      createSession({
+        onFinish,
+        fields: {
+          label: 'Welcome',
+          title: 'Hello',
+          items: [],
+          // Two rules and no join: the shape the schema rejects with "Too big:
+          // expected array to have <=1 items".
+          skipLogic: {
+            action: 'SHOW',
+            filter: { rules: [nodeRule('rule-a'), nodeRule('rule-b')] },
+          },
+        },
+      }),
+    );
+
+    await waitFor(() =>
+      expect(outlineText()?.[2]).toBe('Skip logicHas a problem'),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    expect(
+      await screen.findByText(
+        'Please choose how these rules should be combined.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: /Rules/ })).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
+    expect(onFinish).not.toHaveBeenCalled();
+  });
+
+  it('refuses a rule set the researcher has emptied', async () => {
+    const user = userEvent.setup();
+    const onFinish = vi.fn();
+    renderEditor(
+      createSession({
+        onFinish,
+        fields: configuredFields({ type: 'stage', stageId: 'stage-3' }),
+      }),
+    );
+    await waitFor(() => expect(outlineItems()).toHaveLength(4));
+
+    await user.click(screen.getByRole('button', { name: /^Delete rule:/ }));
+    await user.click(await screen.findByRole('button', { name: 'Delete' }));
+
+    // An empty rule set still looks like an answer to the form, so nothing but
+    // this check stands between it and the schema's "Too small" refusal.
+    await waitFor(() =>
+      expect(outlineText()?.[2]).toBe('Skip logicHas a problem'),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    expect(
+      await screen.findByText('Please create at least one rule.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: /Rules/ })).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
+    expect(onFinish).not.toHaveBeenCalled();
+  });
+
+  it('refuses a rule whose attribute a collaborator has deleted', async () => {
+    const user = userEvent.setup();
+    const onFinish = vi.fn();
+    const session = createSession({ onFinish, fields: attributeRuleFields });
+    renderEditor(session);
+    await waitFor(() => expect(outlineText()?.[2]).toBe('Skip logicFinished'));
+
+    act(() => {
+      session.receiveAuthoritativeUpdate({
+        protocolSections: personWith({}),
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+    });
+
+    // On the row, where the researcher can act on it, and in the outline, so
+    // the section stops claiming to be finished.
+    expect(
+      await screen.findByText(
+        'This rule refers to an attribute that is no longer in the codebook. Edit or delete the rule.',
+      ),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(outlineText()?.[2]).toBe('Skip logicHas a problem'),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    expect(
+      await screen.findByText(
+        "Rule 1 no longer works with this protocol's codebook. Open it to fix it, or delete it.",
+      ),
+    ).toBeInTheDocument();
+    expect(onFinish).not.toHaveBeenCalled();
+  });
+
+  it('refuses a rule whose operator the attribute’s new type does not allow', async () => {
+    const user = userEvent.setup();
+    const onFinish = vi.fn();
+    const session = createSession({ onFinish, fields: attributeRuleFields });
+    renderEditor(session);
+    await waitFor(() => expect(outlineText()?.[2]).toBe('Skip logicFinished'));
+
+    act(() => {
+      session.receiveAuthoritativeUpdate({
+        // The attribute is still there; comparing text with "greater than" is
+        // not something the schema accepts.
+        protocolSections: personWith({ age: { name: 'Age', type: 'text' } }),
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+    });
+
+    expect(
+      await screen.findByText(
+        'This rule uses an operator that is not valid for its attribute type. Edit or delete the rule.',
+      ),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(outlineText()?.[2]).toBe('Skip logicHas a problem'),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    expect(
+      await screen.findByText(
+        "Rule 1 no longer works with this protocol's codebook. Open it to fix it, or delete it.",
+      ),
+    ).toBeInTheDocument();
+    expect(onFinish).not.toHaveBeenCalled();
+  });
+
+  it('asks for the rules a switched-on skip logic has none of', async () => {
+    const user = userEvent.setup();
+    const onFinish = vi.fn();
+    renderEditor(createSession({ onFinish }));
+
+    await switchOn(user);
+    await user.click(screen.getByRole('radio', { name: 'Skip this stage' }));
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'When this stage is skipped' }),
+      'route:finish',
+    );
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    // Rules are what skip logic IS: a stage that switches it on and creates
+    // none has said nothing about when to skip.
+    const rules = screen.getByRole('group', { name: /Rules/ });
+    await waitFor(() =>
+      expect(rules).toHaveAccessibleDescription(/This field is required/),
+    );
+    expect(onFinish).not.toHaveBeenCalled();
+  });
+});
+
 describe('choosing where the interview continues', () => {
   it('offers only the stages that come after this one', async () => {
     renderEditor(createSession({ fields: configuredFields() }));
@@ -348,6 +557,39 @@ describe('choosing where the interview continues', () => {
     ).toEqual([
       'Next available stage',
       'Stage 2 — Middle',
+      'Stage 3 — Goodbye',
+      'End the interview',
+    ]);
+  });
+
+  /**
+   * A stage the interview does not contain yet is not in the stage order, so
+   * only the host knows where it is about to be inserted — and that is what
+   * decides which stages count as later than it, and what they will be
+   * numbered once it exists.
+   */
+  it('offers a stage being created the stages it will be inserted before', () => {
+    renderEditor(
+      createSession({
+        fields: configuredFields(),
+        // This stage is not part of the interview yet.
+        order: ['stage-2', 'stage-3'],
+      }),
+      // It is about to be inserted between them.
+      1,
+    );
+
+    const select = screen.getByRole('combobox', {
+      name: 'When this stage is skipped',
+    });
+    expect(
+      [...select.querySelectorAll('option')].map(
+        (option) => option.textContent,
+      ),
+    ).toEqual([
+      'Next available stage',
+      // Stage 2 will come BEFORE this one, so it is not offered; stage 3 will
+      // be the fourth stage once this one has been inserted.
       'Stage 3 — Goodbye',
       'End the interview',
     ]);
@@ -368,10 +610,28 @@ describe('choosing where the interview continues', () => {
       ),
     ).toBeInTheDocument();
     // The problem is a property of this destination, so it is described to
-    // assistive technology by the control that holds it.
+    // assistive technology by the control that holds it — and the control is
+    // marked invalid, so it is not merely described as broken while still
+    // reading as an acceptable answer.
+    const destination = screen.getByRole('combobox', {
+      name: 'When this stage is skipped',
+    });
+    expect(destination).toHaveAccessibleDescription(
+      /no longer part of this interview/,
+    );
+    expect(destination).toHaveAttribute('aria-invalid', 'true');
+  });
+
+  it('leaves a destination the interview can still reach marked valid', () => {
+    renderEditor(
+      createSession({
+        fields: configuredFields({ type: 'stage', stageId: 'stage-3' }),
+      }),
+    );
+
     expect(
       screen.getByRole('combobox', { name: 'When this stage is skipped' }),
-    ).toHaveAccessibleDescription(/no longer part of this interview/);
+    ).not.toHaveAttribute('aria-invalid', 'true');
   });
 
   it('reports a destination the interview now reaches first, without throwing', async () => {

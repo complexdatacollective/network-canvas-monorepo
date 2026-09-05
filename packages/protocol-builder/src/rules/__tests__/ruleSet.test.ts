@@ -122,7 +122,7 @@ describe('ruleSetValidationMessage', () => {
         codebook,
       ),
     ).toBe(
-      'Rule 2 refers to part of the codebook that no longer exists. Open it to choose again, or delete it.',
+      "Rule 2 no longer works with this protocol's codebook. Open it to fix it, or delete it.",
     );
   });
 
@@ -136,7 +136,7 @@ describe('ruleSetValidationMessage', () => {
         codebook,
       ),
     ).toBe(
-      '2 of these rules refer to parts of the codebook that no longer exist. Open each marked rule to choose again, or delete it.',
+      "2 of these rules no longer work with this protocol's codebook. Open each marked rule to fix it, or delete it.",
     );
   });
 

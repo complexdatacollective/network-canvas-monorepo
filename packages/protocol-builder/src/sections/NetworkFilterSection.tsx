@@ -7,6 +7,7 @@ import { useStageValue } from '../form/stageFormHooks.ts';
 import { ruleDraftOptions } from '../rules/rule.ts';
 import { ruleSetRules } from '../rules/ruleSet.ts';
 import { FilterRuleSetField } from '../rules/RuleSetField.tsx';
+import { useRuleSetValidation } from '../rules/useRuleSetValidation.ts';
 import BuilderSection, { type SectionCapability } from './BuilderSection.tsx';
 
 /** The stage's own filter. Every stage in the schema holds it here. */
@@ -88,6 +89,7 @@ export default function NetworkFilterSection({
   const words = { ...DEFAULT_COPY[subject], ...copy };
   const filter = useStageValue(FILTER_FIELD);
   const prompts = useStageValue('prompts');
+  const rulesValidation = useRuleSetValidation(FILTER_FIELD);
 
   const configuredEdgeTypes = useMemo(
     () => promptEdgeTypes(prompts),
@@ -117,6 +119,7 @@ export default function NetworkFilterSection({
         label={words.fieldLabel}
         hint={words.fieldHint}
         component={FilterRuleSetField}
+        custom={rulesValidation}
       />
     </BuilderSection>
   );

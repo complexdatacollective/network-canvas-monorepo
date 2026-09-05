@@ -14,6 +14,7 @@ import { isCompleteRule, isRuleDraft, ruleDraftOptions } from './rule.ts';
 import {
   DEFAULT_EDGE_COLOR,
   DEFAULT_NODE_COLOR,
+  isOperatorValidForAttributeType,
   isRuleTargetType,
   type RuleTargetType,
   ruleVariable,
@@ -84,6 +85,7 @@ export type RuleProblemCode =
   | 'unknownTarget'
   | 'missingEntityType'
   | 'missingAttribute'
+  | 'invalidOperator'
   | 'incomplete';
 
 export type RuleProblem = Readonly<{
@@ -115,6 +117,21 @@ export type RuleDescription = Readonly<{
   /** Absent when the operator takes no operand. */
   operand: RuleDescriptionOperand | undefined;
   /**
+   * Whether this rule asks only whether the attribute has been answered at
+   * all.
+   *
+   * Such a rule reads "Person where Age", "Person without Age": the operator
+   * takes the place of the word that would otherwise introduce the attribute,
+   * and nothing follows it. Said here rather than worked out again by every
+   * reader, so the sentence a host prints and the one the editor shows cannot
+   * disagree — assembling it from the connector AND the operator is what
+   * produced "Person where Age where".
+   *
+   * Today's editor does not offer these operators against an attribute;
+   * protocols authored before it did still hold them.
+   */
+  attributePresence: boolean;
+  /**
    * Whether the sentence has three separable parts. A presence rule reads as
    * one unbroken phrase and has nothing to put in a third column.
    */
@@ -141,7 +158,10 @@ export type DescribeRuleInput = Readonly<{
 const OPERATOR_TEXT: Readonly<
   Record<string, Readonly<{ alter: string; ego: string }>>
 > = Object.freeze({
-  EXISTS: { alter: 'where', ego: 'where' },
+  // These two introduce the attribute instead of following it — "Person
+  // without Age", "Ego has EgoName" — so each voice states the whole
+  // connecting phrase rather than borrowing the one the other rules use.
+  EXISTS: { alter: 'where', ego: 'has' },
   NOT_EXISTS: { alter: 'without', ego: 'without' },
   EXACTLY: { alter: 'is exactly equal to', ego: 'that is exactly equal to' },
   NOT: { alter: 'is not', ego: 'that is not' },
@@ -217,6 +237,7 @@ export function describeRule({
       attribute: undefined,
       operator: Object.freeze({ id: undefined, text: '' }),
       operand: undefined,
+      attributePresence: false,
       columns: false,
       text: '',
       problems: Object.freeze([
@@ -322,10 +343,28 @@ export function describeRule({
           authoredLabels: authoredLabels && !countsOptions && !matchesPattern,
         });
 
+  // An operator the schema does not accept for this attribute's type. It
+  // arrives from OUTSIDE the editor — a collaborator retyping the variable
+  // under a rule that was correct when it was written — so it is reported
+  // beside the deleted-reference problems rather than left for the refusal
+  // that only comes when the whole stage is saved.
+  if (
+    attribute !== undefined &&
+    !attribute.missing &&
+    operatorId !== undefined &&
+    !isOperatorValidForAttributeType(operatorId, attributeType)
+  ) {
+    problems.push({
+      code: 'invalidOperator',
+      message: INVALID_OPERATOR_MESSAGE,
+    });
+  }
+
   if (!isCompleteRule(rule)) {
     problems.push({ code: 'incomplete', message: INCOMPLETE_MESSAGE });
   }
 
+  const attributePresence = attribute !== undefined && isExistenceOperator;
   const columns = attribute !== undefined && operand !== undefined;
 
   return Object.freeze({
@@ -334,8 +373,16 @@ export function describeRule({
     attribute,
     operator,
     operand,
+    attributePresence,
     columns,
-    text: sentence({ entity, attribute, operator, operand, isEgo }),
+    text: sentence({
+      entity,
+      attribute,
+      operator,
+      operand,
+      isEgo,
+      attributePresence,
+    }),
     problems: Object.freeze(problems),
   });
 }
@@ -406,10 +453,21 @@ function sentence(
     operator: RuleDescriptionOperator;
     operand: RuleDescriptionOperand | undefined;
     isEgo: boolean;
+    attributePresence: boolean;
   }>,
 ): string {
   const words: string[] = [];
   if (parts.entity !== undefined) words.push(parts.entity.label);
+
+  // A rule about whether the attribute was answered at all reads as one
+  // phrase — "Person without Age" — because its operator IS the word that
+  // introduces the attribute. Adding the connector as well, and then the
+  // operator again after the name, produced "Person where Age where".
+  if (parts.attributePresence && parts.attribute !== undefined) {
+    words.push(parts.operator.text, parts.attribute.label);
+    return words.filter((word) => word !== '').join(' ');
+  }
+
   if (parts.attribute !== undefined) {
     words.push(parts.isEgo ? 'has' : 'where', parts.attribute.label);
   }
@@ -430,5 +488,7 @@ const MISSING_EGO_MESSAGE =
   'This rule refers to the ego, but this protocol no longer defines any ego attributes. Edit or delete the rule.';
 const MISSING_ATTRIBUTE_MESSAGE =
   'This rule refers to an attribute that is no longer in the codebook. Edit or delete the rule.';
+const INVALID_OPERATOR_MESSAGE =
+  'This rule uses an operator that is not valid for its attribute type. Edit or delete the rule.';
 const INCOMPLETE_MESSAGE =
   'This rule is not complete. Edit it to fill in every part, or delete it.';

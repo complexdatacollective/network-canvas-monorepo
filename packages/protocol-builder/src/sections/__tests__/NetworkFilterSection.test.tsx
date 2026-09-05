@@ -306,4 +306,69 @@ describe('rules that contradict the rest of the stage', () => {
       screen.queryByText('Filter rules hide configured values'),
     ).toBeNull();
   });
+
+  it('warns when the rules name an edge the prompts create as one that must not exist', () => {
+    renderEditor(
+      createSession({
+        type: 'Sociogram',
+        // Nothing is required to exist here, so the only thing that keeps this
+        // edge off the stage is being named by a rule that excludes it.
+        fields: sociogramFields(edgeRule('friend', 'NOT_EXISTS')),
+      }),
+    );
+
+    expect(
+      screen.getByText('Filter rules hide configured values'),
+    ).toBeInTheDocument();
+  });
+
+  it('counts the edges a prompt only displays, not just the ones it creates', () => {
+    renderEditor(
+      createSession({
+        type: 'Sociogram',
+        fields: {
+          ...sociogramFields(edgeRule('friend', 'EXISTS')),
+          prompts: [
+            {
+              id: 'prompt-1',
+              text: 'Who do you know?',
+              layout: { layoutVariable: 'age' },
+              // Displayed rather than created, and still hidden by rules that
+              // require a different edge type to exist.
+              edges: { display: ['best'] },
+            },
+          ],
+        },
+      }),
+    );
+
+    expect(
+      screen.getByText('Filter rules hide configured values'),
+    ).toBeInTheDocument();
+  });
+});
+
+describe('a filter the researcher cannot save', () => {
+  it('refuses a rule set emptied down to nothing', async () => {
+    const user = userEvent.setup();
+    const onFinish = vi.fn();
+    renderEditor(
+      createSession({
+        fields: { ...alterFormFields, filter: nodeFilter },
+        onFinish,
+      }),
+    );
+
+    await user.click(screen.getByRole('button', { name: /^Delete rule:/ }));
+    await user.click(await screen.findByRole('button', { name: 'Delete' }));
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    // A filter with an empty rule list is the shape the schema rejects with
+    // "Too small: expected array to have >=1 items". Switching the capability
+    // off is how a stage says it has no filter.
+    expect(
+      await screen.findByText('Please create at least one rule.'),
+    ).toBeInTheDocument();
+    expect(onFinish).not.toHaveBeenCalled();
+  });
 });

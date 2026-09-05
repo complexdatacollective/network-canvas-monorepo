@@ -14,6 +14,7 @@ import type { RuleDraft } from './rule.ts';
 import { describeRule } from './ruleDescription.ts';
 import RuleEditorDialog, { type RuleTypeOption } from './RuleEditorDialog.tsx';
 import RulePreview from './RulePreview.tsx';
+import { isCodebookRuleProblem } from './ruleSet.ts';
 
 /**
  * The rule a row holds, without the list's own bookkeeping — which fresco-ui
@@ -100,11 +101,7 @@ function RuleListItem({
               as a field-level error that names a position in a list.
             */}
             {description.problems
-              .filter(
-                (problem) =>
-                  problem.code === 'missingAttribute' ||
-                  problem.code === 'missingEntityType',
-              )
+              .filter(isCodebookRuleProblem)
               .map((problem) => (
                 <p
                   key={problem.code}

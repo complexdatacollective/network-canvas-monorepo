@@ -1,11 +1,11 @@
-import type {
-  Codebook,
-  ColorReference,
-  FilterOperator,
-  NodeShape,
-  Variable,
-  Variables,
-  VariableType,
+import {
+  type Codebook,
+  type ColorReference,
+  type NodeShape,
+  OperatorsByVariableType,
+  type Variable,
+  type Variables,
+  type VariableType,
 } from '@codaco/protocol-validation';
 
 import {
@@ -26,9 +26,6 @@ export type RuleEntityTarget = 'node' | 'edge';
 
 export const isRuleTargetType = (value: unknown): value is RuleTargetType =>
   value === 'node' || value === 'edge' || value === 'ego';
-
-export const isRuleEntityTarget = (value: unknown): value is RuleEntityTarget =>
-  value === 'node' || value === 'edge';
 
 /** One attribute a rule may address. */
 export type RuleVariableOption = Readonly<{
@@ -164,14 +161,26 @@ export const ruleOperatorOptions = (
   return operatorsAsOptions.filter((option) => allowed.has(option.value));
 };
 
-export const isOperatorAllowedForType = (
-  operator: FilterOperator,
+/**
+ * Whether the protocol schema accepts this operator against an attribute of
+ * this type.
+ *
+ * Read from the schema's own table rather than from the set the editor offers,
+ * which is deliberately narrower: a stored protocol may hold an attribute-level
+ * `EXISTS` that today's editor would not build, and reporting a rule the schema
+ * accepts as broken would send the researcher to fix something that is not
+ * wrong. Answers `true` for an attribute whose type is unknown — a deleted
+ * attribute is reported as deleted, and nothing is known about what its
+ * operator ought to be.
+ */
+export const isOperatorValidForAttributeType = (
+  operator: string,
   variableType: VariableType | undefined,
-): boolean =>
-  (variableType === undefined
-    ? operatorsByType.exists
-    : operatorsByType[variableType]
-  ).has(operator);
+): boolean => {
+  if (variableType === undefined) return true;
+  const allowed = OperatorsByVariableType[variableType];
+  return allowed === undefined || allowed.includes(operator);
+};
 
 /**
  * The node or edge types a rule may be pointed at, in codebook order.

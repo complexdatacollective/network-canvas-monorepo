@@ -67,7 +67,7 @@ export type RuleSetFieldProps = CreateFormFieldProps<
  * elsewhere reaches every rule preview and every control inside the rule
  * editor as soon as the session reports it.
  */
-export function RuleSetControl({
+function RuleSetControl({
   id,
   name,
   value,

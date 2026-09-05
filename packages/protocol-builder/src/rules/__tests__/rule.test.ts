@@ -42,6 +42,21 @@ describe('the part of a rule that has not been answered', () => {
     ).toBe('attribute');
   });
 
+  it('reads an attribute key holding nothing as a gap, not as a presence rule', () => {
+    // The KEY is the difference between the two rule shapes, in the schema and
+    // here alike. A key left behind by a control that has been cleared makes
+    // this an attribute rule with no attribute — never a presence rule that
+    // happens to be complete.
+    expect(
+      incompleteRulePart(
+        alterRule({ type: 'person', attribute: undefined, operator: 'EXISTS' }),
+      ),
+    ).toBe('attribute');
+    expect(
+      incompleteRulePart(alterRule({ type: 'person', operator: 'EXISTS' })),
+    ).toBeUndefined();
+  });
+
   it('names the operator once the rule knows what it is comparing', () => {
     expect(incompleteRulePart(alterRule({ type: 'person' }))).toBe('operator');
     expect(

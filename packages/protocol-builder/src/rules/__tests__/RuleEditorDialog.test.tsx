@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createElement, useState } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -83,7 +83,22 @@ const baseSections: Record<string, SectionDoc> = {
     name: 'Person',
     color: 'node-color-seq-2',
     shape: { default: 'square' },
-    variables: { age: { name: 'Age', type: 'number' } },
+    variables: {
+      age: { name: 'Age', type: 'number' },
+      // A second attribute of the SAME type, so a change of attribute leaves
+      // the operator that was chosen for the first one still on offer: that is
+      // what makes a cleared operator evidence of the cascade rather than of
+      // the option simply having gone.
+      height: { name: 'Height', type: 'number' },
+      mood: {
+        name: 'Mood',
+        type: 'categorical',
+        options: [
+          { label: 'Happy', value: 'happy' },
+          { label: 'Sad', value: 'sad' },
+        ],
+      },
+    },
   },
   [friendSection]: { name: 'Friend', color: 'edge-color-seq-3' },
   [egoSection]: { variables: { egoName: { name: 'EgoName', type: 'text' } } },
@@ -199,6 +214,86 @@ function renderStandaloneEditor(layoutId?: string) {
   );
 }
 
+/**
+ * The editor with its two answers to the caller spied on.
+ *
+ * `onSave` and `onCancel` are a conversation with the list the editor was
+ * opened from, and a list cannot show what it was never told: the two are
+ * observed directly here so that saving and dismissing can be told apart.
+ */
+function SpiedEditor({
+  seed,
+  onSave,
+  onCancel,
+}: {
+  seed: RuleDraft;
+  onSave: (rule: RuleDraft) => void;
+  onCancel: () => void;
+}) {
+  const [session] = useState(() => createSession());
+  const controller = useStageEditorController(session, 'stage-form');
+  const [open, setOpen] = useState(true);
+
+  return (
+    <StageEditorShell controller={controller}>
+      <RuleEditorDialog
+        open={open}
+        seed={seed}
+        ruleTypes={RULE_TYPES}
+        onSave={(rule) => {
+          onSave(rule);
+          setOpen(false);
+        }}
+        onCancel={() => {
+          onCancel();
+          setOpen(false);
+        }}
+      />
+    </StageEditorShell>
+  );
+}
+
+const renderSpiedEditor = (seed: RuleDraft = { type: '' }) => {
+  const onSave = vi.fn<(rule: RuleDraft) => void>();
+  const onCancel = vi.fn<() => void>();
+  render(
+    <DialogProvider>
+      <SpiedEditor seed={seed} onSave={onSave} onCancel={onCancel} />
+    </DialogProvider>,
+  );
+  return { onSave, onCancel };
+};
+
+/** A node attribute rule as far as its operator, in the fewest clicks. */
+const buildNodeAttributeRuleUpTo = async (
+  user: ReturnType<typeof userEvent.setup>,
+  attribute: string,
+  operator: string,
+) => {
+  await user.click(
+    screen.getByRole('radio', {
+      name: 'Node - match a node type or one of its attributes.',
+    }),
+  );
+  await user.click(await screen.findByRole('radio', { name: 'Person' }));
+  await user.click(await screen.findByRole('option', { name: /Attribute/ }));
+  await user.selectOptions(
+    await screen.findByRole('combobox', { name: /Node attribute/ }),
+    attribute,
+  );
+  await user.selectOptions(
+    await screen.findByRole('combobox', { name: /Operator/ }),
+    operator,
+  );
+};
+
+const savedRule = (onSave: ReturnType<typeof vi.fn>): RuleDraft =>
+  onSave.mock.calls[0]?.[0] as RuleDraft;
+
+const savedOptions = (
+  onSave: ReturnType<typeof vi.fn>,
+): Record<string, unknown> => savedRule(onSave).options ?? {};
+
 const openNewRule = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(screen.getByRole('button', { name: ADD_RULE }));
   return await screen.findByRole('dialog', { name: RULE_EDITOR });
@@ -258,11 +353,32 @@ describe('the shared-element morph out of a rule row', () => {
 
     await openExistingRule(user);
 
-    // The row's identity is minted by the list, so what there is to assert is
-    // that one was handed over at all.
+    // A rule's own id IS its row's identity, so the dialog morphs out of the
+    // rule it edits rather than out of whatever was at that index.
     await waitFor(() =>
       expect(dialogRenders).toHaveBeenCalledWith(
-        expect.objectContaining({ layoutId: expect.any(String) as string }),
+        expect.objectContaining({ layoutId: 'rule-a' }),
+      ),
+    );
+  });
+
+  it('opens the rule that was clicked, not the one at that position', async () => {
+    const user = userEvent.setup();
+    // Two rules that say exactly the same thing: their ids are the only thing
+    // that tells the rows apart, so a list identifying rows by anything else
+    // cannot say which of them this dialog belongs to.
+    renderRuleList([nodeRule('rule-a'), nodeRule('rule-b')]);
+
+    const [, secondEdit] = screen.getAllByRole('button', {
+      name: /^Edit rule:/,
+    });
+    expect(secondEdit).toBeDefined();
+    await user.click(secondEdit!);
+    await screen.findByRole('dialog', { name: RULE_EDITOR });
+
+    await waitFor(() =>
+      expect(dialogRenders).toHaveBeenCalledWith(
+        expect.objectContaining({ layoutId: 'rule-b' }),
       ),
     );
   });
@@ -432,7 +548,229 @@ describe('a rule the editor refuses to save', () => {
   });
 });
 
+/**
+ * The operand control, chosen by the attribute's type. What it commits is what
+ * the interview runtime compares, so a shape that only LOOKS right — a number
+ * kept as text, a count with a fraction in it — is a rule the protocol schema
+ * refuses at the far end of the editor.
+ */
+describe('the operand a rule compares against', () => {
+  it('states the missing operand in the researcher’s own words', async () => {
+    const user = userEvent.setup();
+    const { onSave } = renderSpiedEditor();
+
+    await buildNodeAttributeRuleUpTo(user, 'age', 'GREATER_THAN');
+    await finishAndClose(user);
+
+    const operand = await screen.findByRole('spinbutton', {
+      name: /Attribute value/,
+    });
+    // Fresco's own wording addresses a participant mid-interview ("You must
+    // answer this question before continuing"), which is not who is reading
+    // this.
+    await waitFor(() =>
+      expect(operand).toHaveAccessibleDescription(/This field is required\./),
+    );
+    expect(operand).not.toHaveAccessibleDescription(/before continuing/);
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it('commits a numeric operand as a number', async () => {
+    const user = userEvent.setup();
+    const { onSave } = renderSpiedEditor();
+
+    await buildNodeAttributeRuleUpTo(user, 'age', 'GREATER_THAN');
+    await user.type(
+      await screen.findByRole('spinbutton', { name: /Attribute value/ }),
+      '30',
+    );
+    await finishAndClose(user);
+
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    // The interview compares this against a number, and the schema refuses a
+    // numeric comparison whose operand is text.
+    expect(savedOptions(onSave).value).toBe(30);
+  });
+
+  it('refuses a count of options that is not a whole number', async () => {
+    const user = userEvent.setup();
+    const { onSave } = renderSpiedEditor();
+
+    await buildNodeAttributeRuleUpTo(user, 'mood', 'OPTIONS_GREATER_THAN');
+    const count = await screen.findByRole('spinbutton', {
+      name: /Selected option count/,
+    });
+    // Set in one go: typing it would be read a keystroke at a time, and the
+    // control commits each intermediate reading.
+    fireEvent.change(count, { target: { value: '1.5' } });
+    await finishAndClose(user);
+
+    // There is no such thing as one and a half selected options, so nothing is
+    // committed and the control says it has no answer.
+    await waitFor(() =>
+      expect(count).toHaveAccessibleDescription(/This field is required\./),
+    );
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it('starts a multi-select operand as a selection, not as text', async () => {
+    const user = userEvent.setup();
+    const { onSave } = renderSpiedEditor();
+
+    await buildNodeAttributeRuleUpTo(user, 'mood', 'OPTIONS_GREATER_THAN');
+    fireEvent.change(
+      await screen.findByRole('spinbutton', { name: /Selected option count/ }),
+      { target: { value: '2' } },
+    );
+
+    // Changing the operator resets the operand to the empty value for the
+    // attribute's type — for a categorical attribute, an empty SELECTION.
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: /Operator/ }),
+      'INCLUDES',
+    );
+    await user.click(await screen.findByRole('checkbox', { name: 'Happy' }));
+    await finishAndClose(user);
+
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    expect(savedOptions(onSave).value).toEqual(['happy']);
+  });
+});
+
+describe('one editing session per row', () => {
+  it('opens the second rule on its own values, not the first rule’s', async () => {
+    const user = userEvent.setup();
+    renderRuleList([
+      nodeRule('rule-a'),
+      {
+        id: 'rule-b',
+        type: 'node',
+        options: { type: 'person', operator: 'NOT_EXISTS' },
+      },
+    ]);
+
+    const editControls = screen.getAllByRole('button', {
+      name: /^Edit rule:/,
+    });
+    expect(editControls).toHaveLength(2);
+
+    await user.click(editControls[0]!);
+    await screen.findByRole('dialog', { name: RULE_EDITOR });
+    expect(await screen.findByRole('radio', { name: 'exists' })).toBeChecked();
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: RULE_EDITOR })).toBeNull(),
+    );
+
+    await user.click(
+      screen.getAllByRole('button', { name: /^Edit rule:/ })[1]!,
+    );
+    await screen.findByRole('dialog', { name: RULE_EDITOR });
+
+    // Fresco has no whole-form reinitialise, so a session reused across rows
+    // would leave the second rule showing the first one's answers — and save
+    // them over it.
+    expect(
+      await screen.findByRole('radio', { name: 'does not exist' }),
+    ).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'exists' })).not.toBeChecked();
+  });
+});
+
+describe('a choice that invalidates the choices below it', () => {
+  it('clears the operator when the attribute it was chosen for changes', async () => {
+    const user = userEvent.setup();
+    renderRuleList();
+
+    await openNewRule(user);
+    await buildNodeAttributeRuleUpTo(user, 'age', 'GREATER_THAN');
+    await user.type(
+      await screen.findByRole('spinbutton', { name: /Attribute value/ }),
+      '30',
+    );
+
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: /Node attribute/ }),
+      'height',
+    );
+
+    // The new attribute still offers "is greater than", so an operator left
+    // standing here would be one carried over rather than one chosen — and the
+    // operand entered for the old attribute would be carried with it.
+    await waitFor(() =>
+      expect(screen.getByRole('combobox', { name: /Operator/ })).toHaveValue(
+        '',
+      ),
+    );
+    expect(
+      screen.queryByRole('spinbutton', { name: /Attribute value/ }),
+    ).toBeNull();
+  });
+
+  it('drops the attribute a rule about presence never had', async () => {
+    const user = userEvent.setup();
+    const { onSave } = renderSpiedEditor();
+
+    await buildNodeAttributeRuleUpTo(user, 'age', 'GREATER_THAN');
+    await user.click(await screen.findByRole('option', { name: /Presence/ }));
+    await user.click(await screen.findByRole('radio', { name: 'exists' }));
+    await finishAndClose(user);
+
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    // The presence of the KEY — not its value — is what tells the schema and
+    // the completeness check that a rule is about an attribute, so a key left
+    // behind holding nothing makes a presence rule read as an unfinished
+    // attribute rule.
+    expect(Object.hasOwn(savedOptions(onSave), 'attribute')).toBe(false);
+    expect(savedOptions(onSave)).toEqual({
+      type: 'person',
+      operator: 'EXISTS',
+    });
+  });
+});
+
+describe('a rule whose target the editor does not recognise', () => {
+  it('refuses it, and names the control that has to be answered', async () => {
+    const user = userEvent.setup();
+    // A stored rule whose target is not one of the three the schema has. Every
+    // control on screen is satisfied — the entity field is holding a
+    // non-empty string — so the editor's own completeness check is the only
+    // thing standing between this and a saved rule.
+    const { onSave } = renderSpiedEditor({ type: 'chimera', options: {} });
+
+    await screen.findByRole('dialog', { name: RULE_EDITOR });
+    await finishAndClose(user);
+
+    expect(
+      await screen.findByText(
+        'This rule cannot be saved until this question is answered.',
+      ),
+    ).toBeInTheDocument();
+    expect(onSave).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole('dialog', { name: RULE_EDITOR }),
+    ).toBeInTheDocument();
+  });
+});
+
 describe('saving a rule', () => {
+  it('does not also report the session as dismissed', async () => {
+    const user = userEvent.setup();
+    const { onSave, onCancel } = renderSpiedEditor();
+
+    await buildEgoRuleUpTo(user, 'EXACTLY');
+    await user.type(
+      await screen.findByRole('textbox', { name: 'Attribute value' }),
+      'Alex',
+    );
+    await finishAndClose(user);
+
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    // One session, one outcome. A dismissal arriving after the save would ask
+    // the list to discard the row it has just committed.
+    expect(onCancel).not.toHaveBeenCalled();
+  });
+
   it('keeps the rule the row was edited into, rather than discarding the row', async () => {
     const user = userEvent.setup();
     renderRuleList([nodeRule('rule-a')]);

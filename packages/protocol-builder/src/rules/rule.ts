@@ -32,18 +32,6 @@ export type RuleDraft = {
   [key: string]: unknown;
 };
 
-/** An operand the interview runtime can compare. */
-export type RuleOperand = string | number | boolean | (string | number)[];
-
-export const isRuleOperand = (value: unknown): value is RuleOperand =>
-  typeof value === 'string' ||
-  typeof value === 'number' ||
-  typeof value === 'boolean' ||
-  (Array.isArray(value) &&
-    value.every(
-      (item) => typeof item === 'string' || typeof item === 'number',
-    ));
-
 /**
  * Whether a field of a rule has actually been answered.
  *

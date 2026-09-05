@@ -191,11 +191,16 @@ export default function RulePreview({
   const { entity, attribute, operator, operand, columns } = description;
   const isSummary = variant === 'summary';
   const isEgo = description.target === 'ego';
+  // A rule about whether the attribute has been answered at all reads
+  // "Person without Age": its operator introduces the attribute rather than
+  // following it, so the attribute takes the place the operand would have had
+  // and no connector is written before it.
+  const { attributePresence } = description;
 
   const subject = (
     <>
       {entity !== undefined && <RuleEntity entity={entity} />}
-      {attribute !== undefined && (
+      {attribute !== undefined && !attributePresence && (
         <>
           {' '}
           <span>{isEgo ? 'has' : 'where'}</span>{' '}
@@ -206,7 +211,9 @@ export default function RulePreview({
   );
   const predicate = <span data-rule-part="operator">{operator.text}</span>;
   const value =
-    operand === undefined ? null : (
+    attributePresence && attribute !== undefined ? (
+      <RuleAttribute attribute={attribute} />
+    ) : operand === undefined ? null : (
       <RuleOperand operand={operand} plain={isSummary} />
     );
 

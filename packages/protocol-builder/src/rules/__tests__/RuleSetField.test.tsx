@@ -169,6 +169,21 @@ const nodeRule = (id: string, typeId = 'person'): RuleDraft => ({
   options: { type: typeId, operator: 'EXISTS' },
 });
 
+/**
+ * The sentence one rule row actually reads, whitespace normalised.
+ *
+ * Taken from the element the row's own controls are named by, so this is the
+ * text a researcher sees and a screen reader announces rather than a shape
+ * assembled again by the test.
+ */
+const ruleRowSentence = (index = 0): string => {
+  const trigger = screen.getAllByRole('button', { name: /^Edit rule:/ })[index];
+  const previewId = trigger?.getAttribute('aria-labelledby')?.split(' ')[1];
+  const preview =
+    previewId === undefined ? null : document.getElementById(previewId);
+  return (preview?.textContent ?? '').replace(/\s+/g, ' ').trim();
+};
+
 describe('the rule set field', () => {
   it('names itself from the field that renders it', () => {
     renderEditor(createSession());
@@ -268,11 +283,14 @@ describe('rule list identity', () => {
       }),
     );
 
-    const [firstDelete] = screen.getAllByRole('button', {
+    const deleteControls = screen.getAllByRole('button', {
       name: /^Delete rule:/,
     });
-    expect(firstDelete).toBeDefined();
-    await user.click(firstDelete!);
+    // One control per rule, which is what makes clicking the first of them a
+    // deletion of the first rule rather than of whichever row happens to be
+    // rendered.
+    expect(deleteControls).toHaveLength(2);
+    await user.click(deleteControls[0]!);
     // Deleting a rule is a real loss, so the list confirms it first.
     await user.click(await screen.findByRole('button', { name: 'Delete' }));
 
@@ -324,6 +342,34 @@ describe('rule list identity', () => {
     expect(
       screen.queryByRole('radio', { name: 'Any rule can match' }),
     ).toBeNull();
+  });
+});
+
+describe('a stored rule about whether an attribute was answered', () => {
+  /**
+   * The editor no longer offers these operators against an attribute, but
+   * protocols authored before it stopped still hold them and have to read
+   * correctly. Architect renders them "Person where Age" / "Person without
+   * Age": the operator introduces the attribute rather than following it.
+   */
+  const attributePresenceRule = (operator: string): RuleDraft => ({
+    id: 'rule-a',
+    type: 'node',
+    options: { type: 'person', attribute: 'age', operator },
+  });
+
+  it('reads it as one phrase rather than repeating the operator', () => {
+    renderEditor(createSession({ rules: [attributePresenceRule('EXISTS')] }));
+
+    expect(ruleRowSentence()).toBe('Person where Age');
+  });
+
+  it('reads its negative the same way', () => {
+    renderEditor(
+      createSession({ rules: [attributePresenceRule('NOT_EXISTS')] }),
+    );
+
+    expect(ruleRowSentence()).toBe('Person without Age');
   });
 });
 
