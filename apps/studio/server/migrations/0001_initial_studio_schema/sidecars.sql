@@ -22,6 +22,14 @@ DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'studio_maintenance') THEN
     CREATE ROLE studio_maintenance NOLOGIN NOSUPERUSER NOBYPASSRLS;
   END IF;
+  IF EXISTS (
+    SELECT 1 FROM pg_roles
+    WHERE rolname IN ('studio_app', 'studio_maintenance')
+      AND (rolsuper OR rolbypassrls OR rolcanlogin)
+  ) THEN
+    RAISE EXCEPTION 'Studio runtime roles must be NOLOGIN, NOSUPERUSER, and NOBYPASSRLS. Ask the database administrator to correct their attributes before migrating.'
+      USING ERRCODE = '42501';
+  END IF;
   IF NOT pg_has_role(current_user, 'studio_app', 'SET') THEN
     EXECUTE format('GRANT studio_app TO %I WITH SET TRUE', current_user);
   END IF;

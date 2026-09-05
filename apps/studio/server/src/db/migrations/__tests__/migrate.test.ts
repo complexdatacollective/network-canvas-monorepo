@@ -503,4 +503,116 @@ describe.skipIf(!database)('explicit Studio migrations', () => {
       });
     });
   });
+
+  it.each(['SUPERUSER', 'BYPASSRLS', 'LOGIN'])(
+    'refuses a pre-created runtime role with %s privileges before stamping the migration',
+    async (unsafeFlag) => {
+      if (!database) throw new Error('Database required.');
+      const suffix = randomUUID().replaceAll('-', '');
+      const appRole = `studio_test_app_${suffix}`;
+      const maintenanceRole = `studio_test_maintenance_${suffix}`;
+      const administrator = new Pool({ connectionString: database.url });
+      try {
+        await administrator.query(
+          `CREATE ROLE ${escapeIdentifier(appRole)} ${unsafeFlag === 'LOGIN' ? 'LOGIN' : 'NOLOGIN'} ${unsafeFlag === 'SUPERUSER' ? 'SUPERUSER' : 'NOSUPERUSER'} ${unsafeFlag === 'BYPASSRLS' ? 'BYPASSRLS' : 'NOBYPASSRLS'}`,
+        );
+        await administrator.query(
+          `CREATE ROLE ${escapeIdentifier(maintenanceRole)} NOLOGIN NOSUPERUSER NOBYPASSRLS`,
+        );
+        await withDatabase(async ({ pool }) => {
+          const initial = shipped[0]!;
+          // Roles are cluster-wide. Isolated names exercise the exact shipped
+          // sidecars without weakening roles used by concurrent suites.
+          const sidecars = initial.sidecars
+            .replaceAll('studio_app', appRole)
+            .replaceAll('studio_maintenance', maintenanceRole);
+          const manifest = {
+            ...initial.manifest,
+            sidecarsHash: sha256(sidecars),
+          };
+          const isolated = {
+            ...initial,
+            manifest,
+            checksum: jsonHash(manifest),
+            sidecars,
+          };
+          await expect(
+            migrateDatabase(pool, [isolated], initial.manifest.fingerprint),
+          ).rejects.toThrow('Studio runtime roles');
+          expect(
+            (
+              await pool.query(
+                `SELECT to_regclass('studio_migrations.history') AS history, to_regclass('public.teams') AS teams`,
+              )
+            ).rows,
+          ).toEqual([{ history: null, teams: null }]);
+        });
+      } finally {
+        await administrator.query(
+          `DROP ROLE IF EXISTS ${escapeIdentifier(appRole)}, ${escapeIdentifier(maintenanceRole)}`,
+        );
+        await administrator.end();
+      }
+    },
+  );
+
+  it.each([
+    { command: 'COMMIT', part: 'sql', code: '0A000' },
+    { command: 'ROLLBACK', part: 'sql', code: '0A000' },
+    { command: 'COMMIT', part: 'sidecars', code: '0A000' },
+    { command: 'DO $$ BEGIN COMMIT; END $$', part: 'sql', code: '2D000' },
+  ])(
+    'contains authored $command in $part so it cannot escape the migration transaction',
+    async ({ command, part, code }) => {
+      await withDatabase(async ({ pool }) => {
+        await migrateDatabase(
+          pool,
+          [predecessor],
+          predecessor.manifest.fingerprint,
+        );
+        await pool.query(
+          `INSERT INTO public."user" (id, name, email, "emailVerified") VALUES ('keep', 'Before', 'keep@example.test', false)`,
+        );
+        const history = (
+          await pool.query('SELECT * FROM studio_migrations.history')
+        ).rows;
+        const appended = `\nUPDATE public."user" SET name = 'Damaged'; ${command};`;
+        const sql = upgrade.sql + (part === 'sql' ? appended : '');
+        const sidecars =
+          upgrade.sidecars + (part === 'sidecars' ? appended : '');
+        const manifest = {
+          ...upgrade.manifest,
+          sqlHash: sha256(sql),
+          sidecarsHash: sha256(sidecars),
+        };
+        const escaped = {
+          ...upgrade,
+          manifest,
+          checksum: jsonHash(manifest),
+          sql,
+          sidecars,
+        };
+        await expect(
+          migrateDatabase(pool, [predecessor, escaped], SCHEMA_FINGERPRINT),
+        ).rejects.toMatchObject({ code });
+        expect(
+          (await pool.query('SELECT name FROM public."user"')).rows,
+        ).toEqual([{ name: 'Before' }]);
+        expect(
+          (await pool.query('SELECT * FROM studio_migrations.history')).rows,
+        ).toEqual(history);
+        expect(
+          (
+            await pool.query(
+              `SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'user' AND column_name = 'locale'`,
+            )
+          ).rows,
+        ).toEqual([]);
+        expect(await checkSchema(pool)).toMatchObject({
+          kind: 'stale',
+          found: predecessor.manifest.fingerprint,
+        });
+      });
+    },
+  );
 });
