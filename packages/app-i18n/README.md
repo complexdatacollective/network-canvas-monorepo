@@ -69,6 +69,12 @@ validation/diagnostic text remains unchanged. A transported list uses
 `{ dependencies: { list: dependencyIds } }`, so conjunctions are formatted in the
 reader's language rather than captured before the switch.
 
+When a whole message contains a separately owned translated label, pass
+`{ rule: { messageError: createMessageError(ruleDescriptor) } }`. List items
+also accept this explicit wrapper. Ordinary strings are always literal data,
+even if they happen to resemble an encoded error. This keeps shared rule names
+and unnamed-attribute labels reactive without duplicating their translations.
+
 ## Host responsibilities
 
 Mount `AppI18nProvider` with the active locale, supported registry, and merged

@@ -6,6 +6,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
 } from 'react';
@@ -261,23 +262,28 @@ export function useField(config: UseFieldConfig): UseFieldResult {
     validationContext: resolvedValidationContext,
   };
 
-  // `useAppIntl` hands back a new formatter every time the active locale
-  // changes. Rebuilding the REGISTERED validation function from it would make
-  // a language switch re-register the field, and unregistering deletes the
-  // field's stored errors along with the blurred flag that lets them show —
-  // so a person switching language with a validation error on screen would
-  // watch it vanish while the form stayed invalid. The registered function
-  // reads the formatter through a ref instead: rule messages are formatted
-  // when validation runs, so the next run picks up the new language without
-  // the function the store holds ever changing identity.
+  // A formatter, custom schema or translated hint may change without the
+  // field being unmounted. The registered validator reads the last committed
+  // configuration, so those changes neither unregister the field nor erase
+  // submitted refusals, values or touched/blurred metadata. Its next run uses
+  // the current rules and language, including custom schemas with closures.
+  const validationConfigRef = useRef({ propsWithContext, intl });
+  useLayoutEffect(() => {
+    validationConfigRef.current = { propsWithContext, intl };
+  });
+
+  // Separately remember the formatter used by errors already on screen; an
+  // in-flight old-language validation still needs a corrective run when it
+  // settles after a language switch.
   const intlRef = useRef(intl);
 
-  const validation = useMemo(
-    () => (formValues: Record<string, FieldValue>) =>
-      makeValidationFunction(propsWithContext, intlRef.current)(formValues),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [validationPropsJson, resolvedValidationContext],
-  );
+  const validation = useCallback((formValues: Record<string, FieldValue>) => {
+    const current = validationConfigRef.current;
+    return makeValidationFunction(
+      current.propsWithContext,
+      current.intl,
+    )(formValues);
+  }, []);
 
   // Memoize the validation summary (only compute if showValidationHints is true)
   const validationSummary = useMemo(

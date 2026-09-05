@@ -185,3 +185,49 @@ Next shared action: commit the verified error checkpoint for app integration, th
 and final Storybook checks and open the prerequisite PR. App owners finish
 source/browser audits and latest-head verification before their PRs. No
 external Codex review or completion is claimed yet.
+
+## Shared checkpoint 5: custom schemas and nested shared labels
+
+Fresco's real SignInForm regression exposed a second route that erased submitted
+field errors: a translated custom validation hint/schema changed the registered
+validator's identity and caused field teardown. The registered validator now
+reads its last committed configuration through a stable callback. Changing copy
+preserves field registration, while the next validation uses the current custom
+schema and language. The regression failed on the disappearing Spanish refusal
+before the fix and now verifies its preservation, focus/value/error association,
+and a subsequent client-schema rejection in Spanish without another submission.
+Existing in-flight locale validation tests also pass.
+
+Explicit `{ messageError: encodedMessage }` values, including list items, let a
+whole error sentence reference separately owned shared labels. Raw strings are
+never recursively interpreted, preserving researcher data even when it resembles
+the transport prefix. A nested-label regression failed before support and passes
+with English/Spanish labels, conjunctions and unchanged literal data.
+
+App-i18n now passes 90 tests; Fresco UI passes all 2062 unit tests. Both packages
+typecheck and build. Full Storybook passes 1318 tests. An earlier full browser
+run had one EverythingBar combobox focus failure; its unchanged story passed all
+30 focused cases and the complete rerun passed without any assertion or timeout
+change. Scoped type-aware lint passes. Evidence:
+`/private/tmp/nc-localized-schema-registration-red.log`,
+`/private/tmp/nc-localized-schema-registration-green.log`,
+`/private/tmp/nc-nested-message-errors-red.log`,
+`/private/tmp/nc-live-validation-all-tests.log`,
+`/private/tmp/nc-live-validation-types.log`,
+`/private/tmp/nc-live-validation-builds.log`,
+`/private/tmp/nc-shared-everythingbar-repro.log`, and
+`/private/tmp/nc-shared-final-storybook-2.log`.
+
+All 698 entries in Architect's final frozen translation delta have now received
+independent AI review: the lead covered 0–119 and 450–697, and the Interviewer
+agent covered 120–449. Findings on verb form, consistent bin/bucket and pedigree
+terminology, singular counts, and remaining sentence assembly are assigned to
+the owner; corrected/new deltas will be rechecked. The lead independently
+accepted Interviewer's final eight changed pairs and 35 description improvements.
+
+An automatic approval reviewer rejected Interviewer's local shared-branch
+fast-forward as covered by the user's prohibition on merging. The lead has
+asked for explicit permission for local prerequisite integrations; that operation
+remains pending. Architect and Fresco's local integrations were accepted. All
+unaffected work continues, including translation of the four shared migration
+approval-note documents, which are in-scope researcher guidance.

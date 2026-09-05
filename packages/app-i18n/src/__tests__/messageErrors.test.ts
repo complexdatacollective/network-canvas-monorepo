@@ -18,6 +18,40 @@ const spanish =
   '{count, plural, one {No se puede guardar # registro de {name}.} other {No se pueden guardar # registros de {name}.}}';
 
 describe('message errors across string result boundaries', () => {
+  it('translates explicit nested labels and list items while preserving raw string values', () => {
+    const label = defineMessage({
+      id: 'test.error.attribute',
+      defaultMessage: 'this attribute',
+      description: 'Fallback attribute label for the nested error test.',
+    });
+    const summary = defineMessage({
+      id: 'test.error.summary',
+      defaultMessage: 'Fix {subject}: {variables}. Raw: {raw}',
+      description:
+        'Whole summary with a localized label, list and literal user data.',
+    });
+    const nested = createMessageError(label);
+    const error = createMessageError(summary, {
+      subject: { messageError: nested },
+      variables: { list: ['<Ana>', { messageError: nested }] },
+      raw: nested,
+    });
+    expect(formatMessageError(error, createAppIntl({ locale: 'en' }))).toBe(
+      `Fix this attribute: <Ana> and this attribute. Raw: ${nested}`,
+    );
+    expect(
+      formatMessageError(
+        error,
+        createAppIntl({
+          locale: 'es',
+          messages: {
+            [label.id]: 'este atributo',
+            [summary.id]: 'Corrige {subject}: {variables}. Literal: {raw}',
+          },
+        }),
+      ),
+    ).toBe(`Corrige este atributo: <Ana> y este atributo. Literal: ${nested}`);
+  });
   it('formats a transported list in the current language', () => {
     const listMessage = defineMessage({
       id: 'test.error.dependencies',

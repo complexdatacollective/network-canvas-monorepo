@@ -1,10 +1,11 @@
 import { act, render, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
+import { z } from 'zod';
 
 import { ecosystemLocales, mergeCatalogs } from '@codaco/app-i18n/locales';
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
-import { AppI18nProvider } from '@codaco/app-i18n/react';
+import { AppI18nProvider, useAppIntl } from '@codaco/app-i18n/react';
 
 import { frescoUiCatalogs } from '../locales/catalogs';
 import Field from './Field/Field';
@@ -24,11 +25,42 @@ const messages = defineMessages({
     defaultMessage: 'Your account could not be saved.',
     description: 'Test whole-form submission failure.',
   },
+  hint: {
+    id: 'test.form.hint',
+    defaultMessage: 'Enter your name.',
+    description: 'Test localized custom validation hint.',
+  },
+  reserved: {
+    id: 'test.form.reserved',
+    defaultMessage: 'Choose a different name.',
+    description:
+      'Test custom client validation with a locale-dependent schema.',
+  },
 });
 const spanish = {
   'test.form.taken': 'Este nombre ya está en uso.',
   'test.form.failed': 'No se pudo guardar tu cuenta.',
+  'test.form.hint': 'Introduce tu nombre.',
+  'test.form.reserved': 'Elige otro nombre.',
 };
+
+function NameField() {
+  const intl = useAppIntl();
+  return (
+    <Field
+      name="name"
+      label="Name"
+      component={InputField}
+      required
+      custom={{
+        hint: intl.formatMessage(messages.hint),
+        schema: z.string().refine((value) => value !== 'reserved', {
+          error: intl.formatMessage(messages.reserved),
+        }),
+      }}
+    />
+  );
+}
 
 it('reformats submitted field/form errors while preserving their refusal, values and focus', async () => {
   const submit = vi.fn(() => ({
@@ -47,7 +79,7 @@ it('reformats submitted field/form errors while preserving their refusal, values
       )}
     >
       <Form onSubmit={submit}>
-        <Field name="name" label="Name" component={InputField} required />
+        <NameField />
         <SubmitButton>Save</SubmitButton>
       </Form>
     </AppI18nProvider>
@@ -73,6 +105,11 @@ it('reformats submitted field/form errors while preserving their refusal, values
   expect(input).toHaveAttribute('aria-invalid', 'true');
   expect(input).toHaveValue('<Ana>');
   expect(input).toHaveFocus();
+  expect(submit).toHaveBeenCalledTimes(1);
+  await user.clear(input);
+  await user.type(input, 'reserved');
+  await user.click(screen.getByRole('button', { name: 'Save' }));
+  expect(await screen.findByText('Elige otro nombre.')).toBeInTheDocument();
   expect(submit).toHaveBeenCalledTimes(1);
 });
 
