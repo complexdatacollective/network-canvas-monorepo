@@ -123,26 +123,38 @@ describe('the nomination limits a name generator may set', () => {
   });
 
   /**
-   * The error belongs to the pair, so raising the maximum has to clear it —
-   * field validation runs on touch and on submit, and neither covers a change
-   * made in the sibling control.
+   * The error belongs to the pair, so moving EITHER end has to clear it.
+   *
+   * Deliberately fixed from the other control. Field validation runs when a
+   * field is touched and on submit, and a control that revalidates itself on
+   * change covers the end the error is showing on whether the section's
+   * sibling-revalidation effect exists or not — so a test that edited the
+   * control holding the error would pass with that effect deleted, which is
+   * the one thing it is here to prove.
    */
-  it('clears the refusal once the other end of the window moves', async () => {
+  it('clears the refusal from the other end of the window', async () => {
     const harness = renderStageEditor(unlimitedStage);
 
     await harness.user.click(
       screen.getByRole('switch', { name: 'Nomination limits' }),
     );
+    const min = await screen.findByRole('spinbutton', {
+      name: /Fewest people/,
+    });
+    await harness.user.type(min, '6');
     await harness.user.type(
-      await screen.findByRole('spinbutton', { name: /Fewest people/ }),
-      '6',
+      screen.getByRole('spinbutton', { name: /Most people/ }),
+      '2',
     );
-    const max = screen.getByRole('spinbutton', { name: /Most people/ });
-    await harness.user.type(max, '2');
     expect(await harness.submit()).toBeNull();
+    expect(
+      await screen.findByText('The maximum cannot be less than the minimum.'),
+    ).toBeInTheDocument();
 
-    await harness.user.clear(max);
-    await harness.user.type(max, '9');
+    // The window becomes 1..2, which is satisfiable — and the error is on the
+    // maximum, which nothing below touches.
+    await harness.user.clear(min);
+    await harness.user.type(min, '1');
     await waitFor(() =>
       expect(
         screen.queryByText('The maximum cannot be less than the minimum.'),
@@ -151,9 +163,51 @@ describe('the nomination limits a name generator may set', () => {
 
     const request = await harness.submit();
     expect(request?.stageDocument.behaviours).toEqual({
-      minNodes: 6,
-      maxNodes: 9,
+      minNodes: 1,
+      maxNodes: 2,
     });
+  });
+
+  /**
+   * The limits count across the whole stage, and a stage asking several
+   * questions reads as though each question had its own allowance — so the
+   * section says which it is, where the researcher is setting it.
+   */
+  it('warns that the limits cover a stage asking several questions', async () => {
+    const harness = renderStageEditor({
+      stage: {
+        type: 'NameGenerator' as const,
+        fields: {
+          ...unlimitedStage.stage.fields,
+          prompts: [
+            { id: 'prompt-a', text: 'Who do you know?' },
+            { id: 'prompt-b', text: 'Who do you talk to?' },
+          ],
+        },
+      },
+      sections: limits,
+    });
+
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Nomination limits' }),
+    );
+
+    expect(
+      await screen.findByText('These limits cover the whole stage'),
+    ).toBeInTheDocument();
+  });
+
+  it('says nothing of the sort on a stage asking one question', async () => {
+    const harness = renderStageEditor(unlimitedStage);
+
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Nomination limits' }),
+    );
+    await screen.findByRole('spinbutton', { name: /Fewest people/ });
+
+    expect(
+      screen.queryByText('These limits cover the whole stage'),
+    ).not.toBeInTheDocument();
   });
 
   /**
