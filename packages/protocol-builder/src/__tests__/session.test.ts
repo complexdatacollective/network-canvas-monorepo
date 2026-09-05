@@ -270,6 +270,27 @@ describe('ProtocolBuilderSessionStore', () => {
     });
   });
 
+  /**
+   * The snapshot's own copy of the stage section is the only authoritative
+   * stage document a caller can read — the one a compound edit hashes, and the
+   * one `orderedStages` is built from — so an authoritative replacement moves
+   * it along with the base.
+   */
+  it('moves the stage document a caller reads when the stage is replaced', () => {
+    const { session } = createSession({
+      protocolSections: { [currentStageSection]: currentStageDocument },
+    });
+
+    session.replaceAuthoritativeStage({
+      fields: { ...initialFields, label: 'Remote' },
+      manifestRevision: revision(2n),
+    });
+
+    expect(session.getSnapshot().protocolSections[currentStageSection]).toEqual(
+      { ...currentStageDocument, label: 'Remote' },
+    );
+  });
+
   it('stamps and atomically reconciles a structural compound edit', async () => {
     const onCommands = vi.fn();
     const onCompoundEdit = vi.fn().mockResolvedValue({

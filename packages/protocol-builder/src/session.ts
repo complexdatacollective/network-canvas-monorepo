@@ -879,12 +879,44 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     this.replaceSnapshot({
       fields,
       pendingCommands,
+      protocolSections: this.sectionsWithAuthoritativeStage(params.fields),
       manifestRevision: params.manifestRevision,
       attribution: params.attribution ?? this.snapshot.attribution,
       validation: pendingValidation(),
       validatedProtocol: null,
     });
     void this.runValidation();
+  }
+
+  /**
+   * The protocol sections with this session's own copy of the edited stage
+   * moved to the document the host has just agreed to.
+   *
+   * The snapshot's stage section is the ONLY authoritative stage document a
+   * caller can read, and two things read it: a compound edit naming the
+   * document its stage commands will be applied to (`withStageSectionEdit`
+   * hashes it, and a hash of a superseded document is refused), and
+   * `protocolContext.orderedStages`, which is where a skip destination's list
+   * and the names an auto-named stage must not collide with come from. Moving
+   * the base without moving this leaves both a revision behind the host, so
+   * they move together.
+   *
+   * A stage being CREATED is left out: the interview does not contain it, an
+   * acknowledgement is not what puts it there, and a stage section outside the
+   * stage order is a protocol issue rather than a stage anything can read.
+   */
+  private sectionsWithAuthoritativeStage(
+    fields: StageFormDraft,
+  ): Readonly<Record<string, SectionDoc>> {
+    if (this.options.creation !== undefined)
+      return this.snapshot.protocolSections;
+    return {
+      ...this.snapshot.protocolSections,
+      [this.snapshot.editedSection.sectionId]: stageDocument(
+        this.options.identity,
+        fields,
+      ),
+    };
   }
 
   replaceAuthoritativeStage(
@@ -910,6 +942,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     this.redoStack.length = 0;
     this.replaceSnapshot({
       fields: params.fields,
+      protocolSections: this.sectionsWithAuthoritativeStage(params.fields),
       manifestRevision: params.manifestRevision,
       validation: pendingValidation(),
       validatedProtocol: null,

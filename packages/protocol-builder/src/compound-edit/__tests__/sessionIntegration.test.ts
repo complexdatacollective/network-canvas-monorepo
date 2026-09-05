@@ -621,6 +621,79 @@ describe('a compound edit made while the stage has unsaved changes', () => {
 });
 
 /**
+ * The one authoritative stage document a caller can read is the snapshot's own
+ * copy of the stage section, and everything that has to name the host's stage
+ * reads it: a compound edit hashes it to say which document its stage commands
+ * apply to, and `protocolContext.orderedStages` is where a skip destination's
+ * list and an auto-named stage's existing names come from. So it has to move
+ * when the host's stage does.
+ */
+describe('the stage document a session hands out after an acknowledgement', () => {
+  it('holds what the host holds', () => {
+    const { host, session, settleAcknowledgements } = createSession({
+      applyLive: true,
+    });
+    session.dispatch([{ op: 'set', key: 'label', value: 'Places' }]);
+    settleAcknowledgements();
+
+    expect(session.getSnapshot().protocolSections[stageSection]).toEqual(
+      host.getSnapshot().protocolSections[stageSection],
+    );
+  });
+
+  it('renames the stage the skip destinations and auto-naming read', () => {
+    const { session, settleAcknowledgements } = createSession({
+      applyLive: true,
+    });
+    session.dispatch([{ op: 'set', key: 'label', value: 'Places' }]);
+    settleAcknowledgements();
+
+    expect(
+      session
+        .getSnapshot()
+        .protocolContext.orderedStages.map((stage) => stage.label),
+    ).toEqual(['Places']);
+  });
+
+  /**
+   * And a compound edit built from it is applied rather than refused: the hash
+   * a caller can name is the hash the host is holding.
+   */
+  it('names a document the host will accept a stage edit against', async () => {
+    const { host, session, settleAcknowledgements } = createSession({
+      applyLive: true,
+    });
+    session.dispatch([{ op: 'set', key: 'label', value: 'Places' }]);
+    settleAcknowledgements();
+
+    // Exactly what `withStageSectionEdit` does: read the authoritative stage
+    // out of the snapshot and hash it.
+    const authoritative =
+      session.getSnapshot().protocolSections[stageSection] ?? {};
+    await expect(
+      session.requestCompoundEdit({
+        id: 'rename-and-create-place',
+        description: 'Rename the stage and create a place',
+        edits: [
+          {
+            kind: 'update',
+            sectionId: stageSection,
+            expectedContentHash: contentHash(authoritative),
+            commands: [{ op: 'set', key: 'title', value: 'Places nearby' }],
+          },
+          request.edits[1]!,
+        ],
+      }),
+    ).resolves.toMatchObject({ status: 'applied' });
+
+    expect(host.getSnapshot().protocolSections[stageSection]).toMatchObject({
+      label: 'Places',
+      title: 'Places nearby',
+    });
+  });
+});
+
+/**
  * Which of this session's batches the host already holds is not something the
  * session may assume, because the two host models disagree about it. A host
  * that buffers `onCommands` until finish holds none of them; a host that
