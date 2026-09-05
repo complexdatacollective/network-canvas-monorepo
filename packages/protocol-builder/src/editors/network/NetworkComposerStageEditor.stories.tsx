@@ -3,7 +3,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 
-import { StageEditorStoryHost } from '../storyHost/StageEditorStoryHost.tsx';
+import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
 import { NetworkComposerStageEditor } from './NetworkComposerStageEditor.tsx';
 
 const meta = {
@@ -48,9 +48,9 @@ export const Editing: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Save stage' }));
 
     await waitFor(async () => {
-      await expect(canvas.getByRole('status')).toHaveTextContent(
-        'Saved “Network Composer”.',
-      );
+      await expect(
+        canvas.getByRole('status', { name: 'Save status' }),
+      ).toHaveTextContent('Saved “Network Composer”.');
     });
     await expect(canvas.getByText(/"type": "knows"/)).toBeInTheDocument();
   },

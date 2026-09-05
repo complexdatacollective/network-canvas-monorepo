@@ -3,7 +3,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 
-import { StageEditorStoryHost } from '../storyHost/StageEditorStoryHost.tsx';
+import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
 import { AnonymisationStageEditor } from './AnonymisationStageEditor.tsx';
 
 const meta = {
@@ -53,8 +53,8 @@ export const Editing: Story = {
 
     await waitFor(async () => {
       await expect(
-        canvas.getByText('Saved “Anonymisation”.'),
-      ).toBeInTheDocument();
+        canvas.getByRole('status', { name: 'Save status' }),
+      ).toHaveTextContent('Saved “Anonymisation”.');
     });
     await expect(
       canvas.getByText(/Your answers are protected/),
