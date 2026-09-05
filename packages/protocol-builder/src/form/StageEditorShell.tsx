@@ -124,16 +124,29 @@ function StageEditorFormBody({
    * the row simply does not appear — which reads as the editor being broken
    * rather than as the lease having gone.
    *
-   * Cleared once the stage is editable again, because taking editing back is
-   * exactly what the message asks for and the researcher should not have to
-   * read it twice.
+   * The message describes ONE write that reached nothing, so it stands only
+   * until something makes it untrue:
+   *
+   *   a write of this form's own that DID land — a list operation the session
+   *   took, or a submit that finished — or the stage becoming editable again.
+   *
+   * All three are stated here rather than at the write paths, because a
+   * refusal that outlives the state it described is worse than none: the
+   * researcher is told nothing was saved while looking at an edit that
+   * plainly was. Editing being handed back is included because that is
+   * exactly what the read-only message asks for, and it should not have to be
+   * read twice. Neither a read of the draft (`applyOwnCommands([])`) nor a
+   * write the session refuses may clear it: neither is news.
    */
   const [refusedWrite, setRefusedWrite] = useState<string | undefined>(
     undefined,
   );
+  const clearRefusedWrite = useCallback(() => {
+    setRefusedWrite(undefined);
+  }, []);
   useEffect(() => {
-    if (!readOnly) setRefusedWrite(undefined);
-  }, [readOnly]);
+    if (!readOnly) clearRefusedWrite();
+  }, [clearRefusedWrite, readOnly]);
 
   /**
    * The one way a refused structural write is said out loud, wherever the
@@ -218,6 +231,9 @@ function StageEditorFormBody({
         // arrival, leaving the controls showing a draft that had moved on.
         flushed.current = written;
         await controller.finish();
+        // The save landed, so whatever a list write was refused before it is
+        // no longer what happened to this stage.
+        clearRefusedWrite();
         return { success: true };
       } catch (error) {
         flushed.current = null;
@@ -232,7 +248,7 @@ function StageEditorFormBody({
         };
       }
     },
-    [controller, flushed, readOnly, storeApi],
+    [clearRefusedWrite, controller, flushed, readOnly, storeApi],
   );
 
   /**
@@ -293,6 +309,10 @@ function StageEditorFormBody({
         return { draft: before, refused: true };
       }
 
+      // The session took these commands, which is the only thing that can say
+      // a refusal reported before them is no longer this form's news.
+      clearRefusedWrite();
+
       const content = canonicalize(next);
       const started = canonicalize(before);
       // What the form believes the agreed draft is: what it last saw agreed,
@@ -310,7 +330,14 @@ function StageEditorFormBody({
         flushed.current = content;
       return { draft: next, refused: false };
     },
-    [committedFields, controller, flushed, readOnly, reportRefusedWrite],
+    [
+      clearRefusedWrite,
+      committedFields,
+      controller,
+      flushed,
+      readOnly,
+      reportRefusedWrite,
+    ],
   );
 
   const { formProps, formErrors } = useForm({

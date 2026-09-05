@@ -11,6 +11,7 @@ import { useMemo } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import type { Command, SectionDoc } from '@codaco/studio-sync/apply';
 
@@ -24,6 +25,7 @@ import {
   SessionReadOnlyError,
 } from '../../../session.ts';
 import ProtocolArrayField from '../../ProtocolArrayField.tsx';
+import ProtocolField from '../../ProtocolField.tsx';
 import StageEditorShell from '../../StageEditorShell.tsx';
 import MultiSelect, {
   makeMultiSelectValidation,
@@ -182,6 +184,48 @@ function renderSortRules(session: ProtocolBuilderSession) {
             properties={SORT_PROPERTIES}
             options={() => []}
             {...validation}
+          />
+        </BuilderSection>
+      </StageEditorShell>
+    );
+  }
+
+  return render(
+    <DialogProvider>
+      <Host />
+    </DialogProvider>,
+  );
+}
+
+/**
+ * A list and an ordinary field in the one stage, which is the arrangement an
+ * undo of a list edit leaves behind: the draft moves for the list, and the
+ * researcher is typing somewhere else on the page while it does.
+ */
+function renderOptionsBesideHeading(session: ProtocolBuilderSession) {
+  function Host() {
+    const controller = useStageEditorController(session, 'stage-form');
+    return (
+      <StageEditorShell
+        controller={controller}
+        actions={({ formId }) => (
+          <SubmitButton form={formId}>Finished editing</SubmitButton>
+        )}
+      >
+        <BuilderSection title="Page content">
+          <ProtocolField
+            name="title"
+            label="Page heading"
+            component={InputField}
+          />
+        </BuilderSection>
+        <BuilderSection title="Answer options">
+          <ProtocolArrayField
+            name="options"
+            label="Answer options"
+            component={Options}
+            addButtonLabel="Create new option"
+            {...optionsValidation}
           />
         </BuilderSection>
       </StageEditorShell>
@@ -451,6 +495,76 @@ describe('Options', () => {
     expect(Object.hasOwn(request.stageDocument, 'options')).toBe(false);
     expect(session.getSnapshot().editedSection.fields.options).toBeUndefined();
   });
+
+  it('adds an option to a key an import left holding something else', async () => {
+    const user = userEvent.setup();
+    // What a list key can hold after an import, a migration or a hand-edited
+    // protocol. The editor renders it as an empty list with a WORKING Add
+    // button — fresco-ui's render-tolerance contract — so the click behind
+    // that button has to reach the document rather than throw out of the
+    // handler.
+    const session = createSession({ title: 'Welcome', options: 'yes' });
+    renderOptions(session);
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Create new option' }),
+    );
+
+    await waitFor(() =>
+      expect(session.getSnapshot().editedSection.fields.options).toEqual([{}]),
+    );
+  });
+});
+
+describe('a list edit undone while another field is being typed in', () => {
+  it('puts the list back without taking the keystrokes with it', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      title: 'Welcome',
+      options: [{ label: 'Yes', value: 'yes' }],
+    });
+    renderOptionsBesideHeading(session);
+
+    // A list edit commits on its own, so the session now holds an undo entry
+    // for it and the draft the controls were built from has moved.
+    await user.click(
+      await screen.findByRole('button', { name: 'Create new option' }),
+    );
+    await waitFor(() =>
+      expect(session.getSnapshot().editedSection.fields.options).toHaveLength(
+        2,
+      ),
+    );
+
+    // Typing never reaches the session: this heading lives in the form and
+    // nowhere else until the stage is saved.
+    await user.clear(screen.getByRole('textbox', { name: 'Page heading' }));
+    await user.type(
+      screen.getByRole('textbox', { name: 'Page heading' }),
+      'A new heading',
+    );
+
+    act(() => {
+      session.undo();
+    });
+
+    // The undo was about the list, so the list is what goes back.
+    await waitFor(() =>
+      expect(session.getSnapshot().editedSection.fields.options).toEqual([
+        { label: 'Yes', value: 'yes' },
+      ]),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole('button', { name: /^Remove option/ }),
+      ).toHaveLength(1),
+    );
+    // The heading was no part of it. Reverting it too would discard work the
+    // researcher has not saved yet and never asked to undo.
+    expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
+      'A new heading',
+    );
+  });
 });
 
 describe('MultiSelect', () => {
@@ -468,6 +582,25 @@ describe('MultiSelect', () => {
 
     await screen.findByText('Every row needs a value in each column.');
     expect(session.getSnapshot().pendingCommands).toEqual([]);
+  });
+
+  it('adds a sort rule to a key an import left holding something else', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      title: 'Welcome',
+      sortOrder: { property: 'name' },
+    });
+    renderSortRules(session);
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Add new sort rule' }),
+    );
+
+    await waitFor(() =>
+      expect(session.getSnapshot().editedSection.fields.sortOrder).toEqual([
+        {},
+      ]),
+    );
   });
 });
 
@@ -654,5 +787,81 @@ describe('an inline list whose write the document does not take', () => {
           .map((cell) => (cell as HTMLInputElement).value),
       ).toEqual(['name', 'name', '']),
     );
+  });
+});
+
+/**
+ * The other half of telling the researcher a write went nowhere: the message
+ * has to stop being true at some point, and the only thing that can say so is
+ * a later write that DID land.
+ */
+describe('a refusal the researcher has since written past', () => {
+  const REFUSAL =
+    'This list changed while you were editing, so this item could not be matched to a row in it and nothing was saved. Copy anything you want to keep, then check the list and make the change again.';
+
+  const twin = () => ({ label: 'A', value: 'a' });
+
+  /** Refuses one inline edit, on a stage that stays editable throughout. */
+  async function refuseAnOptionEdit(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(
+      await screen.findByRole('button', { name: 'Create new option' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getAllByRole('button', { name: /^Remove option/ }),
+      ).toHaveLength(3),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Edit option 1' }));
+    await user.type(await screen.findByRole('textbox', { name: 'Value' }), 'x');
+    expect(await screen.findByText(REFUSAL)).toBeInTheDocument();
+  }
+
+  it('takes the message down once a later list edit lands', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      title: 'Welcome',
+      options: [null, twin(), twin()],
+    });
+    renderOptions(session);
+    await refuseAnOptionEdit(user);
+
+    // A second add, which resolves to a row of its own and reaches the
+    // document. The stage was never read-only, so nothing else will ever
+    // retract the message.
+    await user.click(screen.getByRole('button', { name: 'Create new option' }));
+    await waitFor(() =>
+      expect(session.getSnapshot().editedSection.fields.options).toHaveLength(
+        5,
+      ),
+    );
+
+    expect(screen.queryByText(REFUSAL)).not.toBeInTheDocument();
+  });
+
+  it('takes the message down once the stage saves', async () => {
+    const user = userEvent.setup();
+    const onFinish = vi.fn();
+    const session = createSession(
+      {
+        label: 'Welcome',
+        title: 'Welcome',
+        items: [],
+        options: [null, twin(), twin()],
+      },
+      onFinish,
+    );
+    renderOptionalOptions(session);
+    await refuseAnOptionEdit(user);
+
+    // Switching the capability off clears the list in the form and nowhere
+    // else, so the save that follows is the first thing since the refusal to
+    // reach the document at all.
+    await user.click(screen.getByRole('switch', { name: 'Answer options' }));
+    await user.click(screen.getByRole('button', { name: 'Clear options' }));
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    await waitFor(() => expect(onFinish).toHaveBeenCalled());
+    expect(screen.queryByText(REFUSAL)).not.toBeInTheDocument();
   });
 });
