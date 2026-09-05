@@ -1,0 +1,518 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+// The shared contract every ProtocolBuilderResourceGateway adapter must pass —
+// the in-memory proof adapter here, Architect's adapter, and eventually
+// Studio's. It is imported only from test files (vitest is a devDependency and
+// no runtime module imports this one), and it lives in `src` rather than
+// `__tests__` so an adapter that lives in another workspace can run it.
+import { assetSchema } from '@codaco/protocol-validation';
+import { sectionId } from '@codaco/studio-sync/taxonomy';
+
+import type {
+  ManifestApplyOutcome,
+  ManifestApplyRequest,
+  ProtocolBuilderResourceGateway,
+  ResourceDescriptor,
+  ResourceGatewayFailure,
+  ResourceResult,
+} from './gateway.ts';
+
+/**
+ * What an adapter must expose for the contract to observe host state it cannot
+ * reach through the port itself. Everything here is a test control; none of it
+ * belongs on {@link ProtocolBuilderResourceGateway}.
+ */
+export type ResourceGatewayContractHarness = Readonly<{
+  gateway: ProtocolBuilderResourceGateway;
+  /** The committed manifest the host would serve right now, keyed by asset id. */
+  committedManifest(): Readonly<Record<string, unknown>>;
+  /**
+   * Every key the host still holds on behalf of staging — descriptors, bytes,
+   * secret handles, remembered stage requests, unreleased previews. Discarding
+   * everything must empty it.
+   */
+  stagingResidue(): readonly string[];
+  /** Arrange the next promotion to fail after some, but not all, bytes moved. */
+  failNextPromotionPartially(): void;
+  /** Arrange the next download to fail transiently, exactly once. */
+  failNextDownloadTransiently(): void;
+  /**
+   * Host storage details (bucket or key prefixes, database names, endpoints)
+   * that must never appear in anything the gateway returns.
+   */
+  storageMarkers?: readonly string[];
+}>;
+
+/** The committed resource every harness must seed before the contract runs. */
+export const RESOURCE_GATEWAY_CONTRACT_SEED = Object.freeze({
+  committedImage: Object.freeze({
+    id: 'committed-backdrop',
+    name: 'Committed backdrop',
+    source: 'committed-backdrop.png',
+    contentType: 'image/png',
+  }),
+});
+
+/** The exact bytes the seeded committed image must hold. */
+export function resourceGatewayContractImageBytes(): Uint8Array {
+  return Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10, 7, 8, 9, 10]);
+}
+
+const STAGED_IMAGE_BYTES = Uint8Array.from([1, 2, 3, 4, 5, 6, 7, 8]);
+const STAGED_ROSTER_BYTES = new TextEncoder().encode(
+  JSON.stringify({ nodes: [{ attributes: { name: 'Ada' } }], edges: [] }),
+);
+/** Distinctive so a leak anywhere in a serialized surface is unambiguous. */
+const SECRET_VALUE = 'pk.contract-secret-must-never-appear';
+
+const ASSETS_SECTION = sectionId({ kind: 'assets' });
+
+export function describeResourceGatewayContract(
+  name: string,
+  createHarness: () =>
+    | ResourceGatewayContractHarness
+    | Promise<ResourceGatewayContractHarness>,
+): void {
+  describe(`resource gateway contract: ${name}`, () => {
+    let current: ResourceGatewayContractHarness | undefined;
+
+    beforeEach(async () => {
+      current = await createHarness();
+    });
+
+    const harness = (): ResourceGatewayContractHarness => {
+      if (current === undefined) throw new Error('the harness was not created');
+      return current;
+    };
+    const gateway = (): ProtocolBuilderResourceGateway => harness().gateway;
+
+    const stageImage = async (
+      requestId = 'request-image',
+    ): Promise<ResourceDescriptor> =>
+      expectOk(
+        await gateway().stageUpload({
+          requestId,
+          kind: 'image',
+          name: 'Staged backdrop',
+          source: 'staged-backdrop.png',
+          contentType: 'image/png',
+          bytes: STAGED_IMAGE_BYTES,
+        }),
+      );
+
+    const stageRoster = async (
+      requestId = 'request-roster',
+    ): Promise<ResourceDescriptor> =>
+      expectOk(
+        await gateway().stageUpload({
+          requestId,
+          kind: 'network',
+          name: 'Staged roster',
+          source: 'staged-roster.json',
+          contentType: 'application/json',
+          bytes: STAGED_ROSTER_BYTES,
+        }),
+      );
+
+    const stageSecret = async (requestId = 'request-secret') =>
+      expectOk(
+        await gateway().stageSecret({
+          requestId,
+          name: 'Map token',
+          value: SECRET_VALUE,
+        }),
+      );
+
+    it('lists the committed manifest and nothing staged', async () => {
+      const listed = expectOk(await gateway().list());
+
+      expect(listed.map((descriptor) => descriptor.id)).toEqual([
+        RESOURCE_GATEWAY_CONTRACT_SEED.committedImage.id,
+      ]);
+      expect(listed[0]?.status).toBe('committed');
+      expect(harness().stagingResidue()).toEqual([]);
+    });
+
+    it('stages an upload with a referenceable asset id, outside the committed manifest', async () => {
+      const staged = await stageImage();
+
+      expect(staged.status).toBe('staged');
+      expect(staged.id).not.toBe('');
+      expect(staged.source).toBe('staged-backdrop.png');
+      // A draft may reference the id immediately …
+      const listed = expectOk(await gateway().list({ status: 'staged' }));
+      expect(listed.map((descriptor) => descriptor.id)).toEqual([staged.id]);
+      // … while the committed manifest still knows nothing about it.
+      expect(Object.keys(harness().committedManifest())).toEqual([
+        RESOURCE_GATEWAY_CONTRACT_SEED.committedImage.id,
+      ]);
+    });
+
+    it('stages once when an uncertain upload is retried', async () => {
+      const first = await stageImage('request-retry');
+      const second = await stageImage('request-retry');
+
+      expect(second.id).toBe(first.id);
+      expect(expectOk(await gateway().list({ status: 'staged' }))).toHaveLength(
+        1,
+      );
+    });
+
+    it('stages a secret as an opaque handle and keeps the value off every surface', async () => {
+      const secret = await stageSecret();
+
+      expect(secret.descriptor.kind).toBe('apikey');
+      expect(secret.descriptor.status).toBe('staged');
+      expect(String(secret.handle)).not.toContain(SECRET_VALUE);
+      expect(SECRET_VALUE).not.toContain(String(secret.handle));
+
+      const listed = expectOk(await gateway().list());
+      const inspected = expectOk(await gateway().inspect(secret.descriptor.id));
+      const previewFailure = expectFailure(
+        await gateway().resolvePreview(secret.descriptor.id),
+      );
+      const downloadFailure = expectFailure(
+        await gateway().download(secret.descriptor.id),
+      );
+      // What a stage draft would actually hold: the asset id, never the value.
+      const draftSnapshot = {
+        editedSection: { fields: { token: secret.descriptor.id } },
+        resources: listed,
+        inspected,
+        failures: [previewFailure, downloadFailure],
+        handle: secret.handle,
+        descriptor: secret.descriptor,
+      };
+
+      expect(JSON.stringify(draftSnapshot)).not.toContain(SECRET_VALUE);
+      expect(JSON.stringify(harness().stagingResidue())).not.toContain(
+        SECRET_VALUE,
+      );
+    });
+
+    it('refuses to preview or download secret material', async () => {
+      const secret = await stageSecret();
+
+      expect(
+        expectFailure(await gateway().resolvePreview(secret.descriptor.id))
+          .reason,
+      ).toBe('unsupported-kind');
+      expect(
+        expectFailure(await gateway().download(secret.descriptor.id)).reason,
+      ).toBe('unsupported-kind');
+    });
+
+    it('resolves previews for committed and staged content', async () => {
+      const staged = await stageImage();
+
+      const committedPreview = expectOk(
+        await gateway().resolvePreview(
+          RESOURCE_GATEWAY_CONTRACT_SEED.committedImage.id,
+        ),
+      );
+      const stagedPreview = expectOk(await gateway().resolvePreview(staged.id));
+
+      expect(committedPreview.url).not.toBe('');
+      expect(stagedPreview.url).not.toBe('');
+      expect(stagedPreview.resourceId).toBe(staged.id);
+      stagedPreview.release();
+      committedPreview.release();
+    });
+
+    it('inspects committed and staged resources and reports anything else as not-found', async () => {
+      const staged = await stageRoster();
+
+      expect(expectOk(await gateway().inspect(staged.id)).descriptor.id).toBe(
+        staged.id,
+      );
+      expect(
+        expectOk(
+          await gateway().inspect(
+            RESOURCE_GATEWAY_CONTRACT_SEED.committedImage.id,
+          ),
+        ).descriptor.status,
+      ).toBe('committed');
+
+      const failure = expectFailure(
+        await gateway().inspect('no-such-resource'),
+      );
+      expect(failure.reason).toBe('not-found');
+      expect(failure.retryable).toBe(false);
+    });
+
+    it('downloads the exact bytes of committed and staged content', async () => {
+      const staged = await stageImage();
+
+      const committed = expectOk(
+        await gateway().download(
+          RESOURCE_GATEWAY_CONTRACT_SEED.committedImage.id,
+        ),
+      );
+      expect([...committed.bytes]).toEqual([
+        ...resourceGatewayContractImageBytes(),
+      ]);
+
+      const stagedContent = expectOk(await gateway().download(staged.id));
+      expect([...stagedContent.bytes]).toEqual([...STAGED_IMAGE_BYTES]);
+    });
+
+    it('reports a transient failure as retryable and succeeds when retried', async () => {
+      const staged = await stageImage();
+      harness().failNextDownloadTransiently();
+
+      const failure = expectFailure(await gateway().download(staged.id));
+      expect(failure.retryable).toBe(true);
+
+      const retried = expectOk(await gateway().download(staged.id));
+      expect([...retried.bytes]).toEqual([...STAGED_IMAGE_BYTES]);
+    });
+
+    it('discards one staged resource and leaves the others staged', async () => {
+      const image = await stageImage();
+      const roster = await stageRoster();
+
+      expectOk(await gateway().discardStaged(image.id));
+
+      expect(
+        expectOk(await gateway().list({ status: 'staged' })).map(
+          (descriptor) => descriptor.id,
+        ),
+      ).toEqual([roster.id]);
+      expect(expectFailure(await gateway().download(image.id)).reason).toBe(
+        'not-found',
+      );
+    });
+
+    it('discards all staging with no residue and no change to the committed manifest', async () => {
+      const image = await stageImage();
+      const secret = await stageSecret();
+      const preview = expectOk(await gateway().resolvePreview(image.id));
+      expect(preview.url).not.toBe('');
+
+      expectOk(await gateway().discardAllStaged());
+
+      expect(harness().stagingResidue()).toEqual([]);
+      expect(expectOk(await gateway().list({ status: 'staged' }))).toEqual([]);
+      expect(expectFailure(await gateway().inspect(image.id)).reason).toBe(
+        'not-found',
+      );
+      expect(
+        expectFailure(await gateway().inspect(secret.descriptor.id)).reason,
+      ).toBe('not-found');
+      expect(Object.keys(harness().committedManifest())).toEqual([
+        RESOURCE_GATEWAY_CONTRACT_SEED.committedImage.id,
+      ]);
+    });
+
+    it('promotes every staged resource and its manifest entry together', async () => {
+      const image = await stageImage();
+      const secret = await stageSecret();
+      const applied: ManifestApplyRequest[] = [];
+
+      const promotion = expectOk(
+        await gateway().promote({
+          id: 'promotion-1',
+          resourceIds: [image.id, secret.descriptor.id],
+          secretHandles: [secret.handle],
+          applyManifest: (request) => {
+            applied.push(request);
+            return { status: 'applied' };
+          },
+        }),
+      );
+
+      expect(applied).toHaveLength(1);
+      const request = applied[0];
+      expect(request?.sectionId).toBe(ASSETS_SECTION);
+      expect(request?.commands.map((command) => command.key)).toEqual([
+        image.id,
+        secret.descriptor.id,
+      ]);
+      for (const command of request?.commands ?? []) {
+        expect(command.op).toBe('set');
+        expect(
+          assetSchema.safeParse(
+            command.op === 'set' ? command.value : undefined,
+          ).success,
+        ).toBe(true);
+      }
+
+      expect(promotion.promoted.map((descriptor) => descriptor.status)).toEqual(
+        ['committed', 'committed'],
+      );
+      expect(Object.keys(harness().committedManifest()).toSorted()).toEqual(
+        [
+          RESOURCE_GATEWAY_CONTRACT_SEED.committedImage.id,
+          image.id,
+          secret.descriptor.id,
+        ].toSorted(),
+      );
+      expect(harness().stagingResidue()).toEqual([]);
+    });
+
+    it('rolls a partially failed promotion back completely and reports it as retryable', async () => {
+      const image = await stageImage();
+      const roster = await stageRoster();
+      const applyManifest = vi.fn((): ManifestApplyOutcome => ({
+        status: 'applied',
+      }));
+      harness().failNextPromotionPartially();
+
+      const failure = expectFailure(
+        await gateway().promote({
+          id: 'promotion-partial',
+          resourceIds: [image.id, roster.id],
+          applyManifest,
+        }),
+      );
+
+      expect(failure.reason).toBe('promotion-failed');
+      expect(failure.retryable).toBe(true);
+      expect(applyManifest).not.toHaveBeenCalled();
+      expect(Object.keys(harness().committedManifest())).toEqual([
+        RESOURCE_GATEWAY_CONTRACT_SEED.committedImage.id,
+      ]);
+      expect(
+        expectOk(await gateway().list({ status: 'staged' })).map(
+          (descriptor) => descriptor.id,
+        ),
+      ).toEqual([image.id, roster.id].toSorted());
+    });
+
+    it('rolls the promotion back when the manifest half cannot be applied', async () => {
+      const image = await stageImage();
+
+      const failure = expectFailure(
+        await gateway().promote({
+          id: 'promotion-manifest-failure',
+          resourceIds: [image.id],
+          applyManifest: () => ({
+            status: 'failed',
+            retryable: true,
+            message: 'another editor is changing the same sections',
+          }),
+        }),
+      );
+
+      expect(failure.reason).toBe('promotion-failed');
+      expect(failure.retryable).toBe(true);
+      expect(Object.keys(harness().committedManifest())).toEqual([
+        RESOURCE_GATEWAY_CONTRACT_SEED.committedImage.id,
+      ]);
+      expect(
+        expectOk(await gateway().list({ status: 'staged' })).map(
+          (descriptor) => descriptor.id,
+        ),
+      ).toEqual([image.id]);
+    });
+
+    it('promotes exactly once when a failed promotion is retried', async () => {
+      const image = await stageImage();
+      let attempt = 0;
+      const applyManifest = vi.fn((): ManifestApplyOutcome => {
+        attempt += 1;
+        return attempt === 1
+          ? {
+              status: 'failed',
+              retryable: true,
+              message: 'the protocol changed while finishing',
+            }
+          : { status: 'applied' };
+      });
+      const promotion = {
+        id: 'promotion-retry',
+        resourceIds: [image.id],
+        applyManifest,
+      };
+
+      expectFailure(await gateway().promote(promotion));
+      const retried = expectOk(await gateway().promote(promotion));
+      const repeated = expectOk(await gateway().promote(promotion));
+
+      expect(applyManifest).toHaveBeenCalledTimes(2);
+      expect(retried.promoted.map((descriptor) => descriptor.id)).toEqual([
+        image.id,
+      ]);
+      expect(repeated.promoted.map((descriptor) => descriptor.id)).toEqual([
+        image.id,
+      ]);
+      expect(Object.keys(harness().committedManifest()).toSorted()).toEqual(
+        [RESOURCE_GATEWAY_CONTRACT_SEED.committedImage.id, image.id].toSorted(),
+      );
+      expect(harness().stagingResidue()).toEqual([]);
+    });
+
+    it('refuses to promote an unknown resource or a secret without its handle', async () => {
+      const secret = await stageSecret();
+      const applyManifest = vi.fn((): ManifestApplyOutcome => ({
+        status: 'applied',
+      }));
+
+      const unknown = expectFailure(
+        await gateway().promote({
+          id: 'promotion-unknown',
+          resourceIds: ['no-such-resource'],
+          applyManifest,
+        }),
+      );
+      const withoutHandle = expectFailure(
+        await gateway().promote({
+          id: 'promotion-handleless',
+          resourceIds: [secret.descriptor.id],
+          applyManifest,
+        }),
+      );
+
+      expect(unknown.reason).toBe('not-found');
+      expect(withoutHandle.reason).toBe('invalid-request');
+      expect(withoutHandle.retryable).toBe(false);
+      expect(applyManifest).not.toHaveBeenCalled();
+      expect(Object.keys(harness().committedManifest())).toEqual([
+        RESOURCE_GATEWAY_CONTRACT_SEED.committedImage.id,
+      ]);
+    });
+
+    it('keeps host storage details out of every failure it reports', async () => {
+      const markers = harness().storageMarkers ?? [];
+      const staged = await stageImage();
+      harness().failNextDownloadTransiently();
+
+      const failures = [
+        expectFailure(await gateway().download(staged.id)),
+        expectFailure(await gateway().inspect('no-such-resource')),
+        expectFailure(await gateway().resolvePreview('no-such-resource')),
+        expectFailure(
+          await gateway().promote({
+            id: 'promotion-missing',
+            resourceIds: ['no-such-resource'],
+            applyManifest: () => ({ status: 'applied' }),
+          }),
+        ),
+      ];
+
+      for (const failure of failures) {
+        expect(failure.message).not.toBe('');
+        expect(typeof failure.retryable).toBe('boolean');
+        for (const marker of markers) {
+          expect(JSON.stringify(failure)).not.toContain(marker);
+        }
+      }
+    });
+  });
+}
+
+function expectOk<T>(result: ResourceResult<T>): T {
+  if (result.status !== 'ok') {
+    throw new Error(
+      `expected an ok resource result, got ${result.failure.reason}: ${result.failure.message}`,
+    );
+  }
+  return result.data;
+}
+
+function expectFailure<T>(result: ResourceResult<T>): ResourceGatewayFailure {
+  if (result.status !== 'failed') {
+    throw new Error('expected a failed resource result');
+  }
+  return result.failure;
+}
