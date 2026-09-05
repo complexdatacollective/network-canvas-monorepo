@@ -23,7 +23,20 @@ const NO_ROWS: readonly never[] = [];
 
 /**
  * The rows the editor DREW, out of the value the list field was handed — and
- * the rule for a list that holds a HOLE.
+ * the rule for a value that is not a list of rows.
+ *
+ * The argument is whatever the field was HANDED, not something a caller has
+ * already vetted: a list field renders the stage document's own value, and an
+ * import, a migration or a legacy protocol can leave that as a string, a
+ * number, an object, `null`. Such a value draws NO rows — `ArrayField` renders
+ * the empty list for it — so the answer here is the empty list too, and asking
+ * it for `.every` would take the editor down out of an ordinary Add click
+ * instead. It is the rendered-side twin of `readArray`'s rule in
+ * `useArrayFieldCommands`, which answers for the SESSION's value at the same
+ * key; both exist because neither side of a list write may throw on a shape
+ * the editor was willing to render.
+ *
+ * Then the rule for a list that holds a HOLE.
  *
  * A hole is an entry that is not a row at all: `null`, `undefined`, a string
  * left behind by an import or a migration. It is a document row the editor
@@ -68,11 +81,10 @@ const NO_ROWS: readonly never[] = [];
  * rule forbids. The hole stays where it is, and the edit is expressed against
  * the document as it stands.
  */
-function renderedRows<T extends ArrayRow>(
-  rendered: readonly T[],
-): readonly T[] {
+function renderedRows<T extends ArrayRow>(rendered: unknown): readonly T[] {
+  if (!Array.isArray(rendered)) return NO_ROWS;
   return rendered.every((row) => typeof row === 'object' && row !== null)
-    ? rendered
+    ? (rendered as readonly T[])
     : NO_ROWS;
 }
 
@@ -288,19 +300,19 @@ function reseatRecord(
  * a change that arrived from elsewhere survives the write whether it arrived
  * as a new row or as a new property of the row being replaced.
  *
- * `value` is what the list field was HANDED, which is not always what it drew:
- * the one place the drawn rows are settled is here, so every consumer of this
- * module resolves in the numbering its operation was made in. See
- * `renderedRows`.
+ * `value` is what the list field was HANDED — any shape at all, including one
+ * that is not a list — which is not always what it drew: the one place the
+ * drawn rows are settled is here, so every consumer of this module resolves in
+ * the numbering its operation was made in. See `renderedRows`.
  */
 export function commandsForOperation<T extends ArrayRow>(
   key: string,
   current: readonly unknown[],
-  value: readonly T[],
+  value: unknown,
   operation: ArrayFieldOperation<T>,
   getId?: ArrayRowIdentity<T>,
 ): Command[] {
-  const rendered = renderedRows(value);
+  const rendered = renderedRows<T>(value);
 
   if (operation.type === 'insert') {
     const index = resolveInsertIndex(current, rendered, operation.index, getId);

@@ -151,6 +151,39 @@ describe('commandsForOperation', () => {
       ),
     ).toEqual([{ op: 'insertItem', key: 'prompts', index: 3, item: added }]);
   });
+
+  it('draws no rows out of a value that is not a list at all', () => {
+    const added = { id: 'n', text: 'New' };
+    // What a list field is handed when an import, a migration or a legacy
+    // protocol left something else at its key. The editor drew an empty list
+    // for it, so the operation numbers rows in a list with none in it — and
+    // reading `.every` off the value itself would take the editor down out of
+    // an ordinary Add click.
+    expect(
+      commandsForOperation(
+        'prompts',
+        [],
+        'legacy',
+        { type: 'insert', index: 0, item: added },
+        byId,
+      ),
+    ).toEqual([{ op: 'insertItem', key: 'prompts', index: 0, item: added }]);
+  });
+
+  it('refuses a row named against a value that is not a list at all', () => {
+    // No row was drawn, so there is no row the operation can name — and
+    // replaying its index onto the document would remove whatever now sits
+    // there.
+    expect(
+      commandsForOperation(
+        'prompts',
+        [A, B],
+        { text: 'not a list' },
+        { type: 'remove', index: 0 },
+        byId,
+      ),
+    ).toEqual([]);
+  });
 });
 
 /**

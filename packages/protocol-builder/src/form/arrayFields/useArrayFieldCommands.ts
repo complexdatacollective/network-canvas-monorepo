@@ -119,6 +119,9 @@ const readArray = (key: string, value: unknown): BoundArray => {
 const renderableRows = <T extends ArrayRow>(value: unknown): T[] =>
   readRows(value) as T[];
 
+/** The empty list, shared so that "no rows" is one value and not a new one. */
+const NO_ROWS: readonly never[] = [];
+
 /**
  * Whether a command needs the field to already hold a list. A whole-key `set`
  * replaces the foreign value itself, and a repair in front of one would make
@@ -199,13 +202,24 @@ export type ArrayFieldCommands<T extends ArrayRow> = Readonly<{
  * rows on screen are the document's, so a write that reached nothing cannot go
  * on looking like one that landed.
  *
+ * `rendered` is whatever the list field was HANDED — deliberately `unknown`,
+ * and normalised here rather than by the caller. Every consumer is a connected
+ * control rendering the stage document's own value at its key, and an import,
+ * a migration or a legacy protocol can leave that as a string, a number, an
+ * object, `null`; a signature that promised a list would be a promise three of
+ * the four consumers cannot keep (a destructuring default fires on `undefined`
+ * alone, and `value ?? []` covers nullish alone), and the shape they could not
+ * keep it for is the shape that reaches an Add click. Typing it as the value
+ * it really is makes tolerating it this module's job, where it is done once,
+ * instead of a rule every caller has to remember.
+ *
  * `itemLabel` is the noun a refusal is said in. Lists that edit a row at a time
  * name theirs; the always-editing inline lists take the generic default,
  * because the same list component is a sort rule here and a display property
  * there.
  */
 export function useArrayFieldCommands<T extends ArrayRow>(
-  rendered: readonly T[],
+  rendered: unknown,
   onChange?: (next: T[]) => void,
   getId?: ArrayRowIdentity<T>,
   itemLabel: string = DEFAULT_ITEM_LABEL,
@@ -216,7 +230,7 @@ export function useArrayFieldCommands<T extends ArrayRow>(
   // Read at commit time rather than closed over. A dialog's save can land
   // after the list has moved on, and the values it should be judged against
   // are the ones in force then.
-  const renderedRef = useRef(rendered);
+  const renderedRef = useRef<unknown>(rendered);
   renderedRef.current = rendered;
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
@@ -398,7 +412,13 @@ export function useArrayFieldCommands<T extends ArrayRow>(
       base?: ArrayRow,
     ): ArrayWriteOutcome => {
       if (documentKey === undefined) {
-        const committed = renderedRef.current;
+        // The value this list was handed, when it is a list at all. A foreign
+        // one holds no row to commit onto and is replaced by this write —
+        // `readArray`'s rule for a bound key, applied to the only place an
+        // unbound list can write, which is its own form value.
+        const committed: readonly T[] = Array.isArray(renderedRef.current)
+          ? (renderedRef.current as readonly T[])
+          : NO_ROWS;
         const index =
           id === undefined
             ? -1

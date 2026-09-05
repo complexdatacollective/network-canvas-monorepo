@@ -1056,12 +1056,15 @@ export default function DialogArrayField<T extends ArrayItem>({
     [getId],
   );
 
-  const rows = useMemo(() => value ?? [], [value]);
+  // Handed on exactly as it arrived. The rows this list DREW out of it are
+  // settled inside the hook, which is where a value an import or a migration
+  // left as something other than a list is answered — a `?? []` here would
+  // read as that answer while covering only nullish.
   const {
     onOperation,
     commitDetachedRow: commitById,
     writeThrough,
-  } = useArrayFieldCommands<T>(rows, onChange, resolveItemId, itemLabel);
+  } = useArrayFieldCommands<T>(value, onChange, resolveItemId, itemLabel);
 
   const commitDetachedRow = useCallback(
     (

@@ -1217,3 +1217,22 @@ describe('a list rendered inside a row dialog', () => {
     ]);
   });
 });
+
+describe('a list key holding something that is not a list', () => {
+  it('adds a prompt to it rather than throwing out of the save', async () => {
+    const user = userEvent.setup();
+    // What an import, a migration or a legacy protocol can leave at a list
+    // key. The editor renders it as an empty list with a working Add button,
+    // so the save behind that button has to reach the document.
+    const session = createSession({ prompts: 'legacy' });
+    renderPromptList(session);
+
+    await addPrompt(user, 'About work');
+
+    await waitFor(() =>
+      expect(promptsOf(session)).toEqual([
+        expect.objectContaining({ text: 'About work' }) as unknown as Prompt,
+      ]),
+    );
+  });
+});
