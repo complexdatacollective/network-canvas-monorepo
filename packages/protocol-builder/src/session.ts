@@ -782,7 +782,18 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     // would close over the missing edit.
     this.releaseWithheldThrough(pendingCommands.at(-1)?.id ?? 0);
     if (outcome.discardFailures.length > 0) {
-      this.options.onResourceCleanupFailed?.(outcome.discardFailures);
+      try {
+        this.options.onResourceCleanupFailed?.(outcome.discardFailures);
+      } catch {
+        // Everything this finish decided has already happened: the bytes are
+        // promoted, the stage is applied, and the withheld batches are away.
+        // This is a report about the one thing that did not — a best-effort
+        // cleanup — and letting it out would tell the researcher a save that
+        // succeeded had failed, and invite them to repeat a finish that has
+        // nothing left to do. Nothing is lost by stopping here either: the
+        // resources the host would not drop are still in `stagedResources`,
+        // for the next cleanup or a cancel to reach.
+      }
     }
   }
 
@@ -935,8 +946,17 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       validation: pendingValidation(),
       validatedProtocol: null,
     });
-    if (!withheld) this.options.onCommands?.(batch);
-    void this.runValidation();
+    // Validation runs whatever the host makes of the news. The edit is in the
+    // draft either way, and a host that throws would otherwise leave the
+    // session saying "validating" with nothing left to replace that — an
+    // editor reading it either waits forever or acts on the verdict about the
+    // draft before this edit. The host's own failure still reaches the caller,
+    // because nothing here can resend a batch the host would not take.
+    try {
+      if (!withheld) this.options.onCommands?.(batch);
+    } finally {
+      void this.runValidation();
+    }
   }
 
   /**

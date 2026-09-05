@@ -753,6 +753,42 @@ describe('a session that stages resources', () => {
     expect(gateway.getStagingResidue()).toContain(`staged:${abandoned.id}`);
   });
 
+  it('keeps a committed finish committed when the cleanup report throws', async () => {
+    const { gateway, onCommands, onResourceCleanupFailed, session } =
+      createFixture();
+    const referenced = await stageImage(session, 'first');
+    const abandoned = await stageImage(session, 'second');
+    session.dispatch([
+      { op: 'set', key: 'items', value: informationItems(referenced.id) },
+    ]);
+    expect(onCommands).not.toHaveBeenCalled();
+    gateway.failNext('discard', { reason: 'unavailable', retryable: true });
+    onResourceCleanupFailed.mockImplementation(() => {
+      throw new Error('the host could not record the cleanup failure');
+    });
+
+    await session.finish();
+
+    // Everything this finish decided has already happened by the time the
+    // report is made: the bytes are promoted, the manifest and the stage are
+    // applied, and the batches that were waiting for them have been sent. A
+    // host that cannot take the news is not a reason to tell the researcher
+    // that a save which succeeded had failed, or to invite them to repeat it.
+    expect(onResourceCleanupFailed).toHaveBeenCalledOnce();
+    expect(Object.keys(gateway.getCommittedManifest())).toEqual([
+      referenced.id,
+    ]);
+    // The hold the promotion put on this session's batches is gone with it, so
+    // a later edit reaches a live-applying host at once.
+    session.dispatch([{ op: 'set', key: 'title', value: 'Renamed' }]);
+    expect(onCommands).toHaveBeenCalledTimes(1);
+    // Nothing is lost by the report going nowhere: the resource the host would
+    // not drop is still listed, for the next cleanup to reach.
+    expect(
+      session.getSnapshot().stagedResources.map((descriptor) => descriptor.id),
+    ).toEqual([abandoned.id]);
+  });
+
   it('drops the withheld commands when the session is cancelled', async () => {
     const { onCommands, session } = createFixture();
     const staged = await stageImage(session, 'first');
@@ -771,6 +807,31 @@ describe('a session that stages resources', () => {
     expect(session.getSnapshot().editedSection.fields.items).toEqual([]);
     expect(session.getSnapshot().editedSection.fields.title).toBe('Renamed');
     expect(onCommands).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports a cancel the host threw on, and keeps the edits it did not drop', async () => {
+    const { gateway, session } = createFixture();
+    const staged = await stageImage(session, 'first');
+    session.dispatch([
+      { op: 'set', key: 'items', value: informationItems(staged.id) },
+    ]);
+    vi.spyOn(gateway, 'discardAllStaged').mockImplementation(() => {
+      throw new Error('the host adapter threw');
+    });
+
+    const result = await session.cancel();
+
+    // A cancel answers with a result, so a host that throws is a failure the
+    // caller can show — not an exception out of a call whose type says it
+    // cannot happen.
+    expect(result).toMatchObject({
+      status: 'failed',
+      failure: { reason: 'unavailable', retryable: true },
+    });
+    // Nothing was discarded, so the edit that names the staged resource is
+    // still the researcher's draft: dropping it here would throw away work
+    // over staging the host is still holding.
+    expect(session.getSnapshot().editedSection.fields.items).not.toEqual([]);
   });
 
   it('discards an upload still in flight when the session is cancelled', async () => {
