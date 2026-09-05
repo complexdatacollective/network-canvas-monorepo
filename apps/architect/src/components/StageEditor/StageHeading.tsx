@@ -2,9 +2,9 @@ import { Badge } from '@codaco/fresco-ui/Badge';
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import HeadingInput from '@codaco/protocol-builder/fields/StageNameInput';
+import StageTypeImage from '@codaco/protocol-builder/interfaces/StageTypeImage';
 import type { StageType } from '@codaco/protocol-validation';
 import ExternalLink from '~/components/ExternalLink';
-import StageTypeImage from '~/components/StageTypeImage';
 
 import ArchitectField from '../Form/ArchitectField';
 import IssueAnchor from '../IssueAnchor';

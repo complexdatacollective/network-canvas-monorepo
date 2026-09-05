@@ -6,11 +6,11 @@ import { IconButton } from '@codaco/fresco-ui/Button';
 import { useKeyboardReorder } from '@codaco/fresco-ui/dnd/useKeyboardReorder';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { interfaceDisplayName } from '@codaco/protocol-builder/interfaces/interfaceNames';
+import StageTypeImage from '@codaco/protocol-builder/interfaces/StageTypeImage';
 import filterIcon from '~/images/timeline/filter-icon.svg';
 import skipLogicIcon from '~/images/timeline/skip-logic-icon.svg';
 import { cx } from '~/utils/cva';
 
-import StageTypeImage from '../StageTypeImage';
 import { timelineRowGrid } from './rowLayout';
 
 // Reveal Delete on row hover or when keyboard focus reaches the button itself.

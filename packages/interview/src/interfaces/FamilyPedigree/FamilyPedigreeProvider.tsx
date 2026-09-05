@@ -1,3 +1,5 @@
+'use client';
+
 import { useRef } from 'react';
 
 import type { FramingId } from '@codaco/protocol-validation';

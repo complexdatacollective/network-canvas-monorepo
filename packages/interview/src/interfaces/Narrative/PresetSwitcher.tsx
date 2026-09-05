@@ -1,3 +1,5 @@
+'use client';
+
 import { RadioGroup } from '@base-ui/react/radio-group';
 import { createSelector } from '@reduxjs/toolkit';
 import { ChevronLeft, ChevronRight } from 'lucide-react';

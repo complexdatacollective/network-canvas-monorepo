@@ -1,3 +1,5 @@
+'use client';
+
 import { hash as objectHash } from 'ohash';
 import { useEffect, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';

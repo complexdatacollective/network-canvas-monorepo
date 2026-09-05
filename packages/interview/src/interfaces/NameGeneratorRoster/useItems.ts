@@ -1,3 +1,5 @@
+'use client';
+
 import { invariant } from 'es-toolkit';
 import { useCallback, useMemo } from 'react';
 

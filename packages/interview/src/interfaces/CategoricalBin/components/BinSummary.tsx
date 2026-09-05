@@ -1,3 +1,5 @@
+'use client';
+
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { NcNode } from '@codaco/shared-consts';
 

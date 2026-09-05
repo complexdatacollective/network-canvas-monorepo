@@ -1,3 +1,5 @@
+'use client';
+
 import { type MouseEventHandler, type Ref, useMemo } from 'react';
 
 import { useDragSource } from '@codaco/fresco-ui/dnd/dnd';

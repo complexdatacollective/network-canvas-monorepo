@@ -1,3 +1,5 @@
+'use client';
+
 import { useContext, useMemo, type ReactNode } from 'react';
 import { useSelector } from 'react-redux';
 import { z } from 'zod/mini';
