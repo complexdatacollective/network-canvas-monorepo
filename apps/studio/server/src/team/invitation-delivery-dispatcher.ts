@@ -1,17 +1,18 @@
-import { randomUUID } from 'node:crypto';
-
 import type pg from 'pg';
 
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 
 import type { InvitationMailer } from '../auth/email.ts';
+import {
+  OutboxDispatcher,
+  type OutboxAdapter,
+  type OutboxLease,
+  type OutboxRetryOptions,
+} from '../outbox/dispatcher.ts';
+import type { OutboxObserver } from '../outbox/instrumentation.ts';
+import { startOutboxWorker, type OutboxWorker } from '../outbox/worker.ts';
 
-const DEFAULT_LEASE_MS = 60_000;
-const DEFAULT_MAX_ATTEMPTS = 8;
-const DEFAULT_RETRY_BASE_MS = 5_000;
-const DEFAULT_RETRY_MAX_MS = 30 * 60_000;
-const DEFAULT_POLL_INTERVAL_MS = 5_000;
-const DEFAULT_DRAIN_LIMIT = 10;
+const INVITATION_DELIVERY_QUEUE = 'team_invitation_deliveries';
 const MAX_ERROR_LENGTH = 1_000;
 
 type ClaimedInvitationDelivery = {
@@ -25,10 +26,6 @@ type ClaimedInvitationDelivery = {
   attemptCount: number;
 };
 
-type InvitationDeliveryLeaseHeartbeat = {
-  stop(): Promise<boolean>;
-};
-
 export type InvitationDeliveryResult = {
   claimed: number;
   sent: number;
@@ -36,14 +33,11 @@ export type InvitationDeliveryResult = {
   suppressed: number;
 };
 
-export type InvitationDeliveryDispatcherOptions = {
+export type InvitationDeliveryDispatcherOptions = OutboxRetryOptions & {
   pool: pg.Pool;
   mailer: InvitationMailer;
   publicBaseUrl: string;
-  leaseMs?: number;
-  maxAttempts?: number;
-  retryBaseMs?: number;
-  retryMaxMs?: number;
+  observer?: OutboxObserver;
 };
 
 export class InvitationDeliveryRoleError extends Error {
@@ -52,18 +46,6 @@ export class InvitationDeliveryRoleError extends Error {
       `invitation delivery must run as ${TENANT_ROLES.maintenance}, not ${role}`,
     );
     this.name = 'InvitationDeliveryRoleError';
-  }
-}
-
-function requireNonNegativeFinite(name: string, value: number): void {
-  if (!Number.isFinite(value) || value < 0) {
-    throw new Error(`${name} must be a non-negative finite number`);
-  }
-}
-
-function requirePositiveFinite(name: string, value: number): void {
-  if (!Number.isFinite(value) || value <= 0) {
-    throw new Error(`${name} must be a positive finite number`);
   }
 }
 
@@ -78,46 +60,19 @@ function errorMessage(error: unknown): string {
   );
 }
 
-export class InvitationDeliveryDispatcher {
+class InvitationDeliveryAdapter implements OutboxAdapter<ClaimedInvitationDelivery> {
+  readonly queue = INVITATION_DELIVERY_QUEUE;
   private readonly pool: pg.Pool;
   private readonly mailer: InvitationMailer;
   private readonly publicBaseUrl: URL;
-  private readonly workerId = randomUUID();
-  private readonly leaseMs: number;
-  private readonly maxAttempts: number;
-  private readonly retryBaseMs: number;
-  private readonly retryMaxMs: number;
-  private roleVerified = false;
 
   constructor(options: InvitationDeliveryDispatcherOptions) {
     this.pool = options.pool;
     this.mailer = options.mailer;
     this.publicBaseUrl = new URL(options.publicBaseUrl);
-    this.leaseMs = options.leaseMs ?? DEFAULT_LEASE_MS;
-    this.maxAttempts = options.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
-    this.retryBaseMs = options.retryBaseMs ?? DEFAULT_RETRY_BASE_MS;
-    this.retryMaxMs = options.retryMaxMs ?? DEFAULT_RETRY_MAX_MS;
-    requirePositiveFinite('leaseMs', this.leaseMs);
-    requireNonNegativeFinite('retryBaseMs', this.retryBaseMs);
-    requireNonNegativeFinite('retryMaxMs', this.retryMaxMs);
-    if (!Number.isInteger(this.maxAttempts) || this.maxAttempts < 1) {
-      throw new Error('maxAttempts must be a positive integer');
-    }
   }
 
-  private async verifyRole(): Promise<void> {
-    if (this.roleVerified) return;
-    const current = await this.pool.query<{ role: string }>(
-      `SELECT current_user AS role`,
-    );
-    const role = current.rows[0]?.role ?? '';
-    if (role !== TENANT_ROLES.maintenance) {
-      throw new InvitationDeliveryRoleError(role);
-    }
-    this.roleVerified = true;
-  }
-
-  private async suppressUndeliverable(): Promise<number> {
+  async suppressUndeliverable(): Promise<number> {
     const suppressed = await this.pool.query(
       `UPDATE team_invitation_deliveries delivery
        SET suppressed_at = clock_timestamp(),
@@ -145,7 +100,7 @@ export class InvitationDeliveryDispatcher {
     return suppressed.rowCount ?? 0;
   }
 
-  private async failExhaustedLeases(): Promise<number> {
+  async failExhaustedLeases(maxAttempts: number): Promise<number> {
     const failed = await this.pool.query(
       `UPDATE team_invitation_deliveries
        SET failed_at = clock_timestamp(),
@@ -164,12 +119,15 @@ export class InvitationDeliveryDispatcher {
            lease_expires_at IS NULL
            OR lease_expires_at <= clock_timestamp()
          )`,
-      [this.maxAttempts],
+      [maxAttempts],
     );
     return failed.rowCount ?? 0;
   }
 
-  private async claim(): Promise<ClaimedInvitationDelivery | null> {
+  async claim(
+    lease: OutboxLease,
+    maxAttempts: number,
+  ): Promise<ClaimedInvitationDelivery | null> {
     const claimed = await this.pool.query<ClaimedInvitationDelivery>(
       `WITH candidate AS (
          SELECT delivery.id,
@@ -215,12 +173,15 @@ export class InvitationDeliveryDispatcher {
                  delivery.inviter_label AS "inviterLabel",
                  delivery.expires_at AS "expiresAt",
                  delivery.attempt_count AS "attemptCount"`,
-      [this.workerId, this.leaseMs, this.maxAttempts],
+      [lease.owner, lease.durationMs, maxAttempts],
     );
     return claimed.rows[0] ?? null;
   }
 
-  private async remainsDeliverable(claim: ClaimedInvitationDelivery) {
+  async remainsDeliverable(
+    claim: ClaimedInvitationDelivery,
+    lease: OutboxLease,
+  ) {
     const current = await this.pool.query(
       `SELECT 1
        FROM team_invitation_deliveries delivery
@@ -234,13 +195,14 @@ export class InvitationDeliveryDispatcher {
          AND delivery.uncertain_at IS NULL
          AND invitation.status = 'pending'
          AND invitation.expires_at > clock_timestamp()`,
-      [claim.id, this.workerId],
+      [claim.id, lease.owner],
     );
     return current.rowCount === 1;
   }
 
-  private async suppressClaim(
+  async suppressClaim(
     claim: ClaimedInvitationDelivery,
+    lease: OutboxLease,
   ): Promise<boolean> {
     const suppressed = await this.pool.query(
       `UPDATE team_invitation_deliveries
@@ -254,12 +216,15 @@ export class InvitationDeliveryDispatcher {
          AND failed_at IS NULL
          AND suppressed_at IS NULL
          AND uncertain_at IS NULL`,
-      [claim.id, this.workerId],
+      [claim.id, lease.owner],
     );
     return suppressed.rowCount === 1;
   }
 
-  private async renewLease(claim: ClaimedInvitationDelivery): Promise<boolean> {
+  async renewLease(
+    claim: ClaimedInvitationDelivery,
+    lease: OutboxLease,
+  ): Promise<boolean> {
     const renewed = await this.pool.query(
       `UPDATE team_invitation_deliveries
        SET lease_expires_at = clock_timestamp()
@@ -270,61 +235,18 @@ export class InvitationDeliveryDispatcher {
          AND failed_at IS NULL
          AND suppressed_at IS NULL
          AND uncertain_at IS NULL`,
-      [claim.id, this.workerId, this.leaseMs],
+      [claim.id, lease.owner, lease.durationMs],
     );
     return renewed.rowCount === 1;
   }
 
-  private startLeaseHeartbeat(
+  async recordFailure(
     claim: ClaimedInvitationDelivery,
-  ): InvitationDeliveryLeaseHeartbeat {
-    const heartbeatMs = Math.max(1, Math.floor(this.leaseMs / 3));
-    let ownsLease = true;
-    let stopped = false;
-    let timer: NodeJS.Timeout | undefined;
-    let active: Promise<void> = Promise.resolve();
-
-    const schedule = () => {
-      if (stopped || !ownsLease) return;
-      timer = setTimeout(() => {
-        active = this.renewLease(claim)
-          .then((renewed) => {
-            ownsLease = renewed;
-            return undefined;
-          })
-          .catch(() => {
-            // A failed renewal makes ownership uncertain. The SMTP call cannot
-            // be canceled reliably, so leave the row reclaimable and never
-            // report or persist an outcome from this worker.
-            ownsLease = false;
-            return undefined;
-          })
-          .finally(schedule);
-      }, heartbeatMs);
-      timer.unref();
-    };
-
-    schedule();
-    return {
-      stop: async () => {
-        stopped = true;
-        if (timer) clearTimeout(timer);
-        await active;
-        return ownsLease;
-      },
-    };
-  }
-
-  private retryDelayMs(attemptCount: number): number {
-    const exponent = Math.min(Math.max(attemptCount - 1, 0), 30);
-    return Math.min(this.retryMaxMs, this.retryBaseMs * 2 ** exponent);
-  }
-
-  private async recordFailure(
-    claim: ClaimedInvitationDelivery,
+    lease: OutboxLease,
     error: unknown,
+    retryDelayMs: number | null,
   ): Promise<boolean> {
-    const exhausted = claim.attemptCount >= this.maxAttempts;
+    const exhausted = retryDelayMs === null;
     const recorded = await this.pool.query(
       `UPDATE team_invitation_deliveries
        SET lease_owner = NULL,
@@ -343,16 +265,19 @@ export class InvitationDeliveryDispatcher {
          AND uncertain_at IS NULL`,
       [
         claim.id,
-        this.workerId,
+        lease.owner,
         errorMessage(error),
         exhausted,
-        this.retryDelayMs(claim.attemptCount),
+        retryDelayMs ?? 0,
       ],
     );
     return recorded.rowCount === 1;
   }
 
-  private async recordSent(claim: ClaimedInvitationDelivery): Promise<boolean> {
+  async recordComplete(
+    claim: ClaimedInvitationDelivery,
+    lease: OutboxLease,
+  ): Promise<boolean> {
     const sent = await this.pool.query(
       `UPDATE team_invitation_deliveries
        SET sent_at = clock_timestamp(),
@@ -365,7 +290,7 @@ export class InvitationDeliveryDispatcher {
          AND failed_at IS NULL
          AND suppressed_at IS NULL
          AND uncertain_at IS NULL`,
-      [claim.id, this.workerId],
+      [claim.id, lease.owner],
     );
     return sent.rowCount === 1;
   }
@@ -376,8 +301,9 @@ export class InvitationDeliveryDispatcher {
    * duplicate mail. A process crash still leaves the lease reclaimable, which
    * preserves the outbox's at-least-once crash semantics.
    */
-  private async recordUncertain(
+  async recordUncertain(
     claim: ClaimedInvitationDelivery,
+    lease: OutboxLease,
     error: unknown,
   ): Promise<boolean> {
     const uncertain = await this.pool.query(
@@ -392,76 +318,50 @@ export class InvitationDeliveryDispatcher {
          AND failed_at IS NULL
          AND suppressed_at IS NULL
          AND uncertain_at IS NULL`,
-      [claim.id, this.workerId, errorMessage(error)],
+      [claim.id, lease.owner, errorMessage(error)],
     );
     return uncertain.rowCount === 1;
   }
 
-  async runOnce(): Promise<InvitationDeliveryResult> {
-    await this.verifyRole();
-    const suppressed = await this.suppressUndeliverable();
-    const exhausted = await this.failExhaustedLeases();
-    const claim = await this.claim();
-    if (!claim) {
-      return { claimed: 0, sent: 0, failed: exhausted, suppressed };
-    }
-
-    if (!(await this.remainsDeliverable(claim))) {
-      const claimSuppressed = await this.suppressClaim(claim);
-      return {
-        claimed: 1,
-        sent: 0,
-        failed: exhausted,
-        suppressed: suppressed + (claimSuppressed ? 1 : 0),
-      };
-    }
-
+  async deliver(claim: ClaimedInvitationDelivery): Promise<void> {
     const invitationUrl = new URL(
       `/invitations/${encodeURIComponent(claim.invitationId)}`,
       this.publicBaseUrl,
     ).toString();
-    const heartbeat = this.startLeaseHeartbeat(claim);
-    try {
-      await this.mailer.sendTeamInvitation({
-        email: claim.email,
-        expiresAt: claim.expiresAt,
-        invitationUrl,
-        inviterLabel: claim.inviterLabel,
-        messageId: invitationMessageId(claim.invitationId),
-        role: claim.role,
-        teamLabel: claim.teamLabel,
-      });
-    } catch (error) {
-      const ownsLease = await heartbeat.stop();
-      const failed = ownsLease && (await this.recordFailure(claim, error));
-      return {
-        claimed: 1,
-        sent: 0,
-        failed: exhausted + (failed ? 1 : 0),
-        suppressed,
-      };
-    }
+    await this.mailer.sendTeamInvitation({
+      email: claim.email,
+      expiresAt: claim.expiresAt,
+      invitationUrl,
+      inviterLabel: claim.inviterLabel,
+      messageId: invitationMessageId(claim.invitationId),
+      role: claim.role,
+      teamLabel: claim.teamLabel,
+    });
+  }
+}
 
-    const ownsLease = await heartbeat.stop();
-    if (!ownsLease) {
-      return { claimed: 1, sent: 0, failed: exhausted, suppressed };
-    }
+/** Existing callers retain invitation-specific names and attempt counts. */
+export class InvitationDeliveryDispatcher {
+  private readonly dispatcher: OutboxDispatcher<ClaimedInvitationDelivery>;
 
-    let sent: boolean;
-    try {
-      sent = await this.recordSent(claim);
-    } catch (error) {
-      await this.recordUncertain(claim, error);
-      return { claimed: 1, sent: 0, failed: exhausted, suppressed };
-    }
-    if (sent) {
-      return { claimed: 1, sent: 1, failed: exhausted, suppressed };
-    }
-    await this.recordUncertain(
-      claim,
-      new Error('sent finalization did not retain delivery ownership'),
-    );
-    return { claimed: 1, sent: 0, failed: exhausted, suppressed };
+  constructor(options: InvitationDeliveryDispatcherOptions) {
+    this.dispatcher = new OutboxDispatcher({
+      ...options,
+      adapter: new InvitationDeliveryAdapter(options),
+      roleError: (role) => new InvitationDeliveryRoleError(role),
+    });
+  }
+
+  async runOnce(): Promise<InvitationDeliveryResult> {
+    const result = await this.dispatcher.runOnce();
+    return {
+      claimed: result.claimed,
+      sent: result.completed,
+      // The established public result counts both retryable attempts and
+      // exhausted rows as failed. Lifecycle metrics distinguish them.
+      failed: result.failed + result.retried,
+      suppressed: result.suppressed,
+    };
   }
 }
 
@@ -471,51 +371,19 @@ export type InvitationDeliveryWorkerOptions =
     drainLimit?: number;
   };
 
-export type InvitationDeliveryWorker = {
-  stop(): Promise<void>;
-};
+export type InvitationDeliveryWorker = OutboxWorker;
 
 export function startInvitationDeliveryWorker(
   options: InvitationDeliveryWorkerOptions,
 ): InvitationDeliveryWorker {
-  const pollIntervalMs = options.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
-  const drainLimit = options.drainLimit ?? DEFAULT_DRAIN_LIMIT;
-  requirePositiveFinite('pollIntervalMs', pollIntervalMs);
-  if (!Number.isInteger(drainLimit) || drainLimit < 1) {
-    throw new Error('drainLimit must be a positive integer');
-  }
-
   const dispatcher = new InvitationDeliveryDispatcher(options);
-  let stopped = false;
-  let timer: NodeJS.Timeout | undefined;
-  let active: Promise<void> = Promise.resolve();
-
-  const schedule = (delayMs: number) => {
-    if (stopped) return;
-    timer = setTimeout(() => {
-      active = (async () => {
-        for (let index = 0; index < drainLimit; index += 1) {
-          if (stopped) break;
-          const result = await dispatcher.runOnce();
-          if (result.claimed === 0) break;
-        }
-      })()
-        .catch((error: unknown) => {
-          // oxlint-disable-next-line no-console -- background worker diagnostics
-          console.error('Invitation delivery worker failed:', error);
-        })
-        .finally(() => schedule(pollIntervalMs));
-    }, delayMs);
-    timer.unref();
-  };
-
-  schedule(0);
-
-  return {
-    stop: async () => {
-      stopped = true;
-      if (timer) clearTimeout(timer);
-      await active;
+  return startOutboxWorker({
+    ...options,
+    queue: INVITATION_DELIVERY_QUEUE,
+    runOnce: () => dispatcher.runOnce(),
+    onError: (error) => {
+      // oxlint-disable-next-line no-console -- background worker diagnostics
+      console.error('Invitation delivery worker failed:', error);
     },
-  };
+  });
 }
