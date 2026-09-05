@@ -1017,10 +1017,13 @@ describe('a picker over a session that has moved on', () => {
     );
 
     // The researcher closes the editor while the import is still on its way.
+    // The cancel waits for that import rather than reporting ahead of it, so
+    // the host answers inside the same act.
     await act(async () => {
-      await session.cancel();
+      const cancelling = session.cancel();
+      gate.settle(undefined);
+      await cancelling;
     });
-    gate.settle(undefined);
 
     expect(
       await screen.findByText(

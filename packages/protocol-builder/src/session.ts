@@ -246,6 +246,10 @@ export type ProtocolBuilderSession = {
    * gateway — there is nothing to discard. Refused while a finish is
    * committing those very resources, because that promotion decides them.
    *
+   * An upload or a secret still in flight is waited for rather than raced: it
+   * is staging this cancel has decided against, and the answer has to be true
+   * of it too.
+   *
    * A resource whose promotion ended without saying what it did is kept
    * rather than discarded, and named in the report: see
    * {@link StagedResourceCancelReport}.

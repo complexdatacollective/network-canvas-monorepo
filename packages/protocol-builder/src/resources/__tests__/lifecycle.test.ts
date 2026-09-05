@@ -3,13 +3,14 @@ import { describe, expect, it, vi } from 'vitest';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import type {
-  ManifestApplyOutcome,
-  ManifestApplyRequest,
-  ProtocolBuilderResourceGateway,
-  ResourceDescriptor,
-  ResourceResult,
-  StagedSecretHandle,
+import {
+  resourceFailure,
+  type ManifestApplyOutcome,
+  type ManifestApplyRequest,
+  type ProtocolBuilderResourceGateway,
+  type ResourceDescriptor,
+  type ResourceResult,
+  type StagedSecretHandle,
 } from '../gateway.ts';
 import { InMemoryResourceGateway } from '../InMemoryResourceGateway.ts';
 import {
@@ -326,8 +327,11 @@ describe('staged resource tracker', () => {
       bytes: IMAGE_BYTES,
     });
 
-    expect(await tracker.cancel()).toMatchObject({ status: 'ok' });
+    // The cancel decided this upload too, so it does not answer until the
+    // upload has landed and been dealt with.
+    const cancelling = tracker.cancel();
     gated.release();
+    expect(await cancelling).toMatchObject({ status: 'ok' });
     const landed = await staging;
 
     // Nothing else would ever drop it: the cancel discarded once, before this
@@ -347,8 +351,9 @@ describe('staged resource tracker', () => {
       value: SECRET_VALUE,
     });
 
-    expect(await tracker.cancel()).toMatchObject({ status: 'ok' });
+    const cancelling = tracker.cancel();
     gated.release();
+    expect(await cancelling).toMatchObject({ status: 'ok' });
     const landed = await staging;
 
     // A kept secret is worse than kept bytes: the host would go on holding the
@@ -380,7 +385,7 @@ describe('staged resource tracker', () => {
     expect(host.getStagingResidue()).toEqual([]);
   });
 
-  it('reports the host refusing to drop an upload that landed too late', async () => {
+  it('sweeps up an upload the host refused to drop when it landed too late', async () => {
     const host = new InMemoryResourceGateway();
     const gated = gatedStagingHost(host);
     const { tracker } = createTracker(gated.gateway);
@@ -393,26 +398,69 @@ describe('staged resource tracker', () => {
       bytes: IMAGE_BYTES,
     });
 
-    expect(await tracker.cancel()).toMatchObject({ status: 'ok' });
+    const cancelling = tracker.cancel();
+    // The drop that stands in for registering the upload fails, so the
+    // resource is registered here after all — in a session that is over.
     host.failNext('discard', { reason: 'unavailable', retryable: true });
     gated.release();
+    const cancelled = await cancelling;
     const landed = await staging;
 
     // The host kept it, so 'not kept' would be untrue: the picker is told what
-    // the host said, and the resource really is still there.
+    // the host said, and the resource really was still there.
     expect(expectFailure(landed)).toMatchObject({
       reason: 'unavailable',
       retryable: true,
     });
+    // And the cancel that decided the upload is what clears it up, because it
+    // waited for the answer instead of reporting ahead of it. Nothing else
+    // would: a cancel is the last thing an editing session does.
+    expect(cancelled).toMatchObject({ status: 'ok' });
+    expect(tracker.staged()).toEqual([]);
+    expect(host.getStagingResidue()).toEqual([]);
+  });
+
+  it('reports an upload landing too late that it could not drop either', async () => {
+    const host = new InMemoryResourceGateway();
+    const gated = gatedStagingHost(host);
+    const { tracker } = createTracker(gated.gateway);
+    const staging = tracker.gateway.stageUpload({
+      requestId: 'request-in-flight',
+      kind: 'image',
+      name: 'Staged backdrop',
+      source: 'in-flight.png',
+      contentType: 'image/png',
+      bytes: IMAGE_BYTES,
+    });
+    // Neither the late drop nor the cancel's own sweep gets rid of it.
+    const sweep = vi
+      .spyOn(host, 'discardAllStaged')
+      .mockResolvedValueOnce(
+        resourceFailure('unavailable', 'the host is busy', { retryable: true }),
+      );
+
+    const cancelling = tracker.cancel();
+    host.failNext('discard', { reason: 'unavailable', retryable: true });
+    gated.release();
+    const cancelled = await cancelling;
+    await staging;
+
+    // Reported as the failed cancel it is, rather than as a clean one over a
+    // resource the host is still holding.
+    expect(cancelled).toMatchObject({
+      status: 'failed',
+      failure: { reason: 'unavailable', retryable: true },
+    });
     // Still tracked, because the host is still holding it and the editor was
     // handed a failure rather than an id: dropping it here would leave the
-    // host with a resource nothing could name again.
+    // host with a resource nothing could name again — which is what makes a
+    // second cleanup possible at all.
     expect(tracker.staged().map((descriptor) => descriptor.id)).toEqual([
       'staged-resource-1',
     ]);
     expect(host.getStagingResidue()).not.toEqual([]);
 
-    // Which is what makes a second cleanup possible at all.
+    expect(sweep).toHaveBeenCalledTimes(1);
     expect(await tracker.cancel()).toMatchObject({ status: 'ok' });
     expect(tracker.staged()).toEqual([]);
     expect(host.getStagingResidue()).toEqual([]);

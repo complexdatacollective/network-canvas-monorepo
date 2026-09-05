@@ -119,10 +119,13 @@ export type StagedResourceTracker = Readonly<{
    * Ends this session's staging and discards everything it staged, except what
    * a promotion left in doubt.
    *
-   * Staging that is still in flight is covered: an upload or a secret that
-   * lands after this is discarded at the host instead of being registered,
-   * because the call that started it belongs to a session that is over and
-   * nothing else would ever drop it.
+   * Staging that is still in flight is covered, and waited for: an upload or a
+   * secret that lands after this is discarded at the host instead of being
+   * registered, because the call that started it belongs to a session that is
+   * over and nothing else would ever drop it — and a host that refuses that
+   * discard leaves the resource registered here, where only this cancel's own
+   * sweep can still reach it. So the answer waits for those calls rather than
+   * racing them.
    *
    * Refused while a finish holds the session, because that finish is mid-way
    * through deciding — and then committing — exactly these resources:
@@ -372,6 +375,53 @@ export function createStagedResourceTracker(
     return discarded;
   };
 
+  /**
+   * The staging calls that have not settled yet, so a cancel can wait for
+   * them.
+   *
+   * A cancel decides these calls as much as it decides the resources already
+   * staged: the window closes before they land, so {@link keepStagedResult}
+   * drops what they staged at the host instead of registering it. That drop
+   * can fail — and then the resource IS registered, in a session that has just
+   * reported it had nothing left. Nothing would ever reach it again: a cancel
+   * is the terminal action of an editing session, and its own sweep is the
+   * last thing that could have discarded the resource or reported that it
+   * could not be.
+   *
+   * A finish deliberately does the opposite, and does not wait: it promotes
+   * what it can see when it plans, and staging that lands afterwards is
+   * decided by nothing and dropped. That is safe because a finish leaves the
+   * session alive — a cancel can still follow it — while nothing follows a
+   * cancel.
+   */
+  const stagingInFlight = new Set<Promise<unknown>>();
+
+  const trackStaging = async <T>(
+    call: () => Promise<ResourceResult<T>>,
+  ): Promise<ResourceResult<T>> => {
+    const running = call();
+    stagingInFlight.add(running);
+    try {
+      return await running;
+    } finally {
+      stagingInFlight.delete(running);
+    }
+  };
+
+  /**
+   * Waits for every staging call that is still running, including any started
+   * while waiting: those belong to a session that is already over, and their
+   * own cleanup is what the wait is for.
+   */
+  const settleStagingInFlight = async (): Promise<void> => {
+    while (stagingInFlight.size > 0) {
+      // Settled rather than resolved: a staging call that failed is over, and
+      // that is all this waits for. The set is read through in full before the
+      // first await, so a call starting during it is the next pass's.
+      await Promise.allSettled(stagingInFlight);
+    }
+  };
+
   const forget = (resourceIds: Iterable<string>): void => {
     let changed = false;
     for (const resourceId of resourceIds) {
@@ -422,33 +472,40 @@ export function createStagedResourceTracker(
     download: (resourceId: string) => host.download(resourceId),
     resolvePreview: (resourceId: string) => host.resolvePreview(resourceId),
 
-    async stageUpload(
+    stageUpload(
       request: StageUploadRequest,
     ): Promise<ResourceResult<ResourceDescriptor>> {
-      if (!options.isEditable()) return readOnlyFailure();
-      const stagedDuring = stagingWindow;
-      const result = await host.stageUpload(request);
-      if (result.status !== 'ok') return result;
-      return (
-        (await keepStagedResult(stagedDuring, 'file', result.data)) ?? result
-      );
+      if (!options.isEditable()) return Promise.resolve(readOnlyFailure());
+      // Tracked from here to the cleanup at the end, not only across the host
+      // call: what a cancel has to wait for is the whole decision about this
+      // resource, including the discard that stands in for registering it.
+      return trackStaging(async () => {
+        const stagedDuring = stagingWindow;
+        const result = await host.stageUpload(request);
+        if (result.status !== 'ok') return result;
+        return (
+          (await keepStagedResult(stagedDuring, 'file', result.data)) ?? result
+        );
+      });
     },
 
-    async stageSecret(
+    stageSecret(
       request: StageSecretRequest,
     ): Promise<ResourceResult<StagedSecret>> {
-      if (!options.isEditable()) return readOnlyFailure();
-      const stagedDuring = stagingWindow;
-      const result = await host.stageSecret(request);
-      if (result.status !== 'ok') return result;
-      return (
-        (await keepStagedResult(
-          stagedDuring,
-          'secret',
-          result.data.descriptor,
-          result.data.handle,
-        )) ?? result
-      );
+      if (!options.isEditable()) return Promise.resolve(readOnlyFailure());
+      return trackStaging(async () => {
+        const stagedDuring = stagingWindow;
+        const result = await host.stageSecret(request);
+        if (result.status !== 'ok') return result;
+        return (
+          (await keepStagedResult(
+            stagedDuring,
+            'secret',
+            result.data.descriptor,
+            result.data.handle,
+          )) ?? result
+        );
+      });
     },
 
     async discardStaged(
@@ -571,6 +628,13 @@ export function createStagedResourceTracker(
       // is clearing up belongs to a session that is already over.
       cancelled = true;
       stagingWindow += 1;
+      // And waited for before anything is reported: an upload or a secret
+      // still in flight is one this cancel has just decided against, and a
+      // host that refuses to drop it leaves it registered here. Reporting a
+      // clean cancel before that is settled would report a session emptied
+      // while a resource was on its way into it, with nothing left that could
+      // ever discard it or say that it could not be discarded.
+      await settleStagingInFlight();
       const kept = [...entries.values()]
         .filter(
           (entry) => !entry.promoted && unreconciled.has(entry.descriptor.id),

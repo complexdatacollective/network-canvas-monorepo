@@ -888,8 +888,9 @@ describe('a session that stages resources', () => {
       bytes: Uint8Array.from([1, 2, 3, 4]),
     });
 
-    expect(await session.cancel()).toMatchObject({ status: 'ok' });
+    const cancelling = session.cancel();
     release();
+    expect(await cancelling).toMatchObject({ status: 'ok' });
     const landed = await staging;
 
     expect(expectFailure(landed).reason).toBe('not-found');
@@ -909,13 +910,81 @@ describe('a session that stages resources', () => {
       value: SECRET_VALUE,
     });
 
-    expect(await session.cancel()).toMatchObject({ status: 'ok' });
+    const cancelling = session.cancel();
     release();
+    expect(await cancelling).toMatchObject({ status: 'ok' });
     const landed = await staging;
 
     expect(expectFailure(landed).reason).toBe('not-found');
     expect(session.getSnapshot().stagedResources).toEqual([]);
     // The key would otherwise stay with the host, for a session that is over.
+    expect(gateway.getStagingResidue()).toEqual([]);
+  });
+
+  it('waits for an upload in flight before it reports the session cancelled', async () => {
+    let release = (): void => undefined;
+    const stagingGate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { gateway, session } = createFixture({ stagingGate });
+    // The host refuses to drop what the cancel arrived too late to stop. That
+    // refusal is what leaves the resource remembered in this session rather
+    // than discarded — and this session is one nobody will cancel again.
+    vi.spyOn(gateway, 'discardStaged').mockResolvedValueOnce(
+      resourceFailure('unavailable', 'the host would not drop it', {
+        retryable: true,
+      }),
+    );
+    const staging = sessionGateway(session).stageUpload({
+      requestId: 'in-flight',
+      kind: 'image',
+      name: 'In flight',
+      source: 'in-flight.png',
+      contentType: 'image/png',
+      bytes: Uint8Array.from([1, 2, 3, 4]),
+    });
+
+    const cancelling = session.cancel();
+    release();
+    const landed = await staging;
+    const report = expectOk(await cancelling);
+
+    // The upload is decided by this cancel, so the cancel is not over until it
+    // is: its own sweep is the last thing that can reach a resource the late
+    // cleanup could not drop.
+    expect(expectFailure(landed).reason).toBe('unavailable');
+    expect(report.keptUnreconciled).toEqual([]);
+    expect(session.getSnapshot().stagedResources).toEqual([]);
+    expect(gateway.getStagingResidue()).toEqual([]);
+  });
+
+  it('waits for a secret in flight before it reports the session cancelled', async () => {
+    let release = (): void => undefined;
+    const stagingGate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { gateway, session } = createFixture({ stagingGate });
+    vi.spyOn(gateway, 'discardStaged').mockResolvedValueOnce(
+      resourceFailure('unavailable', 'the host would not drop it', {
+        retryable: true,
+      }),
+    );
+    const staging = sessionGateway(session).stageSecret({
+      requestId: 'in-flight',
+      name: 'Mapbox token',
+      value: SECRET_VALUE,
+    });
+
+    const cancelling = session.cancel();
+    release();
+    const landed = await staging;
+    const report = expectOk(await cancelling);
+
+    expect(expectFailure(landed).reason).toBe('unavailable');
+    expect(report.keptUnreconciled).toEqual([]);
+    expect(session.getSnapshot().stagedResources).toEqual([]);
+    // The key would otherwise stay with the host for a session that is over,
+    // reported to nobody: the cancel that would have named it said it was done.
     expect(gateway.getStagingResidue()).toEqual([]);
   });
 
