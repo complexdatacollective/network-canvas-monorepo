@@ -8,10 +8,15 @@ import {
 } from 'drizzle-kit/api-postgres';
 import { expect, it } from 'vitest';
 
+import {
+  jsonHash,
+  readMigrations,
+  sha256,
+} from '@codaco/studio-sync/postgres-migration-artifacts';
+
 import { generateMigrationFiles } from '../../../../scripts/generate-migration.ts';
 import { SCHEMA_FINGERPRINT } from '../../fingerprint.generated.ts';
 import { SCHEMA, SIDECARS } from '../../schema.ts';
-import { jsonHash, readMigrations, sha256 } from '../artifact.ts';
 
 it('authors a second current-version migration with explicit column addition and removal, never a guessed rename', async () => {
   const root = await mkdtemp(join(tmpdir(), 'studio-migration-authoring-'));

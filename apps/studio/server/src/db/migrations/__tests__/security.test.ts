@@ -4,6 +4,11 @@ import { fileURLToPath } from 'node:url';
 import { escapeIdentifier, Pool } from 'pg';
 import { describe, expect, it } from 'vitest';
 
+import {
+  jsonHash,
+  readMigrations,
+  sha256,
+} from '@codaco/studio-sync/postgres-migration-artifacts';
 import { BACKUP_ROLE } from '@codaco/studio-sync/rls';
 import { runtimeRolesSql } from '@codaco/studio-sync/role-bootstrap';
 
@@ -12,9 +17,7 @@ import {
   reachableDb,
 } from '../../../__tests__/support/postgres.ts';
 import { SCHEMA_FINGERPRINT } from '../../fingerprint.generated.ts';
-import { jsonHash, readMigrations, sha256 } from '../artifact.ts';
-import { migrateDatabase } from '../migrate.ts';
-import { enforceMigrationSecurity } from '../security.ts';
+import { enforceMigrationSecurity, migrateDatabase } from '../migrate.ts';
 
 const database = await reachableDb();
 const shipped = await readMigrations(

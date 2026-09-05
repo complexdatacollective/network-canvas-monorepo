@@ -19,7 +19,9 @@
     "./schema": "./src/schema.ts",
     "./taxonomy": "./src/taxonomy.ts",
     "./tenant": "./src/tenant.ts",
-    "./role-bootstrap": "./src/role-bootstrap.ts"
+    "./role-bootstrap": "./src/role-bootstrap.ts",
+    "./postgres-migrations": "./src/postgres-migrations.ts",
+    "./postgres-migration-artifacts": "./src/postgres-migration-artifacts.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -29,7 +31,8 @@
   "dependencies": {
     "@noble/hashes": "^2.3.0",
     "drizzle-orm": "catalog:",
-    "pg": "^8.22.0"
+    "pg": "^8.22.0",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@codaco/tsconfig": "workspace:^",

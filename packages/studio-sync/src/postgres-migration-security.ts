@@ -1,28 +1,30 @@
 import type pg from 'pg';
 
-import { BACKUP_ROLE, TENANT_ROLES } from '@codaco/studio-sync/rls';
-import {
-  runtimeRolesSql,
-  validateRoleNames,
-} from '@codaco/studio-sync/role-bootstrap';
+import type { PostgresMigrationConfig } from './postgres-migrations.ts';
+import { runtimeRolesSql, validateRoleNames } from './role-bootstrap.ts';
 
 /** Enforce deployment access before SQL and again after historical grants. */
 export async function enforceMigrationSecurity(
   client: pg.PoolClient,
   allowedLogins: readonly string[],
+  config: Readonly<PostgresMigrationConfig>,
 ): Promise<void> {
+  const { applicationName, allowedLoginsSetting, runtimeRoles, backupRole } =
+    config;
   validateRoleNames(allowedLogins);
   // Backup identity provisioning belongs to its own versioned sidecar. Check
   // it when present without creating a future role on an older installation.
-  const optionalRoles = await client.query<{ rolname: string }>(
-    'SELECT rolname FROM pg_roles WHERE rolname = $1',
-    [BACKUP_ROLE],
-  );
+  const optionalRoles =
+    backupRole === undefined
+      ? []
+      : (
+          await client.query<{ rolname: string }>(
+            'SELECT rolname FROM pg_roles WHERE rolname = $1',
+            [backupRole],
+          )
+        ).rows.map(({ rolname }) => rolname);
   await client.query(
-    runtimeRolesSql([
-      ...Object.values(TENANT_ROLES),
-      ...optionalRoles.rows.map(({ rolname }) => rolname),
-    ]),
+    runtimeRolesSql([...runtimeRoles, ...optionalRoles], applicationName),
   );
   const identity = await client.query<{
     operator: string;
@@ -39,12 +41,12 @@ export async function enforceMigrationSecurity(
     !allowedLogins.includes(operator.operator)
   ) {
     throw new Error(
-      'The migration operator must connect as itself and be explicitly enrolled in STUDIO_DATABASE_ALLOWED_LOGINS.',
+      `The migration operator must connect as itself and be explicitly enrolled in ${allowedLoginsSetting}.`,
     );
   }
   if (!allowedLogins.includes(operator.owner)) {
     throw new Error(
-      'The Studio database owner must be explicitly enrolled in STUDIO_DATABASE_ALLOWED_LOGINS.',
+      `The ${applicationName} database owner must be explicitly enrolled in ${allowedLoginsSetting}.`,
     );
   }
   // Ownership and the migration connection are administrative capabilities.
@@ -64,7 +66,7 @@ export async function enforceMigrationSecurity(
     logins.rows.some(({ safe }) => !safe)
   ) {
     throw new Error(
-      'Enrolled Studio identities must exist and allow LOGIN; runtime and backup logins must be NOINHERIT and lack database administration or replication attributes.',
+      `Enrolled ${applicationName} identities must exist and allow LOGIN; runtime and backup logins must be NOINHERIT and lack database administration or replication attributes.`,
     );
   }
   // An outside role able to become an enrolled login can restore CONNECT or
@@ -81,7 +83,7 @@ export async function enforceMigrationSecurity(
   );
   if (memberships.rows[0]?.present) {
     throw new Error(
-      'Enrolled Studio logins must not have memberships granted to unenrolled roles.',
+      `Enrolled ${applicationName} logins must not have memberships granted to unenrolled roles.`,
     );
   }
   // SET ROLE NONE restores session_user despite the pool's pinned startup
@@ -101,15 +103,11 @@ export async function enforceMigrationSecurity(
         ))
       )
     ) AS safe`,
-    [
-      restrictedLogins,
-      [...Object.values(TENANT_ROLES), BACKUP_ROLE],
-      BACKUP_ROLE,
-    ],
+    [restrictedLogins, [...runtimeRoles, ...optionalRoles], backupRole ?? null],
   );
   if (scopedMemberships.rows[0]?.safe !== true) {
     throw new Error(
-      'Runtime and backup login memberships must grant only SET access to the reviewed Studio roles, without inheritance or administration; backup membership must be separate from runtime membership.',
+      `Runtime and backup login memberships must grant only SET access to the reviewed ${applicationName} roles, without inheritance or administration; backup membership must be separate from runtime membership.`,
     );
   }
   const loginAccess = await client.query<{ safe: boolean }>(
@@ -150,11 +148,11 @@ export async function enforceMigrationSecurity(
               ELSE false END
         )
     ) AS safe`,
-    [restrictedLogins, [...Object.values(TENANT_ROLES), BACKUP_ROLE]],
+    [restrictedLogins, [...runtimeRoles, ...optionalRoles]],
   );
   if (loginAccess.rows[0]?.safe !== true) {
     throw new Error(
-      'Runtime and backup identities must own no database objects and hold no access outside their reviewed Studio roles: remove direct or PUBLIC login data grants, CREATE, CONNECT grant options, and executable SECURITY DEFINER routines.',
+      `Runtime and backup identities must own no database objects and hold no access outside their reviewed ${applicationName} roles: remove direct or PUBLIC login data grants, CREATE, CONNECT grant options, and executable SECURITY DEFINER routines.`,
     );
   }
   // CONNECT is checked only at connection admission. Enrollment must already
@@ -177,7 +175,7 @@ export async function enforceMigrationSecurity(
   );
   if (!enrollment.rows[0]?.valid) {
     throw new Error(
-      'Studio database CONNECT must match the precommitted enrollment. Quarantine database admission, remove unenrolled grants, and explicitly grant CONNECT to every STUDIO_DATABASE_ALLOWED_LOGINS entry before migrating.',
+      `${applicationName} database CONNECT must match the precommitted enrollment. Quarantine database admission, remove unenrolled grants, and explicitly grant CONNECT to every ${allowedLoginsSetting} entry before migrating.`,
     );
   }
   const outsiders = await client.query<{ present: boolean }>(
@@ -190,7 +188,7 @@ export async function enforceMigrationSecurity(
   );
   if (outsiders.rows[0]?.present) {
     throw new Error(
-      'Studio database CONNECT is available to an unenrolled login. Ask the administrator to remove its direct or inherited grant before migrating.',
+      `${applicationName} database CONNECT is available to an unenrolled login. Ask the administrator to remove its direct or inherited grant before migrating.`,
     );
   }
   // PostgreSQL caches activity snapshots for a transaction. The final check
@@ -206,17 +204,7 @@ export async function enforceMigrationSecurity(
   );
   if (sessions.rows[0]?.present) {
     throw new Error(
-      'Studio has existing connections from unenrolled logins. Quarantine database admission and have the administrator remove those sessions before migrating.',
+      `${applicationName} has existing connections from unenrolled logins. Quarantine database admission and have the administrator remove those sessions before migrating.`,
     );
   }
-}
-
-/** Table REVOKE ALL also removes corresponding column grants in PostgreSQL. */
-export async function protectMigrationEvidence(
-  client: pg.PoolClient,
-): Promise<void> {
-  await client.query(`REVOKE ALL ON SCHEMA studio_migrations FROM PUBLIC, studio_app, studio_maintenance;
-    REVOKE ALL ON studio_migrations.history FROM PUBLIC, studio_app, studio_maintenance;
-    REVOKE ALL ON public."schemaFingerprint" FROM PUBLIC, studio_app, studio_maintenance;
-    GRANT SELECT ON public."schemaFingerprint" TO studio_app, studio_maintenance`);
 }

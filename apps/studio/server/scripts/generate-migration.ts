@@ -8,14 +8,15 @@ import {
   up,
 } from 'drizzle-kit/api-postgres';
 
-import { SCHEMA_FINGERPRINT } from '../src/db/fingerprint.generated.ts';
 import {
   jsonHash,
   readMigrations,
   sha256,
   type Migration,
   type MigrationManifest,
-} from '../src/db/migrations/artifact.ts';
+} from '@codaco/studio-sync/postgres-migration-artifacts';
+
+import { SCHEMA_FINGERPRINT } from '../src/db/fingerprint.generated.ts';
 import { SCHEMA, SIDECARS } from '../src/db/schema.ts';
 import { computeSchemaFingerprint } from './apply.ts';
 

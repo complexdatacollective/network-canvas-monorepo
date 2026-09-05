@@ -6,9 +6,14 @@ import { fileURLToPath } from 'node:url';
 import { generateDrizzleJson } from 'drizzle-kit/api-postgres';
 import { describe, expect, it } from 'vitest';
 
+import {
+  jsonHash,
+  readMigrations,
+  sha256,
+} from '@codaco/studio-sync/postgres-migration-artifacts';
+
 import { computeSchemaFingerprint } from '../../../../scripts/apply.ts';
 import { SCHEMA, SIDECARS } from '../../schema.ts';
-import { jsonHash, readMigrations, sha256 } from '../artifact.ts';
 
 const directory = fileURLToPath(
   new URL('../../../../migrations', import.meta.url),
