@@ -253,7 +253,14 @@ export type ManifestApplyOutcome =
     }>;
 
 export type ResourcePromotionRequest = Readonly<{
-  /** Stable across an uncertain retry so a host promotes the intent once. */
+  /**
+   * Names this promotion's content: the resources below and the apply the
+   * gateway makes through `applyManifest`. Stable across an uncertain retry of
+   * the identical promotion, so a host promotes the intent once — and never
+   * carried onto a promotion that would commit anything else, because a host
+   * answering under an id it has already completed hands the completed
+   * promotion back without promoting or applying anything again.
+   */
   id: string;
   /** Staged resources the finished draft still references. */
   resourceIds: readonly string[];

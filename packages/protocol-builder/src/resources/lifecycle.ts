@@ -1,5 +1,5 @@
 import type { ProtocolValidationIssue } from '@codaco/protocol-validation';
-import type { SectionDoc } from '@codaco/studio-sync/apply';
+import { canonicalize, type SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import {
@@ -410,6 +410,35 @@ export function planStagedResourceFinish(
 }
 
 /**
+ * Everything one finish would commit, as a string that changes when it does.
+ *
+ * A promotion key names a specific commit rather than "the finish that is
+ * being retried", because that is what an idempotent host replays under it:
+ * asked twice under one key, it hands back the promotion it already made and
+ * never calls `applyManifest` again. So the key has to cover both halves of
+ * what that call would have carried — the stage document being applied, and
+ * the staged resources being promoted — and a finish whose content differs
+ * from the last attempt's is a different commit that must ask for itself.
+ *
+ * Only the resources the plan actually promotes are counted, not everything
+ * staged: a resource staged between two attempts that the draft does not
+ * reference changes nothing about the promotion, and rotating the key for it
+ * would throw away the very retry an uncertain first attempt needs.
+ *
+ * Compared rather than hashed, so two finishes can only share a key by being
+ * character-for-character the same commit.
+ */
+export function promotionContent(
+  stageDocument: SectionDoc,
+  staged: readonly ResourceDescriptor[],
+): string {
+  return canonicalize({
+    stage: stageDocument,
+    promote: planStagedResourceFinish(stageDocument, staged).promote,
+  });
+}
+
+/**
  * A staged resource the finish walked away from and could not drop.
  *
  * The stage itself is committed, so this is not a failed finish — but the host
@@ -447,9 +476,13 @@ export type StagedResourceFinishOutcome =
 export type StagedResourceFinishOptions = Readonly<{
   gateway: ProtocolBuilderResourceGateway;
   /**
-   * Stable across a retried finish, and NOT reused once a finish has
-   * succeeded: a gateway returns an already-succeeded promotion without
-   * promoting or applying anything again.
+   * The key this finish's content is promoted under: stable across a retry of
+   * the identical finish, and never reused for a different one. A gateway
+   * returns an already-succeeded promotion without promoting or applying
+   * anything again, so a caller that carries one id across two different
+   * finishes is told the second one succeeded when none of it was committed.
+   * Derive it from {@link promotionContent}, which says what "different" means
+   * here.
    */
   promotionId: string;
   /** The draft being finished, including its session-owned id and type. */

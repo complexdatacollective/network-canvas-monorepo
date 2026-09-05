@@ -19,10 +19,11 @@ import {
   type ProtocolBuilderPresence,
   type StageFormDraft,
 } from '../../session.ts';
-import type {
-  ProtocolBuilderResourceGateway,
-  ResourceDescriptor,
-  ResourceResult,
+import {
+  resourceFailure,
+  type ProtocolBuilderResourceGateway,
+  type ResourceDescriptor,
+  type ResourceResult,
 } from '../gateway.ts';
 import {
   InMemoryResourceGateway,
@@ -93,6 +94,15 @@ type SessionFixtureOptions = Readonly<{
    * staged, and nothing is being promoted. Run once, for the first inspection.
    */
   duringInspect?: (session: ProtocolBuilderSessionStore) => Promise<void>;
+  /**
+   * Loses the answer to the first promotion, once: the host promotes the
+   * resources and applies the manifest for real, and the session is told the
+   * promotion failed and may be retried. This is the uncertainty a stable
+   * promotion id exists for — and the only state in which reusing one across
+   * two different drafts is observable, because a host that really did promote
+   * hands the first promotion back rather than running the second.
+   */
+  loseFirstPromotionAnswer?: boolean;
 }>;
 
 function createFixture(options: SessionFixtureOptions = {}) {
@@ -124,10 +134,13 @@ function createFixture(options: SessionFixtureOptions = {}) {
   const gateway = new InMemoryResourceGateway(options.gateway);
   const gate = options.stagingGate;
   let inspected = false;
+  let promotionAnswerLost = false;
   // The port the session is given: the host itself, or the host behind the
   // hooks a test uses to act from inside a call that is still in flight.
   const sessionGatewayPort: ProtocolBuilderResourceGateway =
-    gate === undefined && options.duringInspect === undefined
+    gate === undefined &&
+    options.duringInspect === undefined &&
+    options.loseFirstPromotionAnswer !== true
       ? gateway
       : {
           list: (listOptions) => gateway.list(listOptions),
@@ -135,7 +148,20 @@ function createFixture(options: SessionFixtureOptions = {}) {
           resolvePreview: (resourceId) => gateway.resolvePreview(resourceId),
           discardStaged: (resourceId) => gateway.discardStaged(resourceId),
           discardAllStaged: () => gateway.discardAllStaged(),
-          promote: (request) => gateway.promote(request),
+          promote: async (request) => {
+            const result = await gateway.promote(request);
+            if (
+              options.loseFirstPromotionAnswer !== true ||
+              promotionAnswerLost
+            ) {
+              return result;
+            }
+            promotionAnswerLost = true;
+            return resourceFailure(
+              'promotion-failed',
+              'the host did not answer',
+            );
+          },
           inspect: async (resourceId) => {
             if (
               options.duringInspect !== undefined &&
@@ -913,6 +939,99 @@ describe('a session that stages resources', () => {
       first.id,
       second.id,
     ]);
+  });
+
+  it('keeps one promotion id across a retry of the same finish, and mints another for a changed one', async () => {
+    const { gateway, session } = createFixture();
+    const image = await stageImage(session, 'first');
+    session.dispatch([
+      { op: 'set', key: 'items', value: informationItems(image.id) },
+    ]);
+    const promote = vi.spyOn(gateway, 'promote');
+
+    gateway.failNextPromotionPartially();
+    await expect(session.finish()).rejects.toBeInstanceOf(
+      ResourcePromotionError,
+    );
+    gateway.failNextPromotionPartially();
+    await expect(session.finish()).rejects.toBeInstanceOf(
+      ResourcePromotionError,
+    );
+
+    // Nothing about what this finish would commit changed between the two
+    // attempts, so they are one intent, and a host that already ran it must be
+    // able to recognise it rather than promote a second copy.
+    const ids = promote.mock.calls.map(([request]) => request.id);
+    expect(ids[1]).toBe(ids[0]);
+
+    // Now the draft changes, so the next attempt commits something the last
+    // one did not, and it has to say so: a host answering under the old id
+    // would hand back the promotion of the draft before this one.
+    session.dispatch([{ op: 'set', key: 'title', value: 'Second thoughts' }]);
+    await session.finish();
+
+    expect(promote.mock.calls[2]?.[0].id).not.toBe(ids[0]);
+  });
+
+  it('mints a new promotion id when the finish swaps the resource it promotes', async () => {
+    const { gateway, session } = createFixture();
+    const first = await stageImage(session, 'first');
+    session.dispatch([
+      { op: 'set', key: 'items', value: informationItems(first.id) },
+    ]);
+    const promote = vi.spyOn(gateway, 'promote');
+    gateway.failNextPromotionPartially();
+
+    await expect(session.finish()).rejects.toBeInstanceOf(
+      ResourcePromotionError,
+    );
+
+    // The researcher replaces the image rather than retrying the one that
+    // would not save.
+    const second = await stageImage(session, 'second');
+    session.dispatch([
+      { op: 'set', key: 'items', value: informationItems(second.id) },
+    ]);
+    await session.finish();
+
+    const ids = promote.mock.calls.map(([request]) => request.id);
+    expect(ids[1]).not.toBe(ids[0]);
+    expect(Object.keys(gateway.getCommittedManifest())).toEqual([second.id]);
+    expect(gateway.getStagingResidue()).toEqual([]);
+  });
+
+  it('refuses a changed draft rather than reporting the promotion of the one before it', async () => {
+    const { gateway, host, session } = createFixture({
+      loseFirstPromotionAnswer: true,
+    });
+    const image = await stageImage(session, 'first');
+    session.dispatch([
+      { op: 'set', key: 'items', value: informationItems(image.id) },
+    ]);
+    const promote = vi.spyOn(gateway, 'promote');
+
+    // The host promoted and applied this finish; only its answer was lost.
+    await expect(session.finish()).rejects.toBeInstanceOf(
+      ResourcePromotionError,
+    );
+    expect(Object.keys(gateway.getCommittedManifest())).toEqual([image.id]);
+
+    // The researcher edits the draft before retrying, so this is no longer the
+    // finish the host ran — and a host that is asked under the same id answers
+    // with the promotion it already made, applying none of this draft.
+    session.dispatch([{ op: 'set', key: 'title', value: 'Second thoughts' }]);
+    await expect(session.finish()).rejects.toBeInstanceOf(
+      ResourcePromotionError,
+    );
+
+    expect(promote.mock.calls[1]?.[0].id).not.toBe(
+      promote.mock.calls[0]?.[0].id,
+    );
+    // Whatever the host makes of the second attempt, the session may not
+    // report a finish whose draft the host never saw.
+    expect(host.getSnapshot().protocolSections[stageSection]).not.toMatchObject(
+      { title: 'Second thoughts' },
+    );
   });
 
   it('gives a fresh session its own promotion id', async () => {

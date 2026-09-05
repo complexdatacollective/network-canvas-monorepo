@@ -126,6 +126,22 @@ export function describeResourceGatewayContract(
         }),
       );
 
+    /** Stages an arbitrary network document, for the rosters that are wrong. */
+    const stageJsonRoster = async (
+      requestId: string,
+      network: unknown,
+    ): Promise<ResourceDescriptor> =>
+      expectOk(
+        await gateway().stageUpload({
+          requestId,
+          kind: 'network',
+          name: 'Staged JSON roster',
+          source: `${requestId}.json`,
+          contentType: 'application/json',
+          bytes: new TextEncoder().encode(JSON.stringify(network)),
+        }),
+      );
+
     const stageCsvRoster = async (
       requestId = 'request-csv-roster',
     ): Promise<ResourceDescriptor> =>
@@ -313,29 +329,14 @@ export function describeResourceGatewayContract(
     });
 
     it('refuses a JSON roster whose entries are not objects, and names the one that is not', async () => {
-      const stageJson = async (
-        requestId: string,
-        network: unknown,
-      ): Promise<ResourceDescriptor> =>
-        expectOk(
-          await gateway().stageUpload({
-            requestId,
-            kind: 'network',
-            name: 'Roster with a hole',
-            source: `${requestId}.json`,
-            contentType: 'application/json',
-            bytes: new TextEncoder().encode(JSON.stringify(network)),
-          }),
-        );
-
-      const holed = await stageJson('request-holed-roster', {
+      const holed = await stageJsonRoster('request-holed-roster', {
         nodes: [{ attributes: { name: 'Ada' } }, null],
         edges: [],
       });
-      const badAttributes = await stageJson('request-bad-attributes-roster', {
-        nodes: [{ attributes: 'Ada' }],
-        edges: [],
-      });
+      const badAttributes = await stageJsonRoster(
+        'request-bad-attributes-roster',
+        { nodes: [{ attributes: 'Ada' }], edges: [] },
+      );
 
       const holedFailure = expectFailure(await gateway().inspect(holed.id));
       const attributesFailure = expectFailure(
@@ -352,6 +353,91 @@ export function describeResourceGatewayContract(
       expect(holedFailure.message).toContain('node 2');
       expect(attributesFailure.reason).toBe('invalid-content');
       expect(attributesFailure.message).toContain('node 1');
+    });
+
+    it('refuses a JSON roster carrying an attribute value the interview cannot hold, and names it', async () => {
+      const roster = await stageJsonRoster('request-nested-value-roster', {
+        nodes: [
+          { attributes: { name: 'Ada' } },
+          { attributes: { name: 'Grace', address: { city: 'Arlington' } } },
+        ],
+        edges: [],
+      });
+
+      const failure = expectFailure(await gateway().inspect(roster.id));
+
+      // The interview parses every attribute value through the same schema
+      // that decides what a variable may hold, and throws on one it rejects.
+      // An adapter that checks only the shape of the attributes object lets a
+      // protocol commit a field pointing at a roster that fails the moment the
+      // interview opens it. The attribute is named alongside its row because
+      // between them they are the whole of what the researcher has to fix.
+      expect(failure.reason).toBe('invalid-content');
+      expect(failure.retryable).toBe(false);
+      expect(failure.message).toContain('node 2');
+      expect(failure.message).toContain('address');
+    });
+
+    it('reads the attribute values the interview accepts, and passes over the empty ones', async () => {
+      const roster = await stageJsonRoster('request-value-shapes-roster', {
+        nodes: [
+          {
+            attributes: {
+              name: 'Ada',
+              age: 36,
+              consented: true,
+              languages: ['English', 'French'],
+              home: { x: 0.25, y: 0.5 },
+              nickname: null,
+            },
+          },
+        ],
+        edges: [],
+      });
+
+      const inspection = expectOk(await gateway().inspect(roster.id));
+
+      // Every one of these is a value a variable holds — a layout coordinate
+      // and a categorical selection included — and a null is a cell the
+      // researcher left empty, which the interview skips rather than refuses.
+      // An adapter stricter than the runtime turns ordinary rosters away.
+      expect(inspection.counts).toEqual({ nodes: 1, edges: 0 });
+      expect([...(inspection.variableNames ?? [])].toSorted()).toEqual([
+        'age',
+        'consented',
+        'home',
+        'languages',
+        'name',
+        'nickname',
+      ]);
+    });
+
+    it('reads a CSV roster column named with dots as one attribute', async () => {
+      const roster = expectOk(
+        await gateway().stageUpload({
+          requestId: 'request-dotted-csv-roster',
+          kind: 'network',
+          name: 'Roster with a dotted column',
+          source: 'dotted-roster.csv',
+          contentType: 'text/csv',
+          bytes: new TextEncoder().encode(
+            'name,home.city\nAda,London\nGrace,Arlington\n',
+          ),
+        }),
+      );
+
+      const inspection = expectOk(await gateway().inspect(roster.id));
+
+      // A spreadsheet exports a column called `home.city` as one column, and
+      // the interview reads it as one attribute of that name. An adapter whose
+      // CSV parser folds the dots into a nested object reports a variable the
+      // roster does not have — and gives that variable a value no attribute may
+      // hold, so the roster it just described would also be refused.
+      expect(inspection.counts).toEqual({ nodes: 2, edges: 0 });
+      expect([...(inspection.variableNames ?? [])].toSorted()).toEqual([
+        'home.city',
+        'name',
+      ]);
     });
 
     it('downloads the exact bytes of committed and staged content', async () => {

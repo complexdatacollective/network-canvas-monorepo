@@ -47,8 +47,11 @@ export const PREVIEW_RENEWAL_MIN_INTERVAL_MS = 5_000;
  * The URL is a lease, not a fact: the host may be holding an object URL, a
  * signed link, or a cache entry open for as long as this component shows it,
  * so `release` is called whenever the component stops showing it — on unmount,
- * and on a change of resource. A resolution that lands after that point is
- * released immediately rather than kept, because nothing else ever will.
+ * on a change of resource, and when a lease runs out with no renewal to
+ * replace it. A resolution that lands after that point is released immediately
+ * rather than kept, because nothing else ever will, and every lease is released
+ * exactly once: a host that counts what it has handed out is entitled to read a
+ * second release as being about the lease it issued next.
  *
  * A lease that says when it ends is renewed shortly before it does, because a
  * stage editor is left open far longer than a signed URL lives and an image
@@ -108,7 +111,18 @@ export default function ResourcePreview({
           setFailure(result.failure);
           return;
         }
-        renewal = setTimeout(() => setFailure(result.failure), remaining);
+        renewal = setTimeout(() => {
+          // The lease has run out and no replacement is coming, so the preview
+          // stops showing it here — and stopping is what releases it. The
+          // effect's cleanup cannot: it runs on unmount and on a change of
+          // resource, and a field simply left open does neither, so the host
+          // would go on holding this URL for as long as the editor is open.
+          // Cleared as it is released, so the cleanup that follows an unmount
+          // or a retry does not release the same lease a second time.
+          resolved = undefined;
+          inUse.release();
+          setFailure(result.failure);
+        }, remaining);
         return;
       }
       const previous = resolved;

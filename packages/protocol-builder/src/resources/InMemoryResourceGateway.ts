@@ -1,7 +1,10 @@
 import csv from 'csvtojson';
 
 import type { Asset } from '@codaco/protocol-validation';
-import { entityAttributesProperty } from '@codaco/shared-consts';
+import {
+  entityAttributesProperty,
+  VariableValueSchema,
+} from '@codaco/shared-consts';
 import type { Command } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -882,11 +885,17 @@ function isCsvRoster(
  * `checkColumn` comes with it: a row carrying more or fewer values than the
  * header names is content the researcher has to fix, not a row to silently
  * keep half of.
+ *
+ * `flatKeys` is what the interview runtime reads the same file with. Without
+ * it the parser folds a column called `home.city` into a nested object, so
+ * this would report a variable named `home` the roster does not have — and
+ * give it a value no attribute may hold, refusing the very file the interview
+ * loads without complaint.
  */
 async function parseCsvRoster(
   text: string,
 ): Promise<RosterFacts | UnreadableRoster> {
-  const converter = csv({ checkColumn: true });
+  const converter = csv({ checkColumn: true, flatKeys: true });
   // A mismatched row is reported as an event and the row is dropped: the parse
   // still settles, with a roster quietly shorter than the file. Listening is
   // also what keeps the failure from surfacing as an unhandled stream error.
@@ -905,6 +914,11 @@ async function parseCsvRoster(
   const parsedRows: readonly unknown[] = rows;
   const attributes = parsedRows.filter(isAttributeRecord);
   if (attributes.length !== parsedRows.length) return unreadableRoster();
+  for (const [index, row] of attributes.entries()) {
+    // One-based, because it names a line of the researcher's own file.
+    const unreadableValue = unreadableAttributeValue(row, `row ${index + 1}`);
+    if (unreadableValue !== undefined) return unreadableValue;
+  }
 
   return Object.freeze({
     counts: Object.freeze({ nodes: attributes.length, edges: 0 }),
@@ -916,8 +930,9 @@ async function parseCsvRoster(
  * A JSON roster, read exactly as far as the interview runtime reads it.
  *
  * Every entry of `nodes` is checked, not just counted: `loadExternalData`'s
- * `parseExternalNode` throws on an entry that is not an object, and on one
- * whose attributes are not an object, so a roster carrying either is a file
+ * `parseExternalNode` throws on an entry that is not an object, on one whose
+ * attributes are not an object, and on any attribute value its
+ * `VariableValueSchema` rejects, so a roster carrying any of those is a file
  * the interview cannot load. Counting it as a readable node here is what lets
  * a protocol commit a field pointing at a roster that fails when it is used,
  * with a manifest entry that looks perfectly valid — so the entry is named
@@ -953,6 +968,11 @@ function parseJsonRoster(text: string): RosterFacts | UnreadableRoster {
         `the attributes of node ${position} are not an object`,
       );
     }
+    const unreadableValue = unreadableAttributeValue(
+      attributes,
+      `node ${position}`,
+    );
+    if (unreadableValue !== undefined) return unreadableValue;
     nodeAttributes.push(attributes);
   }
 
@@ -960,6 +980,36 @@ function parseJsonRoster(text: string): RosterFacts | UnreadableRoster {
     counts: Object.freeze({ nodes: nodes.length, edges: edges.length }),
     variableNames: attributeNames(nodeAttributes),
   });
+}
+
+/**
+ * The value check both roster formats are read through, because the interview
+ * reads them through one: `loadExternalData`'s `parseExternalAttributes` runs
+ * every attribute of a JSON node and of a CSV row through
+ * {@link VariableValueSchema}, and throws on a value it rejects — a nested
+ * object is the ordinary way a hand-edited roster gets one. The schema itself
+ * is used rather than a check written to look like it, so a variable value the
+ * protocol format learns to hold is one this gateway learns to accept.
+ *
+ * An absent value is passed over rather than refused, exactly as the runtime
+ * passes over it: an empty cell is a value the roster does not carry, not a
+ * value it carries wrongly.
+ *
+ * `entry` names the row in the researcher's own file, which with the attribute
+ * name is the whole of what they have to go and fix.
+ */
+function unreadableAttributeValue(
+  attributes: Readonly<Record<string, unknown>>,
+  entry: string,
+): UnreadableRoster | undefined {
+  for (const [name, value] of Object.entries(attributes)) {
+    if (value === null || value === undefined) continue;
+    if (VariableValueSchema.safeParse(value).success) continue;
+    return unreadableRoster(
+      `the "${name}" attribute of ${entry} is not a value a variable can hold`,
+    );
+  }
+  return undefined;
 }
 
 /**

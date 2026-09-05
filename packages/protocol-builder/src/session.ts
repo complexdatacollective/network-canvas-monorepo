@@ -35,6 +35,7 @@ import {
   draftResourceIssues,
   finishStagedResources,
   mergeDraftValidationIssues,
+  promotionContent,
   stageIndexForValidation,
   type StagedResourceDiscardFailure,
   type StagedResourceFinishOutcome,
@@ -424,8 +425,21 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
   private validationVersion = 0;
   private compoundEditInFlight = false;
   private readonly resources: StagedResourceTracker | undefined;
-  /** Held across a retried finish so a promotion cannot happen twice. */
-  private promotionId: string | undefined;
+  /**
+   * The key the current finish's content is promoted under, and the content it
+   * was minted for.
+   *
+   * A promotion key names one commit — this stage document, promoting these
+   * staged resources — and not "the finish this session is retrying". An
+   * idempotent host asked twice under one key hands back the promotion it
+   * already made without applying anything again, so a key carried across a
+   * changed draft or a swapped resource would report the second finish as done
+   * while none of it reached the protocol. It is therefore held only for as
+   * long as the content is: a retry of the identical finish reuses it, and any
+   * other finish mints its own. Cleared on success as well, so a finish that
+   * has been committed can never be replayed under the key that committed it.
+   */
+  private promotion: Readonly<{ id: string; content: string }> | undefined;
   /**
    * The first batch withheld from `onCommands` because it references a staged
    * resource. Every later batch is withheld with it, so a live-applying host
@@ -718,14 +732,17 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       throw new ResourcePromotionError(hold.failure);
     }
 
-    // Stable across a retried finish so an uncertain promotion happens once,
-    // and released as soon as one succeeds so the next finish is its own.
-    this.promotionId ??= uuid({});
+    // Read after the hold, because the hold is what fixes the staged set this
+    // finish promotes: content read before it could still change.
+    const content = promotionContent(document, hold.data.staged);
+    if (this.promotion?.content !== content) {
+      this.promotion = Object.freeze({ id: uuid({}), content });
+    }
     let outcome: StagedResourceFinishOutcome;
     try {
       outcome = await finishStagedResources({
         gateway: resources.gateway,
-        promotionId: this.promotionId,
+        promotionId: this.promotion.id,
         stageDocument: document,
         stageIndex: stageIndexForValidation(
           this.snapshot.protocolSections,
@@ -758,7 +775,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     if (outcome.status === 'promotion-failed') {
       throw new ResourcePromotionError(outcome.failure);
     }
-    this.promotionId = undefined;
+    this.promotion = undefined;
     // Only the batches this apply actually carried are released. An edit made
     // while the apply was in flight is not among them, and letting a later
     // batch overtake it would leave the host holding a gap an acknowledgement
