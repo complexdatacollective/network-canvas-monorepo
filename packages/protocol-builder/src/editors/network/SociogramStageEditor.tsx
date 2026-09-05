@@ -3,6 +3,7 @@ import { interfaceDocumentationUrl } from '../../interfaces/documentation.ts';
 import InterviewerGuidanceSection from '../../sections/InterviewerGuidanceSection.tsx';
 import AutomaticLayoutSection from '../../sections/network/AutomaticLayoutSection.tsx';
 import BackgroundSection from '../../sections/network/BackgroundSection.tsx';
+import NarrativeBehavioursSection from '../../sections/network/NarrativeBehavioursSection.tsx';
 import SociogramPromptsSection from '../../sections/network/SociogramPromptsSection.tsx';
 import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
 import StageNameSection from '../../sections/StageNameSection.tsx';
@@ -15,19 +16,41 @@ import {
 const DOCUMENTATION_URL = interfaceDocumentationUrl('sociogram');
 
 /**
+ * A sociogram grants the same two canvas permissions a narrative does, and
+ * they mean the same thing — but a sociogram stores each node's position in
+ * the attribute its own PROMPT names, not in a preset's, so the sentence about
+ * where a moved node ends up is written for this interface rather than
+ * borrowed from the other one.
+ */
+const CANVAS_INTERACTION_COPY = {
+  description:
+    'Choose what the participant may do to the canvas while they work through the prompts.',
+  repositioningHint:
+    'The participant can drag nodes to new positions. Each position is stored in the attribute the prompt they are answering names, so moving a node here changes it everywhere that attribute is used.',
+} as const;
+
+/**
  * The editor for a sociogram stage.
  *
  * A sociogram sets the participant a series of tasks on a canvas — place these
  * people, connect the ones who know each other, mark the ones you are closest
  * to — so the prompts are the substance of the stage and come first, before
- * the two decisions about the canvas they are performed on: what is drawn
- * behind the nodes, and how the nodes are arranged when the stage opens.
+ * the decisions about the canvas they are performed on: what is drawn behind
+ * the nodes, how the nodes are arranged when the stage opens, and what the
+ * participant is allowed to do to the picture.
  *
- * The prompts, the background and the layout are all the package's shared
- * sections, given semantic props alone. Each of them reads the protocol
- * through the editor's own context, so a codebook change a collaborator makes
- * reaches the pickers inside an open prompt dialog without this editor doing
- * anything.
+ * Those last three are every key the Sociogram schema's `behaviours` object
+ * has — `automaticLayout`, `freeDraw` and `allowRepositioning` — and all three
+ * are mounted deliberately. A save replaces the whole `behaviours` key with
+ * what the form is holding, so a key no section renders is not preserved: it
+ * is dropped, silently, the first time a researcher saves a stage somebody
+ * else authored.
+ *
+ * The prompts, the background, the layout and the permissions are all the
+ * package's shared sections, given semantic props alone. Each of them reads
+ * the protocol through the editor's own context, so a codebook change a
+ * collaborator makes reaches the pickers inside an open prompt dialog without
+ * this editor doing anything.
  */
 export function SociogramStageEditor({
   controller,
@@ -52,6 +75,7 @@ export function SociogramStageEditor({
       <SociogramPromptsSection />
       <BackgroundSection allowsImage />
       <AutomaticLayoutSection />
+      <NarrativeBehavioursSection copy={CANVAS_INTERACTION_COPY} />
       <SkipLogicSection />
       <InterviewerGuidanceSection />
     </StageEditorShell>

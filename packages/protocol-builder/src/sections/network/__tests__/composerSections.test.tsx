@@ -80,6 +80,37 @@ describe('what a network composer lets the participant build', () => {
     expect(request?.stageDocument.convexHullVariable).toBe('contactType');
   });
 
+  /**
+   * The fixture composer says nothing about automatic layout, and a
+   * researcher who never touched the toggle has decided nothing either.
+   * Absence is how the schema spells that, so the save may not invent a
+   * default — nor the empty `behaviours` container a leaf field assembles
+   * around one.
+   */
+  it('writes no behaviours at all for a stage that arrived without them', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    const request = await harness.submit();
+    expect(Object.hasOwn(request?.stageDocument ?? {}, 'behaviours')).toBe(
+      false,
+    );
+  });
+
+  it('takes the key away again when automatic layout is switched back off', async () => {
+    const harness = renderStageEditor(openEditor());
+    const toggle = screen.getByRole('switch', {
+      name: 'Start with automatic layout switched on',
+    });
+
+    await harness.user.click(toggle);
+    await harness.user.click(toggle);
+
+    const request = await harness.submit();
+    expect(Object.hasOwn(request?.stageDocument ?? {}, 'behaviours')).toBe(
+      false,
+    );
+  });
+
   it('starts the stage with automatic layout switched on', async () => {
     const harness = renderStageEditor(openEditor());
 

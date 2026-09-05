@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 
-import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 
 import {
@@ -16,6 +15,7 @@ import ProtocolField from '../../form/ProtocolField.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import BuilderSection from '../BuilderSection.tsx';
+import { AutomaticLayoutDefaultField } from './canvasFields.tsx';
 import {
   CATEGORICAL_TYPES,
   LAYOUT_TYPES,
@@ -32,7 +32,12 @@ import { asText } from './rowValues.ts';
 
 const QUICK_ADD_FIELD = 'quickAdd';
 const LAYOUT_VARIABLE_FIELD = 'layoutVariable';
-const AUTOMATIC_LAYOUT_FIELD = 'behaviours.automaticLayout';
+/**
+ * The whole `behaviours` object, not the one flag inside it — see
+ * `AutomaticLayoutDefaultField` for why a leaf field here would write an empty
+ * container into a stage that never had one.
+ */
+const BEHAVIOURS_FIELD = 'behaviours';
 const CONVEX_HULL_FIELD = 'convexHullVariable';
 
 /**
@@ -96,9 +101,9 @@ export type ComposerNodeConfigurationSectionProps = Readonly<{
  * What the participant can do with nodes on this canvas.
  *
  * Four decisions the stage holds directly — `quickAdd`, `layoutVariable`,
- * `behaviours.automaticLayout` and `convexHullVariable` — and three of them
- * name an attribute the codebook has to have, so the section can create one
- * where the protocol has nothing suitable yet.
+ * `behaviours` and `convexHullVariable` — and three of them name an attribute
+ * the codebook has to have, so the section can create one where the protocol
+ * has nothing suitable yet.
  *
  * The two attribute pickers deliberately exclude opposite things. Adding a node
  * collects a value through the codebook's own rules, so it may not take an
@@ -230,9 +235,9 @@ export default function ComposerNodeConfigurationSection({
         }
       />
 
-      <ProtocolField<typeof ToggleField>
-        name={AUTOMATIC_LAYOUT_FIELD}
-        component={ToggleField}
+      <ProtocolField<typeof AutomaticLayoutDefaultField>
+        name={BEHAVIOURS_FIELD}
+        component={AutomaticLayoutDefaultField}
         label={words.automaticLayoutLabel}
         hint={words.automaticLayoutHint}
         inline

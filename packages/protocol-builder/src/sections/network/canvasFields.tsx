@@ -5,6 +5,7 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import RichSelectGroupField, {
   type RichSelectOption,
 } from '@codaco/fresco-ui/form/fields/RichSelectGroup';
+import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 
 /**
  * The small bridges between what the protocol schema stores and what a control
@@ -130,6 +131,57 @@ export function LayoutModeField({
       options={LAYOUT_MODE_OPTIONS}
       value={value === true ? AUTOMATIC : MANUAL}
       onChange={(next) => onChange?.(next === AUTOMATIC)}
+    />
+  );
+}
+
+const AUTOMATIC_LAYOUT_KEY = 'automaticLayout';
+
+type BehavioursValue = Record<string, unknown>;
+
+type AutomaticLayoutDefaultFieldProps = Omit<
+  ComponentProps<typeof ToggleField>,
+  'value' | 'onChange'
+> &
+  Readonly<{
+    value?: BehavioursValue;
+    onChange?: (value: BehavioursValue | undefined) => void;
+  }>;
+
+/**
+ * Whether a network composer OPENS with automatic layout running.
+ *
+ * Bound to the whole `behaviours` object rather than to
+ * `behaviours.automaticLayout`, which is the point of it. The form store
+ * assembles a container out of the leaves registered inside it, so a leaf
+ * field holding nothing still materialises `behaviours: {}` — and a stage that
+ * arrived without the key would be saved carrying an empty one it never had.
+ * Absence is how the schema spells "this stage does not do this", and a
+ * researcher who touched nothing must not have a default written for them.
+ *
+ * Switching the toggle off REMOVES the key rather than writing `false`, for
+ * the same reason: the two mean the same thing to the interview, and only one
+ * of them is what an unconfigured stage looks like. Anything else the object
+ * holds is carried through untouched, so a behaviour this control knows
+ * nothing about survives being toggled past.
+ */
+export function AutomaticLayoutDefaultField({
+  value,
+  onChange,
+  ...props
+}: AutomaticLayoutDefaultFieldProps) {
+  return (
+    <ToggleField
+      {...props}
+      value={value?.[AUTOMATIC_LAYOUT_KEY] === true}
+      onChange={(next) => {
+        const behaviours: BehavioursValue = { ...value };
+        if (next) behaviours[AUTOMATIC_LAYOUT_KEY] = true;
+        else delete behaviours[AUTOMATIC_LAYOUT_KEY];
+        onChange?.(
+          Object.keys(behaviours).length === 0 ? undefined : behaviours,
+        );
+      }}
     />
   );
 }

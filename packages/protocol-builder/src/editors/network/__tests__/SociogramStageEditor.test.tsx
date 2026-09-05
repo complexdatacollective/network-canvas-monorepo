@@ -1,12 +1,16 @@
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { sociogramStage } from '@codaco/protocol-validation';
+import type { SectionDoc } from '@codaco/studio-sync/apply';
+
 import { getInterfaceTemplate } from '../../../interfaces/templates.ts';
 import {
   CANVAS_IMAGE_ID,
   canvasImageAssets,
   stageWithImageBackground,
 } from '../../../sections/network/__tests__/canvasFixtures.ts';
+import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { shimMarkdownEditorMeasurement } from '../../pedigree/__tests__/editorFixtures.tsx';
 import { SociogramStageEditor } from '../SociogramStageEditor.tsx';
@@ -43,6 +47,40 @@ const openNewStage = () =>
     editor: sociogramEditor,
   });
 
+/**
+ * Every behaviour the Sociogram schema allows, on one stage.
+ *
+ * Written out here rather than taken from the fixture because the fixture
+ * carries only `automaticLayout`, and a key nothing renders survives a save
+ * untouched — so a stage holding one is the only thing that can catch a
+ * missing section. The list is the schema's own `canvasBehavioursSchema`; a
+ * key added there and not here leaves this test passing while the editor
+ * silently drops it, which is what `schemaBehaviourKeys` guards against.
+ */
+const ALL_BEHAVIOURS: SectionDoc = {
+  behaviours: {
+    automaticLayout: true,
+    allowRepositioning: true,
+    freeDraw: true,
+  },
+};
+
+/** Every behaviour key the Sociogram stage schema itself allows. */
+const schemaBehaviourKeys = (): string[] =>
+  Object.keys(sociogramStage.shape.behaviours.unwrap().shape).toSorted();
+
+const openWithEveryBehaviour = () => {
+  const { type, fields } = loadFixtureStage('sociogram-1');
+  return renderStageEditor({
+    stage: {
+      id: 'sociogram-behaviours',
+      type,
+      fields: { ...fields, ...ALL_BEHAVIOURS },
+    },
+    editor: sociogramEditor,
+  });
+};
+
 describe('the sociogram stage editor', () => {
   it('saves the stage it opened, unchanged', async () => {
     const harness = openFixture();
@@ -53,7 +91,7 @@ describe('the sociogram stage editor', () => {
   it('composes its sections in the order the decisions are made', async () => {
     const harness = openFixture();
 
-    await waitFor(() => expect(harness.outline()).toHaveLength(8));
+    await waitFor(() => expect(harness.outline()).toHaveLength(9));
     expect(harness.outline().map((section) => section.title)).toEqual([
       'Stage name',
       'Node type',
@@ -61,9 +99,49 @@ describe('the sociogram stage editor', () => {
       'Prompts',
       'Background',
       'Node layout',
+      'Canvas interaction',
       'Skip logic',
       'Interviewer guidance',
     ]);
+  });
+
+  /**
+   * A save replaces the whole `behaviours` key with what the form holds, so a
+   * behaviour no section renders is not left alone — it is deleted the first
+   * time anyone re-saves a stage that had it. Opening a stage carrying every
+   * behaviour the schema allows and saving it unchanged is what proves each
+   * one has a section.
+   */
+  it('asks about every behaviour the schema allows', () => {
+    expect(Object.keys(ALL_BEHAVIOURS.behaviours ?? {}).toSorted()).toEqual(
+      schemaBehaviourKeys(),
+    );
+  });
+
+  it('keeps every behaviour the schema allows when a stage carrying them is re-saved', async () => {
+    const harness = openWithEveryBehaviour();
+
+    const request = await harness.roundTrip({ unowned: [] });
+
+    expect(request.stageDocument.behaviours).toEqual(ALL_BEHAVIOURS.behaviours);
+  });
+
+  it('saves each canvas permission the researcher grants', async () => {
+    const harness = openFixture();
+
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Allow drawing on the canvas' }),
+    );
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Allow moving nodes' }),
+    );
+
+    const request = await harness.submit();
+    expect(request?.stageDocument.behaviours).toEqual({
+      automaticLayout: true,
+      freeDraw: true,
+      allowRepositioning: true,
+    });
   });
 
   /**
