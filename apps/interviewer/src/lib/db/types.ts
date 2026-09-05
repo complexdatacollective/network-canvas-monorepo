@@ -99,6 +99,9 @@ export type SessionSortColumn =
   | 'exportedAt';
 
 export type SessionQueryParams = {
+  // Administration display ordering; authored text and stored IDs stay literal.
+  // Callers without app context get deterministic English ordering.
+  locale?: string;
   search?: string;
   caseId?: string;
   protocolNames?: string[];

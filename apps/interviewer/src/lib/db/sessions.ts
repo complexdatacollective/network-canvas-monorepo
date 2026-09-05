@@ -153,10 +153,11 @@ function compareLite(
   a: StoredSessionLite,
   b: StoredSessionLite,
   column: SessionQueryParams['sort']['column'],
+  collator: Intl.Collator,
 ): number {
-  if (column === 'caseId') return a.caseId.localeCompare(b.caseId);
+  if (column === 'caseId') return collator.compare(a.caseId, b.caseId);
   if (column === 'protocolName') {
-    return a.protocolName.localeCompare(b.protocolName);
+    return collator.compare(a.protocolName, b.protocolName);
   }
   if (column === 'startedAt') return a.startedAt.localeCompare(b.startedAt);
   if (column === 'updatedAt') {
@@ -176,10 +177,13 @@ function compareLite(
 function sortLite(
   rows: StoredSessionLite[],
   sort: SessionQueryParams['sort'],
+  locale: string,
 ): StoredSessionLite[] {
   const directionMultiplier = sort.direction === 'asc' ? 1 : -1;
+  const collator = new Intl.Collator(locale);
   return rows.toSorted((a, b) => {
-    const primary = compareLite(a, b, sort.column) * directionMultiplier;
+    const primary =
+      compareLite(a, b, sort.column, collator) * directionMultiplier;
     if (primary !== 0) return primary;
     return a.id.localeCompare(b.id);
   });
@@ -212,7 +216,7 @@ export async function querySessions(
       ? preStatusLite.filter((lite) => statusFilter.includes(lite.statusKind))
       : preStatusLite;
 
-  const sorted = sortLite(filtered, params.sort);
+  const sorted = sortLite(filtered, params.sort, params.locale ?? 'en');
   const start = params.page * params.pageSize;
   const rows = sorted.slice(start, start + params.pageSize);
 

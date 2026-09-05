@@ -179,12 +179,19 @@ export function ProtocolDeck({
   const deck = useMemo(
     () =>
       buildDeck({
+        locale: intl.locale,
         protocols,
         showSampleCard,
         showDevelopmentCard,
         pendingImports,
       }),
-    [protocols, showSampleCard, showDevelopmentCard, pendingImports],
+    [
+      intl.locale,
+      protocols,
+      showSampleCard,
+      showDevelopmentCard,
+      pendingImports,
+    ],
   );
 
   // Per-protocol session count, hoisted here so DeckCard doesn't take the
