@@ -14,6 +14,7 @@ import {
   ArrayFieldBindingContext,
   useArrayFieldCommands,
   type ArrayFieldCommands,
+  type ArrayWriteOutcome,
 } from '../useArrayFieldCommands.ts';
 
 type Row = { id?: string; text?: string };
@@ -100,7 +101,7 @@ describe('a list bound to a document key', () => {
     const onChange = vi.fn();
     const commands = renderCommands(session, [A, B], 'prompts', onChange);
 
-    let committed = false;
+    let committed: ArrayWriteOutcome | undefined;
     act(() => {
       committed = commands.commitDetachedRow(
         { id: 'b', text: 'Bravo edited' },
@@ -109,7 +110,7 @@ describe('a list bound to a document key', () => {
       );
     });
 
-    expect(committed).toBe(true);
+    expect(committed).toEqual({ kind: 'written' });
     expect(session.getSnapshot().editedSection.fields.prompts).toEqual([
       A,
       { id: 'b', text: 'Bravo edited' },
@@ -121,7 +122,7 @@ describe('a list bound to a document key', () => {
     const onChange = vi.fn();
     const commands = renderCommands(session, [A, B], 'prompts', onChange);
 
-    let committed = true;
+    let committed: ArrayWriteOutcome | undefined;
     act(() => {
       committed = commands.commitDetachedRow(
         { id: 'b', text: 'Bravo edited' },
@@ -131,9 +132,10 @@ describe('a list bound to a document key', () => {
     });
 
     // There is nothing left to commit the edit to, and appending it would add
-    // back a row the researcher deleted. Answering yes is what closes the
-    // dialog over an edit that reached nothing.
-    expect(committed).toBe(false);
+    // back a row the researcher deleted. Answering yes — or answering no
+    // without saying why — is what closes the dialog over an edit that reached
+    // nothing.
+    expect(committed).toEqual({ kind: 'refused', reason: 'row-removed' });
     expect(session.getSnapshot().editedSection.fields.prompts).toEqual([A]);
     expect(session.getSnapshot().pendingCommands).toEqual([]);
     expect(onChange).not.toHaveBeenCalled();
@@ -184,14 +186,14 @@ describe('a list bound to a key the document does not hold as a list', () => {
     const onChange = vi.fn();
     const commands = renderCommands(session, [], 'prompts', onChange);
 
-    let committed = false;
+    let committed: ArrayWriteOutcome | undefined;
     act(() => {
       committed = commands.commitDetachedRow({ id: 'n' }, 'n', true);
     });
 
     // The other write that can reach a foreign value: a row still being added
     // when its dialog outlived the list it was opened from.
-    expect(committed).toBe(true);
+    expect(committed).toEqual({ kind: 'written' });
     expect(session.getSnapshot().editedSection.fields.prompts).toEqual([
       { id: 'n' },
     ]);
@@ -450,7 +452,7 @@ describe('a list with no document key of its own', () => {
     const onChange = vi.fn();
     const commands = renderCommands(session, [A], undefined, onChange);
 
-    let committed = true;
+    let committed: ArrayWriteOutcome | undefined;
     act(() => {
       committed = commands.commitDetachedRow(
         { id: 'b', text: 'Bravo edited' },
@@ -459,7 +461,7 @@ describe('a list with no document key of its own', () => {
       );
     });
 
-    expect(committed).toBe(false);
+    expect(committed).toEqual({ kind: 'refused', reason: 'row-removed' });
     expect(onChange).not.toHaveBeenCalled();
   });
 
@@ -468,7 +470,7 @@ describe('a list with no document key of its own', () => {
     const onChange = vi.fn();
     const commands = renderCommands(session, [A], undefined, onChange);
 
-    let committed = false;
+    let committed: ArrayWriteOutcome | undefined;
     act(() => {
       committed = commands.commitDetachedRow(
         { id: 'n', text: 'New' },
@@ -479,7 +481,141 @@ describe('a list with no document key of its own', () => {
 
     // The one exception to the rule above: a row being added was never in the
     // list to begin with, so there is no wrong row for it to land on.
-    expect(committed).toBe(true);
+    expect(committed).toEqual({ kind: 'written' });
     expect(onChange).toHaveBeenCalledWith([A, { id: 'n', text: 'New' }]);
+  });
+});
+
+/**
+ * Every route out of this hook that does not write, and the reason it gives.
+ *
+ * The defect this enumerates is one this file's own seam kept producing: a
+ * write path that could answer "no" without saying why, next to a caller — a
+ * row dialog — that reads silence as a save and closes itself over the
+ * researcher's draft. Each round of review found one more branch that had not
+ * been wired into the refusal signal, so the branches are listed here rather
+ * than being discovered one at a time.
+ *
+ * `written` is asserted alongside them deliberately: a test that only pins the
+ * refusals passes just as well against a write path that refuses everything.
+ */
+describe('what a list write answers', () => {
+  it('is written when the commands reach the document', () => {
+    const session = createSession({ prompts: [A, B] });
+    const commands = renderCommands(session, [A, B], 'prompts', vi.fn());
+
+    let outcome: ArrayWriteOutcome | undefined;
+    act(() => {
+      outcome = commands.writeThrough(() => {
+        commands.onOperation?.({ type: 'remove', index: 1 });
+      });
+    });
+
+    expect(outcome).toEqual({ kind: 'written' });
+    expect(session.getSnapshot().editedSection.fields.prompts).toEqual([A]);
+  });
+
+  it('names the row it could not resolve when an operation reaches no row', () => {
+    // The document has moved on, and the row the operation names carries no id
+    // to be found by — so it is matched by content, and two rows the
+    // researcher cannot tell apart match it equally. Resolving to either would
+    // be a guess; resolving to neither must not read as a save.
+    const twin = { text: 'Same' };
+    const session = createSession({ prompts: [null, twin, twin] });
+    const commands = renderCommands(session, [twin, twin], 'prompts', vi.fn());
+
+    let outcome: ArrayWriteOutcome | undefined;
+    act(() => {
+      outcome = commands.writeThrough(() => {
+        commands.onOperation?.({
+          type: 'replace',
+          index: 0,
+          item: { text: 'Edited' },
+        });
+      });
+    });
+
+    expect(outcome).toEqual({ kind: 'refused', reason: 'row-unresolved' });
+    expect(session.getSnapshot().editedSection.fields.prompts).toEqual([
+      null,
+      twin,
+      twin,
+    ]);
+  });
+
+  it('names the session when the stage will not take the write', () => {
+    const session = createSession({ prompts: [A, B] });
+    act(() => {
+      session.setAccess({ mode: 'readOnly', reason: 'lease-lost' });
+    });
+    const commands = renderCommands(session, [A, B], 'prompts', vi.fn());
+
+    let operated: ArrayWriteOutcome | undefined;
+    let detached: ArrayWriteOutcome | undefined;
+    act(() => {
+      operated = commands.writeThrough(() => {
+        commands.onOperation?.({ type: 'remove', index: 1 });
+      });
+      detached = commands.commitDetachedRow(
+        { id: 'b', text: 'Bravo edited' },
+        'b',
+        false,
+      );
+    });
+
+    // Both routes to the document, so neither can be the one that forgets.
+    expect(operated).toEqual({ kind: 'refused', reason: 'session-refused' });
+    expect(detached).toEqual({ kind: 'refused', reason: 'session-refused' });
+    expect(session.getSnapshot().editedSection.fields.prompts).toEqual([A, B]);
+  });
+
+  it('refuses a dispatch through a bound list that wrote nothing at all', () => {
+    const session = createSession({ prompts: [A, B] });
+    const commands = renderCommands(session, [A, B], 'prompts', vi.fn());
+
+    // What `ArrayField`'s own save handler does when it is no longer editing
+    // the row: it returns, silently, having issued no operation. A bound list
+    // reaches the document by no other route, so silence here is a write that
+    // did not happen.
+    let outcome: ArrayWriteOutcome | undefined;
+    act(() => {
+      outcome = commands.writeThrough(() => undefined);
+    });
+
+    expect(outcome).toEqual({ kind: 'refused', reason: 'row-removed' });
+  });
+
+  it('accepts a dispatch through an unbound list that wrote nothing at all', () => {
+    const session = createSession({ prompts: [A, B] });
+    const commands = renderCommands(session, [A, B], undefined, vi.fn());
+
+    // An unbound list has no document key to address: its rows commit through
+    // the form value the handler was handed, so the dispatch itself IS the
+    // write and there is nothing here to have gone missing.
+    let outcome: ArrayWriteOutcome | undefined;
+    act(() => {
+      outcome = commands.writeThrough(() => undefined);
+    });
+
+    expect(outcome).toEqual({ kind: 'written' });
+  });
+
+  it('does not spend one write’s answer on the next', () => {
+    const session = createSession({ prompts: [A, B] });
+    const commands = renderCommands(session, [A, B], 'prompts', vi.fn());
+
+    act(() => {
+      commands.onOperation?.({ type: 'remove', index: 1 });
+    });
+
+    // A write made outside any dispatch this reads. Left standing, it would be
+    // read as the verdict on a save that issued nothing — which is the whole
+    // shape of the defect this seam replaced.
+    let outcome: ArrayWriteOutcome | undefined;
+    act(() => {
+      outcome = commands.writeThrough(() => undefined);
+    });
+
+    expect(outcome).toEqual({ kind: 'refused', reason: 'row-removed' });
   });
 });

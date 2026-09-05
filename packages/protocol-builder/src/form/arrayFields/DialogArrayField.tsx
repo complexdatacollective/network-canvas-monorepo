@@ -49,6 +49,8 @@ import {
   ArrayFieldBindingContext,
   useArrayFieldCommands,
   type ArrayFieldBinding,
+  type ArrayWriteOutcome,
+  type ArrayWriteRefusal,
 } from './useArrayFieldCommands.ts';
 import {
   rowRemovalControlProps,
@@ -333,6 +335,36 @@ const saveRefusedMessage = (itemLabel: string) =>
   `This ${itemLabel} could not be saved. Check your changes and try again.`;
 
 /**
+ * Said when the commit resolved to no row at all.
+ *
+ * The row has not necessarily gone: a row carrying no id of its own is found
+ * by its content, and only while exactly one row matches — two rows the
+ * researcher cannot tell apart are two rows this save describes identically,
+ * and writing to either would be a guess that lands the edit on a row they
+ * never opened. So the list is what has to be looked at, not the row.
+ */
+const rowUnresolvedMessage = (itemLabel: string) =>
+  `This list changed while you were editing, so this ${itemLabel} could not be matched to a row in it and nothing was saved. Copy anything you want to keep, then check the list and make the change again.`;
+
+/**
+ * What a refused list write is called on screen.
+ *
+ * Exhaustive over the reasons the write path can give, in one place, so a
+ * reason added there has to be answered here rather than reaching the
+ * researcher as silence — or as the wrong thing to do about it.
+ */
+const WRITE_REFUSAL_MESSAGES: Readonly<
+  Record<ArrayWriteRefusal, (itemLabel: string) => string>
+> = Object.freeze({
+  'session-refused': readOnlyMessage,
+  'row-removed': rowRemovedMessage,
+  'row-unresolved': rowUnresolvedMessage,
+});
+
+const writeRefusalMessage = (reason: ArrayWriteRefusal, itemLabel: string) =>
+  WRITE_REFUSAL_MESSAGES[reason](itemLabel);
+
+/**
  * A pre-save refusal, in the shape the dialog renders: form-level messages
  * above the fields, field-level ones attached to the control they name.
  */
@@ -361,8 +393,9 @@ type DialogArrayContextValue = {
    * was replaced, or the editor unmounted, while `onBeforeSave` was in flight.
    * The row is addressed by its OWN id rather than by whichever row the list
    * is editing now, so index drift (a reorder, an insertion, an undo) can
-   * never land the edit on a different row. Returns `false` when that row is
-   * no longer in the committed array: there is then nothing to commit to.
+   * never land the edit on a different row. Answers with a refusal and its
+   * reason when that row is no longer in the committed array: there is then
+   * nothing to commit to.
    *
    * `base` is the row the edit was computed from, so an arrival that reached
    * another property of the same row while the save was in flight is kept
@@ -373,7 +406,7 @@ type DialogArrayContextValue = {
     value: ArrayItem,
     isNewRow: boolean,
     base: ArrayItem,
-  ) => boolean;
+  ) => ArrayWriteOutcome;
   editorFieldsComponent: Renderer;
   editorDialogSize?: DialogProps['size'];
   editorPreviewComponent?: Renderer;
@@ -389,11 +422,11 @@ type DialogArrayContextValue = {
   previewComponent: Renderer;
   previewProps?: Record<string, unknown>;
   /**
-   * Whether the session refused the commit the editor just issued through the
-   * list's own save handler — which answers nothing, so this is the only thing
-   * that can tell a refusal from a save.
+   * Runs the commit the editor issues through the list's own save handler —
+   * which answers nothing — and says what it wrote. The only thing that can
+   * tell a commit from a no-op on that route.
    */
-  takeWriteRefusal: () => boolean;
+  writeThrough: (dispatch: () => void) => ArrayWriteOutcome;
 };
 
 // The renderers must be stable module-level components — ArrayField mounts
@@ -536,7 +569,7 @@ function DialogEditor({
     itemSelector,
     normalizeItem,
     onBeforeSave,
-    takeWriteRefusal,
+    writeThrough,
   } = useDialogArrayContext();
   const { protocolContext, readOnly } = useStageEditorForm();
 
@@ -819,16 +852,22 @@ function DialogEditor({
         listItemAtSaveStart !== undefined &&
         activeItemRef.current === listItemAtSaveStart
       ) {
-        onSaveRef.current?.(rowToCommit);
-        // `ArrayField`'s save handler answers nothing, and the session can
-        // still refuse the write it dispatches: a lease taken back after the
-        // checks above read what this render built. Returning nothing here
-        // would report that refusal as a save and close the dialog over the
-        // draft, leaving the reason on a form the researcher can no longer
-        // see the editor in front of.
-        return takeWriteRefusal()
-          ? { formErrors: [readOnlyMessage(itemLabel)] }
-          : undefined;
+        // `ArrayField`'s save handler answers nothing, so what it did is read
+        // from the write it caused rather than from its silence. Two different
+        // things can go wrong inside it and neither is visible from here: the
+        // session can refuse the write it dispatches (a lease taken back after
+        // the checks above read what this render built), and the commands it
+        // dispatches can resolve against the array the session holds to no row
+        // at all — a row removed, or one that cannot be told apart from the
+        // list as it now stands. Returning nothing for either would report it
+        // as a save and close the dialog over the draft, leaving the reason on
+        // a form the researcher can no longer see the editor in front of.
+        const outcome = writeThrough(() => {
+          onSaveRef.current?.(rowToCommit);
+        });
+        return outcome.kind === 'written'
+          ? undefined
+          : { formErrors: [writeRefusalMessage(outcome.reason, itemLabel)] };
       }
 
       // Otherwise the list is editing no row, a different one, or this editor
@@ -838,35 +877,30 @@ function DialogEditor({
       // list is editing NOW, so it cannot be trusted here — but the
       // researcher's edit must not be thrown away either. Commit it to the
       // row it was actually made on, addressed by that row's own id.
-      if (
-        itemAtSaveStart &&
-        commitDetachedRow(itemAtSaveStart, rowToCommit, wasNewRow, latestValues)
-      ) {
-        return undefined;
-      }
-
-      // Nothing was committed. Either the session refused the write, or the
-      // row has left the array (or carries no id, and ArrayField's positional
-      // fallback has already handed its editing session to a neighbour) —
-      // which are different things to tell the researcher: one asks them to
-      // take editing back, the other says there is nothing left to save to.
-      //
       // What this path must never do is report a save that did not happen as
       // a success, which is what silently closes the dialog over a discarded
-      // edit — so the refusal is returned, and the dialog keeps the draft on
-      // screen with the reason above it.
-      if (takeWriteRefusal()) {
-        return { formErrors: [readOnlyMessage(itemLabel)] };
+      // edit — so a commit that wrote nothing hands back its own reason, and
+      // the dialog keeps the draft on screen with that reason above it. The
+      // reasons ask the researcher for different things: a refused write asks
+      // them to take editing back, a vanished row says there is nothing left
+      // to save to.
+      if (itemAtSaveStart) {
+        const outcome = commitDetachedRow(
+          itemAtSaveStart,
+          rowToCommit,
+          wasNewRow,
+          latestValues,
+        );
+        return outcome.kind === 'written'
+          ? undefined
+          : { formErrors: [writeRefusalMessage(outcome.reason, itemLabel)] };
       }
+
+      // Neither the list nor this session can name a row, so there is nothing
+      // for the edit to be committed to at all.
       return { formErrors: [rowRemovedMessage(itemLabel)] };
     },
-    [
-      commitDetachedRow,
-      itemLabel,
-      normalizeItem,
-      onBeforeSave,
-      takeWriteRefusal,
-    ],
+    [commitDetachedRow, itemLabel, normalizeItem, onBeforeSave, writeThrough],
   );
 
   const handleSave = useCallback(
@@ -1068,7 +1102,7 @@ export default function DialogArrayField<T extends ArrayItem>({
   const {
     onOperation,
     commitDetachedRow: commitById,
-    takeWriteRefusal,
+    writeThrough,
   } = useArrayFieldCommands<T>(rows, onChange, resolveItemId);
 
   const commitDetachedRow = useCallback(
@@ -1100,7 +1134,7 @@ export default function DialogArrayField<T extends ArrayItem>({
       onBeforeSave,
       previewComponent,
       previewProps,
-      takeWriteRefusal,
+      writeThrough,
     }),
     [
       addTitle,
@@ -1121,7 +1155,7 @@ export default function DialogArrayField<T extends ArrayItem>({
       previewComponent,
       previewProps,
       requestedEditFormName,
-      takeWriteRefusal,
+      writeThrough,
     ],
   );
 

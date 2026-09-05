@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createElement, useState, type ComponentType } from 'react';
@@ -601,6 +602,65 @@ describe('a row editor open while the draft moves beneath it', () => {
     expect(promptsOf(session)).toEqual([{ id: 'a', text: 'Alpha' }]);
   });
 
+  /**
+   * The other way a commit can reach nothing, and the one the list's own save
+   * handler is silent about.
+   *
+   * A row that carries no id of its own is matched by its content, and only
+   * while exactly one row matches: two rows the researcher cannot tell apart
+   * are two rows this save describes identically, and writing to either would
+   * be a guess. The list is also numbered differently from the document it
+   * commits to — a document row no editor can draw is dropped from the form
+   * value the moment anything is written, which is what makes the position
+   * shortcut unavailable and sends the match to content in the first place.
+   *
+   * So the commit resolves to no commands at all, while `ArrayField` is still
+   * editing this row and answers nothing about it. Nothing is written, and
+   * what the write path says it did is the only thing between that and a
+   * dialog closing over the researcher's draft.
+   */
+  it('says so when the row a save names cannot be told from the rows beside it', async () => {
+    const user = userEvent.setup();
+    // A row the editor cannot draw, and two rows nothing but their content
+    // tells apart.
+    const session = createSession({
+      prompts: [null, { text: 'Same' }, { text: 'Same' }],
+    });
+    renderPromptList(session);
+
+    // The list draws nothing at all for a value holding an entry that is not a
+    // row, so its Add is the only way in. Committing it writes the rows the
+    // researcher can SEE back to the form value, and the document keeps the
+    // entry they cannot — from here the two are numbered differently.
+    await addPrompt(user, 'Other');
+    await waitFor(() =>
+      expect(
+        screen.queryAllByRole('button', { name: 'Edit prompt' }),
+      ).toHaveLength(3),
+    );
+
+    const text = await editRow(user, 0);
+    await waitFor(() => expect(text).toHaveValue('Same'));
+    await user.clear(text);
+    await user.type(text, 'Same edited');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(
+      await screen.findByText(
+        /could not be matched to a row in it and nothing was saved/,
+      ),
+    ).toBeInTheDocument();
+    // Reporting a commit that reached nothing as a save is what closes the
+    // dialog over a discarded edit, so the draft is still here to be rescued.
+    expect(promptText()).toHaveValue('Same edited');
+    expect(promptsOf(session)).toEqual([
+      null,
+      { text: 'Same' },
+      { text: 'Same' },
+      { id: expect.any(String), text: 'Other' },
+    ]);
+  });
+
   it('keeps a change that reached the row while its save was in flight', async () => {
     const user = userEvent.setup();
     const session = createSession({
@@ -695,6 +755,43 @@ describe('a row editor open while the draft moves beneath it', () => {
     // dialog over a discarded edit, so the draft is still here to be rescued.
     expect(promptText()).toHaveValue('Alpha edited');
     expect(promptsOf(session)).toEqual([{ id: 'a', text: 'Alpha' }]);
+  });
+
+  /**
+   * The third list that shares `useConfirmRowRemoval`, and the same window: a
+   * confirm answered after `ArrayField` has withdrawn the row's delete
+   * handler removes nothing and used to close as though it had.
+   */
+  it('removes no row when the list stops accepting changes mid-confirm', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      prompts: [
+        { id: 'a', text: 'Alpha' },
+        { id: 'b', text: 'Bravo' },
+      ],
+    });
+    const { disableList } = renderPromptList(session);
+
+    const removes = await screen.findAllByRole('button', {
+      name: 'Remove prompt',
+    });
+    await user.click(removes[1]!);
+    const dialog = await screen.findByRole('dialog');
+
+    disableList();
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Remove prompt' }),
+    );
+
+    expect(
+      await screen.findByText(
+        'This list stopped accepting changes while you were confirming, so this prompt was not removed. Remove it again once the list can be edited.',
+      ),
+    ).toBeInTheDocument();
+    expect(promptsOf(session)).toEqual([
+      { id: 'a', text: 'Alpha' },
+      { id: 'b', text: 'Bravo' },
+    ]);
   });
 
   it('commits a row once when a second submit arrives while the first is running', async () => {

@@ -108,6 +108,48 @@ const addressesAList = (command: Command) =>
   command.op === 'removeItem' ||
   command.op === 'moveItem';
 
+/**
+ * Why a list write did not reach the document.
+ *
+ * The three are separate because they ask the researcher for different things:
+ * a lease is taken back, a removed row is gone for good, and a row that cannot
+ * be told from its neighbours is still there to be edited once the list is
+ * looked at again.
+ */
+export type ArrayWriteRefusal =
+  /** The session declined the commands — a read-only stage, a lost lease. */
+  | 'session-refused'
+  /** The row this write was addressed at is not in the array any more. */
+  | 'row-removed'
+  /**
+   * The row could not be told apart from the array as it now stands. Rows
+   * without ids of their own are matched by content, and a match that is
+   * ambiguous — or a list numbered differently from the document behind it —
+   * resolves to no row rather than to a guess. See `resolveRowIndex`.
+   */
+  | 'row-unresolved';
+
+/**
+ * What became of a list write.
+ *
+ * Deliberately not a boolean, and deliberately not a boolean beside a separate
+ * "was it refused" flag. The caller that matters is a row dialog, which closes
+ * itself over the researcher's draft on any save it believes succeeded, and
+ * `ArrayField`'s own save handler answers nothing — so a write path that can
+ * answer "no" without saying why is a write path whose silence reads as a
+ * save. Every route out of this hook that writes nothing has to name a reason,
+ * and the type is what makes forgetting one impossible rather than a comment
+ * asking the next fix to remember.
+ */
+export type ArrayWriteOutcome =
+  | Readonly<{ kind: 'written' }>
+  | Readonly<{ kind: 'refused'; reason: ArrayWriteRefusal }>;
+
+const WRITTEN: ArrayWriteOutcome = Object.freeze({ kind: 'written' });
+
+const refused = (reason: ArrayWriteRefusal): ArrayWriteOutcome =>
+  Object.freeze({ kind: 'refused', reason });
+
 export type ArrayFieldCommands<T extends ArrayRow> = Readonly<{
   /**
    * Hand to fresco-ui's `ArrayField`. `undefined` for an unbound list, which
@@ -116,7 +158,7 @@ export type ArrayFieldCommands<T extends ArrayRow> = Readonly<{
   onOperation: ((operation: ArrayFieldOperation<T>) => void) | undefined;
   /**
    * Commits a row addressed by its own id — the save that outlived the editing
-   * session it was made in. `false` when that row has left the list.
+   * session it was made in.
    *
    * `base` is the row the edit was computed from, so what the edit decided can
    * be told apart from what it merely carried over and re-seated on the row as
@@ -127,18 +169,18 @@ export type ArrayFieldCommands<T extends ArrayRow> = Readonly<{
     id: string | undefined,
     isNewRow: boolean,
     base?: ArrayRow,
-  ) => boolean;
+  ) => ArrayWriteOutcome;
   /**
-   * Whether the session REFUSED this list's last write, read once and
-   * forgotten.
+   * Runs a dispatch that commits through fresco-ui's `ArrayField` — its own
+   * save handler — and answers what this list wrote while it ran.
    *
-   * For the one caller that cannot see the answer any other way: a row dialog
-   * commits through `ArrayField`'s own save handler, which returns nothing, so
-   * by the time control comes back the only record of the refusal is here. It
-   * is read-and-clear because it describes one write, and a refusal left
-   * standing would be spent on some later save that was never refused.
+   * For the one caller that cannot see the answer any other way: `ArrayField`'s
+   * save handler returns nothing, so by the time control comes back the write
+   * it caused is the only record of what happened. Scoped to the dispatch
+   * rather than read afterwards, so an outcome belonging to some earlier write
+   * can never be spent here as the verdict on this one.
    */
-  takeWriteRefusal: () => boolean;
+  writeThrough: (dispatch: () => void) => ArrayWriteOutcome;
 }>;
 
 /**
@@ -177,24 +219,41 @@ export function useArrayFieldCommands<T extends ArrayRow>(
     [applyOwnCommands],
   );
 
-  /** Whether the session refused the write this list made most recently. */
-  const refusedRef = useRef(false);
+  /**
+   * What this list's most recent write did, or `undefined` when it has made
+   * none since anybody last asked.
+   *
+   * Only `writeThrough` reads it, and only across a dispatch it scopes itself,
+   * so the two states it can be in are "this dispatch wrote" and "this dispatch
+   * did not". Nothing here is a flag a caller has to remember to consult.
+   */
+  const lastWriteRef = useRef<ArrayWriteOutcome | undefined>(undefined);
 
-  const commit = useCallback(
-    (key: string, bound: BoundArray, commands: readonly Command[]) => {
-      // Written for every attempt, so that a refusal cannot outlive the write
-      // it describes and be read as the verdict on a later one.
-      refusedRef.current = false;
-      if (commands.length === 0) return false;
-      const { draft, refused } = applyOwnCommands(
+  /**
+   * The write itself. Every route out of it names an outcome, which is what
+   * `commit` below then records — one recording site, so no branch added later
+   * can leave the list silent about what it did.
+   *
+   * `nothingToWrite` is what an empty command list MEANS to the caller that
+   * built it: `commandsForDetachedRow` issues none for a row that has left the
+   * array, `commandsForOperation` for one it could not resolve at all. Both are
+   * writes that reached nothing; they are not the same thing to tell the
+   * researcher.
+   */
+  const applyCommit = useCallback(
+    (
+      key: string,
+      bound: BoundArray,
+      commands: readonly Command[],
+      nothingToWrite: ArrayWriteRefusal,
+    ): ArrayWriteOutcome => {
+      if (commands.length === 0) return refused(nothingToWrite);
+      const { draft, refused: sessionRefused } = applyOwnCommands(
         bound.repair.length > 0 && commands.some(addressesAList)
           ? [...bound.repair, ...commands]
           : commands,
       );
-      if (refused) {
-        refusedRef.current = true;
-        return false;
-      }
+      if (sessionRefused) return refused('session-refused');
       // The rows the researcher can SEE, which is the forgiving read: a hole
       // the document keeps is dropped from the form value, so the list comes
       // back on screen instead of the whole thing staying blank because of one
@@ -202,34 +261,80 @@ export function useArrayFieldCommands<T extends ArrayRow>(
       // differently, which is exactly why nothing downstream replays a
       // position — see `renderedRows` in `arrayFieldCommands`.
       onChangeRef.current?.(readRows(draft[key]) as T[]);
-      return true;
+      return WRITTEN;
     },
     [applyOwnCommands],
   );
 
-  const takeWriteRefusal = useCallback(() => {
-    const refused = refusedRef.current;
-    refusedRef.current = false;
-    return refused;
-  }, []);
+  const commit = useCallback(
+    (
+      key: string,
+      bound: BoundArray,
+      commands: readonly Command[],
+      nothingToWrite: ArrayWriteRefusal,
+    ): ArrayWriteOutcome => {
+      const outcome = applyCommit(key, bound, commands, nothingToWrite);
+      // Written for every attempt, so that an outcome cannot outlive the write
+      // it describes and be read as the verdict on a later one.
+      lastWriteRef.current = outcome;
+      return outcome;
+    },
+    [applyCommit],
+  );
+
+  const writeThrough = useCallback(
+    (dispatch: () => void): ArrayWriteOutcome => {
+      lastWriteRef.current = undefined;
+      dispatch();
+      const outcome = lastWriteRef.current;
+      lastWriteRef.current = undefined;
+      if (outcome !== undefined) return outcome;
+
+      // The handler ran and this list wrote nothing at all.
+      //
+      // For an UNBOUND list that is the ordinary case, and not a refusal: it
+      // has no document key to address, so its rows commit through the form
+      // value the handler was handed and the dispatch itself IS the write.
+      //
+      // For a bound list it is a refusal. Every route through the handler ends
+      // in a command, so one that issued none is one that is no longer editing
+      // the row — `ArrayField` drops its editing state the moment the row
+      // leaves the value it renders, and its handler is silent about that.
+      return documentKey === undefined ? WRITTEN : refused('row-removed');
+    },
+    [documentKey],
+  );
 
   const handleOperation = useCallback(
-    (operation: ArrayFieldOperation<T>) => {
-      if (documentKey === undefined) return;
-      const bound = readCurrent(documentKey);
+    (key: string, operation: ArrayFieldOperation<T>) => {
+      const bound = readCurrent(key);
       commit(
-        documentKey,
+        key,
         bound,
         commandsForOperation(
-          documentKey,
+          key,
           bound.current,
           renderedRef.current,
           operation,
           getIdRef.current,
         ),
+        'row-unresolved',
       );
     },
-    [commit, documentKey, readCurrent],
+    [commit, readCurrent],
+  );
+
+  // Built here rather than guarded inside the handler, so that "this list has
+  // no key to address" is a route that does not exist instead of a branch that
+  // has to remember to say something.
+  const onOperation = useMemo(
+    () =>
+      documentKey === undefined
+        ? undefined
+        : (operation: ArrayFieldOperation<T>) => {
+            handleOperation(documentKey, operation);
+          },
+    [documentKey, handleOperation],
   );
 
   const commitDetachedRow = useCallback(
@@ -238,7 +343,7 @@ export function useArrayFieldCommands<T extends ArrayRow>(
       id: string | undefined,
       isNewRow: boolean,
       base?: ArrayRow,
-    ): boolean => {
+    ): ArrayWriteOutcome => {
       if (documentKey === undefined) {
         const committed = renderedRef.current;
         const index =
@@ -251,11 +356,14 @@ export function useArrayFieldCommands<T extends ArrayRow>(
           const next = [...committed];
           next[index] = reseatEditedRow(base, row, committed[index]) as T;
           onChangeRef.current?.(next);
-          return true;
+          return WRITTEN;
         }
-        if (!isNewRow) return false;
+        // There is nothing left to commit the edit to, and appending it would
+        // add back a row the researcher deleted. A row being ADDED is the
+        // exception: it was never in the list to begin with.
+        if (!isNewRow) return refused('row-removed');
         onChangeRef.current?.([...committed, row]);
-        return true;
+        return WRITTEN;
       }
 
       const bound = readCurrent(documentKey);
@@ -271,17 +379,14 @@ export function useArrayFieldCommands<T extends ArrayRow>(
           getIdRef.current,
           base,
         ),
+        'row-removed',
       );
     },
     [commit, documentKey, readCurrent],
   );
 
   return useMemo(
-    () => ({
-      onOperation: documentKey === undefined ? undefined : handleOperation,
-      commitDetachedRow,
-      takeWriteRefusal,
-    }),
-    [commitDetachedRow, documentKey, handleOperation, takeWriteRefusal],
+    () => ({ onOperation, commitDetachedRow, writeThrough }),
+    [commitDetachedRow, onOperation, writeThrough],
   );
 }
