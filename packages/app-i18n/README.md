@@ -130,7 +130,7 @@ const nextConfig: NextConfig = {
       ...(process.env.NODE_ENV === 'production'
         ? {
             '@formatjs/icu-messageformat-parser':
-              '@formatjs/icu-messageformat-parser/no-parser',
+              '@formatjs/icu-messageformat-parser/no-parser.js',
           }
         : {}),
     },

@@ -301,6 +301,7 @@ export function useField(config: UseFieldConfig): UseFieldResult {
       : state.getFieldState(publicResolvedName),
   );
   const isSubmitting = useFormStore((state) => state.isSubmitting);
+  const isFormValidating = useFormStore((state) => state.isValidating);
 
   const fieldErrors = useFormStore(
     useShallow((state) =>
@@ -354,8 +355,11 @@ export function useField(config: UseFieldConfig): UseFieldResult {
   // nothing left to compare against when the old-language result committed a
   // moment later. The field kept the previous language until some unrelated
   // edit revalidated it.
+  // Whole-form validation also blocks field validation requests. Wait for it
+  // to finish before acknowledging the locale, then revalidate any errors its
+  // old-locale snapshot committed.
   useEffect(() => {
-    if (intlRef.current === intl) return;
+    if (intlRef.current === intl || isFormValidating) return;
     if (fieldErrors && fieldErrors.length > 0) {
       intlRef.current = intl;
       // Submission errors carry their own descriptors and reformat in the
@@ -369,7 +373,7 @@ export function useField(config: UseFieldConfig): UseFieldResult {
         return;
       validateResolvedField();
     }
-  }, [intl, fieldErrors, validateResolvedField]);
+  }, [intl, fieldErrors, isFormValidating, validateResolvedField]);
 
   const setResolvedFieldValue = useCallback(
     (value: FieldValue) => {

@@ -38,8 +38,7 @@ export type ValidationFunction<T extends ValidationParameter> = (
   // host gets localized copy while the strings that then flow through the
   // form store, `onSubmitInvalid`, and Zod issues stay plain strings and the
   // rule signature stays callable without it. Absent (external callers, the
-  // provider-less default), messages render their English defaultMessage —
-  // byte-identical to the pre-conversion literals.
+  // provider-less default), messages render their English defaultMessage.
   intl?: IntlShape,
 ) => (formValues: Record<string, FieldValue>) => z.ZodMiniType;
 

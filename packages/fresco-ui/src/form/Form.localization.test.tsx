@@ -1,4 +1,4 @@
-import { act, render, within } from '@testing-library/react';
+import { act, fireEvent, render, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
 import { z } from 'zod';
@@ -141,4 +141,75 @@ it('reformats the shared submit-throw fallback after the operation has failed', 
     screen.getByText('Se ha producido un error al enviar el formulario.'),
   ).toBeInTheDocument();
   expect(submit).toHaveBeenCalledTimes(1);
+});
+
+it('updates an existing error after whole-form validation finishes across a locale change', async () => {
+  let blockValidation = false;
+  const entered = Promise.withResolvers<void>();
+  const pending = Promise.withResolvers<void>();
+
+  function AsyncNameField() {
+    const intl = useAppIntl();
+    return (
+      <Field
+        name="name"
+        label="Name"
+        component={InputField}
+        custom={{
+          hint: intl.formatMessage(messages.hint),
+          schema: async () => {
+            if (blockValidation) {
+              entered.resolve();
+              await pending.promise;
+            }
+            return z.string().refine(() => false, {
+              error: intl.formatMessage(messages.reserved),
+            });
+          },
+        }}
+      />
+    );
+  }
+  const submit = vi.fn(() => ({ success: true as const }));
+  const view = (locale: string) => (
+    <AppI18nProvider
+      locale={locale}
+      locales={ecosystemLocales}
+      messages={mergeCatalogs(
+        frescoUiCatalogs[locale] ?? {},
+        locale === 'es' ? spanish : {},
+      )}
+      manageDocument={false}
+    >
+      <Form onSubmit={submit}>
+        <AsyncNameField />
+        <SubmitButton>Save</SubmitButton>
+      </Form>
+    </AppI18nProvider>
+  );
+  const { container, rerender } = render(view('en'));
+  const screen = within(container);
+  const input = screen.getByRole('textbox', { name: 'Name' });
+  fireEvent.change(input, { target: { value: 'Ana' } });
+  fireEvent.blur(input, {
+    relatedTarget: screen.getByRole('button', { name: 'Save' }),
+  });
+  expect(await screen.findByText('Choose a different name.')).toBeVisible();
+
+  const form = container.querySelector('form');
+  if (!form) throw new Error('Expected the actual form under test');
+  blockValidation = true;
+  fireEvent.submit(form);
+  await entered.promise;
+  await act(async () => rerender(view('es')));
+  blockValidation = false;
+  await act(async () => pending.resolve());
+
+  expect(await screen.findByText('Elige otro nombre.')).toBeVisible();
+  expect(
+    screen.queryByText('Choose a different name.'),
+  ).not.toBeInTheDocument();
+  expect(input).toHaveValue('Ana');
+  expect(input).toHaveAttribute('aria-invalid', 'true');
+  expect(submit).not.toHaveBeenCalled();
 });
