@@ -20,6 +20,7 @@ import {
   hasValidatedUse,
   interfaceOwnedOptionsIssue,
   interfaceOwnedPickIssue,
+  lockedVariableOptions,
   variableRoleConflicts,
   variableRoleKey,
 } from '../variableRoles.ts';
@@ -257,6 +258,55 @@ describe('variable role helpers', () => {
       ),
     ).toEqual(expect.arrayContaining(['prompts', 'form']));
     expect(entityUsage[entityTypeUsageKey('node', 'person')]).toHaveLength(2);
+  });
+
+  /**
+   * Two independent reasons a prompt editor must render an option list
+   * read-only, and one shape that is neither.
+   */
+  it('locks an option list an interface owns, and one the codebook marks read-only', () => {
+    const optionMap = buildInterfaceOwnedOptionMap(
+      protocolContextFromSections(familySections()),
+    );
+    const variables = {
+      biologicalSex: {
+        name: 'biologicalSex',
+        type: 'categorical' as const,
+        options: [{ label: 'Drifted', value: 'drifted' }],
+      },
+      stamped: {
+        name: 'stamped',
+        type: 'ordinal' as const,
+        readOnly: true,
+        options: [{ label: 'Low', value: 1 }],
+      },
+      ordinary: {
+        name: 'ordinary',
+        type: 'categorical' as const,
+        options: [{ label: 'Yes', value: 'yes' }],
+      },
+      plain: { name: 'plain', type: 'text' as const },
+    };
+
+    // The CANONICAL set, not the drifted one the codebook happens to hold:
+    // the canonical set is what the protocol rule enforces, so showing the
+    // drift as authoritative would invite the researcher to keep it.
+    expect(
+      lockedVariableOptions(
+        variables,
+        'biologicalSex',
+        optionMap[variableRoleKey(FAMILY_SUBJECT, 'biologicalSex')],
+      ),
+    ).toEqual(BIOLOGICAL_SEX_OPTIONS);
+    expect(lockedVariableOptions(variables, 'stamped')).toEqual([
+      { label: 'Low', value: 1 },
+    ]);
+    expect(lockedVariableOptions(variables, 'ordinary')).toBeUndefined();
+    // An attribute with no option list at all cannot have one locked.
+    expect(lockedVariableOptions(variables, 'plain')).toBeUndefined();
+    expect(lockedVariableOptions(variables, 'missing')).toBeUndefined();
+    expect(lockedVariableOptions(variables, undefined)).toBeUndefined();
+    expect(lockedVariableOptions(undefined, 'stamped')).toBeUndefined();
   });
 
   it('keeps colon-containing subjects and variables in distinct keys', () => {

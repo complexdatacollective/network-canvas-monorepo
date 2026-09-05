@@ -1,3 +1,22 @@
+/**
+ * Where every editor family is wired in, and the only file a family has to
+ * change to be wired in.
+ *
+ * ADDING A FAMILY IS TWO LINES:
+ *
+ * 1. Import its part and add it to `REGISTRY_PARTS`.
+ * 2. Delete the stage types it claims from `AWAITING_STAGE_EDITORS`.
+ *
+ * Nothing else — `stageEditorRegistry` and every check below are derived from
+ * those two lists, and both are checked in both directions at compile time, so
+ * a family that adds a part and forgets to remove its types (or removes a type
+ * no family covers) fails `typecheck` rather than a review.
+ *
+ * Both lists are written to be merged rather than to be read: one entry per
+ * line, in alphabetical order, each with a trailing comma, so that families
+ * landing on separate branches change separate lines. `__tests__/
+ * stageEditorRegistry.test.tsx` holds that shape in place.
+ */
 import type { StageType } from '@codaco/protocol-validation';
 
 import type { StageEditorRegistry } from './stage-editor-contract.ts';
@@ -94,7 +113,9 @@ export function composeStageEditorRegistry(
  * from `defineStageEditorPart`, for the reason that function's own comment
  * gives.
  */
-const REGISTRY_PARTS = [] as const satisfies readonly StageEditorRegistryPart[];
+const REGISTRY_PARTS = [
+  // One imported part per line, alphabetically, each with a trailing comma.
+] as const satisfies readonly StageEditorRegistryPart[];
 
 export const stageEditorRegistry: StageEditorRegistryPart =
   composeStageEditorRegistry(...REGISTRY_PARTS);

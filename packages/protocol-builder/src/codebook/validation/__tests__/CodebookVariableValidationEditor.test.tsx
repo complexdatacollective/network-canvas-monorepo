@@ -55,6 +55,32 @@ const appliedResult = (): Extract<
   },
 });
 
+/**
+ * The package's own words for a refused save, from `compoundFailureCopy`.
+ *
+ * Written out here rather than imported: the point of the copy is that it is
+ * NOT the message the host sent, and a test that read the same table as the
+ * component would still pass if that table were replaced by a passthrough.
+ */
+const REFUSED = {
+  'heldByNobodyNamed':
+    'A section needed for this change is currently being edited.',
+  'stale-epoch':
+    'Editing access changed while this was being saved, so nothing was saved. Try again.',
+  'lease-lost':
+    'You are no longer the editor of this stage, so nothing was saved. Take over editing and try again.',
+  'stale-base':
+    'Someone else changed this while you were editing it, so nothing was saved. Close and reopen this editor to load their version, then make your change again.',
+  'host-error':
+    'The protocol would not be valid with this change, so nothing was saved. Adjust this type and try again, or close this and come back once the rest of the stage is filled in.',
+  'threw':
+    'This change could not be saved, and nothing was altered. Wait a moment and try again.',
+} as const;
+
+/** What a host says. None of it reaches the researcher. */
+const HOST_WORDS =
+  'Expected object, received undefined at codebook.node.person';
+
 const blockedResult = (): Extract<
   CompoundEditResult,
   { status: 'blocked' }
@@ -253,25 +279,25 @@ describe('CodebookVariableValidationEditor', () => {
     {
       name: 'blocked',
       result: blockedResult(),
-      message: 'A section needed for this change is currently being edited.',
+      message: REFUSED.heldByNobodyNamed,
     },
     {
       name: 'stale',
       result: {
         status: 'failed' as const,
         reason: 'stale-epoch' as const,
-        message: 'Editing authority changed before the request completed.',
+        message: HOST_WORDS,
       },
-      message: 'Editing authority changed before the request completed.',
+      message: REFUSED['stale-epoch'],
     },
     {
       name: 'failed',
       result: {
         status: 'failed' as const,
         reason: 'host-error' as const,
-        message: 'The codebook service rejected the request.',
+        message: HOST_WORDS,
       },
-      message: 'The codebook service rejected the request.',
+      message: REFUSED['host-error'],
     },
   ])(
     'keeps the dirty draft visible after a $name result',
@@ -283,7 +309,12 @@ describe('CodebookVariableValidationEditor', () => {
 
       await user.click(screen.getByRole('button', { name: 'Save validation' }));
 
-      expect(await screen.findByRole('alert')).toHaveTextContent(message);
+      const alert = await screen.findByRole('alert');
+      expect(alert).toHaveTextContent(message);
+      // Never the host's own words, and never an internal section address: a
+      // researcher is told what happened to their change, not where.
+      expect(alert).not.toHaveTextContent(HOST_WORDS);
+      expect(alert).not.toHaveTextContent('codebook:node:person');
       expect(
         screen.getByRole('spinbutton', { name: 'Minimum value' }),
       ).toHaveValue(5);
@@ -346,7 +377,7 @@ describe('CodebookVariableValidationEditor', () => {
     const user = await replaceMinimumValue('5');
 
     await user.click(screen.getByRole('button', { name: 'Save validation' }));
-    await screen.findByText('Connection dropped.');
+    await screen.findByText(REFUSED.threw);
 
     const reemitted = structuredClone(initial);
     rerender(
@@ -378,7 +409,7 @@ describe('CodebookVariableValidationEditor', () => {
         .mockReturnValueOnce({
           status: 'failed',
           reason,
-          message: 'The request base changed.',
+          message: HOST_WORDS,
         })
         .mockReturnValueOnce(appliedResult());
       renderEditor({
@@ -391,7 +422,7 @@ describe('CodebookVariableValidationEditor', () => {
       const user = await replaceMinimumValue('5');
 
       await user.click(screen.getByRole('button', { name: 'Save validation' }));
-      await screen.findByText('The request base changed.');
+      await screen.findByText(REFUSED[reason]);
       await user.click(screen.getByRole('button', { name: 'Save validation' }));
 
       await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(2));
