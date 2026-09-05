@@ -152,7 +152,11 @@ Framework-free worker/CLI diagnostics remain available unchanged. Researcher
 hosts can opt into localized presentation through the owning package:
 
 - `@codaco/protocol-validation/messages`: protocol-file error descriptors,
-  validation-rule labels, and actionable contradiction summaries.
+  validation-rule labels, actionable contradiction summaries, and
+  `formatMigrationNotes(version, notes, intl)` for migration approval guidance.
+  Known migration versions translate each complete Markdown bullet while
+  preserving list structure and literal protocol defaults; unknown versions
+  retain their supplied notes. Core migration notes remain English.
 - `@codaco/protocol-utilities/messages`: generation conflict guidance selected
   by stable reason codes; original technical diagnostics remain available.
 - `@codaco/network-exporters/messages`: export progress descriptors selected

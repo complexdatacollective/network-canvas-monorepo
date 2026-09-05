@@ -4,7 +4,7 @@
     "description": "Repair guidance for a validation contradiction. variables is a locale-formatted list of unchanged researcher-authored attribute names."
   },
   "protocolValidation.contradiction.disjointBounds": {
-    "defaultMessage": "The comparisons for {variables} cannot be satisfied within their allowed ranges. Adjust the ranges or comparisons.",
+    "defaultMessage": "The comparisons for {variables} cannot be satisfied within their allowed ranges. Adjust the ranges, comparisons, or input controls.",
     "description": "Repair guidance for a validation contradiction. variables is a locale-formatted list of unchanged researcher-authored attribute names."
   },
   "protocolValidation.contradiction.invertedBounds": {
@@ -86,6 +86,206 @@
   "protocolValidation.file.upgradeStepFailed": {
     "defaultMessage": "This protocol could not be upgraded to the current version. Nothing has been changed on this device.",
     "description": "Researcher-facing explanation and recovery guidance for a protocol file import failure: upgradeStepFailed."
+  },
+  "protocolValidation.migrationNotes.schema5.interviewScript": {
+    "defaultMessage": "Enable an 'Interview Script' section for each stage, where notes for the interviewer can be added.",
+    "description": "One complete Markdown bullet in schema 5 migration approval guidance: interviewScript. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema5.referenceValidation": {
+    "defaultMessage": "Add new validation options for form fields: `unique`, `sameAs`, and `differentFrom`.",
+    "description": "One complete Markdown bullet in schema 5 migration approval guidance: referenceValidation. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema5.tieStrengthCensus": {
+    "defaultMessage": "Enable the 'Tie Strength Census' interface, which will allow you to conduct a dyad census that also captures the strength of the tie and assigns it to an ordinal attribute.",
+    "description": "One complete Markdown bullet in schema 5 migration approval guidance: tieStrengthCensus. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema6.rosterNameGenerator": {
+    "defaultMessage": "Replace roster-based name generators (small and large) with a single new interface that combines the functionality of both. This will change the interview experience, and may impact your data collection!",
+    "description": "One complete Markdown bullet in schema 6 migration approval guidance: rosterNameGenerator. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema6.sociogramAutomaticLayout": {
+    "defaultMessage": "Enable support for using the automatic node positioning feature on the Sociogram interface.",
+    "description": "One complete Markdown bullet in schema 6 migration approval guidance: sociogramAutomaticLayout. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema7.alterCountLimits": {
+    "defaultMessage": "Add the ability to specify minimum and maximum numbers of named alters on name generator stages.",
+    "description": "One complete Markdown bullet in schema 7 migration approval guidance: alterCountLimits. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema7.categoricalSkipLogic": {
+    "defaultMessage": "Add additional skip logic options for handling ordinal and categorical attributes.",
+    "description": "One complete Markdown bullet in schema 7 migration approval guidance: categoricalSkipLogic. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.anonymisationInterface": {
+    "defaultMessage": "New experimental interface: \"anonymisation interface\". Allows the participant to encrypt sensitive/identifiable information, so that it cannot be read by the researcher. Not enabled by default. Contact the team for details.",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: anonymisationInterface. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.automaticLayoutBoolean": {
+    "defaultMessage": "The Sociogram and Narrative `automaticLayout` behaviour is now a plain boolean (previously `'{ enabled }'`); existing values are flattened. The Narrative interface gains this behaviour for the first time; it is only active when explicitly enabled, so existing Narrative stages keep their hand-authored static positions.",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: automaticLayoutBoolean. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.categoricalArrays": {
+    "defaultMessage": "Categorical attribute values are now stored as arrays of selected option values. Existing single-value categorical filter and skip-logic rule operands (`is exactly`, `is not`, `includes`, `excludes`) are wrapped in a single-element array to match.",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: categoricalArrays. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.comparisonValidation": {
+    "defaultMessage": "Add new validation options for form fields: `greaterThanVariable` and `lessThanVariable`.",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: comparisonValidation. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.contradictoryRules": {
+    "defaultMessage": "Validation rules that contradict each other are removed so existing protocols stay valid under the new schema checks: inverted `min`/`max` pairs (both removed), `required` text or categorical attributes whose maximum is zero (the zero maximum is removed), `minSelected` above the option count, `sameAs` and `differentFrom` naming one target (both removed), comparator structures no value can satisfy — impossible cycles, comparisons inside a `sameAs` group, comparisons whose value ranges cannot overlap (the comparator is removed; value bounds are kept), `sameAs` groups whose bounds share no value (the `sameAs` rules are removed) — and validation references to an attribute of a different type. Count-valued rules must be non-negative; negative values are removed.",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: contradictoryRules. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.datePickerBounds": {
+    "defaultMessage": "DatePicker `min`/`max` parameters must be real dates written exactly at the picker's resolution, with `min` not after `max`. Values with more precision than the resolution are truncated; other invalid values are removed. At year or month resolution, a bound must use a four-digit year of 1000 or later — the interview builds that resolution's year options unpadded, so an earlier, zero-padded year could never match a stored value; such a bound is removed. Any parameter key other than `type`, `min`, or `max` — e.g. a RelativeDatePicker `anchor` left over from a component switch — is also removed.",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: datePickerBounds. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.datetimeParameterObject": {
+    "defaultMessage": "A datetime attribute's `parameters` must be a plain object; a wrong-typed value (a string, number, list, or null) is removed, reverting the picker to its defaults.",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: datetimeParameterObject. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.duplicateFormAttributes": {
+    "defaultMessage": "A form may no longer collect the same attribute twice. Two fields naming one attribute always shared a single answer — whichever the participant filled in last overwrote the other — so the repeat was never collecting anything of its own. Only the first field for each attribute is kept.",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: duplicateFormAttributes. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.emptyBooleanOptions": {
+    "defaultMessage": "A boolean attribute's `options` must now offer at least one choice. An empty list rendered a control with no buttons at all, which a participant could never answer; the empty list is removed so the attribute falls back to the standard Yes/No choices.",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: emptyBooleanOptions. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.familyPedigree": {
+    "defaultMessage": "New interface: \"family pedigree\". A pedigree building interface designed for genetic disease monitoring scenarios, with configurable node and edge types, relationship attributes, and optional disease/condition nomination prompts.",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: familyPedigree. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.fieldHints": {
+    "defaultMessage": "Added optional 'hint' property to form fields, allowing a markdown string to be displayed as additional guidance for participants.",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: fieldHints. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.fieldInputControl": {
+    "defaultMessage": "A codebook attribute referenced by a form field must define a `component` (input control). Previously this was only checked by the Architect editor; a protocol violating it crashed the interview when the form rendered.",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: fieldInputControl. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.filterRuleEntities": {
+    "defaultMessage": "Changed FilterRule type to use the same entity names as elsewhere",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: filterRuleEntities. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.geospatialInterface": {
+    "defaultMessage": "New interface: \"geospatial interface\". Allows the participant to select a location on a map based on a geojson shapefile.",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: geospatialInterface. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.informationTitle": {
+    "defaultMessage": "The Information stage `title` (page heading) is now required. Any Information stage without one is given its stage label as the title, or \"Information\" when no label was authored.",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: informationTitle. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.inputControlCompatibility": {
+    "defaultMessage": "An attribute's `component` (input control) must be one its type can render. An unrecognised or mismatched control is replaced with the type's standard control (for datetime, chosen by the shape of its `parameters`); layout attributes, which have no control, have it removed.",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: inputControlCompatibility. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.membershipComparators": {
+    "defaultMessage": "Add new comparator options for skip logic and filter: `contains` and `does not contain`.",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: membershipComparators. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.multiValueMembership": {
+    "defaultMessage": "Amplify comparator options `includes` and `excludes` for ordinal and categorical attributes to allow multiple selections.",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: multiValueMembership. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.nameGeneratorTitle": {
+    "defaultMessage": "The NameGenerator `form.title` (heading of the add-a-person dialog) is now required. Any NameGenerator form without one is given \"Add '{node type name}'\" (e.g. \"Add Person\").",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: nameGeneratorTitle. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.nodeIcon": {
+    "defaultMessage": "Renamed 'iconVariant' to 'icon' on node definitions.",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: nodeIcon. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.nodePalette": {
+    "defaultMessage": "A node type's `color` is now restricted to the eight `node-color-seq-1`–`node-color-seq-8` palette values the interfaces can render. Older versions of Architect offered ten, so a node type using the ninth or tenth is moved back onto the palette (the ninth becomes the first, the tenth the second).",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: nodePalette. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.nodeShape": {
+    "defaultMessage": "Added 'shape' property with default 'circle' to all node definitions.",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: nodeShape. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.oneToManyDyadCensus": {
+    "defaultMessage": "New interface: \"one-to-many dyad-census\". Allows the participant to link multiple alters at a time.",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: oneToManyDyadCensus. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.optionValueTypes": {
+    "defaultMessage": "Ordinal and categorical option values must be strings or whole numbers; a fractional value is converted to its string form (as legacy boolean values already are), and a numeric option label becomes the same text it already displayed. A boolean attribute's option entry that is not a labelled true/false choice is removed; if no entries remain the attribute falls back to the standard Yes/No choices.",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: optionValueTypes. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.ordinalPalette": {
+    "defaultMessage": "An OrdinalBin prompt `color` is now required, restricted to the ten `ord-color-seq-1`–`ord-color-seq-10` palette values the interface can render. Any other value was silently ignored and is removed; prompts without a valid color default to the first palette color (`ord-color-seq-1`), the runtime's previous fallback.",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: ordinalPalette. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.orphanOtherConfig": {
+    "defaultMessage": "A CategoricalBin prompt `otherOptionLabel` or `otherVariablePrompt` without an accompanying `otherVariable` was silently ignored, as was an empty-string `otherVariable`. Such orphaned properties are removed.",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: orphanOtherConfig. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.otherAndQuickAddValidation": {
+    "defaultMessage": "The CategoricalBin \"other\" input and the NameGenerator quick-add field now honour the referenced attribute's configured validation. Both previously required a response locally, so migration adds `required: true` to every attribute they reference while preserving its other validation rules.",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: otherAndQuickAddValidation. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.otherLabels": {
+    "defaultMessage": "A CategoricalBin prompt with `otherVariable` set now requires both `otherVariablePrompt` and `otherOptionLabel` (previously a missing label silently dropped the whole \"other\" bin). A missing value is backfilled from the other authored one, else \"Please specify\" / \"Other\".",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: otherLabels. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.otherTextAttribute": {
+    "defaultMessage": "A CategoricalBin prompt's `otherVariable` must reference a text attribute because its follow-up control records text. A non-text reference and its associated \"other\" configuration are removed.",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: otherTextAttribute. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.protocolName": {
+    "defaultMessage": "Added 'name' property to protocol (required dependency for migration)",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: protocolName. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.relativeDateParameters": {
+    "defaultMessage": "A datetime codebook attribute's RelativeDatePicker `anchor` must be a real date inside the native input's year range of 0001–9999, and its `before`/`after` offsets must be non-negative whole numbers of days. Invalid values, and any unrecognised parameter, are removed; a removed anchor reverts the picker to its interview-date default.",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: relativeDateParameters. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.removeDisplayVariable": {
+    "defaultMessage": "Removed 'displayVariable' property, if set. This property was not used, and has been marked as deprecated for a long time.",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: removeDisplayVariable. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.removeMediaLoop": {
+    "defaultMessage": "Removed 'loop' property from Information stage items and video/audio assets. This property was never honoured by Interviewer.",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: removeMediaLoop. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.removeScalarBounds": {
+    "defaultMessage": "Removed the `minValue` and `maxValue` validators from scalar (visual analog scale) attributes. A scalar response is recorded on a normalised 0-1 scale, so a value bound on it was never meaningful. Any such validator is removed.",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: removeScalarBounds. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.removeToggleOptions": {
+    "defaultMessage": "Removed 'options' property for boolean Toggle attributes. This property was not used.",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: removeToggleOptions. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.requiredBackground": {
+    "defaultMessage": "The Sociogram and Narrative `background` is now required and must be exactly one of its two variants: an image (`image` set, no `concentricCircles`) or concentric circles (`concentricCircles` set to a whole number, no `image`; 0 renders no rings). Stages with no background, or with an incomplete or contradictory one, are normalised: an image wins when present; otherwise `concentricCircles` defaults to 4, matching what the interview already rendered.",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: requiredBackground. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.requiredBounds": {
+    "defaultMessage": "A `minValue`, `minLength`, or `minSelected` validator no longer implies a field is required. To preserve the effective behaviour of existing protocols that relied on this coupling, any codebook attribute (node, edge, or ego) with one of these validators and no explicit `required: true` now has `required: true` set.",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: requiredBounds. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.requiredTextFields": {
+    "defaultMessage": "Several free-text fields that the Architect editor already requires are now required (non-empty) in the schema: a prompt's `text`, a form field's `prompt`, an introduction panel's `title` and `text`, an Information item's `content`, a Narrative preset's `label`, a side panel's `title`, a NameGeneratorRoster `dataSource`, and its `searchOptions.matchProperties` (at least one). Any that were empty are backfilled — the form-field prompt from the attribute's name, the panel title from the stage label, a preset/side-panel label by position — else a plain default. An empty `searchOptions`, and an Information asset item with no asset id (a broken reference), are dropped. (The FamilyPedigree `censusPrompt`, NarrativePedigree disease `label`/`color`, and Anonymisation `explanationText` are likewise required but are v8-only, so no migration is needed.)",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: requiredTextFields. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.skipDestinations": {
+    "defaultMessage": "Add optional targeted skip-logic destinations. When a stage is hidden, routing can continue at the next available stage, jump to a later stage, or continue to the interview finish screen.",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: skipDestinations. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.sociogramHighlightAndEdges": {
+    "defaultMessage": "A Sociogram prompt with `highlight.allowHighlighting` enabled must name the boolean attribute to toggle, and an `edges` object must set `create` and/or `display`. Prompts violating either were runtime no-ops; the highlight toggle is turned off and the empty edges object removed.",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: sociogramHighlightAndEdges. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.stageLabels": {
+    "defaultMessage": "Stage labels are now required to be non-empty. Any stage with a missing or empty label is given a default name based on its position (e.g. \"Stage 3\").",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: stageLabels. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.unsupportedValidation": {
+    "defaultMessage": "Validation rules the new schema cannot express are removed: rule names it has never defined, rules whose value has the wrong type (e.g. a quoted number), and rules that do not apply to the attribute's type (e.g. `minValue` on a text attribute, or `requiredAcceptsNull` anywhere). A removed `minValue`/`minLength`/`minSelected` still marks the attribute required, preserving the old implied-required behaviour. Layout attributes take no validation at all; theirs is removed.",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: unsupportedValidation. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
+  },
+  "protocolValidation.migrationNotes.schema8.validationHints": {
+    "defaultMessage": "Added optional 'showValidationHints' property to form fields, enabling automatic display of hints derived from validation rules.",
+    "description": "One complete Markdown bullet in schema 8 migration approval guidance: validationHints. Preserve code identifiers and literal English defaults written into protocol data. Braces in code examples are ICU-quoted literal text."
   },
   "protocolValidation.rule.additionalAttributes": {
     "defaultMessage": "Fixed attributes",

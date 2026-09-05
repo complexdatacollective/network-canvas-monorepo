@@ -118,6 +118,11 @@ export function describeProtocolFileErrorMessage(error: unknown): {
 
 import type { ValidationContradiction } from './schemas/8/variables/validation-contradictions.ts';
 
+export {
+  formatMigrationNotes,
+  migrationNoteMessages,
+} from './migration/noteMessages.ts';
+
 /** Localized, actionable summaries; the original message remains a technical diagnostic. */
 export const validationContradictionMessages = defineMessages({
   invertedBounds: {
@@ -158,7 +163,7 @@ export const validationContradictionMessages = defineMessages({
   disjointBounds: {
     id: 'protocolValidation.contradiction.disjointBounds',
     defaultMessage:
-      'The comparisons for {variables} cannot be satisfied within their allowed ranges. Adjust the ranges or comparisons.',
+      'The comparisons for {variables} cannot be satisfied within their allowed ranges. Adjust the ranges, comparisons, or input controls.',
     description:
       'Repair guidance for a validation contradiction. variables is a locale-formatted list of unchanged researcher-authored attribute names.',
   },

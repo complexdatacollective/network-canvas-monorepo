@@ -5,7 +5,7 @@
 ---
 
 Provide optional localized researcher guidance with complete Spanish catalogs:
-protocol import failures and validation conflicts, synthetic generation
+protocol import failures, migration approval notes and validation conflicts, synthetic generation
 refusals, and export progress. Applications can present this guidance in the
 active language while keeping existing technical diagnostics, event identifiers,
 and generated interview data unchanged.

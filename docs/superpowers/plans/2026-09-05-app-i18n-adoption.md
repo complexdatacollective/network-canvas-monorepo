@@ -231,3 +231,71 @@ asked for explicit permission for local prerequisite integrations; that operatio
 remains pending. Architect and Fresco's local integrations were accepted. All
 unaffected work continues, including translation of the four shared migration
 approval-note documents, which are in-scope researcher guidance.
+
+## Shared checkpoint 6: migration guidance and packed runtime
+
+Migration approval guidance is now exposed through the optional validation
+message entry as `formatMigrationNotes(version, notes, intl)`. All 50 complete
+bullets across schema versions 5–8 have Spanish translations, authored by the
+Interviewer AI agent and independently reviewed against every English bullet by
+the lead. Code identifiers and actual English defaults written into protocol
+data remain literal. The `geojson` asset is described as GeoJSON geometry, in
+agreement with the asset schema. This remains AI translation review, not human
+translator certification. Shared catalogs now contain 405 Spanish entries,
+including 93 in protocol-validation.
+
+The initial whole-document design passed source tests but failed execution from
+the packed Vite build: FormatJS normalized its whitespace and flattened the
+Markdown list. Each descriptor now owns one complete bullet; structural list
+separators preserve the exact original English document. Source regressions
+cover every current note-bearing version, Spanish bullet counts, literal code
+and generated-data defaults, and unknown-version fallback. A mutation returning
+raw notes failed five Spanish assertions before restoration. The full validation
+suite passes 1547 tests with two existing skips; the actual package build passes.
+
+The packed-runtime probe installs the five changed published package tarballs
+into a fresh temporary project, resolving those packages through their actual
+dist export maps. External dependencies reuse the installed runtime. It verifies
+Vite AST defaults/catalogs, React server rendering of encoded form errors,
+Accept-Language parsing, migration notes, Next source/catalog compilation, and
+server formatting under Node's `react-server` condition. The restored probe
+passes; its original failure is retained as evidence rather than hidden.
+Logs: `/private/tmp/nc-shared-packed-runtime.log`,
+`/private/tmp/nc-shared-packed-runtime-3.log`,
+`/private/tmp/nc-migration-bullets-tests.log`, and
+`/private/tmp/nc-migration-bullets-build.log`.
+
+The date-resolution workflow also established that `disjointBounds` repair
+guidance must include input controls alongside ranges and comparisons. The
+updated whole English/Spanish sentence has received independent AI review.
+Latest shared verification passes all 25 workspace typecheck tasks, workspace
+lint/format, and full Knip. Evidence: `/private/tmp/nc-shared-pr-types.log`,
+`/private/tmp/nc-shared-pr-lint.log`, and `/private/tmp/nc-shared-pr-knip.log`.
+Fresh `origin/main` remains `2928a402e`; no further integration is needed.
+
+The final visual classifier still conservatively selects all three suites.
+Checkpoint 4's canonical runs cover the shared build, dependency and rendering
+changes, with no PNG changes. Subsequent edits preserve their captured English
+output: a page-size accessible name, submitted-error/language-change lifecycle,
+and optional migration guidance whose compiled English is byte-for-byte equal
+to the original. No baseline adoption or unexplained pixel changes are claimed.
+Current-head CI will verify the complete prerequisite branch again.
+
+The lead reviewed all 97 new/changed pairs in Architect's 1799-entry catalog
+delta; six grammar, count and bin/prompt meaning corrections are assigned to
+its owner. Interviewer's common-message consolidation and Fresco's final TOTP
+fallback have independent review. Fresco's real URL workflow found direct React
+nodes were being passed to the shared toast-promise string-or-options API;
+its three callers now use description objects, and the other app owners are
+auditing the same seam. Root review of the two changed Interviewer settings
+baseline composites found the requested language-navigation additions explained;
+final-head canonical stability and the remaining phone capture are still due.
+
+Next actions: commit and open the shared prerequisite PR, request explicit
+current-head Codex review, and track CI while app owners finish their real
+workflows and final source audits. Architect must consume the migration presenter
+and complete its full regression suite. Fresco must finish its rebuilt real CSV
+and URL workflows and send final evidence for lead review. Interviewer's local
+prerequisite integration remains pending the explicit permission already
+requested after automatic approval review rejected it; unrelated verification
+and test help continue. No app PR or clean external review has been claimed.
