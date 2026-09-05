@@ -14,13 +14,13 @@ Authorized: implementation, tests, user-attributed commits, normal feature pushe
 
 | Workstream                                 | Owner                                                   | Branch / worktree                                               | PR base and scope                                                                                                     | Next executable action                                                                       |
 | ------------------------------------------ | ------------------------------------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| Shared prerequisites                       | Lead                                                    | `feat/app-i18n-spanish-prerequisites`; original worktree        | `main`; ecosystem/shared Spanish catalogs, Studio subset protection, shared HTTP parser, necessary Next build support | Implement catalogs/parser/registry guard; validate affected consumers                        |
+| Shared prerequisites                       | Lead                                                    | `feat/app-i18n-spanish-prerequisites`; original worktree        | `main`; ecosystem/shared Spanish catalogs, Studio subset protection, shared HTTP parser, necessary Next build support | Complete affected consumer builds/E2E and open prerequisite PR                               |
 | Architect #1616                            | Architect agent                                         | `feat/architect-app-i18n`; `/private/tmp/nc-i18n-architect`     | Shared prerequisite branch; Architect implementation and app changeset                                                | Complete surface inventory and convert researcher chrome                                     |
 | Interviewer #1617                          | Interviewer agent                                       | `feat/interviewer-app-i18n`; `/private/tmp/nc-i18n-interviewer` | Shared prerequisite branch; Interviewer implementation and app changeset                                              | Convert administration and device preference, preserve offline/participant boundaries        |
 | Fresco #1618                               | Fresco agent                                            | `feat/fresco-app-i18n`; `/private/tmp/nc-i18n-fresco`           | Shared prerequisite branch; Fresco implementation, additive user migration, app changeset                             | Implement request/account preference and server/client boundary; convert researcher surfaces |
 | Independent Spanish and integration review | Separate reviewer after capacity frees; lead integrates | Inspect each app worktree and shared branch                     | Review evidence recorded here and in per-app inventories                                                              | Review all catalog meaning, grammar, terminology, ICU and layout after first catalogs exist  |
 
-The lead exclusively owns shared catalogs, shared packages, Studio compatibility edits, root dependency configuration and lockfile. Agents own their app manifests, source, generated English catalog, Spanish/GB catalogs, app plan, and app changeset. Shared changes land once and merge normally into each dependent branch. No cherry-picked duplicates. Intended merge order: shared prerequisite, then the three independently reviewable app PRs. If CI remains base-filtered to `main`, select an evidence-backed supported run or clearly record that external gate; do not treat missing CI as passing.
+The lead exclusively owns shared catalogs, shared packages, Studio compatibility edits, and root dependency configuration. After merging shared checkpoints, each app owner may update only its isolated app importer in the lockfile; the lead reviews the additive diff before integration. Agents own their app manifests, source, generated English catalog, Spanish/GB catalogs, app plan, and app changeset. Shared changes land once and merge normally into each dependent branch. No cherry-picked duplicates. Intended merge order: shared prerequisite, then the three independently reviewable app PRs. If CI remains base-filtered to `main`, select an evidence-backed supported run or clearly record that external gate; do not treat missing CI as passing.
 
 ## Acceptance and evidence matrix
 
@@ -94,3 +94,47 @@ All matrix entries and per-app surface rows need implementation and verification
 - Visual classifier conservatively selects all three suites because shared code and the lockfile changed. Shared English render invariants are retained; TimeAgo machine datetime and stage image alt changes affect semantics rather than pixels. The added locale settings and participant boundary wrappers in app branches require their own pinned visual verification. No baseline adoption has been claimed by the lead.
 - Read linked server PR #1650 and its review discussions: account null remains meaningful, authorization is per user, input must not bypass the dedicated writer, and Studio's supported subset remains exact. Its historical review-limit responses are not evidence of a current review blocker.
 - Next shared actions: finish broad unit runs and local package export verification; add compiler/API docs and correct lane changesets; independently review Spanish; inspect shared affected-host E2E and Storybook evidence; open prerequisite PR and request current-head Codex review. Next app actions: complete remaining copy audits, consume the shared guidance/ReactNode APIs, run full integrated checks and inspect workflows in all locales.
+
+## Shared checkpoint 3: independent Spanish review and delivery checks
+
+A separate AI reviewer (the Interviewer workstream agent, not the shared catalog
+author) reviewed all 355 shared Spanish entries against their English descriptors:
+12 common, 244 Fresco UI, 24 protocol builder, 4 exporters, 43 validation, and
+28 utilities. This is an independent AI language review, not a qualified human
+translator review. All three findings were fixed: network-edge icon terminology
+is now `Vínculos`; text-length hints/errors use complete ICU plurals; the maximum
+length error now says “at most” / “como máximo”, agreeing with the actual inclusive
+validator. Restoring the old messages makes three regression assertions fail on
+the incorrect boundary wording and singular grammar. The restored implementation
+passes 234 focused validation/catalog tests, shared UI typechecking, and the actual
+Fresco UI library build.
+
+The full Fresco UI Storybook suite passed 1,318 tests across Chromium and Firefox
+(176 files). It logged resize-observer/textarea warnings without failing
+the test verdict; no assertions or browser error handling were weakened. Full
+network-exporter tests passed 99 tests in 17 files. Reversing Accept-Language
+quality ordering makes 17 parser assertions fail; restoring it passes all 25.
+Workspace lint/format checks and full Knip pass. Logs: `/private/tmp/nc-length-review-mutation.log`,
+`/private/tmp/nc-length-review-green.log`, `/private/tmp/nc-shared-fresco-ui-storybook.log`,
+`/private/tmp/nc-shared-fresco-ui-build.log`, `/private/tmp/nc-shared-exporters-tests.log`,
+`/private/tmp/nc-accept-language-mutation.log`, `/private/tmp/nc-accept-language-green.log`,
+`/private/tmp/nc-shared-lint.log`, and `/private/tmp/nc-shared-knip.log`.
+
+Release notes extend the existing pending Fresco UI and Studio localization
+changesets, with a separate normal-lane changeset for the new optional validation,
+generation, and export APIs. A successful fresh tag fetch found no app-i18n release
+tag; its exact first-publication version remains 0.1.0, matching the approved
+manifest entry. The new package README documents Vite and Next source/published
+build integration, reactive queued messages, host boundaries, and optional engine
+presentation entry points.
+
+Independent app translation review is in progress. The lead reviewed every
+Interviewer message (444 IDs / 416 unique pairs) and requested corrections to
+codebook/edge terminology, singular selection grammar, total-number formatting,
+and progress plurals; the owner applied these and added behavior assertions.
+Architect's first-pass review found inconsistent formality against the shared/app
+voice and fragmented resource-count sentences; those are being corrected while
+the semantic review continues. Fresco's real production browser run exposed
+English generated activity details; new entries will carry structured localization
+metadata and render in the active language while historical free text remains
+unchanged. These app workstreams are not yet ready to merge.

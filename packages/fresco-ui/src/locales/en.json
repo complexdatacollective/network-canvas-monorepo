@@ -880,11 +880,11 @@
     "description": "Hint and error for a date/time maximum; {max} is the formatted bound."
   },
   "frescoUi.validation.maxLengthError": {
-    "defaultMessage": "Too long. Enter fewer than {max, number} characters.",
+    "defaultMessage": "{max, plural, one {Too long. Enter at most # character.} other {Too long. Enter at most # characters.}}",
     "description": "Error shown when text exceeds its maximum length."
   },
   "frescoUi.validation.maxLengthHint": {
-    "defaultMessage": "Enter at most {max, number} characters.",
+    "defaultMessage": "{max, plural, one {Enter at most # character.} other {Enter at most # characters.}}",
     "description": "Hint summarising a maximum text length rule."
   },
   "frescoUi.validation.maxSelectedError": {
@@ -908,11 +908,11 @@
     "description": "Hint and error for a date/time minimum; {min} is the formatted bound."
   },
   "frescoUi.validation.minLengthError": {
-    "defaultMessage": "Too short. Enter at least {min, number} characters.",
+    "defaultMessage": "{min, plural, one {Too short. Enter at least # character.} other {Too short. Enter at least # characters.}}",
     "description": "Error shown when text is shorter than its minimum length."
   },
   "frescoUi.validation.minLengthHint": {
-    "defaultMessage": "Enter at least {min, number} characters.",
+    "defaultMessage": "{min, plural, one {Enter at least # character.} other {Enter at least # characters.}}",
     "description": "Hint summarising a minimum text length rule."
   },
   "frescoUi.validation.minSelectedError": {

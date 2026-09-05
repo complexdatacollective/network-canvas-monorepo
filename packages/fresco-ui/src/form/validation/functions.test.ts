@@ -8,6 +8,7 @@ import {
   type NcNetwork,
 } from '@codaco/shared-consts';
 
+import { frescoUiCatalogs } from '../../locales/catalogs';
 import type { FieldValue, ValidationContext } from '../store/types';
 import { required, validations } from './functions';
 import { makeValidationFunction } from './helpers';
@@ -141,7 +142,7 @@ describe('Validation Functions', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues[0]?.message).toBe(
-          'Too long. Enter fewer than 5 characters.',
+          'Too long. Enter at most 5 characters.',
         );
       }
     });
@@ -169,6 +170,50 @@ describe('Validation Functions', () => {
       }).toThrow('Max length must be specified');
     });
   });
+
+  it.each([
+    {
+      locale: 'en',
+      maxHint: 'Enter at most 1 character.',
+      maxError: 'Too long. Enter at most 1 character.',
+      minHint: 'Enter at least 1 character.',
+      minError: 'Too short. Enter at least 2 characters.',
+    },
+    {
+      locale: 'es',
+      maxHint: 'Introduce como máximo 1 carácter.',
+      maxError:
+        'El texto es demasiado largo. Introduce como máximo 1 carácter.',
+      minHint: 'Introduce al menos 1 carácter.',
+      minError: 'El texto es demasiado corto. Introduce al menos 2 caracteres.',
+    },
+  ])(
+    'describes inclusive length limits and count grammar in $locale',
+    ({ locale, maxHint, maxError, minHint, minError }) => {
+      const intl = createAppIntl({
+        locale,
+        messages: frescoUiCatalogs[locale],
+      });
+      const maximum = validations.maxLength(1, createMockContext(), intl)({});
+      expect(maximum.safeParse('a').success).toBe(true);
+      expect(z.globalRegistry.get(maximum)?.hint).toBe(maxHint);
+      const tooLong = maximum.safeParse('ab');
+      expect(tooLong.success).toBe(false);
+      expect(tooLong.error?.issues[0]?.message).toBe(maxError);
+
+      const minimum = validations.minLength(1, createMockContext(), intl)({});
+      expect(z.globalRegistry.get(minimum)?.hint).toBe(minHint);
+      const twoCharacters = validations.minLength(
+        2,
+        createMockContext(),
+        intl,
+      )({});
+      expect(twoCharacters.safeParse('ab').success).toBe(true);
+      const tooShort = twoCharacters.safeParse('a');
+      expect(tooShort.success).toBe(false);
+      expect(tooShort.error?.issues[0]?.message).toBe(minError);
+    },
+  );
 
   describe('minLength', () => {
     it('should reject strings shorter than min', () => {
