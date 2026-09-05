@@ -538,6 +538,7 @@ export function applyComposerRenderings(
       variableNames: [name ?? disagreement.variable],
       rules: [...COMPOSER_RENDERING_CONFLICT.rules],
       reason: COMPOSER_RENDERING_CONFLICT.reason,
+      reasonCode: 'incompatibleDateControls' as const,
     };
   });
 

@@ -105,9 +105,7 @@ export default function useWizardState({
   >({});
   const [nextEnabled, setNextEnabled] = useState(true);
   const [backEnabled, setBackEnabled] = useState(true);
-  const [nextLabelOverride, setNextLabelOverride] = useState<string | null>(
-    null,
-  );
+  const [nextLabelOverride, setNextLabelOverride] = useState<ReactNode>(null);
   const [isNextLoading, setIsNextLoading] = useState(false);
 
   const beforeNextRef = useRef<BeforeNextHandler | null>(null);
@@ -286,7 +284,7 @@ export default function useWizardState({
       setStepData,
       setNextEnabled,
       setBackEnabled: (enabled: boolean) => setBackEnabled(enabled),
-      setNextLabel: (label: string) => setNextLabelOverride(label),
+      setNextLabel: (label: ReactNode) => setNextLabelOverride(label),
       setBeforeNext,
       goToStep,
     }),

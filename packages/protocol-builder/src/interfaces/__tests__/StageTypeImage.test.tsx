@@ -1,7 +1,12 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { ecosystemLocales } from '@codaco/app-i18n/locales';
+import { AppI18nProvider } from '@codaco/app-i18n/react';
+
+import { protocolBuilderCatalogs } from '../../locales/catalogs.ts';
 import { STAGE_TYPES } from '../../stage-types.ts';
+import { interfaceDisplayName } from '../interfaceNames.ts';
 import StageTypeImage, { defaultStageImage } from '../StageTypeImage.tsx';
 
 describe('StageTypeImage', () => {
@@ -23,7 +28,7 @@ describe('StageTypeImage', () => {
         defaultStageImage.src,
       );
       expect(img?.getAttribute('alt'), stageType).toBe(
-        `${stageType} interface`,
+        `Preview of ${interfaceDisplayName(stageType)}`,
       );
 
       unmount();
@@ -44,7 +49,7 @@ describe('StageTypeImage', () => {
     expect(container.querySelector('picture')).toBeNull();
 
     const img = screen.getByRole('img', {
-      name: 'SomeFutureInterface interface',
+      name: 'Preview of SomeFutureInterface',
     });
     expect(img.getAttribute('src')).toBe(defaultStageImage.src);
     // Literal expected values, not `defaultStageImage.width/height` — those
@@ -91,4 +96,26 @@ describe('StageTypeImage', () => {
       screen.getByRole('img', { name: 'Sociogram preview' }),
     ).toBeInTheDocument();
   });
+});
+
+it('updates localized preview names and preserves explicitly decorative images', () => {
+  const view = (locale: string) => (
+    <AppI18nProvider
+      locale={locale}
+      locales={ecosystemLocales}
+      messages={protocolBuilderCatalogs[locale]}
+    >
+      <StageTypeImage type="NetworkComposer" />
+      <StageTypeImage type="Information" alt="" />
+    </AppI18nProvider>
+  );
+  const { rerender, container } = render(view('en'));
+  expect(
+    screen.getByRole('img', { name: 'Preview of Network Composer' }),
+  ).toBeInTheDocument();
+  rerender(view('es'));
+  expect(
+    screen.getByRole('img', { name: 'Vista previa de Compositor de redes' }),
+  ).toBeInTheDocument();
+  expect(container.querySelector('img[alt=""]')).toBeInTheDocument();
 });

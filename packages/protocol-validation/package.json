@@ -16,7 +16,9 @@
   ],
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./messages": "./src/messages.ts",
+    "./locales": "./src/locales/catalogs.ts"
   },
   "publishConfig": {
     "main": "./dist/index.js",
@@ -25,6 +27,14 @@
       ".": {
         "types": "./dist/index.d.ts",
         "import": "./dist/index.js"
+      },
+      "./messages": {
+        "types": "./dist/messages.d.ts",
+        "import": "./dist/messages.js"
+      },
+      "./locales": {
+        "types": "./dist/locales.d.ts",
+        "import": "./dist/locales.js"
       }
     },
     "access": "public"
@@ -33,7 +43,8 @@
     "build": "vite build",
     "test": "vitest --run",
     "test:watch": "vitest",
-    "typecheck": "tsc --build --noEmit"
+    "typecheck": "tsc --build --noEmit",
+    "i18n:extract": "node scripts/extract-i18n.mjs"
   },
   "dependencies": {
     "@codaco/shared-consts": "workspace:^",
@@ -41,6 +52,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@codaco/app-i18n": "workspace:^",
     "@codaco/tsconfig": "workspace:^",
     "@octokit/types": "^16.0.0",
     "@types/gunzip-maybe": "^1.4.3",
@@ -54,5 +66,13 @@
     "vite": "catalog:",
     "vite-plugin-dts": "catalog:",
     "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "@codaco/app-i18n": "workspace:^"
+  },
+  "peerDependenciesMeta": {
+    "@codaco/app-i18n": {
+      "optional": true
+    }
   }
 }

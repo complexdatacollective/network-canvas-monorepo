@@ -155,6 +155,8 @@
       "files": [
         "packages/app-i18n/src/**",
         "packages/network-exporters/src/**",
+        "packages/protocol-validation/src/**",
+        "packages/protocol-utilities/src/**",
         "packages/protocol-builder/src/**",
         "apps/studio/client/src/**"
       ],

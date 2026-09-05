@@ -37,7 +37,7 @@
         "import": "./dist/messages.js"
       },
       "./locales": {
-        "types": "./dist/locales.d.ts",
+        "types": "./dist/locales/catalogs.d.ts",
         "import": "./dist/locales.js"
       },
       "./pipeline": {

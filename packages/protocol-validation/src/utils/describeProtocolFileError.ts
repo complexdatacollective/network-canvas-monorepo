@@ -1,13 +1,6 @@
-import {
-  MigrationError,
-  MigrationNotPossibleError,
-  MigrationStepError,
-  SchemaVersionDetectionError,
-  ValidationError,
-  VersionMismatchError,
-} from '../migration/errors.ts';
 import { NetcanvasInflationLimitError } from './extractProtocol.ts';
 import { MalformedNetcanvasError } from './malformedNetcanvasError.ts';
+import { getProtocolFileErrorKind } from './protocolFileErrorKind.ts';
 
 /**
  * Researcher-safe copy for an error THIS PACKAGE throws while opening a
@@ -27,47 +20,38 @@ import { MalformedNetcanvasError } from './malformedNetcanvasError.ts';
  * blames the file.
  */
 export const describeProtocolFileError = (error: unknown): string | null => {
-  if (error instanceof MalformedNetcanvasError) {
-    switch (error.reason) {
-      case 'not-an-archive':
-        return "This file isn't a Network Canvas protocol. Check that you chose the right file, and that it finished downloading.";
-      case 'missing-protocol':
-        return 'This file is missing its protocol, so there is nothing to open. It may have been created by another program, or damaged in transit.';
-      case 'unreadable-protocol-json':
-        return "This protocol's contents are damaged and cannot be read. Try a backup, or the copy you originally downloaded.";
-      case 'missing-asset':
-        return error.assetName
-          ? `This protocol refers to a file that isn't included in it: "${error.assetName}".`
-          : "This protocol refers to a file that isn't included in it.";
-      case 'invalid-asset-definition':
-        return "One of this protocol's resources is described in a way this version does not understand, so the protocol cannot be opened.";
-    }
-  }
-
-  // Already researcher-safe: written for this audience where it is thrown, and
-  // it names a limit rather than an implementation.
-  if (error instanceof NetcanvasInflationLimitError) {
-    return error.message;
-  }
-
-  if (error instanceof MigrationError) {
-    if (error instanceof VersionMismatchError) {
+  switch (getProtocolFileErrorKind(error)) {
+    case 'notArchive':
+      return "This file isn't a Network Canvas protocol. Check that you chose the right file, and that it finished downloading.";
+    case 'missingProtocol':
+      return 'This file is missing its protocol, so there is nothing to open. It may have been created by another program, or damaged in transit.';
+    case 'damagedJson':
+      return "This protocol's contents are damaged and cannot be read. Try a backup, or the copy you originally downloaded.";
+    case 'missingNamedAsset':
+      return error instanceof MalformedNetcanvasError
+        ? `This protocol refers to a file that isn't included in it: "${error.assetName}".`
+        : null;
+    case 'missingAsset':
+      return "This protocol refers to a file that isn't included in it.";
+    case 'invalidAsset':
+      return "One of this protocol's resources is described in a way this version does not understand, so the protocol cannot be opened.";
+    case 'inflationLimit':
+      return error instanceof NetcanvasInflationLimitError
+        ? error.message
+        : null;
+    case 'newerVersion':
       return 'This protocol was made with a newer version of Network Canvas. Update to the latest version to open it.';
-    }
-    if (error instanceof MigrationNotPossibleError) {
+    case 'cannotUpgrade':
       return 'This protocol was made with a version of Network Canvas it cannot be upgraded from. Open it in the version that made it and save it there first.';
-    }
-    if (error instanceof MigrationStepError) {
+    case 'upgradeStepFailed':
       return 'This protocol could not be upgraded to the current version. Nothing has been changed on this device.';
-    }
-    if (error instanceof SchemaVersionDetectionError) {
+    case 'missingVersion':
       return 'This file does not say which version of Network Canvas made it, so it cannot be opened.';
-    }
-    if (error instanceof ValidationError) {
+    case 'invalidBeforeUpgrade':
       return 'This protocol did not pass the checks for the version it was made with, so it could not be upgraded.';
-    }
-    return 'This protocol could not be upgraded to the current version.';
+    case 'upgradeFailed':
+      return 'This protocol could not be upgraded to the current version.';
+    case null:
+      return null;
   }
-
-  return null;
 };

@@ -73,7 +73,7 @@ type ToastData = {
   onCancel?: () => void;
   // Label for the action button rendered when `onCancel` is set. Defaults to
   // "Cancel".
-  cancelLabel?: string;
+  cancelLabel?: React.ReactNode;
   // When set, the toast's title + description become a clickable region (the
   // close button and action button remain separate). Use for "click the toast
   // to see more" affordances.
@@ -84,7 +84,7 @@ type ToastData = {
 type ToastCustomData = {
   variant?: ToastVariant;
   onCancel?: () => void;
-  cancelLabel?: string;
+  cancelLabel?: React.ReactNode;
   onClick?: () => void;
   icon?: React.ReactNode;
 };

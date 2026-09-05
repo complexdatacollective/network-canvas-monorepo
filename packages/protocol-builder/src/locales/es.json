@@ -17,5 +17,10 @@
   "protocolBuilder.interface.oneToManyDyadCensus": "Censo de díadas de uno a varios",
   "protocolBuilder.interface.ordinalBin": "Clasificación ordinal",
   "protocolBuilder.interface.sociogram": "Sociograma",
-  "protocolBuilder.interface.tieStrengthCensus": "Censo de intensidad de vínculos"
+  "protocolBuilder.interface.tieStrengthCensus": "Censo de intensidad de vínculos",
+  "protocolBuilder.stageTypeImage.preview": "Vista previa de {interfaceName}",
+  "protocolBuilder.stageName.name": "Nombre de la etapa",
+  "protocolBuilder.stageName.placeholder": "Introduce el nombre de la etapa...",
+  "protocolBuilder.stageName.position": "Etapa {index, number} de {total, number}",
+  "protocolBuilder.stageName.documentation": "Documentación"
 }

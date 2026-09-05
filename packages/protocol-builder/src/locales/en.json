@@ -74,5 +74,25 @@
   "protocolBuilder.interface.tieStrengthCensus": {
     "defaultMessage": "Tie-Strength Census",
     "description": "Researcher-facing interface name. Interface for reporting the strength of relationships between network members. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.stageName.documentation": {
+    "defaultMessage": "Documentation",
+    "description": "Link to the documentation for this type of interview interface."
+  },
+  "protocolBuilder.stageName.name": {
+    "defaultMessage": "Stage name",
+    "description": "Section heading and accessible field label for the researcher-authored stage name."
+  },
+  "protocolBuilder.stageName.placeholder": {
+    "defaultMessage": "Enter stage name...",
+    "description": "Placeholder for the researcher-authored stage name field."
+  },
+  "protocolBuilder.stageName.position": {
+    "defaultMessage": "Stage {index, number} of {total, number}",
+    "description": "The current stage position in the interview. index is one-based."
+  },
+  "protocolBuilder.stageTypeImage.preview": {
+    "defaultMessage": "Preview of {interfaceName}",
+    "description": "Alternative text for a screenshot of an interview interface. interfaceName is the localized interface name, or an unchanged identifier for an unknown future interface."
   }
 }

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
+import { createAppIntl } from '@codaco/app-i18n/messages';
 import type { StageType } from '@codaco/protocol-validation';
 
+import { protocolBuilderCatalogs } from '../../locales/catalogs.ts';
 import { INTERFACE_NAMES, interfaceDisplayName } from '../interfaceNames.ts';
 
 const stageTypes = Object.keys(INTERFACE_NAMES) as StageType[];
@@ -44,4 +46,16 @@ describe('interfaceDisplayName', () => {
     expect(interfaceDisplayName('toString')).toBeUndefined();
     expect(interfaceDisplayName('constructor')).toBeUndefined();
   });
+});
+
+it('localizes display names without altering persisted protocol-name defaults', () => {
+  const intl = createAppIntl({
+    locale: 'es',
+    messages: protocolBuilderCatalogs.es,
+  });
+  expect(interfaceDisplayName('NetworkComposer', intl)).toBe(
+    'Compositor de redes',
+  );
+  expect(INTERFACE_NAMES.NetworkComposer).toBe('Network Composer');
+  expect(interfaceDisplayName('NetworkComposer')).toBe('Network Composer');
 });

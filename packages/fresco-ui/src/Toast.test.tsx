@@ -29,7 +29,10 @@ it('updates the notification region and an existing rich title when the locale c
     <AppI18nProvider
       locale={locale}
       locales={ecosystemLocales}
-      messages={mergeCatalogs(commonCatalogs[locale], frescoUiCatalogs[locale])}
+      messages={mergeCatalogs(
+        commonCatalogs[locale] ?? {},
+        frescoUiCatalogs[locale] ?? {},
+      )}
     >
       <Toast.Provider>
         <Trigger />
