@@ -37,6 +37,7 @@ import {
   useStageEditorForm,
   type StageFormStoreApi,
 } from '../stageEditorContext.ts';
+import RowEditorBoundary from './RowEditorBoundary.tsx';
 import {
   ArrayFieldBindingContext,
   useArrayFieldCommands,
@@ -775,26 +776,33 @@ function DialogEditor({
     >
       <DialogStoreCapture apiRef={storeApiRef} />
       {/*
-        Nothing inside a row is a document key.
+       * The fields are a family's own code, mounted by machinery that knows
+       * nothing about them. One of them throwing must cost the researcher this
+       * dialog, not the stage editor behind it and everything typed into it.
+       */}
+      <RowEditorBoundary>
+        {/*
+          Nothing inside a row is a document key.
 
-        A list the researcher edits INSIDE this dialog — a prompt's sort
-        rules — is part of one row of THIS list, and this list is what holds
-        the document key. Left inherited, that key is what the inner list
-        would commit its own insertions and reorderings against: adding a sort
-        rule would insert a row into the array of prompts. It also must not
-        commit anything at all until the dialog saves, which is the same rule
-        `ProtocolArrayField` states for a list that finds itself in a nested
-        form store.
-      */}
-      <ArrayFieldBindingContext value={NESTED_IN_A_ROW}>
-        {createElement(editorFieldsComponent, {
-          ...itemValues,
-          ...editorProps,
-          item: itemValues,
-          editIndex,
-          form: editFormName,
-        })}
-      </ArrayFieldBindingContext>
+          A list the researcher edits INSIDE this dialog — a prompt's sort
+          rules — is part of one row of THIS list, and this list is what holds
+          the document key. Left inherited, that key is what the inner list
+          would commit its own insertions and reorderings against: adding a
+          sort rule would insert a row into the array of prompts. It also must
+          not commit anything at all until the dialog saves, which is the same
+          rule `ProtocolArrayField` states for a list that finds itself in a
+          nested form store.
+        */}
+        <ArrayFieldBindingContext value={NESTED_IN_A_ROW}>
+          {createElement(editorFieldsComponent, {
+            ...itemValues,
+            ...editorProps,
+            item: itemValues,
+            editIndex,
+            form: editFormName,
+          })}
+        </ArrayFieldBindingContext>
+      </RowEditorBoundary>
     </DialogForm>
   );
 }

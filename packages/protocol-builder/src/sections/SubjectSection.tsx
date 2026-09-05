@@ -60,16 +60,17 @@ const DEFAULT_COPY: Readonly<Record<SubjectEntity, SubjectSectionCopy>> =
  * creating a type from inside a stage is to get back to configuring the stage:
  * the colour, shape and icon are all editable afterwards from the codebook.
  */
-const NEW_ENTITY_DRAFT: Readonly<Record<SubjectEntity, CodebookEntityDraft>> =
-  Object.freeze({
-    node: Object.freeze({
-      name: '',
-      color: 'node-color-seq-1',
-      shape: { default: 'circle' },
-      icon: 'Circle',
-    }),
-    edge: Object.freeze({ name: '', color: 'edge-color-seq-1' }),
-  });
+export const NEW_ENTITY_DRAFT: Readonly<
+  Record<SubjectEntity, CodebookEntityDraft>
+> = Object.freeze({
+  node: Object.freeze({
+    name: '',
+    color: 'node-color-seq-1',
+    shape: { default: 'circle' },
+    icon: 'Circle',
+  }),
+  edge: Object.freeze({ name: '', color: 'edge-color-seq-1' }),
+});
 
 export type SubjectSectionProps = Readonly<{
   entity: SubjectEntity;

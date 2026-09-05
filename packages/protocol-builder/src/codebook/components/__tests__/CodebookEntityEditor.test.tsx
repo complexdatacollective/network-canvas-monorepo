@@ -390,6 +390,62 @@ describe('CodebookEntityEditor', () => {
     },
   );
 
+  /**
+   * A host refuses in the protocol schema's words, about a path — "expected
+   * object, received undefined". That sentence is about the stage the
+   * researcher was configuring, not the type they were creating, and it names
+   * neither what they did nor what to do next. Repeating it is how an
+   * authoring tool tells someone their work failed for reasons it will not
+   * explain.
+   */
+  it('says what a refused save means, never the words the host used', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn<
+      (request: CompoundEditRequest) => CompoundEditResult
+    >((): CompoundEditResult => ({
+      status: 'failed',
+      reason: 'host-error',
+      message: 'Invalid input: expected object, received undefined',
+    }));
+    renderUpdateEditor(onSubmit);
+
+    const name = screen.getByRole('textbox', { name: 'Node type name' });
+    await user.clear(name);
+    await user.type(name, 'Adult');
+    await user.click(screen.getByRole('button', { name: 'Save entity' }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(
+      'The protocol would not be valid with this change, so nothing was saved.',
+    );
+    expect(alert).not.toHaveTextContent('expected object, received undefined');
+    // The draft is still there to correct, as it is after any refusal.
+    expect(name).toHaveValue('Adult');
+  });
+
+  it('explains a lost lease in its own words too', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn<
+      (request: CompoundEditRequest) => CompoundEditResult
+    >((): CompoundEditResult => ({
+      status: 'failed',
+      reason: 'lease-lost',
+      message: 'editing access was lost before the compound edit completed',
+    }));
+    renderUpdateEditor(onSubmit);
+
+    const name = screen.getByRole('textbox', { name: 'Node type name' });
+    await user.clear(name);
+    await user.type(name, 'Adult');
+    await user.click(screen.getByRole('button', { name: 'Save entity' }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(
+      'You are no longer the editor of this stage, so nothing was saved.',
+    );
+    expect(alert).not.toHaveTextContent('compound edit');
+  });
+
   it('keeps a blocked draft open, reports the holder, and focuses the failure', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn<
@@ -509,7 +565,9 @@ describe('CodebookEntityEditor', () => {
     await user.clear(name);
     await user.type(name, 'UncertainName');
     await user.click(screen.getByRole('button', { name: 'Save entity' }));
-    await screen.findByText('Host outcome uncertain.');
+    // The alert says what a refused save means for the researcher rather than
+    // repeating the host's own words; the wait is on its title.
+    await screen.findByText('Could not save this entity');
 
     rerender(
       <CodebookEntityEditor
@@ -561,7 +619,7 @@ describe('CodebookEntityEditor', () => {
       await user.clear(name);
       await user.type(name, 'RetriableName');
       await user.click(screen.getByRole('button', { name: 'Save entity' }));
-      await screen.findByText('Editing authority changed.');
+      await screen.findByText('Could not save this entity');
 
       await user.click(screen.getByRole('button', { name: 'Save entity' }));
 

@@ -2,6 +2,7 @@ import { get, isEqual } from 'es-toolkit/compat';
 import { useEffect, useRef } from 'react';
 
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
+import type { Command } from '@codaco/studio-sync/apply';
 
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useClearStageValue, useStageValue } from '../form/stageFormHooks.ts';
@@ -59,9 +60,20 @@ function asFieldValue(value: unknown): FieldValue {
  * than a choice. Deliberately not "did both move in the same render": the
  * re-seed happens in the shell's effect, which runs after this one, so the two
  * are a render apart and in an order neither section controls.
+ *
+ * The reset reaches the SESSION as well as the form, as one batch. Ordinary
+ * typing waits for the submit that flushes it, but a bound list does not: it
+ * resolves every insertion, removal and reorder against the draft the session
+ * holds right now (`applyOwnCommands([])`). A reset that lived only in the form
+ * store would therefore be undone by the next row a researcher adds — the list
+ * would rebuild itself from the old subject's rows and save them. One batch
+ * rather than a command per key, so an undo brings the whole stage back at
+ * once, subject included: an undo that restored the configuration without the
+ * type it describes would leave the stage in a state no researcher chose.
  */
 export function useResetStageOnSubjectChange(): void {
-  const { storeApi, committedFields, identity } = useStageEditorForm();
+  const { storeApi, committedFields, identity, applyOwnCommands } =
+    useStageEditorForm();
   const subject = useStageValue('subject');
   const clearStageValue = useClearStageValue();
 
@@ -108,6 +120,22 @@ export function useResetStageOnSubjectChange(): void {
       template,
     );
 
+    // The session first, and in one batch. Everything below writes into the
+    // form store, which a bound list never reads: it asks the session for the
+    // draft it is editing. `applyOwnCommands` also marks the write as this
+    // form's own, so the draft moving here does not re-seed the controls the
+    // loop below is about to set.
+    applyOwnCommands([
+      subject === undefined
+        ? { op: 'unset', key: 'subject' }
+        : { op: 'set', key: 'subject', value: subject },
+      ...resets.map((reset): Command =>
+        reset.value === undefined
+          ? { op: 'unset', key: reset.key }
+          : { op: 'set', key: reset.key, value: reset.value },
+      ),
+    ]);
+
     for (const reset of resets) {
       // Clears the path itself, everything beneath it, and every registered or
       // parked field above it that still carries it. Anything left holding the
@@ -139,5 +167,12 @@ export function useResetStageOnSubjectChange(): void {
           .setFieldValue(name, asFieldValue(get(template, name)));
       }
     }
-  }, [clearStageValue, committedFields, identity.type, storeApi, subject]);
+  }, [
+    applyOwnCommands,
+    clearStageValue,
+    committedFields,
+    identity.type,
+    storeApi,
+    subject,
+  ]);
 }
