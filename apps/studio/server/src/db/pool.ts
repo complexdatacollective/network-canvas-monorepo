@@ -14,8 +14,9 @@ import { logOperational } from '../observability/logger.ts';
 // exhausted. A bounded wait turns that into a fast, repeatable failure.
 const CONNECTION_TIMEOUT_MS = 10_000;
 
-// One DATABASE_URL, three identities. The connecting login owns the schema and
-// applies it; the application pool starts every session as a NOLOGIN role
+// The server uses a dedicated runtime login. The migration command supplies
+// the database owner's credentials separately through its own DATABASE_URL.
+// The application pool starts every session as a NOLOGIN role
 // instead (`role=` is a startup parameter: a missing role refuses the
 // connection, and even RESET ROLE returns to it), so the server never runs as
 // a role that could bypass row-level security — not in a deployment, and not

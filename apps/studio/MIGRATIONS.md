@@ -8,14 +8,78 @@ checkout, pnpm, or drizzle-kit.
 
 ## Fresh installation and upgrade
 
-Use a dedicated PostgreSQL 18 database. Its `public` schema must initially be
-empty, including functions, types, and extension objects. Install optional
-database extensions in their own schema. The database login owns Studio's
-objects and needs `CREATEROLE` for the first migration. On services that do not
-allow that privilege, an administrator must provision the two runtime roles
-and grant the login permission to assume them, as described in the README.
-The migration refuses existing runtime roles with LOGIN, SUPERUSER, or
-BYPASSRLS rather than granting application access to an unsafe identity.
+Use a dedicated PostgreSQL 18 database and deployment-specific login credentials.
+Its `public` schema must initially be empty, including functions, types, and
+extension objects. Install optional database extensions in their own schema.
+The migration login owns the database and Studio's objects. Use a separate,
+unprivileged runtime login. Both need permission to assume the existing
+`studio_app` and `studio_maintenance` runtime roles. An administrator can
+pre-create these roles; `CREATEROLE` is needed only when the migration operator
+creates them. On a shared cluster, have the administrator provision the roles
+and memberships for each deployment before migrating.
+
+Runtime roles must be NOLOGIN, NOSUPERUSER, NOBYPASSRLS, NOCREATEROLE,
+NOCREATEDB, and NOREPLICATION, with no parent-role memberships. The migration
+checks these properties even for pre-created roles and on repeated runs.
+Concurrent role creation in different databases handles the duplicate-name
+race and validates the winning role. Database advisory locks alone cannot
+serialize cluster-wide role creation.
+
+### Provision database access before migration
+
+PostgreSQL checks CONNECT when a connection opens. Revoking it later does not
+remove existing sessions. The database administrator must therefore commit the
+connection enrollment **before admitting connections**, independently of the
+schema migration. Studio checks that enrollment; it does not silently change
+it or terminate sessions.
+
+For example, after provisioning dedicated login roles and their credentials,
+run this from an administrator connection to a different database. These role
+and database names are examples; use your deployment's actual identifiers.
+Runtime login credentials must not have database administration or replication
+attributes, and must not be shared with another Studio deployment.
+
+```sql
+CREATE ROLE studio_app NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB NOREPLICATION;
+CREATE ROLE studio_maintenance NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB NOREPLICATION;
+GRANT studio_app, studio_maintenance TO studio_migrator, studio_runtime
+  WITH SET TRUE, INHERIT FALSE;
+CREATE DATABASE studio OWNER studio_migrator ALLOW_CONNECTIONS false;
+BEGIN;
+REVOKE CONNECT ON DATABASE studio FROM PUBLIC, studio_app, studio_maintenance;
+GRANT CONNECT ON DATABASE studio TO studio_migrator, studio_runtime;
+COMMIT;
+ALTER DATABASE studio ALLOW_CONNECTIONS true;
+```
+
+Do not recreate runtime roles already present on the cluster; validate their
+attributes and memberships instead. Every enrolled identity must be a LOGIN
+role. Enroll the database owner, migration operator, runtime login, and any
+separately provisioned backup login by granting each CONNECT directly and
+listing exactly those names in the migration environment:
+
+```dotenv
+STUDIO_DATABASE_ALLOWED_LOGINS=["studio_migrator","studio_runtime"]
+```
+
+Keep backup privileges and credentials separate from runtime membership.
+Enrolled logins must not have memberships granted to an unenrolled role:
+SET-only membership can impersonate an owner even without inherited privileges.
+Studio refuses PUBLIC or shared-role CONNECT, unexpected direct or inherited
+CONNECT, missing explicit CONNECT, unsafe non-operator login attributes, and
+existing sessions from unenrolled non-superuser logins. Cluster superusers are
+trusted administrators and bypass database ACLs; never use their credentials
+for a deployed runtime.
+
+For an existing database that previously allowed PUBLIC CONNECT, first stop
+its services and quarantine new admission with `ALLOW_CONNECTIONS false` from
+an administrator connection to another database. Commit the corrected grants,
+inspect existing sessions, and have the administrator remove outside sessions.
+Reopen admission only after the ACL is correct and those sessions are gone,
+then migrate before restarting services. A session retained from before the
+revocation makes migration refuse even when the current grants look correct.
+Removing a login from the environment alone does not revoke an old grant: make
+the matching explicit provisioning change under the same quarantine procedure.
 
 For an existing deployment:
 
@@ -26,7 +90,7 @@ For an existing deployment:
    application encryption keys in a separate, encrypted backup. A database
    backup cannot replace the keys needed to read its encrypted fields.
 3. Select the new image version in your deployment configuration. Run its
-   migration command once, using the same database connection and container
+   migration command once, using the migration login for that database and the same container
    network as the application. In a Compose deployment whose app service is
    named `studio`:
 
@@ -41,15 +105,17 @@ For an existing deployment:
      --env-file /secure/path/studio.env YOUR_STUDIO_IMAGE migrate
    ```
 
-   The command reads only `DATABASE_URL`; authentication, mail, object storage,
-   and client assets are not needed for schema administration. Keep credentials
+   The command reads only `DATABASE_URL` and `STUDIO_DATABASE_ALLOWED_LOGINS`;
+   authentication, mail, object storage, and client assets are not needed for
+   schema administration. Keep credentials
    in the restricted environment file instead of putting them in shell history.
 
 4. Start the application containers only after migration succeeds. Retain the
    backup and the old image reference until you have verified the upgrade.
 
 The same command provisions a fresh empty database before its first start.
-Repeated runs are safe: already applied migrations are verified and left alone.
+Repeated runs verify and leave applied migrations alone, while rechecking role
+safety, committed access enrollment, and active connections.
 Concurrent invocations serialize behind the existing Studio advisory lock.
 All pending migrations, their sidecars, the migration history, and the new
 fingerprint commit in one transaction. SQL failure rolls the transaction back
@@ -62,7 +128,12 @@ The runner rejects missing, reordered, edited, or newer migration history and
 a fingerprint inconsistent with that history. Historical artifacts are
 checksummed inside the image. This is provenance validation, not a detector
 for every manual DDL change: do not alter Studio's live schema outside its
-versioned migrations. Application roles cannot write migration history.
+versioned migrations. Runtime roles can read the schema fingerprint but cannot
+write it, including through column-level grants, and cannot access migration
+history. The runner reasserts those evidence restrictions after historical
+sidecars on every run. Role safety and access checks are repeatable operator
+invariants outside the immutable schema history; no numbered artifact is
+rewritten to update them.
 
 ## Pre-release databases
 
@@ -134,7 +205,9 @@ image publishes an artifact, never edit it: add a subsequent migration.
 
 Run the migration tests against a disposable local database. They exercise
 fresh creation, an actual Drizzle-generated upgrade with existing data,
-idempotence, two competing command processes, checksum/history refusals,
+idempotence, two competing command processes, cross-database role races,
+independent deployment login isolation, retained outside connections, unsafe
+role attributes and memberships, checksum/history refusals,
 transaction rollback, and real catalog/privilege assertions. The source guard
 test also rejects a build whose newest migration does not match the current
 fingerprint and ordered sidecars. Existing domain and tenancy suites still

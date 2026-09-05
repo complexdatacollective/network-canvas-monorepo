@@ -4,7 +4,12 @@ import { parseEnv } from 'node:util';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { isLocalDatabase, readEnv, readMigrationDatabase } from '../../env.ts';
+import {
+  isLocalDatabase,
+  readEnv,
+  readMigrationDatabase,
+  readMigrationAllowedLogins,
+} from '../../env.ts';
 import { DEV, DEV_DATABASE_URL, DEV_S3_ENDPOINT } from '../catalogue.ts';
 
 // The suite runs with the committed .env.development loaded (see
@@ -129,6 +134,28 @@ describe('development defaults', () => {
 });
 
 describe('migration environment', () => {
+  it.each([
+    undefined,
+    '',
+    'operator,runtime',
+    '[]',
+    '[1]',
+    '["operator","operator"]',
+    '["' + 'x'.repeat(64) + '"]',
+    '["' + 'é'.repeat(32) + '"]',
+    '["\\u0000"]',
+  ])('refuses missing or invalid explicit login enrollment (%s)', (value) => {
+    vi.stubEnv('STUDIO_DATABASE_ALLOWED_LOGINS', value);
+    vi.stubEnv('SKIP_ENV_VALIDATION', 'true');
+    expect(() => readMigrationAllowedLogins()).toThrow();
+  });
+
+  it('preserves arbitrary quoted login names from the explicit JSON enrollment', () => {
+    const logins = ['operator-name', 'runtime"$studio_roles$'];
+    vi.stubEnv('STUDIO_DATABASE_ALLOWED_LOGINS', JSON.stringify(logins));
+    expect(readMigrationAllowedLogins()).toEqual(logins);
+  });
+
   it('requires a database even when application validation is disabled', () => {
     vi.stubEnv('SKIP_ENV_VALIDATION', 'true');
     vi.stubEnv('DATABASE_URL', '');
