@@ -1,15 +1,23 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 
+import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
+
+import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
 import { CategoricalBinStageEditor } from './CategoricalBinStageEditor.tsx';
-import { CensusEditorStoryHost } from './censusEditorStoryHost.tsx';
 
 const meta = {
   title: 'Protocol Builder/Stage editors/Categorical Bin',
-  component: CensusEditorStoryHost,
+  component: StageEditorStoryHost,
   args: {
     stageId: 'categorical-bin-1',
-    editor: CategoricalBinStageEditor,
+    renderEditor: ({ controller, actions }) => (
+      <CategoricalBinStageEditor
+        controller={controller}
+        stageType="CategoricalBin"
+        actions={actions}
+      />
+    ),
   },
   parameters: {
     layout: 'fullscreen',
@@ -21,7 +29,7 @@ const meta = {
     },
   },
   tags: ['autodocs'],
-} satisfies Meta<typeof CensusEditorStoryHost>;
+} satisfies Meta<typeof StageEditorStoryHost>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -30,17 +38,21 @@ type Story = StoryObj<typeof meta>;
 export const Editing: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const name = canvas.getByRole('textbox', { name: 'Stage name' });
+    await awaitPassiveEffects();
 
+    const name = canvas.getByRole('textbox', { name: 'Stage name' });
     await userEvent.clear(name);
     await userEvent.type(name, 'Kinds of contact');
     await userEvent.click(canvas.getByRole('button', { name: 'Save stage' }));
 
-    await waitFor(() =>
-      expect(
+    await waitFor(async () => {
+      await expect(
         canvas.getByRole('status', { name: 'Save status' }),
-      ).toHaveTextContent('Kinds of contact'),
-    );
+      ).toHaveTextContent('Saved “Kinds of contact”.');
+    });
+    await expect(
+      canvas.getByRole('region', { name: 'What the host was asked to commit' }),
+    ).toHaveTextContent('"label": "Kinds of contact"');
   },
 };
 

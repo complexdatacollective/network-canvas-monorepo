@@ -1,15 +1,23 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 
-import { CensusEditorStoryHost } from './censusEditorStoryHost.tsx';
+import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
+
+import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
 import { OneToManyDyadCensusStageEditor } from './OneToManyDyadCensusStageEditor.tsx';
 
 const meta = {
   title: 'Protocol Builder/Stage editors/One to Many Dyad Census',
-  component: CensusEditorStoryHost,
+  component: StageEditorStoryHost,
   args: {
     stageId: 'one-to-many-dyad-census-1',
-    editor: OneToManyDyadCensusStageEditor,
+    renderEditor: ({ controller, actions }) => (
+      <OneToManyDyadCensusStageEditor
+        controller={controller}
+        stageType="OneToManyDyadCensus"
+        actions={actions}
+      />
+    ),
   },
   parameters: {
     layout: 'fullscreen',
@@ -21,7 +29,7 @@ const meta = {
     },
   },
   tags: ['autodocs'],
-} satisfies Meta<typeof CensusEditorStoryHost>;
+} satisfies Meta<typeof StageEditorStoryHost>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -30,17 +38,21 @@ type Story = StoryObj<typeof meta>;
 export const Editing: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const name = canvas.getByRole('textbox', { name: 'Stage name' });
+    await awaitPassiveEffects();
 
+    const name = canvas.getByRole('textbox', { name: 'Stage name' });
     await userEvent.clear(name);
     await userEvent.type(name, 'Who each person knows');
     await userEvent.click(canvas.getByRole('button', { name: 'Save stage' }));
 
-    await waitFor(() =>
-      expect(
+    await waitFor(async () => {
+      await expect(
         canvas.getByRole('status', { name: 'Save status' }),
-      ).toHaveTextContent('Who each person knows'),
-    );
+      ).toHaveTextContent('Saved “Who each person knows”.');
+    });
+    await expect(
+      canvas.getByRole('region', { name: 'What the host was asked to commit' }),
+    ).toHaveTextContent('"label": "Who each person knows"');
   },
 };
 

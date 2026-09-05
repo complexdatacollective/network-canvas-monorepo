@@ -1,15 +1,23 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 
-import { CensusEditorStoryHost } from './censusEditorStoryHost.tsx';
+import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
+
+import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
 import { OrdinalBinStageEditor } from './OrdinalBinStageEditor.tsx';
 
 const meta = {
   title: 'Protocol Builder/Stage editors/Ordinal Bin',
-  component: CensusEditorStoryHost,
+  component: StageEditorStoryHost,
   args: {
     stageId: 'ordinal-bin-1',
-    editor: OrdinalBinStageEditor,
+    renderEditor: ({ controller, actions }) => (
+      <OrdinalBinStageEditor
+        controller={controller}
+        stageType="OrdinalBin"
+        actions={actions}
+      />
+    ),
   },
   parameters: {
     layout: 'fullscreen',
@@ -21,7 +29,7 @@ const meta = {
     },
   },
   tags: ['autodocs'],
-} satisfies Meta<typeof CensusEditorStoryHost>;
+} satisfies Meta<typeof StageEditorStoryHost>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -30,17 +38,21 @@ type Story = StoryObj<typeof meta>;
 export const Editing: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const name = canvas.getByRole('textbox', { name: 'Stage name' });
+    await awaitPassiveEffects();
 
+    const name = canvas.getByRole('textbox', { name: 'Stage name' });
     await userEvent.clear(name);
     await userEvent.type(name, 'How often you see people');
     await userEvent.click(canvas.getByRole('button', { name: 'Save stage' }));
 
-    await waitFor(() =>
-      expect(
+    await waitFor(async () => {
+      await expect(
         canvas.getByRole('status', { name: 'Save status' }),
-      ).toHaveTextContent('How often you see people'),
-    );
+      ).toHaveTextContent('Saved “How often you see people”.');
+    });
+    await expect(
+      canvas.getByRole('region', { name: 'What the host was asked to commit' }),
+    ).toHaveTextContent('"label": "How often you see people"');
   },
 };
 
