@@ -18,6 +18,7 @@ import {
   type StageSecretRequest,
   type StageUploadRequest,
 } from './gateway.ts';
+import { callGateway, resultChannelGateway } from './gatewayCall.ts';
 import {
   collectStageResourceReferences,
   findDanglingResourceReferences,
@@ -129,7 +130,11 @@ export function createStagedResourceTracker(
     promoted: boolean;
   }>;
   const entries = new Map<string, Entry>();
-  const host = options.gateway;
+  // Where the host's adapter enters the package, and so the one place its
+  // contract is made true: everything below — and every editor handed the
+  // gateway this returns — is written for a result, and an adapter that throws
+  // instead would escape whichever call it was in rather than be reported.
+  const host = resultChannelGateway(options.gateway);
   /** Ids of a promotion that is in flight; they cannot be discarded. */
   const promoting = new Set<string>();
   /** True once the session cancelled: nothing staged after it is kept. */
@@ -559,26 +564,32 @@ export async function finishStagedResources(
   });
 
   let applyError: Readonly<{ error: unknown }> | undefined;
-  const result = await options.gateway.promote({
-    id: options.promotionId,
-    resourceIds: plan.promote,
-    ...(secretHandles.length === 0 ? {} : { secretHandles }),
-    applyManifest: async (manifest: ManifestApplyRequest) => {
-      try {
-        await options.applyStage(manifest);
-        return Object.freeze({ status: 'applied' as const });
-      } catch (error: unknown) {
-        applyError = Object.freeze({ error });
-        return Object.freeze({
-          status: 'failed' as const,
-          retryable: true,
-          // Deliberately generic: the caller's own error is reported by the
-          // caller, and this message reaches the gateway's failure path.
-          message: 'the stage could not be saved with its resources',
-        });
-      }
-    },
-  });
+  // A gateway that throws is reported as a rolled-back promotion rather than
+  // as an exception, because that is the outcome the caller can act on: the
+  // promotion id makes finishing again safe, and a gateway that had in fact
+  // committed answers the repeat with the same promotion.
+  const result = await callGateway(() =>
+    options.gateway.promote({
+      id: options.promotionId,
+      resourceIds: plan.promote,
+      ...(secretHandles.length === 0 ? {} : { secretHandles }),
+      applyManifest: async (manifest: ManifestApplyRequest) => {
+        try {
+          await options.applyStage(manifest);
+          return Object.freeze({ status: 'applied' as const });
+        } catch (error: unknown) {
+          applyError = Object.freeze({ error });
+          return Object.freeze({
+            status: 'failed' as const,
+            retryable: true,
+            // Deliberately generic: the caller's own error is reported by the
+            // caller, and this message reaches the gateway's failure path.
+            message: 'the stage could not be saved with its resources',
+          });
+        }
+      },
+    }),
+  );
 
   if (applyError !== undefined) {
     return Object.freeze({
@@ -724,7 +735,9 @@ async function unreadableResourceIssues(
   const issues: DanglingResourceReference[] = [];
 
   for (const resourceId of promoting) {
-    const inspected = await options.gateway.inspect(resourceId);
+    const inspected = await callGateway(() =>
+      options.gateway.inspect(resourceId),
+    );
     if (inspected.status === 'ok') continue;
     for (const reference of references) {
       if (reference.resourceId !== resourceId) continue;
@@ -745,6 +758,11 @@ async function unreadableResourceIssues(
  * Drops each abandoned resource, and says which ones the host would not drop:
  * a failure here leaves the resource staged, and a finish that reported only
  * what it managed to discard would look like a clean one.
+ *
+ * This runs after the stage and its resources have already committed, so a
+ * host that throws is reported as a refused discard like any other. Letting
+ * the exception out would turn a save that succeeded into a save the
+ * researcher is told failed, over bytes nobody wanted.
  */
 async function discardEach(
   gateway: ProtocolBuilderResourceGateway,
@@ -758,7 +776,7 @@ async function discardEach(
   const discarded: string[] = [];
   const discardFailures: StagedResourceDiscardFailure[] = [];
   for (const resourceId of resourceIds) {
-    const result = await gateway.discardStaged(resourceId);
+    const result = await callGateway(() => gateway.discardStaged(resourceId));
     if (result.status === 'ok') discarded.push(resourceId);
     else
       discardFailures.push(

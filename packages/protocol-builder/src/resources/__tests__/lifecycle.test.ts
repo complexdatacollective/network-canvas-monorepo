@@ -1087,3 +1087,149 @@ describe('draft resource validation', () => {
     ).toEqual([schemaIssue, elsewhere]);
   });
 });
+
+/**
+ * A host that throws instead of reporting.
+ *
+ * The port says every failure arrives as a result, and an adapter that breaks
+ * that promise is the one case nothing downstream is written for: the throw
+ * leaves whatever channel it was in — a `void`-ed promise, a control's attempt,
+ * a finish that has already committed — carrying no answer at all. Thrown
+ * synchronously, because that is the shape a `.catch()` on the call cannot see.
+ */
+function throwingHost(
+  host: ProtocolBuilderResourceGateway,
+  throwsOn: ReadonlySet<keyof ProtocolBuilderResourceGateway>,
+): ProtocolBuilderResourceGateway {
+  const brokenIf = <T>(
+    method: keyof ProtocolBuilderResourceGateway,
+    forward: () => Promise<ResourceResult<T>>,
+  ): Promise<ResourceResult<T>> => {
+    if (throwsOn.has(method)) throw new Error('the host adapter threw');
+    return forward();
+  };
+  return {
+    list: (options) => brokenIf('list', () => host.list(options)),
+    stageUpload: (request) =>
+      brokenIf('stageUpload', () => host.stageUpload(request)),
+    stageSecret: (request) =>
+      brokenIf('stageSecret', () => host.stageSecret(request)),
+    resolvePreview: (resourceId) =>
+      brokenIf('resolvePreview', () => host.resolvePreview(resourceId)),
+    inspect: (resourceId) =>
+      brokenIf('inspect', () => host.inspect(resourceId)),
+    download: (resourceId) =>
+      brokenIf('download', () => host.download(resourceId)),
+    discardStaged: (resourceId) =>
+      brokenIf('discardStaged', () => host.discardStaged(resourceId)),
+    discardAllStaged: () =>
+      brokenIf('discardAllStaged', () => host.discardAllStaged()),
+    promote: (request) => brokenIf('promote', () => host.promote(request)),
+  };
+}
+
+const UNREACHABLE = 'The resource could not be reached. Try again in a moment.';
+
+describe('a host that throws instead of reporting', () => {
+  it('answers a forwarded read on the result channel', async () => {
+    const host = new InMemoryResourceGateway();
+    const image = await stageImage(host);
+    const { tracker } = createTracker(throwingHost(host, new Set(['inspect'])));
+
+    // Every editor surface reads its resource through this gateway, and each
+    // one is written for a result. A throw arriving instead escapes the call
+    // that made it and leaves the surface waiting for an answer forever.
+    const failure = expectFailure(await tracker.gateway.inspect(image.id));
+
+    expect(failure).toMatchObject({
+      reason: 'unavailable',
+      message: UNREACHABLE,
+      retryable: true,
+    });
+  });
+
+  it('answers a cancel on the result channel', async () => {
+    const host = new InMemoryResourceGateway();
+    const { tracker } = createTracker(
+      throwingHost(host, new Set(['discardAllStaged'])),
+    );
+    await stageImage(tracker.gateway);
+
+    const failure = expectFailure(await tracker.cancel());
+
+    expect(failure).toMatchObject({ reason: 'unavailable', retryable: true });
+  });
+
+  it('keeps a committed finish committed when the cleanup discard throws', async () => {
+    const host = new InMemoryResourceGateway();
+    const promoted = await stageImage(host, 'request-promoted');
+    const abandoned = await stageImage(host, 'request-abandoned');
+
+    // The promotion and the stage apply have already succeeded here: the only
+    // thing left is dropping what the draft walked away from, and a throw from
+    // it would report the saved stage as a failed save.
+    const outcome = await finishStagedResources({
+      gateway: throwingHost(host, new Set(['discardStaged'])),
+      promotionId: 'promotion-1',
+      stageDocument: informationStage(promoted.id),
+      stageIndex: 0,
+      staged: [promoted, abandoned],
+      secretHandle: () => undefined,
+      applyStage: () => Promise.resolve(),
+    });
+
+    expect(outcome).toMatchObject({
+      status: 'finished',
+      discarded: [],
+      discardFailures: [
+        { resourceId: abandoned.id, failure: { reason: 'unavailable' } },
+      ],
+    });
+  });
+
+  it('refuses to promote a resource whose readability check throws', async () => {
+    const host = new InMemoryResourceGateway();
+    const image = await stageImage(host);
+
+    const outcome = await finishStagedResources({
+      gateway: throwingHost(host, new Set(['inspect'])),
+      promotionId: 'promotion-1',
+      stageDocument: informationStage(image.id),
+      stageIndex: 0,
+      staged: [image],
+      secretHandle: () => undefined,
+      applyStage: () => Promise.resolve(),
+    });
+
+    // A host that cannot answer for the resource has not said it is usable,
+    // and this is the last moment before the protocol commits to it.
+    expect(outcome).toMatchObject({
+      status: 'unreadable-resources',
+      issues: [{ resourceId: image.id }],
+    });
+  });
+
+  it('reports a promotion that throws as a retryable promotion failure', async () => {
+    const host = new InMemoryResourceGateway();
+    const image = await stageImage(host);
+    const applyStage = vi.fn(() => Promise.resolve());
+
+    const outcome = await finishStagedResources({
+      gateway: throwingHost(host, new Set(['promote'])),
+      promotionId: 'promotion-1',
+      stageDocument: informationStage(image.id),
+      stageIndex: 0,
+      staged: [image],
+      secretHandle: () => undefined,
+      applyStage,
+    });
+
+    // Retryable because the promotion id is what makes finishing again safe:
+    // a gateway that did commit answers the repeat with the same promotion.
+    expect(outcome).toMatchObject({
+      status: 'promotion-failed',
+      failure: { reason: 'unavailable', retryable: true },
+    });
+    expect(applyStage).not.toHaveBeenCalled();
+  });
+});

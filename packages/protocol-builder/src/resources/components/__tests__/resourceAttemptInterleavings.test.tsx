@@ -8,6 +8,7 @@ import {
   resourceFailure,
   RESOURCE_UPLOAD_MAX_BYTE_LENGTH,
   type ProtocolBuilderResourceGateway,
+  type ResourceContent,
   type ResourceDescriptor,
   type ResourcePreview as ResolvedPreview,
   type ResourceResult,
@@ -59,6 +60,9 @@ const OVERSIZE_FILE =
 
 const UNSUPPORTED_IMAGE_FILE =
   'That file cannot be imported here. Supported file types are: .jpg, .jpeg, .gif, .png, .svg.';
+
+/** What a host that throws rather than reporting is told to the researcher as. */
+const UNREACHABLE = 'The resource could not be reached. Try again in a moment.';
 
 const bytesOf = (text: string): Uint8Array => new TextEncoder().encode(text);
 
@@ -856,6 +860,60 @@ const INTERLEAVINGS: readonly Interleaving[] = [
       expect(
         screen.getByRole('button', { name: 'Select an image' }),
       ).toBeEnabled();
+    },
+  },
+  {
+    surface: 'picker',
+    state: 'a call in flight',
+    input: 'the host throws instead of reporting',
+    rule: 'the throw is told as a failure and the control stops waiting',
+    check: async () => {
+      const user = userEvent.setup();
+      const inner = new InMemoryResourceGateway();
+      // Thrown synchronously, which is the shape a `.catch()` chained onto the
+      // call itself cannot see: the throw happens before there is a promise to
+      // chain onto.
+      const gateway = overrideGateway(inner, {
+        download: (): Promise<ResourceResult<ResourceContent>> => {
+          throw new Error('the host adapter threw');
+        },
+      });
+      renderResourceEditor({ gateway, children: imageField() });
+
+      const input = await openBrowser(user, 'Select an image');
+      await user.upload(
+        input,
+        new File(['fake-png-bytes'], 'skyline.png', { type: 'image/png' }),
+      );
+      await user.click(
+        await screen.findByRole('button', { name: 'Download this resource' }),
+      );
+
+      expect(await screen.findByText(UNREACHABLE)).toBeVisible();
+      // Still waiting would be a control the researcher can never use again,
+      // with nothing on screen saying why.
+      expect(
+        screen.getByRole('button', { name: 'Download this resource' }),
+      ).toBeEnabled();
+    },
+  },
+  {
+    surface: 'preview',
+    state: 'resolving its first lease',
+    input: 'the host throws instead of reporting',
+    rule: 'the throw is told as a failure rather than left as empty space',
+    check: async () => {
+      const inner = new InMemoryResourceGateway();
+      const image = await stageImage(inner, 'request-throwing', 'thrown.png');
+      const gateway = overrideGateway(inner, {
+        resolvePreview: (): Promise<ResourceResult<ResolvedPreview>> => {
+          throw new Error('the host adapter threw');
+        },
+      });
+
+      renderPreview(gateway, image, 'Thrown image');
+
+      expect(await screen.findByText(UNREACHABLE)).toBeVisible();
     },
   },
 ];

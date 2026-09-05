@@ -1,19 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import {
-  resourceFailure,
-  type ResourceGatewayFailure,
-  type ResourceResult,
-} from '../gateway.ts';
-
-/**
- * What an adapter that rejects rather than reporting is turned into. The port
- * says failures arrive as results, so a rejection is the adapter breaking its
- * own contract — and the researcher still has to be told something true, in
- * their own terms, rather than being shown a host's exception.
- */
-const UNREACHABLE_MESSAGE =
-  'The resource could not be reached. Try again in a moment.';
+import type { ResourceGatewayFailure, ResourceResult } from '../gateway.ts';
+import { callGateway } from '../gatewayCall.ts';
 
 /**
  * A place in the order of calls, taken before the work that leads to one
@@ -108,11 +96,12 @@ export function useResourceAttempt(): ResourceAttempt {
       setState({ busy: true });
 
       const settle = async () => {
-        const result = await operation().catch(() =>
-          resourceFailure<T>('unavailable', UNREACHABLE_MESSAGE, {
-            retryable: true,
-          }),
-        );
+        // The call is made inside the helper rather than here: a gateway that
+        // throws synchronously throws before there is a promise to attach a
+        // `catch` to, and the exception would escape into a settling nothing
+        // observes — leaving the control busy, with no failure and no retry,
+        // for as long as the editor is open.
+        const result = await callGateway(operation);
         // A result for a superseded call, or for a component that has since
         // gone away, decides nothing — but a successful one may have left
         // something at the host, and this is the last place that knows it

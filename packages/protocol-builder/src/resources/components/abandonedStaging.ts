@@ -2,6 +2,7 @@ import type {
   ProtocolBuilderResourceGateway,
   ResourceDescriptor,
 } from '../gateway.ts';
+import { callGateway } from '../gatewayCall.ts';
 
 /**
  * Drops a resource that was staged for a choice nobody is waiting for any
@@ -22,10 +23,15 @@ import type {
  * Nothing is said on screen, because the choice this belonged to has already
  * been replaced or abandoned and a message about it could only be about
  * something the researcher has moved on from.
+ *
+ * Nothing escapes either. This runs from inside an attempt's own settling,
+ * which nobody observes, so an adapter throwing here — synchronously or as a
+ * rejection — would take the rest of that settling with it and surface as an
+ * exception about a choice the researcher has already left behind.
  */
 export function discardAbandonedStaging(
   gateway: ProtocolBuilderResourceGateway,
   descriptor: ResourceDescriptor,
 ): void {
-  void gateway.discardStaged(descriptor.id);
+  void callGateway(() => gateway.discardStaged(descriptor.id));
 }

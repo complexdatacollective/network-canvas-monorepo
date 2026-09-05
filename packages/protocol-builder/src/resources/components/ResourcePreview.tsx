@@ -5,6 +5,7 @@ import type {
   ResourceGatewayFailure,
   ResourcePreview as ResolvedPreview,
 } from '../gateway.ts';
+import { callGateway } from '../gatewayCall.ts';
 import ResourceFailureNotice from './ResourceFailureNotice.tsx';
 import type { PreviewableResourceKind } from './resourceKinds.ts';
 
@@ -89,7 +90,9 @@ export default function ResourcePreview({
     setFailure(undefined);
 
     const load = async () => {
-      const result = await gateway.resolvePreview(resourceId);
+      const result = await callGateway(() =>
+        gateway.resolvePreview(resourceId),
+      );
       if (released) {
         if (result.status === 'ok') result.data.release();
         return;
