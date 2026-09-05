@@ -35,14 +35,38 @@ import Paragraph from '../typography/Paragraph';
  * cannot share a form because their assertions point in opposite directions:
  * a miss there names a module a false offender, loudly, whereas a miss here
  * would let this test pass while the component really had become client-only.
+ *
+ * The skipping is a scan rather than a regex because expressing it as one
+ * nests a quantifier inside a quantifier, which backtracks exponentially on a
+ * file of repeated `*/ /*` (CodeQL `js/redos`). This consumes at least two
+ * characters per step and never backtracks.
  */
-const USE_CLIENT_DIRECTIVE =
-  /^(?:\s*(?:\/\/[^\n]*\n|\/\*[\s\S]*?\*\/))*\s*(['"])use client\1;?/;
+const stripLeadingComments = (source: string): string => {
+  let rest = source.trimStart();
+
+  for (;;) {
+    const closing = rest.startsWith('//')
+      ? { index: rest.indexOf('\n'), width: 1 }
+      : rest.startsWith('/*')
+        ? { index: rest.indexOf('*/', 2), width: 2 }
+        : null;
+
+    if (!closing) return rest;
+
+    // An unterminated comment swallows the rest of the file, leaving nothing
+    // for the directive to be found in — which is the honest answer for a
+    // module that would not parse.
+    rest =
+      closing.index === -1
+        ? ''
+        : rest.slice(closing.index + closing.width).trimStart();
+  }
+};
 
 const sourceHasUseClientDirective = (sourceFile: string) => {
   const source = readFileSync(new URL(sourceFile, import.meta.url), 'utf8');
 
-  return USE_CLIENT_DIRECTIVE.test(source);
+  return /^(['"])use client\1;?/.test(stripLeadingComments(source));
 };
 
 const headingLevels = [
