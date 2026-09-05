@@ -1,3 +1,4 @@
+import { escapeLiteral } from 'pg';
 import type pg from 'pg';
 
 import { SCHEMA_LOCK_KEY, stampFingerprint } from '../schema.ts';
@@ -11,6 +12,21 @@ type AppliedMigration = {
 };
 
 const HISTORY_TABLE = 'studio_migrations.history';
+
+async function executeAtomicSql(
+  client: pg.PoolClient,
+  sql: string,
+): Promise<void> {
+  if (!sql.trim()) return;
+  // PostgreSQL's atomic PL/pgSQL execution context rejects transaction
+  // control, including commands inside nested DO/CALL statements. Quoting
+  // both literals with pg keeps dollar-quoted function bodies and comments
+  // intact without a second SQL parser. A raw client.query(sql) would let an
+  // authored COMMIT release our lock and escape the rollback guarantee.
+  await client.query(
+    `DO ${escapeLiteral(`BEGIN EXECUTE ${escapeLiteral(sql)}; END;`)}`,
+  );
+}
 
 async function hasPublicObjects(client: pg.PoolClient): Promise<boolean> {
   const result = await client.query<{ present: boolean }>(`
@@ -128,8 +144,8 @@ export async function migrateDatabase(
       if (index < applied.length) continue;
       // Sidecars are the immutable copy from THIS migration, never imports
       // from today's source. Their order preserves narrow security revocations.
-      await client.query(migration.sql);
-      await client.query(migration.sidecars);
+      await executeAtomicSql(client, migration.sql);
+      await executeAtomicSql(client, migration.sidecars);
       await stampFingerprint(client, migration.manifest.fingerprint);
       await client.query(
         `INSERT INTO ${HISTORY_TABLE} (position, id, checksum, fingerprint) VALUES ($1, $2, $3, $4)`,

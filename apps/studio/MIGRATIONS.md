@@ -14,6 +14,8 @@ database extensions in their own schema. The database login owns Studio's
 objects and needs `CREATEROLE` for the first migration. On services that do not
 allow that privilege, an administrator must provision the two runtime roles
 and grant the login permission to assume them, as described in the README.
+The migration refuses existing runtime roles with LOGIN, SUPERUSER, or
+BYPASSRLS rather than granting application access to an unsafe identity.
 
 For an existing deployment:
 
@@ -52,6 +54,9 @@ Concurrent invocations serialize behind the existing Studio advisory lock.
 All pending migrations, their sidecars, the migration history, and the new
 fingerprint commit in one transaction. SQL failure rolls the transaction back
 to the previous schema and data; it does not stamp the failed version.
+PostgreSQL executes migration payloads in an atomic procedural context, so
+authored transaction-control commands cannot commit or roll back around the
+runner's transaction and advisory lock.
 
 The runner rejects missing, reordered, edited, or newer migration history and
 a fingerprint inconsistent with that history. Historical artifacts are
