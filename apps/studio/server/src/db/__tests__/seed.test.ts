@@ -441,7 +441,7 @@ describe.skipIf(!db)('the seeded dataset', () => {
          where d.suppressed_at is not null
            and not exists (
              select 1 from participant_contact_optouts o
-             where o.team_id = d.team_id and o.channel = d.channel
+             where o.blind_index_key_id = d.blind_index_key_id and o.channel = d.channel
                and o.recipient_blind_index = d.recipient_blind_index
                and o.opted_out_at <= d.created_at)`,
       ),
@@ -459,7 +459,7 @@ describe.skipIf(!db)('the seeded dataset', () => {
         pool,
         `select count(*)::int as n from message_deliveries d
          join participant_contact_optouts o
-           on o.team_id = d.team_id and o.channel = d.channel
+           on o.blind_index_key_id = d.blind_index_key_id and o.channel = d.channel
           and o.recipient_blind_index = d.recipient_blind_index
          where o.opted_out_at <= d.created_at and d.suppressed_at is null`,
       ),
@@ -469,7 +469,7 @@ describe.skipIf(!db)('the seeded dataset', () => {
         pool,
         `select count(*)::int as n from message_deliveries d
          join participant_contact_optouts o
-           on o.team_id = d.team_id and o.channel = d.channel
+           on o.blind_index_key_id = d.blind_index_key_id and o.channel = d.channel
           and o.recipient_blind_index = d.recipient_blind_index
          where o.opted_out_at > d.created_at and d.suppressed_at is null`,
       ),

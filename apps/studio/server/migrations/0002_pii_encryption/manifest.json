@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "id": "0002_pii_encryption",
+  "previous": "0001_initial_studio_schema",
+  "fingerprint": "1da550d8f6fe27991609c86a20890993485e88c64a649498aadd975d76a4a886",
+  "snapshotHash": "00361e76b573eed75ce2f715c576cbda011b34320b16fc0d61107a407a1eddff",
+  "sqlHash": "7ed8fcd2654c5f1e3f82c2bc916c0fde338c81d2dae1865bdfcc7d541db9d659",
+  "sidecarsHash": "70cce1f5b0706e2dd52a4de052b9e44c735ba1d385749b880d554dbad1341de4"
+}

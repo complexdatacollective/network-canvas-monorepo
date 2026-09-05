@@ -60,6 +60,7 @@ describe.skipIf(!db)('webhook schema', () => {
     event_types: ['interview.completed'],
     secret_ciphertext: randomBytes(48),
     secret_key_id: 'integration-key-1',
+    secret_algorithm: 'aes-256-gcm.v1',
     created_by_user_id: 'user-1',
     ...overrides,
   });
@@ -346,8 +347,8 @@ describe.skipIf(!db)('webhook schema', () => {
       await expect(
         tenantA.query(
           `INSERT INTO webhook_subscriptions
-             (id, team_id, url, event_types, secret_ciphertext, secret_key_id, created_by_user_id)
-           VALUES ($1, $2, 'https://hooks.example.org/x', ARRAY['interview.completed'], $3, 'k', 'u')`,
+             (id, team_id, url, event_types, secret_ciphertext, secret_key_id, secret_algorithm, created_by_user_id)
+           VALUES ($1, $2, 'https://hooks.example.org/x', ARRAY['interview.completed'], $3, 'k', 'aes-256-gcm.v1', 'u')`,
           [randomUUID(), TEAM_B, randomBytes(32)],
         ),
       ).rejects.toMatchObject({ code: '42501' });

@@ -187,6 +187,8 @@ const TeamMemberRoleChangeFailedV1EventSchema =
 export const DENIED_AUDIT_OPERATIONS = [
   'audit.read',
   'studies.create',
+  'participants.pii.read',
+  'participants.pii.write',
   'team.acceptInvitation',
   'team.cancelInvitation',
   'team.createInvitation',
@@ -309,6 +311,98 @@ const StudyCreationDeniedV1EventSchema = CommonStudyV1EventSchema.extend({
   }),
 }).strict();
 
+const PiiColumnSchema = z.enum([
+  'email_ciphertext',
+  'phone_ciphertext',
+  'name_ciphertext',
+  'attributes_ciphertext',
+]);
+const ParticipantPiiV1EventSchema = CommonUserEventSchema.extend({
+  eventVersion: z.literal(1),
+  category: z.literal('participant_data'),
+  outcome: z.literal('succeeded'),
+  subjectType: z.null(),
+  subjectId: z.null(),
+  subjectLabel: z.null(),
+  resourceType: z.literal('participant'),
+  resourceId: IdentifierSchema,
+  // The non-PII participant_code, never a decrypted name or address.
+  resourceLabel: LabelSchema,
+  details: z.strictObject({
+    studyId: IdentifierSchema,
+    columns: z.array(PiiColumnSchema).min(1).max(4),
+  }),
+}).strict();
+const ParticipantPiiReadV1EventSchema = ParticipantPiiV1EventSchema.extend({
+  eventType: z.literal('participant.pii.read'),
+}).strict();
+const ParticipantPiiUpdatedV1EventSchema = ParticipantPiiV1EventSchema.extend({
+  eventType: z.literal('participant.pii.updated'),
+}).strict();
+const ParticipantPiiLookupV1EventSchema = CommonUserEventSchema.extend({
+  eventVersion: z.literal(1),
+  eventType: z.literal('participant.pii.lookup'),
+  category: z.literal('participant_data'),
+  outcome: z.literal('succeeded'),
+  subjectType: z.null(),
+  subjectId: z.null(),
+  subjectLabel: z.null(),
+  resourceType: z.literal('study'),
+  resourceId: IdentifierSchema,
+  resourceLabel: z.null(),
+  details: z.strictObject({
+    kind: z.enum(['email', 'phone']),
+    resultCount: z.number().int().min(0).max(100),
+  }),
+}).strict();
+const ParticipantPiiDeniedV1EventSchema = CommonUserEventSchema.extend({
+  eventVersion: z.literal(1),
+  eventType: z.literal('participant.pii.denied'),
+  category: z.literal('participant_data'),
+  outcome: z.literal('denied'),
+  subjectType: z.null(),
+  subjectId: z.null(),
+  subjectLabel: z.null(),
+  resourceType: z.null(),
+  resourceId: z.null(),
+  resourceLabel: z.null(),
+  details: z.strictObject({
+    operation: z.enum(['read', 'write']),
+    reason: z.literal('insufficient_permission'),
+  }),
+}).strict();
+const ParticipantPiiMaintenanceV1EventSchema =
+  ParticipantPiiV1EventSchema.extend({
+    actorKind: z.literal('system'),
+    actorId: z.null(),
+    actorLabel: z.literal('Encryption maintenance'),
+    eventType: z.enum([
+      'participant.pii.rotation_read',
+      'participant.pii.rotated',
+    ]),
+  }).strict();
+const WebhookCredentialV1EventSchema = CommonUserEventSchema.extend({
+  actorKind: z.enum(['user', 'system']),
+  actorId: IdentifierSchema.nullable(),
+  eventVersion: z.literal(1),
+  category: z.literal('integration'),
+  outcome: z.literal('succeeded'),
+  eventType: z.enum([
+    'webhook.secret.read',
+    'webhook.secret.updated',
+    'webhook.secret.rotated',
+  ]),
+  subjectType: z.null(),
+  subjectId: z.null(),
+  subjectLabel: z.null(),
+  resourceType: z.literal('webhook_subscription'),
+  resourceId: IdentifierSchema,
+  resourceLabel: z.null(),
+  details: z.strictObject({
+    purpose: z.enum(['configuration', 'delivery', 'rotation']),
+  }),
+}).strict();
+
 // A plain union is intentional: eventType alone cannot remain the
 // discriminator once two retained versions of the same immutable event exist.
 export const AuditEventInputSchema = z.union([
@@ -330,6 +424,12 @@ export const AuditEventInputSchema = z.union([
   ProtocolDraftCommittedV1EventSchema,
   StudyCreatedV1EventSchema,
   StudyCreationDeniedV1EventSchema,
+  ParticipantPiiReadV1EventSchema,
+  ParticipantPiiUpdatedV1EventSchema,
+  ParticipantPiiLookupV1EventSchema,
+  ParticipantPiiDeniedV1EventSchema,
+  ParticipantPiiMaintenanceV1EventSchema,
+  WebhookCredentialV1EventSchema,
 ]);
 
 export type AuditEventInput = z.infer<typeof AuditEventInputSchema>;
@@ -399,7 +499,154 @@ const FIXTURE_STUDY_V1_COMMON = {
   subjectLabel: null,
 } as const;
 
+const FIXTURE_PII_COMMON = {
+  ...FIXTURE_USER_COMMON,
+  eventVersion: 1,
+  category: 'participant_data',
+  outcome: 'succeeded',
+  subjectType: null,
+  subjectId: null,
+  subjectLabel: null,
+  resourceType: 'participant',
+  resourceId: 'fixture-participant',
+  resourceLabel: 'P-001',
+  details: { studyId: 'fixture-study', columns: ['email_ciphertext'] },
+} as const;
+const FIXTURE_WEBHOOK_COMMON = {
+  ...FIXTURE_USER_COMMON,
+  eventVersion: 1,
+  category: 'integration',
+  outcome: 'succeeded',
+  subjectType: null,
+  subjectId: null,
+  subjectLabel: null,
+  resourceType: 'webhook_subscription',
+  resourceId: 'fixture-subscription',
+  resourceLabel: null,
+  details: { purpose: 'configuration' },
+} as const;
+
 export const AUDIT_EVENT_REGISTRY = {
+  'participant.pii.lookup@1': {
+    inputSchema: ParticipantPiiLookupV1EventSchema,
+    title: 'Participant contact lookup',
+    detailFields: ['kind', 'resultCount'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_USER_COMMON,
+      eventVersion: 1,
+      eventType: 'participant.pii.lookup',
+      category: 'participant_data',
+      outcome: 'succeeded',
+      subjectType: null,
+      subjectId: null,
+      subjectLabel: null,
+      resourceType: 'study',
+      resourceId: 'fixture-study',
+      resourceLabel: null,
+      details: { kind: 'email', resultCount: 1 },
+    },
+  },
+  'participant.pii.read@1': {
+    inputSchema: ParticipantPiiReadV1EventSchema,
+    title: 'Participant contact details viewed',
+    detailFields: ['studyId', 'columns'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_PII_COMMON,
+      eventType: 'participant.pii.read',
+      details: { studyId: 'fixture-study', columns: ['email_ciphertext'] },
+    },
+  },
+  'participant.pii.updated@1': {
+    inputSchema: ParticipantPiiUpdatedV1EventSchema,
+    title: 'Participant contact details updated',
+    detailFields: ['studyId', 'columns'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_PII_COMMON,
+      eventType: 'participant.pii.updated',
+      details: { studyId: 'fixture-study', columns: ['email_ciphertext'] },
+    },
+  },
+  'participant.pii.denied@1': {
+    inputSchema: ParticipantPiiDeniedV1EventSchema,
+    title: 'Participant contact access denied',
+    detailFields: ['operation', 'reason'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_USER_COMMON,
+      eventVersion: 1,
+      eventType: 'participant.pii.denied',
+      category: 'participant_data',
+      outcome: 'denied',
+      subjectType: null,
+      subjectId: null,
+      subjectLabel: null,
+      resourceType: null,
+      resourceId: null,
+      resourceLabel: null,
+      details: { operation: 'read', reason: 'insufficient_permission' },
+    },
+  },
+  'participant.pii.rotation_read@1': {
+    inputSchema: ParticipantPiiMaintenanceV1EventSchema,
+    title: 'Participant encryption maintenance read',
+    detailFields: ['studyId', 'columns'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_PII_COMMON,
+      eventType: 'participant.pii.rotation_read',
+      actorKind: 'system',
+      actorId: null,
+      actorLabel: 'Encryption maintenance',
+      details: { studyId: 'fixture-study', columns: ['email_ciphertext'] },
+    },
+  },
+  'participant.pii.rotated@1': {
+    inputSchema: ParticipantPiiMaintenanceV1EventSchema,
+    title: 'Participant encryption key rotated',
+    detailFields: ['studyId', 'columns'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_PII_COMMON,
+      eventType: 'participant.pii.rotated',
+      actorKind: 'system',
+      actorId: null,
+      actorLabel: 'Encryption maintenance',
+      details: { studyId: 'fixture-study', columns: ['email_ciphertext'] },
+    },
+  },
+  'webhook.secret.read@1': {
+    inputSchema: WebhookCredentialV1EventSchema,
+    title: 'Webhook signing secret used',
+    detailFields: ['purpose'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: { ...FIXTURE_WEBHOOK_COMMON, eventType: 'webhook.secret.read' },
+  },
+  'webhook.secret.updated@1': {
+    inputSchema: WebhookCredentialV1EventSchema,
+    title: 'Webhook signing secret updated',
+    detailFields: ['purpose'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: { ...FIXTURE_WEBHOOK_COMMON, eventType: 'webhook.secret.updated' },
+  },
+  'webhook.secret.rotated@1': {
+    inputSchema: WebhookCredentialV1EventSchema,
+    title: 'Webhook signing key rotated',
+    detailFields: ['purpose'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: { ...FIXTURE_WEBHOOK_COMMON, eventType: 'webhook.secret.rotated' },
+  },
   'audit.read_denied@1': {
     inputSchema: AuditReadDeniedV1EventSchema,
     title: 'Activity log access denied',

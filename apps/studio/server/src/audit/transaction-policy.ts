@@ -6,6 +6,16 @@ import type { AuditPolicy } from './policy.ts';
 // any other path. Protocol audit producers are delivered by #1521; lease
 // lifecycle writes are permanently excluded from the audit-log design.
 export const NO_AUDIT_TRANSACTION_POLICIES = {
+  'pii.readCiphertext': {
+    kind: 'none',
+    reason:
+      'Selects encrypted participant bytes only. The PII service re-locks the exact row, authorizes access and commits its required audit before releasing plaintext.',
+  },
+  'integration.readCiphertext': {
+    kind: 'none',
+    reason:
+      'Selects encrypted webhook bytes only. The integration service re-locks the exact row, proves configuration or worker authority and commits its required audit before releasing plaintext.',
+  },
   'audit.list': {
     kind: 'none',
     reason:
