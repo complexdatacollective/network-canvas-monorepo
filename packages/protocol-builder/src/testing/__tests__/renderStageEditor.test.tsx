@@ -35,11 +35,13 @@ function RosterColumnsSection({
 
   useEffect(() => {
     let current = true;
-    void gateway.inspect(resourceId).then((result) => {
+    const readColumns = async () => {
+      const result = await gateway.inspect(resourceId);
       if (!current) return;
       if (result.status === 'ok') setColumns(result.data.variableNames ?? []);
       else setUnreadable(true);
-    });
+    };
+    void readColumns();
     return () => {
       current = false;
     };
