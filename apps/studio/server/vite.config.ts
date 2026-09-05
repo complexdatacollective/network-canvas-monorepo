@@ -6,7 +6,10 @@ import { defineConfig } from 'vite';
 // anything left external here dies at boot in the image.
 export default defineConfig({
   build: {
-    ssr: 'src/index.ts',
+    ssr: true,
+    rolldownOptions: {
+      input: { index: 'src/index.ts', migrate: 'src/migrate.ts' },
+    },
     outDir: 'dist',
     emptyOutDir: true,
     target: 'node24',
@@ -17,6 +20,10 @@ export default defineConfig({
       '@codaco/shared-consts',
       '@codaco/studio-rpc',
       '@codaco/studio-sync',
+      // protocol-validation bundles JSZip in its published output, but this
+      // source-first consumer compiles it here. Its devDependency is absent
+      // from pnpm deploy --prod, so leaving the import external breaks boot.
+      'jszip',
     ],
   },
 });

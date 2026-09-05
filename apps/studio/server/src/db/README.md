@@ -119,8 +119,9 @@ Both properties are pinned by tests rather than by comment alone — see below.
 
 ## How they are applied
 
-`scripts/apply.ts` is the only thing that writes schema; the server itself only
-verifies.
+The image's explicit `migrate` command applies immutable versioned SQL. The
+server itself only verifies. `scripts/apply.ts` remains the direct-definition
+helper for disposable developer resets, demos and test fixtures.
 
 - `renderSchemaStatements()` = the Drizzle DDL that `drizzle-kit` generates,
   followed by `SIDECARS`.
@@ -128,14 +129,18 @@ verifies.
   **Sidecars are inside the hash, and whitespace counts** — editing a sidecar
   changes the fingerprint, which is why every sidecar change needs
   `pnpm --filter @codaco/studio-server sync-fingerprint`.
-- `applySchema()` takes an advisory lock, clears the stamp (so a failure
+- Production migrations store that version's Drizzle snapshot, generated delta,
+  complete ordered sidecars and target fingerprint. A checksummed history and
+  one transaction under the advisory lock prevent partial application or silent
+  adoption of unknown databases. See [Database migrations](../../../MIGRATIONS.md).
+- Developer-only `applySchema()` takes an advisory lock, clears the stamp (so a failure
   part-way cannot leave a drifted database reading as current), runs
   `drizzle-kit push`, executes the sidecars, and stamps the fingerprint.
 - At boot, `checkSchema()` returns `current`, `absent`, or `stale` (either
   `mismatch` or `unstamped`). A database carrying the tables with no
   fingerprint is refused rather than adopted: the SQL that built it is unknown.
 
-Test suites take a different path. `provisionScratchSchema()` runs the composed
+Domain test suites take a different path. `provisionScratchSchema()` runs the composed
 statements directly instead of pushing, because `drizzle-kit push` introspects
 `public` and cannot target a named schema.
 

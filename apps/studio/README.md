@@ -144,11 +144,10 @@ every variable is catalogued under [Environment](#environment) below.
 
 ### Changing the schema
 
-There is deliberately no migration system yet. Pre-release, a schema change
-means reconciling or recreating the database rather than migrating it —
-`drizzle-kit push` semantics. Real migrations (`drizzle-kit generate`, from
-the same table definitions) must land before a release carries data worth
-keeping.
+Deployed databases use the versioned migrations shipped inside the image,
+applied by its explicit `migrate` command. See [Database migrations](MIGRATIONS.md)
+for upgrade, backup, recovery, and migration-authoring instructions. Local
+development keeps its disposable reset-and-seed workflow.
 
 Studio has one schema, defined as Drizzle tables in seventeen modules that live
 with their owners:
@@ -185,11 +184,10 @@ exports that `server/scripts/apply.ts` applies. Sidecar order carries a rule
 the test suite pins: the broad grant over every table runs first, right after
 the roles are created, and every narrower revocation (the outboxes, the audit
 log) runs after it, because a revocation placed before the broad grant is
-silently undone by it. There are no migrations: Studio is in active
-development with no live data, so a database whose schema is not this build's
-is reset and reseeded (`db:reset`, and every `pnpm dev` boot) rather than
-migrated. The versioned migration system arrives with the first release that
-has data to keep.
+silently undone by it. Each migration stores its own immutable copy of these
+sidecars; later source edits cannot change what an older migration applies.
+Local development still resets and reseeds (`db:reset`, and every `pnpm dev`
+boot), while deployments apply versioned migrations explicitly.
 The policies themselves are `pgPolicy` entries on the table definitions, which
 is why `drizzle-kit` is pinned to the 1.0 release candidate: the stable line's
 `push` silently drops their `USING`/`WITH CHECK` expressions.
@@ -204,7 +202,7 @@ is why `drizzle-kit` is pinned to the 1.0 release candidate: the stable line's
 
 Open the image for the full-size diagram. Tables with row-level security or trigger sidecars carry those details as SVG tooltips. The diagram shows physical foreign-key constraints; deliberately unconstrained logical references are not drawn as relationships. The renderer uses `1`/`*` edge endpoints, so optionality remains visible through each column's not-null marker rather than the edge.
 
-Schema fingerprint: `6ad15cda2bbf32a70e596292e52ad7eb057902190e6c06f4429d9ae0177c310b`.
+Schema fingerprint: `3a9aa481323129d4afe36134c07fa0fac787287819f35857e0609c63c9a1cb32`.
 
 Sidecar behavior that cannot be represented as ERD relationships:
 
@@ -264,14 +262,13 @@ Sidecar behavior that cannot be represented as ERD relationships:
 
 <!-- generated:schema-docs end -->
 
-The server never applies schema — it only verifies. Application is
-`drizzle-kit push`, run programmatically by `apply-schema` and `db:reset` from
-a repo checkout: it introspects the live database, applies whatever delta
-brings it to the definitions, re-runs the sidecars, and stamps a fingerprint —
-the hash of the DDL that describes this build. Boot compares that stamp
-against the fingerprint committed in `server/src/db/fingerprint.generated.ts`.
-Both database commands resync the fingerprint and generated schema docs before
-touching the database. To resync without connecting to a database, run:
+The server never applies schema — it only verifies. Deployments use the
+image's explicit `migrate` command, which applies committed SQL and sidecars
+transactionally and records their checksums and target fingerprint. Boot
+compares that stamp against `server/src/db/fingerprint.generated.ts`.
+Developer resets use `drizzle-kit push` on disposable databases. Migration
+generation and resets resync the fingerprint and generated schema docs first.
+To resync without connecting to a database, run:
 
 ```bash
 pnpm --filter @codaco/studio-server sync-fingerprint
@@ -291,8 +288,8 @@ needs no database, and a per-test budget shared with the suites that do is the
 wrong bound for it. The test suite still holds the section to the current
 fingerprint and to naming every sidecar, both read from the committed files.
 
-A mismatch stops the server with the remedies: `apply-schema` reconciles the
-database in place, or
+A mismatch stops the server. Back up deployed data and run the image's explicit
+`migrate` command. For a disposable local database,
 
 ```bash
 pnpm --filter @codaco/studio-server db:reset
@@ -305,9 +302,10 @@ reset of a managed database never picks up the development marker. It also
 sweeps up any `studio_test_*` schemas and databases an interrupted test run
 left behind.
 
-A database carrying the tables but no fingerprint is refused rather than
-adopted by boot — the SQL that built it is unknown — and `db:reset` (or a
-deliberate `apply-schema`, which reconciles whatever it finds) is the remedy.
+A database carrying tables but no fingerprint is refused by boot. The migration
+command also refuses any nonempty database without versioned history, even if
+it claims the expected fingerprint. Preserve unversioned pre-release databases
+and follow the transition guidance in [Database migrations](MIGRATIONS.md).
 
 The fingerprint compares the database against the DDL this build renders. It
 cannot tell you that a `better-auth` upgrade expects a shape these definitions
@@ -503,9 +501,9 @@ fails `pnpm typecheck`.
 
 ### Database
 
-| Variable       | What it is                                             | Development default                                    | Real deployment                                                                                                                                                                                                   |
-| -------------- | ------------------------------------------------------ | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL` | Postgres connection string, `pg.Pool`’s native format. | `postgres://postgres:spike@127.0.0.1:54318/studio_dev` | Unset ⇒ no database; auth and sync refuse while the server still boots. The login owns the schema and needs `CREATEROLE` the first time `apply-schema` runs; the server runs as the `studio_app` role it creates. |
+| Variable       | What it is                                             | Development default                                    | Real deployment                                                                                                                                                                                          |
+| -------------- | ------------------------------------------------------ | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL` | Postgres connection string, `pg.Pool`’s native format. | `postgres://postgres:spike@127.0.0.1:54318/studio_dev` | Unset ⇒ no database; auth and sync refuse while the server still boots. The login owns the schema and needs `CREATEROLE` for the initial migration; the server runs as the `studio_app` role it creates. |
 
 ### Authentication
 
@@ -541,44 +539,34 @@ docker build -f apps/studio/Dockerfile -t network-canvas-studio .
 docker run --rm -p 3000:3000 network-canvas-studio
 ```
 
-### Database schema and seeding
+### Database schema and development seeding
 
-Two steps, run **once per deployment** against `DATABASE_URL` — not once per
-replica, which is why they are commands rather than boot work:
+Run the image's `migrate` command **once per deployment**, before starting its
+replicas. It requires only `DATABASE_URL` and ships with the image; no operator
+checkout or schema-generation tools are needed. Follow the backup and upgrade
+sequence in [Database migrations](MIGRATIONS.md).
 
-```bash
-pnpm --filter @codaco/studio-server apply-schema
-pnpm --filter @codaco/studio-server seed
-```
-
-Both are idempotent and identical in every topology: `apply-schema` is
-`drizzle-kit push` — it reconciles the database to this build's definitions
-and stamps the fingerprint — and `seed` refuses against a database whose
-fingerprint does not match. Three things are worth knowing before you rely on
-them:
-
-- **Every lane needs `apply-schema`, and it runs from a repo checkout.** The
-  server only verifies the fingerprint at boot — drizzle-kit cannot ship in
-  the server bundle, so no deployment applies schema by booting. A stale or
+- **Every persistent deployment needs an explicit migration.** The server
+  only verifies the fingerprint at boot; it never applies schema. A stale or
   never-provisioned database stops the boot with the remedy; a configured
   database it cannot reach fails it too. Only the development lane comes up
   anyway and keeps retrying, because only there is the cause a container that
   has not finished starting or a `dev-pg` schema provision that has not
   landed yet (`dev-pg` applies the schema itself when the database has none).
-- **The login needs `CREATEROLE` the first time.** `apply-schema` creates the
+- **The initial migration needs runtime roles.** With `CREATEROLE`, the login creates the
   `studio_app` and `studio_maintenance` roles the server runs as (see
-  [Tenancy](#tenancy)) and grants the login the right to assume them. The
-  default login on managed Postgres (Neon, RDS, Supabase) holds `CREATEROLE`;
-  where yours does not, create them once as an administrator and re-run:
+  [Tenancy](#tenancy)) and grants itself the right to assume them. If your
+  service does not allow that privilege, an administrator provisions them
+  once and grants the database owner permission to assume them:
 
   ```sql
-  CREATE ROLE studio_app NOLOGIN;
-  CREATE ROLE studio_maintenance NOLOGIN;
-  GRANT studio_app, studio_maintenance TO <login> WITH SET TRUE;
+  CREATE ROLE studio_app NOLOGIN NOSUPERUSER NOBYPASSRLS;
+  CREATE ROLE studio_maintenance NOLOGIN NOSUPERUSER NOBYPASSRLS;
+  GRANT studio_app, studio_maintenance TO <login> WITH SET TRUE, INHERIT FALSE;
   ```
 
 - **The Netlify lane has no automation.** Its build command does not touch the
-  database and its function has no boot, so `apply-schema` is a manual step
+  database and its function has no boot, so `migrate` is a separate manual step
   there — and consequently the only place that lane ever detects a stale
   schema. It also has no supported durable background dispatcher, so team
   invitation creation fails closed with `SERVICE_UNAVAILABLE` in that lane
@@ -613,9 +601,9 @@ them:
   `--force`, and it refuses to give a non-loopback database the published
   admin password: set `STUDIO_SEED_ADMIN_PASSWORD` to a value chosen for that
   instance, because the published one is a working credential on any
-  reachable instance that keeps it. Real onboarding (the first team owner and
-  team invitations) replaces this step on #1256; until then, it is how any
-  fresh instance gets something to sign in to.
+  reachable instance that keeps it. This is a development fixture, not a
+  production initialization step. Self-host first-owner bootstrap is tracked
+  by #1250 separately from database migration.
 
 ## Deployment topologies
 

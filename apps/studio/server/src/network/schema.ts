@@ -211,7 +211,7 @@ const edges = pgTable(
     ),
     // The ADR's covering index, expressed as a key index: drizzle
     // 1.0.0-rc.4 has no `.include()`, and an index created in the sidecar
-    // would be dropped by the next drizzle-kit push (breaking apply-schema's
+    // would be dropped by the next developer drizzle-kit push (breaking its
     // no-op property). Index-only scans for the degree formulation are
     // unaffected; the index is larger because the endpoints ride in the key
     // rather than the leaf payload.

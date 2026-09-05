@@ -54,12 +54,23 @@ const ROLE_BOOTSTRAP_LOCK_KEY = 4021775688147130;
 export const TENANT_ROLES_SQL = `
 DO $$ BEGIN
   PERFORM pg_advisory_xact_lock(${ROLE_BOOTSTRAP_LOCK_KEY});
-  BEGIN
+  -- Checking existence before CREATE also supports an operator whose roles
+  -- were provisioned by an administrator: PostgreSQL checks CREATEROLE before
+  -- reporting duplicate_object, so catching that exception is not sufficient.
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${TENANT_ROLES.app}') THEN
     CREATE ROLE ${TENANT_ROLES.app} NOLOGIN NOSUPERUSER NOBYPASSRLS;
-  EXCEPTION WHEN duplicate_object THEN NULL; END;
-  BEGIN
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${TENANT_ROLES.maintenance}') THEN
     CREATE ROLE ${TENANT_ROLES.maintenance} NOLOGIN NOSUPERUSER NOBYPASSRLS;
-  EXCEPTION WHEN duplicate_object THEN NULL; END;
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM pg_roles
+    WHERE rolname IN ('${TENANT_ROLES.app}', '${TENANT_ROLES.maintenance}')
+      AND (rolsuper OR rolbypassrls OR rolcanlogin)
+  ) THEN
+    RAISE EXCEPTION 'Studio runtime roles must be NOLOGIN, NOSUPERUSER, and NOBYPASSRLS. Ask the database administrator to correct their attributes before migrating.'
+      USING ERRCODE = '42501';
+  END IF;
   IF NOT pg_has_role(current_user, '${TENANT_ROLES.app}', 'SET') THEN
     EXECUTE format('GRANT ${TENANT_ROLES.app} TO %I WITH SET TRUE', current_user);
   END IF;
