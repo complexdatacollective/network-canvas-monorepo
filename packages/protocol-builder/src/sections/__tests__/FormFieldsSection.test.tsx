@@ -406,3 +406,57 @@ describe('the fields a form collects', () => {
     });
   });
 });
+
+/**
+ * What a spectator can do to the list: look at it. Every affordance that would
+ * write is unavailable, and a row dialog reached anyway commits nothing.
+ */
+describe('a spectator and the fields a form collects', () => {
+  it('offers no way to add, edit or remove a field', async () => {
+    renderStageEditor({
+      stageId: 'alter-form-1',
+      readOnly: true,
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const add = await screen.findByRole('button', {
+      name: 'Create new form field',
+    });
+    const edit = screen.getAllByRole('button', { name: 'Edit field' })[0]!;
+    const remove = screen.getAllByRole('button', { name: 'Remove field' })[0];
+
+    expect({
+      add: add.hasAttribute('disabled') || add.ariaDisabled === 'true',
+      edit: edit.hasAttribute('disabled') || edit.ariaDisabled === 'true',
+      remove:
+        remove === undefined ||
+        remove.hasAttribute('disabled') ||
+        remove.ariaDisabled === 'true',
+    }).toEqual({ add: true, edit: true, remove: true });
+  });
+
+  it('does not let a spectator change a row through the dialog', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      readOnly: true,
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    await harness.user.click(
+      screen.getAllByRole('button', { name: 'Edit field' })[0]!,
+    );
+    const dialogs = screen.queryAllByRole('dialog');
+    if (dialogs.length > 0) {
+      const dialog = within(dialogs[0]!);
+      const question = dialog.getByRole('textbox', { name: 'Question text' });
+      await harness.user.clear(question);
+      await harness.user.type(question, 'A spectator wrote this');
+      await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+      await waitFor(() =>
+        expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+      );
+    }
+
+    expect(harness.pendingCommands()).toHaveLength(0);
+  });
+});
