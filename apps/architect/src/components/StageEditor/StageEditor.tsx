@@ -15,6 +15,7 @@ import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import type { FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
 import Heading from '@codaco/fresco-ui/typography/Heading';
+import { getStageEditorInitialValues } from '@codaco/protocol-builder/interfaces/initialValues';
 import {
   type Stage,
   type StageType,
@@ -53,7 +54,6 @@ import { refusedCommitMessage } from '~/utils/protocolLockMessages';
 import { reportError } from '~/utils/reportError';
 
 import { buildProtocolWithStage } from './buildProtocolWithStage';
-import { getStageEditorInitialValues } from './getStageEditorInitialValues';
 import type { SectionComponent } from './Interfaces';
 import { getInterface, interfaceHasSkipLogicSection } from './Interfaces';
 import StageDraftConflictDialog from './StageDraftConflictDialog';

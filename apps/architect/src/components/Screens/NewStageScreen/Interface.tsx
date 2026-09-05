@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { useCallback, useEffect, useId, useMemo, useRef } from 'react';
 
 import Heading from '@codaco/fresco-ui/typography/Heading';
-import StageTypeImage from '~/components/StageTypeImage';
+import StageTypeImage from '@codaco/protocol-builder/interfaces/StageTypeImage';
 import Tag from '~/components/Tag';
 
 import { INTERFACE_TYPES, TAG_COLORS } from './interfaceOptions';

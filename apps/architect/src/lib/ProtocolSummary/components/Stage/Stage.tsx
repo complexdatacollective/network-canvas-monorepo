@@ -2,7 +2,7 @@ import { isEmpty, sortBy } from 'es-toolkit/compat';
 import React, { useContext } from 'react';
 
 import Heading from '@codaco/fresco-ui/typography/Heading';
-import StageTypeImage from '~/components/StageTypeImage';
+import StageTypeImage from '@codaco/protocol-builder/interfaces/StageTypeImage';
 
 import DualLink from '../DualLink';
 import EntityBadge from '../EntityBadge';
