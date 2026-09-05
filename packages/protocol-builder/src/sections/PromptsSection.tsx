@@ -10,6 +10,7 @@ import BuilderSection from './BuilderSection.tsx';
 import {
   type RowEditorComponent,
   type RowPreviewComponent,
+  type RowValues,
   useRowRenderers,
 } from './rowRenderers.tsx';
 
@@ -112,6 +113,20 @@ export type PromptsSectionProps = Readonly<{
    */
   editorValidate?: DialogArrayEditorValidate;
   /**
+   * What a prompt this interface is adding starts out holding.
+   *
+   * For the parts of a row the researcher never chooses and no control in the
+   * dialog can supply: an ordinal bin's prompt carries the color its bins are
+   * drawn in, picked by the interface so the first bin has a color at all. Its
+   * `id` is the list's own business and is filled in whether one is given or
+   * not.
+   *
+   * Only for a row being ADDED. A prompt the stage already holds keeps what it
+   * was saved with — a seed applied to an existing row would silently rewrite
+   * a researcher's answer on the way into its own editor.
+   */
+  itemTemplate?: () => Partial<RowValues>;
+  /**
    * The row as the stage should hold it, given what the dialog collected.
    *
    * Defaults to dropping every control the researcher left empty. A family
@@ -143,6 +158,7 @@ export default function PromptsSection({
   PromptPreview,
   requiresSubject = true,
   editorValidate,
+  itemTemplate,
   normalizeRow = withoutAbsentValues,
   copy,
 }: PromptsSectionProps) {
@@ -178,6 +194,7 @@ export default function PromptsSection({
         previewComponent={previewComponent}
         editorDialogSize="editor"
         normalizeItem={normalizeRow}
+        {...(itemTemplate === undefined ? {} : { itemTemplate })}
         {...(editorValidate === undefined ? {} : { editorValidate })}
         sortable
         {...promptsValidation}
