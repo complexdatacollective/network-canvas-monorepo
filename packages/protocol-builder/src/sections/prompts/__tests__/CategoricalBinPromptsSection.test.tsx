@@ -1,7 +1,10 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import {
+  renderStageEditor,
+  type StageEditorHarness,
+} from '../../../testing/renderStageEditor.tsx';
 import CategoricalBinPromptsSection from '../CategoricalBinPromptsSection.tsx';
 
 const openEditor = () => ({
@@ -349,12 +352,7 @@ function personVariables(harness: {
 
 /** Adds one option to the attribute editor that is open. */
 async function addOption(
-  harness: {
-    user: {
-      click: (element: Element) => Promise<void>;
-      type: (element: Element, text: string) => Promise<void>;
-    };
-  },
+  harness: StageEditorHarness,
   position: number,
   label: string,
   value: string,

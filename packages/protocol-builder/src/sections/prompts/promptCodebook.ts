@@ -51,7 +51,7 @@ import { ruleVariables } from '../../rules/ruleCodebook.ts';
 const EMPTY_OPTIONS: readonly VariablePickerOption[] = Object.freeze([]);
 
 /** A stage subject or an edge type a prompt named, as a codebook subject. */
-export const codebookSubjectOf = (value: unknown): CodebookSubject | null => {
+const codebookSubjectOf = (value: unknown): CodebookSubject | null => {
   if (typeof value !== 'object' || value === null) return null;
   const entity: unknown = Reflect.get(value, 'entity');
   const type: unknown = Reflect.get(value, 'type');
