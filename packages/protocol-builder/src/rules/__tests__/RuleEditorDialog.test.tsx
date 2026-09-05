@@ -25,9 +25,19 @@ import {
   ProtocolBuilderSessionStore,
 } from '../../session.ts';
 import type { RuleDraft } from '../rule.ts';
-import RuleEditorDialog, { type RuleTypeOption } from '../RuleEditorDialog.tsx';
+import {
+  describeRule,
+  RULE_PROBLEM_CODES,
+  type RuleProblemCode,
+} from '../ruleDescription.ts';
+import RuleEditorDialog, {
+  ruleDraftRefusal,
+  type RuleTypeOption,
+} from '../RuleEditorDialog.tsx';
 import type { RuleSetValue } from '../ruleSet.ts';
 import { QueryRuleSetField } from '../RuleSetField.tsx';
+import { RULE_VALUE_FIELD } from '../RuleValueField.tsx';
+import { testCodebook } from './fixtures.ts';
 
 /**
  * `layoutId` is a Motion prop, so it leaves no trace in the DOM: what the rule
@@ -105,6 +115,9 @@ const baseSections: Record<string, SectionDoc> = {
       flag: { name: 'Flag', type: 'boolean', component: 'Boolean' },
       // Text, so an operator a NUMBER accepts can be stored against it.
       note: { name: 'Note', type: 'text' },
+      // Answered with a point on the sociogram: an attribute the codebook
+      // still describes, and that no rule can be built against.
+      home: { name: 'Home', type: 'layout' },
       // A date attribute whose picker is bounded, and coarse enough that the
       // bounds are readable off the control the researcher meets.
       born: {
@@ -998,6 +1011,46 @@ describe('a choice a stored rule holds that the editor does not offer', () => {
     ).toBeInTheDocument();
   });
 
+  it('says a stored attribute cannot carry a rule, rather than that it is gone', async () => {
+    const user = userEvent.setup();
+    renderRuleList([
+      {
+        id: 'rule-a',
+        type: 'node',
+        // `home` is a layout attribute: still in the codebook, and answered
+        // with a point no rule can compare against. The picker is given the
+        // attributes a rule CAN be built on, so leaving this one out of that
+        // list made it indistinguishable from one that had been deleted — and
+        // the researcher was sent to the codebook to look for something that
+        // is still sitting there.
+        options: {
+          type: 'person',
+          attribute: 'home',
+          operator: 'EXACTLY',
+          value: 'somewhere',
+        },
+      },
+    ]);
+
+    await openExistingRule(user);
+
+    const attribute = await screen.findByRole('combobox', {
+      name: /Node attribute/,
+    });
+    expect(attribute).toHaveValue('home');
+    expect(
+      within(attribute).getByRole('option', {
+        name: 'Home — cannot be used in a rule',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'This attribute cannot be used in a rule. Choose another one.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/no longer in the codebook/)).toBeNull();
+  });
+
   it('shows an operator the attribute’s type does not allow, and refuses to offer it again', async () => {
     const user = userEvent.setup();
     renderRuleList([
@@ -1026,6 +1079,162 @@ describe('a choice a stored rule holds that the editor does not offer', () => {
         name: 'is greater than (not valid for this attribute)',
       }),
     ).toBeDisabled();
+  });
+});
+
+/**
+ * The dialog reads a draft through the same `describeRule` the row and the
+ * rule-set field do, so a rule the LIST would mark as broken cannot be
+ * finished from the editor that is holding it. Before this, the dialog ran
+ * three checks of its own: a stale entity type was shown as a dead chip,
+ * accepted by "Finish and Close", and then immediately marked broken by the
+ * row the dialog had just closed onto.
+ */
+describe('a rule the codebook has moved out from under', () => {
+  it('refuses to finish a rule pointed at a type the codebook has lost', async () => {
+    const user = userEvent.setup();
+    const stored: RuleDraft = {
+      id: 'rule-a',
+      type: 'node',
+      options: { type: 'ghost', operator: 'EXISTS' },
+    };
+    renderRuleList([stored]);
+
+    await openExistingRule(user);
+    await finishAndClose(user);
+
+    // Named, not described: "a type" would send the researcher looking through
+    // a rule set for which one.
+    expect(
+      await screen.findByText(
+        'This rule is pointed at "ghost", which is no longer in the codebook. Choose another type.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog', { name: RULE_EDITOR }),
+    ).toBeInTheDocument();
+    // Left exactly as it was found, rather than committed by the refused save.
+    expect(probedRuleSet()?.rules).toEqual([stored]);
+  });
+
+  it('refuses to finish a presence rule holding an operator it cannot use', async () => {
+    const user = userEvent.setup();
+    const stored: RuleDraft = {
+      id: 'rule-a',
+      type: 'node',
+      // No attribute, so the schema allows only EXISTS/NOT_EXISTS here.
+      options: { type: 'person', operator: 'EXACTLY', value: 3 },
+    };
+    renderRuleList([stored]);
+
+    await openExistingRule(user);
+    await finishAndClose(user);
+
+    expect(
+      await screen.findByText(
+        'This operator cannot ask whether an entity type is present. Choose another one.',
+      ),
+    ).toBeInTheDocument();
+    expect(probedRuleSet()?.rules).toEqual([stored]);
+  });
+
+  /**
+   * The dialog's placement table is total over `RULE_PROBLEM_CODES`, so a new
+   * problem cannot be added to the rule description and left with nowhere to
+   * appear in the editor. Each draft below carries the code under test and,
+   * wherever a rule can hold it alone, nothing else — otherwise a code routed
+   * nowhere would still "pass" on a neighbour's refusal. `unknownTarget` is
+   * the one that cannot stand alone: a rule that does not say what it is about
+   * is unfinished by definition.
+   */
+  describe('every problem a rule can have', () => {
+    const DRAFTS: Readonly<Record<RuleProblemCode, RuleDraft>> = {
+      unknownTarget: { type: 'chimera', options: {} },
+      missingEntityType: {
+        type: 'node',
+        options: { type: 'ghost', operator: 'EXISTS' },
+      },
+      missingAttribute: {
+        type: 'node',
+        options: {
+          type: 'person',
+          attribute: 'favouriteColour',
+          operator: 'EXACTLY',
+          value: 1,
+        },
+      },
+      invalidOperator: {
+        type: 'node',
+        // A pattern comparison against an option-bearing attribute: the schema
+        // does not allow it, while the operand it was given is still a
+        // perfectly good pattern — so this is the code on its own.
+        options: {
+          type: 'person',
+          attribute: 'mood',
+          operator: 'CONTAINS',
+          value: 'happy',
+        },
+      },
+      invalidOperand: {
+        type: 'node',
+        // A multi-select is answered with the list of options that were
+        // selected, so a lone option value is not a shape it can be compared
+        // against — but `happy` is still one of the options, so nothing else
+        // is wrong with it.
+        options: {
+          type: 'person',
+          attribute: 'mood',
+          operator: 'EXACTLY',
+          value: 'happy',
+        },
+      },
+      missingOption: {
+        type: 'node',
+        options: {
+          type: 'person',
+          attribute: 'mood',
+          operator: 'INCLUDES',
+          value: ['retired'],
+        },
+      },
+      unusableOption: {
+        type: 'node',
+        options: {
+          type: 'person',
+          attribute: 'mood',
+          operator: 'INCLUDES',
+          value: [true],
+        },
+      },
+      incomplete: {
+        type: 'node',
+        options: { type: 'person', attribute: 'age', operator: 'GREATER_THAN' },
+      },
+    };
+
+    /** The controls this dialog names, which is where a refusal has to land. */
+    const DIALOG_FIELDS: ReadonlySet<string> = new Set([
+      'type',
+      'options.type',
+      'options.attribute',
+      'options.operator',
+      RULE_VALUE_FIELD,
+    ]);
+
+    it.each(RULE_PROBLEM_CODES)('refuses a rule reported as %s', (code) => {
+      const rule = DRAFTS[code];
+
+      expect(
+        describeRule({ rule, codebook: testCodebook }).problems[0]?.code,
+      ).toBe(code);
+
+      const refusal = ruleDraftRefusal(rule, testCodebook);
+      const fields = Object.entries(refusal?.fieldErrors ?? {});
+      expect(fields).toHaveLength(1);
+      const [field, message] = fields[0]!;
+      expect(DIALOG_FIELDS.has(field)).toBe(true);
+      expect(message).toEqual(expect.stringMatching(/\S/));
+    });
   });
 });
 

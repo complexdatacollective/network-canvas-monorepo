@@ -43,6 +43,7 @@ import {
   ruleVariables,
   ruleVariableType,
 } from './ruleCodebook.ts';
+import { describeRule, type RuleProblemCode } from './ruleDescription.ts';
 import {
   emptyRuleValue,
   RULE_VALUE_FIELD,
@@ -304,6 +305,127 @@ const RULE_PART_FIELDS: Readonly<Record<RulePart, string>> = Object.freeze({
   operator: OPERATOR_FIELD,
   value: RULE_VALUE_FIELD,
 });
+
+/** Where one thing wrong with a rule is reported, and in what words. */
+type RuleProblemPlacement = Readonly<{ field: string; message: string }>;
+
+/**
+ * What the DIALOG does with each thing that can be wrong with a rule.
+ *
+ * The row, the rule-set field and this dialog all read a draft through the
+ * same `describeRule`, so a rule the list would mark as broken cannot be
+ * finished from the editor that is holding it. Three hand-written checks used
+ * to stand here instead, and a stale entity type was in none of them: the
+ * dialog showed the dead reference, accepted "Finish and Close", and the row
+ * it closed onto marked the rule broken a moment later.
+ *
+ * A total mapping over `RULE_PROBLEM_CODES` rather than a list of the codes
+ * this dialog happens to know, for the same reason `RULE_PROBLEM_SUMMARIES` in
+ * `ruleSet.ts` is one: a problem added to the description arrives here as a
+ * typecheck failure rather than as a save nothing refuses.
+ *
+ * Only the placement is decided here, never whether a problem counts. The
+ * words differ from the row's for one reason: the row addresses a researcher
+ * looking at a list ("Edit or delete the rule"), and this addresses one
+ * already standing in front of the control that holds it.
+ */
+const RULE_PROBLEM_PLACEMENTS: Readonly<
+  Record<
+    RuleProblemCode,
+    (rule: RuleDraft, codebook: Readonly<Codebook>) => RuleProblemPlacement
+  >
+> = Object.freeze({
+  // Nothing on screen can say what this rule is about, so the question to
+  // answer is the first one.
+  unknownTarget: () => ({
+    field: TARGET_FIELD,
+    message: INCOMPLETE_RULE_MESSAGE,
+  }),
+  missingEntityType: (rule) =>
+    rule.type === 'ego'
+      ? { field: TARGET_FIELD, message: MISSING_EGO_MESSAGE }
+      : {
+          field: ENTITY_TYPE_FIELD,
+          message: missingEntityTypeMessage(draftString(rule, 'type')),
+        },
+  missingAttribute: (rule) => ({
+    field: ATTRIBUTE_FIELD,
+    message: missingAttributeMessage(draftString(rule, 'attribute')),
+  }),
+  // The presence of the `attribute` KEY is what tells the two rule shapes
+  // apart, here as everywhere else, and it decides which question the operator
+  // was answering.
+  invalidOperator: (rule) => ({
+    field: OPERATOR_FIELD,
+    message: Object.hasOwn(rule.options ?? {}, 'attribute')
+      ? INVALID_OPERATOR_MESSAGE
+      : INVALID_PRESENCE_OPERATOR_MESSAGE,
+  }),
+  invalidOperand: () => ({
+    field: RULE_VALUE_FIELD,
+    message: INVALID_OPERAND_MESSAGE,
+  }),
+  // Both option problems name the VALUES they are about, which is the one
+  // thing the row's summary cannot do from a list. Whether an operand is still
+  // one of its attribute's options is the editor's question to ask at all: the
+  // protocol schema checks the shape of a value and stops there on purpose,
+  // because protocols already in the field name options a collaborator has
+  // since renamed, and refusing to LOAD one would lock the researcher out of
+  // the editor that could fix it (ruling on issue #1548).
+  missingOption: (rule, codebook) => ({
+    field: RULE_VALUE_FIELD,
+    message: staleOptionsMessage(staleRuleOptions(codebook, rule)),
+  }),
+  unusableOption: (rule, codebook) => ({
+    field: RULE_VALUE_FIELD,
+    message: staleOptionsMessage(staleRuleOptions(codebook, rule)),
+  }),
+  // Reported by the control that holds the gap rather than as a sentence about
+  // the rule that names no control at all.
+  incomplete: (rule) => ({
+    field: RULE_PART_FIELDS[incompleteRulePart(rule) ?? 'target'],
+    message: INCOMPLETE_RULE_MESSAGE,
+  }),
+});
+
+/**
+ * Everything the editor can tell about a draft without leaving it, as the
+ * refusal it becomes.
+ *
+ * Pure, and separate from the component, because it is the whole of what
+ * "Finish and Close" decides: the dialog only hands it the values the fields
+ * currently hold and the codebook the session holds right now.
+ */
+export const ruleDraftRefusal = (
+  rule: RuleDraft,
+  codebook: Readonly<Codebook>,
+): DialogFormErrors | undefined => {
+  const operator = rule.options?.operator;
+
+  // A `contains` operand is a regular expression, and one that does not
+  // compile matches nothing at all. The one check the rule description cannot
+  // make: a pattern that will not compile is still a string, which is all the
+  // protocol schema asks of it — and a rule the schema accepts is not one the
+  // description reports.
+  if (
+    isFilterOperator(operator) &&
+    operatorsWithRegExp.has(operator) &&
+    !isValidRegExp(rule.options?.value)
+  ) {
+    return { fieldErrors: { [RULE_VALUE_FIELD]: INVALID_REG_EXP_MESSAGE } };
+  }
+
+  // One refusal, however many problems the rule has: the dialog focuses the
+  // first control it names, and the researcher fixes them one at a time.
+  const [problem] = describeRule({ rule, codebook }).problems;
+  if (problem === undefined) return undefined;
+
+  const { field, message } = RULE_PROBLEM_PLACEMENTS[problem.code](
+    rule,
+    codebook,
+  );
+  return { fieldErrors: { [field]: message } };
+};
 
 /**
  * Clears every choice below the one that changed.
@@ -685,66 +807,15 @@ export default function RuleEditorDialog({
    * every field has validated itself. Every answer names a control, because
    * each is about one: a rule the researcher cannot save is never a general
    * fault with the draft, it is a specific thing that is missing or wrong.
+   *
+   * The draft is read through the same `describeRule` the rule's own row reads
+   * it through, so the two cannot disagree about whether a rule is broken —
+   * which is what let a rule pointed at a deleted entity type be saved from
+   * here and marked broken by the row a moment later.
    */
   const validate = useCallback(
-    (values: Record<string, FieldValue>): DialogFormErrors | undefined => {
-      const rule = ruleDraftFromValues(values);
-      const operator = rule.options?.operator;
-
-      // A `contains` operand is a regular expression, and one that does not
-      // compile matches nothing at all. Checked here rather than as a field
-      // rule because whether it applies at all depends on the OPERATOR, which
-      // is a different field; the field it belongs to is still the field that
-      // reports it.
-      if (
-        isFilterOperator(operator) &&
-        operatorsWithRegExp.has(operator) &&
-        !isValidRegExp(rule.options?.value)
-      ) {
-        return {
-          fieldErrors: { [RULE_VALUE_FIELD]: INVALID_REG_EXP_MESSAGE },
-        };
-      }
-
-      // An operand picked from the attribute's own options has to BE one of
-      // them, and the EDITOR is what says so: the protocol schema checks the
-      // shape of a rule's value and stops there on purpose, because protocols
-      // already in the field hold rules naming an option a collaborator has
-      // since renamed or deleted, and refusing to LOAD one would lock the
-      // researcher out of the editor that could fix it (ruling on issue
-      // #1548). Membership is by identity, which is what keeps `"1"` from
-      // standing in for the option whose value is `1`.
-      //
-      // The rule LIST reports such an operand on the row it sits on, and the
-      // rule set's own field validation refuses the stage save. This is the
-      // third face of the same rule, and the one the dialog needs: its option
-      // controls offer nothing but the attribute's current options, so a draft
-      // reaches here only by having been OPENED on a rule that already names
-      // one it no longer has — seeded into a control that shows nothing
-      // selected, and committed straight back unless it is refused.
-      const staleOptions = staleRuleOptions(codebookRef.current, rule);
-      if (staleOptions.length > 0) {
-        return {
-          fieldErrors: {
-            [RULE_VALUE_FIELD]: staleOptionsMessage(staleOptions),
-          },
-        };
-      }
-
-      // The completeness the protocol schema expects, asserted once where the
-      // rule leaves the editor. Every control above states its own `required`,
-      // so this is the backstop for a gap none of them covers — and it is
-      // reported by the control that holds the gap rather than as a sentence
-      // about the rule that names no control at all.
-      const missing = incompleteRulePart(rule);
-      if (missing !== undefined) {
-        return {
-          fieldErrors: { [RULE_PART_FIELDS[missing]]: INCOMPLETE_RULE_MESSAGE },
-        };
-      }
-
-      return undefined;
-    },
+    (values: Record<string, FieldValue>): DialogFormErrors | undefined =>
+      ruleDraftRefusal(ruleDraftFromValues(values), codebookRef.current),
     [],
   );
 
@@ -828,3 +899,29 @@ const INVALID_REG_EXP_MESSAGE =
   'This is not a valid regular expression. Correct it, or choose a different operator.';
 const INCOMPLETE_RULE_MESSAGE =
   'This rule cannot be saved until this question is answered.';
+
+/**
+ * A reference the codebook has lost, named rather than described.
+ *
+ * "a type that is no longer in the codebook" leaves the researcher comparing
+ * the rule against the codebook to work out which one; the id is what the
+ * control beside this is showing, so it is what the sentence says.
+ */
+const missingEntityTypeMessage = (typeId: string | undefined): string =>
+  typeId === undefined
+    ? 'This rule is pointed at a type that is no longer in the codebook. Choose another one.'
+    : `This rule is pointed at "${typeId}", which is no longer in the codebook. Choose another type.`;
+
+const missingAttributeMessage = (attributeId: string | undefined): string =>
+  attributeId === undefined
+    ? 'This rule is about an attribute that is no longer in the codebook. Choose another one.'
+    : `This rule is about "${attributeId}", which is no longer in the codebook. Choose another attribute.`;
+
+const MISSING_EGO_MESSAGE =
+  'This protocol no longer defines any ego attributes, so this rule cannot be about the ego. Choose another target.';
+const INVALID_OPERATOR_MESSAGE =
+  'This operator is not valid for this attribute’s type. Choose another one.';
+const INVALID_PRESENCE_OPERATOR_MESSAGE =
+  'This operator cannot ask whether an entity type is present. Choose another one.';
+const INVALID_OPERAND_MESSAGE =
+  'This is not the kind of value this attribute is answered with, so the rule can never match. Enter one it can be compared against.';

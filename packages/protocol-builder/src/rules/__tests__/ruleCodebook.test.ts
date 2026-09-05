@@ -228,7 +228,12 @@ describe('codebook entries that are legal but sparse', () => {
     );
     expect(
       ruleVariableOptions(ruleVariables(sparseCodebook, 'node', 'blank')),
-    ).toContainEqual({ value: 'unnamed', label: 'unnamed', type: 'text' });
+    ).toContainEqual({
+      value: 'unnamed',
+      label: 'unnamed',
+      type: 'text',
+      usable: true,
+    });
   });
 
   it('does not offer a boolean control’s own labels as rule operands', () => {
@@ -253,19 +258,27 @@ describe('reading the codebook for a rule', () => {
   });
 
   it('offers the variables of the entity type a rule names', () => {
+    // Every attribute the entity type has, with the ones no rule can be built
+    // against MARKED rather than left out. Dropping them made "not offered"
+    // and "not in the codebook" the same thing to a picker reading this list,
+    // and a stored layout attribute — still in the codebook, still on screen
+    // in the codebook editor — was reported as one the researcher had deleted.
     expect(
       ruleVariableOptions(ruleVariables(codebook, 'node', 'person')),
     ).toEqual([
-      { value: 'age', label: 'Age', type: 'number' },
-      { value: 'mood', label: 'Mood', type: 'categorical' },
-      { value: 'note', label: 'Note', type: 'text' },
+      { value: 'age', label: 'Age', type: 'number', usable: true },
+      { value: 'mood', label: 'Mood', type: 'categorical', usable: true },
+      { value: 'note', label: 'Note', type: 'text', usable: true },
+      { value: 'home', label: 'Home', type: 'layout', usable: false },
     ]);
   });
 
   it('reads an ego rule against the ego codebook', () => {
     expect(
       ruleVariableOptions(ruleVariables(codebook, 'ego', undefined)),
-    ).toEqual([{ value: 'egoName', label: 'EgoName', type: 'text' }]);
+    ).toEqual([
+      { value: 'egoName', label: 'EgoName', type: 'text', usable: true },
+    ]);
   });
 
   it('offers nothing for an entity type the codebook no longer has', () => {

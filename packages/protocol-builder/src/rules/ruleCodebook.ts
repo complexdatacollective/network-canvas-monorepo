@@ -40,6 +40,19 @@ export type RuleVariableOption = Readonly<{
   value: string;
   label: string;
   type: VariableType;
+  /**
+   * Whether a rule can be built against an attribute of this type at all.
+   *
+   * False for a layout attribute, whose answer is a point and which the
+   * operand table therefore has no comparison to offer. Said here rather than
+   * settled by leaving the attribute out, because "not something a rule can
+   * ask about" and "not in the codebook" are different things to tell a
+   * researcher — and a picker handed only the usable ones cannot tell them
+   * apart. It read a stored layout reference, still described by the codebook
+   * and still on screen in the codebook editor, as an attribute that had been
+   * deleted.
+   */
+  usable: boolean;
 }>;
 
 /** One authored option of a categorical or ordinal attribute. */
@@ -109,19 +122,31 @@ export const ruleEntityTypeExists = (
   return codebook[target]?.[entityTypeId] !== undefined;
 };
 
-/** Only attribute types a rule can actually be built against are offered. */
+/**
+ * Every attribute of an entity, each saying whether a rule can be built
+ * against it.
+ *
+ * Marked rather than filtered: which of these a picker OFFERS is the picker's
+ * decision, and it needs the rest to tell an attribute a rule cannot ask about
+ * from one the codebook no longer has.
+ *
+ * A type outside the schema's own catalogue is the one thing dropped. Nothing
+ * is known about it — not even that it is an attribute — and a parsed codebook
+ * cannot hold one.
+ */
 export const ruleVariableOptions = (
   variables: Readonly<Variables>,
 ): RuleVariableOption[] =>
   Object.entries(variables).flatMap<RuleVariableOption>(
     ([variableId, definition]) => {
       const type: unknown = definition.type;
-      if (!canAuthorRuleForType(type)) return [];
+      if (!isVariableType(type)) return [];
       return [
         {
           value: variableId,
           label: codebookLabel(definition.name, variableId),
           type,
+          usable: canAuthorRuleForType(type),
         },
       ];
     },

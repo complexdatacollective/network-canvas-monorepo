@@ -25,6 +25,10 @@ export const testCodebook: Readonly<Codebook> = Object.freeze({
           ],
         },
         note: { name: 'Note', type: 'text' },
+        // Answered with a point on the sociogram, which no rule can compare
+        // against: an attribute the codebook still describes and no rule can
+        // be built on.
+        home: { name: 'Home', type: 'layout' },
       },
     },
     place: {
