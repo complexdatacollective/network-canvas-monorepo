@@ -173,6 +173,7 @@
     "./navigation/SiteNavigation.constants": "./src/navigation/SiteNavigation.constants.ts",
     "./navigation/TeamAndStudySwitcher": "./src/navigation/TeamAndStudySwitcher.tsx",
     "./navigation/ThemeSwitcher": "./src/navigation/ThemeSwitcher.tsx",
+    "./storybook-support/awaitPassiveEffects": "./src/storybook-support/awaitPassiveEffects.ts",
     "./styles.css": "./src/styles.css",
     "./styles/controlVariants": "./src/styles/controlVariants.ts",
     "./typography/Heading": "./src/typography/Heading.tsx",
@@ -814,6 +815,10 @@
       "./navigation/ThemeSwitcher": {
         "types": "./dist/navigation/ThemeSwitcher.d.ts",
         "default": "./dist/navigation/ThemeSwitcher.js"
+      },
+      "./storybook-support/awaitPassiveEffects": {
+        "types": "./dist/storybook-support/awaitPassiveEffects.d.ts",
+        "default": "./dist/storybook-support/awaitPassiveEffects.js"
       },
       "./styles.css": "./dist/styles.css",
       "./styles/controlVariants": {
