@@ -35,6 +35,70 @@ const png = Uint8Array.from(
   ),
 );
 
+// Minimal format signatures exercise the pinned detector itself; media decoding
+// is not part of the archive's mechanical type-screening contract.
+const oggSignature = (codec: number[]) =>
+  Uint8Array.from([...encode('OggS'), ...new Uint8Array(24), ...codec]);
+const mp4Signature = (brand: string) =>
+  Uint8Array.from([
+    0,
+    0,
+    0,
+    24,
+    ...encode('ftyp' + brand),
+    ...new Uint8Array(12),
+  ]);
+const mediaSignatures = [
+  {
+    label: 'FLAC',
+    type: 'audio/flac',
+    mediaClass: 'audio',
+    bytes: Uint8Array.from([...encode('fLaC'), ...new Uint8Array(38)]),
+  },
+  {
+    label: 'Opus in Ogg',
+    type: 'audio/ogg',
+    mediaClass: 'audio',
+    bytes: oggSignature([...encode('OpusHead')]),
+  },
+  {
+    label: 'Vorbis in Ogg',
+    type: 'audio/ogg',
+    mediaClass: 'audio',
+    bytes: oggSignature([1, ...encode('vorbis'), 0]),
+  },
+  {
+    label: 'Theora in Ogg',
+    type: 'video/ogg',
+    mediaClass: 'video',
+    bytes: oggSignature([128, ...encode('theora'), 0]),
+  },
+  {
+    label: 'M4A',
+    type: 'audio/mp4',
+    mediaClass: 'audio',
+    bytes: mp4Signature('M4A '),
+  },
+  {
+    label: 'M4B',
+    type: 'audio/mp4',
+    mediaClass: 'audio',
+    bytes: mp4Signature('M4B '),
+  },
+  {
+    label: 'M4V',
+    type: 'video/mp4',
+    mediaClass: 'video',
+    bytes: mp4Signature('M4V '),
+  },
+  {
+    label: 'MP4',
+    type: 'video/mp4',
+    mediaClass: 'video',
+    bytes: mp4Signature('isom'),
+  },
+] as const;
+
 function fixture(): TemplateArtifactInput {
   return {
     template: { name: 'Portable template', kind: 'protocol', version: 1 },
@@ -71,6 +135,54 @@ function fixture(): TemplateArtifactInput {
     ],
   };
 }
+
+describe('template binary media screening', () => {
+  it.each(mediaSignatures)(
+    'round-trips the canonical media type for $label and rejects a different family',
+    async ({ type, mediaClass, bytes }) => {
+      const input = fixture();
+      input.sections = {
+        ...input.sections,
+        assets: {
+          illustration: {
+            type: mediaClass,
+            name: 'Media',
+            source: 'media.bin',
+          },
+        },
+      };
+      input.assets = [
+        {
+          source: 'media.bin',
+          media_class: mediaClass,
+          media_type: type,
+          bytes,
+        },
+      ];
+      const artifact = await createTemplateArtifact(input);
+      expect(
+        (await readTemplateArtifact(artifact.bytes)).assets[0]?.media_type,
+      ).toBe(type);
+      input.sections = {
+        ...input.sections,
+        assets: {
+          illustration: { type: 'image', name: 'Media', source: 'media.bin' },
+        },
+      };
+      input.assets = [
+        {
+          source: 'media.bin',
+          media_class: 'image',
+          media_type: 'image/png',
+          bytes,
+        },
+      ];
+      await expect(createTemplateArtifact(input)).rejects.toMatchObject({
+        code: 'TEMPLATE_ASSET_DISALLOWED',
+      });
+    },
+  );
+});
 
 function repack(files: Record<string, Uint8Array>): Uint8Array {
   return zipSync(files, { level: 9, mtime: new Date(1980, 0, 1) });

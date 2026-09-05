@@ -204,6 +204,10 @@ The binary allowlist is:
   `audio/mp4`.
 - Video: `video/mp4`, `video/webm`, `video/ogg`.
 
+Declarations use these canonical types. The detector's Opus-in-Ogg, M4A, and
+M4V aliases map to `audio/ogg`, `audio/mp4`, and `video/mp4` respectively;
+publisher-supplied aliases do not extend the admitted list.
+
 Binary type detection MUST agree with the declared type and class. This is
 mechanical screening, not a claim that a file has undergone comprehensive
 malware analysis. SVG, HTML, executable code, documents outside this allowlist,
