@@ -8,10 +8,8 @@ import NarrativePresetsSection from '../../sections/network/NarrativePresetsSect
 import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
 import StageNameSection from '../../sections/StageNameSection.tsx';
 import SubjectSection from '../../sections/SubjectSection.tsx';
-import {
-  interviewPosition,
-  type NamedStageEditorProps,
-} from '../pedigree/stageEditorComposition.ts';
+import type { StageEditorProps } from '../../stage-editor-contract.ts';
+import { interviewPosition } from '../pedigree/stageEditorComposition.ts';
 
 const DOCUMENTATION_URL = interfaceDocumentationUrl('narrative');
 
@@ -43,7 +41,7 @@ const DOCUMENTATION_URL = interfaceDocumentationUrl('narrative');
 export function NarrativeStageEditor({
   controller,
   actions,
-}: NamedStageEditorProps<'Narrative'>) {
+}: StageEditorProps<'Narrative'>) {
   const { snapshot } = controller;
   const position = interviewPosition(
     snapshot.protocolContext,

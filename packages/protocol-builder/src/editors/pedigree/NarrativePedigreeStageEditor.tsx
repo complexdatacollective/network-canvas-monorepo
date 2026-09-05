@@ -6,10 +6,8 @@ import DiseasesSection from '../../sections/narrativePedigree/DiseasesSection.ts
 import SourceStageSection from '../../sections/narrativePedigree/SourceStageSection.tsx';
 import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
 import StageNameSection from '../../sections/StageNameSection.tsx';
-import {
-  interviewPosition,
-  type NamedStageEditorProps,
-} from './stageEditorComposition.ts';
+import type { StageEditorProps } from '../../stage-editor-contract.ts';
+import { interviewPosition } from './stageEditorComposition.ts';
 
 const DOCUMENTATION_URL = interfaceDocumentationUrl('narrative-pedigree');
 
@@ -27,7 +25,7 @@ const DOCUMENTATION_URL = interfaceDocumentationUrl('narrative-pedigree');
 export function NarrativePedigreeStageEditor({
   controller,
   actions,
-}: NamedStageEditorProps<'NarrativePedigree'>) {
+}: StageEditorProps<'NarrativePedigree'>) {
   const { snapshot } = controller;
   const position = interviewPosition(
     snapshot.protocolContext,

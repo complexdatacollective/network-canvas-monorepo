@@ -8,10 +8,8 @@ import SociogramPromptsSection from '../../sections/network/SociogramPromptsSect
 import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
 import StageNameSection from '../../sections/StageNameSection.tsx';
 import SubjectSection from '../../sections/SubjectSection.tsx';
-import {
-  interviewPosition,
-  type NamedStageEditorProps,
-} from '../pedigree/stageEditorComposition.ts';
+import type { StageEditorProps } from '../../stage-editor-contract.ts';
+import { interviewPosition } from '../pedigree/stageEditorComposition.ts';
 
 const DOCUMENTATION_URL = interfaceDocumentationUrl('sociogram');
 
@@ -55,7 +53,7 @@ const CANVAS_INTERACTION_COPY = {
 export function SociogramStageEditor({
   controller,
   actions,
-}: NamedStageEditorProps<'Sociogram'>) {
+}: StageEditorProps<'Sociogram'>) {
   const { snapshot } = controller;
   const position = interviewPosition(
     snapshot.protocolContext,

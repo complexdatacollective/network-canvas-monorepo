@@ -1,25 +1,4 @@
-import type { StageType } from '@codaco/protocol-validation';
-
-import type { StageEditorShellProps } from '../../form/StageEditorShell.tsx';
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
-import type { StageEditorProps } from '../../stage-editor-contract.ts';
-
-/**
- * What a named stage editor takes: the registry's own contract, plus the
- * host's action chrome.
- *
- * The shell owns the form and knows whether it can be submitted; the host owns
- * where the save button lives and what sits beside it, and reads the form id
- * from the slot. An editor that did not forward the slot would leave a host no
- * way to render a submit control at all — so the prop is part of every named
- * editor, and optional, because a spectator view needs no chrome.
- *
- * Optional is also what keeps these components assignable to
- * `StageEditorComponent<T>`: the registry renders them with the contract's two
- * props and nothing else.
- */
-export type NamedStageEditorProps<T extends StageType> = StageEditorProps<T> &
-  Readonly<{ actions?: StageEditorShellProps['actions'] }>;
 
 /**
  * Where this stage sits in the interview, for the heading to say.

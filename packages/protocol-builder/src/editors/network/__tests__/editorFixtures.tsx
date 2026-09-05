@@ -4,8 +4,10 @@ import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import type { StageType } from '@codaco/protocol-validation';
 
 import type { StageEditorActionContext } from '../../../form/StageEditorShell.tsx';
-import type { StageEditorComponent } from '../../../stage-editor-contract.ts';
-import type { NamedStageEditorProps } from '../../pedigree/stageEditorComposition.ts';
+import type {
+  StageEditorComponent,
+  StageEditorProps,
+} from '../../../stage-editor-contract.ts';
 
 /**
  * The host chrome these tests put in the editor's action slot.
@@ -34,7 +36,7 @@ const saveActions = ({ formId }: StageEditorActionContext) => (
  * actually reachable.
  */
 export function harnessEditor<T extends StageType>(
-  Editor: ComponentType<NamedStageEditorProps<T>>,
+  Editor: ComponentType<StageEditorProps<T>>,
   stageType: T,
 ): StageEditorComponent {
   return function HarnessEditor({ controller }) {

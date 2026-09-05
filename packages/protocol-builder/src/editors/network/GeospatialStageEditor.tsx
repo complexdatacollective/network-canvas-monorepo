@@ -7,10 +7,8 @@ import InterviewerGuidanceSection from '../../sections/InterviewerGuidanceSectio
 import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
 import StageNameSection from '../../sections/StageNameSection.tsx';
 import SubjectSection from '../../sections/SubjectSection.tsx';
-import {
-  interviewPosition,
-  type NamedStageEditorProps,
-} from '../pedigree/stageEditorComposition.ts';
+import type { StageEditorProps } from '../../stage-editor-contract.ts';
+import { interviewPosition } from '../pedigree/stageEditorComposition.ts';
 
 const DOCUMENTATION_URL = interfaceDocumentationUrl('geospatial');
 
@@ -37,7 +35,7 @@ const DOCUMENTATION_URL = interfaceDocumentationUrl('geospatial');
 export function GeospatialStageEditor({
   controller,
   actions,
-}: NamedStageEditorProps<'Geospatial'>) {
+}: StageEditorProps<'Geospatial'>) {
   const { snapshot } = controller;
   const position = interviewPosition(
     snapshot.protocolContext,

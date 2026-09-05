@@ -7,10 +7,8 @@ import ComposerNodeConfigurationSection from '../../sections/network/ComposerNod
 import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
 import StageNameSection from '../../sections/StageNameSection.tsx';
 import SubjectSection from '../../sections/SubjectSection.tsx';
-import {
-  interviewPosition,
-  type NamedStageEditorProps,
-} from '../pedigree/stageEditorComposition.ts';
+import type { StageEditorProps } from '../../stage-editor-contract.ts';
+import { interviewPosition } from '../pedigree/stageEditorComposition.ts';
 
 const DOCUMENTATION_URL = interfaceDocumentationUrl('network-composer');
 
@@ -32,7 +30,7 @@ const DOCUMENTATION_URL = interfaceDocumentationUrl('network-composer');
 export function NetworkComposerStageEditor({
   controller,
   actions,
-}: NamedStageEditorProps<'NetworkComposer'>) {
+}: StageEditorProps<'NetworkComposer'>) {
   const { snapshot } = controller;
   const position = interviewPosition(
     snapshot.protocolContext,

@@ -10,6 +10,7 @@ import PedigreeEdgeConfigurationSection from '../../sections/pedigree/PedigreeEd
 import PedigreeNodeConfigurationSection from '../../sections/pedigree/PedigreeNodeConfigurationSection.tsx';
 import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
 import StageNameSection from '../../sections/StageNameSection.tsx';
+import type { StageEditorProps } from '../../stage-editor-contract.ts';
 import {
   FamilyMemberFormFieldEditor,
   FamilyMemberFormFieldPreview,
@@ -19,10 +20,7 @@ import {
   IntroScreenBlockPreview,
   normalizeIntroScreenBlock,
 } from './introScreen/IntroScreenBlockRow.tsx';
-import {
-  interviewPosition,
-  type NamedStageEditorProps,
-} from './stageEditorComposition.ts';
+import { interviewPosition } from './stageEditorComposition.ts';
 
 const DOCUMENTATION_URL = interfaceDocumentationUrl('family-pedigree');
 
@@ -44,7 +42,7 @@ const DOCUMENTATION_URL = interfaceDocumentationUrl('family-pedigree');
 export function FamilyPedigreeStageEditor({
   controller,
   actions,
-}: NamedStageEditorProps<'FamilyPedigree'>) {
+}: StageEditorProps<'FamilyPedigree'>) {
   const { snapshot } = controller;
   const position = interviewPosition(
     snapshot.protocolContext,
