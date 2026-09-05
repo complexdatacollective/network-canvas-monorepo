@@ -85,7 +85,9 @@ export type StageEditorRegistryPart = Partial<StageEditorRegistry>;
  * contract imports nothing but the controller and the stage types, so a part
  * can always import it.
  *
- * `type-tests/` compiles the failures this prevents.
+ * `type-tests/` compiles the failures this prevents, `partFromRegistry.ts`
+ * among them: the registry must not offer this helper, or a family could reach
+ * it there and close the cycle again.
  */
 export function defineStageEditorPart<
   const Part extends StageEditorRegistryPart,

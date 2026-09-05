@@ -604,6 +604,20 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       const stageSectionId = this.snapshot.editedSection.sectionId;
       const updatedStageDocument =
         result.update.protocolSections[stageSectionId];
+      /**
+       * A stage being CREATED is not in the protocol the host answers with,
+       * because it is not in the protocol at all until this session finishes.
+       * So its absence is the only correct answer to a create session's
+       * request, and refusing it would refuse every codebook edit a new
+       * stage's editor makes — after the host has already applied it.
+       *
+       * The host says nothing about this stage, so nothing about it moves:
+       * the base stands, the draft stands, the history stands, and only the
+       * sections and the revision the host DID decide are adopted below.
+       */
+      const stageAbsentByCreation =
+        updatedStageDocument === undefined &&
+        this.options.creation !== undefined;
       let fields: typeof this.snapshot.editedSection.fields;
       if (updatedStageDocument !== undefined) {
         try {
@@ -628,6 +642,12 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
             stageSectionId,
           );
         }
+      } else if (stageAbsentByCreation) {
+        // Read from `this.baseFields` rather than from the draft: the draft is
+        // the base plus the batches still pending, and adopting it as the base
+        // would either swallow those batches or replay them onto a document
+        // that already holds them.
+        fields = cloneDoc(this.baseFields);
       } else {
         return compoundFailure(
           'invalid-response',
@@ -646,7 +666,12 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       );
       // Whether this apply moved the ground the batches still pending stand on.
       let rebased: boolean;
-      if (planned.throughBatchId >= 0) {
+      if (stageAbsentByCreation) {
+        // The host was not holding this stage and did not decide anything
+        // about it, so there is no new ground: `fields` is the base it already
+        // was, and the pending batches still stand on it.
+        rebased = false;
+      } else if (planned.throughBatchId >= 0) {
         // This request carried the researcher's batches, so the stage it
         // answers with is the new base and anything still pending was made
         // after it — during the round trip — and has to be replayed onto it.
@@ -854,12 +879,44 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     this.replaceSnapshot({
       fields,
       pendingCommands,
+      protocolSections: this.sectionsWithAuthoritativeStage(params.fields),
       manifestRevision: params.manifestRevision,
       attribution: params.attribution ?? this.snapshot.attribution,
       validation: pendingValidation(),
       validatedProtocol: null,
     });
     void this.runValidation();
+  }
+
+  /**
+   * The protocol sections with this session's own copy of the edited stage
+   * moved to the document the host has just agreed to.
+   *
+   * The snapshot's stage section is the ONLY authoritative stage document a
+   * caller can read, and two things read it: a compound edit naming the
+   * document its stage commands will be applied to (`withStageSectionEdit`
+   * hashes it, and a hash of a superseded document is refused), and
+   * `protocolContext.orderedStages`, which is where a skip destination's list
+   * and the names an auto-named stage must not collide with come from. Moving
+   * the base without moving this leaves both a revision behind the host, so
+   * they move together.
+   *
+   * A stage being CREATED is left out: the interview does not contain it, an
+   * acknowledgement is not what puts it there, and a stage section outside the
+   * stage order is a protocol issue rather than a stage anything can read.
+   */
+  private sectionsWithAuthoritativeStage(
+    fields: StageFormDraft,
+  ): Readonly<Record<string, SectionDoc>> {
+    if (this.options.creation !== undefined)
+      return this.snapshot.protocolSections;
+    return {
+      ...this.snapshot.protocolSections,
+      [this.snapshot.editedSection.sectionId]: stageDocument(
+        this.options.identity,
+        fields,
+      ),
+    };
   }
 
   replaceAuthoritativeStage(
@@ -885,6 +942,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     this.redoStack.length = 0;
     this.replaceSnapshot({
       fields: params.fields,
+      protocolSections: this.sectionsWithAuthoritativeStage(params.fields),
       manifestRevision: params.manifestRevision,
       validation: pendingValidation(),
       validatedProtocol: null,

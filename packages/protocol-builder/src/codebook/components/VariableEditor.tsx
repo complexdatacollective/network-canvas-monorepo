@@ -28,7 +28,7 @@ import {
 import { canonicalize, type SectionDoc } from '@codaco/studio-sync/apply';
 
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
-import type { CompoundEditRequest, CompoundEditResult } from '../../session.ts';
+import type { CompoundEditRequest } from '../../session.ts';
 import { compoundFailureMessage } from '../compoundFailureCopy.ts';
 import {
   AuxiliaryCodebookDraftSession,
@@ -36,6 +36,7 @@ import {
   buildUpdateVariableRequest,
   InvalidCodebookDraftError,
   type AuxiliaryCodebookDraftFailure,
+  type AuxiliaryCodebookSubmitResult,
   type CodebookDraftIssue,
   type CodebookSubject,
   type CodebookVariableDraft,
@@ -87,9 +88,17 @@ type VariableEditorCommonProps = Readonly<{
   initialDraft: CodebookVariableDraft;
   description: string;
   createRequestId(): string;
+  /**
+   * Sends the compound edit, and may refuse it instead.
+   *
+   * A host that knows the draft contradicts rules already committed answers
+   * `{ status: 'contradiction', message }` rather than a `failed` result: the
+   * sentence is already written for the researcher, and the editor shows it
+   * verbatim. See `AuxiliaryCodebookContradiction`.
+   */
   onSubmitRequest(
     request: CompoundEditRequest,
-  ): Promise<CompoundEditResult> | CompoundEditResult;
+  ): Promise<AuxiliaryCodebookSubmitResult> | AuxiliaryCodebookSubmitResult;
   /** Receives the stable record id after the compound edit is accepted. */
   onComplete(variableId: string): void;
   onDraftChange?(draft: CodebookVariableDraft): void;

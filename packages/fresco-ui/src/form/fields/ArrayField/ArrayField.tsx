@@ -936,7 +936,19 @@ export default function ArrayField<T extends Record<string, unknown>>({
     maxItems !== undefined && confirmedItemCount >= Math.max(0, maxItems);
   const effectiveSortable = sortable && !isInteractionDisabled;
 
-  // Extract conflicting event handlers and ref before spreading to motion component
+  // Extract conflicting event handlers and ref before spreading to motion
+  // component.
+  //
+  // `aria-readonly` and `aria-required` go with them, for a different reason:
+  // the element these land on is the `role="list"` below, and a list supports
+  // neither. `useField` gives every field both — `aria-readonly` always, even
+  // when false — so this is not a caller's mistake to fix at a call site, and
+  // an `aria-allowed-attr` violation is not advisory: an attribute a role does
+  // not support is undefined behaviour for a screen reader rather than
+  // something it ignores. Nothing is lost by dropping them here, because the
+  // list was never what conveyed them: each item's own controls carry their
+  // readonly and required state, and `aria-disabled` (which a list does
+  // support) still says the whole field is unavailable.
   const {
     onAnimationStart,
     onAnimationEnd,
@@ -950,6 +962,8 @@ export default function ArrayField<T extends Record<string, unknown>>({
     onDragStart,
     onDrop,
     ref,
+    'aria-readonly': ariaReadOnly,
+    'aria-required': ariaRequired,
     ...safeAriaProps
   } = ariaProps;
 

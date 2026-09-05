@@ -270,6 +270,27 @@ describe('ProtocolBuilderSessionStore', () => {
     });
   });
 
+  /**
+   * The snapshot's own copy of the stage section is the only authoritative
+   * stage document a caller can read — the one a compound edit hashes, and the
+   * one `orderedStages` is built from — so an authoritative replacement moves
+   * it along with the base.
+   */
+  it('moves the stage document a caller reads when the stage is replaced', () => {
+    const { session } = createSession({
+      protocolSections: { [currentStageSection]: currentStageDocument },
+    });
+
+    session.replaceAuthoritativeStage({
+      fields: { ...initialFields, label: 'Remote' },
+      manifestRevision: revision(2n),
+    });
+
+    expect(session.getSnapshot().protocolSections[currentStageSection]).toEqual(
+      { ...currentStageDocument, label: 'Remote' },
+    );
+  });
+
   it('stamps and atomically reconciles a structural compound edit', async () => {
     const onCommands = vi.fn();
     const onCompoundEdit = vi.fn().mockResolvedValue({
@@ -540,6 +561,48 @@ describe('ProtocolBuilderSessionStore', () => {
       sectionId: currentStageSection,
     });
     expect(session.getSnapshot()).toBe(before);
+  });
+
+  /**
+   * The same answer, to a session on a stage that is being CREATED. The
+   * interview does not contain the stage, so no full protocol snapshot can,
+   * and the omission is the only correct answer rather than a broken one.
+   */
+  it('takes the same result for a stage the interview does not contain yet', async () => {
+    const onCompoundEdit = vi.fn().mockResolvedValue({
+      status: 'applied',
+      update: {
+        protocolSections: {
+          [nodeSection]: {
+            name: 'Person',
+            color: 'node-color-seq-1',
+            shape: { default: 'circle' },
+          },
+        },
+        manifestRevision: revision(2n),
+      },
+    });
+    const { session } = createSession({
+      onCompoundEdit,
+      creation: { position: 0 },
+    });
+    await session.validate();
+    const request: CompoundEditRequest = {
+      id: 'create-person-only',
+      description: 'Create person type',
+      edits: [compoundRequest().edits[0]!],
+    };
+
+    await expect(session.requestCompoundEdit(request)).resolves.toMatchObject({
+      status: 'applied',
+    });
+    expect(session.getSnapshot()).toMatchObject({
+      manifestRevision: revision(2n),
+      editedSection: { fields: initialFields },
+    });
+    expect(session.getSnapshot().protocolSections[nodeSection]).toMatchObject({
+      name: 'Person',
+    });
   });
 
   it('fences a compound result that resolves after lease loss', async () => {

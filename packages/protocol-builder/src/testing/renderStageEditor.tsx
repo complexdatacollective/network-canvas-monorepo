@@ -15,7 +15,10 @@ import { resolveFieldPath } from '@codaco/fresco-ui/form/FieldNamespace';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import type { StageType } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
-import { sectionId } from '@codaco/studio-sync/taxonomy';
+import {
+  sectionId,
+  type ProtocolSectionId,
+} from '@codaco/studio-sync/taxonomy';
 
 import type { InMemoryCompoundHost } from '../compound-edit/InMemoryCompoundHost.ts';
 import { useStageEditorController } from '../controller.ts';
@@ -186,6 +189,14 @@ export type RenderStageEditorOptions<T extends StageType = StageType> =
     submitLabel?: string;
     /** Open the stage as a spectator. */
     readOnly?: boolean;
+    /**
+     * Sections another editor is holding, named by who is holding them, so a
+     * change that needs one is blocked rather than applied.
+     */
+    heldSections?: readonly Readonly<{
+      sectionId: ProtocolSectionId;
+      displayName: string;
+    }>[];
   }>;
 
 /**
@@ -210,6 +221,9 @@ export function renderStageEditor<T extends StageType = StageType>(
     seeded,
     ...(options.assets === undefined ? {} : { assets: options.assets }),
     ...(options.readOnly === undefined ? {} : { readOnly: options.readOnly }),
+    ...(options.heldSections === undefined
+      ? {}
+      : { heldSections: options.heldSections }),
     onFinish: (request) => {
       finishRequests.push(request);
     },

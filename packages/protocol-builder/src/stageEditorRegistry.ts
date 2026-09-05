@@ -24,7 +24,9 @@
  * that does not hold its part yet. The contract is a leaf — it imports the
  * controller and the stage types and nothing else — which is what makes it
  * safe for a part to import, and it is where the rest of what a family writes
- * against already lives.
+ * against already lives. `defineStageEditorPart` is deliberately NOT
+ * re-exported from here: a family that reached it through this module would
+ * close the cycle again, and only sometimes.
  */
 import type { StageType } from '@codaco/protocol-validation';
 
