@@ -1,11 +1,42 @@
 import { useSelector } from 'react-redux';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import {
   getUsesRetiredMapboxToken,
   getUsesTestingMapboxToken,
 } from '~/selectors/issues';
+const messages = defineMessages({
+  revokedMapboxTestingToken: {
+    id: 'architect.testingMapboxTokenAlert.revokedMapboxTestingToken',
+    defaultMessage: 'Revoked Mapbox testing token',
+    description: 'Visible text in components / TestingMapboxTokenAlert.',
+  },
+  thisProtocolUsesARetiredNetwork: {
+    id: 'architect.testingMapboxTokenAlert.thisProtocolUsesARetiredNetwork',
+    defaultMessage:
+      'This protocol uses a retired Network Canvas Mapbox testing token. It was revoked on 2 September 2026, so maps in Geospatial stages will not load. Replace it with your own token in the Resource Library.',
+    description: 'Visible text in components / TestingMapboxTokenAlert.',
+  },
+  howToGetAMapboxToken: {
+    id: 'architect.testingMapboxTokenAlert.howToGetAMapboxToken',
+    defaultMessage: 'How to get a Mapbox token',
+    description: 'Visible text in components / TestingMapboxTokenAlert.',
+  },
+  usingATestingMapboxToken: {
+    id: 'architect.testingMapboxTokenAlert.usingATestingMapboxToken',
+    defaultMessage: 'Using a testing Mapbox token',
+    description: 'Visible text in components / TestingMapboxTokenAlert.',
+  },
+  thisProtocolUsesNetworkCanvasSShared: {
+    id: 'architect.testingMapboxTokenAlert.thisProtocolUsesNetworkCanvasSShared',
+    defaultMessage:
+      "This protocol uses Network Canvas's shared Mapbox testing token so the map renders out of the box. It is rate-limited and for evaluation only. Before you deploy this study, replace it with your own token in the Resource Library.",
+    description: 'Visible text in components / TestingMapboxTokenAlert.',
+  },
+});
 
 const MAPBOX_TOKEN_HELP_URL =
   'https://docs.mapbox.com/help/getting-started/access-tokens/';
@@ -28,18 +59,19 @@ const openMapboxTokenHelp = () => {
  * Renders nothing for protocols that carry neither.
  */
 const TestingMapboxTokenAlert = () => {
+  const intl = useAppIntl();
   const usesTestingToken = useSelector(getUsesTestingMapboxToken);
   const usesRetiredToken = useSelector(getUsesRetiredMapboxToken);
 
   if (usesRetiredToken) {
     return (
       <Alert variant="destructive" className="mx-auto mb-10 max-w-3xl">
-        <AlertTitle>Revoked Mapbox testing token</AlertTitle>
+        <AlertTitle>
+          {intl.formatMessage(messages.revokedMapboxTestingToken)}
+        </AlertTitle>
         <AlertDescription className="space-y-4 text-sm">
           <span className="block">
-            This protocol uses a retired Network Canvas Mapbox testing token. It
-            was revoked on 2 September 2026, so maps in Geospatial stages will
-            not load. Replace it with your own token in the Resource Library.
+            {intl.formatMessage(messages.thisProtocolUsesARetiredNetwork)}
           </span>
           <Button
             color="destructive"
@@ -47,7 +79,7 @@ const TestingMapboxTokenAlert = () => {
             className="[--component-bg:var(--destructive)] [--component-text:oklch(var(--white))]"
             onClick={openMapboxTokenHelp}
           >
-            How to get a Mapbox token
+            {intl.formatMessage(messages.howToGetAMapboxToken)}
           </Button>
         </AlertDescription>
       </Alert>
@@ -60,13 +92,12 @@ const TestingMapboxTokenAlert = () => {
 
   return (
     <Alert variant="warning" className="mx-auto mb-10 max-w-3xl">
-      <AlertTitle>Using a testing Mapbox token</AlertTitle>
+      <AlertTitle>
+        {intl.formatMessage(messages.usingATestingMapboxToken)}
+      </AlertTitle>
       <AlertDescription className="space-y-4 text-sm">
         <span className="block">
-          This protocol uses Network Canvas&apos;s shared Mapbox testing token
-          so the map renders out of the box. It is rate-limited and for
-          evaluation only. Before you deploy this study, replace it with your
-          own token in the Resource Library.
+          {intl.formatMessage(messages.thisProtocolUsesNetworkCanvasSShared)}
         </span>
         <Button
           color="warning"
@@ -74,7 +105,7 @@ const TestingMapboxTokenAlert = () => {
           className="[--component-bg:var(--warning)] [--component-text:oklch(var(--white))]"
           onClick={openMapboxTokenHelp}
         >
-          How to get a Mapbox token
+          {intl.formatMessage(messages.howToGetAMapboxToken)}
         </Button>
       </AlertDescription>
     </Alert>

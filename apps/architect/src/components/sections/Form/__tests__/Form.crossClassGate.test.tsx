@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { Stage } from '@codaco/protocol-validation';
+import { messageFields, messageText } from '~/test/messageText';
 
 // Task 9 fix round 1: mount-level coverage of the REAL wiring behind
 // Form.tsx's `hasUnvalidatedUse` closure — the role-map subscription
@@ -293,14 +294,17 @@ describe('Form.tsx cross-class gate (real role-map wiring)', () => {
       throw new Error('stage form context was not captured');
     await stageFormContext.storeApi.getState().validateField('form.fields');
     expect(
-      stageFormContext.storeApi.getState().getFieldErrors('form.fields'),
+      stageFormContext.storeApi
+        .getState()
+        .getFieldErrors('form.fields')
+        ?.map(messageText),
     ).toEqual(['You must create at least one item.']);
   });
 
   it('rejects a pick a bin elsewhere already writes, using the REAL role map for the mount’s subject', () => {
     const editorValidate = renderForm({ entity: 'node', type: 'person' });
     const errors = editorValidate({ variable: 'cat', validation: {} });
-    expect(errors.variable).toBe(
+    expect(messageText(errors.variable)).toBe(
       '"Cat" is written without validation by another stage, so it cannot be used as a form field',
     );
   });
@@ -348,7 +352,7 @@ describe('Form.tsx cross-class gate (real role-map wiring)', () => {
   it('rejects a new field that repeats a variable this form already collects', () => {
     const editorValidate = renderForm({ entity: 'node', type: 'person' });
     const errors = editorValidate({ variable: 'boolA', validation: {} });
-    expect(errors.variable).toBe(
+    expect(messageText(errors.variable)).toBe(
       'This attribute is already collected by another field in this form. Choose a different attribute, or edit the existing field instead.',
     );
   });
@@ -359,7 +363,7 @@ describe('Form.tsx cross-class gate (real role-map wiring)', () => {
       { variable: 'boolA', validation: {} },
       { editIndex: 0 },
     );
-    expect(errors.variable).toBeUndefined();
+    expect(messageText(errors.variable)).toBeUndefined();
   });
 
   // The rows to check against are the ones in the OPEN editor, not the ones on
@@ -377,8 +381,10 @@ describe('Form.tsx cross-class gate (real role-map wiring)', () => {
     ]);
 
     expect(
-      currentEditorValidate()({ variable: 'draftOnly', validation: {} })
-        .variable,
+      messageText(
+        currentEditorValidate()({ variable: 'draftOnly', validation: {} })
+          .variable,
+      ),
     ).toBe(
       'This attribute is already collected by another field in this form. Choose a different attribute, or edit the existing field instead.',
     );
@@ -395,7 +401,9 @@ describe('Form.tsx cross-class gate (real role-map wiring)', () => {
     setFormFields([{ variable: 'boolB' }]);
 
     expect(
-      currentEditorValidate()({ variable: 'boolA', validation: {} }).variable,
+      messageText(
+        currentEditorValidate()({ variable: 'boolA', validation: {} }).variable,
+      ),
     ).toBeUndefined();
     expect(currentSiblingFields()).toEqual([{ variable: 'boolB' }]);
   });
@@ -415,7 +423,9 @@ describe('Form.tsx cross-class gate (real role-map wiring)', () => {
       { editIndex: 0 },
     );
 
-    expect(errors.validation).toContain('must differ');
+    expect(messageText(errors.validation)).toBe(
+      'The rules require different answers for Boolean A and Boolean B, but their allowed ranges force the same value. Widen a range or change the comparison.',
+    );
   });
 
   it('rejects a field variable written by an unsaved prompt draft', () => {
@@ -426,7 +436,7 @@ describe('Form.tsx cross-class gate (real role-map wiring)', () => {
       component: 'Toggle',
     });
 
-    expect(errors.variable).toBe(
+    expect(messageText(errors.variable)).toBe(
       '"Draft only" is assigned without validation by a prompt in this stage, so it cannot be used as a form field',
     );
   });
@@ -434,13 +444,15 @@ describe('Form.tsx cross-class gate (real role-map wiring)', () => {
   it('keeps the unchanged-pick escape for a pre-existing draft conflict', () => {
     const editorValidate = renderForm({ entity: 'node', type: 'person' });
     expect(
-      editorValidate(
-        {
-          variable: 'draftOnly',
-          validation: {},
-          component: 'Toggle',
-        },
-        { initialValues: { variable: 'draftOnly' } },
+      messageFields(
+        editorValidate(
+          {
+            variable: 'draftOnly',
+            validation: {},
+            component: 'Toggle',
+          },
+          { initialValues: { variable: 'draftOnly' } },
+        ),
       ),
     ).toEqual({});
   });

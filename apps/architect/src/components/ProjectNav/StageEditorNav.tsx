@@ -2,6 +2,9 @@ import { Check, Eye, Loader2, Settings, X } from 'lucide-react';
 import { type ReactNode, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import {
   defineToolbarChild,
@@ -22,6 +25,49 @@ import { useActionToolbar } from './ActionToolbar';
 import Breadcrumb, { type BreadcrumbItem } from './Breadcrumb';
 import { HistoryToolbarControls } from './historyToolbarItems';
 import NavShell from './NavShell';
+const chromeMessages = defineMessages({
+  untitledProtocol: {
+    id: 'architect.chrome.projectNav.stageEditorNav.untitledProtocol',
+    defaultMessage: 'Untitled protocol',
+    description: 'The label text in components / ProjectNav / StageEditorNav.',
+  },
+});
+const messages = defineMessages({
+  finishedEditing: {
+    id: 'architect.projectNav.stageEditorNav.finishedEditing',
+    defaultMessage: 'Finished Editing',
+    description: 'Visible text in components / ProjectNav / StageEditorNav.',
+  },
+  stageEditorActions: {
+    id: 'architect.projectNav.stageEditorNav.stageEditorActions',
+    defaultMessage: 'Stage editor actions',
+    description:
+      "The 'aria-label' text in components / ProjectNav / StageEditorNav.",
+  },
+  editingActions: {
+    id: 'architect.projectNav.stageEditorNav.editingActions',
+    defaultMessage: 'Editing actions',
+    description:
+      'The aria-label text in components / ProjectNav / StageEditorNav.',
+  },
+  previewActions: {
+    id: 'architect.projectNav.stageEditorNav.previewActions',
+    defaultMessage: 'Preview actions',
+    description:
+      'The aria-label text in components / ProjectNav / StageEditorNav.',
+  },
+  preview: {
+    id: 'architect.projectNav.stageEditorNav.preview',
+    defaultMessage: 'Preview',
+    description: 'Visible text in components / ProjectNav / StageEditorNav.',
+  },
+  previewSettings: {
+    id: 'architect.projectNav.stageEditorNav.previewSettings',
+    defaultMessage: 'Preview settings',
+    description:
+      'The aria-label text in components / ProjectNav / StageEditorNav.',
+  },
+});
 
 const previewButtonClassName =
   'bg-slate-blue! text-white! ui-enabled:hover:bg-slate-blue! ui-enabled:hover:text-white!';
@@ -58,6 +104,7 @@ const FinishedEditingControl = defineToolbarChild(
     canCommit,
     ref,
   }: FinishedEditingControlProps) {
+    const intl = useAppIntl();
     return (
       <ToolbarButton
         ref={ref}
@@ -71,7 +118,7 @@ const FinishedEditingControl = defineToolbarChild(
         aria-busy={isSubmitting}
         onClick={openIssues}
       >
-        Finished Editing
+        {intl.formatMessage(messages.finishedEditing)}
       </ToolbarButton>
     );
   },
@@ -87,6 +134,7 @@ const StageEditorNav = ({
   isOpeningPreview,
   hasUnsavedChanges,
 }: StageEditorNavProps) => {
+  const intl = useAppIntl();
   const protocolName = useSelector(getProtocolName);
   const { canUndo, canRedo, undo, redo } = useStageDraftHistory();
   const { control: issuesControl, openIssues } = useIssuesToolbarControl();
@@ -100,7 +148,11 @@ const StageEditorNav = ({
   const canCommit = useProtocolAccessMode() === 'editable';
 
   const breadcrumbItems: BreadcrumbItem[] = [
-    { label: protocolName ?? 'Untitled protocol', onClick: onCancel },
+    {
+      label:
+        protocolName ?? intl.formatMessage(chromeMessages.untitledProtocol),
+      onClick: onCancel,
+    },
     { label: stageName },
   ];
 
@@ -108,7 +160,7 @@ const StageEditorNav = ({
 
   const toolbarProps = useMemo(
     () => ({
-      'aria-label': 'Stage editor actions',
+      'aria-label': intl.formatMessage(messages.stageEditorActions),
       'leadingActions': showHistoryActions ? (
         <HistoryToolbarControls
           key="history-controls"
@@ -121,9 +173,12 @@ const StageEditorNav = ({
       'children': [
         issuesControl,
         issuesControl ? <ToolbarSeparator key="issues-separator" /> : null,
-        <ToolbarGroup key="stage-editing" aria-label="Editing actions">
+        <ToolbarGroup
+          key="stage-editing"
+          aria-label={intl.formatMessage(messages.editingActions)}
+        >
           <ToolbarButton icon={<X />} onClick={onCancel}>
-            Cancel
+            {intl.formatMessage(commonMessages.cancel)}
           </ToolbarButton>
           {hasUnsavedChanges ? (
             <FinishedEditingControl
@@ -137,7 +192,7 @@ const StageEditorNav = ({
         <ToolbarSeparator key="stage-preview-separator" />,
         <ToolbarGroup
           key="stage-preview"
-          aria-label="Preview actions"
+          aria-label={intl.formatMessage(messages.previewActions)}
           className="gap-[0.16em]"
         >
           <ToolbarButton
@@ -148,7 +203,9 @@ const StageEditorNav = ({
             }
             onClick={onPreview}
           >
-            {isOpeningPreview ? previewLabel : 'Preview'}
+            {isOpeningPreview
+              ? previewLabel
+              : intl.formatMessage(messages.preview)}
           </ToolbarButton>
           <ToolbarPopover
             open={previewOptionsOpen}
@@ -156,7 +213,7 @@ const StageEditorNav = ({
             contentProps={{ side: 'top', align: 'end' }}
             trigger={
               <ToolbarIconButton
-                aria-label="Preview settings"
+                aria-label={intl.formatMessage(messages.previewSettings)}
                 className={`${previewButtonClassName} relative rounded-l-none! focus-visible:z-10 [&>.lucide]:-translate-x-0.5`}
                 disabled={!previewOptionsContent}
                 icon={<Settings />}
@@ -186,6 +243,7 @@ const StageEditorNav = ({
       redo,
       showHistoryActions,
       undo,
+      intl,
     ],
   );
 

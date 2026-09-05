@@ -11,6 +11,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 
 import Form from '@codaco/fresco-ui/form/Form';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
+import { messageText } from '~/test/messageText';
 
 // The real component is rendered inside a real fresco-ui form — the same idiom
 // DialogArrayField.test.tsx and NativeSelect.test.tsx use — so these behaviours
@@ -204,7 +205,7 @@ describe('Validations behaviour', () => {
 
       expect(toggle('Minimum value')).not.toBeChecked();
       expect(toggle('Maximum value')).not.toBeChecked();
-      expect(toggle('Required')).not.toBeChecked();
+      expect(toggle('Required answer')).not.toBeChecked();
     });
 
     it('renders a set rule as switched on with its value', () => {
@@ -217,7 +218,7 @@ describe('Validations behaviour', () => {
         validation: { required: true, minValue: 3 },
       });
 
-      expect(toggle('Required')).toBeChecked();
+      expect(toggle('Required answer')).toBeChecked();
       expect(toggle('Minimum value')).toBeChecked();
       expect(numberValue('Minimum value')).toHaveValue(3);
     });
@@ -259,9 +260,9 @@ describe('Validations behaviour', () => {
         validation: { required: false, maxLength: 0 },
       });
 
-      expect(toggle('Required')).not.toBeChecked();
-      expect(toggle('Maximum length')).toBeChecked();
-      expect(numberValue('Maximum length')).toHaveValue(0);
+      expect(toggle('Required answer')).not.toBeChecked();
+      expect(toggle('Maximum text length')).toBeChecked();
+      expect(numberValue('Maximum text length')).toHaveValue(0);
       expect(
         screen.queryByText(/required answers cannot satisfy maxLength/),
       ).not.toBeInTheDocument();
@@ -277,7 +278,7 @@ describe('Validations behaviour', () => {
         validation: { unique: false },
       });
 
-      expect(toggle('Must be unique')).not.toBeChecked();
+      expect(toggle('Unique value')).not.toBeChecked();
     });
 
     it('switches a false rule on rather than off on the first click', () => {
@@ -290,9 +291,9 @@ describe('Validations behaviour', () => {
         validation: { required: false },
       });
 
-      fireEvent.click(toggle('Required'));
+      fireEvent.click(toggle('Required answer'));
 
-      expect(toggle('Required')).toBeChecked();
+      expect(toggle('Required answer')).toBeChecked();
       expect(committedValidation()).toEqual({ required: true });
     });
 
@@ -307,17 +308,19 @@ describe('Validations behaviour', () => {
           validation: { required: false, maxLength: 0 },
         });
 
-      fireEvent.click(toggle('Required'));
+      fireEvent.click(toggle('Required answer'));
       // Both rules are implicated, so both rows carry the reason.
       expect(
-        screen.getAllByText(/required answers cannot satisfy maxLength \(0\)/),
+        screen.getAllByText(
+          /leave no permitted answer. Adjust the bounds or the required-answer rule/,
+        ),
       ).toHaveLength(2);
       expect(committedValidation()).toEqual({ required: true, maxLength: 0 });
-      expect(await expectSaveBlocked()).toMatch(
-        /required answers cannot satisfy maxLength \(0\)/,
+      expect(messageText(await expectSaveBlocked())).toMatch(
+        /leave no permitted answer. Adjust the bounds or the required-answer rule/,
       );
 
-      fireEvent.blur(typeValue('Maximum length', '5'));
+      fireEvent.blur(typeValue('Maximum text length', '5'));
 
       expect(committedValidation()).toEqual({ required: true, maxLength: 5 });
       await expectSaveAllowed();
@@ -335,7 +338,7 @@ describe('Validations behaviour', () => {
         validation: {},
       });
 
-      fireEvent.click(toggle('Required'));
+      fireEvent.click(toggle('Required answer'));
 
       expect(committedValidation()).toEqual({ required: true });
     });
@@ -350,7 +353,7 @@ describe('Validations behaviour', () => {
         validation: { required: true, minLength: 2 },
       });
 
-      fireEvent.click(toggle('Required'));
+      fireEvent.click(toggle('Required answer'));
 
       expect(committedValidation()).toEqual({ minLength: 2 });
     });
@@ -368,11 +371,11 @@ describe('Validations behaviour', () => {
         validation: {},
       });
 
-      fireEvent.click(toggle('Minimum length'));
+      fireEvent.click(toggle('Minimum text length'));
       expect(committedValidation()).toEqual({ minLength: 1 });
-      expect(numberValue('Minimum length')).toHaveValue(1);
+      expect(numberValue('Minimum text length')).toHaveValue(1);
 
-      const input = typeValue('Minimum length', '1');
+      const input = typeValue('Minimum text length', '1');
       fireEvent.change(input, { target: { value: '10' } });
       expect(committedValidation()).toEqual({ minLength: 1 });
 
@@ -381,12 +384,12 @@ describe('Validations behaviour', () => {
     });
 
     it.each([
-      ['text', 'Minimum length', 'minLength', 1],
-      ['text', 'Maximum length', 'maxLength', 1],
+      ['text', 'Minimum text length', 'minLength', 1],
+      ['text', 'Maximum text length', 'maxLength', 1],
       ['number', 'Minimum value', 'minValue', 0],
       ['number', 'Maximum value', 'maxValue', 0],
-      ['categorical', 'Minimum selected', 'minSelected', 1],
-      ['categorical', 'Maximum selected', 'maxSelected', 1],
+      ['categorical', 'Minimum selection', 'minSelected', 1],
+      ['categorical', 'Maximum selection', 'maxSelected', 1],
     ])(
       'starts %s %s valid before the value control is edited',
       async (variableType, label, ruleKey, initialValue) => {
@@ -421,13 +424,13 @@ describe('Validations behaviour', () => {
         validation: { maxLength: 7 },
       });
 
-      fireEvent.click(toggle('Minimum length'));
+      fireEvent.click(toggle('Minimum text length'));
 
       expect(committedValidation()).toEqual({
         maxLength: 7,
         minLength: 7,
       });
-      expect(numberValue('Minimum length')).toHaveValue(7);
+      expect(numberValue('Minimum text length')).toHaveValue(7);
     });
 
     it('commits on Enter as well as blur', () => {
@@ -440,8 +443,8 @@ describe('Validations behaviour', () => {
         validation: {},
       });
 
-      fireEvent.click(toggle('Minimum length'));
-      const input = typeValue('Minimum length', '4');
+      fireEvent.click(toggle('Minimum text length'));
+      const input = typeValue('Minimum text length', '4');
       fireEvent.keyDown(input, { key: 'Enter' });
 
       expect(committedValidation()).toEqual({ minLength: 4 });
@@ -482,13 +485,13 @@ describe('Validations behaviour', () => {
         validation: { minLength: 5 },
       });
 
-      const input = typeValue('Minimum length', '');
+      const input = typeValue('Minimum text length', '');
       fireEvent.blur(input);
 
       expect(committedValidation()).toEqual({ minLength: null });
-      expect(toggle('Minimum length')).toBeChecked();
-      expect(await expectSaveBlocked()).toBe(
-        'Enter a value for "Minimum length", or switch the rule off.',
+      expect(toggle('Minimum text length')).toBeChecked();
+      expect(messageText(await expectSaveBlocked())).toBe(
+        'Enter a value for "Minimum text length", or switch the rule off.',
       );
     });
   });
@@ -509,8 +512,8 @@ describe('Validations behaviour', () => {
         validation: {},
       });
 
-      fireEvent.click(toggle('Maximum length'));
-      const input = typeValue('Maximum length', '0');
+      fireEvent.click(toggle('Maximum text length'));
+      const input = typeValue('Maximum text length', '0');
       fireEvent.blur(input);
 
       expect(
@@ -529,27 +532,29 @@ describe('Validations behaviour', () => {
         validation: { required: true },
       });
 
-      fireEvent.click(toggle('Maximum length'));
-      const input = typeValue('Maximum length', '0');
+      fireEvent.click(toggle('Maximum text length'));
+      const input = typeValue('Maximum text length', '0');
 
       expect(
-        screen.getByText(/required answers cannot satisfy maxLength \(0\)/),
+        screen.getByText(
+          /leave no permitted answer. Adjust the bounds or the required-answer rule/,
+        ),
       ).toBeInTheDocument();
 
       fireEvent.blur(input);
       expect(committedValidation()).toEqual({ required: true, maxLength: 0 });
-      expect(await expectSaveBlocked()).toMatch(
-        /required answers cannot satisfy maxLength \(0\)/,
+      expect(messageText(await expectSaveBlocked())).toMatch(
+        /leave no permitted answer. Adjust the bounds or the required-answer rule/,
       );
     });
 
     it.each([
-      ['text', 'minLength', 'Minimum length'],
-      ['text', 'maxLength', 'Maximum length'],
+      ['text', 'minLength', 'Minimum text length'],
+      ['text', 'maxLength', 'Maximum text length'],
       ['number', 'minValue', 'Minimum value'],
       ['number', 'maxValue', 'Maximum value'],
-      ['categorical', 'minSelected', 'Minimum selected'],
-      ['categorical', 'maxSelected', 'Maximum selected'],
+      ['categorical', 'minSelected', 'Minimum selection'],
+      ['categorical', 'maxSelected', 'Maximum selection'],
     ])(
       'keeps a fractional %s %s and blocks the save',
       async (variableType, validationRule, label) => {
@@ -566,13 +571,13 @@ describe('Validations behaviour', () => {
         const input = typeValue(label, '1.5');
 
         expect(
-          screen.getByText(`${validationRule} must be a whole number`),
+          screen.getByText(`${label} must be a whole number`),
         ).toBeInTheDocument();
 
         fireEvent.blur(input);
         expect(committedValidation()).toEqual({ [validationRule]: 1.5 });
-        expect(await expectSaveBlocked()).toBe(
-          `${validationRule} must be a whole number`,
+        expect(messageText(await expectSaveBlocked())).toBe(
+          `${label} must be a whole number`,
         );
       },
     );
@@ -580,12 +585,19 @@ describe('Validations behaviour', () => {
     // Issue #1383's first finding, in miniature: the inverted bound is now
     // held for correction instead of being dropped on the way out.
     it.each([
-      ['text', 'Minimum length', 'Maximum length', '10', '3', 'maxLength'],
+      [
+        'text',
+        'Minimum text length',
+        'Maximum text length',
+        '10',
+        '3',
+        'maxLength',
+      ],
       ['number', 'Minimum value', 'Maximum value', '100', '50', 'maxValue'],
       [
         'categorical',
-        'Minimum selected',
-        'Maximum selected',
+        'Minimum selection',
+        'Maximum selection',
         '2',
         '1',
         'maxSelected',
@@ -610,7 +622,9 @@ describe('Validations behaviour', () => {
         fireEvent.blur(maxInput);
 
         expect(committedValidation()[maxRule]).toBe(Number(maxText));
-        expect(await expectSaveBlocked()).toMatch(/is greater than/);
+        expect(messageText(await expectSaveBlocked())).toMatch(
+          /leave no permitted answer. Adjust the bounds or the required-answer rule/,
+        );
 
         fireEvent.change(maxInput, { target: { value: '999' } });
         fireEvent.blur(maxInput);
@@ -633,7 +647,9 @@ describe('Validations behaviour', () => {
       const input = typeValue('Minimum value', '10');
 
       expect(
-        screen.getByText(/minValue \(10\) is greater than maxValue \(6\)/),
+        screen.getByText(
+          /leave no permitted answer. Adjust the bounds or the required-answer rule/,
+        ),
       ).toBeInTheDocument();
 
       fireEvent.blur(input);
@@ -648,12 +664,12 @@ describe('Validations behaviour', () => {
 
   describe('comparison rules', () => {
     it.each([
-      'Different from',
-      'Same as',
-      'Less than',
-      'Greater than',
-      'Less than or equal to',
-      'Greater than or equal to',
+      'Different from another attribute',
+      'Same as another attribute',
+      'Less than another attribute',
+      'Greater than another attribute',
+      'Less than or equal to another attribute',
+      'Greater than or equal to another attribute',
     ])('does not focus or immediately invalidate the %s picker', (label) => {
       setup({
         variableType: 'number',
@@ -710,7 +726,7 @@ describe('Validations behaviour', () => {
         validation: { lessThanVariable: 'c' },
       });
 
-      const optionLabels = within(targetSelect('Less than'))
+      const optionLabels = within(targetSelect('Less than another attribute'))
         .getAllByRole('option')
         .map((option) => option.textContent);
 
@@ -746,7 +762,7 @@ describe('Validations behaviour', () => {
         validation: { lessThanVariable: 'a' },
       });
 
-      const optionLabels = within(targetSelect('Less than'))
+      const optionLabels = within(targetSelect('Less than another attribute'))
         .getAllByRole('option')
         .map((option) => option.textContent);
 
@@ -766,10 +782,12 @@ describe('Validations behaviour', () => {
         validation: {},
       });
 
-      fireEvent.click(toggle('Less than'));
+      fireEvent.click(toggle('Less than another attribute'));
       expect(committedValidation()).toEqual({ lessThanVariable: null });
 
-      fireEvent.change(targetSelect('Less than'), { target: { value: 'c' } });
+      fireEvent.change(targetSelect('Less than another attribute'), {
+        target: { value: 'c' },
+      });
 
       expect(committedValidation()).toEqual({ lessThanVariable: 'c' });
     });
@@ -789,11 +807,11 @@ describe('Validations behaviour', () => {
         validation: {},
       });
 
-      fireEvent.click(toggle('Less than'));
+      fireEvent.click(toggle('Less than another attribute'));
 
       expect(committedValidation()).toEqual({ lessThanVariable: null });
-      expect(await expectSaveBlocked()).toBe(
-        'Choose a comparison attribute for "Less than", or switch the rule off.',
+      expect(messageText(await expectSaveBlocked())).toBe(
+        'Choose a comparison attribute for "Less than another attribute", or switch the rule off.',
       );
     });
 
@@ -813,10 +831,12 @@ describe('Validations behaviour', () => {
         validation: { minValue: null },
       });
 
-      expect(toggle('Less than')).not.toHaveAttribute('aria-disabled');
+      expect(toggle('Less than another attribute')).not.toHaveAttribute(
+        'aria-disabled',
+      );
 
-      fireEvent.click(toggle('Less than'));
-      const optionLabels = within(targetSelect('Less than'))
+      fireEvent.click(toggle('Less than another attribute'));
+      const optionLabels = within(targetSelect('Less than another attribute'))
         .getAllByRole('option')
         .map((option) => option.textContent);
       expect(optionLabels).toContain('C');
@@ -843,13 +863,18 @@ describe('Validations behaviour', () => {
         validation: { minValue: 10, maxValue: 2 },
       });
 
-      expect(toggle('Less than')).toHaveAttribute('aria-disabled', 'true');
+      expect(toggle('Less than another attribute')).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      );
 
       fireEvent.blur(typeValue('Maximum value', '20'));
 
-      expect(toggle('Less than')).not.toHaveAttribute('aria-disabled');
-      fireEvent.click(toggle('Less than'));
-      const optionLabels = within(targetSelect('Less than'))
+      expect(toggle('Less than another attribute')).not.toHaveAttribute(
+        'aria-disabled',
+      );
+      fireEvent.click(toggle('Less than another attribute'));
+      const optionLabels = within(targetSelect('Less than another attribute'))
         .getAllByRole('option')
         .map((option) => option.textContent);
       expect(optionLabels).toContain('C');
@@ -877,7 +902,10 @@ describe('Validations behaviour', () => {
         validation: {},
       });
 
-      expect(toggle('Less than')).toHaveAttribute('aria-disabled', 'true');
+      expect(toggle('Less than another attribute')).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      );
       const unavailableHint = screen.getAllByText(
         'Every comparable attribute would make this rule impossible to satisfy.',
       )[0];
@@ -909,7 +937,10 @@ describe('Validations behaviour', () => {
         validation: {},
       });
 
-      expect(toggle('Same as')).toHaveAttribute('aria-disabled', 'true');
+      expect(toggle('Same as another attribute')).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      );
       expect(
         screen.getAllByText(
           'No other attribute of this type exists to compare against.',
@@ -944,8 +975,13 @@ describe('Validations behaviour', () => {
         validation: {},
       });
 
-      expect(toggle('Less than')).toHaveAttribute('aria-disabled', 'true');
-      expect(toggle('Greater than')).not.toHaveAttribute('aria-disabled');
+      expect(toggle('Less than another attribute')).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      );
+      expect(toggle('Greater than another attribute')).not.toHaveAttribute(
+        'aria-disabled',
+      );
     });
   });
 
@@ -984,23 +1020,28 @@ describe('Validations behaviour', () => {
       parameters: { type: 'year', min: draftYear, max: draftYear },
     });
 
-    it('offers Same as once the draft window matches the only candidate', () => {
+    it('offers Same as another attribute once the draft window matches the only candidate', () => {
       setup(singletonYearPickers('2021'));
 
-      expect(toggle('Same as')).not.toHaveAttribute('aria-disabled');
+      expect(toggle('Same as another attribute')).not.toHaveAttribute(
+        'aria-disabled',
+      );
     });
 
-    it('still withholds Same as when the draft window stays disjoint', () => {
+    it('still withholds Same as another attribute when the draft window stays disjoint', () => {
       setup(singletonYearPickers('2022'));
 
-      expect(toggle('Same as')).toHaveAttribute('aria-disabled', 'true');
+      expect(toggle('Same as another attribute')).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      );
     });
 
     // The draft `component` matters on its own: while A is still committed as
     // a RelativeDatePicker the row check reads it at full resolution (and as
     // an interview-date window), which mismatches B's year picker however the
     // draft parameters are written.
-    it('offers Same as once the draft switches the picker to match', () => {
+    it('offers Same as another attribute once the draft switches the picker to match', () => {
       setup({
         variableType: 'datetime',
         entity: 'node',
@@ -1027,7 +1068,9 @@ describe('Validations behaviour', () => {
         parameters: { type: 'year', min: '2021', max: '2021' },
       });
 
-      expect(toggle('Same as')).not.toHaveAttribute('aria-disabled');
+      expect(toggle('Same as another attribute')).not.toHaveAttribute(
+        'aria-disabled',
+      );
     });
   });
 
@@ -1072,7 +1115,7 @@ describe('Validations behaviour', () => {
       });
 
       expect(
-        screen.getByText(/This attribute has only 1 possible values/),
+        screen.getByText(/This attribute has only 1 possible value/),
       ).toBeInTheDocument();
     });
 
@@ -1178,11 +1221,11 @@ describe('Validations behaviour', () => {
         validation: {},
       });
 
-      fireEvent.click(toggle('Maximum length'));
-      typeValue('Maximum length', '3');
-      fireEvent.click(stepper('Increase Maximum length'));
+      fireEvent.click(toggle('Maximum text length'));
+      typeValue('Maximum text length', '3');
+      fireEvent.click(stepper('Increase Maximum text length'));
 
-      expect(numberValue('Maximum length')).toHaveValue(4);
+      expect(numberValue('Maximum text length')).toHaveValue(4);
       expect(committedValidation()).toEqual({ maxLength: 4 });
     });
 
@@ -1201,7 +1244,9 @@ describe('Validations behaviour', () => {
       fireEvent.click(stepper('Increase Minimum value'));
 
       expect(
-        screen.getAllByText(/minValue \(7\) is greater than maxValue \(6\)/),
+        screen.getAllByText(
+          /leave no permitted answer. Adjust the bounds or the required-answer rule/,
+        ),
       ).toHaveLength(2);
       expect(committedValidation()).toEqual({ maxValue: 6, minValue: 7 });
       await expectSaveBlocked();
@@ -1250,7 +1295,9 @@ describe('Validations behaviour', () => {
       expect(committedValidation()).toEqual({ minValue: 1, maxValue: 2 });
       await waitFor(() => {
         expect(
-          screen.queryByText(/is greater than maxValue/),
+          screen.queryByText(
+            /leave no permitted answer. Adjust the bounds or the required-answer rule/,
+          ),
         ).not.toBeInTheDocument();
       });
       await expectSaveAllowed();
@@ -1266,11 +1313,11 @@ describe('Validations behaviour', () => {
         validation: { required: true },
       });
 
-      fireEvent.click(toggle('Maximum length'));
-      fireEvent.blur(typeValue('Maximum length', '0'));
+      fireEvent.click(toggle('Maximum text length'));
+      fireEvent.blur(typeValue('Maximum text length', '0'));
       expect(committedValidation()).toEqual({ required: true, maxLength: 0 });
 
-      fireEvent.click(toggle('Required'));
+      fireEvent.click(toggle('Required answer'));
 
       expect(committedValidation()).toEqual({ maxLength: 0 });
       await expectSaveAllowed();
@@ -1365,7 +1412,9 @@ describe('Validations behaviour', () => {
       expect(committedValidation()).toEqual({ minValue: 20, maxValue: 11 });
       expect(numberValue('Minimum value')).toHaveValue(20);
       expect(
-        screen.getAllByText(/minValue \(20\) is greater than maxValue \(11\)/),
+        screen.getAllByText(
+          /leave no permitted answer. Adjust the bounds or the required-answer rule/,
+        ),
       ).toHaveLength(2);
       await expectSaveBlocked();
 
@@ -1386,10 +1435,12 @@ describe('Validations behaviour', () => {
         validation: { maxLength: 0 },
       });
 
-      fireEvent.click(toggle('Required'));
+      fireEvent.click(toggle('Required answer'));
 
       expect(
-        screen.getAllByText(/required answers cannot satisfy maxLength \(0\)/),
+        screen.getAllByText(
+          /leave no permitted answer. Adjust the bounds or the required-answer rule/,
+        ),
       ).toHaveLength(2);
       expect(committedValidation()).toEqual({ maxLength: 0, required: true });
       await expectSaveBlocked();
@@ -1447,7 +1498,9 @@ describe('Validations behaviour', () => {
           ? document.getElementById(describedBy)
           : null;
         expect(description).toHaveAttribute('aria-live', 'polite');
-        expect(description).toHaveTextContent(/is greater than maxValue/);
+        expect(description).toHaveTextContent(
+          /leave no permitted answer. Adjust the bounds or the required-answer rule/,
+        );
       }
     });
 
@@ -1523,7 +1576,9 @@ describe('Validations behaviour', () => {
 
       await waitFor(() => {
         expect(
-          screen.queryByText(/is greater than maxValue/),
+          screen.queryByText(
+            /leave no permitted answer. Adjust the bounds or the required-answer rule/,
+          ),
         ).not.toBeInTheDocument();
       });
     });
@@ -1566,17 +1621,17 @@ describe('Validations behaviour', () => {
         validation: {},
       });
 
-      fireEvent.click(toggle('Maximum length'));
-      fireEvent.blur(typeValue('Maximum length', '4'));
+      fireEvent.click(toggle('Maximum text length'));
+      fireEvent.blur(typeValue('Maximum text length', '4'));
       expect(committedValidation()).toEqual({ maxLength: 4 });
-      expect(toggle('Maximum length')).toBeChecked();
+      expect(toggle('Maximum text length')).toBeChecked();
 
       rollBackTo({});
 
       expect(committedValidation()).toEqual({});
-      expect(toggle('Maximum length')).not.toBeChecked();
+      expect(toggle('Maximum text length')).not.toBeChecked();
       expect(
-        screen.queryByRole('spinbutton', { name: 'Maximum length' }),
+        screen.queryByRole('spinbutton', { name: 'Maximum text length' }),
       ).not.toBeInTheDocument();
     });
 

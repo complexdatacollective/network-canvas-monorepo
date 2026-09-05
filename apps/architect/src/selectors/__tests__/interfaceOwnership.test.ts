@@ -15,6 +15,7 @@ import {
   excludeInterfaceOwned,
   interfaceOwnedPickIssue,
 } from '~/selectors/roleFilters';
+import { messageText } from '~/test/messageText';
 
 const EGO_SLOT = 'familyPedigree.nodeConfig.egoVariable';
 
@@ -189,8 +190,8 @@ describe('interface-owned variable derivation', () => {
       nodeSubject,
       'isEgo',
     );
-    expect(issue).toBe(
-      'This attribute is set by the Family Pedigree interface, which marks the participant, so it cannot be used here. Choose a different attribute.',
+    expect(messageText(issue)).toBe(
+      'This attribute is set by Family Pedigree, so it cannot be used here. Choose a different attribute.',
     );
   });
 

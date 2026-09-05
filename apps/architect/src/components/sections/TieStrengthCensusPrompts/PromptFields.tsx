@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react';
-import type { ComponentType } from 'react';
+import { useEffect, useRef, type ComponentType } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
@@ -31,6 +32,191 @@ import {
 import { VariablePickerControl as VariablePicker } from '../../Form/Fields/VariablePicker/VariablePicker';
 import { getEdgesForSubject } from '../SociogramPrompts/selectors';
 import { useLockedOptions } from '../useLockedOptions';
+const remainingMessages = defineMessages({
+  createNewEdgeType: {
+    id: 'architect.remaining.sections.tieStrengthCensusPrompts.promptFields.createNewEdgeType',
+    defaultMessage: '✨ Create new edge type ✨',
+    description:
+      'The createLabelText text in components / sections / TieStrengthCensusPrompts / PromptFields.',
+  },
+  newEdgeTypeName: {
+    id: 'architect.remaining.sections.tieStrengthCensusPrompts.promptFields.newEdgeTypeName',
+    defaultMessage: 'New edge type name',
+    description:
+      'The createInputLabel text in components / sections / TieStrengthCensusPrompts / PromptFields.',
+  },
+  enterAnEdgeType: {
+    id: 'architect.remaining.sections.tieStrengthCensusPrompts.promptFields.enterAnEdgeType',
+    defaultMessage: 'Enter an edge type...',
+    description:
+      'The createInputPlaceholder text in components / sections / TieStrengthCensusPrompts / PromptFields.',
+  },
+});
+const additionalMessages = defineMessages({
+  createNewOption: {
+    id: 'architect.additional.sections.tieStrengthCensusPrompts.promptFields.createNewOption',
+    defaultMessage: 'Create new option',
+    description:
+      'The addButtonLabel text in components / sections / TieStrengthCensusPrompts / PromptFields.',
+  },
+});
+const messages = defineMessages({
+  edgeTypeName: {
+    id: 'architect.sections.tieStrengthCensusPrompts.promptFields.edgeTypeName',
+    defaultMessage: 'edge type name',
+    description: 'Subject of the invalid edge type identifier guidance.',
+  },
+  participantPrompt: {
+    id: 'architect.sections.tieStrengthCensusPrompts.promptFields.participantPrompt',
+    defaultMessage: 'Participant prompt',
+    description:
+      'The title text in components / sections / TieStrengthCensusPrompts / PromptFields.',
+  },
+  explainTheRelationshipParticipantsShouldEvaluate: {
+    id: 'architect.sections.tieStrengthCensusPrompts.promptFields.explainTheRelationshipParticipantsShouldEvaluate',
+    defaultMessage:
+      'Explain the relationship participants should evaluate for each pair.',
+    description:
+      'The description text in components / sections / TieStrengthCensusPrompts / PromptFields.',
+  },
+  promptText: {
+    id: 'architect.sections.tieStrengthCensusPrompts.promptFields.promptText',
+    defaultMessage: 'Prompt text',
+    description:
+      'The label text in components / sections / TieStrengthCensusPrompts / PromptFields.',
+  },
+  referClearlyToTheTwoPeople: {
+    id: 'architect.sections.tieStrengthCensusPrompts.promptFields.referClearlyToTheTwoPeople',
+    defaultMessage:
+      'Refer clearly to the two people shown and phrase the prompt for a yes or no response.',
+    description:
+      'The hint text in components / sections / TieStrengthCensusPrompts / PromptFields.',
+  },
+  enterTextForThePromptHere: {
+    id: 'architect.sections.tieStrengthCensusPrompts.promptFields.enterTextForThePromptHere',
+    defaultMessage: 'Enter text for the prompt here...',
+    description:
+      'The placeholder text in components / sections / TieStrengthCensusPrompts / PromptFields.',
+  },
+  tieStrengthResponse: {
+    id: 'architect.sections.tieStrengthCensusPrompts.promptFields.tieStrengthResponse',
+    defaultMessage: 'Tie-strength response',
+    description:
+      'The title text in components / sections / TieStrengthCensusPrompts / PromptFields.',
+  },
+  configureTheEdgeAndOrdinalValue: {
+    id: 'architect.sections.tieStrengthCensusPrompts.promptFields.configureTheEdgeAndOrdinalValue',
+    defaultMessage:
+      'Configure the edge and ordinal value created by an affirmative response.',
+    description:
+      'The description text in components / sections / TieStrengthCensusPrompts / PromptFields.',
+  },
+  edgeCreation: {
+    id: 'architect.sections.tieStrengthCensusPrompts.promptFields.edgeCreation',
+    defaultMessage: 'Edge creation',
+    description:
+      'The title text in components / sections / TieStrengthCensusPrompts / PromptFields.',
+  },
+  chooseTheEdgeTypeCreatedBetween: {
+    id: 'architect.sections.tieStrengthCensusPrompts.promptFields.chooseTheEdgeTypeCreatedBetween',
+    defaultMessage: 'Choose the edge type created between the two nodes.',
+    description:
+      'The description text in components / sections / TieStrengthCensusPrompts / PromptFields.',
+  },
+  edgeType: {
+    id: 'architect.sections.tieStrengthCensusPrompts.promptFields.edgeType',
+    defaultMessage: 'Edge type',
+    description:
+      'The label text in components / sections / TieStrengthCensusPrompts / PromptFields.',
+  },
+  selectOrCreateTheEdgeType: {
+    id: 'architect.sections.tieStrengthCensusPrompts.promptFields.selectOrCreateTheEdgeType',
+    defaultMessage:
+      'Select or create the edge type before configuring its ordinal attribute.',
+    description:
+      'The hint text in components / sections / TieStrengthCensusPrompts / PromptFields.',
+  },
+  selectOrCreateAnEdgeType: {
+    id: 'architect.sections.tieStrengthCensusPrompts.promptFields.selectOrCreateAnEdgeType',
+    defaultMessage: 'Select or create an edge type',
+    description:
+      'The placeholder text in components / sections / TieStrengthCensusPrompts / PromptFields.',
+  },
+  responseAttribute: {
+    id: 'architect.sections.tieStrengthCensusPrompts.promptFields.responseAttribute',
+    defaultMessage: 'Response attribute',
+    description:
+      'The title text in components / sections / TieStrengthCensusPrompts / PromptFields.',
+  },
+  chooseTheOrdinalAttributeWhoseOptions: {
+    id: 'architect.sections.tieStrengthCensusPrompts.promptFields.chooseTheOrdinalAttributeWhoseOptions',
+    defaultMessage:
+      'Choose the ordinal attribute whose options participants use to rate the relationship.',
+    description:
+      'The description text in components / sections / TieStrengthCensusPrompts / PromptFields.',
+  },
+  ordinalAttribute: {
+    id: 'architect.sections.tieStrengthCensusPrompts.promptFields.ordinalAttribute',
+    defaultMessage: 'Ordinal attribute',
+    description:
+      'The label text in components / sections / TieStrengthCensusPrompts / PromptFields.',
+  },
+  tooManyOptionValues: {
+    id: 'architect.sections.tieStrengthCensusPrompts.promptFields.tooManyOptionValues',
+    defaultMessage: 'Too many option values',
+    description:
+      'Visible text in components / sections / TieStrengthCensusPrompts / PromptFields.',
+  },
+  theOrdinalBinInterfaceIsDesigned: {
+    id: 'architect.sections.tieStrengthCensusPrompts.promptFields.theOrdinalBinInterfaceIsDesigned',
+    defaultMessage:
+      'The ordinal bin interface is designed to use <strong>up to 5 option values</strong> including the negative label. Using more will create a sub-optimal experience for participants, and might reduce data quality.',
+    description:
+      'Visible text in components / sections / TieStrengthCensusPrompts / PromptFields.',
+  },
+  optionValues: {
+    id: 'architect.sections.tieStrengthCensusPrompts.promptFields.optionValues',
+    defaultMessage: 'Option values',
+    description:
+      'The label text in components / sections / TieStrengthCensusPrompts / PromptFields.',
+  },
+  createUpToFourResponseOptions: {
+    id: 'architect.sections.tieStrengthCensusPrompts.promptFields.createUpToFourResponseOptions',
+    defaultMessage: 'Create up to four response options for this attribute.',
+    description:
+      'The hint text in components / sections / TieStrengthCensusPrompts / PromptFields.',
+  },
+  declineResponse: {
+    id: 'architect.sections.tieStrengthCensusPrompts.promptFields.declineResponse',
+    defaultMessage: 'Decline response',
+    description:
+      'The title text in components / sections / TieStrengthCensusPrompts / PromptFields.',
+  },
+  setTheOptionParticipantsUseTo: {
+    id: 'architect.sections.tieStrengthCensusPrompts.promptFields.setTheOptionParticipantsUseTo',
+    defaultMessage: 'Set the option participants use to decline edge creation.',
+    description:
+      'The description text in components / sections / TieStrengthCensusPrompts / PromptFields.',
+  },
+  declineOption: {
+    id: 'architect.sections.tieStrengthCensusPrompts.promptFields.declineOption',
+    defaultMessage: 'Decline option',
+    description:
+      'The label text in components / sections / TieStrengthCensusPrompts / PromptFields.',
+  },
+  thisOptionAppearsOnTheFar: {
+    id: 'architect.sections.tieStrengthCensusPrompts.promptFields.thisOptionAppearsOnTheFar',
+    defaultMessage: 'This option appears on the far right of the screen.',
+    description:
+      'The hint text in components / sections / TieStrengthCensusPrompts / PromptFields.',
+  },
+  enterTextForTheNegativeLabel: {
+    id: 'architect.sections.tieStrengthCensusPrompts.promptFields.enterTextForTheNegativeLabel',
+    defaultMessage: 'Enter text for the negative label here...',
+    description:
+      'The placeholder text in components / sections / TieStrengthCensusPrompts / PromptFields.',
+  },
+});
 
 type SelectOption = {
   label: string;
@@ -57,6 +243,7 @@ const PromptFields = ({
   negativeLabel,
   variableOptions = NO_OPTIONS,
 }: PromptFieldsProps) => {
+  const intl = useAppIntl();
   const dispatch = useAppDispatch();
   const setFieldValue = useFormStore((state) => state.setFieldValue);
   const {
@@ -156,55 +343,72 @@ const PromptFields = ({
   return (
     <>
       <Section
-        title="Participant prompt"
-        description="Explain the relationship participants should evaluate for each pair."
+        title={intl.formatMessage(messages.participantPrompt)}
+        description={intl.formatMessage(
+          messages.explainTheRelationshipParticipantsShouldEvaluate,
+        )}
       >
         <ArchitectField
           name="text"
-          label="Prompt text"
-          hint="Refer clearly to the two people shown and phrase the prompt for a yes or no response."
+          label={intl.formatMessage(messages.promptText)}
+          hint={intl.formatMessage(messages.referClearlyToTheTwoPeople)}
           component={RichTextField}
           validation={{ required: true }}
           initialValue={text}
           singleLine
-          placeholder="Enter text for the prompt here..."
+          placeholder={intl.formatMessage(messages.enterTextForThePromptHere)}
         />
       </Section>
       <Section
-        title="Tie-strength response"
-        description="Configure the edge and ordinal value created by an affirmative response."
+        title={intl.formatMessage(messages.tieStrengthResponse)}
+        description={intl.formatMessage(
+          messages.configureTheEdgeAndOrdinalValue,
+        )}
       >
         <Section
-          title="Edge creation"
-          description="Choose the edge type created between the two nodes."
+          title={intl.formatMessage(messages.edgeCreation)}
+          description={intl.formatMessage(
+            messages.chooseTheEdgeTypeCreatedBetween,
+          )}
         >
           <ArchitectField
             name="createEdge"
-            label="Edge type"
-            hint="Select or create the edge type before configuring its ordinal attribute."
+            label={intl.formatMessage(messages.edgeType)}
+            hint={intl.formatMessage(messages.selectOrCreateTheEdgeType)}
             component={NativeSelect as ComponentType<Record<string, unknown>>}
-            validation={{ required: true, allowedNMToken: 'edge type name' }}
+            validation={{
+              required: true,
+              allowedNMToken: intl.formatMessage(messages.edgeTypeName),
+            }}
             initialValue={createEdge}
             options={edgesForSubject}
             onCreateOption={handleCreateEdge}
-            placeholder="Select or create an edge type"
-            createLabelText="✨ Create new edge type ✨"
-            createInputLabel="New edge type name"
-            createInputPlaceholder="Enter an edge type..."
+            placeholder={intl.formatMessage(messages.selectOrCreateAnEdgeType)}
+            createLabelText={intl.formatMessage(
+              remainingMessages.createNewEdgeType,
+            )}
+            createInputLabel={intl.formatMessage(
+              remainingMessages.newEdgeTypeName,
+            )}
+            createInputPlaceholder={intl.formatMessage(
+              remainingMessages.enterAnEdgeType,
+            )}
             createValidation={{
               required: true,
-              allowedNMToken: 'edge type name',
+              allowedNMToken: intl.formatMessage(messages.edgeTypeName),
             }}
           />
         </Section>
         {currentCreateEdge && (
           <Section
-            title="Response attribute"
-            description="Choose the ordinal attribute whose options participants use to rate the relationship."
+            title={intl.formatMessage(messages.responseAttribute)}
+            description={intl.formatMessage(
+              messages.chooseTheOrdinalAttributeWhoseOptions,
+            )}
           >
             <ArchitectField
               name="edgeVariable"
-              label="Ordinal attribute"
+              label={intl.formatMessage(messages.ordinalAttribute)}
               component={VariablePicker}
               validation={{ required: true }}
               initialValue={edgeVariable}
@@ -220,41 +424,51 @@ const PromptFields = ({
               !lockedOptions &&
               showVariableOptionsTip && (
                 <Alert variant="destructive" className="my-7">
-                  <AlertTitle>Too many option values</AlertTitle>
+                  <AlertTitle>
+                    {intl.formatMessage(messages.tooManyOptionValues)}
+                  </AlertTitle>
                   <AlertDescription>
-                    The ordinal bin interface is designed to use{' '}
-                    <strong>up to 5 option values</strong> including the
-                    negative label. Using more will create a sub-optimal
-                    experience for participants, and might reduce data quality.
+                    {intl.formatMessage(
+                      messages.theOrdinalBinInterfaceIsDesigned,
+                      { strong: (chunks) => <strong>{chunks}</strong> },
+                    )}
                   </AlertDescription>
                 </Alert>
               )}
             {currentEdgeVariable && !lockedOptions && (
               <ArchitectArrayField
                 name="variableOptions"
-                label="Option values"
-                hint="Create up to four response options for this attribute."
+                label={intl.formatMessage(messages.optionValues)}
+                hint={intl.formatMessage(
+                  messages.createUpToFourResponseOptions,
+                )}
                 component={Options}
-                addButtonLabel="Create new option"
-                validation={optionsValidation}
+                addButtonLabel={intl.formatMessage(
+                  additionalMessages.createNewOption,
+                )}
+                validation={optionsValidation(intl)}
                 initialValue={variableOptions}
               />
             )}
           </Section>
         )}
         <Section
-          title="Decline response"
-          description="Set the option participants use to decline edge creation."
+          title={intl.formatMessage(messages.declineResponse)}
+          description={intl.formatMessage(
+            messages.setTheOptionParticipantsUseTo,
+          )}
         >
           <ArchitectField
             name="negativeLabel"
-            label="Decline option"
-            hint="This option appears on the far right of the screen."
+            label={intl.formatMessage(messages.declineOption)}
+            hint={intl.formatMessage(messages.thisOptionAppearsOnTheFar)}
             component={RichTextField}
             validation={{ required: true }}
             initialValue={negativeLabel}
             singleLine
-            placeholder="Enter text for the negative label here..."
+            placeholder={intl.formatMessage(
+              messages.enterTextForTheNegativeLabel,
+            )}
           />
         </Section>
       </Section>

@@ -10,6 +10,7 @@ import type { ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { renderQueuedMessage } from '~/test/renderQueuedMessage';
 import type { StoredProtocolRow } from '~/utils/assetDB';
 
 import LibraryPanel from '../LibraryPanel';
@@ -81,7 +82,7 @@ const openMenuItem = async (name: RegExp) => {
 const openDownloadFromRow = () => openMenuItem(/download/i);
 
 type DialogConfig = {
-  title?: string;
+  title?: ReactNode;
   intent?: string;
   finalFocus?: () => HTMLElement | null;
 };
@@ -89,7 +90,7 @@ type DialogConfig = {
 const dialogCallWithTitle = (title: string): DialogConfig | undefined =>
   openDialogMock.mock.calls
     .map(([config]) => config as DialogConfig)
-    .find((config) => config.title === title);
+    .find((config) => renderQueuedMessage(config.title) === title);
 
 describe('<LibraryPanel /> download', () => {
   beforeEach(() => {
@@ -119,9 +120,11 @@ describe('<LibraryPanel /> download', () => {
         (config as { type?: string; intent?: string }).intent === 'warning',
     );
     expect(warningCall).toBeDefined();
-    expect((warningCall![0] as { description: string }).description).toContain(
-      'missing-image.png',
-    );
+    expect(
+      renderQueuedMessage(
+        (warningCall![0] as { description: ReactNode }).description,
+      ),
+    ).toContain('missing-image.png');
   });
 
   it('does not warn when every asset was included', async () => {
@@ -304,7 +307,7 @@ describe('<LibraryPanel /> gallery card', () => {
       within(card).getByRole('button', { name: 'Dismiss' }),
     ).toBeInTheDocument();
     expect(
-      within(card).getByRole('link', { name: 'protocol gallery' }),
+      within(card).getByRole('link', { name: 'Protocol Gallery' }),
     ).toBeInTheDocument();
   });
 

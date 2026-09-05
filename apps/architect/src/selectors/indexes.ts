@@ -229,7 +229,11 @@ export const getVariableRoleMapOutsideStage = createSelector(
     buildVariableRoleMap(protocol, excludedStageIndex),
 );
 
-export type ExclusiveSlotClaim = { slot: string; owner: string };
+export type ExclusiveSlotClaim = {
+  slot: string;
+  owner: string;
+  ownerInterface?: string;
+};
 
 /**
  * The interface-owned structural slot claiming each subject-scoped variable,
@@ -250,6 +254,10 @@ export const getExclusiveVariableSlotMap = createSelector(
       map[roleMapKey(slot.subject, slot.variableId)] = {
         slot: slot.descriptor.slot,
         owner: slot.descriptor.owner,
+        ownerInterface:
+          slot.path[0] === 'stages' && typeof slot.path[1] === 'number'
+            ? protocol.stages[slot.path[1]]?.type
+            : undefined,
       };
     }
     return map;

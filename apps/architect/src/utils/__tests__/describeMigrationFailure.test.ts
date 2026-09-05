@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { messageText } from '~/test/messageText';
+
 import { describeMigrationFailure } from '../describeMigrationFailure';
 
 /**
@@ -38,9 +40,9 @@ describe('describeMigrationFailure', () => {
       protocolWithCollision,
     );
 
-    expect(title).toBe('Two attributes share a name');
-    expect(message).toContain('"Gender"');
-    expect(message).toContain('"Person"');
+    expect(messageText(title)).toBe('Two attributes share a name');
+    expect(messageText(message)).toContain('"Gender"');
+    expect(messageText(message)).toContain('"Person"');
   });
 
   it('tells the researcher what to actually do', () => {
@@ -49,9 +51,9 @@ describe('describeMigrationFailure', () => {
       protocolWithCollision,
     );
 
-    expect(message).toMatch(/rename one of them/i);
+    expect(messageText(message)).toMatch(/rename one of them/i);
     // Never the bare sentence the researcher used to get.
-    expect(message).not.toBe('Protocol migration failed.');
+    expect(messageText(message)).not.toBe('Protocol migration failed.');
   });
 
   it('finds a collision on the interviewee', () => {
@@ -66,7 +68,7 @@ describe('describeMigrationFailure', () => {
       },
     });
 
-    expect(message).toContain('the interviewee');
+    expect(messageText(message)).toContain('the interviewee');
   });
 
   // The regression this pins: folding here would send the researcher looking
@@ -88,24 +90,27 @@ describe('describeMigrationFailure', () => {
 
     // No entity is named, because no entity holds two attributes called
     // "Gender" — the case-variants are two different attributes.
-    expect(message).not.toContain('"Person"');
-    expect(message).toContain('"Gender"');
+    expect(messageText(message)).not.toContain('"Person"');
+    expect(messageText(message)).toContain('"Gender"');
   });
 
   it('still names the attribute when the collision cannot be located', () => {
     const { title, message } = describeMigrationFailure(duplicateNameError, {});
 
-    expect(title).toBe('Two attributes share a name');
-    expect(message).toContain('"Gender"');
+    expect(messageText(title)).toBe('Two attributes share a name');
+    expect(messageText(message)).toContain('"Gender"');
   });
 
-  it('surfaces the underlying reason for an unrecognised failure', () => {
-    const { title, message } = describeMigrationFailure(
+  it('gives actionable guidance and retains the underlying diagnostic separately', () => {
+    const { title, message, detail } = describeMigrationFailure(
       new Error('stages.3.prompts must contain at least 1 element'),
       protocolWithCollision,
     );
 
-    expect(title).toBe('Failed to Open Protocol');
-    expect(message).toContain('at least 1 element');
+    expect(messageText(title)).toBe('Failed to Open Protocol');
+    expect(messageText(message)).toBe(
+      'This protocol could not be brought up to date. Open it in the version of Architect that created it, check its settings, and try again.',
+    );
+    expect(detail).toBe('stages.3.prompts must contain at least 1 element');
   });
 });

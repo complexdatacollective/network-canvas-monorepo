@@ -1,3 +1,24 @@
+import {
+  createAppIntl,
+  defineMessages,
+  type IntlShape,
+} from '@codaco/app-i18n/messages';
+const localeMessages = defineMessages({
+  moved: {
+    id: 'architect.timeline.announcement.moved',
+    defaultMessage:
+      'Moved stage {fromPosition, number} to position {toPosition, number} of {total, number}.',
+    description: 'Live announcement after a timeline operation succeeds.',
+  },
+  deleted: {
+    id: 'architect.timeline.announcement.deleted',
+    defaultMessage:
+      'Deleted stage {position, number}. {remaining, plural, =0 {No stages remain.} one {1 stage remains.} other {# stages remain.}}',
+    description: 'Live announcement after a timeline operation succeeds.',
+  },
+});
+const defaultIntl = createAppIntl({ locale: 'en' });
+
 /**
  * What the timeline's `aria-live` region says after a stage is moved or
  * deleted.
@@ -17,19 +38,11 @@ export const getStageMovedAnnouncement = (
   fromPosition: number,
   toPosition: number,
   total: number,
-) => `Moved stage ${fromPosition} to position ${toPosition} of ${total}.`;
-
+  intl: IntlShape = defaultIntl,
+) =>
+  intl.formatMessage(localeMessages.moved, { fromPosition, toPosition, total });
 export const getStageDeletedAnnouncement = (
   position: number,
   remaining: number,
-) => {
-  if (remaining <= 0) {
-    return `Deleted stage ${position}. No stages remain.`;
-  }
-
-  if (remaining === 1) {
-    return `Deleted stage ${position}. 1 stage remains.`;
-  }
-
-  return `Deleted stage ${position}. ${remaining} stages remain.`;
-};
+  intl: IntlShape = defaultIntl,
+) => intl.formatMessage(localeMessages.deleted, { position, remaining });

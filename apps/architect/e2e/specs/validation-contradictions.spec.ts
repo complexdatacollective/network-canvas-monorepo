@@ -67,7 +67,12 @@ test('the field editor blocks an inverted min/max validation pair', async ({
     .click();
   await maxValue.fill('2');
   await expect(
-    page.getByText('is greater than maxValue').first(),
+    page
+      .getByText(
+        'The minimum and maximum rules for this attribute leave no permitted answer. Adjust the bounds or the required-answer rule.',
+        { exact: true },
+      )
+      .first(),
   ).toBeVisible();
   await expect(maxValue).toHaveAttribute('aria-invalid', 'true');
   await maxValue.blur();
@@ -161,7 +166,12 @@ test('the field editor refuses to save an uncorrected min/max pair', async ({
   // The dialog stays open with both entered values intact, and says why.
   await expect(addButton).toBeVisible();
   await expect(
-    page.getByText('is greater than maxValue').first(),
+    page
+      .getByText(
+        'The minimum and maximum rules for this attribute leave no permitted answer. Adjust the bounds or the required-answer rule.',
+        { exact: true },
+      )
+      .first(),
   ).toBeVisible();
   await expect(minValue).toHaveValue('100');
   await expect(maxValue).toHaveValue('50');

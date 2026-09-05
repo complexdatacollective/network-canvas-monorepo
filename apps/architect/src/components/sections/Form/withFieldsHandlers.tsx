@@ -2,6 +2,7 @@ import { find, get, has } from 'es-toolkit/compat';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { shallowEqual, useSelector } from 'react-redux';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import { useField } from '@codaco/fresco-ui/form/hooks/useField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
@@ -14,6 +15,7 @@ import {
   VARIABLE_TYPES_WITH_COMPONENTS,
 } from '~/config/variables';
 import type { RootState } from '~/ducks/store';
+import { formatConfig } from '~/i18n/formatConfig';
 import {
   getVariableOptionsForSubjectSelector,
   getVariablesForSubjectSelector,
@@ -102,6 +104,7 @@ export const useFieldHandlers = ({
   editIndex,
   currentStageIndex,
 }: UseFieldHandlerProps) => {
+  const intl = useAppIntl();
   const setFieldValue = useFormStore((state) => state.setFieldValue);
   const clearValue = useFormStore((state) => state.clearValue);
   // The observers below must tell "the field has not registered yet" apart
@@ -217,10 +220,12 @@ export const useFieldHandlers = ({
   // 2. Otherwise list all INPUT_OPTIONS (new variable)
   const componentOptions =
     variableType && !isNewVariable
-      ? getComponentsForType(variableType)
-      : formattedInputOptions;
+      ? formatConfig(getComponentsForType(variableType), intl)
+      : formatConfig(formattedInputOptions, intl);
 
-  const metaForType = find(INPUT_OPTIONS, { value: component });
+  const metaForType = find(formatConfig(INPUT_OPTIONS, intl), {
+    value: component,
+  });
 
   // The variable observer writes `component`; the component observer must not
   // then treat that write as a researcher changing the input control.

@@ -1,6 +1,8 @@
 import { useCallback, useState } from 'react';
 import { useSelector } from 'react-redux';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import RichSelectGroupField, {
@@ -16,6 +18,7 @@ import {
   useStageFormValue,
 } from '~/components/StageEditor/stageFormHooks';
 import type { RootState } from '~/ducks/modules/root';
+import { type MessageConfig, formatConfig } from '~/i18n/formatConfig';
 
 import { VariablePickerControl as VariablePicker } from '../../Form/Fields/VariablePicker/VariablePicker';
 import { EntitySelectControl as EntitySelectField } from '../fields/EntitySelectField/EntitySelectField';
@@ -26,24 +29,103 @@ import {
   getHighlightVariablesForSubject,
 } from './selectors';
 import getEdgeFilteringWarning from './utils';
+const configMessages = defineMessages({
+  edgeCreation: {
+    id: 'architect.sections.sociogramPrompts.promptFieldsTapBehaviour.config.edgeCreation',
+    defaultMessage: 'Edge creation',
+    description:
+      'Presentation label or description in components/sections/SociogramPrompts/PromptFieldsTapBehaviour.tsx. Identifiers are not translated.',
+  },
+  clickingOrTappingANodeAllows: {
+    id: 'architect.sections.sociogramPrompts.promptFieldsTapBehaviour.config.clickingOrTappingANodeAllows',
+    defaultMessage:
+      'Clicking or tapping a node allows the participant to create an edge.',
+    description:
+      'Presentation label or description in components/sections/SociogramPrompts/PromptFieldsTapBehaviour.tsx. Identifiers are not translated.',
+  },
+  attributeToggling: {
+    id: 'architect.sections.sociogramPrompts.promptFieldsTapBehaviour.config.attributeToggling',
+    defaultMessage: 'Attribute toggling',
+    description:
+      'Presentation label or description in components/sections/SociogramPrompts/PromptFieldsTapBehaviour.tsx. Identifiers are not translated.',
+  },
+  clickingOrTappingANodeToggles: {
+    id: 'architect.sections.sociogramPrompts.promptFieldsTapBehaviour.config.clickingOrTappingANodeToggles',
+    defaultMessage:
+      'Clicking or tapping a node toggles a boolean attribute between true and false.',
+    description:
+      'Presentation label or description in components/sections/SociogramPrompts/PromptFieldsTapBehaviour.tsx. Identifiers are not translated.',
+  },
+});
+const messages = defineMessages({
+  nodeInteraction: {
+    id: 'architect.sections.sociogramPrompts.promptFieldsTapBehaviour.nodeInteraction',
+    defaultMessage: 'Node interaction',
+    description:
+      'The title text in components / sections / SociogramPrompts / PromptFieldsTapBehaviour.',
+  },
+  chooseWhetherTappingANodeToggles: {
+    id: 'architect.sections.sociogramPrompts.promptFieldsTapBehaviour.chooseWhetherTappingANodeToggles',
+    defaultMessage:
+      'Choose whether tapping a node toggles an attribute or creates an edge.',
+    description:
+      'The description text in components / sections / SociogramPrompts / PromptFieldsTapBehaviour.',
+  },
+  interactionType: {
+    id: 'architect.sections.sociogramPrompts.promptFieldsTapBehaviour.interactionType',
+    defaultMessage: 'Interaction type',
+    description:
+      'The label text in components / sections / SociogramPrompts / PromptFieldsTapBehaviour.',
+  },
+  booleanAttribute: {
+    id: 'architect.sections.sociogramPrompts.promptFieldsTapBehaviour.booleanAttribute',
+    defaultMessage: 'Boolean attribute',
+    description:
+      'The label text in components / sections / SociogramPrompts / PromptFieldsTapBehaviour.',
+  },
+  selectTheAttributeToggledWhenA: {
+    id: 'architect.sections.sociogramPrompts.promptFieldsTapBehaviour.selectTheAttributeToggledWhenA',
+    defaultMessage:
+      'Select the attribute toggled when a participant taps a node.',
+    description:
+      'The hint text in components / sections / SociogramPrompts / PromptFieldsTapBehaviour.',
+  },
+  networkFilterHidesThisEdgeType: {
+    id: 'architect.sections.sociogramPrompts.promptFieldsTapBehaviour.networkFilterHidesThisEdgeType',
+    defaultMessage: 'Network filter hides this edge type',
+    description:
+      'Visible text in components / sections / SociogramPrompts / PromptFieldsTapBehaviour.',
+  },
+  stageLevelNetworkFilteringIsEnabled: {
+    id: 'architect.sections.sociogramPrompts.promptFieldsTapBehaviour.stageLevelNetworkFilteringIsEnabled',
+    defaultMessage:
+      'Stage level network filtering is enabled, but the edge type you want to create on this prompt is not currently included in the filter. This means that these edges may not be displayed. Either remove the stage-level network filtering, or add these edge types to the filter to resolve this issue.',
+    description:
+      'Visible text in components / sections / SociogramPrompts / PromptFieldsTapBehaviour.',
+  },
+  createdEdgeType: {
+    id: 'architect.sections.sociogramPrompts.promptFieldsTapBehaviour.createdEdgeType',
+    defaultMessage: 'Created edge type',
+    description:
+      'The label text in components / sections / SociogramPrompts / PromptFieldsTapBehaviour.',
+  },
+});
 
 const TAP_BEHAVIOURS = {
   CREATE_EDGES: 'create edges',
   HIGHLIGHT_ATTRIBUTES: 'highlight attributes',
 };
 
-const TAP_BEHAVIOUR_OPTIONS: RichSelectOption[] = [
+const TAP_BEHAVIOUR_OPTIONS: MessageConfig<RichSelectOption>[] = [
   {
     value: TAP_BEHAVIOURS.CREATE_EDGES,
-    label: 'Edge creation',
-    description:
-      'Clicking or tapping a node allows the participant to create an edge.',
+    label: configMessages.edgeCreation,
+    description: configMessages.clickingOrTappingANodeAllows,
   },
   {
     value: TAP_BEHAVIOURS.HIGHLIGHT_ATTRIBUTES,
-    label: 'Attribute toggling',
-    description:
-      'Clicking or tapping a node toggles a boolean attribute between true and false.',
+    label: configMessages.attributeToggling,
+    description: configMessages.clickingOrTappingANodeToggles,
   },
 ];
 
@@ -73,6 +155,7 @@ const TapBehaviour = ({
   edges: initialEdges,
   highlight: initialHighlight,
 }: TapBehaviourProps) => {
+  const intl = useAppIntl();
   // Writes into THIS dialog's own (local) form store — the row-editor form,
   // not the stage.
   const setLocalFieldValue = useFormStore((store) => store.setFieldValue);
@@ -152,19 +235,21 @@ const TapBehaviour = ({
 
   return (
     <Section
-      title="Node interaction"
-      description="Choose whether tapping a node toggles an attribute or creates an edge."
+      title={intl.formatMessage(messages.nodeInteraction)}
+      description={intl.formatMessage(
+        messages.chooseWhetherTappingANodeToggles,
+      )}
       toggleable
       defaultOpen={tapBehaviour !== null}
       onOpenChange={handleOpenChange}
     >
       <UnconnectedField
         name="interaction-type"
-        label="Interaction type"
+        label={intl.formatMessage(messages.interactionType)}
         component={RichSelectGroupField}
         onChange={handleChangeTapBehaviour}
         value={tapBehaviour ?? undefined}
-        options={TAP_BEHAVIOUR_OPTIONS}
+        options={formatConfig(TAP_BEHAVIOUR_OPTIONS, intl)}
       />
       {tapBehaviour === TAP_BEHAVIOURS.HIGHLIGHT_ATTRIBUTES && (
         <HiddenFieldValue name={ALLOW_HIGHLIGHTING_FIELD} initialValue />
@@ -172,8 +257,8 @@ const TapBehaviour = ({
       {tapBehaviour === TAP_BEHAVIOURS.HIGHLIGHT_ATTRIBUTES && (
         <ArchitectField
           name="highlight.variable"
-          label="Boolean attribute"
-          hint="Select the attribute toggled when a participant taps a node."
+          label={intl.formatMessage(messages.booleanAttribute)}
+          hint={intl.formatMessage(messages.selectTheAttributeToggledWhenA)}
           component={VariablePicker}
           validation={{ required: true }}
           initialValue={initialHighlight?.variable ?? undefined}
@@ -188,20 +273,18 @@ const TapBehaviour = ({
       {tapBehaviour === TAP_BEHAVIOURS.CREATE_EDGES &&
         showNetworkFilterWarning && (
           <Alert variant="warning" className="my-7">
-            <AlertTitle>Network filter hides this edge type</AlertTitle>
+            <AlertTitle>
+              {intl.formatMessage(messages.networkFilterHidesThisEdgeType)}
+            </AlertTitle>
             <AlertDescription>
-              Stage level network filtering is enabled, but the edge type you
-              want to create on this prompt is not currently included in the
-              filter. This means that these edges may not be displayed. Either
-              remove the stage-level network filtering, or add these edge types
-              to the filter to resolve this issue.
+              {intl.formatMessage(messages.stageLevelNetworkFilteringIsEnabled)}
             </AlertDescription>
           </Alert>
         )}
       {tapBehaviour === TAP_BEHAVIOURS.CREATE_EDGES && (
         <ArchitectField
           name="edges.create"
-          label="Created edge type"
+          label={intl.formatMessage(messages.createdEdgeType)}
           component={EntitySelectField}
           validation={{ required: true }}
           initialValue={initialEdges?.create ?? undefined}

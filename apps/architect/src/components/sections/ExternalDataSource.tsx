@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { compose } from 'react-recompose';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Section from '@codaco/fresco-ui/Section';
 import ArchitectField from '~/components/Form/ArchitectField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
@@ -15,6 +17,33 @@ import {
 
 import withDisabledSubjectRequired from '../enhancers/withDisabledSubjectRequired';
 import DataSource from '../Form/Fields/DataSource';
+const messages = defineMessages({
+  rosterSource: {
+    id: 'architect.sections.externalDataSource.rosterSource',
+    defaultMessage: 'Roster source',
+    description:
+      'The title text in components / sections / ExternalDataSource.',
+  },
+  selectTheNetworkDataFileThat: {
+    id: 'architect.sections.externalDataSource.selectTheNetworkDataFileThat',
+    defaultMessage:
+      'Select the network data file that supplies nodes for this roster.',
+    description:
+      'The description text in components / sections / ExternalDataSource.',
+  },
+  rosterDataSource: {
+    id: 'architect.sections.externalDataSource.rosterDataSource',
+    defaultMessage: 'Roster data source',
+    description:
+      'The label text in components / sections / ExternalDataSource.',
+  },
+  thisStageNeedsASourceOf: {
+    id: 'architect.sections.externalDataSource.thisStageNeedsASourceOf',
+    defaultMessage:
+      'This stage needs a source of nodes to populate the roster. Select a network data file to use.',
+    description: 'The hint text in components / sections / ExternalDataSource.',
+  },
+});
 
 type ExternalDataSourceProps = StageEditorSectionProps & {
   disabled: boolean;
@@ -25,6 +54,7 @@ const ExternalDataSource = ({
   disabled,
   disabledMessage,
 }: ExternalDataSourceProps) => {
+  const intl = useAppIntl();
   const setStageValue = useSetStageValue();
   const { draft } = useStageFormContext();
   const dataSource = useStageFormValue<string | undefined>('dataSource');
@@ -70,11 +100,11 @@ const ExternalDataSource = ({
 
   return (
     <Section
-      title="Roster source"
+      title={intl.formatMessage(messages.rosterSource)}
       description={
         disabled
           ? disabledMessage
-          : 'Select the network data file that supplies nodes for this roster.'
+          : intl.formatMessage(messages.selectTheNetworkDataFileThat)
       }
       disabled={disabled}
     >
@@ -82,8 +112,8 @@ const ExternalDataSource = ({
         component={DataSource}
         name="dataSource"
         initialValue={initialDataSource}
-        label="Roster data source"
-        hint="This stage needs a source of nodes to populate the roster. Select a network data file to use."
+        label={intl.formatMessage(messages.rosterDataSource)}
+        hint={intl.formatMessage(messages.thisStageNeedsASourceOf)}
         validation={{ required: true }}
       />
     </Section>

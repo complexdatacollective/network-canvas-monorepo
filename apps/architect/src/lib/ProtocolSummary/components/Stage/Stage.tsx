@@ -1,8 +1,11 @@
 import { isEmpty, sortBy } from 'es-toolkit/compat';
 import React, { useContext } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import StageTypeImage from '@codaco/protocol-builder/interfaces/StageTypeImage';
+import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 
 import DualLink from '../DualLink';
 import EntityBadge from '../EntityBadge';
@@ -28,6 +31,21 @@ import QuickAdd from './QuickAdd';
 import ScaffoldingStep from './ScaffoldingStep';
 import SectionFrame from './SectionFrame';
 import SkipLogic from './SkipLogic';
+const messages = defineMessages({
+  networkFiltering: {
+    id: 'architect.protocolSummary.stage.stage.networkFiltering',
+    defaultMessage: 'Network Filtering',
+    description:
+      'The title text in lib / ProtocolSummary / components / Stage / Stage.',
+  },
+  skipLogic: {
+    id: 'architect.protocolSummary.stage.stage.skipLogic',
+    defaultMessage: 'Skip Logic',
+    description:
+      'The title text in lib / ProtocolSummary / components / Stage / Stage.',
+  },
+});
+
 type FormFieldType = {
   prompt: string;
   variable: string;
@@ -57,6 +75,7 @@ type StageProps = {
   type: string;
 };
 const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
+  const intl = useAppIntl();
   const { index } = useContext(SummaryContext);
   const stageVariables = sortBy(variablesOnStage(index)(id), [
     (variable) => variable[1].toLowerCase(),
@@ -204,7 +223,7 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
                 ...(subject
                   ? [
                       [
-                        'Subject',
+                        intl.formatMessage(summaryMessages.subject),
                         <EntityBadge
                           key="subject"
                           small
@@ -219,7 +238,7 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
                 ...(edgeType
                   ? [
                       [
-                        'Edge Type',
+                        intl.formatMessage(summaryMessages.edgeType),
                         <EntityBadge
                           key="edge-type"
                           small
@@ -234,13 +253,15 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
                 ...(!isEmpty(stageVariables)
                   ? [
                       [
-                        'Attributes',
+                        intl.formatMessage(summaryMessages.attributes),
                         <React.Fragment key="vars">
                           {stageVariables.map(([variableId, variable], i) => (
                             <React.Fragment key={`${id}-${variableId}`}>
                               <DualLink to={`#variable-${variableId}`}>
                                 {variable}
                               </DualLink>
+                              {/* Separator between authored attribute names. */}
+                              {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx */}
                               {i !== stageVariables.length - 1 && ', '}
                             </React.Fragment>
                           ))}
@@ -267,16 +288,21 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
         </div>
       </div>
       {filter && (
-        <SectionFrame title="Network Filtering">
+        <SectionFrame title={intl.formatMessage(messages.networkFiltering)}>
           <MiniTable
             rotated
             wide
-            rows={[['Rules', <Filter key="filter" filter={filter} />]]}
+            rows={[
+              [
+                intl.formatMessage(summaryMessages.rules),
+                <Filter key="filter" filter={filter} />,
+              ],
+            ]}
           />
         </SectionFrame>
       )}
       {skipLogic && (
-        <SectionFrame title="Skip Logic">
+        <SectionFrame title={intl.formatMessage(messages.skipLogic)}>
           <SkipLogic skipLogic={skipLogic} />
         </SectionFrame>
       )}

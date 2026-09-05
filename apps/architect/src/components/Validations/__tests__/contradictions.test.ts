@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { messageText } from '~/test/messageText';
+
 import { buildComposerFieldOverlay } from '../../sections/Form/composerHelpers';
 import {
   buildProspectiveVariables,
@@ -7,7 +9,6 @@ import {
   draftVariableId,
   findDraftContradictions,
   makeFieldEditorValidate,
-  unvalidatedElsewhereMessage,
   validatedElsewhereMessage,
   variableDisplayName,
 } from '../contradictions';
@@ -229,7 +230,9 @@ describe('makeFieldEditorValidate', () => {
         { label: 'Blue', value: 'blue' },
       ],
     });
-    expect(errors.validation).toContain('minSelected');
+    expect(messageText(errors.validation)).toContain(
+      'exceeds the available options. Add options or reduce the minimum.',
+    );
   });
 
   it('passes a coherent draft and ignores dialogs without validation', () => {
@@ -254,8 +257,8 @@ describe('makeFieldEditorValidate', () => {
       component: 'Text',
       validation: { minLength: 10, maxLength: 2 },
     });
-    expect(errors.validation).toBe(
-      'Attribute "this attribute": minLength (10) is greater than maxLength (2)',
+    expect(messageText(errors.validation)).toBe(
+      'The minimum and maximum rules for this attribute leave no permitted answer. Adjust the bounds or the required-answer rule.',
     );
   });
 
@@ -321,13 +324,15 @@ describe('makeFieldEditorValidate', () => {
       );
 
       expect(
-        validate({
-          variable: 'a',
-          validation: { sameAs: 'b' },
-          component: 'DatePicker',
-          parameters: {},
-        }).validation,
-      ).toContain('different resolutions');
+        messageText(
+          validate({
+            variable: 'a',
+            validation: { sameAs: 'b' },
+            component: 'DatePicker',
+            parameters: {},
+          }).validation,
+        ),
+      ).toContain('cannot be satisfied within their allowed ranges');
     });
 
     it('keeps draft options while applying stage-effective Boolean controls', () => {
@@ -363,13 +368,15 @@ describe('makeFieldEditorValidate', () => {
       );
 
       expect(
-        validate({
-          variable: 'a',
-          validation: { differentFrom: 'b' },
-          component: 'Toggle',
-          options: [{ label: 'Yes', value: true }],
-        }).validation,
-      ).toContain('must differ');
+        messageText(
+          validate({
+            variable: 'a',
+            validation: { differentFrom: 'b' },
+            component: 'Toggle',
+            options: [{ label: 'Yes', value: true }],
+          }).validation,
+        ),
+      ).toContain('The rules require different answers');
     });
 
     it('applies composer-owned draft rendering only to the current form while shared views keep codebook controls', () => {
@@ -407,13 +414,15 @@ describe('makeFieldEditorValidate', () => {
       );
 
       expect(
-        validate({
-          variable: 'a',
-          validation: { differentFrom: 'b' },
-          component: 'Toggle',
-          options: [{ label: 'Yes', value: true }],
-        }).validation,
-      ).toContain('must differ');
+        messageText(
+          validate({
+            variable: 'a',
+            validation: { differentFrom: 'b' },
+            component: 'Toggle',
+            options: [{ label: 'Yes', value: true }],
+          }).validation,
+        ),
+      ).toContain('The rules require different answers');
     });
 
     it('accepts matching date controls when the current composer and shared form resolve them differently', () => {
@@ -479,13 +488,15 @@ describe('makeFieldEditorValidate', () => {
       );
 
       expect(
-        validate({
-          variable: 'a',
-          validation: { differentFrom: 'b' },
-          component: 'Boolean',
-          options: [{ label: 'Yes', value: true }],
-        }).validation,
-      ).toContain('must differ');
+        messageText(
+          validate({
+            variable: 'a',
+            validation: { differentFrom: 'b' },
+            component: 'Boolean',
+            options: [{ label: 'Yes', value: true }],
+          }).validation,
+        ),
+      ).toContain('The rules require different answers');
     });
 
     it('does not attribute an identically scoped baseline contradiction to an unrelated draft', () => {
@@ -554,7 +565,9 @@ describe('makeFieldEditorValidate', () => {
         ],
         validation: { sameAs: collidingName },
       });
-      expect(errors.validation).toContain('share no option values');
+      expect(messageText(errors.validation)).toContain(
+        'cannot be satisfied within their allowed ranges. Adjust the ranges or comparisons.',
+      );
     });
 
     it('still reports a contradiction when the typed name collides with nothing', () => {
@@ -567,8 +580,8 @@ describe('makeFieldEditorValidate', () => {
         component: 'Number',
         validation: { minValue: 10, lessThanVariable: 'limit' },
       });
-      expect(errors.validation).toContain(
-        'can never be satisfied because their value ranges do not overlap',
+      expect(messageText(errors.validation)).toContain(
+        'cannot be satisfied within their allowed ranges. Adjust the ranges or comparisons.',
       );
     });
 
@@ -586,7 +599,9 @@ describe('makeFieldEditorValidate', () => {
           { label: 'Blue', value: 'blue' },
         ],
       });
-      expect(errors.validation).toContain('minSelected');
+      expect(messageText(errors.validation)).toContain(
+        'exceeds the available options. Add options or reduce the minimum.',
+      );
     });
   });
 
@@ -629,7 +644,9 @@ describe('makeFieldEditorValidate', () => {
         { label: 'Yellow', value: 'yellow' },
       ],
     });
-    expect(errors.validation).toContain('share no option values');
+    expect(messageText(errors.validation)).toContain(
+      'cannot be satisfied within their allowed ranges. Adjust the ranges or comparisons.',
+    );
   });
 
   // Finding C: the dialog is the editor surface that changes `parameters`, so
@@ -661,8 +678,8 @@ describe('makeFieldEditorValidate', () => {
       validation: {},
       parameters: { type: 'year', max: '2019' },
     });
-    expect(errors.validation).toContain(
-      'can never be satisfied because their value ranges do not overlap',
+    expect(messageText(errors.validation)).toContain(
+      'cannot be satisfied within their allowed ranges. Adjust the ranges or comparisons.',
     );
   });
 
@@ -695,8 +712,8 @@ describe('makeFieldEditorValidate', () => {
       validation: { lessThanVariable: 'end' },
       parameters: { type: 'year', min: '2025' },
     });
-    expect(errors.validation).toContain(
-      'can never be satisfied because their value ranges do not overlap',
+    expect(messageText(errors.validation)).toContain(
+      'cannot be satisfied within their allowed ranges. Adjust the ranges or comparisons.',
     );
   });
 
@@ -731,7 +748,9 @@ describe('makeFieldEditorValidate', () => {
       parameters: null,
       validation: { sameAs: 'end' },
     });
-    expect(errors.validation).toContain('different resolutions');
+    expect(messageText(errors.validation)).toContain(
+      'cannot be satisfied within their allowed ranges',
+    );
   });
 
   // Fifth-wave Finding 4: the codebook definitions of `a`/`b` are both
@@ -794,7 +813,9 @@ describe('makeFieldEditorValidate', () => {
         component: 'DatePicker',
         parameters: {},
       });
-      expect(errors.validation).toContain('different resolutions');
+      expect(messageText(errors.validation)).toContain(
+        'cannot be satisfied within their allowed ranges',
+      );
     });
 
     it('excludes the overlay entry for the field currently being edited', () => {
@@ -883,7 +904,9 @@ describe('makeFieldEditorValidate', () => {
         component: 'DatePicker',
         parameters: {},
       });
-      expect(errors.validation).toContain('different resolutions');
+      expect(messageText(errors.validation)).toContain(
+        'cannot be satisfied within their allowed ranges',
+      );
     });
   });
 
@@ -913,7 +936,9 @@ describe('makeFieldEditorValidate', () => {
         (variableId) => variableId === 'colors',
       );
       const errors = validate({ variable: 'colors', validation: {} });
-      expect(errors.variable).toBe(unvalidatedElsewhereMessage('Colors'));
+      expect(messageText(errors.variable)).toBe(
+        '"Colors" is written without validation by another stage, so it cannot be used as a form field',
+      );
     });
 
     it('accepts a pick with no unvalidated use elsewhere', () => {
@@ -951,7 +976,9 @@ describe('makeFieldEditorValidate', () => {
         { variable: 'colors', validation: {} },
         { initialValues: { variable: 'other' } },
       );
-      expect(errors.variable).toBe(unvalidatedElsewhereMessage('Colors'));
+      expect(messageText(errors.variable)).toBe(
+        '"Colors" is written without validation by another stage, so it cannot be used as a form field',
+      );
     });
 
     it('never runs the gate when hasUnvalidatedUse is not supplied (composer/non-gated callers)', () => {
@@ -979,8 +1006,10 @@ describe('makeFieldEditorValidate', () => {
         validation: { minSelected: 3 },
         options: [{ label: 'Red', value: 'red' }],
       });
-      expect(errors.validation).toContain('minSelected');
-      expect(errors.variable).toBeUndefined();
+      expect(messageText(errors.validation)).toContain(
+        'exceeds the available options. Add options or reduce the minimum.',
+      );
+      expect(messageText(errors.variable)).toBeUndefined();
     });
   });
 
@@ -1030,7 +1059,9 @@ describe('makeFieldEditorValidate', () => {
         options: [{ label: 'Yes', value: true }],
         validation: { differentFrom: 'boolB' },
       });
-      expect(errors.validation).toContain('must differ');
+      expect(messageText(errors.validation)).toContain(
+        'The rules require different answers',
+      );
     });
 
     it('does not flag the same pair in a plain codebook dialog with no stage overlay', () => {
@@ -1120,7 +1151,9 @@ describe('makeFieldEditorValidate', () => {
         component: 'DatePicker',
         parameters: { type: 'year' },
       });
-      expect(errors.validation).toContain('different resolutions');
+      expect(messageText(errors.validation)).toContain(
+        'cannot be satisfied within their allowed ranges',
+      );
     });
 
     it('never omits the edited variable itself', () => {
@@ -1147,7 +1180,9 @@ describe('makeFieldEditorValidate', () => {
         component: 'DatePicker',
         parameters: {},
       });
-      expect(errors.validation).toContain('different resolutions');
+      expect(messageText(errors.validation)).toContain(
+        'cannot be satisfied within their allowed ranges',
+      );
     });
 
     it('omits a reassigned row’s old variable once another form is its only renderer', () => {
@@ -1215,8 +1250,8 @@ describe('makeFieldEditorValidate', () => {
         variable: 'a',
         validation: { required: true, sameAs: 'b', minValue: 10 },
       });
-      expect(errors.validation).toContain(
-        'can never be satisfied because their value ranges do not overlap',
+      expect(messageText(errors.validation)).toContain(
+        'cannot be satisfied within their allowed ranges. Adjust the ranges or comparisons.',
       );
     });
 

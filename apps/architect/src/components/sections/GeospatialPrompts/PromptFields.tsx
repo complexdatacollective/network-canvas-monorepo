@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { useSelector } from 'react-redux';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import Section from '@codaco/fresco-ui/Section';
 import ArchitectField from '~/components/Form/ArchitectField';
@@ -14,6 +16,27 @@ import { getVariableOptionsForSubject } from '~/selectors/codebook';
 import { excludeValidatedUses } from '~/selectors/roleFilters';
 
 import { VariablePickerControl as VariablePicker } from '../../Form/Fields/VariablePicker/VariablePicker';
+const messages = defineMessages({
+  locationResponse: {
+    id: 'architect.sections.geospatialPrompts.promptFields.locationResponse',
+    defaultMessage: 'Location response',
+    description:
+      'The title text in components / sections / GeospatialPrompts / PromptFields.',
+  },
+  chooseTheLocationAttributeThatStores: {
+    id: 'architect.sections.geospatialPrompts.promptFields.chooseTheLocationAttributeThatStores',
+    defaultMessage:
+      "Choose the location attribute that stores the participant's selection.",
+    description:
+      'The description text in components / sections / GeospatialPrompts / PromptFields.',
+  },
+  locationAttribute: {
+    id: 'architect.sections.geospatialPrompts.promptFields.locationAttribute',
+    defaultMessage: 'Location attribute',
+    description:
+      'The label text in components / sections / GeospatialPrompts / PromptFields.',
+  },
+});
 
 const VARIABLE_TYPE = 'location';
 
@@ -38,6 +61,7 @@ const PromptFields = ({
   variable,
   text,
 }: PromptFieldsProps) => {
+  const intl = useAppIntl();
   const subject = useMemo(
     () => ({ entity: entity as 'node' | 'edge' | 'ego', type }),
     [entity, type],
@@ -85,12 +109,14 @@ const PromptFields = ({
     <>
       <PromptText initialValue={text} />
       <Section
-        title="Location response"
-        description="Choose the location attribute that stores the participant's selection."
+        title={intl.formatMessage(messages.locationResponse)}
+        description={intl.formatMessage(
+          messages.chooseTheLocationAttributeThatStores,
+        )}
       >
         <ArchitectField
           name="variable"
-          label="Location attribute"
+          label={intl.formatMessage(messages.locationAttribute)}
           component={VariablePicker}
           validation={{ required: true }}
           initialValue={variable}

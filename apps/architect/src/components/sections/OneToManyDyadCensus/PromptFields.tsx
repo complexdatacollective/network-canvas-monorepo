@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { shallowEqual, useSelector } from 'react-redux';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Section from '@codaco/fresco-ui/Section';
@@ -13,6 +15,59 @@ import BinSortOrderSection from '../BinSortOrderSection';
 import BucketSortOrderSection from '../BucketSortOrderSection';
 import { getSortOrderOptionGetter } from '../CategoricalBinPrompts/optionGetters';
 import { EntitySelectControl as EntitySelectField } from '../fields/EntitySelectField/EntitySelectField';
+const messages = defineMessages({
+  promptConfiguration: {
+    id: 'architect.sections.oneToManyDyadCensus.promptFields.promptConfiguration',
+    defaultMessage: 'Prompt configuration',
+    description:
+      'The title text in components / sections / OneToManyDyadCensus / PromptFields.',
+  },
+  writeTheParticipantPromptAndSelect: {
+    id: 'architect.sections.oneToManyDyadCensus.promptFields.writeTheParticipantPromptAndSelect',
+    defaultMessage:
+      'Write the participant prompt and select the edge type created for chosen nodes.',
+    description:
+      'The description text in components / sections / OneToManyDyadCensus / PromptFields.',
+  },
+  rememberToWriteYourPromptText: {
+    id: 'architect.sections.oneToManyDyadCensus.promptFields.rememberToWriteYourPromptText',
+    defaultMessage:
+      "Remember to write your prompt text so that it clearly indicates the participant is evaluating the relationship between one specific individual and each of the others shown. Use phrases such as ' <strong>which of the following people</strong> ', or ' <strong2>select all people with whom this person</strong2> ' to indicate that the participant should focus on selecting from the group.",
+    description:
+      'Visible text in components / sections / OneToManyDyadCensus / PromptFields.',
+  },
+  promptText: {
+    id: 'architect.sections.oneToManyDyadCensus.promptFields.promptText',
+    defaultMessage: 'Prompt text',
+    description:
+      'The label text in components / sections / OneToManyDyadCensus / PromptFields.',
+  },
+  enterTextForThePromptHere: {
+    id: 'architect.sections.oneToManyDyadCensus.promptFields.enterTextForThePromptHere',
+    defaultMessage: 'Enter text for the prompt here...',
+    description:
+      'The placeholder text in components / sections / OneToManyDyadCensus / PromptFields.',
+  },
+  createdEdgeType: {
+    id: 'architect.sections.oneToManyDyadCensus.promptFields.createdEdgeType',
+    defaultMessage: 'Created edge type',
+    description:
+      'The label text in components / sections / OneToManyDyadCensus / PromptFields.',
+  },
+  orderFocalNodesBeforeTheyAre: {
+    id: 'architect.sections.oneToManyDyadCensus.promptFields.orderFocalNodesBeforeTheyAre',
+    defaultMessage:
+      'Order focal nodes before they are presented for evaluation.',
+    description:
+      'The description text in components / sections / OneToManyDyadCensus / PromptFields.',
+  },
+  orderTargetNodesAfterTheyAre: {
+    id: 'architect.sections.oneToManyDyadCensus.promptFields.orderTargetNodesAfterTheyAre',
+    defaultMessage: 'Order target nodes after they are placed in the bin.',
+    description:
+      'The description text in components / sections / OneToManyDyadCensus / PromptFields.',
+  },
+});
 
 type SelectOption = {
   label: string;
@@ -41,6 +96,7 @@ const PromptFields = ({
   bucketSortOrder,
   binSortOrder,
 }: PromptFieldsProps) => {
+  const intl = useAppIntl();
   // This stage writes no attribute at all, so it needs the codebook pool
   // purely for sort options — and sort keys are read-only references outside
   // the writer-exclusivity rule, so they draw from the RAW pool (never a
@@ -61,39 +117,37 @@ const PromptFields = ({
   const currentCreateEdge =
     typeof liveCreateEdge === 'string' ? liveCreateEdge : createEdge;
 
-  const getOptions = getSortOrderOptionGetter(sortVariableOptions);
+  const getOptions = getSortOrderOptionGetter(sortVariableOptions, intl);
   const sortMaxItems = getOptions('property', undefined, []).length;
 
   return (
     <>
       <Section
-        title="Prompt configuration"
-        description="Write the participant prompt and select the edge type created for chosen nodes."
+        title={intl.formatMessage(messages.promptConfiguration)}
+        description={intl.formatMessage(
+          messages.writeTheParticipantPromptAndSelect,
+        )}
       >
         <Alert variant="info" className="my-7">
           <AlertDescription>
-            Remember to write your prompt text so that it clearly indicates the
-            participant is evaluating the relationship between one specific
-            individual and each of the others shown. Use phrases such as &apos;
-            <strong>which of the following people</strong>
-            &apos;, or &apos;
-            <strong>select all people with whom this person</strong>
-            &apos; to indicate that the participant should focus on selecting
-            from the group.
+            {intl.formatMessage(messages.rememberToWriteYourPromptText, {
+              strong: (chunks) => <strong>{chunks}</strong>,
+              strong2: (chunks) => <strong>{chunks}</strong>,
+            })}
           </AlertDescription>
         </Alert>
         <ArchitectField
           name="text"
-          label="Prompt text"
+          label={intl.formatMessage(messages.promptText)}
           component={RichText}
           validation={{ required: true }}
           initialValue={text}
           singleLine
-          placeholder="Enter text for the prompt here..."
+          placeholder={intl.formatMessage(messages.enterTextForThePromptHere)}
         />
         <ArchitectField
           name="createEdge"
-          label="Created edge type"
+          label={intl.formatMessage(messages.createdEdgeType)}
           component={EntitySelectField}
           validation={{ required: true }}
           initialValue={createEdge}
@@ -106,14 +160,14 @@ const PromptFields = ({
         maxItems={sortMaxItems}
         optionGetter={getOptions}
         initialValue={bucketSortOrder}
-        description="Order focal nodes before they are presented for evaluation."
+        description={intl.formatMessage(messages.orderFocalNodesBeforeTheyAre)}
       />
       <BinSortOrderSection
         disabled={!currentCreateEdge}
         maxItems={sortMaxItems}
         optionGetter={getOptions}
         initialValue={binSortOrder}
-        description="Order target nodes after they are placed in the bin."
+        description={intl.formatMessage(messages.orderTargetNodesAfterTheyAre)}
       />
     </>
   );

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
+import { createAppIntl } from '@codaco/app-i18n/messages';
+
+const intl = createAppIntl({ locale: 'en' });
+
 import {
   type ContentDraftOutcome,
   getContentTypeChangedAnnouncement,
@@ -18,8 +22,9 @@ describe('content-type announcements', () => {
   it.each(ALL_TYPES)(
     'names %s exactly as the type control labels it',
     (type: ContentSlotType) => {
-      const label = typeOptions.find((option) => option.value === type)?.label;
-      expect(label).toBeDefined();
+      const option = typeOptions.find((candidate) => candidate.value === type);
+      if (!option) throw new Error(`No content type option for ${type}`);
+      const label = intl.formatMessage(option.label);
       expect(getContentTypeChosenAnnouncement(type)).toContain(`${label}.`);
       for (const outcome of OUTCOMES) {
         expect(getContentTypeChangedAnnouncement(type, outcome)).toContain(

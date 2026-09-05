@@ -1,3 +1,9 @@
+import {
+  createAppIntl,
+  defineMessages,
+  type IntlShape,
+} from '@codaco/app-i18n/messages';
+const defaultIntl = createAppIntl({ locale: 'en' });
 import { createSelector } from '@reduxjs/toolkit';
 
 import type { NodeShape } from '@codaco/fresco-ui/Node';
@@ -19,6 +25,34 @@ import {
   utils,
 } from '~/selectors/indexes';
 import { getCodebook, getProtocol } from '~/selectors/protocol';
+const extraMessages = defineMessages({
+  ego: {
+    id: 'architect.codebook.entity.ego',
+    defaultMessage: 'Ego',
+    description:
+      'The interviewee entity heading in the researcher codebook, not a persisted entity identifier.',
+  },
+  unknown: {
+    id: 'architect.codebook.usage.unknown',
+    defaultMessage: 'unknown',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  validation: {
+    id: 'architect.codebook.usage.validation',
+    defaultMessage: 'Used as validation for "{name}"',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  shape: {
+    id: 'architect.codebook.usage.shape',
+    defaultMessage: 'Used in shape settings for "{name}"',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  elsewhere: {
+    id: 'architect.codebook.usage.elsewhere',
+    defaultMessage: 'Used elsewhere in this protocol',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+});
 
 type StageMeta = {
   label: string;
@@ -106,6 +140,7 @@ export const getUsageAsStageMeta = (
   variableMetaByIndex: Variables,
   hits: readonly UsageHit[],
   typeMetaByIndex: Record<string, string> = {},
+  intl: IntlShape = defaultIntl,
 ): UsageMeta[] => {
   const codebookVariableNames = new Set<string>();
   const shapeMappingTypeNames = new Set<string>();
@@ -141,7 +176,9 @@ export const getUsageAsStageMeta = (
           typeof owningVariableId === 'string'
             ? variableMetaByIndex[owningVariableId]
             : undefined;
-        codebookVariableNames.add(owner?.name ?? 'unknown');
+        codebookVariableNames.add(
+          owner?.name ?? intl.formatMessage(extraMessages.unknown),
+        );
         continue;
       }
 
@@ -149,7 +186,9 @@ export const getUsageAsStageMeta = (
         const typeId = path[2];
         const typeName =
           typeof typeId === 'string' ? typeMetaByIndex[typeId] : undefined;
-        shapeMappingTypeNames.add(typeName ?? 'unknown');
+        shapeMappingTypeNames.add(
+          typeName ?? intl.formatMessage(extraMessages.unknown),
+        );
         continue;
       }
     }
@@ -160,11 +199,13 @@ export const getUsageAsStageMeta = (
   const stageVariablesWithMeta = [...stagesByIndex.values()];
 
   const codebookVariablesWithMeta: UsageMeta[] = [...codebookVariableNames].map(
-    (name) => ({ label: `Used as validation for "${name}"` }),
+    (name) => ({
+      label: intl.formatMessage(extraMessages.validation, { name }),
+    }),
   );
 
   const shapeMappingsWithMeta: UsageMeta[] = [...shapeMappingTypeNames].map(
-    (name) => ({ label: `Used in shape settings for "${name}"` }),
+    (name) => ({ label: intl.formatMessage(extraMessages.shape, { name }) }),
   );
 
   const fallbackWithMeta: UsageMeta[] =
@@ -172,7 +213,7 @@ export const getUsageAsStageMeta = (
     stageVariablesWithMeta.length === 0 &&
     codebookVariablesWithMeta.length === 0 &&
     shapeMappingsWithMeta.length === 0
-      ? [{ label: 'Used elsewhere in this protocol' }]
+      ? [{ label: intl.formatMessage(extraMessages.elsewhere) }]
       : [];
 
   return [
@@ -187,19 +228,13 @@ export const getUsageAsStageMeta = (
  * Helper function to be used with Array.sort. Sorts a collection of variable
  * definitions by the label property.
  *
- * @param {Object} a { label: string }
- * @param {Object} b { label: string }
- * @returns {number} -1 if a < b, 1 if a > b, 0 if a === b
+ * The caller supplies the researcher's current application locale.
  */
-export const sortByLabel = (a: UsageMeta, b: UsageMeta): number => {
-  if (a.label < b.label) {
-    return -1;
-  }
-  if (a.label > b.label) {
-    return 1;
-  }
-  return 0;
-};
+export const sortByLabel = (
+  a: UsageMeta,
+  b: UsageMeta,
+  intl: IntlShape = defaultIntl,
+): number => a.label.localeCompare(b.label, intl.locale);
 
 /**
  * Creates a selector that returns a function for getting entity usage data.
@@ -215,6 +250,7 @@ export const sortByLabel = (a: UsageMeta, b: UsageMeta): number => {
 export const makeGetEntityWithUsage = (
   index: Record<string, unknown>,
   mergeProps: Record<string, unknown>,
+  intl: IntlShape = defaultIntl,
 ) =>
   createSelector(
     [
@@ -234,6 +270,7 @@ export const makeGetEntityWithUsage = (
               variableMetaByIndex,
               hitsByTypeId.get(id) ?? [],
               typeMetaByIndex,
+              intl,
             )
           : [];
 
@@ -275,6 +312,7 @@ type EntityProperties = {
 export const getEntityProperties = (
   state: RootState,
   { entity, type }: EntityPropertiesParams,
+  intl: IntlShape = defaultIntl,
 ): EntityProperties | null => {
   const entityType = getType(state, { entity, type });
 
@@ -297,7 +335,9 @@ export const getEntityProperties = (
     return null;
   }
 
-  const name = hasNameAndColor(entityType) ? entityType.name : 'Ego';
+  const name = hasNameAndColor(entityType)
+    ? entityType.name
+    : intl.formatMessage(extraMessages.ego);
   const color = hasNameAndColor(entityType) ? entityType.color : undefined;
   const shape =
     entity === 'node' && 'shape' in entityType
@@ -333,7 +373,8 @@ export const getEntityProperties = (
       variableMeta,
       getVariableUsageHits(state, id),
       typeMeta,
-    ).toSorted(sortByLabel);
+      intl,
+    ).toSorted((a, b) => sortByLabel(a, b, intl));
 
     const usageString = usage
       .map(({ label }: UsageMeta) => label)

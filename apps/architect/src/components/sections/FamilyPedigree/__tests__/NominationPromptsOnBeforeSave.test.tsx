@@ -7,6 +7,7 @@ import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { Stage } from '@codaco/protocol-validation';
 import StageFormBridge from '~/components/StageEditor/StageFormBridge';
 import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
+import { messageSubmissionResult } from '~/test/messageText';
 
 // Bypasses the real DialogArrayField (whose dialog machinery is irrelevant
 // here) and captures the `onBeforeSave` prop for direct invocation — the same
@@ -122,7 +123,7 @@ describe('NominationPrompts onBeforeSave cross-class gate', () => {
 
     const result = onBeforeSave({ id: 'p1', text: 'T', variable: 'flagged' });
 
-    expect(result).toEqual({
+    expect(messageSubmissionResult(result)).toEqual({
       success: false,
       fieldErrors: {
         variable: [
@@ -152,7 +153,11 @@ describe('NominationPrompts onBeforeSave cross-class gate', () => {
       { id: 'p2', text: 'T', variable: 'other' },
     ]);
 
-    expect(onBeforeSave({ id: 'p2', text: 'T', variable: 'flagged' })).toEqual({
+    expect(
+      messageSubmissionResult(
+        onBeforeSave({ id: 'p2', text: 'T', variable: 'flagged' }),
+      ),
+    ).toEqual({
       success: false,
       fieldErrors: {
         variable: [
@@ -161,7 +166,9 @@ describe('NominationPrompts onBeforeSave cross-class gate', () => {
       },
     });
     // A brand new row has no committed variable at all, so nothing escapes.
-    expect(onBeforeSave({ text: 'T', variable: 'flagged' })).toMatchObject({
+    expect(
+      messageSubmissionResult(onBeforeSave({ text: 'T', variable: 'flagged' })),
+    ).toMatchObject({
       success: false,
     });
   });
@@ -183,11 +190,15 @@ describe('NominationPrompts onBeforeSave cross-class gate', () => {
       { id: 'p1', text: 'T', variable: 'other' },
     ]);
 
-    expect(onBeforeSave({ id: 'p1', text: 'T', variable: 'flagged' })).toEqual({
+    expect(
+      messageSubmissionResult(
+        onBeforeSave({ id: 'p1', text: 'T', variable: 'flagged' }),
+      ),
+    ).toEqual({
       success: false,
       fieldErrors: {
         variable: [
-          'This attribute is set by the Family Pedigree interface, which marks the participant, so it cannot be used here. Choose a different attribute.',
+          'This attribute is set by Family Pedigree, so it cannot be used here. Choose a different attribute.',
         ],
       },
     });
@@ -209,7 +220,7 @@ describe('NominationPrompts onBeforeSave cross-class gate', () => {
       { id: 'p1', text: 'T', variable: 'flagged' },
     ]);
     const result = onBeforeSave({ id: 'p1', text: 'T', variable: 'flagged' });
-    expect(result).toMatchObject({ success: false });
+    expect(messageSubmissionResult(result)).toMatchObject({ success: false });
   });
 
   it('allows a save with no cross-class conflict', () => {

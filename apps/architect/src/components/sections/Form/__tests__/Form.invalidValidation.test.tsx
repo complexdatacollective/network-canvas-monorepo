@@ -107,18 +107,18 @@ describe('the field editor dialog and an invalid rule map', () => {
     ]);
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit field' }));
-    fireEvent.click(toggle('Minimum length'));
+    fireEvent.click(toggle('Minimum text length'));
     fireEvent.blur(
       (() => {
-        const input = numberValue('Minimum length');
+        const input = numberValue('Minimum text length');
         fireEvent.change(input, { target: { value: '10' } });
         return input;
       })(),
     );
-    fireEvent.click(toggle('Maximum length'));
+    fireEvent.click(toggle('Maximum text length'));
     fireEvent.blur(
       (() => {
-        const input = numberValue('Maximum length');
+        const input = numberValue('Maximum text length');
         fireEvent.change(input, { target: { value: '3' } });
         return input;
       })(),
@@ -128,14 +128,15 @@ describe('the field editor dialog and an invalid rule map', () => {
 
     await waitFor(() => {
       expect(
-        screen.getAllByText(/minLength \(10\) is greater than maxLength \(3\)/)
-          .length,
+        screen.getAllByText(
+          /leave no permitted answer. Adjust the bounds or the required-answer rule/,
+        ).length,
       ).toBeGreaterThan(0);
     });
     expect(onBeforeSave).not.toHaveBeenCalled();
     // The dialog is still open with both values intact for correction.
-    expect(numberValue('Minimum length')).toHaveValue(10);
-    expect(numberValue('Maximum length')).toHaveValue(3);
+    expect(numberValue('Minimum text length')).toHaveValue(10);
+    expect(numberValue('Maximum text length')).toHaveValue(3);
     expect(rows()).toEqual([
       { id: 'row-1', prompt: 'How do you know them?', validation: {} },
     ]);
@@ -154,7 +155,7 @@ describe('the field editor dialog and an invalid rule map', () => {
     ]);
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit field' }));
-    const input = numberValue('Maximum length');
+    const input = numberValue('Maximum text length');
     fireEvent.change(input, { target: { value: '3' } });
     fireEvent.blur(input);
 
@@ -162,8 +163,9 @@ describe('the field editor dialog and an invalid rule map', () => {
 
     await waitFor(() => {
       expect(
-        screen.getAllByText(/minLength \(10\) is greater than maxLength \(3\)/)
-          .length,
+        screen.getAllByText(
+          /leave no permitted answer. Adjust the bounds or the required-answer rule/,
+        ).length,
       ).toBeGreaterThan(0);
     });
     expect(onBeforeSave).not.toHaveBeenCalled();
@@ -186,7 +188,7 @@ describe('the field editor dialog and an invalid rule map', () => {
     ]);
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit field' }));
-    const input = numberValue('Maximum length');
+    const input = numberValue('Maximum text length');
     fireEvent.change(input, { target: { value: '30' } });
     fireEvent.blur(input);
 

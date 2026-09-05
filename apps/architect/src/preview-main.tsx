@@ -1,13 +1,18 @@
-import '@codaco/tailwind-config/fonts/inclusive-sans.css';
-import '@codaco/tailwind-config/fonts/nunito.css';
 import { createRoot } from 'react-dom/client';
 
+import '@codaco/tailwind-config/fonts/inclusive-sans.css';
+import '@codaco/tailwind-config/fonts/nunito.css';
 import { applyFreshLoadServiceWorkerUpdate } from '@codaco/fresco-ui/appUpdate/applyFreshLoadServiceWorkerUpdate';
 import { registerPwaBuildLease } from '@codaco/fresco-ui/appUpdate/registerPwaBuildLease';
 
-import { AppErrorBoundary } from './components/Errors';
 import { PreviewHost } from './components/PreviewHost/PreviewHost';
+import { ArchitectI18nRoot } from './i18n/ArchitectI18nRoot';
+import {
+  initializeArchitectDocument,
+  PreviewDocumentMetadata,
+} from './i18n/documentMetadata';
 
+initializeArchitectDocument(true);
 registerPwaBuildLease(__PWA_BUILD_ID__);
 
 async function startPreview(): Promise<void> {
@@ -23,9 +28,10 @@ async function startPreview(): Promise<void> {
   }
 
   createRoot(root).render(
-    <AppErrorBoundary>
+    <ArchitectI18nRoot>
+      <PreviewDocumentMetadata />
       <PreviewHost />
-    </AppErrorBoundary>,
+    </ArchitectI18nRoot>,
   );
 }
 

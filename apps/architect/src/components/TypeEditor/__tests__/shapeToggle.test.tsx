@@ -8,6 +8,7 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Form from '@codaco/fresco-ui/form/Form';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
+import { messageFields } from '~/test/messageText';
 
 import type { ShapeMappingDraft } from '../shapeMappingTypes';
 import ShapeVariableMapping from '../ShapeVariableMapping';
@@ -137,7 +138,9 @@ describe('ShapeVariableMapping toggle', () => {
 
     fireEvent.click(screen.getByLabelText('Map attribute to shape'));
 
-    expect(validateEntityType(getValues())).toEqual(INCOMPLETE_MAPPING_ERRORS);
+    expect(messageFields(validateEntityType(getValues()))).toEqual(
+      INCOMPLETE_MAPPING_ERRORS,
+    );
   });
 
   it('refuses to save a re-enabled mapping left empty, exactly as a fresh one', () => {
@@ -150,6 +153,8 @@ describe('ShapeVariableMapping toggle', () => {
     fireEvent.click(toggle);
     fireEvent.click(toggle);
 
-    expect(validateEntityType(getValues())).toEqual(INCOMPLETE_MAPPING_ERRORS);
+    expect(messageFields(validateEntityType(getValues()))).toEqual(
+      INCOMPLETE_MAPPING_ERRORS,
+    );
   });
 });

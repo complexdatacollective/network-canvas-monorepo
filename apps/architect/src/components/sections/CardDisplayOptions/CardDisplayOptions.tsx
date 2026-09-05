@@ -1,5 +1,7 @@
 import { compose } from 'react-recompose';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Section from '@codaco/fresco-ui/Section';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -15,26 +17,87 @@ import {
   useStageInitialValue,
 } from '~/components/StageEditor/stageFormHooks';
 import useVariablesFromExternalData from '~/hooks/useVariablesFromExternalData';
+import { type MessageConfig, formatConfig } from '~/i18n/formatConfig';
 
 import withDisabledAssetRequired from '../../enhancers/withDisabledAssetRequired';
 import getVariableOptionsGetter from '../SortOptionsForExternalData/getVariableOptionsGetter';
+const additionalMessages = defineMessages({
+  addNewDisplayProperty: {
+    id: 'architect.additional.sections.cardDisplayOptions.cardDisplayOptions.addNewDisplayProperty',
+    defaultMessage: 'Add new display property',
+    description:
+      'The addButtonLabel text in components / sections / CardDisplayOptions / CardDisplayOptions.',
+  },
+});
+const configMessages = defineMessages({
+  attribute: {
+    id: 'architect.sections.cardDisplayOptions.cardDisplayOptions.config.attribute',
+    defaultMessage: 'Attribute',
+    description:
+      'Presentation label or description in components/sections/CardDisplayOptions/CardDisplayOptions.tsx. Identifiers are not translated.',
+  },
+  label: {
+    id: 'architect.sections.cardDisplayOptions.cardDisplayOptions.config.label',
+    defaultMessage: 'Label',
+    description:
+      'Presentation label or description in components/sections/CardDisplayOptions/CardDisplayOptions.tsx. Identifiers are not translated.',
+  },
+});
+const messages = defineMessages({
+  cardDisplay: {
+    id: 'architect.sections.cardDisplayOptions.cardDisplayOptions.cardDisplay',
+    defaultMessage: 'Card display',
+    description:
+      'The title text in components / sections / CardDisplayOptions / CardDisplayOptions.',
+  },
+  configureHowRosterCardsAreDisplayed: {
+    id: 'architect.sections.cardDisplayOptions.cardDisplayOptions.configureHowRosterCardsAreDisplayed',
+    defaultMessage: 'Configure how roster cards are displayed to participants.',
+    description:
+      'The description text in components / sections / CardDisplayOptions / CardDisplayOptions.',
+  },
+  cardsWillUseTheNameAttribute: {
+    id: 'architect.sections.cardDisplayOptions.cardDisplayOptions.cardsWillUseTheNameAttribute',
+    defaultMessage:
+      'Cards will use the <strong>name</strong> attribute from your external data as the main card title.',
+    description:
+      'Visible text in components / sections / CardDisplayOptions / CardDisplayOptions.',
+  },
+  yourExternalDataDoesNotSeem: {
+    id: 'architect.sections.cardDisplayOptions.cardDisplayOptions.yourExternalDataDoesNotSeem',
+    defaultMessage:
+      'Your external data does not seem to contain any usable attributes. Is it correctly formatted?',
+    description:
+      'Visible text in components / sections / CardDisplayOptions / CardDisplayOptions.',
+  },
+  additionalDisplayProperties: {
+    id: 'architect.sections.cardDisplayOptions.cardDisplayOptions.additionalDisplayProperties',
+    defaultMessage: 'Additional display properties',
+    description:
+      'The label text in components / sections / CardDisplayOptions / CardDisplayOptions.',
+  },
+  chooseAnyAdditionalRosterAttributesThat: {
+    id: 'architect.sections.cardDisplayOptions.cardDisplayOptions.chooseAnyAdditionalRosterAttributesThat',
+    defaultMessage:
+      'Choose any additional roster attributes that will help participants recognize an alter.',
+    description:
+      'The hint text in components / sections / CardDisplayOptions / CardDisplayOptions.',
+  },
+});
 
-const DISPLAY_PROPERTIES: PropertyField[] = [
-  { fieldName: 'variable', label: 'Attribute' },
+const DISPLAY_PROPERTIES: MessageConfig<PropertyField>[] = [
+  { fieldName: 'variable', label: configMessages.attribute },
   {
     fieldName: 'label',
     control: 'input',
-    label: 'Label',
-    placeholder: 'Label',
+    label: configMessages.label,
+    placeholder: configMessages.label,
   },
 ];
 
 // A row's own cells cannot block the save (see RowField), and a display
 // property missing either member survives `prune` to fail the roster stage's
 // schema.
-const DISPLAY_PROPERTIES_VALIDATION = {
-  completeRows: completeRows(DISPLAY_PROPERTIES),
-};
 
 type CardDisplayOptionsProps = StageEditorSectionProps & {
   dataSource?: string;
@@ -44,6 +107,10 @@ const CardDisplayOptions = ({
   dataSource,
   disabled,
 }: CardDisplayOptionsProps) => {
+  const intl = useAppIntl();
+  const DISPLAY_PROPERTIES_VALIDATION = {
+    completeRows: completeRows(formatConfig(DISPLAY_PROPERTIES, intl), intl),
+  };
   const { variables: variableOptions } = useVariablesFromExternalData(
     dataSource,
     true,
@@ -57,24 +124,24 @@ const CardDisplayOptions = ({
   );
   return (
     <Section
-      title="Card display"
-      description="Configure how roster cards are displayed to participants."
+      title={intl.formatMessage(messages.cardDisplay)}
+      description={intl.formatMessage(
+        messages.configureHowRosterCardsAreDisplayed,
+      )}
       toggleable
       defaultOpen={hasCardDisplayOptions}
       disabled={disabled}
     >
       <Alert variant="info" className="my-7">
         <AlertDescription>
-          Cards will use the <strong>name</strong> attribute from your external
-          data as the main card title.
+          {intl.formatMessage(messages.cardsWillUseTheNameAttribute, {
+            strong: (chunks) => <strong>{chunks}</strong>,
+          })}
         </AlertDescription>
       </Alert>
       {maxVariableOptions === 0 && (
         <Paragraph>
-          <em>
-            Your external data does not seem to contain any usable attributes.
-            Is it correctly formatted?
-          </em>
+          <em>{intl.formatMessage(messages.yourExternalDataDoesNotSeem)}</em>
         </Paragraph>
       )}
       {/* Mounted unconditionally, including while the roster's variables are
@@ -84,13 +151,17 @@ const CardDisplayOptions = ({
           still hides the add affordance, which is all the empty case needs. */}
       <ArchitectArrayField
         name="cardOptions.additionalProperties"
-        label="Additional display properties"
-        hint="Choose any additional roster attributes that will help participants recognize an alter."
+        label={intl.formatMessage(messages.additionalDisplayProperties)}
+        hint={intl.formatMessage(
+          messages.chooseAnyAdditionalRosterAttributesThat,
+        )}
         component={MultiSelect}
-        addButtonLabel="Add new display property"
+        addButtonLabel={intl.formatMessage(
+          additionalMessages.addNewDisplayProperty,
+        )}
         initialValue={initialAdditionalProperties}
         maxItems={maxVariableOptions}
-        properties={DISPLAY_PROPERTIES}
+        properties={formatConfig(DISPLAY_PROPERTIES, intl)}
         validation={DISPLAY_PROPERTIES_VALIDATION}
         options={(fieldName: string, rowValues: unknown, allValues: unknown) =>
           variableOptionsGetter(

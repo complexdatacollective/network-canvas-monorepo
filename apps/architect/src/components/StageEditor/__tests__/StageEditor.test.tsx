@@ -6,13 +6,14 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import type { ComponentType } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
 import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
 import { guardState } from '~/hooks/useProtocolNavGuard';
+import { renderQueuedMessage } from '~/test/renderQueuedMessage';
 
 const mocks = vi.hoisted(() => ({
   openDialog: vi.fn(),
@@ -281,8 +282,12 @@ describe('StageEditor', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
     await waitFor(() => {
-      expect(mocks.openDialog).toHaveBeenCalledWith(
-        expect.objectContaining({ title: 'Discard unsaved stage changes?' }),
+      expect(mocks.openDialog).toHaveBeenCalledTimes(1);
+      const dialog = mocks.openDialog.mock.calls[0]?.[0] as {
+        title?: ReactNode;
+      };
+      expect(renderQueuedMessage(dialog.title)).toBe(
+        'Discard unsaved stage changes?',
       );
     });
     expect(mocks.setLocation).not.toHaveBeenCalled();

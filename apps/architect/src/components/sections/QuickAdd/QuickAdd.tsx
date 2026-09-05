@@ -1,3 +1,5 @@
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Section from '@codaco/fresco-ui/Section';
 import ArchitectField from '~/components/Form/ArchitectField';
 import IssueAnchor from '~/components/IssueAnchor';
@@ -14,6 +16,34 @@ import withDisabledSubjectRequired from '../../enhancers/withDisabledSubjectRequ
 import { VariablePickerControl as VariablePicker } from '../../Form/Fields/VariablePicker/VariablePicker';
 import CodebookVariableValidationSection from '../CodebookVariableValidationSection';
 import { getQuickAddOptionsForSubject } from './withOptions';
+const messages = defineMessages({
+  selectAnAttribute: {
+    id: 'architect.sections.quickAdd.quickAdd.selectAnAttribute',
+    defaultMessage: 'Select an attribute',
+    description:
+      'The description text in components / sections / QuickAdd / QuickAdd.',
+  },
+  quickAddConfiguration: {
+    id: 'architect.sections.quickAdd.quickAdd.quickAddConfiguration',
+    defaultMessage: 'Quick add configuration',
+    description:
+      'The title text in components / sections / QuickAdd / QuickAdd.',
+  },
+  chooseTheAttributePopulatedWhenA: {
+    id: 'architect.sections.quickAdd.quickAdd.chooseTheAttributePopulatedWhenA',
+    defaultMessage:
+      'Choose the attribute populated when a participant creates a node with Quick Add.',
+    description:
+      'The description text in components / sections / QuickAdd / QuickAdd.',
+  },
+  selectTheAttributeThatIsAssigned: {
+    id: 'architect.sections.quickAdd.quickAdd.selectTheAttributeThatIsAssigned',
+    defaultMessage:
+      "Select the attribute that is assigned a value when creating a new node using the Quick Add button. Use an attribute called 'name' here, unless you have a good reason not to. Interviewer will then automatically use this attribute as the label for the node in the interview.",
+    description:
+      'The hint text in components / sections / QuickAdd / QuickAdd.',
+  },
+});
 
 // Deliberately NOT `StageEditorSectionProps & {...}`: `withDisabledSubjectRequired`
 // only ever supplies `{interfaceType?, type?}` (own) and `{disabled,
@@ -26,6 +56,7 @@ type QuickAddProps = {
 };
 
 const QuickAdd = ({ disabled, disabledMessage }: QuickAddProps) => {
+  const intl = useAppIntl();
   const { entity, type } = useSubject();
   const quickAdd = useStageFormValue<string | null>('quickAdd');
   const initialQuickAdd = useStageInitialValue<string | undefined>('quickAdd');
@@ -44,20 +75,23 @@ const QuickAdd = ({ disabled, disabledMessage }: QuickAddProps) => {
 
   return (
     <>
-      <IssueAnchor fieldName="quickAdd" description="Select an attribute" />
+      <IssueAnchor
+        fieldName="quickAdd"
+        description={intl.formatMessage(messages.selectAnAttribute)}
+      />
       <Section
-        title="Quick add configuration"
+        title={intl.formatMessage(messages.quickAddConfiguration)}
         description={
           disabled
             ? disabledMessage
-            : 'Choose the attribute populated when a participant creates a node with Quick Add.'
+            : intl.formatMessage(messages.chooseTheAttributePopulatedWhenA)
         }
         disabled={disabled}
       >
         <ArchitectField
           name="quickAdd"
-          label="Select an attribute"
-          hint="Select the attribute that is assigned a value when creating a new node using the Quick Add button. Use an attribute called 'name' here, unless you have a good reason not to. Interviewer will then automatically use this attribute as the label for the node in the interview."
+          label={intl.formatMessage(messages.selectAnAttribute)}
+          hint={intl.formatMessage(messages.selectTheAttributeThatIsAssigned)}
           component={VariablePicker}
           validation={{ required: true }}
           initialValue={initialQuickAdd}

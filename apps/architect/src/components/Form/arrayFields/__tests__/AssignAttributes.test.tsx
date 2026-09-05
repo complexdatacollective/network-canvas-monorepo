@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Form from '@codaco/fresco-ui/form/Form';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type * as SelectorsIndexes from '~/selectors/indexes';
+import { messageText } from '~/test/messageText';
 
 import ArchitectArrayField from '../../ArchitectArrayField';
 
@@ -293,7 +294,7 @@ describe('completeAttributes', () => {
       [{ variable: 'close', value: true }, {}],
     ],
   ])('rejects %s', (_label, rows) => {
-    expect(completeAttributes(rows)).toBe(INCOMPLETE_MESSAGE);
+    expect(messageText(completeAttributes(rows))).toBe(INCOMPLETE_MESSAGE);
   });
 });
 
@@ -423,42 +424,50 @@ describe('makeAssignAttributesValidation: crossClassPicks', () => {
     ['a row with no variable yet', [{}]],
   ])('says nothing about %s', (_label, value) => {
     // `additionalAttributes` is optional and most prompts assign nothing.
-    expect(crossClassPicks(value, { conflicting: ['close'] })).toBeUndefined();
+    expect(
+      messageText(crossClassPicks(value, { conflicting: ['close'] })),
+    ).toBeUndefined();
   });
 
   it('leaves a False stamp alone', () => {
     // `false` is an answer, and this rule only ever reads `variable`.
     expect(
-      crossClassPicks([{ variable: 'close', value: false }]),
+      messageText(crossClassPicks([{ variable: 'close', value: false }])),
     ).toBeUndefined();
   });
 
   it('refuses a pick a form elsewhere already collects', () => {
     expect(
-      crossClassPicks([{ variable: 'nearby', value: true }], {
-        conflicting: ['nearby'],
-      }),
-    ).toBe(validatedElsewhereMessage('Nearby'));
+      messageText(
+        crossClassPicks([{ variable: 'nearby', value: true }], {
+          conflicting: ['nearby'],
+        }),
+      ),
+    ).toBe(messageText(validatedElsewhereMessage('Nearby')));
   });
 
   it('refuses a pick this stage’s draft form already collects', () => {
     expect(
-      crossClassPicks([{ variable: 'nearby', value: true }], {
-        draftValidated: ['nearby'],
-      }),
-    ).toBe(draftValidatedElsewhereMessage('Nearby'));
+      messageText(
+        crossClassPicks([{ variable: 'nearby', value: true }], {
+          draftValidated: ['nearby'],
+        }),
+      ),
+    ).toBe(messageText(draftValidatedElsewhereMessage('Nearby')));
   });
 
   it('finds the offending row wherever it sits in the list', () => {
     expect(
-      crossClassPicks(
-        [
-          { variable: 'close', value: true },
-          { variable: 'nearby', value: true },
-        ],
-        { conflicting: ['nearby'] },
+      messageText(
+        crossClassPicks(
+          [
+            { variable: 'close', value: true },
+            { variable: 'nearby', value: true },
+          ],
+          { conflicting: ['nearby'] },
+        ),
       ),
-    ).toBe(validatedElsewhereMessage('Nearby'));
+    ).toBe(messageText(validatedElsewhereMessage('Nearby')));
   });
 
   /**
@@ -469,29 +478,35 @@ describe('makeAssignAttributesValidation: crossClassPicks', () => {
    */
   it('lets a committed pick through however the rows have been renumbered', () => {
     expect(
-      crossClassPicks([{ variable: 'nearby', value: true }], {
-        committed: ['close', 'nearby'],
-        conflicting: ['nearby'],
-      }),
+      messageText(
+        crossClassPicks([{ variable: 'nearby', value: true }], {
+          committed: ['close', 'nearby'],
+          conflicting: ['nearby'],
+        }),
+      ),
     ).toBeUndefined();
     expect(
-      crossClassPicks([{ variable: 'nearby', value: true }], {
-        committed: ['close', 'nearby'],
-        draftValidated: ['nearby'],
-      }),
+      messageText(
+        crossClassPicks([{ variable: 'nearby', value: true }], {
+          committed: ['close', 'nearby'],
+          draftValidated: ['nearby'],
+        }),
+      ),
     ).toBeUndefined();
   });
 
   it('still refuses a conflicting pick this prompt never saved', () => {
     expect(
-      crossClassPicks(
-        [
-          { variable: 'close', value: true },
-          { variable: 'nearby', value: true },
-        ],
-        { committed: ['close'], conflicting: ['nearby'] },
+      messageText(
+        crossClassPicks(
+          [
+            { variable: 'close', value: true },
+            { variable: 'nearby', value: true },
+          ],
+          { committed: ['close'], conflicting: ['nearby'] },
+        ),
       ),
-    ).toBe(validatedElsewhereMessage('Nearby'));
+    ).toBe(messageText(validatedElsewhereMessage('Nearby')));
   });
 });
 
@@ -508,7 +523,7 @@ describe('AssignAttributes cross-class gate', () => {
     // The array field's refusal and the row's own error are the same
     // sentence, because they are the same function.
     const errors = await screen.findAllByText(
-      validatedElsewhereMessage('Nearby'),
+      messageText(validatedElsewhereMessage('Nearby')),
     );
     expect(errors.length).toBeGreaterThan(1);
     expect(onSubmit).not.toHaveBeenCalled();
@@ -523,7 +538,9 @@ describe('AssignAttributes cross-class gate', () => {
     save();
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalled());
-    expect(screen.queryByText(validatedElsewhereMessage('Nearby'))).toBeNull();
+    expect(
+      screen.queryByText(messageText(validatedElsewhereMessage('Nearby'))),
+    ).toBeNull();
   });
 
   it('refuses a fresh pick of a variable a form elsewhere collects', async () => {
@@ -540,7 +557,9 @@ describe('AssignAttributes cross-class gate', () => {
     save();
 
     expect(
-      await screen.findAllByText(validatedElsewhereMessage('Nearby')),
+      await screen.findAllByText(
+        messageText(validatedElsewhereMessage('Nearby')),
+      ),
     ).not.toHaveLength(0);
     expect(onSubmit).not.toHaveBeenCalled();
   });

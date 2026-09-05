@@ -1,6 +1,35 @@
-import { useCallback, useId } from 'react';
+import { useRef, useCallback, useId } from 'react';
+
+import {
+  type IntlShape,
+  createMessageError,
+  defineMessages,
+} from '@codaco/app-i18n/messages';
+const makeNameLengthValidation = (
+  getIntl: () => IntlShape,
+): CustomFieldValidation => ({
+  schema: () =>
+    z.unknown().check(
+      z.superRefine((value, ctx) => {
+        if (typeof value !== 'string') return;
+        if (countGraphemes(value.trim()) <= PROTOCOL_NAME_MAX_LENGTH) return;
+        ctx.addIssue({
+          code: 'custom',
+          input: value,
+          message: getIntl().formatMessage(PROTOCOL_NAME_TOO_LONG_MESSAGE, {
+            max: PROTOCOL_NAME_MAX_LENGTH,
+          }),
+          path: [],
+        });
+      }),
+    ),
+  hint: '',
+});
+
 import { z } from 'zod/mini';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
@@ -18,6 +47,50 @@ import {
   PROTOCOL_NAME_TOO_LONG_MESSAGE,
 } from '~/config';
 import countGraphemes from '~/utils/countGraphemes';
+const remainingMessages = defineMessages({
+  protocolNameIsRequired: {
+    id: 'architect.remaining.newProtocolDialog.protocolNameIsRequired',
+    defaultMessage: 'Protocol name is required',
+    description: 'The required text in components / NewProtocolDialog.',
+  },
+});
+const messages = defineMessages({
+  createProtocol: {
+    id: 'architect.newProtocolDialog.createProtocol',
+    defaultMessage: 'Create Protocol',
+    description: 'Visible text in components / NewProtocolDialog.',
+  },
+  protocolName: {
+    id: 'architect.newProtocolDialog.protocolName',
+    defaultMessage: 'Protocol Name',
+    description: 'The label text in components / NewProtocolDialog.',
+  },
+  optionUseAShortRecognizableNameOf: {
+    id: 'architect.newProtocolDialog.useAShortRecognizableNameOf',
+    defaultMessage:
+      'Use a short, recognizable name of up to {PROTOCOL_NAME_MAX_LENGTH} characters. Include a version number or date when it helps distinguish drafts, but avoid long project notes.',
+    description: 'The hint text in components / NewProtocolDialog.',
+  },
+  enterANameForYourProtocol: {
+    id: 'architect.newProtocolDialog.enterANameForYourProtocol',
+    defaultMessage: 'Enter a name for your protocol...',
+    description: 'The placeholder text in components / NewProtocolDialog.',
+  },
+});
+const extraMessages = defineMessages({
+  title: {
+    id: 'architect.newProtocolDialog.title',
+    defaultMessage: 'Create New Protocol',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+});
+const finalMessages = defineMessages({
+  required: {
+    id: 'architect.final.components.NewProtocolDialog.required',
+    defaultMessage: 'Protocol name is required',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+});
 
 /**
  * The same cap the editor's own name control enforces, counted the same way.
@@ -38,22 +111,6 @@ import countGraphemes from '~/utils/countGraphemes';
  * `JSON.stringify`, so the memo key stays a tiny constant; handing it a live
  * Zod object instead would serialise that object's internals on every render.
  */
-const nameLengthValidation: CustomFieldValidation = {
-  schema: () =>
-    z.unknown().check(
-      z.superRefine((value, ctx) => {
-        if (typeof value !== 'string') return;
-        if (countGraphemes(value.trim()) <= PROTOCOL_NAME_MAX_LENGTH) return;
-        ctx.addIssue({
-          code: 'custom',
-          input: value,
-          message: PROTOCOL_NAME_TOO_LONG_MESSAGE,
-          path: [],
-        });
-      }),
-    ),
-  hint: `Enter at most ${PROTOCOL_NAME_MAX_LENGTH} characters.`,
-};
 
 type NewProtocolDialogProps = {
   open: boolean;
@@ -67,10 +124,16 @@ const NewProtocolDialog = ({
   open,
   onOpenChange,
   onSubmit,
-  title = 'Create New Protocol',
+  title,
   initialName = '',
 }: NewProtocolDialogProps) => {
+  const intl = useAppIntl();
   const formId = useId();
+  const intlRef = useRef(intl);
+  intlRef.current = intl;
+  const nameLengthValidation = useRef(
+    makeNameLengthValidation(() => intlRef.current),
+  );
 
   const handleOpenChange = useCallback(
     (newOpen: boolean) => onOpenChange(newOpen),
@@ -85,7 +148,7 @@ const NewProtocolDialog = ({
         return {
           success: false,
           fieldErrors: {
-            name: ['Protocol name is required'],
+            name: [createMessageError(finalMessages.required)],
           },
         };
       }
@@ -101,27 +164,36 @@ const NewProtocolDialog = ({
       <Dialog
         open={open}
         closeDialog={() => handleOpenChange(false)}
-        title={title}
+        title={title ?? intl.formatMessage(extraMessages.title)}
         size="readable"
         footer={
           <>
             <Button color="default" onClick={() => handleOpenChange(false)}>
-              Cancel
+              {intl.formatMessage(commonMessages.cancel)}
             </Button>
-            <SubmitButton form={formId}>Create Protocol</SubmitButton>
+            <SubmitButton form={formId}>
+              {intl.formatMessage(messages.createProtocol)}
+            </SubmitButton>
           </>
         }
       >
         <FormWithoutProvider id={formId} onSubmit={handleSubmit}>
           <Field
             name="name"
-            label="Protocol Name"
-            hint={`Use a short, recognizable name of up to ${PROTOCOL_NAME_MAX_LENGTH} characters. Include a version number or date when it helps distinguish drafts, but avoid long project notes.`}
+            label={intl.formatMessage(messages.protocolName)}
+            hint={intl.formatMessage(
+              messages.optionUseAShortRecognizableNameOf,
+              {
+                PROTOCOL_NAME_MAX_LENGTH: PROTOCOL_NAME_MAX_LENGTH,
+              },
+            )}
             component={InputField}
             initialValue={initialName}
-            placeholder="Enter a name for your protocol..."
-            required="Protocol name is required"
-            custom={nameLengthValidation}
+            placeholder={intl.formatMessage(messages.enterANameForYourProtocol)}
+            required={intl.formatMessage(
+              remainingMessages.protocolNameIsRequired,
+            )}
+            custom={nameLengthValidation.current}
             dir="auto"
             autoFocus
           />

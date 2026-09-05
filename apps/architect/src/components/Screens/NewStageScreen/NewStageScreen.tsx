@@ -5,6 +5,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { connect, useSelector } from 'react-redux';
 import { useLocation } from 'wouter';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Button, { IconButton } from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -15,11 +18,51 @@ import { getExperiments, getTimelineLocus } from '~/selectors/protocol';
 
 import InterfaceList from './InterfaceList';
 import {
-  INTERFACE_TYPES,
+  getInterfaceTypes,
+  interfaceTagLabel,
   type InterfaceType,
   TAG_COLORS,
   TAGS,
 } from './interfaceOptions';
+const messages = defineMessages({
+  selectAnInterfaceType: {
+    id: 'architect.screens.newStageScreen.newStageScreen.selectAnInterfaceType',
+    defaultMessage: 'Select an Interface Type',
+    description:
+      'The title text in components / Screens / NewStageScreen / NewStageScreen.',
+  },
+  searchInterfaces: {
+    id: 'architect.screens.newStageScreen.newStageScreen.searchInterfaces',
+    defaultMessage: 'Search interfaces',
+    description:
+      'The aria-label text in components / Screens / NewStageScreen / NewStageScreen.',
+  },
+  searchInterfacesByNameOrKeyword: {
+    id: 'architect.screens.newStageScreen.newStageScreen.searchInterfacesByNameOrKeyword',
+    defaultMessage: 'Search interfaces by name or keyword...',
+    description:
+      'The placeholder text in components / Screens / NewStageScreen / NewStageScreen.',
+  },
+  clearSearch: {
+    id: 'architect.screens.newStageScreen.newStageScreen.clearSearch',
+    defaultMessage: 'Clear search',
+    description:
+      'The aria-label text in components / Screens / NewStageScreen / NewStageScreen.',
+  },
+  filterByCapabilities: {
+    id: 'architect.screens.newStageScreen.newStageScreen.filterByCapabilities',
+    defaultMessage: 'Filter by capabilities:',
+    description:
+      'Visible text in components / Screens / NewStageScreen / NewStageScreen.',
+  },
+  interfaceCapabilityFilters: {
+    id: 'architect.screens.newStageScreen.newStageScreen.interfaceCapabilityFilters',
+    defaultMessage: 'Interface capability filters',
+    description:
+      'The aria-label text in components / Screens / NewStageScreen / NewStageScreen.',
+  },
+});
+
 type FuseResultWithScore<T> = {
   item: T;
   score?: number;
@@ -36,8 +79,6 @@ const fuseOptions = {
 
 // Using existing getTimelineLocus selector instead of custom selector
 
-const fuse = new Fuse(INTERFACE_TYPES, fuseOptions);
-
 const interfaceHasAllSelectedTags = (
   selectedTags: string[],
   interfaceTags: string[],
@@ -48,9 +89,13 @@ const interfaceHasAllSelectedTags = (
   return selectedTags.every((tag: string) => interfaceTags.includes(tag));
 };
 
-const search = (query: string): InterfaceType[] => {
+const search = (
+  query: string,
+  interfaces: InterfaceType[],
+  fuse: Fuse<InterfaceType>,
+): InterfaceType[] => {
   if (query.length === 0) {
-    return INTERFACE_TYPES;
+    return interfaces;
   }
   const result: FuseResultWithScore<InterfaceType>[] = fuse.search(
     query,
@@ -75,6 +120,9 @@ const NewStageScreen = ({
   onOpenChange,
   experiments = {},
 }: NewStageScreenProps) => {
+  const intl = useAppIntl();
+  const interfaces = useMemo(() => getInterfaceTypes(intl), [intl]);
+  const fuse = useMemo(() => new Fuse(interfaces, fuseOptions), [interfaces]);
   const [, setLocation] = useLocation();
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [query, setQuery] = useState('');
@@ -85,17 +133,20 @@ const NewStageScreen = ({
   const _locus = useSelector(getTimelineLocus);
 
   const filteredInterfaces = useMemo(() => {
-    let interfaces = search(query).filter(({ tags: interfaceTags }) =>
-      // eslint-disable-next-line implicit-arrow-linebreak
-      interfaceHasAllSelectedTags(selectedTags, interfaceTags),
+    let matchingInterfaces = search(query, interfaces, fuse).filter(
+      ({ tags: interfaceTags }) =>
+        // eslint-disable-next-line implicit-arrow-linebreak
+        interfaceHasAllSelectedTags(selectedTags, interfaceTags),
     );
 
     if (!experiments.encryptedVariables) {
-      interfaces = interfaces.filter(({ type }) => type !== 'Anonymisation');
+      matchingInterfaces = matchingInterfaces.filter(
+        ({ type }) => type !== 'Anonymisation',
+      );
     }
 
-    return interfaces;
-  }, [query, selectedTags, experiments]);
+    return matchingInterfaces;
+  }, [query, selectedTags, experiments, interfaces, fuse]);
 
   const filteredInterfaceTags = useMemo(
     () =>
@@ -244,15 +295,17 @@ const NewStageScreen = ({
     <Dialog
       open={open}
       closeDialog={() => onOpenChange(false)}
-      title="Select an Interface Type"
+      title={intl.formatMessage(messages.selectAnInterfaceType)}
       size="fullscreen"
       header={
         <div className="flex flex-col gap-4">
           <div className="w-full">
             <InputField
               type="search"
-              aria-label="Search interfaces"
-              placeholder="Search interfaces by name or keyword..."
+              aria-label={intl.formatMessage(messages.searchInterfaces)}
+              placeholder={intl.formatMessage(
+                messages.searchInterfacesByNameOrKeyword,
+              )}
               value={query}
               onChange={handleUpdateQuery}
               onKeyDown={handleKeyDown}
@@ -261,8 +314,8 @@ const NewStageScreen = ({
               suffixComponent={
                 hasQuery ? (
                   <IconButton
-                    aria-label="Clear search"
-                    title="Clear search"
+                    aria-label={intl.formatMessage(messages.clearSearch)}
+                    title={intl.formatMessage(messages.clearSearch)}
                     size="sm"
                     variant="text"
                     color="dynamic"
@@ -279,12 +332,14 @@ const NewStageScreen = ({
               margin="none"
               className="shrink-0 text-sm font-semibold"
             >
-              Filter by capabilities:
+              {intl.formatMessage(messages.filterByCapabilities)}
             </Heading>
             <div
               className="flex flex-wrap gap-1"
               role="group"
-              aria-label="Interface capability filters"
+              aria-label={intl.formatMessage(
+                messages.interfaceCapabilityFilters,
+              )}
             >
               {tags.map(({ value, selected, disabled }) => (
                 <Tag
@@ -295,7 +350,7 @@ const NewStageScreen = ({
                   color={get(TAG_COLORS, value)}
                   disabled={disabled}
                 >
-                  {value}
+                  {interfaceTagLabel(value, intl)}
                 </Tag>
               ))}
             </div>
@@ -304,7 +359,7 @@ const NewStageScreen = ({
       }
       footer={
         <Button color="default" onClick={() => onOpenChange(false)}>
-          Cancel
+          {intl.formatMessage(commonMessages.cancel)}
         </Button>
       }
     >

@@ -1,3 +1,5 @@
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Section from '@codaco/fresco-ui/Section';
@@ -13,6 +15,45 @@ import { getVariableOptionsForSubject } from '~/selectors/codebook';
 import { getFieldId } from '~/utils/issues';
 
 import { selectSlotPickerOptions } from './slotWiring';
+const messages = defineMessages({
+  nominationDetails: {
+    id: 'architect.sections.familyPedigree.nominationPromptFields.nominationDetails',
+    defaultMessage: 'Nomination details',
+    description:
+      'The title text in components / sections / FamilyPedigree / NominationPromptFields.',
+  },
+  writeTheQuestionParticipantsWillAnswer: {
+    id: 'architect.sections.familyPedigree.nominationPromptFields.writeTheQuestionParticipantsWillAnswer',
+    defaultMessage:
+      'Write the question participants will answer and choose the boolean attribute that records who they nominate.',
+    description:
+      'The description text in components / sections / FamilyPedigree / NominationPromptFields.',
+  },
+  promptText: {
+    id: 'architect.sections.familyPedigree.nominationPromptFields.promptText',
+    defaultMessage: 'Prompt text',
+    description:
+      'The label text in components / sections / FamilyPedigree / NominationPromptFields.',
+  },
+  enterYourPrompt: {
+    id: 'architect.sections.familyPedigree.nominationPromptFields.enterYourPrompt',
+    defaultMessage: 'Enter your prompt...',
+    description:
+      'The placeholder text in components / sections / FamilyPedigree / NominationPromptFields.',
+  },
+  attribute: {
+    id: 'architect.sections.familyPedigree.nominationPromptFields.attribute',
+    defaultMessage: 'Attribute',
+    description:
+      'The label text in components / sections / FamilyPedigree / NominationPromptFields.',
+  },
+  selectTheBooleanAttributeThisPrompt: {
+    id: 'architect.sections.familyPedigree.nominationPromptFields.selectTheBooleanAttributeThisPrompt',
+    defaultMessage: 'Select the boolean attribute this prompt will update.',
+    description:
+      'The hint text in components / sections / FamilyPedigree / NominationPromptFields.',
+  },
+});
 
 type NominationPromptFieldsProps = {
   nodeType?: string;
@@ -34,6 +75,7 @@ const NominationPromptFields = ({
   nodeType,
   item,
 }: NominationPromptFieldsProps) => {
+  const intl = useAppIntl();
   const setFieldValue = useFormStore((state) => state.setFieldValue);
   const { variable } = useFormValue(['variable'] as const);
   const variableOptions = useAppSelector((state) =>
@@ -81,15 +123,17 @@ const NominationPromptFields = ({
   return (
     <>
       <Section
-        title="Nomination details"
-        description="Write the question participants will answer and choose the boolean attribute that records who they nominate."
+        title={intl.formatMessage(messages.nominationDetails)}
+        description={intl.formatMessage(
+          messages.writeTheQuestionParticipantsWillAnswer,
+        )}
       >
         <ArchitectField
           name="text"
           component={RichText}
           singleLine
-          label="Prompt text"
-          placeholder="Enter your prompt..."
+          label={intl.formatMessage(messages.promptText)}
+          placeholder={intl.formatMessage(messages.enterYourPrompt)}
           validation={{ required: true }}
           initialValue={asString(item?.text)}
         />
@@ -98,8 +142,10 @@ const NominationPromptFields = ({
           name="variable"
           component={VariablePickerControl}
           validation={{ required: true }}
-          label="Attribute"
-          hint="Select the boolean attribute this prompt will update."
+          label={intl.formatMessage(messages.attribute)}
+          hint={intl.formatMessage(
+            messages.selectTheBooleanAttributeThisPrompt,
+          )}
           initialValue={asString(item?.variable)}
           entity="node"
           type={nodeType}

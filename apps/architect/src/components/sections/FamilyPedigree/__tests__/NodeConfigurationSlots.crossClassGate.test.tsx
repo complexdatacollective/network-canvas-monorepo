@@ -15,6 +15,7 @@ import {
   useStageFormContext,
 } from '~/components/StageEditor/stageFormContext';
 import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
+import { messageFields, messageText } from '~/test/messageText';
 
 // FamilyPedigree's node label is a VALIDATED writer; its three structural node
 // slots remain UNVALIDATED writers. Each carries the matching picker exclusion
@@ -435,16 +436,22 @@ describe('FamilyPedigree NodeConfiguration slot cross-class gates', () => {
   it('allows a label pick collected by another validated field and rejects it from structural slots', () => {
     renderComponent({ protocol: protocolWith([FORM_STAGE]) });
     expect(
-      slotValidatorFor('nodeConfig.nodeLabelVariable')('usedLabel'),
+      messageText(
+        slotValidatorFor('nodeConfig.nodeLabelVariable')('usedLabel'),
+      ),
     ).toBeUndefined();
-    expect(slotValidatorFor('nodeConfig.egoVariable')('usedFlag')).toContain(
-      'is collected by a form elsewhere',
-    );
     expect(
-      slotValidatorFor('nodeConfig.relationshipVariable')('usedLabel'),
+      messageText(slotValidatorFor('nodeConfig.egoVariable')('usedFlag')),
     ).toContain('is collected by a form elsewhere');
     expect(
-      slotValidatorFor('nodeConfig.biologicalSexVariable')('usedSex'),
+      messageText(
+        slotValidatorFor('nodeConfig.relationshipVariable')('usedLabel'),
+      ),
+    ).toContain('is collected by a form elsewhere');
+    expect(
+      messageText(
+        slotValidatorFor('nodeConfig.biologicalSexVariable')('usedSex'),
+      ),
     ).toContain('is collected by a form elsewhere');
   });
 
@@ -454,14 +461,18 @@ describe('FamilyPedigree NodeConfiguration slot cross-class gates', () => {
       initialNodeConfig: { nodeLabelVariable: 'usedLabel' },
     });
     expect(
-      slotValidatorFor('nodeConfig.nodeLabelVariable')('usedLabel'),
+      messageText(
+        slotValidatorFor('nodeConfig.nodeLabelVariable')('usedLabel'),
+      ),
     ).toBeUndefined();
   });
 
   it('allows a pick another validated label writer already claims', () => {
     renderComponent({ protocol: protocolWith([OTHER_PEDIGREE_STAGE]) });
     expect(
-      slotValidatorFor('nodeConfig.nodeLabelVariable')('freeLabel'),
+      messageText(
+        slotValidatorFor('nodeConfig.nodeLabelVariable')('freeLabel'),
+      ),
     ).toBeUndefined();
   });
 
@@ -476,8 +487,12 @@ describe('FamilyPedigree NodeConfiguration slot cross-class gates', () => {
       protocol: protocolWith([STRUCTURAL_PEDIGREE_STAGE]),
     });
     expect(
-      slotValidatorFor('nodeConfig.nodeLabelVariable')('freeLabel'),
-    ).toContain('is set by the Family Pedigree interface');
+      messageText(
+        slotValidatorFor('nodeConfig.nodeLabelVariable')('freeLabel'),
+      ),
+    ).toBe(
+      'This attribute is set by Family Pedigree, so it cannot be used here. Choose a different attribute.',
+    );
   });
 
   it('allows a label pick this stage’s own form also validates', () => {
@@ -486,10 +501,17 @@ describe('FamilyPedigree NodeConfiguration slot cross-class gates', () => {
       nodeConfig: { type: 'person', form: [{ variable: 'freeLabel' }] },
     };
     expect(
-      slotValidatorFor('nodeConfig.nodeLabelVariable')('freeLabel', allValues),
+      messageText(
+        slotValidatorFor('nodeConfig.nodeLabelVariable')(
+          'freeLabel',
+          allValues,
+        ),
+      ),
     ).toBeUndefined();
     expect(
-      slotValidatorFor('nodeConfig.nodeLabelVariable')('freeFlag', allValues),
+      messageText(
+        slotValidatorFor('nodeConfig.nodeLabelVariable')('freeFlag', allValues),
+      ),
     ).toBeUndefined();
   });
 });
@@ -507,15 +529,19 @@ describe('FamilyPedigree nodeConfig.form editorValidate intra-draft mirror', () 
       throw new Error('editorValidate was not captured');
     }
     expect(
-      capturedEditorValidate(
-        { variable: 'freeLabel', component: 'Text', validation: {} },
-        { initialValues: {} },
+      messageFields(
+        capturedEditorValidate(
+          { variable: 'freeLabel', component: 'Text', validation: {} },
+          { initialValues: {} },
+        ),
       ),
     ).toEqual({});
     expect(
-      capturedEditorValidate(
-        { variable: 'usedLabel', component: 'Text', validation: {} },
-        { initialValues: {} },
+      messageFields(
+        capturedEditorValidate(
+          { variable: 'usedLabel', component: 'Text', validation: {} },
+          { initialValues: {} },
+        ),
       ),
     ).toEqual({
       variable:
@@ -536,11 +562,13 @@ describe('FamilyPedigree nodeConfig.form editorValidate intra-draft mirror', () 
     setPedigreeFormFields([{ variable: 'freeLabel', component: 'Text' }]);
 
     expect(
-      currentEditorValidate()({
-        variable: 'freeLabel',
-        component: 'Text',
-        validation: {},
-      }).variable,
+      messageText(
+        currentEditorValidate()({
+          variable: 'freeLabel',
+          component: 'Text',
+          validation: {},
+        }).variable,
+      ),
     ).toBe(
       'This attribute is already collected by another field in this form. Choose a different attribute, or edit the existing field instead.',
     );
@@ -560,11 +588,13 @@ describe('FamilyPedigree nodeConfig.form editorValidate intra-draft mirror', () 
     setPedigreeFormFields([]);
 
     expect(
-      currentEditorValidate()({
-        variable: 'freeLabel',
-        component: 'Text',
-        validation: {},
-      }).variable,
+      messageText(
+        currentEditorValidate()({
+          variable: 'freeLabel',
+          component: 'Text',
+          validation: {},
+        }).variable,
+      ),
     ).toBeUndefined();
     expect(currentSiblingFields()).toEqual([]);
   });

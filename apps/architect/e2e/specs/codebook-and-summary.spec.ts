@@ -121,6 +121,47 @@ test(
     // layout the printed document never has.
     const paper = await printableWidthPx(architectPage);
     await architectPage.setViewportSize(paper);
+    // Chromium can choose a larger cached responsive thumbnail after the app's
+    // idle preloader runs. Pin an advertised 2x candidate for this visual
+    // fixture, then decode the actual image. The image remains fully visible;
+    // this excludes cache timing from the label/layout assertion.
+    const pinnedPictures = await architectPage
+      .locator(`${SECTION} picture`)
+      .evaluateAll(async (pictures) => {
+        await Promise.all(
+          pictures.map(async (picture) => {
+            const image = picture.querySelector('img');
+            const source = picture.querySelector('source');
+            if (!image || !source) throw new Error('Incomplete print picture');
+            const width = image.getBoundingClientRect().width;
+            if (width <= 0)
+              throw new Error('Print picture has no visible width');
+            const candidates = source.srcset.split(/,\s+/).map((candidate) => {
+              const match = /^(.*) (\d+)w$/.exec(candidate);
+              if (!match) throw new Error('Unrecognized print picture source');
+              return { url: match[1]!, width: Number(match[2]) };
+            });
+            const target = candidates.find(
+              (candidate) => candidate.width >= width * 2,
+            );
+            if (!target) throw new Error('No 2x print picture source');
+            source.srcset = `${target.url} ${target.width}w`;
+            await new Promise<void>((resolve) =>
+              requestAnimationFrame(() => resolve()),
+            );
+            await image.decode();
+            if (
+              image.currentSrc !== new URL(target.url, document.baseURI).href
+            ) {
+              throw new Error(
+                'Print picture did not select the requested source',
+              );
+            }
+          }),
+        );
+        return pictures.length;
+      });
+    expect(pinnedPictures).toBe(protocol.stages.length);
     // Re-settle after the resize: a narrower column re-wraps headings and can
     // change how many rows a table needs, and capturing mid-reflow would bake
     // a transient layout into the baseline.

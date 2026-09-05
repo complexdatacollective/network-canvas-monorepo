@@ -1,11 +1,58 @@
 import { useCallback, useMemo } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
+import { type MessageConfig, formatConfig } from '~/i18n/formatConfig';
 
 import PreviewRules from './PreviewRules';
 import type { RuleTypeOption } from './ruleCodebook';
 import type { Rule } from './validateRule';
+const configMessages = defineMessages({
+  nodeMatchANodeType: {
+    id: 'architect.query.rules.rules.config.nodeMatchANodeType',
+    defaultMessage: 'Node - match a node type or one of its attributes.',
+    description:
+      'Presentation label or description in components/Query/Rules/Rules.tsx. Identifiers are not translated.',
+  },
+  edgeMatchAnEdgeType: {
+    id: 'architect.query.rules.rules.config.edgeMatchAnEdgeType',
+    defaultMessage: 'Edge - match an edge type or one of its attributes.',
+    description:
+      'Presentation label or description in components/Query/Rules/Rules.tsx. Identifiers are not translated.',
+  },
+  egoMatchOneOfThe: {
+    id: 'architect.query.rules.rules.config.egoMatchOneOfThe',
+    defaultMessage: 'Ego - match one of the ego attributes.',
+    description:
+      'Presentation label or description in components/Query/Rules/Rules.tsx. Identifiers are not translated.',
+  },
+  allRulesMustMatch: {
+    id: 'architect.query.rules.rules.config.allRulesMustMatch',
+    defaultMessage: 'All rules must match',
+    description:
+      'Presentation label or description in components/Query/Rules/Rules.tsx. Identifiers are not translated.',
+  },
+  anyRuleCanMatch: {
+    id: 'architect.query.rules.rules.config.anyRuleCanMatch',
+    defaultMessage: 'Any rule can match',
+    description:
+      'Presentation label or description in components/Query/Rules/Rules.tsx. Identifiers are not translated.',
+  },
+});
+const messages = defineMessages({
+  ruleMatching: {
+    id: 'architect.query.rules.rules.ruleMatching',
+    defaultMessage: 'Rule Matching',
+    description: 'The label text in components / Query / Rules / Rules.',
+  },
+  whenYouHaveMultipleRulesHow: {
+    id: 'architect.query.rules.rules.whenYouHaveMultipleRulesHow',
+    defaultMessage: 'When you have multiple rules, how should matching work?',
+    description: 'The hint text in components / Query / Rules / Rules.',
+  },
+});
 
 /**
  * The identity `Field` hands its control, forwarded to the rule builder's
@@ -47,22 +94,22 @@ export type RulesOuterProps = RuleSetGroupProps &
     allowEdgeRules?: boolean;
   };
 
-const NODE_RULE: RuleTypeOption = {
-  label: 'Node - match a node type or one of its attributes.',
+const NODE_RULE: MessageConfig<RuleTypeOption> = {
+  label: configMessages.nodeMatchANodeType,
   value: 'node',
 };
-const EDGE_RULE: RuleTypeOption = {
-  label: 'Edge - match an edge type or one of its attributes.',
+const EDGE_RULE: MessageConfig<RuleTypeOption> = {
+  label: configMessages.edgeMatchAnEdgeType,
   value: 'edge',
 };
-const EGO_RULE: RuleTypeOption = {
-  label: 'Ego - match one of the ego attributes.',
+const EGO_RULE: MessageConfig<RuleTypeOption> = {
+  label: configMessages.egoMatchOneOfThe,
   value: 'ego',
 };
 
 const JOIN_OPTIONS = [
-  { label: 'All rules must match', value: 'AND' },
-  { label: 'Any rule can match', value: 'OR' },
+  { label: configMessages.allRulesMustMatch, value: 'AND' },
+  { label: configMessages.anyRuleCanMatch, value: 'OR' },
 ];
 
 const Rules = ({
@@ -79,12 +126,14 @@ const Rules = ({
   onChange = () => {},
   ...variantProps
 }: RulesOuterProps) => {
+  const intl = useAppIntl();
   const ruleTypes = useMemo(() => {
-    const options = [NODE_RULE];
-    if (allowEdgeRules) options.push(EDGE_RULE);
-    if (variantProps.type === 'query') options.push(EGO_RULE);
+    const options = [formatConfig(NODE_RULE, intl)];
+    if (allowEdgeRules) options.push(formatConfig(EDGE_RULE, intl));
+    if (variantProps.type === 'query')
+      options.push(formatConfig(EGO_RULE, intl));
     return options;
-  }, [allowEdgeRules, variantProps.type]);
+  }, [allowEdgeRules, variantProps.type, intl]);
 
   const updateJoin = useCallback(
     (nextJoin: string) =>
@@ -141,9 +190,9 @@ const Rules = ({
         <UnconnectedField
           name="join"
           component={RadioGroupField}
-          label="Rule Matching"
-          hint="When you have multiple rules, how should matching work?"
-          options={JOIN_OPTIONS}
+          label={intl.formatMessage(messages.ruleMatching)}
+          hint={intl.formatMessage(messages.whenYouHaveMultipleRulesHow)}
+          options={formatConfig(JOIN_OPTIONS, intl)}
           value={join}
           onChange={(value) => {
             if (typeof value === 'string') updateJoin(value);

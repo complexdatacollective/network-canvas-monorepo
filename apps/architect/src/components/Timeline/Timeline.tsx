@@ -1,9 +1,23 @@
 import { Plus } from 'lucide-react';
 import { motion, Reorder, useReducedMotion, type Variants } from 'motion/react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  createElement,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useSelector } from 'react-redux';
 import { useLocation } from 'wouter';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages, createMessageError } from '@codaco/app-i18n/messages';
+import {
+  AppMessage,
+  AppErrorMessage,
+  useAppIntl,
+} from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useAccessibilityAnnouncements } from '@codaco/fresco-ui/dnd/useAccessibilityAnnouncements';
 import { useAppDispatch } from '~/ducks/hooks';
@@ -27,6 +41,52 @@ import {
   getSkipDestinationReorderGuard,
 } from './skipDestinationGuards';
 import TimelineStageRow from './TimelineStageRow';
+const messages = defineMessages({
+  oK: {
+    id: 'architect.timeline.timeline.oK',
+    defaultMessage: 'OK',
+    description: 'The label text in components / Timeline / Timeline.',
+  },
+  cannotDeleteStage: {
+    id: 'architect.timeline.timeline.cannotDeleteStage',
+    defaultMessage: 'Cannot delete stage',
+    description: 'The title text in components / Timeline / Timeline.',
+  },
+  thisFamilyPedigreeStageIsUsed: {
+    id: 'architect.timeline.timeline.thisFamilyPedigreeStageIsUsed',
+    defaultMessage:
+      '{stageCount, plural, one {This Family Pedigree stage is used by the Narrative Pedigree stage {names}. Remove that stage or change its source before deleting this stage.} other {This Family Pedigree stage is used by the Narrative Pedigree stages {names}. Remove those stages or change their source before deleting this stage.}}',
+    description: 'The description text in components / Timeline / Timeline.',
+  },
+  deleteStage: {
+    id: 'architect.timeline.timeline.deleteStage',
+    defaultMessage: 'Delete stage',
+    description: 'The title text in components / Timeline / Timeline.',
+  },
+  areYouSureYouWantTo: {
+    id: 'architect.timeline.timeline.areYouSureYouWantTo',
+    defaultMessage:
+      'Are you sure you want to delete this stage from your protocol? You can restore it with Undo while this protocol remains open.',
+    description: 'The description text in components / Timeline / Timeline.',
+  },
+  protocolStages: {
+    id: 'architect.timeline.timeline.protocolStages',
+    defaultMessage: 'Protocol stages',
+    description: 'The aria-label text in components / Timeline / Timeline.',
+  },
+  addNewStage: {
+    id: 'architect.timeline.timeline.addNewStage',
+    defaultMessage: 'Add new stage',
+    description: 'Visible text in components / Timeline / Timeline.',
+  },
+});
+const finalMessages = defineMessages({
+  untitledStage: {
+    id: 'architect.final.components.Timeline.Timeline.untitledStage',
+    defaultMessage: 'Untitled stage',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+});
 
 // The entrance orchestration, as two named numbers rather than two literals
 // buried in a variant: the trailing "Add new stage" control sits outside the
@@ -63,6 +123,9 @@ const timelineInsertVariants: Variants = {
 };
 
 const Timeline = () => {
+  const intl = useAppIntl();
+  const intlRef = useRef(intl);
+  intlRef.current = intl;
   const stages = useSelector(getStageList);
   // `getStageList` maps each stage down to `{id, type, label, hasFilter,
   // hasSkipLogic, skipLogic: {destination}}` for cheap render diffing — the
@@ -165,7 +228,12 @@ const Timeline = () => {
           type: 'acknowledge',
           intent: 'warning',
           ...skipDestinationWarning,
-          actions: { primary: { label: 'OK', value: true } },
+          actions: {
+            primary: {
+              label: createElement(AppMessage, { message: messages.oK }),
+              value: true,
+            },
+          },
         });
         return;
       }
@@ -176,15 +244,32 @@ const Timeline = () => {
           stageId,
         );
         if (dependents.length > 0) {
-          const names = dependents
-            .map((dependent) => `"${dependent.label || 'Untitled stage'}"`)
-            .join(', ');
+          const names = {
+            list: dependents.map(
+              (dependent) =>
+                dependent.label || {
+                  messageError: createMessageError(finalMessages.untitledStage),
+                },
+            ),
+          };
           void openDialog({
             type: 'acknowledge',
             intent: 'warning',
-            title: 'Cannot delete stage',
-            description: `This Family Pedigree stage is used by the following Narrative Pedigree stage(s): ${names}. Remove or repoint those stage(s) before deleting it.`,
-            actions: { primary: { label: 'OK', value: true } },
+            title: createElement(AppMessage, {
+              message: messages.cannotDeleteStage,
+            }),
+            description: createElement(AppErrorMessage, {
+              error: createMessageError(
+                messages.thisFamilyPedigreeStageIsUsed,
+                { names, stageCount: dependents.length },
+              ),
+            }),
+            actions: {
+              primary: {
+                label: createElement(AppMessage, { message: messages.oK }),
+                value: true,
+              },
+            },
           });
           return;
         }
@@ -196,20 +281,31 @@ const Timeline = () => {
       const remaining = stages.length - 1;
 
       void confirm({
-        title: 'Delete stage',
+        title: createElement(AppMessage, { message: messages.deleteStage }),
         // `stages/deleteStage` is inside the protocol timeline
         // (`ducks/modules/root.ts`), so Undo restores the stage — the old
         // "cannot be undone!" was simply false (#1400). Same sentence as the
         // resource delete shipped in #1396 (`AssetBrowser.tsx`): four adjacent
         // destructive dialogs stating one fact must state it one way.
-        description:
-          'Are you sure you want to delete this stage from your protocol? You can restore it with Undo while this protocol remains open.',
-        confirmLabel: 'Delete stage',
-        cancelLabel: 'Cancel',
+        description: createElement(AppMessage, {
+          message: messages.areYouSureYouWantTo,
+        }),
+        confirmLabel: createElement(AppMessage, {
+          message: messages.deleteStage,
+        }),
+        cancelLabel: createElement(AppMessage, {
+          message: commonMessages.cancel,
+        }),
         intent: 'destructive',
         onConfirm: () => {
           deleteStage(stageId);
-          announce(getStageDeletedAnnouncement(stageIndex + 1, remaining));
+          announce(
+            getStageDeletedAnnouncement(
+              stageIndex + 1,
+              remaining,
+              intlRef.current,
+            ),
+          );
         },
         // Cancel returns to the row's own Delete control, which survives.
         // Confirm destroys it, and without an answer here focus would land on
@@ -258,7 +354,12 @@ const Timeline = () => {
           type: 'acknowledge',
           intent: 'warning',
           ...reorderGuard.warning,
-          actions: { primary: { label: 'OK', value: true } },
+          actions: {
+            primary: {
+              label: createElement(AppMessage, { message: messages.oK }),
+              value: true,
+            },
+          },
         });
         return false;
       }
@@ -266,11 +367,16 @@ const Timeline = () => {
       setOrderedStages(proposedStages);
       dispatch(stageActions.moveStage(oldIndex, newIndex));
       announce(
-        getStageMovedAnnouncement(oldIndex + 1, newIndex + 1, stages.length),
+        getStageMovedAnnouncement(
+          oldIndex + 1,
+          newIndex + 1,
+          stages.length,
+          intl,
+        ),
       );
       return true;
     },
-    [announce, dispatch, openDialog, stages],
+    [announce, dispatch, openDialog, stages, intl],
   );
 
   // Commit the whole reorder as a single moveStage once the drag ends, using the
@@ -331,7 +437,7 @@ const Timeline = () => {
         <Reorder.Group
           axis="y"
           onReorder={handleReorder}
-          aria-label="Protocol stages"
+          aria-label={intl.formatMessage(messages.protocolStages)}
           // `role="list"` is redundant in the abstract, which is what the lint
           // rule objects to, but not on a Tailwind page: preflight sets
           // `list-style: none` on every `ul`, and Safari drops list semantics
@@ -377,7 +483,9 @@ const Timeline = () => {
             >
               <InsertButton
                 position={index + 1}
-                nextStageName={stage.label || 'Untitled stage'}
+                nextStageName={
+                  stage.label || intl.formatMessage(finalMessages.untitledStage)
+                }
                 onClick={() => handleInsertStage(index)}
                 variants={timelineInsertVariants}
               />
@@ -417,7 +525,7 @@ const Timeline = () => {
             <Plus className="h-6 w-6" strokeWidth={2.5} />
           </div>
           <span className="justify-self-start text-lg font-semibold transition-all group-hover:font-bold">
-            Add new stage
+            {intl.formatMessage(messages.addNewStage)}
           </span>
         </motion.button>
       </div>
