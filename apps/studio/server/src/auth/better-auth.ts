@@ -10,6 +10,7 @@ import type { DeploymentMode } from '@codaco/studio-rpc/surfaces';
 import { AUTH_TABLES } from '../db/auth-schema.ts';
 import type { AuthEnv } from '../env.ts';
 import type { EncryptionKeys } from '../pii/keys.ts';
+import { logOperational } from '../observability/logger.ts';
 import type { MagicLinkMailer } from './email.ts';
 import { encryptedAuthAdapter } from './encrypted-adapter.ts';
 import { selfHostedEnrollmentHooks } from './enrollment.ts';
@@ -33,6 +34,14 @@ export function createBetterAuthInstance(
     ...(deploymentMode === 'self-hosted'
       ? { databaseHooks: selfHostedEnrollmentHooks(pool) }
       : {}),
+    logger: {
+      level: 'warn',
+      log(level) {
+        logOperational(
+          level === 'error' ? 'STUDIO_AUTH_ERROR' : 'STUDIO_AUTH_WARNING',
+        );
+      },
+    },
     baseURL: env.baseUrl,
     basePath: '/api/auth',
     secret: env.secret,

@@ -1,0 +1,103 @@
+groups:
+  - name: studio-operators
+    rules:
+      - alert: StudioScrapeUnavailable
+        expr: up{job="studio"} == 0
+        for: 2m
+        labels:
+          audience: operators
+          severity: critical
+        annotations:
+          summary: Studio operational metrics are unavailable
+          description: Check process availability, network access, and the configured scraper credential.
+      - alert: StudioDependencyUnavailable
+        expr: studio_dependency_ready == 0
+        for: 2m
+        labels:
+          audience: operators
+          severity: critical
+        annotations:
+          summary: A Studio readiness dependency is unavailable
+          description: Check the database, object bucket, and schema fingerprint using the readiness endpoint.
+      - alert: StudioApplicationErrors
+        expr: |
+          (sum by (job, instance) (rate(studio_http_requests_total{route!~"/(healthz|readyz|metrics)",status=~"5.."}[5m]))
+          / clamp_min(sum by (job, instance) (rate(studio_http_requests_total{route!~"/(healthz|readyz|metrics)"}[5m])), 0.01) > 0.05)
+          and sum by (job, instance) (rate(studio_http_requests_total{route!~"/(healthz|readyz|metrics)"}[5m])) > 0.1
+        for: 5m
+        labels:
+          audience: operators
+          severity: critical
+        annotations:
+          summary: Studio application requests are failing
+          description: Investigate request logs by request_id and the fixed route labels. Do not copy request payloads into an incident.
+      - alert: StudioDatabasePoolSaturated
+        expr: studio_database_pool_connections{state="waiting"} > 0
+        for: 2m
+        labels:
+          audience: operators
+          severity: warning
+        annotations:
+          summary: Studio requests are waiting for database connections
+          description: Check active queries, database capacity, and pool utilization before increasing pool size.
+      - alert: StudioEventLoopBlocked
+        expr: studio_event_loop_lag_seconds{statistic="p99"} > 0.5
+        for: 5m
+        labels:
+          audience: operators
+          severity: warning
+        annotations:
+          summary: Studio event loop latency is elevated
+          description: Check CPU pressure and synchronous work on the affected process.
+      - alert: StudioQueueCollectionFailed
+        expr: studio_outbox_collection_success == 0
+        for: 2m
+        labels:
+          audience: operators
+          severity: critical
+        annotations:
+          summary: Studio queue state cannot be collected
+          description: Check database reachability, current schema, and the maintenance-role pool. Missing queue data does not mean an empty queue.
+      - alert: StudioQueueStalled
+        expr: studio_outbox_oldest_ready_seconds > 300
+        for: 5m
+        labels:
+          audience: operators
+          severity: warning
+        annotations:
+          summary: Studio has delivery or recompute work waiting to run
+          description: Check worker availability and delivery-provider health for the affected queue.
+      - alert: StudioExpiredQueueLease
+        expr: studio_outbox_jobs{state="expired_leases"} > 0
+        for: 5m
+        labels:
+          audience: operators
+          severity: warning
+        annotations:
+          summary: Studio has unreclaimed expired work leases
+          description: Check whether a worker is running and can claim expired work.
+      - alert: StudioQueueFailure
+        expr: increase(studio_outbox_dispatch_results_total{result="failed"}[5m]) > 0
+        labels:
+          audience: operators
+          severity: warning
+        annotations:
+          summary: A Studio delivery exhausted its retry policy
+          description: Investigate the affected queue through operator tooling without including delivery payloads in alerts.
+      - alert: StudioUncertainDelivery
+        expr: studio_outbox_jobs{state="uncertain"} > 0
+        for: 1m
+        labels:
+          audience: operators
+          severity: warning
+        annotations:
+          summary: Studio has delivery acknowledgements requiring reconciliation
+          description: The provider accepted a delivery but database finalization failed. Do not blindly resend uncertain work.
+      - alert: StudioWorkerErrors
+        expr: increase(studio_outbox_errors_total{kind="worker_error"}[5m]) > 0
+        labels:
+          audience: operators
+          severity: warning
+        annotations:
+          summary: A Studio worker could not complete its polling operation
+          description: Inspect fixed operational diagnostic codes and dependency readiness for the affected process.

@@ -116,6 +116,8 @@ describe('principal resolution', () => {
 describe('unconfigured auth', () => {
   const env: StudioEnv = {
     port: 3000,
+    metricsToken: undefined,
+    trustedProxies: [],
     host: '0.0.0.0',
     clientDist: undefined,
     s3: undefined,
