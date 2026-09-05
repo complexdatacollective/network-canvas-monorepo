@@ -18,7 +18,8 @@
     "./rls": "./src/rls.ts",
     "./schema": "./src/schema.ts",
     "./taxonomy": "./src/taxonomy.ts",
-    "./tenant": "./src/tenant.ts"
+    "./tenant": "./src/tenant.ts",
+    "./role-bootstrap": "./src/role-bootstrap.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
