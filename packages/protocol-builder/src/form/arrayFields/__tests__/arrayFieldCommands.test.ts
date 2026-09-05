@@ -102,6 +102,58 @@ describe('resolveMove', () => {
 });
 
 describe('commandsForOperation', () => {
+  /**
+   * A drag whose two ends were measured against two different lists.
+   *
+   * `ArrayField` takes a pointer drag's `from` when the pointer goes DOWN and
+   * its `to` when it comes up, and re-syncs its rows from the value in
+   * between — so an insertion arriving mid-drag leaves `from` numbering a list
+   * that no longer exists. Reading it as a position in the list as it stands
+   * now picks up whichever row has since taken that place.
+   */
+  it('moves the row the drag picked up, not the one now at its old index', () => {
+    // The researcher took hold of A at the top of [A, B, C] and dropped it
+    // below B. A collaborator's row arrived at the front while the pointer was
+    // down, so the drop was measured against [X, A, B, C] — where A is index 2.
+    expect(
+      commandsForOperation(
+        'prompts',
+        [REMOTE, A, B, C],
+        [REMOTE, A, B, C],
+        { type: 'move', from: 0, to: 2, item: A },
+        byId,
+      ),
+    ).toEqual([{ op: 'moveItem', key: 'prompts', from: 1, to: 2 }]);
+  });
+
+  it('moves one of two rows nothing but position tells apart', () => {
+    // An options list may legitimately hold two blank rows. Neither carries an
+    // id and their content is identical, so the row a drag picked up cannot be
+    // named — but the list has not moved, so `from` still names it, and moving
+    // either of two identical rows produces the same array anyway.
+    const blank = {};
+    expect(
+      commandsForOperation('options', [blank, blank, A], [blank, blank, A], {
+        type: 'move',
+        from: 0,
+        to: 2,
+        item: blank,
+      }),
+    ).toEqual([{ op: 'moveItem', key: 'options', from: 0, to: 2 }]);
+  });
+
+  it('issues nothing when the row a drag picked up has since gone', () => {
+    expect(
+      commandsForOperation(
+        'prompts',
+        [REMOTE, B, C],
+        [REMOTE, B, C],
+        { type: 'move', from: 0, to: 2, item: A },
+        byId,
+      ),
+    ).toEqual([]);
+  });
+
   it('removes the row the editor named, not the index it drew it at', () => {
     expect(
       commandsForOperation(

@@ -58,11 +58,20 @@ export const stripManagedProperties = <T extends Record<string, unknown>>(
  * Consumers backed by an array-aware form store can use this descriptor to
  * preserve index-based field metadata when an item is inserted, removed,
  * moved, or replaced.
+ *
+ * A move carries the row it moved as well as the two positions, because those
+ * positions are not always read off the same list. A pointer drag takes `from`
+ * when the pointer goes DOWN and `to` when it comes up, and the value can
+ * change in between — a collaborator inserting a row, a save landing — after
+ * which `from` numbers a list that no longer exists. A consumer replaying it
+ * moves whichever row has since taken that place. The row itself is the only
+ * part of the operation that survives the change, so it is what a consumer
+ * resolving the move against its own data should use.
  */
 export type ArrayFieldOperation<T> =
   | { type: 'insert'; index: number; item: T }
   | { type: 'remove'; index: number }
-  | { type: 'move'; from: number; to: number }
+  | { type: 'move'; from: number; to: number; item: T }
   | { type: 'replace'; index: number; item: T };
 
 type PendingArrayFieldOperation =
@@ -340,6 +349,18 @@ export function useArrayFieldItems<T extends Record<string, unknown>>(
 
       if (operation.type === 'insert' || operation.type === 'replace') {
         const item = confirmedItems[operation.index];
+        if (!item) return;
+        onChange?.(confirmedItems, { ...operation, item });
+        return;
+      }
+
+      // The row a move is ABOUT, named rather than only numbered. `to` is
+      // where it has just landed among the committed rows, so it is where the
+      // row itself is read from — and unlike `from`, which a pointer drag
+      // captured against the list as it stood when the pointer went down, both
+      // it and the row come from this same list.
+      if (operation.type === 'move') {
+        const item = confirmedItems[operation.to];
         if (!item) return;
         onChange?.(confirmedItems, { ...operation, item });
         return;

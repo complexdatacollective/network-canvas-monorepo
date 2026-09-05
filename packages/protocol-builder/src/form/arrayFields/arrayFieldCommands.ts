@@ -152,6 +152,57 @@ export function resolveRowIndex<T extends ArrayRow>(
 }
 
 /**
+ * Where the row a move PICKED UP sits among the rows the editor drew.
+ *
+ * A move is the one operation whose two positions are not read off the same
+ * list. `ArrayField` takes a pointer drag's `from` when the pointer goes down
+ * and its `to` when it comes up, and re-syncs its rows from the value in
+ * between — so a row arriving from elsewhere during the seconds a drag lasts
+ * leaves `from` numbering a list that no longer exists, while `to` numbers the
+ * one on screen. Resolving `from` as a position then picks up whichever row has
+ * since taken that place, and the wrong row is the one that moves.
+ *
+ * So a move is resolved from the ROW the operation carries (see
+ * `ArrayFieldOperation` in fresco-ui, which carries it for exactly this),
+ * asked of the rows drawn NOW the same way `resolveRowIndex` asks it of the
+ * document: the row's own id first, else content while exactly one row
+ * matches.
+ *
+ * `from` is consulted only where identity has no answer — an id-less row the
+ * rows beside it are indistinguishable from, which is a shape an options list
+ * really holds (two blank rows). Position is what tells those apart, and it is
+ * trustworthy exactly while the row it names still looks like the one that was
+ * picked up; picking a different one of two identical rows produces the same
+ * array anyway. Once it does not, nothing is left to name the row and the move
+ * is refused rather than landed on a guess.
+ *
+ * `undefined` therefore means the row the researcher was dragging is no longer
+ * among the ones drawn.
+ */
+const drawnRowIndex = <T extends ArrayRow>(
+  rendered: readonly T[],
+  row: T,
+  from: number,
+  getId?: ArrayRowIdentity<T>,
+): number | undefined => {
+  const byIdentity = resolveRowIndex(rendered, [row], 0, getId);
+  if (byIdentity !== undefined) return byIdentity;
+  const atFrom = rendered[from];
+  return atFrom !== undefined && canonicalize(atFrom) === canonicalize(row)
+    ? from
+    : undefined;
+};
+
+/** `drawnRowIndex`, asked of the value a list field was handed. */
+export const movedRowIndex = <T extends ArrayRow>(
+  value: unknown,
+  row: T,
+  from: number,
+  getId?: ArrayRowIdentity<T>,
+): number | undefined =>
+  drawnRowIndex(renderedRows<T>(value), row, from, getId);
+
+/**
  * Where a new row goes in the array the session holds now.
  *
  * Unlike the other operations this one can never be refused — the row does not
@@ -320,13 +371,12 @@ export function commandsForOperation<T extends ArrayRow>(
   }
 
   if (operation.type === 'move') {
-    const move = resolveMove(
-      current,
-      rendered,
-      operation.from,
-      operation.to,
-      getId,
-    );
+    // `operation.from` is deliberately not used: it was measured against the
+    // list as it stood when the drag STARTED, which is not the numbering
+    // everything below resolves in. See `drawnRowIndex`.
+    const from = drawnRowIndex(rendered, operation.item, operation.from, getId);
+    if (from === undefined) return [];
+    const move = resolveMove(current, rendered, from, operation.to, getId);
     return move === undefined
       ? []
       : [{ op: 'moveItem', key, from: move.from, to: move.to }];

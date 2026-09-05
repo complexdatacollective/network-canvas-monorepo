@@ -9,6 +9,7 @@ import {
   type ArrayRowIdentity,
   commandsForDetachedRow,
   commandsForOperation,
+  movedRowIndex,
   readRows,
   reseatEditedRow,
 } from './arrayFieldCommands.ts';
@@ -371,7 +372,21 @@ export function useArrayFieldCommands<T extends ArrayRow>(
           operation,
           getIdRef.current,
         ),
-        'row-unresolved',
+        // A drag is the one operation that can outlive its own row: it lasts
+        // as long as the pointer is down, and the row it took hold of can be
+        // removed from elsewhere in that time. That is a different thing to
+        // tell the researcher than a row the list could not tell apart from
+        // its neighbours — the row is gone, and looking at the list again will
+        // not bring it back.
+        operation.type === 'move' &&
+          movedRowIndex(
+            renderedRef.current,
+            operation.item,
+            operation.from,
+            getIdRef.current,
+          ) === undefined
+          ? 'row-removed'
+          : 'row-unresolved',
       );
       if (outcome.kind === 'written' || collectingRef.current) return;
       reportRefusedWrite(writeRefusalMessage(outcome.reason, itemLabel));

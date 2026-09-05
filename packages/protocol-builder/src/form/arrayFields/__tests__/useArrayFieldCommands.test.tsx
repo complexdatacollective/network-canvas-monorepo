@@ -210,7 +210,7 @@ describe('a list bound to a key the document does not hold as a list', () => {
       commands.onOperation?.({ type: 'remove', index: 0 });
     });
     act(() => {
-      commands.onOperation?.({ type: 'move', from: 0, to: 1 });
+      commands.onOperation?.({ type: 'move', from: 0, to: 1, item: A });
     });
     act(() => {
       commands.onOperation?.({
@@ -348,7 +348,7 @@ describe('a list the document holds with a hole in it', () => {
       commands.onOperation?.({ type: 'remove', index: 1 });
     });
     act(() => {
-      commands.onOperation?.({ type: 'move', from: 1, to: 0 });
+      commands.onOperation?.({ type: 'move', from: 1, to: 0, item: A });
     });
 
     // The list drew no rows, so nothing on screen could have been dragged or
@@ -427,12 +427,43 @@ describe('a list drawn without the hole its document still holds', () => {
     ).toEqual([[{ op: 'removeItem', key: 'prompts', index: 1 }]]);
   });
 
+  /**
+   * A drag whose two ends were measured against two different lists.
+   *
+   * `ArrayField` takes a pointer drag's `from` when the pointer goes DOWN and
+   * its `to` when it comes up, and re-syncs its rows from the value in
+   * between — a real window of seconds, not a race. A row arriving from
+   * elsewhere during it leaves `from` numbering a list that no longer exists,
+   * and reading it as a position in the list as it stands now moves whichever
+   * row has since taken that place.
+   */
+  it('moves the row a drag picked up, not the one now at its old index', () => {
+    const C: Row = { id: 'c', text: 'Charlie' };
+    const X: Row = { id: 'x', text: 'Remote' };
+    // The researcher took hold of Alpha at the top of [A, B, C]. X arrived at
+    // the front while the pointer was down, so the drop was measured against
+    // [X, A, B, C] and asked for the place below Bravo.
+    const session = createSession({ prompts: [X, A, B, C] });
+    const commands = renderCommands(session, [X, A, B, C], 'prompts', vi.fn());
+
+    act(() => {
+      commands.onOperation?.({ type: 'move', from: 0, to: 2, item: A });
+    });
+
+    expect(session.getSnapshot().editedSection.fields.prompts).toEqual([
+      X,
+      B,
+      A,
+      C,
+    ]);
+  });
+
   it('moves a row between document indices, leaving the hole where it is', () => {
     const session = createSession({ prompts: [null, A, B] });
     const commands = renderCommands(session, [A, B], 'prompts', vi.fn());
 
     act(() => {
-      commands.onOperation?.({ type: 'move', from: 1, to: 0 });
+      commands.onOperation?.({ type: 'move', from: 1, to: 0, item: B });
     });
 
     // Bravo above Alpha, and the hole still the document's first entry — a
@@ -551,6 +582,25 @@ describe('what a list write answers', () => {
       twin,
       twin,
     ]);
+  });
+
+  it('names the row when a drag’s own row left the list while it was held', () => {
+    // A drag lasts as long as the pointer is down, which is long enough for
+    // the row being dragged to be deleted from elsewhere. Nothing is left to
+    // move, and no amount of looking at the list again will bring it back —
+    // which is what tells this apart from a row that could not be matched.
+    const session = createSession({ prompts: [B] });
+    const commands = renderCommands(session, [B], 'prompts', vi.fn());
+
+    let outcome: ArrayWriteOutcome | undefined;
+    act(() => {
+      outcome = commands.writeThrough(() => {
+        commands.onOperation?.({ type: 'move', from: 0, to: 1, item: A });
+      });
+    });
+
+    expect(outcome).toEqual({ kind: 'refused', reason: 'row-removed' });
+    expect(session.getSnapshot().editedSection.fields.prompts).toEqual([B]);
   });
 
   it('names the session when the stage will not take the write', () => {
