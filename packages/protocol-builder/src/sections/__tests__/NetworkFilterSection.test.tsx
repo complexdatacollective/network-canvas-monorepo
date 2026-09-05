@@ -322,6 +322,49 @@ describe('rules that contradict the rest of the stage', () => {
     ).toBeInTheDocument();
   });
 
+  it('stays quiet when the only rules are about nodes', () => {
+    renderEditor(
+      createSession({
+        type: 'Sociogram',
+        // A rule about a node type says nothing about which edges reach the
+        // stage. Folding its entity type into the edge comparison makes the
+        // configured `friend` edge look like one no rule lets through.
+        fields: sociogramFields(nodeFilter),
+      }),
+    );
+
+    expect(
+      screen.queryByText('Filter rules hide configured values'),
+    ).toBeNull();
+  });
+
+  it('still warns about an edge rule standing beside a node rule', () => {
+    renderEditor(
+      createSession({
+        type: 'Sociogram',
+        fields: sociogramFields({
+          join: 'AND',
+          rules: [
+            {
+              id: 'rule-a',
+              type: 'node',
+              options: { type: 'person', operator: 'EXISTS' },
+            },
+            {
+              id: 'rule-b',
+              type: 'edge',
+              options: { type: 'best', operator: 'EXISTS' },
+            },
+          ],
+        }),
+      }),
+    );
+
+    expect(
+      screen.getByText('Filter rules hide configured values'),
+    ).toBeInTheDocument();
+  });
+
   it('counts the edges a prompt only displays, not just the ones it creates', () => {
     renderEditor(
       createSession({

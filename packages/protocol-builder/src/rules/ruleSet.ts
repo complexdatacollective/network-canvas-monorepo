@@ -88,6 +88,7 @@ const CODEBOOK_RULE_PROBLEMS: readonly RuleProblemCode[] = Object.freeze([
   'missingAttribute',
   'missingEntityType',
   'invalidOperator',
+  'invalidOperand',
 ]);
 
 export const isCodebookRuleProblem = (problem: RuleProblem): boolean =>
@@ -134,13 +135,18 @@ export const ruleSetValidationMessage = (
   const issues = ruleSetCodebookIssues(value, codebook);
   const first = issues[0];
   if (first === undefined) return undefined;
+  // Counted by ROW, not by problem. One rule can carry several — losing its
+  // entity type takes the attribute's definition with it, and reports both —
+  // so a count of problems tells the researcher to open two rules when there
+  // is only one to open.
+  const brokenRules = new Set(issues.map((issue) => issue.position));
   // Whole sentences with a number in them, rather than a position glued onto
   // the rule's own message: the specific wording ("a node type", "an
   // attribute", "an operator") belongs on the marked rule itself, where the
   // researcher is looking when they open it.
-  return issues.length === 1
+  return brokenRules.size === 1
     ? `Rule ${first.position} no longer works with this protocol's codebook. Open it to fix it, or delete it.`
-    : `${issues.length} of these rules no longer work with this protocol's codebook. Open each marked rule to fix it, or delete it.`;
+    : `${brokenRules.size} of these rules no longer work with this protocol's codebook. Open each marked rule to fix it, or delete it.`;
 };
 
 const NO_RULES_MESSAGE = 'Please create at least one rule.';

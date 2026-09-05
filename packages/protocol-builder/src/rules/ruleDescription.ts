@@ -12,8 +12,10 @@ import {
 } from './operators.ts';
 import { isCompleteRule, isRuleDraft, ruleDraftOptions } from './rule.ts';
 import {
+  codebookLabel,
   DEFAULT_EDGE_COLOR,
   DEFAULT_NODE_COLOR,
+  isOperandValidForAttributeType,
   isOperatorValidForAttributeType,
   isRuleTargetType,
   type RuleTargetType,
@@ -86,6 +88,7 @@ export type RuleProblemCode =
   | 'missingEntityType'
   | 'missingAttribute'
   | 'invalidOperator'
+  | 'invalidOperand'
   | 'incomplete';
 
 export type RuleProblem = Readonly<{
@@ -288,10 +291,7 @@ export function describeRule({
       ? undefined
       : Object.freeze({
           id: attributeId,
-          label:
-            definition?.name === undefined || definition.name === ''
-              ? attributeId
-              : definition.name,
+          label: codebookLabel(definition?.name, attributeId),
           type: attributeType,
           missing: definition === undefined,
         });
@@ -360,6 +360,24 @@ export function describeRule({
     });
   }
 
+  // The same retype seen from the other side. An operator can outlive a change
+  // of attribute type where the operand it was entered for cannot — `EXACTLY`
+  // is legal for a number and for a multi-select alike, but one answers with a
+  // number and the other with the list of options that were selected — and the
+  // protocol schema accepts either shape at `value` whatever the attribute is,
+  // so nothing downstream of the builder can catch it.
+  if (
+    attribute !== undefined &&
+    !attribute.missing &&
+    operatorId !== undefined &&
+    !isOperandValidForAttributeType(operatorId, attributeType, options.value)
+  ) {
+    problems.push({
+      code: 'invalidOperand',
+      message: INVALID_OPERAND_MESSAGE,
+    });
+  }
+
   if (!isCompleteRule(rule)) {
     problems.push({ code: 'incomplete', message: INCOMPLETE_MESSAGE });
   }
@@ -408,7 +426,7 @@ function describeEntity(
     return Object.freeze({
       kind: 'edge' as const,
       typeId: entityTypeId,
-      label: definition?.name ?? entityTypeId ?? '',
+      label: codebookLabel(definition?.name, entityTypeId ?? ''),
       color: definition?.color ?? DEFAULT_EDGE_COLOR,
       missing: definition === undefined,
     });
@@ -419,7 +437,7 @@ function describeEntity(
   return Object.freeze({
     kind: 'node' as const,
     typeId: entityTypeId,
-    label: definition?.name ?? entityTypeId ?? '',
+    label: codebookLabel(definition?.name, entityTypeId ?? ''),
     color: definition?.color ?? DEFAULT_NODE_COLOR,
     shape: definition?.shape.default,
     missing: definition === undefined,
@@ -490,5 +508,7 @@ const MISSING_ATTRIBUTE_MESSAGE =
   'This rule refers to an attribute that is no longer in the codebook. Edit or delete the rule.';
 const INVALID_OPERATOR_MESSAGE =
   'This rule uses an operator that is not valid for its attribute type. Edit or delete the rule.';
+const INVALID_OPERAND_MESSAGE =
+  'This rule compares its attribute against a value of the wrong kind for the attribute’s type. Edit or delete the rule.';
 const INCOMPLETE_MESSAGE =
   'This rule is not complete. Edit it to fill in every part, or delete it.';

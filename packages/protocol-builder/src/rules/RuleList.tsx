@@ -139,6 +139,9 @@ function RuleListItem({
   );
 }
 
+const SAVE_UNAVAILABLE_MESSAGE =
+  'These rules are no longer editable, so this rule cannot be saved. Copy anything you want to keep, then close the editor.';
+
 type RuleEditorSession = Readonly<{
   /** Bumped per session; the `key` that gives each one a fresh field store. */
   id: number;
@@ -197,7 +200,17 @@ function RuleListEditor({
       open={item !== undefined && session.open}
       seed={session.seed}
       ruleTypes={ruleTypes}
-      onSave={(rule) => onSave?.(rule)}
+      // `ArrayField` withdraws its save handler when the list stops being
+      // editable, and this dialog may already be open when that happens.
+      // Turning that absence into a call that does nothing told the researcher
+      // their rule had been saved while the list never committed it and never
+      // left editing — so the draft was lost and the editor stuck open.
+      // Refusing keeps both the dialog and the draft, and says why.
+      onSave={(rule) =>
+        onSave === undefined
+          ? { formErrors: [SAVE_UNAVAILABLE_MESSAGE] }
+          : onSave(rule)
+      }
       onCancel={onCancel}
       finalFocus={getEditorTrigger}
       {...(session.isNewItem ? {} : { layoutId: session.sourceId })}

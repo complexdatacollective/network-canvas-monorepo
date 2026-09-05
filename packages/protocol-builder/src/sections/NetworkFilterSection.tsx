@@ -161,12 +161,20 @@ function promptEdgeTypes(prompts: unknown): string[] {
  * require to exist is fine, and an edge type no "must not exist" rule names is
  * fine. An edge type left out of a set of "must exist" rules will not survive
  * them, and one a "must not exist" rule names is being excluded by name.
+ *
+ * Only edge rules are read. `options.type` is an entity type id whose codebook
+ * is decided by the rule's own `type`, so a node rule folded into these sets
+ * puts a NODE type id where an edge type id is compared: "this stage needs a
+ * Person to exist" then made the configured Friend edge look like one no rule
+ * lets through, and warned about a rule that excludes nothing.
  */
 function filterHidesAnyEdgeType(
   filter: unknown,
   edgeTypes: readonly string[],
 ): boolean {
-  const rules = ruleSetRules(filter).map((rule) => ruleDraftOptions(rule));
+  const rules = ruleSetRules(filter)
+    .filter((rule) => rule.type === 'edge')
+    .map((rule) => ruleDraftOptions(rule));
   const requiredTypes = rules
     .filter((options) => options.operator === 'EXISTS')
     .map((options) => options.type);

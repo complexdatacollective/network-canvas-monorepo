@@ -90,6 +90,9 @@ const baseSections: Record<string, SectionDoc> = {
       // what makes a cleared operator evidence of the cascade rather than of
       // the option simply having gone.
       height: { name: 'Height', type: 'number' },
+      // A scalar is recorded as a number on a normalised scale, and is offered
+      // the same comparison operators a number is.
+      closeness: { name: 'Closeness', type: 'scalar' },
       mood: {
         name: 'Mood',
         type: 'categorical',
@@ -590,6 +593,50 @@ describe('the operand a rule compares against', () => {
     // The interview compares this against a number, and the schema refuses a
     // numeric comparison whose operand is text.
     expect(savedOptions(onSave).value).toBe(30);
+  });
+
+  it('commits a scalar operand as a number', async () => {
+    const user = userEvent.setup();
+    const { onSave } = renderSpiedEditor();
+
+    await buildNodeAttributeRuleUpTo(user, 'closeness', 'GREATER_THAN');
+    // A scalar is offered the numeric operators, so its operand has to be
+    // entered — and committed — as a number: the runtime's relational
+    // comparison and its deep equality both read a scalar answer as one.
+    await user.type(
+      await screen.findByRole('spinbutton', { name: /Attribute value/ }),
+      '0.5',
+    );
+    await finishAndClose(user);
+
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    expect(savedOptions(onSave).value).toBe(0.5);
+  });
+
+  it('refuses a negative count of options', async () => {
+    const user = userEvent.setup();
+    const { onSave } = renderSpiedEditor();
+
+    await buildNodeAttributeRuleUpTo(user, 'mood', 'OPTIONS_GREATER_THAN');
+    const count = await screen.findByRole('spinbutton', {
+      name: /Selected option count/,
+    });
+    fireEvent.change(count, { target: { value: '-1' } });
+    await finishAndClose(user);
+
+    // There is no such thing as minus one selected option. Left unchecked,
+    // `OPTIONS_GREATER_THAN -1` matches an attribute nobody answered and
+    // `OPTIONS_LESS_THAN -1` matches nothing at all.
+    //
+    // Queried afresh: a saved rule takes the dialog with it, and asserting
+    // against the detached control would report the failure as a type error
+    // rather than as the missing refusal it is.
+    await waitFor(() =>
+      expect(
+        screen.getByRole('spinbutton', { name: /Selected option count/ }),
+      ).toHaveAccessibleDescription(/at least 0/),
+    );
+    expect(onSave).not.toHaveBeenCalled();
   });
 
   it('refuses a count of options that is not a whole number', async () => {

@@ -26,6 +26,9 @@ describe('emptyRuleValue', () => {
     // whose control is numeric would show the researcher text they cannot have
     // typed.
     expect(emptyRuleValue('number')).toBeUndefined();
+    // A scalar is compared as a number too, and is entered with the same
+    // control.
+    expect(emptyRuleValue('scalar')).toBeUndefined();
   });
 
   it('empties every other operand as text', () => {

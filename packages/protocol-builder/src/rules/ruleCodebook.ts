@@ -9,9 +9,12 @@ import {
 } from '@codaco/protocol-validation';
 
 import {
+  isFilterOperator,
   isRuleVariableType,
   operatorsAsOptions,
   operatorsByType,
+  operatorsWithOptionCount,
+  operatorsWithRegExp,
   type RuleOperatorOption,
 } from './operators.ts';
 
@@ -49,6 +52,22 @@ export type RuleEntityTypeOption = Readonly<{
 }>;
 
 const EMPTY_VARIABLES: Readonly<Variables> = Object.freeze({});
+
+/**
+ * What a codebook definition is called, or the id it is filed under when it
+ * has no name of its own.
+ *
+ * The schema requires a `name` on a node type, an edge type and a variable
+ * alike, but an EMPTY one satisfies it — and an empty name is not a name: it
+ * leaves the rule sentence reading "exists", and the edit and delete controls
+ * of the row it describes named after nothing at all. One helper for every
+ * reader of a codebook name, because the type list the editor offers and the
+ * sentence a host prints have to call the same definition the same thing.
+ */
+export const codebookLabel = (
+  name: string | undefined,
+  fallback: string,
+): string => (name === undefined || name === '' ? fallback : name);
 
 export const DEFAULT_NODE_COLOR: ColorReference = 'node-color-seq-1';
 export const DEFAULT_EDGE_COLOR: ColorReference = 'edge-color-seq-1';
@@ -96,7 +115,7 @@ export const ruleVariableOptions = (
       return [
         {
           value: variableId,
-          label: definition.name === '' ? variableId : definition.name,
+          label: codebookLabel(definition.name, variableId),
           type,
         },
       ];
@@ -183,6 +202,116 @@ export const isOperatorValidForAttributeType = (
 };
 
 /**
+ * The shape of ANSWER each kind of attribute is recorded as, which is the
+ * shape an operand has to have to be compared against one.
+ *
+ * `list` is a multi-select's set of chosen option values; `option` is one of
+ * them; `number` and `text` are what they say. Read off the interview's own
+ * comparison — deep equality against the stored answer — rather than off the
+ * control the editor happens to render, because it is the runtime that decides
+ * whether a rule can ever match.
+ */
+type OperandShape = 'boolean' | 'list' | 'number' | 'option' | 'text';
+
+const OPERAND_SHAPES: Readonly<Record<VariableType, OperandShape>> =
+  Object.freeze({
+    boolean: 'boolean',
+    categorical: 'list',
+    ordinal: 'option',
+    number: 'number',
+    scalar: 'number',
+    // Recorded as an ISO string, and compared as one.
+    datetime: 'text',
+    text: 'text',
+    location: 'text',
+    layout: 'text',
+  });
+
+/** The operators that compare two values by magnitude. */
+const RELATIONAL_OPERATORS: ReadonlySet<string> = new Set([
+  'GREATER_THAN',
+  'GREATER_THAN_OR_EQUAL',
+  'LESS_THAN',
+  'LESS_THAN_OR_EQUAL',
+]);
+
+/**
+ * Whether the runtime could resolve this operand to a point on a scale.
+ *
+ * Mirrors the interview's own reading: a number as itself, a numeric string as
+ * its number, and any other string as the date it parses to. Nothing else is
+ * comparable by magnitude, so nothing else can satisfy a relational rule.
+ */
+const isComparableByMagnitude = (value: unknown): boolean => {
+  if (typeof value === 'number') return Number.isFinite(value);
+  if (typeof value !== 'string' || value.trim() === '') return false;
+  return !Number.isNaN(Number(value)) || !Number.isNaN(Date.parse(value));
+};
+
+/** What each of those shapes looks like as a stored value. */
+const HAS_OPERAND_SHAPE: Readonly<
+  Record<OperandShape, (value: unknown) => boolean>
+> = Object.freeze({
+  boolean: (value) => typeof value === 'boolean',
+  list: (value) => Array.isArray(value),
+  number: (value) => typeof value === 'number' && Number.isFinite(value),
+  option: (value) => typeof value === 'string' || typeof value === 'number',
+  text: (value) => typeof value === 'string',
+});
+
+/**
+ * Whether the stored operand is something the interview could ever compare
+ * against an attribute of this type.
+ *
+ * The companion to `isOperatorValidForAttributeType`, and needed beside it
+ * because an operator can survive a retype that its operand cannot: `EXACTLY`
+ * is legal for a number and for a categorical alike, but a number answers with
+ * a number and a categorical answers with the list of options that were
+ * selected, so the operand a collaborator's retype leaves behind compares
+ * against nothing. The protocol schema accepts a number, a string, a boolean
+ * or a list at `value` whatever the attribute is, so the builder is the only
+ * place this can be caught.
+ *
+ * Answers `true` wherever nothing is known or nothing is compared: an
+ * attribute the codebook has lost, an operator outside the schema's set, an
+ * existence operator, and an operand that is simply absent — which is an
+ * unfinished rule, reported as one.
+ */
+export const isOperandValidForAttributeType = (
+  operator: string,
+  variableType: VariableType | undefined,
+  value: unknown,
+): boolean => {
+  if (variableType === undefined) return true;
+  if (!isFilterOperator(operator)) return true;
+  if (operator === 'EXISTS' || operator === 'NOT_EXISTS') return true;
+  if (value === undefined || value === null) return true;
+
+  // An option count is a number whatever kind of attribute is being counted,
+  // and `OPTIONS_EQUALS` compares it identically — a string that merely looks
+  // like one never matches.
+  if (operatorsWithOptionCount.has(operator)) {
+    return typeof value === 'number' && Number.isFinite(value);
+  }
+  // A pattern is a string before it is anything else.
+  if (operatorsWithRegExp.has(operator)) return typeof value === 'string';
+  if (RELATIONAL_OPERATORS.has(operator)) {
+    return isComparableByMagnitude(value);
+  }
+  // `INCLUDES`/`EXCLUDES` ask whether a selection holds an option, and the
+  // runtime takes either one option or a list of them — so a rule authored
+  // before the editor emitted a list still matches.
+  if (operator === 'INCLUDES' || operator === 'EXCLUDES') {
+    return (
+      Array.isArray(value) ||
+      typeof value === 'string' ||
+      typeof value === 'number'
+    );
+  }
+  return HAS_OPERAND_SHAPE[OPERAND_SHAPES[variableType]](value);
+};
+
+/**
  * The node or edge types a rule may be pointed at, in codebook order.
  *
  * An edge definition's colour is optional in the schema, so a missing one
@@ -196,14 +325,14 @@ export const ruleEntityTypeOptions = (
   if (target === 'edge') {
     return Object.entries(codebook.edge ?? {}).map(([value, definition]) => ({
       value,
-      label: definition.name === '' ? value : definition.name,
+      label: codebookLabel(definition.name, value),
       color: definition.color ?? DEFAULT_EDGE_COLOR,
     }));
   }
 
   return Object.entries(codebook.node ?? {}).map(([value, definition]) => ({
     value,
-    label: definition.name === '' ? value : definition.name,
+    label: codebookLabel(definition.name, value),
     color: definition.color,
     shape: definition.shape.default,
   }));

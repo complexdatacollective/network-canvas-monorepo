@@ -20,6 +20,21 @@ export const RULE_VALUE_FIELD = 'options.value';
 const REQUIRED_MESSAGE = 'This field is required.';
 
 /**
+ * The attribute types whose operand is a number.
+ *
+ * A scalar belongs here with a number: the schema offers it the same numeric
+ * comparison operators, and an interview records a scalar response as a
+ * number. Left out, its operand fell through to the free-text control, and the
+ * string it committed satisfied the schema while matching nothing — the
+ * relational operators reject a comparison they cannot resolve, and the
+ * equality ones compare "0.5" against a number that never equals it.
+ */
+const NUMERIC_OPERAND_TYPES: ReadonlySet<VariableType> = new Set<VariableType>([
+  'number',
+  'scalar',
+]);
+
+/**
  * The empty operand for an attribute of this type — what a rule's value is
  * reset to when the choice above it changes.
  *
@@ -32,7 +47,9 @@ export const emptyRuleValue = (
 ): boolean | (string | number)[] | string | undefined => {
   if (variableType === 'boolean') return false;
   if (variableType === 'categorical') return [];
-  if (variableType === 'number') return undefined;
+  if (variableType !== undefined && NUMERIC_OPERAND_TYPES.has(variableType)) {
+    return undefined;
+  }
   return '';
 };
 
@@ -76,6 +93,11 @@ const NumberValueField = ({
  * A count of selected options: a whole number of them, never a fraction and
  * never negative. A value that is not an integer is not committed, exactly as
  * the step rejects it.
+ *
+ * `min` is the control's own affordance and nothing more — the form is
+ * submitted with native validation off, so it never refuses anything. The
+ * `minValue` rule beside the field is what actually keeps a negative count
+ * out; see `RuleCountField`.
  */
 const CountValueField = ({
   value,
@@ -138,8 +160,7 @@ export type RuleValueFieldProps = Readonly<{
    * The codebook type of the attribute being compared. Absent until an
    * attribute is chosen, and absent for an attribute the codebook no longer
    * describes; both fall through to the free-text control, which is also what
-   * every type without a richer editor (scalar, datetime, location, layout)
-   * uses.
+   * every type without a richer editor (datetime, location, layout) uses.
    */
   variableType?: VariableType;
   options?: readonly RuleChoiceOption[];
@@ -217,7 +238,7 @@ export function RuleValueField({
     );
   }
 
-  if (variableType === 'number') {
+  if (variableType !== undefined && NUMERIC_OPERAND_TYPES.has(variableType)) {
     return (
       <Field
         name={RULE_VALUE_FIELD}
@@ -258,6 +279,12 @@ export type RuleCountFieldProps = Readonly<{
  * Plain `required` is correct here even though zero selected options is a real
  * answer: Fresco's own emptiness predicate counts `0` and `false` as answers
  * and only rejects nullish, blank and `NaN` values.
+ *
+ * `minValue` rather than the control's `min` attribute, which the form never
+ * consults: it is submitted with native browser validation off. A count below
+ * zero is not a stricter rule than the schema's, it is a rule that cannot be
+ * read at all — `OPTIONS_GREATER_THAN -1` matches an attribute nobody
+ * answered, and `OPTIONS_LESS_THAN -1` matches nothing there is.
  */
 export function RuleCountField({
   label,
@@ -274,6 +301,7 @@ export function RuleCountField({
       placeholder={placeholder}
       initialValue={asNumber(initialValue)}
       required={REQUIRED_MESSAGE}
+      minValue={0}
     />
   );
 }

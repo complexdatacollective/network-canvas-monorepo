@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import type { Codebook } from '@codaco/protocol-validation';
+
 import { describeRule } from '../ruleDescription.ts';
 import { testCodebook } from './fixtures.ts';
 
@@ -417,6 +419,184 @@ describe('describeRule', () => {
       expect(description.problems.map((problem) => problem.code)).toContain(
         'missingEntityType',
       );
+    });
+  });
+
+  /**
+   * An operator can survive a retype while the operand it was entered for
+   * cannot: both `number` and `categorical` accept `EXACTLY`, but a number
+   * answers with a number and a categorical answers with a list of the options
+   * that were selected. The protocol schema accepts either shape at `value`,
+   * so nothing downstream of the builder catches this.
+   */
+  describe('an operand the attribute type can no longer be compared against', () => {
+    const OPERAND_MESSAGE =
+      'This rule compares its attribute against a value of the wrong kind for the attribute’s type. Edit or delete the rule.';
+
+    it('reports a scalar operand left behind by a retype to categorical', () => {
+      const description = describeRule({
+        rule: {
+          id: 'rule-22',
+          type: 'node',
+          options: {
+            type: 'person',
+            attribute: 'mood',
+            operator: 'EXACTLY',
+            value: 5,
+          },
+        },
+        codebook,
+      });
+
+      expect(description.problems).toContainEqual({
+        code: 'invalidOperand',
+        message: OPERAND_MESSAGE,
+      });
+    });
+
+    it('reports a list operand left behind by a retype to number', () => {
+      const description = describeRule({
+        rule: {
+          id: 'rule-23',
+          type: 'node',
+          options: {
+            type: 'person',
+            attribute: 'age',
+            operator: 'EXACTLY',
+            value: ['happy'],
+          },
+        },
+        codebook,
+      });
+
+      expect(description.problems.map((problem) => problem.code)).toContain(
+        'invalidOperand',
+      );
+    });
+
+    it('says nothing about an operand the attribute type still reads', () => {
+      const description = describeRule({
+        rule: {
+          id: 'rule-24',
+          type: 'node',
+          options: {
+            type: 'person',
+            attribute: 'mood',
+            operator: 'EXACTLY',
+            value: ['happy'],
+          },
+        },
+        codebook,
+      });
+
+      expect(description.problems).toEqual([]);
+    });
+
+    it('says nothing about an option count, which is a number whatever the attribute is', () => {
+      const description = describeRule({
+        rule: {
+          id: 'rule-25',
+          type: 'node',
+          options: {
+            type: 'person',
+            attribute: 'mood',
+            operator: 'OPTIONS_EQUALS',
+            value: 2,
+          },
+        },
+        codebook,
+      });
+
+      expect(description.problems).toEqual([]);
+    });
+
+    it('says nothing about a single option compared with includes', () => {
+      const description = describeRule({
+        rule: {
+          id: 'rule-26',
+          type: 'node',
+          options: {
+            type: 'person',
+            attribute: 'mood',
+            operator: 'INCLUDES',
+            // The runtime compares one option against the stored selection, so
+            // a rule authored before the editor emitted a list still matches.
+            value: 'happy',
+          },
+        },
+        codebook,
+      });
+
+      expect(description.problems).toEqual([]);
+    });
+
+    it('says nothing about an attribute the codebook no longer describes', () => {
+      const description = describeRule({
+        rule: {
+          id: 'rule-27',
+          type: 'node',
+          options: {
+            type: 'person',
+            attribute: 'favouriteColour',
+            operator: 'EXACTLY',
+            value: ['happy'],
+          },
+        },
+        codebook,
+      });
+
+      // Nothing is known about what a deleted attribute's operand ought to
+      // look like, and the deletion is already reported.
+      expect(description.problems.map((problem) => problem.code)).toEqual([
+        'missingAttribute',
+      ]);
+    });
+  });
+
+  describe('a definition the codebook holds without a name', () => {
+    /**
+     * `name` is a required string in the schema but an empty one is legal, and
+     * the editor's own type list already falls back to the id for it. A
+     * sentence that does not leaves the preview reading "exists" and the row's
+     * edit and delete controls named after nothing.
+     */
+    const sparseCodebook: Readonly<Codebook> = Object.freeze({
+      node: {
+        person: {
+          name: '',
+          color: 'node-color-seq-2',
+          shape: { default: 'square' },
+        },
+      },
+      edge: { friend: { name: '' } },
+    });
+
+    it('names a node type by its id', () => {
+      const description = describeRule({
+        rule: {
+          id: 'rule-28',
+          type: 'node',
+          options: { type: 'person', operator: 'EXISTS' },
+        },
+        codebook: sparseCodebook,
+      });
+
+      expect(description.entity?.label).toBe('person');
+      expect(description.text).toBe('person exists');
+    });
+
+    it('names an edge type by its id', () => {
+      const description = describeRule({
+        rule: {
+          id: 'rule-29',
+          type: 'edge',
+          options: { type: 'friend', operator: 'NOT_EXISTS' },
+        },
+        codebook: sparseCodebook,
+      });
+
+      expect(description.entity?.label).toBe('friend');
+      expect(description.text).toBe('friend does not exist');
     });
   });
 

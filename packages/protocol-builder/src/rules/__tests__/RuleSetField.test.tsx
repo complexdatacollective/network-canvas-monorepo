@@ -273,6 +273,80 @@ describe('the rule set field', () => {
   });
 });
 
+/**
+ * The list withdraws its save handler when it stops being editable — a lost
+ * lease, a read-only session — and the rule editor may already be open when
+ * that happens. A dialog that reports a save it could not make is worse than
+ * one that refuses: the draft is gone and the researcher has no way to know.
+ */
+describe('a rule editor that is open when the list stops being editable', () => {
+  const buildPresenceRule = async (
+    user: ReturnType<typeof userEvent.setup>,
+  ) => {
+    await user.click(
+      screen.getByRole('radio', {
+        name: 'Node - match a node type or one of its attributes.',
+      }),
+    );
+    await user.click(await screen.findByRole('radio', { name: 'Person' }));
+    await user.click(await screen.findByRole('option', { name: /Presence/ }));
+    await user.click(await screen.findByRole('radio', { name: 'exists' }));
+  };
+
+  it('refuses the save in words rather than reporting one that never happened', async () => {
+    const user = userEvent.setup();
+    const session = createSession();
+    renderEditor(session);
+
+    await openRuleEditor(user);
+    await buildPresenceRule(user);
+
+    act(() => {
+      session.setAccess({ mode: 'readOnly', reason: 'lease-lost' });
+    });
+    await user.click(screen.getByRole('button', { name: 'Finish and Close' }));
+
+    expect(
+      await screen.findByText(
+        'These rules are no longer editable, so this rule cannot be saved. Copy anything you want to keep, then close the editor.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog', { name: 'Construct a Rule' }),
+    ).toBeInTheDocument();
+    expect(probedRuleSet()).toBeNull();
+  });
+
+  it('still lets the researcher out of the editor afterwards', async () => {
+    const user = userEvent.setup();
+    const session = createSession();
+    renderEditor(session);
+
+    await openRuleEditor(user);
+    await buildPresenceRule(user);
+
+    act(() => {
+      session.setAccess({ mode: 'readOnly', reason: 'lease-lost' });
+    });
+    await user.click(screen.getByRole('button', { name: 'Finish and Close' }));
+    await screen.findByText(/These rules are no longer editable/);
+
+    // A refused save is not an outcome: the session has not ended, so
+    // dismissing it must still discard the draft and close the dialog rather
+    // than leaving the editor with no way out.
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Discard changes' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Construct a Rule' }),
+      ).toBeNull(),
+    );
+  });
+});
+
 describe('rule list identity', () => {
   it('keeps the surviving rule when one is deleted', async () => {
     const user = userEvent.setup();
@@ -464,6 +538,57 @@ describe('a codebook that changes underneath the editor', () => {
 
     expect(
       await screen.findByRole('radio', { name: 'Place' }),
+    ).toBeInTheDocument();
+  });
+
+  it('reports a rule whose attribute a collaborator has just retyped', async () => {
+    const session = createSession({
+      rules: [
+        {
+          id: 'rule-a',
+          type: 'node',
+          options: {
+            type: 'person',
+            attribute: 'age',
+            operator: 'EXACTLY',
+            value: 30,
+          },
+        },
+      ],
+    });
+    renderEditor(session);
+
+    expect(screen.queryByText(/no longer/)).toBeNull();
+
+    act(() => {
+      session.receiveAuthoritativeUpdate({
+        protocolSections: {
+          ...baseSections,
+          [personSection]: {
+            ...personDefinition,
+            variables: {
+              // `EXACTLY` survives the retype — it is legal for both types —
+              // so the operator check has nothing to say, and the operand left
+              // behind is a number where the runtime now compares a list.
+              age: {
+                name: 'Age',
+                type: 'categorical',
+                options: [
+                  { label: 'Young', value: 30 },
+                  { label: 'Old', value: 60 },
+                ],
+              },
+            },
+          },
+        },
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+    });
+
+    expect(
+      await screen.findByText(
+        'This rule compares its attribute against a value of the wrong kind for the attribute’s type. Edit or delete the rule.',
+      ),
     ).toBeInTheDocument();
   });
 

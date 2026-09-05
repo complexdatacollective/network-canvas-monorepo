@@ -553,7 +553,16 @@ export type RuleEditorDialogProps = Readonly<{
   /** The rule as this editing session opened on it. */
   seed: RuleDraft;
   ruleTypes: readonly RuleTypeOption[];
-  onSave: (rule: RuleDraft) => void;
+  /**
+   * Takes the finished rule, or REFUSES it.
+   *
+   * A caller that cannot accept the rule right now — a list that has stopped
+   * being editable while this dialog was open — answers with the errors to
+   * show instead, exactly as `DialogForm` documents for a save the host cannot
+   * take. The dialog then stays open with the draft intact, and the session is
+   * not recorded as saved.
+   */
+  onSave: (rule: RuleDraft) => void | DialogFormErrors;
   onCancel: () => void;
   finalFocus?: DialogFormProps['finalFocus'];
   /** Matches an existing list row to this dialog for its shared morph. */
@@ -645,9 +654,17 @@ export default function RuleEditorDialog({
   );
 
   const handleSubmit = useCallback(
-    (values: Record<string, FieldValue>): void => {
+    (values: Record<string, FieldValue>): DialogFormErrors | undefined => {
+      const refused = onSave({
+        id: seed.id ?? uuid({}),
+        ...ruleDraftFromValues(values),
+      });
+      // Recorded only once the rule has actually been taken. Marking a refused
+      // save as this session's outcome would leave the editor with no way out:
+      // `handleClose` swallows every dismissal that follows one.
+      if (refused !== undefined) return refused;
       saved.current = true;
-      onSave({ id: seed.id ?? uuid({}), ...ruleDraftFromValues(values) });
+      return undefined;
     },
     [onSave, seed.id],
   );

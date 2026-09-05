@@ -140,6 +140,56 @@ describe('ruleSetValidationMessage', () => {
     );
   });
 
+  it('counts the rules that are broken, not the things wrong with each', () => {
+    // One rule, two problems: losing the entity type takes the attribute's
+    // definition with it, so `describeRule` reports both against the same row.
+    const orphanedRule = {
+      id: 'a',
+      type: 'node',
+      options: {
+        type: 'ghost',
+        attribute: 'age',
+        operator: 'EXACTLY',
+        value: 30,
+      },
+    };
+    expect(ruleSetCodebookIssues({ rules: [orphanedRule] }, codebook)).toEqual([
+      { position: 1, message: expect.any(String) as string },
+      { position: 1, message: expect.any(String) as string },
+    ]);
+
+    expect(ruleSetValidationMessage({ rules: [orphanedRule] }, codebook)).toBe(
+      "Rule 1 no longer works with this protocol's codebook. Open it to fix it, or delete it.",
+    );
+  });
+
+  it('refuses a rule whose operand no longer suits its attribute type', () => {
+    // `EXACTLY` is legal for both `number` and `categorical`, so nothing about
+    // the OPERATOR is wrong here — only the operand, which a categorical
+    // attribute answers as a list.
+    expect(
+      ruleSetValidationMessage(
+        {
+          rules: [
+            {
+              id: 'a',
+              type: 'node',
+              options: {
+                type: 'person',
+                attribute: 'mood',
+                operator: 'EXACTLY',
+                value: 5,
+              },
+            },
+          ],
+        },
+        codebook,
+      ),
+    ).toBe(
+      "Rule 1 no longer works with this protocol's codebook. Open it to fix it, or delete it.",
+    );
+  });
+
   it('passes a healthy rule set', () => {
     expect(
       ruleSetValidationMessage({ rules: [presenceRule('a')] }, codebook),
