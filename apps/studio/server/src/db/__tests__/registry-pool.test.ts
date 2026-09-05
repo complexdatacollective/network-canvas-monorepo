@@ -1,3 +1,6 @@
+import { randomUUID } from 'node:crypto';
+
+import { escapeIdentifier } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createPostgresPool } from '@codaco/studio-sync/postgres-pool';
@@ -8,7 +11,10 @@ import {
 } from '../../__tests__/support/postgres.ts';
 
 const db = await reachableDb();
-const registryRoles = ['registry_app', 'registry_operator'] as const;
+const roleSuffix = randomUUID().replaceAll('-', '');
+const registryAppRole = `registry_app_${roleSuffix}`;
+const registryOperatorRole = `registry_operator_${roleSuffix}`;
+const registryRoles = [registryAppRole, registryOperatorRole] as const;
 const onIdleError = () => undefined;
 
 describe.skipIf(!db)('shared pools for a separate registry database', () => {
@@ -17,29 +23,41 @@ describe.skipIf(!db)('shared pools for a separate registry database', () => {
   beforeAll(async () => {
     if (!db) throw new Error('unreachable');
     scratch = await createScratchDatabase(db);
-    // Roles belong to the cluster, so serialize their idempotent creation
-    // while keeping all registry connections in this disposable database.
-    await scratch.pool.query(`DO $$ BEGIN
-      PERFORM pg_advisory_xact_lock(4021775688147131);
-      BEGIN
-        CREATE ROLE registry_app NOLOGIN NOSUPERUSER NOBYPASSRLS;
-      EXCEPTION WHEN duplicate_object THEN NULL; END;
-      BEGIN
-        CREATE ROLE registry_operator NOLOGIN NOSUPERUSER NOBYPASSRLS;
-      EXCEPTION WHEN duplicate_object THEN NULL; END;
-      EXECUTE format('GRANT registry_app, registry_operator TO %I WITH SET TRUE', current_user);
-    END $$;`);
+    // Roles belong to the cluster, while advisory locks belong to a database.
+    // Unique suite names isolate concurrent runs against different scratch DBs.
+    for (const role of registryRoles) {
+      await scratch.pool.query(
+        `CREATE ROLE ${escapeIdentifier(role)} NOLOGIN NOSUPERUSER NOBYPASSRLS`,
+      );
+      await scratch.pool.query(
+        `GRANT ${escapeIdentifier(role)} TO CURRENT_USER WITH SET TRUE`,
+      );
+    }
   });
 
   afterAll(async () => {
-    await scratch?.dispose();
+    try {
+      await scratch?.dispose();
+    } finally {
+      const cleanup = createPostgresPool({
+        connectionString: db!.url,
+        onIdleError,
+      });
+      try {
+        for (const role of registryRoles) {
+          await cleanup.query(`DROP ROLE IF EXISTS ${escapeIdentifier(role)}`);
+        }
+      } finally {
+        await cleanup.end();
+      }
+    }
   });
 
   describe.each(registryRoles)('%s', (role) => {
     it.each([
       undefined,
       '-c application_name=registry_pool -c role=none',
-      '-c role=registry_operator -c role=registry_app',
+      `-c role=${registryOperatorRole} -c role=${registryAppRole}`,
       String.raw`-c application_name=registry\ pool`,
     ])('pins startup and RESET ROLE with URL options %s', async (options) => {
       const url = new URL(scratch.db.url);
@@ -47,7 +65,7 @@ describe.skipIf(!db)('shared pools for a separate registry database', () => {
       const pool = createPostgresPool({
         connectionString: url.toString(),
         role,
-        max: role === 'registry_app' ? 4 : 2,
+        max: role === registryAppRole ? 4 : 2,
         onIdleError,
         roleMismatchCode: 'REGISTRY_DATABASE_ROLE_MISMATCH',
       });
@@ -178,7 +196,7 @@ describe.skipIf(!db)('shared pools for a separate registry database', () => {
   it('uses a generic mismatch code when the caller supplies none', async () => {
     const pool = createPostgresPool({
       connectionString: scratch.db.url,
-      role: 'registry_app',
+      role: registryAppRole,
       onIdleError,
     });
     pool.options.options = '-c role=none';
