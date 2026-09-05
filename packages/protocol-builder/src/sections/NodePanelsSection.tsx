@@ -210,6 +210,9 @@ function PanelEditor({ item }: RowEditorProps) {
     asString(useRowValue('dataSource') ?? item.dataSource) ?? INTERVIEW_NETWORK;
   const usesInterviewNetwork = dataSource === INTERVIEW_NETWORK;
   const filterValidation = usePanelFilterValidation();
+  const { hasRules, requestFilterOpenChange } = usePanelFilterCapability(
+    item.filter,
+  );
   useEdgeRulesClearedWithSource(dataSource);
 
   return (
@@ -241,6 +244,14 @@ function PanelEditor({ item }: RowEditorProps) {
       <Section
         title="Panel filter"
         description="Narrow the panel to the people this stage is about."
+        // A filter is optional and most panels have none — an unfiltered panel
+        // lists everyone, which is what its absence means — so it is a
+        // capability like every other one in this builder rather than an empty
+        // rule builder every panel opens on. Architect narrows it the same way
+        // (`sections/fields/NetworkFilter.tsx`).
+        toggleable
+        defaultOpen={hasRules}
+        onOpenChange={requestFilterOpenChange}
       >
         <Field<typeof FilterRuleSetField>
           name="filter"
@@ -254,6 +265,62 @@ function PanelEditor({ item }: RowEditorProps) {
       </Section>
     </>
   );
+}
+
+/**
+ * What switching a panel's filter off destroys, in its own words.
+ *
+ * The stage-level counterpart is `NetworkFilterSection`'s, and reads the same:
+ * a researcher who has narrowed a stage meets the same question when they
+ * narrow a panel.
+ */
+const FILTER_CONFIRM = {
+  title: 'This will clear this panel’s filter',
+  description:
+    'This will clear the filter, and delete any rules you have created for it. Do you want to continue?',
+  confirmLabel: 'Clear filter',
+  cancelLabel: 'Cancel',
+  intent: 'warning' as const,
+  onConfirm: () => undefined,
+};
+
+/**
+ * The panel filter's own switch: on when there is something to switch off, and
+ * asking before it throws anything away.
+ *
+ * Cleared here rather than left to the collapsed panel's unmount, for the
+ * reason `BuilderSection` states: a field parked behind a closed group is not
+ * unmounted again, so its value would survive and be written back with the
+ * row.
+ */
+function usePanelFilterCapability(committed: unknown) {
+  const storeApi = useContext(FormStoreContext);
+  const { confirm } = useDialog();
+  // The panel as it was opened, not as it stands: this decides whether the
+  // switch STARTS on, and a live read would reopen the group under the
+  // researcher the moment they cleared it.
+  const hasRules = ruleSetRules(committed).length > 0;
+
+  const requestFilterOpenChange = useCallback(
+    async (open: boolean) => {
+      if (open) return true;
+      const state = storeApi?.getState();
+      const filter = state?.hasValue('filter')
+        ? state.getValue('filter')
+        : undefined;
+      if (ruleSetRules(filter).length > 0) {
+        const confirmed = await confirm(FILTER_CONFIRM);
+        if (confirmed !== true) return false;
+      }
+      // Absent rather than an empty rule set: the schema has no way to say
+      // "filtered by nothing", and an empty one is refused.
+      state?.setFieldValue('filter', undefined as never);
+      return true;
+    },
+    [confirm, storeApi],
+  );
+
+  return { hasRules, requestFilterOpenChange };
 }
 
 /**

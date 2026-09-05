@@ -226,6 +226,71 @@ describe('the side panels a name generator shows', () => {
   });
 
   /**
+   * A panel filter is optional, and most panels have none — a panel that
+   * listed everyone is what "no filter" means. So it is a capability like
+   * every other one in the builder: off until asked for, and destroying what
+   * it holds asks first.
+   */
+  it('keeps the filter out of the way until the researcher asks for one', async () => {
+    const harness = renderStageEditor({
+      stage: nameGeneratorWith([
+        {
+          id: 'panel-1',
+          title: 'People you named earlier',
+          dataSource: 'existing',
+        },
+      ]),
+      sections: panels,
+    });
+
+    const dialog = await openPanel(harness, 'Edit panel');
+    const filterSwitch = dialog.getByRole('switch', { name: 'Panel filter' });
+    expect(filterSwitch).not.toBeChecked();
+    expect(
+      dialog.queryByRole('button', { name: 'Add new filter rule' }),
+    ).not.toBeInTheDocument();
+
+    await harness.user.click(filterSwitch);
+
+    expect(
+      await dialog.findByRole('button', { name: 'Add new filter rule' }),
+    ).toBeInTheDocument();
+  });
+
+  it('opens the filter for a panel that has one, and asks before clearing it', async () => {
+    const harness = renderStageEditor({
+      stage: nameGeneratorWith([panelWithAnEdgeRule]),
+      sections: panels,
+    });
+
+    const dialog = await openPanel(harness, 'Edit panel');
+    const filterSwitch = dialog.getByRole('switch', { name: 'Panel filter' });
+    expect(filterSwitch).toBeChecked();
+
+    // Refused: the rules stay, and so does the switch.
+    await harness.user.click(filterSwitch);
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Cancel' }),
+    );
+    await waitFor(() => expect(filterSwitch).toBeChecked());
+
+    await harness.user.click(filterSwitch);
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Clear filter' }),
+    );
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    expect(panelsOf(await harness.submit())[0]).toEqual({
+      id: 'panel-1',
+      title: 'People you named earlier',
+      dataSource: 'existing',
+    });
+  });
+
+  /**
    * Reordering is committed as the move it actually was, so both panels — and
    * every key inside them, including a filter no control on this row renders —
    * survive it whole.
