@@ -76,6 +76,7 @@ function gatedStagingHost(host: ProtocolBuilderResourceGateway): Readonly<{
       release();
     },
     gateway: {
+      secretStorage: host.secretStorage,
       list: (options) => host.list(options),
       inspect: (resourceId) => host.inspect(resourceId),
       download: (resourceId) => host.download(resourceId),
@@ -124,6 +125,7 @@ function gatedInspectHost(host: ProtocolBuilderResourceGateway): Readonly<{
       release();
     },
     gateway: {
+      secretStorage: host.secretStorage,
       list: (options) => host.list(options),
       download: (resourceId) => host.download(resourceId),
       resolvePreview: (resourceId) => host.resolvePreview(resourceId),
@@ -1109,6 +1111,7 @@ function throwingHost(
     return forward();
   };
   return {
+    secretStorage: host.secretStorage,
     list: (options) => brokenIf('list', () => host.list(options)),
     stageUpload: (request) =>
       brokenIf('stageUpload', () => host.stageUpload(request)),

@@ -143,6 +143,7 @@ function createFixture(options: SessionFixtureOptions = {}) {
     options.loseFirstPromotionAnswer !== true
       ? gateway
       : {
+          secretStorage: gateway.secretStorage,
           list: (listOptions) => gateway.list(listOptions),
           download: (resourceId) => gateway.download(resourceId),
           resolvePreview: (resourceId) => gateway.resolvePreview(resourceId),

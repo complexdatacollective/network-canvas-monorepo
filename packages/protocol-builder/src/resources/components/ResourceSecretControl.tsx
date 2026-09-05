@@ -6,13 +6,37 @@ import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 
 import { useResourceGateway } from '../context.tsx';
-import type { ResourceDescriptor, StagedSecret } from '../gateway.ts';
+import type {
+  ResourceDescriptor,
+  ResourceSecretStorage,
+  StagedSecret,
+} from '../gateway.ts';
 import { discardAbandonedStaging } from './abandonedStaging.ts';
 import ResourceFailureNotice from './ResourceFailureNotice.tsx';
 import { useResourceAttempt } from './useResourceAttempt.ts';
 
 const NAME_REQUIRED_MESSAGE = 'Enter a name for this key.';
 const VALUE_REQUIRED_MESSAGE = 'Enter the value of the key.';
+
+/**
+ * What the researcher is told about the key before they paste it, chosen by
+ * what the host does with it when the stage is saved.
+ *
+ * Where the key ends up is the whole of what makes this decision consequential
+ * — a key written into the protocol file leaves with every copy of that file,
+ * and the researcher is the only person who can decide whether that is
+ * acceptable for the key in their hand. Saying nothing, as this control did,
+ * leaves them deciding without the fact; saying it unconditionally would be
+ * telling a host that keeps the value itself that it does not. So the adapter
+ * says which it is and each answer is written out whole, ready to translate as
+ * the statement it is rather than as a warning glued onto a hint.
+ */
+const KEY_HINT: Readonly<Record<ResourceSecretStorage, string>> = {
+  plaintext:
+    'Pasted from your map provider. It is saved inside your protocol as plain text, so anyone you give the protocol file to can read it. It is not shown again here.',
+  vault:
+    'Pasted from your map provider. It is kept by the host rather than saved inside your protocol, and is not shown again here.',
+};
 
 export type ResourceSecretControlProps = Readonly<{
   /**
@@ -150,7 +174,7 @@ export default function ResourceSecretControl({
       <UnconnectedField
         name="staged-secret-value"
         label="Key"
-        hint="Pasted from your map provider. It is stored with the protocol and is not shown again here."
+        hint={KEY_HINT[gateway.secretStorage]}
         component={InputField}
         type="password"
         autoComplete="off"

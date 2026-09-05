@@ -263,6 +263,34 @@ export function describeResourceGatewayContract(
       );
     });
 
+    it('promotes a secret the way it says it stores one', async () => {
+      const secret = await stageSecret();
+
+      expectOk(
+        await gateway().promote({
+          id: 'promotion-secret-storage',
+          resourceIds: [secret.descriptor.id],
+          secretHandles: [secret.handle],
+          applyManifest: () => ({ status: 'applied' }),
+        }),
+      );
+
+      // The editor tells the researcher where the key they are pasting will
+      // end up, and it can only repeat what the adapter says. An adapter whose
+      // answer and whose manifest disagree makes that a lie in one direction
+      // or the other — a credential written into a shareable protocol file
+      // while the researcher was told it stays on the server, or a warning
+      // about distributing a key that never leaves the host.
+      const entry = JSON.stringify(
+        harness().committedManifest()[secret.descriptor.id],
+      );
+      if (gateway().secretStorage === 'plaintext') {
+        expect(entry).toContain(SECRET_VALUE);
+      } else {
+        expect(entry).not.toContain(SECRET_VALUE);
+      }
+    });
+
     it('refuses to preview or download secret material', async () => {
       const secret = await stageSecret();
 

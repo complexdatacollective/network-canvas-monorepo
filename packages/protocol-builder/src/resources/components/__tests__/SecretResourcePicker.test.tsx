@@ -6,6 +6,7 @@ import ProtocolField from '../../../form/ProtocolField.tsx';
 import { ResourceGatewayProvider } from '../../context.tsx';
 import {
   resourceFailure,
+  type ProtocolBuilderResourceGateway,
   type ResourceDescriptor,
   type StagedSecret,
 } from '../../gateway.ts';
@@ -192,7 +193,7 @@ describe('the secret resource picker', () => {
  * before anything can read them.
  */
 describe('the control a key is typed into', () => {
-  function renderControl(gateway: InMemoryResourceGateway) {
+  function renderControl(gateway: ProtocolBuilderResourceGateway) {
     const staged = vi.fn<(descriptor: ResourceDescriptor) => void>();
     render(
       <ResourceGatewayProvider gateway={gateway}>
@@ -201,6 +202,39 @@ describe('the control a key is typed into', () => {
     );
     return staged;
   }
+
+  /**
+   * Pasting a credential is a decision about who ends up holding it, and the
+   * host is the only thing that knows: the editor is handed an opaque handle
+   * and never learns what promotion does with the value. So the two answers
+   * are two different things to say, and the field itself has to say them —
+   * a warning the researcher has to go and find is one they paste without.
+   */
+  it('warns that a key it will write into the protocol is readable by anyone with the file', async () => {
+    const gateway = new InMemoryResourceGateway();
+    renderControl(gateway);
+
+    // The description, not the text: a hint no assistive technology ties to
+    // the input is one a researcher filling the field never hears.
+    expect(await screen.findByLabelText('Key')).toHaveAccessibleDescription(
+      /saved inside your protocol as plain text, so anyone you give the protocol file to can read it/,
+    );
+  });
+
+  it('does not warn of plain text for a host that keeps the key itself', async () => {
+    const gateway = overrideGateway(new InMemoryResourceGateway(), {
+      secretStorage: 'vault',
+    });
+    renderControl(gateway);
+
+    const key = await screen.findByLabelText('Key');
+    expect(key).toHaveAccessibleDescription(
+      /kept by the host rather than saved inside your protocol/,
+    );
+    // Saying it anyway would be telling the researcher their key is going
+    // somewhere it is not, which is its own kind of wrong.
+    expect(key).not.toHaveAccessibleDescription(/plain text/);
+  });
 
   it('is left empty the moment the host has the key', async () => {
     const user = userEvent.setup();

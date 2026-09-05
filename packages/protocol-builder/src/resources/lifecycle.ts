@@ -237,6 +237,7 @@ export function createStagedResourceTracker(
   };
 
   const gateway: ProtocolBuilderResourceGateway = {
+    secretStorage: host.secretStorage,
     list: (listOptions?: ResourceListOptions) => host.list(listOptions),
     inspect: (resourceId: string) => host.inspect(resourceId),
     download: (resourceId: string) => host.download(resourceId),

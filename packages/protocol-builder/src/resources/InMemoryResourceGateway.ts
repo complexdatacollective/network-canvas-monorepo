@@ -119,6 +119,12 @@ const DEFAULT_INJECTED_FAILURE = Object.freeze({
  * testable without reaching into private state.
  */
 export class InMemoryResourceGateway implements ProtocolBuilderResourceGateway {
+  /**
+   * `manifestEntryFor` writes the secret's own value into the `apikey` entry,
+   * which is what Architect's protocol format does, so the value ends up in
+   * the protocol file and in every export of it.
+   */
+  readonly secretStorage = 'plaintext' as const;
   private readonly committed = new Map<string, CommittedEntry>();
   private readonly staged = new Map<string, StagedEntry>();
   /**

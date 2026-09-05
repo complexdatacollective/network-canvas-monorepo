@@ -13,6 +13,7 @@ export function overrideGateway(
   overrides: Partial<ProtocolBuilderResourceGateway>,
 ): ProtocolBuilderResourceGateway {
   return {
+    secretStorage: inner.secretStorage,
     list: (options) => inner.list(options),
     stageUpload: (request) => inner.stageUpload(request),
     stageSecret: (request) => inner.stageSecret(request),

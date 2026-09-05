@@ -54,6 +54,9 @@ export function resultChannelGateway(
   host: ProtocolBuilderResourceGateway,
 ): ProtocolBuilderResourceGateway {
   return {
+    // A fact about the adapter rather than a call it answers, so it is carried
+    // across unchanged: there is nothing here that could fail.
+    secretStorage: host.secretStorage,
     list: (options) => callGateway(() => host.list(options)),
     stageUpload: (request) => callGateway(() => host.stageUpload(request)),
     stageSecret: (request) => callGateway(() => host.stageSecret(request)),
