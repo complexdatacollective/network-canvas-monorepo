@@ -1,0 +1,228 @@
+import { screen, waitFor } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
+
+import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
+import PromptsSection from '../PromptsSection.tsx';
+import StageNameSection from '../StageNameSection.tsx';
+import { TestPromptEditor, TestPromptPreview } from './rowFixtures.tsx';
+
+const prompts = (
+  <PromptsSection
+    PromptEditor={TestPromptEditor}
+    PromptPreview={TestPromptPreview}
+    requiresSubject={false}
+  />
+);
+
+const openEditor = () => ({
+  stageId: 'name-generator-1',
+  sections: (
+    <>
+      <StageNameSection />
+      {prompts}
+    </>
+  ),
+});
+
+const promptIds = (stage: Record<string, unknown>): unknown[] => {
+  const rows = stage.prompts;
+  return Array.isArray(rows)
+    ? rows.map((row: unknown) => Reflect.get(row as object, 'id'))
+    : [];
+};
+
+describe('the prompt list a stage owns', () => {
+  it('sits where the editor put it, and reports what it holds', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    await waitFor(() => expect(harness.outline()).toHaveLength(2));
+    expect(harness.outline()).toEqual([
+      { title: 'Stage name', state: 'Finished' },
+      { title: 'Prompts', state: 'Finished' },
+    ]);
+    expect(
+      screen.getByText('Who are the people you know?'),
+    ).toBeInTheDocument();
+  });
+
+  it('saves the stage it opened, unchanged', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    await harness.roundTrip();
+  });
+
+  it('adds a prompt with an identity of its own', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create new prompt' }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Prompt text' }),
+      'And who else?',
+    );
+    await harness.user.click(screen.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    expect(request).not.toBeNull();
+    const ids = promptIds(request?.stageDocument ?? {});
+    expect(ids[0]).toBe('name-generator-prompt-1');
+    expect(ids[1]).toEqual(expect.any(String));
+    expect(ids[1]).not.toBe(ids[0]);
+  });
+
+  it('removes the prompt the researcher chose, and no other', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create new prompt' }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Prompt text' }),
+      'And who else?',
+    );
+    await harness.user.click(screen.getByRole('button', { name: 'Add' }));
+    await screen.findByText('And who else?');
+
+    const [firstRemove] = screen.getAllByRole('button', {
+      name: 'Remove prompt',
+    });
+    await harness.user.click(firstRemove as HTMLElement);
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Remove prompt' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText('Who are the people you know?'),
+      ).not.toBeInTheDocument(),
+    );
+    const request = await harness.submit();
+    expect(promptIds(request?.stageDocument ?? {})).toHaveLength(1);
+    expect(promptIds(request?.stageDocument ?? {})[0]).not.toBe(
+      'name-generator-prompt-1',
+    );
+  });
+
+  /**
+   * A reorder is committed as the operation it was, addressed by each row's own
+   * id — so the prompt that moved is the same prompt, not a copy of whatever
+   * was at that index when the control was drawn.
+   */
+  it('moves a prompt without changing which prompt it is', async () => {
+    const harness = renderStageEditor({
+      stage: {
+        type: 'NameGenerator',
+        fields: {
+          label: 'Name Generator',
+          subject: { entity: 'node', type: 'person' },
+          form: {
+            title: 'Add a person',
+            fields: [{ variable: 'name', prompt: 'Name?' }],
+          },
+          prompts: [
+            { id: 'prompt-a', text: 'First question' },
+            { id: 'prompt-b', text: 'Second question' },
+          ],
+        },
+      },
+      sections: prompts,
+    });
+
+    screen.getByRole('button', { name: 'Reorder prompt 1 of 2' }).focus();
+    await harness.user.keyboard('{ArrowDown}');
+
+    const request = await harness.submit();
+    expect(promptIds(request?.stageDocument ?? {})).toEqual([
+      'prompt-b',
+      'prompt-a',
+    ]);
+  });
+
+  /**
+   * Rules are what a prompt list IS. The protocol schema also refuses an empty
+   * one, but it does so against a path after the save is attempted; this
+   * refuses it in the section that holds the prompts.
+   */
+  it('refuses to save a stage that asks nothing', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Remove prompt' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Remove prompt' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByText('Who are the people you know?'),
+      ).not.toBeInTheDocument(),
+    );
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      await screen.findByText(/Create at least one prompt/),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * The protocol schema has one spelling for "not answered": the key is not
+   * there. A cleared control submits an empty string, which reaches a save as
+   * `"negativeLabel": ""` and is refused in the schema's own words.
+   */
+  it('leaves an unanswered field out of the prompt entirely', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create new prompt' }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Prompt text' }),
+      'And who else?',
+    );
+    // Touched and left empty, which is how a value becomes `''` rather than
+    // simply never existing.
+    await harness.user.click(
+      screen.getByRole('textbox', { name: 'Negative label' }),
+    );
+    await harness.user.tab();
+    await harness.user.click(screen.getByRole('button', { name: 'Add' }));
+    await screen.findByText('And who else?');
+
+    const request = await harness.submit();
+    const rows = request?.stageDocument.prompts;
+    const added = Array.isArray(rows) ? rows.at(-1) : undefined;
+    expect(added).toEqual({
+      id: expect.any(String) as unknown as string,
+      text: 'And who else?',
+    });
+    expect(Object.hasOwn(added as object, 'negativeLabel')).toBe(false);
+  });
+
+  it('waits for a subject when the prompts describe one', async () => {
+    const harness = renderStageEditor({
+      stage: {
+        type: 'NameGenerator',
+        fields: { label: 'New stage' },
+      },
+      sections: (
+        <PromptsSection
+          PromptEditor={TestPromptEditor}
+          PromptPreview={TestPromptPreview}
+        />
+      ),
+    });
+
+    await waitFor(() => expect(harness.outline()).toHaveLength(1));
+    expect(harness.outline()[0]).toEqual({
+      title: 'Prompts',
+      state: 'Not available yet',
+    });
+    expect(
+      screen.getByRole('button', { name: 'Create new prompt' }),
+    ).toBeDisabled();
+  });
+});
