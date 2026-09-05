@@ -312,6 +312,48 @@ export function describeResourceGatewayContract(
       ]);
     });
 
+    it('refuses a JSON roster whose entries are not objects, and names the one that is not', async () => {
+      const stageJson = async (
+        requestId: string,
+        network: unknown,
+      ): Promise<ResourceDescriptor> =>
+        expectOk(
+          await gateway().stageUpload({
+            requestId,
+            kind: 'network',
+            name: 'Roster with a hole',
+            source: `${requestId}.json`,
+            contentType: 'application/json',
+            bytes: new TextEncoder().encode(JSON.stringify(network)),
+          }),
+        );
+
+      const holed = await stageJson('request-holed-roster', {
+        nodes: [{ attributes: { name: 'Ada' } }, null],
+        edges: [],
+      });
+      const badAttributes = await stageJson('request-bad-attributes-roster', {
+        nodes: [{ attributes: 'Ada' }],
+        edges: [],
+      });
+
+      const holedFailure = expectFailure(await gateway().inspect(holed.id));
+      const attributesFailure = expectFailure(
+        await gateway().inspect(badAttributes.id),
+      );
+
+      // The interview's own loader throws on both of these, so an adapter that
+      // only counts the array lets a protocol commit a field pointing at a
+      // roster that fails the moment the interview opens it — with a manifest
+      // entry that looks perfectly valid. The row is named because that is the
+      // one thing the researcher has to go and fix.
+      expect(holedFailure.reason).toBe('invalid-content');
+      expect(holedFailure.retryable).toBe(false);
+      expect(holedFailure.message).toContain('node 2');
+      expect(attributesFailure.reason).toBe('invalid-content');
+      expect(attributesFailure.message).toContain('node 1');
+    });
+
     it('downloads the exact bytes of committed and staged content', async () => {
       const staged = await stageImage();
 

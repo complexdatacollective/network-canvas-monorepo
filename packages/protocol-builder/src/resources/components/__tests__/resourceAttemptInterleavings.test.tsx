@@ -6,6 +6,7 @@ import ProtocolField from '../../../form/ProtocolField.tsx';
 import { ResourceGatewayProvider } from '../../context.tsx';
 import {
   resourceFailure,
+  RESOURCE_UPLOAD_MAX_BYTE_LENGTH,
   type ProtocolBuilderResourceGateway,
   type ResourceDescriptor,
   type ResourcePreview as ResolvedPreview,
@@ -16,6 +17,7 @@ import { InMemoryResourceGateway } from '../../InMemoryResourceGateway.ts';
 import ResourcePickerControl from '../ResourcePickerControl.tsx';
 import ResourcePreview, {
   PREVIEW_RENEWAL_LEAD_MS,
+  PREVIEW_RENEWAL_MIN_INTERVAL_MS,
 } from '../ResourcePreview.tsx';
 import ResourceSecretControl from '../ResourceSecretControl.tsx';
 import {
@@ -51,6 +53,9 @@ type Interleaving = Readonly<{
 }>;
 
 const SECRET = 'pk.eyJ1IjoicmVzZWFyY2hlciIsImEiOiJzZWNyZXQifQ';
+
+const OVERSIZE_FILE =
+  'That file is too large to import. Files can be up to 8.0 MB.';
 
 const UNSUPPORTED_IMAGE_FILE =
   'That file cannot be imported here. Supported file types are: .jpg, .jpeg, .gif, .png, .svg.';
@@ -558,39 +563,155 @@ const INTERLEAVINGS: readonly Interleaving[] = [
     },
   },
   {
+    surface: 'upload',
+    state: 'a file larger than the import limit is chosen',
+    input: 'nothing else — its size alone decides it',
+    rule: 'it is refused without ever being read',
+    check: async () => {
+      const user = userEvent.setup();
+      const gateway = new InMemoryResourceGateway();
+      const stageUpload = vi.spyOn(gateway, 'stageUpload');
+      renderResourceEditor({ gateway, children: imageField() });
+
+      const input = await openBrowser(user, 'Select an image');
+      const arrayBuffer = vi.fn(() => Promise.resolve(new ArrayBuffer(0)));
+      const huge = new File([''], 'huge.png', { type: 'image/png' });
+      Object.defineProperty(huge, 'size', {
+        value: RESOURCE_UPLOAD_MAX_BYTE_LENGTH + 1,
+      });
+      Object.defineProperty(huge, 'arrayBuffer', { value: arrayBuffer });
+      await user.upload(input, huge);
+
+      expect(await screen.findByText(OVERSIZE_FILE)).toBeVisible();
+      // Reading the file to learn what its own size already said is what
+      // pulls a file of any size into memory just to refuse it.
+      expect(arrayBuffer).not.toHaveBeenCalled();
+      expect(stageUpload).not.toHaveBeenCalled();
+    },
+  },
+  {
+    surface: 'upload',
+    state: 'an import in flight',
+    input: 'the browser is cancelled',
+    rule: 'what it staged is discarded rather than left at the host',
+    check: async () => {
+      const user = userEvent.setup();
+      const gateway = new InMemoryResourceGateway();
+      const discardStaged = vi.spyOn(gateway, 'discardStaged');
+      const { fieldValue, session } = renderResourceEditor({
+        gateway,
+        children: imageField(),
+      });
+
+      const input = await openBrowser(user, 'Select an image');
+      const held = heldFile('late.png', 'image/png', bytesOf('late'));
+      await user.upload(input, held.file);
+      await user.click(screen.getByRole('button', { name: 'Cancel' }));
+      // The host answers an import whose surface has gone. Suppressing the
+      // callback is not enough: the resource exists, the session is tracking
+      // it, and no field will ever name it.
+      held.read();
+
+      await waitFor(() =>
+        expect(discardStaged).toHaveBeenCalledWith('staged-resource-1'),
+      );
+      expect(gateway.getStagingResidue()).toEqual([]);
+      expect(session.getSnapshot().stagedResources).toEqual([]);
+      expect(fieldValue('backgroundImage')).toBeUndefined();
+    },
+  },
+  {
+    surface: 'secret',
+    state: 'a submitted key in flight',
+    input: 'the surface goes away before the host answers',
+    rule: 'the staged key is discarded rather than held for a form nobody is watching',
+    check: async () => {
+      const user = userEvent.setup();
+      const inner = new InMemoryResourceGateway();
+      const discardStaged = vi.spyOn(inner, 'discardStaged');
+      const held = deferred<ResourceResult<StagedSecret>>();
+      const staged = vi.fn<(descriptor: ResourceDescriptor) => void>();
+      const { unmount } = render(
+        <ResourceGatewayProvider
+          gateway={overrideGateway(inner, { stageSecret: () => held.promise })}
+        >
+          <ResourceSecretControl onStaged={staged} />
+        </ResourceGatewayProvider>,
+      );
+
+      await user.type(screen.getByLabelText('Name'), 'Mapbox key');
+      await user.type(screen.getByLabelText('Key'), SECRET);
+      await user.click(screen.getByRole('button', { name: 'Add API key' }));
+
+      unmount();
+      held.settle(
+        await inner.stageSecret({
+          requestId: 'abandoned',
+          name: 'Mapbox key',
+          value: SECRET,
+        }),
+      );
+
+      await waitFor(() =>
+        expect(discardStaged).toHaveBeenCalledWith('staged-resource-1'),
+      );
+      // A key the host goes on holding for a form that is gone is worse than
+      // abandoned bytes: nothing left knows it is there.
+      expect(inner.getStagingResidue()).toEqual([]);
+      expect(staged).not.toHaveBeenCalled();
+    },
+  },
+  {
     surface: 'preview',
     state: 'a lease being renewed',
     input: 'the renewal has not answered yet',
     rule: 'the lease in use goes on playing and is not released',
     check: async () => {
-      const inner = new InMemoryResourceGateway();
-      const resourceId = await stageImage(inner, 'renewal-held', 'leased.png');
-      const host = leasingHost(inner, PREVIEW_RENEWAL_LEAD_MS + 30, 'hold');
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+      try {
+        const inner = new InMemoryResourceGateway();
+        const resourceId = await stageImage(
+          inner,
+          'renewal-held',
+          'leased.png',
+        );
+        const host = leasingHost(inner, PREVIEW_RENEWAL_LEAD_MS + 30, 'hold');
 
-      renderPreview(host.gateway, resourceId, 'Leased image');
-      await waitFor(() =>
+        renderPreview(host.gateway, resourceId, 'Leased image');
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(1);
+        });
         expect(
           screen.getByRole('img', { name: 'Leased image' }).getAttribute('src'),
-        ).toContain('#lease-1'),
-      );
+        ).toContain('#lease-1');
 
-      await waitFor(() => expect(host.renewals).toHaveLength(1));
-      // The renewal is undecided, and the URL on screen still works: throwing
-      // it away here is what stops an audio or video element mid-playback.
-      expect(
-        screen.getByRole('img', { name: 'Leased image' }).getAttribute('src'),
-      ).toContain('#lease-1');
-      expect(host.released()).toBe(0);
+        // This lease ends 30ms after the lead, so the renewal falls due on the
+        // floor rather than on the lead — asking again in 30ms would be the
+        // host answering as fast as it can, for as long as the preview shows.
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(PREVIEW_RENEWAL_MIN_INTERVAL_MS);
+        });
+        expect(host.renewals).toHaveLength(1);
+        // The renewal is undecided, and the URL on screen still works:
+        // throwing it away here is what stops an audio or video element
+        // mid-playback.
+        expect(
+          screen.getByRole('img', { name: 'Leased image' }).getAttribute('src'),
+        ).toContain('#lease-1');
+        expect(host.released()).toBe(0);
 
-      await act(async () => {
-        host.renewals[0]?.settle(await host.issue(resourceId));
-        await flushPendingWork();
-      });
+        await act(async () => {
+          host.renewals[0]?.settle(await host.issue(resourceId));
+          await vi.advanceTimersByTimeAsync(0);
+        });
 
-      expect(
-        screen.getByRole('img', { name: 'Leased image' }).getAttribute('src'),
-      ).toContain('#lease-2');
-      expect(host.released()).toBe(1);
+        expect(
+          screen.getByRole('img', { name: 'Leased image' }).getAttribute('src'),
+        ).toContain('#lease-2');
+        expect(host.released()).toBe(1);
+      } finally {
+        vi.useRealTimers();
+      }
     },
   },
   {
@@ -648,32 +769,50 @@ const INTERLEAVINGS: readonly Interleaving[] = [
     input: 'the field moves to another resource',
     rule: 'every lease for the resource left behind is released',
     check: async () => {
-      const inner = new InMemoryResourceGateway();
-      const first = await stageImage(inner, 'renewal-switch-1', 'first.png');
-      const second = await stageImage(inner, 'renewal-switch-2', 'second.png');
-      const host = leasingHost(inner, PREVIEW_RENEWAL_LEAD_MS + 30, 'hold');
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+      try {
+        const inner = new InMemoryResourceGateway();
+        const first = await stageImage(inner, 'renewal-switch-1', 'first.png');
+        const second = await stageImage(
+          inner,
+          'renewal-switch-2',
+          'second.png',
+        );
+        const host = leasingHost(inner, PREVIEW_RENEWAL_LEAD_MS + 30, 'hold');
 
-      const { rerender } = renderPreview(host.gateway, first, 'First');
-      await screen.findByRole('img', { name: 'First' });
-      await waitFor(() => expect(host.renewals).toHaveLength(1));
+        const { rerender } = renderPreview(host.gateway, first, 'First');
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(1);
+        });
+        screen.getByRole('img', { name: 'First' });
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(PREVIEW_RENEWAL_MIN_INTERVAL_MS);
+        });
+        expect(host.renewals).toHaveLength(1);
 
-      rerender(
-        <ResourceGatewayProvider gateway={host.gateway}>
-          <ResourcePreview resourceId={second} kind="image" name="Second" />
-        </ResourceGatewayProvider>,
-      );
-      await screen.findByRole('img', { name: 'Second' });
+        rerender(
+          <ResourceGatewayProvider gateway={host.gateway}>
+            <ResourcePreview resourceId={second} kind="image" name="Second" />
+          </ResourceGatewayProvider>,
+        );
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(1);
+        });
+        screen.getByRole('img', { name: 'Second' });
 
-      // The renewal for the resource the field left answers at last. Nothing
-      // will ever render it, so nothing else would ever release it.
-      await act(async () => {
-        host.renewals[0]?.settle(await host.issue(first));
-        await flushPendingWork();
-      });
+        // The renewal for the resource the field left answers at last.
+        // Nothing will ever render it, so nothing else would ever release it.
+        await act(async () => {
+          host.renewals[0]?.settle(await host.issue(first));
+          await vi.advanceTimersByTimeAsync(0);
+        });
 
-      expect(screen.getByRole('img', { name: 'Second' })).toBeVisible();
-      expect(host.issued()).toBe(3);
-      expect(host.released()).toBe(2);
+        expect(screen.getByRole('img', { name: 'Second' })).toBeVisible();
+        expect(host.issued()).toBe(3);
+        expect(host.released()).toBe(2);
+      } finally {
+        vi.useRealTimers();
+      }
     },
   },
   {

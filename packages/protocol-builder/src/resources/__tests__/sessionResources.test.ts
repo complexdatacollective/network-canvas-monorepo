@@ -87,6 +87,12 @@ type SessionFixtureOptions = Readonly<{
    * nothing has committed the manifest yet.
    */
   duringApply?: (session: ProtocolBuilderSessionStore) => Promise<void>;
+  /**
+   * Runs inside the finish's readability check, before any promotion has
+   * started — the window in which the plan is fixed, the bytes are still
+   * staged, and nothing is being promoted. Run once, for the first inspection.
+   */
+  duringInspect?: (session: ProtocolBuilderSessionStore) => Promise<void>;
 }>;
 
 function createFixture(options: SessionFixtureOptions = {}) {
@@ -117,19 +123,30 @@ function createFixture(options: SessionFixtureOptions = {}) {
   let sessionInstance: ProtocolBuilderSessionStore | undefined;
   const gateway = new InMemoryResourceGateway(options.gateway);
   const gate = options.stagingGate;
-  // The port the session is given: the host itself, or the host behind a gate
-  // that keeps its staging calls in flight until the test releases them.
+  let inspected = false;
+  // The port the session is given: the host itself, or the host behind the
+  // hooks a test uses to act from inside a call that is still in flight.
   const sessionGatewayPort: ProtocolBuilderResourceGateway =
-    gate === undefined
+    gate === undefined && options.duringInspect === undefined
       ? gateway
       : {
           list: (listOptions) => gateway.list(listOptions),
-          inspect: (resourceId) => gateway.inspect(resourceId),
           download: (resourceId) => gateway.download(resourceId),
           resolvePreview: (resourceId) => gateway.resolvePreview(resourceId),
           discardStaged: (resourceId) => gateway.discardStaged(resourceId),
           discardAllStaged: () => gateway.discardAllStaged(),
           promote: (request) => gateway.promote(request),
+          inspect: async (resourceId) => {
+            if (
+              options.duringInspect !== undefined &&
+              sessionInstance !== undefined &&
+              !inspected
+            ) {
+              inspected = true;
+              await options.duringInspect(sessionInstance);
+            }
+            return gateway.inspect(resourceId);
+          },
           stageUpload: async (request) => {
             await gate;
             return gateway.stageUpload(request);
@@ -773,6 +790,58 @@ describe('a session that stages resources', () => {
     expect(expectFailure(landed).reason).toBe('not-found');
     expect(session.getSnapshot().stagedResources).toEqual([]);
     // The key would otherwise stay with the host, for a session that is over.
+    expect(gateway.getStagingResidue()).toEqual([]);
+  });
+
+  it('refuses a cancel that arrives while the finish is still deciding', async () => {
+    const cancels: ResourceResult<undefined>[] = [];
+    const { gateway, host, session } = createFixture({
+      stage: 'NameGeneratorRoster',
+      duringInspect: async (current) => {
+        cancels.push(await current.cancel());
+      },
+    });
+    const roster = await stageRoster(session, 'roster-request');
+    session.dispatch([{ op: 'set', key: 'dataSource', value: roster.id }]);
+
+    await session.finish();
+
+    // Nothing is being promoted at this point — the finish is still asking
+    // whether it may promote at all. A cancel let through here would discard
+    // the roster the finish goes on to commit, and would tell the researcher
+    // their stage had been thrown away while it was being saved.
+    expect(cancels).toEqual([
+      {
+        status: 'failed',
+        failure: expect.objectContaining({
+          reason: 'unavailable',
+          retryable: true,
+        }),
+      },
+    ]);
+    expect(host.getSnapshot().protocolSections[assetsSection]).toMatchObject({
+      [roster.id]: { type: 'network' },
+    });
+    expect(gateway.getStagingResidue()).toEqual([]);
+  });
+
+  it('lets the session be cancelled after a finish that could not commit', async () => {
+    const { gateway, session } = createFixture({
+      stage: 'NameGeneratorRoster',
+    });
+    const roster = await stageRoster(session, 'roster-request');
+    session.dispatch([{ op: 'set', key: 'dataSource', value: roster.id }]);
+    gateway.failNext('promote', { reason: 'unavailable', retryable: true });
+
+    await expect(session.finish()).rejects.toBeInstanceOf(
+      ResourcePromotionError,
+    );
+
+    // The finish let the session go as it failed. A hold left standing would
+    // refuse every cancel from here on, stranding the roster at the host with
+    // nothing able to name it.
+    expect(await session.cancel()).toMatchObject({ status: 'ok' });
+    expect(session.getSnapshot().stagedResources).toEqual([]);
     expect(gateway.getStagingResidue()).toEqual([]);
   });
 

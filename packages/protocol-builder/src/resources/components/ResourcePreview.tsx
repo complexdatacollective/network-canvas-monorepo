@@ -28,6 +28,20 @@ export type ResourcePreviewProps = Readonly<{
 export const PREVIEW_RENEWAL_LEAD_MS = 5_000;
 
 /**
+ * The shortest a preview will ever wait before asking for another lease.
+ *
+ * The lead alone bounds nothing: a lease that ends just after it — a host
+ * issuing five-second URLs — leaves a lead of a millisecond, and renewing on
+ * it lands another such lease, so the preview asks the host for a URL as fast
+ * as it can answer, for as long as it is on screen. A floor makes the renewal
+ * a renewal rather than a poll. It can let a very short lease lapse between
+ * asks, which is the same thing that already happens to a lease shorter than
+ * the lead: no policy here can keep a URL alive that the host will not issue
+ * for longer than it takes to use.
+ */
+export const PREVIEW_RENEWAL_MIN_INTERVAL_MS = 5_000;
+
+/**
  * Renders a resource's content from a URL the host resolved.
  *
  * The URL is a lease, not a fact: the host may be holding an object URL, a
@@ -108,7 +122,10 @@ export default function ResourcePreview({
       if (expiresAt === undefined) return;
       const lead = expiresAt - Date.now() - PREVIEW_RENEWAL_LEAD_MS;
       if (lead <= 0) return;
-      renewal = setTimeout(() => void load(), lead);
+      renewal = setTimeout(
+        () => void load(),
+        Math.max(lead, PREVIEW_RENEWAL_MIN_INTERVAL_MS),
+      );
     };
 
     void load();

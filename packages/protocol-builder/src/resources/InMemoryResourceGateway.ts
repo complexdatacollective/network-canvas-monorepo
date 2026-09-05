@@ -1,12 +1,14 @@
 import csv from 'csvtojson';
 
 import type { Asset } from '@codaco/protocol-validation';
+import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { Command } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import {
   resourceFailure,
   resourceOk,
+  RESOURCE_UPLOAD_MAX_BYTE_LENGTH,
   stagedSecretHandle,
   validateManifestEntry,
   type ManifestApplyOutcome,
@@ -65,7 +67,11 @@ export type InMemoryResourceGatewayOptions = Readonly<{
   committed?: readonly InMemoryResourceSeed[];
   /** Deterministic by default: `staged-resource-1`, `staged-resource-2`, … */
   createResourceId?: () => string;
-  /** Largest content the host will accept for one resource. */
+  /**
+   * Largest content the host will accept for one resource. Defaults to
+   * {@link RESOURCE_UPLOAD_MAX_BYTE_LENGTH}, which is also what the editor's
+   * own import control refuses a file for before it reads it.
+   */
   maxByteLength?: number;
   readOnly?: boolean;
 }>;
@@ -147,7 +153,8 @@ export class InMemoryResourceGateway implements ProtocolBuilderResourceGateway {
     let nextResourceId = 1;
     this.createResourceId =
       options.createResourceId ?? (() => `staged-resource-${nextResourceId++}`);
-    this.maxByteLength = options.maxByteLength ?? 8 * 1024 * 1024;
+    this.maxByteLength =
+      options.maxByteLength ?? RESOURCE_UPLOAD_MAX_BYTE_LENGTH;
     this.readOnly = options.readOnly ?? false;
 
     for (const seed of options.committed ?? []) {
@@ -439,12 +446,10 @@ export class InMemoryResourceGateway implements ProtocolBuilderResourceGateway {
     }
 
     const network = await parseRoster(found.descriptor, found.content);
-    if (network === undefined) {
-      return resourceFailure(
-        'invalid-content',
-        'the selected file is not a readable network',
-        { resourceId },
-      );
+    if ('unreadable' in network) {
+      return resourceFailure('invalid-content', network.unreadable, {
+        resourceId,
+      });
     }
     return resourceOk(
       Object.freeze({
@@ -827,6 +832,24 @@ type RosterFacts = Readonly<{
 }>;
 
 /**
+ * Why a file is not a network, in the researcher's terms. Lower case and
+ * without a full stop, because every surface that shows it puts it after a
+ * clause of its own.
+ */
+type UnreadableRoster = Readonly<{ unreadable: string }>;
+
+const UNREADABLE_ROSTER = 'the selected file is not a readable network';
+
+function unreadableRoster(detail?: string): UnreadableRoster {
+  return Object.freeze({
+    unreadable:
+      detail === undefined
+        ? UNREADABLE_ROSTER
+        : `${UNREADABLE_ROSTER}: ${detail}`,
+  });
+}
+
+/**
  * The facts a researcher picks a roster on, read from the file the same way
  * Architect reads it: which format the resource is in is decided by its
  * filename, exactly as Architect's own `networkReader` switches on the
@@ -836,7 +859,7 @@ type RosterFacts = Readonly<{
 function parseRoster(
   descriptor: ResourceDescriptor,
   content: StoredContent,
-): Promise<RosterFacts | undefined> {
+): Promise<RosterFacts | UnreadableRoster> {
   const text = new TextDecoder().decode(content.bytes);
   return isCsvRoster(descriptor, content)
     ? parseCsvRoster(text)
@@ -860,7 +883,9 @@ function isCsvRoster(
  * header names is content the researcher has to fix, not a row to silently
  * keep half of.
  */
-async function parseCsvRoster(text: string): Promise<RosterFacts | undefined> {
+async function parseCsvRoster(
+  text: string,
+): Promise<RosterFacts | UnreadableRoster> {
   const converter = csv({ checkColumn: true });
   // A mismatched row is reported as an event and the row is dropped: the parse
   // still settles, with a roster quietly shorter than the file. Listening is
@@ -874,12 +899,12 @@ async function parseCsvRoster(text: string): Promise<RosterFacts | undefined> {
   try {
     rows = await converter.fromString(text);
   } catch {
-    return undefined;
+    return unreadableRoster();
   }
-  if (malformed || !Array.isArray(rows)) return undefined;
+  if (malformed || !Array.isArray(rows)) return unreadableRoster();
   const parsedRows: readonly unknown[] = rows;
   const attributes = parsedRows.filter(isAttributeRecord);
-  if (attributes.length !== parsedRows.length) return undefined;
+  if (attributes.length !== parsedRows.length) return unreadableRoster();
 
   return Object.freeze({
     counts: Object.freeze({ nodes: attributes.length, edges: 0 }),
@@ -887,31 +912,53 @@ async function parseCsvRoster(text: string): Promise<RosterFacts | undefined> {
   });
 }
 
-function parseJsonRoster(text: string): RosterFacts | undefined {
+/**
+ * A JSON roster, read exactly as far as the interview runtime reads it.
+ *
+ * Every entry of `nodes` is checked, not just counted: `loadExternalData`'s
+ * `parseExternalNode` throws on an entry that is not an object, and on one
+ * whose attributes are not an object, so a roster carrying either is a file
+ * the interview cannot load. Counting it as a readable node here is what lets
+ * a protocol commit a field pointing at a roster that fails when it is used,
+ * with a manifest entry that looks perfectly valid — so the entry is named
+ * and the file is refused instead.
+ */
+function parseJsonRoster(text: string): RosterFacts | UnreadableRoster {
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
   } catch {
-    return undefined;
+    return unreadableRoster();
   }
-  if (!isAttributeRecord(parsed)) return undefined;
+  if (!isAttributeRecord(parsed)) return unreadableRoster();
   const nodes: readonly unknown[] | undefined = Array.isArray(parsed.nodes)
     ? parsed.nodes
     : undefined;
   const edges: readonly unknown[] = Array.isArray(parsed.edges)
     ? parsed.edges
     : [];
-  if (nodes === undefined) return undefined;
+  if (nodes === undefined) return unreadableRoster();
+
+  const nodeAttributes: Readonly<Record<string, unknown>>[] = [];
+  for (const [index, node] of nodes.entries()) {
+    // One-based, because it names a row of the researcher's own file.
+    const position = index + 1;
+    if (!isAttributeRecord(node)) {
+      return unreadableRoster(`node ${position} is not an object`);
+    }
+    const attributes: unknown = node[entityAttributesProperty];
+    if (attributes === undefined) continue;
+    if (!isAttributeRecord(attributes)) {
+      return unreadableRoster(
+        `the attributes of node ${position} are not an object`,
+      );
+    }
+    nodeAttributes.push(attributes);
+  }
 
   return Object.freeze({
     counts: Object.freeze({ nodes: nodes.length, edges: edges.length }),
-    variableNames: attributeNames(
-      nodes.flatMap((node) => {
-        if (!isAttributeRecord(node)) return [];
-        const attributes: unknown = node.attributes;
-        return isAttributeRecord(attributes) ? [attributes] : [];
-      }),
-    ),
+    variableNames: attributeNames(nodeAttributes),
   });
 }
 

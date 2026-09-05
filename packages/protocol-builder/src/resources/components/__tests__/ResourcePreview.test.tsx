@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ResourceGatewayProvider } from '../../context.tsx';
@@ -11,6 +11,7 @@ import {
 import { InMemoryResourceGateway } from '../../InMemoryResourceGateway.ts';
 import ResourcePreview, {
   PREVIEW_RENEWAL_LEAD_MS,
+  PREVIEW_RENEWAL_MIN_INTERVAL_MS,
 } from '../ResourcePreview.tsx';
 import {
   deferred,
@@ -236,24 +237,75 @@ function leasingGateway(
 
 describe('a preview whose URL is a lease that ends', () => {
   it('takes a new lease before the old one expires, and lets the old one go', async () => {
-    const gateway = new InMemoryResourceGateway();
-    const image = await stageImage(gateway, 'request-leased', 'leased.png');
-    // Just long enough that the renewal is scheduled rather than skipped.
-    const host = leasingGateway(gateway, PREVIEW_RENEWAL_LEAD_MS + 30);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    try {
+      const gateway = new InMemoryResourceGateway();
+      const image = await stageImage(gateway, 'request-leased', 'leased.png');
+      // Just long enough that the renewal is scheduled rather than skipped.
+      const host = leasingGateway(gateway, PREVIEW_RENEWAL_LEAD_MS + 30);
 
-    renderPreview(host.gateway, image, 'Leased image');
-    const rendered = await screen.findByRole('img', { name: 'Leased image' });
-    expect(rendered.getAttribute('src')).toContain('#lease-1');
-
-    // A stage editor stays open far longer than a signed URL lives, so an
-    // image that silently stops loading looks like a resource the protocol
-    // lost.
-    await waitFor(() =>
+      renderPreview(host.gateway, image, 'Leased image');
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1);
+      });
       expect(
         screen.getByRole('img', { name: 'Leased image' }).getAttribute('src'),
-      ).toContain('#lease-2'),
-    );
-    expect(host.released()).toBe(1);
+      ).toContain('#lease-1');
+
+      // A stage editor stays open far longer than a signed URL lives, so an
+      // image that silently stops loading looks like a resource the protocol
+      // lost.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(PREVIEW_RENEWAL_MIN_INTERVAL_MS);
+      });
+      expect(
+        screen.getByRole('img', { name: 'Leased image' }).getAttribute('src'),
+      ).toContain('#lease-2');
+      expect(host.released()).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('never renews faster than the minimum interval, however short the lease', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    try {
+      const gateway = new InMemoryResourceGateway();
+      const image = await stageImage(gateway, 'request-brief', 'brief.png');
+      // A lease one millisecond longer than the lead. Renewing on the lead
+      // alone would ask again in a millisecond, be answered with another such
+      // lease, and go on doing that for as long as the preview is on screen.
+      const host = leasingGateway(gateway, PREVIEW_RENEWAL_LEAD_MS + 1);
+
+      renderPreview(host.gateway, image, 'Brief lease');
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1);
+      });
+      expect(host.issued()).toBe(1);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(
+          PREVIEW_RENEWAL_MIN_INTERVAL_MS - 100,
+        );
+      });
+      expect(host.issued()).toBe(1);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(200);
+      });
+      expect(host.issued()).toBe(2);
+
+      // And the one after it is a renewal too, not a poll that happens to
+      // have started slowly.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(
+          PREVIEW_RENEWAL_MIN_INTERVAL_MS - 300,
+        );
+      });
+      expect(host.issued()).toBe(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('leaves a lease with no end alone', async () => {

@@ -6,7 +6,8 @@ import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 
 import { useResourceGateway } from '../context.tsx';
-import type { ResourceDescriptor } from '../gateway.ts';
+import type { ResourceDescriptor, StagedSecret } from '../gateway.ts';
+import { discardAbandonedStaging } from './abandonedStaging.ts';
 import ResourceFailureNotice from './ResourceFailureNotice.tsx';
 import { useResourceAttempt } from './useResourceAttempt.ts';
 
@@ -121,6 +122,12 @@ export default function ResourceSecretControl({
         setStatus(`${staged.descriptor.name} was added.`);
         onStaged(staged.descriptor);
       },
+      // The key was staged for a form nobody is watching any more — the
+      // researcher edited it into a new intent, or closed the browser. A
+      // secret held by the host for a choice that no longer exists is worse
+      // than abandoned bytes, so it goes now rather than at the finish.
+      (staged: StagedSecret) =>
+        discardAbandonedStaging(gateway, staged.descriptor),
     );
   };
 

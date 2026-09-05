@@ -4,17 +4,20 @@ import { v4 as uuid } from 'uuid';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import { useResourceGateway } from '../context.tsx';
-import type {
-  ProtocolBuilderResourceGateway,
-  ResourceDescriptor,
-  ResourceResult,
-  StageUploadRequest,
+import {
+  RESOURCE_UPLOAD_MAX_BYTE_LENGTH,
+  type ProtocolBuilderResourceGateway,
+  type ResourceDescriptor,
+  type ResourceResult,
+  type StageUploadRequest,
 } from '../gateway.ts';
+import { discardAbandonedStaging } from './abandonedStaging.ts';
 import ResourceFailureNotice from './ResourceFailureNotice.tsx';
 import {
   acceptedExtensions,
   contentKindForFile,
   contentTypeForFile,
+  oversizeFileMessage,
   sourceFilename,
   unsupportedFileMessage,
   type ResourcePickerKind,
@@ -109,6 +112,15 @@ export default function ResourceUploadControl({
         return;
       }
 
+      // Before the file is read, not after: staging takes the bytes, so a
+      // control that waits for the host to refuse has already pulled a file
+      // of any size into memory to be told what its own `size` said all
+      // along — and the file picked by mistake is the large one.
+      if (file.size > RESOURCE_UPLOAD_MAX_BYTE_LENGTH) {
+        setRejected(oversizeFileMessage(RESOURCE_UPLOAD_MAX_BYTE_LENGTH));
+        return;
+      }
+
       let bytes: Uint8Array;
       try {
         bytes = new Uint8Array(await file.arrayBuffer());
@@ -140,6 +152,10 @@ export default function ResourceUploadControl({
           setStatus(`${descriptor.name} was imported.`);
           onStaged(descriptor);
         },
+        // The import landed with nothing left to hand it to: another file was
+        // chosen, or the browser was closed. No field will ever name it, so
+        // the host is told to let it go.
+        (descriptor) => discardAbandonedStaging(gateway, descriptor),
       );
     },
     [begin, gateway, kind, onStaged],

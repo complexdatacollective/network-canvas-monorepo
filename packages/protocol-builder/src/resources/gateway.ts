@@ -165,6 +165,17 @@ export type ResourceListOptions = Readonly<{
   status?: ResourceStatus;
 }>;
 
+/**
+ * The largest file an editor will read into memory to stage it.
+ *
+ * A limit the editor knows, not only one the host enforces: `stageUpload`
+ * takes bytes, so a control that waits for the host to refuse has already read
+ * the whole file to learn it was too big — and the file a researcher picks by
+ * mistake is exactly the one large enough to matter. A host may still refuse
+ * something smaller, and that refusal is reported as any other is.
+ */
+export const RESOURCE_UPLOAD_MAX_BYTE_LENGTH = 8 * 1024 * 1024;
+
 export type StageUploadRequest = Readonly<{
   /** Stable across an uncertain retry so a host stages the file once. */
   requestId: string;

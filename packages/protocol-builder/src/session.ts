@@ -37,6 +37,7 @@ import {
   mergeDraftValidationIssues,
   stageIndexForValidation,
   type StagedResourceDiscardFailure,
+  type StagedResourceFinishOutcome,
   type StagedResourceTracker,
 } from './resources/lifecycle.ts';
 import { collectStageResourceReferences } from './resources/references.ts';
@@ -329,8 +330,11 @@ export class InvalidProtocolDraftError extends Error {
 }
 
 /**
- * A finish whose resource promotion was rolled back. Nothing was committed and
- * nothing was discarded, so the same finish can simply be tried again.
+ * A finish that could not commit its resources: the promotion was rolled back,
+ * or the session would not let this finish start at all because a cancel or
+ * another finish already had it. Nothing was committed and nothing was
+ * discarded either way, so the same finish can be tried again whenever the
+ * failure says it is retryable.
  */
 export class ResourcePromotionError extends Error {
   readonly failure: ResourceGatewayFailure;
@@ -703,24 +707,39 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       return;
     }
 
+    // Takes the session for this finish, and closes the staging window as it
+    // reads it: an upload or secret that lands while this promotion is in
+    // flight is one this finish already decided against, and no later one
+    // would ever look at it. A cancel — or another finish — that arrives from
+    // here on is refused until the hold is released, so the two can never both
+    // report success over the same resources.
+    const hold = resources.finishing();
+    if (hold.status === 'failed') {
+      throw new ResourcePromotionError(hold.failure);
+    }
+
     // Stable across a retried finish so an uncertain promotion happens once,
     // and released as soon as one succeeds so the next finish is its own.
     this.promotionId ??= uuid({});
-    const outcome = await finishStagedResources({
-      gateway: resources.gateway,
-      promotionId: this.promotionId,
-      stageDocument: document,
-      stageIndex: stageIndexForValidation(
-        this.snapshot.protocolSections,
-        this.snapshot.editedSection.identity.id,
-      ),
-      // Closes the staging window as it reads it: an upload or secret that
-      // lands while this promotion is in flight is one this finish already
-      // decided against, and no later one would ever look at it.
-      staged: resources.finishing(),
-      secretHandle: (resourceId) => resources.secretHandle(resourceId),
-      applyStage,
-    });
+    let outcome: StagedResourceFinishOutcome;
+    try {
+      outcome = await finishStagedResources({
+        gateway: resources.gateway,
+        promotionId: this.promotionId,
+        stageDocument: document,
+        stageIndex: stageIndexForValidation(
+          this.snapshot.protocolSections,
+          this.snapshot.editedSection.identity.id,
+        ),
+        staged: hold.data.staged,
+        secretHandle: (resourceId) => resources.secretHandle(resourceId),
+        applyStage,
+      });
+    } finally {
+      // Released before anything below can throw: a hold left standing would
+      // refuse every later cancel, stranding the session's staged resources.
+      hold.data.settle();
+    }
 
     if (outcome.status === 'unreadable-resources') {
       // The draft is invalid for the same reason a dangling reference makes it

@@ -232,6 +232,14 @@ export function unsupportedFileMessage(kind: ResourcePickerKind): string {
   return `That file cannot be imported here. Supported file types are: ${accepted.join(', ')}.`;
 }
 
+/**
+ * What a researcher is told when the file they chose is too big to import.
+ * One sentence with the limit in it, so it can be translated whole.
+ */
+export function oversizeFileMessage(maxByteLength: number): string {
+  return `That file is too large to import. Files can be up to ${formatByteLength(maxByteLength)}.`;
+}
+
 /** Human-readable size for a resource's stored content. */
 export function formatByteLength(byteLength: number): string {
   if (byteLength < 1024) return `${byteLength} bytes`;

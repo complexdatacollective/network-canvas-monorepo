@@ -4,6 +4,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import {
   resourceFailure,
+  resourceOk,
   type ManifestApplyRequest,
   type ProtocolBuilderResourceGateway,
   type ResourceDescriptor,
@@ -64,15 +65,15 @@ export type StagedResourceTracker = Readonly<{
    * because the call that started it belongs to a session that is over and
    * nothing else would ever drop it.
    *
-   * Refused while a promotion is in flight, because that promotion's manifest
-   * apply is mid-way through committing exactly these resources: discarding
-   * them now would leave the committed stage pointing at bytes this session
-   * threw away.
+   * Refused while a finish holds the session, because that finish is mid-way
+   * through deciding — and then committing — exactly these resources:
+   * discarding them now would leave the committed stage pointing at bytes this
+   * session threw away, and would report a cancel that had not happened.
    */
   cancel(): Promise<ResourceResult<undefined>>;
   /**
-   * Closes this session's staging window and returns what the finish that is
-   * starting has to decide — the same instant, on purpose.
+   * Takes the session for one finish: closes the staging window and returns
+   * what the finish has to decide — the same instant, on purpose.
    *
    * A finish promotes or discards exactly the resources it can see when it
    * plans, so an upload or secret still in flight at that point is decided by
@@ -82,8 +83,28 @@ export type StagedResourceTracker = Readonly<{
    * a result that lands while the promotion is in flight is discarded at the
    * host, exactly as one landing after a cancel is. Staging started after this
    * belongs to the next edit and is kept as usual.
+   *
+   * The hold is what makes a finish and a cancel one decision rather than two
+   * that overlap. Only one of them can be under way, so whichever asks second
+   * is refused and told so; the alternative is a cancel that reports success
+   * while the finish it raced goes on to commit the very resources the cancel
+   * said it had discarded. Refused, too, once the session has cancelled: there
+   * is nothing left to commit and the discard may still be running.
    */
-  finishing(): readonly ResourceDescriptor[];
+  finishing(): ResourceResult<StagedResourceFinishHold>;
+}>;
+
+/**
+ * One finish's hold on a session's staging, and the resources it decides.
+ *
+ * {@link settle} must run however the finish ends — including when it throws —
+ * or the session can never be cancelled again.
+ */
+export type StagedResourceFinishHold = Readonly<{
+  /** Descriptors only, as the staging window closed on them. */
+  staged: readonly ResourceDescriptor[];
+  /** Releases the hold, so a cancel or another finish may take it. */
+  settle: () => void;
 }>;
 
 export type StagedResourceTrackerOptions = Readonly<{
@@ -113,6 +134,17 @@ export function createStagedResourceTracker(
   const promoting = new Set<string>();
   /** True once the session cancelled: nothing staged after it is kept. */
   let cancelled = false;
+  /**
+   * True while a finish holds the session — from the moment it reads its plan
+   * to the moment it has promoted, applied, and cleaned up.
+   *
+   * The whole finish is guarded rather than only its promotion: the inspection
+   * that decides whether the resources may be committed at all runs before any
+   * promotion starts, and a cancel slipping in there would discard the bytes
+   * the finish is about to commit while reporting that the session was
+   * cleanly abandoned.
+   */
+  let finishInFlight = false;
   /**
    * Bumped whenever this session stops staging (a cancel, or a finish that has
    * already chosen what it promotes). A staging call captures it before its
@@ -238,7 +270,7 @@ export function createStagedResourceTracker(
       resourceId: string,
     ): Promise<ResourceResult<undefined>> {
       if (promoting.has(resourceId)) {
-        return promotionInFlightFailure(resourceId);
+        return saveInFlightFailure(resourceId);
       }
       const result = await host.discardStaged(resourceId);
       if (result.status === 'ok') forget([resourceId]);
@@ -246,7 +278,7 @@ export function createStagedResourceTracker(
     },
 
     async discardAllStaged(): Promise<ResourceResult<undefined>> {
-      if (promoting.size > 0) return promotionInFlightFailure();
+      if (promoting.size > 0) return saveInFlightFailure();
       const result = await host.discardAllStaged();
       if (result.status === 'ok') forgetAllStaged();
       return result;
@@ -256,6 +288,12 @@ export function createStagedResourceTracker(
       request: ResourcePromotionRequest,
     ): Promise<ResourceResult<ResourcePromotion>> {
       if (!options.isEditable()) return readOnlyFailure();
+      // Nothing this session staged survives its cancel, so committing any of
+      // it afterwards would publish a manifest entry for bytes the host has
+      // been told to drop — the exact outcome a successful cancel promised
+      // could not happen. Checked here as well as through the finish's hold,
+      // because the gateway is handed to editors that call it directly.
+      if (cancelled) return sessionCancelledFailure();
       // Held for exactly as long as the promotion is undecided, so a discard
       // arriving from the manifest apply — an editor cancelling mid-save — is
       // refused rather than deleting a resource the apply is committing.
@@ -284,7 +322,10 @@ export function createStagedResourceTracker(
   return Object.freeze({
     gateway,
     cancel: async (): Promise<ResourceResult<undefined>> => {
-      if (promoting.size > 0) return promotionInFlightFailure();
+      // A finish that has started is the one deciding these resources, and it
+      // decides them to the end: reporting a clean cancel here would be
+      // reporting something the finish is in the middle of undoing.
+      if (finishInFlight || promoting.size > 0) return saveInFlightFailure();
       // Set before the discard is awaited: staging that lands while the host
       // is clearing up belongs to a session that is already over.
       cancelled = true;
@@ -293,12 +334,30 @@ export function createStagedResourceTracker(
       if (result.status === 'ok') forgetAllStaged();
       return result;
     },
-    finishing: () => {
+    finishing: (): ResourceResult<StagedResourceFinishHold> => {
+      // A cancel sets this before it awaits its discard, so a finish starting
+      // while that discard is still running is refused rather than planning to
+      // promote resources the host is being told to drop.
+      if (cancelled) return sessionCancelledFailure();
+      if (finishInFlight || promoting.size > 0) return saveInFlightFailure();
+      finishInFlight = true;
       // Read before the bump and returned together with it, so there is no
       // moment in which a caller holds the plan while the window is still open.
       const staged = stagedNow();
       stagingWindow += 1;
-      return staged;
+      let settled = false;
+      return resourceOk(
+        Object.freeze({
+          staged,
+          settle: () => {
+            // Idempotent, so a caller that settles on both a normal and an
+            // error path cannot release a hold a later finish has taken.
+            if (settled) return;
+            settled = true;
+            finishInFlight = false;
+          },
+        }),
+      );
     },
     staged: stagedNow,
     secretHandle: (resourceId: string) => entries.get(resourceId)?.handle,
@@ -401,6 +460,11 @@ export type StagedResourceFinishOptions = Readonly<{
    * reported on the same path the schema would have used for the same field.
    */
   stageIndex: number;
+  /**
+   * What this finish decides, from {@link StagedResourceTracker.finishing}'s
+   * hold. The caller keeps that hold for as long as this call runs, so no
+   * cancel can discard these resources while the finish is committing them.
+   */
   staged: readonly ResourceDescriptor[];
   secretHandle(resourceId: string): StagedSecretHandle | undefined;
   /**
@@ -686,15 +750,28 @@ function readOnlyFailure<T>(): ResourceResult<T> {
 }
 
 /**
- * A discard refused because the resources are mid-promotion. Retryable, and
- * true to what the researcher can do: once the save settles, an unwanted
- * resource can be discarded like any other.
+ * A discard, a cancel, or a second finish refused because a save of these
+ * resources is already under way. Retryable, and true to what the researcher
+ * can do: once the save settles, an unwanted resource can be discarded like
+ * any other, and an abandoned stage can be cancelled.
  */
-function promotionInFlightFailure<T>(resourceId?: string): ResourceResult<T> {
+function saveInFlightFailure<T>(resourceId?: string): ResourceResult<T> {
   return resourceFailure(
     'unavailable',
     'these resources are being saved right now, so they cannot be discarded until the save finishes',
     resourceId === undefined ? {} : { resourceId },
+  );
+}
+
+/**
+ * A save refused because the session was cancelled. Not retryable: the cancel
+ * discarded everything this session staged, so repeating the save could only
+ * ever commit a stage whose resources are gone.
+ */
+function sessionCancelledFailure<T>(): ResourceResult<T> {
+  return resourceFailure(
+    'read-only',
+    'this stage was discarded, so its resources can no longer be saved',
   );
 }
 

@@ -32,6 +32,7 @@ export type ResourceAttemptClaim = Readonly<{
   run: <T>(
     operation: () => Promise<ResourceResult<T>>,
     onSuccess?: (data: T) => void,
+    onAbandoned?: (data: T) => void,
   ) => void;
 }>;
 
@@ -46,9 +47,19 @@ export type ResourceAttempt = Readonly<{
    * stable request id, so a repeat cannot stage or promote anything twice.
    */
   retry?: () => void;
+  /**
+   * Runs one gateway call.
+   *
+   * `onAbandoned` receives what a *successful* call produced when nobody is
+   * left to receive it — the researcher has since asked for something else, or
+   * the surface that asked has gone away. Dropping such a result silently is
+   * only safe for a read; a call that made something at the host leaves it
+   * there with nothing knowing its id, so whatever it made is undone here.
+   */
   run: <T>(
     operation: () => Promise<ResourceResult<T>>,
     onSuccess?: (data: T) => void,
+    onAbandoned?: (data: T) => void,
   ) => void;
   /**
    * Takes the next place in the order before the call itself is ready, and
@@ -90,6 +101,7 @@ export function useResourceAttempt(): ResourceAttempt {
     <T>(
       operation: () => Promise<ResourceResult<T>>,
       onSuccess?: (data: T) => void,
+      onAbandoned?: (data: T) => void,
     ): void => {
       sequence.current += 1;
       const attempt = sequence.current;
@@ -102,14 +114,19 @@ export function useResourceAttempt(): ResourceAttempt {
           }),
         );
         // A result for a superseded call, or for a component that has since
-        // gone away, decides nothing.
-        if (!live.current || sequence.current !== attempt) return;
+        // gone away, decides nothing — but a successful one may have left
+        // something at the host, and this is the last place that knows it
+        // exists.
+        if (!live.current || sequence.current !== attempt) {
+          if (result.status === 'ok') onAbandoned?.(result.data);
+          return;
+        }
         if (result.status === 'failed') {
           setState({
             busy: false,
             failure: result.failure,
             ...(result.failure.retryable
-              ? { retry: () => run(operation, onSuccess) }
+              ? { retry: () => run(operation, onSuccess, onAbandoned) }
               : {}),
           });
           return;
@@ -138,9 +155,10 @@ export function useResourceAttempt(): ResourceAttempt {
       run: <T>(
         operation: () => Promise<ResourceResult<T>>,
         onSuccess?: (data: T) => void,
+        onAbandoned?: (data: T) => void,
       ): void => {
         if (!current()) return;
-        run(operation, onSuccess);
+        run(operation, onSuccess, onAbandoned);
       },
     });
   }, [run]);
