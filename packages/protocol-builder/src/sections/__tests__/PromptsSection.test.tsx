@@ -1,10 +1,14 @@
 import { screen, waitFor } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import PromptsSection from '../PromptsSection.tsx';
 import StageNameSection from '../StageNameSection.tsx';
-import { TestPromptEditor, TestPromptPreview } from './rowFixtures.tsx';
+import {
+  ExplodingRowEditor,
+  TestPromptEditor,
+  TestPromptPreview,
+} from './rowFixtures.tsx';
 
 const prompts = (
   <PromptsSection
@@ -48,7 +52,9 @@ describe('the prompt list a stage owns', () => {
   it('saves the stage it opened, unchanged', async () => {
     const harness = renderStageEditor(openEditor());
 
-    await harness.roundTrip();
+    // The stage's type and its add-a-person form belong to the name
+    // generator family's own editor, not to this section.
+    await harness.roundTrip({ unowned: ['subject', 'form'] });
   });
 
   it('adds a prompt with an identity of its own', async () => {
@@ -224,5 +230,149 @@ describe('the prompt list a stage owns', () => {
     expect(
       screen.getByRole('button', { name: 'Create new prompt' }),
     ).toBeDisabled();
+  });
+});
+
+/**
+ * The fields inside a row dialog are a family's own code, mounted by machinery
+ * that knows nothing about them. Before the boundary, one of them throwing
+ * unmounted the whole React tree: the researcher lost the stage editor, every
+ * unsaved change in it, and was left on a blank page with no account of why.
+ */
+describe('a row editor with a defect in it', () => {
+  it('costs the researcher the dialog, and nothing else', async () => {
+    // React reports a caught render error to the console. Silenced so the
+    // expected failure does not read as a broken test run.
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+
+    try {
+      const harness = renderStageEditor({
+        stageId: 'name-generator-1',
+        sections: (
+          <>
+            <StageNameSection />
+            <PromptsSection
+              PromptEditor={ExplodingRowEditor}
+              PromptPreview={TestPromptPreview}
+              requiresSubject={false}
+            />
+          </>
+        ),
+      });
+
+      await harness.user.click(
+        screen.getByRole('button', { name: 'Create new prompt' }),
+      );
+
+      // Said where a form-level problem is already reported, and about what
+      // the researcher can do rather than about what threw.
+      expect(
+        await screen.findByText(/This editor could not be shown/),
+      ).toBeInTheDocument();
+      // The dialog's own close is still there, which is the point of catching
+      // inside the dialog rather than around it.
+      await harness.user.click(screen.getByRole('button', { name: 'Cancel' }));
+      await waitFor(() =>
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+      );
+
+      // The stage behind it never went anywhere: it still lists its prompts,
+      // still has its sections, and still saves what it opened with.
+      expect(
+        screen.getByText('Who are the people you know?'),
+      ).toBeInTheDocument();
+      expect(harness.outline().map((section) => section.title)).toEqual([
+        'Stage name',
+        'Prompts',
+      ]);
+      await harness.roundTrip({ unowned: ['subject', 'form'] });
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+});
+
+/**
+ * A subject is only chosen once it names a TYPE. A stage part way through
+ * being configured can hold `{entity: 'node'}` — an entity picked, no type
+ * yet — and prompts written against that would name variables of nothing.
+ */
+describe('a stage whose subject names no type yet', () => {
+  it('waits, exactly as it does for a stage with no subject at all', async () => {
+    const harness = renderStageEditor({
+      stage: {
+        type: 'NameGenerator',
+        fields: { label: 'New stage', subject: { entity: 'node' } },
+      },
+      sections: (
+        <PromptsSection
+          PromptEditor={TestPromptEditor}
+          PromptPreview={TestPromptPreview}
+        />
+      ),
+    });
+
+    await waitFor(() => expect(harness.outline()).toHaveLength(1));
+    expect(harness.outline()[0]).toEqual({
+      title: 'Prompts',
+      state: 'Not available yet',
+    });
+    expect(
+      screen.getByRole('button', { name: 'Create new prompt' }),
+    ).toBeDisabled();
+  });
+});
+
+/**
+ * What the row dialog hands a family's fields, and what a collapsed row hands
+ * its preview. Both are contracts nothing observed: a `rowOf` that answered
+ * `{}`, an `editIndex` never forwarded, a hard-coded `form`, and a preview
+ * still carrying the list's own `sortable` flag all passed.
+ */
+describe('what a row editor is given to work with', () => {
+  it('names the row being edited, its contents, and its own form', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Edit prompt' }),
+    );
+
+    const dialog = await screen.findByRole('dialog');
+    // The row's own properties, whole — not an empty object, and not the
+    // list's managed bookkeeping.
+    expect(await screen.findByText('id, text')).toBeInTheDocument();
+    expect(screen.getByText('0')).toBeInTheDocument();
+    // …and the CONTROLS opened holding them. A row editor whose fields start
+    // blank is not editing the row: saving would write the emptiness back over
+    // the prompt the researcher meant to change one word of.
+    expect(screen.getByRole('textbox', { name: 'Prompt text' })).toHaveValue(
+      'Who are the people you know?',
+    );
+    // The form the dialog actually rendered, so a control outside it can
+    // associate through `form=`.
+    const form = dialog.querySelector('form');
+    expect(form?.id).toBeTruthy();
+    expect(screen.getByText(form?.id ?? 'no form')).toBeInTheDocument();
+  });
+
+  it('says so when there is no row yet, rather than pointing at one', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create new prompt' }),
+    );
+
+    expect(await screen.findByText('a new row')).toBeInTheDocument();
+  });
+
+  it('keeps the list’s own presentation flag out of a row preview', () => {
+    renderStageEditor(openEditor());
+
+    expect(screen.queryByText(/sortable leaked/)).not.toBeInTheDocument();
+    expect(
+      screen.getByText('Who are the people you know?'),
+    ).toBeInTheDocument();
   });
 });

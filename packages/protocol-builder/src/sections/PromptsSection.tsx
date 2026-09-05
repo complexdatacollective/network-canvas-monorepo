@@ -1,7 +1,9 @@
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 
 import { withoutAbsentValues } from '../form/absentValues.ts';
-import DialogArrayField from '../form/arrayFields/DialogArrayField.tsx';
+import DialogArrayField, {
+  type DialogArrayEditorValidate,
+} from '../form/arrayFields/DialogArrayField.tsx';
 import ProtocolArrayField from '../form/ProtocolArrayField.tsx';
 import { useStageValue } from '../form/stageFormHooks.ts';
 import BuilderSection from './BuilderSection.tsx';
@@ -98,6 +100,28 @@ export type PromptsSectionProps = Readonly<{
    * instance, which describe the participant rather than a type.
    */
   requiresSubject?: boolean;
+  /**
+   * A refusal only the family's own prompt can earn, checked when the row
+   * dialog is submitted.
+   *
+   * Rules a control can state for itself belong on that control. This is for
+   * the ones that need the whole row AND the row as the dialog opened on it —
+   * the attribute-exclusivity gates a bin or census prompt runs, which must
+   * not refuse a pick that was already there before this edit. Only
+   * `editorValidate` is given both (see `DialogArrayField`).
+   */
+  editorValidate?: DialogArrayEditorValidate;
+  /**
+   * The row as the stage should hold it, given what the dialog collected.
+   *
+   * Defaults to dropping every control the researcher left empty. A family
+   * whose prompt carries an optional LIST supplies its own and drops that list
+   * when it is empty: the shared rule deliberately keeps empty arrays, because
+   * only the field that owns one can tell "emptied on purpose" from "never
+   * used", and a prompt that assigns nothing should carry no key at all rather
+   * than an empty one.
+   */
+  normalizeRow?: (row: unknown) => unknown;
   copy?: Partial<PromptsCopy>;
 }>;
 
@@ -118,6 +142,8 @@ export default function PromptsSection({
   PromptEditor,
   PromptPreview,
   requiresSubject = true,
+  editorValidate,
+  normalizeRow = withoutAbsentValues,
   copy,
 }: PromptsSectionProps) {
   const words = { ...DEFAULT_COPY, ...copy };
@@ -151,7 +177,8 @@ export default function PromptsSection({
         editorFieldsComponent={editorFieldsComponent}
         previewComponent={previewComponent}
         editorDialogSize="editor"
-        normalizeItem={withoutAbsentValues}
+        normalizeItem={normalizeRow}
+        {...(editorValidate === undefined ? {} : { editorValidate })}
         sortable
         {...promptsValidation}
       />

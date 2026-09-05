@@ -6,9 +6,37 @@ import {
 } from '../subjectReset.ts';
 
 describe('what a subject change invalidates', () => {
+  /**
+   * Written out rather than derived from the constant. A test that feeds the
+   * list back in cannot see a member leave it — deleting `'introductionPanel'`
+   * removes it from both sides at once and stays green — and the point of the
+   * list is that a protocol edited in Architect and a protocol edited here
+   * lose and keep exactly the same things.
+   */
+  it('keeps what Architect keeps, named one by one', () => {
+    expect([...SUBJECT_INDEPENDENT_FIELDS]).toEqual([
+      'id',
+      'type',
+      'label',
+      'interviewScript',
+      'introductionPanel',
+      'subject',
+    ]);
+  });
+
   it('keeps only what does not describe the subject', () => {
     const resets = subjectDependentResets(
-      [...SUBJECT_INDEPENDENT_FIELDS, 'prompts', 'form', 'panels'],
+      [
+        'id',
+        'type',
+        'label',
+        'interviewScript',
+        'introductionPanel',
+        'subject',
+        'prompts',
+        'form',
+        'panels',
+      ],
       {},
     );
 

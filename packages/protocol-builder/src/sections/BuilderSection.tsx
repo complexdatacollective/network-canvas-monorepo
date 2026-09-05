@@ -1,4 +1,10 @@
-import { type ReactNode, useCallback, useState } from 'react';
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Section from '@codaco/fresco-ui/Section';
@@ -45,6 +51,22 @@ export type BuilderSectionProps = Readonly<{
    */
   disabled?: boolean;
   capability?: SectionCapability;
+  /**
+   * Something the capability's values only mean anything against.
+   *
+   * When it changes, the capability is switched off and everything it owns is
+   * cleared — without asking, because the values did not become wrong through
+   * anything the researcher did to this section: a roster stage's card details
+   * name columns of a data file, and a different file has different columns.
+   * Leaving them would put a stage half-describing the old file into the
+   * protocol, which the schema accepts and the interview renders as an empty
+   * card.
+   *
+   * Switching the capability OFF rather than only clearing it is what keeps
+   * the fields from submitting an empty container in place of the absent one
+   * the schema requires.
+   */
+  resetOn?: unknown;
   children: ReactNode;
 }>;
 
@@ -67,6 +89,7 @@ export default function BuilderSection({
   description,
   disabled = false,
   capability,
+  resetOn,
   children,
 }: BuilderSectionProps) {
   const { readOnly } = useStageEditorForm();
@@ -135,6 +158,27 @@ export default function BuilderSection({
     [capability, clearStageValue, configured, confirm],
   );
 
+  // Only on a CHANGE. The first render is a stage being opened on what it was
+  // saved with, and resetting there would empty a section the researcher has
+  // not touched.
+  //
+  // The panel is remounted rather than closed, because its open state is its
+  // own — a caller can seed it but cannot close it — and a section left open
+  // over cleared fields keeps them registered, which submits the empty
+  // container the schema refuses in place of the absent one it wants. By the
+  // time the new key renders, the clear above has already made `defaultOpen`
+  // false.
+  const [resetGeneration, setResetGeneration] = useState(0);
+  const previousResetOn = useRef(resetOn);
+  useEffect(() => {
+    const before = previousResetOn.current;
+    previousResetOn.current = resetOn;
+    if (before === resetOn) return;
+    for (const path of capability?.fields ?? NO_FIELDS) clearStageValue(path);
+    setSwitchedOn(false);
+    setResetGeneration((generation) => generation + 1);
+  }, [capability, clearStageValue, resetOn]);
+
   const body = (
     <SectionScopeContext value={sectionId}>{children}</SectionScopeContext>
   );
@@ -154,6 +198,7 @@ export default function BuilderSection({
 
   return (
     <Section
+      key={resetGeneration}
       id={sectionId}
       title={title}
       description={description}

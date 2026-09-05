@@ -504,12 +504,6 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     this.assertEditable();
     const invalidRequest = validateCompoundEditRequest(request);
     if (invalidRequest !== null) return invalidRequest;
-    if (this.snapshot.pendingCommands.length !== 0) {
-      return compoundFailure(
-        'pending-commands',
-        'save the current stage changes before editing related sections',
-      );
-    }
     if (this.options.onCompoundEdit === undefined) {
       return compoundFailure('unavailable', 'compound editing is unavailable');
     }
@@ -519,6 +513,9 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
         'another compound edit is still in progress',
       );
     }
+
+    const planned = this.planPendingCommands(request);
+    if (planned.status === 'refused') return planned.failure;
 
     const access = this.snapshot.access;
     if (access.mode !== 'editable') {
@@ -531,6 +528,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     });
     const submission: CompoundEditSubmission = Object.freeze({
       ...request,
+      edits: planned.edits,
       authority,
     });
 
@@ -614,19 +612,42 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
         );
       }
 
-      const pendingCommands = this.snapshot.pendingCommands;
-      this.baseFields = cloneDoc(fields);
-      this.undoStack.length = 0;
-      this.redoStack.length = 0;
-      this.historyGeneration += 1;
-      this.fencedAtRevision = result.update.manifestRevision;
-      const reconciledFields = pendingCommands.reduce<SectionDoc>(
-        (draft, batch) => {
-          this.undoStack.push(cloneDoc(draft));
-          return applyCommands(draft, [...batch.commands]);
-        },
-        cloneDoc(this.baseFields),
+      // The folded batches are in the authoritative stage the host answered
+      // with, so they are acknowledged rather than replayed onto it: replaying
+      // a `set` would be harmless, but replaying an `insertItem` would add the
+      // row twice, and leaving them pending would send them to the host again
+      // at finish. Batches made WHILE the edit was in flight were not folded,
+      // and — after a codebook-only request — neither were the batches that
+      // were already pending before it. Both are still this session's own, so
+      // both are reconciled the same way.
+      const pendingCommands = this.snapshot.pendingCommands.filter(
+        (batch) => batch.id > planned.throughBatchId,
       );
+      // Whether this apply moved the ground the pending batches stand on. A
+      // codebook-only apply hands back the same authoritative stage the
+      // commands were built against, so there is nothing to rebase them onto
+      // and nothing about the local history has been invalidated. Fencing it
+      // there would throw away a researcher's undo and redo for a change that
+      // did not touch their stage at all.
+      const rebased =
+        planned.throughBatchId >= 0 ||
+        canonicalize(fields) !== canonicalize(this.baseFields);
+      this.baseFields = cloneDoc(fields);
+      let reconciledFields: StageFormDraft = this.snapshot.editedSection.fields;
+      if (rebased) {
+        this.undoStack.length = 0;
+        this.redoStack.length = 0;
+        this.historyGeneration += 1;
+        this.fencedAtRevision = result.update.manifestRevision;
+        reconciledFields = pendingCommands.reduce<SectionDoc>(
+          (draft, batch) => {
+            this.undoStack.push(cloneDoc(draft));
+            return applyCommands(draft, [...batch.commands]);
+          },
+          cloneDoc(this.baseFields),
+        );
+      }
+      this.releaseWithheldFrom(pendingCommands);
       this.replaceSnapshot({
         fields: reconciledFields,
         protocolSections: result.update.protocolSections,
@@ -876,6 +897,102 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
    * resource field is covered as soon as its schema is tagged, and nothing
    * here has to know which field of which stage holds an asset id.
    */
+  /**
+   * The edits a compound request should actually carry, and how much of this
+   * session's unsaved work the host will own once it applies them.
+   *
+   * A researcher configuring a stage reaches for a related section IN THE
+   * MIDDLE of that work — a name generator needs a node type that does not
+   * exist yet, and the half-written prompts are exactly why they noticed. So
+   * the request has to survive an unsaved, and usually incomplete, stage.
+   *
+   * What the session sends therefore depends on whether the request says
+   * anything about this stage at all:
+   *
+   * - **It does not** — creating a node type, say. The request is sent alone.
+   *   A codebook-only apply leaves the authoritative stage exactly as it was,
+   *   which is what this session's pending commands were built against, so
+   *   they stay pending and stay valid. Folding them in instead would make the
+   *   host validate a stage the researcher is in the middle of writing, and
+   *   refuse the codebook change in the schema's words for a stage they had
+   *   not asked to save.
+   * - **It does** — then it has decided what the stage document becomes, and
+   *   the researcher's unsaved commands have to go somewhere. They are folded
+   *   in front of the request's own commands in that one section update, so
+   *   both land in a single host apply against the authoritative document they
+   *   were built from, and the request's own decision wins wherever the two
+   *   touch the same key. A collaborator's change to this stage is caught by
+   *   `stale-base` exactly as it would be for any other section, and a refusal
+   *   leaves every pending batch untouched for the researcher to try again.
+   *
+   * One case still refuses outright: a pending batch withheld from a
+   * live-applying host because it references a resource this session has
+   * staged. Those bytes reach the protocol only when `finish` promotes them,
+   * and neither sending that batch nor leaving the host to apply around it is
+   * honest while its resource does not exist.
+   */
+  private planPendingCommands(request: CompoundEditRequest):
+    | Readonly<{
+        status: 'send';
+        edits: readonly CompoundSectionEdit[];
+        /**
+         * Batches up to and including this id are the host's once it applies.
+         * `-1` precedes every batch id, and means nothing is acknowledged.
+         */
+        throughBatchId: number;
+      }>
+    | Readonly<{
+        status: 'refused';
+        failure: Extract<CompoundEditResult, { status: 'failed' }>;
+      }> {
+    const pending = this.snapshot.pendingCommands;
+    if (pending.length === 0) {
+      return Object.freeze({
+        status: 'send',
+        edits: request.edits,
+        throughBatchId: -1,
+      });
+    }
+
+    if (this.withheldFromBatchId !== undefined) {
+      return Object.freeze({
+        status: 'refused',
+        failure: compoundFailure(
+          'pending-commands',
+          'save the current stage changes before editing related sections',
+        ),
+      });
+    }
+
+    const stageSectionId = this.snapshot.editedSection.sectionId;
+    // An update specifically: `validateCompoundEditRequest` has already
+    // refused a structural create or removal of anything but a codebook
+    // section, so a stage edit that reaches here is always an update.
+    const stageEdit = request.edits.find(
+      (edit): edit is Extract<CompoundSectionEdit, { kind: 'update' }> =>
+        edit.sectionId === stageSectionId && edit.kind === 'update',
+    );
+    if (stageEdit === undefined) {
+      return Object.freeze({
+        status: 'send',
+        edits: request.edits,
+        throughBatchId: -1,
+      });
+    }
+
+    const commands = Object.freeze([
+      ...pending.flatMap((batch) => [...batch.commands]),
+      ...stageEdit.commands,
+    ]);
+    return Object.freeze({
+      status: 'send',
+      edits: request.edits.map((edit) =>
+        edit === stageEdit ? Object.freeze({ ...stageEdit, commands }) : edit,
+      ),
+      throughBatchId: pending[pending.length - 1]?.id ?? -1,
+    });
+  }
+
   private withholdsFromHost(
     batch: PendingCommandBatch,
     fields: StageFormDraft,

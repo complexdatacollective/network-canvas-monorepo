@@ -33,7 +33,10 @@ import {
   SessionReadOnlyError,
   type StageFormDraft,
 } from '../session.ts';
-import { SectionOutlineStore } from './outlineStore.ts';
+import {
+  SectionOutlineStore,
+  type SectionValidationIssue,
+} from './outlineStore.ts';
 import { reseedStageForm } from './reseedStageForm.ts';
 import SectionOutline from './SectionOutline.tsx';
 import {
@@ -224,6 +227,24 @@ function StageEditorFormBody({
     },
   });
 
+  /**
+   * What the session says is wrong with the stage, handed to the outline so
+   * the section that owns each problem can say so.
+   *
+   * The outline is otherwise built from the form's own field errors, which are
+   * the rules a control can state about itself. These are the other kind: a
+   * reference to a resource the protocol does not have, a subject naming a
+   * type a collaborator has deleted, a rule the schema states about the stage
+   * as a whole. Every control involved is holding a value it is perfectly
+   * happy with, so without this the save is refused with a message while every
+   * section on the page reads "Finished".
+   */
+  useEffect(() => {
+    outline.setValidationIssues(
+      stageIssuesOf(snapshot.validation, snapshot.editedSection.sectionId),
+    );
+  }, [outline, snapshot.editedSection.sectionId, snapshot.validation]);
+
   // The outline lists the sections in the order they appear on the page, and
   // nothing tells it when that order changes: a component reordering sections
   // from its own state re-renders itself, not the outline beside it. Watching
@@ -313,6 +334,31 @@ function WithResourceGateway({
       {children}
     </ResourceGatewayProvider>
   );
+}
+
+/**
+ * The session's validation issues that belong to the stage being edited, as
+ * paths INSIDE that stage.
+ *
+ * The session attributes every issue to the protocol section that owns it, so
+ * the ones about other sections — a codebook entity's own definition, the
+ * protocol's settings — are not this editor's to point at. What is left is
+ * addressed from the whole protocol (`stages`, then the stage's position in
+ * the interview), and the outline knows only the stage document, so those two
+ * segments are dropped.
+ */
+function stageIssuesOf(
+  validation: ProtocolBuilderSnapshot['validation'],
+  stageSectionId: ProtocolBuilderSnapshot['editedSection']['sectionId'],
+): SectionValidationIssue[] {
+  if (validation.status !== 'invalid') return [];
+  return validation.issues.flatMap((issue) => {
+    if (issue.sectionId !== stageSectionId) return [];
+    const [root, position, ...inside] = issue.path;
+    if (root !== 'stages' || typeof position !== 'number') return [];
+    if (inside.length === 0) return [];
+    return [{ path: inside, message: issue.message }];
+  });
 }
 
 type CommittedDraft = Readonly<{
