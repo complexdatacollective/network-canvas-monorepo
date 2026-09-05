@@ -7,6 +7,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { BackgroundLights } from '@codaco/art';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
+import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
 
 const messages = defineMessages({
@@ -75,7 +76,10 @@ function ErrorFallback() {
   // unmounted by React, so re-create the backdrop here and present the
   // fallback as a dialog over it. Reload is the only way forward.
   return (
-    <>
+    // The dialog's portal must share the fallback's language. In particular,
+    // locale startup can fail after bootstrap set a non-English document lang;
+    // provider-optional English recovery must not inherit that stale language.
+    <ThemedRegion theme="interview" lang={intl.locale} dir="ltr">
       <motion.div
         className="fixed inset-0 -z-10"
         initial={{ opacity: 0 }}
@@ -103,6 +107,6 @@ function ErrorFallback() {
           </Button>
         }
       />
-    </>
+    </ThemedRegion>
   );
 }

@@ -33,7 +33,7 @@ vi.mock('@codaco/interview', () => ({
   createInitialNetwork: () => ({ nodes: [], edges: [], ego: {} }),
 }));
 
-import { NewSessionForm } from '../NewSessionForm';
+import { NewSessionForm, NewSessionFormView } from '../NewSessionForm';
 
 function makeProtocol(stageTypes: string[]): ProtocolWithCounts {
   const stages = stageTypes.map((type, index) => ({
@@ -169,4 +169,44 @@ it('uses the chosen administration language for field-owned required validation'
     await screen.findByText('El ID del caso es obligatorio'),
   ).toBeVisible();
   expect(input).toHaveAttribute('aria-invalid', 'true');
+});
+
+it('keeps a visible Case ID refusal when the administration language changes and permits a corrected value', async () => {
+  const user = userEvent.setup();
+  const submit = vi.fn().mockResolvedValue({ success: true });
+  const view = (locale: string) => (
+    <AppI18nProvider
+      locale={locale}
+      locales={interviewerProductionLocales}
+      messages={interviewerCatalogs[locale]}
+    >
+      <NewSessionFormView
+        requiresInternet={false}
+        online
+        onSubmit={submit}
+        onCancel={vi.fn()}
+      />
+    </AppI18nProvider>
+  );
+  const { rerender } = render(view('en'));
+  const input = screen.getByRole('textbox', { name: 'Case ID' });
+  await user.type(input, 'A');
+  await user.clear(input);
+  await user.tab();
+  expect(await screen.findByText('Case ID is required')).toBeVisible();
+  expect(input).toHaveAttribute('aria-invalid', 'true');
+
+  rerender(view('es'));
+  expect(
+    await screen.findByText('El ID del caso es obligatorio'),
+  ).toBeVisible();
+  expect(input).toHaveAttribute('aria-invalid', 'true');
+  expect(input).toHaveValue('');
+  await user.click(screen.getByRole('button', { name: 'Iniciar entrevista' }));
+  expect(submit).not.toHaveBeenCalled();
+  await user.type(input, 'Caso Á-21');
+  await user.click(screen.getByRole('button', { name: 'Iniciar entrevista' }));
+  await waitFor(() =>
+    expect(submit).toHaveBeenCalledExactlyOnceWith('Caso Á-21'),
+  );
 });
