@@ -28,6 +28,7 @@ export default defineConfig({
         'react',
         'react/jsx-runtime',
         'react-intl',
+        'react-intl/server',
         '@formatjs/cli-lib',
         '@formatjs/icu-messageformat-parser',
         '@formatjs/intl-localematcher',

@@ -1,3 +1,5 @@
+import { execFileSync } from 'node:child_process';
+
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createAppIntl } from '../messages.ts';
@@ -142,4 +144,21 @@ describe('createAppIntl time zone', () => {
     expect(inTokyo).toBe('Due 1/2/20');
     expect(inLosAngeles).toBe('Due 1/1/20');
   });
+});
+
+it('formats through the universal facade under React server conditions', () => {
+  const moduleUrl = new URL('../messages.ts', import.meta.url).href;
+  const script = `
+    import { createAppIntl, defineMessages } from ${JSON.stringify(moduleUrl)};
+    const messages = defineMessages({ count: { id: 'server.count', defaultMessage: '{count, plural, one {# result} other {# results}}', description: 'Server smoke test.' } });
+    const intl = createAppIntl({ locale: 'es', messages: { 'server.count': '{count, plural, one {# resultado} other {# resultados}}' } });
+    process.stdout.write(intl.formatMessage(messages.count, { count: 2 }));
+  `;
+  expect(
+    execFileSync(
+      process.execPath,
+      ['--conditions=react-server', '--input-type=module', '-e', script],
+      { encoding: 'utf8' },
+    ),
+  ).toBe('2 resultados');
 });

@@ -1,10 +1,16 @@
+// The public server entry is universal: unlike react-intl's default entry,
+// it has no client directive or context hooks, and preserves rich React nodes.
 import {
   createIntl,
   createIntlCache,
   defineMessage,
   defineMessages,
-} from 'react-intl';
-import type { IntlConfig, IntlShape, MessageDescriptor } from 'react-intl';
+} from 'react-intl/server';
+import type {
+  IntlConfig,
+  IntlShape,
+  MessageDescriptor,
+} from 'react-intl/server';
 
 import type { CatalogMessages } from './locales.ts';
 
