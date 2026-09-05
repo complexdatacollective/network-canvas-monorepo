@@ -69,6 +69,28 @@ describe('the section that says what a stage is about', () => {
     ]);
   });
 
+  /**
+   * The end of the same path `SubjectSelectField` bridges: a picked EDGE type
+   * reaches the stage as an edge subject. The two branches are written out
+   * rather than computed from the entity, so the edge one has to be walked.
+   */
+  it('writes an edge pick as the stage’s edge subject', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-edge-form-1',
+      sections: <SubjectSection entity="edge" filter />,
+    });
+
+    await harness.user.click(
+      screen.getByRole('radio', { name: 'family_edge' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        harness.session.getSnapshot().editedSection.fields.subject,
+      ).toEqual({ entity: 'edge', type: 'family_edge' }),
+    );
+  });
+
   it('saves the stage it opened, unchanged', async () => {
     const harness = renderStageEditor({
       stageId: 'alter-edge-form-1',
@@ -373,7 +395,17 @@ describe('a codebook that changes while the editor is open', () => {
       },
     });
 
-    expect(await screen.findByRole('radio', { name: 'Place' })).not.toBeNull();
+    // The whole offered set, not just "the new one exists": `findByRole`
+    // throws when it finds nothing, so asserting it is not null asserts
+    // nothing at all.
+    await waitFor(() =>
+      expect(
+        screen
+          .getAllByRole('radio')
+          .map((radio) => radio.getAttribute('value')),
+      ).toEqual(['person', 'family_member', 'place']),
+    );
+    expect(screen.getByRole('radio', { name: 'Place' })).not.toBeChecked();
     expect(dispatch).not.toHaveBeenCalled();
     expect(harness.pendingCommands()).toEqual([]);
     // The researcher's own choice is untouched by someone else's addition.
