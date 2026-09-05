@@ -226,6 +226,38 @@ describe('the side panels a name generator shows', () => {
   });
 
   /**
+   * A panel's filter asks about a node type, and its rules are chosen from
+   * that type's attributes — so until the stage says what it works with there
+   * is nothing for a panel to be about, and the section says so rather than
+   * offering rules over an empty codebook. Every sibling section on these
+   * stages waits the same way.
+   */
+  it('waits for a node type before offering panels', async () => {
+    renderStageEditor({
+      stage: {
+        id: 'name-generator-without-a-type',
+        type: 'NameGenerator',
+        fields: {
+          label: 'Name Generator',
+          form: {
+            title: 'Add a person',
+            fields: [{ variable: 'name', prompt: 'What is their name?' }],
+          },
+          prompts: [{ id: 'prompt-1', text: 'Who are the people you know?' }],
+        },
+      },
+      sections: panels,
+    });
+
+    expect(
+      await screen.findByText(
+        'Choose what this stage works with before adding side panels.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Side panels' })).toBeDisabled();
+  });
+
+  /**
    * A panel filter is optional, and most panels have none — a panel that
    * listed everyone is what "no filter" means. So it is a capability like
    * every other one in the builder: off until asked for, and destroying what

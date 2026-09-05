@@ -32,6 +32,7 @@ import {
   type RowPreviewProps,
   useRowRenderers,
 } from './rowRenderers.tsx';
+import { useStageSubject } from './useStageSubject.ts';
 
 /** Where every name generator that offers side panels keeps them. */
 const PANELS = 'panels';
@@ -119,6 +120,8 @@ export type NodePanelsCopy = Readonly<{
   /** Names the section in the outline and to assistive technology. */
   sectionTitle: string;
   description: string;
+  /** Said instead of `description` while the section is waiting on a subject. */
+  waitingDescription: string;
   fieldLabel: string;
   fieldHint: string;
   addButtonLabel: string;
@@ -129,6 +132,8 @@ const DEFAULT_COPY: NodePanelsCopy = {
   sectionTitle: 'Side panels',
   description:
     'Show a list of people beside this stage, so the participant can nominate someone without typing their name again.',
+  waitingDescription:
+    'Choose what this stage works with before adding side panels.',
   fieldLabel: 'Panels',
   fieldHint:
     'Up to two panels, shown in this order. Each draws from the interview so far or from a network you have imported.',
@@ -157,6 +162,12 @@ export default function NodePanelsSection({
   copy,
 }: NodePanelsSectionProps = {}) {
   const words = { ...DEFAULT_COPY, ...copy };
+  const subject = useStageSubject('node');
+  // A panel's filter asks about a node type, and its rules are chosen from
+  // that type's attributes — so until the stage says what it works with there
+  // is nothing for a panel to be about, and offering rules over an empty
+  // codebook would be offering nothing at all.
+  const waiting = subject === undefined;
   const { editorFieldsComponent, previewComponent } = useRowRenderers(
     PanelEditor,
     PanelPreview,
@@ -165,7 +176,8 @@ export default function NodePanelsSection({
   return (
     <BuilderSection
       title={words.sectionTitle}
-      description={words.description}
+      description={waiting ? words.waitingDescription : words.description}
+      disabled={waiting}
       capability={PANELS_CAPABILITY}
     >
       <ProtocolArrayField<typeof DialogArrayField>
