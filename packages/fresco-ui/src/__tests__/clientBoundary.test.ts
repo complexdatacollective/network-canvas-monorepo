@@ -27,9 +27,9 @@ const DIRECTIVE = /^\s*(['"])use client\1/;
  * Base UI's `useRender` merges props and picks an element type; it calls no
  * React hook, which is why Base UI ships it with no directive of its own.
  * `typography/Heading.tsx` and `NativeLink.tsx` rely on that, and
- * `typography/__tests__/TypographyServer.test.tsx` pins it for Heading by
- * rendering it through `renderToStaticMarkup`. Marking either would cost a
- * server-rendered primitive for nothing.
+ * `serverSafeComponents.test.tsx` pins both by rendering them through
+ * `renderToStaticMarkup`. Marking either would cost a server-rendered
+ * primitive for nothing.
  *
  * Only add a name here after reading its implementation — a hook-shaped name
  * is not evidence either way.
