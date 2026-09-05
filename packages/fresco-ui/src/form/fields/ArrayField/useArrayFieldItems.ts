@@ -89,6 +89,134 @@ type UseArrayFieldItemsConfig<T> = {
 };
 
 /**
+ * What a consumer answers when it is told about a committed operation.
+ *
+ * `false` means the operation did not reach whatever the consumer commits to —
+ * a document that refused the write, a row it could not resolve — and the list
+ * then puts its rows back to the `value` it was given. Everything else means
+ * the operation was taken, and the rows stay as the researcher just left them
+ * until the new value arrives.
+ *
+ * It exists because this hook renders every mutation out of its OWN state
+ * before the consumer is told about it, and re-reads `value` only when `value`
+ * changes: a consumer that commits elsewhere — a stage document, say — can
+ * refuse without the value changing at all, and the row the researcher added
+ * would then stay on screen for good, belonging to no list.
+ */
+type ArrayFieldChangeAnswer = void | boolean;
+
+type ItemsState<T extends Record<string, unknown>> = {
+  items: WithItemProperties<T>[];
+  editingId: string | null;
+};
+
+const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * A row's content, as something a `Map` can be keyed on.
+ *
+ * Rows are plain data — what a form store holds — so `JSON.stringify` sees all
+ * of it, with each object's keys put in order so that two rows written in
+ * different key orders are still the same content.
+ */
+const contentKey = (item: unknown): string =>
+  JSON.stringify(item, (_key: string, value: unknown) =>
+    isPlainRecord(value)
+      ? Object.fromEntries(
+          Object.keys(value)
+            .toSorted()
+            .map((key) => [key, value[key]]),
+        )
+      : value,
+  ) ?? '';
+
+/**
+ * Which internal id each row of an arriving value inherits.
+ *
+ * A row carrying an id of its own — or one the id map already knows by object
+ * reference — keeps it, and nothing below applies. Everything else is an
+ * id-less row (an options list, an attribute list), whose identity has to be
+ * inferred; the order the answers are tried in is the whole of it:
+ *
+ * 1. the row at the SAME position, while its content is unchanged. An
+ *    immutable form store replaces the object containing a changed nested
+ *    field, so a keystroke arrives as a new object at the same index with
+ *    every other row identical — and keeping that position's id is what stops
+ *    the row remounting and taking the caret with it.
+ * 2. otherwise the same content ELSEWHERE. That is what a row arriving from a
+ *    collaborator, an undo or a save looks like: every row past the insertion
+ *    point is the same row one place along. Reusing ids by position there
+ *    hands each row the id of its NEIGHBOUR, and a pointer drag holding one of
+ *    those ids ends up naming a row the researcher never picked up — the drag
+ *    finishes by moving it, and the consumer is told about a row it did not
+ *    touch.
+ * 3. otherwise the position's id if nothing has claimed it — which is the row
+ *    that (1) found changed — and failing that a new one.
+ *
+ * No id is handed out twice: two rows sharing one are a single row to React,
+ * and to every consumer resolving an operation by it.
+ */
+const reuseInternalIds = <T extends Record<string, unknown>>(
+  value: readonly T[],
+  previousConfirmed: readonly WithItemProperties<T>[],
+  knownIdOf: (item: T) => string | undefined,
+): string[] => {
+  const resolved: (string | undefined)[] = value.map(() => undefined);
+  const claimed = new Set<string>();
+  const claim = (index: number, id: string) => {
+    resolved[index] = id;
+    claimed.add(id);
+  };
+
+  value.forEach((item, index) => {
+    const known = knownIdOf(item);
+    if (known !== undefined) claim(index, known);
+  });
+
+  const previousKeys = previousConfirmed.map((item) =>
+    contentKey(stripManagedProperties<T>(item)),
+  );
+  const arrivingKeys = value.map((item) => contentKey(item));
+
+  value.forEach((_item, index) => {
+    if (resolved[index] !== undefined) return;
+    const previous = previousConfirmed[index];
+    if (previous === undefined) return;
+    if (previousKeys[index] !== arrivingKeys[index]) return;
+    if (claimed.has(previous._internalId)) return;
+    claim(index, previous._internalId);
+  });
+
+  const unclaimedByContent = new Map<string, string[]>();
+  previousConfirmed.forEach((item, index) => {
+    if (claimed.has(item._internalId)) return;
+    const key = previousKeys[index]!;
+    const queue = unclaimedByContent.get(key);
+    if (queue === undefined) unclaimedByContent.set(key, [item._internalId]);
+    else queue.push(item._internalId);
+  });
+
+  value.forEach((_item, index) => {
+    if (resolved[index] !== undefined) return;
+    const candidate = unclaimedByContent.get(arrivingKeys[index]!)?.shift();
+    if (candidate !== undefined) claim(index, candidate);
+  });
+
+  return value.map((_item, index) => {
+    const already = resolved[index];
+    if (already !== undefined) return already;
+    const positional = previousConfirmed[index]?._internalId;
+    const id =
+      positional !== undefined && !claimed.has(positional)
+        ? positional
+        : crypto.randomUUID();
+    claimed.add(id);
+    return id;
+  });
+};
+
+/**
  * Return type for the useArrayFieldItems hook.
  */
 type UseArrayFieldItemsReturn<T extends Record<string, unknown>> = {
@@ -129,8 +257,16 @@ type UseArrayFieldItemsReturn<T extends Record<string, unknown>> = {
   addItem: (item: T) => void;
   /** Remove an item by its internal ID. */
   removeItem: (internalId: string) => void;
-  /** Update a specific item by its internal ID without affecting editing state. */
-  updateItem: (internalId: string, data: Partial<T>) => void;
+  /**
+   * Update a specific item by its internal ID without affecting editing state.
+   *
+   * Answers whether the id still named a row of this list. `false` is a write
+   * that reached nothing — the row left the value while the caller was holding
+   * on to its id, which is what an asynchronous edit does — and it is not the
+   * same thing as a consumer refusing the operation the update reported: that
+   * one reached a row, and the consumer answers for it (see `onChange`).
+   */
+  updateItem: (internalId: string, data: Partial<T>) => boolean;
   /** Check if an item is a draft by its internal ID. */
   isDraft: (internalId: string) => boolean;
 };
@@ -200,7 +336,10 @@ type UseArrayFieldItemsReturn<T extends Record<string, unknown>> = {
  */
 export function useArrayFieldItems<T extends Record<string, unknown>>(
   value: T[],
-  onChange?: (items: T[], operation: ArrayFieldOperation<T>) => void,
+  onChange?: (
+    items: T[],
+    operation: ArrayFieldOperation<T>,
+  ) => ArrayFieldChangeAnswer,
   config?: UseArrayFieldItemsConfig<T>,
 ): UseArrayFieldItemsReturn<T> {
   // WeakMap ties internal ID lifespan to the original object for GC
@@ -236,10 +375,7 @@ export function useArrayFieldItems<T extends Record<string, unknown>>(
   );
 
   // Combined state for atomic updates (prevents animation flickering)
-  const [state, setState] = useState<{
-    items: WithItemProperties<T>[];
-    editingId: string | null;
-  }>(() => ({
+  const [state, setState] = useState<ItemsState<T>>(() => ({
     items: value.map((item) => ({
       ...item,
       _internalId: getInternalId(item),
@@ -247,10 +383,59 @@ export function useArrayFieldItems<T extends Record<string, unknown>>(
     editingId: null,
   }));
   const stateRef = useRef(state);
-  const replaceState = useCallback((nextState: typeof state) => {
+  const replaceState = useCallback((nextState: ItemsState<T>) => {
     stateRef.current = nextState;
     setState(nextState);
   }, []);
+
+  /**
+   * The state a value produces: its rows, each keeping the internal id the
+   * list already knew it by (`reuseInternalIds`), plus the uncommitted draft
+   * the value cannot know about.
+   *
+   * One function for both routes to it — a value arriving from the parent, and
+   * a consumer answering that it did not apply an operation — so that the two
+   * cannot come to disagree about which row is which.
+   */
+  const stateForValue = useCallback(
+    (nextValue: T[], currentState: ItemsState<T>): ItemsState<T> => {
+      const currentDraft = currentState.items.find(
+        (item) => item._draft === true,
+      );
+      const previousConfirmed = currentState.items.filter(
+        (item) => !item._draft,
+      );
+
+      const internalIds = reuseInternalIds(
+        nextValue,
+        previousConfirmed,
+        getKnownInternalId,
+      );
+      const newConfirmed: WithItemProperties<T>[] = nextValue.map(
+        (item, index) => {
+          const internalId = internalIds[index]!;
+          idMapRef.current.set(item, internalId);
+          return { ...item, _internalId: internalId };
+        },
+      );
+
+      // Merge: confirmed items from value + draft (if any)
+      const newItems = currentDraft
+        ? [...newConfirmed, currentDraft]
+        : newConfirmed;
+
+      // Clear editingId if the edited item no longer exists
+      const editingStillExists =
+        currentState.editingId === null ||
+        newItems.some((item) => item._internalId === currentState.editingId);
+
+      return {
+        items: newItems,
+        editingId: editingStillExists ? currentState.editingId : null,
+      };
+    },
+    [getKnownInternalId],
+  );
 
   const { items, editingId } = state;
 
@@ -258,47 +443,7 @@ export function useArrayFieldItems<T extends Record<string, unknown>>(
   const prevValueRef = useRef(value);
   if (value !== prevValueRef.current) {
     prevValueRef.current = value;
-
-    // Get current draft to preserve it
-    const currentState = stateRef.current;
-    const currentDraft = currentState.items.find(
-      (item) => item._draft === true,
-    );
-
-    const previousConfirmed = currentState.items.filter((item) => !item._draft);
-
-    // Immutable form stores replace the object containing a changed nested
-    // field. Reuse the item at the same position when neither an explicit ID
-    // nor an object-reference mapping is available, so a keystroke does not
-    // remount the row and interrupt focus.
-    const newConfirmed: WithItemProperties<T>[] = value.map((item, index) => {
-      const internalId =
-        getKnownInternalId(item) ??
-        previousConfirmed[index]?._internalId ??
-        crypto.randomUUID();
-
-      idMapRef.current.set(item, internalId);
-
-      return {
-        ...item,
-        _internalId: internalId,
-      };
-    });
-
-    // Merge: confirmed items from value + draft (if any)
-    const newItems = currentDraft
-      ? [...newConfirmed, currentDraft]
-      : newConfirmed;
-
-    // Clear editingId if the edited item no longer exists
-    const editingStillExists =
-      currentState.editingId === null ||
-      newItems.some((item) => item._internalId === currentState.editingId);
-
-    replaceState({
-      items: newItems,
-      editingId: editingStillExists ? currentState.editingId : null,
-    });
+    replaceState(stateForValue(value, stateRef.current));
   }
 
   // Map internal IDs to their position in the committed value. Derived from
@@ -347,28 +492,35 @@ export function useArrayFieldItems<T extends Record<string, unknown>>(
           return stripped;
         });
 
-      if (operation.type === 'insert' || operation.type === 'replace') {
-        const item = confirmedItems[operation.index];
-        if (!item) return;
-        onChange?.(confirmedItems, { ...operation, item });
-        return;
+      // The row an operation is ABOUT, named rather than only numbered. For a
+      // move, `to` is where it has just landed among the committed rows, so it
+      // is where the row itself is read from — and unlike `from`, which a
+      // pointer drag captured against the list as it stood when the pointer
+      // went down, both it and the row come from this same list. Which is also
+      // why the ids that numbering rests on are reused by CONTENT rather than
+      // by position when a value arrives mid-drag; see `reuseInternalIds`.
+      let described: ArrayFieldOperation<T>;
+      if (operation.type === 'remove') {
+        described = operation;
+      } else {
+        const item =
+          confirmedItems[
+            operation.type === 'move' ? operation.to : operation.index
+          ];
+        if (item === undefined) return;
+        described = { ...operation, item };
       }
 
-      // The row a move is ABOUT, named rather than only numbered. `to` is
-      // where it has just landed among the committed rows, so it is where the
-      // row itself is read from — and unlike `from`, which a pointer drag
-      // captured against the list as it stood when the pointer went down, both
-      // it and the row come from this same list.
-      if (operation.type === 'move') {
-        const item = confirmedItems[operation.to];
-        if (!item) return;
-        onChange?.(confirmedItems, { ...operation, item });
-        return;
+      // A consumer that answers `false` did not apply the operation, and its
+      // value will not change to say so. The rows go back to what that value
+      // holds, because this hook drew the mutation out of its own state before
+      // asking: left alone, a row an add put on screen stays there belonging
+      // to no list, and every later edit of it is refused too.
+      if (onChange?.(confirmedItems, described) === false) {
+        replaceState(stateForValue(prevValueRef.current, stateRef.current));
       }
-
-      onChange?.(confirmedItems, operation);
     },
-    [onChange],
+    [onChange, replaceState, stateForValue],
   );
 
   // Start adding a new item (creates draft and sets editing state)
@@ -535,12 +687,16 @@ export function useArrayFieldItems<T extends Record<string, unknown>>(
 
   // Update a specific item without affecting editing state
   const updateItem = useCallback(
-    (internalId: string, data: Partial<T>): void => {
+    (internalId: string, data: Partial<T>): boolean => {
       const currentState = stateRef.current;
       const itemIndex = currentState.items.findIndex(
         (item) => item._internalId === internalId,
       );
-      if (itemIndex === -1) return;
+      // The row this id named has left the list. Answered rather than merely
+      // returned from: a caller holding an id across an await — a row editor
+      // waiting on a host round trip — has no other way to find out that the
+      // edit it is about to make has nowhere to land.
+      if (itemIndex === -1) return false;
 
       const existingItem = currentState.items[itemIndex]!;
       const updatedItem: WithItemProperties<T> = {
@@ -566,6 +722,7 @@ export function useArrayFieldItems<T extends Record<string, unknown>>(
           index: confirmedIndex,
         });
       }
+      return true;
     },
     [notifyChange, replaceState],
   );
