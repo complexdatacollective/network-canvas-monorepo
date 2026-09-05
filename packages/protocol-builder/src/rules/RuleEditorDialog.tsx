@@ -11,7 +11,7 @@ import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Section from '@codaco/fresco-ui/Section';
-import type { VariableType } from '@codaco/protocol-validation';
+import type { DateFormat, VariableType } from '@codaco/protocol-validation';
 
 import { EntitySelectControl } from '../fields/EntitySelectField.tsx';
 import { VariablePickerControl } from '../fields/VariablePicker.tsx';
@@ -23,9 +23,7 @@ import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { protocolAuthoringLinks } from '../interfaces/documentation.ts';
 import {
   isFilterOperator,
-  operatorsWithOptionCount,
   operatorsWithRegExp,
-  operatorsWithValue,
   type RuleOperatorOption,
 } from './operators.ts';
 import { incompleteRulePart, type RuleDraft, type RulePart } from './rule.ts';
@@ -37,6 +35,7 @@ import {
   type RuleVariableOption,
   ruleOperatorOptions,
   ruleVariableChoices,
+  ruleVariableDateResolution,
   ruleVariableOptions,
   ruleVariables,
   ruleVariableType,
@@ -44,8 +43,7 @@ import {
 import {
   emptyRuleValue,
   RULE_VALUE_FIELD,
-  RuleCountField,
-  RuleValueField,
+  RuleOperandField,
 } from './RuleValueField.tsx';
 
 /** Dialog title and submit label, verbatim — host page objects name both. */
@@ -231,72 +229,6 @@ const useRuleCascade = (
   }, [emptyValue, setFieldValue, values]);
 };
 
-type OperandFieldProps = Readonly<{
-  seed: RuleDraft;
-  operator: string | undefined;
-  variableType: VariableType | undefined;
-  variableChoices: readonly RuleChoiceOption[] | undefined;
-  /** Ego rules address the researcher about the ego's own attribute. */
-  regExpHint: string;
-}>;
-
-/**
- * The operand, when the chosen operator takes one. Shared by ego and alter
- * rules: the only difference between them was copy, and a fork over copy is
- * how the ego branch came to be missing the integer option-count control.
- */
-function RuleOperandField({
-  seed,
-  operator,
-  variableType,
-  variableChoices,
-  regExpHint,
-}: OperandFieldProps) {
-  const seedValue = seed.options?.value;
-  if (!isFilterOperator(operator)) return null;
-
-  if (operatorsWithOptionCount.has(operator)) {
-    return (
-      <RuleCountField
-        label="Selected option count"
-        hint="Enter the number of options that must be selected for this rule to pass."
-        placeholder="Enter a value..."
-        initialValue={seedValue}
-      />
-    );
-  }
-
-  if (operatorsWithRegExp.has(operator)) {
-    return (
-      <RuleValueField
-        label="Attribute value"
-        hint={regExpHint}
-        placeholder="Enter a regular expression..."
-        variableType={variableType}
-        options={variableChoices}
-        initialValue={seedValue}
-        required
-      />
-    );
-  }
-
-  if (operatorsWithValue.has(operator)) {
-    return (
-      <RuleValueField
-        label="Attribute value"
-        hint="Enter the value to compare against."
-        placeholder="Enter a value..."
-        variableType={variableType}
-        options={variableChoices}
-        initialValue={seedValue}
-        required
-      />
-    );
-  }
-
-  return null;
-}
-
 type BranchProps = Readonly<{
   seed: RuleDraft;
   attributeId: string | undefined;
@@ -305,6 +237,7 @@ type BranchProps = Readonly<{
   operatorOptions: readonly RuleOperatorOption[];
   variableType: VariableType | undefined;
   variableChoices: readonly RuleChoiceOption[] | undefined;
+  dateResolution: DateFormat;
 }>;
 
 function EgoRuleFields({
@@ -315,6 +248,7 @@ function EgoRuleFields({
   operatorOptions,
   variableType,
   variableChoices,
+  dateResolution,
 }: BranchProps) {
   return (
     <Section title="Rule structure" description={RULE_STRUCTURE_DESCRIPTION}>
@@ -341,10 +275,11 @@ function EgoRuleFields({
         />
       )}
       <RuleOperandField
-        seed={seed}
-        operator={operator}
         variableType={variableType}
-        variableChoices={variableChoices}
+        operator={operator}
+        options={variableChoices}
+        dateResolution={dateResolution}
+        initialValue={seed.options?.value}
         regExpHint="Enter the value to compare against. You can use a regular expression to match multiple values."
       />
     </Section>
@@ -369,6 +304,7 @@ function EntityRuleFields({
   operatorOptions,
   variableType,
   variableChoices,
+  dateResolution,
 }: EntityBranchProps) {
   // `rule.type` is the entity CLASS, so it is an internal token and never
   // display copy. Interpolating it produced "node Type" and "Choose an node
@@ -437,10 +373,11 @@ function EntityRuleFields({
             />
           )}
           <RuleOperandField
-            seed={seed}
-            operator={operator}
             variableType={variableType}
-            variableChoices={variableChoices}
+            operator={operator}
+            options={variableChoices}
+            dateResolution={dateResolution}
+            initialValue={seed.options?.value}
             regExpHint="Enter a regular expression to compare against."
           />
         </Section>
@@ -480,13 +417,18 @@ function RuleEditorFields({
       variableOptions: ruleVariableOptions(variables),
       variableType,
       variableChoices: ruleVariableChoices(variables, attributeId),
+      dateResolution: ruleVariableDateResolution(variables, attributeId),
       operatorOptions: ruleOperatorOptions(variableType),
     };
   }, [attributeId, codebook, entityTypeId, target]);
 
+  // The operator is part of the answer: a categorical attribute empties to an
+  // empty selection when its options are compared and to no number at all when
+  // they are counted, so a cascade that only knew the type parked a list in a
+  // numeric control.
   const emptyValue = useMemo(
-    () => emptyRuleValue(derived.variableType),
-    [derived.variableType],
+    () => emptyRuleValue(derived.variableType, operator),
+    [derived.variableType, operator],
   );
 
   useRuleCascade(values, emptyValue);
@@ -499,6 +441,7 @@ function RuleEditorFields({
     operatorOptions: derived.operatorOptions,
     variableType: derived.variableType,
     variableChoices: derived.variableChoices,
+    dateResolution: derived.dateResolution,
   };
 
   return (

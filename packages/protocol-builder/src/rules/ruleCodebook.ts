@@ -1,6 +1,9 @@
 import {
   type Codebook,
   type ColorReference,
+  DATE_FORMATS_KEYS,
+  type DateFormat,
+  DEFAULT_TYPE as DEFAULT_DATE_FORMAT,
   type NodeShape,
   OperatorsByVariableType,
   type Variable,
@@ -9,12 +12,12 @@ import {
 } from '@codaco/protocol-validation';
 
 import {
+  canAuthorRuleForType,
   isFilterOperator,
-  isRuleVariableType,
+  isVariableType,
+  operandRequirement,
   operatorsAsOptions,
-  operatorsByType,
-  operatorsWithOptionCount,
-  operatorsWithRegExp,
+  operatorsForSubject,
   type RuleOperatorOption,
 } from './operators.ts';
 
@@ -104,14 +107,14 @@ export const ruleEntityTypeExists = (
   return codebook[target]?.[entityTypeId] !== undefined;
 };
 
-/** Only attribute types a rule can actually compare are offered. */
+/** Only attribute types a rule can actually be built against are offered. */
 export const ruleVariableOptions = (
   variables: Readonly<Variables>,
 ): RuleVariableOption[] =>
   Object.entries(variables).flatMap<RuleVariableOption>(
     ([variableId, definition]) => {
       const type: unknown = definition.type;
-      if (!isRuleVariableType(type)) return [];
+      if (!canAuthorRuleForType(type)) return [];
       return [
         {
           value: variableId,
@@ -130,13 +133,51 @@ export const ruleVariable = (
     ? undefined
     : variables[variableId];
 
+/**
+ * The type the codebook gives this attribute, whether or not a rule could be
+ * BUILT against one.
+ *
+ * Every type the schema has answers here, including one the editor offers no
+ * operator for: a protocol may already hold a rule against a layout attribute,
+ * and reading its type as unknown would report it as an attribute the codebook
+ * has lost rather than as the operand problem it is.
+ */
 export const ruleVariableType = (
   variables: Readonly<Variables>,
   variableId: string | undefined,
 ): VariableType | undefined => {
   const type: unknown = ruleVariable(variables, variableId)?.type;
-  return isRuleVariableType(type) ? type : undefined;
+  return isVariableType(type) ? type : undefined;
 };
+
+/**
+ * The resolution a datetime attribute's answers are recorded at.
+ *
+ * A rule's operand is compared against the stored answer verbatim, so the date
+ * control has to offer the same resolution the attribute's own picker does: a
+ * year-resolution answer is `"1994"`, and a full date entered beside it equals
+ * nothing. `full` is the schema's own default when the variable names none.
+ */
+export const ruleVariableDateResolution = (
+  variables: Readonly<Variables>,
+  variableId: string | undefined,
+): DateFormat => {
+  const variable = ruleVariable(variables, variableId);
+  if (variable?.type !== 'datetime') return DEFAULT_DATE_FORMAT;
+  // Read structurally: only one of the two datetime variable shapes carries a
+  // resolution at all, and a relative date picker records a full date.
+  const parameters: unknown = Reflect.get(variable, 'parameters');
+  if (typeof parameters !== 'object' || parameters === null) {
+    return DEFAULT_DATE_FORMAT;
+  }
+  const resolution: unknown = Reflect.get(parameters, 'type');
+  return isDateFormat(resolution) ? resolution : DEFAULT_DATE_FORMAT;
+};
+
+const DATE_FORMAT_NAMES: ReadonlySet<string> = new Set(DATE_FORMATS_KEYS);
+
+const isDateFormat = (value: unknown): value is DateFormat =>
+  typeof value === 'string' && DATE_FORMAT_NAMES.has(value);
 
 /**
  * The authored option set of a categorical/ordinal attribute, if it has one.
@@ -168,15 +209,15 @@ export const ruleVariableChoices = (
 /**
  * The operators offered for an attribute of this type. A rule with no
  * attribute yet — a presence rule, or a variable rule mid-authoring — gets the
- * existence operators, which is what `operatorsByType.exists` holds.
+ * existence operators, which is what the `exists` subject holds.
  */
 export const ruleOperatorOptions = (
   variableType: VariableType | undefined,
 ): RuleOperatorOption[] => {
   const allowed =
     variableType === undefined
-      ? operatorsByType.exists
-      : operatorsByType[variableType];
+      ? operatorsForSubject('exists')
+      : operatorsForSubject(variableType);
   return operatorsAsOptions.filter((option) => allowed.has(option.value));
 };
 
@@ -202,64 +243,6 @@ export const isOperatorValidForAttributeType = (
 };
 
 /**
- * The shape of ANSWER each kind of attribute is recorded as, which is the
- * shape an operand has to have to be compared against one.
- *
- * `list` is a multi-select's set of chosen option values; `option` is one of
- * them; `number` and `text` are what they say. Read off the interview's own
- * comparison — deep equality against the stored answer — rather than off the
- * control the editor happens to render, because it is the runtime that decides
- * whether a rule can ever match.
- */
-type OperandShape = 'boolean' | 'list' | 'number' | 'option' | 'text';
-
-const OPERAND_SHAPES: Readonly<Record<VariableType, OperandShape>> =
-  Object.freeze({
-    boolean: 'boolean',
-    categorical: 'list',
-    ordinal: 'option',
-    number: 'number',
-    scalar: 'number',
-    // Recorded as an ISO string, and compared as one.
-    datetime: 'text',
-    text: 'text',
-    location: 'text',
-    layout: 'text',
-  });
-
-/** The operators that compare two values by magnitude. */
-const RELATIONAL_OPERATORS: ReadonlySet<string> = new Set([
-  'GREATER_THAN',
-  'GREATER_THAN_OR_EQUAL',
-  'LESS_THAN',
-  'LESS_THAN_OR_EQUAL',
-]);
-
-/**
- * Whether the runtime could resolve this operand to a point on a scale.
- *
- * Mirrors the interview's own reading: a number as itself, a numeric string as
- * its number, and any other string as the date it parses to. Nothing else is
- * comparable by magnitude, so nothing else can satisfy a relational rule.
- */
-const isComparableByMagnitude = (value: unknown): boolean => {
-  if (typeof value === 'number') return Number.isFinite(value);
-  if (typeof value !== 'string' || value.trim() === '') return false;
-  return !Number.isNaN(Number(value)) || !Number.isNaN(Date.parse(value));
-};
-
-/** What each of those shapes looks like as a stored value. */
-const HAS_OPERAND_SHAPE: Readonly<
-  Record<OperandShape, (value: unknown) => boolean>
-> = Object.freeze({
-  boolean: (value) => typeof value === 'boolean',
-  list: (value) => Array.isArray(value),
-  number: (value) => typeof value === 'number' && Number.isFinite(value),
-  option: (value) => typeof value === 'string' || typeof value === 'number',
-  text: (value) => typeof value === 'string',
-});
-
-/**
  * Whether the stored operand is something the interview could ever compare
  * against an attribute of this type.
  *
@@ -271,6 +254,11 @@ const HAS_OPERAND_SHAPE: Readonly<
  * against nothing. The protocol schema accepts a number, a string, a boolean
  * or a list at `value` whatever the attribute is, so the builder is the only
  * place this can be caught.
+ *
+ * Read off the same operand table the editor's controls are, so a value this
+ * accepts is exactly a value the editor could have committed — and a rule the
+ * schema has no operand for at all (a comparison against a layout attribute,
+ * whose answer is a point) is reported rather than passed as text.
  *
  * Answers `true` wherever nothing is known or nothing is compared: an
  * attribute the codebook has lost, an operator outside the schema's set, an
@@ -284,31 +272,14 @@ export const isOperandValidForAttributeType = (
 ): boolean => {
   if (variableType === undefined) return true;
   if (!isFilterOperator(operator)) return true;
-  if (operator === 'EXISTS' || operator === 'NOT_EXISTS') return true;
-  if (value === undefined || value === null) return true;
 
-  // An option count is a number whatever kind of attribute is being counted,
-  // and `OPTIONS_EQUALS` compares it identically — a string that merely looks
-  // like one never matches.
-  if (operatorsWithOptionCount.has(operator)) {
-    return typeof value === 'number' && Number.isFinite(value);
-  }
-  // A pattern is a string before it is anything else.
-  if (operatorsWithRegExp.has(operator)) return typeof value === 'string';
-  if (RELATIONAL_OPERATORS.has(operator)) {
-    return isComparableByMagnitude(value);
-  }
-  // `INCLUDES`/`EXCLUDES` ask whether a selection holds an option, and the
-  // runtime takes either one option or a list of them — so a rule authored
-  // before the editor emitted a list still matches.
-  if (operator === 'INCLUDES' || operator === 'EXCLUDES') {
-    return (
-      Array.isArray(value) ||
-      typeof value === 'string' ||
-      typeof value === 'number'
-    );
-  }
-  return HAS_OPERAND_SHAPE[OPERAND_SHAPES[variableType]](value);
+  const requirement = operandRequirement(variableType, operator);
+  // No operand the protocol can hold for this pair at all, so whatever is
+  // stored there compares against nothing.
+  if (requirement === undefined) return false;
+  if (requirement.kind === 'none') return true;
+  if (value === undefined || value === null) return true;
+  return requirement.holds(value);
 };
 
 /**

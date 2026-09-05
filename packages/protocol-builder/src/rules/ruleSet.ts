@@ -149,5 +149,15 @@ export const ruleSetValidationMessage = (
     : `${brokenRules.size} of these rules no longer work with this protocol's codebook. Open each marked rule to fix it, or delete it.`;
 };
 
-const NO_RULES_MESSAGE = 'Please create at least one rule.';
+/**
+ * What a rule set with nothing in it says, whether it holds an empty list or
+ * has not been started at all.
+ *
+ * Stated once and used as the FIELD's own `required` message as well as this
+ * verdict, so a capability switched on and left empty is refused in the same
+ * words as one whose last rule was deleted. "This field is required" is what
+ * Fresco would otherwise say about a rule builder, which names neither the
+ * rules nor the thing to do about them.
+ */
+export const NO_RULES_MESSAGE = 'Please create at least one rule.';
 const NO_JOIN_MESSAGE = 'Please choose how these rules should be combined.';

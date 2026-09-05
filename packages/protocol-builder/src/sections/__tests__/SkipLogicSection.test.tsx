@@ -534,10 +534,14 @@ describe('a rule set the researcher cannot save', () => {
     await user.click(screen.getByRole('button', { name: 'Finished editing' }));
 
     // Rules are what skip logic IS: a stage that switches it on and creates
-    // none has said nothing about when to skip.
+    // none has said nothing about when to skip. Said in the rule set's own
+    // words — the same sentence a set whose last rule was deleted is refused
+    // with — rather than in Fresco's wording for an unanswered field.
     const rules = screen.getByRole('group', { name: /Rules/ });
     await waitFor(() =>
-      expect(rules).toHaveAccessibleDescription(/This field is required/),
+      expect(rules).toHaveAccessibleDescription(
+        /Please create at least one rule\./,
+      ),
     );
     expect(onFinish).not.toHaveBeenCalled();
   });

@@ -4,10 +4,16 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import BooleanField from '@codaco/fresco-ui/form/fields/Boolean';
 import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
+import DatePickerField from '@codaco/fresco-ui/form/fields/DatePicker';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
-import type { VariableType } from '@codaco/protocol-validation';
+import type { DateFormat, VariableType } from '@codaco/protocol-validation';
 
+import {
+  type OperandRequirement,
+  operandRequirement,
+  type OperandValue,
+} from './operators.ts';
 import type { RuleChoiceOption } from './ruleCodebook.ts';
 
 /** Every rule operand is stored under this one path. */
@@ -19,38 +25,28 @@ export const RULE_VALUE_FIELD = 'options.value';
  */
 const REQUIRED_MESSAGE = 'This field is required.';
 
-/**
- * The attribute types whose operand is a number.
- *
- * A scalar belongs here with a number: the schema offers it the same numeric
- * comparison operators, and an interview records a scalar response as a
- * number. Left out, its operand fell through to the free-text control, and the
- * string it committed satisfied the schema while matching nothing — the
- * relational operators reject a comparison they cannot resolve, and the
- * equality ones compare "0.5" against a number that never equals it.
- */
-const NUMERIC_OPERAND_TYPES: ReadonlySet<VariableType> = new Set<VariableType>([
-  'number',
-  'scalar',
-]);
+/** An operand requirement that actually asks for a value. */
+type ValueRequirement = Extract<OperandRequirement, { kind: 'value' }>;
 
 /**
- * The empty operand for an attribute of this type — what a rule's value is
- * reset to when the choice above it changes.
+ * The empty operand for an attribute of this type, and for the operator chosen
+ * against it — what a rule's value is reset to when either changes.
  *
- * `undefined` for the numeric controls rather than `''`: an empty string is
- * not a number, and parking one there would put a value the interview cannot
- * compare into a field whose control would then show it as text.
+ * Both are asked, because both decide the shape: a categorical attribute
+ * empties to an empty SELECTION when its options are being compared, and to no
+ * number at all when they are being counted. The operator may not have been
+ * chosen yet, in which case the attribute's own answer shape decides — which
+ * is what `EXACTLY` asks for, the operator that compares an answer as it is.
  */
 export const emptyRuleValue = (
   variableType: VariableType | undefined,
-): boolean | (string | number)[] | string | undefined => {
-  if (variableType === 'boolean') return false;
-  if (variableType === 'categorical') return [];
-  if (variableType !== undefined && NUMERIC_OPERAND_TYPES.has(variableType)) {
-    return undefined;
-  }
-  return '';
+  operator?: unknown,
+): OperandValue => {
+  const requirement =
+    operandRequirement(variableType, operator) ??
+    operandRequirement(variableType, 'EXACTLY');
+  if (requirement === undefined || requirement.kind === 'none') return '';
+  return requirement.empty;
 };
 
 const formatNumber = (value: number | undefined): string =>
@@ -75,7 +71,7 @@ type NumericValueFieldProps = CreateFormFieldProps<
  * for `type="number"` — while a rule's numeric operand has to round-trip as a
  * real number, because that is what the interview runtime compares.
  */
-const NumberValueField = ({
+const DecimalValueField = ({
   value,
   onChange,
   ...props
@@ -90,16 +86,17 @@ const NumberValueField = ({
 );
 
 /**
- * A count of selected options: a whole number of them, never a fraction and
- * never negative. A value that is not an integer is not committed, exactly as
- * the step rejects it.
+ * A whole number, never a fraction: a value that is not one is not committed,
+ * exactly as the step rejects it.
  *
- * `min` is the control's own affordance and nothing more — the form is
- * submitted with native validation off, so it never refuses anything. The
- * `minValue` rule beside the field is what actually keeps a negative count
- * out; see `RuleCountField`.
+ * Rendered wherever the operand table says the protocol holds only whole
+ * numbers there — today that is the count of selected options, which is a
+ * number OF things. `step` is the control's own affordance and nothing more:
+ * the form is submitted with native browser validation off, so it refuses
+ * nothing, and the value the control declines to commit is what the field's
+ * own `required` then reports.
  */
-const CountValueField = ({
+const WholeNumberValueField = ({
   value,
   onChange,
   ...props
@@ -108,7 +105,6 @@ const CountValueField = ({
     {...props}
     type="number"
     step={1}
-    min={0}
     value={formatNumber(value)}
     onChange={(next) => {
       const parsed = parseNumber(next);
@@ -119,189 +115,208 @@ const CountValueField = ({
   />
 );
 
-const asScalar = (value: unknown): string | number | undefined =>
-  typeof value === 'string' || typeof value === 'number' ? value : undefined;
-
-const asNumber = (value: unknown): number | undefined => {
-  if (typeof value === 'number') {
-    return Number.isFinite(value) ? value : undefined;
-  }
-  if (typeof value !== 'string' || value.trim() === '') return undefined;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : undefined;
-};
-
-/**
- * A multi-select operand is the set of selected option values, so anything
- * that is not one of those survives the trip only as noise. Non-primitive
- * members are dropped rather than stringified.
- */
-const asSelection = (value: unknown): (string | number)[] =>
-  Array.isArray(value)
-    ? value.filter(
-        (item): item is string | number =>
-          typeof item === 'string' || typeof item === 'number',
-      )
-    : [];
-
-const asText = (value: unknown): string => {
-  if (typeof value === 'string') return value;
-  if (typeof value === 'number' || typeof value === 'boolean') {
-    return String(value);
-  }
-  return '';
-};
-
-export type RuleValueFieldProps = Readonly<{
+type RuleValueFieldProps = Readonly<{
   label: string;
   hint: ReactNode;
   placeholder?: string;
-  /**
-   * The codebook type of the attribute being compared. Absent until an
-   * attribute is chosen, and absent for an attribute the codebook no longer
-   * describes; both fall through to the free-text control, which is also what
-   * every type without a richer editor (datetime, location, layout) uses.
-   */
-  variableType?: VariableType;
+  /** What the operand table says this operator wants for this attribute. */
+  requirement: ValueRequirement;
   options?: readonly RuleChoiceOption[];
+  /** The resolution a datetime attribute's answers are recorded at. */
+  dateResolution?: DateFormat;
   /** The operand as the rule was seeded with it. */
   initialValue?: unknown;
-  required?: boolean;
+  /** The smallest value the operand may take, where one is meaningful. */
+  minValue?: number;
 }>;
 
 /**
- * The control a rule's operand is entered with, chosen by the attribute's
- * type.
+ * The control a rule's operand is entered with.
  *
- * ONE component for ego and alter rules alike. They diverged before — the ego
- * branch had its own copy that never adopted the integer option-count control
- * or the array-preserving operand coercion — and a rule the ego editor could
- * save was then rejected by the protocol schema.
+ * ONE component for ego and alter rules alike, and one branch per CONTROL
+ * rather than per attribute type — the table upstream has already turned the
+ * attribute and the operator into a control, an empty value and a reader. The
+ * two diverged before: the ego branch had a copy that never adopted the
+ * integer option-count control or the array-preserving operand coercion, and a
+ * rule the ego editor could save was then rejected by the protocol schema.
  */
-export function RuleValueField({
+function RuleValueField({
   label,
   hint,
   placeholder,
-  variableType,
+  requirement,
   options,
+  dateResolution,
   initialValue,
-  required = false,
+  minValue,
 }: RuleValueFieldProps) {
-  // `initialValue` is a registration dependency, so an array rebuilt every
+  const { control, parse } = requirement;
+  // `initialValue` is a registration dependency, so a value rebuilt every
   // render would re-register the field on every keystroke elsewhere.
-  const selection = useMemo(() => asSelection(initialValue), [initialValue]);
-  // A literal `false`, never `undefined`. Fresco builds a field's rules from
-  // the validation props it was GIVEN, and only `false` switches `required`
-  // off: an `undefined` one still requires the field, and reports it in the
-  // wording written for a participant mid-interview rather than for the
-  // researcher authoring the rule.
-  const requiredProp = required ? REQUIRED_MESSAGE : false;
+  const seeded = useMemo(() => parse(initialValue), [parse, initialValue]);
+  const shared = {
+    name: RULE_VALUE_FIELD,
+    label,
+    hint,
+    // Every operand a rule asks for has to be answered — the operator would
+    // not be comparing anything otherwise. Stated as the researcher's rule
+    // rather than as `true`, whose Fresco wording addresses a participant.
+    required: REQUIRED_MESSAGE,
+    ...(minValue === undefined ? {} : { minValue }),
+  };
 
-  if (variableType === 'boolean') {
-    return (
-      <Field
-        name={RULE_VALUE_FIELD}
-        label={label}
-        hint={hint}
-        component={BooleanField}
-        initialValue={initialValue === true}
-        required={requiredProp}
-      />
-    );
+  // `parse` has already produced the shape each control takes; these say so to
+  // TypeScript, which cannot carry a union member's value type through the
+  // function that produced it. None of them chooses anything.
+  switch (control) {
+    case 'boolean':
+      return (
+        <Field
+          {...shared}
+          component={BooleanField}
+          initialValue={seeded === true}
+        />
+      );
+    case 'optionList':
+      return (
+        <Field
+          {...shared}
+          component={CheckboxGroupField}
+          options={[...(options ?? [])]}
+          initialValue={Array.isArray(seeded) ? seeded : []}
+        />
+      );
+    case 'option':
+      return (
+        <Field
+          {...shared}
+          component={RadioGroupField}
+          options={[...(options ?? [])]}
+          initialValue={asOptionValue(seeded)}
+        />
+      );
+    case 'date':
+      return (
+        <Field
+          {...shared}
+          component={DatePickerField}
+          type={dateResolution ?? 'full'}
+          initialValue={asStringValue(seeded)}
+        />
+      );
+    case 'wholeNumber':
+      return (
+        <Field
+          {...shared}
+          component={WholeNumberValueField}
+          placeholder={placeholder}
+          initialValue={asNumberValue(seeded)}
+        />
+      );
+    case 'decimalNumber':
+      return (
+        <Field
+          {...shared}
+          component={DecimalValueField}
+          placeholder={placeholder}
+          initialValue={asNumberValue(seeded)}
+        />
+      );
+    case 'text':
+    case 'pattern':
+      return (
+        <Field
+          {...shared}
+          component={InputField}
+          placeholder={placeholder}
+          initialValue={asStringValue(seeded)}
+        />
+      );
+    default:
+      // A control with no branch, which TypeScript proves cannot happen: the
+      // whole point of the table is that a new one arrives with a control the
+      // researcher can use rather than falling through to a text box.
+      return assertNoSuchControl(control);
   }
-
-  if (variableType === 'categorical') {
-    return (
-      <Field
-        name={RULE_VALUE_FIELD}
-        label={label}
-        hint={hint}
-        component={CheckboxGroupField}
-        options={[...(options ?? [])]}
-        initialValue={selection}
-        required={requiredProp}
-      />
-    );
-  }
-
-  if (variableType === 'ordinal') {
-    return (
-      <Field
-        name={RULE_VALUE_FIELD}
-        label={label}
-        hint={hint}
-        component={RadioGroupField}
-        options={[...(options ?? [])]}
-        initialValue={asScalar(initialValue)}
-        required={requiredProp}
-      />
-    );
-  }
-
-  if (variableType !== undefined && NUMERIC_OPERAND_TYPES.has(variableType)) {
-    return (
-      <Field
-        name={RULE_VALUE_FIELD}
-        label={label}
-        hint={hint}
-        component={NumberValueField}
-        placeholder={placeholder}
-        initialValue={asNumber(initialValue)}
-        required={requiredProp}
-      />
-    );
-  }
-
-  return (
-    <Field
-      name={RULE_VALUE_FIELD}
-      label={label}
-      hint={hint}
-      component={InputField}
-      placeholder={placeholder}
-      initialValue={asText(initialValue)}
-      required={requiredProp}
-    />
-  );
 }
 
-export type RuleCountFieldProps = Readonly<{
-  label: string;
-  hint: ReactNode;
-  placeholder?: string;
+const assertNoSuchControl = (control: never): never => {
+  throw new Error(`No operand control is rendered for "${String(control)}".`);
+};
+
+const asStringValue = (value: OperandValue): string =>
+  typeof value === 'string' ? value : '';
+
+const asNumberValue = (value: OperandValue): number | undefined =>
+  typeof value === 'number' ? value : undefined;
+
+const asOptionValue = (value: OperandValue): string | number | undefined =>
+  typeof value === 'string' || typeof value === 'number' ? value : undefined;
+
+export type RuleOperandFieldProps = Readonly<{
+  variableType: VariableType | undefined;
+  operator: unknown;
+  options?: readonly RuleChoiceOption[];
+  dateResolution?: DateFormat;
   initialValue?: unknown;
+  /** Ego rules address the researcher about the ego's own attribute. */
+  regExpHint: string;
 }>;
 
 /**
- * How many options must be selected — the operand of the OPTIONS_* operators.
- * Independent of the attribute's own type, and shared by ego and alter rules.
+ * The operand, when the chosen operator takes one at all.
  *
- * Plain `required` is correct here even though zero selected options is a real
- * answer: Fresco's own emptiness predicate counts `0` and `false` as answers
- * and only rejects nullish, blank and `NaN` values.
- *
- * `minValue` rather than the control's `min` attribute, which the form never
- * consults: it is submitted with native browser validation off. A count below
- * zero is not a stricter rule than the schema's, it is a rule that cannot be
- * read at all — `OPTIONS_GREATER_THAN -1` matches an attribute nobody
- * answered, and `OPTIONS_LESS_THAN -1` matches nothing there is.
+ * What the operand IS decides the control, and how the schema constrains it
+ * decides the words: a count of options is a number of things, a pattern is a
+ * regular expression, and everything else is a value compared against the
+ * answer. All three read the same table, so an operator added to the schema
+ * cannot arrive here with no control and no copy.
  */
-export function RuleCountField({
-  label,
-  hint,
-  placeholder,
+export function RuleOperandField({
+  variableType,
+  operator,
+  options,
+  dateResolution,
   initialValue,
-}: RuleCountFieldProps) {
+  regExpHint,
+}: RuleOperandFieldProps) {
+  const requirement = operandRequirement(variableType, operator);
+  if (requirement === undefined || requirement.kind === 'none') return null;
+
+  if (requirement.operandKind === 'integer') {
+    return (
+      <RuleValueField
+        label="Selected option count"
+        hint="Enter the number of options that must be selected for this rule to pass."
+        placeholder="Enter a value..."
+        requirement={requirement}
+        initialValue={initialValue}
+        // A count below zero is not a stricter rule than the schema's, it is a
+        // rule that cannot be read at all — `OPTIONS_GREATER_THAN -1` matches
+        // an attribute nobody answered, and `OPTIONS_LESS_THAN -1` matches
+        // nothing there is. Stated as a rule rather than as the control's own
+        // `min`, which the form never consults: it is submitted with native
+        // browser validation off.
+        minValue={0}
+      />
+    );
+  }
+
   return (
-    <Field
-      name={RULE_VALUE_FIELD}
-      label={label}
-      hint={hint}
-      component={CountValueField}
-      placeholder={placeholder}
-      initialValue={asNumber(initialValue)}
-      required={REQUIRED_MESSAGE}
-      minValue={0}
+    <RuleValueField
+      label="Attribute value"
+      hint={requirement.operandKind === 'string' ? regExpHint : COMPARE_HINT}
+      placeholder={
+        requirement.operandKind === 'string'
+          ? 'Enter a regular expression...'
+          : 'Enter a value...'
+      }
+      requirement={requirement}
+      options={options}
+      dateResolution={dateResolution}
+      initialValue={initialValue}
     />
   );
 }
+
+const COMPARE_HINT = 'Enter the value to compare against.';

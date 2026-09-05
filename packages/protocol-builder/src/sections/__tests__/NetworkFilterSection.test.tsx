@@ -138,6 +138,13 @@ function renderEditor(
 const switchFilter = async (user: ReturnType<typeof userEvent.setup>) =>
   user.click(screen.getByRole('switch', { name: 'Stage filter' }));
 
+const outlineItems = () =>
+  screen
+    .getByRole('navigation', { name: 'Stage sections' })
+    .querySelectorAll('button');
+
+const outlineText = () => [...outlineItems()].map((item) => item.textContent);
+
 describe('what the section says it is for', () => {
   it('names the nodes a node stage filters', () => {
     renderEditor(createSession(), 'node');
@@ -365,6 +372,95 @@ describe('rules that contradict the rest of the stage', () => {
     ).toBeInTheDocument();
   });
 
+  it('warns when rules that must ALL match require different edge types', () => {
+    renderEditor(
+      createSession({
+        type: 'Sociogram',
+        fields: sociogramFields({
+          join: 'AND',
+          rules: [
+            {
+              id: 'rule-a',
+              type: 'edge',
+              options: { type: 'friend', operator: 'EXISTS' },
+            },
+            {
+              id: 'rule-b',
+              type: 'edge',
+              options: { type: 'best', operator: 'EXISTS' },
+            },
+          ],
+        }),
+      }),
+    );
+
+    // `AND` feeds each rule's result into the next, so an edge has to survive
+    // both — and no edge is of two types at once. A check that merely unioned
+    // the types the rules NAME saw the configured Friend edge in the list and
+    // said nothing, while the stage in fact shows no edges at all.
+    expect(
+      screen.getByText('Filter rules hide configured values'),
+    ).toBeInTheDocument();
+  });
+
+  it('stays quiet when either of those rules would match on its own', () => {
+    renderEditor(
+      createSession({
+        type: 'Sociogram',
+        fields: sociogramFields({
+          join: 'OR',
+          rules: [
+            {
+              id: 'rule-a',
+              type: 'edge',
+              options: { type: 'friend', operator: 'EXISTS' },
+            },
+            {
+              id: 'rule-b',
+              type: 'edge',
+              options: { type: 'best', operator: 'EXISTS' },
+            },
+          ],
+        }),
+      }),
+    );
+
+    // The same two rules under `OR` run on the whole network and are merged,
+    // so the configured Friend edge comes through the first of them.
+    expect(
+      screen.queryByText('Filter rules hide configured values'),
+    ).toBeNull();
+  });
+
+  it('stays quiet when a node rule can bring the edges back under OR', () => {
+    renderEditor(
+      createSession({
+        type: 'Sociogram',
+        fields: sociogramFields({
+          join: 'OR',
+          rules: [
+            {
+              id: 'rule-a',
+              type: 'edge',
+              options: { type: 'best', operator: 'EXISTS' },
+            },
+            {
+              id: 'rule-b',
+              type: 'node',
+              options: { type: 'person', operator: 'EXISTS' },
+            },
+          ],
+        }),
+      }),
+    );
+
+    // Under `OR` the edges between the alters a node rule keeps are merged
+    // back in whatever type they are, so no edge type is certainly hidden.
+    expect(
+      screen.queryByText('Filter rules hide configured values'),
+    ).toBeNull();
+  });
+
   it('counts the edges a prompt only displays, not just the ones it creates', () => {
     renderEditor(
       createSession({
@@ -413,5 +509,58 @@ describe('a filter the researcher cannot save', () => {
       await screen.findByText('Please create at least one rule.'),
     ).toBeInTheDocument();
     expect(onFinish).not.toHaveBeenCalled();
+  });
+
+  it('refuses a filter switched on and left empty', async () => {
+    const user = userEvent.setup();
+    const onFinish = vi.fn();
+    renderEditor(createSession({ onFinish }));
+
+    await switchFilter(user);
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    // Switching the capability on writes nothing on its own, so an editor that
+    // closed here would save a stage with no filter key — and the toggle would
+    // be off again the next time the stage was opened, with nothing having
+    // said so. The section stays on and unfinished until a rule is added or
+    // the switch is turned off, and says which in the rule set's own words.
+    expect(
+      await screen.findByText('Please create at least one rule.'),
+    ).toBeInTheDocument();
+    expect(onFinish).not.toHaveBeenCalled();
+  });
+
+  it('reports a filter switched on and left empty as unfinished, not switched off', async () => {
+    const user = userEvent.setup();
+    renderEditor(createSession());
+    await waitFor(() => expect(outlineItems().length).toBeGreaterThan(0));
+    expect(outlineText()).toContain('Stage filterSwitched off');
+
+    await switchFilter(user);
+
+    await waitFor(() =>
+      expect(outlineText()).toContain('Stage filterNot finished'),
+    );
+  });
+
+  it('saves a stage with no filter key once the switch goes back off', async () => {
+    const user = userEvent.setup();
+    const onFinish = vi.fn();
+    renderEditor(createSession({ onFinish }));
+
+    await switchFilter(user);
+    await waitFor(() =>
+      expect(screen.getByRole('group', { name: /Filter rules/ })).toBeVisible(),
+    );
+    // Nothing was entered, so there is nothing to lose and nothing to confirm.
+    await switchFilter(user);
+    await waitFor(() =>
+      expect(screen.queryByRole('group', { name: /Filter rules/ })).toBeNull(),
+    );
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    await waitFor(() => expect(onFinish).toHaveBeenCalled());
+    const request = onFinish.mock.calls[0]?.[0] as FinishRequest;
+    expect(Object.hasOwn(request.stageDocument, 'filter')).toBe(false);
   });
 });

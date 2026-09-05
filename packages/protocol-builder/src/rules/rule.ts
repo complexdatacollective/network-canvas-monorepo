@@ -1,8 +1,4 @@
-import {
-  isFilterOperator,
-  operatorsWithOptionCount,
-  operatorsWithValue,
-} from './operators.ts';
+import { operatorNeedsOperand } from './operators.ts';
 
 /**
  * A rule as the EDITOR holds it, which is not yet a `FilterRule`.
@@ -42,11 +38,6 @@ const isAnswered = (value: unknown): boolean => {
   if (typeof value === 'string') return value !== '';
   return value !== undefined && value !== null;
 };
-
-/** Whether the chosen operator needs an operand entered beside it. */
-const needsOperand = (operator: unknown): boolean =>
-  isFilterOperator(operator) &&
-  (operatorsWithValue.has(operator) || operatorsWithOptionCount.has(operator));
 
 /**
  * One part of a rule. The editor asks for each of these with a control of its
@@ -106,7 +97,7 @@ const missingOperatorOrOperand = (
   options: RuleDraftOptions,
 ): RulePart | undefined => {
   if (!isAnswered(options.operator)) return 'operator';
-  return needsOperand(options.operator) && !isAnswered(options.value)
+  return operatorNeedsOperand(options.operator) && !isAnswered(options.value)
     ? 'value'
     : undefined;
 };

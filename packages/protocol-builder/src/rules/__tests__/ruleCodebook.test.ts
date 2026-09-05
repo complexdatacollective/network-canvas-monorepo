@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { type Codebook, VariableTypesKeys } from '@codaco/protocol-validation';
 
-import { operatorsByType, ruleVariableTypes } from '../operators.ts';
+import { operatorsForSubject, ruleVariableTypes } from '../operators.ts';
 import {
   ruleEntityTypeExists,
   ruleEntityTypeOptions,
@@ -17,16 +17,23 @@ import { testCodebook } from './fixtures.ts';
 const codebook = testCodebook;
 
 describe('the rule variable-type catalogue', () => {
-  it('is the schema’s own catalogue, not a host display configuration', () => {
+  it('is the schema’s own catalogue, less the types no operand can be entered for', () => {
+    // Read from the schema rather than from a host display configuration, and
+    // narrowed by one thing only: whether the protocol can hold a value to
+    // compare an attribute of that type against. A layout attribute is
+    // answered with a point, and `filterValueSchema` holds numbers, strings,
+    // booleans and lists — so no rule can be built against one, and offering
+    // it would put an attribute in the picker with an empty operator list.
     expect([...ruleVariableTypes].toSorted()).toEqual(
-      [...VariableTypesKeys].toSorted(),
+      [...VariableTypesKeys].filter((type) => type !== 'layout').toSorted(),
     );
   });
 
-  it('offers operators for every type the schema has', () => {
-    for (const type of VariableTypesKeys) {
+  it('offers operators for every type it offers at all', () => {
+    for (const type of ruleVariableTypes) {
       expect(ruleOperatorOptions(type).length).toBeGreaterThan(0);
     }
+    expect(ruleOperatorOptions('layout')).toEqual([]);
   });
 
   it('offers only the existence operators before an attribute is chosen', () => {
@@ -34,7 +41,10 @@ describe('the rule variable-type catalogue', () => {
       'EXISTS',
       'NOT_EXISTS',
     ]);
-    expect([...operatorsByType.exists]).toEqual(['EXISTS', 'NOT_EXISTS']);
+    expect([...operatorsForSubject('exists')]).toEqual([
+      'EXISTS',
+      'NOT_EXISTS',
+    ]);
   });
 
   it('offers text attributes their four comparisons', () => {

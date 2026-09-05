@@ -2,6 +2,7 @@ import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 
 import SkipLogicDestinationField from '../fields/SkipLogicDestinationField.tsx';
 import ProtocolField from '../form/ProtocolField.tsx';
+import { NO_RULES_MESSAGE } from '../rules/ruleSet.ts';
 import { QueryRuleSetField } from '../rules/RuleSetField.tsx';
 import { useRuleSetValidation } from '../rules/useRuleSetValidation.ts';
 import BuilderSection, { type SectionCapability } from './BuilderSection.tsx';
@@ -109,7 +110,10 @@ export default function SkipLogicSection({
         label="Rules"
         hint="Create one or more rules to determine when the action should occur."
         component={QueryRuleSetField}
-        required
+        // The rule set's own words for holding nothing, so a capability
+        // switched on and left empty is refused in the same sentence as one
+        // whose last rule was deleted.
+        required={NO_RULES_MESSAGE}
         custom={rulesValidation}
       />
       <ProtocolField<typeof SkipLogicDestinationField>

@@ -15,7 +15,10 @@ import {
   getVariablesForSubject,
   variableExists,
 } from '../../utils/validation-helpers.ts';
-import { OperatorsByVariableType } from './filters/index.ts';
+import {
+  FilterOperandKinds,
+  OperatorsByVariableType,
+} from './filters/index.ts';
 
 // Re-export all the split schemas
 export * from './assets/index.ts';
@@ -59,22 +62,9 @@ import {
   type ValidationContradiction,
 } from './variables/validation-contradictions.ts';
 
-// Operators that expect numeric values for comparison
-const NUMERIC_COMPARISON_OPERATORS = [
-  'GREATER_THAN',
-  'GREATER_THAN_OR_EQUAL',
-  'LESS_THAN',
-  'LESS_THAN_OR_EQUAL',
-];
-// Operators that count array length (expect numeric value)
-const OPTIONS_COUNT_OPERATORS = [
-  'OPTIONS_GREATER_THAN',
-  'OPTIONS_LESS_THAN',
-  'OPTIONS_EQUALS',
-  'OPTIONS_NOT_EQUALS',
-];
-// Operators that expect string values for text matching
-const STRING_VALUE_OPERATORS = ['CONTAINS', 'DOES_NOT_CONTAIN'];
+// Which kind of value each operator compares against is stated once, beside
+// the filter schema itself (`FilterOperandKinds`), because the protocol
+// builder chooses each operand's control from the same table.
 
 type IssueReporter = (issue: {
   message: string;
@@ -159,38 +149,39 @@ const validateFilterRules = (
 
         // Validate value type based on operator
         if (rule.options.value !== undefined) {
-          const valueType = Array.isArray(rule.options.value)
-            ? 'array'
-            : typeof rule.options.value;
+          const value: unknown = rule.options.value;
+          const valueType = Array.isArray(value) ? 'array' : typeof value;
+          // `attribute` and `none` are unconstrained here: the first is
+          // decided by the attribute's own type (INCLUDES/EXCLUDES accept one
+          // option or a list of them, and resolve the difference at runtime),
+          // and the second belongs to an operator that compares nothing.
+          const operandKind = FilterOperandKinds[rule.options.operator];
 
-          // Note: INCLUDES/EXCLUDES accept single values (string, number,
-          // boolean) or arrays - they handle conversion at runtime in
-          // predicate.js
-
-          if (
-            NUMERIC_COMPARISON_OPERATORS.includes(rule.options.operator) &&
-            valueType !== 'number'
-          ) {
+          if (operandKind === 'number' && valueType !== 'number') {
             addIssue({
               message: `Operator "${rule.options.operator}" requires a numeric value, but got ${valueType}`,
               path: [...rulePath, 'options', 'value'],
             });
           }
 
-          if (
-            OPTIONS_COUNT_OPERATORS.includes(rule.options.operator) &&
-            valueType !== 'number'
-          ) {
-            addIssue({
-              message: `Operator "${rule.options.operator}" requires a numeric value (count), but got ${valueType}`,
-              path: [...rulePath, 'options', 'value'],
-            });
+          if (operandKind === 'integer') {
+            if (valueType !== 'number') {
+              addIssue({
+                message: `Operator "${rule.options.operator}" requires a numeric value (count), but got ${valueType}`,
+                path: [...rulePath, 'options', 'value'],
+              });
+            } else if (!Number.isInteger(value)) {
+              // There is no such thing as one and a half selected options, so
+              // a fractional count is a rule that can never be satisfied
+              // exactly and reads as nonsense in the summary.
+              addIssue({
+                message: `Operator "${rule.options.operator}" requires a whole number of options, but got ${String(value)}`,
+                path: [...rulePath, 'options', 'value'],
+              });
+            }
           }
 
-          if (
-            STRING_VALUE_OPERATORS.includes(rule.options.operator) &&
-            valueType !== 'string'
-          ) {
+          if (operandKind === 'string' && valueType !== 'string') {
             addIssue({
               message: `Operator "${rule.options.operator}" requires a string value, but got ${valueType}`,
               path: [...rulePath, 'options', 'value'],
