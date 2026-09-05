@@ -4,6 +4,7 @@ import {
   DATE_PICKER_EARLIEST_DATE,
   DATE_PICKER_LATEST_DATE,
   dateWithinPickerRange,
+  relativeDatePickerWindow,
 } from '../date-fields.ts';
 
 describe('dateWithinPickerRange', () => {
@@ -94,5 +95,70 @@ describe('dateWithinPickerRange', () => {
       expect(dateWithinPickerRange(partial, 30)).toBe(partial);
       expect(dateWithinPickerRange(partial, -30)).toBe(partial);
     }
+  });
+});
+
+/**
+ * The window every reader of a `RelativeDatePicker` has to derive: the field
+ * that renders it, the interview that validates a submitted answer against it,
+ * the generator that draws values inside it, and the protocol builder that
+ * reports a rule operand outside it.
+ *
+ * The expected dates are written out rather than recomputed from
+ * `dateWithinPickerRange`, so a clamp that is wrong in the same way everywhere
+ * still fails here.
+ */
+describe('relativeDatePickerWindow', () => {
+  it('counts the declared span either side of the declared anchor', () => {
+    expect(
+      relativeDatePickerWindow(
+        { anchor: '2020-01-01', before: 30, after: 30 },
+        '2026-07-27',
+      ),
+    ).toEqual({ min: '2019-12-02', max: '2020-01-31' });
+  });
+
+  it('falls back to today and the shared span, part by part', () => {
+    // The control destructures its own defaults whether or not the record
+    // exists, so an absent record and an empty one constrain identically.
+    for (const parameters of [undefined, {}]) {
+      expect(relativeDatePickerWindow(parameters, '2026-07-27')).toEqual({
+        min: '2026-01-28',
+        max: '2026-07-27',
+      });
+    }
+    expect(relativeDatePickerWindow({ before: 30 }, '2026-07-27')).toEqual({
+      min: '2026-06-27',
+      max: '2026-07-27',
+    });
+    expect(
+      relativeDatePickerWindow({ anchor: '2020-01-01' }, '2026-07-27'),
+    ).toEqual({ min: '2019-07-05', max: '2020-01-01' });
+  });
+
+  it('ignores a parameter of the wrong kind rather than deriving from it', () => {
+    // A protocol the schema has not validated can hold anything here, and a
+    // window derived from `NaN` days is not a date any comparison can place.
+    expect(
+      relativeDatePickerWindow(
+        { anchor: 2020, before: '30', after: null },
+        '2026-07-27',
+      ),
+    ).toEqual({ min: '2026-01-28', max: '2026-07-27' });
+  });
+
+  it('holds both ends inside the calendar the picker can offer', () => {
+    expect(
+      relativeDatePickerWindow(
+        { anchor: '9999-12-31', before: 364, after: 365_250 },
+        '2026-07-27',
+      ),
+    ).toEqual({ min: '9999-01-01', max: '9999-12-31' });
+    expect(
+      relativeDatePickerWindow(
+        { anchor: '0001-06-15', before: 3650, after: 30 },
+        '2026-07-27',
+      ),
+    ).toEqual({ min: '0001-01-01', max: '0001-07-15' });
   });
 });

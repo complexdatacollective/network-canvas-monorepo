@@ -131,3 +131,58 @@ export function dateWithinPickerRange(anchor: string, days: number): string {
   const latest = daysBetween(anchor, DATE_PICKER_LATEST_DATE);
   return addDays(anchor, Math.max(earliest, Math.min(days, latest)));
 }
+
+/** The parameters a `RelativeDatePicker` derives its window from. */
+export type RelativeDatePickerParameters = Readonly<{
+  anchor?: unknown;
+  before?: unknown;
+  after?: unknown;
+}>;
+
+/** The two dates a `RelativeDatePicker` holds an answer between. */
+export type RelativeDatePickerWindow = Readonly<{ min: string; max: string }>;
+
+/**
+ * The window a `RelativeDatePicker` offers, from the parameters a protocol
+ * declares and the day the reader is asking on.
+ *
+ * A relative picker names no `min`/`max`: it names an anchor and a span either
+ * side of it, and EVERY reader of one has to turn that into the same two
+ * dates. `@codaco/interview` validates a submitted answer against them
+ * (`buildDatePickerBoundProps`) and `@codaco/protocol-builder` reports a rule
+ * operand outside them, so the derivation lives here — beside the clamp and
+ * the defaults it is built from — rather than once per reader.
+ *
+ * Every part of it defaults, because the control does: an absent `parameters`
+ * record, an absent anchor and absent offsets all leave a
+ * `RelativeDatePickerField` constraining the participant exactly as an empty
+ * one does. `today` is passed in rather than read, because the clock belongs
+ * to the caller — fresco-ui and protocol-utilities each have their own
+ * `todayYmd`, and this package must stay free of both.
+ *
+ * `RelativeDatePickerField` and `@codaco/protocol-utilities`' generator derive
+ * the same window from the same clamp without going through here — the field
+ * has already applied its own prop defaults by the time it computes, and the
+ * generator REFUSES a coarse anchor rather than defaulting one. All four
+ * answers are held to one set of dates by
+ * `@codaco/interview`'s `relativeDateWindowParity.test.tsx`.
+ */
+export function relativeDatePickerWindow(
+  parameters: RelativeDatePickerParameters | undefined,
+  today: string,
+): RelativeDatePickerWindow {
+  const anchor =
+    typeof parameters?.anchor === 'string' ? parameters.anchor : today;
+  const before =
+    typeof parameters?.before === 'number'
+      ? parameters.before
+      : RELATIVE_DATE_PICKER_DEFAULT_BEFORE;
+  const after =
+    typeof parameters?.after === 'number'
+      ? parameters.after
+      : RELATIVE_DATE_PICKER_DEFAULT_AFTER;
+  return {
+    min: dateWithinPickerRange(anchor, -before),
+    max: dateWithinPickerRange(anchor, after),
+  };
+}
