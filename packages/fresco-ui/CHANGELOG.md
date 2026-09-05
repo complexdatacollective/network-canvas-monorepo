@@ -1,5 +1,163 @@
 # @codaco/fresco-ui
 
+## 6.5.0
+
+### Minor Changes
+
+- b0fa87a: Export `storybook-support/awaitPassiveEffects`. It is what a Storybook play
+  function awaits before its first synthetic interaction, so the story's passive
+  effects have run and the event is not swallowed by a listener that is not
+  attached yet. Stories outside this package had no way to reach it, and the only
+  alternative was a second copy of the same three lines.
+- c358132: Every piece of copy the components supply themselves — icon labels, dialog
+  buttons, empty states, validation messages, pagination and sort announcements
+  — now renders through `@codaco/app-i18n` instead of being hardcoded English.
+  That includes the copy with no visible home: the accessible names a control
+  falls back to when the caller supplies none (progress bars, panel handles,
+  number steppers, the Likert and analog scales), the drag-and-drop live-region
+  announcements, and the two messages a person only sees once something has
+  already failed — a submit handler that threw, and a validation rule that did.
+
+  The numbers inside that copy now go through the same formatter, so a filter
+  endpoint, a saved filter condition and the analog scale's value bubble carry
+  the reader's digits and grouping rather than the source language's.
+
+  Existing hosts need no change: a component used without a locale provider
+  renders exactly the English it rendered before, with one exception — those
+  numbers now take English grouping, so a range ending at 2000 reads `2,000`.
+
+  A host that wants the components in the reader's language mounts
+  `AppI18nProvider` and merges this package's catalogs into the messages it
+  passes it — `mergeCatalogs(commonCatalogs[locale], frescoUiCatalogs[locale],
+appCatalog)`, taking `frescoUiCatalogs` from `@codaco/fresco-ui/locales`. The
+  provider formats only the `messages` it is handed, so mounting it without that
+  merge leaves every `frescoUi.*` id on its English default — including the
+  en-GB overrides, where the trash-bin icon stays a "Trash bin" rather than a
+  "Rubbish bin".
+
+  Also adds a `LocaleSelect` field for choosing a language, exports the
+  package's catalogs at `@codaco/fresco-ui/locales`, and converts the layout to
+  logical properties (`start`/`end` rather than `left`/`right`) so the
+  components lay out correctly in right-to-left languages.
+
+- 3abf9e4: Two new components for naming where a researcher is: `IdentityMark` and
+  `navigation/TeamAndStudySwitcher`.
+
+  `IdentityMark` gives an entity a stable visual identity — a monogram on a fill
+  chosen by hashing the entity's id. The fill derives from the id alone, so the
+  same entity is the same colour in every session with nothing persisted, and
+  renaming it never recolours it. The fill and foreground pairings are measured
+  rather than assumed: mustard, sea green and sea serpent take the dark
+  foreground, because white on them is 1.82:1, 2.27:1 and 2.23:1. The mark is
+  `aria-hidden` — every caller renders the entity's real name beside it.
+
+  `TeamAndStudySwitcher` is the control that names the team whose work is on
+  screen and the study open inside it, and moves between siblings of either. One
+  component rather than a frame composed around separate switchers: the frame and
+  the segments have to agree about radius, height and where a painted surface
+  stops, and as separate components they disagreed about each in turn. The frame
+  owns the border, the radius and the clip; the segments have no corners of their
+  own.
+
+  It is a listbox rather than a menu, so opening lands on the entity you are
+  already in rather than on the first sibling. The trailing command sits in the
+  popup but outside the list, so the list holds only options — and the command
+  is still reachable, one Tab from the open list. A segment with nothing to
+  switch to and no command renders inert rather than taking a tab stop, and a
+  loading segment reserves the space its name will take, so the header does not
+  reflow. Which presentation a segment is in follows a container query, not the
+  viewport.
+
+  A segment's status is `ready` or `loading`, and there is no failure state.
+  A list that could not be read is the host's to report: one switcher carrying
+  its own error surface would put a second, quieter account of the same outage
+  beside the one the application already makes.
+
+  The trigger's accessible name is one interpolated message the host supplies
+  through `accessibleName`, rather than two separately translated strings this
+  component joins. Word order is a property of the sentence — English wants
+  "Team SONIC Lab" and Japanese the equivalent of "SONIC Lab team" — and no
+  order the component picks is right everywhere. It defaults to the previous
+  output, and warns in development when a supplied label does not contain the
+  visible name, which a control's accessible name has to (WCAG 2.5.3).
+
+  The listbox is rendered even when the list is empty. Without one, Base UI
+  moves `role="listbox"` onto the popup, which puts the trailing command inside
+  the listbox — a structure that holds options and nothing else, and one a
+  screen reader may skip or misannounce.
+
+  The supporting line under a name keeps full strength on the selected row.
+  Dimmed, it composites toward `--selected` and falls to 2.90:1 against it.
+
+  Every text run in the control sits on its caps and baseline rather than on its
+  line box, matching the rest of the library. Two spacings that the leading used
+  to provide by accident — between the kicker and the name, and between a name
+  and its supporting line — are now stated, and a name that has to shorten clips
+  sideways only, because a cap-height box would otherwise lose its descenders.
+
+  The type scale gains `text-2xs`, one step below `xs`, for the small uppercase
+  labels that qualify a value rather than being one.
+
+  `@codaco/tailwind-config` ships alongside because the components need its CSS:
+  a `--text-2xs` step below `xs`, for the small uppercase word above each name,
+  and a radius scale that now derives every step from `--radius-base`. That
+  second change is a fix — only the bare `rounded` utility followed a theme
+  before, so `rounded-sm` and the rest resolved at `:root` and every themed
+  region got the default theme's numbers.
+
+  Interviewer's update indicator takes the default pill size. It was the only
+  caller asking for `sm` — Architect's equivalent asks for `md` — so the same
+  indicator was drawn at two sizes in the two apps for no stated reason. It is
+  `md` in both now. The patch is here rather than in a changeset of its own
+  because the size it lands on is `Pill`'s, and the two move together.
+
+- a5626f5: Add the application-shell layout and navigation primitives: `layout/AppFrame`,
+  `layout/AppArea`, `navigation/NavList`, `navigation/NavItem` and
+  `navigation/NavDrawer`.
+
+  `AppFrame` is the outer chrome — the skip link, the `header` it renders around
+  the host's header contents, and the region an area fills. It renders no `nav` and no `main` of its own. `AppArea` renders those:
+  one labelled navigation region and one `main` the skip link lands on, becoming
+  a trigger and a drawer when its container is narrow. Keeping the two apart is
+  what lets one area's navigation replace another's rather than nest inside it.
+
+  `NavList` groups destinations under translatable headings, as sibling lists so
+  each reports its own count and none claims a hierarchy that isn't there.
+  `NavItem` takes its link from a render prop, so any router can supply one, and
+  folds an optional count into the destination's accessible name rather than
+  leaving a bare number beside it. Its `disabled` state — which requires an
+  `unavailableReason` alongside it — renders a destination this deployment does
+  not have as text rather than as a link: no `href`, nothing focusable, and the
+  reason shown beneath the label so the row explains itself.
+
+  `NavDrawer` traps focus while open and hands focus to the destination when a
+  navigation closes it, falling back to the trigger when the destination has no
+  landing point. A navigation that is cancelled leaves it open.
+
+  `navigation/RouteFocus` gains `hasRouteFocusTarget`, which answers whether the
+  current route has a landing point — for callers that must know a handoff is
+  possible before giving up the focus they hold.
+
+### Patch Changes
+
+- 15c8259: Every subpath that runs a React hook now declares `'use client'`, so a Next App
+  Router application can import it from a Server Component. Twenty-seven modules
+  were missing the directive, including `Modal`, `Popover`, `TimeAgo`,
+  `SegmentedSwitcher`, `form/FieldGroup`, `form/SubmitButton`,
+  `form/fields/CheckboxGroup`, the form hooks (`form/hooks/useField`,
+  `useForm`, `useFormState`, `useFormStore`, `useFormValue`), `dialogs/useDialog`,
+  `dnd/useDropTarget`, `hooks/useSafeLocalStorage`, `navigation/RouteFocus` and
+  `utils/NoSSRWrapper`. An unmarked module is treated as server code, so importing
+  any of these anywhere in a Server Component's import graph failed the build
+  rather than rendering.
+
+  `typography/Heading` and `NativeLink` are deliberately unchanged and stay
+  server-renderable: the only hook-named call they make is Base UI's `useRender`,
+  which runs no React hook of its own.
+
+- c100092: Fix `FieldErrors`' shake animation replaying on every keystroke of an already-invalid field. Revalidating a dirty field clears its error and writes the identical message back within the same keystroke, which made the message flicker off and back on and, with it, the shake — even though nothing had actually changed. The shake now only replays when the message itself changes.
+- 208fcea: The site header's Software dropdown cards now highlight the moment the pointer reaches them. The hover tint is a light wash on the popup surface, and easing it in over 150ms made the highlight appear to lag behind the pointer and linger on the card just left.
+
 ## 6.4.0
 
 ### Minor Changes

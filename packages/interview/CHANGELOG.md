@@ -1,5 +1,51 @@
 # @codaco/interview
 
+## 9.0.2
+
+### Patch Changes
+
+- 23dcf99: Analytics now reports a session-scoped pseudonym for every entity id, rather
+  than the interview's own `_uid`.
+
+  The event taxonomy admits `node_id` and `edge_id` on the premise that they are
+  random values minted at creation time, derived from nothing a participant
+  supplied. Roster nodes break that premise: an external-data row is keyed as
+  `${subjectType}_${hash({ node, index })}`, a deterministic, unkeyed digest of
+  the row's own content, and the node is added to the network under exactly that
+  key. Anyone holding the roster could recompute the digest and so recognise
+  which roster row an event was about, and because the digest does not vary the
+  same person carried the same identifier in every interview — so events from
+  separate sessions about one person could be joined together.
+
+  Each session now mints a random pseudonym per entity, held in memory and never
+  persisted or transmitted. Events within a session still join on the entity,
+  which is all these properties are for; nothing joins across sessions or back to
+  a roster row. The substitution happens at the tracker, the single boundary every
+  event passes through, so no emitter can reintroduce a raw identifier. When
+  events fire, and which events fire, is unchanged.
+
+- a13f261: Every module that runs a React hook now declares `'use client'`, so a Next App
+  Router application can import this runtime from a Server Component.
+
+  Seventy-four modules were missing the directive: the navigation, node list, node
+  drawer and panel components, the canvas layers and their layout hooks, the
+  protocol form, and the Anonymisation, CategoricalBin, DyadCensus, EgoForm,
+  FamilyPedigree, Geospatial, NameGenerator, NameGeneratorRoster, Narrative,
+  NarrativePedigree, NetworkComposer, OneToManyDyadCensus, OrdinalBin, SlidesForm
+  and Sociogram interfaces. An unmarked module is treated as server code, so
+  reaching one from a Server Component's import graph failed the build rather than
+  rendering.
+
+  The published bundles now carry the directive too. Bundling had been erasing it,
+  so even the modules that already declared it arrived at npm consumers unmarked.
+  `dist/index.js` and the lazily loaded Geospatial chunks are now marked;
+  `dist/contract.js` and `dist/protocol-schema-version.js` are unmarked, as their
+  server safety intends, and stay that way only for as long as no module carrying
+  the directive is reachable from them.
+
+  Architect, Interviewer and Fresco are released alongside because each bundles
+  this runtime. Nothing about how an interview looks or behaves changes.
+
 ## 9.0.1
 
 ### Patch Changes
