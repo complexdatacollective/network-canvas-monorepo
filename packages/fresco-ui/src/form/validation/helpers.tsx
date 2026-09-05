@@ -101,7 +101,7 @@ export type MessageRule = (
  */
 export function messageRuleValidation(
   rules: readonly MessageRule[],
-  hint = '',
+  hint?: string,
 ): CustomFieldValidation {
   return {
     schema: (formValues: Record<string, FieldValue>) =>
@@ -120,7 +120,10 @@ export function messageRuleValidation(
           }
         }),
       ),
-    hint,
+    // Omitted rather than empty when the caller has nothing to promise up
+    // front: a hint is a sentence shown to a person, and the absence of one is
+    // "this rule has nothing to say until it fails", not "it says nothing".
+    ...(hint !== undefined ? { hint } : {}),
   };
 }
 
@@ -289,7 +292,13 @@ export function makeValidationHints(
       : [props.custom as CustomFieldValidation];
 
     for (const { hint } of customValidations) {
-      hints.push(hint);
+      // A rule with nothing to promise up front contributes no bullet — an
+      // absent or empty hint would otherwise render as an empty list item, and
+      // a field whose only rule is such a one would grow a list holding
+      // nothing at all.
+      if (hint) {
+        hints.push(hint);
+      }
     }
   }
 

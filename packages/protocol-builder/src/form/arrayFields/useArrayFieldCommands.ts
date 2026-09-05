@@ -37,8 +37,6 @@ export type ArrayFieldCommands<T extends ArrayRow> = Readonly<{
    * then commits through the plain value-level `onChange` instead.
    */
   onOperation: ((operation: ArrayFieldOperation<T>) => void) | undefined;
-  /** The list as the session holds it NOW, not as this render saw it. */
-  readCommitted: () => T[];
   /**
    * Commits a row addressed by its own id — the save that outlived the editing
    * session it was made in. `false` when that row has left the list.
@@ -85,11 +83,6 @@ export function useArrayFieldCommands<T extends ArrayRow>(
     (key: string) => readArray(applyOwnCommands([])[key]),
     [applyOwnCommands],
   );
-
-  const readCommitted = useCallback((): T[] => {
-    if (documentKey === undefined) return [...renderedRef.current];
-    return readRows(readCurrent(documentKey)) as T[];
-  }, [documentKey, readCurrent]);
 
   const commit = useCallback(
     (key: string, commands: readonly Command[]) => {
@@ -157,9 +150,8 @@ export function useArrayFieldCommands<T extends ArrayRow>(
   return useMemo(
     () => ({
       onOperation: documentKey === undefined ? undefined : handleOperation,
-      readCommitted,
       commitDetachedRow,
     }),
-    [commitDetachedRow, documentKey, handleOperation, readCommitted],
+    [commitDetachedRow, documentKey, handleOperation],
   );
 }

@@ -49,6 +49,30 @@ describe('optionsValidation', () => {
     ).resolves.toBe('Every option needs both a label and a value.');
   });
 
+  it('treats a label of nothing but spaces as missing', async () => {
+    // Spaces are not a label: nothing is shown to the participant and nothing
+    // is read out. The row that displays the gap trims before judging, so the
+    // array — the only layer that can refuse the save — has to trim too.
+    await expect(
+      issue([
+        { label: '   ', value: 'yes' },
+        { label: 'No', value: 'no' },
+      ]),
+    ).resolves.toBe('Every option needs both a label and a value.');
+  });
+
+  it('treats an emptied value as missing rather than as malformed', async () => {
+    // Clearing the value field leaves `''`, not an absent key. Told only that
+    // `''` is not a valid export column, the researcher is being lectured
+    // about characters in a value they have not typed yet.
+    await expect(
+      issue([
+        { label: 'Yes', value: '' },
+        { label: 'No', value: 'no' },
+      ]),
+    ).resolves.toBe('Every option needs both a label and a value.');
+  });
+
   it('refuses two options that export as the same answer', async () => {
     await expect(
       issue([
@@ -103,6 +127,15 @@ describe('makeMultiSelectValidation', () => {
       'Every row needs a value in each column.',
     );
   });
+
+  it('refuses a column holding nothing but spaces', async () => {
+    // The cells' own `required` trims before judging, so a whitespace-only
+    // column already shows "Required" on the row. Without the same trim here
+    // the researcher reads that error and is still allowed to save.
+    await expect(
+      arrayIssue(custom, [{ property: 'name', direction: '   ' }]),
+    ).resolves.toBe('Every row needs a value in each column.');
+  });
 });
 
 describe('makeAssignAttributesValidation', () => {
@@ -123,6 +156,18 @@ describe('makeAssignAttributesValidation', () => {
     );
   });
 
+  it('refuses a stamp whose attribute has been cleared', async () => {
+    // Deselecting the picker leaves `''` behind, not an absent key. `''` is a
+    // string, so a test on the type alone would let `{ variable: '' }` reach
+    // the protocol, where the schema rejects it long after the researcher has
+    // moved on.
+    await expect(
+      arrayIssue(custom, [{ variable: '', value: true }]),
+    ).resolves.toBe(
+      'Every additional attribute needs both an attribute and a value.',
+    );
+  });
+
   it('accepts `false` as an assigned value', async () => {
     await expect(
       arrayIssue(custom, [{ variable: 'worried', value: false }]),
@@ -135,6 +180,23 @@ describe('makeAssignAttributesValidation', () => {
     // unchanged pick introduces nothing new.
     await expect(
       arrayIssue(custom, [{ variable: 'worried', value: true }]),
+    ).resolves.toBeUndefined();
+  });
+
+  it('escapes a saved pick that a form ELSEWHERE validates', async () => {
+    // The sibling escape: the conflict is with another stage's saved form
+    // rather than with this stage's draft, so it is refused on the way in and
+    // must still be escaped on the way back out. An imported protocol can
+    // arrive already holding this contradiction, and re-saving the prompt
+    // unchanged introduces nothing new to refuse.
+    const { custom: settled } = makeAssignAttributesValidation({
+      allVariables: { worried: { name: 'Worried', type: 'boolean' } },
+      committedVariableIds: new Set(['worried']),
+      draftValidatedVariables: new Set(),
+      hasValidatedUseElsewhere: () => true,
+    });
+    await expect(
+      arrayIssue(settled, [{ variable: 'worried', value: true }]),
     ).resolves.toBeUndefined();
   });
 

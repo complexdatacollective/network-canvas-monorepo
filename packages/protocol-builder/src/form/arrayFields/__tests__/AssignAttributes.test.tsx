@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { type ComponentType, useMemo } from 'react';
 import { describe, expect, it } from 'vitest';
@@ -210,5 +210,86 @@ describe('AssignAttributes', () => {
         session.getSnapshot().editedSection.fields.additionalAttributes,
       ).toEqual([{ variable: 'helpful' }]),
     );
+  });
+
+  it('stops a second row claiming an attribute the first already stamps', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      label: 'People',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [{ id: 'p1', text: 'Who?' }],
+      additionalAttributes: [],
+    });
+    renderAttributeList(session, []);
+
+    const addButton = await screen.findByRole('button', {
+      name: 'Add new attribute to assign',
+    });
+    await user.click(addButton);
+    await user.selectOptions(
+      await screen.findByRole('combobox', {
+        name: 'Create or select an attribute',
+      }),
+      'helpful',
+    );
+    await screen.findByText('Value to assign');
+    await user.click(addButton);
+
+    const pickers = await screen.findAllByRole('combobox', {
+      name: 'Create or select an attribute',
+    });
+    const secondRow = within(pickers[1]!);
+    // One variable holds one value per node, so a second row stamping the same
+    // attribute is not a second stamp — it silently overwrites the first.
+    expect(secondRow.getByRole('option', { name: 'Helpful' })).toBeDisabled();
+    // Everything else the pool offers is still open, so this is the used
+    // attribute being withdrawn rather than the list being closed.
+    expect(secondRow.getByRole('option', { name: 'Worried' })).toBeEnabled();
+  });
+
+  it('shows which row is incomplete when the save is refused', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      label: 'People',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [{ id: 'p1', text: 'Who?' }],
+      additionalAttributes: [],
+    });
+    renderAttributeList(session, []);
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'Add new attribute to assign',
+      }),
+    );
+    // A row that has only just been added has nothing to answer for yet.
+    expect(screen.queryByText('Required')).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    // The array's refusal names no row — these rows are always open, so there
+    // is no "finish editing" step to reveal the one that is incomplete, and
+    // without the row's own error the researcher is told to fix something with
+    // no way to see where it is.
+    await screen.findByText(
+      'Every additional attribute needs both an attribute and a value.',
+    );
+    await screen.findByText('Required');
+  });
+});
+
+describe('committedAttributeVariableIds', () => {
+  it('holds only the picks a row has actually made', () => {
+    // This set is the cross-class gate's escape hatch, and `has` is the only
+    // question ever asked of it. An unfinished row has picked nothing, so it
+    // contributes nothing: letting `undefined` or `''` in would make the set
+    // answer for a row that has not chosen an attribute at all.
+    expect([
+      ...committedAttributeVariableIds([
+        { value: true },
+        { variable: '', value: false },
+        { variable: 'helpful', value: true },
+      ]),
+    ]).toEqual(['helpful']);
   });
 });

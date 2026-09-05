@@ -48,6 +48,15 @@ describe('resolveRowIndex', () => {
     const current = [{ text: 'remote' }, ...rendered];
     expect(resolveRowIndex(current, rendered, 0)).toBeUndefined();
   });
+
+  it('finds a row nothing but its id could still name', () => {
+    // B was retitled elsewhere while this editor was still showing "Bravo",
+    // and a row arrived at the front. Position is untrustworthy because the
+    // lists have diverged, and the content the editor drew no longer exists
+    // anywhere in the list — the id is the only thing left that names B.
+    const current = [REMOTE, A, { id: 'b', text: 'Bravo, revised' }];
+    expect(resolveRowIndex(current, [A, B], 1, byId)).toBe(2);
+  });
 });
 
 describe('resolveInsertIndex', () => {
@@ -74,6 +83,16 @@ describe('resolveMove', () => {
     expect(resolveMove([REMOTE, A, B, C], [A, B, C], 2, 0, byId)).toEqual({
       from: 3,
       to: 1,
+    });
+  });
+
+  it('anchors a move to the bottom on the row the moved one will follow', () => {
+    // Rendered [A, B, C]; A is dragged to the bottom, and a row arrived at the
+    // front since. Nothing follows A there, so the row it will FOLLOW — C — is
+    // the only anchor left, and the destination is the place after it.
+    expect(resolveMove([REMOTE, A, B, C], [A, B, C], 0, 2, byId)).toEqual({
+      from: 1,
+      to: 3,
     });
   });
 

@@ -335,3 +335,182 @@ describe('array-level validation', () => {
     expect(onFinish).not.toHaveBeenCalled();
   });
 });
+
+const TAGS = [
+  { label: 'Alpha', value: 'alpha' },
+  { label: 'Bravo', value: 'bravo' },
+];
+
+function renderTagList(session: ProtocolBuilderSessionStore, name: string) {
+  function Host() {
+    const controller = useStageEditorController(session, 'stage-form');
+    return (
+      <StageEditorShell
+        controller={controller}
+        actions={({ formId }) => (
+          <SubmitButton form={formId}>Finished editing</SubmitButton>
+        )}
+      >
+        <BuilderSection title="Tags">
+          <ProtocolArrayField
+            name={name}
+            label="Tags"
+            component={Options}
+            addButtonLabel="Create new tag"
+          />
+        </BuilderSection>
+      </StageEditorShell>
+    );
+  }
+
+  return render(
+    <DialogProvider>
+      <Host />
+    </DialogProvider>,
+  );
+}
+
+/**
+ * Removes the option at `index` through its own confirmation, which names the
+ * item type rather than the row — see `removeRow` for why the two names are
+ * told apart by the modal rather than by the wording.
+ */
+async function removeOption(
+  user: ReturnType<typeof userEvent.setup>,
+  index: number,
+) {
+  await user.click(
+    await screen.findByRole('button', { name: `Remove option ${index + 1}` }),
+  );
+  await user.click(
+    await screen.findByRole('button', { name: 'Remove option' }),
+  );
+}
+
+describe('a list whose name is not a document key', () => {
+  it('commits structurally while the name IS one', async () => {
+    const user = userEvent.setup();
+    const session = createSession({ title: 'Welcome', tags: TAGS });
+    renderTagList(session, 'tags');
+
+    await removeOption(user, 0);
+
+    await waitFor(() =>
+      expect(commandsOf(session)).toEqual([
+        { op: 'removeItem', key: 'tags', index: 0 },
+      ]),
+    );
+  });
+
+  it('leaves the document alone for a list held inside another list', async () => {
+    const user = userEvent.setup();
+    const fields = {
+      title: 'Welcome',
+      prompts: [{ id: 'a', text: 'Alpha', tags: TAGS }],
+    };
+    const session = createSession({ ...fields });
+    renderTagList(session, 'prompts[0].tags');
+
+    // The same edits as the control above, on a list one level down. The
+    // command vocabulary addresses a document KEY and cannot reach inside a
+    // prompt, so this list is an ordinary form value that commits with the
+    // form rather than a row at a time. Taking the first segment as the key
+    // would not merely miss: it would write these tag rows into `prompts`.
+    await removeOption(user, 0);
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'Remove option 2' }),
+      ).toBeNull(),
+    );
+    await user.click(
+      await screen.findByRole('button', { name: 'Create new tag' }),
+    );
+    await screen.findByRole('button', { name: 'Remove option 2' });
+
+    expect(session.getSnapshot().pendingCommands).toEqual([]);
+    expect(session.getSnapshot().editedSection.fields).toEqual(fields);
+  });
+});
+
+function PromptFieldsWithTags({ item }: Record<string, unknown>) {
+  const row = (item ?? {}) as Partial<Prompt>;
+  return (
+    <>
+      <Field
+        name="text"
+        label="Prompt text"
+        component={InputField}
+        initialValue={row.text ?? ''}
+      />
+      {/* A name a document key COULD be spelled with, so the only thing that
+          can tell this list it is not one is the store it was mounted in. */}
+      <ProtocolArrayField
+        name="tags"
+        label="Tags"
+        component={Options}
+        addButtonLabel="Create new tag"
+      />
+    </>
+  );
+}
+
+function renderPromptListWithTags(session: ProtocolBuilderSessionStore) {
+  function Host() {
+    const controller = useStageEditorController(session, 'stage-form');
+    return (
+      <StageEditorShell
+        controller={controller}
+        actions={({ formId }) => (
+          <SubmitButton form={formId}>Finished editing</SubmitButton>
+        )}
+      >
+        <BuilderSection title="Prompts">
+          <ProtocolArrayField
+            name="prompts"
+            label="Prompts"
+            component={DialogArrayField}
+            addButtonLabel="Create new prompt"
+            editorTitle="Edit prompt"
+            addTitle="Add prompt"
+            itemLabel="prompt"
+            previewComponent={PromptPreview}
+            editorFieldsComponent={PromptFieldsWithTags}
+          />
+        </BuilderSection>
+      </StageEditorShell>
+    );
+  }
+
+  return render(
+    <DialogProvider>
+      <Host />
+    </DialogProvider>,
+  );
+}
+
+describe('a list rendered inside a row dialog', () => {
+  it('writes nothing to the document until the dialog saves', async () => {
+    const user = userEvent.setup();
+    const fields = {
+      title: 'Welcome',
+      prompts: [{ id: 'a', text: 'Alpha' }],
+    };
+    const session = createSession({ ...fields });
+    renderPromptListWithTags(session);
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Edit prompt' }),
+    );
+    await user.click(
+      await screen.findByRole('button', { name: 'Create new tag' }),
+    );
+    // The row really was added to the list on screen — the dialog is still
+    // holding it, and the researcher can still cancel out of it.
+    await screen.findByRole('button', { name: 'Remove option 1' });
+
+    // Writing it to the stage document now would commit half of an edit that
+    // has not been agreed to yet.
+    expect(session.getSnapshot().pendingCommands).toEqual([]);
+    expect(session.getSnapshot().editedSection.fields).toEqual(fields);
+  });
+});

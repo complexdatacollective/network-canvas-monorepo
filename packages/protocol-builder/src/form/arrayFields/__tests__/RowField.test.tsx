@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useContext, type ComponentType } from 'react';
+import { useContext, useEffect, type ComponentType } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -10,9 +10,53 @@ import FormStoreProvider, {
 
 import type { StageFormStoreApi } from '../../stageEditorContext.ts';
 import RowField, { arrayScopedValues } from '../RowField.tsx';
-import { requiredRow, uniqueRowAttribute } from '../rowValidators.ts';
+import {
+  allowedVariableNameRow,
+  requiredRow,
+  uniqueRowAttribute,
+} from '../rowValidators.ts';
 
 const Control = InputField as ComponentType<Record<string, unknown>>;
+
+/**
+ * A control that announces its own value as it mounts, which the rich-text
+ * editor an option label is typed into really does (see `Option.tsx`).
+ */
+function EchoOnMount({
+  id,
+  name,
+  value,
+  onChange,
+  'aria-labelledby': ariaLabelledBy,
+  'aria-describedby': ariaDescribedBy,
+}: {
+  'id'?: string;
+  'name'?: string;
+  'value'?: unknown;
+  'onChange'?: (value: unknown) => void;
+  'aria-labelledby'?: string;
+  'aria-describedby'?: string;
+}) {
+  useEffect(() => {
+    onChange?.(value);
+    // Mount only, exactly as the editors that do this emit it: once, as they
+    // initialise. Re-running on every render would be a different scenario.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
+  }, []);
+
+  return (
+    <input
+      id={id}
+      name={name}
+      readOnly
+      value={typeof value === 'string' ? value : ''}
+      aria-labelledby={ariaLabelledBy}
+      aria-describedby={ariaDescribedBy}
+    />
+  );
+}
+
+const EchoControl = EchoOnMount as ComponentType<Record<string, unknown>>;
 
 function StoreProbe({
   onReady,
@@ -42,31 +86,64 @@ describe('RowField', () => {
     expect(screen.queryByText('Required')).toBeNull();
   });
 
+  it('says nothing when a control merely announces its value at mount', async () => {
+    const received: unknown[] = [];
+    render(
+      <FormStoreProvider>
+        <RowField
+          name="options[0].label"
+          label="Label"
+          component={EchoControl}
+          value=""
+          onChange={(next: unknown) => received.push(next)}
+          validators={[requiredRow()]}
+        />
+      </FormStoreProvider>,
+    );
+
+    await screen.findByRole('textbox', { name: 'Label' });
+    // The echo really did arrive, so the silence below is the rule working and
+    // not the control failing to speak.
+    expect(received).toEqual(['']);
+    expect(screen.queryByText('Required')).toBeNull();
+  });
+
   it('shows every failing rule once the row has been edited', async () => {
     const user = userEvent.setup();
     function Host() {
       return (
         <FormStoreProvider>
           <RowField
-            name="options[0].label"
-            label="Label"
+            name="options[0].value"
+            label="Value"
             component={Control}
-            value="Yes"
+            // Two rules fail at once: another row already exports under this
+            // value, and a space cannot appear in an export column name.
+            value="yes please"
             allValues={arrayScopedValues('options', [
-              { label: 'Yes' },
-              { label: 'Yes' },
+              { value: 'yes please' },
+              { value: 'yes please' },
             ])}
-            validators={[requiredRow(), uniqueRowAttribute()]}
+            validators={[
+              requiredRow(),
+              uniqueRowAttribute(),
+              allowedVariableNameRow('option value'),
+            ]}
           />
         </FormStoreProvider>
       );
     }
     render(<Host />);
 
-    const control = await screen.findByRole('textbox', { name: 'Label' });
-    expect(screen.queryByText('Labels must be unique')).toBeNull();
+    const control = await screen.findByRole('textbox', { name: 'Value' });
+    expect(screen.queryByText('Values must be unique')).toBeNull();
+    expect(screen.queryByText(/Not a valid option value/)).toBeNull();
     await user.type(control, '!');
-    await screen.findByText('Labels must be unique');
+    // Both, not just the first: a row is edited in place, so a cell that
+    // reported its problems one at a time would send the researcher back to
+    // the same box for each of them.
+    await screen.findByText('Values must be unique');
+    await screen.findByText(/Not a valid option value/);
   });
 
   it('reveals its errors without an edit when the array asks it to', async () => {

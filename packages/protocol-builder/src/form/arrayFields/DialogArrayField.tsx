@@ -399,7 +399,12 @@ function DialogItem({
     });
   };
 
-  if (isBeingEdited || item._draft) return null;
+  // A row hides its own controls while its editor is open: the dialog IS this
+  // row for as long as it is on screen, and the Edit button that opened it has
+  // to be gone by the time focus is handed back. (A row still being ADDED
+  // never reaches here — `ArrayField` keeps drafts out of the list whenever an
+  // editor component is rendering them instead.)
+  if (isBeingEdited) return null;
 
   return (
     <div ref={rowRef} className="flex w-full items-center gap-3">
@@ -442,11 +447,22 @@ function DialogItem({
 type EditorSession = {
   /** Bumped for every editing session; used as the dialog remount key. */
   id: number;
+  /**
+   * `ArrayField`'s own identity for the row this session is editing. It is
+   * what makes a session survive the list moving beneath it: the list rebuilds
+   * every row object whenever its value changes — an undo, a rollback after a
+   * lost lease, a collaborator's insertion — and starting a new session for
+   * each of those would throw away the draft in the dialog.
+   */
+  rowId: string | undefined;
   item: ArrayItem;
   index: number | null;
   isNewItem: boolean;
   open: boolean;
 };
+
+const rowIdentityOf = (item: ArrayItem | undefined): string | undefined =>
+  typeof item?._internalId === 'string' ? item._internalId : undefined;
 
 function DialogEditor({
   item,
@@ -481,29 +497,45 @@ function DialogEditor({
   // values.
   const [session, setSession] = useState<EditorSession | null>(null);
 
+  const activeSaveRef = useRef<Promise<void | DialogFormErrors> | null>(null);
+  const rowId = rowIdentityOf(item);
+
   useEffect(() => {
     setSession((previous) => {
       if (!item) {
+        // A save in flight owns the dialog. The list clears its editing state
+        // the moment the row it was editing leaves the array, and closing here
+        // would take the editor down over an answer the researcher has not
+        // read — the row-removed refusal that save is about to report, and the
+        // draft it is asking them to rescue.
+        if (activeSaveRef.current !== null) return previous;
         return previous?.open ? { ...previous, open: false } : previous;
       }
       if (
         previous?.open &&
-        previous.item === item &&
-        previous.index === index
+        previous.rowId !== undefined &&
+        previous.rowId === rowId &&
+        previous.isNewItem === isNewItem
       ) {
-        return previous;
+        // The same row, in a new object: the list rebuilt its rows because its
+        // value moved. The draft on screen belongs to this session and stays;
+        // only the committed values a save will be merged over are refreshed,
+        // so an authoritative change to a key the editor does not render is
+        // not written back out of existence.
+        return previous.item === item && previous.index === index
+          ? previous
+          : { ...previous, item, index };
       }
       return {
         id: (previous?.id ?? 0) + 1,
+        rowId,
         item,
         index,
         isNewItem,
         open: true,
       };
     });
-  }, [index, isNewItem, item]);
-
-  const sessionItem = session?.item;
+  }, [index, isNewItem, item, rowId]);
   // A new item is not in the committed array yet, so it has no index to
   // report. Derived once because `editorValidate` and the fields component
   // must agree: the editor's pickers have to scope themselves to exactly the
@@ -535,11 +567,16 @@ function DialogEditor({
       : stripManagedProperties(session.item);
   }, [selectedItem, session]);
 
-  const activeSaveRef = useRef<Promise<void | DialogFormErrors> | null>(null);
   const storeApiRef = useRef<StageFormStoreApi | null>(null);
   const mountedRef = useRef(true);
-  const activeItemRef = useRef(sessionItem);
-  activeItemRef.current = sessionItem;
+  /**
+   * The row the LIST is editing right now, which is not the same question as
+   * which row this session opened on: the list drops its editing state as soon
+   * as that row leaves the array, and rebuilds the object whenever its value
+   * moves. Either answers "the commit route below is no longer this row's".
+   */
+  const activeItemRef = useRef(item);
+  activeItemRef.current = item;
   const isNewItemRef = useRef(false);
   isNewItemRef.current = session?.isNewItem ?? false;
   const itemValuesRef = useRef(itemValues);
@@ -635,10 +672,12 @@ function DialogEditor({
 
   const handleSave = useCallback(
     (values: Record<string, FieldValue>): Promise<void | DialogFormErrors> => {
-      // The dialog disables its submit control while a save runs, but a
-      // keyboard submit still reaches the form's own handler; the row must be
-      // committed once. The save already running answers for both, so the
-      // second submit reports exactly what the first one did.
+      // The row must be committed once however many submits arrive. Fresco
+      // already collapses two that race through the form element — the second
+      // supersedes the first's validation and the first abandons — but a host
+      // that submits the store directly bypasses that entirely, and this is
+      // the only thing standing between it and two commits. The save already
+      // running answers for both, so the second reports what the first did.
       const inFlight = activeSaveRef.current;
       if (inFlight !== null) return inFlight;
 
@@ -650,6 +689,22 @@ function DialogEditor({
     },
     [performSave],
   );
+
+  /**
+   * The one route that closes this editor, so a save in flight cannot be
+   * closed out from under by the list dropping its editing state.
+   *
+   * `DialogForm` calls it on a dismissal the researcher has nothing to lose by
+   * — or has confirmed — and again once a save has SUCCEEDED, which is the
+   * only outcome that should close a dialog a save is running in. A refused
+   * save never reaches it, so the draft and the reason stay on screen.
+   */
+  const handleClose = useCallback(() => {
+    setSession((previous) =>
+      previous?.open ? { ...previous, open: false } : previous,
+    );
+    onCancel();
+  }, [onCancel]);
 
   const validate = useMemo<DialogFormValidate | undefined>(() => {
     if (!editorValidate) return undefined;
@@ -680,13 +735,7 @@ function DialogEditor({
     <DialogForm
       key={session.id}
       open={session.open}
-      /**
-       * Reached on a cancel the researcher has nothing to lose by — or has
-       * confirmed — and again once a save has succeeded. The list has already
-       * cleared its own editing state by then, so the second call is the
-       * no-op that closing an editor twice should be.
-       */
-      onClose={onCancel}
+      onClose={handleClose}
       title={session.isNewItem ? addTitle : editorTitle}
       formId={editFormName}
       /**

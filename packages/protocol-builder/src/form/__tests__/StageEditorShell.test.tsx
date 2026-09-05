@@ -458,12 +458,50 @@ describe('StageEditorShell', () => {
     });
 
     // A field that merely re-registers keeps the value it was holding, so
-    // without a fresh form the promoted editor would show — and then save —
-    // what it had typed over a screen that had moved on.
+    // without writing the new draft into the controls the promoted editor
+    // would show — and then save — what it had typed over a screen that had
+    // moved on.
     await waitFor(() =>
       expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
         'Refreshed elsewhere',
       ),
+    );
+  });
+
+  it('reopens a capability an authoritative replacement has refilled', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      fields: { ...initialFields, interviewScript: 'Read this aloud' },
+    });
+    renderEditor(session);
+
+    await user.click(
+      screen.getByRole('switch', { name: 'Interviewer guidance' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Clear script' }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('textbox', { name: 'Interviewer script text' }),
+      ).toBeNull(),
+    );
+
+    act(() => {
+      session.replaceAuthoritativeStage({
+        fields: { ...initialFields, interviewScript: 'Read this instead' },
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+    });
+
+    // The stage the form now holds has interviewer guidance again, and a
+    // section that stays closed over content it is holding tells the
+    // researcher the opposite of what the next save will write. Writing the
+    // new draft into the controls is only half of taking it: the sections
+    // decide whether they are on from what those controls hold, and something
+    // has to tell them to ask again.
+    await waitFor(() =>
+      expect(
+        screen.getByRole('textbox', { name: 'Interviewer script text' }),
+      ).toHaveValue('Read this instead'),
     );
   });
 
