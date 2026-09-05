@@ -66,6 +66,18 @@ const HOST_WORDS =
 const CONTRADICTION =
   '“Minimum selected” requires 3 answers, but this attribute has only 2 options to choose from.';
 
+/**
+ * The same kind of sentence, written by the codebook schema rather than by a
+ * host: `rejectValidationContradictions` refuses an attribute whose committed
+ * rules its options can no longer satisfy, and anchors it at the rule.
+ *
+ * Written out rather than imported, for the reason `REFUSED` is: a test that
+ * read the schema's own message would still pass if the editor rendered
+ * nothing and the alert kept its generic copy.
+ */
+const OPTION_COUNT_CONTRADICTION =
+  'Attribute "preference": minSelected (3) is greater than the number of options (2)';
+
 const APPLIED: CompoundEditResult = {
   status: 'applied',
   update: {
@@ -858,6 +870,62 @@ describe('VariableEditor', () => {
     ).toHaveValue('choice');
     expect(onSubmitRequest).not.toHaveBeenCalled();
     expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  /**
+   * The rule the researcher has to change, named.
+   *
+   * Removing an option can leave a committed validation rule unsatisfiable —
+   * "answer at least three" with two options left to choose from. The codebook
+   * schema refuses that, and the sentence it refuses it with names the rule and
+   * both numbers. Reported as a thrown failure it would be replaced by the
+   * "wait a moment and try again" copy written for a save that did not reach
+   * the host, which is about a transport this draft never entered and asks for
+   * a retry that cannot succeed.
+   */
+  it('names the validation rule an option removal would break', async () => {
+    const user = userEvent.setup();
+    const existing = {
+      name: 'preference',
+      type: 'categorical',
+      options: [
+        { label: 'Low', value: 'low' },
+        { label: 'Middle', value: 'middle' },
+        { label: 'High', value: 'high' },
+      ],
+      validation: { minSelected: 3 },
+    } as const;
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+
+    render(
+      <VariableEditor
+        openId="edit-contradiction"
+        mode="update"
+        subject={SUBJECT}
+        authoritativeDocument={personDocument({ preference: existing })}
+        variableId="preference"
+        initialDraft={existing}
+        description="Update attribute"
+        createRequestId={() => 'request-contradiction'}
+        onSubmitRequest={onSubmitRequest}
+        onComplete={() => undefined}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Remove option 3' }));
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(OPTION_COUNT_CONTRADICTION);
+    expect(alert).not.toHaveTextContent(REFUSED.threw);
+    expect(alert).toHaveFocus();
+    // The draft never left the editor, and the researcher can still fix it.
+    expect(onSubmitRequest).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole('button', { name: 'Save attribute' }),
+    ).toBeEnabled();
   });
 
   /**
