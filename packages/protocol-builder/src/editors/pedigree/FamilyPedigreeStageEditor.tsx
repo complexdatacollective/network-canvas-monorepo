@@ -17,10 +17,6 @@ import PedigreeNodeConfigurationSection from '../../sections/pedigree/PedigreeNo
 import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
 import StageNameSection from '../../sections/StageNameSection.tsx';
 import type { StageEditorProps } from '../../stage-editor-contract.ts';
-import {
-  FamilyMemberFormFieldEditor,
-  FamilyMemberFormFieldPreview,
-} from './familyMemberForm/FamilyMemberFormFieldRow.tsx';
 import { interviewPosition } from './stageEditorComposition.ts';
 
 const DOCUMENTATION_URL = interfaceDocumentationUrl('family-pedigree');
@@ -39,9 +35,9 @@ const DOCUMENTATION_URL = interfaceDocumentationUrl('family-pedigree');
  * package's shared content block editor, so a pedigree's introduction offers
  * the same text, image, audio and video blocks an Information stage does —
  * minus the display size, which only that stage's own schema has room for. The
- * form fields the node configuration lists still come from a seam of this
- * editor's own, until the forms family's row editor lands; that seam says so
- * in its own file.
+ * family member form the node configuration lists is the package's shared
+ * form-fields section, pointed at where this interface keeps its form, so it
+ * asks for an attribute and a question exactly as every other form does.
  */
 export function FamilyPedigreeStageEditor({
   controller,
@@ -64,10 +60,7 @@ export function FamilyPedigreeStageEditor({
       />
       <FramingConfigSection />
       <BoundaryOptionsSection />
-      <PedigreeNodeConfigurationSection
-        FormFieldEditor={FamilyMemberFormFieldEditor}
-        FormFieldPreview={FamilyMemberFormFieldPreview}
-      />
+      <PedigreeNodeConfigurationSection />
       <PedigreeEdgeConfigurationSection />
       <PageContentSection
         variant="introScreen"

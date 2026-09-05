@@ -8,19 +8,12 @@ import {
 } from '@codaco/protocol-validation';
 
 import { EntitySelectControl } from '../../fields/EntitySelectField.tsx';
-import { withoutAbsentValues } from '../../form/absentValues.ts';
-import DialogArrayField from '../../form/arrayFields/DialogArrayField.tsx';
-import ProtocolArrayField from '../../form/ProtocolArrayField.tsx';
 import ProtocolField from '../../form/ProtocolField.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import BuilderSection from '../BuilderSection.tsx';
-import {
-  type RowEditorComponent,
-  type RowPreviewComponent,
-  useRowRenderers,
-} from '../rowRenderers.tsx';
+import FormFieldsSection from '../FormFieldsSection.tsx';
 import { useResetOnEntityTypeChange } from './entityTypeReset.ts';
 import SlotVariableField from './SlotVariableField.tsx';
 import {
@@ -69,10 +62,6 @@ export type PedigreeNodeConfigurationCopy = Readonly<{
   formFieldsHint: string;
   /** Visible text and accessible name of the add button. */
   addFormFieldLabel: string;
-  addFormFieldTitle: string;
-  editFormFieldTitle: string;
-  /** Noun used in row affordances ("Edit field", "Remove field"). */
-  formFieldItemLabel: string;
   formFieldsEmptyMessage: string;
 }>;
 
@@ -90,29 +79,30 @@ const DEFAULT_COPY: PedigreeNodeConfigurationCopy = {
   formFieldsHint:
     'The participant answers these when they add or edit a family member. Drag to reorder them.',
   addFormFieldLabel: 'Create new form field',
-  addFormFieldTitle: 'Create form field',
-  editFormFieldTitle: 'Edit form field',
-  formFieldItemLabel: 'field',
   formFieldsEmptyMessage:
     'No form fields yet. Create one to ask something about each family member.',
 };
 
 export type PedigreeNodeConfigurationSectionProps = Readonly<{
-  /**
-   * The family's own form-field editor, rendered inside the row dialog.
-   *
-   * What a form field CAN be — which attribute it collects, which input
-   * control it uses, how it is validated — is shared with every other form in
-   * the protocol, and belongs to the form-fields family rather than to the
-   * pedigree. What the pedigree owns is that this list exists, that it hangs
-   * off the node type, and that its attributes may not also be written
-   * structurally.
-   */
-  FormFieldEditor: RowEditorComponent;
-  /** How one form field reads in the list when its dialog is closed. */
-  FormFieldPreview: RowPreviewComponent;
   copy?: Partial<PedigreeNodeConfigurationCopy>;
 }>;
+
+/**
+ * What switching the family member form off means, in the pedigree's words.
+ *
+ * The shared form-fields section owns the list; what a researcher loses by
+ * turning it off is a fact about THIS interface — participants stop being
+ * asked anything as they add family members — so the pedigree says it.
+ */
+const FORM_CAPABILITY = Object.freeze({
+  fields: [FORM_FIELD],
+  confirmClear: {
+    title: 'This will delete the family member form',
+    description:
+      'Every field you have added to it will be removed, and participants will no longer be asked anything when they add a family member.',
+    confirmLabel: 'Delete the form',
+  },
+});
 
 /**
  * The node type the pedigree draws people as, and the attributes it writes on
@@ -125,8 +115,6 @@ export type PedigreeNodeConfigurationSectionProps = Readonly<{
  * quietly take over an attribute another part of the protocol already writes.
  */
 export default function PedigreeNodeConfigurationSection({
-  FormFieldEditor,
-  FormFieldPreview,
   copy,
 }: PedigreeNodeConfigurationSectionProps) {
   const words = { ...DEFAULT_COPY, ...copy };
@@ -200,11 +188,6 @@ export default function PedigreeNodeConfigurationSection({
           Reflect.get(stage, 'sourceStageId') === identity.id,
       ),
     [identity.id, protocolContext.orderedStages],
-  );
-
-  const { editorFieldsComponent, previewComponent } = useRowRenderers(
-    FormFieldEditor,
-    FormFieldPreview,
   );
 
   return (
@@ -288,36 +271,32 @@ export default function PedigreeNodeConfigurationSection({
             emptyMessage={NO_ATTRIBUTES_MESSAGE}
           />
 
-          <BuilderSection
-            title={words.formSectionTitle}
-            description={words.formSectionDescription}
-            capability={{
-              fields: [FORM_FIELD],
-              confirmClear: {
-                title: 'This will delete the family member form',
-                description:
-                  'Every field you have added to it will be removed, and participants will no longer be asked anything when they add a family member.',
-                confirmLabel: 'Delete the form',
-              },
+          {/*
+            The package's shared form-fields section, told where this
+            interface keeps its form. What a field CAN be — which attribute it
+            collects, how the participant answers it, how the answer is
+            validated — is the same question every form in the protocol asks,
+            so the pedigree does not answer it a second time. What it does own
+            is where the list lives (`nodeConfig.form`), which type it
+            collects into (`nodeConfig.type` rather than a stage `subject`),
+            that the form may be left out altogether, and what is lost by
+            switching it off.
+          */}
+          <FormFieldsSection
+            subject="node"
+            subjectTypePath={TYPE_FIELD}
+            fieldsPath={FORM_FIELD}
+            optional
+            capability={FORM_CAPABILITY}
+            copy={{
+              sectionTitle: words.formSectionTitle,
+              description: words.formSectionDescription,
+              fieldLabel: words.formFieldsLabel,
+              fieldHint: words.formFieldsHint,
+              addButtonLabel: words.addFormFieldLabel,
+              emptyStateMessage: words.formFieldsEmptyMessage,
             }}
-          >
-            <ProtocolArrayField<typeof DialogArrayField>
-              name={FORM_FIELD}
-              label={words.formFieldsLabel}
-              hint={words.formFieldsHint}
-              component={DialogArrayField}
-              addButtonLabel={words.addFormFieldLabel}
-              addTitle={words.addFormFieldTitle}
-              editorTitle={words.editFormFieldTitle}
-              itemLabel={words.formFieldItemLabel}
-              emptyStateMessage={words.formFieldsEmptyMessage}
-              editorFieldsComponent={editorFieldsComponent}
-              previewComponent={previewComponent}
-              editorDialogSize="editor"
-              normalizeItem={withoutAbsentValues}
-              sortable
-            />
-          </BuilderSection>
+          />
         </>
       )}
     </BuilderSection>

@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { RELATIONSHIP_TYPE_OPTIONS } from '@codaco/protocol-validation';
@@ -14,20 +14,13 @@ import FramingConfigSection from '../FramingConfigSection.tsx';
 import NominationPromptsSection from '../NominationPromptsSection.tsx';
 import PedigreeEdgeConfigurationSection from '../PedigreeEdgeConfigurationSection.tsx';
 import PedigreeNodeConfigurationSection from '../PedigreeNodeConfigurationSection.tsx';
-import {
-  familyPedigreeStageWith,
-  TestFormFieldEditor,
-  TestFormFieldPreview,
-} from './pedigreeFixtures.tsx';
+import { familyPedigreeStageWith } from './pedigreeFixtures.tsx';
 
 const pedigreeSections = (
   <>
     <FramingConfigSection />
     <BoundaryOptionsSection />
-    <PedigreeNodeConfigurationSection
-      FormFieldEditor={TestFormFieldEditor}
-      FormFieldPreview={TestFormFieldPreview}
-    />
+    <PedigreeNodeConfigurationSection />
     <PedigreeEdgeConfigurationSection />
     <CensusPromptSection />
     <NominationPromptsSection />
@@ -261,11 +254,19 @@ describe('the attributes a pedigree may bind', () => {
   });
 
   /**
-   * The picker's exclusions are built from the SAVED protocol, so a form field
-   * added in this unsaved session is invisible to them — and the attribute it
-   * collects stays on offer to the structural slots. That is precisely the
-   * case the save-time gate exists for, and the only one a researcher can
-   * reach without an imported protocol.
+   * The structural pickers' exclusions are built from the SAVED protocol, so a
+   * form field added in this unsaved session is invisible to them — and the
+   * attribute it collects stays on offer to them. That is precisely the case
+   * the save-time gate exists for, and the only one a researcher can reach
+   * without an imported protocol.
+   *
+   * The field invents its attribute rather than picking one, because every
+   * boolean already on the node type is written unvalidated somewhere — this
+   * pedigree's own participant marker, and the narrative pedigree's disease —
+   * and the shared form-fields picker refuses all of those before the gate is
+   * reached. The codebook write lands as the row is committed, so the new
+   * attribute reaches the structural picker while the field that collects it
+   * is still unsaved: exactly the window under test.
    */
   it('refuses a structural slot pointing at an attribute this stage collects', async () => {
     const harness = renderStageEditor(openFixture());
@@ -278,32 +279,75 @@ describe('the attributes a pedigree may bind', () => {
     await harness.user.click(
       await screen.findByRole('button', { name: 'Create new form field' }),
     );
-    await harness.user.type(
-      await screen.findByRole('textbox', { name: 'Field attribute' }),
-      'hasConditionX',
+    const field = within(await screen.findByRole('dialog'));
+    await harness.user.selectOptions(
+      field.getByRole('combobox', { name: 'Attribute' }),
+      '__create_new_attribute__',
     );
     await harness.user.type(
-      screen.getByRole('textbox', { name: 'Field prompt' }),
+      await field.findByRole('textbox', { name: 'Attribute name' }),
+      'unwell',
+    );
+    await harness.user.selectOptions(
+      field.getByRole('combobox', { name: 'Kind of answer' }),
+      'boolean',
+    );
+    await harness.user.type(
+      field.getByRole('textbox', { name: 'Question text' }),
       'Have they been unwell?',
     );
-    await harness.user.click(screen.getByRole('button', { name: 'Add' }));
+    await harness.user.click(field.getByRole('button', { name: 'Add' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
 
+    const unwell = variableIdByName(harness, 'unwell');
+    expect(unwell).toBeDefined();
+    if (unwell === undefined) throw new Error('the attribute was not created');
+
     // Still on offer — the picker cannot know about a field that is not saved.
-    expect(optionsOf('Participant identifier')).toContain('hasConditionX');
+    expect(optionsOf('Participant identifier')).toContain(unwell);
     await harness.user.selectOptions(
       screen.getByRole('combobox', { name: 'Participant identifier' }),
-      'hasConditionX',
+      unwell,
     );
 
     expect(await harness.submit()).toBeNull();
     expect(
       await screen.findByText(
-        '"hasConditionX" is collected by a form elsewhere in this protocol, so it cannot be written by this stage (values written here would bypass its validation)',
+        '"unwell" is collected by a form elsewhere in this protocol, so it cannot be written by this stage (values written here would bypass its validation)',
       ),
     ).toBeInTheDocument();
+  });
+
+  /**
+   * The other direction, which the shared form-fields picker owns: a family
+   * member form may not collect an attribute the pedigree derives from the
+   * tree the participant draws, because the pedigree writes those without any
+   * validation and an export would mix checked and unchecked answers under one
+   * name. `fm_name` is the display label — collected THROUGH a form field, so
+   * it stays on offer.
+   */
+  it('never offers the family member form an attribute the pedigree derives', async () => {
+    const harness = renderStageEditor(openFixture());
+
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Family member form' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Create new form field' }),
+    );
+    const field = within(await screen.findByRole('dialog'));
+    const offered = [
+      ...field
+        .getByRole('combobox', { name: 'Attribute' })
+        .querySelectorAll('option'),
+    ].map((option) => option.value);
+
+    expect(offered).toContain('fm_name');
+    expect(offered).not.toContain('is_ego');
+    expect(offered).not.toContain('fm_relationship_to_ego');
+    expect(offered).not.toContain('biologicalSex');
   });
 });
 

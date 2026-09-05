@@ -1,5 +1,6 @@
 import {
   type ComponentType,
+  createContext,
   useCallback,
   useContext,
   useMemo,
@@ -45,8 +46,9 @@ import ProtocolArrayField from '../form/ProtocolArrayField.tsx';
 import ProtocolField from '../form/ProtocolField.tsx';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useStageValue } from '../form/stageFormHooks.ts';
+import type { CodebookSubject } from '../protocol-context.ts';
 import { variablesForSubject } from '../protocol-context.ts';
-import BuilderSection from './BuilderSection.tsx';
+import BuilderSection, { type SectionCapability } from './BuilderSection.tsx';
 import {
   type RowEditorProps,
   type RowPreviewProps,
@@ -54,8 +56,14 @@ import {
 } from './rowRenderers.tsx';
 import { type SubjectEntity, useStageSubject } from './useStageSubject.ts';
 
-/** Where every interface that shows a form keeps it. */
-const FIELDS = 'form.fields';
+/**
+ * Where an interface that holds a whole form keeps it.
+ *
+ * The default rather than the rule: FamilyPedigree's family-member form is the
+ * same list of the same fields hung off its node configuration
+ * (`nodeConfig.form`), which is why the path is a prop.
+ */
+const DEFAULT_FIELDS_PATH = 'form.fields';
 const TITLE = 'form.title';
 
 /**
@@ -147,26 +155,81 @@ const rowsOf = (value: unknown): Record<string, unknown>[] =>
  * duplicate rule asks the question in exactly the schema's terms
  * (`duplicateFormFieldIndices`) so the two cannot disagree.
  */
-const fieldsValidation = {
+const atLeastOneField = (value: unknown) =>
+  Array.isArray(value) && value.length > 0 ? undefined : AT_LEAST_ONE_FIELD;
+
+const everyFieldComplete = (value: unknown) =>
+  rowsOf(value).every(
+    (row) =>
+      typeof row.variable === 'string' &&
+      row.variable !== '' &&
+      typeof row.prompt === 'string' &&
+      row.prompt !== '',
+  )
+    ? undefined
+    : INCOMPLETE_FIELD;
+
+const noAttributeTwice = (value: unknown) =>
+  duplicateFormFieldIndices(rowsOf(value)).length === 0
+    ? undefined
+    : DUPLICATE_FIELD;
+
+/**
+ * The two shapes the schema allows, as a pair of stable objects.
+ *
+ * Written out rather than assembled per render because a validation object is
+ * part of what a field registers with: a fresh one each time re-registers the
+ * rules on every keystroke. Which of the two applies is the `optional` prop —
+ * a form that IS the stage must collect something, while a form hung off
+ * another section is a capability the researcher may leave switched off, and
+ * the schema says exactly that (`FormSchema.fields.min(1)` against
+ * `FormFieldArraySchema.optional()`).
+ */
+const REQUIRED_FIELDS_VALIDATION = Object.freeze({
   custom: messageRuleValidation([
-    (value: unknown) =>
-      Array.isArray(value) && value.length > 0 ? undefined : AT_LEAST_ONE_FIELD,
-    (value: unknown) =>
-      rowsOf(value).every(
-        (row) =>
-          typeof row.variable === 'string' &&
-          row.variable !== '' &&
-          typeof row.prompt === 'string' &&
-          row.prompt !== '',
-      )
-        ? undefined
-        : INCOMPLETE_FIELD,
-    (value: unknown) =>
-      duplicateFormFieldIndices(rowsOf(value)).length === 0
-        ? undefined
-        : DUPLICATE_FIELD,
+    atLeastOneField,
+    everyFieldComplete,
+    noAttributeTwice,
   ]),
-};
+});
+
+const OPTIONAL_FIELDS_VALIDATION = Object.freeze({
+  custom: messageRuleValidation([everyFieldComplete, noAttributeTwice]),
+});
+
+/**
+ * What a row's own controls need to know about the list they belong to.
+ *
+ * The rows are mounted by the shared list field, which knows nothing about
+ * forms and threads no props of its own through — so the two facts a row needs
+ * cannot arrive as props, and neither of them is a fact about the row. Which
+ * codebook subject the fields collect into, and where the list itself lives,
+ * are decided by the section, so the section is what says them.
+ *
+ * Read here rather than from the stage document because there is nothing
+ * reliable to read: a Family Pedigree names its node type at `nodeConfig.type`
+ * and keeps its fields at `nodeConfig.form`, so a row that went looking for
+ * `subject` would draw its picker from an empty codebook and refuse every
+ * sibling attribute silently.
+ */
+type FormFieldsScope = Readonly<{
+  fieldsPath: string;
+  subject: CodebookSubject | undefined;
+}>;
+
+const FormFieldsScopeContext = createContext<FormFieldsScope | undefined>(
+  undefined,
+);
+
+function useFormFieldsScope(): FormFieldsScope {
+  const scope = useContext(FormFieldsScopeContext);
+  if (scope === undefined) {
+    throw new Error(
+      'A form field row was mounted outside FormFieldsSection, so it has no way to know which subject it collects into or where its siblings are.',
+    );
+  }
+  return scope;
+}
 
 export type FormFieldsCopy = Readonly<{
   /** Names the section in the outline and to assistive technology. */
@@ -203,6 +266,30 @@ export type FormFieldsSectionProps = Readonly<{
   /** Whose codebook these fields collect into. */
   subject: SubjectEntity;
   /**
+   * Where the stage names that subject's TYPE, for a stage that does not hold
+   * a `subject` of its own. See `useStageSubject`.
+   */
+  subjectTypePath?: string;
+  /** Where the list of fields lives. See `DEFAULT_FIELDS_PATH`. */
+  fieldsPath?: string;
+  /**
+   * The schema accepts this form with nothing in it, so the section does too.
+   *
+   * True only for a form hung off another section as an extra — a Family
+   * Pedigree may ask nothing at all about each family member. A form that IS
+   * the stage collects nothing when it is empty, which is why that is the
+   * default.
+   */
+  optional?: boolean;
+  /**
+   * Makes the whole form something the researcher switches on and off.
+   *
+   * For an optional form: switching it off is how the protocol says "this
+   * stage does not do this", and the confirmation is written in the words of
+   * the interface that owns the form rather than in this section's.
+   */
+  capability?: SectionCapability;
+  /**
    * The interface shows a heading above the form, so the researcher authors
    * one. `false` for the three interfaces whose form IS the whole stage — the
    * stage's own name already does that job, and the schema refuses a title
@@ -221,32 +308,41 @@ export type FormFieldsSectionProps = Readonly<{
  * be written unvalidated somewhere else in the protocol, or an export would
  * mix checked and unchecked answers under a single name.
  *
- * Shared by every interface that shows a form — the three form stages and the
- * name generators' node forms — which is why the subject arrives as a prop
- * rather than being inferred: an ego form's fields describe the participant,
- * an alter edge form's describe a relationship, and only the editor mounting
- * this knows which.
+ * Shared by every interface that shows a form — the three form stages, the
+ * name generators' node forms and a Family Pedigree's family-member form —
+ * which is why the subject arrives as a prop rather than being inferred: an
+ * ego form's fields describe the participant, an alter edge form's describe a
+ * relationship, and only the editor mounting this knows which.
  */
 export default function FormFieldsSection({
   subject,
+  subjectTypePath,
+  fieldsPath = DEFAULT_FIELDS_PATH,
+  optional = false,
+  capability,
   hasTitle = false,
   copy,
 }: FormFieldsSectionProps) {
   const words = { ...DEFAULT_COPY, ...copy };
-  const codebookSubject = useStageSubject(subject);
+  const codebookSubject = useStageSubject(subject, subjectTypePath);
   const waiting = codebookSubject === undefined;
   const { editorFieldsComponent, previewComponent } = useRowRenderers(
     FormFieldEditor,
     FormFieldPreview,
   );
-  const onBeforeSave = useCommitFormField(subject);
-  const editorValidate = useFormFieldValidate(subject);
+  const onBeforeSave = useCommitFormField(codebookSubject);
+  const editorValidate = useFormFieldValidate(codebookSubject, fieldsPath);
+  const scope = useMemo(
+    () => ({ fieldsPath, subject: codebookSubject }),
+    [codebookSubject, fieldsPath],
+  );
 
   return (
     <BuilderSection
       title={words.sectionTitle}
       description={waiting ? words.waitingDescription : words.description}
       disabled={waiting}
+      {...(capability === undefined ? {} : { capability })}
     >
       {hasTitle && (
         <ProtocolField<typeof InputField>
@@ -258,25 +354,29 @@ export default function FormFieldsSection({
           required="Give this form a title."
         />
       )}
-      <ProtocolArrayField<typeof DialogArrayField>
-        name={FIELDS}
-        label={words.fieldLabel}
-        hint={words.fieldHint}
-        component={DialogArrayField}
-        addButtonLabel={words.addButtonLabel}
-        addTitle="Create form field"
-        editorTitle="Edit form field"
-        itemLabel="field"
-        emptyStateMessage={words.emptyStateMessage}
-        editorFieldsComponent={editorFieldsComponent}
-        previewComponent={previewComponent}
-        editorDialogSize="editor"
-        editorValidate={editorValidate}
-        onBeforeSave={onBeforeSave}
-        normalizeItem={normalizeFormField}
-        sortable
-        {...fieldsValidation}
-      />
+      <FormFieldsScopeContext value={scope}>
+        <ProtocolArrayField<typeof DialogArrayField>
+          name={fieldsPath}
+          label={words.fieldLabel}
+          hint={words.fieldHint}
+          component={DialogArrayField}
+          addButtonLabel={words.addButtonLabel}
+          addTitle="Create form field"
+          editorTitle="Edit form field"
+          itemLabel="field"
+          emptyStateMessage={words.emptyStateMessage}
+          editorFieldsComponent={editorFieldsComponent}
+          previewComponent={previewComponent}
+          editorDialogSize="editor"
+          editorValidate={editorValidate}
+          onBeforeSave={onBeforeSave}
+          normalizeItem={normalizeFormField}
+          sortable
+          {...(optional
+            ? OPTIONAL_FIELDS_VALIDATION
+            : REQUIRED_FIELDS_VALIDATION)}
+        />
+      </FormFieldsScopeContext>
     </BuilderSection>
   );
 }
@@ -318,9 +418,8 @@ function normalizeFormField(value: unknown): unknown {
  * control that caused it.
  */
 function useCommitFormField(
-  subject: SubjectEntity,
+  codebookSubject: CodebookSubject | undefined,
 ): (value: unknown) => Promise<unknown> {
-  const codebookSubject = useStageSubject(subject);
   const createVariable = useCreateCodebookVariable(codebookSubject);
   const setComponent = useSetVariableComponent(codebookSubject);
 
@@ -386,10 +485,12 @@ function useCommitFormField(
  * unvalidated. The picker already hides both, so this catches the draft that
  * was legal when it was authored and the protocol that arrived already broken.
  */
-function useFormFieldValidate(subject: SubjectEntity) {
-  const { protocolContext, identity } = useStageEditorForm();
-  const codebookSubject = useStageSubject(subject);
-  const fields = useStageValue(FIELDS);
+function useFormFieldValidate(
+  codebookSubject: CodebookSubject | undefined,
+  fieldsPath: string,
+) {
+  const { protocolContext } = useStageEditorForm();
+  const fields = useStageValue(fieldsPath);
 
   const allVariables = useMemo(
     () =>
@@ -398,10 +499,7 @@ function useFormFieldValidate(subject: SubjectEntity) {
         : variablesForSubject(protocolContext, codebookSubject),
     [codebookSubject, protocolContext],
   );
-  const roleMap = useMemo(
-    () => buildVariableRoleMap(protocolContext, identity.id),
-    [identity.id, protocolContext],
-  );
+  const roleMap = useUnvalidatedWriterMap();
 
   return useMemo(() => {
     const validateVariable = makeFieldEditorValidate(
@@ -453,6 +551,29 @@ function useFormFieldValidate(subject: SubjectEntity) {
 }
 
 /**
+ * Every unvalidated write in the protocol, the stage being edited included.
+ *
+ * Unscoped deliberately. A form field is a VALIDATED writer, so a stage's own
+ * form contributes nothing this map is read for — but a stage may write the
+ * same subject unvalidated somewhere else in itself: a name generator's prompt
+ * stamps an attribute onto every node it adds, and a Family Pedigree derives
+ * three from the tree the participant draws. Those are exactly the picks the
+ * schema's own role-conflict rule refuses, and excluding the open stage would
+ * offer every one of them and let the researcher author a stage that cannot be
+ * saved.
+ *
+ * Each field's committed pick escapes throughout (`committed` below), so a
+ * protocol that arrives already conflicting stays editable.
+ */
+function useUnvalidatedWriterMap() {
+  const { protocolContext } = useStageEditorForm();
+  return useMemo(
+    () => buildVariableRoleMap(protocolContext),
+    [protocolContext],
+  );
+}
+
+/**
  * Kept as a named helper so the picker's exclusion and the save-time refusal
  * ask the role map the same question.
  */
@@ -475,7 +596,7 @@ function hasUnvalidatedUseFor(
  * saves, and no cell of it is ever registered on the stage.
  */
 function FormFieldEditor({ item, editIndex }: RowEditorProps) {
-  const subject = useSubjectFromRow();
+  const { subject } = useFormFieldsScope();
   const inventing = useInventingAttribute(item);
 
   return (
@@ -564,7 +685,7 @@ function InputControlField({
   item,
 }: Readonly<{ item: RowEditorProps['item'] }>) {
   const { protocolContext } = useStageEditorForm();
-  const subject = useSubjectFromRow();
+  const { subject } = useFormFieldsScope();
   const chosen = asString(useRowValue('variable') ?? item.variable) ?? '';
   const newType = asString(useRowValue(NEW_VARIABLE_TYPE)) ?? '';
 
@@ -614,15 +735,12 @@ function AttributePicker({
   item,
   editIndex,
 }: Readonly<{ item: RowEditorProps['item']; editIndex?: number }>) {
-  const { protocolContext, identity } = useStageEditorForm();
-  const subject = useSubjectFromRow();
-  const fields = useStageValue(FIELDS);
+  const { protocolContext } = useStageEditorForm();
+  const { fieldsPath, subject } = useFormFieldsScope();
+  const fields = useStageValue(fieldsPath);
   const committed = asString(item.variable) ?? '';
 
-  const roleMap = useMemo(
-    () => buildVariableRoleMap(protocolContext, identity.id),
-    [identity.id, protocolContext],
-  );
+  const roleMap = useUnvalidatedWriterMap();
 
   const options = useMemo(() => {
     if (subject === undefined) return NO_OPTIONS;
@@ -667,7 +785,7 @@ function AttributePicker({
 /** How one field reads in the list when its dialog is closed. */
 function FormFieldPreview({ item }: RowPreviewProps) {
   const { protocolContext } = useStageEditorForm();
-  const subject = useSubjectFromRow();
+  const { subject } = useFormFieldsScope();
   const variableId = asString(item.variable) ?? '';
   const variable =
     subject === undefined
@@ -688,29 +806,6 @@ function FormFieldPreview({ item }: RowPreviewProps) {
       </div>
     </div>
   );
-}
-
-/**
- * Which subject the row's controls read the codebook for.
- *
- * The row dialog nests a form store inside the stage form, but the stage
- * editor context is NOT re-provided, so a control inside the dialog can still
- * read the stage around it — which is how a row knows what the stage is
- * configured against without the list threading it through as a prop.
- *
- * `subject.entity` is what the stage itself holds, so an ego form (which has
- * no authored subject at all) is the one case that has to be recognised from
- * the absence of one.
- */
-function useSubjectFromRow() {
-  const stageSubject = useStageValue('subject');
-  const entity: SubjectEntity =
-    isRecord(stageSubject) && stageSubject.entity === 'edge'
-      ? 'edge'
-      : isRecord(stageSubject) && stageSubject.entity === 'node'
-        ? 'node'
-        : 'ego';
-  return useStageSubject(entity);
 }
 
 /**
