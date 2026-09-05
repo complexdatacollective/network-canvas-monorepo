@@ -779,6 +779,14 @@
     "defaultMessage": "Medium data-loss risk",
     "description": "Context label announced before a medium-risk browser-storage warning."
   },
+  "frescoUi.timeAgo.justNow": {
+    "defaultMessage": "just now",
+    "description": "Relative timestamp for an event less than one minute ago."
+  },
+  "frescoUi.toast.notifications": {
+    "defaultMessage": "Notifications",
+    "description": "Accessible name of the region containing status notifications and alerts."
+  },
   "frescoUi.validation.differentFromError": {
     "defaultMessage": "Your answer must be different from your earlier answer.",
     "description": "Error for a must-differ comparison when the other answer has no visible label."

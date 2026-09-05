@@ -3,6 +3,10 @@
 import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import type { IntlShape } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import { cx } from './utils/cva';
 import { withNoSSRWrapper } from './utils/NoSSRWrapper';
 
@@ -19,22 +23,35 @@ const HOUR_MS = 3600000;
 const DAY_MS = 86400000;
 const WEEK_MS = 604800000;
 
-function formatTimeAgo(date: Date, localisedDate: string): string {
-  const distance = Date.now() - date.getTime();
+const messages = defineMessages({
+  justNow: {
+    id: 'frescoUi.timeAgo.justNow',
+    defaultMessage: 'just now',
+    description: 'Relative timestamp for an event less than one minute ago.',
+  },
+});
+
+function formatTimeAgo(
+  date: Date,
+  now: number,
+  localisedDate: string,
+  intl: IntlShape,
+): string {
+  const distance = now - date.getTime();
   if (distance < MINUTE_MS) {
-    return 'just now';
+    return intl.formatMessage(messages.justNow);
   }
   if (distance < HOUR_MS) {
     const minutes = Math.floor(distance / MINUTE_MS);
-    return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'} ago`;
+    return intl.formatRelativeTime(-minutes, 'minute');
   }
   if (distance < DAY_MS) {
     const hours = Math.floor(distance / HOUR_MS);
-    return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
+    return intl.formatRelativeTime(-hours, 'hour');
   }
   if (distance < WEEK_MS) {
     const days = Math.floor(distance / DAY_MS);
-    return `${days} ${days === 1 ? 'day' : 'days'} ago`;
+    return intl.formatRelativeTime(-days, 'day');
   }
   // More than a week ago, fall back to the locale-formatted timestamp.
   return localisedDate;
@@ -56,27 +73,26 @@ const TimeAgo: React.FC<TimeAgoProps> = ({
   onClick,
   ...props
 }) => {
+  const intl = useAppIntl();
   const date = useMemo(() => new Date(dateProp), [dateProp]);
   const opts = dateOptions ?? DEFAULT_DATE_OPTIONS;
   const localisedDate = useMemo(
-    () => new Intl.DateTimeFormat(navigator.language, opts).format(date),
-    [date, opts],
+    () => intl.formatDate(date, opts),
+    [date, opts, intl],
   );
 
   // Computed synchronously for the very first paint: deriving this in an
   // effect rendered an empty element whose width then jumped — a visible
   // flicker on every mount (and table cells remount on unrelated re-renders).
-  const [timeAgo, setTimeAgo] = useState(() =>
-    formatTimeAgo(date, localisedDate),
-  );
+  const [now, setNow] = useState(() => Date.now());
+  const timeAgo = formatTimeAgo(date, now, localisedDate, intl);
   // Click anywhere on the time element to flip between the relative
   // ("2 days ago") rendering and the raw locale-formatted timestamp.
   const [showRaw, setShowRaw] = useState(false);
 
   useEffect(() => {
     const update = () => {
-      // Setting an unchanged string is a no-op render-wise; React bails out.
-      setTimeAgo(formatTimeAgo(date, localisedDate));
+      setNow(Date.now());
     };
 
     update();
@@ -85,7 +101,7 @@ const TimeAgo: React.FC<TimeAgoProps> = ({
     const interval = setInterval(update, MINUTE_MS);
 
     return () => clearInterval(interval);
-  }, [date, localisedDate]);
+  }, [date]);
 
   return (
     <span
@@ -106,7 +122,7 @@ const TimeAgo: React.FC<TimeAgoProps> = ({
       <time
         {...props}
         data-testid="time-ago"
-        dateTime={localisedDate}
+        dateTime={date.toISOString()}
         title={localisedDate}
       >
         {showRaw ? localisedDate : timeAgo}

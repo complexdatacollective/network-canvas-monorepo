@@ -34,6 +34,7 @@ import validateProtocol, {
   type ProtocolValidationResult,
 } from './validation/validate-protocol.ts';
 
+export { parseAcceptLanguage } from './localization/parseAcceptLanguage.ts';
 export {
   MigrationChain,
   type ProtocolMigration as Migration,

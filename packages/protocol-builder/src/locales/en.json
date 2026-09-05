@@ -1,0 +1,78 @@
+{
+  "protocolBuilder.interface.alterEdgeForm": {
+    "defaultMessage": "Per Alter Edge Form",
+    "description": "Researcher-facing interface name. Form for reporting relationships for each network member. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.interface.alterForm": {
+    "defaultMessage": "Per Alter Form",
+    "description": "Researcher-facing interface name. Form for reporting attributes for each network member. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.interface.anonymisation": {
+    "defaultMessage": "Anonymisation Interface",
+    "description": "Researcher-facing interface name. Interface that anonymizes network members. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.interface.categoricalBin": {
+    "defaultMessage": "Categorical Bin",
+    "description": "Researcher-facing interface name. Interface that places network members into categories. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.interface.dyadCensus": {
+    "defaultMessage": "Dyad Census",
+    "description": "Researcher-facing interface name. Interface that asks about every pair of network members. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.interface.egoForm": {
+    "defaultMessage": "Ego Form",
+    "description": "Researcher-facing interface name. Form for attributes of the focal interview participant, called ego in network research. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.interface.familyPedigree": {
+    "defaultMessage": "Family Pedigree",
+    "description": "Researcher-facing interface name. Interface for recording a family genealogy. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.interface.geospatial": {
+    "defaultMessage": "Geospatial Interface",
+    "description": "Researcher-facing interface name. Interface for locating network members on a map. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.interface.information": {
+    "defaultMessage": "Information",
+    "description": "Researcher-facing interface name. Interface for presenting researcher-authored information. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.interface.nameGenerator": {
+    "defaultMessage": "Name Generator (using forms)",
+    "description": "Researcher-facing interface name. Interface for naming network members using forms. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.interface.nameGeneratorQuickAdd": {
+    "defaultMessage": "Name Generator (quick add)",
+    "description": "Researcher-facing interface name. Interface for quickly naming network members. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.interface.nameGeneratorRoster": {
+    "defaultMessage": "Name Generator for Roster Data",
+    "description": "Researcher-facing interface name. Interface for selecting network members from roster data. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.interface.narrative": {
+    "defaultMessage": "Narrative",
+    "description": "Researcher-facing interface name. Interface for recording a narrative. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.interface.narrativePedigree": {
+    "defaultMessage": "Narrative Pedigree",
+    "description": "Researcher-facing interface name. Interface combining a narrative with a family genealogy. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.interface.networkComposer": {
+    "defaultMessage": "Network Composer",
+    "description": "Researcher-facing interface name. Interface for building and editing a network. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.interface.oneToManyDyadCensus": {
+    "defaultMessage": "One to Many Dyad Census",
+    "description": "Researcher-facing interface name. Interface for asking about one network member's relationships with several others. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.interface.ordinalBin": {
+    "defaultMessage": "Ordinal Bin",
+    "description": "Researcher-facing interface name. Interface for arranging network members in ordered categories. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.interface.sociogram": {
+    "defaultMessage": "Sociogram",
+    "description": "Researcher-facing interface name. Interface for drawing and arranging a network. Not a protocol-authored stage label."
+  },
+  "protocolBuilder.interface.tieStrengthCensus": {
+    "defaultMessage": "Tie-Strength Census",
+    "description": "Researcher-facing interface name. Interface for reporting the strength of relationships between network members. Not a protocol-authored stage label."
+  }
+}

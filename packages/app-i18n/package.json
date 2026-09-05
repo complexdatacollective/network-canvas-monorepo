@@ -19,6 +19,7 @@
     "./locales": "./src/locales.ts",
     "./common": "./src/common.ts",
     "./vite": "./src/vite.ts",
+    "./next-loader": "./src/next-loader.ts",
     "./catalog-guards": "./src/catalog-guards.ts"
   },
   "publishConfig": {
@@ -46,6 +47,10 @@
       "./vite": {
         "types": "./dist/vite.d.ts",
         "default": "./dist/vite.js"
+      },
+      "./next-loader": {
+        "types": "./dist/next-loader.d.ts",
+        "default": "./dist/next-loader.js"
       },
       "./catalog-guards": {
         "types": "./dist/catalog-guards.d.ts",

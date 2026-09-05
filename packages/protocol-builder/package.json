@@ -11,6 +11,7 @@
   },
   "type": "module",
   "exports": {
+    "./locales": "./src/locales/catalogs.ts",
     "./codebook/components/CodebookEntityEditor": "./src/codebook/components/CodebookEntityEditor.tsx",
     "./codebook/components/CodebookSurface": "./src/codebook/components/CodebookSurface.tsx",
     "./codebook/components/VariableEditor": "./src/codebook/components/VariableEditor.tsx",
@@ -44,6 +45,7 @@
     "./styles.css": "./src/styles.css"
   },
   "scripts": {
+    "i18n:extract": "node scripts/extract-i18n.mjs",
     "build-storybook": "storybook build",
     "storybook": "storybook dev -p 6010",
     "test": "vitest run",
@@ -63,6 +65,7 @@
     "uuid": "catalog:"
   },
   "devDependencies": {
+    "@codaco/app-i18n": "workspace:^",
     "@codaco/fresco-ui": "workspace:^",
     "@codaco/protocols": "workspace:^",
     "@codaco/tailwind-config": "workspace:^",
@@ -90,6 +93,7 @@
     "vitest": "catalog:"
   },
   "peerDependencies": {
+    "@codaco/app-i18n": "workspace:^",
     "@codaco/fresco-ui": "workspace:^",
     "@codaco/tailwind-config": "workspace:^",
     "motion": "catalog:",

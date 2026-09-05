@@ -1,0 +1,21 @@
+{
+  "protocolBuilder.interface.alterEdgeForm": "Formulario de vínculos por álter",
+  "protocolBuilder.interface.alterForm": "Formulario por álter",
+  "protocolBuilder.interface.anonymisation": "Interfaz de anonimización",
+  "protocolBuilder.interface.categoricalBin": "Clasificación por categorías",
+  "protocolBuilder.interface.dyadCensus": "Censo de díadas",
+  "protocolBuilder.interface.egoForm": "Formulario del ego",
+  "protocolBuilder.interface.familyPedigree": "Genealogía familiar",
+  "protocolBuilder.interface.geospatial": "Interfaz geoespacial",
+  "protocolBuilder.interface.information": "Información",
+  "protocolBuilder.interface.nameGenerator": "Generador de nombres (con formularios)",
+  "protocolBuilder.interface.nameGeneratorQuickAdd": "Generador de nombres (adición rápida)",
+  "protocolBuilder.interface.nameGeneratorRoster": "Generador de nombres a partir de una lista",
+  "protocolBuilder.interface.narrative": "Narrativa",
+  "protocolBuilder.interface.narrativePedigree": "Genealogía narrativa",
+  "protocolBuilder.interface.networkComposer": "Compositor de redes",
+  "protocolBuilder.interface.oneToManyDyadCensus": "Censo de díadas de uno a varios",
+  "protocolBuilder.interface.ordinalBin": "Clasificación ordinal",
+  "protocolBuilder.interface.sociogram": "Sociograma",
+  "protocolBuilder.interface.tieStrengthCensus": "Censo de intensidad de vínculos"
+}
