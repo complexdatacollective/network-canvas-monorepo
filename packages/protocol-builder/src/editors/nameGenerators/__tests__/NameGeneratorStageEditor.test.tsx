@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { nameGeneratorStageEditors } from '../../nameGeneratorStageEditors.ts';
+import { addInterviewNetworkPanel } from './addSidePanel.ts';
 
 /**
  * The prompt and question text are rich-text editors, and their editing
@@ -161,6 +162,97 @@ describe('the name generator editor', () => {
     // was authored just now.
     expect(request?.stageDocument.panels).toBeUndefined();
     expect(request?.stageDocument.behaviours).toBeUndefined();
+  });
+
+  /**
+   * The proposed name says what the stage IS, and side panels are part of
+   * that: a name generator offering the people named so far is a different
+   * stage from one that offers nothing.
+   *
+   * The rule is Architect's, unchanged. `resolveStageQualifier` — which
+   * `apps/architect/src/components/StageEditor/autoStageName/useAutoStageName.ts`
+   * calls, and which this package already owns — turns panels that all draw on
+   * the interview's own network into "with Network Panels".
+   */
+  it('qualifies the proposed name of a new stage with the panels beside it', async () => {
+    const harness = renderStageEditor({
+      create: { type: 'NameGenerator', position: NAME_GENERATOR_INDEX },
+      registry: nameGeneratorStageEditors,
+    });
+
+    await waitFor(() =>
+      expect(stageNameInput()).toHaveValue('Form Name Generator'),
+    );
+
+    await addInterviewNetworkPanel(harness, 'People you named earlier');
+
+    await waitFor(() =>
+      expect(stageNameInput()).toHaveValue(
+        'Form Name Generator with Network Panels',
+      ),
+    );
+  });
+
+  /**
+   * Switching the capability off destroys the panels, so the qualifier goes
+   * with them: the proposal describes the stage as it now is, not as it was.
+   */
+  it('takes the panel qualifier back out when the panels are switched off', async () => {
+    const harness = renderStageEditor({
+      create: { type: 'NameGenerator', position: NAME_GENERATOR_INDEX },
+      registry: nameGeneratorStageEditors,
+    });
+
+    await waitFor(() =>
+      expect(stageNameInput()).toHaveValue('Form Name Generator'),
+    );
+    await addInterviewNetworkPanel(harness, 'People you named earlier');
+    await waitFor(() =>
+      expect(stageNameInput()).toHaveValue(
+        'Form Name Generator with Network Panels',
+      ),
+    );
+
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Side panels' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Remove panels' }),
+    );
+
+    await waitFor(() =>
+      expect(stageNameInput()).toHaveValue('Form Name Generator'),
+    );
+  });
+
+  /** A name the researcher typed is theirs; a later panel does not take it. */
+  it('leaves a name the researcher typed alone when a panel is added', async () => {
+    const harness = renderStageEditor({
+      create: { type: 'NameGenerator', position: NAME_GENERATOR_INDEX },
+      registry: nameGeneratorStageEditors,
+    });
+
+    await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
+    await harness.user.clear(stageNameInput());
+    await harness.user.type(stageNameInput(), 'Close friends');
+
+    await addInterviewNetworkPanel(harness, 'People you named earlier');
+
+    expect(stageNameInput()).toHaveValue('Close friends');
+  });
+
+  /**
+   * An existing stage's name is already the researcher's — they typed it, or
+   * accepted a proposal months ago — so adding a panel to it renames nothing.
+   */
+  it('never renames a stage that already exists', async () => {
+    const harness = mountFixture();
+    await screen.findByText('Who are the people you know?');
+    expect(stageNameInput()).toHaveValue('Name Generator');
+
+    await addInterviewNetworkPanel(harness, 'People you named earlier');
+
+    expect(stageNameInput()).toHaveValue('Name Generator');
   });
 
   /**

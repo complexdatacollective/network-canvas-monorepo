@@ -33,6 +33,9 @@ export function NameGeneratorStageEditor({
     <NameGeneratorFrame
       controller={controller}
       documentationUrl={DOCUMENTATION_URL}
+      // A generator offering the people named so far is a different stage from
+      // one that offers nothing, so the name proposed to a new stage says so.
+      hasSidePanels
       {...(actions === undefined ? {} : { actions })}
     >
       <SubjectSection entity="node" />

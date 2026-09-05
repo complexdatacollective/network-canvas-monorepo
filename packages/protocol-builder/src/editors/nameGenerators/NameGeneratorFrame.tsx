@@ -7,16 +7,29 @@ import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import StageEditorShell from '../../form/StageEditorShell.tsx';
 import InterviewerGuidanceSection from '../../sections/InterviewerGuidanceSection.tsx';
 import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
-import StageNameSection from '../../sections/StageNameSection.tsx';
+import StageNameSection, {
+  type StageNameSectionProps,
+} from '../../sections/StageNameSection.tsx';
 import type {
   StageEditorActionContext,
   StageEditorActions,
 } from '../../stage-editor-contract.ts';
+import { usePanelsForAutoName } from './usePanelsForAutoName.ts';
 
 export type NameGeneratorFrameProps = Readonly<{
   controller: StageEditorController;
   /** Where this interface is documented. */
   documentationUrl: string;
+  /**
+   * This interface offers side panels, so the name proposed to a stage being
+   * created is qualified by them.
+   *
+   * Declared by the editor rather than assumed by the frame, because the
+   * schema gives `panels` to only two of the three name generators — a roster
+   * name generator's list IS the panel — and the frame must not ask the third
+   * about a key its interface does not have.
+   */
+  hasSidePanels?: boolean;
   /**
    * The host's action chrome, forwarded from whichever editor mounted the
    * frame. Left out — by a host that renders none, and by the package's own
@@ -47,12 +60,22 @@ export type NameGeneratorFrameProps = Readonly<{
 export default function NameGeneratorFrame({
   controller,
   documentationUrl,
+  hasSidePanels = false,
   actions,
   children,
 }: NameGeneratorFrameProps) {
   return (
     <StageEditorShell controller={controller} actions={actions ?? saveStage}>
-      <StageHeading documentationUrl={documentationUrl} />
+      {/*
+        Two headings rather than one that reads the panels conditionally: which
+        of them an interface gets is fixed for the life of the editor, and a
+        hook cannot be called only sometimes.
+      */}
+      {hasSidePanels ? (
+        <PanelledStageHeading documentationUrl={documentationUrl} />
+      ) : (
+        <StageHeading documentationUrl={documentationUrl} />
+      )}
       {children}
       <SkipLogicSection />
       <InterviewerGuidanceSection />
@@ -77,6 +100,26 @@ const saveStage = ({ formId }: StageEditorActionContext) => (
 );
 
 /**
+ * The heading of a stage whose side panels qualify its proposed name.
+ *
+ * The panels are read here rather than by the editor above because they live
+ * in the stage form, which only exists inside the shell — the editor names the
+ * interface's capability, and the frame reads it where it can be read.
+ */
+function PanelledStageHeading({
+  documentationUrl,
+}: Readonly<{ documentationUrl: string }>) {
+  const panels = usePanelsForAutoName();
+
+  return (
+    <StageHeading
+      documentationUrl={documentationUrl}
+      {...(panels === undefined ? {} : { autoName: { panels } })}
+    />
+  );
+}
+
+/**
  * The stage's name, with where it sits in the interview.
  *
  * A component of its own because the position is read from the protocol the
@@ -87,7 +130,11 @@ const saveStage = ({ formId }: StageEditorActionContext) => (
  */
 function StageHeading({
   documentationUrl,
-}: Readonly<{ documentationUrl: string }>) {
+  autoName,
+}: Readonly<{
+  documentationUrl: string;
+  autoName?: StageNameSectionProps['autoName'];
+}>) {
   const { identity, protocolContext } = useStageEditorForm();
   const index = protocolContext.orderedStages.findIndex(
     (stage) => stage.id === identity.id,
@@ -96,6 +143,7 @@ function StageHeading({
   return (
     <StageNameSection
       documentationUrl={documentationUrl}
+      {...(autoName === undefined ? {} : { autoName })}
       {...(index === -1
         ? {}
         : {
