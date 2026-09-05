@@ -260,9 +260,19 @@ describe('a key added in the editor and saved with its stage', () => {
     expect(snapshots.join('\n')).not.toContain(SECRET);
     expect(document.body.textContent ?? '').toContain(KEY_NAME);
     expect(document.body.innerHTML).not.toContain(SECRET);
+
+    // Staging closed the browser, so there is no input on the page to read
+    // until it is opened again. Reopened, it puts two empty ones back — the
+    // pair is what proves this is reading live controls rather than none.
+    await user.click(
+      screen.getByRole('button', { name: 'Change the API key' }),
+    );
+    await screen.findByLabelText('Key');
     expect(
       [...document.querySelectorAll('input')].map((input) => input.value),
-    ).not.toContain(SECRET);
+    ).toEqual(['', '']);
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.queryByLabelText('Key')).toBeNull());
 
     await user.click(screen.getByRole('button', { name: 'Finished editing' }));
     await waitFor(() => expect(submissions).toHaveLength(1));

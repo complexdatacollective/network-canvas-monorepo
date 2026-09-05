@@ -1,14 +1,20 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { ResourceGatewayProvider } from '../../context.tsx';
-import type {
-  ProtocolBuilderResourceGateway,
-  ResourcePreview as ResolvedPreview,
-  ResourceResult,
+import {
+  resourceFailure,
+  type ProtocolBuilderResourceGateway,
+  type ResourcePreview as ResolvedPreview,
+  type ResourceResult,
 } from '../../gateway.ts';
 import { InMemoryResourceGateway } from '../../InMemoryResourceGateway.ts';
 import ResourcePreview from '../ResourcePreview.tsx';
+import {
+  deferred,
+  flushPendingWork,
+  overrideGateway,
+} from './overrideGateway.ts';
 
 const bytesOf = (text: string): Uint8Array => new TextEncoder().encode(text);
 
@@ -58,17 +64,7 @@ function gatewayWithPendingPreview(gateway: InMemoryResourceGateway): Readonly<{
   );
 
   return {
-    gateway: {
-      list: (options) => gateway.list(options),
-      stageUpload: (request) => gateway.stageUpload(request),
-      stageSecret: (request) => gateway.stageSecret(request),
-      resolvePreview: () => pending,
-      inspect: (resourceId) => gateway.inspect(resourceId),
-      download: (resourceId) => gateway.download(resourceId),
-      discardStaged: (resourceId) => gateway.discardStaged(resourceId),
-      discardAllStaged: () => gateway.discardAllStaged(),
-      promote: (request) => gateway.promote(request),
-    },
+    gateway: overrideGateway(gateway, { resolvePreview: () => pending }),
     resolve: async (resourceId: string) => {
       const result = await gateway.resolvePreview(resourceId);
       if (result.status === 'failed') throw new Error('no preview to deliver');
@@ -144,5 +140,54 @@ describe('ResourcePreview', () => {
     expect(
       screen.getByRole('button', { name: 'Try loading the preview again' }),
     ).toBeVisible();
+  });
+
+  it('offers no retry for a resource the protocol no longer holds', async () => {
+    const gateway = new InMemoryResourceGateway();
+
+    renderPreview(gateway, 'image-gone', 'Missing');
+
+    expect(
+      await screen.findByText('that resource is no longer available'),
+    ).toBeVisible();
+    // Repeating the identical call cannot change the answer, so offering it
+    // would only invite the researcher to watch it fail again.
+    expect(
+      screen.queryByRole('button', { name: 'Try loading the preview again' }),
+    ).toBeNull();
+  });
+
+  it('ignores a failure for the resource the field has already moved off', async () => {
+    const inner = new InMemoryResourceGateway();
+    const first = await stageImage(inner, 'request-1', 'first.png');
+    const second = await stageImage(inner, 'request-2', 'second.png');
+    const held = deferred<ResourceResult<ResolvedPreview>>();
+    const gateway = overrideGateway(inner, {
+      resolvePreview: (resourceId) =>
+        resourceId === first ? held.promise : inner.resolvePreview(resourceId),
+    });
+
+    const { rerender } = renderPreview(gateway, first, 'First');
+    rerender(
+      <ResourceGatewayProvider gateway={gateway}>
+        <ResourcePreview resourceId={second} kind="image" name="Second" />
+      </ResourceGatewayProvider>,
+    );
+    await screen.findByRole('img', { name: 'Second' });
+
+    // The first resource's answer arrives at last, and it is a failure. It is
+    // about a resource this preview stopped showing, so it decides nothing.
+    held.settle(
+      resourceFailure<ResolvedPreview>(
+        'unavailable',
+        'the first preview could not be resolved',
+      ),
+    );
+    await act(flushPendingWork);
+
+    expect(
+      screen.queryByText('the first preview could not be resolved'),
+    ).toBeNull();
+    expect(screen.getByRole('img', { name: 'Second' })).toBeVisible();
   });
 });
