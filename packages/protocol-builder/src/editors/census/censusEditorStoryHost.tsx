@@ -75,7 +75,12 @@ export function CensusEditorStoryHost({
           controller={controller}
           actions={({ formId, readOnly: inert }) => (
             <div className="flex items-center justify-end gap-4">
-              <Paragraph role="status" margin="none">
+              {/*
+                Named, because the editor below mounts live regions of its
+                own: a story asking for "the status" would otherwise get
+                whichever one the tree happened to render first.
+              */}
+              <Paragraph role="status" aria-label="Save status" margin="none">
                 {saved === null ? '' : `Saved “${saved}”.`}
               </Paragraph>
               <SubmitButton form={formId} disabled={inert}>

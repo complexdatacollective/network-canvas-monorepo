@@ -37,9 +37,9 @@ export const Editing: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Save stage' }));
 
     await waitFor(() =>
-      expect(canvas.getByRole('status')).toHaveTextContent(
-        'Who each person knows',
-      ),
+      expect(
+        canvas.getByRole('status', { name: 'Save status' }),
+      ).toHaveTextContent('Who each person knows'),
     );
   },
 };
