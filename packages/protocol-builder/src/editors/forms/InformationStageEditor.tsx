@@ -1,12 +1,12 @@
 import StageEditorShell from '../../form/StageEditorShell.tsx';
 import { interfaceDocumentationUrl } from '../../interfaces/documentation.ts';
-import InterviewerGuidanceSection from '../../sections/InterviewerGuidanceSection.tsx';
 import ContentBlockEditor from '../../sections/contentBlocks/ContentBlockEditor.tsx';
 import ContentBlockPreview from '../../sections/contentBlocks/ContentBlockPreview.tsx';
 import {
   collapseContentBlock,
   expandContentBlock,
 } from '../../sections/contentBlocks/contentBlockTypes.ts';
+import InterviewerGuidanceSection from '../../sections/InterviewerGuidanceSection.tsx';
 import PageContentSection from '../../sections/PageContentSection.tsx';
 import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
 import StageNameSection from '../../sections/StageNameSection.tsx';
@@ -29,9 +29,13 @@ import { saveStageAction } from './saveStageAction.tsx';
  */
 export function InformationStageEditor({
   controller,
+  actions,
 }: StageEditorProps<'Information'>) {
   return (
-    <StageEditorShell controller={controller} actions={saveStageAction}>
+    <StageEditorShell
+      controller={controller}
+      actions={actions ?? saveStageAction}
+    >
       <StageNameSection
         documentationUrl={interfaceDocumentationUrl('information')}
       />

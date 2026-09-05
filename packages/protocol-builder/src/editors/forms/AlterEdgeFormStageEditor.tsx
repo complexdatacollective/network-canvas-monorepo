@@ -19,9 +19,13 @@ import { saveStageAction } from './saveStageAction.tsx';
  */
 export function AlterEdgeFormStageEditor({
   controller,
+  actions,
 }: StageEditorProps<'AlterEdgeForm'>) {
   return (
-    <StageEditorShell controller={controller} actions={saveStageAction}>
+    <StageEditorShell
+      controller={controller}
+      actions={actions ?? saveStageAction}
+    >
       <StageNameSection
         documentationUrl={interfaceDocumentationUrl('per-alter-edge-form')}
       />

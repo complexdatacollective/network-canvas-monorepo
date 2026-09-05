@@ -3,11 +3,23 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 
-import FormStageEditorStoryHost from './FormStageEditorStoryHost.tsx';
+import StageEditor from '../../StageEditor.tsx';
+import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
+import { formStageEditors } from '../formStageEditors.ts';
 
 const meta = {
   title: 'Protocol Builder/Stage editors/Per alter edge form',
-  component: FormStageEditorStoryHost,
+  component: StageEditorStoryHost,
+  args: {
+    stageId: 'alter-edge-form-1',
+    renderEditor: ({ controller, actions }) => (
+      <StageEditor
+        controller={controller}
+        registry={formStageEditors}
+        actions={actions}
+      />
+    ),
+  },
   parameters: {
     layout: 'fullscreen',
     docs: {
@@ -18,17 +30,13 @@ const meta = {
     },
   },
   tags: ['autodocs'],
-} satisfies Meta<typeof FormStageEditorStoryHost>;
+} satisfies Meta<typeof StageEditorStoryHost>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 /** The editor as the researcher meets it, on a form that already collects an attribute. */
 export const Editing: Story = {
-  args: {
-    stageId: 'alter-edge-form-1',
-    access: { mode: 'editable', leaseOwner: 'storybook', leaseEpoch: 1n },
-  },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
@@ -40,16 +48,16 @@ export const Editing: Story = {
 
     await waitFor(async () => {
       await expect(
-        canvas.getByText('About each relationship'),
-      ).toBeInTheDocument();
+        canvas.getByRole('status', { name: 'Save status' }),
+      ).toHaveTextContent('Saved “About each relationship”.');
     });
+    await expect(
+      canvas.getByRole('region', { name: 'What the host was asked to commit' }),
+    ).toHaveTextContent('"label": "About each relationship"');
   },
 };
 
 /** Someone else holds the lease: every control is inert and saving is refused. */
 export const Spectating: Story = {
-  args: {
-    stageId: 'alter-edge-form-1',
-    access: { mode: 'readOnly', reason: 'spectator' },
-  },
+  args: { readOnly: true },
 };

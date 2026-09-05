@@ -19,9 +19,13 @@ import { saveStageAction } from './saveStageAction.tsx';
  */
 export function AlterFormStageEditor({
   controller,
+  actions,
 }: StageEditorProps<'AlterForm'>) {
   return (
-    <StageEditorShell controller={controller} actions={saveStageAction}>
+    <StageEditorShell
+      controller={controller}
+      actions={actions ?? saveStageAction}
+    >
       <StageNameSection
         documentationUrl={interfaceDocumentationUrl('per-alter-form')}
       />

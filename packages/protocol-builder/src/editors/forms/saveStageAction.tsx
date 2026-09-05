@@ -1,17 +1,16 @@
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 
-import type { StageEditorActionContext } from '../../form/StageEditorShell.tsx';
+import type { StageEditorActionContext } from '../../stage-editor-contract.ts';
 
 /**
- * The control that saves the stage, for an editor reached through the
- * dispatcher.
+ * The control that saves the stage, when the host supplied none of its own.
  *
- * The shell keeps a slot for action chrome because a host composing it
- * directly puts its own buttons there. A NAMED editor is not composed that
- * way: the dispatcher hands it a controller and a stage type and nothing else,
- * so the only thing that can put a control on the form the editor just built
- * is the editor. A host that wants different chrome around a stage editor
- * builds it from `StageEditorShell` rather than from the dispatcher.
+ * Every named editor takes the host's action chrome and hands it to the shell,
+ * so a host composing the dispatcher puts its own buttons on the form this
+ * family built. A host that passes nothing — and the package's own tests and
+ * stories, which mount an editor to exercise it rather than to wrap it — would
+ * otherwise be left with a form and no way to submit it, so this is what the
+ * slot falls back to.
  *
  * Disabled while the session is read-only, which is chrome rather than the
  * guarantee: the shell refuses the write itself, and says why, for every other

@@ -3,32 +3,23 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 
-import FixtureStageEditorHost from './FixtureStageEditorHost.tsx';
-import { NameGeneratorQuickAddStageEditor } from './NameGeneratorQuickAddStageEditor.tsx';
-
-function NameGeneratorQuickAddEditorStory({
-  readOnly = false,
-}: EditorStoryArgs) {
-  return (
-    <FixtureStageEditorHost
-      stageId="name-generator-quick-add-1"
-      readOnly={readOnly}
-    >
-      {(controller) => (
-        <NameGeneratorQuickAddStageEditor
-          controller={controller}
-          stageType="NameGeneratorQuickAdd"
-        />
-      )}
-    </FixtureStageEditorHost>
-  );
-}
-
-type EditorStoryArgs = Readonly<{ readOnly?: boolean }>;
+import StageEditor from '../../StageEditor.tsx';
+import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
+import { nameGeneratorStageEditors } from '../nameGeneratorStageEditors.ts';
 
 const meta = {
   title: 'Protocol Builder/Stage editors/Name Generator (quick add)',
-  component: NameGeneratorQuickAddEditorStory,
+  component: StageEditorStoryHost,
+  args: {
+    stageId: 'name-generator-quick-add-1',
+    renderEditor: ({ controller, actions }) => (
+      <StageEditor
+        controller={controller}
+        registry={nameGeneratorStageEditors}
+        actions={actions}
+      />
+    ),
+  },
   parameters: {
     layout: 'fullscreen',
     docs: {
@@ -39,14 +30,13 @@ const meta = {
     },
   },
   tags: ['autodocs'],
-} satisfies Meta<typeof NameGeneratorQuickAddEditorStory>;
+} satisfies Meta<typeof StageEditorStoryHost>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 /** Choosing what the single box fills in, and saving the stage. */
 export const Editing: Story = {
-  args: {},
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
@@ -58,8 +48,16 @@ export const Editing: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Save stage' }));
 
     await waitFor(async () => {
-      await expect(canvas.getByText('Stage saved')).toBeVisible();
+      await expect(
+        canvas.getByRole('status', { name: 'Save status' }),
+      ).toHaveTextContent('Saved “Name Generator Quick Add”.');
     });
+    // The choice itself, in the document the host was handed: a save that
+    // reported success while committing the attribute it opened on would look
+    // identical above.
+    await expect(
+      canvas.getByRole('region', { name: 'What the host was asked to commit' }),
+    ).toHaveTextContent('"quickAdd": "relationship_to_ego"');
   },
 };
 

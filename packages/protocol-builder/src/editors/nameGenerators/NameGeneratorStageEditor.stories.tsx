@@ -3,27 +3,25 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 
-import FixtureStageEditorHost from './FixtureStageEditorHost.tsx';
-import { NameGeneratorStageEditor } from './NameGeneratorStageEditor.tsx';
-
-function NameGeneratorEditorStory({ readOnly = false }: EditorStoryArgs) {
-  return (
-    <FixtureStageEditorHost stageId="name-generator-1" readOnly={readOnly}>
-      {(controller) => (
-        <NameGeneratorStageEditor
-          controller={controller}
-          stageType="NameGenerator"
-        />
-      )}
-    </FixtureStageEditorHost>
-  );
-}
-
-type EditorStoryArgs = Readonly<{ readOnly?: boolean }>;
+import StageEditor from '../../StageEditor.tsx';
+import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
+import { nameGeneratorStageEditors } from '../nameGeneratorStageEditors.ts';
 
 const meta = {
   title: 'Protocol Builder/Stage editors/Name Generator',
-  component: NameGeneratorEditorStory,
+  component: StageEditorStoryHost,
+  args: {
+    stageId: 'name-generator-1',
+    // Through the dispatcher rather than by naming the component, so the story
+    // also shows that this family claims the interface its stage is of.
+    renderEditor: ({ controller, actions }) => (
+      <StageEditor
+        controller={controller}
+        registry={nameGeneratorStageEditors}
+        actions={actions}
+      />
+    ),
+  },
   parameters: {
     layout: 'fullscreen',
     docs: {
@@ -34,14 +32,13 @@ const meta = {
     },
   },
   tags: ['autodocs'],
-} satisfies Meta<typeof NameGeneratorEditorStory>;
+} satisfies Meta<typeof StageEditorStoryHost>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 /** Renaming a stage and saving it: the whole editor, end to end. */
 export const Editing: Story = {
-  args: {},
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
@@ -53,8 +50,13 @@ export const Editing: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Save stage' }));
 
     await waitFor(async () => {
-      await expect(canvas.getByText('Stage saved')).toBeVisible();
+      await expect(
+        canvas.getByRole('status', { name: 'Save status' }),
+      ).toHaveTextContent('Saved “Name Generator (revised)”.');
     });
+    await expect(
+      canvas.getByRole('region', { name: 'What the host was asked to commit' }),
+    ).toHaveTextContent('"label": "Name Generator (revised)"');
   },
 };
 

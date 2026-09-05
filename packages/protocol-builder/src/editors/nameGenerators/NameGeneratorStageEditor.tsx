@@ -27,11 +27,13 @@ const DOCUMENTATION_URL = interfaceDocumentationUrl(
  */
 export function NameGeneratorStageEditor({
   controller,
+  actions,
 }: StageEditorProps<'NameGenerator'>) {
   return (
     <NameGeneratorFrame
       controller={controller}
       documentationUrl={DOCUMENTATION_URL}
+      {...(actions === undefined ? {} : { actions })}
     >
       <SubjectSection entity="node" />
       {/*

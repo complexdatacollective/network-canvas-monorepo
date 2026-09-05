@@ -8,11 +8,21 @@ import StageEditorShell from '../../form/StageEditorShell.tsx';
 import InterviewerGuidanceSection from '../../sections/InterviewerGuidanceSection.tsx';
 import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
 import StageNameSection from '../../sections/StageNameSection.tsx';
+import type {
+  StageEditorActionContext,
+  StageEditorActions,
+} from '../../stage-editor-contract.ts';
 
 export type NameGeneratorFrameProps = Readonly<{
   controller: StageEditorController;
   /** Where this interface is documented. */
   documentationUrl: string;
+  /**
+   * The host's action chrome, forwarded from whichever editor mounted the
+   * frame. Left out — by a host that renders none, and by the package's own
+   * tests and stories — the frame supplies the save control below.
+   */
+  actions?: StageEditorActions;
   /**
    * The interface's own sections, in the order a researcher meets them:
    * what the stage works on, what it asks, and how it behaves.
@@ -37,25 +47,11 @@ export type NameGeneratorFrameProps = Readonly<{
 export default function NameGeneratorFrame({
   controller,
   documentationUrl,
+  actions,
   children,
 }: NameGeneratorFrameProps) {
   return (
-    <StageEditorShell
-      controller={controller}
-      actions={({ formId }) => (
-        <div className="flex justify-end">
-          {/*
-            Deliberately not disabled while the session is read-only. Every
-            control above it already is, and a spectator who presses this is
-            asking a question — the shell answers it with the reason the stage
-            cannot be saved and what to do about it, which a disabled button
-            says to nobody. It is also the only honest state: access can be
-            taken away between the render that read it and the submit itself.
-          */}
-          <SubmitButton form={formId}>Save stage</SubmitButton>
-        </div>
-      )}
-    >
+    <StageEditorShell controller={controller} actions={actions ?? saveStage}>
       <StageHeading documentationUrl={documentationUrl} />
       {children}
       <SkipLogicSection />
@@ -63,6 +59,22 @@ export default function NameGeneratorFrame({
     </StageEditorShell>
   );
 }
+
+/**
+ * The frame's own save control, for a mount that was given no chrome.
+ *
+ * Deliberately not disabled while the session is read-only. Every control
+ * above it already is, and a spectator who presses this is asking a question —
+ * the shell answers it with the reason the stage cannot be saved and what to do
+ * about it, which a disabled button says to nobody. It is also the only honest
+ * state: access can be taken away between the render that read it and the
+ * submit itself.
+ */
+const saveStage = ({ formId }: StageEditorActionContext) => (
+  <div className="flex justify-end">
+    <SubmitButton form={formId}>Save stage</SubmitButton>
+  </div>
+);
 
 /**
  * The stage's name, with where it sits in the interview.

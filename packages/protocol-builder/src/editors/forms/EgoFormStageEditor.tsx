@@ -19,9 +19,13 @@ import { saveStageAction } from './saveStageAction.tsx';
  */
 export function EgoFormStageEditor({
   controller,
+  actions,
 }: StageEditorProps<'EgoForm'>) {
   return (
-    <StageEditorShell controller={controller} actions={saveStageAction}>
+    <StageEditorShell
+      controller={controller}
+      actions={actions ?? saveStageAction}
+    >
       <StageNameSection
         documentationUrl={interfaceDocumentationUrl('ego-form')}
       />

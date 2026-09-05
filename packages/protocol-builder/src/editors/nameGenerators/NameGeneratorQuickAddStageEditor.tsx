@@ -26,11 +26,13 @@ const DOCUMENTATION_URL = interfaceDocumentationUrl(
  */
 export function NameGeneratorQuickAddStageEditor({
   controller,
+  actions,
 }: StageEditorProps<'NameGeneratorQuickAdd'>) {
   return (
     <NameGeneratorFrame
       controller={controller}
       documentationUrl={DOCUMENTATION_URL}
+      {...(actions === undefined ? {} : { actions })}
     >
       <SubjectSection entity="node" />
       <QuickAddSection />
