@@ -217,4 +217,29 @@ describe('protocolContextFromSections', () => {
       entityForSubject(context, { entity: 'node', type: '__proto__' }),
     ).toMatchObject({ name: 'Prototype' });
   });
+
+  it('exposes asset metadata by id, and reports one bad entry without losing the rest', () => {
+    const sections = protocolSections();
+    sections[sectionId({ kind: 'assets' })] = {
+      'asset-image': { name: 'A photo', type: 'image', source: 'photo.png' },
+      // A file asset with no source: the kind of thing an interrupted upload
+      // leaves behind. It must not cost the section its other assets.
+      'asset-broken': { name: 'Half an upload', type: 'image' },
+    };
+
+    const context = protocolContextFromSections(sections);
+
+    expect(context.assets['asset-image']).toMatchObject({ type: 'image' });
+    expect(context.assets['asset-broken']).toBeUndefined();
+    expect(context.issues).toContainEqual(
+      expect.objectContaining({
+        sectionId: sectionId({ kind: 'assets' }),
+        path: ['asset-broken', 'source'],
+      }),
+    );
+  });
+
+  it('has no assets when the protocol has no asset section', () => {
+    expect(protocolContextFromSections(protocolSections()).assets).toEqual({});
+  });
 });
