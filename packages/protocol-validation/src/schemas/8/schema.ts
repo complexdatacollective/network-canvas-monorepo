@@ -15,10 +15,7 @@ import {
   getVariablesForSubject,
   variableExists,
 } from '../../utils/validation-helpers.ts';
-import {
-  FilterOperandKinds,
-  OperatorsByVariableType,
-} from './filters/index.ts';
+import { OperatorsByVariableType } from './filters/index.ts';
 
 // Re-export all the split schemas
 export * from './assets/index.ts';
@@ -62,19 +59,21 @@ import {
   type ValidationContradiction,
 } from './variables/validation-contradictions.ts';
 
-// Which kind of value each operator compares against is stated once, beside
-// the filter schema itself (`FilterOperandKinds`), because the protocol
-// builder chooses each operand's control from the same table.
-
 type IssueReporter = (issue: {
   message: string;
   path: (string | number)[];
 }) => void;
 
 /**
- * Validate a set of filter rules: entity/attribute existence, operator validity
- * by variable type, and value-type by operator. Shared between an inline
- * stage.filter, skipLogic.filter and panel filters.
+ * Validate a set of filter rules against the CODEBOOK: entity and attribute
+ * existence, and operator validity for the attribute's variable type. Shared
+ * between an inline stage.filter, skipLogic.filter and panel filters.
+ *
+ * What shape a rule's operand may have needs no codebook, so it is not asked
+ * here: `filterRuleSchema` holds every rule's value to its operator's operand
+ * kind (`FilterOperandKinds`) as the rule is parsed, which is what lets a host
+ * validating a bare filter reach the same verdict as one validating a whole
+ * protocol.
  *
  * `allowEgoRules` is false for stage NODE/EDGE filters, where an ego rule has no
  * meaning as a node/edge filter (it is silently dropped at runtime).
@@ -145,58 +144,6 @@ const validateFilterRules = (
             message: `Operator "${rule.options.operator}" is not valid for attribute type "${variableType}". Valid operators: ${validOperators.join(', ')}`,
             path: [...rulePath, 'options', 'operator'],
           });
-        }
-
-        // Validate value type based on operator
-        if (rule.options.value !== undefined) {
-          const value: unknown = rule.options.value;
-          const valueType = Array.isArray(value) ? 'array' : typeof value;
-          // `attribute` and `none` are unconstrained here: the first is
-          // decided by the attribute's own type (INCLUDES/EXCLUDES accept one
-          // option or a list of them, and resolve the difference at runtime),
-          // and the second belongs to an operator that compares nothing.
-          //
-          // Whether an operand is one of the options its attribute authored is
-          // deliberately NOT asked here. A protocol already in the field can
-          // hold a rule naming an option that has since been renamed or
-          // deleted, and refusing to LOAD it would lock the researcher out of
-          // the very editor that can fix it. Membership is an editor rule: the
-          // protocol builder refuses a non-member operand as it is authored,
-          // and reports one it finds in a stored rule as a problem on that
-          // rule (`operandOptionProblems` in `@codaco/protocol-builder`).
-          // Ruling recorded on issue #1548.
-          const operandKind = FilterOperandKinds[rule.options.operator];
-
-          if (operandKind === 'number' && valueType !== 'number') {
-            addIssue({
-              message: `Operator "${rule.options.operator}" requires a numeric value, but got ${valueType}`,
-              path: [...rulePath, 'options', 'value'],
-            });
-          }
-
-          if (operandKind === 'integer') {
-            if (valueType !== 'number') {
-              addIssue({
-                message: `Operator "${rule.options.operator}" requires a numeric value (count), but got ${valueType}`,
-                path: [...rulePath, 'options', 'value'],
-              });
-            } else if (!Number.isInteger(value)) {
-              // There is no such thing as one and a half selected options, so
-              // a fractional count is a rule that can never be satisfied
-              // exactly and reads as nonsense in the summary.
-              addIssue({
-                message: `Operator "${rule.options.operator}" requires a whole number of options, but got ${String(value)}`,
-                path: [...rulePath, 'options', 'value'],
-              });
-            }
-          }
-
-          if (operandKind === 'string' && valueType !== 'string') {
-            addIssue({
-              message: `Operator "${rule.options.operator}" requires a string value, but got ${valueType}`,
-              path: [...rulePath, 'options', 'value'],
-            });
-          }
         }
       }
     }

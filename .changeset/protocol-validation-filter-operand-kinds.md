@@ -19,6 +19,16 @@ SELECTED OPTIONS still require a whole number, and now say so: a fractional
 count is reported as an issue rather than stored as a rule that can never be
 satisfied.
 
+Each operand kind is applied by `filterRuleSchema` itself rather than by the
+protocol schema's cross-reference pass, so validating a bare filter through the
+exported `FilterSchema` or `filterRuleSchema` reaches the same verdict as
+validating the protocol it sits in — a fractional count is refused either way,
+where before only the whole-protocol path asked. `FilterSchema` is one object
+with a check on it instead of a union of a one-rule and a several-rule shape:
+it accepts and refuses exactly the same filters, but a rule that broke both
+shapes used to be reported as a single "Invalid input" against the whole
+filter, discarding the reason the rule was refused.
+
 Nothing here asks whether a rule's operand is one of the options its attribute
 authored. That check stays out of this validator on purpose: protocols already
 in the field hold rules naming an option a collaborator has since renamed or

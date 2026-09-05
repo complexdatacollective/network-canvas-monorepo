@@ -79,11 +79,16 @@ export const OperatorsByVariableType: Record<string, readonly string[]> = {
  * What a rule's comparison value may be, whatever it is being compared
  * against.
  *
- * A number is not required to be whole. The operators that count SELECTED
- * OPTIONS are, and say so themselves through `FilterOperandKinds` below, but a
- * scalar attribute records a normalised 0-1 reading and a number attribute may
- * hold any quantity the study measures — so an integer-only value could
- * express no scalar comparison at all beyond the two ends of its scale.
+ * This is the widest a value may be, and deliberately the whole of what can be
+ * said WITHOUT the operator: which of these shapes a given comparison actually
+ * accepts is decided by `FilterOperandKinds` below and applied by
+ * `filterRuleSchema`, where both halves of the comparison are in hand.
+ *
+ * A number is not required to be whole here. The operators that count SELECTED
+ * OPTIONS are, and say so through their operand kind, but a scalar attribute
+ * records a normalised 0-1 reading and a number attribute may hold any
+ * quantity the study measures — so an integer-only value could express no
+ * scalar comparison at all beyond the two ends of its scale.
  *
  * Exported because it is the only statement of what a rule may hold at
  * `value`, and the protocol builder chooses each operand's control from it
@@ -169,27 +174,118 @@ const attributeLevelFilterRuleSchema = z.strictObject({
   options: attributeLevelOptionsSchema,
 });
 
-// Combined filter rule schema using discriminated union
-export const filterRuleSchema = z.union([
-  attributeLevelFilterRuleSchema,
-  typeLevelFilterRuleSchema,
-]);
+/**
+ * What each operand kind has to BE, as a schema of its own.
+ *
+ * One entry per member of `FilterOperandKind`, so the constraint a kind
+ * carries is stated beside the table that assigns it rather than reconstructed
+ * by whoever reads the table next. `integer` is `z.number().int()` because
+ * there is no such thing as one and a half selected options: a fractional
+ * count is a rule that can never be satisfied exactly, and reads as nonsense
+ * in the summary.
+ *
+ * `none` and `attribute` ask nothing. The first belongs to an operator that
+ * compares no value at all; the second leaves the shape to the ATTRIBUTE's own
+ * type, which the rule schema cannot see — and deliberately does not ask about
+ * option MEMBERSHIP either (ruling on issue #1548: a protocol already in the
+ * field holds rules naming an option a collaborator has since renamed, and
+ * refusing to load one would lock the researcher out of the editor that could
+ * fix it).
+ */
+const OPERAND_SCHEMAS: Readonly<Record<FilterOperandKind, z.ZodType>> =
+  Object.freeze({
+    none: z.unknown(),
+    number: z.number(),
+    integer: z.number().int(),
+    string: z.string(),
+    attribute: z.unknown(),
+  });
+
+const operandTypeName = (value: unknown): string =>
+  Array.isArray(value) ? 'array' : typeof value;
+
+/** Why this operand is refused, in the terms the operator itself sets. */
+const operandMessage = (
+  operator: FilterOperator,
+  kind: FilterOperandKind,
+  value: unknown,
+): string => {
+  if (kind === 'integer') {
+    return typeof value === 'number'
+      ? `Operator "${operator}" requires a whole number of options, but got ${String(value)}`
+      : `Operator "${operator}" requires a numeric value (count), but got ${operandTypeName(value)}`;
+  }
+  if (kind === 'string') {
+    return `Operator "${operator}" requires a string value, but got ${operandTypeName(value)}`;
+  }
+  // `number` is the only kind left that refuses anything: `none` and
+  // `attribute` accept every value the schema can hold, so no operand of
+  // theirs ever needs a reason.
+  return `Operator "${operator}" requires a numeric value, but got ${operandTypeName(value)}`;
+};
+
+/**
+ * Every filter rule, with its operand held to what its operator compares.
+ *
+ * The refinement sits on the union rather than inside either member so that a
+ * rule is CLASSIFIED first and judged second: an operand of the wrong kind is
+ * then reported as the specific thing that is wrong with it, on the value
+ * itself, rather than as a union that matched neither shape.
+ *
+ * Stated here rather than in the protocol schema's own cross-reference pass
+ * because these exports are the package's public statement of what a filter
+ * is: a host validating a bare filter through `FilterSchema` gets the same
+ * verdict as one validating the whole protocol, instead of a false pass on a
+ * count the interview can never satisfy exactly.
+ */
+export const filterRuleSchema = z
+  .union([attributeLevelFilterRuleSchema, typeLevelFilterRuleSchema])
+  .superRefine((rule, ctx) => {
+    const value: unknown = rule.options.value;
+    // An operand that is not there is an unfinished rule, not a wrong one, and
+    // the schema leaves `value` optional for the operators that need none.
+    if (value === undefined) return;
+
+    const operator: FilterOperator = rule.options.operator;
+    const kind = FilterOperandKinds[operator];
+    if (OPERAND_SCHEMAS[kind].safeParse(value).success) return;
+
+    ctx.addIssue({
+      code: 'custom',
+      message: operandMessage(operator, kind, value),
+      path: ['options', 'value'],
+      input: value,
+    });
+  });
 
 export type FilterRule = z.infer<typeof filterRuleSchema>;
 
-const singleFilterRuleSchema = z.strictObject({
-  join: z.enum(['OR', 'AND']).optional(),
-  rules: z.array(filterRuleSchema).min(1).max(1),
-});
-
-const multipleFilterRuleSchema = z.strictObject({
-  join: z.enum(['OR', 'AND']),
-  rules: z.array(filterRuleSchema).min(1),
-});
-
-export const FilterSchema = z.union([
-  singleFilterRuleSchema,
-  multipleFilterRuleSchema,
-]);
+/**
+ * A filter: the rules, and how they combine.
+ *
+ * One shape with a condition on it rather than two shapes to choose between.
+ * A union of "one rule, join optional" and "several rules, join required"
+ * accepted exactly the same protocols, but reported a rule that broke BOTH
+ * shapes as `invalid_union` — one "Invalid input" against the whole filter,
+ * with the reason the rule was refused discarded. That is the only report a
+ * researcher gets for an operand of the wrong kind, so the shape is stated
+ * once and the one thing that varies between the two is asked as a check.
+ */
+export const FilterSchema = z
+  .strictObject({
+    join: z.enum(['OR', 'AND']).optional(),
+    rules: z.array(filterRuleSchema).min(1),
+  })
+  .superRefine((filter, ctx) => {
+    // A lone rule needs no join: there is nothing for it to combine with.
+    if (filter.rules.length <= 1 || filter.join !== undefined) return;
+    ctx.addIssue({
+      code: 'custom',
+      message:
+        'A filter with more than one rule must say how they combine, with a join of "AND" or "OR".',
+      path: ['join'],
+      input: filter.join,
+    });
+  });
 
 export type Filter = z.infer<typeof FilterSchema>;
