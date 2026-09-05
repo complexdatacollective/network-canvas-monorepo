@@ -113,6 +113,14 @@ and creates a numbered directory under `server/migrations/`:
 - `manifest.json`: the previous migration, target source fingerprint and hashes
   binding all three artifacts into the stored migration checksum.
 
+Authoring explicitly treats new and removed names as additions and removals;
+it never guesses that they are a rename. The pinned Drizzle Kit rc.4 needs the
+small `patches/drizzle-kit@1.0.0-rc.4.patch` API extension for this policy: its
+unpatched noninteractive API throws when both sides contain the same kind of
+entity. Drizzle still computes the complete diff and SQL. Re-evaluate the
+patch when upgrading Drizzle; the authoring regression exercises both an
+added and a removed column through the real second-migration command.
+
 Optional `--before path.sql` and `--after path.sql` include reviewed SQL before
 or after the generated Drizzle delta, before the sidecars. Use them for data
 backfills or removal of obsolete sidecar objects; the generator cannot infer
@@ -121,7 +129,7 @@ inside one transaction and must not contain transaction-control commands.
 Data transformations must accompany a schema or sidecar change; a data-only
 migration with an unchanged fingerprint would evade the existing boot guard,
 so the generator refuses it.
-Review destructive DDL and any rename resolution before committing. Once an
+Review destructive DDL and any intentional rename/data preservation before committing. Once an
 image publishes an artifact, never edit it: add a subsequent migration.
 
 Run the migration tests against a disposable local database. They exercise
