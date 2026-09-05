@@ -9,27 +9,23 @@ import { PinUnlockForm } from './PinUnlockForm';
 // wrong PIN, clears + refocuses the field so the user can retype. Drive the
 // verify outcome from the controls.
 type Outcome = 'success' | 'failure';
-type StoryArgs = { outcome: Outcome; invalidMessage: string };
+type StoryArgs = { outcome: Outcome };
 
 const meta: Meta<StoryArgs> = {
   title: 'Auth/UnlockForms/PinUnlockForm',
   parameters: { layout: 'padded' },
   decorators: [withFormStore],
-  args: { outcome: 'failure', invalidMessage: 'Incorrect PIN.' },
+  args: { outcome: 'failure' },
   argTypes: {
     outcome: { control: 'inline-radio', options: ['success', 'failure'] },
-    invalidMessage: { control: 'text' },
   },
-  render: ({ outcome, invalidMessage }) => (
+  render: ({ outcome }) => (
     <div className="max-w-md">
       <PinUnlockForm
         formId="story-pin-form"
-        invalidMessage={invalidMessage}
         verifyPin={async (_pin) => {
           await new Promise((r) => setTimeout(r, 100));
-          return outcome === 'success'
-            ? { ok: true }
-            : { ok: false, message: invalidMessage };
+          return outcome === 'success' ? { ok: true } : { ok: false };
         }}
       />
     </div>

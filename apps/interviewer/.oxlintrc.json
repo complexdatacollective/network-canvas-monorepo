@@ -1,6 +1,6 @@
 {
   "extends": ["../../.oxlintrc.json", "../../tooling/oxlint/react.json"],
-  "jsPlugins": ["oxlint-tailwindcss"],
+  "jsPlugins": ["oxlint-tailwindcss", "eslint-plugin-formatjs"],
   "settings": {
     "tailwindcss": {
       "entryPoint": "tooling/tailwind/fresco/fresco.css"
@@ -15,8 +15,41 @@
   },
   "overrides": [
     {
+      "files": ["src/**"],
+      "rules": {
+        "formatjs/enforce-description": "error",
+        "formatjs/enforce-default-message": "error",
+        "formatjs/no-invalid-icu": "error",
+        "formatjs/enforce-placeholders": "error",
+        "formatjs/no-multiple-whitespaces": "error",
+        "formatjs/no-literal-string-in-jsx": [
+          "error",
+          {
+            "props": {
+              "include": [["*", "{label,placeholder,title,itemLabel}"]]
+            }
+          }
+        ]
+      }
+    },
+    {
       "files": ["e2e/**"],
-      "rules": { "react/rules-of-hooks": "off" }
+      "rules": {
+        "react/rules-of-hooks": "off"
+      }
+    },
+    {
+      "files": [
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.stories.ts",
+        "**/*.stories.tsx",
+        "**/__tests__/**",
+        "src/storybook/**"
+      ],
+      "rules": {
+        "formatjs/no-literal-string-in-jsx": "off"
+      }
     }
   ]
 }

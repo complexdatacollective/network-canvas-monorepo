@@ -1,3 +1,34 @@
+import { commonMessages } from '@codaco/app-i18n/common';
+import { createAppIntl } from '@codaco/app-i18n/messages';
+import { resolveAppLocale } from '@codaco/app-i18n/negotiate';
+
+import {
+  interviewerDefaultLocale,
+  interviewerProductionLocales,
+} from '../../i18n/locales';
+import { browserLanguages, readPreference } from '../../i18n/preference';
+import { interviewerCatalogs } from '../../locales/catalogs';
+
+// The static shell is labelled with the product name until JavaScript is
+// available. Announce its state in the same negotiated language as React,
+// before the asynchronous startup update check can delay mounting the app.
+export function announceLoadingScreen(): void {
+  const message = document.getElementById('app-loading__message');
+  if (!message) return;
+  const { locale } = resolveAppLocale({
+    stored: readPreference(),
+    requested: browserLanguages(),
+    locales: interviewerProductionLocales,
+    defaultLocale: interviewerDefaultLocale,
+  });
+  document.documentElement.lang = locale;
+  document.documentElement.dir =
+    interviewerProductionLocales.find((entry) => entry.locale === locale)
+      ?.direction ?? 'ltr';
+  const intl = createAppIntl({ locale, messages: interviewerCatalogs[locale] });
+  message.textContent = intl.formatMessage(commonMessages.loading);
+}
+
 // Fades out and removes the pre-React loading screen (the static branded
 // spinner injected in index.html's <head>, shown before the JS bundle parses
 // and React mounts). Called once from main.tsx after createRoot(...).render().

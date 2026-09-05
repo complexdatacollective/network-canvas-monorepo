@@ -1,10 +1,27 @@
 import { motion } from 'motion/react';
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { BackgroundLights } from '@codaco/art';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
+
+const messages = defineMessages({
+  theAppHitAnUnexpectedErrorYour: {
+    id: 'interviewer.appErrorBoundary.theAppHitAnUnexpectedErrorYour',
+    defaultMessage:
+      'The app hit an unexpected error. Your collected data is saved on this device and is not affected. Try reloading to continue.',
+    description: 'The description label in Interviewer App Error Boundary.',
+  },
+  reload: {
+    id: 'interviewer.appErrorBoundary.reload',
+    defaultMessage: 'Reload',
+    description: 'Visible copy in Interviewer App Error Boundary.',
+  },
+});
 
 type Props = {
   children: ReactNode;
@@ -32,36 +49,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (!this.state.hasError) return this.props.children;
-    // The crashed tree (including the ambient blob layer in App.tsx) is
-    // unmounted by React, so re-create the backdrop here and present the
-    // fallback as a dialog over it. Reload is the only way forward.
-    return (
-      <>
-        <motion.div
-          className="fixed inset-0 -z-10"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 0.8 }}
-          transition={{ duration: 2 }}
-        >
-          <BackgroundLights
-            large={0}
-            medium={4}
-            small={0}
-            blendMode="color-dodge"
-            speedFactor={30}
-          />
-        </motion.div>
-        <Dialog
-          open
-          dismissible={false}
-          title="Something went wrong"
-          description="The app hit an unexpected error. Your collected data is saved on this device and is not affected. Try reloading to continue."
-          footer={
-            <Button onClick={() => window.location.reload()}>Reload</Button>
-          }
-        />
-      </>
-    );
+    return <ErrorFallback />;
   }
 }
 
@@ -78,5 +66,43 @@ export function AppErrorBoundary({ children }: { children: ReactNode }) {
     >
       {children}
     </ErrorBoundary>
+  );
+}
+
+function ErrorFallback() {
+  const intl = useAppIntl();
+  // The crashed tree (including the ambient blob layer in App.tsx) is
+  // unmounted by React, so re-create the backdrop here and present the
+  // fallback as a dialog over it. Reload is the only way forward.
+  return (
+    <>
+      <motion.div
+        className="fixed inset-0 -z-10"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 0.8 }}
+        transition={{ duration: 2 }}
+      >
+        <BackgroundLights
+          large={0}
+          medium={4}
+          small={0}
+          blendMode="color-dodge"
+          speedFactor={30}
+        />
+      </motion.div>
+      <Dialog
+        open
+        dismissible={false}
+        title={intl.formatMessage(commonMessages.genericError)}
+        description={intl.formatMessage(
+          messages.theAppHitAnUnexpectedErrorYour,
+        )}
+        footer={
+          <Button onClick={() => window.location.reload()}>
+            {intl.formatMessage(messages.reload)}
+          </Button>
+        }
+      />
+    </>
   );
 }

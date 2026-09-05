@@ -3,6 +3,9 @@ import { motion } from 'motion/react';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import ncMarkUrl from '~/assets/NC-Flat.png';
 
+// Product name is invariant across administration languages.
+const PRODUCT_NAME = 'Interviewer';
+
 const variants = {
   hidden: { opacity: 0, y: -8 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.55, delay: 0.05 } },
@@ -27,7 +30,7 @@ export function BrandHeader() {
         margin="none"
         className="tablet-landscape:not-sr-only tablet-landscape:text-2xl laptop:text-3xl sr-only font-black tracking-tight"
       >
-        Interviewer
+        {PRODUCT_NAME}
       </Heading>
     </motion.div>
   );

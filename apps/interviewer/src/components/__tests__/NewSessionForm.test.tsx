@@ -3,8 +3,11 @@ import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { AppI18nProvider } from '@codaco/app-i18n/react';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
+import { interviewerProductionLocales } from '~/i18n/locales';
 import type { ProtocolWithCounts, StoredSession } from '~/lib/db/types';
+import { interviewerCatalogs } from '~/locales/catalogs';
 
 const openDialog = vi.fn();
 const createSession = vi.fn();
@@ -145,4 +148,25 @@ describe('NewSessionForm offline warning', () => {
     ).not.toBeInTheDocument();
     expect(createSession).not.toHaveBeenCalled();
   });
+});
+
+it('uses the chosen administration language for field-owned required validation', async () => {
+  const user = userEvent.setup();
+  render(
+    <AppI18nProvider
+      locale="es"
+      locales={interviewerProductionLocales}
+      messages={interviewerCatalogs.es}
+    >
+      <Harness protocol={makeProtocol(['Information'])} />
+    </AppI18nProvider>,
+  );
+  const input = screen.getByRole('textbox', { name: 'ID del caso' });
+  await user.type(input, 'A');
+  await user.clear(input);
+  await user.tab();
+  expect(
+    await screen.findByText('El ID del caso es obligatorio'),
+  ).toBeVisible();
+  expect(input).toHaveAttribute('aria-invalid', 'true');
 });

@@ -3,6 +3,8 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import type {
   ProtocolWithCounts,
@@ -20,6 +22,40 @@ import { buildDeck, type DeckEntry, entryKey } from './deckEntries';
 import { DeckSlotCard } from './DeckSlotCard';
 import { ImportTriggerCard } from './ImportTriggerCard';
 import { useDeckKeyboard } from './useDeckKeyboard';
+
+const messages = defineMessages({
+  importAProtocolCardSelected: {
+    id: 'interviewer.protocolDeck.importAProtocolCardSelected',
+    defaultMessage: 'Import a protocol card selected',
+    description: 'User-facing message in Interviewer Protocol Deck.',
+  },
+  cancelStartingInterview: {
+    id: 'interviewer.protocolDeck.cancelStartingInterview',
+    defaultMessage: 'Cancel starting interview',
+    description: 'The aria-label label in Interviewer Protocol Deck.',
+  },
+  protocolDeck: {
+    id: 'interviewer.protocolDeck.protocolDeck',
+    defaultMessage: 'Protocol deck',
+    description: 'The aria-label label in Interviewer Protocol Deck.',
+  },
+  previousProtocol: {
+    id: 'interviewer.protocolDeck.previousProtocol',
+    defaultMessage: 'Previous protocol',
+    description: 'The aria-label label in Interviewer Protocol Deck.',
+  },
+  nextProtocol: {
+    id: 'interviewer.protocolDeck.nextProtocol',
+    defaultMessage: 'Next protocol',
+    description: 'The aria-label label in Interviewer Protocol Deck.',
+  },
+  goToCard: {
+    id: 'interviewer.protocolDeck.goToCard',
+    defaultMessage: 'Go to card {number, number}',
+    description:
+      'Accessible name of a numbered protocol-deck navigation button.',
+  },
+});
 
 // Cards are square; height is measured from the section while the deck is
 // idle, and width follows.
@@ -113,6 +149,7 @@ export function ProtocolDeck({
   onCancelNewSession,
   onSessionCreated,
 }: ProtocolDeckProps) {
+  const intl = useAppIntl();
   const newSessionActive = Boolean(newSessionProtocolHash);
   const sectionRef = useRef<HTMLElement | null>(null);
   const carouselRef = useRef<DeckCarouselHandle | null>(null);
@@ -409,7 +446,7 @@ export function ProtocolDeck({
     <div className="flex min-h-0 w-full flex-1 flex-col items-center justify-center">
       <output className="sr-only" aria-live="polite">
         {isDragGlobal && !newSessionActive
-          ? 'Import a protocol card selected'
+          ? intl.formatMessage(messages.importAProtocolCardSelected)
           : ''}
       </output>
       <AnimatePresence>
@@ -418,7 +455,7 @@ export function ProtocolDeck({
             key="new-session-backdrop"
             type="button"
             tabIndex={-1}
-            aria-label="Cancel starting interview"
+            aria-label={intl.formatMessage(messages.cancelStartingInterview)}
             data-testid="new-session-backdrop"
             className="bg-overlay publish-colors fixed inset-0 z-40 cursor-default border-0 p-0 backdrop-blur-xs"
             initial={{ opacity: 0 }}
@@ -432,7 +469,7 @@ export function ProtocolDeck({
       <motion.section
         ref={sectionRef}
         variants={sectionVariants}
-        aria-label="Protocol deck"
+        aria-label={intl.formatMessage(messages.protocolDeck)}
         className={`flex max-h-[45rem] min-h-0 w-full flex-1 items-center justify-center ${newSessionActive ? 'pointer-events-none relative z-50' : ''}`}
       >
         {cardHeight > 0 ? (
@@ -466,7 +503,7 @@ export function ProtocolDeck({
             size="xl"
             variant="glass"
             icon={<ChevronLeft strokeWidth={2.8} aria-hidden />}
-            aria-label="Previous protocol"
+            aria-label={intl.formatMessage(messages.previousProtocol)}
             onClick={() => setActiveIndex(Math.max(0, activeIndex - 1))}
             disabled={atStart}
             className="border-outline"
@@ -477,7 +514,9 @@ export function ProtocolDeck({
                 key={slide.key}
                 type="button"
                 onClick={() => setActiveIndex(i)}
-                aria-label={`Go to card ${i + 1}`}
+                aria-label={intl.formatMessage(messages.goToCard, {
+                  number: i + 1,
+                })}
                 aria-current={i === activeIndex ? 'true' : undefined}
                 className={`h-3 cursor-pointer rounded-full border-0 p-0 transition-all duration-200 ${
                   i === activeIndex ? 'bg-sea-green w-9' : 'bg-outline w-3'
@@ -489,7 +528,7 @@ export function ProtocolDeck({
             size="xl"
             variant="glass"
             icon={<ChevronRight strokeWidth={2.8} aria-hidden />}
-            aria-label="Next protocol"
+            aria-label={intl.formatMessage(messages.nextProtocol)}
             onClick={() =>
               setActiveIndex(Math.min(slides.length - 1, activeIndex + 1))
             }

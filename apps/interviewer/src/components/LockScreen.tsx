@@ -1,6 +1,8 @@
 import { useLayoutEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { useAuth } from '~/lib/auth/AuthContext';
 import {
   isInterviewRoutePath,
@@ -10,15 +12,31 @@ import {
 
 import { AuthenticationDialog } from './UnlockForms/AuthenticationDialog';
 
+const messages = defineMessages({
+  welcomeBack: {
+    id: 'interviewer.lockScreen.welcomeBack',
+    defaultMessage: 'Welcome back',
+    description: 'The title label in Interviewer Lock Screen.',
+  },
+  authenticateToUnlockAndPickUpWhere: {
+    id: 'interviewer.lockScreen.authenticateToUnlockAndPickUpWhere',
+    defaultMessage: 'Authenticate to unlock and pick up where you left off.',
+    description: 'The description label in Interviewer Lock Screen.',
+  },
+});
+
 export function LockScreenView({
   allowDestructiveRecovery = true,
 }: {
   allowDestructiveRecovery?: boolean;
 }) {
+  const intl = useAppIntl();
   return (
     <AuthenticationDialog
-      title="Welcome back"
-      description="Authenticate to unlock and pick up where you left off."
+      title={intl.formatMessage(messages.welcomeBack)}
+      description={intl.formatMessage(
+        messages.authenticateToUnlockAndPickUpWhere,
+      )}
       allowRecovery
       allowDestructiveRecovery={allowDestructiveRecovery}
     />

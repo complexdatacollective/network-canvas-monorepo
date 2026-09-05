@@ -93,6 +93,12 @@ describe('ManageAuthenticator — change passphrase', () => {
     const reEnrolWithPassphrase = vi.fn(async () => ({
       ok: false,
       message: 'Current passphrase is incorrect',
+      localizedMessage: {
+        descriptor: {
+          id: 'interviewer.vault.wrongCurrentPassphrase',
+          defaultMessage: 'Current passphrase is incorrect',
+        },
+      },
     }));
     useAuthMock.mockReturnValue({ mode: 'passphrase', reEnrolWithPassphrase });
     const user = setup();

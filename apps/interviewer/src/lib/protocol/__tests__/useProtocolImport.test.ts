@@ -1,11 +1,17 @@
-import { act, renderHook } from '@testing-library/react';
+import { act, render, renderHook, within } from '@testing-library/react';
+import { createElement, Fragment, type ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { AppI18nProvider } from '@codaco/app-i18n/react';
+import { interviewerProductionLocales } from '~/i18n/locales';
+import { interviewerCatalogs } from '~/locales/catalogs';
+import { renderedMessage } from '~/testUtils/renderedMessage';
 
 import { useProtocolImport } from '../useProtocolImport';
 
 const { dialogOpen, toastAdd } = vi.hoisted(() => ({
   dialogOpen: vi.fn(),
-  toastAdd: vi.fn(),
+  toastAdd: vi.fn<(options: ToastCall) => void>(),
 }));
 
 vi.mock('@codaco/fresco-ui/Toast', () => ({
@@ -28,7 +34,9 @@ vi.mock('../importProtocol', () => ({
 import { importProtocolFromFile } from '../importProtocol';
 
 type ToastCall = {
-  cancelLabel?: string;
+  title?: ReactNode;
+  description?: ReactNode;
+  cancelLabel?: ReactNode;
   onCancel?: () => void;
 };
 
@@ -41,7 +49,62 @@ describe('useProtocolImport', () => {
   });
   afterEach(() => {
     vi.useRealTimers();
+    vi.restoreAllMocks();
     vi.clearAllMocks();
+  });
+
+  it('shows Spanish guidance for an unreadable file and allows reselection', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const file = new File([new Uint8Array()], 'study.netcanvas');
+    vi.spyOn(file, 'arrayBuffer').mockRejectedValueOnce(
+      new DOMException('The file is no longer readable.', 'NotReadableError'),
+    );
+    const onInstalled = vi.fn();
+    const { result } = renderHook(() => useProtocolImport({ onInstalled }));
+    let outcomes: PromiseSettledResult<void>[] = [];
+
+    await act(async () => {
+      outcomes = await Promise.allSettled([
+        result.current.startImport({ source: 'file', file, label: file.name }),
+      ]);
+    });
+
+    const toast = toastAdd.mock.lastCall?.[0];
+    const { container } = render(
+      createElement(AppI18nProvider, {
+        locale: 'es',
+        locales: interviewerProductionLocales,
+        messages: interviewerCatalogs.es,
+        manageDocument: false,
+        // oxlint-disable-next-line react/no-children-prop -- The provider requires children in its props; this .ts hook test uses createElement rather than JSX.
+        children: createElement(
+          Fragment,
+          null,
+          createElement('h2', null, toast?.title),
+          createElement('p', null, toast?.description),
+        ),
+      }),
+    );
+    expect(
+      within(container).getByText(
+        'No se pudo leer este archivo de protocolo. Comprueba que siga disponible y selecciónalo de nuevo.',
+      ),
+    ).toBeInTheDocument();
+    expect(outcomes[0]?.status).toBe('fulfilled');
+    expect(result.current.pendingImports).toEqual([]);
+    expect(importProtocolFromFile).not.toHaveBeenCalled();
+    expect(onInstalled).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await result.current.startImport({
+        source: 'file',
+        file,
+        label: file.name,
+      });
+      await vi.advanceTimersByTimeAsync(600);
+    });
+    expect(result.current.pendingImports).toHaveLength(1);
+    expect(importProtocolFromFile).toHaveBeenCalledTimes(1);
   });
 
   it('shows the pending card immediately but delays the import work', async () => {
@@ -71,6 +134,12 @@ describe('useProtocolImport', () => {
       success: false,
       error: 'validation-failed',
       message: 'Protocol failed schema validation.',
+      localizedMessage: {
+        descriptor: {
+          id: 'interviewer.protocolImport.invalidProtocol',
+          defaultMessage: 'Protocol failed schema validation.',
+        },
+      },
       issues: [
         {
           path: 'stages.0.label',
@@ -98,10 +167,10 @@ describe('useProtocolImport', () => {
 
     expect(toastAdd).toHaveBeenCalledWith(
       expect.objectContaining({
-        title: 'Import failed',
-        description: 'Protocol failed schema validation.',
+        title: renderedMessage('Import failed'),
+        description: renderedMessage('Protocol failed schema validation.'),
         variant: 'destructive',
-        cancelLabel: 'View details',
+        cancelLabel: renderedMessage('View details'),
       }),
     );
 
@@ -113,8 +182,10 @@ describe('useProtocolImport', () => {
     expect(dialogOpen).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'custom',
-        title: 'Protocol validation failed',
-        description: 'Details of the validation errors can be found below:',
+        title: renderedMessage('Protocol validation failed'),
+        description: renderedMessage(
+          'Details of the validation errors can be found below:',
+        ),
         intent: 'destructive',
       }),
     );

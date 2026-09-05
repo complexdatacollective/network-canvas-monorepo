@@ -1,20 +1,46 @@
-import { useState } from 'react';
+import { type ReactNode, createElement, useState } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import type { LocalizedMessage } from '~/i18n/messageResult';
+
+const messages = defineMessages({
+  unlockWithAuthenticator: {
+    id: 'interviewer.biometricUnlockForm.unlockWithAuthenticator',
+    defaultMessage: 'Unlock with authenticator',
+    description: 'User-facing message in Interviewer Biometric Unlock Form.',
+  },
+  unlockFailed: {
+    id: 'interviewer.biometricUnlockForm.unlockFailed',
+    defaultMessage: 'Unlock failed',
+    description: 'User-facing message in Interviewer Biometric Unlock Form.',
+  },
+  waitingForAuthenticator: {
+    id: 'interviewer.biometricUnlockForm.waitingForAuthenticator',
+    defaultMessage: 'Waiting for authenticator…',
+    description: 'User-facing message in Interviewer Biometric Unlock Form.',
+  },
+});
 
 type BiometricUnlockFormProps = {
-  onSubmit: () => Promise<{ ok: boolean; message?: string }>;
+  onSubmit: () => Promise<{
+    ok: boolean;
+    message?: string;
+    localizedMessage?: LocalizedMessage;
+  }>;
   submitLabel?: string;
   disabled?: boolean;
 };
 
 export default function BiometricUnlockForm({
   onSubmit,
-  submitLabel = 'Unlock with authenticator',
+  submitLabel,
   disabled,
 }: BiometricUnlockFormProps) {
-  const [error, setError] = useState<string | null>(null);
+  const intl = useAppIntl();
+  const [error, setError] = useState<ReactNode>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const handleClick = async () => {
@@ -23,7 +49,12 @@ export default function BiometricUnlockForm({
     const result = await onSubmit();
     setSubmitting(false);
     if (!result.ok) {
-      setError(result.message ?? 'Unlock failed');
+      setError(
+        createElement(AppMessage, {
+          message: result.localizedMessage?.descriptor ?? messages.unlockFailed,
+          values: result.localizedMessage?.values,
+        }),
+      );
     }
   };
 
@@ -35,7 +66,10 @@ export default function BiometricUnlockForm({
         onClick={() => void handleClick()}
         disabled={disabled ?? submitting}
       >
-        {submitting ? 'Waiting for authenticator…' : submitLabel}
+        {submitting
+          ? intl.formatMessage(messages.waitingForAuthenticator)
+          : (submitLabel ??
+            intl.formatMessage(messages.unlockWithAuthenticator))}
       </Button>
       {error && (
         <div

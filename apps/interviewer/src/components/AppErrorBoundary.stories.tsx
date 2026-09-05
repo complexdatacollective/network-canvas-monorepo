@@ -33,7 +33,7 @@ export const ErrorFallback: Story = {
     const dialog = await screen.findByRole('dialog');
     await waitFor(() =>
       expect(
-        within(dialog).getByText('Something went wrong'),
+        within(dialog).getByText('Something went wrong.'),
       ).toBeInTheDocument(),
     );
     await expect(

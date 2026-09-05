@@ -1,7 +1,10 @@
 import { AnimatePresence, motion } from 'motion/react';
-import { useCallback, useMemo, useState } from 'react';
+import { createElement, useCallback, useMemo, useState } from 'react';
 import { useLocation } from 'wouter';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppMessage } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import { BrandHeader } from '~/components/BrandHeader';
@@ -25,6 +28,34 @@ import {
   protocolsContainerVariants,
 } from './homeAnimations';
 import { useHomeData } from './useHomeData';
+
+const messages = defineMessages({
+  deleteThisProtocol: {
+    id: 'interviewer.home.deleteThisProtocol',
+    defaultMessage: 'Delete this protocol?',
+    description: 'User-facing message in Interviewer Home.',
+  },
+  deleteProtocol: {
+    id: 'interviewer.home.deleteProtocol',
+    defaultMessage: 'Delete Protocol',
+    description: 'User-facing message in Interviewer Home.',
+  },
+  protocolDeleted: {
+    id: 'interviewer.home.protocolDeleted',
+    defaultMessage: 'Protocol deleted',
+    description: 'User-facing message in Interviewer Home.',
+  },
+  couldNotDeleteProtocol: {
+    id: 'interviewer.home.couldNotDeleteProtocol',
+    defaultMessage: 'Could not delete protocol',
+    description: 'User-facing message in Interviewer Home.',
+  },
+  deleteFailedHelp: {
+    id: 'interviewer.home.deleteFailedHelp',
+    defaultMessage: 'The protocol could not be deleted. Please try again.',
+    description: 'Administration text in Interviewer Home.',
+  },
+});
 
 type OpenDialog = 'settings' | null;
 type View = 'protocols' | 'data';
@@ -134,12 +165,27 @@ export function HomeRoute() {
 
       const confirmed = await dialog.openDialog({
         type: 'choice',
-        title: 'Delete this protocol?',
-        description,
+        title: createElement(AppMessage, {
+          message: messages.deleteThisProtocol,
+        }),
+        description: createElement(AppMessage, {
+          message: description.descriptor,
+          values: description.values,
+        }),
         intent: hasUnexported ? 'destructive' : 'default',
         actions: {
-          primary: { label: 'Delete Protocol', value: true },
-          cancel: { label: 'Cancel', value: false },
+          primary: {
+            label: createElement(AppMessage, {
+              message: messages.deleteProtocol,
+            }),
+            value: true,
+          },
+          cancel: {
+            label: createElement(AppMessage, {
+              message: commonMessages.cancel,
+            }),
+            value: false,
+          },
         },
       });
       if (confirmed !== true) return;
@@ -151,15 +197,22 @@ export function HomeRoute() {
         // bytes behind them) it minted while the protocol existed.
         revokeProtocolAssetUrls(hash);
         toast.add({
-          title: 'Protocol deleted',
+          title: createElement(AppMessage, {
+            message: messages.protocolDeleted,
+          }),
           description: protocol.name,
           variant: 'success',
         });
         await reload();
       } catch (cause) {
+        console.error('Protocol deletion failed', cause);
         toast.add({
-          title: 'Could not delete protocol',
-          description: cause instanceof Error ? cause.message : String(cause),
+          title: createElement(AppMessage, {
+            message: messages.couldNotDeleteProtocol,
+          }),
+          description: createElement(AppMessage, {
+            message: messages.deleteFailedHelp,
+          }),
           variant: 'destructive',
         });
       }
