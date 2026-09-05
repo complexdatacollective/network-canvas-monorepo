@@ -8,6 +8,7 @@ import {
   useSyncExternalStore,
 } from 'react';
 
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
@@ -57,6 +58,21 @@ const PANELS_CAPABILITY: SectionCapability = {
       'This will remove every side panel on this stage, and delete any filter rules you have created for them. Do you want to continue?',
     confirmLabel: 'Remove panels',
   },
+};
+
+/**
+ * What a panel loses by leaving the interview's own network, in the words of
+ * the rules it would lose. Shaped like every other capability's confirmation,
+ * because it is the same kind of loss.
+ */
+const EDGE_RULES_CONFIRM = {
+  title: 'This will delete this panel’s connection rules',
+  description:
+    'Rules about connections ask about the network the participant is building, and an imported file has none — so they would match nobody. Delete them and use the file, or cancel to keep the rules and go on listing the people named so far.',
+  confirmLabel: 'Delete the rules',
+  cancelLabel: 'Cancel',
+  intent: 'warning' as const,
+  onConfirm: () => undefined,
 };
 
 const INCOMPLETE_PANEL =
@@ -241,21 +257,28 @@ function PanelEditor({ item }: RowEditorProps) {
 }
 
 /**
- * Drops the rules an imported network cannot answer, the moment the panel
+ * Asks about the rules an imported network cannot answer, the moment the panel
  * stops reading the interview.
  *
  * A rule about connections is a question about the network the participant is
  * building; a network file has none, so the rule can never match and the panel
  * silently shows nobody. The schema accepts it, the interview does not report
  * it, and the researcher finds out from an empty panel mid-study — so the
- * rules go when the source that could answer them does.
+ * panel cannot be left in that state.
+ *
+ * Which leaves two answers, and the researcher picks: delete the rules, or
+ * keep them and go on reading the interview. Confirmed rather than done —
+ * rules a researcher authored are a real loss, the same reason switching this
+ * whole section off asks first — and REVERSED rather than half-applied on
+ * refusal, because "keep my rules" and "use this file" cannot both be true.
  *
  * Only on a CHANGE the researcher made. The value also "changes" from
- * unregistered to its committed value on the field's first render, and
- * stripping there would edit a panel that was merely opened.
+ * unregistered to its committed value on the field's first render, and asking
+ * there would interrogate a panel that was merely opened.
  */
 function useEdgeRulesClearedWithSource(dataSource: string): void {
   const storeApi = useContext(FormStoreContext);
+  const { confirm } = useDialog();
   const previous = useRef(dataSource);
 
   useEffect(() => {
@@ -270,8 +293,27 @@ function useEdgeRulesClearedWithSource(dataSource: string): void {
       : undefined;
     const remaining = withoutEdgeRules(filter);
     if (remaining === filter) return;
-    state.setFieldValue('filter', remaining as never);
-  }, [dataSource, storeApi]);
+
+    // Read afresh inside the answer: the dialog is open for as long as the
+    // researcher takes, and the row's store is live behind it.
+    let abandoned = false;
+    void (async () => {
+      const confirmed = await confirm(EDGE_RULES_CONFIRM);
+      if (abandoned) return;
+      if (confirmed === true) {
+        storeApi.getState().setFieldValue('filter', remaining as never);
+        return;
+      }
+      // The source goes back, and `previous` with it, so putting it back does
+      // not read as a fresh change and ask again.
+      previous.current = INTERVIEW_NETWORK;
+      storeApi.getState().setFieldValue('dataSource', INTERVIEW_NETWORK);
+    })();
+
+    return () => {
+      abandoned = true;
+    };
+  }, [confirm, dataSource, storeApi]);
 }
 
 /** The same rule set with every connection rule taken out of it. */

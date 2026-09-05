@@ -35,6 +35,36 @@ const openPanel = async (
   return within(await screen.findByRole('dialog'));
 };
 
+/** A panel narrowed by a rule only the interview's own network can answer. */
+const panelWithAnEdgeRule = {
+  id: 'panel-1',
+  title: 'People you named earlier',
+  dataSource: 'existing',
+  filter: {
+    join: 'AND',
+    rules: [
+      {
+        id: 'rule-1',
+        type: 'edge',
+        options: { type: 'knows', operator: 'EXISTS' },
+      },
+    ],
+  },
+};
+
+/** Points a panel at an imported file, the way a researcher does. */
+const chooseImportedNetwork = async (
+  harness: ReturnType<typeof renderStageEditor>,
+  dialog: ReturnType<typeof within>,
+) => {
+  await harness.user.click(
+    dialog.getByRole('radio', { name: 'Use an imported data file' }),
+  );
+  await harness.user.click(
+    await screen.findByRole('button', { name: 'Roster' }),
+  );
+};
+
 const panelsOf = (
   request: Awaited<ReturnType<ReturnType<typeof renderStageEditor>['submit']>>,
 ): Record<string, unknown>[] => {
@@ -133,36 +163,22 @@ describe('the side panels a name generator shows', () => {
    * building. An imported file has none, so the rule could never match and the
    * panel would silently show nobody — accepted by the schema, unreported by
    * the interview, discovered mid-study.
+   *
+   * Losing rules the researcher wrote is a real loss, so it is confirmed
+   * first, exactly as switching the whole section off is.
    */
-  it('drops a connection rule when the panel stops reading the interview', async () => {
+  it('drops a connection rule, once told to, when the panel stops reading the interview', async () => {
     const harness = renderStageEditor({
-      stage: nameGeneratorWith([
-        {
-          id: 'panel-1',
-          title: 'People you named earlier',
-          dataSource: 'existing',
-          filter: {
-            join: 'AND',
-            rules: [
-              {
-                id: 'rule-1',
-                type: 'edge',
-                options: { type: 'knows', operator: 'EXISTS' },
-              },
-            ],
-          },
-        },
-      ]),
+      stage: nameGeneratorWith([panelWithAnEdgeRule]),
       sections: panels,
     });
 
     const dialog = await openPanel(harness, 'Edit panel');
+    await chooseImportedNetwork(harness, dialog);
     await harness.user.click(
-      dialog.getByRole('radio', { name: 'Use an imported data file' }),
+      await screen.findByRole('button', { name: 'Delete the rules' }),
     );
-    await harness.user.click(
-      await screen.findByRole('button', { name: 'Roster' }),
-    );
+
     await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
       expect(screen.queryAllByRole('dialog')).toHaveLength(0),
@@ -174,6 +190,39 @@ describe('the side panels a name generator shows', () => {
       title: 'People you named earlier',
       dataSource: 'roster_data',
     });
+  });
+
+  /**
+   * And refusing keeps both: the rules are what the researcher answered for,
+   * and they only mean anything against the interview's own network — so the
+   * source goes back rather than the panel being left in the one state that
+   * would silently show nobody.
+   */
+  it('puts the source back when the researcher keeps the rules', async () => {
+    const harness = renderStageEditor({
+      stage: nameGeneratorWith([panelWithAnEdgeRule]),
+      sections: panels,
+    });
+
+    const dialog = await openPanel(harness, 'Edit panel');
+    await chooseImportedNetwork(harness, dialog);
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Cancel' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        dialog.getByRole('radio', {
+          name: 'Use the network from the in-progress interview',
+        }),
+      ).toBeChecked(),
+    );
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    expect(panelsOf(await harness.submit())[0]).toEqual(panelWithAnEdgeRule);
   });
 
   /**
