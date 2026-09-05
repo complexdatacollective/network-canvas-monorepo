@@ -1,17 +1,20 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { v4 as uuid } from 'uuid';
 
 import Button from '@codaco/fresco-ui/Button';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { normalizeForComparison } from '@codaco/shared-consts';
 
 import { useResourceGateway } from '../context.tsx';
-import type {
-  ResourceDescriptor,
-  ResourceSecretStorage,
-  StagedSecret,
-  StageSecretRequest,
+import {
+  resourceOk,
+  type ResourceDescriptor,
+  type ResourceResult,
+  type ResourceSecretStorage,
+  type StagedSecret,
+  type StageSecretRequest,
 } from '../gateway.ts';
 import { callGateway } from '../gatewayCall.ts';
 import { discardAbandonedStaging } from './abandonedStaging.ts';
@@ -22,6 +25,13 @@ const NAME_REQUIRED_MESSAGE = 'Enter a name for this key.';
 const VALUE_REQUIRED_MESSAGE = 'Enter the value of the key.';
 const DUPLICATE_NAME_MESSAGE =
   'You already have a key called that. Choose a different name.';
+/**
+ * Why a key cannot be added yet. One whole sentence, and about the researcher
+ * rather than about the request: what they are waiting for, and what it is
+ * for — a disabled button with no reason beside it reads as a broken one.
+ */
+const WAITING_FOR_NAMES_MESSAGE =
+  'Waiting for the keys this protocol already has, so this one can be checked against them.';
 
 /**
  * What the researcher is told about the key before they paste it, chosen by
@@ -59,17 +69,32 @@ export type ResourceSecretControlProps = Readonly<{
    */
   onDraftChange?: (hasDraft: boolean) => void;
   /**
-   * The names the protocol's keys already go by — committed and staged alike.
+   * The names the protocol's keys already go by — committed and staged alike
+   * — read at the moment a key is submitted.
    *
    * A name already in use is refused rather than quietly accepted, because
    * every surface that offers a key to a field offers it by its name and
    * nothing else: two keys called "Mapbox" are two identical buttons, and the
    * researcher choosing between them has no way to tell which is which, nor
    * any way to learn that the key they think they just created already
-   * existed. This is the list they are looking at as they type, read where the
-   * browser reads it, so what is refused is exactly what they can see.
+   * existed.
+   *
+   * Asked for as a call rather than handed over as a list, because a list is
+   * only ever a fact about when it was read: the browser around this control
+   * reads its own once, when it opens, and anything else in the session may
+   * have added a key since. Architect's own key dialog reads the manifest out
+   * of the store at submit for exactly this reason. A read that fails refuses
+   * the submission and is reported as the failure it is — a key added without
+   * the check is the pair of indistinguishable buttons this exists to prevent.
    */
-  existingNames?: readonly string[];
+  existingNames?: () => Promise<ResourceResult<readonly string[]>>;
+  /**
+   * Whether that list is still being read for the first time. Submitting is
+   * refused while it is, and the control says why: the check below is about
+   * to make the researcher wait for the same read anyway, and a form that
+   * looks ready is one they will use before it is.
+   */
+  existingNamesBusy?: boolean;
   disabled?: boolean;
 }>;
 
@@ -77,6 +102,10 @@ const asString = (value: unknown): string =>
   typeof value === 'string' ? value : '';
 
 const NO_EXISTING_NAMES: readonly string[] = Object.freeze([]);
+
+/** A control with no library behind it has no name to refuse. */
+const readNoExistingNames = (): Promise<ResourceResult<readonly string[]>> =>
+  Promise.resolve(resourceOk(NO_EXISTING_NAMES));
 
 /**
  * Stages secret material — a map provider's API key — without the editor ever
@@ -98,7 +127,8 @@ const NO_EXISTING_NAMES: readonly string[] = Object.freeze([]);
 export default function ResourceSecretControl({
   onStaged,
   onDraftChange,
-  existingNames = NO_EXISTING_NAMES,
+  existingNames = readNoExistingNames,
+  existingNamesBusy = false,
   disabled = false,
 }: ResourceSecretControlProps) {
   const gateway = useResourceGateway();
@@ -109,6 +139,7 @@ export default function ResourceSecretControl({
     Readonly<{ name?: string; value?: string }>
   >({});
   const [status, setStatus] = useState('');
+  const waitingId = useId();
   // One id per key the researcher is adding, so a retry after an uncertain
   // failure stages that key once rather than minting a second copy of it.
   const requestId = useRef(uuid());
@@ -201,25 +232,17 @@ export default function ResourceSecretControl({
     clear();
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (disabled || busy) return;
-
-    const trimmedName = name.trim();
-    const trimmedSecret = secret.trim();
-    const nextErrors: { name?: string; value?: string } = {};
-    if (trimmedName === '') nextErrors.name = NAME_REQUIRED_MESSAGE;
-    else if (namesAnExistingKey(existingNames, trimmedName)) {
-      nextErrors.name = DUPLICATE_NAME_MESSAGE;
-    }
-    if (trimmedSecret === '') nextErrors.value = VALUE_REQUIRED_MESSAGE;
-    setErrors(nextErrors);
-    // Reported on the name field rather than as a failure of the call, and
-    // before the call is made: nothing is staged, so there is nothing to
-    // retry, and the correction belongs where the researcher will make it.
-    if (Object.keys(nextErrors).length > 0) return;
-
-    submitted.current = true;
+  /**
+   * Stages the key, once the name has been checked against the library the
+   * check's own read returned.
+   *
+   * Held apart from the submission so the read that precedes it can be an
+   * attempt of its own: the researcher is waiting for both, a host that
+   * cannot answer the read is a failure they can retry, and a retry has to
+   * repeat the check as well as the staging — the name may have been taken in
+   * between by whatever answered slowly the first time.
+   */
+  const stageKey = (trimmedName: string, trimmedSecret: string) => {
     // Held rather than rebuilt per call, so the retry, the reconciliation, and
     // this submission are all provably the same request.
     const request: StageSecretRequest = {
@@ -250,6 +273,45 @@ export default function ResourceSecretControl({
       (staged: StagedSecret) =>
         discardAbandonedStaging(gateway, staged.descriptor),
     );
+  };
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    // This form is a form inside another one: the browser holding it is a
+    // dialog portalled out of the DOM, but React propagates events along the
+    // component tree it was rendered in, so a submit here reaches the stage
+    // editor's own form and saves the whole stage. Adding a key is not saving
+    // the stage, so the submit stops here.
+    event.stopPropagation();
+    if (disabled || busy || existingNamesBusy) return;
+
+    const trimmedName = name.trim();
+    const trimmedSecret = secret.trim();
+    const nextErrors: { name?: string; value?: string } = {};
+    if (trimmedName === '') nextErrors.name = NAME_REQUIRED_MESSAGE;
+    if (trimmedSecret === '') nextErrors.value = VALUE_REQUIRED_MESSAGE;
+    setErrors(nextErrors);
+    // Reported on the fields rather than as a failure of the call, and before
+    // any call is made: nothing is staged, so there is nothing to retry, and
+    // the correction belongs where the researcher will make it.
+    if (Object.keys(nextErrors).length > 0) return;
+
+    // Set before the check rather than with the staging call, so editing
+    // during either disowns this submission: the read below carries the name
+    // and value it was started for, and a correction must not be answered
+    // with the key it replaced.
+    submitted.current = true;
+    run(existingNames, (names) => {
+      // Asked of the library as it is now, which is the only moment the
+      // answer is about: another picker in this session may have staged a key
+      // since this browser read its list.
+      if (namesAnExistingKey(names, trimmedName)) {
+        submitted.current = false;
+        setErrors({ name: DUPLICATE_NAME_MESSAGE });
+        return;
+      }
+      stageKey(trimmedName, trimmedSecret);
+    });
   };
 
   return (
@@ -294,11 +356,18 @@ export default function ResourceSecretControl({
         />
       )}
 
+      {existingNamesBusy && (
+        <Paragraph id={waitingId} intent="smallText" emphasis="muted">
+          {WAITING_FOR_NAMES_MESSAGE}
+        </Paragraph>
+      )}
+
       <Button
         type="submit"
         color="primary"
         className="self-start"
-        disabled={disabled || busy}
+        disabled={disabled || busy || existingNamesBusy}
+        {...(existingNamesBusy ? { 'aria-describedby': waitingId } : {})}
       >
         Add API key
       </Button>

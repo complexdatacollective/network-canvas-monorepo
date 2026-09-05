@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -291,6 +291,156 @@ describe('the secret resource picker', () => {
     expect(screen.getByLabelText('Name')).toHaveAccessibleDescription(
       /You already have a key called that/,
     );
+  });
+
+  it('will not add a key until the keys already in the protocol have been read', async () => {
+    const user = userEvent.setup();
+    const inner = new InMemoryResourceGateway({
+      committed: [
+        {
+          id: 'committed-key',
+          kind: 'apikey',
+          name: 'Mapbox',
+          value: SECOND_SECRET,
+        },
+      ],
+    });
+    let release = (): void => undefined;
+    const listed = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const gateway = overrideGateway(inner, {
+      list: async (options) => {
+        await listed;
+        return inner.list(options);
+      },
+    });
+    const stageSecret = vi.spyOn(inner, 'stageSecret');
+    renderResourceEditor({
+      gateway,
+      children: (
+        <ProtocolField
+          component={ResourcePickerControl}
+          name="apiKey"
+          label="Map provider API key"
+          kind="apikey"
+        />
+      ),
+    });
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Select an API key' }),
+    );
+    await user.type(await screen.findByLabelText('Name'), 'Mapbox');
+    await user.type(screen.getByLabelText('Key'), SECRET);
+
+    // The list is what a name is checked against, and it is not here yet. A
+    // form that looks ready in this window is one a researcher submits in it,
+    // and the check that would have refused this name has nothing to read.
+    const add = screen.getByRole('button', { name: 'Add API key' });
+    expect(add).toBeDisabled();
+    expect(add).toHaveAccessibleDescription(
+      /Waiting for the keys this protocol already has/,
+    );
+    await user.click(add);
+    expect(stageSecret).not.toHaveBeenCalled();
+
+    release();
+
+    // And it is only the wait: once the keys are there, so is the form.
+    await waitFor(() => expect(add).toBeEnabled());
+  });
+
+  it('refuses a name a key staged since the browser opened already has', async () => {
+    const user = userEvent.setup();
+    const gateway = new InMemoryResourceGateway();
+    const { session } = renderResourceEditor({
+      gateway,
+      children: (
+        <ProtocolField
+          component={ResourcePickerControl}
+          name="apiKey"
+          label="Map provider API key"
+          kind="apikey"
+        />
+      ),
+    });
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Select an API key' }),
+    );
+    await screen.findByLabelText('Name');
+
+    // This browser read its list when it opened and nothing refreshes it, so
+    // a key another field's picker adds while it is open is one it cannot
+    // see. The researcher can, everywhere else in the protocol.
+    const resources = session.getResourceGateway();
+    if (resources === undefined) {
+      throw new Error('the session was opened without a resource gateway');
+    }
+    await act(async () => {
+      await resources.stageSecret({
+        requestId: 'another-field',
+        name: 'Mapbox',
+        value: SECOND_SECRET,
+      });
+    });
+    const stageSecret = vi.spyOn(gateway, 'stageSecret');
+
+    await submitKey(user, 'Mapbox', SECRET);
+
+    await waitFor(() =>
+      expect(screen.getByLabelText('Name')).toHaveAccessibleDescription(
+        /You already have a key called that/,
+      ),
+    );
+    expect(stageSecret).not.toHaveBeenCalled();
+  });
+
+  it('reports a key whose name it could not check, and adds it on the retry', async () => {
+    const user = userEvent.setup();
+    const gateway = new InMemoryResourceGateway();
+    const stageSecret = vi.spyOn(gateway, 'stageSecret');
+    const { fieldValue } = renderResourceEditor({
+      gateway,
+      children: (
+        <ProtocolField
+          component={ResourcePickerControl}
+          name="apiKey"
+          label="Map provider API key"
+          kind="apikey"
+        />
+      ),
+    });
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Select an API key' }),
+    );
+    await screen.findByLabelText('Name');
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Add API key' })).toBeEnabled(),
+    );
+    // The submission's own read of the keys, not the one this browser made
+    // when it opened.
+    gateway.failNext('list');
+
+    await submitKey(user, 'Mapbox', SECRET);
+
+    expect(
+      await screen.findByText('the resource host is temporarily unavailable'),
+    ).toBeVisible();
+    // Nothing is added behind a check that never happened: a second key with
+    // the same name is the one outcome the check exists to prevent, and the
+    // researcher would have no way to tell the two apart afterwards.
+    expect(stageSecret).not.toHaveBeenCalled();
+
+    await user.click(
+      screen.getByRole('button', { name: 'Try adding the key again' }),
+    );
+
+    // Trying again repeats the check as well as the staging, so the key is
+    // added under a name that has been checked against the current list.
+    await waitFor(() => expect(fieldValue('apiKey')).toBe('staged-resource-1'));
   });
 
   it('refuses a name another key staged in this session already has', async () => {

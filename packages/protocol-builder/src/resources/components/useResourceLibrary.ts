@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useResourceGateway } from '../context.tsx';
-import type { ResourceDescriptor, ResourceKind } from '../gateway.ts';
+import type {
+  ResourceDescriptor,
+  ResourceKind,
+  ResourceResult,
+} from '../gateway.ts';
+import { callGateway } from '../gatewayCall.ts';
 import {
   useResourceAttempt,
   type ResourceAttempt,
@@ -16,6 +21,18 @@ export type ResourceLibrary = Readonly<{
   failure?: ResourceAttempt['failure'];
   retry?: ResourceAttempt['retry'];
   reload: () => void;
+  /**
+   * The library as of now, answered rather than rendered.
+   *
+   * {@link resources} is what was there when this hook last read the gateway,
+   * which is what a list on screen has to be. A decision made against the
+   * library — whether a name is already taken — cannot be made against that:
+   * it has to be true at the moment it is acted on, and anything else in the
+   * session may have added a resource since. What comes back is rendered too,
+   * so the list the researcher is looking at catches up with what they were
+   * just told about it.
+   */
+  read: () => Promise<ResourceResult<readonly ResourceDescriptor[]>>;
 }>;
 
 /**
@@ -40,9 +57,24 @@ export function useResourceLibrary(
   const latestKinds = useRef(kinds);
   latestKinds.current = kinds;
 
+  const list = useCallback(
+    () => gateway.list({ kinds: latestKinds.current }),
+    [gateway, key],
+  );
+
   const reload = useCallback(() => {
-    run(() => gateway.list({ kinds: latestKinds.current }), setResources);
-  }, [gateway, key, run]);
+    run(list, setResources);
+  }, [list, run]);
+
+  const read = useCallback(async () => {
+    // Outside the attempt state on purpose: this read belongs to whatever
+    // asked for it, and the caller shows its own progress and its own
+    // failure. Taking `busy` here would disable the list's own retry while a
+    // form beside it was submitting.
+    const result = await callGateway(list);
+    if (result.status === 'ok') setResources(result.data);
+    return result;
+  }, [list]);
 
   useEffect(() => {
     reload();
@@ -54,5 +86,6 @@ export function useResourceLibrary(
     ...(failure === undefined ? {} : { failure }),
     ...(retry === undefined ? {} : { retry }),
     reload,
+    read,
   };
 }

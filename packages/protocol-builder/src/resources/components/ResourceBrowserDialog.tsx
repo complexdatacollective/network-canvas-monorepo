@@ -6,7 +6,7 @@ import Section from '@codaco/fresco-ui/Section';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import { useDiscardDraftGuard } from '../../form/discardDraftGuard.ts';
-import type { ResourceDescriptor } from '../gateway.ts';
+import { resourceOk, type ResourceDescriptor } from '../gateway.ts';
 import ResourceFailureNotice from './ResourceFailureNotice.tsx';
 import {
   browsableKinds,
@@ -114,6 +114,16 @@ function ResourceBrowserBody({
 }: ResourceBrowserBodyProps) {
   const copy = RESOURCE_PICKER_COPY[kind];
   const library = useResourceLibrary(browsableKinds(kind));
+  const readLibrary = library.read;
+  // Read where the browser reads it, but when the key is submitted rather
+  // than when this dialog opened: the list below is what there was, and a
+  // name is refused for what there is.
+  const readExistingNames = useCallback(async () => {
+    const listed = await readLibrary();
+    return listed.status === 'ok'
+      ? resourceOk(listed.data.map((descriptor) => descriptor.name))
+      : listed;
+  }, [readLibrary]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -121,11 +131,8 @@ function ResourceBrowserBody({
         {kind === 'apikey' ? (
           <ResourceSecretControl
             onStaged={onSelect}
-            // The very list rendered below, so a name the control refuses is
-            // one the researcher can see they already have.
-            existingNames={library.resources.map(
-              (descriptor) => descriptor.name,
-            )}
+            existingNames={readExistingNames}
+            existingNamesBusy={library.busy}
             onDraftChange={onDraftChange}
             disabled={disabled}
           />

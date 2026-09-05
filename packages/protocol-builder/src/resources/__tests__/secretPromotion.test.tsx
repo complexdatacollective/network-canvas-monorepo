@@ -251,6 +251,12 @@ describe('a key added in the editor and saved with its stage', () => {
       }),
     );
 
+    // Adding a key is not saving the stage. The form the key is typed into
+    // sits inside the stage editor's own form — a dialog portalled out of the
+    // DOM is still inside it as far as React is concerned — so a submit that
+    // did not stop here would commit the whole stage on its way past.
+    expect(submissions).toEqual([]);
+
     // Before the save, with the key staged: the id is everywhere it belongs
     // and the key itself is nowhere. Each check is paired with what proves it
     // is looking at something.
