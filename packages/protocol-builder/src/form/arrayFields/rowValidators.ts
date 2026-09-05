@@ -1,5 +1,6 @@
-import { get, isEqual, isNil } from 'es-toolkit/compat';
+import { get, isEqual } from 'es-toolkit/compat';
 
+import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 import { normalizeForComparison } from '@codaco/shared-consts';
 
 /**
@@ -21,9 +22,6 @@ export type RowValidator = (
   name: string,
 ) => string | undefined;
 
-const hasValue = (value: unknown) =>
-  typeof value === 'string' ? value !== '' : !isNil(value);
-
 /**
  * Case-insensitive AND Unicode-canonical: a precomposed and a decomposed
  * spelling of the same text are the same answer, so they are the same value
@@ -37,11 +35,22 @@ const isRoughlyEqual = (left: unknown, right: unknown) =>
 const capitalize = (word: string) =>
   word.replace(/^\w/, (firstLetter) => firstLetter.toUpperCase());
 
-/** Nothing entered. `false` and `0` are answers; `''` and absent are not. */
+/**
+ * Nothing entered. `false` and `0` are answers; absent, empty and
+ * whitespace-only are not.
+ *
+ * Emptiness is asked of Fresco's own `isUnanswered` — the predicate every
+ * registered field's `required` rule already uses — rather than defined again
+ * here. A row cell is not a registered field, but it sits in the same form as
+ * ones that are, and the array-level rules that refuse the save trim too. A
+ * second definition is how a row comes to read as answered while something
+ * else blocks it as empty, with no error on screen saying which row is at
+ * fault.
+ */
 export const requiredRow =
   (message = 'Required'): RowValidator =>
   (value) =>
-    hasValue(value) ? undefined : message;
+    isUnanswered(value) ? message : undefined;
 
 /**
  * No other row of the same array may hold this value in the same column.
@@ -54,7 +63,10 @@ export const requiredRow =
 export const uniqueRowAttribute =
   (message?: string): RowValidator =>
   (value, allValues, name) => {
-    if (!value) return undefined;
+    // Emptiness is `required`'s business, and it is the same emptiness: two
+    // rows that have both been left blank are not a clash to report. `0` and
+    // `false` ARE answers, and two rows holding either genuinely do clash.
+    if (isUnanswered(value)) return undefined;
 
     const fieldMatch = /^(.*)\[\d+\]\.([^.[\]]+)$/.exec(name);
     if (!fieldMatch) return undefined;

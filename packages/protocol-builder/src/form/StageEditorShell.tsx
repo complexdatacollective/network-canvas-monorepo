@@ -8,6 +8,7 @@ import {
   useId,
   useMemo,
   useRef,
+  useState,
 } from 'react';
 
 import { resolveFieldPath } from '@codaco/fresco-ui/form/FieldNamespace';
@@ -114,6 +115,26 @@ function StageEditorFormBody({
   const committedFields = committed.fields;
 
   /**
+   * A structural write the session refused, in the form's own error region.
+   *
+   * A submit reports its own refusals through the value it answers with, but a
+   * list editor's write is not a submit: it happens in a click handler that
+   * has nowhere to return an answer to. Without this the refusal is silent —
+   * the row simply does not appear — which reads as the editor being broken
+   * rather than as the lease having gone.
+   *
+   * Cleared once the stage is editable again, because taking editing back is
+   * exactly what the message asks for and the researcher should not have to
+   * read it twice.
+   */
+  const [refusedWrite, setRefusedWrite] = useState<string | undefined>(
+    undefined,
+  );
+  useEffect(() => {
+    if (!readOnly) setRefusedWrite(undefined);
+  }, [readOnly]);
+
+  /**
    * The draft moved for a reason that is not this form's own submit, so the
    * controls on screen are showing something that is no longer agreed. They
    * are written to rather than rebuilt: rebuilding would discard everything
@@ -196,19 +217,46 @@ function StageEditorFormBody({
    */
   const applyOwnCommands = useCallback(
     (commands: readonly Command[]): StageFormDraft => {
-      if (readOnly) return controller.snapshot.editedSection.fields;
       // An empty batch is how a list editor READS the draft the session holds
       // right now — which is the point of asking rather than reading the
       // snapshot it rendered against — so it must leave no marker at all. One
       // left here would suppress the re-seed for a change that arrived from
-      // somewhere else entirely.
-      const next = controller.applyCommands(commands);
-      if (commands.length === 0) return next;
+      // somewhere else entirely. It is also how the draft is read back when
+      // there is nothing to write: it dispatches nothing, so it cannot be
+      // refused.
+      const before = controller.applyCommands([]);
+      if (readOnly || commands.length === 0) return before;
+
+      let next: StageFormDraft;
+      try {
+        next = controller.applyCommands(commands);
+      } catch (error) {
+        // Access can be revoked between the render this handler was built in
+        // and the click that runs it, and the session refuses a write from a
+        // lease it no longer holds by throwing — out of an event handler,
+        // where an uncaught throw is a crash rather than a declined edit. It
+        // is the same ordinary lease transition the submit reports, so it is
+        // reported the same way and in the same words.
+        if (!(error instanceof SessionReadOnlyError)) throw error;
+        setRefusedWrite(READ_ONLY_MESSAGE);
+        return before;
+      }
+
       const content = canonicalize(next);
-      // Marked only when the draft actually moved, matching the submit's own
-      // rule: a marker for a transition that never happens stays standing, and
-      // is then spent on some later arrival at the same content.
-      if (content !== canonicalize(committedFields)) flushed.current = content;
+      const started = canonicalize(before);
+      // What the form believes the agreed draft is: what it last saw agreed,
+      // or what it itself last wrote and is still waiting to see arrive.
+      const expected = flushed.current ?? canonicalize(committedFields);
+      // Marked only when this write is the ONLY thing that has moved the draft
+      // since. The marker says "an arrival at this content is the form's own
+      // doing"; when something else moved the draft first and the controls
+      // have not seen it yet, the arrival is that change AND this one, and
+      // claiming it would strand the other half on screen — to be written back
+      // over the top by the next save. A write that changes nothing has no
+      // transition to explain either, and a marker for one that never happens
+      // stays standing to be spent on some later arrival at the same content.
+      if (content !== started && started === expected)
+        flushed.current = content;
       return next;
     },
     [committedFields, controller, flushed, readOnly],
@@ -223,6 +271,15 @@ function StageEditorFormBody({
       focusFirstError(errors, formRef.current);
     },
   });
+
+  // A refused structural write is reported beside whatever the last submit had
+  // to say, in one region, because they are the same kind of news about the
+  // same form. `undefined` rather than an empty list: the region is not
+  // rendered at all when there is nothing to report.
+  const reportedErrors = useMemo(() => {
+    if (refusedWrite === undefined) return formErrors;
+    return [...(formErrors ?? []), refusedWrite];
+  }, [formErrors, refusedWrite]);
 
   // The outline lists the sections in the order they appear on the page, and
   // nothing tells it when that order changes: a component reordering sections
@@ -281,8 +338,8 @@ function StageEditorFormBody({
               className="flex min-w-0 flex-col"
             >
               <LayoutGroup id={layoutGroupId}>
-                {formErrors && (
-                  <FormErrorsList key="form-errors" errors={formErrors} />
+                {reportedErrors && (
+                  <FormErrorsList key="form-errors" errors={reportedErrors} />
                 )}
                 {children}
               </LayoutGroup>

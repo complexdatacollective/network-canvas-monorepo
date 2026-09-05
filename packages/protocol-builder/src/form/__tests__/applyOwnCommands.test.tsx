@@ -114,6 +114,54 @@ describe('the form’s own structural writes', () => {
     expect(heading()).toHaveValue('Welcome to the study');
   });
 
+  it('says so rather than throwing when the lease goes before the write lands', async () => {
+    const session = createSession();
+    const { raw } = renderEditor(session);
+    await screen.findByRole('textbox', { name: 'Page heading' });
+
+    act(() => {
+      // The lease is revoked, and a row operation dispatches before React has
+      // rendered that: the form still believes it can write, and the session
+      // refuses by throwing — out of a click handler, where nothing catches it.
+      session.setAccess({ mode: 'readOnly', reason: 'lease-lost' });
+      raw([{ op: 'set', key: 'prompts', value: [{ id: 'a', text: 'Who?' }] }]);
+    });
+
+    expect(session.getSnapshot().pendingCommands).toEqual([]);
+    // A refusal the researcher can read, in the same words the stage's own
+    // submit uses: the lease is what went, and taking editing back is the move.
+    expect(
+      await screen.findByText(
+        'This stage is read-only, so your changes were not saved. Take over editing and try again.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('re-seeds the controls when an arrival is folded into its own write', async () => {
+    const session = createSession();
+    const { raw } = renderEditor(session);
+    await screen.findByRole('textbox', { name: 'Page heading' });
+
+    act(() => {
+      // An authoritative replacement lands, and a list editor commits a row
+      // before React has rendered it. The draft the session now holds is both
+      // changes at once, and only the row is the form's own.
+      session.replaceAuthoritativeStage({
+        fields: { label: 'Welcome', title: 'Renamed elsewhere' },
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+      raw([{ op: 'set', key: 'prompts', value: [{ id: 'a', text: 'Who?' }] }]);
+    });
+
+    // Claiming the combined content as the form's own write suppresses the
+    // re-seed the arrival earned, and the control goes on showing — and would
+    // save back — the heading the replacement moved away from.
+    await waitFor(() => expect(heading()).toHaveValue('Renamed elsewhere'));
+    expect(session.getSnapshot().editedSection.fields.prompts).toEqual([
+      { id: 'a', text: 'Who?' },
+    ]);
+  });
+
   it('leaves everything typed in place when the form writes for itself', async () => {
     const user = userEvent.setup();
     const session = createSession();

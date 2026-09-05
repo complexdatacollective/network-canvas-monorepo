@@ -6,7 +6,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { createElement } from 'react';
+import { createElement, useState } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type * as DialogModule from '@codaco/fresco-ui/dialogs/Dialog';
@@ -98,8 +98,16 @@ function renderPromptList(
     onBeforeSave?: (value: unknown) => unknown;
   }>,
 ) {
+  // How a test takes the list's own interactivity away mid-edit, the way a
+  // section does when a prerequisite it depends on stops being chosen.
+  const controls: { setDisabled: (value: boolean) => void } = {
+    setDisabled: () => undefined,
+  };
+
   function Host() {
     const controller = useStageEditorController(session, 'stage-form');
+    const [disabled, setDisabled] = useState(false);
+    controls.setDisabled = setDisabled;
     return (
       <StageEditorShell controller={controller}>
         <BuilderSection title="Prompts">
@@ -111,6 +119,7 @@ function renderPromptList(
             editorTitle="Edit prompt"
             addTitle="Add prompt"
             itemLabel="prompt"
+            disabled={disabled}
             previewComponent={PromptPreview}
             editorFieldsComponent={PromptFields}
             {...(extra?.withPreview === true
@@ -125,11 +134,18 @@ function renderPromptList(
     );
   }
 
-  return render(
-    <DialogProvider>
-      <Host />
-    </DialogProvider>,
-  );
+  return {
+    ...render(
+      <DialogProvider>
+        <Host />
+      </DialogProvider>,
+    ),
+    disableList: () => {
+      act(() => {
+        controls.setDisabled(true);
+      });
+    },
+  };
 }
 
 /**
@@ -462,6 +478,102 @@ describe('a row editor open while the draft moves beneath it', () => {
     // closes the dialog over a discarded edit, so the draft is still here to
     // be rescued.
     expect(promptText()).toHaveValue('Bravo edited');
+    expect(promptsOf(session)).toEqual([{ id: 'a', text: 'Alpha' }]);
+  });
+
+  it('keeps a change that reached the row while its save was in flight', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      prompts: [{ id: 'a', text: 'Alpha', additionalAttributes: [] }],
+    });
+
+    let release: () => void = () => undefined;
+    const inFlight = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    renderPromptList(session, {
+      onBeforeSave: async (value) => {
+        await inFlight;
+        return value;
+      },
+    });
+
+    const text = await editRow(user, 0);
+    await waitFor(() => expect(text).toHaveValue('Alpha'));
+    await user.clear(text);
+    await user.type(text, 'Alpha edited');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    // A key this editor does not render moves on the same row while the save
+    // is in flight. The values the save is built from were read before that,
+    // and committing the whole row from them writes this straight back out.
+    act(() => {
+      session.dispatch([
+        {
+          op: 'set',
+          key: 'prompts',
+          value: [
+            {
+              id: 'a',
+              text: 'Alpha',
+              additionalAttributes: [{ variable: 'v1', value: true }],
+            },
+          ],
+        },
+      ]);
+    });
+    await waitFor(() =>
+      expect(promptsOf(session)).toEqual([
+        {
+          id: 'a',
+          text: 'Alpha',
+          additionalAttributes: [{ variable: 'v1', value: true }],
+        },
+      ]),
+    );
+
+    await act(async () => {
+      release();
+      await inFlight;
+    });
+
+    // The edit lands on the row as it stands: the researcher's own change to
+    // the key they edited, and the arrival on the key they did not.
+    await waitFor(() =>
+      expect(promptsOf(session)).toEqual([
+        {
+          id: 'a',
+          text: 'Alpha edited',
+          additionalAttributes: [{ variable: 'v1', value: true }],
+        },
+      ]),
+    );
+  });
+
+  it('refuses a row save the list has stopped accepting', async () => {
+    const user = userEvent.setup();
+    const session = createSession({ prompts: [{ id: 'a', text: 'Alpha' }] });
+    const { disableList } = renderPromptList(session);
+
+    const text = await editRow(user, 0);
+    await waitFor(() => expect(text).toHaveValue('Alpha'));
+    await user.clear(text);
+    await user.type(text, 'Alpha edited');
+
+    // The list stops accepting changes while the editor sits open — something
+    // it depends on stopped being chosen. `ArrayField` withdraws its own save
+    // handler when that happens, so calling it commits nothing at all.
+    disableList();
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(
+      await screen.findByText(
+        'This list is not accepting changes at the moment, so this prompt was not saved. Copy anything you want to keep, then try again once the list can be edited.',
+      ),
+    ).toBeInTheDocument();
+    // Reporting a save that never happened as a success is what closes the
+    // dialog over a discarded edit, so the draft is still here to be rescued.
+    expect(promptText()).toHaveValue('Alpha edited');
     expect(promptsOf(session)).toEqual([{ id: 'a', text: 'Alpha' }]);
   });
 

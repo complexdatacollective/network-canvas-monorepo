@@ -9,7 +9,6 @@ import {
 } from 'react';
 
 import { IconButton } from '@codaco/fresco-ui/Button';
-import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import ArrayField, {
   ArrayFieldDragHandle,
   stripManagedProperties,
@@ -23,6 +22,7 @@ import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers
 import RowField from './RowField.tsx';
 import { requiredRow } from './rowValidators.ts';
 import { useArrayFieldCommands } from './useArrayFieldCommands.ts';
+import { useConfirmRowRemoval } from './useConfirmRowRemoval.ts';
 
 // Row background reads `--rule-bg` so callers (e.g. Validations error state)
 // can flip it without re-defining the row layout.
@@ -141,7 +141,7 @@ function MultiSelectRow({
   readOnly,
 }: ArrayFieldItemProps<ItemValue>) {
   const { arrayName, properties, options, allValues } = useMultiSelectContext();
-  const { confirm } = useDialog();
+  const confirmRemoval = useConfirmRowRemoval(item, 'item', onDelete);
   const interactionDisabled = disabled || readOnly;
   const rowValues = stripManagedProperties(item);
   // Bind field paths to the committed position, not the live (possibly
@@ -149,13 +149,12 @@ function MultiSelectRow({
   const rowFieldName = `${arrayName}[${committedIndex ?? index}]`;
 
   const handleDelete = () => {
-    void confirm({
+    confirmRemoval({
       title: 'Remove item',
       description: 'Are you sure you want to remove this item?',
       confirmLabel: 'Remove item',
       cancelLabel: 'Cancel',
       intent: 'destructive',
-      onConfirm: () => onDelete?.(),
     });
   };
 

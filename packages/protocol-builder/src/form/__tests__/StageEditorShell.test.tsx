@@ -306,6 +306,97 @@ describe('StageEditorShell', () => {
     );
   });
 
+  it('reports a capability an arrival emptied as switched off', async () => {
+    const session = createSession({
+      fields: { ...initialFields, interviewScript: 'Read this aloud' },
+    });
+    renderEditor(session);
+    await waitFor(() =>
+      expect([...outlineItems()][2]?.textContent).toBe(
+        'Interviewer guidanceFinished',
+      ),
+    );
+
+    act(() => {
+      session.replaceAuthoritativeStage({
+        fields: initialFields,
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+    });
+
+    // Nothing the capability owns holds anything any more, and the panel it
+    // was configured in has closed itself over that. Saying "available" beside
+    // a closed, empty capability describes a stage nobody is looking at.
+    await waitFor(() =>
+      expect([...outlineItems()][2]?.textContent).toBe(
+        'Interviewer guidanceSwitched off',
+      ),
+    );
+  });
+
+  it('reports a capability an arrival filled as available', async () => {
+    const session = createSession();
+    renderEditor(session);
+    await waitFor(() =>
+      expect([...outlineItems()][2]?.textContent).toBe(
+        'Interviewer guidanceSwitched off',
+      ),
+    );
+
+    act(() => {
+      session.replaceAuthoritativeStage({
+        fields: { ...initialFields, interviewScript: 'Read this aloud' },
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+    });
+
+    await waitFor(() =>
+      expect([...outlineItems()][2]?.textContent).toBe(
+        'Interviewer guidanceFinished',
+      ),
+    );
+  });
+
+  it('keeps a capability the researcher switched on when an arrival leaves it alone', async () => {
+    const user = userEvent.setup();
+    const session = createSession();
+    renderEditor(session);
+    await waitFor(() => expect(outlineItems()).toHaveLength(3));
+
+    // Switched on and not yet filled in: nothing the capability owns holds a
+    // value, so only the researcher's own decision says it is on.
+    await user.click(
+      screen.getByRole('switch', { name: 'Interviewer guidance' }),
+    );
+    await screen.findByRole('textbox', { name: 'Interviewer script text' });
+    expect([...outlineItems()][2]?.textContent).toBe(
+      'Interviewer guidanceFinished',
+    );
+
+    act(() => {
+      session.replaceAuthoritativeStage({
+        fields: { ...initialFields, title: 'Renamed elsewhere' },
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+    });
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
+        'Renamed elsewhere',
+      ),
+    );
+
+    // The arrival says nothing about this capability, so it says nothing about
+    // the decision the researcher just made about it either — and the panel
+    // that decision opened is still open, holding the field they were about to
+    // fill in.
+    expect({
+      outline: [...outlineItems()][2]?.textContent,
+      script:
+        screen.queryByRole('textbox', { name: 'Interviewer script text' }) !==
+        null,
+    }).toEqual({ outline: 'Interviewer guidanceFinished', script: true });
+  });
+
   it('keeps a section\u2019s fields when only its title changes', async () => {
     const session = createSession({ fields: { label: 'Welcome', items: [] } });
     const { rerender } = renderEditor(session);

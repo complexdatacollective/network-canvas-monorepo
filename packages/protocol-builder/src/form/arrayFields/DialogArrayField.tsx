@@ -16,7 +16,6 @@ import { v4 as uuid } from 'uuid';
 
 import { IconButton } from '@codaco/fresco-ui/Button';
 import type { DialogProps } from '@codaco/fresco-ui/dialogs/Dialog';
-import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import ArrayField, {
   ArrayFieldDragHandle,
@@ -37,7 +36,9 @@ import {
   useStageEditorForm,
   type StageFormStoreApi,
 } from '../stageEditorContext.ts';
+import { reseatEditedRow } from './arrayFieldCommands.ts';
 import { useArrayFieldCommands } from './useArrayFieldCommands.ts';
+import { useConfirmRowRemoval } from './useConfirmRowRemoval.ts';
 
 /**
  * COMPOSITION: this is a *field component*, rendered as
@@ -261,6 +262,17 @@ const readOnlyMessage = (itemLabel: string) =>
   `This stage is read-only, so this ${itemLabel} was not saved. Take over editing and try again.`;
 
 /**
+ * Said when the LIST stopped accepting changes while the editor was open —
+ * a section whose prerequisite is no longer chosen, a list disabled by
+ * something else on the stage. `ArrayField` withdraws its own save handler
+ * then, so calling it commits nothing at all, and the stage's own lease is
+ * untouched: the researcher's next move is to restore whatever the list
+ * depends on, not to take editing back.
+ */
+const listDisabledMessage = (itemLabel: string) =>
+  `This list is not accepting changes at the moment, so this ${itemLabel} was not saved. Copy anything you want to keep, then try again once the list can be edited.`;
+
+/**
  * Said when `onBeforeSave` refuses without saying why. A refusal that reports
  * nothing would otherwise read as a success and close the dialog over work
  * that was never committed.
@@ -299,11 +311,16 @@ type DialogArrayContextValue = {
    * is editing now, so index drift (a reorder, an insertion, an undo) can
    * never land the edit on a different row. Returns `false` when that row is
    * no longer in the committed array: there is then nothing to commit to.
+   *
+   * `base` is the row the edit was computed from, so an arrival that reached
+   * another property of the same row while the save was in flight is kept
+   * rather than written back out — see `reseatEditedRow`.
    */
   commitDetachedRow: (
     editedRow: ArrayItem,
     value: ArrayItem,
     isNewRow: boolean,
+    base: ArrayItem,
   ) => boolean;
   editorFieldsComponent: Renderer;
   editorDialogSize?: DialogProps['size'];
@@ -352,7 +369,7 @@ function DialogItem({
   getAddTrigger,
 }: ArrayFieldItemProps<ArrayItem>) {
   const { itemLabel, previewComponent, previewProps } = useDialogArrayContext();
-  const { confirm } = useDialog();
+  const confirmRemoval = useConfirmRowRemoval(item, itemLabel, onDelete);
   const rowRef = useRef<HTMLDivElement>(null);
   const interactionDisabled = disabled || readOnly;
   const itemValue = stripManagedProperties(item);
@@ -363,13 +380,12 @@ function DialogItem({
     // tree. The list element itself survives.
     const list = rowRef.current?.closest('[role="list"]') ?? null;
 
-    void confirm({
+    confirmRemoval({
       title: `Remove this ${itemLabel}?`,
       description: `This ${itemLabel} will be removed from the list.`,
       confirmLabel: `Remove ${itemLabel}`,
       cancelLabel: 'Cancel',
       intent: 'destructive',
-      onConfirm: () => onDelete?.(),
       // Cancel returns focus to the Remove control, which is untouched. Confirm
       // destroys it along with the row, so name a surviving target: whichever
       // row has taken this one's place, else the list's add button — which is
@@ -587,6 +603,14 @@ function DialogEditor({
    */
   const readOnlyRef = useRef(readOnly);
   readOnlyRef.current = readOnly;
+  /**
+   * The list's own save handler, which `ArrayField` WITHDRAWS while the list
+   * is not accepting changes. Read as a getter for the same reason as the
+   * lease: a list can stop accepting changes while the editor sits open, and
+   * again while a save is in flight.
+   */
+  const onSaveRef = useRef(onSave);
+  onSaveRef.current = onSave;
 
   useEffect(() => {
     mountedRef.current = true;
@@ -600,22 +624,37 @@ function DialogEditor({
       values: Record<string, FieldValue>,
     ): Promise<void | DialogFormErrors> => {
       const itemAtSaveStart = activeItemRef.current;
+      const rowIdAtSaveStart = rowIdentityOf(itemAtSaveStart);
       const wasNewRow = isNewItemRef.current;
+      /** The row's values as they stood when this save was composed. */
+      const baseValues = itemValuesRef.current;
 
       /**
-       * A stage that has stopped accepting writes must not take a save and
-       * look like it worked. Every commit route below is silent about it:
-       * `ArrayField` withholds its own save handler entirely while the list is
-       * read-only, and the structural commit answers that it wrote when the
-       * form declined to issue the commands. Both leave the dialog closing
-       * over an edit that reached nothing.
+       * A stage or a list that has stopped accepting writes must not take a
+       * save and look like it worked. Every commit route below is silent about
+       * it: `ArrayField` withholds its own save handler entirely while the
+       * list is disabled or read-only, and the structural commit answers that
+       * it wrote when the form declined to issue the commands. Both leave the
+       * dialog closing over an edit that reached nothing.
+       *
+       * The two are asked separately because they ask the researcher for
+       * different things: a lease is taken back, a disabled list is waited on.
        */
-      if (readOnlyRef.current) {
-        return { formErrors: [readOnlyMessage(itemLabel)] };
-      }
+      const refusal = (): DialogFormErrors | undefined => {
+        if (readOnlyRef.current) {
+          return { formErrors: [readOnlyMessage(itemLabel)] };
+        }
+        if (onSaveRef.current === undefined) {
+          return { formErrors: [listDisabledMessage(itemLabel)] };
+        }
+        return undefined;
+      };
+
+      const refusedBefore = refusal();
+      if (refusedBefore) return refusedBefore;
 
       let valueToSave: unknown = mergeEditedRow(
-        itemValuesRef.current,
+        baseValues,
         storeApiRef.current,
         values,
       );
@@ -627,20 +666,34 @@ function DialogEditor({
         if (transformedValue !== undefined) valueToSave = transformedValue;
       }
 
-      const rowToCommit = normalizeItem(valueToSave) as ArrayItem;
+      // Asked again on the far side of the pre-save work: both answers above
+      // are stale by the time it resolves.
+      const refusedAfter = refusal();
+      if (refusedAfter) return refusedAfter;
 
-      // Asked again on the far side of the pre-save work: the lease can go
-      // while that is in flight, and by then the answer above is stale.
-      if (readOnlyRef.current) {
-        return { formErrors: [readOnlyMessage(itemLabel)] };
-      }
+      /**
+       * The row as it stands now — but only while this session is still
+       * showing the same row. Once the editor has moved to a different row,
+       * `itemValuesRef` describes THAT one, and re-seating this edit on it
+       * would write one row's values onto another. Falling back to the values
+       * the save was composed from makes the re-seat a no-op, which is exactly
+       * what "nothing is known to have arrived" should mean.
+       */
+      const latestValues =
+        rowIdAtSaveStart !== undefined &&
+        rowIdentityOf(activeItemRef.current) === rowIdAtSaveStart
+          ? itemValuesRef.current
+          : baseValues;
+      const rowToCommit = normalizeItem(
+        reseatEditedRow(baseValues, valueToSave, latestValues),
+      ) as ArrayItem;
 
       // The happy path: this editor is still the one editing this row, so
       // the list's own save handles the commit — including a draft's
       // promotion to a confirmed row. The dialog closes itself once this
       // resolves with nothing to report.
       if (mountedRef.current && activeItemRef.current === itemAtSaveStart) {
-        onSave?.(rowToCommit);
+        onSaveRef.current?.(rowToCommit);
         return undefined;
       }
 
@@ -651,7 +704,7 @@ function DialogEditor({
       // row it was actually made on, addressed by that row's own id.
       if (
         itemAtSaveStart &&
-        commitDetachedRow(itemAtSaveStart, rowToCommit, wasNewRow)
+        commitDetachedRow(itemAtSaveStart, rowToCommit, wasNewRow, latestValues)
       ) {
         return undefined;
       }
@@ -667,7 +720,7 @@ function DialogEditor({
       // screen with the reason above it.
       return { formErrors: [rowRemovedMessage(itemLabel)] };
     },
-    [commitDetachedRow, itemLabel, normalizeItem, onBeforeSave, onSave],
+    [commitDetachedRow, itemLabel, normalizeItem, onBeforeSave],
   );
 
   const handleSave = useCallback(
@@ -832,8 +885,13 @@ export default function DialogArrayField<T extends ArrayItem>({
     useArrayFieldCommands<T>(rows, onChange, resolveItemId);
 
   const commitDetachedRow = useCallback(
-    (editedRow: ArrayItem, rowValue: ArrayItem, isNewRow: boolean) =>
-      commitById(rowValue as T, resolveItemId(editedRow as T), isNewRow),
+    (
+      editedRow: ArrayItem,
+      rowValue: ArrayItem,
+      isNewRow: boolean,
+      base: ArrayItem,
+    ) =>
+      commitById(rowValue as T, resolveItemId(editedRow as T), isNewRow, base),
     [commitById, resolveItemId],
   );
 

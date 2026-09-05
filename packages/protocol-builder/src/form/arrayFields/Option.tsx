@@ -11,7 +11,6 @@ import {
 } from 'react';
 
 import { IconButton } from '@codaco/fresco-ui/Button';
-import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import {
   ArrayFieldDragHandle,
   type ArrayFieldItemProps,
@@ -38,6 +37,7 @@ import {
   requiredRow,
   uniqueRowAttribute,
 } from './rowValidators.ts';
+import { useConfirmRowRemoval } from './useConfirmRowRemoval.ts';
 
 export type OptionValue = VariableOptions[number];
 
@@ -120,7 +120,7 @@ export default function Option({
   readOnly,
 }: ArrayFieldItemProps<OptionValue>) {
   const { arrayName, allValues, showArrayError } = useOptionsContext();
-  const { confirm } = useDialog();
+  const confirmRemoval = useConfirmRowRemoval(item, 'option', onDelete);
   const interactionDisabled = disabled || readOnly;
   const rowFieldName = `${arrayName}[${committedIndex ?? index}]`;
 
@@ -160,13 +160,12 @@ export default function Option({
   };
 
   const handleDelete = () => {
-    void confirm({
+    confirmRemoval({
       title: 'Remove option',
       description: 'Are you sure you want to remove this option?',
       confirmLabel: 'Remove option',
       cancelLabel: 'Cancel',
       intent: 'destructive',
-      onConfirm: () => onDelete?.(),
     });
   };
 

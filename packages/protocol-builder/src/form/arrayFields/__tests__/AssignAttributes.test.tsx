@@ -278,6 +278,48 @@ describe('AssignAttributes', () => {
   });
 });
 
+/**
+ * The render-tolerance contract fresco-ui states on `useField`'s
+ * `fieldProps.value`: a control renders whatever the store holds, and the
+ * cascade that replaces a foreign-typed value can only run AFTER the render
+ * commits. A throw is not cosmetic — the render never commits, so the effect
+ * that would have corrected the value never runs and the value stays foreign
+ * forever (#1433, where `CheckboxGroup` reached `true.includes(...)`).
+ *
+ * This list is a field component like any other, so the contract is its
+ * contract too: `undefined` is not the only shape a stage document can hold at
+ * `additionalAttributes` — an imported protocol, a collaborator's write, or a
+ * mid-cascade reseed can put anything there.
+ */
+describe('a stage document holding something that is not a list', () => {
+  const foreignValues = {
+    'a bare string': 'worried',
+    'a single record': { variable: 'worried', value: true },
+    'a list with a hole in it': [null, { variable: 'helpful', value: true }],
+  };
+
+  for (const [shape, foreign] of Object.entries(foreignValues)) {
+    it(`renders rather than crashing on ${shape}`, async () => {
+      const session = createSession({
+        label: 'People',
+        subject: { entity: 'node', type: 'person' },
+        prompts: [{ id: 'p1', text: 'Who?' }],
+        additionalAttributes: foreign,
+      } as SectionDoc);
+
+      renderAttributeList(session, []);
+
+      // The editor is on screen, so the render committed and whatever comes
+      // next — a cascade, a reseed, the researcher's own edit — can still run.
+      expect(
+        await screen.findByRole('button', {
+          name: 'Add new attribute to assign',
+        }),
+      ).toBeInTheDocument();
+    });
+  }
+});
+
 describe('committedAttributeVariableIds', () => {
   it('holds only the picks a row has actually made', () => {
     // This set is the cross-class gate's escape hatch, and `has` is the only

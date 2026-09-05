@@ -153,6 +153,74 @@ describe('commandsForOperation', () => {
   });
 });
 
+/**
+ * The row-level twin of "rebuilt from what the session holds now". Rebuilding
+ * the ARRAY keeps a row that arrived from elsewhere; dropping the edited row in
+ * whole still discards an arrival that reached another property of that row.
+ */
+describe('a row that moved while its edit was being composed', () => {
+  // The editor drew this prompt and changed its text. Something else changed a
+  // property the editor never rendered on the same row meanwhile — a
+  // collaborator's edit, an undo, an acknowledgement.
+  const drawn = { id: 'b', text: 'Bravo', note: 'as drawn' };
+  const arrived = { id: 'b', text: 'Bravo', note: 'from elsewhere' };
+  const edited = { id: 'b', text: 'Bravo edited', note: 'as drawn' };
+
+  it('keeps the arrival when a replace commits', () => {
+    expect(
+      commandsForOperation(
+        'prompts',
+        [A, arrived],
+        [A, drawn],
+        { type: 'replace', index: 1, item: edited },
+        byId,
+      ),
+    ).toEqual([
+      {
+        op: 'set',
+        key: 'prompts',
+        value: [A, { id: 'b', text: 'Bravo edited', note: 'from elsewhere' }],
+      },
+    ]);
+  });
+
+  it('keeps the arrival when a save that outlived its editor commits', () => {
+    expect(
+      commandsForDetachedRow(
+        'prompts',
+        [A, arrived],
+        edited,
+        'b',
+        false,
+        byId,
+        drawn,
+      ),
+    ).toEqual([
+      {
+        op: 'set',
+        key: 'prompts',
+        value: [A, { id: 'b', text: 'Bravo edited', note: 'from elsewhere' }],
+      },
+    ]);
+  });
+
+  it('still removes a property the edit itself cleared', () => {
+    // Surviving an arrival must not mean ignoring the edit: a key the
+    // researcher emptied is emptied, even though the row moved beneath them.
+    expect(
+      commandsForOperation(
+        'prompts',
+        [A, arrived],
+        [A, drawn],
+        { type: 'replace', index: 1, item: { id: 'b', text: 'Bravo' } },
+        byId,
+      ),
+    ).toEqual([
+      { op: 'set', key: 'prompts', value: [A, { id: 'b', text: 'Bravo' }] },
+    ]);
+  });
+});
+
 describe('commandsForDetachedRow', () => {
   it('commits an edit onto the row it was made on', () => {
     const edited = { id: 'b', text: 'Bravo edited' };

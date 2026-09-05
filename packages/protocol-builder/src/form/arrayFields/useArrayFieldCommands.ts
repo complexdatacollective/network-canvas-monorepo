@@ -10,6 +10,7 @@ import {
   commandsForDetachedRow,
   commandsForOperation,
   readRows,
+  reseatEditedRow,
 } from './arrayFieldCommands.ts';
 
 /**
@@ -40,11 +41,16 @@ export type ArrayFieldCommands<T extends ArrayRow> = Readonly<{
   /**
    * Commits a row addressed by its own id — the save that outlived the editing
    * session it was made in. `false` when that row has left the list.
+   *
+   * `base` is the row the edit was computed from, so what the edit decided can
+   * be told apart from what it merely carried over and re-seated on the row as
+   * it stands now.
    */
   commitDetachedRow: (
     row: T,
     id: string | undefined,
     isNewRow: boolean,
+    base?: ArrayRow,
   ) => boolean;
 }>;
 
@@ -112,7 +118,12 @@ export function useArrayFieldCommands<T extends ArrayRow>(
   );
 
   const commitDetachedRow = useCallback(
-    (row: T, id: string | undefined, isNewRow: boolean): boolean => {
+    (
+      row: T,
+      id: string | undefined,
+      isNewRow: boolean,
+      base?: ArrayRow,
+    ): boolean => {
       if (documentKey === undefined) {
         const committed = renderedRef.current;
         const index =
@@ -123,7 +134,7 @@ export function useArrayFieldCommands<T extends ArrayRow>(
               );
         if (index !== -1) {
           const next = [...committed];
-          next[index] = row;
+          next[index] = reseatEditedRow(base, row, committed[index]) as T;
           onChangeRef.current?.(next);
           return true;
         }
@@ -141,6 +152,7 @@ export function useArrayFieldCommands<T extends ArrayRow>(
           id,
           isNewRow,
           getIdRef.current,
+          base,
         ),
       );
     },

@@ -1,3 +1,5 @@
+import { isEqual } from 'es-toolkit/compat';
+
 import type { ArrayFieldOperation } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import { type Command, canonicalize } from '@codaco/studio-sync/apply';
 
@@ -141,14 +143,61 @@ export function resolveMove<T extends ArrayRow>(
 }
 
 /**
+ * The edit a commit is making, re-seated on the row as it stands NOW.
+ *
+ * Rebuilding the replacement array from what the session holds is what lets a
+ * row that arrived from elsewhere survive the write — but only as a ROW.
+ * Dropping the edited row in whole discards an arrival that reached a
+ * different property of that same row, because the values the edit was built
+ * from are a revision behind: a list editor composes its replacement from the
+ * row the form rendered, and a dialog composes its own before its pre-save
+ * work has even run.
+ *
+ * So only what the edit actually DECIDED is applied over the row the session
+ * holds: a key it left as it found it keeps whatever the row holds now, a key
+ * it changed is changed, and a key it removed is removed. `base` is the row
+ * the edit was computed from, which is the only thing that tells "left alone"
+ * apart from "deliberately set back to what it was".
+ */
+export function reseatEditedRow(
+  base: unknown,
+  edited: unknown,
+  latest: unknown,
+): unknown {
+  if (!isRecord(base) || !isRecord(edited) || !isRecord(latest)) return edited;
+  // Nothing reached the row while the edit was being made, so the edit already
+  // describes the whole row and re-seating it could only lose information.
+  if (isEqual(base, latest)) return edited;
+
+  const next: ArrayRow = { ...latest };
+  for (const key of new Set([...Object.keys(base), ...Object.keys(edited)])) {
+    const inEdited = Object.hasOwn(edited, key);
+    if (
+      inEdited === Object.hasOwn(base, key) &&
+      isEqual(edited[key], base[key])
+    ) {
+      continue;
+    }
+    if (inEdited) {
+      next[key] = edited[key];
+    } else {
+      Reflect.deleteProperty(next, key);
+    }
+  }
+  return next;
+}
+
+/**
  * One committed list mutation, as commands against the stage document.
  *
  * A replace is a whole-key `set` rather than a remove-then-insert pair,
  * because the command vocabulary addresses a document KEY and cannot reach
  * inside a row: two commands would be two history entries for one edit, and a
  * list that briefly did not contain the row being edited. The replacement
- * array is rebuilt from what the session holds now, so a row that arrived from
- * elsewhere survives the write.
+ * array is rebuilt from what the session holds now, and the replaced row is
+ * re-seated on what the session holds for THAT row (see `reseatEditedRow`), so
+ * a change that arrived from elsewhere survives the write whether it arrived
+ * as a new row or as a new property of the row being replaced.
  */
 export function commandsForOperation<T extends ArrayRow>(
   key: string,
@@ -182,7 +231,11 @@ export function commandsForOperation<T extends ArrayRow>(
   }
 
   const next = [...current];
-  next[index] = operation.item;
+  next[index] = reseatEditedRow(
+    rendered[operation.index],
+    operation.item,
+    current[index],
+  );
   return [{ op: 'set', key, value: next }];
 }
 
@@ -194,6 +247,10 @@ export function commandsForOperation<T extends ArrayRow>(
  * to commit the edit to, and appending it would add a row the researcher
  * deleted. A row being ADDED is the exception, because it was never in the
  * array to begin with.
+ *
+ * `base` is the row the edit was computed from, and the edit is re-seated on
+ * it exactly as a replace is — a save that outlived its editing session is the
+ * longest window of all for something to have reached the row meanwhile.
  */
 export function commandsForDetachedRow<T extends ArrayRow>(
   key: string,
@@ -202,6 +259,7 @@ export function commandsForDetachedRow<T extends ArrayRow>(
   id: string | undefined,
   isNewRow: boolean,
   getId?: ArrayRowIdentity<T>,
+  base?: ArrayRow,
 ): Command[] {
   const index =
     id === undefined
@@ -211,7 +269,7 @@ export function commandsForDetachedRow<T extends ArrayRow>(
         );
   if (index !== -1) {
     const next = [...current];
-    next[index] = row;
+    next[index] = reseatEditedRow(base, row, current[index]);
     return [{ op: 'set', key, value: next }];
   }
   return isNewRow

@@ -188,13 +188,37 @@ export default function AssignAttributes({
   'aria-invalid': ariaInvalid,
   ...arrayFieldProps
 }: AssignAttributesProps) {
+  /**
+   * The rows, for everything here that has to READ them.
+   *
+   * A default only answers for `undefined`, and this list is a field component
+   * like any other: it renders whatever the stage document holds at its key,
+   * which an import, a collaborator's write or a mid-cascade reseed can leave
+   * as something that is not a list of records at all. Reading a foreign shape
+   * throws out of render, and a render that never commits is a render whose
+   * corrective effect never runs — so the value stays foreign for good, which
+   * is fresco-ui's render-tolerance contract (#1433) and the reason for this.
+   *
+   * Length and order are preserved rather than filtered, because the row
+   * positions here are the same ones a committed operation is resolved
+   * against; `ArrayField` applies its own tolerance to what it renders.
+   */
+  const rows = useMemo(
+    () => (Array.isArray(value) ? value : EMPTY_ATTRIBUTES),
+    [value],
+  );
+
   const context = useMemo(
     () => ({
       arrayName: name,
       subject,
       variableOptions: getAssignableVariableOptions(
         variableOptions,
-        value.map(({ variable }) => variable),
+        rows.map((row) =>
+          isRecord(row) && typeof row.variable === 'string'
+            ? row.variable
+            : undefined,
+        ),
       ),
       variablePickerComponent,
       onCreateVariable,
@@ -214,8 +238,8 @@ export default function AssignAttributes({
       draftValidatedVariables,
       name,
       onCreateVariable,
+      rows,
       subject,
-      value,
       variableOptions,
       variablePickerComponent,
     ],
@@ -225,10 +249,7 @@ export default function AssignAttributes({
     () => ({}) satisfies Partial<AttributeValue>,
     [],
   );
-  const { onOperation } = useArrayFieldCommands<AttributeValue>(
-    value,
-    onChange,
-  );
+  const { onOperation } = useArrayFieldCommands<AttributeValue>(rows, onChange);
 
   return (
     <AssignAttributesContext value={context}>

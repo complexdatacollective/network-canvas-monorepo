@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useMemo } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -192,6 +192,91 @@ describe('Options', () => {
       item: {},
     });
     expect(commands.slice(1).every(({ op }) => op === 'set')).toBe(true);
+  });
+
+  /**
+   * Options carry no id of their own, so `ArrayField` gives each row an
+   * internal id and REUSES those ids by position whenever the value is
+   * replaced. A confirm dialog is a window in which the list can be replaced —
+   * and when it is, the delete handler this row was rendered with names
+   * whichever option has taken its place.
+   */
+  it('removes nothing when the option it confirmed was replaced beneath it', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      title: 'Welcome',
+      options: [
+        { label: 'Alpha', value: 'alpha' },
+        { label: 'Bravo', value: 'bravo' },
+      ],
+    });
+    renderOptions(session);
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Remove option 2' }),
+    );
+    await screen.findByRole('button', { name: 'Remove option' });
+
+    // A row arrives at the TOP of the list while the confirm sits open, which
+    // hands this control the internal id of the row above it.
+    act(() => {
+      session.replaceAuthoritativeStage({
+        fields: {
+          title: 'Welcome',
+          options: [
+            { label: 'Zulu', value: 'zulu' },
+            { label: 'Alpha', value: 'alpha' },
+            { label: 'Bravo', value: 'bravo' },
+          ],
+        },
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+    });
+    await waitFor(() =>
+      expect(
+        document.querySelectorAll('[aria-label^="Remove option "]'),
+      ).toHaveLength(3),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Remove option' }));
+
+    // Nothing is removed, and the dialog says why rather than closing over a
+    // deletion that landed on an option the researcher never looked at.
+    expect(
+      await screen.findByText(
+        'This option was replaced while you were confirming, so nothing was removed. Check the list and remove it again if you still want to.',
+      ),
+    ).toBeInTheDocument();
+    expect(session.getSnapshot().editedSection.fields.options).toEqual([
+      { label: 'Zulu', value: 'zulu' },
+      { label: 'Alpha', value: 'alpha' },
+      { label: 'Bravo', value: 'bravo' },
+    ]);
+  });
+
+  it('removes the option it confirmed when the list has not moved', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      title: 'Welcome',
+      options: [
+        { label: 'Alpha', value: 'alpha' },
+        { label: 'Bravo', value: 'bravo' },
+      ],
+    });
+    renderOptions(session);
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Remove option 2' }),
+    );
+    await user.click(
+      await screen.findByRole('button', { name: 'Remove option' }),
+    );
+
+    await waitFor(() =>
+      expect(session.getSnapshot().editedSection.fields.options).toEqual([
+        { label: 'Alpha', value: 'alpha' },
+      ]),
+    );
   });
 
   it('refuses to finish the stage while a row it added is still blank', async () => {
