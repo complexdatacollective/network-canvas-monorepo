@@ -52,11 +52,20 @@ const stripComments = (text: string): string =>
 
 /**
  * `useThing(` or `React.useThing(`, but not some object's `.useThing(`.
+ *
+ * A type argument may sit between the name and the call — `useMemo<Labels>(…)`
+ * is a hook call as much as `useMemo(…)` is — so `<` counts as an opening
+ * bracket here. Requiring `(` missed that shape entirely; no module in this
+ * package escaped on it, but `@codaco/interview`'s `forms/buildVariableLabels`
+ * did, so the sibling guard in that package matches this one. The prefix is
+ * reserved for hooks by convention, so a `use[A-Z]` name followed by `<` is a
+ * generic call rather than a comparison.
+ *
  * Declarations are removed first so that a module which only *defines* a
  * hook-named helper, without calling a hook, is not mistaken for one that
  * runs one.
  */
-const HOOK_CALL = /(?<![\w.$])(?:React\.)?use[A-Z]\w*(?=\s*\()/g;
+const HOOK_CALL = /(?<![\w.$])(?:React\.)?use[A-Z]\w*(?=\s*[(<])/g;
 
 const hooksCalledBy = (text: string): string[] =>
   stripComments(text)

@@ -1,3 +1,5 @@
+'use client';
+
 import { Plus } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useEffect, useRef, useState } from 'react';

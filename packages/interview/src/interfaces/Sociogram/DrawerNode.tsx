@@ -1,3 +1,5 @@
+'use client';
+
 import { useDragSource } from '@codaco/fresco-ui/dnd/dnd';
 import {
   entityAttributesProperty,

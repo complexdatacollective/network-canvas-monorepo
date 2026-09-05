@@ -1,3 +1,5 @@
+'use client';
+
 import { createSelector } from '@reduxjs/toolkit';
 import { motion } from 'motion/react';
 import type React from 'react';

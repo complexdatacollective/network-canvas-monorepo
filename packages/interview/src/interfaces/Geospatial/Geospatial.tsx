@@ -1,3 +1,5 @@
+'use client';
+
 import type { Action } from '@reduxjs/toolkit';
 import { LocateFixed, ZoomIn, ZoomOut } from 'lucide-react';
 import { AnimatePresence, motion, type Variants } from 'motion/react';

@@ -1,3 +1,5 @@
+'use client';
+
 import { createStore, useStore } from 'zustand';
 
 export type UndoCommand = {

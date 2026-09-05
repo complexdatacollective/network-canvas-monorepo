@@ -1,3 +1,5 @@
+'use client';
+
 import type { MapMouseEvent } from 'mapbox-gl/esm';
 
 import type { ColorReference, MapOptions } from '@codaco/protocol-validation';
