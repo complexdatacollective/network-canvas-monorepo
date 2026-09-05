@@ -1,5 +1,11 @@
 import StageEditorShell from '../../form/StageEditorShell.tsx';
 import { interfaceDocumentationUrl } from '../../interfaces/documentation.ts';
+import ContentBlockEditor from '../../sections/contentBlocks/ContentBlockEditor.tsx';
+import ContentBlockPreview from '../../sections/contentBlocks/ContentBlockPreview.tsx';
+import {
+  collapseContentBlock,
+  expandContentBlock,
+} from '../../sections/contentBlocks/contentBlockTypes.ts';
 import InterviewerGuidanceSection from '../../sections/InterviewerGuidanceSection.tsx';
 import PageContentSection from '../../sections/PageContentSection.tsx';
 import BoundaryOptionsSection from '../../sections/pedigree/BoundaryOptionsSection.tsx';
@@ -15,11 +21,6 @@ import {
   FamilyMemberFormFieldEditor,
   FamilyMemberFormFieldPreview,
 } from './familyMemberForm/FamilyMemberFormFieldRow.tsx';
-import {
-  IntroScreenBlockEditor,
-  IntroScreenBlockPreview,
-  normalizeIntroScreenBlock,
-} from './introScreen/IntroScreenBlockRow.tsx';
 import { interviewPosition } from './stageEditorComposition.ts';
 
 const DOCUMENTATION_URL = interfaceDocumentationUrl('family-pedigree');
@@ -34,10 +35,13 @@ const DOCUMENTATION_URL = interfaceDocumentationUrl('family-pedigree');
  * any of it; and the census and nomination prompts are the questions asked
  * while they build it.
  *
- * Two of those sections render a list whose rows belong to other families —
- * content blocks to the Information stage, form fields to the forms family —
- * so each is composed with a seam of this editor's own until the shared
- * editors land. Both seams say so in their own files.
+ * The introduction screen is the package's shared page section given the
+ * package's shared content block editor, so a pedigree's introduction offers
+ * the same text, image, audio and video blocks an Information stage does —
+ * minus the display size, which only that stage's own schema has room for. The
+ * form fields the node configuration lists still come from a seam of this
+ * editor's own, until the forms family's row editor lands; that seam says so
+ * in its own file.
  */
 export function FamilyPedigreeStageEditor({
   controller,
@@ -67,9 +71,10 @@ export function FamilyPedigreeStageEditor({
       <PedigreeEdgeConfigurationSection />
       <PageContentSection
         variant="introScreen"
-        ItemEditor={IntroScreenBlockEditor}
-        ItemPreview={IntroScreenBlockPreview}
-        normalizeItem={normalizeIntroScreenBlock}
+        ItemEditor={ContentBlockEditor}
+        ItemPreview={ContentBlockPreview}
+        itemSelector={expandContentBlock}
+        normalizeItem={collapseContentBlock}
       />
       <CensusPromptSection />
       <NominationPromptsSection />

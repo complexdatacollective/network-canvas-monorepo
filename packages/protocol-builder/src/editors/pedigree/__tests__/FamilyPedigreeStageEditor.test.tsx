@@ -99,8 +99,8 @@ describe('the family pedigree stage editor', () => {
    * mounts, and saving it unchanged returns it unchanged. `unowned` is empty
    * because there is nothing this interface's schema holds that the editor
    * leaves to a section that has not been built — including the introduction
-   * screen, which is composed with this editor's own text-block seam until the
-   * shared content-block editor lands.
+   * screen, which is the package's shared page section given the package's
+   * shared content blocks.
    */
   it('owns every key the stage holds, and round-trips it', async () => {
     const harness = renderStageEditor({
@@ -260,10 +260,9 @@ describe('the family pedigree stage editor', () => {
 
 describe('the introduction screen a pedigree opens with', () => {
   /**
-   * The blocks belong to the Information stage's family; until that editor
-   * lands this composes the page with a text-block seam of its own, so the key
-   * is edited here rather than round-tripping untouched with nothing on screen
-   * that can change it.
+   * The blocks are the package's shared content blocks, the same ones an
+   * Information stage's page holds, so a saved text block opens on the rich
+   * text control its own kind names and is written back under `content`.
    */
   it('saves a block the researcher rewrites', async () => {
     const harness = renderStageEditor({
@@ -274,9 +273,7 @@ describe('the introduction screen a pedigree opens with', () => {
     await harness.user.click(
       screen.getByRole('button', { name: 'Edit introduction block' }),
     );
-    const blockText = await screen.findByRole('textbox', {
-      name: 'Block text',
-    });
+    const blockText = await screen.findByRole('textbox', { name: 'Content' });
     await harness.user.clear(blockText);
     await harness.user.type(blockText, 'First, your parents.');
     await harness.user.click(screen.getByRole('button', { name: 'Save' }));
@@ -285,6 +282,36 @@ describe('the introduction screen a pedigree opens with', () => {
     expect(request?.stageDocument.introScreen).toEqual({
       items: [{ id: 'intro-1', type: 'text', content: 'First, your parents.' }],
     });
+  });
+
+  /**
+   * What the shared editor brings that this editor's own seam could not: a
+   * pedigree's introduction can show a picture or play a recording, chosen
+   * from the protocol's resources.
+   *
+   * The display size is deliberately absent. It exists on an Information
+   * stage's items and nowhere else — a pedigree's introduction blocks are a
+   * strict object without it — so offering the control here would author a
+   * stage the protocol refuses.
+   */
+  it('offers the media kinds a page offers, and no display size', async () => {
+    const harness = renderStageEditor({
+      stage: familyPedigreeStageWith({ introScreen: INTRO_SCREEN }),
+      editor: familyPedigreeEditor,
+    });
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit introduction block' }),
+    );
+    await screen.findByRole('radio', { name: 'Text' });
+    for (const kind of ['Image', 'Video', 'Audio']) {
+      expect(screen.getByRole('radio', { name: kind })).toBeInTheDocument();
+    }
+
+    await harness.user.click(screen.getByRole('radio', { name: 'Image' }));
+    expect(
+      screen.queryByRole('radiogroup', { name: 'Display size' }),
+    ).not.toBeInTheDocument();
   });
 });
 
