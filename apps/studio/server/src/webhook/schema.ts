@@ -15,7 +15,7 @@ import {
 } from 'drizzle-orm/pg-core';
 
 import {
-  teamIsolationPolicy,
+  teamIsolationPolicies,
   tenantTablesSql,
   TENANT_ROLES,
 } from '@codaco/studio-sync/rls';
@@ -108,7 +108,7 @@ const webhookSubscriptions = pgTable(
           AND char_length(${table.createdByUserId}) BETWEEN 1 AND 255
           AND (${table.description} IS NULL OR char_length(${table.description}) BETWEEN 1 AND 500)`,
     ),
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 
@@ -177,7 +177,7 @@ const webhookDeliveries = pgTable(
           AND (${table.lastStatusCode} IS NULL OR ${table.lastStatusCode} BETWEEN 100 AND 599)
           AND (${table.lastError} IS NULL OR char_length(${table.lastError}) <= 1000)`,
     ),
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 

@@ -15,7 +15,10 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 
-import { teamIsolationPolicy, tenantTablesSql } from '@codaco/studio-sync/rls';
+import {
+  teamIsolationPolicies,
+  tenantTablesSql,
+} from '@codaco/studio-sync/rls';
 
 import { teams } from '../db/auth-schema.ts';
 import { PROTOCOL_TABLES } from '../protocol/schema.ts';
@@ -145,7 +148,7 @@ const studies = pgTable(
       'studies_went_live_at_check',
       sql`${table.state} = 'draft' OR ${table.wentLiveAt} IS NOT NULL`,
     ),
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 
@@ -202,7 +205,7 @@ const studyWaves = pgTable(
           OR ${table.closesAt} IS NULL
           OR ${table.closesAt} > ${table.opensAt}`,
     ),
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 
@@ -315,7 +318,7 @@ const participants = pgTable(
       'participants_source_check',
       sql`(${table.sourceParticipantId} IS NULL) = (${table.sourceStudyId} IS NULL)`,
     ),
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 
@@ -390,7 +393,7 @@ const interviewLinks = pgTable(
       'interview_links_token_hash_check',
       sql`octet_length(${table.tokenHash}) = 32`,
     ),
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 
@@ -546,7 +549,7 @@ const interviewSessions = pgTable(
           AND (${table.egoSecureAttributes} IS NULL
                OR jsonb_typeof(${table.egoSecureAttributes}) = 'object')`,
     ),
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 

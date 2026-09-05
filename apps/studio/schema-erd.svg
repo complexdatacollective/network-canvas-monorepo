@@ -549,7 +549,7 @@
 <!-- protocols -->
 <g id="protocols" class="node">
 <title>protocols</title>
-<g id="a_protocols"><a xlink:title="protocols&#10;RLS policy team_isolation; sidecar forces row&#45;level security">
+<g id="a_protocols"><a xlink:title="protocols&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="1993.98" cy="-6714.24" rx="287.59" ry="299.63"/>
 <polygon fill="#1d71b8" stroke="transparent" points="1792.98,-6864.24 1792.98,-6924.24 2195.98,-6924.24 2195.98,-6864.24 1792.98,-6864.24"/>
 <polygon fill="none" stroke="#29235c" points="1792.98,-6864.24 1792.98,-6924.24 2195.98,-6924.24 2195.98,-6864.24 1792.98,-6864.24"/>
@@ -602,7 +602,7 @@
 <!-- studies -->
 <g id="studies" class="node">
 <title>studies</title>
-<g id="a_studies"><a xlink:title="studies&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger studies_closed_read_only: BEFORE UPDATE calls studies_closed_is_read_only(); sidecar trigger studies_go_live_final: BEFORE UPDATE calls studies_go_live_is_final(); sidecar trigger studies_protocol_line_unpinned: AFTER UPDATE OF protocol_id calls studies_protocol_line_is_unpinned(); sidecar trigger studies_delete_purge_only: BEFORE DELETE calls study_delete_is_purge(); sidecar trigger studies_mode_switch_unpeopled: BEFORE UPDATE calls studies_mode_switch_is_unpeopled()">
+<g id="a_studies"><a xlink:title="studies&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger studies_closed_read_only: BEFORE UPDATE calls studies_closed_is_read_only(); sidecar trigger studies_go_live_final: BEFORE UPDATE calls studies_go_live_is_final(); sidecar trigger studies_protocol_line_unpinned: AFTER UPDATE OF protocol_id calls studies_protocol_line_is_unpinned(); sidecar trigger studies_delete_purge_only: BEFORE DELETE calls study_delete_is_purge(); sidecar trigger studies_mode_switch_unpeopled: BEFORE UPDATE calls studies_mode_switch_is_unpeopled()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="3445.61" cy="-9632.24" rx="371.46" ry="808.86"/>
 <polygon fill="#1d71b8" stroke="transparent" points="3185.61,-10142.24 3185.61,-10202.24 3706.61,-10202.24 3706.61,-10142.24 3185.61,-10142.24"/>
 <polygon fill="none" stroke="#29235c" points="3185.61,-10142.24 3185.61,-10202.24 3706.61,-10202.24 3706.61,-10142.24 3185.61,-10142.24"/>
@@ -721,7 +721,7 @@
 <!-- team_invitation_deliveries -->
 <g id="team_invitation_deliveries" class="node">
 <title>team_invitation_deliveries</title>
-<g id="a_team_invitation_deliveries"><a xlink:title="team_invitation_deliveries&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger invitation_delivery_payload_immutable: BEFORE UPDATE calls invitation_delivery_payload_is_immutable()">
+<g id="a_team_invitation_deliveries"><a xlink:title="team_invitation_deliveries&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger invitation_delivery_payload_immutable: BEFORE UPDATE calls invitation_delivery_payload_is_immutable()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="3445.61" cy="-11310.24" rx="366.06" ry="851.21"/>
 <polygon fill="#1d71b8" stroke="transparent" points="3188.61,-11850.24 3188.61,-11910.24 3702.61,-11910.24 3702.61,-11850.24 3188.61,-11850.24"/>
 <polygon fill="none" stroke="#29235c" points="3188.61,-11850.24 3188.61,-11910.24 3702.61,-11910.24 3702.61,-11850.24 3188.61,-11850.24"/>
@@ -838,7 +838,7 @@
 <!-- drafts -->
 <g id="drafts" class="node">
 <title>drafts</title>
-<g id="a_drafts"><a xlink:title="drafts&#10;RLS policy team_isolation; sidecar forces row&#45;level security">
+<g id="a_drafts"><a xlink:title="drafts&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="3445.61" cy="-1044.24" rx="316.57" ry="257.27"/>
 <polygon fill="#1d71b8" stroke="transparent" points="3223.61,-1164.24 3223.61,-1224.24 3667.61,-1224.24 3667.61,-1164.24 3223.61,-1164.24"/>
 <polygon fill="none" stroke="#29235c" points="3223.61,-1164.24 3223.61,-1224.24 3667.61,-1224.24 3667.61,-1164.24 3223.61,-1164.24"/>
@@ -876,7 +876,7 @@
 <!-- manifests -->
 <g id="manifests" class="node">
 <title>manifests</title>
-<g id="a_manifests"><a xlink:title="manifests&#10;RLS policy team_isolation; sidecar forces row&#45;level security">
+<g id="a_manifests"><a xlink:title="manifests&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="4448.22" cy="-1044.24" rx="281.36" ry="342.48"/>
 <polygon fill="#1d71b8" stroke="transparent" points="4251.22,-1224.24 4251.22,-1284.24 4645.22,-1284.24 4645.22,-1224.24 4251.22,-1224.24"/>
 <polygon fill="none" stroke="#29235c" points="4251.22,-1224.24 4251.22,-1284.24 4645.22,-1284.24 4645.22,-1224.24 4251.22,-1224.24"/>
@@ -932,7 +932,7 @@
 <!-- leases -->
 <g id="leases" class="node">
 <title>leases</title>
-<g id="a_leases"><a xlink:title="leases&#10;RLS policy team_isolation; sidecar forces row&#45;level security">
+<g id="a_leases"><a xlink:title="leases&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="4448.22" cy="-342.24" rx="279.11" ry="342.48"/>
 <polygon fill="#1d71b8" stroke="transparent" points="4253.22,-522.24 4253.22,-582.24 4644.22,-582.24 4644.22,-522.24 4253.22,-522.24"/>
 <polygon fill="none" stroke="#29235c" points="4253.22,-522.24 4253.22,-582.24 4644.22,-582.24 4644.22,-522.24 4253.22,-522.24"/>
@@ -990,7 +990,7 @@
 <!-- protocol_drafts -->
 <g id="protocol_drafts" class="node">
 <title>protocol_drafts</title>
-<g id="a_protocol_drafts"><a xlink:title="protocol_drafts&#10;RLS policy team_isolation; sidecar forces row&#45;level security">
+<g id="a_protocol_drafts"><a xlink:title="protocol_drafts&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="4448.22" cy="-2406.24" rx="376.36" ry="384.83"/>
 <polygon fill="#1d71b8" stroke="transparent" points="4184.22,-2616.24 4184.22,-2676.24 4712.22,-2676.24 4712.22,-2616.24 4184.22,-2616.24"/>
 <polygon fill="none" stroke="#29235c" points="4184.22,-2616.24 4184.22,-2676.24 4712.22,-2676.24 4712.22,-2616.24 4184.22,-2616.24"/>
@@ -1047,7 +1047,7 @@
 <!-- sections -->
 <g id="sections" class="node">
 <title>sections</title>
-<g id="a_sections"><a xlink:title="sections&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger sections_immutable: BEFORE UPDATE calls sections_are_immutable()">
+<g id="a_sections"><a xlink:title="sections&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger sections_immutable: BEFORE UPDATE calls sections_are_immutable()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="3445.61" cy="-2846.24" rx="311.67" ry="299.63"/>
 <polygon fill="#1d71b8" stroke="transparent" points="3227.61,-2996.24 3227.61,-3056.24 3664.61,-3056.24 3664.61,-2996.24 3227.61,-2996.24"/>
 <polygon fill="none" stroke="#29235c" points="3227.61,-2996.24 3227.61,-3056.24 3664.61,-3056.24 3664.61,-2996.24 3227.61,-2996.24"/>
@@ -1088,7 +1088,7 @@
 <!-- version_sections -->
 <g id="version_sections" class="node">
 <title>version_sections</title>
-<g id="a_version_sections"><a xlink:title="version_sections&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger version_sections_immutable: BEFORE UPDATE OR DELETE calls protocol_versions_are_immutable(); sidecar trigger version_sections_insert_frozen: BEFORE INSERT calls version_sections_pins_are_frozen()">
+<g id="a_version_sections"><a xlink:title="version_sections&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger version_sections_immutable: BEFORE UPDATE OR DELETE calls protocol_versions_are_immutable(); sidecar trigger version_sections_insert_frozen: BEFORE INSERT calls version_sections_pins_are_frozen()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="4448.22" cy="-3108.24" rx="294.73" ry="299.63"/>
 <polygon fill="#1d71b8" stroke="transparent" points="4242.22,-3258.24 4242.22,-3318.24 4655.22,-3318.24 4655.22,-3258.24 4242.22,-3258.24"/>
 <polygon fill="none" stroke="#29235c" points="4242.22,-3258.24 4242.22,-3318.24 4655.22,-3318.24 4655.22,-3258.24 4242.22,-3258.24"/>
@@ -1137,7 +1137,7 @@
 <!-- template_version_sections -->
 <g id="template_version_sections" class="node">
 <title>template_version_sections</title>
-<g id="a_template_version_sections"><a xlink:title="template_version_sections&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger template_version_sections_immutable: BEFORE UPDATE OR DELETE calls template_versions_are_immutable(); sidecar trigger template_version_sections_insert_frozen: BEFORE INSERT calls template_version_sections_pins_are_frozen()">
+<g id="a_template_version_sections"><a xlink:title="template_version_sections&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger template_version_sections_immutable: BEFORE UPDATE OR DELETE calls template_versions_are_immutable(); sidecar trigger template_version_sections_insert_frozen: BEFORE INSERT calls template_version_sections_pins_are_frozen()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="4448.22" cy="-1704.24" rx="374.12" ry="299.63"/>
 <polygon fill="#1d71b8" stroke="transparent" points="4186.22,-1854.24 4186.22,-1914.24 4711.22,-1914.24 4711.22,-1854.24 4186.22,-1854.24"/>
 <polygon fill="none" stroke="#29235c" points="4186.22,-1854.24 4186.22,-1914.24 4711.22,-1914.24 4711.22,-1854.24 4186.22,-1854.24"/>
@@ -1186,7 +1186,7 @@
 <!-- command_log -->
 <g id="command_log" class="node">
 <title>command_log</title>
-<g id="a_command_log"><a xlink:title="command_log&#10;RLS policy team_isolation; sidecar forces row&#45;level security">
+<g id="a_command_log"><a xlink:title="command_log&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="566.39" cy="-14091.24" rx="281.36" ry="469.54"/>
 <polygon fill="#1d71b8" stroke="transparent" points="369.39,-14361.24 369.39,-14421.24 763.39,-14421.24 763.39,-14361.24 369.39,-14361.24"/>
 <polygon fill="none" stroke="#29235c" points="369.39,-14361.24 369.39,-14421.24 763.39,-14421.24 763.39,-14361.24 369.39,-14361.24"/>
@@ -1257,7 +1257,7 @@
 <!-- protocol_versions -->
 <g id="protocol_versions" class="node">
 <title>protocol_versions</title>
-<g id="a_protocol_versions"><a xlink:title="protocol_versions&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger protocol_versions_immutable: BEFORE UPDATE OR DELETE calls protocol_versions_are_immutable()">
+<g id="a_protocol_versions"><a xlink:title="protocol_versions&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger protocol_versions_immutable: BEFORE UPDATE OR DELETE calls protocol_versions_are_immutable()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="3445.61" cy="-3845.24" rx="422.7" ry="681.8"/>
 <polygon fill="#1d71b8" stroke="transparent" points="3148.61,-4265.24 3148.61,-4325.24 3742.61,-4325.24 3742.61,-4265.24 3148.61,-4265.24"/>
 <polygon fill="none" stroke="#29235c" points="3148.61,-4265.24 3148.61,-4325.24 3742.61,-4325.24 3742.61,-4265.24 3148.61,-4265.24"/>
@@ -1397,7 +1397,7 @@
 <!-- study_waves -->
 <g id="study_waves" class="node">
 <title>study_waves</title>
-<g id="a_study_waves"><a xlink:title="study_waves&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger study_waves_identity_immutable: BEFORE UPDATE calls study_waves_identity_is_immutable(); sidecar trigger study_waves_parent_open: BEFORE INSERT OR UPDATE OR DELETE calls study_waves_parent_is_open(); sidecar trigger study_waves_version_own_line: AFTER INSERT OR UPDATE OF protocol_version_id calls study_wave_version_is_own_line()">
+<g id="a_study_waves"><a xlink:title="study_waves&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger study_waves_identity_immutable: BEFORE UPDATE calls study_waves_identity_is_immutable(); sidecar trigger study_waves_parent_open: BEFORE INSERT OR UPDATE OR DELETE calls study_waves_parent_is_open(); sidecar trigger study_waves_version_own_line: AFTER INSERT OR UPDATE OF protocol_version_id calls study_wave_version_is_own_line()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="4448.22" cy="-5487.24" rx="357.59" ry="596.6"/>
 <polygon fill="#1d71b8" stroke="transparent" points="4197.22,-5847.24 4197.22,-5907.24 4699.22,-5907.24 4699.22,-5847.24 4197.22,-5847.24"/>
 <polygon fill="none" stroke="#29235c" points="4197.22,-5847.24 4197.22,-5907.24 4699.22,-5907.24 4699.22,-5847.24 4197.22,-5847.24"/>
@@ -1478,7 +1478,7 @@
 <!-- interview_sessions -->
 <g id="interview_sessions" class="node">
 <title>interview_sessions</title>
-<g id="a_interview_sessions"><a xlink:title="interview_sessions&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger interview_sessions_writable: BEFORE INSERT OR UPDATE OR DELETE calls interview_sessions_are_writable(); sidecar trigger interview_sessions_link_own: AFTER INSERT OR UPDATE OF link_id calls interview_session_link_is_own(); sidecar trigger interview_sessions_version_wave_pin: AFTER INSERT calls interview_session_version_is_wave_pin(); sidecar trigger interview_sessions_completion_snapshot: AFTER INSERT OR UPDATE OF status calls interview_session_completion_has_snapshot()">
+<g id="a_interview_sessions"><a xlink:title="interview_sessions&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger interview_sessions_writable: BEFORE INSERT OR UPDATE OR DELETE calls interview_sessions_are_writable(); sidecar trigger interview_sessions_link_own: AFTER INSERT OR UPDATE OF link_id calls interview_session_link_is_own(); sidecar trigger interview_sessions_version_wave_pin: AFTER INSERT calls interview_session_version_is_wave_pin(); sidecar trigger interview_sessions_completion_snapshot: AFTER INSERT OR UPDATE OF status calls interview_session_completion_has_snapshot()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="6138.08" cy="-6331.24" rx="392.39" ry="1233.39"/>
 <polygon fill="#1d71b8" stroke="transparent" points="5863.08,-7141.24 5863.08,-7201.24 6414.08,-7201.24 6414.08,-7141.24 5863.08,-7141.24"/>
 <polygon fill="none" stroke="#29235c" points="5863.08,-7141.24 5863.08,-7201.24 6414.08,-7201.24 6414.08,-7141.24 5863.08,-7141.24"/>
@@ -1632,7 +1632,7 @@
 <!-- session_snapshots -->
 <g id="session_snapshots" class="node">
 <title>session_snapshots</title>
-<g id="a_session_snapshots"><a xlink:title="session_snapshots&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger session_snapshots_insert_frozen: AFTER INSERT calls session_snapshots_insert_at_finalization(); sidecar trigger session_snapshots_immutable: BEFORE UPDATE OR DELETE calls session_snapshots_are_immutable()">
+<g id="a_session_snapshots"><a xlink:title="session_snapshots&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger session_snapshots_insert_frozen: AFTER INSERT calls session_snapshots_insert_at_finalization(); sidecar trigger session_snapshots_immutable: BEFORE UPDATE OR DELETE calls session_snapshots_are_immutable()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="7144.23" cy="-4402.24" rx="364.73" ry="469.54"/>
 <polygon fill="#1d71b8" stroke="transparent" points="6888.23,-4672.24 6888.23,-4732.24 7400.23,-4732.24 7400.23,-4672.24 6888.23,-4672.24"/>
 <polygon fill="none" stroke="#29235c" points="6888.23,-4672.24 6888.23,-4732.24 7400.23,-4732.24 7400.23,-4672.24 6888.23,-4672.24"/>
@@ -1706,7 +1706,7 @@
 <!-- assets -->
 <g id="assets" class="node">
 <title>assets</title>
-<g id="a_assets"><a xlink:title="assets&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger assets_metadata_immutable: BEFORE UPDATE calls assets_metadata_is_immutable()">
+<g id="a_assets"><a xlink:title="assets&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger assets_metadata_immutable: BEFORE UPDATE calls assets_metadata_is_immutable()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="566.39" cy="-15188.24" rx="311.67" ry="554.24"/>
 <polygon fill="#1d71b8" stroke="transparent" points="348.39,-15518.24 348.39,-15578.24 785.39,-15578.24 785.39,-15518.24 348.39,-15518.24"/>
 <polygon fill="none" stroke="#29235c" points="348.39,-15518.24 348.39,-15578.24 785.39,-15578.24 785.39,-15518.24 348.39,-15518.24"/>
@@ -1779,7 +1779,7 @@
 <!-- asset_references -->
 <g id="asset_references" class="node">
 <title>asset_references</title>
-<g id="a_asset_references"><a xlink:title="asset_references&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger asset_references_published_immutable: BEFORE UPDATE OR DELETE calls asset_references_published_pins_are_frozen(); sidecar trigger asset_references_insert_frozen: AFTER INSERT calls asset_reference_pin_is_written_at_publication()">
+<g id="a_asset_references"><a xlink:title="asset_references&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger asset_references_published_immutable: BEFORE UPDATE OR DELETE calls asset_references_published_pins_are_frozen(); sidecar trigger asset_references_insert_frozen: AFTER INSERT calls asset_reference_pin_is_written_at_publication()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="1993.98" cy="-15368.24" rx="281.36" ry="299.63"/>
 <polygon fill="#1d71b8" stroke="transparent" points="1796.98,-15518.24 1796.98,-15578.24 2190.98,-15578.24 2190.98,-15518.24 1796.98,-15518.24"/>
 <polygon fill="none" stroke="#29235c" points="1796.98,-15518.24 1796.98,-15578.24 2190.98,-15578.24 2190.98,-15518.24 1796.98,-15518.24"/>
@@ -1838,7 +1838,7 @@
 <!-- participants -->
 <g id="participants" class="node">
 <title>participants</title>
-<g id="a_participants"><a xlink:title="participants&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger participants_writable: BEFORE INSERT OR UPDATE OR DELETE calls participants_are_writable(); sidecar trigger participants_study_managed: AFTER INSERT calls participants_study_is_managed()">
+<g id="a_participants"><a xlink:title="participants&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger participants_writable: BEFORE INSERT OR UPDATE OR DELETE calls participants_are_writable(); sidecar trigger participants_study_managed: AFTER INSERT calls participants_study_is_managed()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="4448.22" cy="-7076.24" rx="301.87" ry="936.42"/>
 <polygon fill="#1d71b8" stroke="transparent" points="4237.22,-7676.24 4237.22,-7736.24 4660.22,-7736.24 4660.22,-7676.24 4237.22,-7676.24"/>
 <polygon fill="none" stroke="#29235c" points="4237.22,-7676.24 4237.22,-7736.24 4660.22,-7736.24 4660.22,-7676.24 4237.22,-7676.24"/>
@@ -1954,7 +1954,7 @@
 <!-- study_role_grants -->
 <g id="study_role_grants" class="node">
 <title>study_role_grants</title>
-<g id="a_study_role_grants"><a xlink:title="study_role_grants&#10;RLS policy team_isolation; sidecar forces row&#45;level security">
+<g id="a_study_role_grants"><a xlink:title="study_role_grants&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="4448.22" cy="-9872.24" rx="306.77" ry="469.54"/>
 <polygon fill="#1d71b8" stroke="transparent" points="4233.22,-10142.24 4233.22,-10202.24 4663.22,-10202.24 4663.22,-10142.24 4233.22,-10142.24"/>
 <polygon fill="none" stroke="#29235c" points="4233.22,-10142.24 4233.22,-10202.24 4663.22,-10202.24 4663.22,-10142.24 4233.22,-10142.24"/>
@@ -2031,7 +2031,7 @@
 <!-- consent_documents -->
 <g id="consent_documents" class="node">
 <title>consent_documents</title>
-<g id="a_consent_documents"><a xlink:title="consent_documents&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger consent_documents_publication_immutable: BEFORE UPDATE calls consent_documents_publication_is_immutable(); sidecar trigger consent_documents_delete_purge_only: BEFORE DELETE calls consent_document_delete_is_purge()">
+<g id="a_consent_documents"><a xlink:title="consent_documents&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger consent_documents_publication_immutable: BEFORE UPDATE calls consent_documents_publication_is_immutable(); sidecar trigger consent_documents_delete_purge_only: BEFORE DELETE calls consent_document_delete_is_purge()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="6138.08" cy="-13128.24" rx="308.1" ry="724.15"/>
 <polygon fill="#1d71b8" stroke="transparent" points="5922.08,-13578.24 5922.08,-13638.24 6354.08,-13638.24 6354.08,-13578.24 5922.08,-13578.24"/>
 <polygon fill="none" stroke="#29235c" points="5922.08,-13578.24 5922.08,-13638.24 6354.08,-13638.24 6354.08,-13578.24 5922.08,-13578.24"/>
@@ -2134,7 +2134,7 @@
 <!-- study_schedules -->
 <g id="study_schedules" class="node">
 <title>study_schedules</title>
-<g id="a_study_schedules"><a xlink:title="study_schedules&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger study_schedules_time_zone_known_insert: AFTER INSERT calls study_schedules_validate_time_zone(); sidecar trigger study_schedules_time_zone_known_update: AFTER UPDATE calls study_schedules_validate_time_zone()">
+<g id="a_study_schedules"><a xlink:title="study_schedules&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger study_schedules_time_zone_known_insert: AFTER INSERT calls study_schedules_validate_time_zone(); sidecar trigger study_schedules_time_zone_known_update: AFTER UPDATE calls study_schedules_validate_time_zone()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="5269.82" cy="-9094.24" rx="378.1" ry="1360.45"/>
 <polygon fill="#1d71b8" stroke="transparent" points="5004.82,-9994.24 5004.82,-10054.24 5535.82,-10054.24 5535.82,-9994.24 5004.82,-9994.24"/>
 <polygon fill="none" stroke="#29235c" points="5004.82,-9994.24 5004.82,-10054.24 5535.82,-10054.24 5535.82,-9994.24 5004.82,-9994.24"/>
@@ -2313,7 +2313,7 @@
 <!-- message_templates -->
 <g id="message_templates" class="node">
 <title>message_templates</title>
-<g id="a_message_templates"><a xlink:title="message_templates&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger message_templates_publication_immutable: BEFORE UPDATE calls message_templates_publication_is_immutable()">
+<g id="a_message_templates"><a xlink:title="message_templates&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger message_templates_publication_immutable: BEFORE UPDATE calls message_templates_publication_is_immutable()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="6138.08" cy="-11301.24" rx="308.1" ry="639.45"/>
 <polygon fill="#1d71b8" stroke="transparent" points="5922.08,-11691.24 5922.08,-11751.24 6354.08,-11751.24 6354.08,-11691.24 5922.08,-11691.24"/>
 <polygon fill="none" stroke="#29235c" points="5922.08,-11691.24 5922.08,-11751.24 6354.08,-11751.24 6354.08,-11691.24 5922.08,-11691.24"/>
@@ -2407,7 +2407,7 @@
 <!-- api_tokens -->
 <g id="api_tokens" class="node">
 <title>api_tokens</title>
-<g id="a_api_tokens"><a xlink:title="api_tokens&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger api_token_authority_immutable: BEFORE UPDATE calls api_token_authority_is_immutable()">
+<g id="a_api_tokens"><a xlink:title="api_tokens&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger api_token_authority_immutable: BEFORE UPDATE calls api_token_authority_is_immutable()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="4448.22" cy="-11126.24" rx="305.44" ry="766.51"/>
 <polygon fill="#1d71b8" stroke="transparent" points="4234.22,-11606.24 4234.22,-11666.24 4662.22,-11666.24 4662.22,-11606.24 4234.22,-11606.24"/>
 <polygon fill="none" stroke="#29235c" points="4234.22,-11606.24 4234.22,-11666.24 4662.22,-11666.24 4662.22,-11606.24 4234.22,-11606.24"/>
@@ -2516,7 +2516,7 @@
 <!-- webhook_subscriptions -->
 <g id="webhook_subscriptions" class="node">
 <title>webhook_subscriptions</title>
-<g id="a_webhook_subscriptions"><a xlink:title="webhook_subscriptions&#10;RLS policy team_isolation; sidecar forces row&#45;level security">
+<g id="a_webhook_subscriptions"><a xlink:title="webhook_subscriptions&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="4448.22" cy="-12758.24" rx="344.22" ry="808.86"/>
 <polygon fill="#1d71b8" stroke="transparent" points="4207.22,-13268.24 4207.22,-13328.24 4690.22,-13328.24 4690.22,-13268.24 4207.22,-13268.24"/>
 <polygon fill="none" stroke="#29235c" points="4207.22,-13268.24 4207.22,-13328.24 4690.22,-13328.24 4690.22,-13268.24 4207.22,-13268.24"/>
@@ -2630,7 +2630,7 @@
 <!-- feedback_reports -->
 <g id="feedback_reports" class="node">
 <title>feedback_reports</title>
-<g id="a_feedback_reports"><a xlink:title="feedback_reports&#10;RLS policy team_isolation; sidecar forces row&#45;level security">
+<g id="a_feedback_reports"><a xlink:title="feedback_reports&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="4448.22" cy="-8745.24" rx="315.24" ry="639.45"/>
 <polygon fill="#1d71b8" stroke="transparent" points="4227.22,-9135.24 4227.22,-9195.24 4669.22,-9195.24 4669.22,-9135.24 4227.22,-9135.24"/>
 <polygon fill="none" stroke="#29235c" points="4227.22,-9135.24 4227.22,-9195.24 4669.22,-9195.24 4669.22,-9135.24 4227.22,-9135.24"/>
@@ -2732,7 +2732,7 @@
 <!-- interview_links -->
 <g id="interview_links" class="node">
 <title>interview_links</title>
-<g id="a_interview_links"><a xlink:title="interview_links&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger interview_links_writable: BEFORE INSERT OR UPDATE OR DELETE calls interview_links_are_writable()">
+<g id="a_interview_links"><a xlink:title="interview_links&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger interview_links_writable: BEFORE INSERT OR UPDATE OR DELETE calls interview_links_are_writable()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="5269.82" cy="-6802.24" rx="392.39" ry="724.15"/>
 <polygon fill="#1d71b8" stroke="transparent" points="4994.82,-7252.24 4994.82,-7312.24 5545.82,-7312.24 5545.82,-7252.24 4994.82,-7252.24"/>
 <polygon fill="none" stroke="#29235c" points="4994.82,-7252.24 4994.82,-7312.24 5545.82,-7312.24 5545.82,-7252.24 4994.82,-7252.24"/>
@@ -2829,7 +2829,7 @@
 <!-- session_stats -->
 <g id="session_stats" class="node">
 <title>session_stats</title>
-<g id="a_session_stats"><a xlink:title="session_stats&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger session_stats_parent_writable_insert: AFTER INSERT calls network_rows_parent_is_writable(); sidecar trigger session_stats_parent_writable_update: AFTER UPDATE calls network_rows_parent_is_writable(); sidecar trigger session_stats_parent_writable_delete: AFTER DELETE calls network_rows_parent_is_writable(); sidecar trigger session_stats_session_immutable: BEFORE UPDATE calls network_row_session_is_immutable()">
+<g id="a_session_stats"><a xlink:title="session_stats&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger session_stats_parent_writable_insert: AFTER INSERT calls network_rows_parent_is_writable(); sidecar trigger session_stats_parent_writable_update: AFTER UPDATE calls network_rows_parent_is_writable(); sidecar trigger session_stats_parent_writable_delete: AFTER DELETE calls network_rows_parent_is_writable(); sidecar trigger session_stats_session_immutable: BEFORE UPDATE calls network_row_session_is_immutable()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="7144.23" cy="-7753.24" rx="392.39" ry="554.24"/>
 <polygon fill="#1d71b8" stroke="transparent" points="6869.23,-8083.24 6869.23,-8143.24 7420.23,-8143.24 7420.23,-8083.24 6869.23,-8083.24"/>
 <polygon fill="none" stroke="#29235c" points="6869.23,-8083.24 6869.23,-8143.24 7420.23,-8143.24 7420.23,-8083.24 6869.23,-8083.24"/>
@@ -2919,7 +2919,7 @@
 <!-- study_wave_rollups -->
 <g id="study_wave_rollups" class="node">
 <title>study_wave_rollups</title>
-<g id="a_study_wave_rollups"><a xlink:title="study_wave_rollups&#10;RLS policy team_isolation; sidecar forces row&#45;level security">
+<g id="a_study_wave_rollups"><a xlink:title="study_wave_rollups&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="5269.82" cy="-4251.24" rx="409.33" ry="596.6"/>
 <polygon fill="#1d71b8" stroke="transparent" points="4982.82,-4611.24 4982.82,-4671.24 5557.82,-4671.24 5557.82,-4611.24 4982.82,-4611.24"/>
 <polygon fill="none" stroke="#29235c" points="4982.82,-4611.24 4982.82,-4671.24 5557.82,-4671.24 5557.82,-4611.24 4982.82,-4611.24"/>
@@ -3012,7 +3012,7 @@
 <!-- study_stage_rollups -->
 <g id="study_stage_rollups" class="node">
 <title>study_stage_rollups</title>
-<g id="a_study_stage_rollups"><a xlink:title="study_stage_rollups&#10;RLS policy team_isolation; sidecar forces row&#45;level security">
+<g id="a_study_stage_rollups"><a xlink:title="study_stage_rollups&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="5269.82" cy="-5463.24" rx="341.57" ry="596.6"/>
 <polygon fill="#1d71b8" stroke="transparent" points="5030.82,-5823.24 5030.82,-5883.24 5509.82,-5883.24 5509.82,-5823.24 5030.82,-5823.24"/>
 <polygon fill="none" stroke="#29235c" points="5030.82,-5823.24 5030.82,-5883.24 5509.82,-5883.24 5509.82,-5823.24 5030.82,-5823.24"/>
@@ -3131,7 +3131,7 @@
 <!-- participant_consents -->
 <g id="participant_consents" class="node">
 <title>participant_consents</title>
-<g id="a_participant_consents"><a xlink:title="participant_consents&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger participant_consent_grant_immutable: BEFORE UPDATE calls participant_consent_grant_is_immutable(); sidecar trigger participant_consents_session_own: AFTER INSERT calls participant_consent_session_is_own(); sidecar trigger participant_consents_document_published: AFTER INSERT calls participant_consent_document_is_published(); sidecar trigger participant_consents_required_items_affirmed: AFTER INSERT calls participant_consent_required_items_are_affirmed(); sidecar trigger participant_consents_delete_audited: BEFORE DELETE calls participant_consent_delete_is_audited()">
+<g id="a_participant_consents"><a xlink:title="participant_consents&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger participant_consent_grant_immutable: BEFORE UPDATE calls participant_consent_grant_is_immutable(); sidecar trigger participant_consents_session_own: AFTER INSERT calls participant_consent_session_is_own(); sidecar trigger participant_consents_document_published: AFTER INSERT calls participant_consent_document_is_published(); sidecar trigger participant_consents_required_items_affirmed: AFTER INSERT calls participant_consent_required_items_are_affirmed(); sidecar trigger participant_consents_delete_audited: BEFORE DELETE calls participant_consent_delete_is_audited()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="7144.23" cy="-12054.24" rx="479.34" ry="766.51"/>
 <polygon fill="#1d71b8" stroke="transparent" points="6807.23,-12534.24 6807.23,-12594.24 7481.23,-12594.24 7481.23,-12534.24 6807.23,-12534.24"/>
 <polygon fill="none" stroke="#29235c" points="6807.23,-12534.24 6807.23,-12594.24 7481.23,-12594.24 7481.23,-12534.24 6807.23,-12534.24"/>
@@ -3233,7 +3233,7 @@
 <!-- schedule_occurrences -->
 <g id="schedule_occurrences" class="node">
 <title>schedule_occurrences</title>
-<g id="a_schedule_occurrences"><a xlink:title="schedule_occurrences&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger schedule_occurrences_time_zone_known_insert: AFTER INSERT calls schedule_occurrences_validate_time_zone(); sidecar trigger schedule_occurrences_time_zone_known_update: AFTER UPDATE calls schedule_occurrences_validate_time_zone(); sidecar trigger schedule_occurrences_identity_immutable: BEFORE UPDATE calls schedule_occurrence_identity_is_immutable()">
+<g id="a_schedule_occurrences"><a xlink:title="schedule_occurrences&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger schedule_occurrences_time_zone_known_insert: AFTER INSERT calls schedule_occurrences_validate_time_zone(); sidecar trigger schedule_occurrences_time_zone_known_update: AFTER UPDATE calls schedule_occurrences_validate_time_zone(); sidecar trigger schedule_occurrences_identity_immutable: BEFORE UPDATE calls schedule_occurrence_identity_is_immutable()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="6138.08" cy="-9844.24" rx="422.7" ry="724.15"/>
 <polygon fill="#1d71b8" stroke="transparent" points="5841.08,-10294.24 5841.08,-10354.24 6435.08,-10354.24 6435.08,-10294.24 5841.08,-10294.24"/>
 <polygon fill="none" stroke="#29235c" points="5841.08,-10294.24 5841.08,-10354.24 6435.08,-10354.24 6435.08,-10294.24 5841.08,-10294.24"/>
@@ -3340,7 +3340,7 @@
 <!-- message_deliveries -->
 <g id="message_deliveries" class="node">
 <title>message_deliveries</title>
-<g id="a_message_deliveries"><a xlink:title="message_deliveries&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger message_delivery_payload_immutable: BEFORE UPDATE calls message_delivery_payload_is_immutable(); sidecar trigger message_deliveries_template_applies: AFTER INSERT calls message_delivery_template_applies(); sidecar trigger message_deliveries_deletable: BEFORE DELETE calls message_deliveries_are_deletable()">
+<g id="a_message_deliveries"><a xlink:title="message_deliveries&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger message_delivery_payload_immutable: BEFORE UPDATE calls message_delivery_payload_is_immutable(); sidecar trigger message_deliveries_template_applies: AFTER INSERT calls message_delivery_template_applies(); sidecar trigger message_deliveries_deletable: BEFORE DELETE calls message_deliveries_are_deletable()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="7144.23" cy="-10079.24" rx="547.1" ry="1190.54"/>
 <polygon fill="#1d71b8" stroke="transparent" points="6759.23,-10859.24 6759.23,-10919.24 7529.23,-10919.24 7529.23,-10859.24 6759.23,-10859.24"/>
 <polygon fill="none" stroke="#29235c" points="6759.23,-10859.24 6759.23,-10919.24 7529.23,-10919.24 7529.23,-10859.24 6759.23,-10859.24"/>
@@ -3499,7 +3499,7 @@
 <!-- nodes -->
 <g id="nodes" class="node">
 <title>nodes</title>
-<g id="a_nodes"><a xlink:title="nodes&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger nodes_parent_writable_insert: AFTER INSERT calls network_rows_parent_is_writable(); sidecar trigger nodes_parent_writable_update: AFTER UPDATE calls network_rows_parent_is_writable(); sidecar trigger nodes_parent_writable_delete: AFTER DELETE calls network_rows_parent_is_writable(); sidecar trigger nodes_session_immutable: BEFORE UPDATE calls network_row_session_is_immutable()">
+<g id="a_nodes"><a xlink:title="nodes&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger nodes_parent_writable_insert: AFTER INSERT calls network_rows_parent_is_writable(); sidecar trigger nodes_parent_writable_update: AFTER UPDATE calls network_rows_parent_is_writable(); sidecar trigger nodes_parent_writable_delete: AFTER DELETE calls network_rows_parent_is_writable(); sidecar trigger nodes_session_immutable: BEFORE UPDATE calls network_row_session_is_immutable()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="7144.23" cy="-6141.24" rx="270.23" ry="469.54"/>
 <polygon fill="#1d71b8" stroke="transparent" points="6955.23,-6411.24 6955.23,-6471.24 7333.23,-6471.24 7333.23,-6411.24 6955.23,-6411.24"/>
 <polygon fill="none" stroke="#29235c" points="6955.23,-6411.24 6955.23,-6471.24 7333.23,-6471.24 7333.23,-6411.24 6955.23,-6411.24"/>
@@ -3566,7 +3566,7 @@
 <!-- edges -->
 <g id="edges" class="node">
 <title>edges</title>
-<g id="a_edges"><a xlink:title="edges&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger edges_parent_writable_insert: AFTER INSERT calls network_rows_parent_is_writable(); sidecar trigger edges_parent_writable_update: AFTER UPDATE calls network_rows_parent_is_writable(); sidecar trigger edges_parent_writable_delete: AFTER DELETE calls network_rows_parent_is_writable(); sidecar trigger edges_session_immutable: BEFORE UPDATE calls network_row_session_is_immutable()">
+<g id="a_edges"><a xlink:title="edges&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger edges_parent_writable_insert: AFTER INSERT calls network_rows_parent_is_writable(); sidecar trigger edges_parent_writable_update: AFTER UPDATE calls network_rows_parent_is_writable(); sidecar trigger edges_parent_writable_delete: AFTER DELETE calls network_rows_parent_is_writable(); sidecar trigger edges_session_immutable: BEFORE UPDATE calls network_row_session_is_immutable()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="8390.8" cy="-6111.24" rx="296.06" ry="511.89"/>
 <polygon fill="#1d71b8" stroke="transparent" points="8183.8,-6411.24 8183.8,-6471.24 8598.8,-6471.24 8598.8,-6411.24 8183.8,-6411.24"/>
 <polygon fill="none" stroke="#29235c" points="8183.8,-6411.24 8183.8,-6471.24 8598.8,-6471.24 8598.8,-6411.24 8183.8,-6411.24"/>
@@ -3649,7 +3649,7 @@
 <!-- session_degree_hist -->
 <g id="session_degree_hist" class="node">
 <title>session_degree_hist</title>
-<g id="a_session_degree_hist"><a xlink:title="session_degree_hist&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger session_degree_hist_parent_writable_insert: AFTER INSERT calls network_rows_parent_is_writable(); sidecar trigger session_degree_hist_parent_writable_update: AFTER UPDATE calls network_rows_parent_is_writable(); sidecar trigger session_degree_hist_parent_writable_delete: AFTER DELETE calls network_rows_parent_is_writable(); sidecar trigger session_degree_hist_session_immutable: BEFORE UPDATE calls network_row_session_is_immutable()">
+<g id="a_session_degree_hist"><a xlink:title="session_degree_hist&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger session_degree_hist_parent_writable_insert: AFTER INSERT calls network_rows_parent_is_writable(); sidecar trigger session_degree_hist_parent_writable_update: AFTER UPDATE calls network_rows_parent_is_writable(); sidecar trigger session_degree_hist_parent_writable_delete: AFTER DELETE calls network_rows_parent_is_writable(); sidecar trigger session_degree_hist_session_immutable: BEFORE UPDATE calls network_row_session_is_immutable()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="7144.23" cy="-6886.24" rx="313.5" ry="257.27"/>
 <polygon fill="#1d71b8" stroke="transparent" points="6925.23,-7006.24 6925.23,-7066.24 7364.23,-7066.24 7364.23,-7006.24 6925.23,-7006.24"/>
 <polygon fill="none" stroke="#29235c" points="6925.23,-7006.24 6925.23,-7066.24 7364.23,-7066.24 7364.23,-7006.24 6925.23,-7006.24"/>
@@ -3731,7 +3731,7 @@
 <!-- consent_items -->
 <g id="consent_items" class="node">
 <title>consent_items</title>
-<g id="a_consent_items"><a xlink:title="consent_items&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger consent_items_frozen: BEFORE INSERT OR UPDATE OR DELETE calls consent_items_are_frozen_after_publication()">
+<g id="a_consent_items"><a xlink:title="consent_items&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger consent_items_frozen: BEFORE INSERT OR UPDATE OR DELETE calls consent_items_are_frozen_after_publication()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="7144.23" cy="-13308.24" rx="460.15" ry="469.54"/>
 <polygon fill="#1d71b8" stroke="transparent" points="6821.23,-13578.24 6821.23,-13638.24 7468.23,-13638.24 7468.23,-13578.24 6821.23,-13578.24"/>
 <polygon fill="none" stroke="#29235c" points="6821.23,-13578.24 6821.23,-13638.24 7468.23,-13638.24 7468.23,-13578.24 6821.23,-13578.24"/>
@@ -3814,7 +3814,7 @@
 <!-- participant_consent_item_responses -->
 <g id="participant_consent_item_responses" class="node">
 <title>participant_consent_item_responses</title>
-<g id="a_participant_consent_item_responses"><a xlink:title="participant_consent_item_responses&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger participant_consent_item_responses_immutable: BEFORE UPDATE calls participant_consent_grant_is_immutable(); sidecar trigger participant_consent_item_responses_delete_audited: BEFORE DELETE calls participant_consent_response_delete_is_audited()">
+<g id="a_participant_consent_item_responses"><a xlink:title="participant_consent_item_responses&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger participant_consent_item_responses_immutable: BEFORE UPDATE calls participant_consent_grant_is_immutable(); sidecar trigger participant_consent_item_responses_delete_audited: BEFORE DELETE calls participant_consent_response_delete_is_audited()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="8390.8" cy="-12786.24" rx="663.03" ry="384.83"/>
 <polygon fill="#1d71b8" stroke="transparent" points="7923.8,-12996.24 7923.8,-13056.24 8857.8,-13056.24 8857.8,-12996.24 7923.8,-12996.24"/>
 <polygon fill="none" stroke="#29235c" points="7923.8,-12996.24 7923.8,-13056.24 8857.8,-13056.24 8857.8,-12996.24 7923.8,-12996.24"/>
@@ -3911,7 +3911,7 @@
 <!-- message_delivery_events -->
 <g id="message_delivery_events" class="node">
 <title>message_delivery_events</title>
-<g id="a_message_delivery_events"><a xlink:title="message_delivery_events&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger message_delivery_events_immutable: BEFORE UPDATE calls message_delivery_payload_is_immutable(); sidecar trigger message_delivery_events_provider_sent_it: AFTER INSERT calls message_delivery_event_provider_sent_it(); sidecar trigger message_delivery_events_deletable: BEFORE DELETE calls message_delivery_events_are_deletable()">
+<g id="a_message_delivery_events"><a xlink:title="message_delivery_events&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger message_delivery_events_immutable: BEFORE UPDATE calls message_delivery_payload_is_immutable(); sidecar trigger message_delivery_events_provider_sent_it: AFTER INSERT calls message_delivery_event_provider_sent_it(); sidecar trigger message_delivery_events_deletable: BEFORE DELETE calls message_delivery_events_are_deletable()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="8390.8" cy="-10589.24" rx="367.89" ry="469.54"/>
 <polygon fill="#1d71b8" stroke="transparent" points="8132.8,-10859.24 8132.8,-10919.24 8648.8,-10919.24 8648.8,-10859.24 8132.8,-10859.24"/>
 <polygon fill="none" stroke="#29235c" points="8132.8,-10859.24 8132.8,-10919.24 8648.8,-10919.24 8648.8,-10859.24 8132.8,-10859.24"/>
@@ -4024,7 +4024,7 @@
 <!-- templates -->
 <g id="templates" class="node">
 <title>templates</title>
-<g id="a_templates"><a xlink:title="templates&#10;RLS policy team_isolation; sidecar forces row&#45;level security">
+<g id="a_templates"><a xlink:title="templates&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="1993.98" cy="-1699.24" rx="287.59" ry="596.6"/>
 <polygon fill="#1d71b8" stroke="transparent" points="1792.98,-2059.24 1792.98,-2119.24 2195.98,-2119.24 2195.98,-2059.24 1792.98,-2059.24"/>
 <polygon fill="none" stroke="#29235c" points="1792.98,-2059.24 1792.98,-2119.24 2195.98,-2119.24 2195.98,-2059.24 1792.98,-2059.24"/>
@@ -4106,7 +4106,7 @@
 <!-- template_versions -->
 <g id="template_versions" class="node">
 <title>template_versions</title>
-<g id="a_template_versions"><a xlink:title="template_versions&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger template_versions_immutable: BEFORE UPDATE OR DELETE calls template_versions_are_immutable()">
+<g id="a_template_versions"><a xlink:title="template_versions&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger template_versions_immutable: BEFORE UPDATE OR DELETE calls template_versions_are_immutable()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="3445.61" cy="-1789.24" rx="304.11" ry="469.54"/>
 <polygon fill="#1d71b8" stroke="transparent" points="3232.61,-2059.24 3232.61,-2119.24 3658.61,-2119.24 3658.61,-2059.24 3232.61,-2059.24"/>
 <polygon fill="none" stroke="#29235c" points="3232.61,-2059.24 3232.61,-2119.24 3658.61,-2119.24 3658.61,-2059.24 3232.61,-2059.24"/>
@@ -4189,7 +4189,7 @@
 <!-- webhook_deliveries -->
 <g id="webhook_deliveries" class="node">
 <title>webhook_deliveries</title>
-<g id="a_webhook_deliveries"><a xlink:title="webhook_deliveries&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger webhook_delivery_payload_immutable: BEFORE UPDATE calls webhook_delivery_payload_is_immutable(); sidecar trigger webhook_deliveries_subscription_wants_event: AFTER INSERT calls webhook_delivery_subscription_wants_event()">
+<g id="a_webhook_deliveries"><a xlink:title="webhook_deliveries&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger webhook_delivery_payload_immutable: BEFORE UPDATE calls webhook_delivery_payload_is_immutable(); sidecar trigger webhook_deliveries_subscription_wants_event: AFTER INSERT calls webhook_delivery_subscription_wants_event()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="5269.82" cy="-12834.24" rx="318.4" ry="724.15"/>
 <polygon fill="#1d71b8" stroke="transparent" points="5046.82,-13284.24 5046.82,-13344.24 5492.82,-13344.24 5492.82,-13284.24 5046.82,-13284.24"/>
 <polygon fill="none" stroke="#29235c" points="5046.82,-13284.24 5046.82,-13344.24 5492.82,-13344.24 5492.82,-13284.24 5046.82,-13284.24"/>
@@ -4290,7 +4290,7 @@
 <!-- experiments -->
 <g id="experiments" class="node">
 <title>experiments</title>
-<g id="a_experiments"><a xlink:title="experiments&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger experiments_variants_frozen: BEFORE UPDATE calls experiment_variants_are_frozen(); sidecar trigger experiments_start_final: BEFORE UPDATE calls experiment_start_is_final(); sidecar trigger experiments_stop_closes_lifetime: BEFORE UPDATE calls experiment_stop_closes_the_lifetime(); sidecar trigger experiments_variants_well_formed: BEFORE INSERT OR UPDATE calls experiment_variants_are_well_formed()">
+<g id="a_experiments"><a xlink:title="experiments&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger experiments_variants_frozen: BEFORE UPDATE calls experiment_variants_are_frozen(); sidecar trigger experiments_start_final: BEFORE UPDATE calls experiment_start_is_final(); sidecar trigger experiments_stop_closes_lifetime: BEFORE UPDATE calls experiment_stop_closes_the_lifetime(); sidecar trigger experiments_variants_well_formed: BEFORE INSERT OR UPDATE calls experiment_variants_are_well_formed()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="566.39" cy="-16805.24" rx="281.36" ry="511.89"/>
 <polygon fill="#1d71b8" stroke="transparent" points="369.39,-17105.24 369.39,-17165.24 763.39,-17165.24 763.39,-17105.24 369.39,-17105.24"/>
 <polygon fill="none" stroke="#29235c" points="369.39,-17105.24 369.39,-17165.24 763.39,-17165.24 763.39,-17105.24 369.39,-17105.24"/>
@@ -4360,7 +4360,7 @@
 <!-- experiment_assignments -->
 <g id="experiment_assignments" class="node">
 <title>experiment_assignments</title>
-<g id="a_experiment_assignments"><a xlink:title="experiment_assignments&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger experiment_assignments_immutable: BEFORE UPDATE calls experiment_assignments_are_immutable(); sidecar trigger experiment_assignments_deletable: BEFORE DELETE calls experiment_assignments_are_deletable(); sidecar trigger experiment_assignments_variant_known: AFTER INSERT calls experiment_assignments_variant_is_known(); sidecar trigger experiment_assignments_within_lifetime: AFTER INSERT calls experiment_rows_are_within_lifetime()">
+<g id="a_experiment_assignments"><a xlink:title="experiment_assignments&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger experiment_assignments_immutable: BEFORE UPDATE calls experiment_assignments_are_immutable(); sidecar trigger experiment_assignments_deletable: BEFORE DELETE calls experiment_assignments_are_deletable(); sidecar trigger experiment_assignments_variant_known: AFTER INSERT calls experiment_assignments_variant_is_known(); sidecar trigger experiment_assignments_within_lifetime: AFTER INSERT calls experiment_rows_are_within_lifetime()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="1993.98" cy="-16865.24" rx="461.98" ry="427.19"/>
 <polygon fill="#1d71b8" stroke="transparent" points="1669.98,-17105.24 1669.98,-17165.24 2318.98,-17165.24 2318.98,-17105.24 1669.98,-17105.24"/>
 <polygon fill="none" stroke="#29235c" points="1669.98,-17105.24 1669.98,-17165.24 2318.98,-17165.24 2318.98,-17105.24 1669.98,-17105.24"/>
@@ -4428,7 +4428,7 @@
 <!-- experiment_exposures -->
 <g id="experiment_exposures" class="node">
 <title>experiment_exposures</title>
-<g id="a_experiment_exposures"><a xlink:title="experiment_exposures&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger experiment_exposures_immutable: BEFORE UPDATE calls experiment_assignments_are_immutable(); sidecar trigger experiment_exposures_deletable: BEFORE DELETE calls experiment_exposures_are_deletable(); sidecar trigger experiment_exposures_within_lifetime: AFTER INSERT calls experiment_rows_are_within_lifetime()">
+<g id="a_experiment_exposures"><a xlink:title="experiment_exposures&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger experiment_exposures_immutable: BEFORE UPDATE calls experiment_assignments_are_immutable(); sidecar trigger experiment_exposures_deletable: BEFORE DELETE calls experiment_exposures_are_deletable(); sidecar trigger experiment_exposures_within_lifetime: AFTER INSERT calls experiment_rows_are_within_lifetime()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="3445.61" cy="-16865.24" rx="590.37" ry="427.19"/>
 <polygon fill="#1d71b8" stroke="transparent" points="3030.61,-17105.24 3030.61,-17165.24 3861.61,-17165.24 3861.61,-17105.24 3030.61,-17105.24"/>
 <polygon fill="none" stroke="#29235c" points="3030.61,-17105.24 3030.61,-17165.24 3861.61,-17165.24 3861.61,-17105.24 3030.61,-17105.24"/>
@@ -4499,7 +4499,7 @@
 <!-- audit_events -->
 <g id="audit_events" class="node">
 <title>audit_events</title>
-<g id="a_audit_events"><a xlink:title="audit_events&#10;RLS policy audit_team_isolation; sidecar forces row&#45;level security; sidecar trigger audit_events_immutable: BEFORE UPDATE OR DELETE calls audit_events_are_immutable()">
+<g id="a_audit_events"><a xlink:title="audit_events&#10;RLS policy audit_team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger audit_events_immutable: BEFORE UPDATE OR DELETE calls audit_events_are_immutable()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="566.39" cy="-18271.24" rx="566.29" ry="936.42"/>
 <polygon fill="#1d71b8" stroke="transparent" points="168.39,-18871.24 168.39,-18931.24 965.39,-18931.24 965.39,-18871.24 168.39,-18871.24"/>
 <polygon fill="none" stroke="#29235c" points="168.39,-18871.24 168.39,-18931.24 965.39,-18931.24 965.39,-18871.24 168.39,-18871.24"/>
@@ -4619,7 +4619,7 @@
 <!-- audit_alert_outbox -->
 <g id="audit_alert_outbox" class="node">
 <title>audit_alert_outbox</title>
-<g id="a_audit_alert_outbox"><a xlink:title="audit_alert_outbox&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger audit_alert_link_immutable: BEFORE UPDATE calls audit_alert_link_is_immutable()">
+<g id="a_audit_alert_outbox"><a xlink:title="audit_alert_outbox&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger audit_alert_link_immutable: BEFORE UPDATE calls audit_alert_link_is_immutable()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="1993.98" cy="-18391.24" rx="825.39" ry="766.51"/>
 <polygon fill="#1d71b8" stroke="transparent" points="1412.98,-18871.24 1412.98,-18931.24 2575.98,-18931.24 2575.98,-18871.24 1412.98,-18871.24"/>
 <polygon fill="none" stroke="#29235c" points="1412.98,-18871.24 1412.98,-18931.24 2575.98,-18931.24 2575.98,-18871.24 1412.98,-18871.24"/>
@@ -4726,7 +4726,7 @@
 <!-- audit_export_jobs -->
 <g id="audit_export_jobs" class="node">
 <title>audit_export_jobs</title>
-<g id="a_audit_export_jobs"><a xlink:title="audit_export_jobs&#10;RLS policy team_isolation; sidecar forces row&#45;level security; sidecar trigger audit_export_request_immutable: BEFORE UPDATE calls audit_export_request_is_immutable(); sidecar trigger audit_export_handle_single_use: BEFORE UPDATE calls audit_export_handle_is_single_use()">
+<g id="a_audit_export_jobs"><a xlink:title="audit_export_jobs&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger audit_export_request_immutable: BEFORE UPDATE calls audit_export_request_is_immutable(); sidecar trigger audit_export_handle_single_use: BEFORE UPDATE calls audit_export_handle_is_single_use()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="566.39" cy="-20501.24" rx="363.41" ry="1275.74"/>
 <polygon fill="#1d71b8" stroke="transparent" points="311.39,-21341.24 311.39,-21401.24 821.39,-21401.24 821.39,-21341.24 311.39,-21341.24"/>
 <polygon fill="none" stroke="#29235c" points="311.39,-21341.24 311.39,-21401.24 821.39,-21401.24 821.39,-21341.24 311.39,-21341.24"/>
