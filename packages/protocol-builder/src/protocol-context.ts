@@ -1,4 +1,6 @@
 import {
+  type Asset,
+  assetSchema,
   type Codebook,
   EdgeDefinitionSchema,
   type EdgeDefinition,
@@ -35,6 +37,15 @@ export type ProtocolContextIssue = Readonly<{
  */
 export type ProtocolBuilderProtocolContext = Readonly<{
   codebook: Readonly<Codebook>;
+  /**
+   * The protocol's asset manifest, keyed by asset id.
+   *
+   * Metadata only, and deliberately so: a stage editor needs to know what KIND
+   * of thing an asset reference points at (a name reads "with Image & Video",
+   * a roster data source has to be a network) without any of the bytes. Where
+   * the file itself lives is the host's business.
+   */
+  assets: Readonly<Record<string, Asset>>;
   orderedStages: readonly Readonly<Stage>[];
   issues: readonly ProtocolContextIssue[];
 }>;
@@ -101,6 +112,7 @@ export function protocolContextFromSections(
   const node = new Map<string, NodeDefinition>();
   const edge = new Map<string, EdgeDefinition>();
   const stages = new Map<string, Stage>();
+  const assets = new Map<string, Asset>();
   const variableOwners = new Map<string, string>();
   const entityNameOwners = new Map<string, string>();
   let ego: EgoDefinition | undefined;
@@ -201,8 +213,26 @@ export function protocolContextFromSections(
         } else issues.push(...sectionIssues(id, result.error.issues));
         break;
       }
+      case 'assets': {
+        // The assets section IS the manifest — one entry per asset, keyed by
+        // id. Each is parsed on its own so one malformed entry is reported
+        // rather than costing the section every other asset's metadata.
+        for (const [assetId, entry] of Object.entries(document)) {
+          const result = assetSchema.safeParse(entry);
+          if (result.success) {
+            assets.set(assetId, result.data);
+          } else {
+            issues.push(
+              ...sectionIssues(id, result.error.issues).map((issue) => ({
+                ...issue,
+                path: [assetId, ...issue.path],
+              })),
+            );
+          }
+        }
+        break;
+      }
       case 'settings':
-      case 'assets':
         break;
     }
   }
@@ -246,6 +276,7 @@ export function protocolContextFromSections(
 
   return Object.freeze({
     codebook: Object.freeze(codebook),
+    assets: Object.freeze(Object.fromEntries(assets)),
     orderedStages: Object.freeze(orderedStages),
     issues: Object.freeze(issues),
   });

@@ -12,6 +12,7 @@ import VariableEditor from './VariableEditor.tsx';
 const SUBJECT = { entity: 'node', type: 'person' } as const;
 const CONTEXT: ProtocolBuilderProtocolContext = {
   codebook: { node: {}, edge: {} },
+  assets: {},
   orderedStages: [],
   issues: [],
 };

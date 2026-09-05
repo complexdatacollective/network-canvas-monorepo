@@ -1,6 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useSelector } from 'react-redux';
 
+import { computeAutoNameUpdate } from '@codaco/protocol-builder/naming/computeAutoNameUpdate';
+import {
+  generateStageLabel,
+  STAGE_TYPE_NAMES,
+} from '@codaco/protocol-builder/naming/generateStageLabel';
+import {
+  resolveStageQualifier,
+  resolveStageSubjectName,
+} from '@codaco/protocol-builder/naming/resolveStageNameParts';
 import type {
   Item,
   Stage,
@@ -24,12 +33,6 @@ import {
 import { useStageRestoreVersion } from '../StageFormBridge';
 import { useStageFormContext } from '../stageFormContext';
 import { useSetStageValue, useStageFormValue } from '../stageFormHooks';
-import { computeAutoNameUpdate } from './computeAutoNameUpdate';
-import { generateStageLabel, STAGE_TYPE_NAMES } from './generateStageLabel';
-import {
-  resolveStageQualifier,
-  resolveStageSubjectName,
-} from './resolveStageNameParts';
 
 export function useAutoStageName(isNewStage: boolean): {
   onLabelBlur: () => void;
