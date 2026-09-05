@@ -600,27 +600,71 @@ const INTERLEAVINGS: readonly Interleaving[] = [
     rule: 'what it staged is discarded rather than left at the host',
     check: async () => {
       const user = userEvent.setup();
-      const gateway = new InMemoryResourceGateway();
-      const discardStaged = vi.spyOn(gateway, 'discardStaged');
+      const inner = new InMemoryResourceGateway();
+      const discardStaged = vi.spyOn(inner, 'discardStaged');
+      // Held at the HOST, not at the file read: the call has to be under way
+      // for the browser to be cancelled during it. A read still in flight is
+      // the other row — nothing has been sent, and nothing is dispatched.
+      const staging = deferred<void>();
+      const gateway = overrideGateway(inner, {
+        stageUpload: async (request) => {
+          await staging.promise;
+          return inner.stageUpload(request);
+        },
+      });
+      const stageUpload = vi.spyOn(gateway, 'stageUpload');
       const { fieldValue, session } = renderResourceEditor({
         gateway,
         children: imageField(),
       });
 
       const input = await openBrowser(user, 'Select an image');
-      const held = heldFile('late.png', 'image/png', bytesOf('late'));
-      await user.upload(input, held.file);
+      await user.upload(
+        input,
+        new File(['late-png'], 'late.png', { type: 'image/png' }),
+      );
+      await waitFor(() => expect(stageUpload).toHaveBeenCalled());
       await user.click(screen.getByRole('button', { name: 'Cancel' }));
       // The host answers an import whose surface has gone. Suppressing the
       // callback is not enough: the resource exists, the session is tracking
       // it, and no field will ever name it.
-      held.read();
+      staging.settle(undefined);
 
       await waitFor(() =>
         expect(discardStaged).toHaveBeenCalledWith('staged-resource-1'),
       );
-      expect(gateway.getStagingResidue()).toEqual([]);
+      expect(inner.getStagingResidue()).toEqual([]);
       expect(session.getSnapshot().stagedResources).toEqual([]);
+      expect(fieldValue('backgroundImage')).toBeUndefined();
+    },
+  },
+  {
+    surface: 'upload',
+    state: 'a chosen file still being read',
+    input: 'the browser is closed before the bytes arrive',
+    rule: 'the import is never sent to the host at all',
+    check: async () => {
+      const user = userEvent.setup();
+      const gateway = new InMemoryResourceGateway();
+      const stageUpload = vi.spyOn(gateway, 'stageUpload');
+      const { fieldValue } = renderResourceEditor({
+        gateway,
+        children: imageField(),
+      });
+
+      const input = await openBrowser(user, 'Select an image');
+      const held = heldFile('slow.png', 'image/png', bytesOf('slow'));
+      await user.upload(input, held.file);
+      await user.click(screen.getByRole('button', { name: 'Cancel' }));
+      // The read finishes for a control that is no longer there. Discarding
+      // afterwards leaves the same clean end state, but the bytes have been
+      // sent and the host has done the work of holding them — for an import
+      // there was never anything left to hand to.
+      held.read();
+      await act(flushPendingWork);
+
+      expect(stageUpload).not.toHaveBeenCalled();
+      expect(gateway.getStagingResidue()).toEqual([]);
       expect(fieldValue('backgroundImage')).toBeUndefined();
     },
   },

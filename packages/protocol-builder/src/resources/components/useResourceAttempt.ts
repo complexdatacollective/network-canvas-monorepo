@@ -14,7 +14,16 @@ import { callGateway } from '../gatewayCall.ts';
  * chose is what this claims.
  */
 export type ResourceAttemptClaim = Readonly<{
-  /** False once the researcher has asked for something else. */
+  /**
+   * False once the researcher has asked for something else, and false once the
+   * surface that asked has gone away.
+   *
+   * Both are the same fact — nobody is waiting for this any more — and the
+   * claim is consulted before the call is made rather than after it answers,
+   * so the second one has to count too: a claim that only watched for a newer
+   * choice would go on to send a whole file to the host for an import there is
+   * no longer anywhere to put.
+   */
   current: () => boolean;
   /** Starts the claimed call, or does nothing if it was superseded. */
   run: <T>(
@@ -138,7 +147,11 @@ export function useResourceAttempt(): ResourceAttempt {
     // with it — including its retry, which would otherwise repeat the earlier
     // call and let it win over the choice that superseded it.
     setState(IDLE);
-    const current = (): boolean => sequence.current === attempt;
+    // Liveness as well as order: an unmounted surface has left the order
+    // rather than been overtaken in it, and nothing bumps the sequence on the
+    // way out. Without this the work leading up to a call — reading the file
+    // the researcher chose — would finish and dispatch it regardless.
+    const current = (): boolean => live.current && sequence.current === attempt;
     return Object.freeze({
       current,
       run: <T>(
