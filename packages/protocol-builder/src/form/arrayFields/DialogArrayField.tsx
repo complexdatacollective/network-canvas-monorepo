@@ -38,7 +38,11 @@ import {
   type StageFormStoreApi,
 } from '../stageEditorContext.ts';
 import RowEditorBoundary from './RowEditorBoundary.tsx';
-import { useArrayFieldCommands } from './useArrayFieldCommands.ts';
+import {
+  ArrayFieldBindingContext,
+  useArrayFieldCommands,
+  type ArrayFieldBinding,
+} from './useArrayFieldCommands.ts';
 
 /**
  * COMPOSITION: this is a *field component*, rendered as
@@ -249,6 +253,11 @@ const mergeEditedRow = (
  * This is an authoring tool, so it says what happened and what to do next
  * rather than reporting a failure.
  */
+/** What every list inside a row dialog is: part of one row, not a key. */
+const NESTED_IN_A_ROW: ArrayFieldBinding = Object.freeze({
+  documentKey: undefined,
+});
+
 const rowRemovedMessage = (itemLabel: string) =>
   `This ${itemLabel} was removed while your changes were being saved, so there is nothing left to save them to. Copy anything you want to keep, then cancel and add a new ${itemLabel}.`;
 
@@ -772,13 +781,27 @@ function DialogEditor({
        * dialog, not the stage editor behind it and everything typed into it.
        */}
       <RowEditorBoundary>
-        {createElement(editorFieldsComponent, {
-          ...itemValues,
-          ...editorProps,
-          item: itemValues,
-          editIndex,
-          form: editFormName,
-        })}
+        {/*
+          Nothing inside a row is a document key.
+
+          A list the researcher edits INSIDE this dialog — a prompt's sort
+          rules — is part of one row of THIS list, and this list is what holds
+          the document key. Left inherited, that key is what the inner list
+          would commit its own insertions and reorderings against: adding a
+          sort rule would insert a row into the array of prompts. It also must
+          not commit anything at all until the dialog saves, which is the same
+          rule `ProtocolArrayField` states for a list that finds itself in a
+          nested form store.
+        */}
+        <ArrayFieldBindingContext value={NESTED_IN_A_ROW}>
+          {createElement(editorFieldsComponent, {
+            ...itemValues,
+            ...editorProps,
+            item: itemValues,
+            editIndex,
+            form: editFormName,
+          })}
+        </ArrayFieldBindingContext>
       </RowEditorBoundary>
     </DialogForm>
   );
