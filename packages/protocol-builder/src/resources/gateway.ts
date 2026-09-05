@@ -51,6 +51,17 @@ import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
  *   there; it is not something this port or an adapter can work around.
  */
 export type ProtocolBuilderResourceGateway = {
+  /**
+   * What promotion does with a staged secret's value.
+   *
+   * The editor never holds the value and never sees where it goes, so it
+   * cannot work this out: the handle is opaque, and resolving it is the
+   * adapter's own job. A researcher pasting an API key is nonetheless
+   * deciding whether to put a credential into a file they will send to other
+   * people, and only the adapter can tell them which it is — so it says, once,
+   * as a fact about itself. It does not change over an adapter's life.
+   */
+  readonly secretStorage: ResourceSecretStorage;
   /** Committed manifest resources plus everything staged in this session. */
   list(
     options?: ResourceListOptions,
@@ -98,6 +109,19 @@ export type ProtocolBuilderResourceGateway = {
     request: ResourcePromotionRequest,
   ): Promise<ResourceResult<ResourcePromotion>>;
 };
+
+/**
+ * Where a promoted secret's value comes to rest.
+ *
+ * `plaintext` is Architect's answer: the value is written into the protocol's
+ * own `apiKey` asset, so it travels inside the protocol file and inside every
+ * export of it. `vault` is the answer a host with a secret store of its own
+ * gives: the manifest carries a reference and the value never leaves the host.
+ * The two are materially different promises to a researcher, which is why the
+ * port makes an adapter state which one it is keeping rather than letting an
+ * editor assume.
+ */
+export type ResourceSecretStorage = 'plaintext' | 'vault';
 
 /** Manifest asset types whose content is bytes the host stores. */
 export type ResourceContentKind =
@@ -164,6 +188,17 @@ export type ResourceListOptions = Readonly<{
   kinds?: readonly ResourceKind[];
   status?: ResourceStatus;
 }>;
+
+/**
+ * The largest file an editor will read into memory to stage it.
+ *
+ * A limit the editor knows, not only one the host enforces: `stageUpload`
+ * takes bytes, so a control that waits for the host to refuse has already read
+ * the whole file to learn it was too big — and the file a researcher picks by
+ * mistake is exactly the one large enough to matter. A host may still refuse
+ * something smaller, and that refusal is reported as any other is.
+ */
+export const RESOURCE_UPLOAD_MAX_BYTE_LENGTH = 8 * 1024 * 1024;
 
 export type StageUploadRequest = Readonly<{
   /** Stable across an uncertain retry so a host stages the file once. */
@@ -242,7 +277,14 @@ export type ManifestApplyOutcome =
     }>;
 
 export type ResourcePromotionRequest = Readonly<{
-  /** Stable across an uncertain retry so a host promotes the intent once. */
+  /**
+   * Names this promotion's content: the resources below and the apply the
+   * gateway makes through `applyManifest`. Stable across an uncertain retry of
+   * the identical promotion, so a host promotes the intent once — and never
+   * carried onto a promotion that would commit anything else, because a host
+   * answering under an id it has already completed hands the completed
+   * promotion back without promoting or applying anything again.
+   */
   id: string;
   /** Staged resources the finished draft still references. */
   resourceIds: readonly string[];

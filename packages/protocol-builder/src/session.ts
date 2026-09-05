@@ -35,7 +35,12 @@ import {
   draftResourceIssues,
   finishStagedResources,
   mergeDraftValidationIssues,
+  promotionContent,
   stageIndexForValidation,
+  type SessionResourceGateway,
+  type StagedResourceCancelReport,
+  type StagedResourceDiscardFailure,
+  type StagedResourceFinishOutcome,
   type StagedResourceTracker,
 } from './resources/lifecycle.ts';
 import { collectStageResourceReferences } from './resources/references.ts';
@@ -240,14 +245,18 @@ export type ProtocolBuilderSession = {
    * host because they referenced that staging. Ok when the session has no
    * gateway — there is nothing to discard. Refused while a finish is
    * committing those very resources, because that promotion decides them.
+   *
+   * A resource whose promotion ended without saying what it did is kept
+   * rather than discarded, and named in the report: see
+   * {@link StagedResourceCancelReport}.
    */
-  cancel(): Promise<ResourceResult<undefined>>;
+  cancel(): Promise<ResourceResult<StagedResourceCancelReport>>;
   /**
    * The session-scoped resource gateway, or `undefined` when the host opened
    * the session without one. The shell provides it to editors; nothing else
    * in the package reaches host storage.
    */
-  getResourceGateway(): ProtocolBuilderResourceGateway | undefined;
+  getResourceGateway(): SessionResourceGateway | undefined;
 };
 
 export type ProtocolBuilderSessionOptions = Readonly<{
@@ -285,6 +294,18 @@ export type ProtocolBuilderSessionOptions = Readonly<{
     request: CompoundEditSubmission,
   ): Promise<CompoundEditResult> | CompoundEditResult;
   onFinish?(request: FinishRequest): Promise<void> | void;
+  /**
+   * Staged resources a finish committed the stage without being able to drop.
+   *
+   * The save succeeded, so this is not a failed finish — but the host is still
+   * holding bytes or a secret the draft walked away from, and the session goes
+   * on listing them in {@link ProtocolBuilderSnapshot.stagedResources} so the
+   * next cleanup can still reach them. Reported because the alternative is a
+   * finish that claims a cleanup it did not manage.
+   */
+  onResourceCleanupFailed?(
+    failures: readonly StagedResourceDiscardFailure[],
+  ): void;
 }>;
 
 export type AuthoritativeUpdate = Readonly<{
@@ -316,8 +337,11 @@ export class InvalidProtocolDraftError extends Error {
 }
 
 /**
- * A finish whose resource promotion was rolled back. Nothing was committed and
- * nothing was discarded, so the same finish can simply be tried again.
+ * A finish that could not commit its resources: the promotion was rolled back,
+ * or the session would not let this finish start at all because a cancel or
+ * another finish already had it. Nothing was committed and nothing was
+ * discarded either way, so the same finish can be tried again whenever the
+ * failure says it is retryable.
  */
 export class ResourcePromotionError extends Error {
   readonly failure: ResourceGatewayFailure;
@@ -407,8 +431,21 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
   private validationVersion = 0;
   private compoundEditInFlight = false;
   private readonly resources: StagedResourceTracker | undefined;
-  /** Held across a retried finish so a promotion cannot happen twice. */
-  private promotionId: string | undefined;
+  /**
+   * The key the current finish's content is promoted under, and the content it
+   * was minted for.
+   *
+   * A promotion key names one commit — this stage document, promoting these
+   * staged resources — and not "the finish this session is retrying". An
+   * idempotent host asked twice under one key hands back the promotion it
+   * already made without applying anything again, so a key carried across a
+   * changed draft or a swapped resource would report the second finish as done
+   * while none of it reached the protocol. It is therefore held only for as
+   * long as the content is: a retry of the identical finish reuses it, and any
+   * other finish mints its own. Cleared on success as well, so a finish that
+   * has been committed can never be replayed under the key that committed it.
+   */
+  private promotion: Readonly<{ id: string; content: string }> | undefined;
   /**
    * The first batch withheld from `onCommands` because it references a staged
    * resource. Every later batch is withheld with it, so a live-applying host
@@ -690,40 +727,103 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       return;
     }
 
-    // Stable across a retried finish so an uncertain promotion happens once,
-    // and released as soon as one succeeds so the next finish is its own.
-    this.promotionId ??= uuid({});
-    const outcome = await finishStagedResources({
-      gateway: resources.gateway,
-      promotionId: this.promotionId,
-      stageDocument: document,
-      staged: resources.staged(),
-      secretHandle: (resourceId) => resources.secretHandle(resourceId),
-      applyStage,
-    });
+    // Takes the session for this finish, and closes the staging window as it
+    // reads it: an upload or secret that lands while this promotion is in
+    // flight is one this finish already decided against, and no later one
+    // would ever look at it. A cancel — or another finish — that arrives from
+    // here on is refused until the hold is released, so the two can never both
+    // report success over the same resources.
+    const hold = resources.finishing();
+    if (hold.status === 'failed') {
+      throw new ResourcePromotionError(hold.failure);
+    }
 
+    // Read after the hold, because the hold is what fixes the staged set this
+    // finish promotes: content read before it could still change.
+    const content = promotionContent(document, hold.data.staged);
+    if (this.promotion?.content !== content) {
+      this.promotion = Object.freeze({ id: uuid({}), content });
+    }
+    let outcome: StagedResourceFinishOutcome;
+    try {
+      outcome = await finishStagedResources({
+        gateway: resources.gateway,
+        promotionId: this.promotion.id,
+        stageDocument: document,
+        stageIndex: stageIndexForValidation(
+          this.snapshot.protocolSections,
+          this.snapshot.editedSection.identity.id,
+        ),
+        staged: hold.data.staged,
+        secretHandle: (resourceId) => resources.secretHandle(resourceId),
+        applyStage,
+      });
+    } finally {
+      // Released before anything below can throw: a hold left standing would
+      // refuse every later cancel, stranding the session's staged resources.
+      // Safe even when the promotion below was never decided: what a cancel
+      // may discard is fenced by that promotion's own outcome, inside the
+      // tracker, rather than by how long this finish holds the session.
+      hold.data.settle();
+    }
+
+    if (outcome.status === 'unreadable-resources') {
+      // The draft is invalid for the same reason a dangling reference makes it
+      // invalid — a field naming a resource the protocol cannot use — so it is
+      // reported the same way, on the field's own path.
+      throw new InvalidProtocolDraftError(
+        attributeValidationIssues(
+          outcome.issues,
+          this.snapshot.protocolSections,
+          this.snapshot.attribution,
+          this.snapshot.manifestRevision,
+        ),
+      );
+    }
     if (outcome.status === 'apply-failed') throw outcome.error;
     if (outcome.status === 'promotion-failed') {
       throw new ResourcePromotionError(outcome.failure);
     }
-    this.promotionId = undefined;
-    // The apply carried every pending batch, withheld ones included, so the
-    // host is no longer missing anything and later batches flow live again.
-    this.withheldFromBatchId = undefined;
-    resources.finished();
+    this.promotion = undefined;
+    // Only the batches this apply actually carried are released. An edit made
+    // while the apply was in flight is not among them, and letting a later
+    // batch overtake it would leave the host holding a gap an acknowledgement
+    // would close over the missing edit.
+    this.releaseWithheldThrough(pendingCommands.at(-1)?.id ?? 0);
+    if (outcome.discardFailures.length > 0) {
+      try {
+        this.options.onResourceCleanupFailed?.(outcome.discardFailures);
+      } catch {
+        // Everything this finish decided has already happened: the bytes are
+        // promoted, the stage is applied, and the withheld batches are away.
+        // This is a report about the one thing that did not — a best-effort
+        // cleanup — and letting it out would tell the researcher a save that
+        // succeeded had failed, and invite them to repeat a finish that has
+        // nothing left to do. Nothing is lost by stopping here either: the
+        // resources the host would not drop are still in `stagedResources`,
+        // for the next cleanup or a cancel to reach.
+      }
+    }
   }
 
-  async cancel(): Promise<ResourceResult<undefined>> {
+  /**
+   * Ends the edit and discards what it staged, except anything a promotion
+   * left undecided — see {@link StagedResourceCancelReport}.
+   */
+  async cancel(): Promise<ResourceResult<StagedResourceCancelReport>> {
     const resources = this.resources;
     if (resources === undefined) {
-      return Object.freeze({ status: 'ok', data: undefined });
+      return Object.freeze({
+        status: 'ok',
+        data: Object.freeze({ keptUnreconciled: Object.freeze([]) }),
+      });
     }
     const result = await resources.cancel();
     if (result.status === 'ok') this.dropWithheldCommands();
     return result;
   }
 
-  getResourceGateway(): ProtocolBuilderResourceGateway | undefined {
+  getResourceGateway(): SessionResourceGateway | undefined {
     return this.resources?.gateway;
   }
 
@@ -862,8 +962,17 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       validation: pendingValidation(),
       validatedProtocol: null,
     });
-    if (!withheld) this.options.onCommands?.(batch);
-    void this.runValidation();
+    // Validation runs whatever the host makes of the news. The edit is in the
+    // draft either way, and a host that throws would otherwise leave the
+    // session saying "validating" with nothing left to replace that — an
+    // editor reading it either waits forever or acts on the verdict about the
+    // draft before this edit. The host's own failure still reaches the caller,
+    // because nothing here can resend a batch the host would not take.
+    try {
+      if (!withheld) this.options.onCommands?.(batch);
+    } finally {
+      void this.runValidation();
+    }
   }
 
   /**
@@ -920,6 +1029,25 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       validatedProtocol: null,
     });
     void this.runValidation();
+  }
+
+  /**
+   * Moves the hold past everything a finish apply carried to the host.
+   *
+   * What the apply carried is a prefix of the pending batches, so the hold
+   * either goes entirely (the host now has every withheld batch) or moves to
+   * the first batch it did not carry — an edit made while the apply was in
+   * flight. Those stay pending and withheld, in order, for the next finish to
+   * carry: releasing them here would send them after batches the host already
+   * has, and clearing the hold outright would let the batches that follow
+   * overtake them.
+   */
+  private releaseWithheldThrough(carriedThroughBatchId: number): void {
+    const withheldFrom = this.withheldFromBatchId;
+    if (withheldFrom === undefined) return;
+    this.withheldFromBatchId = this.snapshot.pendingCommands.find(
+      (batch) => batch.id >= withheldFrom && batch.id > carriedThroughBatchId,
+    )?.id;
   }
 
   /** Clears the hold once no withheld batch is pending any more. */

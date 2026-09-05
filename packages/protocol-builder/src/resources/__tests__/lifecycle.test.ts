@@ -4,6 +4,7 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import type {
+  ManifestApplyOutcome,
   ManifestApplyRequest,
   ProtocolBuilderResourceGateway,
   ResourceDescriptor,
@@ -75,6 +76,7 @@ function gatedStagingHost(host: ProtocolBuilderResourceGateway): Readonly<{
       release();
     },
     gateway: {
+      secretStorage: host.secretStorage,
       list: (options) => host.list(options),
       inspect: (resourceId) => host.inspect(resourceId),
       download: (resourceId) => host.download(resourceId),
@@ -89,6 +91,53 @@ function gatedStagingHost(host: ProtocolBuilderResourceGateway): Readonly<{
       stageSecret: async (request) => {
         await staged;
         return host.stageSecret(request);
+      },
+    },
+  };
+}
+
+/**
+ * A host whose `inspect` hangs until the test releases it, and which says when
+ * one has been reached.
+ *
+ * That is the window a finish spends asking whether the resources it plans to
+ * promote can be committed at all: the plan is fixed, nothing is promoting
+ * yet, and the bytes are still staged. Every cancel-versus-finish race lives
+ * here rather than around the promotion.
+ */
+function gatedInspectHost(host: ProtocolBuilderResourceGateway): Readonly<{
+  gateway: ProtocolBuilderResourceGateway;
+  /** Resolves once a finish has reached its readability check. */
+  inspecting: Promise<void>;
+  release(): void;
+}> {
+  let release = (): void => undefined;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let reached = (): void => undefined;
+  const inspecting = new Promise<void>((resolve) => {
+    reached = resolve;
+  });
+  return {
+    inspecting,
+    release: () => {
+      release();
+    },
+    gateway: {
+      secretStorage: host.secretStorage,
+      list: (options) => host.list(options),
+      download: (resourceId) => host.download(resourceId),
+      resolvePreview: (resourceId) => host.resolvePreview(resourceId),
+      discardStaged: (resourceId) => host.discardStaged(resourceId),
+      discardAllStaged: () => host.discardAllStaged(),
+      promote: (request) => host.promote(request),
+      stageUpload: (request) => host.stageUpload(request),
+      stageSecret: (request) => host.stageSecret(request),
+      inspect: async (resourceId) => {
+        reached();
+        await gate;
+        return host.inspect(resourceId);
       },
     },
   };
@@ -120,6 +169,27 @@ async function stageImage(
     bytes: IMAGE_BYTES,
   });
   return expectOk(result);
+}
+
+/**
+ * A file the host will hold but cannot read as the kind it claims to be: bytes
+ * named `.json` that are not a network. Staging succeeds — the host has the
+ * bytes — and only `inspect` can say the roster is unusable.
+ */
+async function stageUnreadableRoster(
+  gateway: ProtocolBuilderResourceGateway,
+  requestId = 'request-unreadable-roster',
+): Promise<ResourceDescriptor> {
+  return expectOk(
+    await gateway.stageUpload({
+      requestId,
+      kind: 'network',
+      name: 'Community roster',
+      source: `${requestId}.json`,
+      contentType: 'application/json',
+      bytes: new TextEncoder().encode('not a roster at all'),
+    }),
+  );
 }
 
 function expectOk<T>(result: ResourceResult<T>): T {
@@ -288,7 +358,7 @@ describe('staged resource tracker', () => {
     expect(host.getStagingResidue()).toEqual([]);
   });
 
-  it('discards an upload that lands after the finish that did not promote it', async () => {
+  it('discards an upload that lands after the finish selected what it promotes', async () => {
     const host = new InMemoryResourceGateway();
     const gated = gatedStagingHost(host);
     const { tracker } = createTracker(gated.gateway);
@@ -301,7 +371,7 @@ describe('staged resource tracker', () => {
       bytes: IMAGE_BYTES,
     });
 
-    tracker.finished();
+    expect(expectOk(tracker.finishing()).staged).toEqual([]);
     gated.release();
     const landed = await staging;
 
@@ -310,11 +380,64 @@ describe('staged resource tracker', () => {
     expect(host.getStagingResidue()).toEqual([]);
   });
 
+  it('reports the host refusing to drop an upload that landed too late', async () => {
+    const host = new InMemoryResourceGateway();
+    const gated = gatedStagingHost(host);
+    const { tracker } = createTracker(gated.gateway);
+    const staging = tracker.gateway.stageUpload({
+      requestId: 'request-in-flight',
+      kind: 'image',
+      name: 'Staged backdrop',
+      source: 'in-flight.png',
+      contentType: 'image/png',
+      bytes: IMAGE_BYTES,
+    });
+
+    expect(await tracker.cancel()).toMatchObject({ status: 'ok' });
+    host.failNext('discard', { reason: 'unavailable', retryable: true });
+    gated.release();
+    const landed = await staging;
+
+    // The host kept it, so 'not kept' would be untrue: the picker is told what
+    // the host said, and the resource really is still there.
+    expect(expectFailure(landed)).toMatchObject({
+      reason: 'unavailable',
+      retryable: true,
+    });
+    // Still tracked, because the host is still holding it and the editor was
+    // handed a failure rather than an id: dropping it here would leave the
+    // host with a resource nothing could name again.
+    expect(tracker.staged().map((descriptor) => descriptor.id)).toEqual([
+      'staged-resource-1',
+    ]);
+    expect(host.getStagingResidue()).not.toEqual([]);
+
+    // Which is what makes a second cleanup possible at all.
+    expect(await tracker.cancel()).toMatchObject({ status: 'ok' });
+    expect(tracker.staged()).toEqual([]);
+    expect(host.getStagingResidue()).toEqual([]);
+  });
+
+  it('hands the finish what is staged and closes the window in one step', async () => {
+    const host = new InMemoryResourceGateway();
+    const { tracker } = createTracker(host);
+    const image = await stageImage(tracker.gateway, 'request-planned');
+
+    // One step, because a list captured while the window is still open is a
+    // plan that can miss a resource nothing else will ever decide.
+    expect(
+      expectOk(tracker.finishing()).staged.map((descriptor) => descriptor.id),
+    ).toEqual([image.id]);
+    expect(tracker.staged().map((descriptor) => descriptor.id)).toEqual([
+      image.id,
+    ]);
+  });
+
   it('keeps staging that starts after a finish, which belongs to the next edit', async () => {
     const host = new InMemoryResourceGateway();
     const { tracker } = createTracker(host);
 
-    tracker.finished();
+    expectOk(tracker.finishing());
     const image = await stageImage(tracker.gateway, 'request-after-finish');
 
     expect(tracker.staged().map((descriptor) => descriptor.id)).toEqual([
@@ -322,12 +445,114 @@ describe('staged resource tracker', () => {
     ]);
   });
 
+  it('refuses a cancel while a finish is deciding, and lets the finish commit', async () => {
+    const host = new InMemoryResourceGateway();
+    const gated = gatedInspectHost(host);
+    const { tracker } = createTracker(gated.gateway);
+    const image = await stageImage(tracker.gateway, 'request-finished');
+    const hold = expectOk(tracker.finishing());
+
+    const finishing = finishStagedResources({
+      gateway: tracker.gateway,
+      promotionId: 'promotion-1',
+      stageDocument: informationStage(image.id),
+      stageIndex: 0,
+      staged: hold.staged,
+      secretHandle: (resourceId) => tracker.secretHandle(resourceId),
+      applyStage: () => Promise.resolve(),
+    });
+    await gated.inspecting;
+    // Nothing is promoting yet: the plan is made, the bytes are still staged,
+    // and the promotion has not been asked for. A cancel allowed through here
+    // would discard exactly what the finish is about to commit — and report
+    // that it had, while the finish went on committing it.
+    const cancelled = await tracker.cancel();
+    gated.release();
+    const outcome = await finishing;
+    hold.settle();
+
+    expect(expectFailure(cancelled)).toMatchObject({
+      reason: 'unavailable',
+      retryable: true,
+    });
+    expect(outcome.status).toBe('finished');
+    expect(host.getCommittedManifest()).toMatchObject({
+      [image.id]: { type: 'image' },
+    });
+    // Retryable meant it: once the finish let the session go, the cancel the
+    // researcher asked for is available again.
+    expect(await tracker.cancel()).toMatchObject({ status: 'ok' });
+  });
+
+  it('refuses a finish that starts while a cancel is discarding', async () => {
+    const host = new InMemoryResourceGateway();
+    const { tracker } = createTracker(host);
+    const image = await stageImage(tracker.gateway, 'request-cancelled');
+
+    // The cancel has decided and is discarding at the host; a finish reading
+    // its plan now would plan to promote resources already being dropped.
+    const cancelling = tracker.cancel();
+    const refused = tracker.finishing();
+    expect(await cancelling).toMatchObject({ status: 'ok' });
+
+    expect(expectFailure(refused)).toMatchObject({
+      reason: 'read-only',
+      retryable: false,
+    });
+    expect(tracker.staged()).toEqual([]);
+    expect(host.getCommittedManifest()).not.toHaveProperty(image.id);
+    expect(host.getStagingResidue()).toEqual([]);
+  });
+
+  it('refuses to promote anything once the session has cancelled', async () => {
+    const host = new InMemoryResourceGateway();
+    const { tracker } = createTracker(host);
+    const image = await stageImage(tracker.gateway, 'request-cancelled');
+    expect(await tracker.cancel()).toMatchObject({ status: 'ok' });
+    const applyManifest = vi.fn((): ManifestApplyOutcome => ({
+      status: 'applied',
+    }));
+
+    const refused = await tracker.gateway.promote({
+      id: 'promotion-1',
+      resourceIds: [image.id],
+      applyManifest,
+    });
+
+    // The gateway is handed to editors, which call it directly: a promotion
+    // reaching the host after the cancel would commit a manifest entry for
+    // bytes the cancel already had it drop.
+    expect(expectFailure(refused).reason).toBe('read-only');
+    expect(applyManifest).not.toHaveBeenCalled();
+    expect(host.getCommittedManifest()).not.toHaveProperty(image.id);
+  });
+
+  it('refuses a second finish while one holds the session, and releases it on settle', async () => {
+    const host = new InMemoryResourceGateway();
+    const { tracker } = createTracker(host);
+    await stageImage(tracker.gateway, 'request-held');
+
+    const first = expectOk(tracker.finishing());
+    expect(expectFailure(tracker.finishing())).toMatchObject({
+      reason: 'unavailable',
+      retryable: true,
+    });
+
+    first.settle();
+    // The session is its own again, and a retried finish sees the same staged
+    // resources: the first hold closed the staging window, it did not decide
+    // anything about what was already in it.
+    expect(
+      expectOk(tracker.finishing()).staged.map((descriptor) => descriptor.id),
+    ).toEqual(['staged-resource-1']);
+  });
+
   it('refuses to discard a resource the promotion in flight is deciding', async () => {
     const host = new InMemoryResourceGateway();
     const { tracker } = createTracker(host);
     const image = await stageImage(tracker.gateway);
     let discardDuringApply: ResourceResult<undefined> | undefined;
-    let cancelDuringApply: ResourceResult<undefined> | undefined;
+    let cancelDuringApply: ResourceResult<unknown> | undefined;
 
     const promotion = expectOk(
       await tracker.gateway.promote({
@@ -414,6 +639,7 @@ describe('finishStagedResources', () => {
       gateway: tracker.gateway,
       promotionId: 'promotion-1',
       stageDocument: informationStage(referenced.id),
+      stageIndex: 0,
       staged: tracker.staged(),
       secretHandle: (resourceId) => tracker.secretHandle(resourceId),
       applyStage: (manifest) => {
@@ -457,6 +683,7 @@ describe('finishStagedResources', () => {
       gateway: tracker.gateway,
       promotionId: 'promotion-1',
       stageDocument: geospatialStage(secret.descriptor.id),
+      stageIndex: 0,
       staged: tracker.staged(),
       secretHandle: (resourceId) => tracker.secretHandle(resourceId),
       applyStage: (request) => {
@@ -489,6 +716,7 @@ describe('finishStagedResources', () => {
       gateway: tracker.gateway,
       promotionId: 'promotion-1',
       stageDocument: informationStage(referenced.id),
+      stageIndex: 0,
       staged: tracker.staged(),
       secretHandle: (resourceId) => tracker.secretHandle(resourceId),
       applyStage: () => Promise.reject(failure),
@@ -514,6 +742,7 @@ describe('finishStagedResources', () => {
         gateway: tracker.gateway,
         promotionId: 'promotion-1',
         stageDocument,
+        stageIndex: 0,
         staged: tracker.staged(),
         secretHandle: (resourceId) => tracker.secretHandle(resourceId),
         applyStage,
@@ -553,6 +782,7 @@ describe('finishStagedResources', () => {
       gateway: tracker.gateway,
       promotionId: 'promotion-1',
       stageDocument: informationStage(),
+      stageIndex: 0,
       staged: tracker.staged(),
       secretHandle: (resourceId) => tracker.secretHandle(resourceId),
       applyStage,
@@ -568,6 +798,123 @@ describe('finishStagedResources', () => {
     expect(host.getStagingResidue()).toEqual([]);
   });
 
+  it('reports a discard that failed rather than counting it as discarded', async () => {
+    const host = new InMemoryResourceGateway();
+    const { tracker } = createTracker(host);
+    const promoted = await stageImage(tracker.gateway, 'request-promoted');
+    const abandoned = await stageImage(tracker.gateway, 'request-abandoned');
+    host.failNext('discard', { reason: 'unavailable', retryable: true });
+
+    const outcome = await finishStagedResources({
+      gateway: tracker.gateway,
+      promotionId: 'promotion-1',
+      stageDocument: informationStage(promoted.id),
+      stageIndex: 0,
+      staged: tracker.staged(),
+      secretHandle: (resourceId) => tracker.secretHandle(resourceId),
+      applyStage: () => Promise.resolve(),
+    });
+
+    // Counting it as discarded would report a finish that cleaned up when the
+    // host is still holding the bytes.
+    expect(outcome).toMatchObject({
+      status: 'finished',
+      discarded: [],
+      discardFailures: [
+        {
+          resourceId: abandoned.id,
+          failure: { reason: 'unavailable', retryable: true },
+        },
+      ],
+    });
+    expect(tracker.staged().map((descriptor) => descriptor.id)).toEqual([
+      abandoned.id,
+    ]);
+    expect(host.getStagingResidue()).not.toEqual([]);
+  });
+
+  it('reports a discard that failed when the finish promotes nothing', async () => {
+    const host = new InMemoryResourceGateway();
+    const { tracker } = createTracker(host);
+    const abandoned = await stageImage(tracker.gateway, 'request-abandoned');
+    host.failNext('discard', { reason: 'unavailable', retryable: true });
+
+    const outcome = await finishStagedResources({
+      gateway: tracker.gateway,
+      promotionId: 'promotion-1',
+      stageDocument: informationStage(),
+      stageIndex: 0,
+      staged: tracker.staged(),
+      secretHandle: (resourceId) => tracker.secretHandle(resourceId),
+      applyStage: () => Promise.resolve(),
+    });
+
+    expect(outcome).toMatchObject({
+      status: 'finished',
+      promoted: [],
+      discarded: [],
+      discardFailures: [{ resourceId: abandoned.id }],
+    });
+    expect(host.getStagingResidue()).not.toEqual([]);
+  });
+
+  it('refuses to promote a referenced resource the host cannot read', async () => {
+    const host = new InMemoryResourceGateway();
+    const { tracker } = createTracker(host);
+    const roster = await stageUnreadableRoster(tracker.gateway);
+    const applyStage = vi.fn(() => Promise.resolve());
+
+    const outcome = await finishStagedResources({
+      gateway: tracker.gateway,
+      promotionId: 'promotion-1',
+      stageDocument: informationStage(roster.id),
+      stageIndex: 2,
+      staged: tracker.staged(),
+      secretHandle: (resourceId) => tracker.secretHandle(resourceId),
+      applyStage,
+    });
+
+    // Committing this stage would leave the protocol holding a roster the
+    // interview cannot read, which is not a state a save may reach.
+    expect(outcome).toMatchObject({
+      status: 'unreadable-resources',
+      issues: [
+        { path: ['stages', 2, 'items', 0, 'content'], resourceId: roster.id },
+      ],
+    });
+    if (outcome.status !== 'unreadable-resources') {
+      throw new Error('the finish was not refused');
+    }
+    // The host's own words, so the researcher is told what is wrong with the
+    // file rather than that "something" is.
+    expect(outcome.issues[0]?.message).toContain(
+      'the selected file is not a readable network',
+    );
+    // Nothing was committed and nothing was thrown away: the researcher can
+    // choose another file and finish again.
+    expect(applyStage).not.toHaveBeenCalled();
+    expect(host.getCommittedManifest()).toEqual({});
+    expect(tracker.staged()).toEqual([roster]);
+  });
+
+  it('promotes a referenced resource the host can still read', async () => {
+    const host = new InMemoryResourceGateway();
+    const { tracker } = createTracker(host);
+    const image = await stageImage(tracker.gateway, 'request-readable');
+
+    const outcome = await finishStagedResources({
+      gateway: tracker.gateway,
+      promotionId: 'promotion-1',
+      stageDocument: informationStage(image.id),
+      stageIndex: 0,
+      staged: tracker.staged(),
+      secretHandle: (resourceId) => tracker.secretHandle(resourceId),
+      applyStage: () => Promise.resolve(),
+    });
+
+    expect(outcome).toMatchObject({ status: 'finished' });
+  });
+
   it('keeps what a stage that promotes nothing abandoned when its apply fails', async () => {
     const host = new InMemoryResourceGateway();
     const { tracker } = createTracker(host);
@@ -578,6 +925,7 @@ describe('finishStagedResources', () => {
       gateway: tracker.gateway,
       promotionId: 'promotion-1',
       stageDocument: informationStage(),
+      stageIndex: 0,
       staged: tracker.staged(),
       secretHandle: (resourceId) => tracker.secretHandle(resourceId),
       applyStage: () => Promise.reject(failure),
@@ -739,5 +1087,152 @@ describe('draft resource validation', () => {
     expect(
       mergeDraftValidationIssues([schemaIssue], [resourceIssue, elsewhere]),
     ).toEqual([schemaIssue, elsewhere]);
+  });
+});
+
+/**
+ * A host that throws instead of reporting.
+ *
+ * The port says every failure arrives as a result, and an adapter that breaks
+ * that promise is the one case nothing downstream is written for: the throw
+ * leaves whatever channel it was in — a `void`-ed promise, a control's attempt,
+ * a finish that has already committed — carrying no answer at all. Thrown
+ * synchronously, because that is the shape a `.catch()` on the call cannot see.
+ */
+function throwingHost(
+  host: ProtocolBuilderResourceGateway,
+  throwsOn: ReadonlySet<keyof ProtocolBuilderResourceGateway>,
+): ProtocolBuilderResourceGateway {
+  const brokenIf = <T>(
+    method: keyof ProtocolBuilderResourceGateway,
+    forward: () => Promise<ResourceResult<T>>,
+  ): Promise<ResourceResult<T>> => {
+    if (throwsOn.has(method)) throw new Error('the host adapter threw');
+    return forward();
+  };
+  return {
+    secretStorage: host.secretStorage,
+    list: (options) => brokenIf('list', () => host.list(options)),
+    stageUpload: (request) =>
+      brokenIf('stageUpload', () => host.stageUpload(request)),
+    stageSecret: (request) =>
+      brokenIf('stageSecret', () => host.stageSecret(request)),
+    resolvePreview: (resourceId) =>
+      brokenIf('resolvePreview', () => host.resolvePreview(resourceId)),
+    inspect: (resourceId) =>
+      brokenIf('inspect', () => host.inspect(resourceId)),
+    download: (resourceId) =>
+      brokenIf('download', () => host.download(resourceId)),
+    discardStaged: (resourceId) =>
+      brokenIf('discardStaged', () => host.discardStaged(resourceId)),
+    discardAllStaged: () =>
+      brokenIf('discardAllStaged', () => host.discardAllStaged()),
+    promote: (request) => brokenIf('promote', () => host.promote(request)),
+  };
+}
+
+const UNREACHABLE = 'The resource could not be reached. Try again in a moment.';
+
+describe('a host that throws instead of reporting', () => {
+  it('answers a forwarded read on the result channel', async () => {
+    const host = new InMemoryResourceGateway();
+    const image = await stageImage(host);
+    const { tracker } = createTracker(throwingHost(host, new Set(['inspect'])));
+
+    // Every editor surface reads its resource through this gateway, and each
+    // one is written for a result. A throw arriving instead escapes the call
+    // that made it and leaves the surface waiting for an answer forever.
+    const failure = expectFailure(await tracker.gateway.inspect(image.id));
+
+    expect(failure).toMatchObject({
+      reason: 'unavailable',
+      message: UNREACHABLE,
+      retryable: true,
+    });
+  });
+
+  it('answers a cancel on the result channel', async () => {
+    const host = new InMemoryResourceGateway();
+    const { tracker } = createTracker(
+      throwingHost(host, new Set(['discardAllStaged'])),
+    );
+    await stageImage(tracker.gateway);
+
+    const failure = expectFailure(await tracker.cancel());
+
+    expect(failure).toMatchObject({ reason: 'unavailable', retryable: true });
+  });
+
+  it('keeps a committed finish committed when the cleanup discard throws', async () => {
+    const host = new InMemoryResourceGateway();
+    const promoted = await stageImage(host, 'request-promoted');
+    const abandoned = await stageImage(host, 'request-abandoned');
+
+    // The promotion and the stage apply have already succeeded here: the only
+    // thing left is dropping what the draft walked away from, and a throw from
+    // it would report the saved stage as a failed save.
+    const outcome = await finishStagedResources({
+      gateway: throwingHost(host, new Set(['discardStaged'])),
+      promotionId: 'promotion-1',
+      stageDocument: informationStage(promoted.id),
+      stageIndex: 0,
+      staged: [promoted, abandoned],
+      secretHandle: () => undefined,
+      applyStage: () => Promise.resolve(),
+    });
+
+    expect(outcome).toMatchObject({
+      status: 'finished',
+      discarded: [],
+      discardFailures: [
+        { resourceId: abandoned.id, failure: { reason: 'unavailable' } },
+      ],
+    });
+  });
+
+  it('refuses to promote a resource whose readability check throws', async () => {
+    const host = new InMemoryResourceGateway();
+    const image = await stageImage(host);
+
+    const outcome = await finishStagedResources({
+      gateway: throwingHost(host, new Set(['inspect'])),
+      promotionId: 'promotion-1',
+      stageDocument: informationStage(image.id),
+      stageIndex: 0,
+      staged: [image],
+      secretHandle: () => undefined,
+      applyStage: () => Promise.resolve(),
+    });
+
+    // A host that cannot answer for the resource has not said it is usable,
+    // and this is the last moment before the protocol commits to it.
+    expect(outcome).toMatchObject({
+      status: 'unreadable-resources',
+      issues: [{ resourceId: image.id }],
+    });
+  });
+
+  it('reports a promotion that throws as a retryable promotion failure', async () => {
+    const host = new InMemoryResourceGateway();
+    const image = await stageImage(host);
+    const applyStage = vi.fn(() => Promise.resolve());
+
+    const outcome = await finishStagedResources({
+      gateway: throwingHost(host, new Set(['promote'])),
+      promotionId: 'promotion-1',
+      stageDocument: informationStage(image.id),
+      stageIndex: 0,
+      staged: [image],
+      secretHandle: () => undefined,
+      applyStage,
+    });
+
+    // Retryable because the promotion id is what makes finishing again safe:
+    // a gateway that did commit answers the repeat with the same promotion.
+    expect(outcome).toMatchObject({
+      status: 'promotion-failed',
+      failure: { reason: 'unavailable', retryable: true },
+    });
+    expect(applyStage).not.toHaveBeenCalled();
   });
 });

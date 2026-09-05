@@ -170,6 +170,30 @@ describe('ProtocolBuilderSessionStore', () => {
     });
   });
 
+  it('validates the edit even when a live-applying host cannot take it', async () => {
+    const { onCommands, session } = createSession();
+    expect((await session.validate()).status).toBe('valid');
+    onCommands.mockImplementation(() => {
+      throw new Error('the host could not take the batch');
+    });
+
+    // The host's failure is the caller's to see: this batch did not reach it,
+    // and nothing here can resend it.
+    expect(() =>
+      session.dispatch([{ op: 'set', key: 'title', value: '' }]),
+    ).toThrow('the host could not take the batch');
+
+    // The edit is in the draft whatever the host made of the news, so a
+    // session left saying "validating" would go on saying it forever — and an
+    // editor reading that would let the researcher save a draft the schema
+    // rejects, on the strength of a verdict about the draft before this edit.
+    expect(session.getSnapshot().editedSection.fields.title).toBe('');
+    await vi.waitFor(() =>
+      expect(session.getSnapshot().validation.status).toBe('invalid'),
+    );
+    expect(session.getSnapshot().validatedProtocol).toBeNull();
+  });
+
   it('reuses protocol sections and context across field-only snapshots', () => {
     const personDocument = {
       name: 'Person',

@@ -1,12 +1,18 @@
 import csv from 'csvtojson';
 
 import type { Asset } from '@codaco/protocol-validation';
+import {
+  entityAttributesProperty,
+  VariableNameSchema,
+  VariableValueSchema,
+} from '@codaco/shared-consts';
 import type { Command } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import {
   resourceFailure,
   resourceOk,
+  RESOURCE_UPLOAD_MAX_BYTE_LENGTH,
   stagedSecretHandle,
   validateManifestEntry,
   type ManifestApplyOutcome,
@@ -65,7 +71,11 @@ export type InMemoryResourceGatewayOptions = Readonly<{
   committed?: readonly InMemoryResourceSeed[];
   /** Deterministic by default: `staged-resource-1`, `staged-resource-2`, … */
   createResourceId?: () => string;
-  /** Largest content the host will accept for one resource. */
+  /**
+   * Largest content the host will accept for one resource. Defaults to
+   * {@link RESOURCE_UPLOAD_MAX_BYTE_LENGTH}, which is also what the editor's
+   * own import control refuses a file for before it reads it.
+   */
   maxByteLength?: number;
   readOnly?: boolean;
 }>;
@@ -74,7 +84,8 @@ type StoredContent = Readonly<{ bytes: Uint8Array; contentType: string }>;
 
 type StagedEntry = {
   descriptor: ResourceDescriptor;
-  requestId: string;
+  /** The `stageRequestKey` this entry was remembered under. */
+  requestKey: string;
   content?: StoredContent;
   secret?: Readonly<{ handle: StagedSecretHandle; value: string }>;
 };
@@ -109,12 +120,32 @@ const DEFAULT_INJECTED_FAILURE = Object.freeze({
  * testable without reaching into private state.
  */
 export class InMemoryResourceGateway implements ProtocolBuilderResourceGateway {
+  /**
+   * `manifestEntryFor` writes the secret's own value into the `apikey` entry,
+   * which is what Architect's protocol format does, so the value ends up in
+   * the protocol file and in every export of it.
+   */
+  readonly secretStorage = 'plaintext' as const;
   private readonly committed = new Map<string, CommittedEntry>();
   private readonly staged = new Map<string, StagedEntry>();
-  /** requestId → resourceId, so a repeated stage call stages once. */
+  /**
+   * Stage request key → resourceId, so a repeated stage call stages once.
+   *
+   * Keyed by the operation as well as the id: a request id is unique to the
+   * picker that made it, and an upload and a secret can carry the same one.
+   */
   private readonly stageRequests = new Map<string, string>();
   /** promotionId → promotion, so a repeated promote promotes once. */
   private readonly promotions = new Map<string, ResourcePromotion>();
+  /**
+   * promotionId → the promotion still running under it, so a retry that
+   * arrives before the first one settles joins it instead of moving the same
+   * resources a second time and applying the manifest twice.
+   */
+  private readonly promotionsInFlight = new Map<
+    string,
+    Promise<ResourceResult<ResourcePromotion>>
+  >();
   private readonly injectedFailures = new Map<
     InMemoryResourceGatewayOperation,
     InMemoryResourceFailureOverride
@@ -132,7 +163,8 @@ export class InMemoryResourceGateway implements ProtocolBuilderResourceGateway {
     let nextResourceId = 1;
     this.createResourceId =
       options.createResourceId ?? (() => `staged-resource-${nextResourceId++}`);
-    this.maxByteLength = options.maxByteLength ?? 8 * 1024 * 1024;
+    this.maxByteLength =
+      options.maxByteLength ?? RESOURCE_UPLOAD_MAX_BYTE_LENGTH;
     this.readOnly = options.readOnly ?? false;
 
     for (const seed of options.committed ?? []) {
@@ -173,7 +205,7 @@ export class InMemoryResourceGateway implements ProtocolBuilderResourceGateway {
   stageUnnamedContent(): ResourceDescriptor {
     const bytes = Uint8Array.from([1, 2, 3, 4]);
     const resourceId = this.claimResourceId();
-    const requestId = `unnamed-${resourceId}`;
+    const requestKey = stageRequestKey('upload', `unnamed-${resourceId}`);
     const descriptor = Object.freeze({
       id: resourceId,
       kind: 'image' as const,
@@ -184,13 +216,13 @@ export class InMemoryResourceGateway implements ProtocolBuilderResourceGateway {
     });
     this.staged.set(resourceId, {
       descriptor,
-      requestId,
+      requestKey,
       content: Object.freeze({
         bytes: Uint8Array.from(bytes),
         contentType: 'image/png',
       }),
     });
-    this.stageRequests.set(requestId, resourceId);
+    this.stageRequests.set(requestKey, resourceId);
     return descriptor;
   }
 
@@ -217,8 +249,8 @@ export class InMemoryResourceGateway implements ProtocolBuilderResourceGateway {
         residue.push(`secret:${staged.secret.handle}`);
       }
     }
-    for (const requestId of this.stageRequests.keys()) {
-      residue.push(`request:${requestId}`);
+    for (const requestKey of this.stageRequests.keys()) {
+      residue.push(`request:${requestKey}`);
     }
     for (const [previewKey, resourceId] of this.openPreviews) {
       if (!this.committed.has(resourceId))
@@ -296,7 +328,8 @@ export class InMemoryResourceGateway implements ProtocolBuilderResourceGateway {
       );
     }
 
-    const existing = this.existingStageRequest(request.requestId);
+    const requestKey = stageRequestKey('upload', request.requestId);
+    const existing = this.existingStageRequest(requestKey);
     if (existing !== undefined) {
       return Promise.resolve(resourceOk(existing.descriptor));
     }
@@ -313,13 +346,13 @@ export class InMemoryResourceGateway implements ProtocolBuilderResourceGateway {
     });
     this.staged.set(resourceId, {
       descriptor,
-      requestId: request.requestId,
+      requestKey,
       content: Object.freeze({
         bytes: Uint8Array.from(request.bytes),
         contentType: request.contentType,
       }),
     });
-    this.stageRequests.set(request.requestId, resourceId);
+    this.stageRequests.set(requestKey, resourceId);
     return Promise.resolve(resourceOk(descriptor));
   }
 
@@ -344,7 +377,8 @@ export class InMemoryResourceGateway implements ProtocolBuilderResourceGateway {
       );
     }
 
-    const existing = this.existingStageRequest(request.requestId);
+    const requestKey = stageRequestKey('secret', request.requestId);
+    const existing = this.existingStageRequest(requestKey);
     if (existing?.secret !== undefined) {
       return Promise.resolve(
         resourceOk(
@@ -368,10 +402,10 @@ export class InMemoryResourceGateway implements ProtocolBuilderResourceGateway {
     const handle = stagedSecretHandle(`staged-secret-${this.nextHandle++}`);
     this.staged.set(resourceId, {
       descriptor,
-      requestId: request.requestId,
+      requestKey,
       secret: Object.freeze({ handle, value: request.value }),
     });
-    this.stageRequests.set(request.requestId, resourceId);
+    this.stageRequests.set(requestKey, resourceId);
     return Promise.resolve(resourceOk(Object.freeze({ descriptor, handle })));
   }
 
@@ -422,12 +456,10 @@ export class InMemoryResourceGateway implements ProtocolBuilderResourceGateway {
     }
 
     const network = await parseRoster(found.descriptor, found.content);
-    if (network === undefined) {
-      return resourceFailure(
-        'invalid-content',
-        'the selected file is not a readable network',
-        { resourceId },
-      );
+    if ('unreadable' in network) {
+      return resourceFailure('invalid-content', network.unreadable, {
+        resourceId,
+      });
     }
     return resourceOk(
       Object.freeze({
@@ -491,16 +523,37 @@ export class InMemoryResourceGateway implements ProtocolBuilderResourceGateway {
     return Promise.resolve(resourceOk(undefined));
   }
 
-  async promote(
+  promote(
     request: ResourcePromotionRequest,
   ): Promise<ResourceResult<ResourcePromotion>> {
     const injected = this.takeInjectedFailure('promote');
-    if (injected !== undefined) return injected;
-    if (this.readOnly) return readOnlyFailure();
+    if (injected !== undefined) return Promise.resolve(injected);
+    if (this.readOnly) return Promise.resolve(readOnlyFailure());
 
     const completed = this.promotions.get(request.id);
-    if (completed !== undefined) return resourceOk(completed);
+    if (completed !== undefined) return Promise.resolve(resourceOk(completed));
 
+    // A promotion id is one intent, whether its retry arrives after the first
+    // attempt settled or while it is still running. Two attempts moving the
+    // same resources would apply the manifest twice, and the one that failed
+    // would roll back over what the one that succeeded had just committed.
+    const running = this.promotionsInFlight.get(request.id);
+    if (running !== undefined) return running;
+
+    // Registered before anything is awaited, so a call made in the same turn
+    // as this one finds it.
+    const started = this.runPromotion(request).finally(() => {
+      this.promotionsInFlight.delete(request.id);
+    });
+    this.promotionsInFlight.set(request.id, started);
+    return started;
+  }
+
+  // --- internals -----------------------------------------------------------
+
+  private async runPromotion(
+    request: ResourcePromotionRequest,
+  ): Promise<ResourceResult<ResourcePromotion>> {
     const resolved = this.resolvePromotionItems(request);
     if (resolved.status === 'failed') return resolved;
     const items = resolved.data;
@@ -605,8 +658,6 @@ export class InMemoryResourceGateway implements ProtocolBuilderResourceGateway {
     return resourceOk(promotion);
   }
 
-  // --- internals -----------------------------------------------------------
-
   private resolvePromotionItems(
     request: ResourcePromotionRequest,
   ): ResourceResult<readonly StagedEntry[]> {
@@ -654,8 +705,8 @@ export class InMemoryResourceGateway implements ProtocolBuilderResourceGateway {
     return resourceOk(Object.freeze(items));
   }
 
-  private existingStageRequest(requestId: string): StagedEntry | undefined {
-    const resourceId = this.stageRequests.get(requestId);
+  private existingStageRequest(requestKey: string): StagedEntry | undefined {
+    const resourceId = this.stageRequests.get(requestKey);
     return resourceId === undefined ? undefined : this.staged.get(resourceId);
   }
 
@@ -683,7 +734,7 @@ export class InMemoryResourceGateway implements ProtocolBuilderResourceGateway {
 
   private releaseStaged(staged: StagedEntry): void {
     this.staged.delete(staged.descriptor.id);
-    this.stageRequests.delete(staged.requestId);
+    this.stageRequests.delete(staged.requestKey);
     staged.content = undefined;
     staged.secret = undefined;
   }
@@ -708,6 +759,18 @@ export class InMemoryResourceGateway implements ProtocolBuilderResourceGateway {
       override.retryable === undefined ? {} : { retryable: override.retryable },
     );
   }
+}
+
+/**
+ * The key one staging request is remembered under. Callers are told only that
+ * a request id must be stable, not that it must be unique across the pickers
+ * an editor happens to be showing, so the operation is part of the key.
+ */
+function stageRequestKey(
+  operation: 'secret' | 'upload',
+  requestId: string,
+): string {
+  return `${operation}:${requestId}`;
 }
 
 function committedEntryFromSeed(seed: InMemoryResourceSeed): CommittedEntry {
@@ -779,6 +842,72 @@ type RosterFacts = Readonly<{
 }>;
 
 /**
+ * Why a file cannot be the roster a stage points at, in the researcher's
+ * terms. Lower case and without a full stop, because every surface that shows
+ * it puts it after a clause of its own.
+ */
+type RosterProblem = Readonly<{ unreadable: string }>;
+
+const UNREADABLE_ROSTER = 'the selected file is not a readable network';
+
+function unreadableRoster(detail?: string): RosterProblem {
+  return Object.freeze({
+    unreadable:
+      detail === undefined
+        ? UNREADABLE_ROSTER
+        : `${UNREADABLE_ROSTER}: ${detail}`,
+  });
+}
+
+/**
+ * A file that parsed perfectly and still cannot be committed as a roster.
+ *
+ * Kept apart from {@link unreadableRoster} because it is a different thing to
+ * tell a researcher: nothing is wrong with how the file is written, so saying
+ * it "is not a readable network" would send them looking for a corruption that
+ * is not there.
+ */
+function unusableRoster(reason: string): RosterProblem {
+  return Object.freeze({ unreadable: reason });
+}
+
+/**
+ * A roster with nothing in it: the mistake a spreadsheet makes when a filtered
+ * or empty sheet is exported.
+ *
+ * Refused rather than described, because a stage pointing at it saves and
+ * validates exactly like any other and then presents no participant at all
+ * when the interview runs — and this is the last moment at which choosing a
+ * different file is still what the researcher would do.
+ */
+const EMPTY_ROSTER =
+  'the selected file has no records in it, so a stage using it would have nobody to show';
+
+/**
+ * The attribute names a roster may carry, which are the variable names the
+ * protocol will hold.
+ *
+ * {@link VariableNameSchema} is the rule the runtime and the protocol format
+ * already apply — NMTOKEN-compatible, because variable names reach XML-based
+ * exports — and it is used rather than restated so a name the protocol format
+ * learns to accept is one this gateway learns to accept. A spreadsheet's own
+ * headings routinely break it ("home address", "date of birth"), and a roster
+ * that only fails at export time is one the researcher cannot connect to the
+ * file they chose weeks earlier.
+ */
+function unusableAttributeName(
+  names: readonly string[],
+): RosterProblem | undefined {
+  for (const name of names) {
+    if (VariableNameSchema.safeParse(name).success) continue;
+    return unusableRoster(
+      `the "${name}" attribute cannot be used as a variable name: names may hold only letters, digits, and the characters . _ - :`,
+    );
+  }
+  return undefined;
+}
+
+/**
  * The facts a researcher picks a roster on, read from the file the same way
  * Architect reads it: which format the resource is in is decided by its
  * filename, exactly as Architect's own `networkReader` switches on the
@@ -788,7 +917,7 @@ type RosterFacts = Readonly<{
 function parseRoster(
   descriptor: ResourceDescriptor,
   content: StoredContent,
-): Promise<RosterFacts | undefined> {
+): Promise<RosterFacts | RosterProblem> {
   const text = new TextDecoder().decode(content.bytes);
   return isCsvRoster(descriptor, content)
     ? parseCsvRoster(text)
@@ -811,9 +940,17 @@ function isCsvRoster(
  * `checkColumn` comes with it: a row carrying more or fewer values than the
  * header names is content the researcher has to fix, not a row to silently
  * keep half of.
+ *
+ * `flatKeys` is what the interview runtime reads the same file with. Without
+ * it the parser folds a column called `home.city` into a nested object, so
+ * this would report a variable named `home` the roster does not have — and
+ * give it a value no attribute may hold, refusing the very file the interview
+ * loads without complaint.
  */
-async function parseCsvRoster(text: string): Promise<RosterFacts | undefined> {
-  const converter = csv({ checkColumn: true });
+async function parseCsvRoster(
+  text: string,
+): Promise<RosterFacts | RosterProblem> {
+  const converter = csv({ checkColumn: true, flatKeys: true });
   // A mismatched row is reported as an event and the row is dropped: the parse
   // still settles, with a roster quietly shorter than the file. Listening is
   // also what keeps the failure from surfacing as an unhandled stream error.
@@ -826,45 +963,120 @@ async function parseCsvRoster(text: string): Promise<RosterFacts | undefined> {
   try {
     rows = await converter.fromString(text);
   } catch {
-    return undefined;
+    return unreadableRoster();
   }
-  if (malformed || !Array.isArray(rows)) return undefined;
+  if (malformed || !Array.isArray(rows)) return unreadableRoster();
   const parsedRows: readonly unknown[] = rows;
   const attributes = parsedRows.filter(isAttributeRecord);
-  if (attributes.length !== parsedRows.length) return undefined;
+  if (attributes.length !== parsedRows.length) return unreadableRoster();
+  for (const [index, row] of attributes.entries()) {
+    // One-based, because it names a line of the researcher's own file.
+    const unreadableValue = unreadableAttributeValue(row, `row ${index + 1}`);
+    if (unreadableValue !== undefined) return unreadableValue;
+  }
+
+  if (attributes.length === 0) return unusableRoster(EMPTY_ROSTER);
+  const variableNames = attributeNames(attributes);
+  const unusableName = unusableAttributeName(variableNames);
+  if (unusableName !== undefined) return unusableName;
 
   return Object.freeze({
     counts: Object.freeze({ nodes: attributes.length, edges: 0 }),
-    variableNames: attributeNames(attributes),
+    variableNames,
   });
 }
 
-function parseJsonRoster(text: string): RosterFacts | undefined {
+/**
+ * A JSON roster, read exactly as far as the interview runtime reads it.
+ *
+ * Every entry of `nodes` is checked, not just counted: `loadExternalData`'s
+ * `parseExternalNode` throws on an entry that is not an object, on one whose
+ * attributes are not an object, and on any attribute value its
+ * `VariableValueSchema` rejects, so a roster carrying any of those is a file
+ * the interview cannot load. Counting it as a readable node here is what lets
+ * a protocol commit a field pointing at a roster that fails when it is used,
+ * with a manifest entry that looks perfectly valid — so the entry is named
+ * and the file is refused instead.
+ */
+function parseJsonRoster(text: string): RosterFacts | RosterProblem {
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
   } catch {
-    return undefined;
+    return unreadableRoster();
   }
-  if (!isAttributeRecord(parsed)) return undefined;
+  if (!isAttributeRecord(parsed)) return unreadableRoster();
   const nodes: readonly unknown[] | undefined = Array.isArray(parsed.nodes)
     ? parsed.nodes
     : undefined;
   const edges: readonly unknown[] = Array.isArray(parsed.edges)
     ? parsed.edges
     : [];
-  if (nodes === undefined) return undefined;
+  if (nodes === undefined) return unreadableRoster();
+
+  const nodeAttributes: Readonly<Record<string, unknown>>[] = [];
+  for (const [index, node] of nodes.entries()) {
+    // One-based, because it names a row of the researcher's own file.
+    const position = index + 1;
+    if (!isAttributeRecord(node)) {
+      return unreadableRoster(`node ${position} is not an object`);
+    }
+    const attributes: unknown = node[entityAttributesProperty];
+    if (attributes === undefined) continue;
+    if (!isAttributeRecord(attributes)) {
+      return unreadableRoster(
+        `the attributes of node ${position} are not an object`,
+      );
+    }
+    const unreadableValue = unreadableAttributeValue(
+      attributes,
+      `node ${position}`,
+    );
+    if (unreadableValue !== undefined) return unreadableValue;
+    nodeAttributes.push(attributes);
+  }
+
+  if (nodes.length === 0 && edges.length === 0) {
+    return unusableRoster(EMPTY_ROSTER);
+  }
+  const variableNames = attributeNames(nodeAttributes);
+  const unusableName = unusableAttributeName(variableNames);
+  if (unusableName !== undefined) return unusableName;
 
   return Object.freeze({
     counts: Object.freeze({ nodes: nodes.length, edges: edges.length }),
-    variableNames: attributeNames(
-      nodes.flatMap((node) => {
-        if (!isAttributeRecord(node)) return [];
-        const attributes: unknown = node.attributes;
-        return isAttributeRecord(attributes) ? [attributes] : [];
-      }),
-    ),
+    variableNames,
   });
+}
+
+/**
+ * The value check both roster formats are read through, because the interview
+ * reads them through one: `loadExternalData`'s `parseExternalAttributes` runs
+ * every attribute of a JSON node and of a CSV row through
+ * {@link VariableValueSchema}, and throws on a value it rejects — a nested
+ * object is the ordinary way a hand-edited roster gets one. The schema itself
+ * is used rather than a check written to look like it, so a variable value the
+ * protocol format learns to hold is one this gateway learns to accept.
+ *
+ * An absent value is passed over rather than refused, exactly as the runtime
+ * passes over it: an empty cell is a value the roster does not carry, not a
+ * value it carries wrongly.
+ *
+ * `entry` names the row in the researcher's own file, which with the attribute
+ * name is the whole of what they have to go and fix.
+ */
+function unreadableAttributeValue(
+  attributes: Readonly<Record<string, unknown>>,
+  entry: string,
+): RosterProblem | undefined {
+  for (const [name, value] of Object.entries(attributes)) {
+    if (value === null || value === undefined) continue;
+    if (VariableValueSchema.safeParse(value).success) continue;
+    return unreadableRoster(
+      `the "${name}" attribute of ${entry} is not a value a variable can hold`,
+    );
+  }
+  return undefined;
 }
 
 /**

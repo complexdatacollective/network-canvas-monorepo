@@ -8,7 +8,6 @@ import {
 
 import { Button } from '@codaco/fresco-ui/Button';
 import Dialog, { type DialogProps } from '@codaco/fresco-ui/dialogs/Dialog';
-import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import type {
   FieldProps,
@@ -26,6 +25,8 @@ import type {
   FormSubmitHandler,
 } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
+
+import { useDiscardDraftGuard } from './discardDraftGuard.ts';
 
 /**
  * What a form-level check — or a save the host could not take — reports.
@@ -221,7 +222,6 @@ function DialogFormBody({
   children,
 }: DialogFormProps) {
   const storeApi = useContext(FormStoreContext);
-  const { confirm } = useDialog();
   const { isSubmitting } = useFormMeta();
 
   /**
@@ -252,36 +252,14 @@ function DialogFormBody({
     [storeApi],
   );
 
-  /**
-   * Cancel, the close button, Escape and a click outside all arrive here —
-   * Fresco's `Dialog` routes every dismissal through one `closeDialog` — so a
-   * single gate covers all four.
-   *
-   * Deliberately not the route a successful submit takes: there is nothing
-   * left to lose by then, and asking would be a question about work that has
-   * just been saved.
-   */
-  const requestClose = useCallback(() => {
-    if (isSubmitting) return;
-
-    if (!isDirty()) {
-      onClose();
-      return;
-    }
-
-    void (async () => {
-      const confirmed = await confirm({
-        title: 'Discard your changes?',
-        description:
-          'This editor holds changes that have not been saved. Closing it now discards them.',
-        confirmLabel: 'Discard changes',
-        cancelLabel: 'Keep editing',
-        intent: 'warning',
-        onConfirm: () => undefined,
-      });
-      if (confirmed === true) onClose();
-    })();
-  }, [confirm, isDirty, isSubmitting, onClose]);
+  // Cancel, the close button, Escape and a click outside all arrive here, and
+  // a submit still in flight refuses all four: the dialog is about to show
+  // what the host made of it.
+  const requestClose = useDiscardDraftGuard({
+    hasDraft: isDirty,
+    onClose,
+    blocked: isSubmitting,
+  });
 
   /**
    * Fresco runs every field's own validation before this is reached, so the

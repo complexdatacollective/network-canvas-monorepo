@@ -126,6 +126,22 @@ export function describeResourceGatewayContract(
         }),
       );
 
+    /** Stages an arbitrary network document, for the rosters that are wrong. */
+    const stageJsonRoster = async (
+      requestId: string,
+      network: unknown,
+    ): Promise<ResourceDescriptor> =>
+      expectOk(
+        await gateway().stageUpload({
+          requestId,
+          kind: 'network',
+          name: 'Staged JSON roster',
+          source: `${requestId}.json`,
+          contentType: 'application/json',
+          bytes: new TextEncoder().encode(JSON.stringify(network)),
+        }),
+      );
+
     const stageCsvRoster = async (
       requestId = 'request-csv-roster',
     ): Promise<ResourceDescriptor> =>
@@ -184,6 +200,37 @@ export function describeResourceGatewayContract(
       );
     });
 
+    it('keeps an upload and a secret that share a request id apart', async () => {
+      // A request id is unique to the picker that made it, not across pickers:
+      // two of them can hand the host the same id for entirely different work.
+      const upload = await stageImage('request-shared');
+      const secret = await stageSecret('request-shared');
+
+      expect(secret.descriptor.id).not.toBe(upload.id);
+
+      const retriedUpload = await stageImage('request-shared');
+      const retriedSecret = await stageSecret('request-shared');
+
+      // Each retry is its own operation's retry: an upload that came back as
+      // the secret's descriptor would put a key where a file belongs.
+      expect(retriedUpload.id).toBe(upload.id);
+      expect(retriedUpload.kind).toBe('image');
+      expect(retriedSecret.descriptor.id).toBe(secret.descriptor.id);
+      expect(String(retriedSecret.handle)).toBe(String(secret.handle));
+      expect(
+        expectOk(await gateway().list({ status: 'staged' }))
+          .map((descriptor) => descriptor.id)
+          .toSorted(),
+      ).toEqual([upload.id, secret.descriptor.id].toSorted());
+
+      // Discarding one must not take the other's retry identity with it.
+      expectOk(await gateway().discardStaged(upload.id));
+
+      expect((await stageSecret('request-shared')).descriptor.id).toBe(
+        secret.descriptor.id,
+      );
+    });
+
     it('stages a secret as an opaque handle and keeps the value off every surface', async () => {
       const secret = await stageSecret();
 
@@ -214,6 +261,34 @@ export function describeResourceGatewayContract(
       expect(JSON.stringify(harness().stagingResidue())).not.toContain(
         SECRET_VALUE,
       );
+    });
+
+    it('promotes a secret the way it says it stores one', async () => {
+      const secret = await stageSecret();
+
+      expectOk(
+        await gateway().promote({
+          id: 'promotion-secret-storage',
+          resourceIds: [secret.descriptor.id],
+          secretHandles: [secret.handle],
+          applyManifest: () => ({ status: 'applied' }),
+        }),
+      );
+
+      // The editor tells the researcher where the key they are pasting will
+      // end up, and it can only repeat what the adapter says. An adapter whose
+      // answer and whose manifest disagree makes that a lie in one direction
+      // or the other — a credential written into a shareable protocol file
+      // while the researcher was told it stays on the server, or a warning
+      // about distributing a key that never leaves the host.
+      const entry = JSON.stringify(
+        harness().committedManifest()[secret.descriptor.id],
+      );
+      if (gateway().secretStorage === 'plaintext') {
+        expect(entry).toContain(SECRET_VALUE);
+      } else {
+        expect(entry).not.toContain(SECRET_VALUE);
+      }
     });
 
     it('refuses to preview or download secret material', async () => {
@@ -278,6 +353,182 @@ export function describeResourceGatewayContract(
       expect([...(inspection.variableNames ?? [])].toSorted()).toEqual([
         'name',
         'role',
+      ]);
+    });
+
+    it('refuses a JSON roster whose entries are not objects, and names the one that is not', async () => {
+      const holed = await stageJsonRoster('request-holed-roster', {
+        nodes: [{ attributes: { name: 'Ada' } }, null],
+        edges: [],
+      });
+      const badAttributes = await stageJsonRoster(
+        'request-bad-attributes-roster',
+        { nodes: [{ attributes: 'Ada' }], edges: [] },
+      );
+
+      const holedFailure = expectFailure(await gateway().inspect(holed.id));
+      const attributesFailure = expectFailure(
+        await gateway().inspect(badAttributes.id),
+      );
+
+      // The interview's own loader throws on both of these, so an adapter that
+      // only counts the array lets a protocol commit a field pointing at a
+      // roster that fails the moment the interview opens it — with a manifest
+      // entry that looks perfectly valid. The row is named because that is the
+      // one thing the researcher has to go and fix.
+      expect(holedFailure.reason).toBe('invalid-content');
+      expect(holedFailure.retryable).toBe(false);
+      expect(holedFailure.message).toContain('node 2');
+      expect(attributesFailure.reason).toBe('invalid-content');
+      expect(attributesFailure.message).toContain('node 1');
+    });
+
+    it('refuses a JSON roster carrying an attribute value the interview cannot hold, and names it', async () => {
+      const roster = await stageJsonRoster('request-nested-value-roster', {
+        nodes: [
+          { attributes: { name: 'Ada' } },
+          { attributes: { name: 'Grace', address: { city: 'Arlington' } } },
+        ],
+        edges: [],
+      });
+
+      const failure = expectFailure(await gateway().inspect(roster.id));
+
+      // The interview parses every attribute value through the same schema
+      // that decides what a variable may hold, and throws on one it rejects.
+      // An adapter that checks only the shape of the attributes object lets a
+      // protocol commit a field pointing at a roster that fails the moment the
+      // interview opens it. The attribute is named alongside its row because
+      // between them they are the whole of what the researcher has to fix.
+      expect(failure.reason).toBe('invalid-content');
+      expect(failure.retryable).toBe(false);
+      expect(failure.message).toContain('node 2');
+      expect(failure.message).toContain('address');
+    });
+
+    it('reads the attribute values the interview accepts, and passes over the empty ones', async () => {
+      const roster = await stageJsonRoster('request-value-shapes-roster', {
+        nodes: [
+          {
+            attributes: {
+              name: 'Ada',
+              age: 36,
+              consented: true,
+              languages: ['English', 'French'],
+              home: { x: 0.25, y: 0.5 },
+              nickname: null,
+            },
+          },
+        ],
+        edges: [],
+      });
+
+      const inspection = expectOk(await gateway().inspect(roster.id));
+
+      // Every one of these is a value a variable holds — a layout coordinate
+      // and a categorical selection included — and a null is a cell the
+      // researcher left empty, which the interview skips rather than refuses.
+      // An adapter stricter than the runtime turns ordinary rosters away.
+      expect(inspection.counts).toEqual({ nodes: 1, edges: 0 });
+      expect([...(inspection.variableNames ?? [])].toSorted()).toEqual([
+        'age',
+        'consented',
+        'home',
+        'languages',
+        'name',
+        'nickname',
+      ]);
+    });
+
+    it('refuses a roster whose attribute name a variable cannot be called, and names it', async () => {
+      const json = await stageJsonRoster('request-spaced-attribute-roster', {
+        nodes: [{ attributes: { 'name': 'Ada', 'home address': 'London' } }],
+        edges: [],
+      });
+      const csv = expectOk(
+        await gateway().stageUpload({
+          requestId: 'request-spaced-column-roster',
+          kind: 'network',
+          name: 'Roster with a spaced column',
+          source: 'spaced-roster.csv',
+          contentType: 'text/csv',
+          bytes: new TextEncoder().encode(
+            'name,home address\nAda,London\nGrace,Arlington\n',
+          ),
+        }),
+      );
+
+      const jsonFailure = expectFailure(await gateway().inspect(json.id));
+      const csvFailure = expectFailure(await gateway().inspect(csv.id));
+
+      // A roster's attribute names become variable names, and those must be
+      // NMTOKEN-compatible for the XML-based exports the protocol format
+      // produces. A spreadsheet's own column headings — "home address", "date
+      // of birth" — are not, so an adapter that only counts the columns lets a
+      // protocol commit a roster whose problem surfaces at export time, long
+      // after the researcher could have picked a different file. The offending
+      // name is reported because it is the whole of what they have to fix.
+      expect(jsonFailure.reason).toBe('invalid-content');
+      expect(jsonFailure.retryable).toBe(false);
+      expect(jsonFailure.message).toContain('home address');
+      expect(csvFailure.reason).toBe('invalid-content');
+      expect(csvFailure.message).toContain('home address');
+    });
+
+    it('refuses a roster with no records at all', async () => {
+      const json = await stageJsonRoster('request-empty-json-roster', {
+        nodes: [],
+        edges: [],
+      });
+      const csv = expectOk(
+        await gateway().stageUpload({
+          requestId: 'request-empty-csv-roster',
+          kind: 'network',
+          name: 'Roster with only a header',
+          source: 'empty-roster.csv',
+          contentType: 'text/csv',
+          bytes: new TextEncoder().encode('name,role\n'),
+        }),
+      );
+
+      const jsonFailure = expectFailure(await gateway().inspect(json.id));
+      const csvFailure = expectFailure(await gateway().inspect(csv.id));
+
+      // A header-only export is an ordinary spreadsheet mistake, and a stage
+      // pointing at one saves and validates perfectly while being unable to
+      // present a single participant at interview time. Refusing it here is
+      // the only moment the researcher can still choose another file.
+      expect(jsonFailure.reason).toBe('invalid-content');
+      expect(jsonFailure.retryable).toBe(false);
+      expect(csvFailure.reason).toBe('invalid-content');
+      expect(csvFailure.retryable).toBe(false);
+    });
+
+    it('reads a CSV roster column named with dots as one attribute', async () => {
+      const roster = expectOk(
+        await gateway().stageUpload({
+          requestId: 'request-dotted-csv-roster',
+          kind: 'network',
+          name: 'Roster with a dotted column',
+          source: 'dotted-roster.csv',
+          contentType: 'text/csv',
+          bytes: new TextEncoder().encode(
+            'name,home.city\nAda,London\nGrace,Arlington\n',
+          ),
+        }),
+      );
+
+      const inspection = expectOk(await gateway().inspect(roster.id));
+
+      // A spreadsheet exports a column called `home.city` as one column, and
+      // the interview reads it as one attribute of that name. An adapter whose
+      // CSV parser folds the dots into a nested object reports a variable the
+      // roster does not have — and gives that variable a value no attribute may
+      // hold, so the roster it just described would also be refused.
+      expect(inspection.counts).toEqual({ nodes: 2, edges: 0 });
+      expect([...(inspection.variableNames ?? [])].toSorted()).toEqual([
+        'home.city',
+        'name',
       ]);
     });
 
@@ -475,6 +726,49 @@ export function describeResourceGatewayContract(
         image.id,
       ]);
       expect(repeated.promoted.map((descriptor) => descriptor.id)).toEqual([
+        image.id,
+      ]);
+      expect(Object.keys(harness().committedManifest()).toSorted()).toEqual(
+        [RESOURCE_GATEWAY_CONTRACT_SEED.committedImage.id, image.id].toSorted(),
+      );
+      expect(harness().stagingResidue()).toEqual([]);
+    });
+
+    it('coalesces concurrent promotions of one id into a single apply', async () => {
+      const image = await stageImage();
+      let releaseApply: (() => void) | undefined;
+      const applyGate = new Promise<void>((resolve) => {
+        releaseApply = resolve;
+      });
+      let applies = 0;
+      // The second apply fails, so a gateway that runs it rolls back — and the
+      // rollback deletes what the first apply committed.
+      const applyManifest = vi.fn(async (): Promise<ManifestApplyOutcome> => {
+        applies += 1;
+        if (applies > 1) {
+          return {
+            status: 'failed',
+            retryable: true,
+            message: 'the protocol changed while finishing',
+          };
+        }
+        await applyGate;
+        return { status: 'applied' };
+      });
+      const promotion = {
+        id: 'promotion-concurrent',
+        resourceIds: [image.id],
+        applyManifest,
+      };
+
+      const first = gateway().promote(promotion);
+      const second = gateway().promote(promotion);
+      releaseApply?.();
+      const outcomes = [expectOk(await first), expectOk(await second)];
+
+      expect(applyManifest).toHaveBeenCalledTimes(1);
+      expect(outcomes[1]).toEqual(outcomes[0]);
+      expect(outcomes[0]?.promoted.map((descriptor) => descriptor.id)).toEqual([
         image.id,
       ]);
       expect(Object.keys(harness().committedManifest()).toSorted()).toEqual(

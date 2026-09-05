@@ -229,7 +229,7 @@ function StageEditorFormBody({
 
   return (
     <StageEditorFormContext value={context}>
-      <WithResourceGateway gateway={controller.resourceGateway}>
+      <ResourceGatewayProvider gateway={controller.resourceGateway}>
         <div className={cx('@container flex w-full flex-col gap-6', className)}>
           <div className="grid grid-cols-1 gap-6 @min-[60rem]:grid-cols-[16rem_minmax(0,1fr)] @min-[60rem]:gap-10">
             <SectionOutline />
@@ -250,28 +250,8 @@ function StageEditorFormBody({
           </div>
           {actions?.({ controller, formId, readOnly })}
         </div>
-      </WithResourceGateway>
+      </ResourceGatewayProvider>
     </StageEditorFormContext>
-  );
-}
-
-/**
- * Puts the session's resource gateway where the editor's resource pickers look
- * for it, and nowhere else: a session opened without one renders the same tree,
- * and a picker mounted inside it says so rather than reaching for host storage.
- */
-function WithResourceGateway({
-  gateway,
-  children,
-}: Readonly<{
-  gateway: StageEditorController['resourceGateway'];
-  children: ReactNode;
-}>) {
-  if (gateway === undefined) return children;
-  return (
-    <ResourceGatewayProvider gateway={gateway}>
-      {children}
-    </ResourceGatewayProvider>
   );
 }
 
