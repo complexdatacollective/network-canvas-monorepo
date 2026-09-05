@@ -73,13 +73,15 @@ const holdsDiseases = (value: unknown): boolean =>
  * the new node type does not have.
  *
  * The removal reaches the SESSION as one field-level command and the FORM as a
- * clear, in that order, and neither half is optional. `applyOwnCommands` is
- * what marks the write as this form's own; a whole-draft `changeFields` here
- * is indistinguishable from a draft arriving from somewhere else, so the shell
- * re-seeds every control from it — including the source select, which is put
- * straight back to the stage the researcher had just moved away from. The form
- * clear is the other half: a bound list resolves its next edit against the
- * draft the session holds, so rows left on screen would be written back.
+ * clear, in that order, and neither half is optional. The session half goes
+ * through `applyOwnCommands` rather than `changeFields` for two reasons that
+ * have nothing to do with which of them the controller marks as the form's own
+ * — both are marked. It says exactly which key is being removed, rather than
+ * leaving a whole-draft diff to work it out; and the empty batch is how this
+ * section READS the draft the session holds right now, which is the reading
+ * the decision below is made against. The form clear is the other half: a
+ * bound list resolves its next edit against the draft the session holds, so
+ * rows left on screen would be written back.
  *
  * A stage with nothing mapped is left completely alone. A narrative pedigree
  * created from its template carries `diseases: []`, and issuing a write to
