@@ -23,10 +23,26 @@ import Paragraph from '../typography/Paragraph';
  * `render` override, which is the path most likely to reach for the client.
  */
 
+/**
+ * `'use client'` is a directive only as the module's first statement, so this
+ * anchors to the start of the file and steps over any leading comments, which
+ * may legally precede it.
+ *
+ * Neither half is optional. Matching per-line (`/m`) would also fire on the
+ * string quoted inside a comment or a code example further down. Anchoring
+ * without stepping over comments — the form `clientBoundary.test.ts` uses —
+ * would miss a directive written under a header comment, and the two guards
+ * cannot share a form because their assertions point in opposite directions:
+ * a miss there names a module a false offender, loudly, whereas a miss here
+ * would let this test pass while the component really had become client-only.
+ */
+const USE_CLIENT_DIRECTIVE =
+  /^(?:\s*(?:\/\/[^\n]*\n|\/\*[\s\S]*?\*\/))*\s*(['"])use client\1;?/;
+
 const sourceHasUseClientDirective = (sourceFile: string) => {
   const source = readFileSync(new URL(sourceFile, import.meta.url), 'utf8');
 
-  return /^\s*(['"])use client\1;?/m.test(source);
+  return USE_CLIENT_DIRECTIVE.test(source);
 };
 
 const headingLevels = [
