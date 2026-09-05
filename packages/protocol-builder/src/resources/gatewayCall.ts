@@ -12,7 +12,7 @@ import {
  * in their own terms, rather than being shown a host's exception or nothing at
  * all.
  */
-export const UNREACHABLE_MESSAGE =
+const UNREACHABLE_MESSAGE =
   'The resource could not be reached. Try again in a moment.';
 
 /**
