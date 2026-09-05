@@ -48,6 +48,8 @@ export default defineConfig({
       '/rpc': SERVER_ORIGIN,
       '/storage': SERVER_ORIGIN,
       '/healthz': SERVER_ORIGIN,
+      '/readyz': SERVER_ORIGIN,
+      '/metrics': SERVER_ORIGIN,
       '/ws': { target: SERVER_ORIGIN, ws: true },
     },
   },
