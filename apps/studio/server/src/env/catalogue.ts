@@ -162,9 +162,17 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
     group: 'Database',
     summary: 'Postgres connection string, `pg.Pool`’s native format.',
     deployment:
-      'Unset ⇒ no database; auth and sync refuse while the server still boots. The login owns the schema and needs `CREATEROLE` for the initial migration; the server runs as the `studio_app` role it creates.',
+      'Unset ⇒ no database; auth and sync refuse while the server still boots. Use a dedicated deployment login. The migration connection owns the database and schema; the runtime connection assumes `studio_app` or `studio_maintenance`.',
     devDefault: DEV_DATABASE_URL,
     example: 'postgres://user:password@host:5432/studio',
+  },
+
+  STUDIO_DATABASE_ALLOWED_LOGINS: {
+    group: 'Database',
+    summary: 'JSON array of this deployment’s database login names.',
+    deployment:
+      'Required by `migrate` only. Enroll the database owner, migration login, runtime login, and any separately provisioned backup login. Provision explicit CONNECT before admitting database connections. Migration refuses PUBLIC, shared-role, missing, or unexpected access.',
+    example: '["studio_migrator","studio_runtime"]',
   },
 
   BETTER_AUTH_SECRET: {

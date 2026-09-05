@@ -197,6 +197,7 @@ describe.skipIf(!db)(
           pending: 0,
           ready: 0,
           oldest_ready_seconds: 0,
+          last_failure_timestamp_seconds: 0,
           leased: 0,
           expired_leases: 0,
           failed: 0,
@@ -369,6 +370,93 @@ describe.skipIf(!db)(
         down.mockRestore();
       }
       runtime.stop();
+    });
+
+    it('reports durable failure time across restart and retains old failures without restamping them', async () => {
+      if (!db) throw new Error('unreachable');
+      const isolated = await createScratchSchema(db);
+      let runtime: ReturnType<typeof createObservability> | undefined;
+      try {
+        await provisionScratchSchema(isolated.pool);
+        const failure = await isolated.pool.query<{ failed_at: Date }>(
+          `INSERT INTO audit_export_jobs (id, team_id, actor_kind, actor_id, start_event_id, start_event_sequence, high_water_sequence, filters, row_limit, byte_limit, preflight_row_count, preflight_byte_count, status, failure_event_id, failed_at)
+          VALUES ($1, 'operational-failure-team', 'user', $2, $3, 1, 10, '{}', 1000, 1000000, 10, 2048, 'failed', $4, date_trunc('second', now()) - interval '1 minute') RETURNING failed_at`,
+          [randomUUID(), CANARY, randomUUID(), randomUUID()],
+        );
+        // A retained older row must not hide the newest failure, regardless
+        // of insertion order or how many historical failures remain.
+        await isolated.pool.query(
+          `INSERT INTO audit_export_jobs (id, team_id, actor_kind, actor_id, start_event_id, start_event_sequence, high_water_sequence, filters, row_limit, byte_limit, preflight_row_count, preflight_byte_count, status, failure_event_id, failed_at)
+          SELECT $1, team_id, actor_kind, actor_id, start_event_id, start_event_sequence, high_water_sequence, filters, row_limit, byte_limit, preflight_row_count, preflight_byte_count, status, failure_event_id, failed_at - interval '1 day' FROM audit_export_jobs`,
+          [randomUUID()],
+        );
+        const failedAt = failure.rows[0]?.failed_at;
+        expect(failedAt).toBeInstanceOf(Date);
+        if (!failedAt) throw new Error('expected one durable failure');
+        const openRuntime = () =>
+          createObservability({
+            pool: isolated.app,
+            maintenancePool: isolated.maintenance,
+            assetStore: store,
+            cacheMs: 0,
+          });
+        const sample = `studio_outbox_last_failure_timestamp_seconds{queue="audit_export_jobs"} ${failedAt.getTime() / 1000}`;
+        runtime = openRuntime();
+        const initial = (await runtime.metrics.scrape()).body;
+        expect(initial).toContain(sample);
+        expect(initial).toContain(
+          'studio_outbox_jobs{queue="audit_export_jobs",state="failed"} 2',
+        );
+        expect(initial).not.toContain('studio_outbox_dispatch_results_total{');
+        expect(initial).not.toContain(CANARY);
+        expect(initial).not.toMatch(
+          /team_id|request_id|participant_id|actor_id|message_id/,
+        );
+        runtime.stop();
+        runtime = openRuntime();
+        expect((await runtime.metrics.scrape()).body).toContain(sample);
+
+        const aged = await isolated.pool.query<{ failed_at: Date }>(
+          `UPDATE audit_export_jobs SET failed_at = date_trunc('second', now()) - interval '1 day' RETURNING failed_at`,
+        );
+        const old = aged.rows[0]?.failed_at;
+        expect(old).toBeInstanceOf(Date);
+        if (!old) throw new Error('expected retained old failure');
+        const retained = (await runtime.metrics.scrape()).body;
+        expect(retained).toContain(
+          `studio_outbox_last_failure_timestamp_seconds{queue="audit_export_jobs"} ${old.getTime() / 1000}`,
+        );
+        expect(retained).toContain(
+          'studio_outbox_jobs{queue="audit_export_jobs",state="failed"} 2',
+        );
+        expect(retained).not.toContain(sample);
+        const future = await isolated.pool.query<{ failed_at: Date }>(
+          `UPDATE audit_export_jobs SET failed_at = date_trunc('second', now()) + interval '1 hour' RETURNING failed_at`,
+        );
+        const ahead = future.rows[0]?.failed_at;
+        expect(ahead).toBeInstanceOf(Date);
+        if (!ahead) throw new Error('expected clock-skew fixture');
+        expect(ahead.getTime()).toBeGreaterThan(Date.now());
+        expect((await runtime.metrics.scrape()).body).toContain(
+          `studio_outbox_last_failure_timestamp_seconds{queue="audit_export_jobs"} ${ahead.getTime() / 1000}`,
+        );
+        const unavailable = vi
+          .spyOn(isolated.maintenance, 'connect')
+          .mockRejectedValue(new Error(CANARY));
+        try {
+          const down = (await runtime.metrics.scrape()).body;
+          expect(down).toContain('studio_outbox_collection_success 0');
+          expect(down).not.toContain(
+            'studio_outbox_last_failure_timestamp_seconds{',
+          );
+          expect(down).not.toContain(CANARY);
+        } finally {
+          unavailable.mockRestore();
+        }
+      } finally {
+        runtime?.stop();
+        await isolated.dispose();
+      }
     });
 
     it('correlates authorized team RPCs with the same id stored in immutable audit history', async () => {

@@ -3,6 +3,10 @@ import type pg from 'pg';
 
 import { SCHEMA_LOCK_KEY, stampFingerprint } from '../schema.ts';
 import type { Migration } from './artifact.ts';
+import {
+  enforceMigrationSecurity,
+  protectMigrationEvidence,
+} from './security.ts';
 
 type AppliedMigration = {
   position: number;
@@ -78,6 +82,7 @@ export async function migrateDatabase(
   pool: pg.Pool,
   migrations: readonly Migration[],
   expectedFingerprint: string,
+  allowedLogins: readonly string[],
 ): Promise<string[]> {
   if (
     migrations.length === 0 ||
@@ -130,6 +135,8 @@ export async function migrateDatabase(
     const previous = applied.at(-1);
     if (previous) await verifyFingerprint(client, previous.fingerprint);
 
+    await enforceMigrationSecurity(client, allowedLogins);
+
     await client.query(`CREATE SCHEMA IF NOT EXISTS studio_migrations;
       REVOKE ALL ON SCHEMA studio_migrations FROM PUBLIC;
       CREATE TABLE IF NOT EXISTS ${HISTORY_TABLE} (
@@ -158,10 +165,10 @@ export async function migrateDatabase(
       );
       completed.push(migration.manifest.id);
     }
-    // Runtime identities cannot modify migration evidence. The first migration
-    // creates these roles, so their revocations must follow its sidecars.
-    await client.query(`REVOKE ALL ON SCHEMA studio_migrations FROM studio_app, studio_maintenance;
-      REVOKE ALL ON ${HISTORY_TABLE} FROM PUBLIC, studio_app, studio_maintenance`);
+    // Repeatable security is independent of historical schema checksums. It
+    // runs on no-op migrations too and contains grants in every old sidecar.
+    await enforceMigrationSecurity(client, allowedLogins);
+    await protectMigrationEvidence(client);
     await verifyFingerprint(client, expectedFingerprint);
     await client.query('COMMIT');
     return completed;

@@ -104,6 +104,41 @@ describe('operational output allowlists', () => {
     expect(() => broken.diagnostic('STUDIO_AUDIT_APPEND_FAILED')).not.toThrow();
   });
 
+  it('retains the actual worker failure time even when its first scrape occurs later', async () => {
+    vi.useFakeTimers();
+    const failedAt = new Date('2026-09-05T12:00:00Z');
+    vi.setSystemTime(failedAt);
+    const runtime = createObservability({});
+    try {
+      await runtime.metrics.observer({
+        queue: 'team_invitation_deliveries',
+        kind: 'dispatch_error',
+      });
+      expect((await runtime.metrics.scrape()).body).not.toContain(
+        'studio_outbox_last_worker_error_timestamp_seconds{',
+      );
+      await runtime.metrics.observer({
+        queue: 'team_invitation_deliveries',
+        kind: 'worker_error',
+      });
+      vi.setSystemTime(new Date(failedAt.getTime() + 60_000));
+      const first = (await runtime.metrics.scrape()).body;
+      const sample = `studio_outbox_last_worker_error_timestamp_seconds{queue="team_invitation_deliveries"} ${failedAt.getTime() / 1000}`;
+      expect(first).toContain(sample);
+      expect(first).toContain(
+        'studio_outbox_errors_total{queue="team_invitation_deliveries",kind="worker_error"} 1',
+      );
+      vi.setSystemTime(new Date(failedAt.getTime() + 600_000));
+      expect((await runtime.metrics.scrape()).body).toContain(sample);
+      expect(first).not.toMatch(
+        /team_id|request_id|participant|actor_id|message_id/,
+      );
+    } finally {
+      runtime.stop();
+      vi.useRealTimers();
+    }
+  });
+
   it('records each shared dispatcher event once and keeps uncertain separate from retries and failures', async () => {
     const runtime = createObservability({});
     await runtime.metrics.observer({

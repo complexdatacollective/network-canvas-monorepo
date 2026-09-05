@@ -35,6 +35,22 @@ const directory = fileURLToPath(
 );
 const shipped = await readMigrations(directory);
 const runFile = promisify(execFile);
+
+// These schema tests deliberately enroll only their observed fixture operator.
+// Production enrollment is required configuration, covered in security.test.ts.
+async function migrateTestDatabase(
+  pool: pg.Pool,
+  migrations: readonly Migration[],
+  fingerprint: string,
+) {
+  const identity = await pool.query<{ login: string }>(
+    'SELECT session_user AS login',
+  );
+  return migrateDatabase(pool, migrations, fingerprint, [
+    identity.rows[0]!.login,
+  ]);
+}
+
 type Snapshot = Awaited<ReturnType<typeof generateDrizzleJson>>;
 
 function artifact(
@@ -66,6 +82,15 @@ async function withDatabase(
     throw new Error('Database required for migration integration tests.');
   const scratch = await createScratchDatabase(database);
   try {
+    const databaseName = decodeURIComponent(
+      new URL(scratch.db.url).pathname.slice(1),
+    );
+    const identity = await scratch.pool.query<{ login: string }>(
+      'SELECT session_user AS login',
+    );
+    await scratch.pool
+      .query(`REVOKE CONNECT ON DATABASE ${escapeIdentifier(databaseName)} FROM PUBLIC, studio_app, studio_maintenance;
+      GRANT CONNECT ON DATABASE ${escapeIdentifier(databaseName)} TO ${escapeIdentifier(identity.rows[0]!.login)}`);
     await run(scratch);
   } finally {
     await scratch.dispose();
@@ -245,7 +270,7 @@ describe.skipIf(!database)('explicit Studio migrations', () => {
             expect(identity.rows).toEqual([
               { rolsuper: false, rolcreaterole: createRole },
             ]);
-            await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT);
+            await migrateTestDatabase(owner, shipped, SCHEMA_FINGERPRINT);
             expect(await checkSchema(owner)).toEqual({ kind: 'current' });
             await expectSecurityContract(pool);
           } finally {
@@ -263,9 +288,9 @@ describe.skipIf(!database)('explicit Studio migrations', () => {
 
   it('provisions actual tables, roles, RLS and ordered sidecar privileges on a fresh database', async () => {
     await withDatabase(async ({ pool }) => {
-      expect(await migrateDatabase(pool, shipped, SCHEMA_FINGERPRINT)).toEqual(
-        shipped.map(({ manifest }) => manifest.id),
-      );
+      expect(
+        await migrateTestDatabase(pool, shipped, SCHEMA_FINGERPRINT),
+      ).toEqual(shipped.map(({ manifest }) => manifest.id));
       expect(await checkSchema(pool)).toEqual({ kind: 'current' });
       await expectSecurityContract(pool);
       const constraints = await pool.query<{ conname: string }>(
@@ -284,7 +309,7 @@ describe.skipIf(!database)('explicit Studio migrations', () => {
 
   it('applies a generated schema upgrade without changing existing users', async () => {
     await withDatabase(async ({ pool }) => {
-      await migrateDatabase(
+      await migrateTestDatabase(
         pool,
         [predecessor],
         predecessor.manifest.fingerprint,
@@ -303,7 +328,11 @@ describe.skipIf(!database)('explicit Studio migrations', () => {
         reason: 'mismatch',
       });
       expect(
-        await migrateDatabase(pool, [predecessor, upgrade], SCHEMA_FINGERPRINT),
+        await migrateTestDatabase(
+          pool,
+          [predecessor, upgrade],
+          SCHEMA_FINGERPRINT,
+        ),
       ).toEqual([upgrade.manifest.id]);
       expect(
         (
@@ -322,7 +351,7 @@ describe.skipIf(!database)('explicit Studio migrations', () => {
 
   it('is idempotent without rewriting history or fingerprint timestamps', async () => {
     await withDatabase(async ({ pool }) => {
-      await migrateDatabase(pool, shipped, SCHEMA_FINGERPRINT);
+      await migrateTestDatabase(pool, shipped, SCHEMA_FINGERPRINT);
       const history = (
         await pool.query(
           'SELECT * FROM studio_migrations.history ORDER BY position',
@@ -333,9 +362,9 @@ describe.skipIf(!database)('explicit Studio migrations', () => {
       ).rows;
       expect(history).toHaveLength(shipped.length);
       expect(stamp).toHaveLength(1);
-      expect(await migrateDatabase(pool, shipped, SCHEMA_FINGERPRINT)).toEqual(
-        [],
-      );
+      expect(
+        await migrateTestDatabase(pool, shipped, SCHEMA_FINGERPRINT),
+      ).toEqual([]);
       expect(
         (
           await pool.query(
@@ -358,7 +387,13 @@ describe.skipIf(!database)('explicit Studio migrations', () => {
         runFile(process.execPath, [entrypoint], {
           // These are synthetic credentials for an isolated scratch database.
           // oxlint-disable-next-line node/no-process-env -- child process environment
-          env: { PATH: process.env.PATH, DATABASE_URL: db.url },
+          env: {
+            PATH: process.env.PATH,
+            DATABASE_URL: db.url,
+            STUDIO_DATABASE_ALLOWED_LOGINS: JSON.stringify([
+              decodeURIComponent(new URL(db.url).username),
+            ]),
+          },
         });
       const results = await Promise.all([execute(), execute()]);
       expect(
@@ -379,7 +414,7 @@ describe.skipIf(!database)('explicit Studio migrations', () => {
 
   it('refuses developer reconciliation of a versioned database without changing its evidence', async () => {
     await withDatabase(async ({ pool }) => {
-      await migrateDatabase(pool, shipped, SCHEMA_FINGERPRINT);
+      await migrateTestDatabase(pool, shipped, SCHEMA_FINGERPRINT);
       const history = (
         await pool.query('SELECT * FROM studio_migrations.history')
       ).rows;
@@ -400,16 +435,24 @@ describe.skipIf(!database)('explicit Studio migrations', () => {
 
   it('rejects changed applied history and a newer database before applying anything', async () => {
     await withDatabase(async ({ pool }) => {
-      await migrateDatabase(pool, [predecessor, upgrade], SCHEMA_FINGERPRINT);
+      await migrateTestDatabase(
+        pool,
+        [predecessor, upgrade],
+        SCHEMA_FINGERPRINT,
+      );
       await expect(
-        migrateDatabase(pool, [predecessor], predecessor.manifest.fingerprint),
+        migrateTestDatabase(
+          pool,
+          [predecessor],
+          predecessor.manifest.fingerprint,
+        ),
       ).rejects.toThrow('downgrade or edited migrations');
       await pool.query(
         `UPDATE studio_migrations.history SET checksum = $1 WHERE position = 1`,
         ['0'.repeat(64)],
       );
       await expect(
-        migrateDatabase(pool, [predecessor, upgrade], SCHEMA_FINGERPRINT),
+        migrateTestDatabase(pool, [predecessor, upgrade], SCHEMA_FINGERPRINT),
       ).rejects.toThrow('Applied migration history differs');
       expect(await checkSchema(pool)).toEqual({ kind: 'current' });
     });
@@ -427,7 +470,7 @@ describe.skipIf(!database)('explicit Studio migrations', () => {
         `INSERT INTO public."user" (id, name, email, "emailVerified") VALUES ('keep', 'Keep me', 'keep@example.test', false)`,
       );
       await expect(
-        migrateDatabase(pool, shipped, SCHEMA_FINGERPRINT),
+        migrateTestDatabase(pool, shipped, SCHEMA_FINGERPRINT),
       ).rejects.toThrow('not adopted automatically');
       expect((await pool.query('SELECT name FROM public."user"')).rows).toEqual(
         [{ name: 'Keep me' }],
@@ -444,20 +487,20 @@ describe.skipIf(!database)('explicit Studio migrations', () => {
 
   it('refuses a fingerprint inconsistent with otherwise correct history', async () => {
     await withDatabase(async ({ pool }) => {
-      await migrateDatabase(pool, shipped, SCHEMA_FINGERPRINT);
+      await migrateTestDatabase(pool, shipped, SCHEMA_FINGERPRINT);
       await pool.query(
         'UPDATE public."schemaFingerprint" SET fingerprint = $1',
         ['0'.repeat(64)],
       );
       await expect(
-        migrateDatabase(pool, shipped, SCHEMA_FINGERPRINT),
+        migrateTestDatabase(pool, shipped, SCHEMA_FINGERPRINT),
       ).rejects.toThrow('fingerprint does not match');
     });
   });
 
   it('rolls back schema changes, data changes and evidence when SQL fails', async () => {
     await withDatabase(async ({ pool }) => {
-      await migrateDatabase(
+      await migrateTestDatabase(
         pool,
         [predecessor],
         predecessor.manifest.fingerprint,
@@ -482,7 +525,7 @@ describe.skipIf(!database)('explicit Studio migrations', () => {
         sql: failedSql,
       };
       await expect(
-        migrateDatabase(pool, [predecessor, failed], SCHEMA_FINGERPRINT),
+        migrateTestDatabase(pool, [predecessor, failed], SCHEMA_FINGERPRINT),
       ).rejects.toMatchObject({ code: '22012' });
       expect((await pool.query('SELECT name FROM public."user"')).rows).toEqual(
         [{ name: 'Before' }],
@@ -537,7 +580,7 @@ describe.skipIf(!database)('explicit Studio migrations', () => {
             sidecars,
           };
           await expect(
-            migrateDatabase(pool, [isolated], initial.manifest.fingerprint),
+            migrateTestDatabase(pool, [isolated], initial.manifest.fingerprint),
           ).rejects.toThrow('Studio runtime roles');
           expect(
             (
@@ -565,7 +608,7 @@ describe.skipIf(!database)('explicit Studio migrations', () => {
     'contains authored $command in $part so it cannot escape the migration transaction',
     async ({ command, part, code }) => {
       await withDatabase(async ({ pool }) => {
-        await migrateDatabase(
+        await migrateTestDatabase(
           pool,
           [predecessor],
           predecessor.manifest.fingerprint,
@@ -593,7 +636,7 @@ describe.skipIf(!database)('explicit Studio migrations', () => {
           sidecars,
         };
         await expect(
-          migrateDatabase(pool, [predecessor, escaped], SCHEMA_FINGERPRINT),
+          migrateTestDatabase(pool, [predecessor, escaped], SCHEMA_FINGERPRINT),
         ).rejects.toMatchObject({ code });
         expect(
           (await pool.query('SELECT name FROM public."user"')).rows,

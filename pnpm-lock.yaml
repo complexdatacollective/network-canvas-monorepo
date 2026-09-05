@@ -2008,9 +2008,6 @@ importers:
       pg:
         specifier: ^8.22.0
         version: 8.22.0
-      pg-connection-string:
-        specifier: ^2.14.0
-        version: 2.14.0
       pino:
         specifier: ^10.3.1
         version: 10.3.1
@@ -3053,6 +3050,9 @@ importers:
       pg:
         specifier: ^8.22.0
         version: 8.22.0
+      pg-connection-string:
+        specifier: ^2.14.0
+        version: 2.14.0
     devDependencies:
       '@codaco/tsconfig':
         specifier: workspace:^
