@@ -23,7 +23,7 @@ import type {
 import { focusFirstError } from '@codaco/fresco-ui/form/utils/focusFirstError';
 import type { ObjectPath } from '@codaco/fresco-ui/form/utils/objectPath';
 import { cx } from '@codaco/fresco-ui/utils/cva';
-import { canonicalize } from '@codaco/studio-sync/apply';
+import { canonicalize, type Command } from '@codaco/studio-sync/apply';
 
 import type { StageEditorController } from '../controller.ts';
 import {
@@ -175,6 +175,37 @@ function StageEditorFormBody({
     [controller, flushed, readOnly, storeApi],
   );
 
+  /**
+   * The other way this form writes to the session: structurally, as a list
+   * editor commits one row operation, rather than as a whole-draft flush.
+   *
+   * It leaves the same marker a submit does, and for the same reason — the
+   * form is keyed on the committed draft so that an arrival from ELSEWHERE
+   * re-seeds the controls, and a write the form made itself is not that. Left
+   * unmarked, adding a row would tear down and rebuild every field in the
+   * editor, discarding everything typed but not yet saved and closing the row
+   * dialog that issued the write.
+   */
+  const applyOwnCommands = useCallback(
+    (commands: readonly Command[]): StageFormDraft => {
+      if (readOnly) return controller.snapshot.editedSection.fields;
+      // An empty batch is how a list editor READS the draft the session holds
+      // right now — which is the point of asking rather than reading the
+      // snapshot it rendered against — so it must leave no marker at all. One
+      // left here would suppress the re-seed for a change that arrived from
+      // somewhere else entirely.
+      const next = controller.applyCommands(commands);
+      if (commands.length === 0) return next;
+      const content = canonicalize(next);
+      // Marked only when the draft actually moved, matching the submit's own
+      // rule: a marker for a transition that never happens stays standing, and
+      // is then spent on some later arrival at the same content.
+      if (content !== canonicalize(committedFields)) flushed.current = content;
+      return next;
+    },
+    [committedFields, controller, flushed, readOnly],
+  );
+
   const { formProps, formErrors } = useForm({
     onSubmit: handleSubmit,
     onSubmitInvalid: (errors) => {
@@ -207,12 +238,14 @@ function StageEditorFormBody({
             controller,
             storeApi,
             committedFields,
+            applyOwnCommands,
             identity: snapshot.editedSection.identity,
             protocolContext: snapshot.protocolContext,
             readOnly,
             outline,
           },
     [
+      applyOwnCommands,
       committedFields,
       controller,
       formId,

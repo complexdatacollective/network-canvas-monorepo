@@ -1,6 +1,7 @@
 import { type ContextType, createContext, useContext } from 'react';
 
 import type { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
+import type { Command } from '@codaco/studio-sync/apply';
 
 import type { StageEditorController } from '../controller.ts';
 import type { ProtocolBuilderProtocolContext } from '../protocol-context.ts';
@@ -34,6 +35,20 @@ export type StageEditorFormContextValue = Readonly<{
    * it has anything to show before its fields have registered.
    */
   committedFields: StageFormDraft;
+  /**
+   * Issues commands on the FORM's own behalf, and answers with the draft they
+   * produced.
+   *
+   * A list editor writes structurally — insert this row, move that one — so
+   * that the edit survives being replayed onto a list something else has
+   * changed. Those writes reach the session immediately rather than waiting
+   * for the submit that flushes ordinary fields, which is the whole reason
+   * this exists: the form is keyed on the committed draft, so a write the form
+   * made itself must not be mistaken for one that arrived from elsewhere and
+   * tear down every control on screen (an open row dialog included) to
+   * re-seed them.
+   */
+  applyOwnCommands(commands: readonly Command[]): StageFormDraft;
   /** Session-owned; never a form field. */
   identity: StageIdentity;
   /** Tolerant, typed metadata derived from authoritative protocol sections. */

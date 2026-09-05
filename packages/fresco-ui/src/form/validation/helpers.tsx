@@ -73,6 +73,58 @@ export async function validateFieldValue<T extends z.ZodMiniType>(
 }
 
 /**
+ * A rule that judges a whole field value and answers with the message to show,
+ * or nothing when the value passes.
+ *
+ * The shape a rule takes when it is a piece of domain reasoning rather than a
+ * constraint from this catalogue — "every option needs a unique value", "every
+ * row needs a value in each column". Such a rule has no parameter to name and
+ * no hint to render; it has an explanation, and the explanation is its result.
+ */
+export type MessageRule = (
+  value: unknown,
+  formValues: Record<string, FieldValue>,
+) => string | undefined;
+
+/**
+ * Turns plain message rules into the `custom` entry `Field` accepts.
+ *
+ * Exported because a consumer that owns rules like these — an array editor
+ * whose whole list is one field value, above all — would otherwise need Zod as
+ * a dependency purely to say "this value is wrong, and here is why". The rules
+ * themselves stay plain functions, so they can be read, reused and tested
+ * without a schema in sight.
+ *
+ * The first failing rule wins, matching how a field reports one error at a
+ * time: a value that is both incomplete and malformed should say what is
+ * missing before it is told the missing part is wrong.
+ */
+export function messageRuleValidation(
+  rules: readonly MessageRule[],
+  hint = '',
+): CustomFieldValidation {
+  return {
+    schema: (formValues: Record<string, FieldValue>) =>
+      z.unknown().check(
+        z.superRefine((value, ctx) => {
+          for (const rule of rules) {
+            const message = rule(value, formValues);
+            if (message === undefined) continue;
+            ctx.addIssue({
+              code: 'custom',
+              input: value,
+              message,
+              path: [],
+            });
+            return;
+          }
+        }),
+      ),
+    hint,
+  };
+}
+
+/**
  * Helper function that parses component props and converts them into a validation
  * using functions from ~/components/ui/form/validation/index.ts.
  *
