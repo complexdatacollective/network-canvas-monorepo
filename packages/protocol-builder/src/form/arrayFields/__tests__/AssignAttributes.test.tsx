@@ -371,6 +371,50 @@ describe('a stage document holding something that is not a list', () => {
         }),
       ).toBeInTheDocument();
     });
+
+    it(`adds a row over ${shape} rather than throwing out of the Add button`, async () => {
+      const user = userEvent.setup();
+      const session = createSession({
+        label: 'People',
+        subject: { entity: 'node', type: 'person' },
+        prompts: [{ id: 'p1', text: 'Who?' }],
+        additionalAttributes: foreign,
+      } as SectionDoc);
+      renderAttributeList(session, []);
+
+      const add = await screen.findByRole('button', {
+        name: 'Add new attribute to assign',
+      });
+      const heldBefore = session.getSnapshot().editedSection.fields
+        .additionalAttributes as unknown;
+      const rowsBefore = Array.isArray(heldBefore) ? heldBefore.length : 0;
+      const pickersBefore = screen.queryAllByRole('combobox').length;
+      await user.click(add);
+
+      // Rendering a foreign value as an empty list is only half the contract:
+      // the list shows an ENABLED Add, so the write behind it has to reach the
+      // list the researcher was looking at. Addressed at the foreign value
+      // instead, `insertItem` throws `ApplyError("Field additionalAttributes
+      // is not a list")` from the click handler — and the shell's own catch
+      // re-throws everything that is not a `SessionReadOnlyError`, so it
+      // crashes the editor instead of declining the edit.
+      await waitFor(() => {
+        const held = session.getSnapshot().editedSection.fields
+          .additionalAttributes as unknown;
+        expect(Array.isArray(held)).toBe(true);
+        expect(held as unknown[]).toContainEqual({});
+        // The rows the researcher could see are what the list keeps: one more
+        // than it showed, never a salvage of the foreign value's contents.
+        expect(held as unknown[]).toHaveLength(rowsBefore + 1);
+      });
+      // And the editor is still alive, with a row on screen for the
+      // researcher to fill in. How many rows a foreign value rendered as
+      // before the click is `ArrayField`'s own tolerance to decide, so what is
+      // pinned here is that the list gained one, not what it started from.
+      expect(screen.queryAllByRole('combobox').length).toBeGreaterThan(
+        pickersBefore,
+      );
+    });
   }
 });
 

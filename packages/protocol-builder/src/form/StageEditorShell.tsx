@@ -243,6 +243,15 @@ function StageEditorFormBody({
         // where an uncaught throw is a crash rather than a declined edit. It
         // is the same ordinary lease transition the submit reports, so it is
         // reported the same way and in the same words.
+        //
+        // Everything else is re-thrown deliberately. A caller reads the draft
+        // through this very function and dispatches in the same turn, so an
+        // `ApplyError` — a key that is not the list the command addresses, an
+        // index out of range — says the form asked for something its own
+        // snapshot ruled out. Reporting that as a declined edit would leave
+        // the researcher clicking a button that quietly does nothing; see
+        // `readArray` in `useArrayFieldCommands` for the rule that keeps a
+        // list command applicable.
         if (!(error instanceof SessionReadOnlyError)) throw error;
         setRefusedWrite(READ_ONLY_MESSAGE);
         return { draft: before, refused: true };

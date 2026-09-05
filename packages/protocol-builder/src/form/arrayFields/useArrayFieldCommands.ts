@@ -29,8 +29,74 @@ export const ArrayFieldBindingContext = createContext<ArrayFieldBinding | null>(
   null,
 );
 
-const readArray = (value: unknown): unknown[] =>
-  Array.isArray(value) ? [...value] : [];
+/**
+ * The array a list editor resolves its operations against, and the write that
+ * has to go in front of them for the document to actually hold it.
+ */
+type BoundArray = Readonly<{
+  current: unknown[];
+  /** Empty unless the key holds something that is not a list. */
+  repair: readonly Command[];
+}>;
+
+/**
+ * What a bound list finds at its key, and the rule for a value that is not a
+ * list.
+ *
+ * A list editor is a field component like any other: it renders whatever the
+ * stage document holds at its key, and an import, a migration or a legacy
+ * protocol can leave that as an object, a string, anything. Every reader in
+ * this package answers that with the empty list (`readRows` here,
+ * `AssignAttributes`' own `rows`, `ArrayField`'s render tolerance), because
+ * refusing it would throw out of a render and the corrective effect a render
+ * that never commits would have run never runs — fresco-ui's render-tolerance
+ * contract, #1433.
+ *
+ * So the researcher is shown an empty list WITH a working Add button, and the
+ * rule for the write behind that button follows from it:
+ *
+ *   an array field that finds a non-array value REPLACES it — a `set` of the
+ *   array the operation was resolved against, as the form's own write and in
+ *   the same batch as the operation — so that the item command applies to the
+ *   list the researcher was looking at.
+ *
+ * Without the replacement the command is addressed at the foreign value and
+ * `apply`'s `asList` throws `ApplyError("Field … is not a list")` out of a
+ * click handler, where nothing catches it: the shell re-throws everything that
+ * is not a `SessionReadOnlyError`, so an Add takes the editor down instead of
+ * adding a row.
+ *
+ * Two things the rule deliberately does NOT do:
+ *
+ * - salvage rows out of the foreign value. The replacement is the empty list
+ *   the editor rendered and nothing else; a row recovered from a shape no
+ *   reader could render is a row the researcher never saw and did not ask to
+ *   keep, and it would also move the indices the operation was resolved
+ *   against.
+ * - repair on its own. It rides with an operation, so a list that is only
+ *   LOOKED at is never rewritten, and a refused operation (see
+ *   `resolveRowIndex` — a remove or a move naming a row the value has not got
+ *   issues no command) discards nothing. In the same batch it is also one
+ *   history entry, so undoing the add puts the value back as it was.
+ *
+ * Nullish is not foreign: an absent key is the empty list to `asList` exactly
+ * as it is to every reader here, so it needs no repair.
+ */
+const readArray = (key: string, value: unknown): BoundArray => {
+  if (Array.isArray(value)) return { current: [...value], repair: [] };
+  if (value === undefined || value === null) return { current: [], repair: [] };
+  return { current: [], repair: [{ op: 'set', key, value: [] }] };
+};
+
+/**
+ * Whether a command needs the field to already hold a list. A whole-key `set`
+ * replaces the foreign value itself, and a repair in front of one would make
+ * two history entries out of a single edit.
+ */
+const addressesAList = (command: Command) =>
+  command.op === 'insertItem' ||
+  command.op === 'removeItem' ||
+  command.op === 'moveItem';
 
 export type ArrayFieldCommands<T extends ArrayRow> = Readonly<{
   /**
@@ -97,7 +163,7 @@ export function useArrayFieldCommands<T extends ArrayRow>(
   getIdRef.current = getId;
 
   const readCurrent = useCallback(
-    (key: string) => readArray(applyOwnCommands([]).draft[key]),
+    (key: string) => readArray(key, applyOwnCommands([]).draft[key]),
     [applyOwnCommands],
   );
 
@@ -105,12 +171,16 @@ export function useArrayFieldCommands<T extends ArrayRow>(
   const refusedRef = useRef(false);
 
   const commit = useCallback(
-    (key: string, commands: readonly Command[]) => {
+    (key: string, bound: BoundArray, commands: readonly Command[]) => {
       // Written for every attempt, so that a refusal cannot outlive the write
       // it describes and be read as the verdict on a later one.
       refusedRef.current = false;
       if (commands.length === 0) return false;
-      const { draft, refused } = applyOwnCommands(commands);
+      const { draft, refused } = applyOwnCommands(
+        bound.repair.length > 0 && commands.some(addressesAList)
+          ? [...bound.repair, ...commands]
+          : commands,
+      );
       if (refused) {
         refusedRef.current = true;
         return false;
@@ -130,11 +200,13 @@ export function useArrayFieldCommands<T extends ArrayRow>(
   const handleOperation = useCallback(
     (operation: ArrayFieldOperation<T>) => {
       if (documentKey === undefined) return;
+      const bound = readCurrent(documentKey);
       commit(
         documentKey,
+        bound,
         commandsForOperation(
           documentKey,
-          readCurrent(documentKey),
+          bound.current,
           renderedRef.current,
           operation,
           getIdRef.current,
@@ -170,11 +242,13 @@ export function useArrayFieldCommands<T extends ArrayRow>(
         return true;
       }
 
+      const bound = readCurrent(documentKey);
       return commit(
         documentKey,
+        bound,
         commandsForDetachedRow(
           documentKey,
-          readCurrent(documentKey),
+          bound.current,
           row,
           id,
           isNewRow,
