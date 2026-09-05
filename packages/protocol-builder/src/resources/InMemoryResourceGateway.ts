@@ -165,6 +165,35 @@ export class InMemoryResourceGateway implements ProtocolBuilderResourceGateway {
     this.readOnly = readOnly;
   }
 
+  /**
+   * Stages content the host can hold but cannot name — bytes pasted or dropped
+   * with no filename — so a promotion has to refuse it: the manifest records a
+   * `source`, and there is none to record.
+   */
+  stageUnnamedContent(): ResourceDescriptor {
+    const bytes = Uint8Array.from([1, 2, 3, 4]);
+    const resourceId = this.claimResourceId();
+    const requestId = `unnamed-${resourceId}`;
+    const descriptor = Object.freeze({
+      id: resourceId,
+      kind: 'image' as const,
+      name: 'Pasted image',
+      status: 'staged' as const,
+      byteLength: bytes.byteLength,
+      contentType: 'image/png',
+    });
+    this.staged.set(resourceId, {
+      descriptor,
+      requestId,
+      content: Object.freeze({
+        bytes: Uint8Array.from(bytes),
+        contentType: 'image/png',
+      }),
+    });
+    this.stageRequests.set(requestId, resourceId);
+    return descriptor;
+  }
+
   /** The manifest the host would serve right now, keyed by asset id. */
   getCommittedManifest(): Readonly<Record<string, Asset>> {
     const manifest: Record<string, Asset> = {};

@@ -38,6 +38,7 @@ import {
   stageIndexForValidation,
   type StagedResourceTracker,
 } from './resources/lifecycle.ts';
+import { collectStageResourceReferences } from './resources/references.ts';
 import { isStageType } from './stage-types.ts';
 import {
   attributeValidationIssues,
@@ -110,6 +111,12 @@ export type ProtocolBuilderSnapshot = Readonly<{
   access: ProtocolBuilderAccess;
   presence: readonly ProtocolBuilderPresence[];
   attribution: Readonly<Record<string, ChangeAttribution>>;
+  /**
+   * Every local batch the authoritative protocol has not acknowledged yet,
+   * including the batches a live-applying host has not been given: a batch
+   * that references a resource staged in this session waits here until finish
+   * carries it and the manifest to the host together.
+   */
   pendingCommands: readonly PendingCommandBatch[];
   history: ProtocolBuilderHistory;
   validation: ProtocolBuilderValidation;
@@ -228,8 +235,11 @@ export type ProtocolBuilderSession = {
   ): Promise<CompoundEditResult>;
   finish(): Promise<void>;
   /**
-   * Ends the session without finishing: everything staged in it is discarded.
-   * Ok when the session has no gateway — there is nothing to discard.
+   * Ends the session without finishing: everything staged in it is discarded,
+   * along with the pending batches that were withheld from a live-applying
+   * host because they referenced that staging. Ok when the session has no
+   * gateway — there is nothing to discard. Refused while a finish is
+   * committing those very resources, because that promotion decides them.
    */
   cancel(): Promise<ResourceResult<undefined>>;
   /**
@@ -255,6 +265,21 @@ export type ProtocolBuilderSessionOptions = Readonly<{
    */
   resourceGateway?: ProtocolBuilderResourceGateway;
   buildCandidate(context: ProtocolCandidateContext): unknown;
+  /**
+   * Each local batch, as it is made, for a host that applies edits live rather
+   * than only at finish.
+   *
+   * A batch that puts a resource this session has staged into the draft is
+   * withheld: its bytes are not in the protocol until finish promotes them, so
+   * a host applying it live would commit a reference to a resource the
+   * protocol does not have. That batch and every batch after it stay pending
+   * — visible in {@link ProtocolBuilderSnapshot.pendingCommands}, so nothing
+   * looks saved that is not — and reach the host in the finish apply, in
+   * order, alongside the manifest commands from the same promotion. A cancel
+   * drops them with the staging that made them unsendable. Batches naming only
+   * committed resources are unaffected, as is a host that buffers instead of
+   * applying live: it reads the same pending batches at finish either way.
+   */
   onCommands?(batch: PendingCommandBatch): void;
   onCompoundEdit?(
     request: CompoundEditSubmission,
@@ -384,6 +409,13 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
   private readonly resources: StagedResourceTracker | undefined;
   /** Held across a retried finish so a promotion cannot happen twice. */
   private promotionId: string | undefined;
+  /**
+   * The first batch withheld from `onCommands` because it references a staged
+   * resource. Every later batch is withheld with it, so a live-applying host
+   * only ever holds a prefix of this session's batches and an acknowledgement
+   * cannot drop a batch it never received.
+   */
+  private withheldFromBatchId: number | undefined;
 
   constructor(options: ProtocolBuilderSessionOptions) {
     assertNoIdentityFields(options.fields);
@@ -623,6 +655,10 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
    * that promotion so the manifest entries and the stage's own commands reach
    * the host as one atomic apply. Staged resources the draft walked away from
    * are discarded only once that apply has succeeded.
+   *
+   * That apply is also where the batches withheld from a live-applying host
+   * are released: they reference resources whose manifest entries are in the
+   * very same apply, so this is the first moment they are safe to send.
    */
   async finish(): Promise<void> {
     this.assertEditable();
@@ -671,6 +707,10 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       throw new ResourcePromotionError(outcome.failure);
     }
     this.promotionId = undefined;
+    // The apply carried every pending batch, withheld ones included, so the
+    // host is no longer missing anything and later batches flow live again.
+    this.withheldFromBatchId = undefined;
+    resources.finished();
   }
 
   async cancel(): Promise<ResourceResult<undefined>> {
@@ -678,7 +718,9 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     if (resources === undefined) {
       return Object.freeze({ status: 'ok', data: undefined });
     }
-    return await resources.gateway.discardAllStaged();
+    const result = await resources.cancel();
+    if (result.status === 'ok') this.dropWithheldCommands();
+    return result;
   }
 
   getResourceGateway(): ProtocolBuilderResourceGateway | undefined {
@@ -730,6 +772,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       (doc, batch) => applyCommands(doc, [...batch.commands]),
       cloneDoc(this.baseFields),
     );
+    this.releaseWithheldFrom(pendingCommands);
     this.replaceSnapshot({
       fields,
       pendingCommands,
@@ -779,6 +822,9 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       this.redoStack.length = 0;
       this.historyGeneration += 1;
       this.fencedAtRevision = this.snapshot.manifestRevision;
+      // The dropped batches take the hold with them: nothing is waiting for a
+      // finish this session can no longer run.
+      this.withheldFromBatchId = undefined;
       this.replaceSnapshot({
         access,
         fields: this.baseFields,
@@ -808,14 +854,85 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       id: this.nextBatchId++,
       commands: Object.freeze([...commands]),
     });
+    const withheld = this.withholdsFromHost(batch, fields);
+    if (withheld) this.withheldFromBatchId ??= batch.id;
     this.replaceSnapshot({
       fields,
       pendingCommands: [...this.snapshot.pendingCommands, batch],
       validation: pendingValidation(),
       validatedProtocol: null,
     });
-    this.options.onCommands?.(batch);
+    if (!withheld) this.options.onCommands?.(batch);
     void this.runValidation();
+  }
+
+  /**
+   * Whether a batch has to wait for finish: it puts a resource this session
+   * has staged into one of the fields it touches, and that resource's manifest
+   * entry does not exist until the finish promotion writes it.
+   *
+   * The fields are read for references the way validation reads them — from
+   * the schema's own `assetReference` tags — so a stage type that gains a
+   * resource field is covered as soon as its schema is tagged, and nothing
+   * here has to know which field of which stage holds an asset id.
+   */
+  private withholdsFromHost(
+    batch: PendingCommandBatch,
+    fields: StageFormDraft,
+  ): boolean {
+    // Once one batch is held, everything after it is held too: releasing them
+    // out of order would let an acknowledgement of a later batch drop an
+    // earlier one the host never saw.
+    if (this.withheldFromBatchId !== undefined) return true;
+    const staged = this.resources?.staged() ?? NO_STAGED_RESOURCES;
+    if (staged.length === 0) return false;
+    const stagedIds = new Set(staged.map((descriptor) => descriptor.id));
+    const touched = new Set(batch.commands.map((command) => command.key));
+    return collectStageResourceReferences(
+      stageDocument(this.snapshot.editedSection.identity, fields),
+    ).some(
+      (reference) =>
+        touched.has(String(reference.path[0])) &&
+        stagedIds.has(reference.resourceId),
+    );
+  }
+
+  /**
+   * Forgets the batches a live-applying host never received, and the draft
+   * they made — the cancel path, where the resources they reference have just
+   * been discarded. The host's own view is untouched: it never had them.
+   */
+  private dropWithheldCommands(): void {
+    const withheldFrom = this.withheldFromBatchId;
+    if (withheldFrom === undefined) return;
+    this.withheldFromBatchId = undefined;
+    const pendingCommands = this.snapshot.pendingCommands.filter(
+      (batch) => batch.id < withheldFrom,
+    );
+    const fields = pendingCommands.reduce<SectionDoc>(
+      (doc, batch) => applyCommands(doc, [...batch.commands]),
+      cloneDoc(this.baseFields),
+    );
+    this.replaceSnapshot({
+      fields,
+      pendingCommands,
+      validation: pendingValidation(),
+      validatedProtocol: null,
+    });
+    void this.runValidation();
+  }
+
+  /** Clears the hold once no withheld batch is pending any more. */
+  private releaseWithheldFrom(
+    pendingCommands: readonly PendingCommandBatch[],
+  ): void {
+    const withheldFrom = this.withheldFromBatchId;
+    if (
+      withheldFrom !== undefined &&
+      pendingCommands.every((batch) => batch.id < withheldFrom)
+    ) {
+      this.withheldFromBatchId = undefined;
+    }
   }
 
   private async runValidation(): Promise<ProtocolBuilderValidation> {

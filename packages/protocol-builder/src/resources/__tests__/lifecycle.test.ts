@@ -57,6 +57,43 @@ function geospatialStage(tokenAssetId: string): SectionDoc {
   };
 }
 
+/**
+ * A host whose staging calls hang until the test releases them — an upload or
+ * a secret still in flight, which is the only way to observe what a session
+ * does with a result that lands after it stopped staging.
+ */
+function gatedStagingHost(host: ProtocolBuilderResourceGateway): Readonly<{
+  gateway: ProtocolBuilderResourceGateway;
+  release(): void;
+}> {
+  let release = (): void => undefined;
+  const staged = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  return {
+    release: () => {
+      release();
+    },
+    gateway: {
+      list: (options) => host.list(options),
+      inspect: (resourceId) => host.inspect(resourceId),
+      download: (resourceId) => host.download(resourceId),
+      resolvePreview: (resourceId) => host.resolvePreview(resourceId),
+      discardStaged: (resourceId) => host.discardStaged(resourceId),
+      discardAllStaged: () => host.discardAllStaged(),
+      promote: (request) => host.promote(request),
+      stageUpload: async (request) => {
+        await staged;
+        return host.stageUpload(request);
+      },
+      stageSecret: async (request) => {
+        await staged;
+        return host.stageSecret(request);
+      },
+    },
+  };
+}
+
 function createTracker(
   gateway: ProtocolBuilderResourceGateway,
   isEditable: () => boolean = () => true,
@@ -204,6 +241,152 @@ describe('staged resource tracker', () => {
       status: 'ok',
     });
     expect(tracker.staged()).toEqual([]);
+  });
+
+  it('discards an upload that lands after the session cancelled', async () => {
+    const host = new InMemoryResourceGateway();
+    const gated = gatedStagingHost(host);
+    const { tracker } = createTracker(gated.gateway);
+    const staging = tracker.gateway.stageUpload({
+      requestId: 'request-in-flight',
+      kind: 'image',
+      name: 'Staged backdrop',
+      source: 'in-flight.png',
+      contentType: 'image/png',
+      bytes: IMAGE_BYTES,
+    });
+
+    expect(await tracker.cancel()).toMatchObject({ status: 'ok' });
+    gated.release();
+    const landed = await staging;
+
+    // Nothing else would ever drop it: the cancel discarded once, before this
+    // upload existed at the host.
+    expect(expectFailure(landed).reason).toBe('not-found');
+    expect(tracker.staged()).toEqual([]);
+    expect(host.getStagingResidue()).toEqual([]);
+  });
+
+  it('discards a secret that lands after the session cancelled', async () => {
+    const host = new InMemoryResourceGateway();
+    const gated = gatedStagingHost(host);
+    const { tracker } = createTracker(gated.gateway);
+    const staging = tracker.gateway.stageSecret({
+      requestId: 'request-in-flight',
+      name: 'Mapbox token',
+      value: SECRET_VALUE,
+    });
+
+    expect(await tracker.cancel()).toMatchObject({ status: 'ok' });
+    gated.release();
+    const landed = await staging;
+
+    // A kept secret is worse than kept bytes: the host would go on holding the
+    // key for an editing session that is over.
+    expect(expectFailure(landed).reason).toBe('not-found');
+    expect(tracker.staged()).toEqual([]);
+    expect(host.getStagingResidue()).toEqual([]);
+  });
+
+  it('discards an upload that lands after the finish that did not promote it', async () => {
+    const host = new InMemoryResourceGateway();
+    const gated = gatedStagingHost(host);
+    const { tracker } = createTracker(gated.gateway);
+    const staging = tracker.gateway.stageUpload({
+      requestId: 'request-in-flight',
+      kind: 'image',
+      name: 'Staged backdrop',
+      source: 'in-flight.png',
+      contentType: 'image/png',
+      bytes: IMAGE_BYTES,
+    });
+
+    tracker.finished();
+    gated.release();
+    const landed = await staging;
+
+    expect(expectFailure(landed).reason).toBe('not-found');
+    expect(tracker.staged()).toEqual([]);
+    expect(host.getStagingResidue()).toEqual([]);
+  });
+
+  it('keeps staging that starts after a finish, which belongs to the next edit', async () => {
+    const host = new InMemoryResourceGateway();
+    const { tracker } = createTracker(host);
+
+    tracker.finished();
+    const image = await stageImage(tracker.gateway, 'request-after-finish');
+
+    expect(tracker.staged().map((descriptor) => descriptor.id)).toEqual([
+      image.id,
+    ]);
+  });
+
+  it('refuses to discard a resource the promotion in flight is deciding', async () => {
+    const host = new InMemoryResourceGateway();
+    const { tracker } = createTracker(host);
+    const image = await stageImage(tracker.gateway);
+    let discardDuringApply: ResourceResult<undefined> | undefined;
+    let cancelDuringApply: ResourceResult<undefined> | undefined;
+
+    const promotion = expectOk(
+      await tracker.gateway.promote({
+        id: 'promotion-1',
+        resourceIds: [image.id],
+        applyManifest: async () => {
+          // What an editor cancelled mid-save does: the bytes have moved, and
+          // the manifest entry for them is in this very apply.
+          discardDuringApply = await tracker.gateway.discardStaged(image.id);
+          cancelDuringApply = await tracker.cancel();
+          return { status: 'applied' };
+        },
+      }),
+    );
+
+    expect(discardDuringApply).toMatchObject({
+      status: 'failed',
+      failure: { reason: 'unavailable', retryable: true, resourceId: image.id },
+    });
+    expect(cancelDuringApply).toMatchObject({
+      status: 'failed',
+      failure: { reason: 'unavailable', retryable: true },
+    });
+    expect(promotion.promoted.map((descriptor) => descriptor.id)).toEqual([
+      image.id,
+    ]);
+    // The committed resource is still resolvable: had the discard gone
+    // through, the promotion would have had nothing left to mark and the
+    // stage that references it would read as pointing at nothing.
+    expect(
+      tracker.promotedAwaitingManifest({}).map((descriptor) => descriptor.id),
+    ).toEqual([image.id]);
+    expect(host.getCommittedManifest()).toMatchObject({
+      [image.id]: { type: 'image' },
+    });
+  });
+
+  it('leaves a promoted resource alone when everything staged is discarded', async () => {
+    const host = new InMemoryResourceGateway();
+    const { tracker } = createTracker(host);
+    const promoted = await stageImage(tracker.gateway, 'request-promoted');
+    await stageImage(tracker.gateway, 'request-abandoned');
+    expectOk(
+      await tracker.gateway.promote({
+        id: 'promotion-1',
+        resourceIds: [promoted.id],
+        applyManifest: () => ({ status: 'applied' }),
+      }),
+    );
+
+    expectOk(await tracker.gateway.discardAllStaged());
+
+    expect(tracker.staged()).toEqual([]);
+    // Discarding staging must not reach a resource that is no longer staging:
+    // it is committed, and the session goes on resolving it until the host's
+    // revision carries its manifest entry.
+    expect(
+      tracker.promotedAwaitingManifest({}).map((descriptor) => descriptor.id),
+    ).toEqual([promoted.id]);
   });
 });
 
@@ -383,6 +566,31 @@ describe('finishStagedResources', () => {
     // No promotion, so no manifest rides with the stage's own commands.
     expect(applyStage).toHaveBeenCalledExactlyOnceWith();
     expect(host.getStagingResidue()).toEqual([]);
+  });
+
+  it('keeps what a stage that promotes nothing abandoned when its apply fails', async () => {
+    const host = new InMemoryResourceGateway();
+    const { tracker } = createTracker(host);
+    const abandoned = await stageImage(tracker.gateway, 'request-abandoned');
+    const failure = new Error('the host refused the revision');
+
+    const outcome = await finishStagedResources({
+      gateway: tracker.gateway,
+      promotionId: 'promotion-1',
+      stageDocument: informationStage(),
+      staged: tracker.staged(),
+      secretHandle: (resourceId) => tracker.secretHandle(resourceId),
+      applyStage: () => Promise.reject(failure),
+    });
+
+    // The draft walked away from this resource, but the stage that walked away
+    // was never saved: discarding before the apply settles would throw the
+    // researcher's file away on the strength of an edit that did not happen.
+    expect(outcome).toEqual({ status: 'apply-failed', error: failure });
+    expect(tracker.staged().map((descriptor) => descriptor.id)).toEqual([
+      abandoned.id,
+    ]);
+    expect(host.getStagingResidue()).not.toEqual([]);
   });
 });
 
