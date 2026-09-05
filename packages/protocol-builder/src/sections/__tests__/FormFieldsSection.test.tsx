@@ -1,5 +1,5 @@
 import { act, screen, waitFor, within } from '@testing-library/react';
-import type { ComponentProps } from 'react';
+import { type ComponentProps, useEffect, useMemo } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { contentHash } from '@codaco/studio-sync/apply';
@@ -8,7 +8,12 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import {
   buildVariableRoleMap,
   excludeUnvalidatedUses,
+  variableRoleConflicts,
 } from '../../codebook/variableRoles.ts';
+import { draftAdditionalAttributeVariableIds } from '../../codebook/variableValidation.ts';
+import ProtocolField from '../../form/ProtocolField.tsx';
+import { useStageEditorForm } from '../../form/stageEditorContext.ts';
+import { useStageValue } from '../../form/stageFormHooks.ts';
 import { protocolContextFromSections } from '../../protocol-context.ts';
 import { FIXTURE_SESSION_OWNER } from '../../testing/fixtureSession.ts';
 import { loadFixtureStage } from '../../testing/protocolFixture.ts';
@@ -754,6 +759,205 @@ describe('an attribute the open stage itself writes unvalidated', () => {
     expect(offeredByRoleMap(sections, 'flagged', harness.seeded.id)).toEqual([
       'flagged',
     ]);
+  });
+});
+
+/** The same name generator, with nothing stamped on the nodes it adds yet. */
+const UNSTAMPED_NAME_GENERATOR = {
+  id: 'binds-a-slot-while-the-form-is-open',
+  type: 'NameGenerator' as const,
+  fields: {
+    ...STAMPING_NAME_GENERATOR.fields,
+    prompts: [
+      {
+        id: 'name-generator-prompt-1',
+        text: 'Who are the people you know?',
+      },
+    ],
+  },
+};
+
+/** What that prompt looks like once the researcher has bound the slot. */
+const STAMPED_PROMPTS = STAMPING_NAME_GENERATOR.fields.prompts;
+
+/** Lets a test bind the slot from outside, past the row dialog. */
+type SlotBinder = { bind?: () => void };
+
+/**
+ * Binds the prompt's stamp in the DRAFT, as the prompts section does.
+ *
+ * Written through `applyOwnCommands` rather than through a control, because
+ * the moment this test is about is one where a row dialog is open over the
+ * editor: the modal takes every pointer event, and a researcher's own binding
+ * of a slot before opening the dialog is the same draft write either way.
+ */
+function SlotBinder({ handle }: Readonly<{ handle: SlotBinder }>) {
+  const { applyOwnCommands } = useStageEditorForm();
+
+  useEffect(() => {
+    handle.bind = () => {
+      applyOwnCommands([{ op: 'set', key: 'prompts', value: STAMPED_PROMPTS }]);
+    };
+  }, [applyOwnCommands, handle]);
+
+  return null;
+}
+
+/**
+ * The form as an interface that owns unvalidated slots mounts it: reading its
+ * own live prompts, and telling the section what they now write.
+ *
+ * Exactly what Architect's own Form section does
+ * (`draftAdditionalAttributeVariableIds(promptDrafts)`), which is the point —
+ * the two hosts must refuse the same picks.
+ */
+function FormBesideItsSlots({ handle }: Readonly<{ handle: SlotBinder }>) {
+  const prompts = useStageValue('prompts');
+  const draftUnvalidatedVariables = useMemo(
+    () => [...draftAdditionalAttributeVariableIds(prompts)],
+    [prompts],
+  );
+
+  return (
+    <>
+      <SlotBinder handle={handle} />
+      <FormFieldsSection
+        subject="node"
+        hasTitle
+        draftUnvalidatedVariables={draftUnvalidatedVariables}
+      />
+    </>
+  );
+}
+
+/**
+ * A slot the researcher binds in THIS session, which no saved section holds.
+ *
+ * The role map is built from the authoritative protocol, so it describes the
+ * open stage as it was last saved: a prompt stamp bound a minute ago is
+ * invisible to it. Without the draft, the picker goes on offering that
+ * attribute and the row dialog goes on accepting it, and the contradiction
+ * arrives at stage submit — against the prompt, which is not what the
+ * researcher was working on.
+ */
+describe('an attribute the open stage’s DRAFT writes unvalidated', () => {
+  it('stops being offered the moment the slot is bound', async () => {
+    const handle: SlotBinder = {};
+    const harness = renderStageEditor({
+      stage: UNSTAMPED_NAME_GENERATOR,
+      sections: <FormBesideItsSlots handle={handle} />,
+    });
+
+    // Nothing writes `flagged` unvalidated yet, here or anywhere else.
+    const before = await openField(harness, 'Create new form field');
+    expect(offeredAttributes(before)).toContain('flagged');
+    await harness.user.click(before.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    act(() => handle.bind?.());
+
+    const after = await openField(harness, 'Create new form field');
+    const offered = offeredAttributes(after);
+    // Not the empty picker: everything else about this subject is still there.
+    expect(offered).toContain('age');
+    expect(offered).not.toContain('flagged');
+  });
+
+  /**
+   * The backstop, for the pick that was legal when it was made. The picker
+   * cannot offer what is already bound, so the only way to reach this refusal
+   * is to bind the slot while the dialog stands open — and the researcher has
+   * to be told which of their own two edits contradicts the other.
+   */
+  it('refuses a row that was picked before the slot was bound, and says where', async () => {
+    const handle: SlotBinder = {};
+    const harness = renderStageEditor({
+      stage: UNSTAMPED_NAME_GENERATOR,
+      sections: <FormBesideItsSlots handle={handle} />,
+    });
+
+    const dialog = await openField(harness, 'Create new form field');
+    await harness.user.selectOptions(
+      dialog.getByRole('combobox', { name: 'Attribute' }),
+      'flagged',
+    );
+    await harness.user.type(
+      dialog.getByRole('textbox', { name: 'Question text' }),
+      'Are they flagged?',
+    );
+
+    act(() => handle.bind?.());
+    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+
+    expect(
+      await dialog.findByText(
+        '"flagged" is assigned without validation by a prompt in this stage, so it cannot be used as a form field',
+      ),
+    ).toBeInTheDocument();
+    // The dialog stays open on the refusal, so the pick can be changed.
+    expect(screen.queryAllByRole('dialog')).toHaveLength(1);
+  });
+
+  /**
+   * Without the draft the section has only the saved protocol, which still
+   * says `flagged` is free — so the same journey ends with the pick accepted
+   * and the stage saved holding both writers of one attribute, which is the
+   * contradiction the picker exists to prevent.
+   */
+  it('is offered and accepted while the section reads only the saved protocol', async () => {
+    const handle: SlotBinder = {};
+    const harness = renderStageEditor({
+      stage: UNSTAMPED_NAME_GENERATOR,
+      sections: (
+        <>
+          <SlotBinder handle={handle} />
+          <FormFieldsSection subject="node" hasTitle />
+        </>
+      ),
+    });
+    await screen.findByRole('button', { name: 'Create new form field' });
+
+    act(() => handle.bind?.());
+
+    const dialog = await openField(harness, 'Create new form field');
+    expect(offeredAttributes(dialog)).toContain('flagged');
+    await harness.user.selectOptions(
+      dialog.getByRole('combobox', { name: 'Attribute' }),
+      'flagged',
+    );
+    await harness.user.type(
+      dialog.getByRole('textbox', { name: 'Question text' }),
+      'Are they flagged?',
+    );
+    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    const request = await harness.submit();
+    if (request === null) throw new Error('the stage did not save');
+    // Saved, holding both writers of `flagged` in the one stage: a form field
+    // that checks the participant's answer, and a prompt that stamps one
+    // unchecked. Nothing refuses that at save, so the picker is where it has
+    // to be caught — and what does report it names the prompt as loudly as the
+    // field, which is not what the researcher was working on.
+    const saved = protocolContextFromSections({
+      ...harness.session.getSnapshot().protocolSections,
+      [sectionId({ kind: 'stage', stageId: harness.seeded.id })]:
+        request.stageDocument,
+    });
+    const here = saved.orderedStages.findIndex(
+      (stage) => stage.id === harness.seeded.id,
+    );
+    const conflict = variableRoleConflicts(saved).find(
+      (candidate) => candidate.variableId === 'flagged',
+    );
+
+    expect(conflict?.validated.map((hit) => hit.stageIndex)).toContain(here);
+    expect(conflict?.unvalidated.map((hit) => hit.stageIndex)).toContain(here);
   });
 });
 

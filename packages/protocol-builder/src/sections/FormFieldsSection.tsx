@@ -31,6 +31,7 @@ import {
   excludeUnvalidatedUses,
 } from '../codebook/variableRoles.ts';
 import {
+  draftUnvalidatedElsewhereMessage,
   makeFieldEditorValidate,
   unvalidatedElsewhereMessage,
   variableDisplayName,
@@ -103,6 +104,9 @@ const DUPLICATE_FIELD =
 
 /** Stable identity: `options` is a memo dependency of the picker below. */
 const NO_OPTIONS: VariablePickerOption[] = [];
+
+/** Stable identity, for the same reason: see `draftUnvalidatedVariables`. */
+const NO_DRAFT_UNVALIDATED: readonly string[] = Object.freeze([]);
 
 const VariablePicker = VariablePickerControl as ComponentType<
   Record<string, unknown>
@@ -215,6 +219,8 @@ const OPTIONAL_FIELDS_VALIDATION = Object.freeze({
 type FormFieldsScope = Readonly<{
   fieldsPath: string;
   subject: CodebookSubject | undefined;
+  /** See `draftUnvalidatedVariables`. Carried for the row's own picker. */
+  draftUnvalidated: ReadonlySet<string>;
 }>;
 
 const FormFieldsScopeContext = createContext<FormFieldsScope | undefined>(
@@ -296,6 +302,24 @@ export type FormFieldsSectionProps = Readonly<{
    * there (`TitlelessFormSchema`).
    */
   hasTitle?: boolean;
+  /**
+   * Attributes THIS stage's live draft writes without validation, which the
+   * authoritative protocol does not know about yet.
+   *
+   * The role map is built from the protocol's own sections, so it describes
+   * the edited stage as it was last SAVED. A researcher who binds an attribute
+   * to an unvalidated slot in this same session — a name generator's prompt
+   * stamp, a pedigree slot — has made a write no section of the protocol holds,
+   * and without this the picker goes on offering that attribute and the row
+   * dialog goes on accepting it. The contradiction then surfaces at stage
+   * submit, against the slot the researcher was not looking at.
+   *
+   * The interface that owns those slots supplies this, because only it knows
+   * where its own unvalidated writes live: a name generator reads its prompts'
+   * `additionalAttributes`, a Family Pedigree its node configuration. Give a
+   * stable array — a fresh one each render re-registers the list's validator.
+   */
+  draftUnvalidatedVariables?: readonly string[];
   copy?: Partial<FormFieldsCopy>;
 }>;
 
@@ -321,6 +345,7 @@ export default function FormFieldsSection({
   optional = false,
   capability,
   hasTitle = false,
+  draftUnvalidatedVariables = NO_DRAFT_UNVALIDATED,
   copy,
 }: FormFieldsSectionProps) {
   const words = { ...DEFAULT_COPY, ...copy };
@@ -330,11 +355,19 @@ export default function FormFieldsSection({
     FormFieldEditor,
     FormFieldPreview,
   );
+  const draftUnvalidated = useMemo(
+    () => new Set(draftUnvalidatedVariables),
+    [draftUnvalidatedVariables],
+  );
   const onBeforeSave = useCommitFormField(codebookSubject);
-  const editorValidate = useFormFieldValidate(codebookSubject, fieldsPath);
+  const editorValidate = useFormFieldValidate(
+    codebookSubject,
+    fieldsPath,
+    draftUnvalidated,
+  );
   const scope = useMemo(
-    () => ({ fieldsPath, subject: codebookSubject }),
-    [codebookSubject, fieldsPath],
+    () => ({ fieldsPath, subject: codebookSubject, draftUnvalidated }),
+    [codebookSubject, draftUnvalidated, fieldsPath],
   );
 
   return (
@@ -488,6 +521,7 @@ function useCommitFormField(
 function useFormFieldValidate(
   codebookSubject: CodebookSubject | undefined,
   fieldsPath: string,
+  draftUnvalidated: ReadonlySet<string>,
 ) {
   const { protocolContext } = useStageEditorForm();
   const fields = useStageValue(fieldsPath);
@@ -506,13 +540,27 @@ function useFormFieldValidate(
       allVariables,
       undefined,
       undefined,
-      (variableId) =>
-        codebookSubject !== undefined &&
-        hasUnvalidatedUseFor(roleMap, codebookSubject, variableId)
-          ? unvalidatedElsewhereMessage(
-              variableDisplayName(allVariables, variableId),
-            )
-          : false,
+      (variableId) => {
+        if (
+          codebookSubject === undefined ||
+          !hasUnvalidatedUseFor(
+            roleMap,
+            codebookSubject,
+            variableId,
+            draftUnvalidated,
+          )
+        ) {
+          return false;
+        }
+        const name = variableDisplayName(allVariables, variableId);
+        // Where the other writer IS decides what the researcher is told, and
+        // it is the only thing they can act on: a slot in this stage is on
+        // screen behind the dialog, and a stage elsewhere in the protocol is
+        // not.
+        return draftUnvalidated.has(variableId)
+          ? draftUnvalidatedElsewhereMessage(name)
+          : unvalidatedElsewhereMessage(name);
+      },
     );
 
     return (
@@ -547,7 +595,7 @@ function useFormFieldValidate(
         ? undefined
         : { variable: issues.variable };
     };
-  }, [allVariables, codebookSubject, fields, roleMap]);
+  }, [allVariables, codebookSubject, draftUnvalidated, fields, roleMap]);
 }
 
 /**
@@ -564,6 +612,10 @@ function useFormFieldValidate(
  *
  * Each field's committed pick escapes throughout (`committed` below), so a
  * protocol that arrives already conflicting stays editable.
+ *
+ * Built from the AUTHORITATIVE sections, so it describes the open stage as it
+ * was last saved. What this session has bound since is the other half of the
+ * question, and arrives as `draftUnvalidatedVariables`.
  */
 function useUnvalidatedWriterMap() {
   const { protocolContext } = useStageEditorForm();
@@ -575,14 +627,21 @@ function useUnvalidatedWriterMap() {
 
 /**
  * Kept as a named helper so the picker's exclusion and the save-time refusal
- * ask the role map the same question.
+ * ask the same question of the same two sources.
+ *
+ * Two sources, because the role map is built from the authoritative protocol
+ * and therefore describes the edited stage as it was last SAVED: a slot this
+ * session has just bound is a write no section holds yet, and only the draft
+ * knows about it.
  */
 function hasUnvalidatedUseFor(
   roleMap: ReturnType<typeof buildVariableRoleMap>,
   codebookSubject: Parameters<typeof excludeUnvalidatedUses>[1],
   variableId: string,
+  draftUnvalidated: ReadonlySet<string>,
 ): boolean {
   return (
+    draftUnvalidated.has(variableId) ||
     excludeUnvalidatedUses(roleMap, codebookSubject, [{ value: variableId }])
       .length === 0
   );
@@ -736,7 +795,7 @@ function AttributePicker({
   editIndex,
 }: Readonly<{ item: RowEditorProps['item']; editIndex?: number }>) {
   const { protocolContext } = useStageEditorForm();
-  const { fieldsPath, subject } = useFormFieldsScope();
+  const { fieldsPath, subject, draftUnvalidated } = useFormFieldsScope();
   const fields = useStageValue(fieldsPath);
   const committed = asString(item.variable) ?? '';
 
@@ -762,11 +821,25 @@ function AttributePicker({
       }));
     return [
       ...excludeUnvalidatedUses(roleMap, subject, pool, committed).filter(
-        ({ value }) => value === committed || !siblings.has(value),
+        ({ value }) =>
+          value === committed ||
+          // A slot bound in this session writes unvalidated just as a saved one
+          // does; the protocol simply does not hold it yet. Asked the same way
+          // as the save-time gate, so the picker cannot offer what the dialog
+          // is about to refuse.
+          (!siblings.has(value) && !draftUnvalidated.has(value)),
       ),
       { value: NEW_VARIABLE, label: 'Create a new attribute…' },
     ];
-  }, [committed, editIndex, fields, protocolContext, roleMap, subject]);
+  }, [
+    committed,
+    draftUnvalidated,
+    editIndex,
+    fields,
+    protocolContext,
+    roleMap,
+    subject,
+  ]);
 
   return (
     <Field<typeof VariablePicker>
