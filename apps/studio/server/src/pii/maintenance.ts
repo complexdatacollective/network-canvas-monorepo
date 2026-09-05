@@ -44,6 +44,14 @@ const cursorSchema = z.strictObject({
 });
 export type RotationCursor = z.infer<typeof cursorSchema>;
 
+export function parseRotationCursor(value: unknown): RotationCursor {
+  return cursorSchema.parse(value);
+}
+
+export function parseLegacyCursor(value: unknown): string | null {
+  return z.string().min(1).max(255).nullable().parse(value);
+}
+
 function sameBytes(left: Buffer | null, right: Buffer | null): boolean {
   return left === null ? right === null : right !== null && left.equals(right);
 }
@@ -357,7 +365,7 @@ export async function rotateEncryptionBatch(
 }> {
   const limit = limitSchema.parse(input.limit);
   const start: RotationCursor = input.cursor
-    ? cursorSchema.parse(input.cursor)
+    ? parseRotationCursor(input.cursor)
     : {
         phase: 'participants',
         afterId: null,
@@ -433,12 +441,7 @@ export async function migrateLegacyOAuthBatch(
   input: { limit: number; afterId?: string | null },
 ): Promise<{ processed: number; afterId: string | null; remaining: number }> {
   const limit = limitSchema.parse(input.limit);
-  const afterId = z
-    .string()
-    .min(1)
-    .max(255)
-    .nullable()
-    .parse(input.afterId ?? null);
+  const afterId = parseLegacyCursor(input.afterId ?? null);
   const legacyWhere =
     '"accessToken" IS NOT NULL OR "refreshToken" IS NOT NULL OR "idToken" IS NOT NULL';
   await credentialTransaction(pool, async () => undefined, true);

@@ -15,11 +15,10 @@ const migrations = await readMigrations(
 const pool = createOwnerPool(readMigrationDatabase());
 try {
   const completed = await migrateDatabase(pool, migrations, SCHEMA_FINGERPRINT);
-  // oxlint-disable-next-line no-console -- explicit operator command
-  console.log(
-    completed.length
+  process.stdout.write(
+    (completed.length
       ? `Applied Studio migrations: ${completed.join(', ')}`
-      : 'Studio migrations already current.',
+      : 'Studio migrations already current.') + '\n',
   );
 } finally {
   await pool.end();

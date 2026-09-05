@@ -1,0 +1,252 @@
+import { spawn, spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+
+import { describe, expect, it, vi } from 'vitest';
+
+import {
+  createScratchDatabase,
+  provisionScratchSchema,
+  reachableDb,
+} from '../../__tests__/support/postgres.ts';
+import { createMaintenancePool } from '../../db/pool.ts';
+import type { DbEnv } from '../../env.ts';
+import { runEncryptionCommand } from '../operator.ts';
+import { configuration, rootOne } from './fixtures.ts';
+
+const database = await reachableDb();
+const entry = fileURLToPath(new URL('../../index.ts', import.meta.url));
+const operator = fileURLToPath(new URL('../../encryption.ts', import.meta.url));
+
+function environment(db: DbEnv) {
+  const config = configuration();
+  config.roots = config.roots.map((root) => ({
+    ...root,
+    reference: `STUDIO_ENCRYPTION_ROOT_${root.reference}`,
+  }));
+  return {
+    NODE_ENV: 'production',
+    HOST: '127.0.0.1',
+    PORT: '0',
+    DATABASE_URL: db.url,
+    BETTER_AUTH_SECRET: 'synthetic-studio-entrypoint-secret-for-tests',
+    PUBLIC_URL: 'https://studio.example.org',
+    STUDIO_ENCRYPTION_KEYSET: JSON.stringify(config),
+    STUDIO_ENCRYPTION_ROOT_TEST_ROOT_ONE: rootOne.toString('base64'),
+    STUDIO_ENCRYPTION_ROOT_TEST_ROOT_TWO: rootOne.toString('base64'),
+  };
+}
+
+async function withDatabase(
+  work: (
+    scratch: Awaited<ReturnType<typeof createScratchDatabase>>,
+  ) => Promise<void>,
+) {
+  if (!database) throw new Error('A local database is required.');
+  const scratch = await createScratchDatabase(database);
+  try {
+    await provisionScratchSchema(scratch.pool);
+    await work(scratch);
+  } finally {
+    await scratch.dispose();
+  }
+}
+
+function runNode(file: string, args: string[], env: Record<string, string>) {
+  const child = spawnSync(process.execPath, [file, ...args], {
+    env,
+    encoding: 'utf8',
+    timeout: 10_000,
+  });
+  expect(child.error).toBeUndefined();
+  expect(child.stderr).toBe('');
+  return {
+    status: child.status,
+    records: child.stdout
+      .trim()
+      .split('\n')
+      .map((line) => JSON.parse(line) as Record<string, unknown>),
+  };
+}
+
+async function runServer(env: Record<string, string>) {
+  const child = spawn(process.execPath, [entry], {
+    env,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  const chunks: string[] = [];
+  const errors: string[] = [];
+  let started = false;
+  const timer = setTimeout(() => child.kill('SIGKILL'), 10_000);
+  child.stdout.on('data', (chunk: Buffer) => {
+    chunks.push(chunk.toString());
+    if (
+      !started &&
+      chunks.join('').includes('"code":"STUDIO_SERVER_STARTED"')
+    ) {
+      started = true;
+      child.kill('SIGTERM');
+    }
+  });
+  child.stderr.on('data', (chunk: Buffer) => errors.push(chunk.toString()));
+  try {
+    const status = await new Promise<number | null>((resolve, reject) => {
+      child.once('error', reject);
+      child.once('close', resolve);
+    });
+    expect(errors.join('')).toBe('');
+    return {
+      status,
+      started,
+      records: chunks
+        .join('')
+        .trim()
+        .split('\n')
+        .map((line) => JSON.parse(line) as Record<string, unknown>),
+    };
+  } finally {
+    clearTimeout(timer);
+    if (child.exitCode === null) child.kill('SIGKILL');
+  }
+}
+
+describe('actual server encryption startup and operator entrypoints', () => {
+  it('verifies through the operator command, starts with correct roots, and refuses wrong or missing roots before traffic', async () => {
+    await withDatabase(async ({ db, pool }) => {
+      const env = environment(db);
+      const {
+        BETTER_AUTH_SECRET: _authSecret,
+        PUBLIC_URL: _origin,
+        ...operatorEnv
+      } = env;
+      expect(runNode(operator, ['verify'], operatorEnv)).toEqual({
+        status: 0,
+        records: [{ operation: 'verify', verified: true }],
+      });
+      expect(
+        (await pool.query('SELECT * FROM encryption_key_verifications'))
+          .rowCount,
+      ).toBe(8);
+      expect(await runServer(env)).toMatchObject({ status: 0, started: true });
+      for (const root of [
+        'synthetic-secret-invalid-root',
+        Buffer.alloc(32, 44).toString('base64'),
+        '',
+      ]) {
+        const result = await runServer({
+          ...env,
+          STUDIO_ENCRYPTION_ROOT_TEST_ROOT_ONE: root,
+        });
+        expect(result.status).toBe(1);
+        expect(result.started).toBe(false);
+        expect(result.records).toEqual([
+          {
+            level: 50,
+            time: expect.any(String),
+            event: 'operational',
+            code: 'STUDIO_ENCRYPTION_INVALID',
+          },
+        ]);
+        expect(JSON.stringify(result.records)).not.toContain(
+          root || 'STUDIO_SERVER_STARTED',
+        );
+      }
+    });
+  });
+
+  it('never selects public roots in the operator lane and keeps failures value-free', async () => {
+    await withDatabase(async ({ db }) => {
+      const env = environment(db);
+      const { STUDIO_ENCRYPTION_KEYSET: _keyset, ...withoutKeys } = env;
+      const result = runNode(operator, ['verify'], {
+        ...withoutKeys,
+        STUDIO_DEV_DEFAULTS: 'true',
+      });
+      expect(result.status).toBe(1);
+      expect(result.records).toEqual([
+        {
+          level: 50,
+          time: expect.any(String),
+          event: 'operational',
+          code: 'STUDIO_ENCRYPTION_MAINTENANCE_FAILED',
+        },
+      ]);
+      for (const args of [
+        ['rotate', '--limit', '101'],
+        ['verify', '--cursor', 'synthetic-secret-bad-cursor'],
+      ]) {
+        const failed = runNode(operator, args, env);
+        expect(failed.status).toBe(1);
+        expect(failed.records.map((record) => record.code)).toEqual([
+          'STUDIO_ENCRYPTION_MAINTENANCE_FAILED',
+        ]);
+        expect(JSON.stringify(failed.records)).not.toContain(
+          'synthetic-secret',
+        );
+      }
+    });
+  });
+
+  it('exposes bounded maintenance results without starting unrelated application services', async () => {
+    await withDatabase(async ({ db }) => {
+      const maintenance = createMaintenancePool(db);
+      const encryption = {
+        configuration: configuration(),
+        loadRootKey: async () => rootOne,
+      };
+      try {
+        await expect(
+          runEncryptionCommand(
+            ['rotate', '--limit', '1'],
+            maintenance,
+            encryption,
+          ),
+        ).resolves.toEqual({
+          operation: 'rotate',
+          processed: 0,
+          remaining: 0,
+          cursor: null,
+        });
+        await expect(
+          runEncryptionCommand(
+            ['migrate-legacy', '--limit', '1'],
+            maintenance,
+            encryption,
+          ),
+        ).resolves.toEqual({
+          operation: 'migrate-legacy',
+          processed: 0,
+          remaining: 0,
+          afterId: null,
+        });
+      } finally {
+        await maintenance.end();
+      }
+    });
+  });
+
+  it('rejects malformed legacy cursors before loading roots or registering permanent proofs', async () => {
+    await withDatabase(async ({ db, pool }) => {
+      const maintenance = createMaintenancePool(db);
+      const loadRootKey = vi.fn(async () => rootOne);
+      try {
+        for (const afterId of ['', 'x'.repeat(256)]) {
+          await expect(
+            runEncryptionCommand(
+              ['migrate-legacy', '--after-id', afterId],
+              maintenance,
+              { configuration: configuration(), loadRootKey },
+            ),
+          ).rejects.toThrow();
+          expect({
+            rootLoads: loadRootKey.mock.calls.length,
+            registeredProofs: (
+              await pool.query('SELECT * FROM encryption_key_verifications')
+            ).rowCount,
+          }).toEqual({ rootLoads: 0, registeredProofs: 0 });
+        }
+      } finally {
+        await maintenance.end();
+      }
+    });
+  });
+});

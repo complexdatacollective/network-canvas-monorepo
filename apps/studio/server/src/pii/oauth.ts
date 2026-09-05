@@ -39,7 +39,7 @@ export const OAUTH_FIELDS = [
 export type OAuthIdentity = { id: string; userId: string };
 
 /** Runtime identity, not a caller-supplied authorization flag. */
-export async function requireCredentialRole(
+async function requireCredentialRole(
   client: pg.PoolClient,
   maintenanceOnly = false,
 ): Promise<void> {

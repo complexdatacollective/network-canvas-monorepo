@@ -32,6 +32,7 @@ import {
   authorizeMetrics,
   createObservability,
 } from './observability/runtime.ts';
+import type { EncryptionKeys } from './pii/keys.ts';
 import { createRpcRouter } from './rpc.ts';
 
 // The app WebSocket endpoint. In development the Vite dev server proxies this
@@ -53,6 +54,7 @@ const BETTER_AUTH_ORGANIZATION_MUTATION_POLICIES: ReadonlyMap<
 );
 
 type CreateAppDeps = {
+  encryptionKeys?: EncryptionKeys;
   auth?: AuthService;
   assetStore?: AssetStore;
   observability?: ReturnType<typeof createObservability>;
@@ -74,7 +76,7 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     });
   });
   const pool = deps.pool ?? (env.db ? createPool(env.db) : undefined);
-  const auth = deps.auth ?? createAuthService(env, pool);
+  const auth = deps.auth ?? createAuthService(env, pool, deps.encryptionKeys);
   const assetStore =
     deps.assetStore ?? (env.s3 ? createAssetStore(env.s3) : undefined);
   const observability =

@@ -103,18 +103,19 @@ async function verifyAndRegisterKeys(
   keys: EncryptionKeys,
   allowLegacyCredentials: boolean,
 ): Promise<void> {
-  const client = await pool.connect();
+  let client: pg.PoolClient | undefined;
   try {
+    client = await pool.connect();
     await client.query('BEGIN');
     await verifyEncryptionKeyTransaction(client, keys, allowLegacyCredentials);
     await client.query('COMMIT');
   } catch {
-    await client.query('ROLLBACK').catch(() => undefined);
+    await client?.query('ROLLBACK').catch(() => undefined);
     // Database/provider errors can include bound values. Boot reports only
     // this fixed diagnostic, never a key, address, token, or raw SQL error.
     throw new EncryptionStartupError();
   } finally {
-    client.release();
+    client?.release();
   }
 }
 

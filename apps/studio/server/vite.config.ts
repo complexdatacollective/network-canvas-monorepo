@@ -8,7 +8,11 @@ export default defineConfig({
   build: {
     ssr: true,
     rolldownOptions: {
-      input: { index: 'src/index.ts', migrate: 'src/migrate.ts' },
+      input: {
+        index: 'src/index.ts',
+        migrate: 'src/migrate.ts',
+        encryption: 'src/encryption.ts',
+      },
     },
     outDir: 'dist',
     emptyOutDir: true,
