@@ -55,51 +55,77 @@ const isAnswered = (value: unknown): boolean => {
   return value !== undefined && value !== null;
 };
 
-const areAnswered = (
-  keys: readonly string[],
-  options: RuleDraftOptions,
-): boolean => keys.every((key) => isAnswered(options[key]));
-
 /** Whether the chosen operator needs an operand entered beside it. */
 const needsOperand = (operator: unknown): boolean =>
   isFilterOperator(operator) &&
   (operatorsWithValue.has(operator) || operatorsWithOptionCount.has(operator));
 
 /**
- * Whether this draft is a rule the protocol schema would accept.
+ * One part of a rule. The editor asks for each of these with a control of its
+ * own.
+ *
+ * `target` is what the rule is about at all — an entity class, or the ego;
+ * `entityType` is the node or edge type an alter rule is pointed at.
+ */
+export type RulePart =
+  | 'target'
+  | 'entityType'
+  | 'attribute'
+  | 'operator'
+  | 'value';
+
+/**
+ * The first part of this draft that has not been answered, or `undefined` for
+ * a rule the protocol schema would accept.
+ *
+ * Named rather than counted, because a rule that cannot be saved is always one
+ * specific unanswered thing: whoever reports it can point at the control that
+ * holds the gap instead of saying the rule "is incomplete" and leaving the
+ * researcher to find it. The order is the order the editor asks the questions
+ * in, so the part named is the highest one on screen.
  *
  * The presence of an `attribute` KEY — not its value — is what tells an
  * attribute rule from a presence rule, in the schema and here alike, so it is
- * tested with `hasOwn` rather than by truthiness.
+ * tested with `hasOwn` rather than by truthiness. A presence rule never takes
+ * an operand: its operators are about the entity itself.
  */
-export const isCompleteRule = (rule: RuleDraft | undefined): boolean => {
-  if (rule === undefined) return false;
+export const incompleteRulePart = (
+  rule: RuleDraft | undefined,
+): RulePart | undefined => {
+  if (rule === undefined) return 'target';
   const options = rule.options ?? {};
 
   switch (rule.type) {
     case 'node':
     case 'edge': {
+      if (!isAnswered(options.type)) return 'entityType';
       if (!Object.hasOwn(options, 'attribute')) {
-        return areAnswered(['type', 'operator'], options);
+        return isAnswered(options.operator) ? undefined : 'operator';
       }
-      return areAnswered(
-        needsOperand(options.operator)
-          ? ['type', 'attribute', 'operator', 'value']
-          : ['type', 'attribute', 'operator'],
-        options,
-      );
+      if (!isAnswered(options.attribute)) return 'attribute';
+      return missingOperatorOrOperand(options);
     }
-    case 'ego':
-      return areAnswered(
-        needsOperand(options.operator)
-          ? ['attribute', 'operator', 'value']
-          : ['attribute', 'operator'],
-        options,
-      );
+    case 'ego': {
+      if (!isAnswered(options.attribute)) return 'attribute';
+      return missingOperatorOrOperand(options);
+    }
     default:
-      return false;
+      return 'target';
   }
 };
+
+const missingOperatorOrOperand = (
+  options: RuleDraftOptions,
+): RulePart | undefined => {
+  if (!isAnswered(options.operator)) return 'operator';
+  return needsOperand(options.operator) && !isAnswered(options.value)
+    ? 'value'
+    : undefined;
+};
+
+/** Whether this draft is a rule the protocol schema would accept. */
+export const isCompleteRule = (rule: RuleDraft | undefined): boolean =>
+  incompleteRulePart(rule) === undefined;
 
 export const isRuleDraft = (value: unknown): value is RuleDraft => {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {

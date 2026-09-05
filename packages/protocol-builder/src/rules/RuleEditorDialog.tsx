@@ -1,36 +1,24 @@
 import { isEqual } from 'es-toolkit/compat';
-import {
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef } from 'react';
 import { v4 as uuid } from 'uuid';
 
-import Button from '@codaco/fresco-ui/Button';
-import Dialog, { type DialogProps } from '@codaco/fresco-ui/dialogs/Dialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
-import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
-import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
-import type {
-  FieldValue,
-  FormSubmissionResult,
-  FormSubmitHandler,
-} from '@codaco/fresco-ui/form/store/types';
-import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
+import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Section from '@codaco/fresco-ui/Section';
 import type { VariableType } from '@codaco/protocol-validation';
 
 import { EntitySelectControl } from '../fields/EntitySelectField.tsx';
 import { VariablePickerControl } from '../fields/VariablePicker.tsx';
+import DialogForm, {
+  type DialogFormErrors,
+  type DialogFormProps,
+} from '../form/DialogForm.tsx';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { protocolAuthoringLinks } from '../interfaces/documentation.ts';
 import {
@@ -40,7 +28,7 @@ import {
   operatorsWithValue,
   type RuleOperatorOption,
 } from './operators.ts';
-import { isCompleteRule, type RuleDraft } from './rule.ts';
+import { incompleteRulePart, type RuleDraft, type RulePart } from './rule.ts';
 import {
   isRuleTargetType,
   type RuleChoiceOption,
@@ -79,7 +67,7 @@ const REQUIRED_MESSAGE = 'This field is required.';
  * A registered field rather than component state, so it takes part in the same
  * cascade, dirty-tracking and required-validation as everything else in the
  * dialog. It describes the SHAPE of the rule rather than any of its values, so
- * it is dropped when the rule is assembled (see `ruleFromValues`).
+ * it is dropped when the rule is assembled (see `ruleDraftFromValues`).
  */
 const RULE_KIND_FIELD = 'ruleKind';
 const VARIABLE_RULE = 'ALTER/VARIABLE';
@@ -180,21 +168,32 @@ const ruleOptionsFromValues = (
 };
 
 /**
- * The rule the form describes.
+ * The rule the form describes, without an identity.
  *
  * `getFormValues` reports only the fields that are currently RENDERED, which
  * is what makes the editor's branches load-bearing: a presence rule has no
  * `attribute` key at all, and an operator that needs no operand contributes no
  * `value`. `ruleKind` describes the shape rather than the rule, so it is not
  * carried across.
+ *
+ * The id belongs to the rule being edited rather than to the values on screen,
+ * so it is joined on at the one place a rule leaves the editor — a check that
+ * only reads the draft has no business minting one.
  */
-const ruleFromValues = (
+const ruleDraftFromValues = (
   values: Record<string, FieldValue>,
-  seed: RuleDraft,
 ): RuleDraft => ({
-  id: seed.id ?? uuid({}),
   type: typeof values[TARGET_FIELD] === 'string' ? values[TARGET_FIELD] : '',
   options: ruleOptionsFromValues(values.options),
+});
+
+/** The control the researcher has to visit to supply each part of a rule. */
+const RULE_PART_FIELDS: Readonly<Record<RulePart, string>> = Object.freeze({
+  target: TARGET_FIELD,
+  entityType: ENTITY_TYPE_FIELD,
+  attribute: ATTRIBUTE_FIELD,
+  operator: OPERATOR_FIELD,
+  value: RULE_VALUE_FIELD,
 });
 
 /**
@@ -549,101 +548,6 @@ function RuleEditorFields({
   );
 }
 
-/*
- * ---------------------------------------------------------------------------
- * SEAM: local dialog-form shell.
- *
- * The package's shared `form/DialogForm.tsx` primitive is being extracted
- * separately. Everything below `RuleEditorDialogShell` is the minimum this one
- * editor needs from it — a dialog whose body is a Fresco form, with the submit
- * control in the footer associated to the form by DOM id — and NOTHING else
- * should be built on it. When the shared primitive lands, delete this shell and
- * render `DialogForm` with exactly the props `RuleEditorDialogShell` takes;
- * the rest of this file does not change.
- *
- * What the shared primitive adds that this does not have: nested-draft
- * registration, confirm-before-dismissing a dirty editor, the refused-commit
- * guard, and the resizable aside.
- * ---------------------------------------------------------------------------
- */
-
-/** Distinguishes concurrently mounted forms — see `domFormId` below. */
-let nextDialogFormInstance = 0;
-
-type RuleEditorDialogShellProps = Readonly<{
-  open: boolean;
-  onClose: () => void;
-  title: ReactNode;
-  formId: string;
-  submitLabel: string;
-  onSubmit: FormSubmitHandler;
-  size?: DialogProps['size'];
-  finalFocus?: DialogProps['finalFocus'];
-  layoutId?: string;
-  children: ReactNode;
-}>;
-
-function RuleEditorDialogShellBody({
-  open,
-  onClose,
-  title,
-  formId,
-  submitLabel,
-  onSubmit,
-  size,
-  finalFocus,
-  layoutId,
-  children,
-}: RuleEditorDialogShellProps) {
-  /**
-   * The footer's SubmitButton is not a descendant of the `<form>`, so it
-   * associates with it through the native `form=` attribute, which resolves by
-   * DOM id — and takes the FIRST element with that id in document order. A
-   * dialog stays mounted while it animates closed, so a second dialog of the
-   * same kind opened during that window would render a second `<form>` with
-   * the same id, and the new dialog's Submit would resolve to the old, closing
-   * one. A per-MOUNT counter (not `useId`, which answers by tree position and
-   * repeats for a dialog reopened in the same slot) keeps each addressable.
-   */
-  const [domFormId] = useState(() => {
-    nextDialogFormInstance += 1;
-    return `${formId}-${nextDialogFormInstance}`;
-  });
-
-  return (
-    <Dialog
-      open={open}
-      closeDialog={onClose}
-      title={title}
-      layoutId={layoutId}
-      finalFocus={finalFocus}
-      size={size}
-      footer={
-        <>
-          <Button color="default" onClick={onClose}>
-            Cancel
-          </Button>
-          <SubmitButton form={domFormId}>{submitLabel}</SubmitButton>
-        </>
-      }
-    >
-      <FormWithoutProvider id={domFormId} onSubmit={onSubmit}>
-        {children}
-      </FormWithoutProvider>
-    </Dialog>
-  );
-}
-
-function RuleEditorDialogShell(props: RuleEditorDialogShellProps) {
-  return (
-    <FormStoreProvider>
-      <RuleEditorDialogShellBody {...props} />
-    </FormStoreProvider>
-  );
-}
-
-/* --------------------------- end of the seam --------------------------- */
-
 export type RuleEditorDialogProps = Readonly<{
   open: boolean;
   /** The rule as this editing session opened on it. */
@@ -651,20 +555,26 @@ export type RuleEditorDialogProps = Readonly<{
   ruleTypes: readonly RuleTypeOption[];
   onSave: (rule: RuleDraft) => void;
   onCancel: () => void;
-  finalFocus?: DialogProps['finalFocus'];
+  finalFocus?: DialogFormProps['finalFocus'];
   /** Matches an existing list row to this dialog for its shared morph. */
-  layoutId?: string;
+  layoutId?: DialogFormProps['layoutId'];
 }>;
 
 /**
- * The rule editor: a dialog whose body is an ordinary protocol-builder form.
+ * The rule editor: one `DialogForm` whose fields are the parts of a rule.
  *
- * Every control is connected to the dialog's own form store, so a rule the
- * researcher has not finished cannot be saved and the control that is missing
- * says so itself — before this, the fields ran their own validation, which
- * could only ever be shown for a field that had already been edited, so
- * `required` was invisible on precisely the untouched fields it exists for,
- * and the refusal arrived as a modal that named none of them.
+ * Nothing about the dialog itself is written here. `DialogForm` owns the
+ * separate form store, the confirmation before a dirty draft is discarded, the
+ * guard against a second submit while one is in flight, and the shared-element
+ * morph out of the row this was opened from — so this file is only the
+ * questions a rule is made of, and what it means for one to be unanswered.
+ *
+ * Every control is connected to that store, so a rule the researcher has not
+ * finished cannot be saved and the control that is missing says so itself —
+ * before this, the fields ran their own validation, which could only ever be
+ * shown for a field that had already been edited, so `required` was invisible
+ * on precisely the untouched fields it exists for, and the refusal arrived as
+ * a modal that named none of them.
  *
  * The codebook reaches every control through the editor's protocol context,
  * never as a prop and never through a host selector.
@@ -678,9 +588,28 @@ export default function RuleEditorDialog({
   finalFocus,
   layoutId,
 }: RuleEditorDialogProps) {
-  const handleSubmit = useCallback<FormSubmitHandler>(
-    (values): FormSubmissionResult => {
-      const rule = ruleFromValues(values, seed);
+  /**
+   * Whether this editing session ended by saving.
+   *
+   * `DialogForm` reports one close, however it was reached, while the list
+   * this opens from has two answers for it: a saved rule has already been
+   * handed over and the list closes the editor by taking the row out of
+   * editing, whereas a dismissal has to discard that row. Cancelling after a
+   * save would throw away the rule that had just been committed. A session is
+   * one mount — the list keys each one — so this records the session's outcome
+   * rather than a running state.
+   */
+  const saved = useRef(false);
+
+  /**
+   * Everything the editor can tell about a draft without leaving it, run after
+   * every field has validated itself. Both answers name a control, because
+   * both are about one: a rule the researcher cannot save is never a general
+   * fault with the draft, it is a specific thing that is missing or wrong.
+   */
+  const validate = useCallback(
+    (values: Record<string, FieldValue>): DialogFormErrors | undefined => {
+      const rule = ruleDraftFromValues(values);
       const operator = rule.options?.operator;
 
       // A `contains` operand is a regular expression, and one that does not
@@ -694,33 +623,49 @@ export default function RuleEditorDialog({
         !isValidRegExp(rule.options?.value)
       ) {
         return {
-          success: false,
-          fieldErrors: { [RULE_VALUE_FIELD]: [INVALID_REG_EXP_MESSAGE] },
+          fieldErrors: { [RULE_VALUE_FIELD]: INVALID_REG_EXP_MESSAGE },
         };
       }
 
       // The completeness the protocol schema expects, asserted once where the
-      // rule leaves the editor. The fields above reject each missing part on
-      // their own; this is what makes a gap they do not cover visible instead
-      // of silent.
-      if (!isCompleteRule(rule)) {
-        return { success: false, formErrors: [INCOMPLETE_RULE_MESSAGE] };
+      // rule leaves the editor. Every control above states its own `required`,
+      // so this is the backstop for a gap none of them covers — and it is
+      // reported by the control that holds the gap rather than as a sentence
+      // about the rule that names no control at all.
+      const missing = incompleteRulePart(rule);
+      if (missing !== undefined) {
+        return {
+          fieldErrors: { [RULE_PART_FIELDS[missing]]: INCOMPLETE_RULE_MESSAGE },
+        };
       }
 
-      onSave(rule);
-      return { success: true };
+      return undefined;
     },
-    [onSave, seed],
+    [],
   );
 
+  const handleSubmit = useCallback(
+    (values: Record<string, FieldValue>): void => {
+      saved.current = true;
+      onSave({ id: seed.id ?? uuid({}), ...ruleDraftFromValues(values) });
+    },
+    [onSave, seed.id],
+  );
+
+  const handleClose = useCallback(() => {
+    if (saved.current) return;
+    onCancel();
+  }, [onCancel]);
+
   return (
-    <RuleEditorDialogShell
+    <DialogForm
       open={open}
-      onClose={onCancel}
+      onClose={handleClose}
       title={RULE_EDITOR_TITLE}
       formId={RULE_EDITOR_FORM_ID}
-      submitLabel={RULE_EDITOR_SUBMIT}
+      validate={validate}
       onSubmit={handleSubmit}
+      submitLabel={RULE_EDITOR_SUBMIT}
       size="editor"
       finalFocus={finalFocus}
       layoutId={layoutId}
@@ -752,7 +697,7 @@ export default function RuleEditorDialog({
           </>
         }
       />
-    </RuleEditorDialogShell>
+    </DialogForm>
   );
 }
 
@@ -770,4 +715,4 @@ function isValidRegExp(value: unknown): boolean {
 const INVALID_REG_EXP_MESSAGE =
   'This is not a valid regular expression. Correct it, or choose a different operator.';
 const INCOMPLETE_RULE_MESSAGE =
-  'This rule is not complete. Please fill in every field before saving it.';
+  'This rule cannot be saved until this question is answered.';

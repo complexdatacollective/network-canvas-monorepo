@@ -83,6 +83,30 @@ const nodeRule = (id: string): RuleDraft => ({
   options: { type: 'person', operator: 'EXISTS' },
 });
 
+const otherStages: Readonly<Record<string, SectionDoc>> = {
+  'stage-2': middleStage,
+  'stage-3': finalStage,
+};
+
+/**
+ * The interview as the stage order describes it, with the stage being edited
+ * in its own place.
+ *
+ * A host assembles the candidate this way, and it is what makes `finish` a
+ * real check on skip logic: a candidate holding only the edited stage would
+ * accept a destination naming a stage that does not exist, and one holding a
+ * fixed list would accept a destination that has since left the interview.
+ */
+const candidateStages = (
+  order: readonly string[],
+  stageDocument: SectionDoc,
+): SectionDoc[] =>
+  order.flatMap((stageId) => {
+    if (stageId === 'stage-1') return [stageDocument];
+    const stage = otherStages[stageId];
+    return stage === undefined ? [] : [stage];
+  });
+
 function createSession(
   options: Readonly<{
     fields?: SectionDoc;
@@ -90,20 +114,19 @@ function createSession(
     onFinish?: (request: FinishRequest) => void;
   }> = {},
 ) {
+  const order = options.order ?? ['stage-1', 'stage-2', 'stage-3'];
+
   return new ProtocolBuilderSessionStore({
     identity: createStageIdentity('Information', () => 'stage-1'),
     fields: options.fields ?? { label: 'Welcome', title: 'Hello', items: [] },
-    protocolSections: protocolSections(options.order),
+    protocolSections: protocolSections(order),
     manifestRevision: { sequence: 1n, hash: 'revision-1' },
     access: { mode: 'editable', leaseOwner: 'tab-1', leaseEpoch: 1n },
-    // The whole interview, so `finish` validates the skip logic against the
-    // stages it actually routes to. A candidate holding only the edited stage
-    // would accept a destination naming a stage that does not exist.
     buildCandidate: ({ stageDocument }) => ({
       name: 'Skip logic editing',
       schemaVersion: 8,
       codebook,
-      stages: [stageDocument, middleStage, finalStage],
+      stages: candidateStages(order, stageDocument),
     }),
     ...(options.onFinish === undefined ? {} : { onFinish: options.onFinish }),
   });
@@ -365,6 +388,106 @@ describe('choosing where the interview continues', () => {
         'The stage this skips to no longer comes after this one. Choose a later stage, or end the interview.',
       ),
     ).toBeInTheDocument();
+  });
+});
+
+/**
+ * The control reports a stale destination so the researcher can see it, but
+ * reporting is not refusing: what stops one being saved is the protocol schema
+ * itself, through `finish`. These say so, so that a change to either the
+ * control's own reporting or the schema's rule cannot quietly leave a broken
+ * route saveable.
+ */
+describe('saving a stage whose destination is no longer reachable', () => {
+  it('refuses a destination whose stage has left the interview', async () => {
+    const user = userEvent.setup();
+    const onFinish = vi.fn();
+    renderEditor(
+      createSession({
+        onFinish,
+        fields: configuredFields({ type: 'stage', stageId: 'stage-3' }),
+        order: ['stage-1', 'stage-2'],
+      }),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    expect(
+      await screen.findByText(
+        'Skip destination stage "stage-3" does not exist.',
+      ),
+    ).toBeInTheDocument();
+    expect(onFinish).not.toHaveBeenCalled();
+  });
+
+  it('refuses a destination the interview now reaches first', async () => {
+    const user = userEvent.setup();
+    const onFinish = vi.fn();
+    renderEditor(
+      createSession({
+        onFinish,
+        fields: configuredFields({ type: 'stage', stageId: 'stage-2' }),
+        order: ['stage-2', 'stage-3', 'stage-1'],
+      }),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    expect(
+      await screen.findByText(
+        'Skip destination stage "stage-2" must come after the stage that references it.',
+      ),
+    ).toBeInTheDocument();
+    expect(onFinish).not.toHaveBeenCalled();
+  });
+
+  it('attributes the refusal to the destination, and to the stage that holds it', async () => {
+    const session = createSession({
+      fields: configuredFields({ type: 'stage', stageId: 'stage-3' }),
+      order: ['stage-1', 'stage-2'],
+    });
+
+    const validation = await session.validate();
+
+    // The path is the destination itself, not the stage or the skip logic
+    // around it, so a host rendering issues against its own sections puts this
+    // one on the control the researcher has to change.
+    expect(validation).toMatchObject({
+      status: 'invalid',
+      issues: expect.arrayContaining([
+        expect.objectContaining({
+          path: ['stages', 0, 'skipLogic', 'destination', 'stageId'],
+          message: 'Skip destination stage "stage-3" does not exist.',
+          sectionId: sectionId({ kind: 'stage', stageId: 'stage-1' }),
+        }),
+      ]) as unknown,
+    });
+  });
+
+  it('saves the same stage once the destination is chosen again', async () => {
+    const user = userEvent.setup();
+    const onFinish = vi.fn();
+    renderEditor(
+      createSession({
+        onFinish,
+        fields: configuredFields({ type: 'stage', stageId: 'stage-3' }),
+        order: ['stage-1', 'stage-2'],
+      }),
+    );
+
+    // The refusal above is about the destination and nothing else: correcting
+    // it is all it takes for the same stage to save.
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'When this stage is skipped' }),
+      'route:stage:stage-2',
+    );
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    await waitFor(() => expect(onFinish).toHaveBeenCalled());
+    const request = onFinish.mock.calls[0]?.[0] as FinishRequest;
+    expect(request.stageDocument.skipLogic).toMatchObject({
+      destination: { type: 'stage', stageId: 'stage-2' },
+    });
   });
 });
 

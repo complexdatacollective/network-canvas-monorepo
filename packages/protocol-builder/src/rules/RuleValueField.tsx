@@ -169,7 +169,12 @@ export function RuleValueField({
   // `initialValue` is a registration dependency, so an array rebuilt every
   // render would re-register the field on every keystroke elsewhere.
   const selection = useMemo(() => asSelection(initialValue), [initialValue]);
-  const requiredProp = required ? REQUIRED_MESSAGE : undefined;
+  // A literal `false`, never `undefined`. Fresco builds a field's rules from
+  // the validation props it was GIVEN, and only `false` switches `required`
+  // off: an `undefined` one still requires the field, and reports it in the
+  // wording written for a participant mid-interview rather than for the
+  // researcher authoring the rule.
+  const requiredProp = required ? REQUIRED_MESSAGE : false;
 
   if (variableType === 'boolean') {
     return (
