@@ -1,0 +1,71 @@
+{
+  "input": {
+    "template": {
+      "name": "Portability example",
+      "kind": "protocol",
+      "version": 1
+    },
+    "metadata": {
+      "schema_version": 1,
+      "authors": [
+        {
+          "name": "Example Researcher"
+        }
+      ],
+      "keywords": ["network"]
+    },
+    "license": "CC0-1.0",
+    "sections": {
+      "settings": {
+        "schemaVersion": 8,
+        "name": "Portability example"
+      },
+      "stageOrder": {
+        "stages": ["welcome"]
+      },
+      "stage:welcome": {
+        "id": "welcome",
+        "type": "Information",
+        "label": "Welcome",
+        "title": "Welcome",
+        "items": [
+          {
+            "id": "greeting",
+            "type": "text",
+            "content": "Hello."
+          }
+        ]
+      }
+    },
+    "assets": []
+  },
+  "canonical_root_input": "{\"assets\":[],\"format\":\"network-canvas-template\",\"format_version\":1,\"license_hash\":\"201ee96f8fbca47fa28ef6d8b9c47e5d7effdaee6b81e8221981830387c1e9cd\",\"metadata_hash\":\"6ba95f19cd15e0f4dd96728ce01b5adb9373fec0812a993188d00a9baca1f299\",\"protocol_schema_version\":8,\"sections\":[{\"hash\":\"7b371b749fe8fcbabaded3e8977d3db375f3315a7ece6e770b34993d55219b86\",\"id\":\"settings\"},{\"hash\":\"6f7c85b82192280bc27c633be9706418a77274f7d239ad344cb3325b590b1ee5\",\"id\":\"stage:welcome\"},{\"hash\":\"9ffb3343e310410a44a1f84f4db40e27d1ecae50a30fb22376216eafbdb7be70\",\"id\":\"stageOrder\"}],\"template\":{\"kind\":\"protocol\",\"name\":\"Portability example\",\"version\":1}}",
+  "manifest": {
+    "format": "network-canvas-template",
+    "format_version": 1,
+    "protocol_schema_version": 8,
+    "template": {
+      "name": "Portability example",
+      "kind": "protocol",
+      "version": 1
+    },
+    "sections": [
+      {
+        "id": "settings",
+        "hash": "7b371b749fe8fcbabaded3e8977d3db375f3315a7ece6e770b34993d55219b86"
+      },
+      {
+        "id": "stage:welcome",
+        "hash": "6f7c85b82192280bc27c633be9706418a77274f7d239ad344cb3325b590b1ee5"
+      },
+      {
+        "id": "stageOrder",
+        "hash": "9ffb3343e310410a44a1f84f4db40e27d1ecae50a30fb22376216eafbdb7be70"
+      }
+    ],
+    "assets": [],
+    "metadata_hash": "6ba95f19cd15e0f4dd96728ce01b5adb9373fec0812a993188d00a9baca1f299",
+    "license_hash": "201ee96f8fbca47fa28ef6d8b9c47e5d7effdaee6b81e8221981830387c1e9cd",
+    "merkle_root": "cf9ba3ab855f9f2d9e7dff2727b60bb90fe86ee1ff9a16d5599c7ee6caad56de"
+  }
+}
