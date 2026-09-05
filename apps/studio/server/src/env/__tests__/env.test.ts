@@ -1,6 +1,9 @@
+import { readFileSync } from 'node:fs';
+import { parseEnv } from 'node:util';
+
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { isLocalDatabase, readEnv } from '../../env.ts';
+import { isLocalDatabase, readEnv, readMigrationDatabase } from '../../env.ts';
 import { DEV, DEV_DATABASE_URL, DEV_S3_ENDPOINT } from '../catalogue.ts';
 
 // The suite runs with the committed .env.development loaded (see
@@ -13,6 +16,17 @@ afterEach(() => {
 
 describe('development defaults', () => {
   it('configures the whole stack from the committed file', () => {
+    // Integration runs can point DATABASE_URL at an isolated local container.
+    // This unit test specifically describes the committed defaults, so load
+    // those values explicitly rather than assuming the caller exported none.
+    const defaults = parseEnv(
+      readFileSync(
+        new URL('../../../.env.development', import.meta.url),
+        'utf8',
+      ),
+    );
+    for (const [name, value] of Object.entries(defaults))
+      vi.stubEnv(name, value);
     const env = readEnv();
     expect(env.db).toEqual({ url: DEV_DATABASE_URL });
     expect(env.s3?.endpoint).toBe(DEV_S3_ENDPOINT);
@@ -37,6 +51,24 @@ describe('development defaults', () => {
       kind: 'smtp',
       url: 'smtp://localhost:1025',
       from: DEV.emailFrom,
+    });
+  });
+});
+
+describe('migration environment', () => {
+  it('requires a database even when application validation is disabled', () => {
+    vi.stubEnv('SKIP_ENV_VALIDATION', 'true');
+    vi.stubEnv('DATABASE_URL', '');
+    expect(() => readMigrationDatabase()).toThrow();
+  });
+
+  it('reads only the database for an offline migration command', () => {
+    vi.stubEnv('DATABASE_URL', 'postgres://operator@localhost/studio');
+    vi.stubEnv('BETTER_AUTH_SECRET', '');
+    vi.stubEnv('PUBLIC_URL', '');
+    vi.stubEnv('SMTP_URL', '');
+    expect(readMigrationDatabase()).toEqual({
+      url: 'postgres://operator@localhost/studio',
     });
   });
 });

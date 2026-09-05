@@ -47,6 +47,8 @@ export type ApplyOutcome = {
 };
 
 /**
+ * Developer-only reconciliation for disposable resets, demos and schema tests.
+ * Production uses src/db/migrations/migrate.ts and immutable migration files.
  * Not transactional — a push failure partway leaves an unstamped database,
  * which checkSchema reports as stale and db:reset remedies.
  */
@@ -61,6 +63,14 @@ export async function applySchema(pool: pg.Pool): Promise<ApplyOutcome> {
   const lock = await pool.connect();
   try {
     await lock.query(`select pg_advisory_lock(${SCHEMA_LOCK_KEY})`);
+    const history = await lock.query<{ present: boolean }>(
+      "select to_regclass('studio_migrations.history') is not null as present",
+    );
+    if (history.rows[0]?.present) {
+      throw new Error(
+        'Developer schema reconciliation refuses a versioned database. Run migrate, or explicitly db:reset a disposable development database.',
+      );
+    }
     // A matching stamp must not survive a failed apply: a drifted database
     // would keep reading `current`. Cleared here, restored only on success.
     const stamped = await lock.query<{ present: boolean }>(
@@ -106,6 +116,9 @@ export async function resetSchemaAndSeed(
 ): Promise<void> {
   await pool.query('drop schema if exists public cascade');
   await pool.query('create schema public');
+  // A reset deliberately replaces the database with synthetic development
+  // content. It must not leave an old production migration ledger beside it.
+  await pool.query('drop schema if exists studio_migrations cascade');
 
   if (options.sweepScratch) await sweepScratch(pool);
 

@@ -140,7 +140,7 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
     group: 'Database',
     summary: 'Postgres connection string, `pg.Pool`’s native format.',
     deployment:
-      'Unset ⇒ no database; auth and sync refuse while the server still boots. The login owns the schema and needs `CREATEROLE` the first time `apply-schema` runs; the server runs as the `studio_app` role it creates.',
+      'Unset ⇒ no database; auth and sync refuse while the server still boots. The login owns the schema and needs `CREATEROLE` for the initial migration; the server runs as the `studio_app` role it creates.',
     devDefault: DEV_DATABASE_URL,
     example: 'postgres://user:password@host:5432/studio',
   },

@@ -123,7 +123,7 @@ export type SchemaState =
 export type SchemaProblem = Exclude<SchemaState, { kind: 'current' }>;
 
 /**
- * Read-only verdict; application lives in scripts/apply.ts. A problem is
+ * Read-only verdict; deployment application lives in migrations/migrate.ts. A problem is
  * returned rather than thrown so callers can tell a verdict from a connection
  * failure: anything this throws is transient, and everything it returns is an
  * answer.
@@ -185,7 +185,7 @@ export function schemaProblemMessage(state: SchemaProblem): string {
       'The database has no Studio schema.',
       'Create it and start again:',
       '  pnpm --filter @codaco/studio-server db:reset        (local development)',
-      '  pnpm --filter @codaco/studio-server apply-schema    (a deployed database)',
+      '  docker compose run --rm studio migrate             (a deployed database)',
     ].join('\n');
   }
 
@@ -197,9 +197,9 @@ export function schemaProblemMessage(state: SchemaProblem): string {
   return [
     'The database was not built from the schema in this build.',
     detail,
-    'Studio has no migration system yet: pre-release, drizzle-kit push reconciles the schema in place, or recreate the database.',
+    'Back up the database and its encryption keys, then run the explicit migration command. Databases without migration history are not adopted automatically.',
     'Then start again:',
-    '  pnpm --filter @codaco/studio-server apply-schema    (reconcile in place)',
+    '  docker compose run --rm studio migrate             (apply versioned migrations)',
     '  pnpm --filter @codaco/studio-server db:reset        (recreate)',
   ].join('\n');
 }

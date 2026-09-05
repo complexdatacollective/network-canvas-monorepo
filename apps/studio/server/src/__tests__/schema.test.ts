@@ -355,8 +355,8 @@ describe('generated schema documentation', () => {
     expect(readManifestScripts()).toHaveProperty('generate:erd');
   });
 
-  it.each(['apply-schema', 'db:reset'])(
-    'regenerates before %s touches the database',
+  it.each(['generate:migration', 'db:reset'])(
+    'regenerates before %s executes',
     (script) => {
       expect(readManifestScripts()[script]).toMatch(
         /^pnpm run sync-fingerprint && /,
@@ -684,13 +684,11 @@ describe('schema problem message', () => {
   it('names scripts package.json declares', () => {
     const message = schemaProblemMessage(stale);
     expect(message).toContain('pnpm --filter @codaco/studio-server db:reset');
-    expect(message).toContain(
-      'pnpm --filter @codaco/studio-server apply-schema',
-    );
+    expect(message).toContain('docker compose run --rm studio migrate');
 
     const scripts = readManifestScripts();
     expect(scripts).toHaveProperty('db:reset');
-    expect(scripts).toHaveProperty('apply-schema');
+    expect(scripts).toHaveProperty('migrate');
   });
 
   it('explains an unstamped database differently', () => {
@@ -702,8 +700,6 @@ describe('schema problem message', () => {
   it('explains an absent schema with both remedies', () => {
     const message = schemaProblemMessage({ kind: 'absent' });
     expect(message).toContain('pnpm --filter @codaco/studio-server db:reset');
-    expect(message).toContain(
-      'pnpm --filter @codaco/studio-server apply-schema',
-    );
+    expect(message).toContain('docker compose run --rm studio migrate');
   });
 });
