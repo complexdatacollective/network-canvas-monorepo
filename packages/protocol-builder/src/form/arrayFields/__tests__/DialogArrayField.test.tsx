@@ -373,6 +373,88 @@ describe('the row editor', () => {
     expect(promptsOf(session)).toEqual([{ id: 'a', text: 'Alpha' }]);
   });
 
+  /**
+   * A row the researcher opened and did not touch, while the row itself moved.
+   *
+   * The dialog keeps the draft it is showing when an arrival reaches the open
+   * row — the field the arrival moved goes on holding the value the researcher
+   * is looking at. What must not follow is the editor deciding, from that same
+   * arrival, that they have changed something: the question "is there anything
+   * to lose by closing?" is about what the researcher did, not about what
+   * arrived.
+   */
+  it('closes without asking after an arrival moved a field nobody touched', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      prompts: [{ id: 'a', text: 'Alpha', helpText: 'Original help' }],
+    });
+    renderPromptList(session, { editorFieldsComponent: PromptFieldsWithHelp });
+
+    const text = await editRow(user, 0);
+    // Waited for, so "untouched" is a draft that really did open on the row's
+    // values rather than one that had not been seeded yet.
+    await waitFor(() => expect(text).toHaveValue('Alpha'));
+    const help = screen.getByRole('textbox', { name: 'Help text' });
+    expect(help).toHaveValue('Original help');
+
+    // Somebody else rewrites the help text of the very row this editor is
+    // open on.
+    act(() => {
+      session.dispatch([
+        {
+          op: 'set',
+          key: 'prompts',
+          value: [{ id: 'a', text: 'Alpha', helpText: 'Rewritten elsewhere' }],
+        },
+      ]);
+    });
+    await waitFor(() =>
+      expect(promptsOf(session)).toEqual([
+        { id: 'a', text: 'Alpha', helpText: 'Rewritten elsewhere' },
+      ]),
+    );
+
+    await user.keyboard('{Escape}');
+
+    // The row's own controls are hidden while its editor is open, so their
+    // return is that editor closing — without a question having been asked.
+    await screen.findByRole('button', { name: 'Edit prompt' });
+    expect(
+      screen.queryByRole('button', { name: 'Discard changes' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('still asks about a change the researcher made before the arrival', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      prompts: [{ id: 'a', text: 'Alpha', helpText: 'Original help' }],
+    });
+    renderPromptList(session, { editorFieldsComponent: PromptFieldsWithHelp });
+
+    const text = await editRow(user, 0);
+    await waitFor(() => expect(text).toHaveValue('Alpha'));
+    await user.clear(text);
+    await user.type(text, 'Alpha edited');
+
+    act(() => {
+      session.dispatch([
+        {
+          op: 'set',
+          key: 'prompts',
+          value: [{ id: 'a', text: 'Alpha', helpText: 'Rewritten elsewhere' }],
+        },
+      ]);
+    });
+
+    await user.keyboard('{Escape}');
+
+    expect(
+      await screen.findByText(
+        'This editor holds changes that have not been saved. Closing it now discards them.',
+      ),
+    ).toBeInTheDocument();
+  });
+
   it('refuses to save a row once the stage has become read-only', async () => {
     const user = userEvent.setup();
     const session = createSession({ prompts: [{ id: 'a', text: 'Alpha' }] });

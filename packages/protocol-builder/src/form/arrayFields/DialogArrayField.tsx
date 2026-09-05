@@ -954,11 +954,26 @@ function DialogEditor({
       title={session.isNewItem ? addTitle : editorTitle}
       formId={editFormName}
       /**
-       * What the row holds now, for any field inside the editor that reads its
-       * starting value from the dialog rather than stating one itself. A
-       * field's own `initialValue` still wins.
+       * The row as this session OPENED on it, for any field inside the editor
+       * that reads its starting value from the dialog rather than stating one
+       * itself. A field's own `initialValue` still wins.
+       *
+       * Deliberately not the row as it stands NOW. A field's `initialValue` is
+       * half of what "has the researcher changed anything?" is asked of — the
+       * other half being the value on screen — and `DialogForm` asks it before
+       * every dismissal, to decide whether closing has anything to lose. Moved
+       * by an arrival, it re-registers the field: the value on screen is the
+       * draft, which is kept (that is the arrival contract this editor keeps
+       * throughout), and the starting value it is compared against is now the
+       * arrival's. A field the researcher never touched then reads as changed,
+       * and Cancel, Escape or a click outside asks them to discard work they
+       * never did.
+       *
+       * The same reading `validate` and the save take, and for the same
+       * reason: only what was on screen when this session opened can answer a
+       * question about what the researcher decided since.
        */
-      initialValues={itemValues as Record<string, FieldValue>}
+      initialValues={sessionBaseRef.current as Record<string, FieldValue>}
       submitLabel={session.isNewItem ? 'Add' : 'Save'}
       onSubmit={handleSave}
       validate={validate}

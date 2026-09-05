@@ -113,10 +113,11 @@ const writeLeaf = (row: PromptRow, leaf: RenderedLeaf, value: string) => {
 
 type OpenDialog = {
   id: string;
-  /** The row this session OPENED on — what a submitted value is judged against. */
+  /**
+   * The row this session OPENED on — what a submitted value is judged against,
+   * and what the dialog seeds its fields' starting values from.
+   */
   base: PromptRow;
-  /** The row as the dialog last saw it; what its fields' initial values track. */
-  live: PromptRow;
   draft: Draft;
   /** Whether a refusal this editor is showing is holding it open. */
   refused: boolean;
@@ -145,15 +146,28 @@ type Model = {
   staleList: boolean;
 };
 
-const isDirty = (dialog: OpenDialog): boolean => {
-  const live = renderedOf(dialog.live);
-  return RENDERED_LEAVES.some((leaf) => dialog.draft[leaf] !== live[leaf]);
-};
-
 const decidedLeaves = (dialog: OpenDialog): RenderedLeaf[] => {
   const base = renderedOf(dialog.base);
   return RENDERED_LEAVES.filter((leaf) => dialog.draft[leaf] !== base[leaf]);
 };
+
+/**
+ * Whether closing this editor would lose anything of the RESEARCHER'S, which
+ * is the only question its confirmation asks — so it is the same question a
+ * save asks: which leaves has the researcher decided since this session opened?
+ *
+ * Judged against the row the dialog OPENED on, never the row as it stands now.
+ * The dialog seeds its controls' starting values from the former, precisely so
+ * that a value arriving from elsewhere cannot make an untouched control read as
+ * a change the researcher made.
+ *
+ * A field stating its OWN starting value is the exception the dialog cannot
+ * answer for — `sort.property` does, from the live row — but no step below
+ * moves that leaf from elsewhere, so nothing here can tell the two readings
+ * apart. A step that did would have to say so.
+ */
+const isDirty = (dialog: OpenDialog): boolean =>
+  decidedLeaves(dialog).length > 0;
 
 // ─── The editor under test ──────────────────────────────────────────────────
 
@@ -410,11 +424,6 @@ const arrive = (harness: Harness, model: Model, rows: PromptRow[]) => {
   // Any change to the list's value brings `ArrayField`'s own copy of it back
   // in step with the document.
   model.staleList = false;
-  const { dialog } = model;
-  if (dialog !== null && !dialog.detached) {
-    const live = rows.find((row) => row.id === dialog.id);
-    if (live !== undefined) dialog.live = structuredClone(live);
-  }
 };
 
 /**
@@ -447,7 +456,6 @@ async function runStep(
     model.dialog = {
       id: row.id,
       base: structuredClone(row),
-      live: structuredClone(row),
       draft: draftOf(row),
       refused: false,
       detached: false,
@@ -552,10 +560,6 @@ async function runStep(
       model.rows = structuredClone(INITIAL_ROWS) as PromptRow[];
       model.readOnly = true;
       model.staleList = false;
-      const rolledBack = model.rows.find((row) => row.id === dialog?.id);
-      if (dialog !== null && !dialog.detached && rolledBack !== undefined) {
-        dialog.live = structuredClone(rolledBack);
-      }
       return;
     }
 
