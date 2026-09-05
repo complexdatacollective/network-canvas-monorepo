@@ -18,7 +18,7 @@ vi.mock('./autoStageName/useAutoStageName', () => ({
   useAutoStageName: () => ({ onLabelBlur: vi.fn() }),
 }));
 
-vi.mock('~/components/StageTypeImage', () => ({
+vi.mock('@codaco/protocol-builder/interfaces/StageTypeImage', () => ({
   default: () => null,
 }));
 

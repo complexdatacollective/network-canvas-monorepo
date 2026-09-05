@@ -7,7 +7,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 // treats it. A `role="img"` stand-in with `aria-label=""` would not — an empty
 // label leaves the image in the tree, so a regression that put the title back
 // in the alt would still pass.
-vi.mock('~/components/StageTypeImage', () => ({
+vi.mock('@codaco/protocol-builder/interfaces/StageTypeImage', () => ({
   default: ({ alt }: { alt: string }) => <img alt={alt} />,
 }));
 

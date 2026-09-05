@@ -94,7 +94,8 @@ const pathMatches =
 //    canonical Narrative background simply lacks the key. `true` still
 //    compares strictly.
 // 6. `behaviours.automaticLayout: false` ≡ absent — the Narrative template
-//    seeds `automaticLayout: true` (interfaceTemplates.ts) and toggling OFF
+//    seeds `automaticLayout: true` (protocol-builder's interfaces/templates.ts)
+//    and toggling OFF
 //    can only write `false`, never remove the key; the canonical stage
 //    predates automatic layout. A stage whose ONLY behaviour was that key
 //    (every Sociogram: the Layout Mode section always registers the field
