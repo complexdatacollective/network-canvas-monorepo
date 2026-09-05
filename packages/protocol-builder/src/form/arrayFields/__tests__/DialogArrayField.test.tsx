@@ -6,7 +6,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { createElement, useState } from 'react';
+import { createElement, useState, type ComponentType } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type * as DialogModule from '@codaco/fresco-ui/dialogs/Dialog';
@@ -24,6 +24,7 @@ import { DialogFormField } from '../../DialogForm.tsx';
 import ProtocolArrayField from '../../ProtocolArrayField.tsx';
 import StageEditorShell from '../../StageEditorShell.tsx';
 import DialogArrayField from '../DialogArrayField.tsx';
+import { useArrayFieldCommands } from '../useArrayFieldCommands.ts';
 
 /**
  * `layoutId` is a Motion prop, so it leaves no trace in the DOM: what the row
@@ -91,11 +92,63 @@ function PromptEditorPreview({ text }: Record<string, unknown>) {
   return <span>Preview of {typeof text === 'string' ? text : ''}</span>;
 }
 
+type Rule = { id: string; label: string };
+
+const NEW_RULE: Rule = { id: 'rule-1', label: 'New rule' };
+
+/**
+ * A minimal stand-in for production's `MultiSelect`/`Options`: it calls
+ * `useArrayFieldCommands` itself rather than being wrapped in its own
+ * `ProtocolArrayField`, so it inherits whatever `ArrayFieldBindingContext` is
+ * ambient at the point it renders. That is exactly how a real sort-rule list
+ * reaches a prompt's row dialog (`DialogFormField` + `MultiSelect`, never
+ * `ProtocolArrayField`), and exactly the route `DialogArrayField` has to bind
+ * for itself instead of leaving to whatever wraps it.
+ */
+function RuleList({
+  value,
+  onChange,
+}: {
+  value?: Rule[];
+  onChange?: (next: Rule[]) => void;
+}) {
+  const rows = Array.isArray(value) ? value : [];
+  const { onOperation } = useArrayFieldCommands<Rule>(rows, onChange);
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        if (onOperation) {
+          onOperation({ type: 'insert', index: rows.length, item: NEW_RULE });
+        } else {
+          onChange?.([...rows, NEW_RULE]);
+        }
+      }}
+    >
+      Add rule
+    </button>
+  );
+}
+
+/** The row editor for a prompt whose "rules" is a list reached by no
+ * `ProtocolArrayField` of its own — matching `SortOrderRows`' real use of
+ * `DialogFormField` + `MultiSelect`. */
+function PromptFieldsWithRuleList() {
+  return (
+    <>
+      <DialogFormField name="text" label="Prompt text" component={InputField} />
+      <DialogFormField name="rules" label="Rules" component={RuleList} />
+    </>
+  );
+}
+
 function renderPromptList(
   session: ProtocolBuilderSessionStore,
   extra?: Readonly<{
     withPreview?: boolean;
     onBeforeSave?: (value: unknown) => unknown;
+    editorFieldsComponent?: ComponentType<Record<string, unknown>>;
   }>,
 ) {
   // How a test takes the list's own interactivity away mid-edit, the way a
@@ -121,7 +174,7 @@ function renderPromptList(
             itemLabel="prompt"
             disabled={disabled}
             previewComponent={PromptPreview}
-            editorFieldsComponent={PromptFields}
+            editorFieldsComponent={extra?.editorFieldsComponent ?? PromptFields}
             {...(extra?.withPreview === true
               ? { editorPreviewComponent: PromptEditorPreview }
               : {})}
@@ -615,5 +668,35 @@ describe('a row editor open while the draft moves beneath it', () => {
     // One commit, not two. The save already running answers for both.
     expect(onBeforeSave).toHaveBeenCalledTimes(1);
     expect(session.getSnapshot().pendingCommands).toHaveLength(1);
+  });
+});
+
+describe('a list rendered inside a row dialog', () => {
+  it('does not let an insert inside the row reach the list around it', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      prompts: [{ id: 'a', text: 'Alpha', rules: [] }],
+    });
+    renderPromptList(session, {
+      editorFieldsComponent: PromptFieldsWithRuleList,
+    });
+
+    await editRow(user, 0);
+    await user.click(await screen.findByRole('button', { name: 'Add rule' }));
+
+    // The rule is part of THIS row, not a sibling of it: adding one must not
+    // commit an insert against the array of prompts the dialog belongs to,
+    // even before the dialog is saved.
+    expect(promptsOf(session)).toEqual([{ id: 'a', text: 'Alpha', rules: [] }]);
+
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    // The rule went into the prompt's own field, not beside it.
+    expect(promptsOf(session)).toEqual([
+      { id: 'a', text: 'Alpha', rules: [{ id: 'rule-1', label: 'New rule' }] },
+    ]);
   });
 });

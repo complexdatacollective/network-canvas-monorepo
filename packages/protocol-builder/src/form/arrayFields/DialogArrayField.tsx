@@ -37,7 +37,11 @@ import {
   type StageFormStoreApi,
 } from '../stageEditorContext.ts';
 import { reseatEditedRow } from './arrayFieldCommands.ts';
-import { useArrayFieldCommands } from './useArrayFieldCommands.ts';
+import {
+  ArrayFieldBindingContext,
+  useArrayFieldCommands,
+  type ArrayFieldBinding,
+} from './useArrayFieldCommands.ts';
 import { useConfirmRowRemoval } from './useConfirmRowRemoval.ts';
 
 /**
@@ -243,6 +247,11 @@ const mergeEditedRow = (
 
   return merged;
 };
+
+/** What every list inside a row dialog is: part of one row, not a key. */
+const NESTED_IN_A_ROW: ArrayFieldBinding = Object.freeze({
+  documentKey: undefined,
+});
 
 /**
  * The researcher-facing account of a save that landed after its row was gone.
@@ -818,13 +827,27 @@ function DialogEditor({
       aside={editorPreview}
     >
       <DialogStoreCapture apiRef={storeApiRef} />
-      {createElement(editorFieldsComponent, {
-        ...itemValues,
-        ...editorProps,
-        item: itemValues,
-        editIndex,
-        form: editFormName,
-      })}
+      {/*
+        Nothing inside a row is a document key.
+
+        A list the researcher edits INSIDE this dialog — a prompt's sort
+        rules — is part of one row of THIS list, and this list is what holds
+        the document key. Left inherited, that key is what the inner list
+        would commit its own insertions and reorderings against: adding a sort
+        rule would insert a row into the array of prompts. It also must not
+        commit anything at all until the dialog saves, which is the same rule
+        `ProtocolArrayField` states for a list that finds itself in a nested
+        form store.
+      */}
+      <ArrayFieldBindingContext value={NESTED_IN_A_ROW}>
+        {createElement(editorFieldsComponent, {
+          ...itemValues,
+          ...editorProps,
+          item: itemValues,
+          editIndex,
+          form: editFormName,
+        })}
+      </ArrayFieldBindingContext>
     </DialogForm>
   );
 }
