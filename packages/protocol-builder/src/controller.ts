@@ -2,6 +2,10 @@ import { useId, useMemo, useSyncExternalStore } from 'react';
 
 import type { Command } from '@codaco/studio-sync/apply';
 
+import type {
+  ProtocolBuilderResourceGateway,
+  ResourceResult,
+} from './resources/gateway.ts';
 import {
   commandsFromDraftChange,
   type CompoundEditRequest,
@@ -26,6 +30,12 @@ export type StageFormDraftChange = (current: StageFormDraft) => StageFormDraft;
 export type StageEditorController = Readonly<{
   formId: string;
   snapshot: ProtocolBuilderSnapshot;
+  /**
+   * The session's resource gateway, or `undefined` when the host opened the
+   * session without one. The shell provides it to the editor's resource
+   * pickers; they reach it through `useResourceGateway`, never through this.
+   */
+  resourceGateway: ProtocolBuilderResourceGateway | undefined;
   changeFields(next: StageFormDraftChange): void;
   setField(key: string, value: unknown): void;
   unsetField(key: string): void;
@@ -39,6 +49,8 @@ export type StageEditorController = Readonly<{
     request: CompoundEditRequest,
   ): Promise<CompoundEditResult>;
   finish(): Promise<void>;
+  /** Closes the editor without finishing: staged resources are discarded. */
+  cancel(): Promise<ResourceResult<undefined>>;
 }>;
 
 export function useStageEditorController(
@@ -57,6 +69,7 @@ export function useStageEditorController(
     () => ({
       formId,
       snapshot,
+      resourceGateway: session.getResourceGateway(),
       changeFields(update: StageFormDraftChange) {
         // Both the draft handed out and the diff baseline are what the session
         // holds NOW, not the snapshot this controller was memoised on, so a
@@ -90,6 +103,7 @@ export function useStageEditorController(
       requestCompoundEdit: (request: CompoundEditRequest) =>
         session.requestCompoundEdit(request),
       finish: () => session.finish(),
+      cancel: () => session.cancel(),
     }),
     [formId, session, snapshot],
   );

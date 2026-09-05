@@ -4,12 +4,17 @@ import { describe, expect, it, vi } from 'vitest';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { useStageEditorController } from '../controller.ts';
+import type { ProtocolBuilderResourceGateway } from '../resources/gateway.ts';
+import { InMemoryResourceGateway } from '../resources/InMemoryResourceGateway.ts';
 import {
   createStageIdentity,
   ProtocolBuilderSessionStore,
 } from '../session.ts';
 
-function createSession(onCommands = vi.fn()) {
+function createSession(
+  onCommands = vi.fn(),
+  resourceGateway?: ProtocolBuilderResourceGateway,
+) {
   const session = new ProtocolBuilderSessionStore({
     identity: createStageIdentity('Information', () => 'stage-1'),
     fields: { label: 'Welcome', title: 'Welcome', items: [] },
@@ -27,6 +32,7 @@ function createSession(onCommands = vi.fn()) {
       stages: [stageDocument],
     }),
     onCommands,
+    ...(resourceGateway === undefined ? {} : { resourceGateway }),
   });
   return { onCommands, session };
 }
@@ -109,5 +115,40 @@ describe('useStageEditorController', () => {
     expect(
       onCommands.mock.calls.map(([batch]) => batch.commands[0].op),
     ).toEqual(['insertItem', 'removeItem']);
+  });
+
+  it('cancels the session, discarding what the editor staged', async () => {
+    const host = new InMemoryResourceGateway();
+    const { session } = createSession(vi.fn(), host);
+    const { result } = renderHook(() =>
+      useStageEditorController(session, 'stage-form'),
+    );
+    const pickerGateway = result.current.resourceGateway;
+    if (pickerGateway === undefined) {
+      throw new Error('the controller was given no resource gateway');
+    }
+
+    await act(async () => {
+      await pickerGateway.stageUpload({
+        requestId: 'backdrop',
+        kind: 'image',
+        name: 'Backdrop',
+        source: 'backdrop.png',
+        contentType: 'image/png',
+        bytes: Uint8Array.from([1, 2, 3, 4]),
+      });
+    });
+    expect(result.current.snapshot.stagedResources).toHaveLength(1);
+
+    // Closing the editor without saving: the staging goes with it, or the host
+    // keeps bytes for an edit that never happened.
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await result.current.cancel();
+    });
+
+    expect(outcome).toMatchObject({ status: 'ok' });
+    expect(result.current.snapshot.stagedResources).toEqual([]);
+    expect(host.getStagingResidue()).toEqual([]);
   });
 });

@@ -22,6 +22,23 @@ import {
   protocolContextFromSections,
   type ProtocolBuilderProtocolContext,
 } from './protocol-context.ts';
+import type {
+  ManifestApplyRequest,
+  ProtocolBuilderResourceGateway,
+  ResourceDescriptor,
+  ResourceGatewayFailure,
+  ResourceResult,
+} from './resources/gateway.ts';
+import {
+  assetsSectionForValidation,
+  createStagedResourceTracker,
+  draftResourceIssues,
+  finishStagedResources,
+  mergeDraftValidationIssues,
+  stageIndexForValidation,
+  type StagedResourceTracker,
+} from './resources/lifecycle.ts';
+import { collectStageResourceReferences } from './resources/references.ts';
 import { isStageType } from './stage-types.ts';
 import {
   attributeValidationIssues,
@@ -94,10 +111,23 @@ export type ProtocolBuilderSnapshot = Readonly<{
   access: ProtocolBuilderAccess;
   presence: readonly ProtocolBuilderPresence[];
   attribution: Readonly<Record<string, ChangeAttribution>>;
+  /**
+   * Every local batch the authoritative protocol has not acknowledged yet,
+   * including the batches a live-applying host has not been given: a batch
+   * that references a resource staged in this session waits here until finish
+   * carries it and the manifest to the host together.
+   */
   pendingCommands: readonly PendingCommandBatch[];
   history: ProtocolBuilderHistory;
   validation: ProtocolBuilderValidation;
   validatedProtocol: CurrentProtocol | null;
+  /**
+   * Resources staged in this session and not yet promoted or discarded.
+   *
+   * Descriptors only, exactly as the gateway hands them out: a staged secret
+   * appears here as its name and id, never as its value.
+   */
+  stagedResources: readonly ResourceDescriptor[];
 }>;
 
 export type CompoundSectionEdit =
@@ -168,6 +198,12 @@ export type CompoundEditResult =
 
 export type ProtocolCandidateContext = Readonly<{
   stageDocument: SectionDoc;
+  /**
+   * The authoritative sections, with one provisional `assets` entry per
+   * resource staged in this session. The canonical schema resolves every
+   * resource reference against the manifest, so a draft that uses a staged
+   * resource is validated as the protocol will be once it is promoted.
+   */
   protocolSections: Readonly<Record<string, SectionDoc>>;
 }>;
 
@@ -175,6 +211,15 @@ export type FinishRequest = Readonly<{
   stageDocument: SectionDoc;
   validatedProtocol: CurrentProtocol;
   pendingCommands: readonly PendingCommandBatch[];
+  /**
+   * Manifest commands for the staged resources this finish promotes, when it
+   * promotes any. They must be applied in the SAME atomic revision as
+   * `pendingCommands`: their bytes are already moved, and a host that commits
+   * the stage without them commits references to resources the protocol does
+   * not have. An `onFinish` that cannot apply both must throw, which rolls the
+   * promotion back and leaves the staging intact for a retry.
+   */
+  resourceManifest?: ManifestApplyRequest;
 }>;
 
 export type ProtocolBuilderSession = {
@@ -189,6 +234,20 @@ export type ProtocolBuilderSession = {
     request: CompoundEditRequest,
   ): Promise<CompoundEditResult>;
   finish(): Promise<void>;
+  /**
+   * Ends the session without finishing: everything staged in it is discarded,
+   * along with the pending batches that were withheld from a live-applying
+   * host because they referenced that staging. Ok when the session has no
+   * gateway — there is nothing to discard. Refused while a finish is
+   * committing those very resources, because that promotion decides them.
+   */
+  cancel(): Promise<ResourceResult<undefined>>;
+  /**
+   * The session-scoped resource gateway, or `undefined` when the host opened
+   * the session without one. The shell provides it to editors; nothing else
+   * in the package reaches host storage.
+   */
+  getResourceGateway(): ProtocolBuilderResourceGateway | undefined;
 };
 
 export type ProtocolBuilderSessionOptions = Readonly<{
@@ -199,7 +258,28 @@ export type ProtocolBuilderSessionOptions = Readonly<{
   access: ProtocolBuilderAccess;
   presence?: readonly ProtocolBuilderPresence[];
   attribution?: Readonly<Record<string, ChangeAttribution>>;
+  /**
+   * The host's resource port. Supplied when the session opens, so staging
+   * lives exactly as long as the edit session: finish promotes what the draft
+   * still references, and cancel discards everything.
+   */
+  resourceGateway?: ProtocolBuilderResourceGateway;
   buildCandidate(context: ProtocolCandidateContext): unknown;
+  /**
+   * Each local batch, as it is made, for a host that applies edits live rather
+   * than only at finish.
+   *
+   * A batch that puts a resource this session has staged into the draft is
+   * withheld: its bytes are not in the protocol until finish promotes them, so
+   * a host applying it live would commit a reference to a resource the
+   * protocol does not have. That batch and every batch after it stay pending
+   * — visible in {@link ProtocolBuilderSnapshot.pendingCommands}, so nothing
+   * looks saved that is not — and reach the host in the finish apply, in
+   * order, alongside the manifest commands from the same promotion. A cancel
+   * drops them with the staging that made them unsendable. Batches naming only
+   * committed resources are unaffected, as is a host that buffers instead of
+   * applying live: it reads the same pending batches at finish either way.
+   */
   onCommands?(batch: PendingCommandBatch): void;
   onCompoundEdit?(
     request: CompoundEditSubmission,
@@ -232,6 +312,19 @@ export class InvalidProtocolDraftError extends Error {
   constructor(issues: readonly ProtocolValidationIssue[]) {
     super('the protocol draft is not valid');
     this.issues = issues;
+  }
+}
+
+/**
+ * A finish whose resource promotion was rolled back. Nothing was committed and
+ * nothing was discarded, so the same finish can simply be tried again.
+ */
+export class ResourcePromotionError extends Error {
+  readonly failure: ResourceGatewayFailure;
+
+  constructor(failure: ResourceGatewayFailure) {
+    super(failure.message);
+    this.failure = failure;
   }
 }
 
@@ -313,11 +406,39 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
   private nextBatchId = 1;
   private validationVersion = 0;
   private compoundEditInFlight = false;
+  private readonly resources: StagedResourceTracker | undefined;
+  /** Held across a retried finish so a promotion cannot happen twice. */
+  private promotionId: string | undefined;
+  /**
+   * The first batch withheld from `onCommands` because it references a staged
+   * resource. Every later batch is withheld with it, so a live-applying host
+   * only ever holds a prefix of this session's batches and an acknowledgement
+   * cannot drop a batch it never received.
+   */
+  private withheldFromBatchId: number | undefined;
 
   constructor(options: ProtocolBuilderSessionOptions) {
     assertNoIdentityFields(options.fields);
     this.options = options;
     this.baseFields = cloneDoc(options.fields);
+    this.resources =
+      options.resourceGateway === undefined
+        ? undefined
+        : createStagedResourceTracker({
+            gateway: options.resourceGateway,
+            isEditable: () => this.snapshot.access.mode === 'editable',
+            // Staging changes what the draft may legally reference, so the
+            // draft is revalidated: discarding a resource something still uses
+            // is a problem the researcher must see immediately, and staging
+            // one is what clears it.
+            onStagedChanged: () => {
+              this.replaceSnapshot({
+                validation: pendingValidation(),
+                validatedProtocol: null,
+              });
+              void this.runValidation();
+            },
+          });
     this.snapshot = this.makeSnapshot({
       fields: options.fields,
       protocolSections: options.protocolSections,
@@ -523,6 +644,22 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     }
   }
 
+  /**
+   * Validates, then commits the stage and its resources as one revision.
+   *
+   * The order is forced by what each step needs from the last: canonical
+   * validation decides whether there is anything to commit at all (a draft
+   * naming a resource that is neither committed nor staged is invalid here,
+   * not at the host); the promotion then moves the bytes of exactly the staged
+   * resources the validated draft references, and applies the stage inside
+   * that promotion so the manifest entries and the stage's own commands reach
+   * the host as one atomic apply. Staged resources the draft walked away from
+   * are discarded only once that apply has succeeded.
+   *
+   * That apply is also where the batches withheld from a live-applying host
+   * are released: they reference resources whose manifest entries are in the
+   * very same apply, so this is the first moment they are safe to send.
+   */
   async finish(): Promise<void> {
     this.assertEditable();
     const validation = await this.validate();
@@ -530,14 +667,64 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     if (validation.status !== 'valid' || validatedProtocol === null) {
       throw new InvalidProtocolDraftError(validation.issues);
     }
-    await this.options.onFinish?.({
-      stageDocument: stageDocument(
-        this.snapshot.editedSection.identity,
-        this.snapshot.editedSection.fields,
-      ),
-      validatedProtocol,
-      pendingCommands: this.snapshot.pendingCommands,
+
+    const document = stageDocument(
+      this.snapshot.editedSection.identity,
+      this.snapshot.editedSection.fields,
+    );
+    const pendingCommands = this.snapshot.pendingCommands;
+    const applyStage = async (
+      resourceManifest?: ManifestApplyRequest,
+    ): Promise<void> => {
+      await this.options.onFinish?.({
+        stageDocument: document,
+        validatedProtocol,
+        pendingCommands,
+        ...(resourceManifest === undefined ? {} : { resourceManifest }),
+      });
+    };
+
+    const resources = this.resources;
+    if (resources === undefined) {
+      await applyStage();
+      return;
+    }
+
+    // Stable across a retried finish so an uncertain promotion happens once,
+    // and released as soon as one succeeds so the next finish is its own.
+    this.promotionId ??= uuid({});
+    const outcome = await finishStagedResources({
+      gateway: resources.gateway,
+      promotionId: this.promotionId,
+      stageDocument: document,
+      staged: resources.staged(),
+      secretHandle: (resourceId) => resources.secretHandle(resourceId),
+      applyStage,
     });
+
+    if (outcome.status === 'apply-failed') throw outcome.error;
+    if (outcome.status === 'promotion-failed') {
+      throw new ResourcePromotionError(outcome.failure);
+    }
+    this.promotionId = undefined;
+    // The apply carried every pending batch, withheld ones included, so the
+    // host is no longer missing anything and later batches flow live again.
+    this.withheldFromBatchId = undefined;
+    resources.finished();
+  }
+
+  async cancel(): Promise<ResourceResult<undefined>> {
+    const resources = this.resources;
+    if (resources === undefined) {
+      return Object.freeze({ status: 'ok', data: undefined });
+    }
+    const result = await resources.cancel();
+    if (result.status === 'ok') this.dropWithheldCommands();
+    return result;
+  }
+
+  getResourceGateway(): ProtocolBuilderResourceGateway | undefined {
+    return this.resources?.gateway;
   }
 
   receiveAuthoritativeUpdate(update: AuthoritativeUpdate): void {
@@ -585,6 +772,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       (doc, batch) => applyCommands(doc, [...batch.commands]),
       cloneDoc(this.baseFields),
     );
+    this.releaseWithheldFrom(pendingCommands);
     this.replaceSnapshot({
       fields,
       pendingCommands,
@@ -634,6 +822,9 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       this.redoStack.length = 0;
       this.historyGeneration += 1;
       this.fencedAtRevision = this.snapshot.manifestRevision;
+      // The dropped batches take the hold with them: nothing is waiting for a
+      // finish this session can no longer run.
+      this.withheldFromBatchId = undefined;
       this.replaceSnapshot({
         access,
         fields: this.baseFields,
@@ -663,29 +854,111 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       id: this.nextBatchId++,
       commands: Object.freeze([...commands]),
     });
+    const withheld = this.withholdsFromHost(batch, fields);
+    if (withheld) this.withheldFromBatchId ??= batch.id;
     this.replaceSnapshot({
       fields,
       pendingCommands: [...this.snapshot.pendingCommands, batch],
       validation: pendingValidation(),
       validatedProtocol: null,
     });
-    this.options.onCommands?.(batch);
+    if (!withheld) this.options.onCommands?.(batch);
     void this.runValidation();
+  }
+
+  /**
+   * Whether a batch has to wait for finish: it puts a resource this session
+   * has staged into one of the fields it touches, and that resource's manifest
+   * entry does not exist until the finish promotion writes it.
+   *
+   * The fields are read for references the way validation reads them — from
+   * the schema's own `assetReference` tags — so a stage type that gains a
+   * resource field is covered as soon as its schema is tagged, and nothing
+   * here has to know which field of which stage holds an asset id.
+   */
+  private withholdsFromHost(
+    batch: PendingCommandBatch,
+    fields: StageFormDraft,
+  ): boolean {
+    // Once one batch is held, everything after it is held too: releasing them
+    // out of order would let an acknowledgement of a later batch drop an
+    // earlier one the host never saw.
+    if (this.withheldFromBatchId !== undefined) return true;
+    const staged = this.resources?.staged() ?? NO_STAGED_RESOURCES;
+    if (staged.length === 0) return false;
+    const stagedIds = new Set(staged.map((descriptor) => descriptor.id));
+    const touched = new Set(batch.commands.map((command) => command.key));
+    return collectStageResourceReferences(
+      stageDocument(this.snapshot.editedSection.identity, fields),
+    ).some(
+      (reference) =>
+        touched.has(String(reference.path[0])) &&
+        stagedIds.has(reference.resourceId),
+    );
+  }
+
+  /**
+   * Forgets the batches a live-applying host never received, and the draft
+   * they made — the cancel path, where the resources they reference have just
+   * been discarded. The host's own view is untouched: it never had them.
+   */
+  private dropWithheldCommands(): void {
+    const withheldFrom = this.withheldFromBatchId;
+    if (withheldFrom === undefined) return;
+    this.withheldFromBatchId = undefined;
+    const pendingCommands = this.snapshot.pendingCommands.filter(
+      (batch) => batch.id < withheldFrom,
+    );
+    const fields = pendingCommands.reduce<SectionDoc>(
+      (doc, batch) => applyCommands(doc, [...batch.commands]),
+      cloneDoc(this.baseFields),
+    );
+    this.replaceSnapshot({
+      fields,
+      pendingCommands,
+      validation: pendingValidation(),
+      validatedProtocol: null,
+    });
+    void this.runValidation();
+  }
+
+  /** Clears the hold once no withheld batch is pending any more. */
+  private releaseWithheldFrom(
+    pendingCommands: readonly PendingCommandBatch[],
+  ): void {
+    const withheldFrom = this.withheldFromBatchId;
+    if (
+      withheldFrom !== undefined &&
+      pendingCommands.every((batch) => batch.id < withheldFrom)
+    ) {
+      this.withheldFromBatchId = undefined;
+    }
   }
 
   private async runValidation(): Promise<ProtocolBuilderValidation> {
     const version = ++this.validationVersion;
-    const candidate = this.options.buildCandidate({
-      stageDocument: stageDocument(
-        this.snapshot.editedSection.identity,
-        this.snapshot.editedSection.fields,
-      ),
+    const draft = stageDocument(
+      this.snapshot.editedSection.identity,
+      this.snapshot.editedSection.fields,
+    );
+    const resolvable = this.resolvableResources();
+    const resourceIssues = draftResourceIssues({
+      stageDocument: draft,
       protocolSections: this.snapshot.protocolSections,
+      stagedResourceIds: resolvable.map((descriptor) => descriptor.id),
+      stageIndex: stageIndexForValidation(
+        this.snapshot.protocolSections,
+        this.snapshot.editedSection.identity.id,
+      ),
+    });
+    const candidate = this.options.buildCandidate({
+      stageDocument: draft,
+      protocolSections: this.candidateProtocolSections(resolvable),
     });
     const result = await CurrentProtocolSchema.safeParseAsync(candidate);
     if (version !== this.validationVersion) return this.snapshot.validation;
 
-    if (result.success) {
+    if (result.success && resourceIssues.length === 0) {
       const validation = validValidation();
       this.replaceSnapshot({
         validation,
@@ -694,16 +967,19 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       return validation;
     }
 
-    const validation: ProtocolBuilderValidation = Object.freeze({
-      status: 'invalid',
-      issues: attributeValidationIssues(
-        result.error.issues.map((issue) => ({
+    const schemaIssues = result.success
+      ? []
+      : result.error.issues.map((issue) => ({
           code: issue.code,
           path: issue.path.map((segment) =>
             typeof segment === 'symbol' ? String(segment) : segment,
           ),
           message: issue.message,
-        })),
+        }));
+    const validation: ProtocolBuilderValidation = Object.freeze({
+      status: 'invalid',
+      issues: attributeValidationIssues(
+        mergeDraftValidationIssues(schemaIssues, resourceIssues),
         this.snapshot.protocolSections,
         this.snapshot.attribution,
         this.snapshot.manifestRevision,
@@ -711,6 +987,47 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     });
     this.replaceSnapshot({ validation, validatedProtocol: null });
     return validation;
+  }
+
+  /**
+   * Resources the draft may reference even though the authoritative manifest
+   * does not list them: everything staged here, plus everything this session
+   * has already promoted but not yet seen come back in an authoritative
+   * revision.
+   */
+  private resolvableResources(): readonly ResourceDescriptor[] {
+    const resources = this.resources;
+    if (resources === undefined) return NO_STAGED_RESOURCES;
+    return [
+      ...this.snapshot.stagedResources,
+      ...resources.promotedAwaitingManifest(
+        this.snapshot.protocolSections[sectionId({ kind: 'assets' })],
+      ),
+    ];
+  }
+
+  /**
+   * The sections a candidate is built from: authoritative everywhere except
+   * the manifest, which also carries the resources this session staged or has
+   * just promoted, so a draft may reference one before the host's revision
+   * lists it. The authoritative sections in the snapshot are left exactly as
+   * the host sent them.
+   */
+  private candidateProtocolSections(
+    resolvable: readonly ResourceDescriptor[],
+  ): Readonly<Record<string, SectionDoc>> {
+    const resources = this.resources;
+    if (resolvable.length === 0 || resources === undefined) {
+      return this.snapshot.protocolSections;
+    }
+    return Object.freeze({
+      ...this.snapshot.protocolSections,
+      [sectionId({ kind: 'assets' })]: assetsSectionForValidation(
+        this.snapshot.protocolSections[sectionId({ kind: 'assets' })],
+        resolvable,
+        (resourceId) => resources.secretHandle(resourceId),
+      ),
+    });
   }
 
   private assertEditable(): void {
@@ -811,9 +1128,14 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       }),
       validation: params.validation,
       validatedProtocol: params.validatedProtocol,
+      // Read from the tracker rather than threaded through every snapshot
+      // update: it is the one place that knows what this session staged.
+      stagedResources: this.resources?.staged() ?? NO_STAGED_RESOURCES,
     });
   }
 }
+
+const NO_STAGED_RESOURCES: readonly ResourceDescriptor[] = Object.freeze([]);
 
 type ManifestRevisionOrder = 'older' | 'same' | 'newer' | 'conflicting';
 
