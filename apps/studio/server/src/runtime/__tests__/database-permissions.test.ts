@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 import { describe, expect, it } from 'vitest';
 
+import { enrollMigrationTestDatabase } from '../../__tests__/support/migrations.ts';
 import {
   createScratchDatabase,
   reachableDb,
@@ -28,12 +29,22 @@ describe.skipIf(!database)('restricted deployment database login', () => {
     const administrator = new pg.Pool({ connectionString: database.url });
     const pools: pg.Pool[] = [];
     try {
-      await migrateDatabase(scratch.pool, migrations, SCHEMA_FINGERPRINT);
       await administrator.query(
         `CREATE ROLE ${identifier} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS PASSWORD 'runtime-test-only'`,
       );
       await administrator.query(
         `GRANT studio_app, studio_maintenance TO ${identifier} WITH SET TRUE, INHERIT FALSE`,
+      );
+      const allowedLogins = await enrollMigrationTestDatabase(
+        scratch.pool,
+        database,
+        [login],
+      );
+      await migrateDatabase(
+        scratch.pool,
+        migrations,
+        SCHEMA_FINGERPRINT,
+        allowedLogins,
       );
       const url = new URL(scratch.db.url);
       url.username = login;

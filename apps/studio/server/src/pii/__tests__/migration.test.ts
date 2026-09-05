@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { expect, it } from 'vitest';
 
+import { enrollMigrationTestDatabase } from '../../__tests__/support/migrations.ts';
 import {
   createScratchDatabase,
   reachableDb,
@@ -23,12 +24,17 @@ it('preserves populated legacy credentials and index bytes through migration0002
   if (!database) throw new Error('A local database is required.');
   const scratch = await createScratchDatabase(database);
   try {
+    const allowedLogins = await enrollMigrationTestDatabase(
+      scratch.pool,
+      database,
+    );
     const initial = migrations[0];
     if (!initial) throw new Error('Initial migration missing.');
     await migrateDatabase(
       scratch.pool,
       [initial],
       initial.manifest.fingerprint,
+      allowedLogins,
     );
     const teamA = randomUUID();
     const teamB = randomUUID();
@@ -102,7 +108,12 @@ it('preserves populated legacy credentials and index bytes through migration0002
     );
 
     await expect(
-      migrateDatabase(scratch.pool, migrations, SCHEMA_FINGERPRINT),
+      migrateDatabase(
+        scratch.pool,
+        migrations,
+        SCHEMA_FINGERPRINT,
+        allowedLogins,
+      ),
     ).resolves.toEqual(
       migrations.slice(1).map((migration) => migration.manifest.id),
     );
