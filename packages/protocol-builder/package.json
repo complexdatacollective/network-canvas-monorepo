@@ -23,10 +23,10 @@
     "./controller": "./src/controller.ts",
     "./fields/RichTextField": "./src/fields/RichTextField.tsx",
     "./fields/StageNameInput": "./src/fields/StageNameInput.tsx",
+    "./interfaces/StageTypeImage": "./src/interfaces/StageTypeImage.tsx",
     "./interfaces/documentation": "./src/interfaces/documentation.ts",
     "./interfaces/initialValues": "./src/interfaces/initialValues.ts",
     "./interfaces/interfaceNames": "./src/interfaces/interfaceNames.ts",
-    "./interfaces/StageTypeImage": "./src/interfaces/StageTypeImage.tsx",
     "./interfaces/templates": "./src/interfaces/templates.ts",
     "./markdown/markdownAdapter": "./src/markdown/markdownAdapter.ts",
     "./naming/computeAutoNameUpdate": "./src/naming/computeAutoNameUpdate.ts",
@@ -38,10 +38,11 @@
     "./resources/gateway": "./src/resources/gateway.ts",
     "./resources/gatewayContract": "./src/resources/gatewayContract.ts",
     "./resources/references": "./src/resources/references.ts",
+    "./rules/ruleDescription": "./src/rules/ruleDescription.ts",
     "./session": "./src/session.ts",
     "./stage-editor-contract": "./src/stage-editor-contract.ts",
-    "./validation-attribution": "./src/validationAttribution.ts",
-    "./styles.css": "./src/styles.css"
+    "./styles.css": "./src/styles.css",
+    "./validation-attribution": "./src/validationAttribution.ts"
   },
   "scripts": {
     "build-storybook": "storybook build",
@@ -60,7 +61,8 @@
     "lucide-react": "catalog:",
     "remark-parse": "^11.0.0",
     "unified": "^11.0.5",
-    "uuid": "catalog:"
+    "uuid": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@codaco/fresco-ui": "workspace:^",
