@@ -12,6 +12,7 @@ export default defineConfig({
         index: 'src/index.ts',
         migrate: 'src/migrate.ts',
         encryption: 'src/encryption.ts',
+        backup: 'src/backup.ts',
       },
     },
     outDir: 'dist',

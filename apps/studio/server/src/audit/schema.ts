@@ -17,7 +17,8 @@ import {
 } from 'drizzle-orm/pg-core';
 
 import {
-  teamIsolationPolicy,
+  teamIsolationPolicies,
+  backupReadPolicy,
   TEAM_GUC,
   tenantTablesSql,
   TENANT_ROLES,
@@ -149,6 +150,7 @@ const auditEvents = pgTable(
     // maintenance jobs. Unlike mutable tenant data, an accidental unscoped
     // maintenance query must not be able to enumerate every team's history.
     auditTeamIsolationPolicy(),
+    backupReadPolicy(),
   ],
 );
 
@@ -293,7 +295,7 @@ const auditExportJobs = pgTable(
     ),
     // The ordinary policy, with the maintenance escape — deliberately not the
     // strict audit policy above. See the note on AUDIT_SIDECAR_SQL.
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 
@@ -392,7 +394,7 @@ const auditAlertOutbox = pgTable(
     ),
     // The ordinary policy, with the maintenance escape — deliberately not the
     // strict audit policy above. See the note on AUDIT_SIDECAR_SQL.
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 

@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "id": "0005_readonly_backups",
+  "previous": "0004_runtime_schema_evidence",
+  "fingerprint": "ab0128394ab29d766025733dcb7156b112348e564df04c4dcbea9f61ac3807ca",
+  "snapshotHash": "958230b543dcf84cffba34ff0c9ac1509e403ee16bad74889057a5d21a2d38b9",
+  "sqlHash": "99362654cdb0644eb484be8ba9a344a4bf6624d649f35a3329131414252959b5",
+  "sidecarsHash": "29ee3bbde912ee874b69a59c0b279c8435d873a61ab5d30d04b672a110213714"
+}

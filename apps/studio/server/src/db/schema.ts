@@ -38,6 +38,7 @@ import {
   FINGERPRINT_ACCESS_SIDECAR_SQL,
 } from './access.ts';
 import { AUTH_TABLES } from './auth-schema.ts';
+import { BACKUP_ACCESS_SIDECAR_SQL } from './backup-access.ts';
 import { SCHEMA_FINGERPRINT } from './fingerprint.generated.ts';
 
 // Managed like every other table: push diffs the whole public schema, so an
@@ -105,6 +106,7 @@ export const SIDECARS = [
   INVITATION_DELIVERY_SIDECAR_SQL,
   PII_SIDECAR_SQL,
   INSTANCE_SIDECAR_SQL,
+  BACKUP_ACCESS_SIDECAR_SQL,
   AUDIT_SIDECAR_SQL,
 ];
 
