@@ -117,6 +117,41 @@ describe('useStageEditorController', () => {
     ).toEqual(['insertItem', 'removeItem']);
   });
 
+  it('cancels the session, discarding what the editor staged', async () => {
+    const host = new InMemoryResourceGateway();
+    const { session } = createSession(vi.fn(), host);
+    const { result } = renderHook(() =>
+      useStageEditorController(session, 'stage-form'),
+    );
+    const pickerGateway = result.current.resourceGateway;
+    if (pickerGateway === undefined) {
+      throw new Error('the controller was given no resource gateway');
+    }
+
+    await act(async () => {
+      await pickerGateway.stageUpload({
+        requestId: 'backdrop',
+        kind: 'image',
+        name: 'Backdrop',
+        source: 'backdrop.png',
+        contentType: 'image/png',
+        bytes: Uint8Array.from([1, 2, 3, 4]),
+      });
+    });
+    expect(result.current.snapshot.stagedResources).toHaveLength(1);
+
+    // Closing the editor without saving: the staging goes with it, or the host
+    // keeps bytes for an edit that never happened.
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await result.current.cancel();
+    });
+
+    expect(outcome).toMatchObject({ status: 'ok' });
+    expect(result.current.snapshot.stagedResources).toEqual([]);
+    expect(host.getStagingResidue()).toEqual([]);
+  });
+
   it('answers an empty batch with the current draft rather than writing', async () => {
     const { onCommands, session } = createSession();
     const { result } = renderHook(() => useStageEditorController(session));
@@ -156,38 +191,5 @@ describe('useStageEditorController', () => {
     // editor down rather than answering the question it was asked.
     expect(() => result.current.applyCommands([])).not.toThrow();
     expect(result.current.applyCommands([]).title).toBe('Welcome');
-  it('cancels the session, discarding what the editor staged', async () => {
-    const host = new InMemoryResourceGateway();
-    const { session } = createSession(vi.fn(), host);
-    const { result } = renderHook(() =>
-      useStageEditorController(session, 'stage-form'),
-    );
-    const pickerGateway = result.current.resourceGateway;
-    if (pickerGateway === undefined) {
-      throw new Error('the controller was given no resource gateway');
-    }
-
-    await act(async () => {
-      await pickerGateway.stageUpload({
-        requestId: 'backdrop',
-        kind: 'image',
-        name: 'Backdrop',
-        source: 'backdrop.png',
-        contentType: 'image/png',
-        bytes: Uint8Array.from([1, 2, 3, 4]),
-      });
-    });
-    expect(result.current.snapshot.stagedResources).toHaveLength(1);
-
-    // Closing the editor without saving: the staging goes with it, or the host
-    // keeps bytes for an edit that never happened.
-    let outcome: unknown;
-    await act(async () => {
-      outcome = await result.current.cancel();
-    });
-
-    expect(outcome).toMatchObject({ status: 'ok' });
-    expect(result.current.snapshot.stagedResources).toEqual([]);
-    expect(host.getStagingResidue()).toEqual([]);
   });
 });
