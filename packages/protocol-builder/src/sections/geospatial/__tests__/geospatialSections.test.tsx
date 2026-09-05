@@ -21,7 +21,8 @@ import {
 } from '../../../testing/renderStageEditor.tsx';
 import StageNameSection from '../../StageNameSection.tsx';
 import GeospatialPromptsSection from '../GeospatialPromptsSection.tsx';
-import MapOptionsSection from '../MapOptionsSection.tsx';
+import MapAppearanceSection from '../MapAppearanceSection.tsx';
+import MapSourceSection from '../MapSourceSection.tsx';
 
 /**
  * The map SDK is replaced for this whole file. Mounting the map options
@@ -52,8 +53,9 @@ const openEditor = () =>
     sections: (
       <>
         <StageNameSection />
-        <MapOptionsSection />
+        <MapSourceSection />
         <GeospatialPromptsSection />
+        <MapAppearanceSection />
       </>
     ),
   });
@@ -129,9 +131,9 @@ describe('the map a geospatial stage shows', () => {
       'Stage name',
       'Map access',
       'Map layer',
+      'Prompts',
       'Map appearance',
       'Starting map view',
-      'Prompts',
     ]);
   });
 

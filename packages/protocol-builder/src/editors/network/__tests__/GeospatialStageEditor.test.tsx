@@ -56,7 +56,10 @@ describe('the geospatial stage editor', () => {
 
   /**
    * The map is four decisions a researcher makes at different times, each
-   * finishable on its own, so each of them appears in the outline separately.
+   * finishable on its own, so each of them appears in the outline separately —
+   * and the prompts sit between the two halves. What the map IS has to be
+   * settled before there is anything to ask about it; how it looks and where
+   * it opens are settled once the questions are written.
    */
   it('composes its sections in the order the decisions are made', async () => {
     const harness = openFixture();
@@ -68,9 +71,9 @@ describe('the geospatial stage editor', () => {
       'Stage filter',
       'Map access',
       'Map layer',
+      'Prompts',
       'Map appearance',
       'Starting map view',
-      'Prompts',
       'Skip logic',
       'Interviewer guidance',
     ]);

@@ -106,11 +106,10 @@ describe('the sociogram stage editor', () => {
   });
 
   /**
-   * A save replaces the whole `behaviours` key with what the form holds, so a
-   * behaviour no section renders is not left alone — it is deleted the first
-   * time anyone re-saves a stage that had it. Opening a stage carrying every
-   * behaviour the schema allows and saving it unchanged is what proves each
-   * one has a section.
+   * The list below is only as good as its agreement with the schema, so it is
+   * checked against it: a behaviour added to `canvasBehavioursSchema` and not
+   * here would leave the round-trip test passing while the editor silently
+   * dropped the new key.
    */
   it('asks about every behaviour the schema allows', () => {
     expect(Object.keys(ALL_BEHAVIOURS.behaviours ?? {}).toSorted()).toEqual(
@@ -118,6 +117,13 @@ describe('the sociogram stage editor', () => {
     );
   });
 
+  /**
+   * A save replaces the whole `behaviours` key with what the form holds, so a
+   * behaviour no section renders is not left alone — it is deleted the first
+   * time anyone re-saves a stage that had it. Opening a stage carrying every
+   * behaviour the schema allows and saving it unchanged is what proves each
+   * one has a section.
+   */
   it('keeps every behaviour the schema allows when a stage carrying them is re-saved', async () => {
     const harness = openWithEveryBehaviour();
 

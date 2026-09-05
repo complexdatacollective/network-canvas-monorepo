@@ -1,7 +1,8 @@
 import StageEditorShell from '../../form/StageEditorShell.tsx';
 import { interfaceDocumentationUrl } from '../../interfaces/documentation.ts';
 import GeospatialPromptsSection from '../../sections/geospatial/GeospatialPromptsSection.tsx';
-import MapOptionsSection from '../../sections/geospatial/MapOptionsSection.tsx';
+import MapAppearanceSection from '../../sections/geospatial/MapAppearanceSection.tsx';
+import MapSourceSection from '../../sections/geospatial/MapSourceSection.tsx';
 import InterviewerGuidanceSection from '../../sections/InterviewerGuidanceSection.tsx';
 import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
 import StageNameSection from '../../sections/StageNameSection.tsx';
@@ -17,13 +18,16 @@ const DOCUMENTATION_URL = interfaceDocumentationUrl('geospatial');
  * The editor for a geospatial stage.
  *
  * A geospatial stage asks the participant where something is, and records the
- * answer as an area of a map. Nothing can be asked until the map exists, so
- * the map comes first: the key that lets one be drawn, the layer that says
- * which areas can be chosen, how it looks, and where it opens. Those are four
- * decisions a researcher makes at different times, and each of them appears in
- * the outline separately — `MapOptionsSection` renders them as four sections
- * of its own, in that fixed order, so the prompts follow all four rather than
- * splitting them. That is also the order Architect has always shown.
+ * answer as an area of a map. The map is four decisions a researcher makes at
+ * different times, each finishable on its own and each reported separately in
+ * the outline — and the prompts sit in the middle of them.
+ *
+ * What the map IS comes first, because nothing can be asked until it exists:
+ * the key that lets a map be drawn, and the layer that says which areas can be
+ * chosen. The prompts follow, because the property recorded from that layer is
+ * what each prompt's answer is stored as. How the map LOOKS and where it opens
+ * come last: those are settled once the researcher knows what they are asking
+ * the participant to point at.
  *
  * The key and the layer are stored resources. This editor never sees a file, a
  * URL or a key value: the fields hold asset ids, chosen through the package's
@@ -50,8 +54,9 @@ export function GeospatialStageEditor({
         documentationUrl={DOCUMENTATION_URL}
       />
       <SubjectSection entity="node" filter />
-      <MapOptionsSection />
+      <MapSourceSection />
       <GeospatialPromptsSection />
+      <MapAppearanceSection />
       <SkipLogicSection />
       <InterviewerGuidanceSection />
     </StageEditorShell>
