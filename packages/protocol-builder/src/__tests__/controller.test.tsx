@@ -150,6 +150,8 @@ describe('useStageEditorController', () => {
     expect(outcome).toMatchObject({ status: 'ok' });
     expect(result.current.snapshot.stagedResources).toEqual([]);
     expect(host.getStagingResidue()).toEqual([]);
+  });
+
   it('answers an empty batch with the current draft rather than writing', async () => {
     const { onCommands, session } = createSession();
     const { result } = renderHook(() => useStageEditorController(session));
