@@ -27,6 +27,20 @@ const EgoFormEditor: StageEditorComponent<'EgoForm'> = ({
   stageType,
 }: StageEditorProps<'EgoForm'>) => <p>{stageType} editor</p>;
 
+/**
+ * An editor that renders the host's chrome and nothing else, so a test can
+ * read whether the slot reached it — and what it was called with.
+ */
+const ChromeEditor: StageEditorComponent<'Information'> = ({
+  controller,
+  actions,
+}: StageEditorProps<'Information'>) => (
+  <p>
+    {actions?.({ controller, formId: controller.formId, readOnly: false }) ??
+      'no chrome'}
+  </p>
+);
+
 describe('composing the registry from family parts', () => {
   it('merges the parts each family exports', () => {
     const registry = composeStageEditorRegistry(
@@ -178,16 +192,19 @@ describe('the two lists a family edits', () => {
 /**
  * The coverage machinery is a set of TYPES, so the only thing that can test it
  * is a compiler. `type-tests/` holds one project of deliberately wrong
- * registries; this compiles it and reads which files the compiler refused.
+ * registries and editors; this compiles it and reads which files the compiler
+ * refused.
  *
- * The control matters as much as the probes: `valid.ts` proves the machinery
+ * The controls matter as much as the probes: `valid.ts` proves the machinery
  * is not simply refusing everything, and its `ClaimsExactlyTheseTwo` proves
  * `defineStageEditorPart` keeps a part's exact key set — the fact all three
- * probes rest on, and the one an annotated `const part: StageEditorRegistryPart`
- * destroys.
+ * registry probes rest on, and the one an annotated `const part:
+ * StageEditorRegistryPart` destroys. `actionsSlot.ts` is the control for the
+ * fourth probe: an editor may ignore the host's action chrome or forward it,
+ * and only one that INSISTS on it is refused.
  */
 describe('the compile-time coverage checks', () => {
-  it('refuses a missing entry, a stale entry and a duplicate claim', () => {
+  it('refuses a missing entry, a stale entry, a duplicate claim and an editor that insists on chrome', () => {
     const packageRoot = join(import.meta.dirname, '..', '..');
     let output = '';
     try {
@@ -206,6 +223,7 @@ describe('the compile-time coverage checks', () => {
     expect(filesWithErrors(output)).toEqual([
       'type-tests/duplicateEntry.ts',
       'type-tests/missingEntry.ts',
+      'type-tests/requiredActions.ts',
       'type-tests/staleEntry.ts',
     ]);
   });
@@ -276,6 +294,40 @@ describe('dispatching to a named editor', () => {
     } finally {
       consoleError.mockRestore();
     }
+  });
+
+  /**
+   * A host that reaches an editor through the dispatcher never names the
+   * component, so this is the only route its own save button has into the
+   * editor's slot. An editor mounted without one has to render nothing rather
+   * than fail, because a spectator view is given no chrome at all.
+   */
+  it('hands the host’s action chrome to the editor it chose', () => {
+    const withoutChrome = renderStageEditor({
+      stageId: 'information-1',
+      registry: { Information: ChromeEditor },
+    });
+    expect(withoutChrome.getByText('no chrome')).toBeInTheDocument();
+
+    const withChrome = renderStageEditor({
+      stageId: 'information-1',
+      registry: { Information: ChromeEditor },
+      actions: ({ formId, readOnly }) => `chrome for ${formId}, ${readOnly}`,
+    });
+    expect(
+      withChrome.getByText('chrome for stage-form, false'),
+    ).toBeInTheDocument();
+  });
+
+  /** The same slot, when a host names the editor instead of dispatching. */
+  it('hands it to a named editor mounted directly', () => {
+    const harness = renderStageEditor({
+      stageId: 'information-1',
+      editor: ChromeEditor,
+      actions: ({ formId }) => `chrome for ${formId}`,
+    });
+
+    expect(harness.getByText('chrome for stage-form')).toBeInTheDocument();
   });
 
   /**

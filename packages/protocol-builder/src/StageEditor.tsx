@@ -4,6 +4,7 @@ import type { StageType } from '@codaco/protocol-validation';
 
 import type { StageEditorController } from './controller.ts';
 import type {
+  StageEditorActions,
   StageEditorComponent,
   StageEditorRegistry,
 } from './stage-editor-contract.ts';
@@ -37,6 +38,14 @@ export type StageEditorProps = Readonly<{
    * owns.
    */
   registry?: StageEditorRegistry | Partial<StageEditorRegistry>;
+  /**
+   * The host's action chrome, handed to whichever editor this dispatches to.
+   *
+   * A host that reaches an editor through the dispatcher never names the
+   * component, so this is the only route its own save button has into the
+   * editor's slot.
+   */
+  actions?: StageEditorActions;
 }>;
 
 /**
@@ -49,12 +58,14 @@ export type StageEditorProps = Readonly<{
 export default function StageEditor({
   controller,
   registry = stageEditorRegistry,
+  actions,
 }: StageEditorProps) {
   return (
     <NamedStageEditor
       registry={registry}
       controller={controller}
       stageType={controller.snapshot.editedSection.identity.type}
+      {...(actions === undefined ? {} : { actions })}
     />
   );
 }
@@ -72,15 +83,25 @@ function NamedStageEditor<T extends StageType>({
   registry,
   controller,
   stageType,
+  actions,
 }: Readonly<{
   registry: Partial<StageEditorRegistry>;
   controller: StageEditorController;
   stageType: T;
+  actions?: StageEditorActions;
 }>) {
   const Editor: StageEditorComponent<T> | undefined = registry[stageType];
   if (Editor === undefined) throw new UnregisteredStageTypeError(stageType);
   // `createElement` rather than JSX: the element type is still generic here,
   // and JSX resolves a component's accepted props through machinery that
   // cannot see through an unresolved type parameter.
-  return createElement(Editor, { controller, stageType });
+  return createElement(Editor, {
+    controller,
+    stageType,
+    // Spread rather than passed as `undefined`: the slot's absence is what
+    // says a host rendered no chrome, and an editor forwarding an explicit
+    // `undefined` into the shell says the same thing in a way the prop's type
+    // does not admit.
+    ...(actions === undefined ? {} : { actions }),
+  });
 }

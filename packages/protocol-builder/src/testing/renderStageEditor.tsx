@@ -34,6 +34,7 @@ import {
   type StageCreation,
 } from '../session.ts';
 import type {
+  StageEditorActions,
   StageEditorComponent,
   StageEditorRegistry,
 } from '../stage-editor-contract.ts';
@@ -182,6 +183,16 @@ export type RenderStageEditorOptions<T extends StageType = StageType> =
      * rather than one whose save is refused for a dangling reference.
      */
     assets?: Readonly<Record<string, SectionDoc>>;
+    /**
+     * The host's action chrome, as a host would give it to the editor.
+     *
+     * Given, it is what gets rendered in the editor's slot, whichever of the
+     * three ways above mounted it. Left out, an editor or a registry is
+     * mounted with no chrome at all — a named editor under test usually brings
+     * its own save control for the harness to click — while `sections` keeps
+     * the harness's own submit button, which is the only control that path has.
+     */
+    actions?: StageEditorActions;
     /** Accessible name of the control that saves the stage. */
     submitLabel?: string;
     /** Open the stage as a spectator. */
@@ -294,6 +305,7 @@ export function renderStageEditor<T extends StageType = StageType>(
       <HarnessEditor
         session={session}
         submitLabel={submitLabel}
+        {...(options.actions === undefined ? {} : { actions: options.actions })}
         {...(options.editor === undefined ? {} : { editor: options.editor })}
         {...(options.sections === undefined
           ? {}
@@ -412,12 +424,14 @@ export function renderStageEditor<T extends StageType = StageType>(
 function HarnessEditor<T extends StageType>({
   session,
   submitLabel,
+  actions,
   editor: Editor,
   sections,
   registry,
 }: Readonly<{
   session: ProtocolBuilderSessionStore;
   submitLabel: string;
+  actions?: StageEditorActions;
   editor?: StageEditorComponent<T>;
   sections?: ReactNode;
   registry?: Partial<StageEditorRegistry>;
@@ -430,7 +444,13 @@ function HarnessEditor<T extends StageType>({
     // the session holds the type as a runtime string, and only the call site
     // knows which literal it is.
     const stageType = controller.snapshot.editedSection.identity.type as T;
-    return <Editor controller={controller} stageType={stageType} />;
+    return (
+      <Editor
+        controller={controller}
+        stageType={stageType}
+        {...(actions === undefined ? {} : { actions })}
+      />
+    );
   }
 
   if (sections === undefined) {
@@ -438,6 +458,7 @@ function HarnessEditor<T extends StageType>({
       <StageEditor
         controller={controller}
         {...(registry === undefined ? {} : { registry })}
+        {...(actions === undefined ? {} : { actions })}
       />
     );
   }
@@ -445,9 +466,12 @@ function HarnessEditor<T extends StageType>({
   return (
     <StageEditorShell
       controller={controller}
-      actions={({ formId }) => (
-        <SubmitButton form={formId}>{submitLabel}</SubmitButton>
-      )}
+      actions={
+        actions ??
+        (({ formId }) => (
+          <SubmitButton form={formId}>{submitLabel}</SubmitButton>
+        ))
+      }
     >
       {sections}
     </StageEditorShell>

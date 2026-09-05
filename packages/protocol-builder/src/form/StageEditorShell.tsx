@@ -32,6 +32,7 @@ import {
   SessionReadOnlyError,
   type StageFormDraft,
 } from '../session.ts';
+import type { StageEditorActions } from '../stage-editor-contract.ts';
 import {
   SectionOutlineStore,
   type SectionValidationIssue,
@@ -48,22 +49,20 @@ import {
 } from './stageEditorContext.ts';
 
 /**
- * What a host needs to render its own action chrome for the editor.
- *
- * The package owns the form and knows whether it can be submitted; the host
- * owns where the buttons live and what else sits beside them. `formId` is the
- * whole contract for a submit control rendered outside the form element.
+ * Where the slot's own types live is `stage-editor-contract.ts`: they are part
+ * of what a named editor takes, and the contract is a module of types a host
+ * can read without compiling a component tree. Carried on through here because
+ * this is the component that calls the slot.
  */
-export type StageEditorActionContext = Readonly<{
-  controller: StageEditorController;
-  formId: string;
-  readOnly: boolean;
-}>;
+export type {
+  StageEditorActionContext,
+  StageEditorActions,
+} from '../stage-editor-contract.ts';
 
 export type StageEditorShellProps = Readonly<{
   controller: StageEditorController;
   /** The host's action chrome. Receives the controller and the form id. */
-  actions?: (context: StageEditorActionContext) => ReactNode;
+  actions?: StageEditorActions;
   children: ReactNode;
   className?: string;
 }>;
