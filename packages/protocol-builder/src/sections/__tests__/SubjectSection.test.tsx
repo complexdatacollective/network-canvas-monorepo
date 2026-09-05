@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import IntroductionSection from '../IntroductionSection.tsx';
 import PromptsSection from '../PromptsSection.tsx';
-import SubjectSection from '../SubjectSection.tsx';
+import SubjectSection, { NEW_ENTITY_DRAFT } from '../SubjectSection.tsx';
 import { TestPromptEditor, TestPromptPreview } from './rowFixtures.tsx';
 
 const nodeSubjectAndPrompts = (
@@ -16,6 +16,18 @@ const nodeSubjectAndPrompts = (
     />
   </>
 );
+
+/** One string out of the shared new-type draft, which is an open document. */
+const draftString = (draft: unknown, ...keys: readonly string[]): string => {
+  let current = draft;
+  for (const key of keys) {
+    current =
+      typeof current === 'object' && current !== null
+        ? Reflect.get(current, key)
+        : undefined;
+  }
+  return typeof current === 'string' ? current : '';
+};
 
 const codebookNodeNames = (
   sections: Readonly<Record<string, Record<string, unknown>>>,
@@ -256,6 +268,46 @@ describe('changing what a stage is about', () => {
 });
 
 describe('creating the type a stage needs without leaving it', () => {
+  /**
+   * The point of creating a type from inside a stage is to get back to
+   * configuring the stage, so everything the schema requires is pre-filled and
+   * the researcher only has to name it. Other sections that create a type from
+   * inside a stage open on the same draft, which is why it is shared — and a
+   * copy that drifted would ask those researchers for a colour and an icon
+   * here and not there.
+   */
+  it('opens on the shared draft, so only the name is left to enter', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: nodeSubjectAndPrompts,
+    });
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create a new node type' }),
+    );
+
+    const color = draftString(NEW_ENTITY_DRAFT.node, 'color');
+    const shape = draftString(NEW_ENTITY_DRAFT.node, 'shape', 'default');
+    const icon = draftString(NEW_ENTITY_DRAFT.node, 'icon');
+    // Asserted before they are compared against: a draft that stopped
+    // pre-filling one of these would answer '' here, and an empty control
+    // would then match it.
+    expect([color, shape, icon]).not.toContain('');
+
+    expect(
+      await screen.findByRole('textbox', { name: 'Node type name' }),
+    ).toHaveValue('');
+    expect(
+      screen.getByRole('combobox', { name: 'Protocol color' }),
+    ).toHaveValue(color);
+    expect(screen.getByRole('combobox', { name: 'Default shape' })).toHaveValue(
+      shape,
+    );
+    expect(screen.getByRole('textbox', { name: 'Interface icon' })).toHaveValue(
+      icon,
+    );
+  });
+
   it('puts the new type in the codebook and selects it here', async () => {
     const harness = renderStageEditor({
       stageId: 'name-generator-1',

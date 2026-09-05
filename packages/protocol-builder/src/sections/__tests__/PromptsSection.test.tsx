@@ -344,6 +344,12 @@ describe('what a row editor is given to work with', () => {
     // list's managed bookkeeping.
     expect(await screen.findByText('id, text')).toBeInTheDocument();
     expect(screen.getByText('0')).toBeInTheDocument();
+    // …and the CONTROLS opened holding them. A row editor whose fields start
+    // blank is not editing the row: saving would write the emptiness back over
+    // the prompt the researcher meant to change one word of.
+    expect(screen.getByRole('textbox', { name: 'Prompt text' })).toHaveValue(
+      'Who are the people you know?',
+    );
     // The form the dialog actually rendered, so a control outside it can
     // associate through `form=`.
     const form = dialog.querySelector('form');

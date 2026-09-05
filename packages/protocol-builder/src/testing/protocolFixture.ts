@@ -1,4 +1,5 @@
 import type { StageType } from '@codaco/protocol-validation';
+import rosterNetwork from '@codaco/protocols/e2e/all-interfaces/assets/roster.json';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
@@ -109,3 +110,26 @@ export function fixtureProtocolSections(): Record<string, SectionDoc> {
 export function fixtureAssetManifest(): Record<string, unknown> {
   return isRecord(FIXTURE.assetManifest) ? FIXTURE.assetManifest : {};
 }
+
+/**
+ * The bytes of an asset the fixture ships beside its protocol.
+ *
+ * A stage editor asks the gateway what is IN a data file — a roster's columns
+ * are what the card, sort and search sections offer — so a gateway seeded with
+ * a placeholder body would answer "this file is unreadable" and every one of
+ * those sections would test its empty state instead of itself.
+ *
+ * `undefined` for an asset with no file beside the protocol, which the caller
+ * seeds with a placeholder: the editors that reference those read only the
+ * manifest's name and kind.
+ */
+export function fixtureAssetContent(source: string): Uint8Array | undefined {
+  const content = FIXTURE_ASSET_CONTENT[source];
+  return content === undefined
+    ? undefined
+    : new TextEncoder().encode(JSON.stringify(content));
+}
+
+const FIXTURE_ASSET_CONTENT: Readonly<Record<string, unknown>> = Object.freeze({
+  'roster.json': rosterNetwork,
+});

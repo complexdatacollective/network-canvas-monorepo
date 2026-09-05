@@ -37,6 +37,7 @@ import type {
 } from '../stage-editor-contract.ts';
 import StageEditor from '../StageEditor.tsx';
 import {
+  fixtureAssetContent,
   fixtureAssetManifest,
   fixtureProtocolSections,
   loadFixtureStage,
@@ -144,6 +145,15 @@ export type RenderStageEditorOptions = Readonly<{
   sections?: ReactNode;
   /** The editors the dispatcher chooses from, when neither of the above is given. */
   registry?: Partial<StageEditorRegistry>;
+  /**
+   * Extra manifest entries this stage may reference, keyed by asset id.
+   *
+   * They join the fixture's own assets in BOTH places a resource has to exist
+   * to be referenced — the protocol's manifest section and the gateway — so a
+   * stage seeded with a reference to one is a stage a host would accept,
+   * rather than one whose save is refused for a dangling reference.
+   */
+  assets?: Readonly<Record<string, SectionDoc>>;
   /** Accessible name of the control that saves the stage. */
   submitLabel?: string;
   /** Open the stage as a spectator. */
@@ -175,6 +185,11 @@ export function renderStageEditor(
   protocolSections[sectionId({ kind: 'stageOrder' })] = {
     stages: stageOrderWith(baseSections, seeded.id),
   };
+  const assetManifest: Record<string, unknown> = {
+    ...fixtureAssetManifest(),
+    ...options.assets,
+  };
+  protocolSections[sectionId({ kind: 'assets' })] = assetManifest;
 
   const manifestRevision = { sequence: 1n, hash: 'revision-1' };
   const host = new InMemoryCompoundHost({
@@ -196,7 +211,7 @@ export function renderStageEditor(
     ],
   });
   const gateway = new InMemoryResourceGateway({
-    committed: fixtureResources(),
+    committed: manifestResources(assetManifest),
   });
 
   const finishRequests: FinishRequest[] = [];
@@ -438,14 +453,18 @@ function patchedCodebook(
 }
 
 /**
- * The fixture's assets, as resources a gateway already holds.
+ * A manifest's assets, as resources a gateway already holds.
  *
- * Content-bearing assets are seeded with a placeholder body: an editor reads a
- * resource's kind, name and size to decide what it may reference, and the
- * bytes belong to the host.
+ * An asset the fixture ships a file for is seeded with that file, because an
+ * editor asks the gateway what is INSIDE a data file — a roster's columns are
+ * the material its card, sort and search sections offer. Everything else gets
+ * a placeholder body: those editors read only a resource's kind, name and
+ * size, and the bytes belong to the host.
  */
-function fixtureResources(): InMemoryResourceSeed[] {
-  return Object.entries(fixtureAssetManifest()).flatMap(
+function manifestResources(
+  manifest: Readonly<Record<string, unknown>>,
+): InMemoryResourceSeed[] {
+  return Object.entries(manifest).flatMap(
     ([id, entry]): InMemoryResourceSeed[] => {
       if (!isRecord(entry)) return [];
       const name = typeof entry.name === 'string' ? entry.name : id;
@@ -462,15 +481,16 @@ function fixtureResources(): InMemoryResourceSeed[] {
       ) {
         return [];
       }
+      const source =
+        typeof entry.source === 'string' ? entry.source : `${id}.json`;
       return [
         {
           kind,
           id,
           name,
-          source:
-            typeof entry.source === 'string' ? entry.source : `${id}.json`,
+          source,
           contentType: 'application/json',
-          bytes: new TextEncoder().encode('{}'),
+          bytes: fixtureAssetContent(source) ?? new TextEncoder().encode('{}'),
         },
       ];
     },

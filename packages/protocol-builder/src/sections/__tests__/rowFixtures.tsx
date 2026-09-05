@@ -1,4 +1,3 @@
-import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 
@@ -14,10 +13,13 @@ import type { RowEditorProps, RowPreviewProps } from '../rowRenderers.tsx';
  * row editor that did anything clever would make a failure ambiguous between
  * the shared machinery and the family's own fields.
  *
- * The controls are ordinary connected fields, because the row dialog mounts a
- * form store of its own. A `ProtocolField` here would register the row's cells
- * with the STAGE's outline, which is exactly what the array primitives exist to
- * avoid: a deleted row's dormant value resurrecting itself on save.
+ * The controls are `DialogFormField`s, because the row dialog mounts a form
+ * store of its own and seeds it from the row it opened on. A `ProtocolField`
+ * here would register the row's cells with the STAGE's outline, which is
+ * exactly what the array primitives exist to avoid: a deleted row's dormant
+ * value resurrecting itself on save. A bare Fresco `Field` would be worse
+ * still — nothing would hand it the row's value, so editing a prompt would
+ * open on an empty box and save the emptiness back.
  */
 export function TestPromptEditor({ item, editIndex, form }: RowEditorProps) {
   return (
@@ -34,13 +36,13 @@ export function TestPromptEditor({ item, editIndex, form }: RowEditorProps) {
         <dt>Editor form</dt>
         <dd>{form}</dd>
       </dl>
-      <Field
+      <DialogFormField
         name="text"
         label="Prompt text"
         component={InputField}
         required="Enter the question this prompt asks."
       />
-      <Field
+      <DialogFormField
         name="negativeLabel"
         label="Negative label"
         component={InputField}
@@ -72,13 +74,16 @@ export function TestPromptPreview({ item }: RowPreviewProps) {
 export function TestItemEditor() {
   return (
     <>
-      <Field
+      {/* The one field that states its own starting value: a block the
+          researcher has just added has no type yet, and every block this
+          stand-in edits is prose. */}
+      <DialogFormField
         name="type"
         label="Block type"
         component={InputField}
         initialValue="text"
       />
-      <Field
+      <DialogFormField
         name="content"
         label="Block text"
         component={InputField}
