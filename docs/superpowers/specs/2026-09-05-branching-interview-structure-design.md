@@ -7,7 +7,11 @@ Schema 9 tracker once approved.
 after approval. Rescopes #1548 (protocol builder: skip logic Section) and
 extends #1282 (template system) with a new template kind.
 
-**Related:** #1523 (stable protocol-wide IDs), #1661 and #1537 (typed
+**Related:** the scenario examples in
+`docs/superpowers/specs/2026-09-05-branching-interview-structure-examples.md`
+(migrated skip logic, gates, independent modules, screening endings, nested
+groups, streams that rejoin at different places); #1523 (stable
+protocol-wide IDs), #1661 and #1537 (typed
 condition AST), #1475 (protocol localization, `LocalizedString`), #1522
 (dynamic attributes in participant text), #1536 and #1656 (missing data and
 the exposure ledger), #1426 (synthetic interview generation), #1279 (in-editor
@@ -193,7 +197,8 @@ type Outcome = {
 
 type RouteTarget =
   | { kind: 'next' } // the item after this one in the same sequence
-  | { kind: 'item'; itemId: ProtocolObjectId }; // a later sibling
+  | { kind: 'item'; itemId: ProtocolObjectId } // a later sibling
+  | { kind: 'exit' }; // leave the enclosing group at its exit point
 ```
 
 A **sequence** is any ordered list of items: the top-level `timeline` or a
@@ -205,6 +210,15 @@ point and has no id of its own.
 `RouteTarget` is always an explicit object; there is no "absent means next"
 rule, so a strict schema can reject partial objects and the editor always
 shows where an exit goes.
+
+The `exit` target (recommendation, added while writing the scenario
+examples in `2026-09-05-branching-interview-structure-examples.md`) says
+"continue at the enclosing group's exit point". It exists because a decision
+point inside a group that is followed by more items, for example a
+consent check followed by the "declined" finish stage, otherwise has no way
+to say "continue after this group": links may only name later siblings, and
+the group's exit is not a sibling. It is valid only inside a group, and it
+never reaches anything outside the group, so decision 6 holds.
 
 ### 4.2 Document order
 
@@ -223,8 +237,9 @@ one exit point.
 - **Entry.** The interview enters a group only at its first item: by falling
   through from the previous sibling, or by a link that names the group. A
   link may never name an item inside a group from outside it.
-- **Exit.** When the last item of a group's sequence is passed, or a link
-  inside the group targets `next` past its end, the group's `exit` decides
+- **Exit.** When the last item of a group's sequence is passed, a link
+  inside the group targets `next` past its end, or a link inside the group
+  targets `exit`, the group's `exit` decides
   where the interview continues in the parent sequence: `next` continues at
   the item after the group; `item` continues at a later sibling of the group.
   If the group is the last item of its parent and its exit is `next`, the
@@ -256,9 +271,9 @@ outcome whose condition holds supplies the link that is followed. If none
 holds, `otherwise` supplies the link. The editor shows this order explicitly
 ("checked top to bottom, first match wins") and lets outcomes be reordered.
 
-Every outcome and the `otherwise` slot may target `next` or any later sibling
+Every outcome and the `otherwise` slot may target `next`, any later sibling
 in the decision point's own sequence, including a finish stage placed there
-and a later group as a whole.
+and a later group as a whole, or, inside a group, `exit`.
 
 ### 6.2 Conditions
 
@@ -498,6 +513,8 @@ carries (#1523 ids, #1475 localized strings, #1661 condition validity):
    the decision point (for an outcome or `otherwise`) or as the group (for an
    `exit`). A target that is the item itself, an earlier sibling, an item in a
    different sequence, or a missing id is rejected with the path of the link.
+   An `exit` target at the top level is rejected: the top level has no exit,
+   it ends at a finish stage.
 3. Every path through the timeline ends at a finish stage (§8.2).
 4. Every stage is reachable on at least one path. An item that no path
    reaches, for example a stage placed after a finish stage with no link that
@@ -639,7 +656,8 @@ are:
   each outcome having a label, the shared condition builder from #1537's
   Architect issue restricted to interview-level sources, and a target picker
   that lists only valid targets ("Continue to next item", then each later
-  sibling by document number and label); the "otherwise" target picker.
+  sibling by document number and label, then "Leave this group" inside a
+  group); the "otherwise" target picker.
 - **Group editor:** localized label, description, exit target picker.
 - **Finish stage editor:** localized label, title, and content through the
   rich text editor with the #1522 dynamic-value picker; outcome kind.
@@ -723,7 +741,9 @@ shareable unit.
 
 ## 16. Example protocol.json (Schema 9, this feature only)
 
-The example is a screening interview with two exclusive modules. Other
+The example is a screening interview with two exclusive modules. Further
+scenarios, including migrated skip logic, gates, nested groups, and several
+early endings, are in the companion examples document named above. Other
 Schema 9 changes (the attribute registry, localization of every string,
 missing-data codes, form items) are elided with `…` where they do not bear on
 routing. Condition node shapes follow #1537 §3 and are illustrative until
