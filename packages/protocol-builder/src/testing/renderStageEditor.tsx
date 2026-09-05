@@ -92,18 +92,26 @@ export type StageEditorHarness = RenderResult &
      */
     ownedKeys(): string[];
     /**
-     * Saves the stage unchanged and proves every key is still accounted for.
+     * Saves the stage unchanged and proves it came back the same stage.
      *
      * The one test every named editor owes the schema, and it is two claims,
      * because a key can be lost in two different ways.
      *
-     * A key the editor RENDERS can be dropped or altered by the save itself,
-     * which the comparison against the seeded stage catches. A key NO section
-     * renders is a quieter failure: it survives the round trip untouched, by
-     * design — an interface with no `skipLogic` section must not delete skip
-     * logic someone authored — so a comparison can never see it. The editor is
-     * simply missing a section, and a researcher who opens the stage cannot
-     * see or change something their protocol holds.
+     * A key the editor RENDERS can be dropped, altered or INVENTED by the save
+     * itself, which the comparison against the seeded stage catches. The
+     * comparison runs in both directions and all the way down: a key the
+     * editor drops, a nested key a control defaults away, and a key nothing
+     * authored that the editor stamps on anyway are the same failure seen from
+     * three sides, and each is reported by its own path
+     * (`mapOptions.showTransit`, `prompts[0].id`). An invented key matters as
+     * much as a lost one — it is content in the researcher's protocol that the
+     * researcher did not write.
+     *
+     * A key NO section renders is a quieter failure: it survives the round trip
+     * untouched, by design — an interface with no `skipLogic` section must not
+     * delete skip logic someone authored — so a comparison can never see it.
+     * The editor is simply missing a section, and a researcher who opens the
+     * stage cannot see or change something their protocol holds.
      *
      * So an unrendered key has to be declared. `unowned` is where an editor
      * says "this interface's schema has this key and nothing here edits it
@@ -112,8 +120,15 @@ export type StageEditorHarness = RenderResult &
     roundTrip(
       options?: Readonly<{
         /**
-         * Keys the mounted sections deliberately do not own. Every other key
-         * of the seeded stage must be owned by a mounted section.
+         * TOP-LEVEL keys the mounted sections deliberately do not own. Every
+         * other key of the seeded stage must be owned by a mounted section.
+         *
+         * Top-level only, and it needs to be nothing more: a key inside one
+         * the editor does render cannot go unnoticed, because the comparison
+         * below reaches it. `unowned` answers "is there a section for this at
+         * all?", which is a question about the editor's outline; what happens
+         * inside a key a section does own is a question about the save, and
+         * the diff answers that one.
          */
         unowned?: readonly string[];
       }>,
@@ -320,20 +335,20 @@ export function renderStageEditor<T extends StageType = StageType>(
           `The stage did not save, so nothing round-tripped. The editor is showing: ${visibleProblems(view.baseElement)}`,
         );
       }
-      const lost: string[] = [];
-      const changed: string[] = [];
-      for (const [key, value] of Object.entries(seeded.fields)) {
-        if (!Object.hasOwn(request.stageDocument, key)) {
-          lost.push(key);
-        } else if (!isEqual(request.stageDocument[key], value)) {
-          changed.push(key);
-        }
-      }
-      if (lost.length > 0 || changed.length > 0) {
+      // `id` and `type` are the session's, never the editor's: `seeded.fields`
+      // is the document without them, and `stageDocument` puts them back.
+      const { id: _id, type: _type, ...saved } = request.stageDocument;
+      const { dropped, added, changed } = stageDocumentDiff(
+        seeded.fields,
+        saved,
+      );
+      if (dropped.length > 0 || added.length > 0 || changed.length > 0) {
         throw new Error(
           `Saving "${seeded.id}" unchanged did not return the same stage.${
-            lost.length > 0 ? ` Dropped: ${lost.join(', ')}.` : ''
-          }${changed.length > 0 ? ` Changed: ${changed.join(', ')}.` : ''}`,
+            dropped.length > 0 ? ` Dropped: ${dropped.join(', ')}.` : ''
+          }${added.length > 0 ? ` Added: ${added.join(', ')}.` : ''}${
+            changed.length > 0 ? ` Changed: ${changed.join(', ')}.` : ''
+          }`,
         );
       }
       return request;
@@ -459,6 +474,78 @@ function patchedCodebook(
     else next[id] = patch.ego;
   }
   return next;
+}
+
+/** What a round trip did to the stage, one path per difference. */
+type StageDocumentDiff = Readonly<{
+  /** In the seeded stage, gone from the saved one. */
+  dropped: string[];
+  /** In the saved stage, and in nothing the researcher authored. */
+  added: string[];
+  /** Present in both, holding something else. */
+  changed: string[];
+}>;
+
+const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * Every way the saved stage differs from the seeded one, by path.
+ *
+ * Both directions and all the way down, because a stage document is a tree and
+ * every one of its levels is authored content. A comparison that only walked
+ * the seeded stage's top-level keys could not see a key the editor INVENTED —
+ * a default stamped onto a protocol nobody asked to change — and a comparison
+ * that stopped at the top could say no more than "`mapOptions` changed" about
+ * a control that quietly dropped one setting out of eight.
+ *
+ * `isEqual` prunes: an identical subtree is not walked at all, so the paths
+ * reported are exactly the differences and nothing else.
+ */
+function stageDocumentDiff(
+  seeded: Readonly<Record<string, unknown>>,
+  saved: Readonly<Record<string, unknown>>,
+): StageDocumentDiff {
+  const diff: StageDocumentDiff = { dropped: [], added: [], changed: [] };
+  collectDifferences('', seeded, saved, diff);
+  return diff;
+}
+
+function collectDifferences(
+  path: string,
+  seeded: unknown,
+  saved: unknown,
+  into: StageDocumentDiff,
+): void {
+  if (isEqual(seeded, saved)) return;
+
+  if (isPlainRecord(seeded) && isPlainRecord(saved)) {
+    for (const key of new Set([
+      ...Object.keys(seeded),
+      ...Object.keys(saved),
+    ])) {
+      const here = path === '' ? key : `${path}.${key}`;
+      if (!Object.hasOwn(saved, key)) into.dropped.push(here);
+      else if (!Object.hasOwn(seeded, key)) into.added.push(here);
+      else collectDifferences(here, seeded[key], saved[key], into);
+    }
+    return;
+  }
+
+  if (Array.isArray(seeded) && Array.isArray(saved)) {
+    const length = Math.max(seeded.length, saved.length);
+    for (let index = 0; index < length; index += 1) {
+      const here = `${path}[${index}]`;
+      if (index >= saved.length) into.dropped.push(here);
+      else if (index >= seeded.length) into.added.push(here);
+      else collectDifferences(here, seeded[index], saved[index], into);
+    }
+    return;
+  }
+
+  // A leaf, or a value that changed shape — an object where a list was. Either
+  // way the path itself is what a reader needs, not what is inside it.
+  into.changed.push(path);
 }
 
 /**

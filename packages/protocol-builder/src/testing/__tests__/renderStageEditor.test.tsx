@@ -2,6 +2,7 @@ import { act, screen, waitFor } from '@testing-library/react';
 import { useEffect, useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
+import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useResourceGateway } from '../../resources/context.tsx';
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import InterviewerGuidanceSection from '../../sections/InterviewerGuidanceSection.tsx';
@@ -252,6 +253,122 @@ describe('the stage-editor test harness', () => {
 
     harness.setReadOnly(false);
     expect(harness.session.getSnapshot().access.mode).toBe('editable');
+  });
+});
+
+/**
+ * A stub editor whose only behaviour is one write to the stage draft.
+ *
+ * Written through `applyOwnCommands` — the same door a list editor commits a
+ * row through — rather than by mounting a control that misbehaves, because
+ * what is under test is the harness's comparison and not any section: a stub
+ * that could only fail by rendering something would prove the check catches
+ * that one control, and nothing about the check.
+ */
+function WritesToTheDraft({
+  stageKey,
+  value,
+}: Readonly<{ stageKey: string; value: unknown }>) {
+  const { applyOwnCommands } = useStageEditorForm();
+
+  useEffect(() => {
+    applyOwnCommands([{ op: 'set', key: stageKey, value }]);
+  }, [applyOwnCommands, stageKey, value]);
+
+  return null;
+}
+
+/** The fixture's geospatial stage, with one more setting on its map. */
+const geospatialShowingTransit = () => {
+  const geospatial = loadFixtureStage('geospatial-1');
+  const mapOptions =
+    typeof geospatial.fields.mapOptions === 'object' &&
+    geospatial.fields.mapOptions !== null
+      ? (geospatial.fields.mapOptions as Record<string, unknown>)
+      : {};
+  return {
+    seeded: {
+      id: geospatial.id,
+      type: geospatial.type,
+      fields: {
+        ...geospatial.fields,
+        mapOptions: { ...mapOptions, showTransit: true },
+      },
+    },
+    /** The same map options with that setting gone, and nothing else moved. */
+    withoutTransit: mapOptions,
+  };
+};
+
+/**
+ * A round trip is a claim about the WHOLE stage, in both directions.
+ *
+ * A key nothing authored is content in the researcher's protocol they did not
+ * write — a control's default stamped on a save that was meant to change
+ * nothing — and it is invisible to a comparison that only walks the seeded
+ * stage. A key nested inside one an editor does render is invisible to a
+ * comparison that stops at the top, and `unowned` is not a place it could be
+ * declared either: `unowned` is about which sections exist, not about what a
+ * save does inside a section that does.
+ */
+describe('what a round trip refuses', () => {
+  it('refuses a stage that came back with a key nobody authored', async () => {
+    const harness = renderStageEditor({
+      stageId: 'information-1',
+      sections: (
+        <>
+          <StageNameSection />
+          <WritesToTheDraft
+            stageKey="interviewScript"
+            value="Read this aloud."
+          />
+        </>
+      ),
+    });
+
+    await expect(
+      harness.roundTrip({ unowned: ['title', 'items'] }),
+    ).rejects.toThrow(/Added: interviewScript\./);
+  });
+
+  it('refuses a stage that came back missing a key nested inside one', async () => {
+    const { seeded, withoutTransit } = geospatialShowingTransit();
+    const harness = renderStageEditor({
+      stage: seeded,
+      sections: (
+        <>
+          <StageNameSection />
+          <WritesToTheDraft stageKey="mapOptions" value={withoutTransit} />
+        </>
+      ),
+    });
+
+    // Named by its own path, not as "mapOptions changed": which of the map's
+    // eight settings went is the whole of what a reader needs.
+    await expect(
+      harness.roundTrip({ unowned: ['subject', 'mapOptions', 'prompts'] }),
+    ).rejects.toThrow(/Dropped: mapOptions\.showTransit\./);
+  });
+
+  /**
+   * The same stage, saved by an editor that leaves it alone, still round-trips
+   * — so the two refusals above are about what the stub did, not about the
+   * stage being unable to survive a save at all.
+   */
+  it('accepts the same stage from an editor that changes nothing', async () => {
+    const { seeded } = geospatialShowingTransit();
+    const harness = renderStageEditor({
+      stage: seeded,
+      sections: <StageNameSection />,
+    });
+
+    const request = await harness.roundTrip({
+      unowned: ['subject', 'mapOptions', 'prompts'],
+    });
+
+    expect(request.stageDocument.mapOptions).toMatchObject({
+      showTransit: true,
+    });
   });
 });
 
