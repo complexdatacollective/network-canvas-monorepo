@@ -21,7 +21,9 @@ describe('what a quick-add name generator records', () => {
     expect(
       await screen.findByRole('combobox', { name: /Attribute filled in/ }),
     ).toHaveValue('name');
-    await harness.roundTrip();
+    // The stage's name, the type it nominates and what it asks belong to
+    // sections this mount does not include.
+    await harness.roundTrip({ unowned: ['label', 'subject', 'prompts'] });
   });
 
   /**

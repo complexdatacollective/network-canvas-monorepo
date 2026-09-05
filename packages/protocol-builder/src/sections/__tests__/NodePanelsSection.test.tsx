@@ -58,7 +58,11 @@ describe('the side panels a name generator shows', () => {
     expect(
       await screen.findByText('People you named earlier'),
     ).toBeInTheDocument();
-    await harness.roundTrip();
+    // The stage's name, the type it nominates, its add-a-person form and what
+    // it asks belong to sections this mount does not include.
+    await harness.roundTrip({
+      unowned: ['label', 'subject', 'form', 'prompts'],
+    });
   });
 
   /**

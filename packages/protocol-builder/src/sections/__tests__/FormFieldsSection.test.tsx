@@ -73,7 +73,11 @@ describe('the fields a form collects', () => {
         exact: false,
       }),
     ).toBeInTheDocument();
-    await harness.roundTrip();
+    // The stage's name, the type it collects about, and the screen shown
+    // before it belong to sections this mount does not include.
+    await harness.roundTrip({
+      unowned: ['label', 'subject', 'introductionPanel'],
+    });
   });
 
   it('records the question the researcher rewrote', async () => {
@@ -238,7 +242,9 @@ describe('the fields a form collects', () => {
     expect(
       screen.queryByRole('textbox', { name: 'Form title' }),
     ).not.toBeInTheDocument();
-    await harness.roundTrip();
+    // An ego form has no subject to own; its name and its introduction screen
+    // belong to sections this mount does not include.
+    await harness.roundTrip({ unowned: ['label', 'introductionPanel'] });
   });
 
   it("collects a relationship's attributes on an alter edge form", async () => {
@@ -258,7 +264,11 @@ describe('the fields a form collects', () => {
       expect(screen.queryAllByRole('dialog')).toHaveLength(0),
     );
 
-    await harness.roundTrip();
+    // The stage's name, the relationship it collects about, and the screen
+    // shown before it belong to sections this mount does not include.
+    await harness.roundTrip({
+      unowned: ['label', 'subject', 'introductionPanel'],
+    });
   });
 
   it("authors the heading shown above a name generator's form, and needs one", async () => {

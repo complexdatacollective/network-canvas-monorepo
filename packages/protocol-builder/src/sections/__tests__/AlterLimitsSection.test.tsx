@@ -48,7 +48,20 @@ describe('the nomination limits a name generator may set', () => {
       sections: limits,
     });
 
-    await harness.roundTrip();
+    // Everything else a roster name generator holds — its name, its type, the
+    // data file it lists from, how its cards read, and what it asks — belongs
+    // to sections this mount does not include.
+    await harness.roundTrip({
+      unowned: [
+        'label',
+        'subject',
+        'dataSource',
+        'cardOptions',
+        'sortOptions',
+        'searchOptions',
+        'prompts',
+      ],
+    });
   });
 
   it('reports itself switched off on a stage with no limits', async () => {

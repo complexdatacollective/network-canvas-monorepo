@@ -116,7 +116,11 @@ describe("what a roster's cards show", () => {
     await screen.findByText(
       'The people in it carry these attributes: age, name.',
     );
-    await harness.roundTrip();
+    // The stage's name, the type it lists, what it asks and how it behaves
+    // belong to sections this mount does not include.
+    await harness.roundTrip({
+      unowned: ['label', 'subject', 'prompts', 'behaviours'],
+    });
   });
 
   it('offers the data file’s own columns', async () => {

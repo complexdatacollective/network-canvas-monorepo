@@ -61,7 +61,9 @@ describe("a name generator's prompts", () => {
     expect(
       await screen.findByText('Who are the people you know?'),
     ).toBeInTheDocument();
-    await harness.roundTrip();
+    // The stage's name, the type it nominates, and its add-a-person form
+    // belong to sections this mount does not include.
+    await harness.roundTrip({ unowned: ['label', 'subject', 'form'] });
   });
 
   it('records the question the researcher wrote', async () => {
@@ -244,6 +246,6 @@ describe("a name generator's prompts", () => {
     expect(
       screen.getByText('Who are the people you know?'),
     ).toBeInTheDocument();
-    await harness.roundTrip();
+    await harness.roundTrip({ unowned: ['label', 'subject', 'form'] });
   });
 });
