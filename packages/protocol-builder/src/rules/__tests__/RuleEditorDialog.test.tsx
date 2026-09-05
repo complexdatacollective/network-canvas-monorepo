@@ -101,6 +101,17 @@ const baseSections: Record<string, SectionDoc> = {
           { label: 'Sad', value: 'sad' },
         ],
       },
+      // An option-bearing attribute whose option VALUES are numbers, which is
+      // what makes the difference between `1` and `"1"` observable: the
+      // interview compares an operand against the stored answer by identity.
+      strength: {
+        name: 'Strength',
+        type: 'ordinal',
+        options: [
+          { label: 'Weak', value: 1 },
+          { label: 'Strong', value: 2 },
+        ],
+      },
     },
   },
   [friendSection]: { name: 'Friend', color: 'edge-color-seq-3' },
@@ -547,6 +558,125 @@ describe('a rule the editor refuses to save', () => {
         operator: 'CONTAINS',
         value: '[unclosed]',
       },
+    });
+  });
+
+  /**
+   * An operand picked from an attribute's own options has to BE one of them,
+   * and the editor is the only place that can say so: the protocol schema
+   * checks the SHAPE of a rule's value and deliberately stops there, because a
+   * protocol already in the field holds rules naming options that have since
+   * been renamed or deleted, and refusing to load one would lock the
+   * researcher out of the editor that could fix it (ruling on issue #1548).
+   *
+   * The option controls offer nothing but the attribute's current options, so
+   * this is reached by OPENING a rule that already names one it no longer has:
+   * the value is seeded into a control that shows nothing selected, and
+   * committing it unchanged would write the unmatchable rule straight back.
+   */
+  const staleOptionRule = (value: unknown): RuleDraft => ({
+    id: 'rule-a',
+    type: 'node',
+    options: {
+      type: 'person',
+      attribute: 'mood',
+      operator: 'INCLUDES',
+      value,
+    },
+  });
+
+  it('refuses an operand naming an option the attribute no longer offers', async () => {
+    const user = userEvent.setup();
+    renderRuleList([staleOptionRule(['retired'])]);
+
+    await openExistingRule(user);
+    await finishAndClose(user);
+
+    expect(
+      await screen.findByText(
+        'This rule compares against "retired", which this attribute no longer offers. Choose from the options it does.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog', { name: RULE_EDITOR }),
+    ).toBeInTheDocument();
+    // The unmatchable rule is still exactly as it was found, rather than
+    // committed back by the save that was refused.
+    expect(probedRuleSet()?.rules).toEqual([staleOptionRule(['retired'])]);
+  });
+
+  it('refuses a list for one member the attribute no longer offers', async () => {
+    const user = userEvent.setup();
+    renderRuleList([staleOptionRule(['happy', 'retired'])]);
+
+    await openExistingRule(user);
+    await finishAndClose(user);
+
+    // Only the member that went missing is named: `happy` is still an option.
+    expect(
+      await screen.findByText(
+        'This rule compares against "retired", which this attribute no longer offers. Choose from the options it does.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog', { name: RULE_EDITOR }),
+    ).toBeInTheDocument();
+  });
+
+  it('refuses an operand whose type is not the type the option was authored with', async () => {
+    const user = userEvent.setup();
+    // `strength`'s options are the numbers 1 and 2, and the interview compares
+    // an operand against the stored answer by identity: the string "1" is not
+    // the option whose value is 1.
+    renderRuleList([
+      {
+        id: 'rule-a',
+        type: 'node',
+        options: {
+          type: 'person',
+          attribute: 'strength',
+          operator: 'EXACTLY',
+          value: '1',
+        },
+      },
+    ]);
+
+    await openExistingRule(user);
+    await finishAndClose(user);
+
+    expect(
+      await screen.findByText(
+        'This rule compares against "1", which this attribute no longer offers. Choose from the options it does.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog', { name: RULE_EDITOR }),
+    ).toBeInTheDocument();
+  });
+
+  it('saves the same operand as the number the option was authored with', async () => {
+    const user = userEvent.setup();
+    renderRuleList([
+      {
+        id: 'rule-a',
+        type: 'node',
+        options: {
+          type: 'person',
+          attribute: 'strength',
+          operator: 'EXACTLY',
+          value: 1,
+        },
+      },
+    ]);
+
+    await openExistingRule(user);
+    await finishAndClose(user);
+
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: RULE_EDITOR })).toBeNull(),
+    );
+    expect(probedRuleSet()?.rules?.[0]).toMatchObject({
+      options: { attribute: 'strength', operator: 'EXACTLY', value: 1 },
     });
   });
 });

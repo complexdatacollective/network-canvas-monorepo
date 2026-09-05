@@ -1603,10 +1603,15 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
 
     /**
      * A comparison value may be a fraction, because a scalar attribute records
-     * a normalised reading and a number attribute may hold any quantity. That
-     * latitude belongs to attributes ANSWERED with a number: an option-bearing
-     * attribute is answered with one of the options it authored, and an
-     * operand that is not one of them is a rule that can never match.
+     * a normalised reading and a number attribute may hold any quantity.
+     *
+     * Whether an operand is one of the options its attribute authored is NOT
+     * asked here. Membership is an editor rule, not a load-time error (ruling
+     * on issue #1548): protocols already in the field hold rules naming an
+     * option that has since been renamed or deleted, and refusing to LOAD one
+     * locks the researcher out of the editor that could fix it. The protocol
+     * builder refuses a non-member operand as it is authored and reports one
+     * it finds in a stored rule; this validator checks shape only.
      */
     const ruleAgainst = (
       attribute: string,
@@ -1630,36 +1635,6 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       ],
     });
 
-    const optionIssue = (
-      result: ReturnType<typeof ProtocolSchemaV8.safeParse>,
-    ) =>
-      result.success
-        ? undefined
-        : result.error.issues.find((issue) =>
-            issue.message.includes('is not one of them'),
-          );
-
-    it('rejects a fractional operand against an ordinal attribute', () => {
-      const result = ProtocolSchemaV8.safeParse(
-        ruleAgainst('strength', 'EXACTLY', 0.5),
-      );
-
-      expect(result.success).toBe(false);
-      const issue = optionIssue(result);
-      expect(issue?.message).toBe(
-        'Operator "EXACTLY" compares attribute "strength" against one of its options, but 0.5 is not one of them',
-      );
-      expect(issue?.path).toEqual([
-        'stages',
-        0,
-        'filter',
-        'rules',
-        0,
-        'options',
-        'value',
-      ]);
-    });
-
     it('accepts an operand that is one of the ordinal attribute’s options', () => {
       const result = ProtocolSchemaV8.safeParse(
         ruleAgainst('strength', 'EXACTLY', 2),
@@ -1668,28 +1643,27 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       expect(result.success).toBe(true);
     });
 
-    it('rejects an operand whose type is not the type the options use', () => {
-      // The options are whole numbers, and the interview compares the operand
-      // against the stored answer by identity: "2" equals none of them.
-      const result = ProtocolSchemaV8.safeParse(
-        ruleAgainst('strength', 'EXACTLY', '2'),
-      );
-
-      expect(result.success).toBe(false);
-      expect(optionIssue(result)?.message).toBe(
-        'Operator "EXACTLY" compares attribute "strength" against one of its options, but "2" is not one of them',
-      );
-    });
-
-    it('rejects an operand naming an option the codebook does not have', () => {
+    it('accepts an INCLUDES operand the attribute no longer offers', () => {
+      // The case that rejected a deployed protocol when membership was a
+      // load-time error: `category` authors `friend` and `family`, and a
+      // stage in the field carries a skip-logic rule naming an option that is
+      // no longer among them. Loading it has to succeed so the builder can
+      // show the researcher the rule to fix — issue #1548.
       const result = ProtocolSchemaV8.safeParse(
         ruleAgainst('category', 'INCLUDES', 'retired'),
       );
 
-      expect(result.success).toBe(false);
-      expect(optionIssue(result)?.message).toBe(
-        'Operator "INCLUDES" compares attribute "category" against one of its options, but "retired" is not one of them',
+      expect(result.success).toBe(true);
+    });
+
+    it('accepts a numeric INCLUDES operand no option of the attribute uses', () => {
+      // Verbatim shape of the rule CI refused: a number beside INCLUDES on an
+      // attribute whose options are strings.
+      const result = ProtocolSchemaV8.safeParse(
+        ruleAgainst('category', 'INCLUDES', 7),
       );
+
+      expect(result.success).toBe(true);
     });
 
     it('accepts a list of the categorical attribute’s own options', () => {
@@ -1700,15 +1674,22 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       expect(result.success).toBe(true);
     });
 
-    it('reports every member of a list that is not one of the options', () => {
+    it('accepts a list holding an option the attribute no longer offers', () => {
       const result = ProtocolSchemaV8.safeParse(
         ruleAgainst('category', 'INCLUDES', ['friend', 'retired']),
       );
 
-      expect(result.success).toBe(false);
-      expect(optionIssue(result)?.message).toBe(
-        'Operator "INCLUDES" compares attribute "category" against one of its options, but "retired" is not one of them',
+      expect(result.success).toBe(true);
+    });
+
+    it('accepts a fractional operand against an ordinal attribute', () => {
+      // Shape only: the options are whole numbers, and saying so is the
+      // editor's job rather than the loader's.
+      const result = ProtocolSchemaV8.safeParse(
+        ruleAgainst('strength', 'EXACTLY', 0.5),
       );
+
+      expect(result.success).toBe(true);
     });
 
     it('keeps a fractional operand valid against a number attribute', () => {

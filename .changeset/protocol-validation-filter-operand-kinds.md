@@ -10,7 +10,7 @@ reads that table instead of keeping three private operator lists of its own.
 each operand's input control from the same statements the validator applies
 rather than from a second list that could drift.
 
-Three rule-value verdicts change with it. A comparison value may now be a
+Two rule-value verdicts change with it. A comparison value may now be a
 fraction: `filterValueSchema` previously required whole numbers, which left a
 scalar attribute — recorded as a normalised 0-1 reading — with no expressible
 comparison beyond the two ends of its scale, and rejected an ordinary
@@ -19,11 +19,9 @@ SELECTED OPTIONS still require a whole number, and now say so: a fractional
 count is reported as an issue rather than stored as a rule that can never be
 satisfied.
 
-That latitude belongs to attributes ANSWERED with a number, so the third
-verdict holds it there. A rule comparing a categorical or ordinal attribute is
-compared against one of the options that attribute authored, and an operand
-that is not one of them — a fraction beside an ordinal, an option a
-collaborator has since renamed or deleted, or `"1"` where the option's value is
-the number `1` — is now reported as an issue rather than saved as a rule no
-answer can ever match. Every option a list operand names is checked, and an
-attribute that authors no options at all is left to the codebook's own check.
+Nothing here asks whether a rule's operand is one of the options its attribute
+authored. That check stays out of this validator on purpose: protocols already
+in the field hold rules naming an option a collaborator has since renamed or
+deleted, and refusing to LOAD one would lock the researcher out of the very
+editor that could fix it. Whether an operand is still one of the attribute's
+options is an editor rule, reported on the rule by the protocol builder.

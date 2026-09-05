@@ -11,7 +11,11 @@ import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Section from '@codaco/fresco-ui/Section';
-import type { DateFormat, VariableType } from '@codaco/protocol-validation';
+import type {
+  Codebook,
+  DateFormat,
+  VariableType,
+} from '@codaco/protocol-validation';
 
 import { EntitySelectControl } from '../fields/EntitySelectField.tsx';
 import { VariablePickerControl } from '../fields/VariablePicker.tsx';
@@ -29,6 +33,7 @@ import {
 import { incompleteRulePart, type RuleDraft, type RulePart } from './rule.ts';
 import {
   isRuleTargetType,
+  missingOperandOptions,
   type RuleChoiceOption,
   type RuleEntityTarget,
   type RuleTargetType,
@@ -184,6 +189,54 @@ const ruleDraftFromValues = (
   type: typeof values[TARGET_FIELD] === 'string' ? values[TARGET_FIELD] : '',
   options: ruleOptionsFromValues(values.options),
 });
+
+/** One of a draft's option ids, or `undefined` when it is not answered. */
+const draftString = (
+  rule: RuleDraft,
+  key: 'type' | 'attribute' | 'operator',
+): string | undefined => {
+  const value = rule.options?.[key];
+  return typeof value === 'string' && value !== '' ? value : undefined;
+};
+
+/**
+ * The option values this draft names that its attribute does not offer.
+ *
+ * Asked of the whole draft rather than of the operand alone, because which
+ * options exist is a question about the ATTRIBUTE the draft points at — read
+ * live from the codebook, so an option a collaborator deletes while the dialog
+ * is open is refused by the next save rather than by the next reload.
+ */
+const staleRuleOptions = (
+  codebook: Readonly<Codebook>,
+  rule: RuleDraft,
+): (string | number)[] => {
+  const target = isRuleTargetType(rule.type) ? rule.type : undefined;
+  if (target === undefined) return [];
+  const variables = ruleVariables(codebook, target, draftString(rule, 'type'));
+  return missingOperandOptions(
+    variables,
+    draftString(rule, 'attribute'),
+    draftString(rule, 'operator') ?? '',
+    rule.options?.value,
+  );
+};
+
+/**
+ * An operand as it reads in the refusal. Quoted when it is text, so the reason
+ * `"1"` was refused against the option whose value is `1` is legible.
+ */
+const describeStaleOption = (value: string | number): string =>
+  typeof value === 'string' ? `"${value}"` : String(value);
+
+const staleOptionsMessage = (values: readonly (string | number)[]): string => {
+  const described = values.map(describeStaleOption);
+  const list =
+    described.length <= 1
+      ? (described[0] ?? '')
+      : `${described.slice(0, -1).join(', ')} and ${described.at(-1) ?? ''}`;
+  return `This rule compares against ${list}, which this attribute no longer offers. Choose from the options it does.`;
+};
 
 /** The control the researcher has to visit to supply each part of a rule. */
 const RULE_PART_FIELDS: Readonly<Record<RulePart, string>> = Object.freeze({
@@ -553,10 +606,18 @@ export default function RuleEditorDialog({
    */
   const saved = useRef(false);
 
+  // The codebook the session holds right now, read through a ref so the check
+  // below stays live without giving the validator a new identity on every
+  // snapshot the session receives. Same reason `useRuleSetValidation` does it:
+  // a collaborator's edit has to reach a dialog that is already open.
+  const { protocolContext } = useStageEditorForm();
+  const codebookRef = useRef(protocolContext.codebook);
+  codebookRef.current = protocolContext.codebook;
+
   /**
    * Everything the editor can tell about a draft without leaving it, run after
-   * every field has validated itself. Both answers name a control, because
-   * both are about one: a rule the researcher cannot save is never a general
+   * every field has validated itself. Every answer names a control, because
+   * each is about one: a rule the researcher cannot save is never a general
    * fault with the draft, it is a specific thing that is missing or wrong.
    */
   const validate = useCallback(
@@ -576,6 +637,31 @@ export default function RuleEditorDialog({
       ) {
         return {
           fieldErrors: { [RULE_VALUE_FIELD]: INVALID_REG_EXP_MESSAGE },
+        };
+      }
+
+      // An operand picked from the attribute's own options has to BE one of
+      // them, and the EDITOR is what says so: the protocol schema checks the
+      // shape of a rule's value and stops there on purpose, because protocols
+      // already in the field hold rules naming an option a collaborator has
+      // since renamed or deleted, and refusing to LOAD one would lock the
+      // researcher out of the editor that could fix it (ruling on issue
+      // #1548). Membership is by identity, which is what keeps `"1"` from
+      // standing in for the option whose value is `1`.
+      //
+      // The rule LIST reports such an operand on the row it sits on, and the
+      // rule set's own field validation refuses the stage save. This is the
+      // third face of the same rule, and the one the dialog needs: its option
+      // controls offer nothing but the attribute's current options, so a draft
+      // reaches here only by having been OPENED on a rule that already names
+      // one it no longer has — seeded into a control that shows nothing
+      // selected, and committed straight back unless it is refused.
+      const staleOptions = staleRuleOptions(codebookRef.current, rule);
+      if (staleOptions.length > 0) {
+        return {
+          fieldErrors: {
+            [RULE_VALUE_FIELD]: staleOptionsMessage(staleOptions),
+          },
         };
       }
 

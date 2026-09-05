@@ -717,6 +717,65 @@ describe('a rule set the researcher cannot save', () => {
     expect(onFinish).not.toHaveBeenCalled();
   });
 
+  it('opens a stage whose stored rule already names a missing option', async () => {
+    const user = setupUser();
+    const onFinish = vi.fn();
+    // The deployed-protocol case, and the reason membership is an editor rule
+    // rather than a load-time error (ruling on issue #1548): the shared
+    // validator accepts this protocol, so the editor is what has to open it,
+    // show the researcher the rule, and refuse the save.
+    renderEditor(
+      createSession({
+        onFinish,
+        fields: {
+          label: 'Welcome',
+          title: 'Hello',
+          items: [],
+          skipLogic: {
+            action: 'SHOW',
+            filter: {
+              rules: [
+                {
+                  id: 'rule-a',
+                  type: 'node',
+                  options: {
+                    type: 'person',
+                    attribute: 'mood',
+                    operator: 'INCLUDES',
+                    value: ['retired'],
+                  },
+                },
+              ],
+            },
+          },
+        },
+      }),
+    );
+
+    // The rule is on screen and readable, with the option it names printed as
+    // the bare value the codebook has no label for — reporting a rule is not
+    // refusing to show it.
+    const row = await screen.findByRole('button', { name: /^Edit rule:/ });
+    expect(row).toHaveAccessibleName(/Mood.*includes.*retired/s);
+    expect(
+      screen.getByText(
+        'This rule compares its attribute against an option that is no longer one of that attribute’s choices. Edit or delete the rule.',
+      ),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(outlineText()?.[2]).toBe('Skip logicHas a problem'),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    expect(
+      await screen.findByText(
+        "Rule 1 no longer works with this protocol's codebook. Open it to fix it, or delete it.",
+      ),
+    ).toBeInTheDocument();
+    expect(onFinish).not.toHaveBeenCalled();
+  });
+
   it('asks for the rules a switched-on skip logic has none of', async () => {
     const user = setupUser();
     const onFinish = vi.fn();

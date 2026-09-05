@@ -217,30 +217,6 @@ export const filterRuleAttributeExists = (
 };
 
 /**
- * Get the codebook definition of a filter rule's attribute.
- * Returns undefined if attribute is not specified or variable doesn't exist.
- *
- * The whole definition rather than only its type, because what a rule's
- * comparison value may be is not always decided by the type alone: an
- * option-bearing attribute answers with one of the options IT authored, so
- * they have to be read to know whether the rule can ever match.
- */
-export const getFilterRuleVariable = (
-  rule: FilterRule,
-  codebook: Codebook,
-): Variable | undefined => {
-  if (!('attribute' in rule.options) || !rule.options.attribute)
-    return undefined;
-
-  if (rule.type === 'ego') {
-    return codebook.ego?.variables?.[rule.options.attribute];
-  }
-
-  const entity = codebook[rule.type]?.[rule.options.type || ''];
-  return entity?.variables?.[rule.options.attribute];
-};
-
-/**
  * Get the variable type for a filter rule's attribute
  * Returns undefined if attribute is not specified or variable doesn't exist
  */
@@ -248,7 +224,19 @@ export const getFilterRuleVariableType = (
   rule: FilterRule,
   codebook: Codebook,
 ): string | undefined => {
-  return getFilterRuleVariable(rule, codebook)?.type;
+  if (!('attribute' in rule.options) || !rule.options.attribute)
+    return undefined;
+
+  let variable: Variable | undefined;
+
+  if (rule.type === 'ego') {
+    variable = codebook.ego?.variables?.[rule.options.attribute];
+  } else {
+    const entity = codebook[rule.type]?.[rule.options.type || ''];
+    variable = entity?.variables?.[rule.options.attribute];
+  }
+
+  return variable?.type;
 };
 
 /**
