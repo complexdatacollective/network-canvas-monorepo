@@ -1,7 +1,6 @@
 import { LayoutGroup } from 'motion/react';
 import {
   type ReactNode,
-  type RefObject,
   useCallback,
   useContext,
   useEffect,
@@ -84,15 +83,16 @@ export type StageEditorShellProps = Readonly<{
  */
 export default function StageEditorShell(props: StageEditorShellProps) {
   const { identity } = props.controller.snapshot.editedSection;
-  // The content this form itself last wrote into the session. Everything else
-  // that moves the draft — undo, redo, an acknowledgement, an authoritative
-  // replacement — moved it out from under the controls on screen.
-  const flushed = useRef<string | null>(null);
-  const committed = useCommittedFields(props.controller.snapshot, flushed);
+  // Which arrivals this form itself caused is the controller's own record —
+  // every write goes through it, whichever reference to it a section holds.
+  // Everything else that moves the draft — undo, redo, an acknowledgement, an
+  // authoritative replacement — moved it out from under the controls on
+  // screen.
+  const committed = useCommittedFields(props.controller);
 
   return (
     <FormStoreProvider key={`${identity.type}:${identity.id}`}>
-      <StageEditorFormBody {...props} committed={committed} flushed={flushed} />
+      <StageEditorFormBody {...props} committed={committed} />
     </FormStoreProvider>
   );
 }
@@ -103,11 +103,9 @@ function StageEditorFormBody({
   children,
   className,
   committed,
-  flushed,
 }: StageEditorShellProps &
   Readonly<{
     committed: CommittedDraft;
-    flushed: RefObject<string | null>;
   }>) {
   const storeApi = useContext(FormStoreContext);
   const formRef = useRef<HTMLFormElement>(null);
@@ -141,38 +139,29 @@ function StageEditorFormBody({
         return { success: false, formErrors: [READ_ONLY_MESSAGE] };
       }
 
-      let written: string | null = null;
       try {
         // Inside the guarded block with the finish it precedes: access can be
         // revoked between the render that read it and this submit, and the
         // session refuses a write from a lease it no longer holds. That is an
         // ordinary lease transition, and it belongs in the form's own errors
         // rather than in a rejected submit promise.
-        controller.changeFields((current) => {
-          const next = stageDraftFromSubmission({
+        //
+        // The controller records the draft this produces as the form's own,
+        // and only once the session has accepted it, so the arrival at exactly
+        // this content does not read as something moving under the form: it IS
+        // the form. A submit that changes nothing records nothing.
+        controller.changeFields((current) =>
+          stageDraftFromSubmission({
             currentFields: current,
             submittedValues: values as Record<string, FieldValue>,
             mountedPaths: mountedPathsOf(storeApi),
             dormantFields: dormantFieldsOf(storeApi),
-          });
-          // A submit that changes nothing moves nothing, so it has no
-          // transition to explain and leaves no marker: one left standing
-          // would spend itself on some later arrival at the same content — a
-          // redo, most likely — and leave the controls showing what was undone.
-          const content = canonicalize(next);
-          written = content === canonicalize(current) ? null : content;
-          return next;
-        });
-        // Recorded only once the session has accepted the write, so that the
-        // draft arriving at exactly this content does not read as something
-        // moving under the form: it IS the form. A refused write moves
-        // nothing, and its marker would be spent later on an unrelated
-        // arrival, leaving the controls showing a draft that had moved on.
-        flushed.current = written;
+          }),
+        );
         await controller.finish();
         return { success: true };
       } catch (error) {
-        flushed.current = null;
+        controller.forgetOwnWrite();
         return {
           success: false,
           formErrors:
@@ -184,37 +173,30 @@ function StageEditorFormBody({
         };
       }
     },
-    [controller, flushed, readOnly, storeApi],
+    [controller, readOnly, storeApi],
   );
 
   /**
    * The other way this form writes to the session: structurally, as a list
    * editor commits one row operation, rather than as a whole-draft flush.
    *
-   * It leaves the same marker a submit does, and for the same reason — an
-   * arrival from ELSEWHERE re-seeds the controls, and a write the form made
-   * itself is not that. Left unmarked, adding a row would write the draft back
-   * over every control on screen, discarding everything typed since and
-   * resetting the row dialog that issued the write.
+   * The controller records it as the form's own, exactly as it does a submit,
+   * and for the same reason — an arrival from ELSEWHERE re-seeds the controls,
+   * and a write the form made itself is not that. Unrecorded, adding a row
+   * would write the draft back over every control on screen, discarding
+   * everything typed since and resetting the row dialog that issued the write.
+   *
+   * What is left here is the one thing the controller cannot say: a session
+   * that has stopped accepting writes refuses one by throwing, which would
+   * take the editor down rather than decline the edit, so a list editor is
+   * answered with the draft as it stands.
    */
   const applyOwnCommands = useCallback(
     (commands: readonly Command[]): StageFormDraft => {
       if (readOnly) return controller.snapshot.editedSection.fields;
-      // An empty batch is how a list editor READS the draft the session holds
-      // right now — which is the point of asking rather than reading the
-      // snapshot it rendered against — so it must leave no marker at all. One
-      // left here would suppress the re-seed for a change that arrived from
-      // somewhere else entirely.
-      const next = controller.applyCommands(commands);
-      if (commands.length === 0) return next;
-      const content = canonicalize(next);
-      // Marked only when the draft actually moved, matching the submit's own
-      // rule: a marker for a transition that never happens stays standing, and
-      // is then spent on some later arrival at the same content.
-      if (content !== canonicalize(committedFields)) flushed.current = content;
-      return next;
+      return controller.applyCommands(commands);
     },
-    [committedFields, controller, flushed, readOnly],
+    [controller, readOnly],
   );
 
   const { formProps, formErrors } = useForm({
@@ -374,39 +356,33 @@ type CommittedDraft = Readonly<{
  * replaced beneath them.
  *
  * Typing never reaches the session, so the draft moves for exactly two kinds
- * of reason: this form flushing its own values on submit, and everything else
- * — undo, redo, an acknowledgement, an authoritative replacement, a rollback
- * after a lost lease. Only the second kind is a surprise to the controls on
- * screen, and only it advances the generation that asks for a re-seed.
+ * of reason: this form writing through its controller — a submit, a row
+ * operation, a reset a choice triggered — and everything else: undo, redo, an
+ * acknowledgement, an authoritative replacement, a rollback after a lost
+ * lease. Only the second kind is a surprise to the controls on screen, and
+ * only it advances the generation that asks for a re-seed.
  *
- * The distinction has to be made here rather than from `pendingCommands`,
- * which cannot tell an undo from a submit: both leave a batch outstanding. A
- * form left mounted through an undo goes on showing the value that was just
- * undone, and writes it back over the undo when saved.
+ * Which kind it was is the controller's to say, because the controller is what
+ * every write goes through. The distinction cannot be made from
+ * `pendingCommands`, which cannot tell an undo from a submit: both leave a
+ * batch outstanding. A form left mounted through an undo goes on showing the
+ * value that was just undone, and writes it back over the undo when saved.
  *
  * Compared by content, not identity: the session freezes a fresh object into
  * every snapshot, and one lands whenever validation settles.
  */
-function useCommittedFields(
-  snapshot: ProtocolBuilderSnapshot,
-  flushed: RefObject<string | null>,
-): CommittedDraft {
-  const { fields } = snapshot.editedSection;
+function useCommittedFields(controller: StageEditorController): CommittedDraft {
+  const { fields } = controller.snapshot.editedSection;
   const committed = useRef<CommittedDraft>({ fields, generation: 0 });
   const seen = useRef(canonicalize(fields));
   const content = canonicalize(fields);
 
   if (content !== seen.current) {
     seen.current = content;
-    // The marker describes ONE write, and is spent by the transition it
-    // explains. Undo and then redo returns the draft to that same content, and
-    // by then the controls are showing the undone values — a marker left
-    // standing would leave them there, to be saved back over the redo.
-    const ownFlush = content === flushed.current;
-    if (ownFlush) flushed.current = null;
+    const ownWrite = controller.takeOwnWrite(content);
     committed.current = {
       fields,
-      generation: committed.current.generation + (ownFlush ? 0 : 1),
+      generation: committed.current.generation + (ownWrite ? 0 : 1),
     };
   }
   return committed.current;
