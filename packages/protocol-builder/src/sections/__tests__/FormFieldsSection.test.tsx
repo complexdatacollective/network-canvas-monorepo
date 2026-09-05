@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { loadFixtureStage } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import FormFieldsSection from '../FormFieldsSection.tsx';
 
@@ -49,6 +50,48 @@ const offeredAttributes = (dialog: ReturnType<typeof within>) =>
   within(dialog.getByRole('combobox', { name: 'Attribute' }))
     .getAllByRole('option')
     .map((option) => (option as HTMLOptionElement).value);
+
+/**
+ * Adds a field that collects an attribute nobody has declared yet, and waits
+ * for the dialog to close — which it only does once the codebook write the
+ * invention needs has been applied.
+ */
+const inventNickname = async (
+  harness: ReturnType<typeof renderStageEditor>,
+) => {
+  const dialog = await openField(harness, 'Create new form field');
+  await harness.user.selectOptions(
+    dialog.getByRole('combobox', { name: 'Attribute' }),
+    '__create_new_attribute__',
+  );
+  await harness.user.type(
+    await dialog.findByRole('textbox', { name: 'Attribute name' }),
+    'nickname',
+  );
+  await harness.user.selectOptions(
+    dialog.getByRole('combobox', { name: 'Kind of answer' }),
+    'text',
+  );
+  await harness.user.type(
+    dialog.getByRole('textbox', { name: 'Question text' }),
+    'What do people call them?',
+  );
+  await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+  await waitFor(() => expect(screen.queryAllByRole('dialog')).toHaveLength(0));
+};
+
+/** The attribute the invention above should have written, and its record id. */
+const inventedNickname = (harness: ReturnType<typeof renderStageEditor>) => {
+  const person =
+    harness.host.getSnapshot().protocolSections['codebook:node:person'];
+  const variables =
+    typeof person === 'object' && person !== null
+      ? Reflect.get(person, 'variables')
+      : undefined;
+  return Object.entries(
+    (variables ?? {}) as Record<string, { name?: string; type?: string }>,
+  ).find(([, variable]) => variable.name === 'nickname');
+};
 
 const fieldsOf = (
   request: Awaited<ReturnType<ReturnType<typeof renderStageEditor>['submit']>>,
@@ -366,39 +409,49 @@ describe('the fields a form collects', () => {
       sections: <FormFieldsSection subject="node" />,
     });
 
-    const dialog = await openField(harness, 'Create new form field');
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Attribute' }),
-      '__create_new_attribute__',
-    );
-    await harness.user.type(
-      await dialog.findByRole('textbox', { name: 'Attribute name' }),
-      'nickname',
-    );
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Kind of answer' }),
-      'text',
-    );
-    await harness.user.type(
-      dialog.getByRole('textbox', { name: 'Question text' }),
-      'What do people call them?',
-    );
-    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
-    await waitFor(() =>
-      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
-    );
+    await inventNickname(harness);
 
-    const person =
-      harness.host.getSnapshot().protocolSections['codebook:node:person'];
-    const variables =
-      typeof person === 'object' && person !== null
-        ? Reflect.get(person, 'variables')
-        : undefined;
-    const created = Object.entries(
-      (variables ?? {}) as Record<string, { name?: string; type?: string }>,
-    ).find(([, variable]) => variable.name === 'nickname');
+    const created = inventedNickname(harness);
     expect(created?.[1]).toMatchObject({ name: 'nickname', type: 'text' });
 
+    expect(fieldsOf(await harness.submit()).at(-1)).toEqual({
+      id: expect.any(String) as unknown as string,
+      variable: created?.[0],
+      prompt: 'What do people call them?',
+    });
+  });
+
+  /**
+   * The same invention, from a stage the researcher is still CREATING.
+   *
+   * The codebook half is a compound edit, and the full protocol a host answers
+   * one with cannot contain a stage the interview does not have yet. Read as a
+   * broken answer, the attribute is written to the codebook and the researcher
+   * is told it was not — with the host's own sentence about a stage they never
+   * mentioned.
+   */
+  it('creates the attribute a field invents while the stage itself is being created', async () => {
+    const harness = renderStageEditor({
+      create: {
+        type: 'AlterForm',
+        position: 0,
+        // Everything a saved alter form needs except the fields themselves,
+        // because this journey ends in a save. `AlterForm`'s own template has
+        // no authored defaults, so a stage built from it alone is one no
+        // researcher could finish yet.
+        fields: {
+          ...loadFixtureStage('alter-form-1').fields,
+          label: 'New alter form',
+          form: { fields: [] },
+        },
+      },
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    await inventNickname(harness);
+
+    const created = inventedNickname(harness);
+    expect(created?.[1]).toMatchObject({ name: 'nickname', type: 'text' });
     expect(fieldsOf(await harness.submit()).at(-1)).toEqual({
       id: expect.any(String) as unknown as string,
       variable: created?.[0],

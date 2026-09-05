@@ -63,10 +63,24 @@ function createSession(
      * may have moved the authoritative revision on.
      */
     applyLive?: boolean;
+    /**
+     * Opens the session on a stage that is being CREATED, the way a host opens
+     * a new one: the interview holds no section for it and does not list it in
+     * the stage order, and only the candidate the session validates puts it
+     * where it is about to live. See `StageCreation`.
+     */
+    creating?: boolean;
   }> = {},
 ) {
+  const creating = options.creating === true;
   const host = new InMemoryCompoundHost({
-    protocolSections: initialSections,
+    protocolSections: creating
+      ? {
+          [settingsSection]: initialSections[settingsSection]!,
+          [stageOrderSection]: { stages: [] },
+          [assetsSection]: {},
+        }
+      : initialSections,
     manifestRevision: { sequence: 7n, hash: 'revision-7' },
     leases: [primaryLease, ...(options.additionalLeases ?? [])],
   });
@@ -125,8 +139,13 @@ function createSession(
     ...(options.resources === true
       ? { resourceGateway: new InMemoryResourceGateway() }
       : {}),
+    ...(creating ? { creation: { position: 0 } } : {}),
     buildCandidate: ({ stageDocument, protocolSections: sections }) =>
-      assembleProtocolSections({ ...sections, [stageSection]: stageDocument }),
+      assembleProtocolSections({
+        ...sections,
+        [stageSection]: stageDocument,
+        ...(creating ? { [stageOrderSection]: { stages: ['stage-1'] } } : {}),
+      }),
     onCommands,
     onCompoundEdit,
     // The same host, applying the stage's own batches: a finish is what
@@ -325,6 +344,37 @@ describe('compound host and protocol-builder session integration', () => {
 
     expect(host.getSnapshot()).toEqual(hostBefore);
     expect(session.getSnapshot()).toBe(sessionBefore);
+  });
+
+  /**
+   * The same edit, made while the stage itself is still being created.
+   *
+   * The full protocol the host answers with cannot contain a stage the
+   * interview does not have, so the answer omits it — and a session that read
+   * that omission as a broken answer would refuse the result the host has
+   * already applied, leaving the codebook ahead of the editor that wrote it.
+   */
+  it('publishes a codebook revision from a stage the interview does not contain yet', async () => {
+    const { host, session } = createSession({ creating: true });
+    session.dispatch(insertBlock('one', 0));
+
+    await expect(
+      session.requestCompoundEdit(createPlaceOnly),
+    ).resolves.toMatchObject({ status: 'applied' });
+
+    expect(host.getSnapshot().protocolSections[placeSection]).toMatchObject({
+      name: 'Place',
+    });
+    expect(session.getSnapshot().protocolSections).toEqual(
+      host.getSnapshot().protocolSections,
+    );
+    expect(session.getSnapshot().manifestRevision).toEqual(
+      host.getSnapshot().manifestRevision,
+    );
+    // Nothing the host said was about this stage, so the researcher's unsaved
+    // batch is still theirs to send.
+    expect(stageItems(session)).toEqual([block('one')]);
+    expect(session.getSnapshot().pendingCommands).toHaveLength(1);
   });
 });
 
