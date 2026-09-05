@@ -2,8 +2,9 @@ import { expect, it, vi } from 'vitest';
 
 import type { ResourceDescriptor, ResourceResult } from '../../gateway.ts';
 import { InMemoryResourceGateway } from '../../InMemoryResourceGateway.ts';
+import { overrideGateway } from '../../overrideGateway.ts';
 import { discardAbandonedStaging } from '../abandonedStaging.ts';
-import { flushPendingWork, overrideGateway } from './overrideGateway.ts';
+import { flushPendingWork } from './asyncControls.ts';
 
 const DESCRIPTOR: ResourceDescriptor = Object.freeze({
   id: 'staged-resource-1',

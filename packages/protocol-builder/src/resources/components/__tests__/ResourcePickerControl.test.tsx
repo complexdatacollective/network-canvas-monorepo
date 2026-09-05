@@ -31,12 +31,9 @@ import {
   InMemoryResourceGateway,
   type InMemoryResourceSeed,
 } from '../../InMemoryResourceGateway.ts';
+import { overrideGateway } from '../../overrideGateway.ts';
 import ResourcePickerControl from '../ResourcePickerControl.tsx';
-import {
-  deferred,
-  flushPendingWork,
-  overrideGateway,
-} from './overrideGateway.ts';
+import { deferred, flushPendingWork } from './asyncControls.ts';
 import { renderResourceEditor } from './renderResourceEditor.tsx';
 
 const bytesOf = (text: string): Uint8Array => new TextEncoder().encode(text);

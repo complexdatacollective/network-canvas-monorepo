@@ -9,15 +9,12 @@ import {
   type ResourceResult,
 } from '../../gateway.ts';
 import { InMemoryResourceGateway } from '../../InMemoryResourceGateway.ts';
+import { overrideGateway } from '../../overrideGateway.ts';
 import ResourcePreview, {
   PREVIEW_RENEWAL_LEAD_MS,
   PREVIEW_RENEWAL_MIN_INTERVAL_MS,
 } from '../ResourcePreview.tsx';
-import {
-  deferred,
-  flushPendingWork,
-  overrideGateway,
-} from './overrideGateway.ts';
+import { deferred, flushPendingWork } from './asyncControls.ts';
 
 const bytesOf = (text: string): Uint8Array => new TextEncoder().encode(text);
 

@@ -11,9 +11,9 @@ import {
   type StagedSecret,
 } from '../../gateway.ts';
 import { InMemoryResourceGateway } from '../../InMemoryResourceGateway.ts';
+import { overrideGateway } from '../../overrideGateway.ts';
 import ResourcePickerControl from '../ResourcePickerControl.tsx';
 import ResourceSecretControl from '../ResourceSecretControl.tsx';
-import { overrideGateway } from './overrideGateway.ts';
 import { renderResourceEditor } from './renderResourceEditor.tsx';
 
 const SECRET = 'pk.eyJ1IjoicmVzZWFyY2hlciIsImEiOiJzZWNyZXQifQ';

@@ -15,18 +15,14 @@ import {
   type StagedSecret,
 } from '../../gateway.ts';
 import { InMemoryResourceGateway } from '../../InMemoryResourceGateway.ts';
+import { overrideGateway } from '../../overrideGateway.ts';
 import ResourcePickerControl from '../ResourcePickerControl.tsx';
 import ResourcePreview, {
   PREVIEW_RENEWAL_LEAD_MS,
   PREVIEW_RENEWAL_MIN_INTERVAL_MS,
 } from '../ResourcePreview.tsx';
 import ResourceSecretControl from '../ResourceSecretControl.tsx';
-import {
-  deferred,
-  flushPendingWork,
-  overrideGateway,
-  type Deferred,
-} from './overrideGateway.ts';
+import { deferred, flushPendingWork, type Deferred } from './asyncControls.ts';
 import { renderResourceEditor } from './renderResourceEditor.tsx';
 
 /**

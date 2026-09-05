@@ -9,10 +9,11 @@ import {
   type ResourceResult,
 } from '../../gateway.ts';
 import { InMemoryResourceGateway } from '../../InMemoryResourceGateway.ts';
+import { overrideGateway } from '../../overrideGateway.ts';
 import ResourcePreview, {
   PREVIEW_RENEWAL_MIN_INTERVAL_MS,
 } from '../ResourcePreview.tsx';
-import { deferred, overrideGateway, type Deferred } from './overrideGateway.ts';
+import { deferred, type Deferred } from './asyncControls.ts';
 
 /**
  * Every state a preview's lease can be in, against every event that can arrive
