@@ -313,6 +313,75 @@ const INTERLEAVINGS: readonly Interleaving[] = [
   },
   {
     surface: 'upload',
+    state: 'reading a chosen file',
+    input: 'the browser is dismissed with Escape',
+    rule: 'the researcher is asked before the choice is thrown away',
+    check: async () => {
+      const user = userEvent.setup();
+      const gateway = new InMemoryResourceGateway();
+      const { fieldValue } = renderResourceEditor({
+        gateway,
+        children: imageField(),
+      });
+
+      const input = await openBrowser(user, 'Select an image');
+      const chosen = heldFile('skyline.png', 'image/png', bytesOf('skyline'));
+      await user.upload(input, chosen.file);
+
+      // Nothing has reached the host yet, because the file is still being
+      // read: there is no call in flight for the dialog to notice, and Escape
+      // is the reflex that would otherwise lose the choice silently.
+      await user.keyboard('{Escape}');
+
+      expect(
+        await screen.findByText(
+          'This editor holds changes that have not been saved. Closing it now discards them.',
+        ),
+      ).toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: 'Keep editing' }));
+      chosen.read();
+      await act(flushPendingWork);
+
+      // Kept, so the import the researcher asked for still lands.
+      await waitFor(() =>
+        expect(fieldValue('backgroundImage')).toBe('staged-resource-1'),
+      );
+    },
+  },
+  {
+    surface: 'upload',
+    state: 'a file the field cannot hold has just been refused',
+    input: 'the browser is dismissed with Escape',
+    rule: 'nothing is asked about a choice that was never taken',
+    check: async () => {
+      const user = userEvent.setup({ applyAccept: false });
+      const gateway = new InMemoryResourceGateway();
+      renderResourceEditor({ gateway, children: imageField() });
+
+      const input = await openBrowser(user, 'Select an image');
+      await user.upload(
+        input,
+        new File(['notes'], 'notes.txt', { type: 'text/plain' }),
+      );
+      expect(await screen.findByText(UNSUPPORTED_IMAGE_FILE)).toBeVisible();
+
+      await user.keyboard('{Escape}');
+
+      // A question the researcher has to dismiss after every mis-click is one
+      // they learn to dismiss without reading.
+      await waitFor(() =>
+        expect(
+          screen.queryByLabelText('Choose a file from your computer'),
+        ).not.toBeInTheDocument(),
+      );
+      expect(
+        screen.queryByRole('button', { name: 'Keep editing' }),
+      ).not.toBeInTheDocument();
+    },
+  },
+  {
+    surface: 'upload',
     state: 'a failed import on screen',
     input: 'a file the field cannot hold is chosen',
     rule: 'the stale failure goes with the choice it was about',
@@ -658,6 +727,11 @@ const INTERLEAVINGS: readonly Interleaving[] = [
       const held = heldFile('slow.png', 'image/png', bytesOf('slow'));
       await user.upload(input, held.file);
       await user.click(screen.getByRole('button', { name: 'Cancel' }));
+      // Closing asks first, because the file being read is a choice nothing
+      // else records. Here the answer is that it may go.
+      await user.click(
+        await screen.findByRole('button', { name: 'Discard changes' }),
+      );
       // The read finishes for a control that is no longer there. Discarding
       // afterwards leaves the same clean end state, but the bytes have been
       // sent and the host has done the work of holding them — for an import

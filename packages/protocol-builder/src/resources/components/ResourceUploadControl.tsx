@@ -101,15 +101,25 @@ export default function ResourceUploadControl({
   const [rejected, setRejected] = useState<string | undefined>(undefined);
   const [status, setStatus] = useState('');
   const [dragging, setDragging] = useState(false);
+  /**
+   * A file has been chosen and its bytes are being read, which is work of the
+   * researcher's that no gateway call has started yet.
+   *
+   * `busy` cannot stand for this on its own: the read happens before any call
+   * is made, so a control that reported only `busy` would report nothing for
+   * the whole of it — and reading the file a researcher picked by mistake is
+   * exactly the long part.
+   */
+  const [reading, setReading] = useState(false);
 
-  // A file the researcher has chosen and the host is still reading or storing.
-  // It is not typed work, but it is a choice they made that nothing else
-  // records: dismissing here throws the import away and the file has to be
-  // found again.
+  // A file the researcher has chosen, from the moment they choose it until the
+  // import settles: reading it, then staging it. It is not typed work, but it
+  // is a choice they made that nothing else records — dismissing here throws
+  // the import away and the file has to be found again.
   useEffect(() => {
-    onDraftChange?.(busy);
+    onDraftChange?.(reading || busy);
     return () => onDraftChange?.(false);
-  }, [busy, onDraftChange]);
+  }, [busy, onDraftChange, reading]);
 
   const stageFile = useCallback(
     async (file: File) => {
@@ -123,10 +133,18 @@ export default function ResourceUploadControl({
       // takes away what the previous choice left on screen, so the refusal
       // below is the only thing the researcher is being told.
       const claim = begin();
+      // Held as a draft from the same moment and for the same reason: the
+      // checks below and the read after them all happen while a dismissal
+      // could arrive, and none of them has started a call for `busy` to show.
+      setReading(true);
 
       const contentKind = contentKindForFile(kind, file.name);
       if (contentKind === undefined) {
         setRejected(unsupportedFileMessage(kind));
+        // A refused file is not work to lose: the refusal on screen is the
+        // whole of what happened, and it survives a dismissal by being about
+        // a choice the researcher will make again.
+        setReading(false);
         return;
       }
 
@@ -136,6 +154,7 @@ export default function ResourceUploadControl({
       // along — and the file picked by mistake is the large one.
       if (file.size > RESOURCE_UPLOAD_MAX_BYTE_LENGTH) {
         setRejected(oversizeFileMessage(RESOURCE_UPLOAD_MAX_BYTE_LENGTH));
+        setReading(false);
         return;
       }
 
@@ -145,8 +164,12 @@ export default function ResourceUploadControl({
       } catch {
         // A file the researcher has already moved off is not something to
         // report at all: the import that replaced it is what is happening now.
+        // Its draft is that import's to hold as well, so this leaves it be —
+        // saying there is nothing to lose would be saying it about the choice
+        // that superseded this one.
         if (!claim.current()) return;
         setRejected(UNREADABLE_MESSAGE);
+        setReading(false);
         return;
       }
       if (!claim.current()) return;
@@ -175,6 +198,9 @@ export default function ResourceUploadControl({
         // the host is told to let it go.
         (descriptor) => discardAbandonedStaging(gateway, descriptor),
       );
+      // After the call has started, so the draft passes from this flag to
+      // `busy` without ever being reported as nothing in between.
+      setReading(false);
     },
     [begin, gateway, kind, onStaged],
   );

@@ -1229,6 +1229,14 @@ const ASSET_ITEMS: SectionDoc = {
  * using it, from the same `assetReference` tags the session validates against.
  */
 describe('discarding a resource other fields may share', () => {
+  function sessionResources(session: ProtocolBuilderSessionStore) {
+    const gateway = session.getResourceGateway();
+    if (gateway === undefined) {
+      throw new Error('the editor was opened without a resource gateway');
+    }
+    return gateway;
+  }
+
   async function importInto(
     user: ReturnType<typeof userEvent.setup>,
     group: HTMLElement,
@@ -1243,7 +1251,7 @@ describe('discarding a resource other fields may share', () => {
   }
 
   function renderItems(gateway: ProtocolBuilderResourceGateway) {
-    const { formValues } = renderResourceEditor({
+    const { formValues, session } = renderResourceEditor({
       gateway,
       fields: ASSET_ITEMS,
       children: (
@@ -1255,10 +1263,11 @@ describe('discarding a resource other fields may share', () => {
         </>
       ),
     });
-    return (): unknown[] =>
+    const contents = (): unknown[] =>
       (formValues().items as { content?: unknown }[] | undefined)?.map(
         (item) => item.content,
       ) ?? [];
+    return Object.assign(contents, { session });
   }
 
   it('refuses to discard one a second field still names, and says why', async () => {
@@ -1346,6 +1355,47 @@ describe('discarding a resource other fields may share', () => {
 
     await waitFor(() => expect(contents()[0]).toBeUndefined());
     expect(within(first).queryByRole('alert')).toBeNull();
+    expect(gateway.getStagingResidue()).toEqual([]);
+  });
+
+  it('will not let a second field take one a finished discard has already removed', async () => {
+    const user = userEvent.setup();
+    const gateway = new InMemoryResourceGateway();
+    const contents = renderItems(gateway);
+
+    const first = await screen.findByRole('group', { name: 'First image' });
+    const second = screen.getByRole('group', { name: 'Second image' });
+    await importInto(user, first);
+    await waitFor(() => expect(contents()[0]).toBe('staged-resource-1'));
+
+    // The second field opens its browser, which reads the list once. Nothing
+    // refreshes it after that.
+    await user.click(
+      within(second).getByRole('button', { name: 'Select an image' }),
+    );
+    await screen.findByRole('button', { name: 'skyline.png' });
+
+    // The first field discards the resource, and the host finishes carrying it
+    // out — so the in-flight mark that would have covered this is lifted again
+    // before the second field clicks. Made through the session's gateway
+    // because the open browser hides the rest of the editor from this test
+    // exactly as it does from the researcher; it is the same call the first
+    // field's own discard button makes.
+    await act(async () => {
+      const discarded = await sessionResources(contents.session).discardStaged(
+        'staged-resource-1',
+      );
+      expect(discarded.status).toBe('ok');
+    });
+
+    await user.click(screen.getByRole('button', { name: 'skyline.png' }));
+    await act(flushPendingWork);
+
+    expect(within(second).getByRole('alert')).toHaveTextContent(
+      'That resource is no longer available',
+    );
+    // Untouched: still the empty string the item started as.
+    expect(contents()[1]).toBe('');
     expect(gateway.getStagingResidue()).toEqual([]);
   });
 

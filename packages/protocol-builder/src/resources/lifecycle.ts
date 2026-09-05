@@ -5,6 +5,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import {
   resourceFailure,
   resourceOk,
+  type ManifestApplyOutcome,
   type ManifestApplyRequest,
   type ProtocolBuilderResourceGateway,
   type ResourceDescriptor,
@@ -29,18 +30,42 @@ const ASSETS_SECTION = sectionId({ kind: 'assets' });
 const STAGE_ORDER_SECTION = sectionId({ kind: 'stageOrder' });
 
 /**
+ * The manifest apply of a promotion replayed only to find out whether it
+ * committed. It refuses, so a host that never took that promotion rolls the
+ * replay back rather than committing the draft that has since replaced it.
+ *
+ * Never shown: reaching this outcome at all is the answer the replay wanted,
+ * and its caller reports nothing about the promotion the host declined to
+ * make. See {@link StagedResourceTracker.reconcileUndecidedPromotions}.
+ */
+const REPLAY_REFUSAL: ManifestApplyOutcome = Object.freeze({
+  status: 'failed' as const,
+  retryable: false,
+  message: 'this save was only asking whether an earlier one finished',
+});
+
+/**
  * The one decision a session's gateway makes that a host's cannot: whether a
  * field may come to name a staged resource right now.
  *
  * **A staged resource stops accepting references from the moment its discard
- * is asked for.** Discarding is asynchronous, so the "is anything else using
- * this?" a picker asks before it discards is a fact about the past: a second
- * field choosing the same resource from the browser while the first field's
- * discard is in flight arrives after that question and before the host has
- * answered, and neither side would ever notice. The discard therefore marks
- * the resource as leaving before it asks the host, and a reference taken while
- * it is leaving is refused — so at every instant exactly one of the two can
- * happen, and a field can never end up naming bytes the host is deleting.
+ * is asked for, and never accepts one again.** Discarding is asynchronous, so
+ * the "is anything else using this?" a picker asks before it discards is a
+ * fact about the past: a second field choosing the same resource from the
+ * browser while the first field's discard is in flight arrives after that
+ * question and before the host has answered, and neither side would ever
+ * notice. The discard therefore marks the resource as leaving before it asks
+ * the host, and a reference taken while it is leaving is refused — so at every
+ * instant exactly one of the two can happen, and a field can never end up
+ * naming bytes the host is deleting.
+ *
+ * The mark is not enough on its own, because it is lifted the moment the host
+ * answers. A browser reads the resource list once, when it opens, so a second
+ * field's dialog left open across another field's discard is showing a
+ * resource that no longer exists — and clicking it lands after the mark has
+ * gone. A resource this session actually discarded is therefore refused for
+ * the rest of the session, by id: the mark covers the discard, and this covers
+ * everything after it.
  *
  * The count of references belongs to the form rather than here — a field's
  * value reaches the session only on submit — so the picker still decides
@@ -49,8 +74,9 @@ const STAGE_ORDER_SECTION = sectionId({ kind: 'stageOrder' });
 export type StagedResourceReferenceGuard = Readonly<{
   /**
    * Ok when a field may name this resource; a failure to show the researcher
-   * when it may not. Anything this session is not discarding is ok, including
-   * every committed resource, which it knows nothing about.
+   * when it may not. Anything this session is neither discarding nor has
+   * already discarded is ok, including every committed resource, which it
+   * knows nothing about.
    */
   referenceStaged(resourceId: string): ResourceResult<undefined>;
 }>;
@@ -107,6 +133,31 @@ export type StagedResourceTracker = Readonly<{
    * reported rather than discarded: see {@link StagedResourceCancelReport}.
    */
   cancel(): Promise<ResourceResult<StagedResourceCancelReport>>;
+  /**
+   * Settles every promotion that ended without saying what it did, so a finish
+   * may promote different content under an id of its own.
+   *
+   * A doubt can only ever be answered under the promotion id that created it,
+   * and a finish whose content has changed must not commit under that id: an
+   * idempotent host asked under an id it has already completed hands back the
+   * promotion it made, which would report a save of the new draft that never
+   * happened. Those two rules only compose because the doubted id is replayed
+   * here as a *question* — a promotion whose manifest apply refuses, so
+   * nothing of the current draft can reach the protocol under it.
+   *
+   * Whether that apply is reached at all is the answer, and it is decisive
+   * however the host reports the refusal it caused:
+   *
+   * - the host returns the promotion without applying anything, so it holds
+   *   those resources and they are committed;
+   * - the host reaches the apply, so it had no promotion under that id and
+   *   never committed one, whatever it makes of the refusal;
+   * - the host answers neither, so it is unreachable, the doubt stands, and
+   *   the failure is reported for the finish to report.
+   *
+   * Ok when nothing was in doubt, which is every ordinary finish.
+   */
+  reconcileUndecidedPromotions(): Promise<ResourceResult<undefined>>;
   /**
    * Takes the session for one finish: closes the staging window and returns
    * what the finish has to decide — the same instant, on purpose.
@@ -205,6 +256,14 @@ export function createStagedResourceTracker(
    * promotion answering decisively settles it: `ok` means the host has it, and
    * a refusal under the SAME promotion id means the host never took it, since
    * a host that had would answer that id with the promotion it already made.
+   *
+   * That rule needs the doubted id to stay askable, which the id the session
+   * mints for a finish is not: it names one commit, so any edit before the
+   * retry rotates it. The two compose through
+   * {@link StagedResourceTracker.reconcileUndecidedPromotions}, which the
+   * session runs before it rotates: the doubted id is asked one last time,
+   * as a question rather than as a commit, and only an id nothing is waiting
+   * on is left behind.
    */
   const unreconciled = new Map<string, string>();
   /**
@@ -212,6 +271,16 @@ export function createStagedResourceTracker(
    * {@link StagedResourceReferenceGuard} for the rule and what it is for.
    */
   const leaving = new Set<string>();
+  /**
+   * Ids the host has actually dropped for this session. They take no new
+   * references either, and unlike {@link leaving} this is never lifted.
+   *
+   * Only a discard puts an id here. A resource that was promoted also leaves
+   * the staged set, and one whose manifest entry has caught up leaves the
+   * tracker altogether — but both of those are resources the protocol now
+   * has, and a field naming one is naming something that exists.
+   */
+  const discardedIds = new Set<string>();
   /** True once the session cancelled: nothing staged after it is kept. */
   let cancelled = false;
   /**
@@ -287,11 +356,22 @@ export function createStagedResourceTracker(
     if (changed) options.onStagedChanged();
   };
 
+  /**
+   * Forgets resources the host has dropped. Not the same as {@link forget}:
+   * their ids stay refused for the rest of the session, because a browser
+   * opened before the drop is still offering them.
+   */
+  const forgetDiscarded = (resourceIds: Iterable<string>): void => {
+    const dropped = [...resourceIds];
+    for (const resourceId of dropped) discardedIds.add(resourceId);
+    forget(dropped);
+  };
+
   // A promoted resource is no longer staging, so a discard-everything leaves it
   // alone: it is committed, and the session goes on resolving it until the
   // host's revision carries its manifest entry.
   const forgetAllStaged = (): void => {
-    forget(
+    forgetDiscarded(
       [...entries.values()]
         .filter((entry) => !entry.promoted)
         .map((entry) => entry.descriptor.id),
@@ -363,7 +443,7 @@ export function createStagedResourceTracker(
       leaving.add(resourceId);
       try {
         const result = await host.discardStaged(resourceId);
-        if (result.status === 'ok') forget([resourceId]);
+        if (result.status === 'ok') forgetDiscarded([resourceId]);
         return result;
       } finally {
         leaving.delete(resourceId);
@@ -438,6 +518,13 @@ export function createStagedResourceTracker(
       // particular discard is still running.
       if (cancelled) return sessionCancelledFailure();
       if (leaving.has(resourceId)) return resourceLeavingFailure(resourceId);
+      // A discard that has already happened, whose mark is therefore long
+      // gone. The list the field chose from was read when its browser opened
+      // and nothing refreshes it, so this is the ordinary way a second field
+      // comes to name a resource that no longer exists.
+      if (discardedIds.has(resourceId)) {
+        return resourceDiscardedFailure(resourceId);
+      }
       return resourceOk(undefined);
     },
   };
@@ -481,11 +568,53 @@ export function createStagedResourceTracker(
         if (entry.promoted || unreconciled.has(entry.descriptor.id)) continue;
         const result = await host.discardStaged(entry.descriptor.id);
         if (result.status !== 'ok') return result;
-        forget([entry.descriptor.id]);
+        forgetDiscarded([entry.descriptor.id]);
       }
       return resourceOk(
         Object.freeze({ keptUnreconciled: Object.freeze(kept) }),
       );
+    },
+    reconcileUndecidedPromotions: async (): Promise<
+      ResourceResult<undefined>
+    > => {
+      if (unreconciled.size === 0) return resourceOk(undefined);
+      const doubted = new Map<string, string[]>();
+      for (const [resourceId, promotionId] of unreconciled) {
+        const named = doubted.get(promotionId);
+        if (named === undefined) doubted.set(promotionId, [resourceId]);
+        else named.push(resourceId);
+      }
+
+      for (const [promotionId, resourceIds] of doubted) {
+        const secretHandles = resourceIds.flatMap((resourceId) => {
+          const handle = entries.get(resourceId)?.handle;
+          return handle === undefined ? [] : [handle];
+        });
+        let reachedApply = false;
+        // Through this session's own gateway, so an `ok` marks the resources
+        // promoted and clears their doubt exactly as any other promotion does.
+        const result = await gateway.promote({
+          id: promotionId,
+          resourceIds,
+          ...(secretHandles.length === 0 ? {} : { secretHandles }),
+          applyManifest: () => {
+            reachedApply = true;
+            return REPLAY_REFUSAL;
+          },
+        });
+        if (result.status === 'ok') continue;
+        // The host had nothing under this id, so it never committed it. The
+        // promotion above cannot tell that from a rollback worth repeating —
+        // the answer is in whether the apply was reached, which only the
+        // caller that supplied it can see.
+        if (!reachedApply) return result;
+        for (const resourceId of resourceIds) {
+          if (unreconciled.get(resourceId) === promotionId) {
+            unreconciled.delete(resourceId);
+          }
+        }
+      }
+      return resourceOk(undefined);
     },
     finishing: (): ResourceResult<StagedResourceFinishHold> => {
       // A cancel sets this before it awaits its discard, so a finish starting
@@ -1003,6 +1132,21 @@ function resourceLeavingFailure<T>(resourceId: string): ResourceResult<T> {
   return resourceFailure(
     'not-found',
     'That resource is being discarded, so it cannot be used here. Choose a different one.',
+    { resourceId },
+  );
+}
+
+/**
+ * A reference refused because the resource was discarded some time ago.
+ *
+ * The researcher is looking at a list that says otherwise, so the message says
+ * what to do about the list rather than only what went wrong: reopening the
+ * browser reads it again, and what is offered then is what there is.
+ */
+function resourceDiscardedFailure<T>(resourceId: string): ResourceResult<T> {
+  return resourceFailure(
+    'not-found',
+    'That resource is no longer available: it was discarded while this list was open. Close and reopen the browser to see what there is.',
     { resourceId },
   );
 }

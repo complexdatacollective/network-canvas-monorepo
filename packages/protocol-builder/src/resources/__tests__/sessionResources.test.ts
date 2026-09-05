@@ -1126,11 +1126,18 @@ describe('a session that stages resources', () => {
 
     // Now the draft changes, so the next attempt commits something the last
     // one did not, and it has to say so: a host answering under the old id
-    // would hand back the promotion of the draft before this one.
+    // would hand back the promotion of the draft before this one. The old id
+    // is asked once more before that happens — settling the doubt the failed
+    // attempt left, which nothing else could ever do — and the commit itself
+    // takes an id of its own.
     session.dispatch([{ op: 'set', key: 'title', value: 'Second thoughts' }]);
     await session.finish();
 
-    expect(promote.mock.calls[2]?.[0].id).not.toBe(ids[0]);
+    const afterEdit = promote.mock.calls
+      .map(([request]) => request.id)
+      .slice(2);
+    expect(afterEdit[0]).toBe(ids[0]);
+    expect(afterEdit[1]).not.toBe(ids[0]);
   });
 
   it('mints a new promotion id when the finish swaps the resource it promotes', async () => {
@@ -1155,19 +1162,21 @@ describe('a session that stages resources', () => {
     await session.finish();
 
     const ids = promote.mock.calls.map(([request]) => request.id);
-    expect(ids[1]).not.toBe(ids[0]);
+    // The rolled-back id is asked one last time, and the commit that follows
+    // takes its own.
+    expect(ids[1]).toBe(ids[0]);
+    expect(ids[2]).not.toBe(ids[0]);
     expect(Object.keys(gateway.getCommittedManifest())).toEqual([second.id]);
-    // The image the draft walked away from is the one whose own promotion was
-    // never decided, so the finish leaves it alone and says it did rather than
-    // dropping bytes the host may have committed under the earlier id.
-    expect(onResourceCleanupFailed).toHaveBeenCalledWith([
-      expect.objectContaining({ resourceId: first.id }),
-    ]);
-    expect(gateway.getStagingResidue()).toContain(`staged:${first.id}`);
+    // The image the draft walked away from was the one whose own promotion had
+    // never been decided. Settling it decided it — the host reached an apply,
+    // so it never held the promotion — and only then is the finish free to
+    // clean the image up like any other resource the draft abandoned.
+    expect(onResourceCleanupFailed).not.toHaveBeenCalled();
+    expect(gateway.getStagingResidue()).toEqual([]);
   });
 
-  it('refuses a changed draft rather than reporting the promotion of the one before it', async () => {
-    const { gateway, host, session } = createFixture({
+  it('refuses a changed draft while the doubt it has to settle first cannot be answered', async () => {
+    const { gateway, host, resources, session } = createFixture({
       loseFirstPromotionAnswer: true,
     });
     const image = await stageImage(session, 'first');
@@ -1183,21 +1192,131 @@ describe('a session that stages resources', () => {
     expect(Object.keys(gateway.getCommittedManifest())).toEqual([image.id]);
 
     // The researcher edits the draft before retrying, so this is no longer the
-    // finish the host ran — and a host that is asked under the same id answers
-    // with the promotion it already made, applying none of this draft.
+    // finish the host ran and it needs an id of its own — which it may not
+    // take while the doubted id is still unanswered. This time the host cannot
+    // answer it either.
     session.dispatch([{ op: 'set', key: 'title', value: 'Second thoughts' }]);
+    gateway.failNext('promote', { reason: 'unavailable', retryable: true });
     await expect(session.finish()).rejects.toBeInstanceOf(
       ResourcePromotionError,
     );
 
-    expect(promote.mock.calls[1]?.[0].id).not.toBe(
-      promote.mock.calls[0]?.[0].id,
-    );
-    // Whatever the host makes of the second attempt, the session may not
-    // report a finish whose draft the host never saw.
+    const ids = promote.mock.calls.map(([request]) => request.id);
+    expect(ids).toHaveLength(2);
+    expect(ids[1]).toBe(ids[0]);
+    // The session may not report a finish whose draft the host never saw.
     expect(host.getSnapshot().protocolSections[stageSection]).not.toMatchObject(
       { title: 'Second thoughts' },
     );
+    // And nothing was settled, so the image is still protected from a discard.
+    expect(expectFailure(await resources.discardStaged(image.id)).reason).toBe(
+      'unavailable',
+    );
+  });
+
+  it('settles a promotion left in doubt before a changed draft takes an id of its own', async () => {
+    const { gateway, host, session } = createFixture({
+      loseFirstPromotionAnswer: true,
+    });
+    const image = await stageImage(session, 'first');
+    session.dispatch([
+      { op: 'set', key: 'items', value: informationItems(image.id) },
+    ]);
+    const promote = vi.spyOn(gateway, 'promote');
+
+    // The host promoted the image and applied its manifest entry for real;
+    // only the answer was lost.
+    await expect(session.finish()).rejects.toBeInstanceOf(
+      ResourcePromotionError,
+    );
+    expect(Object.keys(gateway.getCommittedManifest())).toEqual([image.id]);
+
+    // Editing something and saving again is an ordinary way to react to a
+    // "could not save" notice, and it changes the content the next finish
+    // commits — so that finish needs an id of its own.
+    session.dispatch([{ op: 'set', key: 'title', value: 'Second thoughts' }]);
+    await session.finish();
+
+    // Asked one last time under the id that created the doubt, which is the
+    // only id an answer could ever come under. Rotating past it instead leaves
+    // the image in limbo for the rest of the session: no discard may touch it,
+    // because the protocol may already have it, and no promotion may take it,
+    // because a host holding it refuses a second id for the same bytes.
+    const asked = promote.mock.calls.map(([request]) => request.id);
+    expect(asked).toHaveLength(2);
+    expect(asked[1]).toBe(asked[0]);
+    expect(host.getSnapshot().protocolSections[stageSection]).toMatchObject({
+      title: 'Second thoughts',
+    });
+    expect(Object.keys(gateway.getCommittedManifest())).toEqual([image.id]);
+    expect(session.getSnapshot().stagedResources).toEqual([]);
+
+    // Nothing is left in doubt, so the session can be left cleanly.
+    const report = expectOk(await session.cancel());
+    expect(report.keptUnreconciled).toEqual([]);
+    expect(gateway.getStagingResidue()).toEqual([]);
+  });
+
+  it('asks the doubted id without committing under it, then promotes the changed draft under a new one', async () => {
+    const { gateway, host, onFinish, session } = createFixture();
+    const image = await stageImage(session, 'first');
+    session.dispatch([
+      { op: 'set', key: 'items', value: informationItems(image.id) },
+    ]);
+    const promote = vi.spyOn(gateway, 'promote');
+    // The other reading of the same uncertainty: the host never took the
+    // promotion at all.
+    gateway.failNext('promote', { reason: 'unavailable', retryable: true });
+
+    await expect(session.finish()).rejects.toBeInstanceOf(
+      ResourcePromotionError,
+    );
+    session.dispatch([{ op: 'set', key: 'title', value: 'Second thoughts' }]);
+    await session.finish();
+
+    const asked = promote.mock.calls.map(([request]) => request.id);
+    expect(asked).toHaveLength(3);
+    expect(asked[1]).toBe(asked[0]);
+    expect(asked[2]).not.toBe(asked[0]);
+    // The replay reached a manifest apply, which is the answer: a host holding
+    // the promotion would have handed it back instead. That apply refuses, so
+    // the draft the researcher has since written cannot reach the protocol
+    // under an id naming the draft before it.
+    expect(
+      onFinish.mock.calls
+        .map(([request]) => request.resourceManifest?.promotionId)
+        .filter((id) => id !== undefined),
+    ).toEqual([asked[2]]);
+    expect(host.getSnapshot().protocolSections[stageSection]).toMatchObject({
+      title: 'Second thoughts',
+    });
+    expect(Object.keys(gateway.getCommittedManifest())).toEqual([image.id]);
+    expect(gateway.getStagingResidue()).toEqual([]);
+  });
+
+  it('keeps a resource left in doubt when the draft is edited and the session is then cancelled', async () => {
+    const { gateway, session } = createFixture({
+      loseFirstPromotionAnswer: true,
+    });
+    const image = await stageImage(session, 'first');
+    session.dispatch([
+      { op: 'set', key: 'items', value: informationItems(image.id) },
+    ]);
+
+    await expect(session.finish()).rejects.toBeInstanceOf(
+      ResourcePromotionError,
+    );
+    session.dispatch([{ op: 'set', key: 'title', value: 'Second thoughts' }]);
+
+    // Editing says nothing about what the host did, so the cancel still may
+    // not discard bytes the protocol may already hold — and still has to say
+    // which resource it left behind.
+    const report = expectOk(await session.cancel());
+    expect(report.keptUnreconciled.map((kept) => kept.id)).toEqual([image.id]);
+    expect(session.getSnapshot().stagedResources.map((one) => one.id)).toEqual([
+      image.id,
+    ]);
+    expect(Object.keys(gateway.getCommittedManifest())).toEqual([image.id]);
   });
 
   it('gives a fresh session its own promotion id', async () => {
@@ -1333,6 +1452,69 @@ describe('a discard racing a field that would name the same resource', () => {
     expect(
       session.getSnapshot().stagedResources.map((staged) => staged.id),
     ).toEqual([roster.id]);
+  });
+
+  it('refuses a reference to a resource whose discard has already finished', async () => {
+    const { session, release } = heldDiscard();
+    const roster = await stageRoster(session, 'request-roster');
+    const other = await stageRoster(session, 'request-other', 'Second roster');
+    const resources = sessionGateway(session);
+
+    const discarding = resources.discardStaged(roster.id);
+    release();
+    expectOk(await discarding);
+
+    // A second field's browser read the list before the discard and nothing
+    // refreshes it, so the descriptor is still on screen. By now the in-flight
+    // mark has been lifted — it is lifted the moment the host answers — and
+    // without this the selection is taken and the field is left naming bytes
+    // that are gone.
+    const refused = expectFailure(resources.referenceStaged(roster.id));
+    expect(refused.reason).toBe('not-found');
+    expect(refused.retryable).toBe(false);
+    expect(refused.resourceId).toBe(roster.id);
+    expect(refused.message).toMatch(/no longer available/);
+    // Only the one that went: everything else the session staged is still a
+    // perfectly good thing for a field to choose.
+    expectOk(resources.referenceStaged(other.id));
+  });
+
+  it('refuses every reference a discard of everything took away', async () => {
+    const { session } = createFixture();
+    const roster = await stageRoster(session, 'request-roster');
+    const resources = sessionGateway(session);
+
+    expectOk(await resources.discardAllStaged());
+
+    expect(expectFailure(resources.referenceStaged(roster.id)).reason).toBe(
+      'not-found',
+    );
+  });
+
+  it('goes on taking references for a resource a finish committed', async () => {
+    const { session } = createFixture({
+      stage: 'NameGeneratorRoster',
+      committedAssets: {
+        'committed-roster': {
+          type: 'network',
+          id: 'committed-roster',
+          name: 'Last year',
+          source: 'last-year.json',
+        },
+      },
+    });
+    const roster = await stageRoster(session, 'request-roster');
+    session.dispatch([{ op: 'set', key: 'dataSource', value: roster.id }]);
+    await session.finish();
+
+    // Promoting takes a resource out of the staged set and, once the manifest
+    // catches up, out of the session altogether — but the protocol has it, so
+    // a field naming it is naming something that exists. Only a discard makes
+    // an id unusable.
+    const resources = sessionGateway(session);
+    expectOk(resources.referenceStaged(roster.id));
+    // And a resource the session never staged at all is none of its business.
+    expectOk(resources.referenceStaged('committed-roster'));
   });
 
   it('refuses every reference once the session has been cancelled', async () => {

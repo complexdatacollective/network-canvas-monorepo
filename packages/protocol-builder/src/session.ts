@@ -444,6 +444,16 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
    * long as the content is: a retry of the identical finish reuses it, and any
    * other finish mints its own. Cleared on success as well, so a finish that
    * has been committed can never be replayed under the key that committed it.
+   *
+   * **A key is never rotated away from while something is still waiting on
+   * it.** A promotion that ended without saying what it did can only ever be
+   * answered under the key it was made with, so a rotation before that answer
+   * arrives strands its resources for good: nothing may discard them, because
+   * the protocol may already have them, and nothing may promote them, because
+   * a host holding them refuses a second key for the same bytes. So the
+   * session settles the outstanding key before it mints another — see
+   * {@link promotionForFinish} — and only then is this slot the one commit it
+   * describes.
    */
   private promotion: Readonly<{ id: string; content: string }> | undefined;
   /**
@@ -738,23 +748,24 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       throw new ResourcePromotionError(hold.failure);
     }
 
-    // Read after the hold, because the hold is what fixes the staged set this
-    // finish promotes: content read before it could still change.
-    const content = promotionContent(document, hold.data.staged);
-    if (this.promotion?.content !== content) {
-      this.promotion = Object.freeze({ id: uuid({}), content });
-    }
     let outcome: StagedResourceFinishOutcome;
     try {
+      // Decided after the hold, because the hold is what fixes the staged set
+      // this finish promotes: content read before it could still change.
+      const promotion = await this.promotionForFinish(
+        resources,
+        document,
+        hold.data.staged,
+      );
       outcome = await finishStagedResources({
         gateway: resources.gateway,
-        promotionId: this.promotion.id,
+        promotionId: promotion.id,
         stageDocument: document,
         stageIndex: stageIndexForValidation(
           this.snapshot.protocolSections,
           this.snapshot.editedSection.identity.id,
         ),
-        staged: hold.data.staged,
+        staged: promotion.staged,
         secretHandle: (resourceId) => resources.secretHandle(resourceId),
         applyStage,
       });
@@ -804,6 +815,46 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
         // for the next cleanup or a cancel to reach.
       }
     }
+  }
+
+  /**
+   * The key this finish promotes under, and the staged resources it promotes.
+   *
+   * A retry of the identical finish keeps the key it already has: repeating
+   * that promotion is what settles it, whether the host answers with the
+   * promotion it made or with a refusal saying it never made one.
+   *
+   * A finish that would commit anything else has to mint its own key — and
+   * cannot simply take one, because the outstanding key is the only thing a
+   * resource left in doubt can be answered under. So the doubt is settled
+   * first, under the key that created it and without committing anything, and
+   * whatever that settling committed leaves the staged set: those resources
+   * are the protocol's now, and a host asked to promote them again refuses.
+   */
+  private async promotionForFinish(
+    resources: StagedResourceTracker,
+    document: SectionDoc,
+    staged: readonly ResourceDescriptor[],
+  ): Promise<Readonly<{ id: string; staged: readonly ResourceDescriptor[] }>> {
+    if (this.promotion?.content === promotionContent(document, staged)) {
+      return Object.freeze({ id: this.promotion.id, staged });
+    }
+
+    const settled = await resources.reconcileUndecidedPromotions();
+    if (settled.status === 'failed') {
+      throw new ResourcePromotionError(settled.failure);
+    }
+    const stillStaged = new Set(
+      resources.staged().map((descriptor) => descriptor.id),
+    );
+    const promoting = staged.filter((descriptor) =>
+      stillStaged.has(descriptor.id),
+    );
+    this.promotion = Object.freeze({
+      id: uuid({}),
+      content: promotionContent(document, promoting),
+    });
+    return Object.freeze({ id: this.promotion.id, staged: promoting });
   }
 
   /**
