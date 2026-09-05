@@ -24,7 +24,9 @@ describe('the questions a categorical bin asks', () => {
   it('saves the stage it opened, unchanged', async () => {
     const harness = renderStageEditor(openEditor());
 
-    await harness.roundTrip();
+    // The stage's name and the type its bins sort belong to sections this
+    // mount does not include.
+    await harness.roundTrip({ unowned: ['label', 'subject'] });
   });
 
   it('offers only the categorical attributes of the type the stage is about', async () => {
@@ -147,7 +149,7 @@ describe('the questions a categorical bin asks', () => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
 
-    await harness.roundTrip();
+    await harness.roundTrip({ unowned: ['label', 'subject'] });
   });
 });
 

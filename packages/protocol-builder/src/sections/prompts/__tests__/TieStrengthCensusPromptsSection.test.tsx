@@ -24,7 +24,11 @@ describe('the questions a tie-strength census asks about a pair', () => {
   it('saves the stage it opened, unchanged', async () => {
     const harness = renderStageEditor(openEditor());
 
-    await harness.roundTrip();
+    // The stage's name, the type it asks about and the screen shown before
+    // it belong to sections this mount does not include.
+    await harness.roundTrip({
+      unowned: ['label', 'subject', 'introductionPanel'],
+    });
   });
 
   it('opens a prompt holding everything it was saved with', async () => {
@@ -158,7 +162,9 @@ describe('the questions a tie-strength census asks about a pair', () => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
 
-    await harness.roundTrip();
+    await harness.roundTrip({
+      unowned: ['label', 'subject', 'introductionPanel'],
+    });
   });
 });
 

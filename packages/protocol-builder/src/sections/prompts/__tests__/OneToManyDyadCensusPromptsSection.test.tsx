@@ -29,7 +29,9 @@ describe('the questions a one-to-many dyad census asks', () => {
   it('saves the stage it opened, unchanged', async () => {
     const harness = renderStageEditor(openEditor());
 
-    await harness.roundTrip();
+    // The stage's name and the type it asks about belong to sections this
+    // mount does not include.
+    await harness.roundTrip({ unowned: ['label', 'subject'] });
   });
 
   it('sits beside the section that says what becomes of a person', async () => {

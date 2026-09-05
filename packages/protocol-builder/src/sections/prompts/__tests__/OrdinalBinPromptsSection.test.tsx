@@ -21,7 +21,9 @@ describe('the questions an ordinal bin asks', () => {
   it('saves the stage it opened, unchanged', async () => {
     const harness = renderStageEditor(openEditor());
 
-    await harness.roundTrip();
+    // The stage's name and the type its bins sort belong to sections this
+    // mount does not include.
+    await harness.roundTrip({ unowned: ['label', 'subject'] });
   });
 
   it('opens a prompt holding the scale and the gradient it was saved with', async () => {
