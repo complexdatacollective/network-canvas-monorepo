@@ -2,6 +2,8 @@ import { z } from 'zod';
 
 import { DEPLOYMENT_MODES } from '@codaco/studio-rpc/surfaces';
 
+import { isProxyAddress } from '../observability/proxy.ts';
+
 // Deliberately NO `.default()` calls anywhere in this file. Defaults declared
 // here would be compiled into the production server bundle, which is how the
 // publicly-known development auth secret used to ship inside the built
@@ -22,6 +24,12 @@ export const serverSchemas = {
 
   PORT: z.coerce.number().int().min(0).max(65535).optional(),
   HOST: z.string().min(1).optional(),
+  STUDIO_METRICS_TOKEN: z
+    .string()
+    .min(32)
+    .max(256)
+    .regex(/^[!-~]+$/)
+    .optional(),
   CLIENT_DIST: z.string().min(1).optional(),
 
   /**
@@ -81,6 +89,10 @@ export const serverSchemas = {
         .split(',')
         .map((entry) => entry.trim())
         .filter(Boolean),
+    )
+    .refine(
+      (entries) => entries.every(isProxyAddress),
+      'TRUSTED_PROXIES must contain only IP addresses or CIDRs',
     )
     .optional(),
 } as const;

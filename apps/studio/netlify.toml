@@ -25,7 +25,7 @@
 #
 # The gate that variable drives (src/client-assets.ts) does not run on this
 # lane at all: the client is served by the CDN, and src/netlify.ts's
-# `config.path` claims only /api, /rpc, /storage and /healthz, so no function
+# `config.path` claims only /api, /rpc, /storage and the operational endpoints, so no function
 # is invoked for a page path and the function-level refusal is unreachable.
 # The mode still reaches the client here, over the `status` procedure.
 #

@@ -1,8 +1,10 @@
 import pg from 'pg';
+import { parseIntoClientConfig } from 'pg-connection-string';
 
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 
 import type { DbEnv } from '../env.ts';
+import { logOperational } from '../observability/logger.ts';
 
 // The pool is lazy — no connection is made until the first query — so
 // creating it with the dev defaults never requires a running database.
@@ -20,20 +22,40 @@ const CONNECTION_TIMEOUT_MS = 10_000;
 // in development, where the login is the superuser. Garbage collection pins
 // the maintenance role the same way as durable delivery workers do.
 function connect(db: DbEnv, role?: string): pg.Pool {
-  const pool = new pg.Pool({
-    connectionString: db.url,
+  // pg gives URL fields precedence over an options object. Parse once before
+  // pinning the role, retaining host/TLS settings and other startup options.
+  const parsed = role === undefined ? undefined : parseIntoClientConfig(db.url);
+  const onConnect =
+    role === undefined
+      ? undefined
+      : async (client: pg.ClientBase) => {
+          const result = await client.query<{ role: string }>(
+            'SELECT current_user AS role',
+          );
+          if (result.rows[0]?.role !== role)
+            throw new Error('STUDIO_DATABASE_ROLE_MISMATCH');
+        };
+  const configuration = {
+    ...parsed,
+    // A URL can itself carry a connectionString query parameter. Never let
+    // the driver parse that nested value and override the pinned fields.
+    connectionString: role === undefined ? db.url : undefined,
     connectionTimeoutMillis: CONNECTION_TIMEOUT_MS,
-    ...(role === undefined ? {} : { options: `-c role=${role}` }),
-  });
+    options:
+      role === undefined
+        ? undefined
+        : `${parsed?.options ? `${parsed.options} ` : ''}-c role=${role}`,
+    // pg-pool awaits this hook before handing out a client; its connect event
+    // does not await async listeners. Fail closed if startup parsing changes.
+    onConnect,
+  };
+  const pool = new pg.Pool(configuration);
   // A client that dies while idle (database restart, network partition) emits
   // `error` on the pool with no query to reject. Node turns an unhandled
   // `error` event into an uncaught exception, so without this listener a
   // routine database restart takes the server down. node-postgres has already
   // discarded the client by the time this runs; the next checkout reconnects.
-  pool.on('error', (error) => {
-    // oxlint-disable-next-line no-console -- server-side failure diagnostics
-    console.error('Postgres pool error on an idle client:', error);
-  });
+  pool.on('error', () => logOperational('STUDIO_DATABASE_IDLE_ERROR'));
   return pool;
 }
 

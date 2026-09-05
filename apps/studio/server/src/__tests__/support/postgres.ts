@@ -3,11 +3,15 @@ import process from 'node:process';
 
 import pg from 'pg';
 
-import { TENANT_ROLES, TENANT_ROLES_SQL } from '@codaco/studio-sync/rls';
+import { TENANT_ROLES_SQL } from '@codaco/studio-sync/rls';
 
 import { renderSchemaStatements } from '../../../scripts/apply.ts';
 import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
-import { createOwnerPool } from '../../db/pool.ts';
+import {
+  createMaintenancePool,
+  createOwnerPool,
+  createPool,
+} from '../../db/pool.ts';
 import { stampFingerprint } from '../../db/schema.ts';
 import { type DbEnv, isLocalDatabase, readEnv } from '../../env.ts';
 
@@ -27,7 +31,7 @@ export async function reachableDb(): Promise<DbEnv | null> {
   // garbage collection's unqualified DELETEs.
   if (!db) return unavailable('DATABASE_URL is not set');
   if (!isLocalDatabase(db.url)) {
-    return unavailable(`${db.url} is not a local database`);
+    return unavailable('DATABASE_URL is not a local database');
   }
   const pool = createOwnerPool(db);
   let timer: NodeJS.Timeout | undefined;
@@ -49,8 +53,8 @@ export async function reachableDb(): Promise<DbEnv | null> {
       }),
     ]);
     return db;
-  } catch (err) {
-    return unavailable(`${db.url} is unreachable (${String(err)})`);
+  } catch {
+    return unavailable('the local test database is unreachable');
   } finally {
     // Otherwise the timer keeps the suite alive for the rest of its window.
     clearTimeout(timer);
@@ -85,19 +89,20 @@ export async function createScratchSchema(db: DbEnv): Promise<ScratchSchema> {
     await admin.end();
   }
 
-  // Not the server's constructors: the search_path is the whole point, and
-  // the server's pools deliberately never carry one.
-  // The timeout turns a leaked client into a fast failure rather than a hang.
-  const connect = (role?: string) =>
-    new pg.Pool({
-      connectionString: db.url,
-      options: `-c search_path=${name}${role === undefined ? '' : ` -c role=${role}`}`,
-      max: 20,
-      connectionTimeoutMillis: 10_000,
-    });
-  const pool = connect();
-  const app = connect(TENANT_ROLES.app);
-  const maintenance = connect(TENANT_ROLES.maintenance);
+  // Exercise the production role boundary. Only the scratch search path and
+  // capacity differ, so URL settings cannot silently weaken these RLS tests.
+  const url = new URL(db.url);
+  const existing = url.searchParams.get('options');
+  url.searchParams.set(
+    'options',
+    `${existing ? `${existing} ` : ''}-c search_path=${name}`,
+  );
+  const scratchDb = { url: url.toString() };
+  const pool = createOwnerPool(scratchDb);
+  const app = createPool(scratchDb);
+  const maintenance = createMaintenancePool(scratchDb);
+  for (const connection of [pool, app, maintenance])
+    connection.options.max = 20;
 
   return {
     pool,

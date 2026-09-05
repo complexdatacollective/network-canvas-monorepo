@@ -37,6 +37,8 @@ export type AuthEnv = {
 // refuses with 503; the server still boots.
 export type StudioEnv = {
   port: number;
+  metricsToken: string | undefined;
+  trustedProxies: string[];
   host: string;
   clientDist: string | undefined;
   s3: S3Env | undefined;
@@ -243,6 +245,8 @@ export function resolve(raw: RawEnv): StudioEnv {
 
   return {
     port: raw.PORT ?? DEFAULT_PORT,
+    metricsToken: raw.STUDIO_METRICS_TOKEN,
+    trustedProxies: raw.TRUSTED_PROXIES ?? [],
     host: raw.HOST ?? DEFAULT_HOST,
     clientDist: raw.CLIENT_DIST,
     s3: resolveS3(raw),

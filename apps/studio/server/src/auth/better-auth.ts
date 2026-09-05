@@ -9,6 +9,7 @@ import { SOCIAL_PROVIDERS } from '@codaco/studio-rpc';
 
 import { AUTH_TABLES } from '../db/auth-schema.ts';
 import type { AuthEnv } from '../env.ts';
+import { logOperational } from '../observability/logger.ts';
 import type { MagicLinkMailer } from './email.ts';
 import type { AuthService } from './service.ts';
 
@@ -20,6 +21,14 @@ export function createBetterAuthInstance(
   mailer: MagicLinkMailer,
 ) {
   return betterAuth({
+    logger: {
+      level: 'warn',
+      log(level) {
+        logOperational(
+          level === 'error' ? 'STUDIO_AUTH_ERROR' : 'STUDIO_AUTH_WARNING',
+        );
+      },
+    },
     baseURL: env.baseUrl,
     basePath: '/api/auth',
     secret: env.secret,
