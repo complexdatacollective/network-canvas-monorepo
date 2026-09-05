@@ -155,9 +155,15 @@ export type StagedResourceTracker = Readonly<{
    * - the host answers neither, so it is unreachable, the doubt stands, and
    *   the failure is reported for the finish to report.
    *
+   * The first of those is reported back as
+   * {@link ReconciledPromotions.committed}, because a promotion's manifest
+   * apply is where the stage's own commands were applied too: the caller is
+   * the only thing that knows which batches that apply carried, and it has to
+   * retire them rather than send them again.
+   *
    * Ok when nothing was in doubt, which is every ordinary finish.
    */
-  reconcileUndecidedPromotions(): Promise<ResourceResult<undefined>>;
+  reconcileUndecidedPromotions(): Promise<ResourceResult<ReconciledPromotions>>;
   /**
    * Takes the session for one finish: closes the staging window and returns
    * what the finish has to decide — the same instant, on purpose.
@@ -179,6 +185,24 @@ export type StagedResourceTracker = Readonly<{
    * is nothing left to commit and the discard may still be running.
    */
   finishing(): ResourceResult<StagedResourceFinishHold>;
+}>;
+
+/**
+ * What settling the outstanding doubts proved about them.
+ *
+ * A promotion is half of one atomic apply — the manifest entries the gateway
+ * writes and the stage's own commands the caller applies inside it — so
+ * proving the host holds the promotion proves the whole apply committed. The
+ * resource half is settled here; the caller settles the other half, which is
+ * why the ids it can settle are named rather than merely counted.
+ */
+export type ReconciledPromotions = Readonly<{
+  /**
+   * The doubted promotion ids the host answered with a promotion it had
+   * already made, rather than by reaching the replay's refusing apply.
+   * Everything those applies carried is committed.
+   */
+  committed: readonly string[];
 }>;
 
 /**
@@ -575,9 +599,9 @@ export function createStagedResourceTracker(
       );
     },
     reconcileUndecidedPromotions: async (): Promise<
-      ResourceResult<undefined>
+      ResourceResult<ReconciledPromotions>
     > => {
-      if (unreconciled.size === 0) return resourceOk(undefined);
+      if (unreconciled.size === 0) return reconciled([]);
       const doubted = new Map<string, string[]>();
       for (const [resourceId, promotionId] of unreconciled) {
         const named = doubted.get(promotionId);
@@ -585,6 +609,7 @@ export function createStagedResourceTracker(
         else named.push(resourceId);
       }
 
+      const committed: string[] = [];
       for (const [promotionId, resourceIds] of doubted) {
         const secretHandles = resourceIds.flatMap((resourceId) => {
           const handle = entries.get(resourceId)?.handle;
@@ -602,7 +627,15 @@ export function createStagedResourceTracker(
             return REPLAY_REFUSAL;
           },
         });
-        if (result.status === 'ok') continue;
+        if (result.status === 'ok') {
+          // Answered with the promotion it had already made: it never called
+          // the refusing apply, so what it holds is the apply that DID run —
+          // manifest entries and the stage commands beside them alike. A host
+          // that reached the apply and reported success anyway has answered
+          // its own refusal with an `ok`, and nothing may be retired on that.
+          if (!reachedApply) committed.push(promotionId);
+          continue;
+        }
         // The host had nothing under this id, so it never committed it. The
         // promotion above cannot tell that from a rollback worth repeating —
         // the answer is in whether the apply was reached, which only the
@@ -614,7 +647,7 @@ export function createStagedResourceTracker(
           }
         }
       }
-      return resourceOk(undefined);
+      return reconciled(committed);
     },
     finishing: (): ResourceResult<StagedResourceFinishHold> => {
       // A cancel sets this before it awaits its discard, so a finish starting
@@ -660,6 +693,14 @@ export function createStagedResourceTracker(
       return Object.freeze(awaiting);
     },
   });
+}
+
+function reconciled(
+  committed: readonly string[],
+): ResourceResult<ReconciledPromotions> {
+  return resourceOk(
+    Object.freeze({ committed: Object.freeze([...committed]) }),
+  );
 }
 
 /** What finish does with each staged resource, decided from the draft alone. */

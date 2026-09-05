@@ -71,8 +71,32 @@ const rosterFields: StageFormDraft = {
   behaviours: {},
 };
 
+/**
+ * A committed stage whose prompts are already there to be reordered, so an
+ * index-based command lands on content the protocol holds rather than on
+ * content a command in the same pending batch put there.
+ */
+const reorderableRosterFields: StageFormDraft = {
+  ...rosterFields,
+  prompts: [
+    { id: 'prompt-1', text: 'Pick someone you know' },
+    { id: 'prompt-2', text: 'Pick someone you have met once' },
+  ],
+};
+
+/** Those prompts after `moveItem` has swapped them. */
+const reorderedPrompts = [
+  { id: 'prompt-2', text: 'Pick someone you have met once' },
+  { id: 'prompt-1', text: 'Pick someone you know' },
+];
+
 type SessionFixtureOptions = Readonly<{
   stage?: 'Information' | 'NameGeneratorRoster';
+  /**
+   * The committed stage draft the session and the host both open with, for a
+   * test whose edits have to land on content the protocol already holds.
+   */
+  fields?: StageFormDraft;
   gateway?: InMemoryResourceGatewayOptions;
   /**
    * Commits the stage WITHOUT the manifest commands the promotion handed it —
@@ -115,7 +139,9 @@ type SessionFixtureOptions = Readonly<{
 
 function createFixture(options: SessionFixtureOptions = {}) {
   const stageType = options.stage ?? 'Information';
-  const fields = stageType === 'Information' ? informationFields : rosterFields;
+  const fields =
+    options.fields ??
+    (stageType === 'Information' ? informationFields : rosterFields);
   const protocolSections: Record<string, SectionDoc> = {
     [settingsSection]: { name: 'Resource lifecycle', schemaVersion: 8 },
     [stageOrderSection]: { stages: ['stage-1'] },
@@ -1255,6 +1281,75 @@ describe('a session that stages resources', () => {
     const report = expectOk(await session.cancel());
     expect(report.keptUnreconciled).toEqual([]);
     expect(gateway.getStagingResidue()).toEqual([]);
+  });
+
+  it('retires the stage commands the promotion it settled already carried', async () => {
+    const { host, session } = createFixture({
+      stage: 'NameGeneratorRoster',
+      fields: reorderableRosterFields,
+      loseFirstPromotionAnswer: true,
+    });
+    const roster = await stageRoster(session, 'roster-request');
+    session.dispatch([{ op: 'set', key: 'dataSource', value: roster.id }]);
+    // An index-based command, which is what makes a resend visible at all: a
+    // `set` applied twice leaves the same document, and a move applied twice
+    // puts the prompts back in the order the researcher changed.
+    session.dispatch([{ op: 'moveItem', key: 'prompts', from: 0, to: 1 }]);
+
+    // The host promoted the roster and applied the stage — both batches
+    // included, in the same atomic revision — and lost only its answer.
+    await expect(session.finish()).rejects.toBeInstanceOf(
+      ResourcePromotionError,
+    );
+    expect(host.getSnapshot().protocolSections[stageSection]).toMatchObject({
+      prompts: reorderedPrompts,
+    });
+
+    // Editing and saving again is the ordinary reaction to "could not save",
+    // and it is what makes the next finish settle the doubt first.
+    session.dispatch([{ op: 'set', key: 'label', value: 'Second thoughts' }]);
+    await session.finish();
+
+    // Settling proved the host holds that promotion, so the apply it was made
+    // inside committed — and the batches that apply carried are not the next
+    // finish's to send again. Sending them moves the prompt back, silently
+    // undoing the researcher's own reordering.
+    expect(host.getSnapshot().protocolSections[stageSection]).toMatchObject({
+      prompts: reorderedPrompts,
+      label: 'Second thoughts',
+    });
+    expect(
+      session.getSnapshot().pendingCommands.map((batch) => batch.id),
+    ).toEqual([3]);
+  });
+
+  it('keeps the stage commands of a promotion the host never made', async () => {
+    const { gateway, host, onFinish, session } = createFixture({
+      stage: 'NameGeneratorRoster',
+      fields: reorderableRosterFields,
+    });
+    const roster = await stageRoster(session, 'roster-request');
+    session.dispatch([{ op: 'set', key: 'dataSource', value: roster.id }]);
+    session.dispatch([{ op: 'moveItem', key: 'prompts', from: 0, to: 1 }]);
+    // The other reading of the same uncertainty: the host took nothing, so it
+    // applied nothing either, and these batches have still never been anywhere.
+    gateway.failNext('promote', { reason: 'unavailable', retryable: true });
+
+    await expect(session.finish()).rejects.toBeInstanceOf(
+      ResourcePromotionError,
+    );
+    session.dispatch([{ op: 'set', key: 'label', value: 'Second thoughts' }]);
+    await session.finish();
+
+    // Retiring them on this reading would lose the researcher's work outright:
+    // nothing the doubted promotion carried ever reached the protocol.
+    expect(
+      onFinish.mock.calls.at(-1)?.[0].pendingCommands.map((batch) => batch.id),
+    ).toEqual([1, 2, 3]);
+    expect(host.getSnapshot().protocolSections[stageSection]).toMatchObject({
+      prompts: reorderedPrompts,
+      label: 'Second thoughts',
+    });
   });
 
   it('asks the doubted id without committing under it, then promotes the changed draft under a new one', async () => {

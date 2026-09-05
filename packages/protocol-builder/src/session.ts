@@ -454,8 +454,19 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
    * session settles the outstanding key before it mints another — see
    * {@link promotionForFinish} — and only then is this slot the one commit it
    * describes.
+   *
+   * `carriedThroughBatchId` is the other half of that commit: the last pending
+   * batch the finish that minted this key handed to the host, applied inside
+   * the very promotion the key names. If settling proves the host holds the
+   * promotion, it holds those batches too — see
+   * {@link retirePendingCommandsThrough}. It is fixed when the key is minted
+   * and never raised on a retry, because a retry under a key the host has
+   * already completed is answered without applying anything: the batches the
+   * FIRST attempt carried are the only ones any answer can vouch for.
    */
-  private promotion: Readonly<{ id: string; content: string }> | undefined;
+  private promotion:
+    | Readonly<{ id: string; content: string; carriedThroughBatchId: number }>
+    | undefined;
   /**
    * The first batch withheld from `onCommands` because it references a staged
    * resource. Every later batch is withheld with it, so a live-applying host
@@ -719,21 +730,22 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       this.snapshot.editedSection.identity,
       this.snapshot.editedSection.fields,
     );
-    const pendingCommands = this.snapshot.pendingCommands;
-    const applyStage = async (
-      resourceManifest?: ManifestApplyRequest,
-    ): Promise<void> => {
-      await this.options.onFinish?.({
-        stageDocument: document,
-        validatedProtocol,
-        pendingCommands,
-        ...(resourceManifest === undefined ? {} : { resourceManifest }),
-      });
-    };
+    // The batches this apply carries are fixed before it starts and not
+    // re-read while it runs: an edit made mid-apply is not among them.
+    const applyStageCarrying =
+      (pendingCommands: readonly PendingCommandBatch[]) =>
+      async (resourceManifest?: ManifestApplyRequest): Promise<void> => {
+        await this.options.onFinish?.({
+          stageDocument: document,
+          validatedProtocol,
+          pendingCommands,
+          ...(resourceManifest === undefined ? {} : { resourceManifest }),
+        });
+      };
 
     const resources = this.resources;
     if (resources === undefined) {
-      await applyStage();
+      await applyStageCarrying(this.snapshot.pendingCommands)();
       return;
     }
 
@@ -749,6 +761,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     }
 
     let outcome: StagedResourceFinishOutcome;
+    let carriedThroughBatchId = 0;
     try {
       // Decided after the hold, because the hold is what fixes the staged set
       // this finish promotes: content read before it could still change.
@@ -757,6 +770,11 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
         document,
         hold.data.staged,
       );
+      // Read after that settling, not before it: settling a promotion the host
+      // turns out to hold retires the batches its apply already committed, and
+      // this apply must not carry them again.
+      const pendingCommands = this.snapshot.pendingCommands;
+      carriedThroughBatchId = pendingCommands.at(-1)?.id ?? 0;
       outcome = await finishStagedResources({
         gateway: resources.gateway,
         promotionId: promotion.id,
@@ -767,7 +785,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
         ),
         staged: promotion.staged,
         secretHandle: (resourceId) => resources.secretHandle(resourceId),
-        applyStage,
+        applyStage: applyStageCarrying(pendingCommands),
       });
     } finally {
       // Released before anything below can throw: a hold left standing would
@@ -800,7 +818,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     // while the apply was in flight is not among them, and letting a later
     // batch overtake it would leave the host holding a gap an acknowledgement
     // would close over the missing edit.
-    this.releaseWithheldThrough(pendingCommands.at(-1)?.id ?? 0);
+    this.releaseWithheldThrough(carriedThroughBatchId);
     if (outcome.discardFailures.length > 0) {
       try {
         this.options.onResourceCleanupFailed?.(outcome.discardFailures);
@@ -830,6 +848,14 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
    * first, under the key that created it and without committing anything, and
    * whatever that settling committed leaves the staged set: those resources
    * are the protocol's now, and a host asked to promote them again refuses.
+   *
+   * Settling decides the batches as well as the resources. The manifest apply
+   * of a promotion is where the stage's own commands were applied, so a
+   * settling that proves the host holds the promotion proves it holds them;
+   * they are retired here rather than sent again by the finish below, which
+   * would replay index-based commands against a document that has already
+   * moved. A settling that proves the host never took the promotion leaves
+   * them exactly where they are, because nothing they said ever arrived.
    */
   private async promotionForFinish(
     resources: StagedResourceTracker,
@@ -840,9 +866,16 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       return Object.freeze({ id: this.promotion.id, staged });
     }
 
+    const outstanding = this.promotion;
     const settled = await resources.reconcileUndecidedPromotions();
     if (settled.status === 'failed') {
       throw new ResourcePromotionError(settled.failure);
+    }
+    if (
+      outstanding !== undefined &&
+      settled.data.committed.includes(outstanding.id)
+    ) {
+      this.retirePendingCommandsThrough(outstanding.carriedThroughBatchId);
     }
     const stillStaged = new Set(
       resources.staged().map((descriptor) => descriptor.id),
@@ -853,8 +886,45 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     this.promotion = Object.freeze({
       id: uuid({}),
       content: promotionContent(document, promoting),
+      carriedThroughBatchId: this.snapshot.pendingCommands.at(-1)?.id ?? 0,
     });
     return Object.freeze({ id: this.promotion.id, staged: promoting });
+  }
+
+  /**
+   * Drops the batches an apply the session has since proved committed.
+   *
+   * The same delivered-prefix reconciliation {@link acknowledge} performs, for
+   * the one apply no acknowledgement is coming for: the finish that carried
+   * these batches was told its promotion had failed, so the host's own
+   * acknowledgement of that revision — if it was ever sent — belongs to a
+   * finish this session gave up on. Leaving them pending is what makes the
+   * next finish send them a second time, and `insertItem`, `removeItem` and
+   * `moveItem` are index-based: replayed against the document they have
+   * already moved, they duplicate an item or reorder the wrong one, and the
+   * finish that does it reports success.
+   *
+   * The draft is untouched. What the batches say is already in it, and moving
+   * them into the base is exactly what the host did with them — so the fields
+   * the researcher is looking at, and the validation of them, are unchanged.
+   */
+  private retirePendingCommandsThrough(throughBatchId: number): void {
+    const retired = this.snapshot.pendingCommands.filter(
+      (batch) => batch.id <= throughBatchId,
+    );
+    if (retired.length === 0) return;
+    this.baseFields = retired.reduce<SectionDoc>(
+      (doc, batch) => applyCommands(doc, [...batch.commands]),
+      cloneDoc(this.baseFields),
+    );
+    // The host has these, so the hold moves past them exactly as it does for a
+    // finish that carried them and was told so.
+    this.releaseWithheldThrough(throughBatchId);
+    this.replaceSnapshot({
+      pendingCommands: this.snapshot.pendingCommands.filter(
+        (batch) => batch.id > throughBatchId,
+      ),
+    });
   }
 
   /**
