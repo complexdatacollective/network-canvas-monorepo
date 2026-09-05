@@ -67,6 +67,19 @@ const resolveRemovalFocus = (
 const rowReplacedMessage = (itemLabel: string) =>
   `This ${itemLabel} was replaced while you were confirming, so nothing was removed. Check the list and remove it again if you still want to.`;
 
+/**
+ * Said when the list stopped accepting changes while the confirm was open.
+ *
+ * `ArrayField` WITHDRAWS a row's delete handler the moment its list becomes
+ * read-only or disabled — a lost lease, a section whose prerequisite is no
+ * longer chosen — and a confirm is a window the researcher can answer after
+ * that has happened. Calling a handler that is no longer there removes
+ * nothing, so the list's capability is asked about at the same moment its
+ * content is, and for the same reason.
+ */
+const removalUnavailableMessage = (itemLabel: string) =>
+  `This list stopped accepting changes while you were confirming, so this ${itemLabel} was not removed. Remove it again once the list can be edited.`;
+
 export type RowRemoval = Readonly<{
   /** The row being removed, as the list is rendering it right now. */
   item: Record<string, unknown>;
@@ -138,15 +151,19 @@ export function useConfirmRowRemoval<E extends HTMLElement = HTMLDivElement>(
             removalRef.current.getAddTrigger,
           ),
         onConfirm: () => {
-          if (
-            !isEqual(
-              stripManagedProperties(removalRef.current.item),
-              confirmedRow,
-            )
-          ) {
+          const { item, onDelete } = removalRef.current;
+          // The list can stop accepting changes inside the same window the row
+          // can be replaced in, and `ArrayField` says so by taking the delete
+          // handler away rather than by anything this row can see. Asked
+          // FIRST: a list that will not accept the removal is what determines
+          // what the researcher can do next, whichever row is now here.
+          if (onDelete === undefined) {
+            throw new Error(removalUnavailableMessage(itemLabel));
+          }
+          if (!isEqual(stripManagedProperties(item), confirmedRow)) {
             throw new Error(rowReplacedMessage(itemLabel));
           }
-          removalRef.current.onDelete?.();
+          onDelete();
         },
       });
     },

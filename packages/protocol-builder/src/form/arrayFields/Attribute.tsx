@@ -116,6 +116,19 @@ const rowReplacedMessage = (variableName: string) =>
   `The row you created “${variableName}” from was replaced while it was being created, so nothing has been assigned to it. Select “${variableName}” in the row you want it in.`;
 
 /**
+ * Said when the list stopped accepting changes while the attribute was being
+ * created — a lost lease, a section whose prerequisite stopped being chosen.
+ * `ArrayField` withdraws the row's update handler when that happens, and it is
+ * silent about it: an optional call here assigns nothing and says nothing,
+ * which reads as an assignment that worked.
+ *
+ * Like `rowReplacedMessage` this reports where the attribute went rather than a
+ * failure — creating it is the host's write, and it succeeded.
+ */
+const listClosedMessage = (variableName: string) =>
+  `“${variableName}” was created, but this list stopped accepting changes while it was being created, so nothing has been assigned to it. Select “${variableName}” in the row you want it in once the list can be edited.`;
+
+/**
  * Every variable id an array's COMMITTED value holds.
  *
  * Rows carry no stable identity. `committedValue` is frozen when the dialog
@@ -218,9 +231,13 @@ export default function Attribute({
   const { protocolContext, identity } = useStageEditorForm();
   const { openDialog } = useDialog();
   // Read when the creation COMPLETES, not when the row was drawn: the whole
-  // point is that the two are different moments.
+  // point is that the two are different moments. The handler is read the same
+  // way and for the same reason — `ArrayField` withdraws it while the list is
+  // not accepting changes, which can happen inside that window too.
   const rowRef = useRef(item);
   rowRef.current = item;
+  const onUpdateRef = useRef(onUpdate);
+  onUpdateRef.current = onUpdate;
   // A DISPLAY path only — the `data-field-name` seam E2E specs target. It is
   // the live position (fresco-ui's `committedIndex` holds it steady through a
   // drag preview) and is never an identity: nothing about this row's VALUE may
@@ -287,17 +304,28 @@ export default function Attribute({
         void (async () => {
           const created = await onCreateVariable(variableName);
           if (created === undefined) return;
-          if (!isEqual(stripManagedProperties(rowRef.current), createdFrom)) {
+          // Both of these are read when the creation COMPLETES: which row this
+          // control now names, and whether the list will still take a write to
+          // it. Either can have changed inside the round trip, and neither is
+          // something the assignment itself would report.
+          const assign = onUpdateRef.current;
+          const stillTheSameRow = isEqual(
+            stripManagedProperties(rowRef.current),
+            createdFrom,
+          );
+          if (!stillTheSameRow || assign === undefined) {
             await openDialog({
               type: 'acknowledge',
               intent: 'warning',
               title: `“${variableName}” was created but not assigned`,
-              description: rowReplacedMessage(variableName),
+              description: stillTheSameRow
+                ? listClosedMessage(variableName)
+                : rowReplacedMessage(variableName),
               actions: { primary: { label: 'Continue', value: true } },
             });
             return;
           }
-          onUpdate?.({ variable: created });
+          assign({ variable: created });
         })();
       }
     : undefined;

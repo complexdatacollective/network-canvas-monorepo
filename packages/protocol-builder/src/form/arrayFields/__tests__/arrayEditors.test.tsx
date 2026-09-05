@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useMemo } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -279,6 +279,50 @@ describe('Options', () => {
     );
   });
 
+  /**
+   * The other thing a confirm's window can outlive: not the row, but what the
+   * list will accept.
+   *
+   * `ArrayField` withdraws a row's delete handler the moment its list becomes
+   * read-only or disabled, and says nothing else about it. A confirm answered
+   * after that calls a handler that is no longer there, removes nothing, and
+   * closes as though the option had gone.
+   */
+  it('removes nothing when the list stops accepting changes mid-confirm', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      title: 'Welcome',
+      options: [
+        { label: 'Alpha', value: 'alpha' },
+        { label: 'Bravo', value: 'bravo' },
+      ],
+    });
+    renderOptions(session);
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Remove option 2' }),
+    );
+    await screen.findByRole('button', { name: 'Remove option' });
+
+    // The lease goes while the confirm sits open. The option is untouched —
+    // only what may be done to it has changed.
+    act(() => {
+      session.setAccess({ mode: 'readOnly', reason: 'lease-lost' });
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Remove option' }));
+
+    expect(
+      await screen.findByText(
+        'This list stopped accepting changes while you were confirming, so this option was not removed. Remove it again once the list can be edited.',
+      ),
+    ).toBeInTheDocument();
+    expect(session.getSnapshot().editedSection.fields.options).toEqual([
+      { label: 'Alpha', value: 'alpha' },
+      { label: 'Bravo', value: 'bravo' },
+    ]);
+  });
+
   it('refuses to finish the stage while a row it added is still blank', async () => {
     const user = userEvent.setup();
     const onFinish = vi.fn();
@@ -385,5 +429,49 @@ describe('MultiSelect', () => {
 
     await screen.findByText('Every row needs a value in each column.');
     expect(session.getSnapshot().pendingCommands).toEqual([]);
+  });
+});
+
+/**
+ * The same window, in the second of the three lists that share the confirm.
+ * A sort rule names its Remove control identically in every row, and the
+ * confirm's own control is named the same again, so the confirm is asked
+ * inside its own dialog rather than by name alone.
+ */
+describe('a row removal confirm the list stops accepting', () => {
+  it('removes no sort rule and says why', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      title: 'Welcome',
+      sortOrder: [
+        { property: 'name', direction: 'asc' },
+        { property: 'age', direction: 'desc' },
+      ],
+    });
+    renderSortRules(session);
+
+    const [firstRemove] = await screen.findAllByRole('button', {
+      name: 'Remove item',
+    });
+    await user.click(firstRemove!);
+    const dialog = await screen.findByRole('dialog');
+
+    act(() => {
+      session.setAccess({ mode: 'readOnly', reason: 'lease-lost' });
+    });
+
+    await user.click(
+      within(dialog).getByRole('button', { name: 'Remove item' }),
+    );
+
+    expect(
+      await screen.findByText(
+        'This list stopped accepting changes while you were confirming, so this item was not removed. Remove it again once the list can be edited.',
+      ),
+    ).toBeInTheDocument();
+    expect(session.getSnapshot().editedSection.fields.sortOrder).toEqual([
+      { property: 'name', direction: 'asc' },
+      { property: 'age', direction: 'desc' },
+    ]);
   });
 });

@@ -515,6 +515,45 @@ describe('a variable created while the list is moving', () => {
     ).toBeInTheDocument();
     expect(attributesOf(session)).toEqual(arrived);
   });
+
+  /**
+   * The other thing the round trip can outlive: not which row this control
+   * names, but whether the list will take a write to it at all. `ArrayField`
+   * withdraws a row's update handler while its list is not accepting changes,
+   * and says nothing else about it — so the assignment simply does not happen,
+   * and the attribute the host created is left in the codebook unmentioned.
+   */
+  it('says where the attribute went when the list stops accepting changes', async () => {
+    const user = userEvent.setup();
+    let finishCreation: (id: string) => void = () => undefined;
+    const created = new Promise<string | undefined>((resolve) => {
+      finishCreation = resolve;
+    });
+    const attributes = [{ variable: 'helpful', value: true }];
+    const session = openList(attributes, () => created);
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Create an attribute' }),
+    );
+
+    // The lease goes while the creation is still running. The row is untouched
+    // — only what may be written to it has changed.
+    act(() => {
+      session.setAccess({ mode: 'readOnly', reason: 'lease-lost' });
+    });
+
+    await act(async () => {
+      finishCreation('reassuring');
+      await created;
+    });
+
+    expect(
+      await screen.findByText(
+        /this list stopped accepting changes while it was being created/,
+      ),
+    ).toBeInTheDocument();
+    expect(attributesOf(session)).toEqual(attributes);
+  });
 });
 
 describe('committedAttributeVariableIds', () => {
