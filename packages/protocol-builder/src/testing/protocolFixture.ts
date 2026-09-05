@@ -1,5 +1,6 @@
 import type { StageType } from '@codaco/protocol-validation';
-import rosterNetwork from '@codaco/protocols/e2e/all-interfaces/assets/roster.json';
+import regionsLayer from '@codaco/protocols/e2e/all-interfaces/assets/regions.geojson?raw';
+import rosterNetwork from '@codaco/protocols/e2e/all-interfaces/assets/roster.json?raw';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
@@ -125,11 +126,26 @@ export function fixtureAssetManifest(): Record<string, unknown> {
  */
 export function fixtureAssetContent(source: string): Uint8Array | undefined {
   const content = FIXTURE_ASSET_CONTENT[source];
-  return content === undefined
-    ? undefined
-    : new TextEncoder().encode(JSON.stringify(content));
+  return content === undefined ? undefined : new TextEncoder().encode(content);
 }
 
-const FIXTURE_ASSET_CONTENT: Readonly<Record<string, unknown>> = Object.freeze({
+/**
+ * Every file the fixture ships beside its protocol, keyed by the `source` its
+ * manifest names, and holding the file's own text.
+ *
+ * One entry per file in `packages/protocols/e2e/all-interfaces/assets`, which
+ * is the rule rather than the current contents: a manifest entry naming a file
+ * that is missing from here is seeded with `{}` instead, and every editor that
+ * reads that file tests its "this cannot be read" state rather than itself —
+ * which is exactly how the map layer went unread. `protocolFixture.test.ts`
+ * holds the rule in place by asking the manifest, so a new asset added to the
+ * protocol fails here until its bytes are seeded too.
+ *
+ * The text rather than a parsed value, because bytes are what a gateway hands
+ * an editor: a file the editor parses itself must arrive the way the host
+ * would deliver it, not the way a bundler happened to read it.
+ */
+const FIXTURE_ASSET_CONTENT: Readonly<Record<string, string>> = Object.freeze({
+  'regions.geojson': regionsLayer,
   'roster.json': rosterNetwork,
 });

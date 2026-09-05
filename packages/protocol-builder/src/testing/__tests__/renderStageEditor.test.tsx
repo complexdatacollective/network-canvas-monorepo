@@ -65,6 +65,71 @@ function RosterColumnsSection({
   );
 }
 
+/**
+ * A section that reads a map LAYER, the way a geospatial stage's target-feature
+ * section does: the properties it offers a researcher are the layer's own, and
+ * only the file has them. Seeded with a placeholder body — valid JSON with no
+ * features in it — this section would offer nothing at all and say the layer
+ * cannot be read.
+ */
+function LayerFeaturesSection({
+  resourceId,
+  property,
+}: Readonly<{ resourceId: string; property: string }>) {
+  const gateway = useResourceGateway();
+  const [features, setFeatures] = useState<readonly string[]>([]);
+  const [unreadable, setUnreadable] = useState(false);
+
+  useEffect(() => {
+    let current = true;
+    const readFeatures = async () => {
+      const result = await gateway.download(resourceId);
+      if (!current) return;
+      const layer =
+        result.status === 'ok'
+          ? (JSON.parse(new TextDecoder().decode(result.data.bytes)) as unknown)
+          : undefined;
+      const collection =
+        typeof layer === 'object' && layer !== null && 'features' in layer
+          ? layer.features
+          : undefined;
+      if (!Array.isArray(collection) || collection.length === 0) {
+        setUnreadable(true);
+        return;
+      }
+      setFeatures(
+        collection.map((feature: unknown) => {
+          const properties =
+            typeof feature === 'object' &&
+            feature !== null &&
+            'properties' in feature
+              ? feature.properties
+              : undefined;
+          const value =
+            typeof properties === 'object' && properties !== null
+              ? (properties as Record<string, unknown>)[property]
+              : undefined;
+          return typeof value === 'string' ? value : '';
+        }),
+      );
+    };
+    void readFeatures();
+    return () => {
+      current = false;
+    };
+  }, [gateway, property, resourceId]);
+
+  return (
+    <BuilderSection title="Target feature">
+      <p>
+        {unreadable
+          ? 'That layer could not be read as GeoJSON.'
+          : `Features: ${features.join(', ')}`}
+      </p>
+    </BuilderSection>
+  );
+}
+
 describe('the stage-editor test harness', () => {
   it('opens a stage of the shared protocol over a real session', () => {
     const harness = renderStageEditor({
@@ -213,6 +278,29 @@ describe('the resources a harnessed stage can reach', () => {
     expect(
       listed.data.find((resource) => resource.id === 'roster_data'),
     ).toMatchObject({ name: 'Roster', kind: 'network', status: 'committed' });
+  });
+
+  /**
+   * The same claim for the OTHER file the protocol ships. A layer seeded with
+   * a placeholder parses as JSON and holds no features, so every geospatial
+   * section that reads it shows its unreadable state — which is what the whole
+   * interface's tests and stories were doing.
+   */
+  it('hands a section the features of the map layer the fixture ships', async () => {
+    const harness = renderStageEditor({
+      stageId: 'geospatial-1',
+      sections: <LayerFeaturesSection resourceId="geo_data" property="name" />,
+    });
+
+    // The layer's own regions, named by the property `geospatial-1` targets.
+    expect(
+      await screen.findByText('Features: Downtown, Uptown'),
+    ).toBeInTheDocument();
+    const listed = await harness.gateway.list();
+    if (listed.status !== 'ok') throw new Error('the gateway refused to list');
+    expect(
+      listed.data.find((resource) => resource.id === 'geo_data'),
+    ).toMatchObject({ name: 'Regions', kind: 'geojson', status: 'committed' });
   });
 
   it('joins an extra asset to the manifest and the gateway together', async () => {
