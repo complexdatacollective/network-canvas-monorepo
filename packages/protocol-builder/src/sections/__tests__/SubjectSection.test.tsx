@@ -80,7 +80,9 @@ describe('the section that says what a stage is about', () => {
       ),
     });
 
-    await harness.roundTrip();
+    // The stage's name and its edge form belong to sections this mount does
+    // not include.
+    await harness.roundTrip({ unowned: ['label', 'form'] });
   });
 });
 
@@ -192,7 +194,7 @@ describe('changing what a stage is about', () => {
       await screen.findByText('Who are the people you know?'),
     ).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'person' })).toBeChecked();
-    await harness.roundTrip();
+    await harness.roundTrip({ unowned: ['label', 'form'] });
   });
 
   /**

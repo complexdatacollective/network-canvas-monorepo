@@ -11,6 +11,7 @@ import type { ReactNode } from 'react';
 import { expect } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
+import { resolveFieldPath } from '@codaco/fresco-ui/form/FieldNamespace';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import type { StageType } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
@@ -42,6 +43,9 @@ import {
 } from './protocolFixture.ts';
 
 const DEFAULT_SUBMIT_LABEL = 'Save stage';
+
+/** DOM id of the stage form the harness mounts. See `HarnessEditor`. */
+const STAGE_FORM_ID = 'stage-form';
 
 const OWNER = 'harness-tab';
 
@@ -82,14 +86,42 @@ export type StageEditorHarness = RenderResult &
     /** Every local batch the authoritative protocol has not acknowledged. */
     pendingCommands(): readonly PendingCommandBatch[];
     /**
-     * Saves the stage unchanged and proves nothing was dropped on the way.
+     * The top-level stage keys the mounted sections have a field for.
      *
-     * The one test every named editor owes the schema: a stage a researcher
-     * opened and saved without touching must come back the same. An editor
-     * that has no section for one of its interface's keys silently drops it
-     * otherwise, and the loss only shows up in an exported protocol.
+     * Read from the fields themselves — `data-field-path` is the canonical key
+     * the form store files a field under, the same string `ProtocolField`
+     * registers with the outline — and scoped to the stage form, so a row
+     * dialog's own fields (which belong to a form of their own, in a portal)
+     * are not mistaken for the stage's.
      */
-    roundTrip(): Promise<FinishRequest>;
+    ownedKeys(): string[];
+    /**
+     * Saves the stage unchanged and proves every key is still accounted for.
+     *
+     * The one test every named editor owes the schema, and it is two claims,
+     * because a key can be lost in two different ways.
+     *
+     * A key the editor RENDERS can be dropped or altered by the save itself,
+     * which the comparison against the seeded stage catches. A key NO section
+     * renders is a quieter failure: it survives the round trip untouched, by
+     * design — an interface with no `skipLogic` section must not delete skip
+     * logic someone authored — so a comparison can never see it. The editor is
+     * simply missing a section, and a researcher who opens the stage cannot
+     * see or change something their protocol holds.
+     *
+     * So an unrendered key has to be declared. `unowned` is where an editor
+     * says "this interface's schema has this key and nothing here edits it
+     * yet", one key at a time, in a list a reviewer can read.
+     */
+    roundTrip(
+      options?: Readonly<{
+        /**
+         * Keys the mounted sections deliberately do not own. Every other key
+         * of the seeded stage must be owned by a mounted section.
+         */
+        unowned?: readonly string[];
+      }>,
+    ): Promise<FinishRequest>;
     /** The section outline, in the order it is rendered. */
     outline(): { title: string; state: string }[];
     /** Takes editing away from this session, or gives it back. */
@@ -222,7 +254,13 @@ export function renderStageEditor(
       expect(button).toHaveAttribute('aria-busy', 'false');
       expect(refusalOnScreen(view.baseElement)).toBe(true);
     });
-    return finishRequests.at(-1) ?? null;
+    // Answered against the count taken before the click, never `at(-1)`: after
+    // one save has succeeded, the last request is a request — and a refused
+    // submit reported as that earlier success is a refusal a test can neither
+    // see nor assert against.
+    return finishRequests.length > before
+      ? (finishRequests.at(-1) ?? null)
+      : null;
   };
 
   return {
@@ -254,7 +292,19 @@ export function renderStageEditor(
       });
     },
     pendingCommands: () => session.getSnapshot().pendingCommands,
-    roundTrip: async () => {
+    ownedKeys: () => readOwnedKeys(),
+    roundTrip: async ({ unowned = [] } = {}) => {
+      // Before the save, because it is a question about what is on screen and
+      // the save's own failure would otherwise hide it.
+      const owned = new Set(readOwnedKeys());
+      const orphaned = Object.keys(seeded.fields).filter(
+        (key) => !owned.has(key) && !unowned.includes(key),
+      );
+      if (orphaned.length > 0) {
+        throw new Error(
+          `Nothing mounted here edits "${seeded.id}" keys: ${orphaned.join(', ')}. They round-trip untouched, so a researcher cannot see or change them. Add the section that owns each one, or name it in \`unowned\` to say the editor does not own it yet.`,
+        );
+      }
       const request = await submit();
       if (request === null) {
         throw new Error(
@@ -305,7 +355,7 @@ function HarnessEditor({
   sections?: ReactNode;
   registry?: Partial<StageEditorRegistry>;
 }>) {
-  const controller = useStageEditorController(session, 'stage-form');
+  const controller = useStageEditorController(session, STAGE_FORM_ID);
 
   if (Editor !== undefined) {
     return (
@@ -425,6 +475,33 @@ function fixtureResources(): InMemoryResourceSeed[] {
       ];
     },
   );
+}
+
+/**
+ * The top-level stage keys the mounted sections have a field registered for.
+ *
+ * Scoped to the stage's own `<form>`. A row dialog mounts a form store of its
+ * own in a portal outside it, and its fields are named after the row's
+ * properties — `text`, `content` — which are not stage keys at all.
+ */
+function readOwnedKeys(): string[] {
+  const form = document.getElementById(STAGE_FORM_ID);
+  if (form === null) return [];
+  const keys = new Set<string>();
+  for (const field of form.querySelectorAll('[data-field-path]')) {
+    const registeredName = field.getAttribute('data-field-path');
+    if (registeredName === null || registeredName === '') continue;
+    // Parsed rather than split on a dot: a protocol-authored key may contain
+    // one, and `["prompt text"]` is a single name with a space in it.
+    let root: string | number | undefined;
+    try {
+      [root] = resolveFieldPath([], registeredName, 'path');
+    } catch {
+      continue;
+    }
+    if (root !== undefined) keys.add(String(root));
+  }
+  return [...keys].toSorted();
 }
 
 function readOutline(): { title: string; state: string }[] {

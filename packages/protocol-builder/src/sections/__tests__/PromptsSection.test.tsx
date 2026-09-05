@@ -52,7 +52,9 @@ describe('the prompt list a stage owns', () => {
   it('saves the stage it opened, unchanged', async () => {
     const harness = renderStageEditor(openEditor());
 
-    await harness.roundTrip();
+    // The stage's type and its add-a-person form belong to the name
+    // generator family's own editor, not to this section.
+    await harness.roundTrip({ unowned: ['subject', 'form'] });
   });
 
   it('adds a prompt with an identity of its own', async () => {
@@ -285,7 +287,7 @@ describe('a row editor with a defect in it', () => {
         'Stage name',
         'Prompts',
       ]);
-      await harness.roundTrip();
+      await harness.roundTrip({ unowned: ['subject', 'form'] });
     } finally {
       consoleError.mockRestore();
     }

@@ -39,7 +39,8 @@ describe('the introduction a participant reads before a task', () => {
       state: 'Finished',
     });
 
-    await harness.roundTrip();
+    // An ego form's `form` is the family's own section.
+    await harness.roundTrip({ unowned: ['form'] });
   });
 
   /**
