@@ -214,3 +214,139 @@ describe('the tasks a sociogram sets', () => {
     );
   });
 });
+
+/**
+ * The stack of nodes the participant has not placed yet is handed to them in
+ * an order, and `sociogramPromptSchema.sortOrder` is where a prompt says what
+ * that order is. It is the one place in a sociogram a researcher can decide
+ * who the participant is asked about first, so a stage that holds one and an
+ * editor that cannot show it is an editor that quietly discards a decision.
+ */
+const SORTED_PROMPT = {
+  id: 'sociogram-prompt-1',
+  text: 'Place the people who know each other close together',
+  layout: { layoutVariable: 'layout' },
+  sortOrder: [{ property: 'name', direction: 'asc' }],
+};
+
+const openWithSortOrder = () => ({
+  stage: {
+    type: 'Sociogram' as const,
+    fields: {
+      label: 'Sociogram',
+      subject: { entity: 'node', type: 'person' },
+      background: { concentricCircles: 4, skewedTowardCenter: true },
+      behaviours: { automaticLayout: true },
+      prompts: [SORTED_PROMPT],
+    },
+  },
+  sections,
+});
+
+const openPrompt = async (harness: StageEditorHarness): Promise<void> => {
+  const [first] = screen.getAllByRole('button', { name: 'Edit prompt' });
+  await harness.user.click(first as HTMLElement);
+  await screen.findByRole('dialog');
+};
+
+describe('the order a sociogram hands unplaced nodes over in', () => {
+  /**
+   * An order the prompt already has opens switched ON, holding its rules.
+   * Switched off it would look exactly like a prompt that never had one — and
+   * closing a `Section` clears the fields inside it, so saving the prompt from
+   * there would drop the rules without saying so.
+   */
+  it('opens a prompt’s sort order switched on, holding the rule it was saved with', async () => {
+    const harness = renderStageEditor(openWithSortOrder());
+
+    await openPrompt(harness);
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('switch', { name: 'Sort unplaced nodes' }),
+      ).toBeChecked(),
+    );
+    expect(screen.getByRole('combobox', { name: 'Property' })).toHaveValue(
+      'name',
+    );
+    expect(screen.getByRole('combobox', { name: 'Direction' })).toHaveValue(
+      'asc',
+    );
+  });
+
+  it('saves a rule the researcher added to a prompt that had none', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    await openPrompt(harness);
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Sort unplaced nodes' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', {
+        name: 'Add a rule for the order unplaced nodes are handed over in',
+      }),
+    );
+    await harness.user.selectOptions(
+      await screen.findByRole('combobox', { name: 'Property' }),
+      'age',
+    );
+    await harness.user.selectOptions(
+      screen.getByRole('combobox', { name: 'Direction' }),
+      'desc',
+    );
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    expect(prompts(request?.stageDocument ?? {})[0]?.sortOrder).toEqual([
+      { property: 'age', direction: 'desc' },
+    ]);
+  });
+
+  /**
+   * Opening a prompt and saving it is not a decision about its sort order, so
+   * the order has to come back out of the dialog exactly as it went in.
+   */
+  it('keeps a sort order the researcher opened the prompt on and left alone', async () => {
+    const harness = renderStageEditor(openWithSortOrder());
+
+    await openPrompt(harness);
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    // Its own rules, and the layout attribute they are read against: a save
+    // from the dialog rebuilds the row out of the fields it rendered, so both
+    // are claims about what the dialog put back.
+    const saved = prompts(request?.stageDocument ?? {})[0];
+    expect(saved?.sortOrder).toEqual(SORTED_PROMPT.sortOrder);
+    expect(saved?.layout).toEqual(SORTED_PROMPT.layout);
+  });
+
+  /**
+   * Switching the group off is how a researcher says the stack has no order
+   * they care about, and the schema spells that as no key at all rather than
+   * an empty list.
+   */
+  it('drops the sort order when the researcher switches it off', async () => {
+    const harness = renderStageEditor(openWithSortOrder());
+
+    await openPrompt(harness);
+    await harness.user.click(
+      await screen.findByRole('switch', { name: 'Sort unplaced nodes' }),
+    );
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    expect(prompts(request?.stageDocument ?? {})[0]).not.toHaveProperty(
+      'sortOrder',
+    );
+  });
+});

@@ -12,7 +12,17 @@ import Section from '@codaco/fresco-ui/Section';
 
 import { EntitySelectControl } from '../../fields/EntitySelectField.tsx';
 import RichTextField from '../../fields/RichTextField.tsx';
+import {
+  getSortOrderOptionGetter,
+  type SortableProperty,
+} from '../../fields/sortOrderOptions.ts';
 import { VariablePickerControl } from '../../fields/VariablePicker.tsx';
+import MultiSelect, {
+  makeMultiSelectValidation,
+  type PropertyField,
+} from '../../form/arrayFields/MultiSelect.tsx';
+import { DialogFormField } from '../../form/DialogForm.tsx';
+import type { CodebookSubject } from '../../protocol-context.ts';
 import type { RowEditorProps, RowPreviewProps } from '../rowRenderers.tsx';
 import { OptionalCheckboxGroupField } from './canvasFields.tsx';
 import {
@@ -20,6 +30,7 @@ import {
   LAYOUT_TYPES,
   useEdgeTypeOptions,
   useStageSubject,
+  useSubjectVariables,
   useVariableOptions,
 } from './codebookOptions.ts';
 import CreateVariableAction from './CreateVariableAction.tsx';
@@ -33,10 +44,97 @@ import {
 
 const TEXT_FIELD = 'text';
 const LAYOUT_VARIABLE_FIELD = 'layout.layoutVariable';
+const SORT_ORDER_FIELD = 'sortOrder';
 const DISPLAY_EDGES_FIELD = 'edges.display';
 const CREATE_EDGE_FIELD = 'edges.create';
 const HIGHLIGHT_VARIABLE_FIELD = 'highlight.variable';
 const ALLOW_HIGHLIGHTING_FIELD = 'highlight.allowHighlighting';
+
+/** A sort rule is one property and one direction, in that order. */
+const SORT_RULE_PROPERTIES: PropertyField[] = [
+  { fieldName: 'property' },
+  { fieldName: 'direction' },
+];
+
+/**
+ * The rule that can actually refuse the save. A row's own cells only display
+ * their errors (see `RowField`), and a rule missing its direction fails the
+ * protocol's `SortRuleSchema` against a path rather than against the control
+ * the researcher left half-filled.
+ */
+const SORT_RULE_VALIDATION = makeMultiSelectValidation(SORT_RULE_PROPERTIES);
+
+/**
+ * The order the nodes the participant has not placed yet are handed to them
+ * in — `sociogramPromptSchema.sortOrder`.
+ *
+ * An optional group rather than a plain list: a prompt with no rules hands the
+ * nodes over in the order they were added, which is a real answer, and closing
+ * the group is how the researcher says so — Fresco's `Section` clears the
+ * fields inside it, so the key leaves the saved prompt entirely rather than
+ * staying behind as an empty list. A prompt that ALREADY has rules therefore
+ * has to open switched on, or saving it from a closed group would throw them
+ * away without saying anything.
+ *
+ * Written here rather than shared because the sociogram is this branch's only
+ * interface with a prompt-level sort order; the bin and census prompts bring a
+ * `SortOrderRows` of the same shape, and this should become a call to that one
+ * when the two meet.
+ */
+function SortUnplacedNodes({
+  subject,
+  committedRules,
+}: Readonly<{
+  subject: CodebookSubject | undefined;
+  /**
+   * The rules this prompt already has, which decide whether the group starts
+   * open. Read from the row rather than from form state: the field is inside
+   * the group, so a reactive read could never see a value until the group was
+   * already open.
+   */
+  committedRules: unknown;
+}>) {
+  const variables = useSubjectVariables(subject);
+  const properties = useMemo<SortableProperty[]>(
+    () =>
+      Object.entries(variables).map(([value, variable]) => ({
+        value,
+        label: variable.name,
+        type: variable.type,
+      })),
+    [variables],
+  );
+  const options = useMemo(
+    () => getSortOrderOptionGetter(properties),
+    [properties],
+  );
+  // One rule per property at most: every rule after that could only repeat a
+  // property the getter has already disabled.
+  const maxItems = options('property', undefined, []).length;
+  const configured = Array.isArray(committedRules) && committedRules.length > 0;
+
+  return (
+    <Section
+      title="Sort unplaced nodes"
+      description="Choose the order the nodes the participant has not placed yet are handed to them in."
+      toggleable
+      defaultOpen={configured}
+    >
+      <DialogFormField<typeof MultiSelect>
+        name={SORT_ORDER_FIELD}
+        label="Sort rules"
+        hint="Rules are applied in order. Use the asterisk to keep the order the nodes were added in."
+        component={MultiSelect}
+        addButtonLabel="Add a rule for the order unplaced nodes are handed over in"
+        emptyStateMessage="No rules yet, so nodes are handed over in the order they were added."
+        properties={SORT_RULE_PROPERTIES}
+        options={options}
+        maxItems={maxItems}
+        {...SORT_RULE_VALIDATION}
+      />
+    </Section>
+  );
+}
 
 /**
  * What tapping a node does.
@@ -230,6 +328,10 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
           onCreated={(variableId) =>
             setRowValue(LAYOUT_VARIABLE_FIELD, variableId)
           }
+        />
+        <SortUnplacedNodes
+          subject={subject}
+          committedRules={item[SORT_ORDER_FIELD]}
         />
       </Section>
 
