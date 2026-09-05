@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { computeAutoNameUpdate } from '../computeAutoNameUpdate';
+import { computeAutoNameUpdate } from '../computeAutoNameUpdate.ts';
 
 describe('computeAutoNameUpdate', () => {
   it('never auto-names an existing stage', () => {

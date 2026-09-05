@@ -4,7 +4,7 @@ import {
   buildListQualifier,
   resolveStageQualifier,
   resolveStageSubjectName,
-} from '../resolveStageNameParts';
+} from '../resolveStageNameParts.ts';
 
 const nameByType: Record<string, string> = {
   person: 'Person',
