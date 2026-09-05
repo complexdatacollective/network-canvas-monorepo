@@ -9,6 +9,7 @@ import {
 import {
   applyCommands,
   canonicalize,
+  contentHash,
   type Command,
   type SectionDoc,
 } from '@codaco/studio-sync/apply';
@@ -645,7 +646,11 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
         // screen is base + prefix + the rest whichever host this is, so
         // nothing is replayed and no undo is thrown away for a change that did
         // not touch the stage.
-        const accounted = this.deliveredPrefixLength(fields, pendingCommands);
+        const canonicalStage = canonicalize(fields);
+        const accounted = this.deliveredPrefixLength(
+          pendingCommands,
+          (candidate) => canonicalize(candidate) === canonicalStage,
+        );
         if (accounted === null) {
           // The authoritative stage moved for a reason this session cannot
           // account for, and the batches it is holding were built against the
@@ -950,11 +955,15 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
    * - **It does** — then it has decided what the stage document becomes, and
    *   the researcher's unsaved commands have to go somewhere. They are folded
    *   in front of the request's own commands in that one section update, so
-   *   both land in a single host apply against the authoritative document they
-   *   were built from, and the request's own decision wins wherever the two
-   *   touch the same key. A collaborator's change to this stage is caught by
-   *   `stale-base` exactly as it would be for any other section, and a refusal
-   *   leaves every pending batch untouched for the researcher to try again.
+   *   both land in a single host apply against the document they were built
+   *   from, and the request's own decision wins wherever the two touch the same
+   *   key. Only the batches that document does NOT already contain are folded:
+   *   the request names it by content hash, which is the same evidence
+   *   `deliveredPrefixLength` reads on the other path, and folding a batch a
+   *   live-applying host has already applied would apply it twice. A stage
+   *   neither this session's base nor that base plus a run of its batches is
+   *   refused with `stale-base`, which leaves every pending batch untouched for
+   *   the researcher to try again.
    *
    * One case still refuses outright: a pending batch withheld from a
    * live-applying host because it references a resource this session has
@@ -1022,8 +1031,33 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       });
     }
 
+    // Only the batches the host is not already holding. It names the document
+    // it will apply this update to by content hash, so which of them it has
+    // is read off the request rather than assumed: folding one a live-applying
+    // host has already applied would apply it twice, and an `insertItem`
+    // applied twice adds the row twice.
+    const identity = this.snapshot.editedSection.identity;
+    const accounted = this.deliveredPrefixLength(
+      pending,
+      (candidate) =>
+        contentHash(stageDocument(identity, candidate)) ===
+        stageEdit.expectedContentHash,
+    );
+    if (accounted === null) {
+      // The stage the request was built from is neither this session's base nor
+      // that base with any run of its batches applied. Refused with the base,
+      // the batches, the draft and the history exactly as they were.
+      return Object.freeze({
+        status: 'refused',
+        failure: compoundFailure(
+          'stale-base',
+          'the authoritative stage changed while this change was being made, so nothing local was altered',
+          stageSectionId,
+        ),
+      });
+    }
     const commands = Object.freeze([
-      ...pending.flatMap((batch) => [...batch.commands]),
+      ...pending.slice(accounted).flatMap((batch) => [...batch.commands]),
       ...stageEdit.commands,
     ]);
     return Object.freeze({
@@ -1037,24 +1071,28 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
   }
 
   /**
-   * How many of these pending batches an authoritative stage already contains.
+   * How many of these pending batches a host's stage already contains.
    *
    * A live-applying host receives the batches in order and applies them in
-   * order, so a stage it answers a codebook-only request with is this session's
-   * base plus a PREFIX of them: none if it buffers until finish, all of them if
-   * it applied every one it was given, a leading run if one was made while the
-   * request was in flight. `null` means the stage is none of those — it moved
-   * for a reason this session cannot account for.
+   * order, so any stage it holds is this session's base plus a PREFIX of them:
+   * none if it buffers until finish, all of them if it applied every one it was
+   * given, a leading run if one was made while a request was in flight. `null`
+   * means the stage is none of those — it moved for a reason this session
+   * cannot account for.
+   *
+   * Which stage is being asked about differs by path, so the caller says how to
+   * recognise it: the codebook-only path compares the stage the host ANSWERED
+   * with, and the fold compares the content hash the request was BUILT from —
+   * the document the host is about to apply the folded commands to.
    */
   private deliveredPrefixLength(
-    stage: StageFormDraft,
     pending: readonly PendingCommandBatch[],
+    isHostStage: (fields: SectionDoc) => boolean,
   ): number | null {
-    const canonicalStage = canonicalize(stage);
     let document = cloneDoc(this.baseFields);
-    if (canonicalize(document) === canonicalStage) return 0;
+    if (isHostStage(document)) return 0;
     // Without an `onCommands` the host has been given nothing, so the base is
-    // the only stage it can honestly answer with.
+    // the only stage it can honestly be holding.
     if (this.options.onCommands === undefined) return null;
     for (const [index, batch] of pending.entries()) {
       // A withheld batch never reached the host, and neither did any after it.
@@ -1068,10 +1106,10 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
         document = applyCommands(document, [...batch.commands]);
       } catch {
         // A batch that no longer applies to this base cannot describe the
-        // difference between it and the authoritative stage.
+        // difference between it and the host's stage.
         return null;
       }
-      if (canonicalize(document) === canonicalStage) return index + 1;
+      if (isHostStage(document)) return index + 1;
     }
     return null;
   }

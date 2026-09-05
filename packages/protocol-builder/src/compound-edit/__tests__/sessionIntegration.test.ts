@@ -9,6 +9,7 @@ import {
   createStageIdentity,
   ProtocolBuilderSessionStore,
   stageDraftFromDocument,
+  type CompoundEditSubmission,
   type PendingCommandBatch,
   type ProtocolBuilderPresence,
 } from '../../session.ts';
@@ -108,6 +109,9 @@ function createSession(
     });
   });
   let finishes = 0;
+  const onCompoundEdit = vi.fn((submission: CompoundEditSubmission) =>
+    host.submit(submission),
+  );
   const session = new ProtocolBuilderSessionStore({
     identity: createStageIdentity('Information', () => 'stage-1'),
     fields: { label: 'Welcome', title: 'Welcome', items: [] },
@@ -124,7 +128,7 @@ function createSession(
     buildCandidate: ({ stageDocument, protocolSections: sections }) =>
       assembleProtocolSections({ ...sections, [stageSection]: stageDocument }),
     onCommands,
-    onCompoundEdit: (submission) => host.submit(submission),
+    onCompoundEdit,
     // The same host, applying the stage's own batches: a finish is what
     // eventually makes the researcher's unsaved work authoritative.
     onFinish: ({ pendingCommands }) => {
@@ -158,6 +162,7 @@ function createSession(
   return {
     host,
     onCommands,
+    onCompoundEdit,
     session,
     /** Delivers every acknowledgement the live host still owes this session. */
     settleAcknowledgements: () => {
@@ -233,6 +238,30 @@ const createVenueOnly = {
     },
   ],
 };
+
+/**
+ * A create-a-place request that also renames the stage, built against whatever
+ * stage document the host is holding right now.
+ *
+ * The hash is what a caller has: `withStageSectionEdit` reads the authoritative
+ * stage and hashes it, so the request says exactly which document the host will
+ * apply the fold onto.
+ */
+const renameAndCreatePlace = (host: InMemoryCompoundHost) => ({
+  id: 'rename-and-create-place',
+  description: 'Rename the stage and create a place',
+  edits: [
+    {
+      kind: 'update' as const,
+      sectionId: stageSection,
+      expectedContentHash: contentHash(
+        host.getSnapshot().protocolSections[stageSection] ?? {},
+      ),
+      commands: [{ op: 'set' as const, key: 'label', value: 'Places' }],
+    },
+    request.edits[1]!,
+  ],
+});
 
 /** One block of an Information stage's page, as the schema stores it. */
 const block = (id: string) => ({ id, type: 'text', content: `Block ${id}` });
@@ -672,6 +701,95 @@ describe('a codebook-only compound against each kind of host', () => {
     expect(host.getSnapshot().protocolSections[stageSection]).toMatchObject({
       items: [block('one'), block('two')],
     });
+  });
+
+  /**
+   * The same reading, on the other path. A request that carries a stage edit
+   * folds the researcher's unsaved batches in front of it — and a live-applying
+   * host is already holding some of them, so folding all of them applies those
+   * twice. Written with `insertItem`, which is where applying twice shows: a
+   * `set` applied twice is the same stage, a row inserted twice is not.
+   */
+  it('folds only the batches a live-applying host is not already holding', async () => {
+    const { host, session } = createSession({ applyLive: true });
+    session.dispatch(insertBlock('one', 0));
+
+    await expect(
+      session.requestCompoundEdit(renameAndCreatePlace(host)),
+    ).resolves.toMatchObject({ status: 'applied' });
+
+    // Once, not twice — and the request's own decision is there beside it.
+    expect(host.getSnapshot().protocolSections[stageSection]).toMatchObject({
+      items: [block('one')],
+      label: 'Places',
+    });
+    expect(host.getSnapshot().protocolSections[placeSection]).toMatchObject({
+      name: 'Place',
+    });
+    expect(stageItems(session)).toEqual([block('one')]);
+    // Everything the request carried is the host's now, so finish sends none of
+    // it again.
+    expect(session.getSnapshot().pendingCommands).toEqual([]);
+    await session.finish();
+    expect(host.getSnapshot().protocolSections[stageSection]).toMatchObject({
+      items: [block('one')],
+    });
+  });
+
+  it('folds every batch for a host that is holding none of them', async () => {
+    const { host, session } = createSession();
+    session.dispatch(insertBlock('one', 0));
+
+    await expect(
+      session.requestCompoundEdit(renameAndCreatePlace(host)),
+    ).resolves.toMatchObject({ status: 'applied' });
+
+    expect(host.getSnapshot().protocolSections[stageSection]).toMatchObject({
+      items: [block('one')],
+      label: 'Places',
+    });
+    expect(stageItems(session)).toEqual([block('one')]);
+    expect(session.getSnapshot().pendingCommands).toEqual([]);
+  });
+
+  /**
+   * The fold's own stale base. The request was built against a stage this
+   * session cannot account for, so the batches it is holding were written for a
+   * document that is no longer what the host will apply them to.
+   */
+  it('refuses a fold onto a stage it cannot account for, and loses nothing local', async () => {
+    const { host, onCompoundEdit, session } = createSession();
+    session.dispatch(insertBlock('one', 0));
+    const before = session.getSnapshot();
+
+    await expect(
+      session.requestCompoundEdit({
+        ...renameAndCreatePlace(host),
+        edits: [
+          {
+            kind: 'update' as const,
+            sectionId: stageSection,
+            expectedContentHash: contentHash({
+              ...initialStage,
+              label: 'Renamed elsewhere',
+            }),
+            commands: [{ op: 'set' as const, key: 'label', value: 'Places' }],
+          },
+          request.edits[1]!,
+        ],
+      }),
+    ).resolves.toMatchObject({ status: 'failed', reason: 'stale-base' });
+
+    // Refused here, before the host was asked: a fold this session cannot
+    // account for is not something to find out about from the answer, because
+    // by then the researcher's batches have already been sent.
+    expect(onCompoundEdit).not.toHaveBeenCalled();
+    expect(host.getSnapshot().protocolSections[placeSection]).toBeUndefined();
+    expect(session.getSnapshot().pendingCommands).toEqual(
+      before.pendingCommands,
+    );
+    expect(stageItems(session)).toEqual([block('one')]);
+    expect(session.getSnapshot().history).toEqual(before.history);
   });
 
   /**
