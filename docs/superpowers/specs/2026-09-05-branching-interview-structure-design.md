@@ -53,9 +53,10 @@ carry. A protocol may contain several finish stages. Migration appends one
 `completed` finish stage to every existing protocol.
 
 The route is always computed from the current interview data, exactly as
-skip logic is evaluated today: when data changes, the route changes, and a
-participant standing on a stage that has just left the route is moved to the
-nearest stage still on it.
+skip logic is evaluated today: when data changes, the route changes. A
+participant standing on a stage that has just left the route is not
+interrupted: they finish that stage, and their next navigation takes them to
+the nearest stage still on the route.
 
 ### 1.1 Decisions this design records
 
@@ -97,6 +98,15 @@ quoted as the option chosen.
 11. **Naming: "Decision point, with outcomes."** The fallback is "otherwise".
 12. **Delivery:** "spec file and PR, but moved to github issues when approved
     and linked to the schema 9 epic."
+13. **Recovery (follow-up on the PR draft): "Move the participant at the next
+    Next instead of immediately."** A stage that leaves the route while the
+    participant is on it stays on screen until they navigate away; today's
+    immediate move is dropped.
+14. **Timeline rendering (same follow-up):** "a branching tree structure
+    rather than the single line with messy connections … a hierarchical
+    graph layout similar to what we implemented for the family pedigree
+    layout." Architect's timeline is a layered graph, not a list with
+    arrows.
 
 Technical positions recorded without a product question are marked
 "(recommendation)" where they appear below.
@@ -336,11 +346,18 @@ greyed out, and what the exposure ledger records (§11).
 
 - **Next** moves to the following stage on the route. **Back** moves to the
   preceding stage on the route. Decision points are never landed on.
-- **Recovery.** If the stage a participant is on leaves the route, the
-  runtime moves them to the nearest later stage on the route, and to the
-  nearest earlier one only when there is none later. This is the existing
-  recovery rule; document order is the tie-break as it is today. The render
-  gate that stops off-route content from flashing is unchanged.
+- **Recovery.** A participant is never moved while they are on a stage. If
+  the stage they are on leaves the route, it stays on screen, its prompts and
+  before-navigation handlers keep working, and the move happens at the
+  navigation that would leave the stage: Next goes to the nearest later stage
+  on the route in document order, Back to the nearest earlier one. Because a
+  form commits inside that navigation, the route is recomputed after the
+  handlers run and before the destination is chosen, so an answer changed on
+  the way out is honoured. The exposure ledger records the stage as presented
+  (§11). The render gate still stops an off-route stage from being _entered_,
+  except through the stage menu below; it no longer unmounts the one the
+  participant is already on (decision 13; this replaces today's immediate
+  move).
 - **Stage menu.** The interviewer's stage menu renders the timeline in
   document order with groups as nested headings (decision 8). Decision points
   are not listed. Off-route stages are greyed and, exactly as today, may be
@@ -355,7 +372,9 @@ greyed out, and what the exposure ledger records (§11).
   of all stages, finish stages included (recommendation: it keeps Fresco's
   and Interviewer's stored step columns and the `initialStageOverrideIndex`
   prop meaningful without a contract rewrite). A resumed step that is off
-  route recovers as above.
+  route renders, and the participant moves at their next navigation as
+  above. Progress holds its last on-route value while the participant is on
+  an off-route stage.
 
 ### 7.4 Preview
 
@@ -512,7 +531,9 @@ compatibility boundary.
   outcome taken at every decision point on the route, every stage's
   availability with its `divertedBy` record, and, at finish, the finish stage
   id and outcome kind. This is what lets retrospective `notAsked` establish
-  "bypassed by routing" for a concrete stage rather than inferring it.
+  "bypassed by routing" for a concrete stage rather than inferring it. A
+  stage the participant stayed on after it left the route (§7.3) was
+  presented, so the ledger records it as asked.
 - **Analytics.** Route-change events carry decision point and outcome ids and
   the finish outcome kind; never condition inputs or attribute values.
 - **Synthetic generation (#1426).** Generation walks the timeline in route
@@ -523,22 +544,37 @@ compatibility boundary.
 
 ## 12. Architect
 
-Architect's timeline becomes a nested list. The illustration in §16 shows
-the intended shape; the rules are:
+Architect's timeline becomes a hierarchical graph drawn top to bottom
+(decision 14). Each sequence is laid out with the same layered method the
+Family Pedigree interface uses: every item is assigned a layer by longest
+path from the sequence's first item, items are ordered within a layer by
+document order so the fall-through path stays in one column and branches
+open to its right, an edge that skips layers gets a placeholder in each
+skipped layer so it is routed around the items it bypasses rather than
+across them, and coordinates are assigned by centring each item under the
+items that lead to it. A group is one node of its parent's graph whose box
+contains its own layout, so a group's contents are visibly inside it and
+move with it. The illustration in §17 shows the intended shape; the rules
+are:
 
-- **Groups** render as collapsible containers with the group label, an item
-  count, and an exit indicator ("continues at …" when the exit links
-  somewhere other than the next item). Dragging a group drags its contents.
-- **Decision points** render as a distinct row with a diamond marker, the
-  label, and one sub-row per outcome and one for "otherwise", each showing a
-  plain-language summary of the condition and a target chip ("→ 9 Closing
-  questions", "→ continue"). Selecting or hovering an outcome highlights its
-  target row; a gutter draws the link as a forward arrow.
-- **Finish stages** render as terminal rows with a stop marker and the
-  outcome kind as a badge.
-- **Insert points** exist between every pair of items in every sequence and
-  at the start and end of every group, offering stage, group, and decision
-  point.
+- **Stages** are nodes with the document-order number, the label, and the
+  interface name. A straight edge joins each stage to whatever follows it.
+- **Decision points** are nodes with a diamond marker and the label. Each
+  outcome is an outgoing edge labelled with the outcome's name, ordered left
+  to right in evaluation order, with the "otherwise" edge last; hovering or
+  selecting the decision point reveals each outcome's condition in words.
+  Two outcomes that share a target draw as two labelled edges into the same
+  node.
+- **Groups** are boxes with the group label and item count in a header, the
+  group's own layout inside, and the exit at the bottom edge. A box can be
+  collapsed to a single node. Dragging a box drags its contents; an edge
+  leaving the box bottom is the group exit, labelled "exit" when it links
+  past the next item.
+- **Finish stages** are terminal nodes with a stop marker and the outcome
+  kind as a badge; no edge leaves them.
+- **Insert points** appear on every edge and at the start and end of every
+  group, offering stage, group, and decision point. Dropping an item on an
+  edge inserts it into that edge's sequence at that position.
 - **Selection actions:** "Group selected" wraps a contiguous run of siblings
   in a new group; "Ungroup" splices a group's contents into its parent and
   drops its exit link; "Skip this stage when…" inserts a decision point before
@@ -617,8 +653,11 @@ shareable unit.
   entry by fall-through and by link; group exits of both kinds including a
   last-in-parent group; nested exits; finish stages ending the route
   mid-timeline; increasing document order; determinism.
-- Runtime: continuous re-evaluation on data change; recovery forward then
-  backward; Back across decision points; forced navigation to an off-route
+- Runtime: continuous re-evaluation on data change; an off-route current
+  stage stays mounted and working until the participant navigates, then Next
+  goes forward and Back goes backward along the route, with the route
+  recomputed after before-navigation handlers; Back across decision points;
+  forced navigation to an off-route
   stage from the stage menu with the diverting label; stage menu grouping;
   progress and `totalSteps` over the route; numeric step resume onto an
   off-route stage; preview from-start versus stage-scoped.
@@ -852,46 +891,60 @@ stage, with `otherwise: { kind: 'next' }`.
 
 ## 17. Timeline illustration
 
-The Architect timeline for the example above. Stages are numbered in document
-order; decision points and groups are unnumbered; arrows in the gutter are
-links. The interactive mock-up that accompanies this spec renders the same
-protocol.
+The Architect timeline for the example above, laid out as the layered graph
+§12 describes. Stages carry their document-order number; each sequence's
+fall-through path runs down one column and branches open to the right; the
+"otherwise" edge from Substance use is routed around the two modules rather
+than through them; groups are boxes containing their own layout. The
+interactive mock-up that accompanies this spec renders the same protocol.
 
 ```text
- ┃
- ┣━ 1  Introduction                         Information
- ┃
- ┣━ 2  About you                            Ego form
- ┃
- ┣━ ◆  Eligibility check                    Decision point
- ┃     ├─ Under 18 · age < 18 ──────────────────────────────→ 11 Not eligible
- ┃     └─ otherwise ───────────────────────→ continue
- ┃
- ┣━ 3  People you know                      Name generator
- ┃
- ┣━ 4  Relationships                        Sociogram
- ┃
- ┣━ ◆  Substance use                        Decision point
- ┃     ├─ Uses drugs · substanceUse includes drugs ──────────→ Drug use module
- ┃     ├─ Drinks alcohol · includes alcohol and any person ─→ Alcohol module
- ┃     └─ otherwise ────────────────────────────────────────→ 9 Closing questions
- ┃
- ┣━ ▣  Drug use module                      Group · 3 stages · exit → 9 Closing questions
- ┃   ┃
- ┃   ┣━ 5  Substances used                  Categorical bin
- ┃   ┣━ 6  Used with                        Sociogram
- ┃   ┗━ 7  Frequency                        Ego form
- ┃      ╰────────────────────────────────────────────────────→ 9 Closing questions
- ┃
- ┣━ ▣  Alcohol module                       Group · 1 stage · exit → continue
- ┃   ┃
- ┃   ┗━ 8  Drinking patterns                Ego form
- ┃
- ┣━ 9  Closing questions                    Ego form
- ┃
- ┣━ ■ 10  Thank you                         Finish · completed
- ┃
- ┗━ ■ 11  Not eligible                      Finish · ineligible
+                 ┌───────────────────────┐
+                 │ 1  Introduction       │
+                 └───────────┬───────────┘
+                 ┌───────────┴───────────┐
+                 │ 2  About you          │
+                 └───────────┬───────────┘
+                 ┌───────────┴───────────┐
+                 │ ◆  Eligibility check  │
+                 └─────┬───────────┬─────┘
+             otherwise │           │ Under 18
+                 ┌─────┴─────────┐ │  ┌────────────────────────┐
+                 │ 3  People you │ └──┤ ■ 11  Not eligible     │
+                 │    know       │    │       Finish · ineligible│
+                 └───────┬───────┘    └────────────────────────┘
+                 ┌───────┴───────┐
+                 │ 4  Relation-  │
+                 │    ships      │
+                 └───────┬───────┘
+                 ┌───────┴───────┐
+                 │ ◆ Substance   │
+                 │   use         │
+                 └─┬─────┬─────┬─┘
+        Uses drugs │     │     │ otherwise
+   ┌───────────────┴─┐ ┌─┴───────────────┐   │
+   │ ▣ Drug use      │ │ ▣ Alcohol       │   │
+   │   module        │ │   module        │   │
+   │ ┌─────────────┐ │ │ ┌─────────────┐ │   │
+   │ │ 5 Substances│ │ │ │ 8 Drinking  │ │   │
+   │ │   used      │ │ │ │   patterns  │ │   │
+   │ └──────┬──────┘ │ │ └──────┬──────┘ │   │
+   │ ┌──────┴──────┐ │ │        │        │   │
+   │ │ 6 Used with │ │ │  exit → continue│   │
+   │ └──────┬──────┘ │ └────────┬────────┘   │
+   │ ┌──────┴──────┐ │          │            │
+   │ │ 7 Frequency │ │          │            │
+   │ └──────┬──────┘ │          │            │
+   │   exit → 9      │          │            │
+   └────────┬────────┘          │            │
+            └──────────┬────────┴────────────┘
+                 ┌─────┴─────────────────┐
+                 │ 9  Closing questions  │
+                 └───────────┬───────────┘
+                 ┌───────────┴───────────┐
+                 │ ■ 10  Thank you       │
+                 │       Finish · completed│
+                 └───────────────────────┘
 ```
 
 ## 18. Sequencing
