@@ -8,6 +8,7 @@ import pg from 'pg';
 
 import type { SectionDoc } from '../apply.ts';
 import { TENANT_ROLES } from '../rls.ts';
+import { runtimeRolesSql } from '../role-bootstrap.ts';
 import { SYNC_SIDECAR_SQL, SYNC_TABLES } from '../schema.ts';
 import {
   forceExpire,
@@ -87,6 +88,7 @@ async function createSyncDatabase(
     await generateDrizzleJson({}),
     await generateDrizzleJson(SYNC_TABLES),
   );
+  await db.query(runtimeRolesSql(Object.values(TENANT_ROLES)));
   await db.query([...statements, SYNC_SIDECAR_SQL].join('\n'));
   const app = connect(TENANT_ROLES.app);
   const maintenance = connect(TENANT_ROLES.maintenance);

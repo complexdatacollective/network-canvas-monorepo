@@ -3,7 +3,8 @@ import process from 'node:process';
 
 import pg from 'pg';
 
-import { TENANT_ROLES_SQL } from '@codaco/studio-sync/rls';
+import { TENANT_ROLES, TENANT_ROLES_SQL } from '@codaco/studio-sync/rls';
+import { runtimeRolesSql } from '@codaco/studio-sync/role-bootstrap';
 
 import { renderSchemaStatements } from '../../../scripts/apply.ts';
 import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
@@ -38,7 +39,9 @@ export async function reachableDb(): Promise<DbEnv | null> {
   try {
     // The application pools pin roles the schema apply creates; provisioning
     // them here means no suite depends on another having run first.
-    const probe = pool.query(TENANT_ROLES_SQL);
+    const probe = pool.query(
+      runtimeRolesSql(Object.values(TENANT_ROLES)) + TENANT_ROLES_SQL,
+    );
     // When the timeout wins the race, this query is still in flight and
     // `pool.end()` below rejects it. Promise.race has already settled by then,
     // so nothing is listening — and an unhandled rejection fails the run.
@@ -127,6 +130,7 @@ export async function createScratchSchema(db: DbEnv): Promise<ScratchSchema> {
  * owner pool: the statements are DDL.
  */
 export async function provisionScratchSchema(pool: pg.Pool): Promise<void> {
+  await pool.query(runtimeRolesSql(Object.values(TENANT_ROLES)));
   await pool.query((await renderSchemaStatements()).join('\n'));
   await stampFingerprint(pool, SCHEMA_FINGERPRINT);
 }

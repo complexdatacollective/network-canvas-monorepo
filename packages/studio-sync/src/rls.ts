@@ -39,9 +39,10 @@ export function teamIsolationPolicy() {
   });
 }
 
-// Serialises role bootstrap across sessions provisioning schemas in parallel
-// (the test suites do), so a race on CREATE ROLE or GRANT cannot surface as a
-// spurious error.
+// Legacy schema-sidecar bytes are part of immutable migration fingerprints.
+// Every mutable provisioning caller must run runtimeRolesSql first; that
+// operator preflight handles cross-database creation races and role safety.
+// This lock only serializes the remaining grants within one database.
 const ROLE_BOOTSTRAP_LOCK_KEY = 4021775688147130;
 
 /**
