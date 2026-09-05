@@ -11,6 +11,13 @@ import {
   type StageEditorHarness,
 } from '../../../testing/renderStageEditor.tsx';
 import { CategoricalBinStageEditor } from '../CategoricalBinStageEditor.tsx';
+import {
+  CREATE_POSITION,
+  destinationOptions,
+  destinationsAfterInsertion,
+  stageNameInput,
+  switchSkipLogicOn,
+} from './createMode.ts';
 
 /**
  * The named editor as a host mounts it: the editor itself, plus the action
@@ -156,6 +163,40 @@ describe('the Categorical Bin stage editor', () => {
       ),
     ).toBeInTheDocument();
     expect(harness.pendingCommands()).toEqual([]);
+  });
+});
+
+/**
+ * A stage the host is CREATING rather than one the interview already contains.
+ *
+ * Nothing about it is a prop this editor passes: whether the stage exists yet
+ * and where the host is about to insert it are facts only the session has, and
+ * the shared sections read both out of it. So this is a test of what the
+ * editor mounts, not of what it says — an editor that stopped composing
+ * `StageNameSection` or `SkipLogicSection` would fail it.
+ */
+describe('creating a Categorical Bin stage', () => {
+  it('opens on the interface template with a proposed name, and offers only the destinations its position allows', async () => {
+    const harness = renderStageEditor({
+      create: { type: 'CategoricalBin', position: CREATE_POSITION },
+      editor,
+    });
+
+    // Proposed, and unique in the interview: the fixture already holds a stage
+    // called "Categorical Bin", so an unqualified proposal would be a second.
+    await waitFor(() =>
+      expect(stageNameInput()).toHaveValue('Categorical Bin #2'),
+    );
+
+    // This interface's template carries nothing, so the new stage opens with
+    // nothing written for the researcher to find and undo.
+    expect(getInterfaceTemplate('CategoricalBin')).toEqual({});
+    expect(screen.queryAllByRole('button', { name: /^Edit prompt/ })).toEqual(
+      [],
+    );
+
+    await switchSkipLogicOn(harness);
+    expect(destinationOptions()).toEqual(destinationsAfterInsertion());
   });
 });
 

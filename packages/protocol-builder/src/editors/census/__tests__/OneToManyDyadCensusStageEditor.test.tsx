@@ -8,6 +8,13 @@ import { getInterfaceTemplate } from '../../../interfaces/templates.ts';
 import type { StageEditorComponent } from '../../../stage-editor-contract.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { OneToManyDyadCensusStageEditor } from '../OneToManyDyadCensusStageEditor.tsx';
+import {
+  CREATE_POSITION,
+  destinationOptions,
+  destinationsAfterInsertion,
+  stageNameInput,
+  switchSkipLogicOn,
+} from './createMode.ts';
 
 /**
  * The named editor as a host mounts it: the editor itself, plus the action
@@ -159,6 +166,41 @@ describe('the One-to-Many Dyad Census stage editor', () => {
       ),
     ).toBeInTheDocument();
     expect(harness.pendingCommands()).toEqual([]);
+  });
+});
+
+/**
+ * A stage the host is CREATING rather than one the interview already contains.
+ *
+ * Nothing about it is a prop this editor passes: whether the stage exists yet
+ * and where the host is about to insert it are facts only the session has, and
+ * the shared sections read both out of it.
+ */
+describe('creating a One-to-Many Dyad Census stage', () => {
+  it('opens on the interface template with a proposed name, and offers only the destinations its position allows', async () => {
+    const harness = renderStageEditor({
+      create: { type: 'OneToManyDyadCensus', position: CREATE_POSITION },
+      editor,
+    });
+
+    // Proposed, and unique in the interview: the fixture already holds a stage
+    // called "One to Many Dyad Census", so an unqualified proposal would be a
+    // second.
+    await waitFor(() =>
+      expect(stageNameInput()).toHaveValue('One to Many Dyad Census #2'),
+    );
+
+    // The one template in this family that carries a value, on screen before
+    // the researcher has touched the control that holds it.
+    expect(getInterfaceTemplate('OneToManyDyadCensus')).toEqual({
+      behaviours: { removeAfterConsideration: true },
+    });
+    expect(
+      screen.getByRole('radio', { name: 'Remove them from the list' }),
+    ).toBeChecked();
+
+    await switchSkipLogicOn(harness);
+    expect(destinationOptions()).toEqual(destinationsAfterInsertion());
   });
 });
 
