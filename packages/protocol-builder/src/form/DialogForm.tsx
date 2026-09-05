@@ -22,15 +22,17 @@ import FormStoreProvider, {
 } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type {
   FieldValue,
+  FormSubmissionResult,
   FormSubmitHandler,
 } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 
 /**
- * What a form-level check reports. `formErrors` describe the submission as a
- * whole and are rendered by Fresco's `FormErrors` above the fields;
- * `fieldErrors` attach to a named field, for a check a single field cannot
- * make on its own — a value that has to be unique among its siblings, say.
+ * What a form-level check — or a save the host could not take — reports.
+ * `formErrors` describe the submission as a whole and are rendered by Fresco's
+ * `FormErrors` above the fields; `fieldErrors` attach to a named field, for a
+ * problem a single field cannot see on its own — a value that has to be unique
+ * among its siblings, say.
  */
 export type DialogFormErrors = Readonly<{
   formErrors?: readonly string[];
@@ -72,15 +74,44 @@ export type DialogFormProps = Readonly<{
   validate?: DialogFormValidate;
   /**
    * Receives the draft once every field and `validate` have passed. The dialog
-   * closes when this resolves; throwing keeps it open and reports the failure
-   * through Fresco's form errors.
+   * closes when this resolves with nothing to report — `undefined`, or a
+   * result carrying no errors at all.
+   *
+   * A save the host cannot take reports it the way `validate` does, and it is
+   * rendered identically: `formErrors` about the submission as a whole appear
+   * above the fields, and a `fieldErrors` entry attaches to the control it
+   * names and focuses it for correction. Either keeps the dialog open with the
+   * draft intact, so the researcher can fix it and submit again. This is the
+   * route for a refusal the host expects — a name already used by a sibling
+   * only it can see, a row that left the array while the editor was open.
+   *
+   * Throwing also keeps it open, and reports the failure above the fields: so
+   * write the thrown message for the researcher who has to act on it — 'That
+   * name is already used by another rule.', not a stack trace. A failure
+   * carrying no message of its own falls back to Fresco's generic, translated
+   * wording; nothing is ever swallowed.
    */
-  onSubmit: (values: Record<string, FieldValue>) => void | Promise<void>;
+  onSubmit: (
+    values: Record<string, FieldValue>,
+  ) => void | DialogFormErrors | Promise<void | DialogFormErrors>;
   /** Footer submit label — 'Save', 'Add rule'. */
   submitLabel: string;
   cancelLabel?: string;
   /** Semantic width preset, forwarded to `Dialog`. */
   size?: DialogProps['size'];
+  /**
+   * Names the element this dialog is the same thing as, so it morphs out of it
+   * rather than appearing over it — the array row whose Edit button opened it,
+   * say. The row renders the matching id; both are forwarded to Motion, which
+   * pairs them.
+   */
+  layoutId?: DialogProps['layoutId'];
+  /**
+   * Inline styles for the dialog surface. What it is for here is the geometry
+   * a morph interpolates — the row's own border radius, so the two edges agree
+   * while they travel.
+   */
+  style?: DialogProps['style'];
   /**
    * Where focus RETURNS when the dialog closes. Prefer a function: it is
    * resolved after the exit animation, by which time a control that unmounted
@@ -130,10 +161,47 @@ const normalizeFieldErrors = (
     ]),
   );
 
-const hasErrors = (errors: DialogFormErrors | undefined): boolean =>
+/**
+ * What a failed save has to say for itself, or `undefined` when it says
+ * nothing worth reading.
+ *
+ * A host throws to report that it could not take the draft — a name already
+ * used by a sibling only it can see, a write that was refused — and the
+ * researcher is the person who has to act on that, so the reason is put above
+ * the fields rather than swallowed. A failure with no message of its own is
+ * left to Fresco, whose form hook already renders one translated sentence for
+ * exactly this case; duplicating that string here would be a second copy to
+ * translate and to keep in step.
+ */
+const failureMessage = (failure: unknown): string | undefined => {
+  if (!(failure instanceof Error)) return undefined;
+  const message = failure.message.trim();
+  return message === '' ? undefined : message;
+};
+
+/**
+ * Whether a result has anything to say. `void` is in the parameter type
+ * because a submit handler that saves and returns nothing is the ordinary
+ * case: saying nothing and saying `{}` are the same answer, and both mean the
+ * dialog may close.
+ */
+const hasErrors = (
+  errors: void | DialogFormErrors,
+): errors is DialogFormErrors =>
   errors !== undefined &&
   ((errors.formErrors?.length ?? 0) > 0 ||
     Object.keys(errors.fieldErrors ?? {}).length > 0);
+
+/**
+ * Reported the way a field's own validation is, so the errors land on Fresco's
+ * invalid-submit path: the form-level ones render above the fields, and the
+ * first control named by `fieldErrors` is focused for correction.
+ */
+const refusal = (errors: DialogFormErrors): FormSubmissionResult => ({
+  success: false,
+  formErrors: [...(errors.formErrors ?? [])],
+  fieldErrors: normalizeFieldErrors(errors.fieldErrors),
+});
 
 function DialogFormBody({
   open,
@@ -147,6 +215,8 @@ function DialogFormBody({
   submitLabel,
   cancelLabel = 'Cancel',
   size,
+  layoutId,
+  style,
   finalFocus,
   children,
 }: DialogFormProps) {
@@ -218,19 +288,28 @@ function DialogFormBody({
    * form-level check only ever sees a draft whose individual fields are
    * already good. Reporting through the submission result — rather than
    * throwing — is what puts the errors on the same path as a field-level
-   * failure, so the first offending control is focused for correction.
+   * failure, so the first offending control is focused for correction. A save
+   * the host refuses takes the same route, in the same shape, for the same
+   * reason: only a submission that SUCCEEDS reaches `onClose`.
    */
   const handleSubmit: FormSubmitHandler = async (values) => {
-    const errors = validate?.(values);
-    if (hasErrors(errors)) {
-      return {
-        success: false,
-        formErrors: [...(errors?.formErrors ?? [])],
-        fieldErrors: normalizeFieldErrors(errors?.fieldErrors),
-      };
+    const invalid = validate?.(values);
+    if (hasErrors(invalid)) return refusal(invalid);
+
+    let refused: void | DialogFormErrors;
+    try {
+      refused = await onSubmit(values);
+    } catch (failure) {
+      const reason = failureMessage(failure);
+      // Nothing to report of its own: hand it back to Fresco's own catch,
+      // which renders the generic message. The dialog stays open either way,
+      // because `onClose` below is never reached.
+      if (reason === undefined) throw failure;
+      return { success: false, formErrors: [reason], fieldErrors: {} };
     }
 
-    await onSubmit(values);
+    if (hasErrors(refused)) return refusal(refused);
+
     onClose();
     return { success: true };
   };
@@ -243,6 +322,8 @@ function DialogFormBody({
       title={title}
       description={description}
       size={size}
+      layoutId={layoutId}
+      style={style}
       finalFocus={finalFocus}
       footer={
         <>
