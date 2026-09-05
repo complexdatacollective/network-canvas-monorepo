@@ -36,6 +36,7 @@ import type {
 } from '../stage-editor-contract.ts';
 import StageEditor from '../StageEditor.tsx';
 import {
+  fixtureAssetContent,
   fixtureAssetManifest,
   fixtureProtocolSections,
   loadFixtureStage,
@@ -390,9 +391,11 @@ function patchedCodebook(
 /**
  * The fixture's assets, as resources a gateway already holds.
  *
- * Content-bearing assets are seeded with a placeholder body: an editor reads a
- * resource's kind, name and size to decide what it may reference, and the
- * bytes belong to the host.
+ * An asset the fixture ships a file for is seeded with that file, because an
+ * editor asks the gateway what is INSIDE a data file — a roster's columns are
+ * the material its card, sort and search sections offer. Everything else gets
+ * a placeholder body: those editors read only a resource's kind, name and
+ * size, and the bytes belong to the host.
  */
 function fixtureResources(): InMemoryResourceSeed[] {
   return Object.entries(fixtureAssetManifest()).flatMap(
@@ -412,15 +415,16 @@ function fixtureResources(): InMemoryResourceSeed[] {
       ) {
         return [];
       }
+      const source =
+        typeof entry.source === 'string' ? entry.source : `${id}.json`;
       return [
         {
           kind,
           id,
           name,
-          source:
-            typeof entry.source === 'string' ? entry.source : `${id}.json`,
+          source,
           contentType: 'application/json',
-          bytes: new TextEncoder().encode('{}'),
+          bytes: fixtureAssetContent(source) ?? new TextEncoder().encode('{}'),
         },
       ];
     },
