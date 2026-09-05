@@ -334,8 +334,18 @@ describe('staged resource tracker', () => {
       reason: 'unavailable',
       retryable: true,
     });
-    expect(tracker.staged()).toEqual([]);
+    // Still tracked, because the host is still holding it and the editor was
+    // handed a failure rather than an id: dropping it here would leave the
+    // host with a resource nothing could name again.
+    expect(tracker.staged().map((descriptor) => descriptor.id)).toEqual([
+      'staged-resource-1',
+    ]);
     expect(host.getStagingResidue()).not.toEqual([]);
+
+    // Which is what makes a second cleanup possible at all.
+    expect(await tracker.cancel()).toMatchObject({ status: 'ok' });
+    expect(tracker.staged()).toEqual([]);
+    expect(host.getStagingResidue()).toEqual([]);
   });
 
   it('hands the finish what is staged and closes the window in one step', async () => {

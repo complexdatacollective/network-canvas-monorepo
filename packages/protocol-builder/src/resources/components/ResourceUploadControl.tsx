@@ -44,7 +44,7 @@ export default function ResourceUploadControl({
   disabled = false,
 }: ResourceUploadControlProps) {
   const gateway = useResourceGateway();
-  const { busy, failure, retry, run } = useResourceAttempt();
+  const { begin, busy, clear, failure, retry } = useResourceAttempt();
   const inputId = useId();
   const [rejected, setRejected] = useState<string | undefined>(undefined);
   const [status, setStatus] = useState('');
@@ -59,20 +59,31 @@ export default function ResourceUploadControl({
         return;
       }
 
+      // Claimed before the file is read, because reading is part of importing
+      // this file: a large first choice can still be reading when a smaller
+      // second one is already staged, and the file the researcher chose last
+      // is the one the field must end up holding.
+      const claim = begin();
+
       let bytes: Uint8Array;
       try {
         bytes = new Uint8Array(await file.arrayBuffer());
       } catch {
+        // A file the researcher has already moved off is not something to
+        // report, and clearing would disown the import that replaced it.
+        if (!claim.current()) return;
+        clear();
         setRejected(UNREADABLE_MESSAGE);
         return;
       }
+      if (!claim.current()) return;
 
       const source = sourceFilename(file.name);
       // One id for this file, kept across a retry: repeating an uncertain
       // import must not leave the protocol holding the same file twice.
       const requestId = uuid();
       setStatus('');
-      run(
+      claim.run(
         () =>
           gateway.stageUpload({
             requestId,
@@ -88,7 +99,7 @@ export default function ResourceUploadControl({
         },
       );
     },
-    [gateway, kind, onStaged, run],
+    [begin, clear, gateway, kind, onStaged],
   );
 
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {

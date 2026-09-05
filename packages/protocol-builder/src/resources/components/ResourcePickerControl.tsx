@@ -19,6 +19,7 @@ import ResourcePreview from './ResourcePreview.tsx';
 import ResourceSummary from './ResourceSummary.tsx';
 import { useResourceAttempt } from './useResourceAttempt.ts';
 import { useResourceInspection } from './useResourceInspection.ts';
+import { useStageResourceUsage } from './useStageResourceUsage.ts';
 
 /**
  * The value a network field holds when the stage reads the network the
@@ -26,6 +27,14 @@ import { useResourceInspection } from './useResourceInspection.ts';
  * id, so no resource is looked up for it.
  */
 const INTERVIEW_NETWORK = 'existing';
+
+/**
+ * Said when the researcher asks to discard an imported resource another field
+ * on the same stage is still using. Whole, so it can be translated: it names
+ * what happened and the one thing that unblocks it.
+ */
+const STILL_IN_USE_MESSAGE =
+  'This resource is still used elsewhere on this stage, so it was not discarded. Move the other field off it first, or choose a different resource here.';
 
 export type ResourcePickerControlProps = CreateFormFieldProps<
   string,
@@ -67,11 +76,22 @@ export default function ResourcePickerControl({
   'aria-invalid': ariaInvalid,
   'aria-label': ariaLabel,
   'aria-labelledby': ariaLabelledBy,
+  'aria-required': ariaRequired,
 }: ResourcePickerControlProps) {
   const gateway = useResourceGateway();
   const action = useResourceAttempt();
+  const referenceCount = useStageResourceUsage();
   const [browserOpen, setBrowserOpen] = useState(false);
   const [status, setStatus] = useState('');
+  const [refusal, setRefusal] = useState<string | undefined>(undefined);
+  /**
+   * The researcher has asked for an imported file while the field still holds
+   * the interview-network marker. Kept here rather than written into the field
+   * so that cancelling the browser leaves the field as it was: a required
+   * field emptied on the way to a choice that was never made is a field the
+   * researcher has to notice and put back.
+   */
+  const [askedForResource, setAskedForResource] = useState(false);
 
   const copy = RESOURCE_PICKER_COPY[kind];
   const usesInterviewNetwork = canUseExisting && value === INTERVIEW_NETWORK;
@@ -86,18 +106,34 @@ export default function ResourcePickerControl({
 
   const handleSelect = (chosen: ResourceDescriptor) => {
     setBrowserOpen(false);
+    setAskedForResource(false);
+    setRefusal(undefined);
     action.clear();
     onChange?.(chosen.id);
     setStatus(`${chosen.name} is now selected.`);
   };
 
   const handleRemove = () => {
+    // Whatever was in flight was about the resource this field no longer
+    // holds, so its failure has nothing on screen to be about and its retry
+    // would act on a removed selection.
+    action.clear();
+    setRefusal(undefined);
     onChange?.(undefined);
     setStatus('The resource was removed from this field.');
   };
 
   const handleDiscard = () => {
     if (selectedId === undefined) return;
+    // Discarding drops the resource for the whole editing session, not just
+    // for this field, so a resource another field still names is refused —
+    // dropping it would leave that field pointing at nothing and the stage
+    // unable to save, which is not what "discard this one" asked for.
+    if (referenceCount(selectedId) > 1) {
+      setRefusal(STILL_IN_USE_MESSAGE);
+      return;
+    }
+    setRefusal(undefined);
     action.run(
       () => gateway.discardStaged(selectedId),
       () => {
@@ -123,20 +159,30 @@ export default function ResourcePickerControl({
   const handleSourceChange = (next: string | number | undefined) => {
     if (locked) return;
     if (next === INTERVIEW_NETWORK) {
+      setAskedForResource(false);
+      setRefusal(undefined);
+      action.clear();
       onChange?.(INTERVIEW_NETWORK);
       setStatus('This stage will use the network from the interview itself.');
       return;
     }
     if (next === 'resource') {
-      // Clearing first is what makes the picker appear: the field holds the
-      // interview-network marker, not a resource, and the researcher has just
-      // said they want a file instead.
-      onChange?.(undefined);
+      // Only the asking is recorded: the field keeps the interview network
+      // until a file is actually chosen, so closing the browser without
+      // choosing one leaves the stage exactly as the researcher found it.
+      setAskedForResource(true);
       setBrowserOpen(true);
     }
   };
 
-  const showPicker = !usesInterviewNetwork;
+  const handleBrowserClose = () => {
+    setBrowserOpen(false);
+    // Cancelled without choosing anything, so the question the radio asked is
+    // unanswered and the field's own answer stands.
+    setAskedForResource(false);
+  };
+
+  const showPicker = !usesInterviewNetwork || askedForResource;
 
   return (
     <div
@@ -150,6 +196,11 @@ export default function ResourcePickerControl({
               ariaLabelledBy ?? (id === undefined ? undefined : `${id}-label`),
             'aria-describedby': ariaDescribedBy,
             'aria-label': ariaLabel,
+            // The group is the field, so it carries the field's validation
+            // state: without these a required picker announces as an ordinary
+            // one, and a failed submit says nothing at all.
+            'aria-invalid': ariaInvalid,
+            'aria-required': ariaRequired,
           })}
       data-name={name}
       onBlur={onBlur}
@@ -160,11 +211,13 @@ export default function ResourcePickerControl({
           id={id}
           name={`${name ?? 'resource'}-source`}
           value={
-            value === undefined || value === ''
-              ? undefined
-              : usesInterviewNetwork
-                ? INTERVIEW_NETWORK
-                : 'resource'
+            askedForResource
+              ? 'resource'
+              : value === undefined || value === ''
+                ? undefined
+                : usesInterviewNetwork
+                  ? INTERVIEW_NETWORK
+                  : 'resource'
           }
           onChange={handleSourceChange}
           disabled={disabled}
@@ -172,6 +225,7 @@ export default function ResourcePickerControl({
           aria-labelledby={ariaLabelledBy}
           aria-describedby={ariaDescribedBy}
           aria-invalid={ariaInvalid}
+          aria-required={ariaRequired}
           options={[
             {
               value: INTERVIEW_NETWORK,
@@ -247,6 +301,12 @@ export default function ResourcePickerControl({
             </div>
           )}
 
+          {refusal !== undefined && (
+            <div role="alert" className="text-destructive text-sm">
+              {refusal}
+            </div>
+          )}
+
           {action.failure !== undefined && (
             <ResourceFailureNotice
               failure={action.failure}
@@ -273,7 +333,7 @@ export default function ResourcePickerControl({
         kind={kind}
         {...(selectedId === undefined ? {} : { selectedId })}
         onSelect={handleSelect}
-        onClose={() => setBrowserOpen(false)}
+        onClose={handleBrowserClose}
         disabled={locked}
       />
 

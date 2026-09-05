@@ -17,6 +17,17 @@ export type ResourcePreviewProps = Readonly<{
 }>;
 
 /**
+ * How long before a lease ends the next one is asked for.
+ *
+ * Long enough that the replacement has arrived before the old URL stops
+ * resolving, and short enough that a preview open for an hour is re-resolved
+ * once rather than continually. A lease shorter than this is not renewed
+ * ahead of time at all: renewing one the moment it arrives would ask the host
+ * for a new URL as fast as it could answer.
+ */
+export const PREVIEW_RENEWAL_LEAD_MS = 5_000;
+
+/**
  * Renders a resource's content from a URL the host resolved.
  *
  * The URL is a lease, not a fact: the host may be holding an object URL, a
@@ -24,6 +35,13 @@ export type ResourcePreviewProps = Readonly<{
  * so `release` is called whenever the component stops showing it — on unmount,
  * and on a change of resource. A resolution that lands after that point is
  * released immediately rather than kept, because nothing else ever will.
+ *
+ * A lease that says when it ends is renewed shortly before it does, because a
+ * stage editor is left open far longer than a signed URL lives and an image
+ * that silently stops loading looks like a resource the protocol lost. The new
+ * URL replaces the old one in place, which restarts an audio or video element
+ * that happens to be playing — a lease that expires under it would stop it
+ * anyway, and only a host that issues expiring URLs pays either cost.
  */
 export default function ResourcePreview({
   resourceId,
@@ -43,6 +61,7 @@ export default function ResourcePreview({
   useEffect(() => {
     let released = false;
     let resolved: ResolvedPreview | undefined;
+    let renewal: ReturnType<typeof setTimeout> | undefined;
     setPreview(undefined);
     setFailure(undefined);
 
@@ -58,12 +77,21 @@ export default function ResourcePreview({
       }
       resolved = result.data;
       setPreview(result.data);
+
+      const { expiresAt } = result.data;
+      if (expiresAt === undefined) return;
+      const lead = expiresAt - Date.now() - PREVIEW_RENEWAL_LEAD_MS;
+      if (lead <= 0) return;
+      renewal = setTimeout(() => {
+        setAttempt((current) => current + 1);
+      }, lead);
     };
 
     void load();
 
     return () => {
       released = true;
+      if (renewal !== undefined) clearTimeout(renewal);
       resolved?.release();
     };
   }, [attempt, gateway, resourceId]);

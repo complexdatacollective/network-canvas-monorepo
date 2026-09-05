@@ -4,10 +4,15 @@ import { describe, expect, it, vi } from 'vitest';
 
 import ProtocolField from '../../../form/ProtocolField.tsx';
 import { ResourceGatewayProvider } from '../../context.tsx';
-import type { ResourceDescriptor } from '../../gateway.ts';
+import {
+  resourceFailure,
+  type ResourceDescriptor,
+  type StagedSecret,
+} from '../../gateway.ts';
 import { InMemoryResourceGateway } from '../../InMemoryResourceGateway.ts';
 import ResourcePickerControl from '../ResourcePickerControl.tsx';
 import ResourceSecretControl from '../ResourceSecretControl.tsx';
+import { overrideGateway } from './overrideGateway.ts';
 import { renderResourceEditor } from './renderResourceEditor.tsx';
 
 const SECRET = 'pk.eyJ1IjoicmVzZWFyY2hlciIsImEiOiJzZWNyZXQifQ';
@@ -252,5 +257,88 @@ describe('the control a key is typed into', () => {
       'secret:staged-secret-1',
       'secret:staged-secret-2',
     ]);
+  });
+});
+
+/**
+ * A request id makes a repeat safe by making it the SAME request. That is only
+ * true while the request is the same: an edited key sent under the id of the
+ * one before it is answered with the one before it.
+ */
+describe('a key edited after an uncertain failure', () => {
+  it('is added as the key the researcher entered, not the one they replaced', async () => {
+    const user = userEvent.setup();
+    const inner = new InMemoryResourceGateway();
+    let calls = 0;
+    const gateway = overrideGateway(inner, {
+      stageSecret: async (request) => {
+        calls += 1;
+        // The host really staged the first request; only its answer was lost,
+        // which is the case a request id exists for.
+        const staged = await inner.stageSecret(request);
+        return calls === 1
+          ? resourceFailure<StagedSecret>(
+              'unavailable',
+              'the key could not be added just now',
+            )
+          : staged;
+      },
+    });
+    const stageSecret = vi.spyOn(gateway, 'stageSecret');
+    const staged = vi.fn<(descriptor: ResourceDescriptor) => void>();
+    render(
+      <ResourceGatewayProvider gateway={gateway}>
+        <ResourceSecretControl onStaged={staged} />
+      </ResourceGatewayProvider>,
+    );
+
+    await submitKey(user, 'Mapbox key', SECRET);
+    expect(
+      await screen.findByText('the key could not be added just now'),
+    ).toBeVisible();
+
+    // The researcher decides the key was wrong and corrects it.
+    await user.clear(screen.getByLabelText('Name'));
+    await user.type(screen.getByLabelText('Name'), 'Mapbox production key');
+    await user.clear(screen.getByLabelText('Key'));
+    await user.type(screen.getByLabelText('Key'), SECOND_SECRET);
+
+    // Repeating the previous call is no longer what "try again" would mean.
+    expect(
+      screen.queryByRole('button', { name: 'Try adding the key again' }),
+    ).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: 'Add API key' }));
+    await waitFor(() => expect(staged).toHaveBeenCalledTimes(1));
+
+    const requestIds = stageSecret.mock.calls.map(([call]) => call.requestId);
+    expect(new Set(requestIds).size).toBe(2);
+    expect(staged.mock.calls[0]?.[0]).toMatchObject({
+      name: 'Mapbox production key',
+    });
+  });
+
+  it('repeats the identical call when nothing was edited', async () => {
+    const user = userEvent.setup();
+    const gateway = new InMemoryResourceGateway();
+    const stageSecret = vi.spyOn(gateway, 'stageSecret');
+    const staged = vi.fn<(descriptor: ResourceDescriptor) => void>();
+    gateway.failNext('stageSecret', { reason: 'unavailable', retryable: true });
+    render(
+      <ResourceGatewayProvider gateway={gateway}>
+        <ResourceSecretControl onStaged={staged} />
+      </ResourceGatewayProvider>,
+    );
+
+    await submitKey(user, 'Mapbox key', SECRET);
+    await user.click(
+      await screen.findByRole('button', { name: 'Try adding the key again' }),
+    );
+    await waitFor(() => expect(staged).toHaveBeenCalledTimes(1));
+
+    // Still one intent, so a host that already staged it answers with what it
+    // staged rather than staging a second copy of the same key.
+    const requestIds = stageSecret.mock.calls.map(([call]) => call.requestId);
+    expect(new Set(requestIds).size).toBe(1);
   });
 });

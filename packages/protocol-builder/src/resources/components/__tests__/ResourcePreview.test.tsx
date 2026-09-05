@@ -1,5 +1,5 @@
-import { act, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { act, render, screen, waitFor } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 
 import { ResourceGatewayProvider } from '../../context.tsx';
 import {
@@ -9,7 +9,9 @@ import {
   type ResourceResult,
 } from '../../gateway.ts';
 import { InMemoryResourceGateway } from '../../InMemoryResourceGateway.ts';
-import ResourcePreview from '../ResourcePreview.tsx';
+import ResourcePreview, {
+  PREVIEW_RENEWAL_LEAD_MS,
+} from '../ResourcePreview.tsx';
 import {
   deferred,
   flushPendingWork,
@@ -189,5 +191,82 @@ describe('ResourcePreview', () => {
       screen.queryByText('the first preview could not be resolved'),
     ).toBeNull();
     expect(screen.getByRole('img', { name: 'Second' })).toBeVisible();
+  });
+});
+
+/**
+ * A host that hands out leases which end, as a signed delivery URL does. Each
+ * one is distinct, so a renewal is visible in what the element is showing.
+ */
+function leasingGateway(
+  gateway: InMemoryResourceGateway,
+  livesForMs: number,
+): Readonly<{
+  gateway: ProtocolBuilderResourceGateway;
+  issued: () => number;
+  released: () => number;
+}> {
+  let issued = 0;
+  let released = 0;
+  return {
+    issued: () => issued,
+    released: () => released,
+    gateway: overrideGateway(gateway, {
+      resolvePreview: async (resourceId) => {
+        const result = await gateway.resolvePreview(resourceId);
+        if (result.status === 'failed') return result;
+        issued += 1;
+        const lease = issued;
+        return {
+          status: 'ok',
+          data: {
+            resourceId,
+            url: `${result.data.url}#lease-${lease}`,
+            expiresAt: Date.now() + livesForMs,
+            release: () => {
+              released += 1;
+              result.data.release();
+            },
+          },
+        };
+      },
+    }),
+  };
+}
+
+describe('a preview whose URL is a lease that ends', () => {
+  it('takes a new lease before the old one expires, and lets the old one go', async () => {
+    const gateway = new InMemoryResourceGateway();
+    const image = await stageImage(gateway, 'request-leased', 'leased.png');
+    // Just long enough that the renewal is scheduled rather than skipped.
+    const host = leasingGateway(gateway, PREVIEW_RENEWAL_LEAD_MS + 30);
+
+    renderPreview(host.gateway, image, 'Leased image');
+    const rendered = await screen.findByRole('img', { name: 'Leased image' });
+    expect(rendered.getAttribute('src')).toContain('#lease-1');
+
+    // A stage editor stays open far longer than a signed URL lives, so an
+    // image that silently stops loading looks like a resource the protocol
+    // lost.
+    await waitFor(() =>
+      expect(
+        screen.getByRole('img', { name: 'Leased image' }).getAttribute('src'),
+      ).toContain('#lease-2'),
+    );
+    expect(host.released()).toBe(1);
+  });
+
+  it('leaves a lease with no end alone', async () => {
+    const gateway = new InMemoryResourceGateway();
+    const image = await stageImage(gateway, 'request-open', 'open.png');
+    const resolvePreview = vi.spyOn(gateway, 'resolvePreview');
+
+    renderPreview(gateway, image, 'Open image');
+    await screen.findByRole('img', { name: 'Open image' });
+    await act(flushPendingWork);
+
+    // Nothing said the URL stops working, so asking for another one would be
+    // traffic about nothing.
+    expect(resolvePreview).toHaveBeenCalledTimes(1);
   });
 });

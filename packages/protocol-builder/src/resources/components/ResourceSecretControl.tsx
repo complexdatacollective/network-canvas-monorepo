@@ -43,7 +43,7 @@ export default function ResourceSecretControl({
   disabled = false,
 }: ResourceSecretControlProps) {
   const gateway = useResourceGateway();
-  const { busy, failure, retry, run } = useResourceAttempt();
+  const { busy, clear, failure, retry, run } = useResourceAttempt();
   const [name, setName] = useState('');
   const [secret, setSecret] = useState('');
   const [errors, setErrors] = useState<
@@ -53,6 +53,26 @@ export default function ResourceSecretControl({
   // One id per key the researcher is adding, so a retry after an uncertain
   // failure stages that key once rather than minting a second copy of it.
   const requestId = useRef(uuid());
+  /** Whether the id above has already been sent to the host. */
+  const submitted = useRef(false);
+
+  /**
+   * Editing after a submission starts a new intent, so it gets a new id.
+   *
+   * An uncertain failure may mean the host staged the key and lost only its
+   * answer. Sending an edited key under the same id would be answered with the
+   * first one — the field would name a key the researcher never entered, and
+   * the correction would be silently dropped. The stale failure goes with the
+   * id: repeating the previous call is no longer what "try again" means, and
+   * the key that first call may have staged is unreferenced, so the finish
+   * discards it.
+   */
+  const editing = () => {
+    if (!submitted.current || busy) return;
+    submitted.current = false;
+    requestId.current = uuid();
+    clear();
+  };
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -66,6 +86,7 @@ export default function ResourceSecretControl({
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
+    submitted.current = true;
     run(
       () =>
         gateway.stageSecret({
@@ -78,6 +99,7 @@ export default function ResourceSecretControl({
         // is the key, on screen and in the page.
         setName('');
         setSecret('');
+        submitted.current = false;
         requestId.current = uuid();
         setStatus(`${staged.descriptor.name} was added.`);
         onStaged(staged.descriptor);
@@ -93,7 +115,10 @@ export default function ResourceSecretControl({
         hint="How this key is listed in your protocol."
         component={InputField}
         value={name}
-        onChange={(value: unknown) => setName(asString(value))}
+        onChange={(value: unknown) => {
+          editing();
+          setName(asString(value));
+        }}
         disabled={disabled}
         errors={errors.name === undefined ? [] : [errors.name]}
         showErrors={errors.name !== undefined}
@@ -106,7 +131,10 @@ export default function ResourceSecretControl({
         type="password"
         autoComplete="off"
         value={secret}
-        onChange={(value: unknown) => setSecret(asString(value))}
+        onChange={(value: unknown) => {
+          editing();
+          setSecret(asString(value));
+        }}
         disabled={disabled}
         errors={errors.value === undefined ? [] : [errors.value]}
         showErrors={errors.value !== undefined}

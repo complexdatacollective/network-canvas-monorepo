@@ -143,6 +143,11 @@ export function createStagedResourceTracker(
    * resource was kept. A host that refused the drop is reported as it
    * answered: the resource really is still there, so saying it was not kept
    * would be untrue, and a retryable failure is what the picker can act on.
+   *
+   * A refused drop is also tracked, because the host is still holding it and
+   * nothing else knows its id: the editor was handed a failure rather than a
+   * descriptor, so a session that dropped it here would leave the host with a
+   * resource no later cancel, finish, or host cleanup could name.
    */
   const keepStagedResult = async (
     stagedDuring: number,
@@ -155,9 +160,11 @@ export function createStagedResourceTracker(
       return undefined;
     }
     const discarded = await host.discardStaged(descriptor.id);
-    return discarded.status === 'ok'
-      ? stagingEndedFailure(descriptor.id, subject)
-      : discarded;
+    if (discarded.status === 'ok') {
+      return stagingEndedFailure(descriptor.id, subject);
+    }
+    remember(descriptor, handle);
+    return discarded;
   };
 
   const forget = (resourceIds: Iterable<string>): void => {

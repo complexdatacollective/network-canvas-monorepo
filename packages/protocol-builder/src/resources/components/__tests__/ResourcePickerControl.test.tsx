@@ -2,6 +2,7 @@ import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import { contentHash, type SectionDoc } from '@codaco/studio-sync/apply';
 import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
@@ -1123,6 +1124,337 @@ describe('a picker over a session that has moved on', () => {
     });
     expect(host.getSnapshot().protocolSections[assetsSection]).toHaveProperty(
       'staged-resource-1',
+    );
+  });
+});
+
+/**
+ * An Information stage whose two items can hold the same image, which is what
+ * makes "another field is still using this" a state a researcher can reach.
+ *
+ * The item's `id` and `type` are rendered alongside its content because a
+ * section owning part of a nested value has to render every part of it: the
+ * form replaces the whole `items` key, so an item whose type no field carries
+ * stops being an asset item the moment the form is read.
+ */
+function itemIdentityFields(index: number) {
+  return (
+    <>
+      <ProtocolField
+        component={InputField}
+        name={`items[${index}].id`}
+        nameMode="path"
+        label={`Item ${index + 1} id`}
+        labelHidden
+      />
+      <ProtocolField
+        component={InputField}
+        name={`items[${index}].type`}
+        nameMode="path"
+        label={`Item ${index + 1} type`}
+        labelHidden
+      />
+    </>
+  );
+}
+
+function itemPicker(index: number, label: string) {
+  return (
+    <ProtocolField
+      component={ResourcePickerControl}
+      name={`items[${index}].content`}
+      nameMode="path"
+      label={label}
+      kind="image"
+    />
+  );
+}
+
+const ASSET_ITEMS: SectionDoc = {
+  title: 'Welcome',
+  items: [
+    { id: 'item-1', type: 'asset', content: '' },
+    { id: 'item-2', type: 'asset', content: '' },
+  ],
+};
+
+/**
+ * Discarding is a decision about the editing session, not about one field: the
+ * resource leaves the host, and every reference to it anywhere in the stage
+ * becomes one the protocol cannot resolve. So the picker asks what else is
+ * using it, from the same `assetReference` tags the session validates against.
+ */
+describe('discarding a resource other fields may share', () => {
+  async function importInto(
+    user: ReturnType<typeof userEvent.setup>,
+    group: HTMLElement,
+  ) {
+    await user.click(
+      within(group).getByRole('button', { name: 'Select an image' }),
+    );
+    await user.upload(
+      await screen.findByLabelText('Choose a file from your computer'),
+      new File(['fake-png-bytes'], 'skyline.png', { type: 'image/png' }),
+    );
+  }
+
+  function renderItems(gateway: InMemoryResourceGateway) {
+    const { formValues } = renderResourceEditor({
+      gateway,
+      fields: ASSET_ITEMS,
+      children: (
+        <>
+          {itemIdentityFields(0)}
+          {itemPicker(0, 'First image')}
+          {itemIdentityFields(1)}
+          {itemPicker(1, 'Second image')}
+        </>
+      ),
+    });
+    return (): unknown[] =>
+      (formValues().items as { content?: unknown }[] | undefined)?.map(
+        (item) => item.content,
+      ) ?? [];
+  }
+
+  it('refuses to discard one a second field still names, and says why', async () => {
+    const user = userEvent.setup();
+    const gateway = new InMemoryResourceGateway();
+    const contents = renderItems(gateway);
+
+    const first = await screen.findByRole('group', { name: 'First image' });
+    const second = screen.getByRole('group', { name: 'Second image' });
+    await importInto(user, first);
+    await waitFor(() => expect(contents()[0]).toBe('staged-resource-1'));
+
+    // The second item is pointed at the very same import, which the browser
+    // offers because it lists everything staged in this session.
+    await user.click(
+      within(second).getByRole('button', { name: 'Select an image' }),
+    );
+    await user.click(
+      await screen.findByRole('button', { name: 'skyline.png' }),
+    );
+    await waitFor(() => expect(contents()[1]).toBe('staged-resource-1'));
+
+    await user.click(
+      within(first).getByRole('button', { name: 'Discard this resource' }),
+    );
+    await act(flushPendingWork);
+
+    expect(within(first).getByRole('alert')).toHaveTextContent(
+      'This resource is still used elsewhere on this stage, so it was not discarded.',
+    );
+    // Nothing moved: neither field lost its reference, and the host still has
+    // the file both of them name.
+    expect(contents()).toEqual(['staged-resource-1', 'staged-resource-1']);
+    expect(gateway.getStagingResidue()).not.toEqual([]);
+  });
+
+  it('discards one no other field names', async () => {
+    const user = userEvent.setup();
+    const gateway = new InMemoryResourceGateway();
+    const contents = renderItems(gateway);
+
+    const first = await screen.findByRole('group', { name: 'First image' });
+    await importInto(user, first);
+    await waitFor(() => expect(contents()[0]).toBe('staged-resource-1'));
+
+    await user.click(
+      within(first).getByRole('button', { name: 'Discard this resource' }),
+    );
+
+    await waitFor(() => expect(contents()[0]).toBeUndefined());
+    expect(within(first).queryByRole('alert')).toBeNull();
+    expect(gateway.getStagingResidue()).toEqual([]);
+  });
+});
+
+describe('the validation state a picker exposes', () => {
+  it('tells assistive technology that a picker group is required and invalid', async () => {
+    const user = userEvent.setup();
+    const gateway = new InMemoryResourceGateway({ committed: [imageSeed] });
+    renderResourceEditor({
+      gateway,
+      actions: ({ formId }) => <SubmitButton form={formId}>Save</SubmitButton>,
+      children: (
+        <ProtocolField
+          component={ResourcePickerControl}
+          name="backgroundImage"
+          label="Background image"
+          kind="image"
+          required
+        />
+      ),
+    });
+
+    const group = await screen.findByRole('group', {
+      name: 'Background image',
+    });
+    // The group IS the field, so the field's own validation state has to be on
+    // it: a picker that never says it is required announces as an optional one.
+    expect(group).toHaveAttribute('aria-required', 'true');
+    expect(group).toHaveAttribute('aria-invalid', 'false');
+
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(group).toHaveAttribute('aria-invalid', 'true'));
+  });
+
+  it('tells assistive technology the same about a source radio group', async () => {
+    const gateway = new InMemoryResourceGateway({ committed: [networkSeed] });
+    renderResourceEditor({
+      gateway,
+      children: (
+        <ProtocolField
+          component={ResourcePickerControl}
+          name="dataSource"
+          label="Network data"
+          kind="network"
+          canUseExisting
+          required
+        />
+      ),
+    });
+
+    const group = await screen.findByRole('radiogroup', {
+      name: 'Network data',
+    });
+    expect(group).toHaveAttribute('aria-required', 'true');
+  });
+});
+
+/**
+ * The two ways a picker can be left showing something that is no longer true:
+ * a call still in flight for a resource the field has let go, and a source
+ * chosen but never followed through.
+ */
+describe('a picker the researcher backs out of', () => {
+  it('drops an in-flight download when the resource is removed', async () => {
+    const user = userEvent.setup();
+    const inner = new InMemoryResourceGateway({ committed: [imageSeed] });
+    const held = deferred<ResourceResult<ResourceContent>>();
+    const gateway = overrideGateway(inner, { download: () => held.promise });
+    const { fieldValue } = renderResourceEditor({
+      gateway,
+      fields: { label: 'Welcome', backgroundImage: 'image-1' },
+      children: imageField(),
+    });
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Download this resource' }),
+    );
+    await user.click(
+      screen.getByRole('button', { name: 'Remove this resource' }),
+    );
+    await waitFor(() => expect(fieldValue('backgroundImage')).toBeUndefined());
+
+    held.settle(
+      resourceFailure<ResourceContent>(
+        'unavailable',
+        'the download could not be completed',
+      ),
+    );
+    await act(flushPendingWork);
+
+    // The download was of the resource the field just let go of, so a notice
+    // beside "No resource selected" would be about nothing on screen, and its
+    // retry would download the removed resource all over again.
+    expect(
+      screen.queryByText('the download could not be completed'),
+    ).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Try that again' })).toBeNull();
+  });
+
+  it('keeps the interview network when the browser is cancelled', async () => {
+    const user = userEvent.setup();
+    const gateway = new InMemoryResourceGateway({ committed: [networkSeed] });
+    const { fieldValue } = renderResourceEditor({
+      gateway,
+      fields: { label: 'Roster', dataSource: 'existing' },
+      children: (
+        <ProtocolField
+          component={ResourcePickerControl}
+          name="dataSource"
+          label="Network data"
+          kind="network"
+          canUseExisting
+        />
+      ),
+    });
+
+    await user.click(
+      await screen.findByRole('radio', { name: 'Use an imported data file' }),
+    );
+    await user.click(await screen.findByRole('button', { name: 'Cancel' }));
+
+    // Nothing was chosen, so nothing replaced what the field had: a required
+    // field emptied on the way to a choice never made is one the researcher
+    // has to notice and put back.
+    expect(fieldValue('dataSource')).toBe('existing');
+    expect(
+      await screen.findByRole('radio', {
+        name: 'Use the network from the in-progress interview',
+      }),
+    ).toBeChecked();
+  });
+});
+
+describe('two files chosen before either has been read', () => {
+  it('imports the one the researcher chose last', async () => {
+    const user = userEvent.setup();
+    const inner = new InMemoryResourceGateway();
+    const staging = new Map<string, () => void>();
+    const requests: string[] = [];
+    const gateway = overrideGateway(inner, {
+      stageUpload: (request) => {
+        requests.push(request.source);
+        return new Promise((settle) => {
+          staging.set(request.source, () => {
+            void inner.stageUpload(request).then(settle);
+          });
+        });
+      },
+    });
+    const { fieldValue } = renderResourceEditor({
+      gateway,
+      children: imageField(),
+    });
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Select an image' }),
+    );
+    const input = await screen.findByLabelText(
+      'Choose a file from your computer',
+    );
+
+    // A big first choice and a small second one: the reads are what overlap,
+    // and the second finishes first.
+    const slow = deferred<ArrayBuffer>();
+    const fast = deferred<ArrayBuffer>();
+    const older = new File(['older'], 'older.png', { type: 'image/png' });
+    const newer = new File(['newer'], 'newer.png', { type: 'image/png' });
+    Object.defineProperty(older, 'arrayBuffer', { value: () => slow.promise });
+    Object.defineProperty(newer, 'arrayBuffer', { value: () => fast.promise });
+
+    await user.upload(input, older);
+    await user.upload(input, newer);
+
+    fast.settle(bytesOf('newer').buffer as ArrayBuffer);
+    await act(flushPendingWork);
+    slow.settle(bytesOf('older').buffer as ArrayBuffer);
+    await act(flushPendingWork);
+
+    await act(async () => {
+      for (const settle of staging.values()) settle();
+      await flushPendingWork();
+    });
+
+    // The older read finished last, but it was chosen first: it is not staged
+    // at all, and the field holds the file the researcher actually chose.
+    expect(requests).toEqual(['newer.png']);
+    await waitFor(() =>
+      expect(fieldValue('backgroundImage')).toBe('staged-resource-1'),
     );
   });
 });

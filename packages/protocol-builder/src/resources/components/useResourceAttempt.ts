@@ -15,6 +15,26 @@ import {
 const UNREACHABLE_MESSAGE =
   'The resource could not be reached. Try again in a moment.';
 
+/**
+ * A place in the order of calls, taken before the work that leads to one
+ * begins.
+ *
+ * Some calls are preceded by work of their own — reading a file the researcher
+ * chose, for one — and that work can take longer for an earlier choice than
+ * for a later one. Ordering by when the gateway call is made would let the
+ * slower, older choice arrive last and win; ordering by when the researcher
+ * chose is what this claims.
+ */
+export type ResourceAttemptClaim = Readonly<{
+  /** False once the researcher has asked for something else. */
+  current: () => boolean;
+  /** Starts the claimed call, or does nothing if it was superseded. */
+  run: <T>(
+    operation: () => Promise<ResourceResult<T>>,
+    onSuccess?: (data: T) => void,
+  ) => void;
+}>;
+
 export type ResourceAttempt = Readonly<{
   /** A call is in flight. */
   busy: boolean;
@@ -30,6 +50,8 @@ export type ResourceAttempt = Readonly<{
     operation: () => Promise<ResourceResult<T>>,
     onSuccess?: (data: T) => void,
   ) => void;
+  /** Takes the next place in the order before the call itself is ready. */
+  begin: () => ResourceAttemptClaim;
   clear: () => void;
 }>;
 
@@ -98,6 +120,24 @@ export function useResourceAttempt(): ResourceAttempt {
     [],
   );
 
+  const begin = useCallback((): ResourceAttemptClaim => {
+    // Taken now, not when the call is made: the claim is the researcher's
+    // choice, and the call is only its consequence.
+    sequence.current += 1;
+    const attempt = sequence.current;
+    const current = (): boolean => sequence.current === attempt;
+    return Object.freeze({
+      current,
+      run: <T>(
+        operation: () => Promise<ResourceResult<T>>,
+        onSuccess?: (data: T) => void,
+      ): void => {
+        if (!current()) return;
+        run(operation, onSuccess);
+      },
+    });
+  }, [run]);
+
   const clear = useCallback(() => {
     // Anything still in flight is disowned as well, so a late failure cannot
     // reappear after the surface that asked for it has moved on.
@@ -110,6 +150,7 @@ export function useResourceAttempt(): ResourceAttempt {
     ...(state.failure === undefined ? {} : { failure: state.failure }),
     ...(state.retry === undefined ? {} : { retry: state.retry }),
     run,
+    begin,
     clear,
   };
 }
