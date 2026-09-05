@@ -680,6 +680,53 @@ describe('ResourcePickerControl', () => {
     ).toBeVisible();
   });
 
+  it('lets a field let go of a resource the protocol no longer holds', async () => {
+    const user = userEvent.setup();
+    const gateway = new InMemoryResourceGateway();
+    const { fieldValue } = renderResourceEditor({
+      gateway,
+      fields: { label: 'Welcome', backgroundImage: 'image-1' },
+      children: imageField(),
+    });
+
+    expect(
+      await screen.findByText('that resource is no longer available'),
+    ).toBeVisible();
+    // Nothing is known about the resource, so there is no summary and no
+    // discard — but the reference is still in the draft, and this field is not
+    // required, so choosing a replacement is not the only thing the researcher
+    // can reasonably want to do.
+    expect(
+      screen.getByText(
+        'This field still refers to that resource. Removing it clears the reference; it does not delete anything.',
+      ),
+    ).toBeVisible();
+
+    await user.click(
+      screen.getByRole('button', { name: 'Remove this resource' }),
+    );
+
+    await waitFor(() => expect(fieldValue('backgroundImage')).toBeUndefined());
+    expect(await screen.findByText('No resource selected.')).toBeVisible();
+  });
+
+  it('offers no way to let go of a resource in a read-only session', async () => {
+    const gateway = new InMemoryResourceGateway();
+    renderResourceEditor({
+      gateway,
+      readOnly: true,
+      fields: { label: 'Welcome', backgroundImage: 'image-1' },
+      children: imageField(),
+    });
+
+    expect(
+      await screen.findByText('that resource is no longer available'),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: 'Remove this resource' }),
+    ).toBeDisabled();
+  });
+
   it('offers no way to change the resource in a read-only session', async () => {
     const gateway = new InMemoryResourceGateway({ committed: [imageSeed] });
     renderResourceEditor({
@@ -1248,6 +1295,42 @@ describe('discarding a resource other fields may share', () => {
     // Nothing moved: neither field lost its reference, and the host still has
     // the file both of them name.
     expect(contents()).toEqual(['staged-resource-1', 'staged-resource-1']);
+    expect(gateway.getStagingResidue()).not.toEqual([]);
+  });
+
+  it('lets a field let go of one it was refused the discard of', async () => {
+    const user = userEvent.setup();
+    const gateway = new InMemoryResourceGateway();
+    const contents = renderItems(gateway);
+
+    const first = await screen.findByRole('group', { name: 'First image' });
+    const second = screen.getByRole('group', { name: 'Second image' });
+    await importInto(user, first);
+    await waitFor(() => expect(contents()[0]).toBe('staged-resource-1'));
+    await user.click(
+      within(second).getByRole('button', { name: 'Select an image' }),
+    );
+    await user.click(
+      await screen.findByRole('button', { name: 'skyline.png' }),
+    );
+    await waitFor(() => expect(contents()[1]).toBe('staged-resource-1'));
+
+    await user.click(
+      within(first).getByRole('button', { name: 'Discard this resource' }),
+    );
+    await act(flushPendingWork);
+
+    // Both fields name it, so neither of them can discard it. Telling each
+    // researcher to move the other field off it first is telling them to do
+    // the very thing the other field cannot do either.
+    await user.click(
+      within(first).getByRole('button', { name: 'Remove this resource' }),
+    );
+
+    await waitFor(() =>
+      expect(contents()).toEqual([undefined, 'staged-resource-1']),
+    );
+    // The file itself is untouched: the other field still names it.
     expect(gateway.getStagingResidue()).not.toEqual([]);
   });
 

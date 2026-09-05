@@ -31,10 +31,29 @@ const INTERVIEW_NETWORK = 'existing';
 /**
  * Said when the researcher asks to discard an imported resource another field
  * on the same stage is still using. Whole, so it can be translated: it names
- * what happened and the one thing that unblocks it.
+ * what happened and what can be done instead.
+ *
+ * Moving the other field off it first is not among the offers, because the
+ * other field is in exactly this state too: both name the resource, so neither
+ * can discard it, and each would be told to go and do what the other cannot.
+ * Letting this field go of it is the way out that always exists, so it is
+ * offered here as a control rather than described as a chore.
  */
 const STILL_IN_USE_MESSAGE =
-  'This resource is still used elsewhere on this stage, so it was not discarded. Move the other field off it first, or choose a different resource here.';
+  'This resource is still used elsewhere on this stage, so it was not discarded. Remove it from this field instead, or choose a different resource here.';
+
+/**
+ * Said beside the failure when a field's resource could not be looked up at
+ * all, which is the one state where nothing on the card can describe what the
+ * field is holding.
+ *
+ * The removal has to be offered anyway. A resource deleted out from under the
+ * draft leaves a reference the stage cannot be saved with, and the only other
+ * control here asks for a replacement — which a researcher who simply wants
+ * the field empty, or who has no replacement yet, cannot give it.
+ */
+const UNRESOLVED_REFERENCE_MESSAGE =
+  'This field still refers to that resource. Removing it clears the reference; it does not delete anything.';
 
 export type ResourcePickerControlProps = CreateFormFieldProps<
   string,
@@ -278,6 +297,28 @@ export default function ResourcePickerControl({
             />
           )}
 
+          {/* The reference outlives the resource, so the way off it has to
+              outlive the resource too: the actions below are all about a
+              descriptor there is none of here. */}
+          {selectedId !== undefined &&
+            inspection === undefined &&
+            failure !== undefined && (
+              <div className="flex flex-col items-start gap-2">
+                <Paragraph margin="none" emphasis="muted">
+                  {UNRESOLVED_REFERENCE_MESSAGE}
+                </Paragraph>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={locked}
+                  onClick={handleRemove}
+                >
+                  Remove this resource
+                </Button>
+              </div>
+            )}
+
           {inspection !== undefined && descriptor !== undefined && (
             <div className="flex flex-col gap-3">
               <ResourceSummary inspection={inspection} />
@@ -327,8 +368,19 @@ export default function ResourcePickerControl({
           )}
 
           {refusal !== undefined && (
-            <div role="alert" className="text-destructive text-sm">
-              {refusal}
+            <div className="flex flex-col items-start gap-2">
+              <div role="alert" className="text-destructive text-sm">
+                {refusal}
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={locked}
+                onClick={handleRemove}
+              >
+                Remove this resource
+              </Button>
             </div>
           )}
 
