@@ -1,3 +1,5 @@
+'use client';
+
 import { type ReactNode, useCallback, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 

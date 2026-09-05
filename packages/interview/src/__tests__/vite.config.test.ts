@@ -46,3 +46,59 @@ describe('interview declaration output', () => {
     );
   });
 });
+
+describe('interview client directive', () => {
+  it('banners a chunk built from a module that declared the boundary', async () => {
+    const { createClientDirective } = await import('../../vite.config');
+    const { banner, record } = createClientDirective();
+
+    record(
+      "'use client';\n\nexport const Node = () => null;\n",
+      '/src/Node.tsx',
+    );
+    record('export const NODE_RADIUS = 4;\n', '/src/constants.ts');
+
+    // The main bundle: one client module in the chunk is enough, because the
+    // chunk evaluates as a single module in the consumer's graph.
+    expect(banner(['/src/constants.ts', '/src/Node.tsx'])).toBe(
+      "'use client';",
+    );
+
+    // The `contract` bundle: server-safe, and it says so.
+    expect(banner(['/src/constants.ts'])).toBe('');
+  });
+
+  it('reads the directive off the source before other transforms run', async () => {
+    const { createClientDirective } = await import('../../vite.config');
+    const { banner, plugin } = createClientDirective();
+
+    if (typeof plugin.transform !== 'function') {
+      throw new Error('Expected the client-directive plugin to transform');
+    }
+
+    // `enforce: 'pre'` is what makes this reliable — a later transform can move
+    // or drop the directive, and the recorded id is taken from the raw source.
+    expect(plugin.enforce).toBe('pre');
+
+    plugin.transform.call(
+      // The hook reads only its arguments; a plugin context would be noise.
+      undefined as never,
+      '"use client";\n\nexport const Panel = () => null;\n',
+      '/src/Panel.tsx',
+    );
+
+    expect(banner(['/src/Panel.tsx'])).toBe("'use client';");
+  });
+
+  it('ignores a module that only mentions the directive in its body', async () => {
+    const { createClientDirective } = await import('../../vite.config');
+    const { banner, record } = createClientDirective();
+
+    record(
+      'export const DIRECTIVE = "\'use client\';";\n',
+      '/src/directive.ts',
+    );
+
+    expect(banner(['/src/directive.ts'])).toBe('');
+  });
+});

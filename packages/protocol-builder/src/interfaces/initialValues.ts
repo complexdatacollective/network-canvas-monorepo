@@ -9,6 +9,10 @@ type GetStageEditorInitialValuesOptions = {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+/**
+ * The values a stage editor mounts with: the committed stage when there is
+ * one, and otherwise the interface's template plus its `type`.
+ */
 export const getStageEditorInitialValues = ({
   interfaceType,
   stage,

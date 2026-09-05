@@ -1,3 +1,5 @@
+'use client';
+
 import { motion } from 'motion/react';
 
 import { type DragMetadata, useDropTarget } from '@codaco/fresco-ui/dnd/dnd';

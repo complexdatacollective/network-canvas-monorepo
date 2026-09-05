@@ -1,3 +1,5 @@
+'use client';
+
 import { ChevronUp, GripHorizontal } from 'lucide-react';
 import { motion } from 'motion/react';
 import {

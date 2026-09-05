@@ -1,3 +1,5 @@
+'use client';
+
 import { useCallback, useEffect, useMemo } from 'react';
 
 import type { ItemProps } from '@codaco/fresco-ui/collection/types';
