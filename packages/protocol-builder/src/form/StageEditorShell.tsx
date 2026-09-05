@@ -159,11 +159,25 @@ function StageEditorFormBody({
    * to report. See `reseedStageForm`.
    */
   const reseededGeneration = useRef(committed.generation);
+  /**
+   * The agreed draft the controls are already level with, which is what the
+   * arrival is compared AGAINST rather than the values on screen.
+   *
+   * Kept here rather than derived, because it is true of both ways a draft
+   * stops being a surprise: a re-seed writes an arrival into the controls, and
+   * this form's own flush IS the content that arrived. Only the difference
+   * between two agreed drafts says what an arrival decided; the difference
+   * between an agreed draft and what is on screen is mostly the researcher
+   * typing.
+   */
+  const levelWith = useRef(committed.fields);
   useEffect(() => {
     if (storeApi === undefined) return;
+    const previous = levelWith.current;
+    levelWith.current = committed.fields;
     if (reseededGeneration.current === committed.generation) return;
     reseededGeneration.current = committed.generation;
-    reseedStageForm(storeApi, committed.fields);
+    reseedStageForm(storeApi, committed.fields, previous);
   }, [committed, storeApi]);
 
   const handleSubmit = useCallback<FormSubmitHandler>(

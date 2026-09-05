@@ -593,6 +593,94 @@ describe('StageEditorShell', () => {
     );
   });
 
+  it('keeps a field the researcher is editing when an arrival moves another', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      fields: { ...initialFields, interviewScript: 'Read this aloud' },
+    });
+    renderEditor(session);
+
+    const script = await screen.findByRole('textbox', {
+      name: 'Interviewer script text',
+    });
+    await user.clear(script);
+    await user.type(script, 'Half-written note');
+
+    // An arrival that moves the heading and says nothing about the script.
+    act(() => {
+      session.replaceAuthoritativeStage({
+        fields: {
+          ...initialFields,
+          title: 'Renamed elsewhere',
+          interviewScript: 'Read this aloud',
+        },
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+    });
+
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
+        'Renamed elsewhere',
+      ),
+    );
+    // The script is exactly where the arrival left it, so there is nothing
+    // about it for the controls to take. Writing the agreed value back over
+    // the researcher's half-finished note would discard work nothing in the
+    // stage disagreed with.
+    expect(
+      screen.getByRole('textbox', { name: 'Interviewer script text' }),
+    ).toHaveValue('Half-written note');
+  });
+
+  it('keeps what was typed after a save when an arrival moves another field', async () => {
+    const user = userEvent.setup();
+    const session = createSession({ onFinish: () => undefined });
+    renderEditor(session);
+
+    const heading = screen.getByRole('textbox', { name: 'Page heading' });
+    await user.clear(heading);
+    await user.type(heading, 'Saved heading');
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+    await waitFor(() =>
+      expect(session.getSnapshot().editedSection.fields.title).toBe(
+        'Saved heading',
+      ),
+    );
+
+    // Still editing after the save, with the extra keystrokes in the form and
+    // nowhere else.
+    await user.type(heading, ' edited');
+
+    // The host acknowledges the save, and someone else renames the stage.
+    const [batch] = session.getSnapshot().pendingCommands;
+    if (batch === undefined) throw new Error('the save wrote no commands');
+    act(() => {
+      session.acknowledge({
+        fields: { label: 'Welcome', title: 'Saved heading', items: [] },
+        throughBatchId: batch.id,
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+      session.replaceAuthoritativeStage({
+        fields: {
+          label: 'Renamed by someone else',
+          title: 'Saved heading',
+          items: [],
+        },
+        manifestRevision: { sequence: 3n, hash: 'revision-3' },
+      });
+    });
+
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Stage name' })).toHaveValue(
+        'Renamed by someone else',
+      ),
+    );
+    // The heading the arrival carries is the one this form saved, so the
+    // arrival decided nothing about it — the draft it must be compared with is
+    // the one the save left agreed, not the one the stage was opened with.
+    expect(heading).toHaveValue('Saved heading edited');
+  });
+
   it('reopens a capability an authoritative replacement has refilled', async () => {
     const user = userEvent.setup();
     const session = createSession({
