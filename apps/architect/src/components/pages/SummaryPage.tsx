@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import { useSelector } from 'react-redux';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import PageHeading from '~/components/ProjectNav/PageHeading';
 import AssetManifest from '~/lib/ProtocolSummary/components/AssetManifest';
 import Codebook from '~/lib/ProtocolSummary/components/Codebook';
@@ -10,7 +12,22 @@ import Stages from '~/lib/ProtocolSummary/components/Stages';
 import SummaryContext from '~/lib/ProtocolSummary/components/SummaryContext';
 import { getCodebookIndex } from '~/lib/ProtocolSummary/helpers';
 import { getProtocol, getProtocolName } from '~/selectors/protocol';
+const messages = defineMessages({
+  protocolSummary: {
+    id: 'architect.pages.summaryPage.protocolSummary',
+    defaultMessage: 'Protocol Summary',
+    description: 'The title text in components / pages / SummaryPage.',
+  },
+  belowIsAComprehensiveSummaryOf: {
+    id: 'architect.pages.summaryPage.belowIsAComprehensiveSummaryOf',
+    defaultMessage:
+      'Below is a comprehensive summary of your protocol configuration, including all stages, codebook, and assets.',
+    description: 'The description text in components / pages / SummaryPage.',
+  },
+});
+
 const SummaryPage = () => {
+  const intl = useAppIntl();
   // Toggle a document-level class so global stylesheets can switch <html>
   // and <body> into the summary "paged" layout. The class name avoids
   // `print` because Tailwind's `print:` variant makes that token noisy to
@@ -43,8 +60,10 @@ const SummaryPage = () => {
       <div className="w-full">
         <div className="w-full print:hidden">
           <PageHeading
-            title="Protocol Summary"
-            description="Below is a comprehensive summary of your protocol configuration, including all stages, codebook, and assets."
+            title={intl.formatMessage(messages.protocolSummary)}
+            description={intl.formatMessage(
+              messages.belowIsAComprehensiveSummaryOf,
+            )}
           />
         </div>
         <div className="protocol-summary-surface mt-6 [&_.variable-pill]:origin-left [&_.variable-pill]:scale-[0.8]">

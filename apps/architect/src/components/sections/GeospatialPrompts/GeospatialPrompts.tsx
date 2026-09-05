@@ -1,7 +1,13 @@
 import { useMemo, type ComponentType } from 'react';
 
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Section from '@codaco/fresco-ui/Section';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
+import {
+  arrayItemMessages,
+  arrayValidationMessages,
+} from '~/components/Form/arrayFields/arrayMessages';
 import DialogArrayField from '~/components/Form/arrayFields/DialogArrayField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import {
@@ -14,6 +20,48 @@ import withDisabledSubjectRequired from '../../enhancers/withDisabledSubjectRequ
 import { useCrossClassEditorValidate } from '../useCrossClassEditorValidate';
 import PromptFields from './PromptFields';
 import PromptPreview from './PromptPreview';
+const remainingMessages = defineMessages({
+  editPrompt: {
+    id: 'architect.remaining.sections.geospatialPrompts.geospatialPrompts.editPrompt',
+    defaultMessage: 'Edit Prompt',
+    description:
+      'The addTitle text in components / sections / GeospatialPrompts / GeospatialPrompts.',
+  },
+});
+const additionalMessages = defineMessages({
+  createNewPrompt: {
+    id: 'architect.additional.sections.geospatialPrompts.geospatialPrompts.createNewPrompt',
+    defaultMessage: 'Create new prompt',
+    description:
+      'The addButtonLabel text in components / sections / GeospatialPrompts / GeospatialPrompts.',
+  },
+});
+const messages = defineMessages({
+  promptCollection: {
+    id: 'architect.sections.geospatialPrompts.geospatialPrompts.promptCollection',
+    defaultMessage: 'Prompt collection',
+    description:
+      'The title text in components / sections / GeospatialPrompts / GeospatialPrompts.',
+  },
+  createAndReorderThePromptsShown: {
+    id: 'architect.sections.geospatialPrompts.geospatialPrompts.createAndReorderThePromptsShown',
+    defaultMessage: 'Create and reorder the prompts shown in this stage.',
+    description:
+      'The description text in components / sections / GeospatialPrompts / GeospatialPrompts.',
+  },
+  prompts: {
+    id: 'architect.sections.geospatialPrompts.geospatialPrompts.prompts',
+    defaultMessage: 'Prompts',
+    description:
+      'The label text in components / sections / GeospatialPrompts / GeospatialPrompts.',
+  },
+  addAtLeastOnePromptAnd: {
+    id: 'architect.sections.geospatialPrompts.geospatialPrompts.addAtLeastOnePromptAnd',
+    defaultMessage: 'Add at least one prompt and drag prompts to reorder them.',
+    description:
+      'The hint text in components / sections / GeospatialPrompts / GeospatialPrompts.',
+  },
+});
 
 type Prompt = Record<string, unknown>;
 
@@ -43,6 +91,7 @@ type GeospatialPromptsProps = {
 };
 
 const GeospatialPrompts = ({ disabled }: GeospatialPromptsProps) => {
+  const intl = useAppIntl();
   const { entity, type } = useSubject();
   const initialPrompts = useStageInitialValue<Prompt[]>('prompts');
   const subject = useMemo(
@@ -56,27 +105,29 @@ const GeospatialPrompts = ({ disabled }: GeospatialPromptsProps) => {
 
   return (
     <Section
-      title="Prompt collection"
-      description="Create and reorder the prompts shown in this stage."
+      title={intl.formatMessage(messages.promptCollection)}
+      description={intl.formatMessage(messages.createAndReorderThePromptsShown)}
       disabled={disabled}
     >
       <ArchitectArrayField
         name="prompts"
-        label="Prompts"
-        hint="Add at least one prompt and drag prompts to reorder them."
+        label={intl.formatMessage(messages.prompts)}
+        hint={intl.formatMessage(messages.addAtLeastOnePromptAnd)}
         component={DialogArrayField}
-        addButtonLabel="Create new prompt"
-        validation={{ required: 'You must create at least one item.' }}
+        addButtonLabel={intl.formatMessage(additionalMessages.createNewPrompt)}
+        validation={{
+          required: createMessageError(arrayValidationMessages.required),
+        }}
         initialValue={initialPrompts}
-        addTitle="Edit Prompt"
+        addTitle={intl.formatMessage(remainingMessages.editPrompt)}
         previewComponent={
           PromptPreview as ComponentType<Record<string, unknown>>
         }
         editorFieldsComponent={
           PromptFields as ComponentType<Record<string, unknown>>
         }
-        editorTitle="Edit Prompt"
-        itemLabel="prompt"
+        editorTitle={intl.formatMessage(remainingMessages.editPrompt)}
+        itemLabelMessage={arrayItemMessages.prompt}
         editorDialogSize="editor"
         editorProps={{ entity, type }}
         editorValidate={editorValidate}

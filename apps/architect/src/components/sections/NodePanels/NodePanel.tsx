@@ -1,10 +1,15 @@
 import { Trash2 } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { createElement, useEffect, useRef } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import { ArrayFieldDragHandle } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
-import type { ArrayFieldItemProps } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
+import {
+  ArrayFieldDragHandle,
+  type ArrayFieldItemProps,
+} from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import ArchitectField from '~/components/Form/ArchitectField';
@@ -20,6 +25,83 @@ import {
 } from '~/components/StageEditor/stageFormHooks';
 
 import { usePanelSlot } from './usePanelSlot';
+const messages = defineMessages({
+  dataSourceForPanel: {
+    id: 'architect.nodePanel.dataSource',
+    defaultMessage: 'Data source for panel {position, number}',
+    description: 'Label of the source control for a numbered side panel.',
+  },
+  removeThisItem: {
+    id: 'architect.sections.nodePanels.nodePanel.removeThisItem',
+    defaultMessage: 'Remove this item?',
+    description:
+      'The title text in components / sections / NodePanels / NodePanel.',
+  },
+  thisItemWillBeRemovedFrom: {
+    id: 'architect.sections.nodePanels.nodePanel.thisItemWillBeRemovedFrom',
+    defaultMessage: 'This item will be removed from the list.',
+    description:
+      'The description text in components / sections / NodePanels / NodePanel.',
+  },
+  removeItem: {
+    id: 'architect.sections.nodePanels.nodePanel.removeItem',
+    defaultMessage: 'Remove item',
+    description:
+      'The confirmLabel text in components / sections / NodePanels / NodePanel.',
+  },
+  thisWillRemoveYourEdgeRules: {
+    id: 'architect.sections.nodePanels.nodePanel.thisWillRemoveYourEdgeRules',
+    defaultMessage: 'This will remove your edge rules',
+    description:
+      'The title text in components / sections / NodePanels / NodePanel.',
+  },
+  anExternalDataFileContainsOnly: {
+    id: 'architect.sections.nodePanels.nodePanel.anExternalDataFileContainsOnly',
+    defaultMessage:
+      'An external data file contains only nodes, so edge rules cannot be applied to it. Switching will delete the edge rules in this panel’s filter. Do you want to continue?',
+    description:
+      'The description text in components / sections / NodePanels / NodePanel.',
+  },
+  removeEdgeRules: {
+    id: 'architect.sections.nodePanels.nodePanel.removeEdgeRules',
+    defaultMessage: 'Remove edge rules',
+    description:
+      'The confirmLabel text in components / sections / NodePanels / NodePanel.',
+  },
+  reorderSidePanelOf: {
+    id: 'architect.sections.nodePanels.nodePanel.reorderSidePanelOf',
+    defaultMessage:
+      'Reorder side panel {value1, number} of {itemCount, number}',
+    description:
+      'The label text in components / sections / NodePanels / NodePanel.',
+  },
+  panelTitle: {
+    id: 'architect.sections.nodePanels.nodePanel.panelTitle',
+    defaultMessage: 'Panel title',
+    description:
+      'The description text in components / sections / NodePanels / NodePanel.',
+  },
+  thePanelTitleWillBeShown: {
+    id: 'architect.sections.nodePanels.nodePanel.thePanelTitleWillBeShown',
+    defaultMessage:
+      'The panel title will be shown above the list of nodes within the panel.',
+    description:
+      'Visible text in components / sections / NodePanels / NodePanel.',
+  },
+  chooseWhereThisPanelRsquoSDataComes: {
+    id: 'architect.sections.nodePanels.nodePanel.chooseWhereThisPanelRsquoSDataComes',
+    defaultMessage:
+      'Choose where this panel’s data comes from: the in-progress interview session (“People you have already named”), or a network data file you have added to this protocol.',
+    description:
+      'Visible text in components / sections / NodePanels / NodePanel.',
+  },
+  removeSidePanel: {
+    id: 'architect.sections.nodePanels.nodePanel.removeSidePanel',
+    defaultMessage: 'Remove side panel',
+    description:
+      'The aria-label text in components / sections / NodePanels / NodePanel.',
+  },
+});
 
 const EXISTING_DATA_SOURCE = 'existing';
 
@@ -59,6 +141,7 @@ const NodePanel = ({
   disabled,
   readOnly,
 }: NodePanelProps) => {
+  const intl = useAppIntl();
   const { confirm } = useDialog();
   const interactionDisabled = disabled || readOnly;
   // Bind to the committed position, not the live (possibly mid-drag-preview)
@@ -70,10 +153,14 @@ const NodePanel = ({
 
   const handleDelete = () => {
     void confirm({
-      title: 'Remove this item?',
-      description: 'This item will be removed from the list.',
-      confirmLabel: 'Remove item',
-      cancelLabel: 'Cancel',
+      title: createElement(AppMessage, { message: messages.removeThisItem }),
+      description: createElement(AppMessage, {
+        message: messages.thisItemWillBeRemovedFrom,
+      }),
+      confirmLabel: createElement(AppMessage, { message: messages.removeItem }),
+      cancelLabel: createElement(AppMessage, {
+        message: commonMessages.cancel,
+      }),
       intent: 'destructive',
       onConfirm: () => onDelete?.(),
     });
@@ -124,11 +211,18 @@ const NodePanel = ({
 
     void (async () => {
       const confirmed = await confirm({
-        title: 'This will remove your edge rules',
-        description:
-          'An external data file contains only nodes, so edge rules cannot be applied to it. Switching will delete the edge rules in this panel’s filter. Do you want to continue?',
-        confirmLabel: 'Remove edge rules',
-        cancelLabel: 'Cancel',
+        title: createElement(AppMessage, {
+          message: messages.thisWillRemoveYourEdgeRules,
+        }),
+        description: createElement(AppMessage, {
+          message: messages.anExternalDataFileContainsOnly,
+        }),
+        confirmLabel: createElement(AppMessage, {
+          message: messages.removeEdgeRules,
+        }),
+        cancelLabel: createElement(AppMessage, {
+          message: commonMessages.cancel,
+        }),
         intent: 'warning',
         onConfirm: () => {},
       });
@@ -156,7 +250,9 @@ const NodePanel = ({
   // thing that varies; the panel has no title field value available here to
   // name it by). Held in one place so the field and its issue anchor cannot
   // call the same control two different things.
-  const dataSourceLabel = `Data source for panel ${index + 1}`;
+  const dataSourceLabel = intl.formatMessage(messages.dataSourceForPanel, {
+    position: index + 1,
+  });
 
   return (
     <div className="flex w-full items-center gap-4">
@@ -167,7 +263,10 @@ const NodePanel = ({
           itemCount={itemCount}
           onMove={onMove}
           disabled={interactionDisabled}
-          label={`Reorder side panel ${index + 1} of ${itemCount}`}
+          label={intl.formatMessage(messages.reorderSidePanelOf, {
+            value1: index + 1,
+            itemCount: itemCount,
+          })}
         />
       )}
       <div className="min-w-0 flex-1">
@@ -183,15 +282,14 @@ const NodePanel = ({
         */}
         <IssueAnchor
           fieldName={`${fieldName}.title`}
-          description="Panel title"
+          description={intl.formatMessage(messages.panelTitle)}
         />
         <ArchitectField
           name={`${fieldName}.title`}
-          label="Panel title"
+          label={intl.formatMessage(messages.panelTitle)}
           hint={
             <Paragraph>
-              The panel title will be shown above the list of nodes within the
-              panel.
+              {intl.formatMessage(messages.thePanelTitleWillBeShown)}
             </Paragraph>
           }
           component={InputField}
@@ -207,9 +305,7 @@ const NodePanel = ({
           label={dataSourceLabel}
           hint={
             <Paragraph>
-              Choose where this panel&rsquo;s data comes from: the in-progress
-              interview session (&ldquo;People you have already named&rdquo;),
-              or a network data file you have added to this protocol.
+              {intl.formatMessage(messages.chooseWhereThisPanelRsquoSDataComes)}
             </Paragraph>
           }
           component={DataSource}
@@ -224,7 +320,7 @@ const NodePanel = ({
       </div>
       <IconButton
         icon={<Trash2 />}
-        aria-label="Remove side panel"
+        aria-label={intl.formatMessage(messages.removeSidePanel)}
         color="destructive"
         disabled={interactionDisabled}
         onClick={handleDelete}

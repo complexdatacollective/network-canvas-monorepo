@@ -1,6 +1,6 @@
 import { Combobox } from '@base-ui/react/combobox';
-import type { LucideProps } from 'lucide-react';
 import {
+  type LucideProps,
   Check,
   ChevronsUpDown,
   icons as lucideIconMap,
@@ -13,6 +13,8 @@ import {
   useState,
 } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import { comboboxTriggerVariants } from '@codaco/fresco-ui/form/fields/Combobox/shared';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -22,6 +24,24 @@ import { usePortalContainer } from '@codaco/fresco-ui/PortalContainer';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import { dropdownItemVariants } from '@codaco/fresco-ui/styles/controlVariants';
 import { cx } from '~/utils/cva';
+const messages = defineMessages({
+  selectAnIcon: {
+    id: 'architect.typeEditor.iconPicker.selectAnIcon',
+    defaultMessage: 'Select an icon…',
+    description: 'Visible text in components / TypeEditor / IconPicker.',
+  },
+  searchIcons: {
+    id: 'architect.typeEditor.iconPicker.searchIcons',
+    defaultMessage: 'Search icons…',
+    description:
+      'The placeholder text in components / TypeEditor / IconPicker.',
+  },
+  noIconsFound: {
+    id: 'architect.typeEditor.iconPicker.noIconsFound',
+    defaultMessage: 'No icons found',
+    description: 'Visible text in components / TypeEditor / IconPicker.',
+  },
+});
 
 const CUSTOM_ICONS = [
   'add-a-person',
@@ -117,6 +137,7 @@ const IconPicker = ({
   'aria-labelledby': ariaLabelledBy,
   'aria-required': ariaRequired,
 }: IconPickerProps) => {
+  const intl = useAppIntl();
   const [query, setQuery] = useState('');
   const portalContainer = usePortalContainer();
   const selectedEntry = useMemo(
@@ -201,7 +222,7 @@ const IconPicker = ({
           </>
         ) : (
           <span className="text-input-contrast/50 min-w-0 flex-1 truncate text-left italic">
-            Select an icon…
+            {intl.formatMessage(messages.selectAnIcon)}
           </span>
         )}
         <ChevronsUpDown className="h-[1.2em] w-[1.2em] shrink-0" />
@@ -221,7 +242,7 @@ const IconPicker = ({
             }
           >
             <Combobox.Input
-              placeholder="Search icons…"
+              placeholder={intl.formatMessage(messages.searchIcons)}
               render={({ onChange: renderOnChange, ...renderProps }) => {
                 const inputFieldProps =
                   renderProps as unknown as ComponentPropsWithRef<
@@ -240,7 +261,7 @@ const IconPicker = ({
               }}
             />
             <Combobox.Empty className="text-center text-sm text-current/50 italic empty:hidden">
-              No icons found
+              {intl.formatMessage(messages.noIconsFound)}
             </Combobox.Empty>
             <Combobox.List
               className="max-h-72 overflow-hidden has-data-empty:hidden"

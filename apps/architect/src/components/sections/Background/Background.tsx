@@ -2,6 +2,8 @@ import { get } from 'es-toolkit/compat';
 import { type ComponentProps, useEffect, useRef, useState } from 'react';
 import { useStore } from 'react-redux';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
@@ -18,21 +20,124 @@ import {
   useStageInitialValue,
 } from '~/components/StageEditor/stageFormHooks';
 import type { RootState } from '~/ducks/store';
+import { formatConfig } from '~/i18n/formatConfig';
 import { documentationLinks } from '~/utils/documentationLinks';
 
 import Image from '../../Form/Fields/Image';
+const additionalMessages = defineMessages({
+  aResponsiveSVGCanSpanThe: {
+    id: 'architect.additional.sections.background.background.aResponsiveSVGCanSpanThe',
+    defaultMessage:
+      'A responsive SVG can span the canvas in portrait and landscape while keeping labels readable. <ExternalLink> {value1} </ExternalLink> .',
+    description:
+      'Visible text in components / sections / Background / Background.',
+  },
+});
+const configMessages = defineMessages({
+  concentricCircles: {
+    id: 'architect.sections.background.background.config.concentricCircles',
+    defaultMessage: 'Concentric Circles',
+    description:
+      'Presentation label or description in components/sections/Background/Background.tsx. Identifiers are not translated.',
+  },
+  optionUseTheConventionalConcentricCirclesSociogram: {
+    id: 'architect.sections.background.background.config.useTheConventionalConcentricCirclesSociogram',
+    defaultMessage:
+      'Use the conventional concentric circles sociogram background.',
+    description:
+      'Presentation label or description in components/sections/Background/Background.tsx. Identifiers are not translated.',
+  },
+  image: {
+    id: 'architect.sections.background.background.config.image',
+    defaultMessage: 'Image',
+    description:
+      'Presentation label or description in components/sections/Background/Background.tsx. Identifiers are not translated.',
+  },
+  optionUseACustomImageOfYour: {
+    id: 'architect.sections.background.background.config.useACustomImageOfYour',
+    defaultMessage: 'Use a custom image of your choosing as the background.',
+    description:
+      'Presentation label or description in components/sections/Background/Background.tsx. Identifiers are not translated.',
+  },
+});
+const messages = defineMessages({
+  background: {
+    id: 'architect.sections.background.background.background',
+    defaultMessage: 'Background',
+    description:
+      'The title text in components / sections / Background / Background.',
+  },
+  chooseConcentricCirclesOrACustom: {
+    id: 'architect.sections.background.background.chooseConcentricCirclesOrACustom',
+    defaultMessage:
+      'Choose concentric circles or a custom image as the graphical background for this prompt.',
+    description:
+      'The description text in components / sections / Background / Background.',
+  },
+  configureTheConcentricCircleBackgroundForThis: {
+    id: 'architect.sections.background.background.configureTheConcentricCircleBackgroundForThis',
+    defaultMessage:
+      'Configure the concentric-circle background for this prompt.',
+    description:
+      'The description text in components / sections / Background / Background.',
+  },
+  chooseABackgroundType: {
+    id: 'architect.sections.background.background.chooseABackgroundType',
+    defaultMessage: 'Choose a background type',
+    description:
+      'The label text in components / sections / Background / Background.',
+  },
+  numberOfConcentricCircles: {
+    id: 'architect.sections.background.background.numberOfConcentricCircles',
+    defaultMessage: 'Number of concentric circles',
+    description:
+      'The label text in components / sections / Background / Background.',
+  },
+  skewCircleSizes: {
+    id: 'architect.sections.background.background.skewCircleSizes',
+    defaultMessage: 'Skew circle sizes',
+    description:
+      'The label text in components / sections / Background / Background.',
+  },
+  whenEnabledTheInnerCirclesWill: {
+    id: 'architect.sections.background.background.whenEnabledTheInnerCirclesWill',
+    defaultMessage:
+      'When enabled, the inner circles will be proportionally larger than the outer circles, which can help reduce overlap of nodes in the center of the canvas.',
+    description:
+      'The hint text in components / sections / Background / Background.',
+  },
+  backgroundImage: {
+    id: 'architect.sections.background.background.backgroundImage',
+    defaultMessage: 'Background image',
+    description:
+      'The label text in components / sections / Background / Background.',
+  },
+  chooseAnImageToUseAs: {
+    id: 'architect.sections.background.background.chooseAnImageToUseAs',
+    defaultMessage:
+      'Choose an image to use as the background for this prompt. The image will be scaled to fit the canvas.',
+    description:
+      'Visible text in components / sections / Background / Background.',
+  },
+  learnHowToCreateAResponsive: {
+    id: 'architect.sections.background.background.learnHowToCreateAResponsive',
+    defaultMessage: 'Learn how to create a responsive SVG background',
+    description:
+      'Visible text in components / sections / Background / Background.',
+  },
+});
 
 const backgroundTypeOptions = [
   {
     value: 'concentric-circles',
-    label: 'Concentric Circles',
+    label: configMessages.concentricCircles,
     description:
-      'Use the conventional concentric circles sociogram background.',
+      configMessages.optionUseTheConventionalConcentricCirclesSociogram,
   },
   {
     value: 'image',
-    label: 'Image',
-    description: 'Use a custom image of your choosing as the background.',
+    label: configMessages.image,
+    description: configMessages.optionUseACustomImageOfYour,
   },
 ];
 
@@ -83,6 +188,7 @@ const IntegerInput = ({
  * group they belong to exists nowhere but here.
  */
 const Background = ({ interfaceType }: StageEditorSectionProps) => {
+  const intl = useAppIntl();
   const setStageValue = useSetStageValue();
   const imageAllowed = allowsBackgroundImage(interfaceType);
 
@@ -170,21 +276,23 @@ const Background = ({ interfaceType }: StageEditorSectionProps) => {
 
   return (
     <Section
-      title="Background"
+      title={intl.formatMessage(messages.background)}
       description={
         imageAllowed
-          ? 'Choose concentric circles or a custom image as the graphical background for this prompt.'
-          : 'Configure the concentric-circle background for this prompt.'
+          ? intl.formatMessage(messages.chooseConcentricCirclesOrACustom)
+          : intl.formatMessage(
+              messages.configureTheConcentricCircleBackgroundForThis,
+            )
       }
     >
       {imageAllowed && (
         <UnconnectedField
           name="background-type"
-          label="Choose a background type"
+          label={intl.formatMessage(messages.chooseABackgroundType)}
           component={RichSelectGroupField}
           value={useImage ? 'image' : 'concentric-circles'}
           onChange={handleChooseBackgroundType}
-          options={backgroundTypeOptions}
+          options={formatConfig(backgroundTypeOptions, intl)}
           orientation="horizontal"
         />
       )}
@@ -193,7 +301,7 @@ const Background = ({ interfaceType }: StageEditorSectionProps) => {
           name="background.concentricCircles"
           component={IntegerInput}
           validation={{ required: true, positiveNumber: true }}
-          label="Number of concentric circles"
+          label={intl.formatMessage(messages.numberOfConcentricCircles)}
           initialValue={concentricCirclesInitialValue}
           inline
         />
@@ -203,8 +311,8 @@ const Background = ({ interfaceType }: StageEditorSectionProps) => {
           name="background.skewedTowardCenter"
           component={ToggleField}
           inline
-          label="Skew circle sizes"
-          hint="When enabled, the inner circles will be proportionally larger than the outer circles, which can help reduce overlap of nodes in the center of the canvas."
+          label={intl.formatMessage(messages.skewCircleSizes)}
+          hint={intl.formatMessage(messages.whenEnabledTheInnerCirclesWill)}
           initialValue={skewedTowardCenterInitialValue ?? false}
         />
       )}
@@ -212,23 +320,28 @@ const Background = ({ interfaceType }: StageEditorSectionProps) => {
         <ArchitectField
           name="background.image"
           component={Image}
-          label="Background image"
+          label={intl.formatMessage(messages.backgroundImage)}
           hint={
             <>
               <Paragraph>
-                Choose an image to use as the background for this prompt. The
-                image will be scaled to fit the canvas.
+                {intl.formatMessage(messages.chooseAnImageToUseAs)}
               </Paragraph>
               <Paragraph>
-                {' '}
-                A responsive SVG can span the canvas in portrait and landscape
-                while keeping labels readable.{' '}
-                <ExternalLink
-                  href={documentationLinks.responsiveSvgBackgrounds}
-                >
-                  Learn how to create a responsive SVG background
-                </ExternalLink>
-                .
+                {intl.formatMessage(
+                  additionalMessages.aResponsiveSVGCanSpanThe,
+                  {
+                    value1: intl.formatMessage(
+                      messages.learnHowToCreateAResponsive,
+                    ),
+                    ExternalLink: (chunks) => (
+                      <ExternalLink
+                        href={documentationLinks.responsiveSvgBackgrounds}
+                      >
+                        {chunks}
+                      </ExternalLink>
+                    ),
+                  },
+                )}
               </Paragraph>
             </>
           }

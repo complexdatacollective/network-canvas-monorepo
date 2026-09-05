@@ -72,7 +72,7 @@ describe('protocol colour swatch names', () => {
         return titleCase(hue ?? '');
       });
 
-      expect([...names]).toEqual(expected);
+      expect(names.map((message) => message.defaultMessage)).toEqual(expected);
     },
   );
 

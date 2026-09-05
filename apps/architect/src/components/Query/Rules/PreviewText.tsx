@@ -1,51 +1,162 @@
-import { get, isNil } from 'es-toolkit/compat';
+import { isNil } from 'es-toolkit/compat';
 import { Fragment, type CSSProperties, type ReactNode } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Icon from '@codaco/fresco-ui/Icon';
 import Node, { NodeColors, type NodeShape } from '@codaco/fresco-ui/Node';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import type { ColorReference, VariableType } from '@codaco/protocol-validation';
 import { VariablePill } from '~/components/VariablePill';
+import { VARIABLE_TYPES } from '~/config/variables';
+import { formatConfig } from '~/i18n/formatConfig';
 import { resolveProtocolColor } from '~/utils/resolveProtocolColor';
-
-const operatorsAsText = (isEgo: boolean) => ({
-  EXISTS: 'where',
-  NOT_EXISTS: 'without',
-  EXACTLY: isEgo ? 'that is exactly equal to' : 'is exactly equal to',
-  NOT: isEgo ? 'that is not' : 'is not',
-  GREATER_THAN: isEgo ? 'that is greater than' : 'is greater than',
-  GREATER_THAN_OR_EQUAL: isEgo
-    ? 'that is greater than or equal to'
-    : 'is greater than or equal to',
-  LESS_THAN: isEgo ? 'that is less than' : 'is less than',
-  LESS_THAN_OR_EQUAL: isEgo
-    ? 'that is less than or equal to'
-    : 'is less than or equal to',
-  CONTAINS: isEgo ? 'that contains' : 'contains',
-  DOES_NOT_CONTAIN: isEgo ? 'that does not contain' : 'does not contain',
-  INCLUDES: isEgo ? 'that includes' : 'includes',
-  EXCLUDES: isEgo ? 'that excludes' : 'excludes',
-  OPTIONS_GREATER_THAN: isEgo
-    ? 'that has selected options greater than'
-    : 'has selected options greater than',
-  OPTIONS_LESS_THAN: isEgo
-    ? 'that has selected options less than'
-    : 'has selected options less than',
-  OPTIONS_EQUALS: isEgo
-    ? 'that has selected options equal to'
-    : 'has selected options equal to',
-  OPTIONS_NOT_EQUALS: isEgo
-    ? 'that has selected options not equal to'
-    : 'has selected options not equal to',
+const messages = defineMessages({
+  ego: {
+    id: 'architect.query.rules.previewText.ego',
+    defaultMessage: 'Ego',
+    description: 'Visible text in components / Query / Rules / PreviewText.',
+  },
+  attribute: {
+    id: 'architect.query.rules.previewText.attribute',
+    defaultMessage: '{value1} attribute {label}',
+    description:
+      'The aria-label text in components / Query / Rules / PreviewText.',
+  },
 });
-
-const typeOperatorsAsText = {
-  EXISTS: 'exists',
-  NOT_EXISTS: 'does not exist',
-};
-
-const formatValue = (value: string | number | boolean): string | number =>
-  typeof value === 'boolean' ? (value ? 'true' : 'false') : value;
+const sentenceMessages = defineMessages({
+  EXACTLY: {
+    id: 'architect.query.sentence.exactly',
+    defaultMessage:
+      '{target, select, ego {<subject><entity></entity> has <attribute></attribute></subject> <predicate><operator>that is exactly equal to</operator> <operand></operand></predicate>} other {<subject><entity></entity> where <attribute></attribute></subject> <predicate><operator>is exactly equal to</operator> <operand></operand></predicate>}}',
+    description:
+      'Complete rule-preview sentence. Rich tags preserve entity and attribute chips and the literal authored operand; translate and reorder the whole sentence, keeping all tags.',
+  },
+  NOT: {
+    id: 'architect.query.sentence.not',
+    defaultMessage:
+      '{target, select, ego {<subject><entity></entity> has <attribute></attribute></subject> <predicate><operator>that is not</operator> <operand></operand></predicate>} other {<subject><entity></entity> where <attribute></attribute></subject> <predicate><operator>is not</operator> <operand></operand></predicate>}}',
+    description:
+      'Complete rule-preview sentence. Rich tags preserve entity and attribute chips and the literal authored operand; translate and reorder the whole sentence, keeping all tags.',
+  },
+  GREATER_THAN: {
+    id: 'architect.query.sentence.greaterThan',
+    defaultMessage:
+      '{target, select, ego {<subject><entity></entity> has <attribute></attribute></subject> <predicate><operator>that is greater than</operator> <operand></operand></predicate>} other {<subject><entity></entity> where <attribute></attribute></subject> <predicate><operator>is greater than</operator> <operand></operand></predicate>}}',
+    description:
+      'Complete rule-preview sentence. Rich tags preserve entity and attribute chips and the literal authored operand; translate and reorder the whole sentence, keeping all tags.',
+  },
+  GREATER_THAN_OR_EQUAL: {
+    id: 'architect.query.sentence.greaterThanOrEqual',
+    defaultMessage:
+      '{target, select, ego {<subject><entity></entity> has <attribute></attribute></subject> <predicate><operator>that is greater than or equal to</operator> <operand></operand></predicate>} other {<subject><entity></entity> where <attribute></attribute></subject> <predicate><operator>is greater than or equal to</operator> <operand></operand></predicate>}}',
+    description:
+      'Complete rule-preview sentence. Rich tags preserve entity and attribute chips and the literal authored operand; translate and reorder the whole sentence, keeping all tags.',
+  },
+  LESS_THAN: {
+    id: 'architect.query.sentence.lessThan',
+    defaultMessage:
+      '{target, select, ego {<subject><entity></entity> has <attribute></attribute></subject> <predicate><operator>that is less than</operator> <operand></operand></predicate>} other {<subject><entity></entity> where <attribute></attribute></subject> <predicate><operator>is less than</operator> <operand></operand></predicate>}}',
+    description:
+      'Complete rule-preview sentence. Rich tags preserve entity and attribute chips and the literal authored operand; translate and reorder the whole sentence, keeping all tags.',
+  },
+  LESS_THAN_OR_EQUAL: {
+    id: 'architect.query.sentence.lessThanOrEqual',
+    defaultMessage:
+      '{target, select, ego {<subject><entity></entity> has <attribute></attribute></subject> <predicate><operator>that is less than or equal to</operator> <operand></operand></predicate>} other {<subject><entity></entity> where <attribute></attribute></subject> <predicate><operator>is less than or equal to</operator> <operand></operand></predicate>}}',
+    description:
+      'Complete rule-preview sentence. Rich tags preserve entity and attribute chips and the literal authored operand; translate and reorder the whole sentence, keeping all tags.',
+  },
+  CONTAINS: {
+    id: 'architect.query.sentence.contains',
+    defaultMessage:
+      '{target, select, ego {<subject><entity></entity> has <attribute></attribute></subject> <predicate><operator>that contains</operator> <operand></operand></predicate>} other {<subject><entity></entity> where <attribute></attribute></subject> <predicate><operator>contains</operator> <operand></operand></predicate>}}',
+    description:
+      'Complete rule-preview sentence. Rich tags preserve entity and attribute chips and the literal authored operand; translate and reorder the whole sentence, keeping all tags.',
+  },
+  DOES_NOT_CONTAIN: {
+    id: 'architect.query.sentence.doesNotContain',
+    defaultMessage:
+      '{target, select, ego {<subject><entity></entity> has <attribute></attribute></subject> <predicate><operator>that does not contain</operator> <operand></operand></predicate>} other {<subject><entity></entity> where <attribute></attribute></subject> <predicate><operator>does not contain</operator> <operand></operand></predicate>}}',
+    description:
+      'Complete rule-preview sentence. Rich tags preserve entity and attribute chips and the literal authored operand; translate and reorder the whole sentence, keeping all tags.',
+  },
+  INCLUDES: {
+    id: 'architect.query.sentence.includes',
+    defaultMessage:
+      '{target, select, ego {<subject><entity></entity> has <attribute></attribute></subject> <predicate><operator>that includes</operator> <operand></operand></predicate>} other {<subject><entity></entity> where <attribute></attribute></subject> <predicate><operator>includes</operator> <operand></operand></predicate>}}',
+    description:
+      'Complete rule-preview sentence. Rich tags preserve entity and attribute chips and the literal authored operand; translate and reorder the whole sentence, keeping all tags.',
+  },
+  EXCLUDES: {
+    id: 'architect.query.sentence.excludes',
+    defaultMessage:
+      '{target, select, ego {<subject><entity></entity> has <attribute></attribute></subject> <predicate><operator>that excludes</operator> <operand></operand></predicate>} other {<subject><entity></entity> where <attribute></attribute></subject> <predicate><operator>excludes</operator> <operand></operand></predicate>}}',
+    description:
+      'Complete rule-preview sentence. Rich tags preserve entity and attribute chips and the literal authored operand; translate and reorder the whole sentence, keeping all tags.',
+  },
+  OPTIONS_GREATER_THAN: {
+    id: 'architect.query.sentence.optionsGreaterThan',
+    defaultMessage:
+      '{target, select, ego {<subject><entity></entity> has <attribute></attribute></subject> <predicate><operator>that has selected options greater than</operator> <operand></operand></predicate>} other {<subject><entity></entity> where <attribute></attribute></subject> <predicate><operator>has selected options greater than</operator> <operand></operand></predicate>}}',
+    description:
+      'Complete rule-preview sentence. Rich tags preserve entity and attribute chips and the literal authored operand; translate and reorder the whole sentence, keeping all tags.',
+  },
+  OPTIONS_LESS_THAN: {
+    id: 'architect.query.sentence.optionsLessThan',
+    defaultMessage:
+      '{target, select, ego {<subject><entity></entity> has <attribute></attribute></subject> <predicate><operator>that has selected options less than</operator> <operand></operand></predicate>} other {<subject><entity></entity> where <attribute></attribute></subject> <predicate><operator>has selected options less than</operator> <operand></operand></predicate>}}',
+    description:
+      'Complete rule-preview sentence. Rich tags preserve entity and attribute chips and the literal authored operand; translate and reorder the whole sentence, keeping all tags.',
+  },
+  OPTIONS_EQUALS: {
+    id: 'architect.query.sentence.optionsEquals',
+    defaultMessage:
+      '{target, select, ego {<subject><entity></entity> has <attribute></attribute></subject> <predicate><operator>that has selected options equal to</operator> <operand></operand></predicate>} other {<subject><entity></entity> where <attribute></attribute></subject> <predicate><operator>has selected options equal to</operator> <operand></operand></predicate>}}',
+    description:
+      'Complete rule-preview sentence. Rich tags preserve entity and attribute chips and the literal authored operand; translate and reorder the whole sentence, keeping all tags.',
+  },
+  OPTIONS_NOT_EQUALS: {
+    id: 'architect.query.sentence.optionsNotEquals',
+    defaultMessage:
+      '{target, select, ego {<subject><entity></entity> has <attribute></attribute></subject> <predicate><operator>that has selected options not equal to</operator> <operand></operand></predicate>} other {<subject><entity></entity> where <attribute></attribute></subject> <predicate><operator>has selected options not equal to</operator> <operand></operand></predicate>}}',
+    description:
+      'Complete rule-preview sentence. Rich tags preserve entity and attribute chips and the literal authored operand; translate and reorder the whole sentence, keeping all tags.',
+  },
+  entityPresence: {
+    id: 'architect.query.sentence.entityPresence',
+    defaultMessage:
+      '<subject><entity></entity> <operator>{operatorCode, select, NOT_EXISTS {does not exist} other {exists}}</operator></subject>',
+    description:
+      'Whole sentence for whether an authored node or edge type exists.',
+  },
+  attributePresence: {
+    id: 'architect.query.sentence.attributePresence',
+    defaultMessage:
+      '<subject><entity></entity></subject> <operator>{operatorCode, select, NOT_EXISTS {without} other {where}}</operator> <attribute></attribute>',
+    description:
+      'Whole sentence for whether an entity has an attribute. Entity and attribute tags render authored labels.',
+  },
+  join: {
+    id: 'architect.query.sentence.join',
+    defaultMessage: '{join, select, AND {and} OR {or} other {}}',
+    description:
+      'How adjacent network-filter rules combine. AND and OR are protocol identifiers; translate their displayed labels only.',
+  },
+  booleanValue: {
+    id: 'architect.query.sentence.booleanValue',
+    defaultMessage: '{value, select, true {true} other {false}}',
+    description:
+      'Display of a boolean rule operand; the stored value is unchanged.',
+  },
+  unknown: {
+    id: 'architect.query.sentence.unknown',
+    defaultMessage:
+      '<subject><entity></entity> <attribute></attribute></subject> <predicate><operator>{operatorCode}</operator> <operand></operand></predicate>',
+    description:
+      'Fallback for an unknown technical operator; do not alter the operator token.',
+  },
+});
 
 type JoinProps = {
   value?: string;
@@ -56,11 +167,14 @@ type JoinProps = {
  * ("and"/"or"). The editable rule list keeps this information in its Rule
  * Matching field instead of repeating it between cards.
  */
-export const Join = ({ value = '' }: JoinProps) => (
-  <div className="w-full py-5 text-center text-current/70 uppercase italic">
-    {value.toLowerCase()}
-  </div>
-);
+export const Join = ({ value = '' }: JoinProps) => {
+  const intl = useAppIntl();
+  return (
+    <div className="w-full py-5 text-center text-current/70 uppercase italic">
+      {intl.formatMessage(sentenceMessages.join, { join: value })}
+    </div>
+  );
+};
 
 /*
  * A rule reads as one sentence. Its entity chips are presentational because
@@ -72,8 +186,17 @@ export const Join = ({ value = '' }: JoinProps) => (
  * is, leaving a coloured chip with nothing to read.
  */
 
-const RuleSubject = ({ children }: { children: ReactNode }) => (
-  <span data-rule-part="subject" className="inline">
+const RuleSubject = ({
+  children,
+  presence,
+}: {
+  children: ReactNode;
+  presence: boolean;
+}) => (
+  <span
+    data-rule-part="subject"
+    className={presence ? 'inline whitespace-nowrap' : 'inline'}
+  >
     {children}
   </span>
 );
@@ -81,33 +204,6 @@ const RuleSubject = ({ children }: { children: ReactNode }) => (
 const RulePredicate = ({ children }: { children: ReactNode }) => (
   <span data-rule-part="predicate" className="inline">
     {children}
-  </span>
-);
-
-const RulePresence = ({ children }: { children: ReactNode }) => (
-  <span data-rule-part="subject" className="inline whitespace-nowrap">
-    {children}
-  </span>
-);
-
-type OperatorProps = {
-  value?: string;
-  isEgo?: boolean;
-};
-
-const Operator = ({ value = '', isEgo = false }: OperatorProps) => (
-  <span data-rule-part="operator">
-    {get(operatorsAsText(isEgo), value, value.toLowerCase())}
-  </span>
-);
-
-type TypeOperatorProps = {
-  value?: string;
-};
-
-const TypeOperator = ({ value = '' }: TypeOperatorProps) => (
-  <span data-rule-part="operator">
-    {get(typeOperatorsAsText, value, value.toLowerCase())}
   </span>
 );
 
@@ -146,7 +242,13 @@ const valueTokenClassName = (plain: boolean) =>
     : 'border-sea-green max-w-full min-w-0 rounded-sm border-2 border-dashed box-decoration-clone px-2 py-1 wrap-break-word whitespace-normal';
 
 const ValueToken = ({ plain, markdown, value }: ValueTokenProps) => {
-  const text = String(formatValue(value));
+  const intl = useAppIntl();
+  const text =
+    typeof value === 'boolean'
+      ? intl.formatMessage(sentenceMessages.booleanValue, {
+          value: String(value),
+        })
+      : String(value);
 
   if (!markdown) {
     return (
@@ -172,23 +274,22 @@ const Value = ({ value = '', plain = false, markdown = false }: ValueProps) => {
 
   return values.map((item, index) => (
     <Fragment key={`${typeof item}-${String(item)}-${index}`}>
+      {/* Literal list punctuation separates authored values without modifying them. */}
+      {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx */}
       {index > 0 && ', '}
       <ValueToken plain={plain} markdown={markdown} value={item} />
     </Fragment>
   ));
 };
 
-type CopyProps = {
-  children?: string;
+const EgoEntity = () => {
+  const intl = useAppIntl();
+  return (
+    <strong data-rule-entity="ego" className="font-bold">
+      {intl.formatMessage(messages.ego)}
+    </strong>
+  );
 };
-
-const Copy = ({ children = '' }: CopyProps) => <span>{children}</span>;
-
-const EgoEntity = () => (
-  <strong data-rule-entity="ego" className="font-bold">
-    Ego
-  </strong>
-);
 
 type RuleEntityProps = {
   type: string;
@@ -250,35 +351,41 @@ type AttributePillProps = {
  * component — when each layout owned its own copy, the printable summary's
  * went missing and its pill read as a bare name.
  */
-const AttributePill = ({ label, type }: AttributePillProps) => (
-  <span
-    className="inline-flex max-w-full align-middle"
-    aria-label={`${type ?? DEFAULT_ATTRIBUTE_TYPE} attribute ${label}`}
-  >
-    <VariablePill label={label} type={type ?? DEFAULT_ATTRIBUTE_TYPE} />
-  </span>
-);
-
-/**
- * A rule as three slots — who, how, and what — plus whether the summary can
- * lay it out in its three columns.
- *
- * `value` is absent for a presence rule, which is a two-part sentence
- * ("person exists") and reads as one unbroken phrase.
- */
-type RuleSentence = {
-  subject: ReactNode;
-  operator: ReactNode;
-  value?: ReactNode;
-  columns: boolean;
+const AttributePill = ({ label, type }: AttributePillProps) => {
+  const intl = useAppIntl();
+  return (
+    <span
+      className="inline-flex max-w-full align-middle"
+      aria-label={intl.formatMessage(messages.attribute, {
+        value1: formatConfig(
+          VARIABLE_TYPES[type ?? DEFAULT_ATTRIBUTE_TYPE],
+          intl,
+        ).label.toLocaleLowerCase(intl.locale),
+        label: label,
+      })}
+    >
+      <VariablePill label={label} type={type ?? DEFAULT_ATTRIBUTE_TYPE} />
+    </span>
+  );
 };
 
-const describeRule = (
-  type: string,
-  options: PreviewTextOptions,
-  fillPill: boolean,
-): RuleSentence => {
+/** One whole ICU sentence owns grammar and ordering in both presentation layouts. */
+const PreviewText = ({
+  type,
+  options,
+  variant = 'default',
+}: PreviewTextProps) => {
+  const intl = useAppIntl();
+  const isSummary = variant === 'summary';
   const isEgo = type === 'ego';
+  const entityPresence = !isEgo && isNil(options.attribute);
+  const attributePresence = !entityPresence && isNil(options.value);
+  const operator = options.operator ?? '';
+  const descriptor = entityPresence
+    ? sentenceMessages.entityPresence
+    : attributePresence
+      ? sentenceMessages.attributePresence
+      : getSentenceMessage(operator);
   const entity = isEgo ? (
     <EgoEntity />
   ) : (
@@ -292,108 +399,61 @@ const describeRule = (
       label={options.typeLabel ?? ''}
     />
   );
-
-  // A presence rule names no attribute at all.
-  if (!isEgo && isNil(options.attribute)) {
-    return {
-      subject: entity,
-      operator: <TypeOperator value={options.operator} />,
-      columns: false,
-    };
-  }
-
-  // Attribute-presence operators take no operand. The attribute is still a
-  // codebook variable, so it uses the same typed pill as value-bearing rules.
-  if (!isEgo && isNil(options.value)) {
-    return {
-      subject: entity,
-      operator: <Operator value={options.operator} />,
-      value: (
-        <AttributePill
-          label={options.attribute ?? ''}
-          type={options.variableType}
-        />
-      ),
-      columns: false,
-    };
-  }
-
-  return {
-    subject: (
-      <>
-        {entity} <Copy>{isEgo ? 'has' : 'where'}</Copy>{' '}
-        <AttributePill
-          label={options.attribute ?? ''}
-          type={options.variableType}
-        />
-      </>
-    ),
-    operator: <Operator value={options.operator} isEgo={isEgo} />,
-    value: (
-      <Value
-        value={options.value}
-        plain={fillPill}
-        markdown={isAuthoredLabel(options.variableType)}
+  const sentence = intl.formatMessage(descriptor, {
+    target: type,
+    operatorCode: operator,
+    entity: () => entity,
+    attribute: () => (
+      <AttributePill
+        label={options.attribute ?? ''}
+        type={options.variableType}
       />
     ),
-    columns: true,
-  };
+    operand: () => (
+      <div className={isSummary ? 'min-w-0' : 'inline'}>
+        <Value
+          value={options.value}
+          plain={isSummary}
+          markdown={isAuthoredLabel(options.variableType)}
+        />
+      </div>
+    ),
+    subject: (children) =>
+      isSummary ? (
+        <div
+          className="flex min-w-0 items-center gap-3"
+          data-rule-part="subject"
+        >
+          {children}
+        </div>
+      ) : (
+        <RuleSubject presence={entityPresence}>{children}</RuleSubject>
+      ),
+    operator: (children) => <span data-rule-part="operator">{children}</span>,
+    predicate: (children) =>
+      isSummary ? (
+        <Fragment>{children}</Fragment>
+      ) : (
+        <RulePredicate>{children}</RulePredicate>
+      ),
+  });
+  return isSummary && !entityPresence && !attributePresence ? (
+    <div className="grid w-full grid-cols-[minmax(16rem,2fr)_minmax(8rem,1fr)_minmax(0,2fr)] items-center gap-6">
+      {sentence}
+    </div>
+  ) : (
+    <span className={entityPresence ? 'inline whitespace-nowrap' : 'inline'}>
+      {sentence}
+    </span>
+  );
 };
 
-const PreviewText = ({
-  type,
-  options,
-  variant = 'default',
-}: PreviewTextProps) => {
-  const isSummary = variant === 'summary';
-  const { subject, operator, value, columns } = describeRule(
-    type,
-    options,
-    isSummary,
-  );
-
-  if (isSummary) {
-    // The printable summary aligns rules under one another, so a rule with all
-    // three parts takes the three columns. A two-part rule has nothing to put
-    // in the third and reads better as a run of phrases.
-    return columns ? (
-      <div className="grid w-full grid-cols-[minmax(16rem,2fr)_minmax(8rem,1fr)_minmax(0,2fr)] items-center gap-6">
-        <div className="flex min-w-0 items-center gap-3">{subject}</div>
-        {operator}
-        {/*
-          One cell, however many operands are in it. A multi-select rule
-          renders one token per selected option with ", " between them, and as
-          direct children of the grid every one of those — the bare separator
-          text included — became a grid item of its own and wrapped the tail of
-          the list onto a second row under the entity column.
-        */}
-        <div className="min-w-0">{value}</div>
-      </div>
-    ) : (
-      <>
-        {subject}
-        {operator}
-        {value}
-      </>
-    );
-  }
-
-  if (value === undefined) {
-    return (
-      <RulePresence>
-        {subject} {operator}
-      </RulePresence>
-    );
-  }
-
-  return (
-    <>
-      <RuleSubject>{subject}</RuleSubject>{' '}
-      <RulePredicate>
-        {operator} {value}
-      </RulePredicate>
-    </>
-  );
+const getSentenceMessage = (operator: string) => {
+  const byOperator: Record<
+    string,
+    (typeof sentenceMessages)[keyof typeof sentenceMessages] | undefined
+  > = sentenceMessages;
+  return byOperator[operator] ?? sentenceMessages.unknown;
 };
 
 export type PreviewTextOptions = {

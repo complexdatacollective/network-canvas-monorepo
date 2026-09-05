@@ -15,6 +15,17 @@ import {
 import { shallowEqual, useSelector } from 'react-redux';
 import { v4 as uuid } from 'uuid';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import {
+  createMessageError,
+  type MessageDescriptor,
+  defineMessages,
+} from '@codaco/app-i18n/messages';
+import {
+  AppErrorMessage,
+  AppMessage,
+  useAppIntl,
+} from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import type { DialogProps } from '@codaco/fresco-ui/dialogs/Dialog';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
@@ -38,12 +49,72 @@ import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
  * self-contained `name`-taking section keeps ONE owner of the field name, the
  * validation adapter and the Issues anchor (`ArchitectArrayField`).
  */
-import { ensureError } from '@codaco/shared-consts';
 import DialogForm from '~/components/DialogForm/DialogForm';
 import type { FormLevelValidate } from '~/components/DialogForm/formLevelValidate';
 import { STAGE_FORM_ID } from '~/components/StageEditor/StageForm';
 import type { StageFormStoreApi } from '~/components/StageEditor/stageFormContext';
 import type { RootState } from '~/ducks/modules/root';
+import { submissionMessages, toSubmissionError } from '~/i18n/submissionErrors';
+
+const defaultMessages = defineMessages({
+  emptyStateMessage: {
+    id: 'architect.defaults.components.Form.arrayFields.DialogArrayField.emptyStateMessage',
+    defaultMessage: 'No items have been created yet.',
+    description:
+      'Default researcher-facing copy when the caller does not supply its own emptyStateMessage.',
+  },
+  itemLabel: {
+    id: 'architect.defaults.components.Form.arrayFields.DialogArrayField.itemLabel',
+    defaultMessage: 'item',
+    description:
+      'Default researcher-facing copy when the caller does not supply its own itemLabel.',
+  },
+});
+const messages = defineMessages({
+  addItem: {
+    id: 'architect.form.arrayFields.dialogArrayField.addItem',
+    defaultMessage: 'Add {itemLabel}',
+    description:
+      'Default dialog heading for adding one item of the translated item type.',
+  },
+  removeThis: {
+    id: 'architect.form.arrayFields.dialogArrayField.removeThis',
+    defaultMessage: 'Remove this {itemLabel}?',
+    description:
+      'The title text in components / Form / arrayFields / DialogArrayField.',
+  },
+  thisWillBeRemovedFromThe: {
+    id: 'architect.form.arrayFields.dialogArrayField.thisWillBeRemovedFromThe',
+    defaultMessage: 'This {itemLabel} will be removed from the list.',
+    description:
+      'The description text in components / Form / arrayFields / DialogArrayField.',
+  },
+  remove: {
+    id: 'architect.form.arrayFields.dialogArrayField.remove',
+    defaultMessage: 'Remove {itemLabel}',
+    description:
+      'The confirmLabel text in components / Form / arrayFields / DialogArrayField.',
+  },
+  reorderOf: {
+    id: 'architect.form.arrayFields.dialogArrayField.reorderOf',
+    defaultMessage:
+      'Reorder {itemLabel} {value2, number} of {itemCount, number}',
+    description:
+      'The label text in components / Form / arrayFields / DialogArrayField.',
+  },
+  edit: {
+    id: 'architect.form.arrayFields.dialogArrayField.edit',
+    defaultMessage: 'Edit {itemLabel}',
+    description:
+      'The aria-label text in components / Form / arrayFields / DialogArrayField.',
+  },
+  add: {
+    id: 'architect.form.arrayFields.dialogArrayField.add',
+    defaultMessage: 'Add',
+    description:
+      'The submitLabel text in components / Form / arrayFields / DialogArrayField.',
+  },
+});
 
 type ArrayItem = Record<string, unknown>;
 type Renderer = ComponentType<Record<string, unknown>>;
@@ -121,6 +192,8 @@ export type DialogArrayFieldProps<T extends ArrayItem> = Omit<
   editorValidate?: DialogArrayEditorValidate;
   /** Noun used in row affordances ("Edit prompt", "Remove prompt"). */
   itemLabel?: string;
+  /** App-owned noun descriptor, retained until queued confirmations render. */
+  itemLabelMessage?: MessageDescriptor;
   itemSelector?: DialogArrayItemSelector;
   itemTemplate?: () => Partial<T>;
   /** Last transform before the value reaches the array. */
@@ -243,8 +316,8 @@ const mergeEditedRow = (
  * Architect is an authoring tool, so this says what happened and what to do
  * next rather than reporting a failure.
  */
-const rowRemovedMessage = (itemLabel: string) =>
-  `This ${itemLabel} was removed while your changes were being saved, so there is nothing left to save them to. Copy anything you want to keep, then cancel and add a new ${itemLabel}.`;
+const rowRemovedMessage = () =>
+  createMessageError(submissionMessages.rowRemoved);
 
 type DialogArrayContextValue = {
   addTitle: string;
@@ -270,6 +343,7 @@ type DialogArrayContextValue = {
   editorValidate?: DialogArrayEditorValidate;
   editFormName: string;
   itemLabel: string;
+  itemLabelMessage?: MessageDescriptor;
   itemSelector?: DialogArrayItemSelector;
   normalizeItem: (value: unknown) => unknown;
   onBeforeSave?: (value: unknown) => unknown;
@@ -307,7 +381,9 @@ const DialogItem = ({
   editTriggerRef,
   getAddTrigger,
 }: ArrayFieldItemProps<ArrayItem>) => {
-  const { itemLabel, previewComponent, previewProps } = useDialogArrayContext();
+  const intl = useAppIntl();
+  const { itemLabel, itemLabelMessage, previewComponent, previewProps } =
+    useDialogArrayContext();
   const { confirm } = useDialog();
   const rowRef = useRef<HTMLDivElement>(null);
   const interactionDisabled = disabled || readOnly;
@@ -319,11 +395,24 @@ const DialogItem = ({
     // tree. The list element itself survives.
     const list = rowRef.current?.closest('[role="list"]') ?? null;
 
+    const noun = itemLabelMessage
+      ? { messageError: createMessageError(itemLabelMessage) }
+      : itemLabel;
     void confirm({
-      title: `Remove this ${itemLabel}?`,
-      description: `This ${itemLabel} will be removed from the list.`,
-      confirmLabel: `Remove ${itemLabel}`,
-      cancelLabel: 'Cancel',
+      title: createElement(AppErrorMessage, {
+        error: createMessageError(messages.removeThis, { itemLabel: noun }),
+      }),
+      description: createElement(AppErrorMessage, {
+        error: createMessageError(messages.thisWillBeRemovedFromThe, {
+          itemLabel: noun,
+        }),
+      }),
+      confirmLabel: createElement(AppErrorMessage, {
+        error: createMessageError(messages.remove, { itemLabel: noun }),
+      }),
+      cancelLabel: createElement(AppMessage, {
+        message: commonMessages.cancel,
+      }),
       intent: 'destructive',
       onConfirm: () => onDelete?.(),
       // Cancel returns focus to the Remove control, which is untouched. Confirm
@@ -335,11 +424,9 @@ const DialogItem = ({
       // researcher back to the page header from the middle of a form.
       finalFocus: () => {
         if (list?.isConnected) {
-          // `itemLabel` is caller-supplied, and this runs inside Base UI's
-          // layout-effect cleanup — an unescaped quote would throw a
-          // SyntaxError out of an unmount.
+          // Focus follows row identity, independent of a language change while the dialog is open.
           const remaining = list.querySelectorAll<HTMLElement>(
-            `[aria-label="${CSS.escape(`Remove ${itemLabel}`)}"]`,
+            '[data-array-row-remove]',
           );
           // The row that has taken this one's place, or the last one if this
           // was the last row.
@@ -369,7 +456,11 @@ const DialogItem = ({
           itemCount={itemCount}
           onMove={onMove}
           disabled={interactionDisabled}
-          label={`Reorder ${itemLabel} ${index + 1} of ${itemCount}`}
+          label={intl.formatMessage(messages.reorderOf, {
+            itemLabel: itemLabel,
+            value2: index + 1,
+            itemCount: itemCount,
+          })}
         />
       )}
       <div className="min-w-0 flex-1">
@@ -382,14 +473,17 @@ const DialogItem = ({
       <IconButton
         ref={editTriggerRef}
         icon={<Pencil />}
-        aria-label={`Edit ${itemLabel}`}
+        aria-label={intl.formatMessage(messages.edit, { itemLabel: itemLabel })}
         color="dynamic"
         disabled={interactionDisabled}
         onClick={onEdit}
       />
       <IconButton
         icon={<Trash2 />}
-        aria-label={`Remove ${itemLabel}`}
+        data-array-row-remove
+        aria-label={intl.formatMessage(messages.remove, {
+          itemLabel: itemLabel,
+        })}
         color="destructive"
         disabled={interactionDisabled}
         onClick={handleDelete}
@@ -415,6 +509,7 @@ const DialogEditor = ({
   onCancel,
   getEditorTrigger,
 }: ArrayFieldEditorProps<ArrayItem>) => {
+  const intl = useAppIntl();
   const {
     addTitle,
     commitDetachedRow,
@@ -577,12 +672,12 @@ const DialogEditor = ({
         // which is what silently closes the dialog over a discarded edit.
         return {
           success: false,
-          formErrors: [rowRemovedMessage(itemLabel)],
+          formErrors: [rowRemovedMessage()],
         };
       } catch (error) {
         return {
           success: false,
-          formErrors: [ensureError(error).message],
+          formErrors: [toSubmissionError(error)],
         };
       } finally {
         saveInFlightRef.current = false;
@@ -625,7 +720,11 @@ const DialogEditor = ({
       onClose={handleCancel}
       title={session.isNewItem ? addTitle : editorTitle}
       formId={editFormName}
-      submitLabel={session.isNewItem ? 'Add' : 'Save'}
+      submitLabel={
+        session.isNewItem
+          ? intl.formatMessage(messages.add)
+          : intl.formatMessage(commonMessages.save)
+      }
       onSubmit={handleSave}
       validate={validate}
       editIndex={editIndex}
@@ -668,7 +767,7 @@ function DialogArrayField<T extends ArrayItem>({
   onChange,
   name = '',
   addButtonLabel,
-  emptyStateMessage = 'No items have been created yet.',
+  emptyStateMessage: providedEmptyStateMessage,
   addTitle,
   editorTitle,
   editorFieldsComponent,
@@ -677,7 +776,8 @@ function DialogArrayField<T extends ArrayItem>({
   editorPreviewProps,
   editorProps,
   editorValidate,
-  itemLabel = 'item',
+  itemLabel: providedItemLabel,
+  itemLabelMessage: providedItemLabelMessage,
   itemSelector,
   itemTemplate = () => ({}),
   normalizeItem = (itemValue) => itemValue,
@@ -689,6 +789,16 @@ function DialogArrayField<T extends ArrayItem>({
   itemClasses,
   ...arrayFieldProps
 }: DialogArrayFieldProps<T>) {
+  const intl = useAppIntl();
+  const emptyStateMessage =
+    providedEmptyStateMessage ??
+    intl.formatMessage(defaultMessages.emptyStateMessage);
+  const itemLabelMessage =
+    providedItemLabelMessage ??
+    (providedItemLabel === undefined ? defaultMessages.itemLabel : undefined);
+  const itemLabel = itemLabelMessage
+    ? intl.formatMessage(itemLabelMessage)
+    : (providedItemLabel ?? '');
   const createItem = useCallback(() => {
     const item = itemTemplate();
     return {
@@ -741,7 +851,7 @@ function DialogArrayField<T extends ArrayItem>({
 
   const context = useMemo<DialogArrayContextValue>(
     () => ({
-      addTitle: addTitle ?? `Add ${itemLabel}`,
+      addTitle: addTitle ?? intl.formatMessage(messages.addItem, { itemLabel }),
       commitDetachedRow,
       editFormName: requestedEditFormName ?? defaultEditFormName(name),
       editorFieldsComponent,
@@ -752,6 +862,7 @@ function DialogArrayField<T extends ArrayItem>({
       editorTitle,
       editorValidate,
       itemLabel,
+      itemLabelMessage,
       itemSelector,
       normalizeItem,
       onBeforeSave,
@@ -760,6 +871,7 @@ function DialogArrayField<T extends ArrayItem>({
     }),
     [
       addTitle,
+      intl,
       commitDetachedRow,
       editorFieldsComponent,
       editorDialogSize,
@@ -769,6 +881,7 @@ function DialogArrayField<T extends ArrayItem>({
       editorTitle,
       editorValidate,
       itemLabel,
+      itemLabelMessage,
       itemSelector,
       name,
       normalizeItem,

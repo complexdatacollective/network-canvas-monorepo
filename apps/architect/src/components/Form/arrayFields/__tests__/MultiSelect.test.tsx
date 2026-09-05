@@ -17,8 +17,8 @@ import MultiSelect, {
 const NO_ITEMS: ItemValue[] = [];
 
 const DEFAULT_PROPERTIES: PropertyField[] = [
-  { fieldName: 'first' },
-  { fieldName: 'second' },
+  { fieldName: 'first', label: 'First' },
+  { fieldName: 'second', label: 'Second' },
 ];
 
 const DEFAULT_VALIDATION: ArchitectValidation = {
@@ -107,14 +107,16 @@ describe('MultiSelect', () => {
 
   it('uses semantic labels and an input control for free-text properties', () => {
     setup({
-      initialItems: [{ first: 'a', label: 'Visible label' }],
+      initialItems: [{ property: 'a', label: 'Visible label' }],
       properties: [
-        { fieldName: 'first' },
+        { fieldName: 'property' },
         { fieldName: 'label', control: 'input', label: 'Label' },
       ],
     });
 
-    expect(screen.getByRole('combobox', { name: 'First' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('combobox', { name: 'Property' }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Label' })).toHaveValue(
       'Visible label',
     );

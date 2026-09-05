@@ -112,7 +112,10 @@ describe('CodebookVariableValidationSection', () => {
     // be opened before the rule list is reachable.
     fireEvent.click(screen.getByRole('switch', { name: 'Validation' }));
     fireEvent.click(
-      await screen.findByRole('switch', { name: 'Required', hidden: true }),
+      await screen.findByRole('switch', {
+        name: 'Required answer',
+        hidden: true,
+      }),
     );
 
     await waitFor(() => {
@@ -191,12 +194,12 @@ describe('CodebookVariableValidationSection', () => {
   });
 
   it.each([
-    'Different from',
-    'Same as',
-    'Less than',
-    'Greater than',
-    'Less than or equal to',
-    'Greater than or equal to',
+    'Different from another attribute',
+    'Same as another attribute',
+    'Less than another attribute',
+    'Greater than another attribute',
+    'Less than or equal to another attribute',
+    'Greater than or equal to another attribute',
   ])(
     'leaves the %s picker untouched and waits for interaction before showing an error',
     async (label) => {
@@ -247,12 +250,12 @@ describe('CodebookVariableValidationSection', () => {
   );
 
   it.each([
-    'Different from',
-    'Same as',
-    'Less than',
-    'Greater than',
-    'Less than or equal to',
-    'Greater than or equal to',
+    'Different from another attribute',
+    'Same as another attribute',
+    'Less than another attribute',
+    'Greater than another attribute',
+    'Less than or equal to another attribute',
+    'Greater than or equal to another attribute',
   ])(
     'does not let an earlier picker error leak into a newly enabled %s rule',
     async (label) => {
@@ -270,7 +273,9 @@ describe('CodebookVariableValidationSection', () => {
 
       fireEvent.click(screen.getByRole('switch', { name: 'Validation' }));
       const firstLabel =
-        label === 'Different from' ? 'Same as' : 'Different from';
+        label === 'Different from another attribute'
+          ? 'Same as another attribute'
+          : 'Different from another attribute';
       const firstToggle = await screen.findByRole('switch', {
         name: firstLabel,
         hidden: true,
@@ -338,8 +343,9 @@ describe('CodebookVariableValidationSection', () => {
 
     await waitFor(() => {
       expect(
-        screen.getAllByText(/minValue \(10\) is greater than maxValue \(6\)/)
-          .length,
+        screen.getAllByText(
+          /leave no permitted answer. Adjust the bounds or the required-answer rule/,
+        ).length,
       ).toBeGreaterThan(0);
     });
     expect(updateVariableAsync).not.toHaveBeenCalled();

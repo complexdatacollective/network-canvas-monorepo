@@ -11,6 +11,7 @@ import {
   useStageFormContext,
 } from '~/components/StageEditor/stageFormContext';
 import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
+import { messageFields } from '~/test/messageText';
 
 type EditorValidate = (
   values: Record<string, unknown>,
@@ -132,7 +133,9 @@ describe('NarrativePedigree Diseases gate reads the live rows', () => {
     ]);
 
     expect(
-      currentValidate()({ variable: 'var-2', label: 'Psoriasis' }),
+      messageFields(
+        currentValidate()({ variable: 'var-2', label: 'Psoriasis' }),
+      ),
     ).toEqual({
       variable:
         'This attribute is already mapped by another disease. Choose a different attribute, or edit the existing disease instead.',
@@ -146,7 +149,9 @@ describe('NarrativePedigree Diseases gate reads the live rows', () => {
       { label: 'Eczema', color: 'node-2', variable: 'var-2' },
     ]);
 
-    expect(currentValidate()({ variable: 'var-3', label: 'eczema' })).toEqual({
+    expect(
+      messageFields(currentValidate()({ variable: 'var-3', label: 'eczema' })),
+    ).toEqual({
       label:
         'Another disease already uses this name. Give this one a name participants can tell apart.',
     });
@@ -156,9 +161,9 @@ describe('NarrativePedigree Diseases gate reads the live rows', () => {
     const { setRows } = renderDiseases();
     setRows([]);
 
-    expect(currentValidate()({ variable: 'var-1', label: 'Asthma' })).toEqual(
-      {},
-    );
+    expect(
+      messageFields(currentValidate()({ variable: 'var-1', label: 'Asthma' })),
+    ).toEqual({});
   });
 
   it('gives the picker the same live rows the gate reads', () => {

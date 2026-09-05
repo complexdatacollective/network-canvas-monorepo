@@ -1,12 +1,45 @@
 import { useRef } from 'react';
 import { z } from 'zod/mini';
 
+import {
+  createAppIntl,
+  defineMessages,
+  type IntlShape,
+} from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import type {
   FieldValue,
   ValidationPropsCatalogue,
 } from '@codaco/fresco-ui/form/Field/types';
 import type { CustomFieldValidation } from '@codaco/fresco-ui/form/store/types';
 import { getValidations } from '~/utils/validations';
+const messages = defineMessages({
+  hint: {
+    id: 'architect.fieldValidation.nameHint',
+    defaultMessage: 'Use only letters, numbers and the symbols ._-:',
+    description:
+      'Hint for researcher-authored technical names that must be valid XML names.',
+  },
+  required: {
+    id: 'architect.fieldValidation.required',
+    defaultMessage: 'This field is required.',
+    description:
+      'Required field error in the researcher-facing protocol editor.',
+  },
+  name: {
+    id: 'architect.fieldValidation.name',
+    defaultMessage: 'attribute name',
+    description:
+      'Default subject name used by the technical-name validation error.',
+  },
+  invalidName: {
+    id: 'architect.fieldValidation.invalidName',
+    defaultMessage:
+      'Not a valid {name}. Only letters, numbers and the symbols ._-: are supported',
+    description:
+      'Error for a technical name containing unsupported characters. Name identifies the field.',
+  },
+});
 
 /**
  * Architect's validation configuration: a map of rule name to rule parameter,
@@ -75,13 +108,12 @@ function readRule(option: unknown): Rule {
  * own `RegExp` from one.
  */
 const NMTOKEN_PATTERN = '^[a-zA-Z0-9._\\-:]+$';
-const NMTOKEN_HINT = 'Use only letters, numbers and the symbols ._-:';
+const defaultIntl = createAppIntl({ locale: 'en' });
 
 /**
  * fresco-ui's built-in required copy addresses a participant mid-interview;
  * Architect is researcher-facing, so it states the rule instead.
  */
-const REQUIRED_MESSAGE = 'This field is required.';
 
 /**
  * Maps one Architect rule onto fresco-ui `Field` props, or returns `null` to
@@ -96,6 +128,7 @@ type NativeMapper = (
   rule: Rule,
   claimed: NativeValidationProps,
   config: ArchitectValidation,
+  intl: IntlShape,
 ) => NativeValidationProps | null;
 
 type NumericProp =
@@ -125,7 +158,7 @@ const numericBound =
  */
 const requiredLike =
   (stringParameterIsMessage: boolean): NativeMapper =>
-  ({ value, message }, claimed) => {
+  ({ value, message }, claimed, _config, intl) => {
     if ('required' in claimed) return null;
 
     const isMessageParameter =
@@ -139,7 +172,9 @@ const requiredLike =
 
     // fresco-ui's built-in copy is participant-voice; Architect is
     // researcher-facing. Author-supplied messages win.
-    return { required: resolvedMessage ?? REQUIRED_MESSAGE };
+    return {
+      required: resolvedMessage ?? intl.formatMessage(messages.required),
+    };
   };
 
 /**
@@ -147,18 +182,24 @@ const requiredLike =
  * with a caller-named subject — fresco-ui's `pattern` carries both the
  * expression and the exact error message.
  */
-const allowedVariableName: NativeMapper = ({ value }, claimed) => {
+const allowedVariableName: NativeMapper = (
+  { value },
+  claimed,
+  _config,
+  intl,
+) => {
   if ('pattern' in claimed) return null;
   // Architect's factory defaults the subject name and ignores its second
   // (message) argument entirely, so a non-string parameter — such as the
   // `allowedNMToken: true` call sites — falls back to the default instead of
   // interpolating `true` into the message.
-  const name = typeof value === 'string' ? value : 'attribute name';
+  const name =
+    typeof value === 'string' ? value : intl.formatMessage(messages.name);
   return {
     pattern: {
       regex: NMTOKEN_PATTERN,
-      errorMessage: `Not a valid ${name}. Only letters, numbers and the symbols ._-: are supported`,
-      hint: NMTOKEN_HINT,
+      errorMessage: intl.formatMessage(messages.invalidName, { name }),
+      hint: intl.formatMessage(messages.hint),
     },
   };
 };
@@ -190,14 +231,14 @@ const nativeMappers: Record<string, NativeMapper> = {
    * documented fresco-ui idiom for Architect's semantics — but only when the
    * config does not state `required` itself, anywhere in the object.
    */
-  minSelected: ({ value, message }, claimed, config) => {
+  minSelected: ({ value, message }, claimed, config, intl) => {
     if (message !== undefined) return null;
     if (typeof value !== 'number' || Number.isNaN(value)) return null;
     if ('minSelected' in claimed) return null;
 
     const props: NativeValidationProps = { minSelected: value };
     if (!REQUIRED_RULE_NAMES.some((rule) => rule in config)) {
-      props.required = REQUIRED_MESSAGE;
+      props.required = intl.formatMessage(messages.required);
     }
     return props;
   },
@@ -221,7 +262,10 @@ const nativeMappers: Record<string, NativeMapper> = {
  * Partitions an Architect validation config into the rules fresco-ui runs
  * natively and the rules that keep running through `~/utils/validations`.
  */
-function partitionRules(validation: ArchitectValidation): {
+function partitionRules(
+  validation: ArchitectValidation,
+  intl: IntlShape,
+): {
   nativeProps: NativeValidationProps;
   customConfig: ArchitectValidation;
 } {
@@ -241,6 +285,7 @@ function partitionRules(validation: ArchitectValidation): {
       readRule(option),
       nativeProps,
       validation,
+      intl,
     );
 
     if (!mapped) {
@@ -268,13 +313,17 @@ function partitionRules(validation: ArchitectValidation): {
 function makeCustomValidation(
   getCustomConfig: () => ArchitectValidation,
   getFieldName: () => string,
+  getIntl: () => IntlShape,
 ): CustomFieldValidation {
   return {
     schema: (formValues: Record<string, FieldValue>) =>
       z.unknown().check(
         z.superRefine((value, ctx) => {
           const fieldName = getFieldName();
-          for (const validator of getValidations(getCustomConfig())) {
+          for (const validator of getValidations(
+            getCustomConfig(),
+            getIntl(),
+          )) {
             const message = validator(value, formValues, undefined, fieldName);
             if (message) {
               ctx.addIssue({
@@ -306,8 +355,9 @@ function makeCustomValidation(
 export function splitValidation(
   validation: ArchitectValidation = {},
   fieldName: string,
+  intl: IntlShape = defaultIntl,
 ): SplitValidation {
-  const { nativeProps, customConfig } = partitionRules(validation);
+  const { nativeProps, customConfig } = partitionRules(validation, intl);
 
   if (Object.keys(customConfig).length === 0) {
     return { nativeProps };
@@ -318,6 +368,7 @@ export function splitValidation(
     custom: makeCustomValidation(
       () => customConfig,
       () => fieldName,
+      () => intl,
     ),
   };
 }
@@ -337,6 +388,9 @@ export function useValidationProps(
   validation: ArchitectValidation | undefined,
   fieldName: string,
 ): SplitValidation {
+  const intl = useAppIntl();
+  const intlRef = useRef(intl);
+  intlRef.current = intl;
   const validationRef = useRef(validation);
   validationRef.current = validation;
   const fieldNameRef = useRef(fieldName);
@@ -344,11 +398,13 @@ export function useValidationProps(
 
   const customRef = useRef<CustomFieldValidation | undefined>(undefined);
   customRef.current ??= makeCustomValidation(
-    () => partitionRules(validationRef.current ?? {}).customConfig,
+    () =>
+      partitionRules(validationRef.current ?? {}, intlRef.current).customConfig,
     () => fieldNameRef.current,
+    () => intlRef.current,
   );
 
-  const { nativeProps, customConfig } = partitionRules(validation ?? {});
+  const { nativeProps, customConfig } = partitionRules(validation ?? {}, intl);
 
   // Whether `custom` is present is part of useField's serialised memo key, so
   // a config that gains or loses custom rules still re-derives its validation.

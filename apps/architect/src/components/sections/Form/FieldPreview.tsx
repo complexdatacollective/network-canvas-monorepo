@@ -2,6 +2,7 @@ import { get } from 'es-toolkit/compat';
 import { useSelector } from 'react-redux';
 
 import { Badge } from '@codaco/fresco-ui/Badge';
+import AttributeControlDescription from '~/components/Form/AttributeControlDescription';
 import Markdown from '~/components/Markdown';
 import { getColorForType } from '~/config/variables';
 import type { RootState } from '~/ducks/modules/root';
@@ -39,12 +40,10 @@ const FieldPreview = ({
       <Markdown label={prompt} className="[&>p]:m-0" />
       <div>
         <Badge color={getColorForType(codebookVariable.type)}>
-          <span>
-            <strong>{codebookVariable.type}</strong>
-            {' attribute using '}
-            <strong>{codebookVariable.component}</strong>
-            {' input control'}
-          </span>
+          <AttributeControlDescription
+            type={codebookVariable.type}
+            component={codebookVariable.component}
+          />
         </Badge>
       </div>
     </div>

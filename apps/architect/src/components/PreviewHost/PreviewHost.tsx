@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { v4 as uuid } from 'uuid';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppI18nProvider, useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -17,6 +20,7 @@ import {
   generateNetwork,
   SyntheticDataConstraintError,
 } from '@codaco/protocol-utilities';
+import { formatConstraintConflictReason } from '@codaco/protocol-utilities/messages';
 import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
 import { type StageMetadata, StageMetadataSchema } from '@codaco/shared-consts';
 import { assetKey } from '~/utils/assetDB';
@@ -26,6 +30,110 @@ import { currentProtocolToPayload } from './currentProtocolToPayload';
 import { isPreviewMessage, type PreviewPayload } from './messages';
 import { collectPreviewRosterData } from './previewRosterData';
 import { useAssetResolver } from './useAssetResolver';
+const chromeMessages = defineMessages({
+  english: {
+    id: 'architect.chrome.previewHost.previewHost.english',
+    defaultMessage: 'English',
+    description: 'The label text in components / PreviewHost / PreviewHost.',
+  },
+});
+const messages = defineMessages({
+  conflictSubject: {
+    id: 'architect.presentation.conflictSubject',
+    defaultMessage: '{entityName}: {variableNames}',
+    description:
+      'Complete presentation message. Preserve authored values; the translator controls spacing and punctuation.',
+  },
+  thisPreviewHasEnded: {
+    id: 'architect.previewHost.previewHost.thisPreviewHasEnded',
+    defaultMessage: 'This preview has ended',
+    description: 'Visible text in components / PreviewHost / PreviewHost.',
+  },
+  returnToArchitectAndClickPreview: {
+    id: 'architect.previewHost.previewHost.returnToArchitectAndClickPreview',
+    defaultMessage:
+      'Return to Architect and click Preview again to start a new one.',
+    description: 'Visible text in components / PreviewHost / PreviewHost.',
+  },
+  closeTab: {
+    id: 'architect.previewHost.previewHost.closeTab',
+    defaultMessage: 'Close tab',
+    description: 'Visible text in components / PreviewHost / PreviewHost.',
+  },
+  previewFinished: {
+    id: 'architect.previewHost.previewHost.previewFinished',
+    defaultMessage: 'Preview finished',
+    description: 'Visible text in components / PreviewHost / PreviewHost.',
+  },
+  theInterviewFinishedJustAsIt: {
+    id: 'architect.previewHost.previewHost.theInterviewFinishedJustAsIt',
+    defaultMessage:
+      'The interview finished, just as it would for a participant. Nothing was saved — preview responses are never stored.',
+    description: 'Visible text in components / PreviewHost / PreviewHost.',
+  },
+  startingAgainRerunsTheProtocolAs: {
+    id: 'architect.previewHost.previewHost.startingAgainRerunsTheProtocolAs',
+    defaultMessage:
+      'Starting again reruns the protocol as it was when this preview opened. To preview changes you have made in Architect since then, start a new preview from there.',
+    description: 'Visible text in components / PreviewHost / PreviewHost.',
+  },
+  startThePreviewAgain: {
+    id: 'architect.previewHost.previewHost.startThePreviewAgain',
+    defaultMessage: 'Start the preview again',
+    description: 'Visible text in components / PreviewHost / PreviewHost.',
+  },
+  couldnTReachTheArchitectTab: {
+    id: 'architect.previewHost.previewHost.couldnTReachTheArchitectTab',
+    defaultMessage: "Couldn't reach the Architect tab",
+    description: 'Visible text in components / PreviewHost / PreviewHost.',
+  },
+  thePreviewCouldnTBeLoadedThe: {
+    id: 'architect.previewHost.previewHost.thePreviewCouldnTBeLoadedThe',
+    defaultMessage:
+      "The preview couldn't be loaded. The Architect tab may be closed or no longer responding.",
+    description: 'Visible text in components / PreviewHost / PreviewHost.',
+  },
+  thisProtocolCanTBePreviewed: {
+    id: 'architect.previewHost.previewHost.thisProtocolCanTBePreviewed',
+    defaultMessage: "This protocol can't be previewed",
+    description: 'Visible text in components / PreviewHost / PreviewHost.',
+  },
+  syntheticDataCouldnTBeGeneratedBecause: {
+    id: 'architect.previewHost.previewHost.syntheticDataCouldnTBeGeneratedBecause',
+    defaultMessage:
+      "Synthetic data couldn't be generated because these validation rules can't all be satisfied. Return to Architect, update the protocol, and preview it again.",
+    description: 'Visible text in components / PreviewHost / PreviewHost.',
+  },
+  ego: {
+    id: 'architect.previewHost.previewHost.ego',
+    defaultMessage: 'Ego',
+    description: 'Visible text in components / PreviewHost / PreviewHost.',
+  },
+  couldnTBuildThePreview: {
+    id: 'architect.previewHost.previewHost.couldnTBuildThePreview',
+    defaultMessage: "Couldn't build the preview",
+    description: 'Visible text in components / PreviewHost / PreviewHost.',
+  },
+  somethingWentWrongPreparingThisProtocol: {
+    id: 'architect.previewHost.previewHost.somethingWentWrongPreparingThisProtocol',
+    defaultMessage:
+      'Something went wrong preparing this protocol for preview. Return to Architect, check the protocol, and try again.',
+    description: 'Visible text in components / PreviewHost / PreviewHost.',
+  },
+  loadingPreview: {
+    id: 'architect.previewHost.previewHost.loadingPreview',
+    defaultMessage: 'Loading preview…',
+    description: 'Visible text in components / PreviewHost / PreviewHost.',
+  },
+});
+const extraMessages = defineMessages({
+  thisType: {
+    id: 'architect.preview.constraints.thisType',
+    defaultMessage: 'This type',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+});
+
 const PAYLOAD_TIMEOUT_MS = 5000;
 const noopSync = async () => {};
 
@@ -108,6 +216,7 @@ type PreviewFailure =
   | { kind: 'constraints'; conflicts: ConstraintConflict[] }
   | { kind: 'processing' };
 export function PreviewHost() {
+  const intl = useAppIntl();
   const [interviewPayload, setInterviewPayload] =
     useState<InterviewPayload | null>(null);
   const [protocolId, setProtocolId] = useState<string | null>(null);
@@ -232,13 +341,13 @@ export function PreviewHost() {
     return (
       <div className="flex h-dvh w-full flex-col items-center justify-center gap-4 p-8 text-center">
         <Heading level="h1" margin="none" className="text-2xl font-semibold">
-          This preview has ended
+          {intl.formatMessage(messages.thisPreviewHasEnded)}
         </Heading>
         <Paragraph margin="none">
-          Return to Architect and click Preview again to start a new one.
+          {intl.formatMessage(messages.returnToArchitectAndClickPreview)}
         </Paragraph>
         <Button color="primary" onClick={() => window.close()}>
-          Close tab
+          {intl.formatMessage(messages.closeTab)}
         </Button>
       </div>
     );
@@ -257,15 +366,14 @@ export function PreviewHost() {
           className="text-2xl font-semibold"
           aria-describedby={COMPLETION_DESCRIPTION_ID}
         >
-          Preview finished
+          {intl.formatMessage(messages.previewFinished)}
         </Heading>
         <Paragraph
           id={COMPLETION_DESCRIPTION_ID}
           margin="none"
           className="max-w-xl"
         >
-          The interview finished, just as it would for a participant. Nothing
-          was saved — preview responses are never stored.
+          {intl.formatMessage(messages.theInterviewFinishedJustAsIt)}
         </Paragraph>
         <Paragraph
           margin="none"
@@ -273,16 +381,14 @@ export function PreviewHost() {
           emphasis="muted"
           className="max-w-xl"
         >
-          Starting again reruns the protocol as it was when this preview opened.
-          To preview changes you have made in Architect since then, start a new
-          preview from there.
+          {intl.formatMessage(messages.startingAgainRerunsTheProtocolAs)}
         </Paragraph>
         <div className="flex gap-3">
           <Button color="primary" onClick={restartPreview}>
-            Start the preview again
+            {intl.formatMessage(messages.startThePreviewAgain)}
           </Button>
           <Button color="default" onClick={() => window.close()}>
-            Close tab
+            {intl.formatMessage(messages.closeTab)}
           </Button>
         </div>
       </div>
@@ -292,11 +398,10 @@ export function PreviewHost() {
     return (
       <div className="flex h-dvh w-full flex-col items-center justify-center gap-4 p-8 text-center">
         <Heading level="h1" margin="none" className="text-2xl font-semibold">
-          Couldn't reach the Architect tab
+          {intl.formatMessage(messages.couldnTReachTheArchitectTab)}
         </Heading>
         <Paragraph margin="none">
-          The preview couldn't be loaded. The Architect tab may be closed or no
-          longer responding.
+          {intl.formatMessage(messages.thePreviewCouldnTBeLoadedThe)}
         </Paragraph>
         <div className="flex gap-3">
           <Button
@@ -306,10 +411,10 @@ export function PreviewHost() {
               setRetryNonce((n) => n + 1);
             }}
           >
-            Try again
+            {intl.formatMessage(commonMessages.retry)}
           </Button>
           <Button color="default" onClick={() => window.close()}>
-            Close tab
+            {intl.formatMessage(messages.closeTab)}
           </Button>
         </div>
       </div>
@@ -319,12 +424,10 @@ export function PreviewHost() {
     return (
       <div className="flex h-dvh w-full flex-col items-center gap-4 overflow-y-auto p-8 pt-16 text-center">
         <Heading level="h1" margin="none" className="text-2xl font-semibold">
-          This protocol can't be previewed
+          {intl.formatMessage(messages.thisProtocolCanTBePreviewed)}
         </Heading>
         <Paragraph margin="none" className="max-w-xl">
-          Synthetic data couldn't be generated because these validation rules
-          can't all be satisfied. Return to Architect, update the protocol, and
-          preview it again.
+          {intl.formatMessage(messages.syntheticDataCouldnTBeGeneratedBecause)}
         </Paragraph>
         <div className="flex w-full max-w-xl flex-col gap-3 text-left">
           {failure.conflicts.map((conflict, index) => (
@@ -334,17 +437,23 @@ export function PreviewHost() {
               density="compact"
             >
               <AlertTitle>
-                {conflict.entity === 'ego'
-                  ? 'Ego'
-                  : (conflict.entityTypeName ?? 'This type')}
-                : {conflict.variableNames.join(', ')}
+                {intl.formatMessage(messages.conflictSubject, {
+                  entityName:
+                    conflict.entity === 'ego'
+                      ? intl.formatMessage(messages.ego)
+                      : (conflict.entityTypeName ??
+                        intl.formatMessage(extraMessages.thisType)),
+                  variableNames: intl.formatList(conflict.variableNames),
+                })}
               </AlertTitle>
-              <AlertDescription>{conflict.reason}</AlertDescription>
+              <AlertDescription>
+                {formatConstraintConflictReason(conflict, intl)}
+              </AlertDescription>
             </Alert>
           ))}
         </div>
         <Button color="primary" onClick={() => window.close()}>
-          Close tab
+          {intl.formatMessage(messages.closeTab)}
         </Button>
       </div>
     );
@@ -353,11 +462,10 @@ export function PreviewHost() {
     return (
       <div className="flex h-dvh w-full flex-col items-center justify-center gap-4 p-8 text-center">
         <Heading level="h1" margin="none" className="text-2xl font-semibold">
-          Couldn't build the preview
+          {intl.formatMessage(messages.couldnTBuildThePreview)}
         </Heading>
         <Paragraph margin="none">
-          Something went wrong preparing this protocol for preview. Return to
-          Architect, check the protocol, and try again.
+          {intl.formatMessage(messages.somethingWentWrongPreparingThisProtocol)}
         </Paragraph>
         <div className="flex gap-3">
           <Button
@@ -367,10 +475,10 @@ export function PreviewHost() {
               setRetryNonce((n) => n + 1);
             }}
           >
-            Try again
+            {intl.formatMessage(commonMessages.retry)}
           </Button>
           <Button color="default" onClick={() => window.close()}>
-            Close tab
+            {intl.formatMessage(messages.closeTab)}
           </Button>
         </div>
       </div>
@@ -379,29 +487,43 @@ export function PreviewHost() {
   if (!interviewPayload) {
     return (
       <div className="flex h-dvh w-full items-center justify-center">
-        <Paragraph>Loading preview…</Paragraph>
+        <Paragraph>{intl.formatMessage(messages.loadingPreview)}</Paragraph>
       </div>
     );
   }
   return (
-    <div className="h-screen">
-      <Shell
-        payload={interviewPayload}
-        onSync={noopSync}
-        onFinish={handleFinish}
-        finishConfirmationDescription={PREVIEW_FINISH_CONFIRMATION}
-        onRequestAsset={onRequestAsset}
-        currentStep={currentStep}
-        onStepChange={setCurrentStep}
-        flags={{ isDevelopment: import.meta.env.DEV }}
-        initialStageOverrideIndex={initialStageOverrideIndex ?? undefined}
-        allowStageNavigation
-        disableAnalytics
-        analytics={{
-          installationId: 'architect-preview',
-          hostApp: 'architect-preview',
-        }}
-      />
+    <div className="h-screen" lang="en" dir="ltr">
+      {/* Protocol/participant language is independent of Architect chrome.
+          Schema-8 previews retain their source English runtime until #1313. */}
+      <AppI18nProvider
+        locale="en"
+        locales={[
+          {
+            locale: 'en',
+            label: intl.formatMessage(chromeMessages.english),
+            direction: 'ltr',
+          },
+        ]}
+        manageDocument={false}
+      >
+        <Shell
+          payload={interviewPayload}
+          onSync={noopSync}
+          onFinish={handleFinish}
+          finishConfirmationDescription={PREVIEW_FINISH_CONFIRMATION}
+          onRequestAsset={onRequestAsset}
+          currentStep={currentStep}
+          onStepChange={setCurrentStep}
+          flags={{ isDevelopment: import.meta.env.DEV }}
+          initialStageOverrideIndex={initialStageOverrideIndex ?? undefined}
+          allowStageNavigation
+          disableAnalytics
+          analytics={{
+            installationId: 'architect-preview',
+            hostApp: 'architect-preview',
+          }}
+        />
+      </AppI18nProvider>
     </div>
   );
 }

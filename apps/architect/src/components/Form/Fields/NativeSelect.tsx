@@ -2,16 +2,79 @@ import { sortBy } from 'es-toolkit/compat';
 import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useMemo, useState } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import { normalizeForComparison } from '@codaco/shared-consts';
+import { toSubmissionError } from '~/i18n/submissionErrors';
 import { cx } from '~/utils/cva';
 import { getValidator } from '~/utils/validations';
 
 import type { ArchitectValidation } from '../toZodValidation';
+const defaultMessages = defineMessages({
+  placeholder: {
+    id: 'architect.defaults.components.Form.Fields.NativeSelect.placeholder',
+    defaultMessage: 'Select an option',
+    description:
+      'Default researcher-facing copy when the caller does not supply its own placeholder.',
+  },
+  createLabelText: {
+    id: 'architect.defaults.components.Form.Fields.NativeSelect.createLabelText',
+    defaultMessage: '✨ Create new ✨',
+    description:
+      'Default researcher-facing copy when the caller does not supply its own createLabelText.',
+  },
+  createInputLabel: {
+    id: 'architect.defaults.components.Form.Fields.NativeSelect.createInputLabel',
+    defaultMessage: 'New attribute name',
+    description:
+      'Default researcher-facing copy when the caller does not supply its own createInputLabel.',
+  },
+  createInputPlaceholder: {
+    id: 'architect.defaults.components.Form.Fields.NativeSelect.createInputPlaceholder',
+    defaultMessage: 'Enter an attribute name...',
+    description:
+      'Default researcher-facing copy when the caller does not supply its own createInputPlaceholder.',
+  },
+});
+const chromeMessages = defineMessages({
+  anOptionNamedIs: {
+    id: 'architect.chrome.form.fields.nativeSelect.anOptionNamedIs',
+    defaultMessage:
+      'An option named "{candidate}" is already defined{hasEntity, select, yes { on entity type {entity}} other {}}',
+    description:
+      'Researcher-facing explanatory text in components / Form / Fields / NativeSelect.',
+  },
+});
+const messages = defineMessages({
+  message: {
+    id: 'architect.form.fields.nativeSelect.message',
+    defaultMessage: '-- {placeholder} --',
+    description: 'The label text in components / Form / Fields / NativeSelect.',
+  },
+  creating: {
+    id: 'architect.form.fields.nativeSelect.creating',
+    defaultMessage: 'Creating…',
+    description: 'Visible text in components / Form / Fields / NativeSelect.',
+  },
+  create: {
+    id: 'architect.form.fields.nativeSelect.create',
+    defaultMessage: 'Create',
+    description: 'Visible text in components / Form / Fields / NativeSelect.',
+  },
+});
+const finalMessages = defineMessages({
+  createFailed: {
+    id: 'architect.nativeSelect.createFailed',
+    defaultMessage: 'Unable to create this option.',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+});
 
 type Option = {
   label: string;
@@ -71,13 +134,13 @@ const NativeSelect = ({
   onBlur,
   onFocus,
   options = [],
-  placeholder = 'Select an option',
+  placeholder: providedPlaceholder,
   className = '',
   onCreateOption,
   onCreateNew,
-  createLabelText = '✨ Create new ✨',
-  createInputLabel = 'New attribute name',
-  createInputPlaceholder = 'Enter an attribute name...',
+  createLabelText: providedCreateLabelText,
+  createInputLabel: providedCreateInputLabel,
+  createInputPlaceholder: providedCreateInputPlaceholder,
   allowPlaceholderSelect = false,
   sortOptionsByLabel = true,
   reserved = [],
@@ -90,6 +153,19 @@ const NativeSelect = ({
   'aria-labelledby': ariaLabelledBy,
   'aria-required': ariaRequired,
 }: NativeSelectProps) => {
+  const intl = useAppIntl();
+  const placeholder =
+    providedPlaceholder ?? intl.formatMessage(defaultMessages.placeholder);
+  const createLabelText =
+    providedCreateLabelText ??
+    intl.formatMessage(defaultMessages.createLabelText);
+  const createInputLabel =
+    providedCreateInputLabel ??
+    intl.formatMessage(defaultMessages.createInputLabel);
+  const createInputPlaceholder =
+    providedCreateInputPlaceholder ??
+    intl.formatMessage(defaultMessages.createInputPlaceholder);
+
   const [showCreateOptionForm, setShowCreateOptionForm] = useState(false);
   const [newOptionValue, setNewOptionValue] = useState<string | null>(null);
   const [createRequestError, setCreateRequestError] = useState<string | false>(
@@ -127,7 +203,10 @@ const NativeSelect = ({
     (candidate: string | null): string | false => {
       if (!candidate) return false;
 
-      const validationError = getValidator(createValidation ?? {})(candidate);
+      const validationError = getValidator(
+        createValidation ?? {},
+        intl,
+      )(candidate);
       if (validationError) return validationError;
 
       // The same question the array-field validators (`uniqueByList`,
@@ -141,12 +220,16 @@ const NativeSelect = ({
         normalizeForComparison(candidate);
 
       if (options.some(matchesLabel) || reserved.some(matchesLabel)) {
-        return `An option named "${candidate}" is already defined${entity ? ` on entity type ${entity}` : ''}`;
+        return intl.formatMessage(chromeMessages.anOptionNamedIs, {
+          candidate: candidate,
+          hasEntity: entity ? 'yes' : 'no',
+          entity: entity ?? '',
+        });
       }
 
       return false;
     },
-    [entity, options, reserved, createValidation],
+    [entity, options, reserved, createValidation, intl],
   );
 
   const createOptionError = useMemo(
@@ -171,9 +254,7 @@ const NativeSelect = ({
       resetForm();
     } catch (error) {
       setCreateRequestError(
-        error instanceof Error && error.message
-          ? error.message
-          : 'Unable to create this option.',
+        toSubmissionError(error, finalMessages.createFailed),
       );
       setIsCreating(false);
     }
@@ -188,7 +269,9 @@ const NativeSelect = ({
     () => [
       {
         value: '',
-        label: `-- ${placeholder} --`,
+        label: intl.formatMessage(messages.message, {
+          placeholder: placeholder,
+        }),
         disabled: !allowPlaceholderSelect,
       },
       ...(onCreateOption || onCreateNew
@@ -203,6 +286,7 @@ const NativeSelect = ({
       onCreateOption,
       placeholder,
       sortedOptions,
+      intl,
     ],
   );
 
@@ -238,7 +322,7 @@ const NativeSelect = ({
             />
             <div className="flex items-center justify-end gap-2.5 [&_button]:min-w-40">
               <Button color="default" onClick={resetForm}>
-                Cancel
+                {intl.formatMessage(commonMessages.cancel)}
               </Button>
               <Button
                 onClick={() => void handleCreateOption()}
@@ -246,7 +330,9 @@ const NativeSelect = ({
                   !newOptionValue || Boolean(createOptionError) || isCreating
                 }
               >
-                {isCreating ? 'Creating…' : 'Create'}
+                {isCreating
+                  ? intl.formatMessage(messages.creating)
+                  : intl.formatMessage(messages.create)}
               </Button>
             </div>
           </motion.div>

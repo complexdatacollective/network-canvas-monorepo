@@ -3,6 +3,8 @@ import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { v4 as uuid } from 'uuid';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
@@ -11,6 +13,22 @@ import NewTypeDialog from '~/components/Dialog/NewTypeDialog';
 import { useAppSelector } from '~/ducks/hooks';
 import { getEdgeTypes } from '~/selectors/codebook/index';
 import { asOptions } from '~/selectors/utils';
+const messages = defineMessages({
+  noEdgeTypesCurrentlyDefinedUse: {
+    id: 'architect.sections.edgeConfiguration.edgeTypeMultiSelect.noEdgeTypesCurrentlyDefinedUse',
+    defaultMessage:
+      'No edge types currently defined. Use the button below to create one.',
+    description:
+      'Visible text in components / sections / EdgeConfiguration / EdgeTypeMultiSelect.',
+  },
+  createNewEdgeType: {
+    id: 'architect.sections.edgeConfiguration.edgeTypeMultiSelect.createNewEdgeType',
+    defaultMessage: 'Create new edge type',
+    description:
+      'Visible text in components / sections / EdgeConfiguration / EdgeTypeMultiSelect.',
+  },
+});
+
 type EdgeEntrySubject = {
   entity: 'edge';
   type: string;
@@ -34,6 +52,7 @@ export const EdgeTypeMultiSelectInner = ({
   value,
   onChange,
 }: EdgeTypeMultiSelectInnerProps) => {
+  const intl = useAppIntl();
   const [showNewTypeDialog, setShowNewTypeDialog] = useState(false);
   const checkedTypes = value.map((entry) => entry.subject.type);
   const handleChange = (newCheckedTypes: (string | number)[] | undefined) => {
@@ -72,7 +91,7 @@ export const EdgeTypeMultiSelectInner = ({
         />
       ) : (
         <Paragraph>
-          No edge types currently defined. Use the button below to create one.
+          {intl.formatMessage(messages.noEdgeTypesCurrentlyDefinedUse)}
         </Paragraph>
       )}
       <Button
@@ -80,7 +99,7 @@ export const EdgeTypeMultiSelectInner = ({
         color="primary"
         onClick={() => setShowNewTypeDialog(true)}
       >
-        Create new edge type
+        {intl.formatMessage(messages.createNewEdgeType)}
       </Button>
       <NewTypeDialog
         show={showNewTypeDialog}

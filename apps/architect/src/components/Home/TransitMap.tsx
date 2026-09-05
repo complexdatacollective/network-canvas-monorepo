@@ -1,9 +1,19 @@
 import { motion, useReducedMotion } from 'motion/react';
 import { useEffect, useRef } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
+import { type FormattedConfig, formatConfig } from '~/i18n/formatConfig';
 
 import { STAGE_META, type TimelineStop } from './timelineScript';
+const messages = defineMessages({
+  protocolTimeline: {
+    id: 'architect.home.transitMap.protocolTimeline',
+    defaultMessage: 'Protocol timeline',
+    description: 'Visible text in components / Home / TransitMap.',
+  },
+});
 
 // Internal SVG design coordinates. The outer container width controls the
 // actual rendered size; everything inside scales via viewBox so stations,
@@ -39,6 +49,7 @@ type TransitMapProps = {
 type WindowedStop = TimelineStop & { absoluteIndex: number };
 
 export default function TransitMap({ stops, count }: TransitMapProps) {
+  const intl = useAppIntl();
   const reducedMotion = useReducedMotion();
   const firstMountRef = useRef(true);
   const isFirstMount = firstMountRef.current;
@@ -68,7 +79,7 @@ export default function TransitMap({ stops, count }: TransitMapProps) {
         height="100%"
         preserveAspectRatio="xMidYMid meet"
       >
-        <title>Protocol timeline</title>
+        <title>{intl.formatMessage(messages.protocolTimeline)}</title>
         <defs>
           <linearGradient id="nc-timeline-fade" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stopColor="#fff" stopOpacity="0" />
@@ -113,7 +124,7 @@ export default function TransitMap({ stops, count }: TransitMapProps) {
               if (i === 0) return null;
               const prev = stations[i - 1];
               if (!prev) return null;
-              const prevMeta = STAGE_META[prev.key];
+              const prevMeta = formatConfig(STAGE_META, intl)[prev.key];
               const y1 = prev.absoluteIndex * STATION_GAP;
               const y2 = s.absoluteIndex * STATION_GAP;
               const isNewSeg = s.absoluteIndex === newestAbs;
@@ -163,7 +174,7 @@ export default function TransitMap({ stops, count }: TransitMapProps) {
 
             {stations.map((s, i) => {
               const y = s.absoluteIndex * STATION_GAP;
-              const meta = STAGE_META[s.key];
+              const meta = formatConfig(STAGE_META, intl)[s.key];
               const isNewest = s.absoluteIndex === newestAbs;
               const entryDelay = reducedMotion
                 ? undefined
@@ -197,7 +208,7 @@ export default function TransitMap({ stops, count }: TransitMapProps) {
 type StationProps = {
   x: number;
   y: number;
-  meta: (typeof STAGE_META)[keyof typeof STAGE_META];
+  meta: FormattedConfig<(typeof STAGE_META)[keyof typeof STAGE_META]>;
   label: string;
   sub: string;
   isNewest: boolean;

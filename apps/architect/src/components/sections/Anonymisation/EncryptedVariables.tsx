@@ -1,6 +1,9 @@
-import { useCallback, useMemo } from 'react';
+import { createElement, useCallback, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
@@ -11,6 +14,55 @@ import type { AppDispatch } from '~/ducks/store';
 import { getNodeTypes } from '~/selectors/codebook';
 
 import { updateVariableByUUID } from '../../../ducks/modules/protocol/codebook';
+const messages = defineMessages({
+  thisWillClearSelectedAttributes: {
+    id: 'architect.sections.anonymisation.encryptedVariables.thisWillClearSelectedAttributes',
+    defaultMessage: 'This will clear selected attributes',
+    description:
+      'The title text in components / sections / Anonymisation / EncryptedVariables.',
+  },
+  thisWillDeselectAllEncryptedAttributes: {
+    id: 'architect.sections.anonymisation.encryptedVariables.thisWillDeselectAllEncryptedAttributes',
+    defaultMessage:
+      'This will deselect all encrypted attributes for the {value1} node type. Do you want to continue?',
+    description:
+      'The description text in components / sections / Anonymisation / EncryptedVariables.',
+  },
+  clearEncryptedAttributes: {
+    id: 'architect.sections.anonymisation.encryptedVariables.clearEncryptedAttributes',
+    defaultMessage: 'Clear encrypted attributes',
+    description:
+      'The confirmLabel text in components / sections / Anonymisation / EncryptedVariables.',
+  },
+  encryptedAttributes: {
+    id: 'architect.sections.anonymisation.encryptedVariables.encryptedAttributes',
+    defaultMessage: 'Encrypted attributes',
+    description:
+      'The title text in components / sections / Anonymisation / EncryptedVariables.',
+  },
+  selectTheTextAttributesForEach: {
+    id: 'architect.sections.anonymisation.encryptedVariables.selectTheTextAttributesForEach',
+    defaultMessage:
+      'Select the text attributes for each node type that should be encrypted.',
+    description:
+      'The description text in components / sections / Anonymisation / EncryptedVariables.',
+  },
+  valuesForEncryptedAttributesAreNot: {
+    id: 'architect.sections.anonymisation.encryptedVariables.valuesForEncryptedAttributesAreNot',
+    defaultMessage:
+      'Values for encrypted attributes are not stored in the database.',
+    description:
+      'Visible text in components / sections / Anonymisation / EncryptedVariables.',
+  },
+  enableEncryptionForAttributesBelongingTo: {
+    id: 'architect.sections.anonymisation.encryptedVariables.enableEncryptionForAttributesBelongingTo',
+    defaultMessage:
+      'Enable encryption for attributes belonging to this node type.',
+    description:
+      'The description text in components / sections / Anonymisation / EncryptedVariables.',
+  },
+});
+
 type Variable = {
   name: string;
   type?: string;
@@ -68,6 +120,7 @@ export const getEncryptableVariableOptions = (
       label: variable.name,
     }));
 const EncryptedVariables = (_props: StageEditorSectionProps) => {
+  const intl = useAppIntl();
   const dispatch = useDispatch<AppDispatch>();
   const { confirm } = useDialog();
   const nodeTypes = useSelector(
@@ -94,10 +147,19 @@ const EncryptedVariables = (_props: StageEditorSectionProps) => {
         nextOpen: newState,
         confirmClear: () =>
           confirm({
-            title: 'This will clear selected attributes',
-            description: `This will deselect all encrypted attributes for the ${nodeType.name} node type. Do you want to continue?`,
-            confirmLabel: 'Clear encrypted attributes',
-            cancelLabel: 'Cancel',
+            title: createElement(AppMessage, {
+              message: messages.thisWillClearSelectedAttributes,
+            }),
+            description: createElement(AppMessage, {
+              message: messages.thisWillDeselectAllEncryptedAttributes,
+              values: { value1: nodeType.name },
+            }),
+            confirmLabel: createElement(AppMessage, {
+              message: messages.clearEncryptedAttributes,
+            }),
+            cancelLabel: createElement(AppMessage, {
+              message: commonMessages.cancel,
+            }),
             intent: 'warning',
             onConfirm: () => {},
           }),
@@ -140,12 +202,12 @@ const EncryptedVariables = (_props: StageEditorSectionProps) => {
   );
   return (
     <Section
-      title="Encrypted attributes"
-      description="Select the text attributes for each node type that should be encrypted."
+      title={intl.formatMessage(messages.encryptedAttributes)}
+      description={intl.formatMessage(messages.selectTheTextAttributesForEach)}
     >
       <Alert variant="info" className="my-7">
         <AlertDescription>
-          Values for encrypted attributes are not stored in the database.
+          {intl.formatMessage(messages.valuesForEncryptedAttributesAreNot)}
         </AlertDescription>
       </Alert>
       {nodeTypeVariableData.map(
@@ -162,7 +224,9 @@ const EncryptedVariables = (_props: StageEditorSectionProps) => {
             title={nodeType.name}
             key={nodeTypeId}
             defaultOpen={hasEncryptedVariable}
-            description="Enable encryption for attributes belonging to this node type."
+            description={intl.formatMessage(
+              messages.enableEncryptionForAttributesBelongingTo,
+            )}
             onOpenChange={(newState) =>
               handleToggleChange(hasEncryptedVariable, nodeType, newState)
             }

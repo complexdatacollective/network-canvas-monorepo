@@ -611,7 +611,9 @@ describe('PreviewHost', () => {
     expect(screen.getByText(/Person/)).toBeInTheDocument();
     expect(screen.getByText(/Code/)).toBeInTheDocument();
     expect(
-      screen.getByText(/minLength 24 exceeds maxLength 10/i),
+      screen.getByText(
+        'The minimum exceeds the maximum, so no answer is allowed. Adjust these limits.',
+      ),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: /try again/i }),
@@ -666,7 +668,11 @@ describe('PreviewHost', () => {
     expect(
       screen.queryByText(/protocol can't be previewed/i),
     ).not.toBeInTheDocument();
-    expect(screen.queryByText(/minLength 24 exceeds maxLength 10/i)).toBeNull();
+    expect(
+      screen.queryByText(
+        'The minimum exceeds the maximum, so no answer is allowed. Adjust these limits.',
+      ),
+    ).toBeNull();
     expect(
       screen.getByRole('button', { name: /try again/i }),
     ).toBeInTheDocument();
@@ -695,7 +701,9 @@ describe('PreviewHost', () => {
       await screen.findByText(/protocol can't be previewed/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/minLength 24 exceeds maxLength 10/i),
+      screen.getByText(
+        'The minimum exceeds the maximum, so no answer is allowed. Adjust these limits.',
+      ),
     ).toBeInTheDocument();
     // The generic screen's retry can only fail the same way here, so no part of
     // it may survive alongside the conflict list.
@@ -787,7 +795,9 @@ describe('PreviewHost', () => {
       await screen.findByText(/protocol can't be previewed/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/minLength 24 exceeds maxLength 10/i),
+      screen.getByText(
+        'The minimum exceeds the maximum, so no answer is allowed. Adjust these limits.',
+      ),
     ).toBeInTheDocument();
     // Architect answered, so blaming the connection hides the rules the user
     // can actually correct.

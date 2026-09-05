@@ -8,8 +8,15 @@ import {
   X,
 } from 'lucide-react';
 import { DateTime } from 'luxon';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { createElement, useCallback, useMemo, useRef, useState } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import {
+  type IntlShape,
+  type MessageDescriptor,
+  defineMessages,
+} from '@codaco/app-i18n/messages';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import Button, { IconButton } from '@codaco/fresco-ui/Button';
 import { Collection } from '@codaco/fresco-ui/collection/components/Collection';
@@ -47,13 +54,290 @@ import { getProtocolAssetCount } from '~/utils/assetUtils';
 import { downloadProtocolAsNetcanvas } from '~/utils/bundleProtocol';
 import { documentationLinks } from '~/utils/documentationLinks';
 import { reportError } from '~/utils/reportError';
+const chromeMessages = defineMessages({
+  templateCount: {
+    id: 'architect.home.libraryPanel.templateCount',
+    defaultMessage: '{count, plural, one {# template} other {# templates}}',
+    description: 'Number of available protocol templates on the home page.',
+  },
+  anExampleIntroducingTheKeyFeatures: {
+    id: 'architect.chrome.home.libraryPanel.anExampleIntroducingTheKeyFeatures',
+    defaultMessage:
+      'An example introducing the key features and techniques available in Network Canvas.',
+    description: 'The description text in components / Home / LibraryPanel.',
+  },
+  yourProtocolsAreSavedOnlyOn: {
+    id: 'architect.chrome.home.libraryPanel.yourProtocolsAreSavedOnlyOn',
+    defaultMessage:
+      '{protocolCount, plural, one {Your protocol is saved only on this device. It is never uploaded to a server.} other {Your # protocols are saved only on this device. They are never uploaded to a server.}}',
+    description:
+      'Researcher-facing explanatory text in components / Home / LibraryPanel.',
+  },
+  thisProtocolHasNoDescription: {
+    id: 'architect.chrome.home.libraryPanel.thisProtocolHasNoDescription',
+    defaultMessage: 'This protocol has no description.',
+    description: 'Visible text in components / Home / LibraryPanel.',
+  },
+});
+const additionalMessages = defineMessages({
+  moreExamplesOfNetworkCanvasProtocols: {
+    id: 'architect.additional.home.libraryPanel.moreExamplesOfNetworkCanvasProtocols',
+    defaultMessage:
+      'More examples of Network Canvas protocols can be found on our <ExternalLink>Protocol Gallery</ExternalLink>.',
+    description: 'Visible text in components / Home / LibraryPanel.',
+  },
+  becauseYourWorkIsStoredLocally: {
+    id: 'architect.additional.home.libraryPanel.becauseYourWorkIsStoredLocally',
+    defaultMessage:
+      'Because your work is stored locally, clearing Architect\'s app data, or using "Clear all protocols", will permanently remove it. Download the protocol as a <code>.netcanvas</code> file to save a copy or move it to another device. See our guide to <ExternalLink>saving and backing up your work</ExternalLink> for more.',
+    description: 'Visible text in components / Home / LibraryPanel.',
+  },
+  lookingForInspirationBrowseExampleResearch: {
+    id: 'architect.additional.home.libraryPanel.lookingForInspirationBrowseExampleResearch',
+    defaultMessage:
+      'Looking for inspiration? Browse example research protocols in the <ExternalLink>Protocol Gallery</ExternalLink>.',
+    description: 'Visible text in components / Home / LibraryPanel.',
+  },
+});
+const messages = defineMessages({
+  property: {
+    id: 'architect.home.libraryPanel.property',
+    defaultMessage: 'Property',
+    description: 'Column heading for protocol metadata property names.',
+  },
+  value: {
+    id: 'architect.home.libraryPanel.value',
+    defaultMessage: 'Value',
+    description: 'Column heading for protocol metadata values.',
+  },
+  protocolCount: {
+    id: 'architect.presentation.protocolCount',
+    defaultMessage: '{count, plural, one {# protocol} other {# protocols}}',
+    description:
+      'Complete presentation message. Preserve authored values; the translator controls spacing and punctuation.',
+  },
+  actionsFor: {
+    id: 'architect.home.libraryPanel.actionsFor',
+    defaultMessage: 'Actions for {name}',
+    description: 'The aria-label text in components / Home / LibraryPanel.',
+  },
+  open: {
+    id: 'architect.home.libraryPanel.open',
+    defaultMessage: 'Open',
+    description: 'Visible text in components / Home / LibraryPanel.',
+  },
+  seeMoreInfo: {
+    id: 'architect.home.libraryPanel.seeMoreInfo',
+    defaultMessage: 'See more info',
+    description: 'Visible text in components / Home / LibraryPanel.',
+  },
+  download: {
+    id: 'architect.home.libraryPanel.download',
+    defaultMessage: 'Download',
+    description: 'Visible text in components / Home / LibraryPanel.',
+  },
+  protocolGallery: {
+    id: 'architect.home.libraryPanel.protocolGallery',
+    defaultMessage: 'Protocol gallery',
+    description: 'The aria-label text in components / Home / LibraryPanel.',
+  },
+  lookingForMore: {
+    id: 'architect.home.libraryPanel.lookingForMore',
+    defaultMessage: 'Looking for more?',
+    description: 'Visible text in components / Home / LibraryPanel.',
+  },
+  dismiss: {
+    id: 'architect.home.libraryPanel.dismiss',
+    defaultMessage: 'Dismiss',
+    description: 'The aria-label text in components / Home / LibraryPanel.',
+  },
+  someAssetsCouldNotBeIncluded: {
+    id: 'architect.home.libraryPanel.someAssetsCouldNotBeIncluded',
+    defaultMessage: 'Some assets could not be included',
+    description: 'The title text in components / Home / LibraryPanel.',
+  },
+  wasDownloadedButThese: {
+    id: 'architect.home.libraryPanel.wasDownloadedButThese',
+    defaultMessage:
+      '"{value1}" was downloaded, but these assets could not be included and are missing from the file: {assetList}.',
+    description: 'The description text in components / Home / LibraryPanel.',
+  },
+  oK: {
+    id: 'architect.home.libraryPanel.oK',
+    defaultMessage: 'OK',
+    description: 'The label text in components / Home / LibraryPanel.',
+  },
+  downloadFailed: {
+    id: 'architect.home.libraryPanel.downloadFailed',
+    defaultMessage: 'Download failed',
+    description: 'The title text in components / Home / LibraryPanel.',
+  },
+  couldNotBeDownloaded: {
+    id: 'architect.home.libraryPanel.couldNotBeDownloaded',
+    defaultMessage: '"{value1}" could not be downloaded.',
+    description: 'The description text in components / Home / LibraryPanel.',
+  },
+  deleteProtocol: {
+    id: 'architect.home.libraryPanel.deleteProtocol',
+    defaultMessage: 'Delete protocol?',
+    description: 'The title text in components / Home / LibraryPanel.',
+  },
+  andItsAssetsWill: {
+    id: 'architect.home.libraryPanel.andItsAssetsWill',
+    defaultMessage:
+      '"{value1}" and its assets will be permanently removed from this device. This cannot be undone.',
+    description: 'The description text in components / Home / LibraryPanel.',
+  },
+  deleteFailed: {
+    id: 'architect.home.libraryPanel.deleteFailed',
+    defaultMessage: 'Delete failed',
+    description: 'The title text in components / Home / LibraryPanel.',
+  },
+  couldNotBeDeleted: {
+    id: 'architect.home.libraryPanel.couldNotBeDeleted',
+    defaultMessage: '"{value1}" could not be deleted.',
+    description: 'The description text in components / Home / LibraryPanel.',
+  },
+  stages: {
+    id: 'architect.home.libraryPanel.stages',
+    defaultMessage: 'Stages',
+    description: 'The label text in components / Home / LibraryPanel.',
+  },
+  nodeTypes: {
+    id: 'architect.home.libraryPanel.nodeTypes',
+    defaultMessage: 'Node types',
+    description: 'The label text in components / Home / LibraryPanel.',
+  },
+  edgeTypes: {
+    id: 'architect.home.libraryPanel.edgeTypes',
+    defaultMessage: 'Edge types',
+    description: 'The label text in components / Home / LibraryPanel.',
+  },
+  assets: {
+    id: 'architect.home.libraryPanel.assets',
+    defaultMessage: 'Assets',
+    description: 'The label text in components / Home / LibraryPanel.',
+  },
+  added: {
+    id: 'architect.home.libraryPanel.added',
+    defaultMessage: 'Added',
+    description: 'The label text in components / Home / LibraryPanel.',
+  },
+  edited: {
+    id: 'architect.home.libraryPanel.edited',
+    defaultMessage: 'Edited',
+    description: 'The label text in components / Home / LibraryPanel.',
+  },
+  protocolStorage: {
+    id: 'architect.home.libraryPanel.protocolStorage',
+    defaultMessage: 'Protocol Storage',
+    description: 'The title text in components / Home / LibraryPanel.',
+  },
+  yourProtocolsAreSavedOnlyOn: {
+    id: 'architect.home.libraryPanel.yourProtocolsAreSavedOnlyOn',
+    defaultMessage:
+      'Your protocols are saved only on this device. They are never uploaded to a server.',
+    description: 'Visible text in components / Home / LibraryPanel.',
+  },
+  removeAllData: {
+    id: 'architect.home.libraryPanel.removeAllData',
+    defaultMessage: 'Remove all data?',
+    description: 'The title text in components / Home / LibraryPanel.',
+  },
+  everyProtocolAssetAndSettingStored: {
+    id: 'architect.home.libraryPanel.everyProtocolAssetAndSettingStored',
+    defaultMessage:
+      'Every protocol, asset, and setting stored locally by Architect will be permanently removed. This cannot be undone.',
+    description: 'The description text in components / Home / LibraryPanel.',
+  },
+  removeAll: {
+    id: 'architect.home.libraryPanel.removeAll',
+    defaultMessage: 'Remove all',
+    description: 'The label text in components / Home / LibraryPanel.',
+  },
+  couldNotRemoveData: {
+    id: 'architect.home.libraryPanel.couldNotRemoveData',
+    defaultMessage: 'Could not remove data',
+    description: 'The title text in components / Home / LibraryPanel.',
+  },
+  architectSStoredDataCouldNotBe: {
+    id: 'architect.home.libraryPanel.architectSStoredDataCouldNotBe',
+    defaultMessage: "Architect's stored data could not be removed.",
+    description: 'The description text in components / Home / LibraryPanel.',
+  },
+  includesExamplesOfEveryStageType: {
+    id: 'architect.home.libraryPanel.includesExamplesOfEveryStageType',
+    defaultMessage: 'Includes examples of every stage type',
+    description: 'The description text in components / Home / LibraryPanel.',
+  },
+  whereYourProtocolsAreStored: {
+    id: 'architect.home.libraryPanel.whereYourProtocolsAreStored',
+    defaultMessage: 'Where your protocols are stored',
+    description: 'The aria-label text in components / Home / LibraryPanel.',
+  },
+  clearAllLocallySavedProtocols: {
+    id: 'architect.home.libraryPanel.clearAllLocallySavedProtocols',
+    defaultMessage: 'Clear all locally saved protocols',
+    description: 'The aria-label text in components / Home / LibraryPanel.',
+  },
+  protocolLibrary: {
+    id: 'architect.home.libraryPanel.protocolLibrary',
+    defaultMessage: 'Protocol library',
+    description: 'The aria-label text in components / Home / LibraryPanel.',
+  },
+  recent: {
+    id: 'architect.home.libraryPanel.recent',
+    defaultMessage: 'Recent',
+    description: 'The label text in components / Home / LibraryPanel.',
+  },
+  templates: {
+    id: 'architect.home.libraryPanel.templates',
+    defaultMessage: 'Templates',
+    description: 'The label text in components / Home / LibraryPanel.',
+  },
+  recentProtocols: {
+    id: 'architect.home.libraryPanel.recentProtocols',
+    defaultMessage: 'Recent protocols',
+    description: 'The aria-label text in components / Home / LibraryPanel.',
+  },
+  noRecentProtocolsYet: {
+    id: 'architect.home.libraryPanel.noRecentProtocolsYet',
+    defaultMessage: 'No recent protocols yet.',
+    description: 'Visible text in components / Home / LibraryPanel.',
+  },
+  protocolTemplates: {
+    id: 'architect.home.libraryPanel.protocolTemplates',
+    defaultMessage: 'Protocol templates',
+    description: 'The aria-label text in components / Home / LibraryPanel.',
+  },
+});
+const extraMessages = defineMessages({
+  justNow: {
+    id: 'architect.library.metadata.justNow',
+    defaultMessage: '< 1 min ago',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  protocolMeta: {
+    id: 'architect.library.metadata.protocolMeta',
+    defaultMessage:
+      '{count, plural, one {# stage} other {# stages}} \u00b7 Added {created} \u00b7 Edited {updated}',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  templateMeta: {
+    id: 'architect.library.metadata.templateMeta',
+    defaultMessage:
+      '{stages, plural, one {# stage} other {# stages}} \u00b7 {nodes, plural, one {# node type} other {# node types}} \u00b7 {edges, plural, one {# edge type} other {# edge types}}',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+});
+
 type Tab = 'recent' | 'templates';
 const RELATIVE_CUTOFF_DAYS = 7;
-const formatTimestamp = (millis: number): string => {
-  const dt = DateTime.fromMillis(millis);
+const formatTimestamp = (millis: number, intl: IntlShape): string => {
+  const dt = DateTime.fromMillis(millis).setLocale(intl.locale);
   const secondsAgo = -dt.diffNow('seconds').seconds;
   if (secondsAgo < 60) {
-    return '< 1 min ago';
+    return intl.formatMessage(extraMessages.justNow);
   }
   const absolute = dt.toLocaleString({
     month: 'short',
@@ -67,29 +351,28 @@ const formatTimestamp = (millis: number): string => {
   return absolute;
 };
 type MetaStat = {
-  label: string;
-  value: string;
+  label: MessageDescriptor;
+  value: number;
+  kind?: 'date';
 };
-const formatProtocolMeta = (protocol: StoredProtocolRow): string => {
-  const stageCount = protocol.protocol.stages.length;
-  return [
-    `${stageCount} ${stageCount === 1 ? 'stage' : 'stages'}`,
-    `Added ${formatTimestamp(protocol.createdAt)}`,
-    `Edited ${formatTimestamp(protocol.updatedAt)}`,
-  ].join(' · ');
-};
-// Bundled templates aren't library rows: they carry no created/updated
-// timestamps, only the counts already baked into their protocol JSON.
-const formatTemplateMeta = (protocol: CurrentProtocol): string => {
-  const stageCount = protocol.stages.length;
-  const nodeTypeCount = Object.keys(protocol.codebook.node ?? {}).length;
-  const edgeTypeCount = Object.keys(protocol.codebook.edge ?? {}).length;
-  return [
-    `${stageCount} ${stageCount === 1 ? 'stage' : 'stages'}`,
-    `${nodeTypeCount} node ${nodeTypeCount === 1 ? 'type' : 'types'}`,
-    `${edgeTypeCount} edge ${edgeTypeCount === 1 ? 'type' : 'types'}`,
-  ].join(' · ');
-};
+const formatProtocolMeta = (
+  protocol: StoredProtocolRow,
+  intl: IntlShape,
+): string =>
+  intl.formatMessage(extraMessages.protocolMeta, {
+    count: protocol.protocol.stages.length,
+    created: formatTimestamp(protocol.createdAt, intl),
+    updated: formatTimestamp(protocol.updatedAt, intl),
+  });
+const formatTemplateMeta = (
+  protocol: CurrentProtocol,
+  intl: IntlShape,
+): string =>
+  intl.formatMessage(extraMessages.templateMeta, {
+    stages: protocol.stages.length,
+    nodes: Object.keys(protocol.codebook.node ?? {}).length,
+    edges: Object.keys(protocol.codebook.edge ?? {}).length,
+  });
 /**
  * Where focus belongs once a row action's dialog closes.
  *
@@ -138,6 +421,7 @@ const PanelRow = ({
   onDelete,
   onShowInfo,
 }: PanelRowProps) => {
+  const intl = useAppIntl();
   const [menuOpen, setMenuOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const handleClick = (event: React.MouseEvent) => {
@@ -240,7 +524,9 @@ const PanelRow = ({
                   ref={triggerRef}
                   variant="text"
                   color="dynamic"
-                  aria-label={`Actions for ${name}`}
+                  aria-label={intl.formatMessage(messages.actionsFor, {
+                    name: name,
+                  })}
                   onClick={(event) => event.stopPropagation()}
                   icon={
                     downloading ? (
@@ -257,14 +543,14 @@ const PanelRow = ({
                 icon={<FolderOpen />}
                 onClick={runMenuAction(onOpen)}
               >
-                Open
+                {intl.formatMessage(messages.open)}
               </DropdownMenuItem>
               {onShowInfo && (
                 <DropdownMenuItem
                   icon={<Info />}
                   onClick={runMenuAction(onShowInfo)}
                 >
-                  See more info
+                  {intl.formatMessage(messages.seeMoreInfo)}
                 </DropdownMenuItem>
               )}
               {onDownload && (
@@ -273,7 +559,7 @@ const PanelRow = ({
                   disabled={downloading}
                   onClick={runMenuAction(onDownload)}
                 >
-                  Download
+                  {intl.formatMessage(messages.download)}
                 </DropdownMenuItem>
               )}
               {onDelete && (
@@ -281,7 +567,7 @@ const PanelRow = ({
                   icon={<Trash2 />}
                   onClick={runMenuAction(onDelete)}
                 >
-                  Delete
+                  {intl.formatMessage(commonMessages.delete)}
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>
@@ -293,6 +579,7 @@ const PanelRow = ({
 };
 
 const GalleryCard = () => {
+  const intl = useAppIntl();
   // Persist the protocol-gallery card's dismissal so it stays hidden across
   // reloads once the user closes it.
   const GALLERY_CARD_DISMISSED_KEY = 'architect:templates-gallery-dismissed';
@@ -330,24 +617,32 @@ const GalleryCard = () => {
     <Surface
       ref={cardRef}
       role="group"
-      aria-label="Protocol gallery"
+      aria-label={intl.formatMessage(messages.protocolGallery)}
       spacing="sm"
       className="mb-4"
     >
       <div>
-        <Heading level="h4">Looking for more?</Heading>
+        <Heading level="h4">
+          {intl.formatMessage(messages.lookingForMore)}
+        </Heading>
         <Paragraph intent="smallText">
-          More examples of Network Canvas protocols can be found on our{' '}
-          <ExternalLink href="https://protocolgallery.networkcanvas.com/">
-            protocol gallery
-          </ExternalLink>
+          {intl.formatMessage(
+            additionalMessages.moreExamplesOfNetworkCanvasProtocols,
+            {
+              ExternalLink: (chunks) => (
+                <ExternalLink href="https://protocolgallery.networkcanvas.com/">
+                  {chunks}
+                </ExternalLink>
+              ),
+            },
+          )}
         </Paragraph>
       </div>
       <IconButton
         variant="text"
         color="dynamic"
         size="sm"
-        aria-label="Dismiss"
+        aria-label={intl.formatMessage(messages.dismiss)}
         className="absolute top-1 right-2"
         onClick={handleDismiss}
         icon={<X />}
@@ -398,6 +693,7 @@ const LibraryPanel = ({
   templates,
   onOpenTemplate,
 }: LibraryPanelProps) => {
+  const intl = useAppIntl();
   const dispatch = useAppDispatch();
   const { openDialog } = useDialog();
   const { protocols } = useProtocolLibrary();
@@ -440,9 +736,22 @@ const LibraryPanel = ({
           void openDialog({
             type: 'acknowledge',
             intent: 'warning',
-            title: 'Some assets could not be included',
-            description: `"${protocol.name}" was downloaded, but these assets could not be included and are missing from the file: ${assetList}.`,
-            actions: { primary: { label: 'OK', value: true } },
+            title: createElement(AppMessage, {
+              message: messages.someAssetsCouldNotBeIncluded,
+            }),
+            description: createElement(AppMessage, {
+              message: messages.wasDownloadedButThese,
+              values: {
+                value1: protocol.name,
+                assetList: assetList,
+              },
+            }),
+            actions: {
+              primary: {
+                label: createElement(AppMessage, { message: messages.oK }),
+                value: true,
+              },
+            },
             finalFocus: resolveFocus,
           });
         }
@@ -454,9 +763,21 @@ const LibraryPanel = ({
         void openDialog({
           type: 'acknowledge',
           intent: 'destructive',
-          title: 'Download failed',
-          description: `"${protocol.name}" could not be downloaded.`,
-          actions: { primary: { label: 'OK', value: true } },
+          title: createElement(AppMessage, {
+            message: messages.downloadFailed,
+          }),
+          description: createElement(AppMessage, {
+            message: messages.couldNotBeDownloaded,
+            values: {
+              value1: protocol.name,
+            },
+          }),
+          actions: {
+            primary: {
+              label: createElement(AppMessage, { message: messages.oK }),
+              value: true,
+            },
+          },
           finalFocus: resolveFocus,
         });
       } finally {
@@ -474,11 +795,26 @@ const LibraryPanel = ({
       const confirmed = await openDialog({
         type: 'choice',
         intent: 'destructive',
-        title: 'Delete protocol?',
-        description: `"${protocol.name}" and its assets will be permanently removed from this device. This cannot be undone.`,
+        title: createElement(AppMessage, { message: messages.deleteProtocol }),
+        description: createElement(AppMessage, {
+          message: messages.andItsAssetsWill,
+          values: {
+            value1: protocol.name,
+          },
+        }),
         actions: {
-          primary: { label: 'Delete', value: true },
-          cancel: { label: 'Cancel', value: false },
+          primary: {
+            label: createElement(AppMessage, {
+              message: commonMessages.delete,
+            }),
+            value: true,
+          },
+          cancel: {
+            label: createElement(AppMessage, {
+              message: commonMessages.cancel,
+            }),
+            value: false,
+          },
         },
         // Both branches need this, for opposite reasons. The dialog's own
         // remembered opener is the menu item, which has already unmounted by
@@ -497,9 +833,19 @@ const LibraryPanel = ({
         void openDialog({
           type: 'acknowledge',
           intent: 'destructive',
-          title: 'Delete failed',
-          description: `"${protocol.name}" could not be deleted.`,
-          actions: { primary: { label: 'OK', value: true } },
+          title: createElement(AppMessage, { message: messages.deleteFailed }),
+          description: createElement(AppMessage, {
+            message: messages.couldNotBeDeleted,
+            values: {
+              value1: protocol.name,
+            },
+          }),
+          actions: {
+            primary: {
+              label: createElement(AppMessage, { message: messages.oK }),
+              value: true,
+            },
+          },
           finalFocus: resolveFocus,
         });
       }
@@ -512,18 +858,32 @@ const LibraryPanel = ({
       const { codebook } = protocol.protocol;
       const assetCount = await getProtocolAssetCount(protocol.id);
       const stats: MetaStat[] = [
-        { label: 'Stages', value: String(protocol.protocol.stages.length) },
         {
-          label: 'Node types',
-          value: String(Object.keys(codebook.node ?? {}).length),
+          label: messages.stages,
+          value: protocol.protocol.stages.length,
         },
         {
-          label: 'Edge types',
-          value: String(Object.keys(codebook.edge ?? {}).length),
+          label: messages.nodeTypes,
+          value: Object.keys(codebook.node ?? {}).length,
         },
-        { label: 'Assets', value: String(assetCount) },
-        { label: 'Added', value: formatTimestamp(protocol.createdAt) },
-        { label: 'Edited', value: formatTimestamp(protocol.updatedAt) },
+        {
+          label: messages.edgeTypes,
+          value: Object.keys(codebook.edge ?? {}).length,
+        },
+        {
+          label: messages.assets,
+          value: assetCount,
+        },
+        {
+          label: messages.added,
+          value: protocol.createdAt,
+          kind: 'date',
+        },
+        {
+          label: messages.edited,
+          value: protocol.updatedAt,
+          kind: 'date',
+        },
       ];
       setInfo({
         title: protocol.name,
@@ -542,14 +902,17 @@ const LibraryPanel = ({
       infoFocusRef.current = resolveFocus;
       const { protocol } = template;
       const stats: MetaStat[] = [
-        { label: 'Stages', value: String(protocol.stages.length) },
         {
-          label: 'Node types',
-          value: String(Object.keys(protocol.codebook.node ?? {}).length),
+          label: messages.stages,
+          value: protocol.stages.length,
         },
         {
-          label: 'Edge types',
-          value: String(Object.keys(protocol.codebook.edge ?? {}).length),
+          label: messages.nodeTypes,
+          value: Object.keys(protocol.codebook.node ?? {}).length,
+        },
+        {
+          label: messages.edgeTypes,
+          value: Object.keys(protocol.codebook.edge ?? {}).length,
         },
       ];
       setInfo({
@@ -565,45 +928,67 @@ const LibraryPanel = ({
     void openDialog({
       type: 'acknowledge',
       intent: 'info',
-      title: 'Protocol Storage',
+      title: createElement(AppMessage, { message: messages.protocolStorage }),
       children: (
         <>
           <Paragraph>
-            Your protocols are saved only on this device. They are never
-            uploaded to a server.
+            {createElement(AppMessage, {
+              message: messages.yourProtocolsAreSavedOnlyOn,
+            })}
           </Paragraph>
           <Paragraph>
-            Because your work is stored locally, clearing Architect&apos;s app
-            data, or using &quot;Clear all protocols&quot;, will permanently
-            remove it. Download the protocol as a <code>.netcanvas</code> file
-            to save a copy or move it to another device. See our guide to{' '}
-            <ExternalLink href={documentationLinks.savingAndBackingUp}>
-              saving and backing up your work
-            </ExternalLink>{' '}
-            for more.
+            {createElement(AppMessage, {
+              message: additionalMessages.becauseYourWorkIsStoredLocally,
+              values: {
+                code: (chunks) => <code>{chunks}</code>,
+                ExternalLink: (chunks) => (
+                  <ExternalLink href={documentationLinks.savingAndBackingUp}>
+                    {chunks}
+                  </ExternalLink>
+                ),
+              },
+            })}
           </Paragraph>
           <Paragraph>
-            Looking for inspiration? Browse example research protocols in the{' '}
-            <ExternalLink href={documentationLinks.protocolGallery}>
-              Protocol Gallery
-            </ExternalLink>
-            .
+            {createElement(AppMessage, {
+              message:
+                additionalMessages.lookingForInspirationBrowseExampleResearch,
+              values: {
+                ExternalLink: (chunks) => (
+                  <ExternalLink href={documentationLinks.protocolGallery}>
+                    {chunks}
+                  </ExternalLink>
+                ),
+              },
+            })}
           </Paragraph>
         </>
       ),
-      actions: { primary: { label: 'OK', value: true } },
+      actions: {
+        primary: {
+          label: createElement(AppMessage, { message: messages.oK }),
+          value: true,
+        },
+      },
     });
   }, [openDialog]);
   const handleClearAll = useCallback(async () => {
     const confirmed = await openDialog({
       type: 'choice',
       intent: 'destructive',
-      title: 'Remove all data?',
-      description:
-        'Every protocol, asset, and setting stored locally by Architect will be permanently removed. This cannot be undone.',
+      title: createElement(AppMessage, { message: messages.removeAllData }),
+      description: createElement(AppMessage, {
+        message: messages.everyProtocolAssetAndSettingStored,
+      }),
       actions: {
-        primary: { label: 'Remove all', value: true },
-        cancel: { label: 'Cancel', value: false },
+        primary: {
+          label: createElement(AppMessage, { message: messages.removeAll }),
+          value: true,
+        },
+        cancel: {
+          label: createElement(AppMessage, { message: commonMessages.cancel }),
+          value: false,
+        },
       },
     });
     if (!confirmed) {
@@ -616,9 +1001,18 @@ const LibraryPanel = ({
       void openDialog({
         type: 'acknowledge',
         intent: 'destructive',
-        title: 'Could not remove data',
-        description: "Architect's stored data could not be removed.",
-        actions: { primary: { label: 'OK', value: true } },
+        title: createElement(AppMessage, {
+          message: messages.couldNotRemoveData,
+        }),
+        description: createElement(AppMessage, {
+          message: messages.architectSStoredDataCouldNotBe,
+        }),
+        actions: {
+          primary: {
+            label: createElement(AppMessage, { message: messages.oK }),
+            value: true,
+          },
+        },
       });
     }
   }, [openDialog]);
@@ -630,7 +1024,7 @@ const LibraryPanel = ({
         textValue: protocol.name,
         name: protocol.name,
         description: protocol.protocol.description,
-        meta: formatProtocolMeta(protocol),
+        meta: formatProtocolMeta(protocol, intl),
         downloading: downloadingIds.has(protocol.id),
         onOpen: () => onOpenProtocol(protocol.id),
         onDownload: (resolveFocus) =>
@@ -640,6 +1034,7 @@ const LibraryPanel = ({
           void handleShowInfo(protocol, resolveFocus),
       })),
     [
+      intl,
       protocols,
       downloadingIds,
       onOpenProtocol,
@@ -657,8 +1052,8 @@ const LibraryPanel = ({
         name: 'Sample Protocol',
         description:
           sampleProtocol.description ??
-          'An example introducing the key features and techniques available in Network Canvas.',
-        meta: formatTemplateMeta(sampleProtocol),
+          intl.formatMessage(chromeMessages.anExampleIntroducingTheKeyFeatures),
+        meta: formatTemplateMeta(sampleProtocol, intl),
         onOpen: onOpenSample,
       },
     ];
@@ -668,7 +1063,9 @@ const LibraryPanel = ({
         id: 'development-protocol',
         textValue: 'Development Protocol',
         name: 'Development Protocol',
-        description: 'Includes examples of every stage type',
+        description: intl.formatMessage(
+          messages.includesExamplesOfEveryStageType,
+        ),
         onOpen: onOpenDevProtocol,
       });
     }
@@ -679,7 +1076,7 @@ const LibraryPanel = ({
         textValue: template.name,
         name: template.name,
         description: template.description,
-        meta: formatTemplateMeta(template.protocol),
+        meta: formatTemplateMeta(template.protocol, intl),
         onOpen: () => onOpenTemplate(template),
         onShowInfo: (resolveFocus: ResolveMenuFocus) =>
           handleShowTemplateInfo(template, resolveFocus),
@@ -692,19 +1089,22 @@ const LibraryPanel = ({
     onOpenSample,
     onOpenTemplate,
     templates,
+    intl,
   ]);
   const templateCount = (import.meta.env.DEV ? 2 : 1) + templates.length;
-  const templateLabel = `${templateCount} ${templateCount === 1 ? 'template' : 'templates'}`;
+  const templateLabel = intl.formatMessage(chromeMessages.templateCount, {
+    count: templateCount,
+  });
   const protocolCount = protocols.length;
-  const storageTooltip =
-    protocolCount === 1
-      ? 'Your 1 protocol is saved only on this device. It is never uploaded to a server.'
-      : `Your ${protocolCount} protocols are saved only on this device. They are never uploaded to a server.`;
+  const storageTooltip = intl.formatMessage(
+    chromeMessages.yourProtocolsAreSavedOnlyOn,
+    { protocolCount },
+  );
   const headerEnd =
     activeTab === 'recent' ? (
       <div className="flex min-w-max items-center justify-end gap-2.5">
         <Badge color="platinum">
-          {protocolCount} {protocolCount === 1 ? 'protocol' : 'protocols'}
+          {intl.formatMessage(messages.protocolCount, { count: protocolCount })}
         </Badge>
         <Tooltip>
           <TooltipTrigger
@@ -712,7 +1112,9 @@ const LibraryPanel = ({
               <IconButton
                 variant="text"
                 size="sm"
-                aria-label="Where your protocols are stored"
+                aria-label={intl.formatMessage(
+                  messages.whereYourProtocolsAreStored,
+                )}
                 onClick={handleShowStorageInfo}
                 icon={<Info />}
               />
@@ -726,14 +1128,16 @@ const LibraryPanel = ({
               <IconButton
                 variant="text"
                 size="sm"
-                aria-label="Clear all locally saved protocols"
+                aria-label={intl.formatMessage(
+                  messages.clearAllLocallySavedProtocols,
+                )}
                 onClick={() => void handleClearAll()}
                 icon={<Trash2 />}
               />
             }
           />
           <TooltipContent side="bottom">
-            Clear all locally saved protocols
+            {intl.formatMessage(messages.clearAllLocallySavedProtocols)}
           </TooltipContent>
         </Tooltip>
       </div>
@@ -753,7 +1157,7 @@ const LibraryPanel = ({
     // reachable instead of cut off.
     <Surface spacing="sm" className="publish-colors w-full grow" noContainer>
       <Tabs
-        aria-label="Protocol library"
+        aria-label={intl.formatMessage(messages.protocolLibrary)}
         layout="top"
         value={activeTab}
         onValueChange={(value) => {
@@ -762,8 +1166,8 @@ const LibraryPanel = ({
           }
         }}
         tabs={[
-          { value: 'recent', label: 'Recent' },
-          { value: 'templates', label: 'Templates' },
+          { value: 'recent', label: intl.formatMessage(messages.recent) },
+          { value: 'templates', label: intl.formatMessage(messages.templates) },
         ]}
         headerEnd={headerEnd}
         className="h-full"
@@ -778,12 +1182,12 @@ const LibraryPanel = ({
             renderItem={renderLibraryItem}
             selectionMode="none"
             animate={false}
-            aria-label="Recent protocols"
+            aria-label={intl.formatMessage(messages.recentProtocols)}
             // className="p-0"
             // viewportClassName={COLLECTION_VIEWPORT_CLASSES}
             emptyState={
               <Paragraph className="px-5 py-10 text-center text-sm text-current/70">
-                No recent protocols yet.
+                {intl.formatMessage(messages.noRecentProtocolsYet)}
               </Paragraph>
             }
           >
@@ -803,7 +1207,7 @@ const LibraryPanel = ({
                 renderItem={renderLibraryItem}
                 selectionMode="none"
                 animate={false}
-                aria-label="Protocol templates"
+                aria-label={intl.formatMessage(messages.protocolTemplates)}
                 viewportClassName="overflow-visible"
                 className="overflow-visible"
               >
@@ -821,20 +1225,37 @@ const LibraryPanel = ({
         title={info?.title ?? ''}
         size="readable"
         finalFocus={() => infoFocusRef.current?.() ?? null}
-        footer={<Button onClick={() => setInfoOpen(false)}>Close</Button>}
+        footer={
+          <Button onClick={() => setInfoOpen(false)}>
+            {intl.formatMessage(commonMessages.close)}
+          </Button>
+        }
       >
         {info && (
           <div className="flex flex-col gap-5">
             <Paragraph className="whitespace-pre-wrap">
-              {info.description?.trim() || 'This protocol has no description.'}
+              {info.description?.trim() ||
+                intl.formatMessage(chromeMessages.thisProtocolHasNoDescription)}
             </Paragraph>
             <div className="flex flex-col overflow-hidden rounded">
               <Table
                 columns={[
-                  { Header: 'Property', accessor: 'label' },
-                  { Header: 'Value', accessor: 'value' },
+                  {
+                    Header: intl.formatMessage(messages.property),
+                    accessor: 'label',
+                  },
+                  {
+                    Header: intl.formatMessage(messages.value),
+                    accessor: 'value',
+                  },
                 ]}
-                data={info.stats}
+                data={info.stats.map((stat) => ({
+                  label: intl.formatMessage(stat.label),
+                  value:
+                    stat.kind === 'date'
+                      ? formatTimestamp(stat.value, intl)
+                      : intl.formatNumber(stat.value),
+                }))}
               />
             </div>
           </div>

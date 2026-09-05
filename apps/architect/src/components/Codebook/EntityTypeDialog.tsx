@@ -1,6 +1,8 @@
 import { get } from 'es-toolkit/compat';
-import { useCallback, useMemo, useState } from 'react';
+import { createElement, useCallback, useMemo, useState } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import DialogForm from '~/components/DialogForm/DialogForm';
@@ -18,6 +20,55 @@ import {
 import type { RootState } from '~/ducks/store';
 import { getProtocol } from '~/selectors/protocol';
 import { reportError } from '~/utils/reportError';
+const chromeMessages = defineMessages({
+  node: {
+    id: 'architect.chrome.codebook.entityTypeDialog.node',
+    defaultMessage: 'Node',
+    description:
+      'Researcher-facing explanatory text in components / Codebook / EntityTypeDialog.',
+  },
+  edge: {
+    id: 'architect.chrome.codebook.entityTypeDialog.edge',
+    defaultMessage: 'Edge',
+    description:
+      'Researcher-facing explanatory text in components / Codebook / EntityTypeDialog.',
+  },
+  createType: {
+    id: 'architect.chrome.codebook.entityTypeDialog.createType',
+    defaultMessage: 'Create {entityLabel} Type',
+    description:
+      'Researcher-facing explanatory text in components / Codebook / EntityTypeDialog.',
+  },
+  editType: {
+    id: 'architect.chrome.codebook.entityTypeDialog.editType',
+    defaultMessage: 'Edit {entityLabel} Type',
+    description:
+      'Researcher-facing explanatory text in components / Codebook / EntityTypeDialog.',
+  },
+});
+const messages = defineMessages({
+  couldNotCreateType: {
+    id: 'architect.codebook.entityTypeDialog.couldNotCreateType',
+    defaultMessage: 'Could not create type',
+    description: 'The title text in components / Codebook / EntityTypeDialog.',
+  },
+  couldNotUpdateType: {
+    id: 'architect.codebook.entityTypeDialog.couldNotUpdateType',
+    defaultMessage: 'Could not update type',
+    description: 'The title text in components / Codebook / EntityTypeDialog.',
+  },
+  oK: {
+    id: 'architect.codebook.entityTypeDialog.oK',
+    defaultMessage: 'OK',
+    description: 'The label text in components / Codebook / EntityTypeDialog.',
+  },
+  saveAndClose: {
+    id: 'architect.codebook.entityTypeDialog.saveAndClose',
+    defaultMessage: 'Save and Close',
+    description:
+      'The submitLabel text in components / Codebook / EntityTypeDialog.',
+  },
+});
 
 const FORM_ID = 'entity-type-dialog';
 
@@ -34,6 +85,7 @@ const EntityTypeDialog = ({
   type,
   onClose,
 }: EntityTypeDialogProps) => {
+  const intl = useAppIntl();
   const dispatch = useAppDispatch();
   const { openDialog } = useDialog();
   const protocol = useAppSelector((state: RootState) => getProtocol(state));
@@ -58,9 +110,18 @@ const EntityTypeDialog = ({
     if (!entity) {
       return '';
     }
-    const entityLabel = entity === 'node' ? 'Node' : 'Edge';
-    return isNew ? `Create ${entityLabel} Type` : `Edit ${entityLabel} Type`;
-  }, [entity, isNew]);
+    const entityLabel =
+      entity === 'node'
+        ? intl.formatMessage(chromeMessages.node)
+        : intl.formatMessage(chromeMessages.edge);
+    return isNew
+      ? intl.formatMessage(chromeMessages.createType, {
+          entityLabel: entityLabel,
+        })
+      : intl.formatMessage(chromeMessages.editType, {
+          entityLabel: entityLabel,
+        });
+  }, [entity, isNew, intl]);
 
   const handleSubmit = useCallback(
     async (values: Record<string, FieldValue>) => {
@@ -98,9 +159,20 @@ const EntityTypeDialog = ({
         void openDialog({
           type: 'acknowledge',
           intent: 'destructive',
-          title: isNew ? 'Could not create type' : 'Could not update type',
+          title: isNew
+            ? createElement(AppMessage, {
+                message: messages.couldNotCreateType,
+              })
+            : createElement(AppMessage, {
+                message: messages.couldNotUpdateType,
+              }),
           description: normalizedError.message,
-          actions: { primary: { label: 'OK', value: true } },
+          actions: {
+            primary: {
+              label: createElement(AppMessage, { message: messages.oK }),
+              value: true,
+            },
+          },
         });
       }
     },
@@ -154,7 +226,7 @@ const EntityTypeDialog = ({
       onClose={() => onClose()}
       title={title}
       formId={FORM_ID}
-      submitLabel="Save and Close"
+      submitLabel={intl.formatMessage(messages.saveAndClose)}
       onSubmit={handleSubmit}
       validate={validateEntityType}
     >

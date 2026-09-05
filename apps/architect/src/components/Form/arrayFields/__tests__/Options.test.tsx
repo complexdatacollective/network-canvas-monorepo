@@ -2,15 +2,13 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useContext, type ContextType } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { createAppIntl } from '@codaco/app-i18n/messages';
 import Form from '@codaco/fresco-ui/form/Form';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 
 import ArchitectArrayField from '../../ArchitectArrayField';
 import type { OptionValue } from '../Option';
-import Options, {
-  MINIMUM_OPTIONS_MESSAGE,
-  optionsValidation,
-} from '../Options';
+import Options, { minimumOptionsMessage, optionsValidation } from '../Options';
 
 const TWO_VALID_OPTIONS: OptionValue[] = [
   { label: 'One', value: 1 },
@@ -51,7 +49,7 @@ const setup = (options: Partial<OptionValue>[] = TWO_VALID_OPTIONS) => {
         // The field's prop type describes finished options; seeding a
         // half-filled row is the point of several cases below.
         initialValue={options as OptionValue[]}
-        validation={optionsValidation}
+        validation={optionsValidation()}
       />
       <button type="submit">Save</button>
     </Form>,
@@ -63,6 +61,9 @@ const setup = (options: Partial<OptionValue>[] = TWO_VALID_OPTIONS) => {
 const finishButton = () =>
   screen.queryByRole('button', { name: 'Finish editing option' });
 
+const MINIMUM_OPTIONS_MESSAGE = createAppIntl({ locale: 'en' }).formatMessage(
+  minimumOptionsMessage,
+);
 describe('Options', () => {
   it('presents the option list as required', () => {
     setup();
@@ -164,7 +165,9 @@ describe('Options', () => {
     fireEvent.change(valueInput, { target: { value: '1' } });
 
     expect(
-      await screen.findByText('Values must be unique'),
+      await screen.findByText(
+        'This value is already in use. Enter a different value.',
+      ),
     ).toBeInTheDocument();
   });
 

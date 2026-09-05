@@ -3,6 +3,12 @@ import { Check, X } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import {
+  type MessageDescriptor,
+  defineMessages,
+} from '@codaco/app-i18n/messages';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -14,7 +20,11 @@ import {
   TooltipTrigger,
 } from '@codaco/fresco-ui/Tooltip';
 import type { VariableType } from '@codaco/protocol-validation';
-import { getColorForType, getIconForType } from '~/config/variables';
+import {
+  getVariableTypeLabel,
+  getColorForType,
+  getIconForType,
+} from '~/config/variables';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import { updateVariableByUUID } from '~/ducks/modules/protocol/codebook';
 import type { RootState } from '~/ducks/store';
@@ -23,7 +33,62 @@ import {
   makeGetVariableWithEntity,
 } from '~/selectors/codebook';
 import { cx } from '~/utils/cva';
-import { validations } from '~/utils/validations';
+import { createValidations } from '~/utils/validations';
+const messages = defineMessages({
+  editing: {
+    id: 'architect.variablePill.editing',
+    defaultMessage: 'Editing attribute {name}',
+    description: 'Live announcement when the attribute name editor opens.',
+  },
+  cancelled: {
+    id: 'architect.variablePill.cancelled',
+    defaultMessage: 'Attribute name edit cancelled',
+    description: 'Live announcement after cancelling an attribute rename.',
+  },
+  renamed: {
+    id: 'architect.variablePill.renamed',
+    defaultMessage: 'Attribute renamed to {name}',
+    description:
+      'Live announcement after an attribute rename. Name is authored data.',
+  },
+  attribute: {
+    id: 'architect.variablePill.attribute',
+    defaultMessage: '{type} attribute',
+    description: 'The alt text in components / VariablePill.',
+  },
+  editAttributeName: {
+    id: 'architect.variablePill.editAttributeName',
+    defaultMessage: 'Edit attribute name: {label}',
+    description: 'The aria-label text in components / VariablePill.',
+  },
+  editAttributeName62aa3: {
+    id: 'architect.variablePill.editAttributeName62aa3',
+    defaultMessage: 'Edit attribute name',
+    description: 'The aria-label text in components / VariablePill.',
+  },
+  attributeName: {
+    id: 'architect.variablePill.attributeName',
+    defaultMessage: 'Attribute name',
+    description: 'The aria-label text in components / VariablePill.',
+  },
+  enterAnAttributeName: {
+    id: 'architect.variablePill.enterAnAttributeName',
+    defaultMessage: 'Enter an attribute name...',
+    description: 'The placeholder text in components / VariablePill.',
+  },
+  saveChanges: {
+    id: 'architect.variablePill.saveChanges',
+    defaultMessage: 'Save Changes',
+    description: 'Visible text in components / VariablePill.',
+  },
+});
+const finalMessages = defineMessages({
+  required: {
+    id: 'architect.final.components.VariablePill.required',
+    defaultMessage: 'You must enter an attribute name',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+});
 
 export type VariablePillProps = {
   className?: string;
@@ -137,6 +202,7 @@ function VariablePillContents({
   fill?: boolean;
   type: VariableType;
 }) {
+  const intl = useAppIntl();
   const icon = useMemo(() => getIconForType(type), [type]);
 
   return (
@@ -152,7 +218,15 @@ function VariablePillContents({
       )}
     >
       <span className="flex items-center justify-center border-r border-white/25 bg-(--variable-pill-accent) [&_.icon]:w-5">
-        <img className="icon opacity-80" src={icon} alt={`${type} attribute`} />
+        <img
+          className="icon opacity-80"
+          src={icon}
+          alt={intl.formatMessage(messages.attribute, {
+            type: getVariableTypeLabel(type, intl).toLocaleLowerCase(
+              intl.locale,
+            ),
+          })}
+        />
       </span>
       <span className="flex min-w-0 items-center justify-between">
         {children}
@@ -175,6 +249,7 @@ export const VariablePill = ({
   type,
   validateLabel,
 }: VariablePillProps) => {
+  const intl = useAppIntl();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const restoreFocusRef = useRef(false);
   const closingRef = useRef(false);
@@ -185,22 +260,26 @@ export const VariablePill = ({
   const [closing, setClosing] = useState(false);
   const [editorAnchor, setEditorAnchor] =
     useState<VariablePillEditorAnchor | null>(null);
-  const [isValid, setIsValid] = useState(false);
-  const [validation, setValidation] = useState<string | null>(null);
-  const [announcement, setAnnouncement] = useState('');
+  const [announcement, setAnnouncement] = useState<{
+    message: MessageDescriptor;
+    values?: { name: string };
+  } | null>(null);
 
   const [newName, setNewName] = useState(label);
   const hasChanges = newName !== label;
 
   const getValidation = (value: string) => {
-    const required = validations.required('You must enter an attribute name')(
-      value,
-    );
+    const required = createValidations(intl).required(
+      intl.formatMessage(finalMessages.required),
+    )(value);
     const external = validateLabel?.(value);
-    const allowed = validations.allowedVariableName()(value);
+    const allowed = createValidations(intl).allowedVariableName()(value);
 
     return required || external || allowed || null;
   };
+
+  const validation = editing ? getValidation(newName) : null;
+  const isValid = !validation;
 
   useEffect(() => {
     if (!editing && restoreFocusRef.current) {
@@ -231,10 +310,7 @@ export const VariablePill = ({
       width: triggerBounds.width,
     });
     setNewName(label);
-    const nextValidation = getValidation(label);
-    setValidation(nextValidation);
-    setIsValid(!nextValidation);
-    setAnnouncement(`Editing attribute ${label}`);
+    setAnnouncement({ message: messages.editing, values: { name: label } });
     restoreFocusRef.current = true;
     setEditing(true);
   };
@@ -243,7 +319,7 @@ export const VariablePill = ({
     announcement: nextAnnouncement,
     beforeClose,
   }: {
-    announcement: string;
+    announcement: { message: MessageDescriptor; values?: { name: string } };
     beforeClose?: () => void;
   }) => {
     if (closingRef.current) {
@@ -255,13 +331,12 @@ export const VariablePill = ({
 
     beforeClose?.();
     setEditing(false);
-    setValidation(null);
     setAnnouncement(nextAnnouncement);
   };
 
   const handleCancel = () => {
     closeEditor({
-      announcement: 'Attribute name edit cancelled',
+      announcement: { message: messages.cancelled },
     });
   };
 
@@ -271,7 +346,7 @@ export const VariablePill = ({
     }
 
     closeEditor({
-      announcement: `Attribute renamed to ${newName}`,
+      announcement: { message: messages.renamed, values: { name: newName } },
       beforeClose: () => onLabelChange(newName),
     });
   };
@@ -279,10 +354,6 @@ export const VariablePill = ({
   const handleUpdateName = (value: string | undefined) => {
     const nextValue = value ?? '';
     setNewName(nextValue);
-
-    const validationResult = getValidation(nextValue);
-    setValidation(validationResult);
-    setIsValid(!validationResult);
   };
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
@@ -369,7 +440,9 @@ export const VariablePill = ({
               ref={triggerRef}
               type="button"
               aria-haspopup="dialog"
-              aria-label={`Edit attribute name: ${label}`}
+              aria-label={intl.formatMessage(messages.editAttributeName, {
+                label: label,
+              })}
               className={getVariablePillClassName({
                 animated,
                 className,
@@ -386,7 +459,9 @@ export const VariablePill = ({
             </button>
           }
         />
-        <TooltipContent side="top">Edit attribute name: {label}</TooltipContent>
+        <TooltipContent side="top">
+          {intl.formatMessage(messages.editAttributeName, { label: label })}
+        </TooltipContent>
       </Tooltip>
 
       <Modal
@@ -402,7 +477,7 @@ export const VariablePill = ({
         {editorFrame && (
           <ModalPopup
             key="variable-pill-editor"
-            aria-label="Edit attribute name"
+            aria-label={intl.formatMessage(messages.editAttributeName62aa3)}
             className="fixed z-40 flex flex-col items-center gap-6 p-6 outline-none"
             style={editorFrame.style}
             initial={{ opacity: 0.9999 }}
@@ -435,11 +510,13 @@ export const VariablePill = ({
               <VariablePillContents fill type={type}>
                 <InputField
                   autoFocus
-                  aria-label="Attribute name"
+                  aria-label={intl.formatMessage(messages.attributeName)}
                   aria-invalid={validation ? true : undefined}
                   aria-describedby={validation ? validationId : undefined}
                   className="h-full w-full rounded-l-none! outline-none!"
-                  placeholder="Enter an attribute name..."
+                  placeholder={intl.formatMessage(
+                    messages.enterAnAttributeName,
+                  )}
                   value={newName}
                   onChange={handleUpdateName}
                   onKeyDown={handleKeyDown}
@@ -475,7 +552,7 @@ export const VariablePill = ({
                 disabled={closing}
                 onClick={handleCancel}
               >
-                Cancel
+                {intl.formatMessage(commonMessages.cancel)}
               </Button>
               <Button
                 size="sm"
@@ -484,7 +561,7 @@ export const VariablePill = ({
                 disabled={closing || !isValid || !hasChanges}
                 onClick={onEditComplete}
               >
-                Save Changes
+                {intl.formatMessage(messages.saveChanges)}
               </Button>
             </motion.div>
           </ModalPopup>
@@ -492,7 +569,7 @@ export const VariablePill = ({
       </Modal>
 
       <span className="sr-only" aria-live="polite">
-        {announcement}
+        {announcement && <AppMessage {...announcement} />}
       </span>
     </>
   );
@@ -504,6 +581,7 @@ const ConnectedVariablePillComponent = ({
   editable = false,
   uuid,
 }: ConnectedVariablePillProps) => {
+  const intl = useAppIntl();
   const dispatch = useAppDispatch();
   const variableSelector = useMemo(
     () => makeGetVariableWithEntity(uuid),
@@ -546,7 +624,7 @@ const ConnectedVariablePillComponent = ({
         void dispatch(action);
       }}
       validateLabel={(nextName) =>
-        validations.uniqueByList(existingVariableNames)(nextName)
+        createValidations(intl).uniqueByList(existingVariableNames)(nextName)
       }
     />
   );

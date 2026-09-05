@@ -2,11 +2,16 @@ import { find, get } from 'es-toolkit/compat';
 import { motion } from 'motion/react';
 import { useCallback, useEffect, useId, useMemo, useRef } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import StageTypeImage from '@codaco/protocol-builder/interfaces/StageTypeImage';
 import Tag from '~/components/Tag';
 
-import { INTERFACE_TYPES, TAG_COLORS } from './interfaceOptions';
+import {
+  getInterfaceTypes,
+  interfaceTagLabel,
+  TAG_COLORS,
+} from './interfaceOptions';
 type InterfaceThumbnailProps = {
   type: string;
   onClick: (type: string) => void;
@@ -22,13 +27,14 @@ const InterfaceThumbnail = ({
   setHighlighted,
   removeHighlighted,
 }: InterfaceThumbnailProps) => {
+  const intl = useAppIntl();
   const ref = useRef<HTMLButtonElement>(null);
   const titleId = useId();
   const descriptionId = useId();
   const tagsId = useId();
   const meta = useMemo(
-    () => find(INTERFACE_TYPES, ['type', interfaceType]),
-    [interfaceType],
+    () => find(getInterfaceTypes(intl), ['type', interfaceType]),
+    [interfaceType, intl],
   );
   const { title, tags, description } = meta ?? {
     title: '',
@@ -103,7 +109,7 @@ const InterfaceThumbnail = ({
           <div id={tagsId} className="flex flex-wrap gap-2">
             {tags.map((tag: string) => (
               <Tag key={tag} id={tag} color={get(TAG_COLORS, tag)} light>
-                {tag}
+                {interfaceTagLabel(tag, intl)}
               </Tag>
             ))}
           </div>

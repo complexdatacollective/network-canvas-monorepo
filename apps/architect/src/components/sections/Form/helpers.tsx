@@ -5,8 +5,8 @@ import type NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native'
 import type { VariablePropertyKey } from '@codaco/protocol-validation';
 import type { DialogArrayItemSelector } from '~/components/Form/arrayFields/DialogArrayField';
 import type ValidationSection from '~/components/sections/ValidationSection';
-import type { InputControlGroup } from '~/config/variables';
 import {
+  type InputControlGroup,
   isBooleanWithOptions,
   isOrdinalOrCategoricalType,
   isVariableTypeWithParameters,

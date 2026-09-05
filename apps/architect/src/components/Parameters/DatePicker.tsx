@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
@@ -8,13 +10,75 @@ import DatePicker, {
   DATE_FORMATS,
   DATE_TYPES,
 } from '~/components/Form/Fields/DatePicker';
+import { formatConfig } from '~/i18n/formatConfig';
 
 import { parameterString, type ParameterValues } from './parameterValues';
-
-const dateTypes = DATE_TYPES.map((type) => ({
-  ...type,
-  label: `${type.label} (${DATE_FORMATS[type.value].toUpperCase()})`,
-}));
+const chromeMessages = defineMessages({
+  message: {
+    id: 'architect.chrome.parameters.datePicker.message',
+    defaultMessage: '{value1} ({value2})',
+    description: 'The label text in components / Parameters / DatePicker.',
+  },
+});
+const messages = defineMessages({
+  dateResolution: {
+    id: 'architect.parameters.datePicker.dateResolution',
+    defaultMessage: 'Date resolution',
+    description: 'The label text in components / Parameters / DatePicker.',
+  },
+  dateResolutionControlsThePrecisionOf: {
+    id: 'architect.parameters.datePicker.dateResolutionControlsThePrecisionOf',
+    defaultMessage:
+      'Date resolution controls the precision of the measurement. By default, this input will ask for a year, a month, and a day. You may optionally choose to collect only a year and a month, or only a year. Changing the resolution clears the start and end range, because those dates are stored at the resolution you choose here.',
+    description: 'The hint text in components / Parameters / DatePicker.',
+  },
+  theStartAndEndRangeWere: {
+    id: 'architect.parameters.datePicker.theStartAndEndRangeWere',
+    defaultMessage:
+      'The start and end range were cleared because they were set at the previous date resolution. Set them again if you still need them.',
+    description: 'Visible text in components / Parameters / DatePicker.',
+  },
+  startRange: {
+    id: 'architect.parameters.datePicker.startRange',
+    defaultMessage: 'Start range',
+    description: 'The label text in components / Parameters / DatePicker.',
+  },
+  theEarliestDateAvailableForThe: {
+    id: 'architect.parameters.datePicker.theEarliestDateAvailableForThe',
+    defaultMessage:
+      'The earliest date available for the participant to select. If left empty, it will default to starting in the year 1920.',
+    description: 'The hint text in components / Parameters / DatePicker.',
+  },
+  selectAStartRangeDate: {
+    id: 'architect.parameters.datePicker.selectAStartRangeDate',
+    defaultMessage: 'Select a start range date...',
+    description:
+      'The placeholder text in components / Parameters / DatePicker.',
+  },
+  endRange: {
+    id: 'architect.parameters.datePicker.endRange',
+    defaultMessage: 'End range',
+    description: 'The label text in components / Parameters / DatePicker.',
+  },
+  theLatestDateAvailableForThe: {
+    id: 'architect.parameters.datePicker.theLatestDateAvailableForThe',
+    defaultMessage:
+      'The latest date available for the participant to select. If it is not supplied, the input will default to ending at the current date.',
+    description: 'The hint text in components / Parameters / DatePicker.',
+  },
+  endDateMustNotBeBefore: {
+    id: 'architect.parameters.datePicker.endDateMustNotBeBefore',
+    defaultMessage: 'End date must not be before start date',
+    description: 'The message text in components / Parameters / DatePicker.',
+  },
+  selectAnEndRangeDateOr: {
+    id: 'architect.parameters.datePicker.selectAnEndRangeDateOr',
+    defaultMessage:
+      'Select an end range date, or leave empty to use interview date...',
+    description:
+      'The placeholder text in components / Parameters / DatePicker.',
+  },
+});
 
 const DEFAULT_DATE_TYPE = 'full';
 
@@ -32,6 +96,14 @@ const DateTimeParameters = ({
   name,
   initialParameters,
 }: DateTimeParametersProps) => {
+  const intl = useAppIntl();
+  const dateTypes = formatConfig(DATE_TYPES, intl).map((type) => ({
+    ...type,
+    label: intl.formatMessage(chromeMessages.message, {
+      value1: type.label,
+      value2: DATE_FORMATS[type.value].toUpperCase(),
+    }),
+  }));
   const typeField = `${name}.type`;
   const minField = `${name}.min`;
   const maxField = `${name}.max`;
@@ -111,8 +183,8 @@ const DateTimeParameters = ({
       <ArchitectField
         component={NativeSelectField}
         name={typeField}
-        label="Date resolution"
-        hint="Date resolution controls the precision of the measurement. By default, this input will ask for a year, a month, and a day. You may optionally choose to collect only a year and a month, or only a year. Changing the resolution clears the start and end range, because those dates are stored at the resolution you choose here."
+        label={intl.formatMessage(messages.dateResolution)}
+        hint={intl.formatMessage(messages.dateResolutionControlsThePrecisionOf)}
         // Seeds the resolution the interview runtime assumes, so a variable
         // saved without touching this field still carries one.
         initialValue={
@@ -128,8 +200,7 @@ const DateTimeParameters = ({
         {clearedRange && (
           <Alert variant="info" className="my-7">
             <AlertDescription>
-              The start and end range were cleared because they were set at the
-              previous date resolution. Set them again if you still need them.
+              {intl.formatMessage(messages.theStartAndEndRangeWere)}
             </AlertDescription>
           </Alert>
         )}
@@ -137,18 +208,18 @@ const DateTimeParameters = ({
       <ArchitectField
         component={DatePicker}
         name={minField}
-        label="Start range"
-        hint="The earliest date available for the participant to select. If left empty, it will default to starting in the year 1920."
+        label={intl.formatMessage(messages.startRange)}
+        hint={intl.formatMessage(messages.theEarliestDateAvailableForThe)}
         initialValue={parameterString(initialParameters?.min)}
         validation={{ ISODate: dateFormat }}
-        placeholder="Select a start range date..."
+        placeholder={intl.formatMessage(messages.selectAStartRangeDate)}
         parameters={pickerParameters}
       />
       <ArchitectField
         component={DatePicker}
         name={maxField}
-        label="End range"
-        hint="The latest date available for the participant to select. If it is not supplied, the input will default to ending at the current date."
+        label={intl.formatMessage(messages.endRange)}
+        hint={intl.formatMessage(messages.theLatestDateAvailableForThe)}
         initialValue={parameterString(initialParameters?.max)}
         // Audit sweep: the schema only rejects `min > max`, so a collapsed
         // single-day window is legal — and it is the shape the contradiction
@@ -158,10 +229,10 @@ const DateTimeParameters = ({
           ISODate: dateFormat,
           greaterThanOrEqualTo: {
             value: minField,
-            message: 'End date must not be before start date',
+            message: intl.formatMessage(messages.endDateMustNotBeBefore),
           },
         }}
-        placeholder="Select an end range date, or leave empty to use interview date..."
+        placeholder={intl.formatMessage(messages.selectAnEndRangeDateOr)}
         parameters={pickerParameters}
       />
     </>

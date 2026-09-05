@@ -1,6 +1,7 @@
 import { toNumber } from 'es-toolkit/compat';
 import { Check, Pencil, Trash2 } from 'lucide-react';
 import {
+  createElement,
   createContext,
   useContext,
   useEffect,
@@ -10,10 +11,15 @@ import {
   type ComponentType,
 } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import { ArrayFieldDragHandle } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
-import type { ArrayFieldItemProps } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
+import {
+  ArrayFieldDragHandle,
+  type ArrayFieldItemProps,
+} from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import RichTextEditorField from '@codaco/fresco-ui/form/fields/RichTextEditor';
 import {
@@ -31,6 +37,81 @@ import {
 import { cx } from '~/utils/cva';
 
 import RowField from './RowField';
+// Punctuation only, separating two unchanged researcher-authored values.
+const OPTION_VALUE_SEPARATOR = ' — ';
+const messages = defineMessages({
+  optionValue: {
+    id: 'architect.form.arrayFields.option.optionValue',
+    defaultMessage: 'option value',
+    description: 'Subject of the invalid option-value identifier guidance.',
+  },
+  removeOption: {
+    id: 'architect.form.arrayFields.option.removeOption',
+    defaultMessage: 'Remove option',
+    description: 'The title text in components / Form / arrayFields / Option.',
+  },
+  areYouSureYouWantTo: {
+    id: 'architect.form.arrayFields.option.areYouSureYouWantTo',
+    defaultMessage: 'Are you sure you want to remove this option?',
+    description:
+      'The description text in components / Form / arrayFields / Option.',
+  },
+  reorderOptionOf: {
+    id: 'architect.form.arrayFields.option.reorderOptionOf',
+    defaultMessage: 'Reorder option {value1, number} of {itemCount, number}',
+    description: 'The label text in components / Form / arrayFields / Option.',
+  },
+  untitledOption: {
+    id: 'architect.form.arrayFields.option.untitledOption',
+    defaultMessage: 'Untitled option',
+    description: 'Visible text in components / Form / arrayFields / Option.',
+  },
+  noValue: {
+    id: 'architect.form.arrayFields.option.noValue',
+    defaultMessage: 'No value',
+    description: 'Visible text in components / Form / arrayFields / Option.',
+  },
+  editOption: {
+    id: 'architect.form.arrayFields.option.editOption',
+    defaultMessage: 'Edit option {value1}',
+    description:
+      'The aria-label text in components / Form / arrayFields / Option.',
+  },
+  removeOption45a9b: {
+    id: 'architect.form.arrayFields.option.removeOption45a9b',
+    defaultMessage: 'Remove option {value1}',
+    description:
+      'The aria-label text in components / Form / arrayFields / Option.',
+  },
+  finishEditingOption: {
+    id: 'architect.form.arrayFields.option.finishEditingOption',
+    defaultMessage: 'Finish editing option',
+    description:
+      'The aria-label text in components / Form / arrayFields / Option.',
+  },
+  label: {
+    id: 'architect.form.arrayFields.option.label',
+    defaultMessage: 'Label',
+    description: 'The label text in components / Form / arrayFields / Option.',
+  },
+  enterALabel: {
+    id: 'architect.form.arrayFields.option.enterALabel',
+    defaultMessage: 'Enter a label...',
+    description:
+      'The placeholder text in components / Form / arrayFields / Option.',
+  },
+  value: {
+    id: 'architect.form.arrayFields.option.value',
+    defaultMessage: 'Value',
+    description: 'The label text in components / Form / arrayFields / Option.',
+  },
+  enterAValue: {
+    id: 'architect.form.arrayFields.option.enterAValue',
+    defaultMessage: 'Enter a value...',
+    description:
+      'The placeholder text in components / Form / arrayFields / Option.',
+  },
+});
 
 export type OptionValue = VariableOptions[number];
 
@@ -99,6 +180,7 @@ const Option = ({
   disabled,
   readOnly,
 }: ArrayFieldItemProps<OptionValue>) => {
+  const intl = useAppIntl();
   const { arrayName, allValues, showArrayError } = useOptionsContext();
   const { confirm } = useDialog();
   const interactionDisabled = disabled || readOnly;
@@ -141,10 +223,16 @@ const Option = ({
 
   const handleDelete = () => {
     void confirm({
-      title: 'Remove option',
-      description: 'Are you sure you want to remove this option?',
-      confirmLabel: 'Remove option',
-      cancelLabel: 'Cancel',
+      title: createElement(AppMessage, { message: messages.removeOption }),
+      description: createElement(AppMessage, {
+        message: messages.areYouSureYouWantTo,
+      }),
+      confirmLabel: createElement(AppMessage, {
+        message: messages.removeOption,
+      }),
+      cancelLabel: createElement(AppMessage, {
+        message: commonMessages.cancel,
+      }),
       intent: 'destructive',
       onConfirm: () => onDelete?.(),
     });
@@ -169,34 +257,48 @@ const Option = ({
             itemCount={itemCount}
             onMove={onMove}
             disabled={interactionDisabled}
-            label={`Reorder option ${index + 1} of ${itemCount}`}
+            label={intl.formatMessage(messages.reorderOptionOf, {
+              value1: index + 1,
+              itemCount: itemCount,
+            })}
           />
         )}
         <div className="min-w-0 flex-1 truncate">
           <span className={!hasLabel ? 'text-current/50 italic' : undefined}>
-            {hasLabel ? item.label : 'Untitled option'}
+            {hasLabel
+              ? item.label
+              : intl.formatMessage(messages.untitledOption)}
           </span>
-          <span className="text-current/50"> — </span>
+          {/* Decorative separation of authored label and value. */}
+          <span className="text-current/50" aria-hidden>
+            {OPTION_VALUE_SEPARATOR}
+          </span>
           <span
             className={cx(
               'font-monospace',
               !hasValue && 'text-current/50 italic',
             )}
           >
-            {hasValue ? String(item.value) : 'No value'}
+            {hasValue
+              ? String(item.value)
+              : intl.formatMessage(messages.noValue)}
           </span>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <IconButton
             icon={<Pencil />}
-            aria-label={`Edit option ${index + 1}`}
+            aria-label={intl.formatMessage(messages.editOption, {
+              value1: index + 1,
+            })}
             color="dynamic"
             disabled={interactionDisabled}
             onClick={onEdit}
           />
           <IconButton
             icon={<Trash2 />}
-            aria-label={`Remove option ${index + 1}`}
+            aria-label={intl.formatMessage(messages.removeOption45a9b, {
+              value1: index + 1,
+            })}
             color="destructive"
             disabled={interactionDisabled}
             onClick={handleDelete}
@@ -222,7 +324,7 @@ const Option = ({
       <div className="flex items-center justify-end gap-2">
         <IconButton
           icon={<Check />}
-          aria-label="Finish editing option"
+          aria-label={intl.formatMessage(messages.finishEditingOption)}
           size="lg"
           color="primary"
           disabled={interactionDisabled}
@@ -230,7 +332,9 @@ const Option = ({
         />
         <IconButton
           icon={<Trash2 />}
-          aria-label={`Remove option ${index + 1}`}
+          aria-label={intl.formatMessage(messages.removeOption45a9b, {
+            value1: index + 1,
+          })}
           color="destructive"
           disabled={interactionDisabled}
           onClick={handleDelete}
@@ -238,9 +342,9 @@ const Option = ({
       </div>
       <RowField
         name={`${rowFieldName}.label`}
-        label="Label"
+        label={intl.formatMessage(messages.label)}
         component={FrescoRichTextEditorField}
-        placeholder="Enter a label..."
+        placeholder={intl.formatMessage(messages.enterALabel)}
         changeMode="input"
         toolbarOptions={RICH_TEXT_TOOLBAR}
         value={labelContent}
@@ -268,9 +372,9 @@ const Option = ({
       />
       <RowField
         name={`${rowFieldName}.value`}
-        label="Value"
+        label={intl.formatMessage(messages.value)}
         component={FrescoInputField}
-        placeholder="Enter a value..."
+        placeholder={intl.formatMessage(messages.enterAValue)}
         value={item.value}
         onChange={(value: unknown) =>
           onUpdate?.({
@@ -284,7 +388,7 @@ const Option = ({
         validation={{
           required: true,
           uniqueArrayAttribute: true,
-          allowedVariableName: 'option value',
+          allowedVariableName: intl.formatMessage(messages.optionValue),
         }}
         allValues={allValues}
         forceShowErrors={forceShowErrors}

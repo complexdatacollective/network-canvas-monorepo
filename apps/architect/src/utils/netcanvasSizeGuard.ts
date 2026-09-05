@@ -1,6 +1,29 @@
 import type JSZip from 'jszip';
 
+import {
+  createAppIntl,
+  defineMessages,
+  type MessageDescriptor,
+} from '@codaco/app-i18n/messages';
 import { loadNetcanvasArchive } from '@codaco/protocol-validation';
+
+const messages = defineMessages({
+  compressed: {
+    id: 'architect.importSize.compressed',
+    defaultMessage:
+      'This protocol file is too large to open ({size, number} MB). The maximum supported size is {maximum, number} MB.',
+    description:
+      'Import refusal before a protocol archive is buffered. Sizes are rounded mebibytes, shown consistently with the existing MB convention.',
+  },
+  expanded: {
+    id: 'architect.importSize.expanded',
+    defaultMessage:
+      'This protocol file expands to more data than can be opened safely ({size, number} MB). It may be corrupt. The maximum supported size is {maximum, number} MB.',
+    description:
+      'Import refusal before media inflation when the archive declares an excessive expanded size.',
+  },
+});
+const diagnosticIntl = createAppIntl({ locale: 'en' });
 
 // A .netcanvas is a zip of protocol.json plus media assets. Importing it reads
 // the whole file into memory and inflates every asset to a Blob, so an oversized
@@ -21,24 +44,27 @@ export const MAX_COMPRESSED_BYTES = 500 * MB;
 export const MAX_UNCOMPRESSED_BYTES = 1024 * MB;
 
 export class NetcanvasTooLargeError extends Error {
-  constructor(message: string) {
-    super(message);
+  readonly localizedMessage: {
+    message: MessageDescriptor;
+    values: Record<string, number>;
+  };
+
+  constructor(message: MessageDescriptor, values: Record<string, number>) {
+    super(diagnosticIntl.formatMessage(message, values));
     this.name = 'NetcanvasTooLargeError';
+    this.localizedMessage = { message, values };
   }
 }
-
-const formatMb = (bytes: number): string => `${Math.round(bytes / MB)} MB`;
 
 // Throw the compressed-size error if the given byte length exceeds the cap.
 // Exported so callers can reject a File by its `size` before buffering it into
 // memory, surfacing the same message without duplicating the cap or the copy.
 export const assertCompressedSizeWithinLimit = (byteLength: number): void => {
   if (byteLength > MAX_COMPRESSED_BYTES) {
-    throw new NetcanvasTooLargeError(
-      `This protocol file is too large to open (${formatMb(
-        byteLength,
-      )}). The maximum supported size is ${formatMb(MAX_COMPRESSED_BYTES)}.`,
-    );
+    throw new NetcanvasTooLargeError(messages.compressed, {
+      size: Math.round(byteLength / MB),
+      maximum: Math.round(MAX_COMPRESSED_BYTES / MB),
+    });
   }
 };
 
@@ -82,11 +108,10 @@ export const loadGuardedNetcanvas = async (
 
   const uncompressedTotal = declaredUncompressedTotal(zip);
   if (uncompressedTotal > MAX_UNCOMPRESSED_BYTES) {
-    throw new NetcanvasTooLargeError(
-      `This protocol file expands to more data than can be opened safely ` +
-        `(${formatMb(uncompressedTotal)}). It may be corrupt. The maximum ` +
-        `supported size is ${formatMb(MAX_UNCOMPRESSED_BYTES)}.`,
-    );
+    throw new NetcanvasTooLargeError(messages.expanded, {
+      size: Math.round(uncompressedTotal / MB),
+      maximum: Math.round(MAX_UNCOMPRESSED_BYTES / MB),
+    });
   }
 
   return zip;

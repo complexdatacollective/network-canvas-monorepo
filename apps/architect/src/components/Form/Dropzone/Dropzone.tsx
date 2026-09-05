@@ -9,11 +9,33 @@ import {
 } from 'react';
 import { useDropzone } from 'react-dropzone';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import { cva, cx } from '~/utils/cva';
+import type { LocalizedText } from '~/utils/protocolImportErrors';
 
 import { acceptsFiles, getRejectedExtensions } from './helpers';
 import useTimer from './useTimer';
+const messages = defineMessages({
+  uploadFile: {
+    id: 'architect.form.dropzone.dropzone.uploadFile',
+    defaultMessage: 'Upload file',
+    description:
+      'The aria-label text in components / Form / Dropzone / Dropzone.',
+  },
+  dragAndDropAFileHere: {
+    id: 'architect.form.dropzone.dropzone.dragAndDropAFileHere',
+    defaultMessage:
+      'Drag and drop a file here to import it, or <span> click here to select a file from your computer </span> .',
+    description: 'Visible text in components / Form / Dropzone / Dropzone.',
+  },
+  importingFile: {
+    id: 'architect.form.dropzone.dropzone.importingFile',
+    defaultMessage: 'Importing file…',
+    description: 'Visible text in components / Form / Dropzone / Dropzone.',
+  },
+});
 
 type DropzoneState = {
   isActive: boolean;
@@ -22,7 +44,7 @@ type DropzoneState = {
   isLoading: boolean;
   isError: boolean;
   isHover: boolean;
-  error: string | null;
+  error: LocalizedText | null;
 };
 
 const initialState: DropzoneState = {
@@ -116,6 +138,7 @@ const Dropzone = ({
   disabled = false,
   rootRef,
 }: DropzoneProps) => {
+  const intl = useAppIntl();
   const [state, setState] = useState(initialState);
   const errorId = useId();
 
@@ -152,7 +175,13 @@ const Dropzone = ({
           const match = /(\.[A-Za-z0-9]+)$/.exec(rejection.file.name);
           return match ? match[1] : rejection.file.name;
         });
-        const errorMessage = `This asset type does not support ${extensions.join(', ')} extension(s). Supported types are: ${accepts.join(', ')}.`;
+        const errorMessage = {
+          message: extraMessages.extensions,
+          values: {
+            extensions: extensions.join(', '),
+            supported: accepts.join(', '),
+          },
+        };
         setState((previousState) => ({
           ...previousState,
           isActive: false,
@@ -167,7 +196,13 @@ const Dropzone = ({
 
       if (!isAcceptable) {
         const extensions = getRejectedExtensions(accepts, acceptedFiles);
-        const errorMessage = `This asset type does not support ${extensions.join(', ')} extension(s). Supported types are: ${accepts.join(', ')}.`;
+        const errorMessage = {
+          message: extraMessages.extensions,
+          values: {
+            extensions: extensions.join(', '),
+            supported: accepts.join(', '),
+          },
+        };
         setState((previousState) => ({
           ...previousState,
           isActive: false,
@@ -188,16 +223,13 @@ const Dropzone = ({
       void Promise.resolve()
         .then(() => onDrop(acceptedFiles))
         .then(resetState)
-        .catch((error: unknown) => {
+        .catch(() => {
           setState((previousState) => ({
             ...previousState,
             isActive: false,
             isLoading: false,
             isError: true,
-            error:
-              error instanceof Error && error.message
-                ? error.message
-                : 'Unable to import this file.',
+            error: { message: extraMessages.failed },
           }));
         });
     },
@@ -264,7 +296,7 @@ const Dropzone = ({
         // drag handlers, and `handleDrop` returns early anyway.
         {...getRootProps({ tabIndex: 0 })}
         role="button"
-        aria-label="Upload file"
+        aria-label={intl.formatMessage(messages.uploadFile)}
         aria-busy={state.isLoading || undefined}
         aria-disabled={isDisabled || undefined}
         aria-describedby={state.error ? errorId : undefined}
@@ -277,17 +309,19 @@ const Dropzone = ({
           )}
         />
         <div className={labelVariants({ state: dropzoneState })}>
-          Drag and drop a file here to import it, or&nbsp;
-          <span className="border-primary inline-block cursor-pointer border-b-2">
-            click here to select a file from your computer
-          </span>
-          .
+          {intl.formatMessage(messages.dragAndDropAFileHere, {
+            span: (chunks) => (
+              <span className="border-primary inline-block cursor-pointer border-b-2">
+                {chunks}
+              </span>
+            ),
+          })}
         </div>
         <div className={loadingVariants({ state: dropzoneState })}>
           {state.isActive && <Spinner size="sm" />}
         </div>
         <span className="sr-only" aria-live="polite">
-          {state.isLoading ? 'Importing file…' : ''}
+          {state.isLoading ? intl.formatMessage(messages.importingFile) : ''}
         </span>
       </div>
       {state.error && (
@@ -297,7 +331,7 @@ const Dropzone = ({
           className="bg-destructive text-destructive-contrast mt-2 flex items-center gap-2 overflow-hidden rounded px-4 py-2 opacity-100 transition-opacity duration-150"
         >
           <TriangleAlert aria-hidden />
-          {state.error}
+          {<AppMessage {...state.error} />}
         </div>
       )}
     </div>
@@ -305,3 +339,18 @@ const Dropzone = ({
 };
 
 export default Dropzone;
+
+const extraMessages = defineMessages({
+  extensions: {
+    id: 'architect.dropzone.extensions',
+    defaultMessage:
+      'This resource type does not support these extensions: {extensions}. Supported extensions: {supported}.',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  failed: {
+    id: 'architect.dropzone.failed',
+    defaultMessage:
+      'Unable to import this file. Check its format and try again.',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+});

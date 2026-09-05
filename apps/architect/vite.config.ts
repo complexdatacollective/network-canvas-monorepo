@@ -7,6 +7,8 @@ import react from '@vitejs/plugin-react';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+import { appI18n } from '@codaco/app-i18n/vite';
+
 import { createPostHogSourceMapsPlugin } from '../../scripts/posthog-source-maps-plugin.ts';
 import {
   createPwaCacheReclamationPlugin,
@@ -103,6 +105,7 @@ export default defineConfig(({ mode }) => {
       tsconfigPaths: true,
     },
     plugins: [
+      ...appI18n(),
       injectCspMeta(),
       createProtocolSourceAuthoringPlugin({
         repoRoot,

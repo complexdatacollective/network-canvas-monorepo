@@ -219,7 +219,7 @@ describe('NativeSelect', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create' }));
 
     expect(
-      await screen.findByText('Could not create that option'),
+      await screen.findByText('Unable to create this option.'),
     ).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'New choice' })).toHaveValue(
       'NewChoice',

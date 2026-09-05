@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { operatorsAsOptions, operatorsByType, validTypes } from '../options';
+import { getOperatorsAsOptions, operatorsByType, validTypes } from '../options';
 
 describe('rule editor operator options', () => {
   it('offers CONTAINS / DOES_NOT_CONTAIN for text variables', () => {
@@ -9,7 +9,7 @@ describe('rule editor operator options', () => {
   });
 
   it('exposes labelled options for CONTAINS / DOES_NOT_CONTAIN', () => {
-    const values = operatorsAsOptions.map((option) => option.value);
+    const values = getOperatorsAsOptions().map((option) => option.value);
     expect(values).toContain('CONTAINS');
     expect(values).toContain('DOES_NOT_CONTAIN');
   });

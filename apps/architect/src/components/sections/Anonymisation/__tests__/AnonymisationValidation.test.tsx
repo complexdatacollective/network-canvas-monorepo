@@ -90,10 +90,10 @@ describe('AnonymisationValidation', () => {
       screen.queryByRole('group', { name: 'Compare to another attribute' }),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByRole('switch', { name: 'Minimum length', hidden: true }),
+      screen.getByRole('switch', { name: 'Minimum text length', hidden: true }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('switch', { name: 'Maximum length', hidden: true }),
+      screen.getByRole('switch', { name: 'Maximum text length', hidden: true }),
     ).toBeInTheDocument();
   });
 
@@ -159,11 +159,11 @@ describe('AnonymisationValidation across a stage change', () => {
     // An edit still in flight, plus a rule switched on but not yet given a
     // value: both live only in the rule list's own state.
     fireEvent.change(
-      screen.getByRole('spinbutton', { name: 'Minimum length' }),
+      screen.getByRole('spinbutton', { name: 'Minimum text length' }),
       { target: { value: '9' } },
     );
     fireEvent.click(
-      screen.getByRole('switch', { name: 'Maximum length', hidden: true }),
+      screen.getByRole('switch', { name: 'Maximum text length', hidden: true }),
     );
 
     // The reinitialize: the next stage's saved rules are written into the form
@@ -181,10 +181,10 @@ describe('AnonymisationValidation across a stage change', () => {
     );
 
     expect(
-      screen.getByRole('spinbutton', { name: 'Minimum length' }),
+      screen.getByRole('spinbutton', { name: 'Minimum text length' }),
     ).toHaveValue(2);
     expect(
-      screen.getByRole('switch', { name: 'Maximum length', hidden: true }),
+      screen.getByRole('switch', { name: 'Maximum text length', hidden: true }),
     ).not.toBeChecked();
   });
 });

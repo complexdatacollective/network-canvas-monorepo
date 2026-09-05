@@ -5,6 +5,7 @@ import {
   ProtocolValidationError,
 } from '@codaco/protocol-validation';
 import { APP_SCHEMA_VERSION } from '~/config';
+import { messageFields } from '~/test/messageText';
 
 import type { StoredProtocolRow } from '../assetDB';
 import { admitStoredProtocol } from '../storedProtocolAdmission';
@@ -150,7 +151,10 @@ describe('admitStoredProtocol', () => {
         notifyUpgraded,
       });
 
-      expect(result).toEqual({
+      expect(result.success).toBe(false);
+      if (result.success)
+        throw new Error('The failed migration must refuse admission');
+      expect({ ...result, refusal: messageFields(result.refusal) }).toEqual({
         success: false,
         refusal: {
           status: 'error',
@@ -201,12 +205,16 @@ describe('admitStoredProtocol', () => {
         notifyUpgraded,
       });
 
-      expect(result).toEqual({
+      expect(result.success).toBe(false);
+      if (result.success)
+        throw new Error('The failed migration must refuse admission');
+      expect({ ...result, refusal: messageFields(result.refusal) }).toEqual({
         success: false,
         refusal: {
           status: 'error',
           title: 'Two attributes share a name',
-          message: expect.stringContaining('both named "name"') as string,
+          message: expect.stringContaining('both named "name"'),
+          detail: 'Duplicate attribute name "name"',
         },
       });
       expect(persist).not.toHaveBeenCalled();

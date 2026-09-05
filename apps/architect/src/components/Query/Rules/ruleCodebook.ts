@@ -1,4 +1,6 @@
-import { operatorsAsOptions, operatorsByType, validTypes } from './options';
+import type { IntlShape } from '@codaco/app-i18n/messages';
+
+import { getOperatorsAsOptions, operatorsByType, validTypes } from './options';
 
 /**
  * What a rule targets. `rule.type` holds one of these; the entity TYPE a
@@ -118,10 +120,11 @@ const operatorsForType = new Map<string, ReadonlySet<string>>(
 
 export const getOperatorOptions = (
   variableType: string | undefined,
+  intl?: IntlShape,
 ): RuleOptionItem[] => {
   const allowed =
     (variableType ? operatorsForType.get(variableType) : undefined) ??
     operatorsByType.exists;
 
-  return operatorsAsOptions.filter(({ value }) => allowed.has(value));
+  return getOperatorsAsOptions(intl).filter(({ value }) => allowed.has(value));
 };

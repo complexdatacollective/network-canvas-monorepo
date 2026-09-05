@@ -9,6 +9,7 @@ import {
   GAMETE_ROLE_OPTIONS,
   RELATIONSHIP_TYPE_OPTIONS,
 } from '@codaco/protocol-validation';
+import { messageSubmissionResult } from '~/test/messageText';
 
 import { useOnBeforeSavePrompt } from '../useOnBeforeSavePrompt';
 
@@ -90,10 +91,12 @@ describe('useOnBeforeSavePrompt options contradiction', () => {
         { label: 'Blue', value: 'blue' },
       ],
     });
-    expect(result).toMatchObject({
+    expect(messageSubmissionResult(result)).toMatchObject({
       success: false,
       fieldErrors: {
-        variableOptions: [expect.stringContaining('minSelected')],
+        variableOptions: [
+          'The minimum selection for Colors exceeds the available options. Add options or reduce the minimum.',
+        ],
       },
     });
   });
@@ -112,10 +115,12 @@ describe('useOnBeforeSavePrompt options contradiction', () => {
         { label: 'Yellow', value: 'yellow' },
       ],
     });
-    expect(result).toMatchObject({
+    expect(messageSubmissionResult(result)).toMatchObject({
       success: false,
       fieldErrors: {
-        variableOptions: [expect.stringContaining('share no option values')],
+        variableOptions: [
+          'The comparisons for A and B cannot be satisfied within their allowed ranges. Adjust the ranges, comparisons, or input controls.',
+        ],
       },
     });
   });
@@ -168,7 +173,7 @@ describe('useOnBeforeSavePrompt optional otherVariable key', () => {
     );
     const { otherVariable: _unused, ...withoutOther } = OTHER_PROMPT_VALUE;
     const result = await onBeforeSave(withoutOther);
-    expect(result).not.toHaveProperty('otherVariable');
+    expect(messageSubmissionResult(result)).not.toHaveProperty('otherVariable');
   });
 });
 
@@ -278,7 +283,9 @@ describe('useOnBeforeSavePrompt interface-owned options', () => {
       variable: 'biologicalSex',
       variableOptions: BIOLOGICAL_SEX_OPTIONS,
     });
-    expect(result).toMatchObject({ variable: 'biologicalSex' });
+    expect(messageSubmissionResult(result)).toMatchObject({
+      variable: 'biologicalSex',
+    });
     expect(dispatched).toEqual([]);
   });
 
@@ -290,7 +297,7 @@ describe('useOnBeforeSavePrompt interface-owned options', () => {
         option.value === 'female' ? { ...option, label: 'Woman' } : option,
       ),
     });
-    expect(result).toMatchObject({
+    expect(messageSubmissionResult(result)).toMatchObject({
       success: false,
       fieldErrors: {
         variableOptions: [expect.stringContaining('set by the interface')],

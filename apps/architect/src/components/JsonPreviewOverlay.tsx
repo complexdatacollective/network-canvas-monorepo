@@ -1,8 +1,33 @@
 import { useCallback, useState } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { useJsonPreview } from '~/hooks/useJsonPreview';
+const messages = defineMessages({
+  closePreview: {
+    id: 'architect.jsonPreviewOverlay.closePreview',
+    defaultMessage: 'Close preview',
+    description: 'The aria-label text in components / JsonPreviewOverlay.',
+  },
+  altShiftJToClose: {
+    id: 'architect.jsonPreviewOverlay.altShiftJToClose',
+    defaultMessage: 'Alt+Shift+J to close',
+    description: 'Visible text in components / JsonPreviewOverlay.',
+  },
+  copied: {
+    id: 'architect.jsonPreviewOverlay.copied',
+    defaultMessage: 'Copied!',
+    description: 'Visible text in components / JsonPreviewOverlay.',
+  },
+  copy: {
+    id: 'architect.jsonPreviewOverlay.copy',
+    defaultMessage: 'Copy',
+    description: 'Visible text in components / JsonPreviewOverlay.',
+  },
+});
 
 export function JsonPreviewOverlay() {
+  const intl = useAppIntl();
   const { isOpen, context, close } = useJsonPreview();
   const [copied, setCopied] = useState(false);
 
@@ -22,7 +47,7 @@ export function JsonPreviewOverlay() {
         type="button"
         className="absolute inset-0 cursor-default"
         onClick={close}
-        aria-label="Close preview"
+        aria-label={intl.formatMessage(messages.closePreview)}
       />
       <div className="relative flex h-full flex-col">
         <div className="flex items-center justify-between border-b border-white/10 px-7 py-5">
@@ -31,14 +56,16 @@ export function JsonPreviewOverlay() {
           </span>
           <div className="flex items-center gap-2.5">
             <span className="font-monospace text-xs text-white/40">
-              Alt+Shift+J to close
+              {intl.formatMessage(messages.altShiftJToClose)}
             </span>
             <button
               type="button"
               onClick={handleCopy}
               className="font-monospace cursor-pointer rounded bg-white/10 px-2.5 py-1 text-xs text-white/80 transition-colors hover:bg-white/20"
             >
-              {copied ? 'Copied!' : 'Copy'}
+              {copied
+                ? intl.formatMessage(messages.copied)
+                : intl.formatMessage(messages.copy)}
             </button>
           </div>
         </div>

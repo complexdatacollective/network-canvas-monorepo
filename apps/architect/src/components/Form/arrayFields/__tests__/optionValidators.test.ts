@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
+import { createAppIntl } from '@codaco/app-i18n/messages';
 import { getValidations } from '~/utils/validations';
 
 import { parseOptionValue } from '../Option';
 import {
   allowedOptionValues,
   completeOptions,
-  MINIMUM_OPTIONS_MESSAGE,
+  minimumOptionsMessage,
   minTwoOptions,
   minTwoPopulatedOptions,
   optionsValidation,
@@ -14,6 +15,9 @@ import {
   uniqueOptionValues,
 } from '../Options';
 
+const MINIMUM_OPTIONS_MESSAGE = createAppIntl({ locale: 'en' }).formatMessage(
+  minimumOptionsMessage,
+);
 describe('Options validators', () => {
   it('requires at least two options', () => {
     expect(minTwoOptions(undefined)).toMatch(/minimum of two options/i);
@@ -79,7 +83,7 @@ describe('Options validators', () => {
         undefined,
         'options[0].value',
       ),
-    ).toBe('Values must be unique');
+    ).toBe('This value is already in use. Enter a different value.');
     expect(
       validateUnique?.(
         'One',
@@ -87,7 +91,7 @@ describe('Options validators', () => {
         undefined,
         'options[0].value',
       ),
-    ).toBe('Values must be unique');
+    ).toBe('This value is already in use. Enter a different value.');
     expect(
       validateUnique?.(
         1,
@@ -201,7 +205,7 @@ describe('Options validators', () => {
           undefined,
           'options[1].label',
         ),
-      ).toBe('Labels must be unique');
+      ).toBe('This value is already in use. Enter a different value.');
     });
 
     it('are stored in canonical composed form', () => {
@@ -262,27 +266,43 @@ describe('Options validators', () => {
   });
 
   it('bundles every array-level rule so a call site cannot keep only some', () => {
-    expect(optionsValidation).toEqual({
-      required: MINIMUM_OPTIONS_MESSAGE,
-      minTwoOptions: minTwoPopulatedOptions,
-      completeOptions,
-      uniqueOptionValues,
-      uniqueOptionLabels,
-      allowedOptionValues,
-    });
+    const rules = optionsValidation();
+    expect(rules.required).toBe(MINIMUM_OPTIONS_MESSAGE);
+    expect(rules.minTwoOptions([{ label: 'One', value: 1 }])).toBe(
+      MINIMUM_OPTIONS_MESSAGE,
+    );
+    expect(rules.completeOptions([{ label: 'One' }])).toBe(
+      'Every option needs both a label and a value.',
+    );
+    expect(
+      rules.uniqueOptionValues([
+        { label: 'One', value: 1 },
+        { label: 'Two', value: 1 },
+      ]),
+    ).toBe('Every option needs a unique value.');
+    expect(
+      rules.uniqueOptionLabels([
+        { label: 'One', value: 1 },
+        { label: 'One', value: 2 },
+      ]),
+    ).toBe('Every option needs a unique label.');
+    expect(
+      rules.allowedOptionValues([{ label: 'One', value: 'not valid' }]),
+    ).toBe(
+      'Not a valid option value. Only letters, numbers and the symbols ._-: are supported',
+    );
   });
 
-  // Only the first failing rule is reported per field (see toZodValidation),
-  // so the syntax rule is bundled last: an unfinished row should be told what
-  // it is missing before it is told the missing value is malformed.
+  // Only the first failing rule is reported per field (see toZodValidation).
+  // An unfinished row must explain the missing value before its syntax.
   it('reports completeness before syntax when a row is both', () => {
-    expect(Object.keys(optionsValidation)).toEqual([
-      'required',
-      'minTwoOptions',
-      'completeOptions',
-      'uniqueOptionValues',
-      'uniqueOptionLabels',
-      'allowedOptionValues',
-    ]);
+    const rows = [
+      { label: '', value: 'not valid' },
+      { label: 'Two', value: 2 },
+    ];
+    const firstError = getValidations(optionsValidation())
+      .map((validate) => validate(rows))
+      .find((error) => error !== undefined);
+    expect(firstError).toBe('Every option needs both a label and a value.');
   });
 });

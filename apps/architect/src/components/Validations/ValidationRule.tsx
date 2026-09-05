@@ -1,5 +1,7 @@
 import { useId, type KeyboardEvent } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import {
   fieldDescribedBy,
   fieldElementIds,
@@ -15,6 +17,26 @@ import {
   isValidationWithListValue,
   isValidationWithNumberValue,
 } from './options';
+const messages = defineMessages({
+  increase: {
+    id: 'architect.validations.validationRule.increase',
+    defaultMessage: 'Increase {label}',
+    description:
+      'Accessible action for increasing the named validation rule value; label is the localized rule name.',
+  },
+  decrease: {
+    id: 'architect.validations.validationRule.decrease',
+    defaultMessage: 'Decrease {label}',
+    description:
+      'Accessible action for decreasing the named validation rule value; label is the localized rule name.',
+  },
+  selectComparisonAttribute: {
+    id: 'architect.validations.validationRule.selectComparisonAttribute',
+    defaultMessage: 'Select comparison attribute',
+    description:
+      'The placeholder text in components / Validations / ValidationRule.',
+  },
+});
 
 export type TargetOption = {
   label: string;
@@ -55,6 +77,7 @@ const ValidationRule = ({
   onCommit,
   onValueExit,
 }: ValidationRuleProps) => {
+  const intl = useAppIntl();
   const rowId = useId();
   // This row is not a BaseField, but it names the same elements around its
   // controls, so it takes both the IDs and the reference list from fresco-ui's
@@ -112,8 +135,8 @@ const ValidationRule = ({
             onBlur={() => onValueExit(ruleKey, text)}
             onStep={(value: string) => onCommit(ruleKey, value)}
             stepperLabels={{
-              increase: `Increase ${label}`,
-              decrease: `Decrease ${label}`,
+              increase: intl.formatMessage(messages.increase, { label }),
+              decrease: intl.formatMessage(messages.decrease, { label }),
             }}
             onKeyDown={handleValueKeyDown}
             type="number"
@@ -137,7 +160,7 @@ const ValidationRule = ({
               onCommit(ruleKey, next);
             }}
             onBlur={() => onValueExit(ruleKey, text)}
-            placeholder="Select comparison attribute"
+            placeholder={intl.formatMessage(messages.selectComparisonAttribute)}
           />
         </div>
       )}

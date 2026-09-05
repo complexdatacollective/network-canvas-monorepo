@@ -7,6 +7,7 @@ import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { Stage, StageType } from '@codaco/protocol-validation';
 import StageFormBridge from '~/components/StageEditor/StageFormBridge';
 import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
+import { messageText } from '~/test/messageText';
 
 // The spotlight picker is a whole search UI; these tests only need a control
 // that can report a variable was chosen. What it emits is deliberately NOT
@@ -68,7 +69,9 @@ const asStage = (values: Record<string, unknown>) => values as unknown as Stage;
 const INCOMPLETE_MESSAGE =
   'Every additional attribute needs both an attribute and a value.';
 
-const NEARBY_ELSEWHERE_MESSAGE = validatedElsewhereMessage('Nearby');
+const NEARBY_ELSEWHERE_MESSAGE = messageText(
+  validatedElsewhereMessage('Nearby'),
+);
 
 type AttributeRow = { variable?: string | null; value?: boolean | null };
 

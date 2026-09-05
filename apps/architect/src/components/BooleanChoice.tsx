@@ -1,5 +1,13 @@
+import {
+  type IntlShape,
+  createAppIntl,
+  defineMessages,
+} from '@codaco/app-i18n/messages';
+
+const defaultIntl = createAppIntl({ locale: 'en' });
 import { useMemo } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -8,6 +16,64 @@ import RichText from '@codaco/protocol-builder/fields/RichTextField';
 import type { OptionValue } from '~/components/Form/arrayFields/Option';
 
 import ArchitectField from './Form/ArchitectField';
+const utilityMessages = defineMessages({
+  bothOptionLabelsAreRequired: {
+    id: 'architect.utility.booleanChoice.bothOptionLabelsAreRequired',
+    defaultMessage: 'Both option labels are required',
+    description:
+      'Researcher-facing explanatory text in components / BooleanChoice.',
+  },
+});
+const messages = defineMessages({
+  optionOne: {
+    id: 'architect.booleanChoice.optionOne',
+    defaultMessage: 'Option One',
+    description: 'Visible text in components / BooleanChoice.',
+  },
+  thisOptionWillSetTheValue: {
+    id: 'architect.booleanChoice.thisOptionWillSetTheValue',
+    defaultMessage:
+      'This option will set the value <strong>{value1}</strong> when selected.',
+    description: 'Visible text in components / BooleanChoice.',
+  },
+  label: {
+    id: 'architect.booleanChoice.label',
+    defaultMessage: 'Label',
+    description: 'The label text in components / BooleanChoice.',
+  },
+  styleOptionOneAsNegative: {
+    id: 'architect.booleanChoice.styleOptionOneAsNegative',
+    defaultMessage: 'Style Option One as negative',
+    description: 'The label text in components / BooleanChoice.',
+  },
+  optionTwo: {
+    id: 'architect.booleanChoice.optionTwo',
+    defaultMessage: 'Option Two',
+    description: 'Visible text in components / BooleanChoice.',
+  },
+  styleOptionTwoAsNegative: {
+    id: 'architect.booleanChoice.styleOptionTwoAsNegative',
+    defaultMessage: 'Style Option Two as negative',
+    description: 'The label text in components / BooleanChoice.',
+  },
+  answerOptions: {
+    id: 'architect.booleanChoice.answerOptions',
+    defaultMessage: 'Answer options',
+    description: 'The label text in components / BooleanChoice.',
+  },
+  theBooleanChoiceInputComponentAllowsYou: {
+    id: 'architect.booleanChoice.theBooleanChoiceInputComponentAllowsYou',
+    defaultMessage:
+      'The BooleanChoice input component allows you to specify rich text labels for the two choices that your participant sees. Create a label for the first option, representing the value true, and the second option, representing the value false, below.',
+    description: 'Visible text in components / BooleanChoice.',
+  },
+  eachValueCanAlsoBeStyled: {
+    id: 'architect.booleanChoice.eachValueCanAlsoBeStyled',
+    defaultMessage:
+      'Each value can also be styled to indicate that it is negative. When enabled, this will make the option red when selected.',
+    description: 'Visible text in components / BooleanChoice.',
+  },
+});
 
 type BooleanOption = {
   label: string;
@@ -15,6 +81,7 @@ type BooleanOption = {
   negative?: boolean;
 };
 
+// Protocol-authored option defaults are stored data and stay in source English.
 // The two options a new BooleanChoice starts from. The schema requires a
 // `value` on every option (`booleanOptionsSchema` in
 // `@codaco/protocol-validation`) but offers no editor for it, so these supply
@@ -77,11 +144,14 @@ const hasLabel = (option: unknown): boolean => {
   return typeof label === 'string' && label.trim().length > 0;
 };
 
-const bothOptionLabelsRequired = (value: unknown): string | undefined => {
+const bothOptionLabelsRequired = (
+  value: unknown,
+  intl: IntlShape = defaultIntl,
+): string | undefined => {
   const options = Array.isArray(value) ? value : [];
   return options.length >= 2 && hasLabel(options[0]) && hasLabel(options[1])
     ? undefined
-    : 'Both option labels are required';
+    : intl.formatMessage(utilityMessages.bothOptionLabelsAreRequired);
 };
 
 /**
@@ -101,6 +171,7 @@ function BooleanChoiceOptionsField({
   value?: [BooleanOption, BooleanOption];
   onChange?: (value: [BooleanOption, BooleanOption]) => void;
 }) {
+  const intl = useAppIntl();
   const [optionOne, optionTwo] = value;
 
   const updateOption = (index: 0 | 1, patch: Partial<BooleanOption>) => {
@@ -112,20 +183,22 @@ function BooleanChoiceOptionsField({
   return (
     <div className="grid grid-cols-1 gap-5">
       <div className="bg-surface-3 text-surface-3-contrast rounded p-7 [&_h3]:mt-0">
-        <Heading level="h3">Option One</Heading>
+        <Heading level="h3">{intl.formatMessage(messages.optionOne)}</Heading>
         {/*
           Each card states the boolean its option actually records rather than
           a fixed true/false, because the committed values are retained (see
           `toBooleanOption`) and a protocol may store them false-first.
         */}
         <Paragraph>
-          This option will set the value{' '}
-          <strong>{String(optionOne.value)}</strong> when selected.
+          {intl.formatMessage(messages.thisOptionWillSetTheValue, {
+            value1: String(optionOne.value),
+            strong: (chunks) => <strong>{chunks}</strong>,
+          })}
         </Paragraph>
         <UnconnectedField
           name="options[0].label"
           component={RichText}
-          label="Label"
+          label={intl.formatMessage(messages.label)}
           value={optionOne.label}
           onChange={(label) => updateOption(0, { label: label ?? '' })}
           disallowedTypes={['history', 'quote']}
@@ -133,22 +206,24 @@ function BooleanChoiceOptionsField({
         <UnconnectedField
           name="options[0].negative"
           component={ToggleField}
-          label="Style Option One as negative"
+          label={intl.formatMessage(messages.styleOptionOneAsNegative)}
           inline
           value={!!optionOne.negative}
           onChange={(negative) => updateOption(0, { negative: !!negative })}
         />
       </div>
       <div className="bg-surface-3 text-surface-3-contrast rounded p-7 [&_h3]:mt-0">
-        <Heading level="h3">Option Two</Heading>
+        <Heading level="h3">{intl.formatMessage(messages.optionTwo)}</Heading>
         <Paragraph>
-          This option will set the value{' '}
-          <strong>{String(optionTwo.value)}</strong> when selected.
+          {intl.formatMessage(messages.thisOptionWillSetTheValue, {
+            value1: String(optionTwo.value),
+            strong: (chunks) => <strong>{chunks}</strong>,
+          })}
         </Paragraph>
         <UnconnectedField
           name="options[1].label"
           component={RichText}
-          label="Label"
+          label={intl.formatMessage(messages.label)}
           value={optionTwo.label}
           onChange={(label) => updateOption(1, { label: label ?? '' })}
           disallowedTypes={['history', 'quote']}
@@ -156,7 +231,7 @@ function BooleanChoiceOptionsField({
         <UnconnectedField
           name="options[1].negative"
           component={ToggleField}
-          label="Style Option Two as negative"
+          label={intl.formatMessage(messages.styleOptionTwoAsNegative)}
           inline
           value={!!optionTwo.negative}
           onChange={(negative) => updateOption(1, { negative: !!negative })}
@@ -185,6 +260,7 @@ type BooleanChoiceProps = {
  * (destructively-styled) choice.
  */
 const BooleanChoice = ({ initialValue }: BooleanChoiceProps) => {
+  const intl = useAppIntl();
   // `initialValue` is a register-effect dependency (`useField`'s registration
   // effect), so the normalized value must hold a stable reference across
   // renders whenever the input is unchanged — recomputing a fresh array
@@ -201,23 +277,24 @@ const BooleanChoice = ({ initialValue }: BooleanChoiceProps) => {
     <ArchitectField
       name="options"
       component={BooleanChoiceOptionsField}
-      label="Answer options"
+      label={intl.formatMessage(messages.answerOptions)}
       hint={
         <>
           <Paragraph>
-            The BooleanChoice input component allows you to specify rich text
-            labels for the two choices that your participant sees. Create a
-            label for the first option, representing the value true, and the
-            second option, representing the value false, below.
+            {intl.formatMessage(
+              messages.theBooleanChoiceInputComponentAllowsYou,
+            )}
           </Paragraph>
           <Paragraph>
-            Each value can also be styled to indicate that it is negative. When
-            enabled, this will make the option red when selected.
+            {intl.formatMessage(messages.eachValueCanAlsoBeStyled)}
           </Paragraph>
         </>
       }
       initialValue={normalizedInitialValue}
-      validation={{ bothOptionLabelsRequired }}
+      validation={{
+        bothOptionLabelsRequired: (value: unknown) =>
+          bothOptionLabelsRequired(value, intl),
+      }}
     />
   );
 };

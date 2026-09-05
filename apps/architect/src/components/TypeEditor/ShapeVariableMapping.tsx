@@ -1,6 +1,8 @@
 import { Trash2 } from 'lucide-react';
 import { createContext, useContext, useEffect, useState } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
@@ -29,6 +31,125 @@ import type {
 } from './shapeMappingTypes';
 import { ShapePickerControl, SHAPES } from './ShapePicker';
 import { SHAPE_MAPPING_FIELD } from './validateEntityType';
+const additionalMessages = defineMessages({
+  addThreshold: {
+    id: 'architect.additional.typeEditor.shapeVariableMapping.addThreshold',
+    defaultMessage: 'Add threshold',
+    description:
+      'The addButtonLabel text in components / TypeEditor / ShapeVariableMapping.',
+  },
+  noThresholdsYetEveryValue: {
+    id: 'architect.additional.typeEditor.shapeVariableMapping.noThresholdsYetEveryValue',
+    defaultMessage: 'No thresholds yet — every value uses the default shape.',
+    description:
+      'The emptyStateMessage text in components / TypeEditor / ShapeVariableMapping.',
+  },
+});
+const messages = defineMessages({
+  thresholdValue: {
+    id: 'architect.typeEditor.shapeVariableMapping.thresholdValue',
+    defaultMessage: 'Threshold {value1} value',
+    description:
+      'The aria-label text in components / TypeEditor / ShapeVariableMapping.',
+  },
+  shapeAtThreshold: {
+    id: 'architect.typeEditor.shapeVariableMapping.shapeAtThreshold',
+    defaultMessage: 'Shape at threshold {value}',
+    description:
+      'The aria-label text in components / TypeEditor / ShapeVariableMapping.',
+  },
+  removeThreshold: {
+    id: 'architect.typeEditor.shapeVariableMapping.removeThreshold',
+    defaultMessage: 'Remove threshold {value1}',
+    description:
+      'The aria-label text in components / TypeEditor / ShapeVariableMapping.',
+  },
+  true: {
+    id: 'architect.typeEditor.shapeVariableMapping.true',
+    defaultMessage: 'True',
+    description:
+      'The label text in components / TypeEditor / ShapeVariableMapping.',
+  },
+  false: {
+    id: 'architect.typeEditor.shapeVariableMapping.false',
+    defaultMessage: 'False',
+    description:
+      'The label text in components / TypeEditor / ShapeVariableMapping.',
+  },
+  attribute: {
+    id: 'architect.typeEditor.shapeVariableMapping.attribute',
+    defaultMessage: 'Attribute',
+    description:
+      'The label text in components / TypeEditor / ShapeVariableMapping.',
+  },
+  shapeForEachValue: {
+    id: 'architect.typeEditor.shapeVariableMapping.shapeForEachValue',
+    defaultMessage: 'Shape for each value',
+    description:
+      'Visible text in components / TypeEditor / ShapeVariableMapping.',
+  },
+  shapeFor: {
+    id: 'architect.typeEditor.shapeVariableMapping.shapeFor',
+    defaultMessage: 'Shape for {value1}',
+    description:
+      'The aria-label text in components / TypeEditor / ShapeVariableMapping.',
+  },
+  someValuesAreUnmappedAndWill: {
+    id: 'architect.typeEditor.shapeVariableMapping.someValuesAreUnmappedAndWill',
+    defaultMessage: 'Some values are unmapped and will use the default shape.',
+    description:
+      'Visible text in components / TypeEditor / ShapeVariableMapping.',
+  },
+  thresholds: {
+    id: 'architect.typeEditor.shapeVariableMapping.thresholds',
+    defaultMessage: 'Thresholds',
+    description:
+      'Visible text in components / TypeEditor / ShapeVariableMapping.',
+  },
+  belowFirstThreshold: {
+    id: 'architect.typeEditor.shapeVariableMapping.belowFirstThreshold',
+    defaultMessage: 'Below first threshold',
+    description:
+      'Visible text in components / TypeEditor / ShapeVariableMapping.',
+  },
+  defaultShape: {
+    id: 'architect.typeEditor.shapeVariableMapping.defaultShape',
+    defaultMessage: 'Default shape',
+    description:
+      'The aria-label text in components / TypeEditor / ShapeVariableMapping.',
+  },
+  usesDefaultShape: {
+    id: 'architect.typeEditor.shapeVariableMapping.usesDefaultShape',
+    defaultMessage: 'uses default shape',
+    description:
+      'Visible text in components / TypeEditor / ShapeVariableMapping.',
+  },
+  belowFirstThresholdCannotBeRemoved: {
+    id: 'architect.typeEditor.shapeVariableMapping.belowFirstThresholdCannotBeRemoved',
+    defaultMessage: 'Below first threshold cannot be removed',
+    description:
+      'The aria-label text in components / TypeEditor / ShapeVariableMapping.',
+  },
+  mapAttributeToShape: {
+    id: 'architect.typeEditor.shapeVariableMapping.mapAttributeToShape',
+    defaultMessage: 'Map attribute to shape',
+    description:
+      'Visible text in components / TypeEditor / ShapeVariableMapping.',
+  },
+  overrideTheDefaultShapeBasedOn: {
+    id: 'architect.typeEditor.shapeVariableMapping.overrideTheDefaultShapeBasedOn',
+    defaultMessage:
+      "Override the default shape based on the value of a node's attribute.",
+    description:
+      'Visible text in components / TypeEditor / ShapeVariableMapping.',
+  },
+  shapeMapping: {
+    id: 'architect.typeEditor.shapeVariableMapping.shapeMapping',
+    defaultMessage: 'Shape mapping',
+    description:
+      'The label text in components / TypeEditor / ShapeVariableMapping.',
+  },
+});
 
 const DISCRETE_TYPES = new Set<VariableType>([
   'categorical',
@@ -111,6 +232,7 @@ const ThresholdItem = ({
   onUpdate,
   onDelete,
 }: ArrayFieldItemProps<ShapeThreshold>) => {
+  const intl = useAppIntl();
   const { config, nodeColor } = useContext(ThresholdItemContext);
   const value = item.value ?? 0;
   const shape = item.shape;
@@ -124,6 +246,8 @@ const ThresholdItem = ({
 
   return (
     <>
+      {/* Mathematical comparison symbol, independent of locale. */}
+      {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx */}
       <span className="text-xl text-current/70">≥</span>
       <InputField
         type="number"
@@ -131,7 +255,9 @@ const ThresholdItem = ({
         min={config.min}
         max={config.max}
         size="sm"
-        aria-label={`Threshold ${index + 1} value`}
+        aria-label={intl.formatMessage(messages.thresholdValue, {
+          value1: index + 1,
+        })}
         className="w-36"
         value={draft}
         onChange={(nextValue) => setDraft(nextValue ?? '')}
@@ -139,11 +265,15 @@ const ThresholdItem = ({
           onUpdate?.({ value: parseThresholdValue(draft) ?? value, shape })
         }
       />
+      {/* Mathematical mapping symbol, independent of locale. */}
+      {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx */}
       <span className="text-xl text-current/70">→</span>
       <ShapePickerControl
         small
         nodeColor={nodeColor}
-        aria-label={`Shape at threshold ${value}`}
+        aria-label={intl.formatMessage(messages.shapeAtThreshold, {
+          value: value,
+        })}
         value={shape}
         onChange={(nextShape) =>
           onUpdate?.({
@@ -159,7 +289,9 @@ const ThresholdItem = ({
         variant="text"
         className="ml-auto"
         onClick={onDelete}
-        aria-label={`Remove threshold ${index + 1}`}
+        aria-label={intl.formatMessage(messages.removeThreshold, {
+          value1: index + 1,
+        })}
       />
     </>
   );
@@ -188,6 +320,7 @@ const ShapeMappingEditor = ({
   nodeColor,
   defaultShape,
 }: ShapeMappingEditorProps) => {
+  const intl = useAppIntl();
   const dynamic = (value ?? EMPTY_MAPPING) as ShapeMappingDraft;
 
   const variableOptions = Object.entries(variables ?? {})
@@ -262,8 +395,8 @@ const ShapeMappingEditor = ({
     if (selectedVar.type === 'boolean') {
       return (
         selectedVar.options ?? [
-          { label: 'True', value: true },
-          { label: 'False', value: false },
+          { label: intl.formatMessage(messages.true), value: true },
+          { label: intl.formatMessage(messages.false), value: false },
         ]
       );
     }
@@ -281,7 +414,7 @@ const ShapeMappingEditor = ({
     <div className="flex flex-col">
       <UnconnectedField
         name={`${SHAPE_MAPPING_FIELD}.variable`}
-        label="Attribute"
+        label={intl.formatMessage(messages.attribute)}
         component={VariablePickerControl}
         value={selectedVarId}
         onChange={handleVariableChange}
@@ -296,7 +429,7 @@ const ShapeMappingEditor = ({
             margin="none"
             className="mb-1 block text-sm font-semibold text-current/70"
           >
-            Shape for each value
+            {intl.formatMessage(messages.shapeForEachValue)}
           </Heading>
           {getDiscreteOptions().map((option) => (
             <div key={String(option.value)} className={ITEM_ROW_CLASSES}>
@@ -304,7 +437,9 @@ const ShapeMappingEditor = ({
               <ShapePickerControl
                 small
                 nodeColor={nodeColor}
-                aria-label={`Shape for ${option.label}`}
+                aria-label={intl.formatMessage(messages.shapeFor, {
+                  value1: option.label,
+                })}
                 value={getShapeForValue(option.value)}
                 onChange={(shape) => {
                   if (shape) handleDiscreteShapeChange(option.value, shape);
@@ -314,7 +449,7 @@ const ShapeMappingEditor = ({
           ))}
           {getDiscreteOptions().some((opt) => !getShapeForValue(opt.value)) && (
             <Paragraph className="text-warning mt-1 text-xs">
-              Some values are unmapped and will use the default shape.
+              {intl.formatMessage(messages.someValuesAreUnmappedAndWill)}
             </Paragraph>
           )}
         </div>
@@ -323,7 +458,7 @@ const ShapeMappingEditor = ({
       {selectedVar && dynamic.type === 'breakpoints' && (
         <div className="flex flex-col gap-3">
           <Heading level="h4" margin="none" className="mb-1 block text-sm">
-            Thresholds
+            {intl.formatMessage(messages.thresholds)}
           </Heading>
           <Surface
             noContainer
@@ -332,7 +467,11 @@ const ShapeMappingEditor = ({
             className={`${ITEM_ROW_CLASSES} pointer-events-none select-none`}
             style={{ borderRadius: 14 }}
           >
-            <span className="text-sm">Below first threshold</span>
+            <span className="text-sm">
+              {intl.formatMessage(messages.belowFirstThreshold)}
+            </span>
+            {/* Mathematical mapping symbol, independent of locale. */}
+            {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx */}
             <span className="text-xl text-current/70">→</span>
             <ShapePickerControl
               small
@@ -340,10 +479,10 @@ const ShapeMappingEditor = ({
               readOnly
               nodeColor={nodeColor}
               value={defaultShape}
-              aria-label="Default shape"
+              aria-label={intl.formatMessage(messages.defaultShape)}
             />
             <span className="ml-auto text-xs text-current/70">
-              uses default shape
+              {intl.formatMessage(messages.usesDefaultShape)}
             </span>
             <IconButton
               icon={<Trash2 />}
@@ -351,14 +490,16 @@ const ShapeMappingEditor = ({
               color="destructive"
               variant="text"
               disabled
-              aria-label="Below first threshold cannot be removed"
+              aria-label={intl.formatMessage(
+                messages.belowFirstThresholdCannotBeRemoved,
+              )}
             />
           </Surface>
           <ThresholdItemContext.Provider
             value={{ config: thresholdConfig, nodeColor }}
           >
             <ArrayField<ShapeThreshold>
-              aria-label="Thresholds"
+              aria-label={intl.formatMessage(messages.thresholds)}
               className="w-full gap-3 border-0 bg-transparent p-0"
               sortable={false}
               immediateAdd
@@ -371,8 +512,12 @@ const ShapeMappingEditor = ({
                 value: getNextThresholdValue(),
                 shape: 'square',
               })}
-              addButtonLabel="Add threshold"
-              emptyStateMessage="No thresholds yet — every value uses the default shape."
+              addButtonLabel={intl.formatMessage(
+                additionalMessages.addThreshold,
+              )}
+              emptyStateMessage={intl.formatMessage(
+                additionalMessages.noThresholdsYetEveryValue,
+              )}
               itemClasses={ITEM_ROW_CLASSES}
             />
           </ThresholdItemContext.Provider>
@@ -407,6 +552,7 @@ const ShapeVariableMapping = ({
   nodeColor,
   defaultShape,
 }: ShapeVariableMappingProps) => {
+  const intl = useAppIntl();
   const setFieldValue = useFormStore((state) => state.setFieldValue);
   const [enabled, setEnabled] = useState(Boolean(initialMapping));
 
@@ -431,16 +577,15 @@ const ShapeVariableMapping = ({
     <div className="mb-8">
       <div className="py-2.5">
         <div className="flex items-center justify-between font-semibold">
-          <span>Map attribute to shape</span>
+          <span>{intl.formatMessage(messages.mapAttributeToShape)}</span>
           <ToggleField
-            aria-label="Map attribute to shape"
+            aria-label={intl.formatMessage(messages.mapAttributeToShape)}
             value={enabled}
             onChange={handleToggle}
           />
         </div>
         <Paragraph className="mt-1 text-sm text-current/70">
-          Override the default shape based on the value of a node&apos;s
-          attribute.
+          {intl.formatMessage(messages.overrideTheDefaultShapeBasedOn)}
         </Paragraph>
       </div>
 
@@ -448,7 +593,7 @@ const ShapeVariableMapping = ({
         <div className="mt-5">
           <ArchitectField
             name={SHAPE_MAPPING_FIELD}
-            label="Shape mapping"
+            label={intl.formatMessage(messages.shapeMapping)}
             labelHidden
             component={ShapeMappingEditor}
             initialValue={initialMapping ?? EMPTY_MAPPING}
