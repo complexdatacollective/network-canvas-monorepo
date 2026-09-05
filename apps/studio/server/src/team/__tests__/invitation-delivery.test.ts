@@ -11,6 +11,7 @@ import {
   reachableDb,
 } from '../../__tests__/support/postgres.ts';
 import type { InvitationMailer } from '../../auth/email.ts';
+import type { OutboxLifecycleEvent } from '../../outbox/instrumentation.ts';
 import { cancelTeamInvitation } from '../commands.ts';
 import {
   InvitationDeliveryDispatcher,
@@ -642,5 +643,74 @@ describe.skipIf(!db)('invitation delivery outbox', () => {
         ],
       ),
     ).rejects.toMatchObject({ code: '23503' });
+  });
+
+  it('reports persisted invitation outcomes without exposing delivery contents', async () => {
+    const invitation = await seedInvitation(scratch, {
+      email: 'private-invitation-recipient@example.com',
+    });
+    await enqueue(scratch, invitation);
+    // Other cases intentionally leave reclaimable rows behind. Give this
+    // invitation the earliest ready time so this assertion observes its send.
+    await scratch.maintenance.query(
+      `UPDATE team_invitation_deliveries SET available_at = '2000-01-01'
+       WHERE invitation_id = $1`,
+      [invitation.invitationId],
+    );
+    const providerError = new Error('private-provider-response');
+    const sendTeamInvitation = vi
+      .fn<InvitationMailer['sendTeamInvitation']>()
+      .mockRejectedValue(providerError);
+    const events: OutboxLifecycleEvent[] = [];
+
+    await expect(
+      dispatcher(
+        scratch.maintenance,
+        { sendTeamInvitation },
+        {
+          retryBaseMs: 60_000,
+          retryMaxMs: 60_000,
+          observer: (event) => {
+            events.push(event);
+          },
+        },
+      ).runOnce(),
+    ).resolves.toEqual({ claimed: 1, sent: 0, failed: 1, suppressed: 0 });
+
+    expect(sendTeamInvitation).toHaveBeenCalledOnce();
+    expect(sendTeamInvitation).toHaveBeenCalledWith(
+      expect.objectContaining({ email: invitation.email }),
+    );
+    expect(events).toEqual([
+      {
+        queue: 'team_invitation_deliveries',
+        kind: 'dispatch',
+        durationMs: expect.any(Number),
+        claimed: 1,
+        completed: 0,
+        retried: 1,
+        failed: 0,
+        suppressed: 0,
+        uncertain: 0,
+        leaseLost: 0,
+      },
+    ]);
+    const stored = await scratch.pool.query<{
+      attempt_count: number;
+      delayed: boolean;
+      failed_at: Date | null;
+      lease_owner: string | null;
+    }>(
+      `SELECT attempt_count, available_at > clock_timestamp() AS delayed,
+              failed_at, lease_owner
+       FROM team_invitation_deliveries WHERE invitation_id = $1`,
+      [invitation.invitationId],
+    );
+    expect(stored.rows).toEqual([
+      { attempt_count: 1, delayed: true, failed_at: null, lease_owner: null },
+    ]);
+    expect(JSON.stringify(events)).not.toContain(invitation.email);
+    expect(JSON.stringify(events)).not.toContain(invitation.invitationId);
+    expect(JSON.stringify(events)).not.toContain(providerError.message);
   });
 });
