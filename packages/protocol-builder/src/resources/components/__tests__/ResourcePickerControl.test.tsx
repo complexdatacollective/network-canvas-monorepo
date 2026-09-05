@@ -20,6 +20,9 @@ const ROSTER = JSON.stringify({
   edges: [{ from: 0, to: 1 }],
 });
 
+/** The same roster as a spreadsheet export: one node per row, no edges. */
+const CSV_ROSTER = 'name,age\nAda,36\nGrace,41\n';
+
 const imageSeed: InMemoryResourceSeed = {
   kind: 'image',
   id: 'image-1',
@@ -236,6 +239,41 @@ describe('ResourcePickerControl', () => {
     // `inspect` rather than from anything the editor parsed itself.
     expect(await screen.findByText('Nodes')).toBeVisible();
     expect(await screen.findByText('age, name')).toBeVisible();
+  });
+
+  it('summarises an imported CSV roster, which is how most rosters arrive', async () => {
+    const user = userEvent.setup();
+    const gateway = new InMemoryResourceGateway();
+    const { fieldValue } = renderResourceEditor({
+      gateway,
+      children: (
+        <ProtocolField
+          component={ResourcePickerControl}
+          name="dataSource"
+          label="Roster"
+          kind="network"
+        />
+      ),
+    });
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Select a data file' }),
+    );
+    await user.upload(
+      await screen.findByLabelText('Choose a file from your computer'),
+      new File([CSV_ROSTER], 'community.csv', { type: 'text/csv' }),
+    );
+
+    await waitFor(() =>
+      expect(fieldValue('dataSource')).toBe('staged-resource-1'),
+    );
+    // One node per row, its columns the attributes — the same summary a JSON
+    // roster gets, rather than the "not a readable network" a researcher used
+    // to be shown for an ordinary spreadsheet export.
+    expect(await screen.findByText('age, name')).toBeVisible();
+    const nodes = await screen.findByText('Nodes');
+    expect(nodes.nextElementSibling).toHaveTextContent('2');
+    expect(screen.getByText('Edges').nextElementSibling).toHaveTextContent('0');
   });
 
   it('uses the interview network without asking the host for a resource', async () => {

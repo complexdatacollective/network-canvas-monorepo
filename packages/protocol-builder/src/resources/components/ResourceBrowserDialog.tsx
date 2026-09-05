@@ -3,7 +3,7 @@ import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import Section from '@codaco/fresco-ui/Section';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
-import type { ResourceDescriptor, StagedSecret } from '../gateway.ts';
+import type { ResourceDescriptor } from '../gateway.ts';
 import ResourceFailureNotice from './ResourceFailureNotice.tsx';
 import {
   browsableKinds,
@@ -23,12 +23,6 @@ export type ResourceBrowserDialogProps = Readonly<{
   /** The resource the field currently holds, marked as the current one. */
   selectedId?: string;
   onSelect: (descriptor: ResourceDescriptor) => void;
-  /**
-   * The opaque handle for a secret staged here. The editing session needs it
-   * to promote the secret at finish; it is not the secret, and it is
-   * deliberately not the field's value.
-   */
-  onSecretStaged?: (secret: StagedSecret) => void;
   onClose: () => void;
   disabled?: boolean;
 }>;
@@ -47,7 +41,6 @@ export default function ResourceBrowserDialog({
   kind,
   selectedId,
   onSelect,
-  onSecretStaged,
   onClose,
   disabled = false,
 }: ResourceBrowserDialogProps) {
@@ -73,7 +66,6 @@ export default function ResourceBrowserDialog({
           kind={kind}
           {...(selectedId === undefined ? {} : { selectedId })}
           onSelect={onSelect}
-          {...(onSecretStaged === undefined ? {} : { onSecretStaged })}
           disabled={disabled}
         />
       )}
@@ -85,7 +77,6 @@ type ResourceBrowserBodyProps = Readonly<{
   kind: ResourcePickerKind;
   selectedId?: string;
   onSelect: (descriptor: ResourceDescriptor) => void;
-  onSecretStaged?: (secret: StagedSecret) => void;
   disabled: boolean;
 }>;
 
@@ -93,25 +84,16 @@ function ResourceBrowserBody({
   kind,
   selectedId,
   onSelect,
-  onSecretStaged,
   disabled,
 }: ResourceBrowserBodyProps) {
   const copy = RESOURCE_PICKER_COPY[kind];
   const library = useResourceLibrary(browsableKinds(kind));
 
-  const handleSecretStaged = (secret: StagedSecret) => {
-    onSecretStaged?.(secret);
-    onSelect(secret.descriptor);
-  };
-
   return (
     <div className="flex flex-col gap-6">
       <Section title={copy.importTitle}>
         {kind === 'apikey' ? (
-          <ResourceSecretControl
-            onStaged={handleSecretStaged}
-            disabled={disabled}
-          />
+          <ResourceSecretControl onStaged={onSelect} disabled={disabled} />
         ) : (
           <ResourceUploadControl
             kind={kind}

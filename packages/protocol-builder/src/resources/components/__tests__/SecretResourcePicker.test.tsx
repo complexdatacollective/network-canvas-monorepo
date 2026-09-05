@@ -3,7 +3,6 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import ProtocolField from '../../../form/ProtocolField.tsx';
-import type { StagedSecret } from '../../gateway.ts';
 import { InMemoryResourceGateway } from '../../InMemoryResourceGateway.ts';
 import ResourcePickerControl from '../ResourcePickerControl.tsx';
 import { renderResourceEditor } from './renderResourceEditor.tsx';
@@ -27,8 +26,7 @@ describe('the secret resource picker', () => {
   it('stores the staged id and never the key itself', async () => {
     const user = userEvent.setup();
     const gateway = new InMemoryResourceGateway();
-    const staged: StagedSecret[] = [];
-    const { fieldValue, formValues } = renderResourceEditor({
+    const { fieldValue, formValues, session } = renderResourceEditor({
       gateway,
       children: (
         <ProtocolField
@@ -36,7 +34,6 @@ describe('the secret resource picker', () => {
           name="apiKey"
           label="Map provider API key"
           kind="apikey"
-          onSecretStaged={(secret) => staged.push(secret)}
         />
       ),
     });
@@ -56,12 +53,17 @@ describe('the secret resource picker', () => {
     expect(document.body.innerHTML).not.toContain(SECRET);
     expect(inputValues()).not.toContain(SECRET);
 
-    // The field holds the asset id. The handle reaches the session that will
-    // promote the secret, and is neither the value nor derived from it.
+    // The field holds the asset id, and the session is what knows the key was
+    // staged — the control reports nothing about it beyond what is on screen.
     expect(fieldValue('apiKey')).toBe('staged-resource-1');
-    expect(staged).toHaveLength(1);
-    expect(staged[0]?.handle).not.toContain(SECRET);
-    expect(staged[0]?.descriptor.id).toBe('staged-resource-1');
+    expect(session.getSnapshot().stagedResources).toEqual([
+      {
+        id: 'staged-resource-1',
+        kind: 'apikey',
+        name: 'Mapbox key',
+        status: 'staged',
+      },
+    ]);
   });
 
   it('shows the key by the name it was given, and offers no download', async () => {

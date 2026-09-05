@@ -2720,6 +2720,9 @@ importers:
       '@codaco/studio-sync':
         specifier: workspace:^
         version: link:../studio-sync
+      csvtojson:
+        specifier: 'catalog:'
+        version: 2.0.14
       es-toolkit:
         specifier: 'catalog:'
         version: 1.50.0

@@ -62,6 +62,10 @@ const STAGED_IMAGE_BYTES = Uint8Array.from([1, 2, 3, 4, 5, 6, 7, 8]);
 const STAGED_ROSTER_BYTES = new TextEncoder().encode(
   JSON.stringify({ nodes: [{ attributes: { name: 'Ada' } }], edges: [] }),
 );
+/** A roster as researchers most often have one: a spreadsheet export. */
+const STAGED_CSV_ROSTER_BYTES = new TextEncoder().encode(
+  'name,role\nAda,engineer\nGrace,mathematician\n',
+);
 /** Distinctive so a leak anywhere in a serialized surface is unambiguous. */
 const SECRET_VALUE = 'pk.contract-secret-must-never-appear';
 
@@ -111,6 +115,20 @@ export function describeResourceGatewayContract(
           source: 'staged-roster.json',
           contentType: 'application/json',
           bytes: STAGED_ROSTER_BYTES,
+        }),
+      );
+
+    const stageCsvRoster = async (
+      requestId = 'request-csv-roster',
+    ): Promise<ResourceDescriptor> =>
+      expectOk(
+        await gateway().stageUpload({
+          requestId,
+          kind: 'network',
+          name: 'Staged CSV roster',
+          source: 'staged-roster.csv',
+          contentType: 'text/csv',
+          bytes: STAGED_CSV_ROSTER_BYTES,
         }),
       );
 
@@ -238,6 +256,21 @@ export function describeResourceGatewayContract(
       );
       expect(failure.reason).toBe('not-found');
       expect(failure.retryable).toBe(false);
+    });
+
+    it('reads a CSV roster as one node per row, with its columns as attributes', async () => {
+      const roster = await stageCsvRoster();
+
+      const inspection = expectOk(await gateway().inspect(roster.id));
+
+      // A CSV roster is as ordinary as a JSON one — it is what a spreadsheet
+      // exports — so an adapter that cannot read one leaves the researcher
+      // choosing between rosters it can tell them nothing about.
+      expect(inspection.counts).toEqual({ nodes: 2, edges: 0 });
+      expect([...(inspection.variableNames ?? [])].toSorted()).toEqual([
+        'name',
+        'role',
+      ]);
     });
 
     it('downloads the exact bytes of committed and staged content', async () => {

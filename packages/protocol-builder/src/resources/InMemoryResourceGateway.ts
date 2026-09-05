@@ -1,3 +1,5 @@
+import csv from 'csvtojson';
+
 import type { Asset } from '@codaco/protocol-validation';
 import type { Command } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
@@ -378,38 +380,32 @@ export class InMemoryResourceGateway implements ProtocolBuilderResourceGateway {
     );
   }
 
-  inspect(resourceId: string): Promise<ResourceResult<ResourceInspection>> {
+  async inspect(
+    resourceId: string,
+  ): Promise<ResourceResult<ResourceInspection>> {
     const injected = this.takeInjectedFailure('inspect');
-    if (injected !== undefined) return Promise.resolve(injected);
+    if (injected !== undefined) return injected;
 
     const found = this.find(resourceId);
-    if (found === undefined) {
-      return Promise.resolve(notFoundFailure(resourceId));
-    }
+    if (found === undefined) return notFoundFailure(resourceId);
     if (found.descriptor.kind !== 'network' || found.content === undefined) {
-      return Promise.resolve(
-        resourceOk(Object.freeze({ descriptor: found.descriptor })),
-      );
+      return resourceOk(Object.freeze({ descriptor: found.descriptor }));
     }
 
-    const network = parseNetwork(found.content.bytes);
+    const network = await parseRoster(found.descriptor, found.content);
     if (network === undefined) {
-      return Promise.resolve(
-        resourceFailure(
-          'invalid-content',
-          'the selected file is not a readable network',
-          { resourceId },
-        ),
+      return resourceFailure(
+        'invalid-content',
+        'the selected file is not a readable network',
+        { resourceId },
       );
     }
-    return Promise.resolve(
-      resourceOk(
-        Object.freeze({
-          descriptor: found.descriptor,
-          counts: network.counts,
-          variableNames: network.variableNames,
-        }),
-      ),
+    return resourceOk(
+      Object.freeze({
+        descriptor: found.descriptor,
+        counts: network.counts,
+        variableNames: network.variableNames,
+      }),
     );
   }
 
@@ -748,38 +744,119 @@ function manifestEntryFor(staged: StagedEntry): unknown {
   };
 }
 
-function parseNetwork(bytes: Uint8Array):
-  | Readonly<{
-      counts: Readonly<{ nodes: number; edges: number }>;
-      variableNames: readonly string[];
-    }>
-  | undefined {
-  let parsed: unknown;
+type RosterFacts = Readonly<{
+  counts: Readonly<{ nodes: number; edges: number }>;
+  variableNames: readonly string[];
+}>;
+
+/**
+ * The facts a researcher picks a roster on, read from the file the same way
+ * Architect reads it: which format the resource is in is decided by its
+ * filename, exactly as Architect's own `networkReader` switches on the
+ * extension, and the media type answers only for a resource whose name says
+ * nothing.
+ */
+function parseRoster(
+  descriptor: ResourceDescriptor,
+  content: StoredContent,
+): Promise<RosterFacts | undefined> {
+  const text = new TextDecoder().decode(content.bytes);
+  return isCsvRoster(descriptor, content)
+    ? parseCsvRoster(text)
+    : Promise.resolve(parseJsonRoster(text));
+}
+
+function isCsvRoster(
+  descriptor: ResourceDescriptor,
+  content: StoredContent,
+): boolean {
+  const source = descriptor.source?.toLowerCase() ?? '';
+  if (source.endsWith('.csv')) return true;
+  if (source.endsWith('.json')) return false;
+  return content.contentType.split(';')[0]?.trim().toLowerCase() === 'text/csv';
+}
+
+/**
+ * A CSV roster is one node per row, its columns that node's attributes, and no
+ * edges — Architect's own reading of the same file, through the same parser.
+ * `checkColumn` comes with it: a row carrying more or fewer values than the
+ * header names is content the researcher has to fix, not a row to silently
+ * keep half of.
+ */
+async function parseCsvRoster(text: string): Promise<RosterFacts | undefined> {
+  const converter = csv({ checkColumn: true });
+  // A mismatched row is reported as an event and the row is dropped: the parse
+  // still settles, with a roster quietly shorter than the file. Listening is
+  // also what keeps the failure from surfacing as an unhandled stream error.
+  let malformed = false;
+  converter.on('error', () => {
+    malformed = true;
+  });
+
+  let rows: unknown;
   try {
-    parsed = JSON.parse(new TextDecoder().decode(bytes));
+    rows = await converter.fromString(text);
   } catch {
     return undefined;
   }
-  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+  if (malformed || !Array.isArray(rows)) return undefined;
+  const parsedRows: readonly unknown[] = rows;
+  const attributes = parsedRows.filter(isAttributeRecord);
+  if (attributes.length !== parsedRows.length) return undefined;
+
+  return Object.freeze({
+    counts: Object.freeze({ nodes: attributes.length, edges: 0 }),
+    variableNames: attributeNames(attributes),
+  });
+}
+
+function parseJsonRoster(text: string): RosterFacts | undefined {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
     return undefined;
   }
-  const record: Record<string, unknown> = { ...parsed };
-  const nodes = Array.isArray(record.nodes) ? record.nodes : undefined;
-  const edges = Array.isArray(record.edges) ? record.edges : [];
+  if (!isAttributeRecord(parsed)) return undefined;
+  const nodes: readonly unknown[] | undefined = Array.isArray(parsed.nodes)
+    ? parsed.nodes
+    : undefined;
+  const edges: readonly unknown[] = Array.isArray(parsed.edges)
+    ? parsed.edges
+    : [];
   if (nodes === undefined) return undefined;
-
-  const variableNames = new Set<string>();
-  for (const node of nodes) {
-    if (typeof node !== 'object' || node === null) continue;
-    const attributes: unknown = { ...node }.attributes;
-    if (typeof attributes !== 'object' || attributes === null) continue;
-    for (const name of Object.keys(attributes)) variableNames.add(name);
-  }
 
   return Object.freeze({
     counts: Object.freeze({ nodes: nodes.length, edges: edges.length }),
-    variableNames: Object.freeze([...variableNames].toSorted()),
+    variableNames: attributeNames(
+      nodes.flatMap((node) => {
+        if (!isAttributeRecord(node)) return [];
+        const attributes: unknown = node.attributes;
+        return isAttributeRecord(attributes) ? [attributes] : [];
+      }),
+    ),
   });
+}
+
+/**
+ * Sorted rather than in the order the file happens to list them, because this
+ * is what a summary shows a researcher comparing two similarly named rosters,
+ * and a row that names its columns in a different order is the same roster.
+ */
+function attributeNames(
+  attributes: readonly Readonly<Record<string, unknown>>[],
+): readonly string[] {
+  const names = new Set<string>();
+  for (const record of attributes) {
+    for (const name of Object.keys(record)) names.add(name);
+  }
+  return Object.freeze([...names].toSorted());
+}
+
+function isAttributeRecord(
+  value: unknown,
+): value is Readonly<Record<string, unknown>> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function notFoundFailure<T>(resourceId: string): ResourceResult<T> {

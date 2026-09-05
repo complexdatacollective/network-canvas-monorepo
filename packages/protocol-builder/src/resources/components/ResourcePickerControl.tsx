@@ -6,7 +6,7 @@ import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import { useResourceGateway } from '../context.tsx';
-import type { ResourceDescriptor, StagedSecret } from '../gateway.ts';
+import type { ResourceDescriptor } from '../gateway.ts';
 import { downloadResourceContent } from './downloadResourceContent.ts';
 import ResourceBrowserDialog from './ResourceBrowserDialog.tsx';
 import ResourceFailureNotice from './ResourceFailureNotice.tsx';
@@ -38,12 +38,6 @@ export type ResourcePickerControlProps = CreateFormFieldProps<
      * file, as Architect's roster fields do. Only meaningful for `network`.
      */
     canUseExisting?: boolean;
-    /**
-     * Receives the opaque handle for a secret staged from this field, so the
-     * editing session can promote it when the stage is finished. The handle is
-     * never the field's value and never reaches the stage draft.
-     */
-    onSecretStaged?: (secret: StagedSecret) => void;
   }
 >;
 
@@ -66,7 +60,6 @@ export default function ResourcePickerControl({
   onFocus,
   kind,
   canUseExisting = false,
-  onSecretStaged,
   disabled = false,
   readOnly = false,
   className,
@@ -280,7 +273,6 @@ export default function ResourcePickerControl({
         kind={kind}
         {...(selectedId === undefined ? {} : { selectedId })}
         onSelect={handleSelect}
-        {...(onSecretStaged === undefined ? {} : { onSecretStaged })}
         onClose={() => setBrowserOpen(false)}
         disabled={locked}
       />

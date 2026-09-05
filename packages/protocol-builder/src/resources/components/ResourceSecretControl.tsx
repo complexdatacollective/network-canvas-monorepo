@@ -6,7 +6,7 @@ import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 
 import { useResourceGateway } from '../context.tsx';
-import type { StagedSecret } from '../gateway.ts';
+import type { ResourceDescriptor } from '../gateway.ts';
 import ResourceFailureNotice from './ResourceFailureNotice.tsx';
 import { useResourceAttempt } from './useResourceAttempt.ts';
 
@@ -14,7 +14,12 @@ const NAME_REQUIRED_MESSAGE = 'Enter a name for this key.';
 const VALUE_REQUIRED_MESSAGE = 'Enter the value of the key.';
 
 export type ResourceSecretControlProps = Readonly<{
-  onStaged: (secret: StagedSecret) => void;
+  /**
+   * The key that was added, as the field will refer to it. Only the
+   * descriptor: the handle promotion needs is the session's, captured where
+   * the secret was staged, and no surface here has any use for it.
+   */
+  onStaged: (descriptor: ResourceDescriptor) => void;
   disabled?: boolean;
 }>;
 
@@ -26,11 +31,12 @@ const asString = (value: unknown): string =>
  * holding on to it.
  *
  * The value exists in this control's own state while it is being typed and
- * nowhere else. Staging hands it to the host and clears both inputs; what
- * comes back is an asset id, which is what the field stores, and an opaque
- * handle, which is a capability for promotion rather than the secret. Nothing
- * here writes the value to the stage draft, renders it once staged, or keeps
- * it for a later call.
+ * nowhere else. Staging hands it to the host and clears both inputs; what this
+ * control keeps is the asset id, which is what the field stores. The opaque
+ * handle promotion needs never travels through the editor at all: the
+ * session's gateway captured it as the secret was staged. Nothing here writes
+ * the value to the stage draft, renders it once staged, or keeps it for a
+ * later call.
  */
 export default function ResourceSecretControl({
   onStaged,
@@ -74,7 +80,7 @@ export default function ResourceSecretControl({
         setSecret('');
         requestId.current = uuid();
         setStatus(`${staged.descriptor.name} was added.`);
-        onStaged(staged);
+        onStaged(staged.descriptor);
       },
     );
   };

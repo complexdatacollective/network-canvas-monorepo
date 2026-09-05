@@ -53,6 +53,7 @@
     "@codaco/protocol-validation": "workspace:^",
     "@codaco/shared-consts": "workspace:^",
     "@codaco/studio-sync": "workspace:^",
+    "csvtojson": "catalog:",
     "es-toolkit": "catalog:",
     "lucide-react": "catalog:",
     "remark-parse": "^11.0.0",

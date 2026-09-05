@@ -86,6 +86,72 @@ describe('InMemoryResourceGateway', () => {
     expect(inspection.variableNames).toEqual(['name', 'role']);
   });
 
+  const stageCsvRoster = async (
+    gateway: InMemoryResourceGateway,
+    csv: string,
+    source = 'roster.csv',
+  ): Promise<ResourceDescriptor> =>
+    unwrap(
+      await gateway.stageUpload({
+        requestId: `csv-${source}`,
+        kind: 'network',
+        name: 'CSV roster',
+        source,
+        contentType: 'text/csv',
+        bytes: new TextEncoder().encode(csv),
+      }),
+    );
+
+  it('reports row counts and column names when inspecting a CSV roster', async () => {
+    const gateway = createGateway();
+    const roster = await stageCsvRoster(
+      gateway,
+      'name,role\nAda,engineer\nGrace,mathematician\n',
+    );
+
+    const inspection = unwrap(await gateway.inspect(roster.id));
+
+    // One node per row and no edges, which is the whole of what a CSV roster
+    // can say — the same reading Architect gives the same file.
+    expect(inspection.counts).toEqual({ nodes: 2, edges: 0 });
+    expect(inspection.variableNames).toEqual(['name', 'role']);
+  });
+
+  it('reports a CSV roster whose rows do not match its header as invalid content', async () => {
+    const gateway = createGateway();
+    const roster = await stageCsvRoster(
+      gateway,
+      'name,role\nAda,engineer,extra\n',
+    );
+
+    const result = await gateway.inspect(roster.id);
+
+    expect(result.status === 'failed' && result.failure.reason).toBe(
+      'invalid-content',
+    );
+  });
+
+  it('reads a roster by its filename rather than by its media type', async () => {
+    const gateway = createGateway();
+    // A CSV chosen from a file picker that reported no type at all: the
+    // manifest's `source` is what says what the file is.
+    const roster = unwrap(
+      await gateway.stageUpload({
+        requestId: 'untyped-csv',
+        kind: 'network',
+        name: 'CSV roster',
+        source: 'roster.csv',
+        contentType: 'application/octet-stream',
+        bytes: new TextEncoder().encode('name,role\nAda,engineer\n'),
+      }),
+    );
+
+    expect(unwrap(await gateway.inspect(roster.id)).counts).toEqual({
+      nodes: 1,
+      edges: 0,
+    });
+  });
+
   it('reports unreadable network content as invalid content', async () => {
     const gateway = createGateway();
     const roster = await stageRoster(
