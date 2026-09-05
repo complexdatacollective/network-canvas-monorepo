@@ -23,7 +23,7 @@ import type {
 import { focusFirstError } from '@codaco/fresco-ui/form/utils/focusFirstError';
 import type { ObjectPath } from '@codaco/fresco-ui/form/utils/objectPath';
 import { cx } from '@codaco/fresco-ui/utils/cva';
-import { canonicalize } from '@codaco/studio-sync/apply';
+import { canonicalize, type Command } from '@codaco/studio-sync/apply';
 
 import type { StageEditorController } from '../controller.ts';
 import { ResourceGatewayProvider } from '../resources/context.tsx';
@@ -34,6 +34,7 @@ import {
   type StageFormDraft,
 } from '../session.ts';
 import { SectionOutlineStore } from './outlineStore.ts';
+import { reseedStageForm } from './reseedStageForm.ts';
 import SectionOutline from './SectionOutline.tsx';
 import {
   type DormantField,
@@ -74,7 +75,9 @@ export type StageEditorShellProps = Readonly<{
  * the session, and a slot where the host puts its own buttons.
  *
  * The store provider is keyed by the stage being edited because Fresco forms
- * have no reinitialise: opening a different stage is a different form.
+ * have no reinitialise: opening a different stage is a different form. It is
+ * keyed by NOTHING else — see `reseedStageForm` for what happens instead when
+ * the draft for THIS stage is replaced beneath the controls.
  */
 export default function StageEditorShell(props: StageEditorShellProps) {
   const { identity } = props.controller.snapshot.editedSection;
@@ -85,20 +88,8 @@ export default function StageEditorShell(props: StageEditorShellProps) {
   const committed = useCommittedFields(props.controller.snapshot, flushed);
 
   return (
-    // Keyed by the stage AND by which agreed draft is being edited. Fresco
-    // forms have no reinitialise, and a field that re-registers keeps the
-    // value it was holding rather than taking the new one — so a host
-    // replacing the authoritative fields for the SAME stage (a spectator
-    // being promoted to editor, a lease lost and rolled back) would leave
-    // stale values on screen, and save them over what it replaced.
-    <FormStoreProvider
-      key={`${identity.type}:${identity.id}:${committed.generation}`}
-    >
-      <StageEditorFormBody
-        {...props}
-        committedFields={committed.fields}
-        flushed={flushed}
-      />
+    <FormStoreProvider key={`${identity.type}:${identity.id}`}>
+      <StageEditorFormBody {...props} committed={committed} flushed={flushed} />
     </FormStoreProvider>
   );
 }
@@ -108,11 +99,11 @@ function StageEditorFormBody({
   actions,
   children,
   className,
-  committedFields,
+  committed,
   flushed,
 }: StageEditorShellProps &
   Readonly<{
-    committedFields: StageFormDraft;
+    committed: CommittedDraft;
     flushed: RefObject<string | null>;
   }>) {
   const storeApi = useContext(FormStoreContext);
@@ -120,6 +111,23 @@ function StageEditorFormBody({
   const outline = useMemo(() => new SectionOutlineStore(), []);
   const { snapshot, formId } = controller;
   const readOnly = snapshot.access.mode !== 'editable';
+  const committedFields = committed.fields;
+
+  /**
+   * The draft moved for a reason that is not this form's own submit, so the
+   * controls on screen are showing something that is no longer agreed. They
+   * are written to rather than rebuilt: rebuilding would discard everything
+   * typed but not yet saved and destroy any row dialog open over the editor —
+   * along with the draft inside it, and the message a save in flight was about
+   * to report. See `reseedStageForm`.
+   */
+  const reseededGeneration = useRef(committed.generation);
+  useEffect(() => {
+    if (storeApi === undefined) return;
+    if (reseededGeneration.current === committed.generation) return;
+    reseededGeneration.current = committed.generation;
+    reseedStageForm(storeApi, committed.fields);
+  }, [committed, storeApi]);
 
   const handleSubmit = useCallback<FormSubmitHandler>(
     async (values) => {
@@ -176,6 +184,36 @@ function StageEditorFormBody({
     [controller, flushed, readOnly, storeApi],
   );
 
+  /**
+   * The other way this form writes to the session: structurally, as a list
+   * editor commits one row operation, rather than as a whole-draft flush.
+   *
+   * It leaves the same marker a submit does, and for the same reason — an
+   * arrival from ELSEWHERE re-seeds the controls, and a write the form made
+   * itself is not that. Left unmarked, adding a row would write the draft back
+   * over every control on screen, discarding everything typed since and
+   * resetting the row dialog that issued the write.
+   */
+  const applyOwnCommands = useCallback(
+    (commands: readonly Command[]): StageFormDraft => {
+      if (readOnly) return controller.snapshot.editedSection.fields;
+      // An empty batch is how a list editor READS the draft the session holds
+      // right now — which is the point of asking rather than reading the
+      // snapshot it rendered against — so it must leave no marker at all. One
+      // left here would suppress the re-seed for a change that arrived from
+      // somewhere else entirely.
+      const next = controller.applyCommands(commands);
+      if (commands.length === 0) return next;
+      const content = canonicalize(next);
+      // Marked only when the draft actually moved, matching the submit's own
+      // rule: a marker for a transition that never happens stays standing, and
+      // is then spent on some later arrival at the same content.
+      if (content !== canonicalize(committedFields)) flushed.current = content;
+      return next;
+    },
+    [committedFields, controller, flushed, readOnly],
+  );
+
   const { formProps, formErrors } = useForm({
     onSubmit: handleSubmit,
     onSubmitInvalid: (errors) => {
@@ -208,12 +246,14 @@ function StageEditorFormBody({
             controller,
             storeApi,
             committedFields,
+            applyOwnCommands,
             identity: snapshot.editedSection.identity,
             protocolContext: snapshot.protocolContext,
             readOnly,
             outline,
           },
     [
+      applyOwnCommands,
       committedFields,
       controller,
       formId,
@@ -289,7 +329,7 @@ type CommittedDraft = Readonly<{
  * of reason: this form flushing its own values on submit, and everything else
  * — undo, redo, an acknowledgement, an authoritative replacement, a rollback
  * after a lost lease. Only the second kind is a surprise to the controls on
- * screen, and only it advances the generation the form store is keyed by.
+ * screen, and only it advances the generation that asks for a re-seed.
  *
  * The distinction has to be made here rather than from `pendingCommands`,
  * which cannot tell an undo from a submit: both leave a batch outstanding. A
