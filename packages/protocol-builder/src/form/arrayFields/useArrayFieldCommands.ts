@@ -158,8 +158,13 @@ export type ArrayFieldCommands<T extends ArrayRow> = Readonly<{
   /**
    * Hand to fresco-ui's `ArrayField`. `undefined` for an unbound list, which
    * then commits through the plain value-level `onChange` instead.
+   *
+   * Answers whether the operation reached the document, which is what puts a
+   * refused edit back off the screen: `ArrayField` draws every mutation out of
+   * its own state before reporting it, so a row it added optimistically stays
+   * there until either the value changes or this says the write went nowhere.
    */
-  onOperation: ((operation: ArrayFieldOperation<T>) => void) | undefined;
+  onOperation: ((operation: ArrayFieldOperation<T>) => boolean) | undefined;
   /**
    * Commits a row addressed by its own id — the save that outlived the editing
    * session it was made in.
@@ -358,9 +363,16 @@ export function useArrayFieldCommands<T extends ArrayRow>(
    * `ArrayField` re-seats its editing session on the value it receives and only
    * gives it up when the row it is editing is no longer there — which, for a
    * refused write, is exactly the case where there is no longer a row to edit.
+   *
+   * Answers whether the document took the operation, for the half of the screen
+   * the form value cannot reach. `ArrayField` keeps its own copy of the rows
+   * and re-reads the value only when the value CHANGES, so a refusal that
+   * leaves the value where it was — the one below, which will not write the
+   * empty list over a foreign one — would otherwise leave the optimistic row on
+   * screen for good, in a list the document has not got.
    */
   const handleOperation = useCallback(
-    (key: string, operation: ArrayFieldOperation<T>) => {
+    (key: string, operation: ArrayFieldOperation<T>): boolean => {
       const bound = readCurrent(key);
       const outcome = commit(
         key,
@@ -388,7 +400,11 @@ export function useArrayFieldCommands<T extends ArrayRow>(
           ? 'row-removed'
           : 'row-unresolved',
       );
-      if (outcome.kind === 'written' || collectingRef.current) return;
+      if (outcome.kind === 'written') return true;
+      // A dispatch a caller is COLLECTING is a dispatch that caller reports —
+      // but it is refused all the same, and the rows on screen are no more the
+      // document's for having a dialog above them to say so.
+      if (collectingRef.current) return false;
       reportRefusedWrite(writeRefusalMessage(outcome.reason, itemLabel));
       // What the document still holds, read exactly as a written operation
       // reads it, so a refusal and a write cannot leave the control saying
@@ -402,6 +418,7 @@ export function useArrayFieldCommands<T extends ArrayRow>(
       if (bound.repair.length === 0) {
         onChangeRef.current?.(renderableRows<T>(bound.current));
       }
+      return false;
     },
     [commit, itemLabel, readCurrent, reportRefusedWrite],
   );
@@ -413,9 +430,8 @@ export function useArrayFieldCommands<T extends ArrayRow>(
     () =>
       documentKey === undefined
         ? undefined
-        : (operation: ArrayFieldOperation<T>) => {
-            handleOperation(documentKey, operation);
-          },
+        : (operation: ArrayFieldOperation<T>) =>
+            handleOperation(documentKey, operation),
     [documentKey, handleOperation],
   );
 

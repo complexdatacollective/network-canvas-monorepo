@@ -99,11 +99,14 @@ export type RowRemoval = Readonly<{
  * A confirm is a WINDOW: the researcher reads it, and the list carries on
  * moving behind it — a collaborator's insertion, an undo, a rollback after a
  * lost lease. `ArrayField` identifies a row by an internal id, and for rows
- * that carry no id of their own (an option, a sort rule) it reuses those ids
- * BY POSITION whenever the value is replaced, so an insertion above hands this
- * control's id to the row that has taken this one's place. The delete handler
- * this component was rendered with then names that row instead, and confirming
- * removes an option the researcher never looked at.
+ * that carry no id of their own (an option, a sort rule) that id is inferred
+ * from the row's content when the value is replaced, so a row the researcher
+ * can still recognise keeps its own delete handler however the list moves
+ * around it. What content cannot answer for is a row whose content has itself
+ * changed — an edit arriving on this row — or two rows nothing can tell apart:
+ * there the handler this component was rendered with names a row the dialog
+ * never described, and confirming removes an option the researcher never
+ * looked at.
  *
  * So the confirm is answered against the row it was actually about. Its
  * content is the only identity such a row has, and content is enough here:

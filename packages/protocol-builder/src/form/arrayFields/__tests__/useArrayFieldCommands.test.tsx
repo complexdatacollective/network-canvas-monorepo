@@ -159,10 +159,19 @@ describe('a list bound to a key the document does not hold as a list', () => {
     // therefore what the operation's index was resolved against.
     const commands = renderCommands(session, [], 'prompts', onChange);
 
+    let answered: boolean | undefined;
     act(() => {
-      commands.onOperation?.({ type: 'insert', index: 0, item: { id: 'n' } });
+      answered = commands.onOperation?.({
+        type: 'insert',
+        index: 0,
+        item: { id: 'n' },
+      });
     });
 
+    // The answer `ArrayField` keeps its own rows by. Pinned beside the
+    // refusals below, because a list that answered "no" to everything would
+    // satisfy them on its own.
+    expect(answered).toBe(true);
     // Applying the insert alone throws `ApplyError("Field prompts is not a
     // list")` out of the click handler, which nothing above catches.
     expect(session.getSnapshot().editedSection.fields.prompts).toEqual([
@@ -206,18 +215,23 @@ describe('a list bound to a key the document does not hold as a list', () => {
     // never took: the only way a remove, move or edit can be issued here.
     const commands = renderCommands(session, [A], 'prompts', onChange);
 
+    const answers: (boolean | undefined)[] = [];
     act(() => {
-      commands.onOperation?.({ type: 'remove', index: 0 });
+      answers.push(commands.onOperation?.({ type: 'remove', index: 0 }));
     });
     act(() => {
-      commands.onOperation?.({ type: 'move', from: 0, to: 1, item: A });
+      answers.push(
+        commands.onOperation?.({ type: 'move', from: 0, to: 1, item: A }),
+      );
     });
     act(() => {
-      commands.onOperation?.({
-        type: 'replace',
-        index: 0,
-        item: { id: 'a', text: 'Alpha edited' },
-      });
+      answers.push(
+        commands.onOperation?.({
+          type: 'replace',
+          index: 0,
+          item: { id: 'a', text: 'Alpha edited' },
+        }),
+      );
     });
 
     // None of the three has a row to address, and a repair issued on its own
@@ -231,6 +245,12 @@ describe('a list bound to a key the document does not hold as a list', () => {
     // form value here would replace the legacy object at the next submit, which
     // is the same discard by a slower route.
     expect(onChange).not.toHaveBeenCalled();
+    // Which leaves nothing for the value to say, so the answer has to say it:
+    // `ArrayField` drew each of these out of its own state before reporting it
+    // and re-reads the value only when the value CHANGES. Unanswered, the row
+    // an Add put on screen would stay there for good — in a list the document
+    // has not got, where every later edit of it is refused too.
+    expect(answers).toEqual([false, false, false]);
   });
 
   it('treats an absent list as the empty list it already is, repairing nothing', () => {

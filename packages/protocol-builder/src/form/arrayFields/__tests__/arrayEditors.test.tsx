@@ -279,10 +279,11 @@ describe('Options', () => {
 
   /**
    * Options carry no id of their own, so `ArrayField` gives each row an
-   * internal id and REUSES those ids by position whenever the value is
-   * replaced. A confirm dialog is a window in which the list can be replaced —
-   * and when it is, the delete handler this row was rendered with names
-   * whichever option has taken its place.
+   * internal id and infers, whenever the value is replaced, which arriving row
+   * each one belongs to. A confirm dialog is a window in which the list can be
+   * replaced — and when what arrives is an edit to the row being confirmed,
+   * the delete handler this row was rendered with names a row the dialog never
+   * described.
    */
   it('removes nothing when the option it confirmed was replaced beneath it', async () => {
     const user = userEvent.setup();
@@ -300,8 +301,61 @@ describe('Options', () => {
     );
     await screen.findByRole('button', { name: 'Remove option' });
 
-    // A row arrives at the TOP of the list while the confirm sits open, which
-    // hands this control the internal id of the row above it.
+    // The row itself is edited from elsewhere while the confirm sits open, so
+    // this control now names an option the researcher has not read about.
+    act(() => {
+      session.replaceAuthoritativeStage({
+        fields: {
+          title: 'Welcome',
+          options: [
+            { label: 'Alpha', value: 'alpha' },
+            { label: 'Bravo, revised', value: 'bravo-revised' },
+          ],
+        },
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+    });
+    await screen.findByText('Bravo, revised');
+
+    await user.click(screen.getByRole('button', { name: 'Remove option' }));
+
+    // Nothing is removed, and the dialog says why rather than closing over a
+    // deletion that landed on an option the researcher never looked at.
+    expect(
+      await screen.findByText(
+        'This option was replaced while you were confirming, so nothing was removed. Check the list and remove it again if you still want to.',
+      ),
+    ).toBeInTheDocument();
+    expect(session.getSnapshot().editedSection.fields.options).toEqual([
+      { label: 'Alpha', value: 'alpha' },
+      { label: 'Bravo, revised', value: 'bravo-revised' },
+    ]);
+  });
+
+  /**
+   * The other half of that: a row that has NOT changed is still the row the
+   * researcher confirmed, however far the list has moved around it. Its id is
+   * inferred from its content rather than from where it sits, so an insertion
+   * above no longer hands this control the row above's handle — and refusing
+   * the removal here would send the researcher back to delete a row they had
+   * already told the list to delete.
+   */
+  it('removes the option it confirmed when a row arrives above it meanwhile', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      title: 'Welcome',
+      options: [
+        { label: 'Alpha', value: 'alpha' },
+        { label: 'Bravo', value: 'bravo' },
+      ],
+    });
+    renderOptions(session);
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Remove option 2' }),
+    );
+    await screen.findByRole('button', { name: 'Remove option' });
+
     act(() => {
       session.replaceAuthoritativeStage({
         fields: {
@@ -323,18 +377,12 @@ describe('Options', () => {
 
     await user.click(screen.getByRole('button', { name: 'Remove option' }));
 
-    // Nothing is removed, and the dialog says why rather than closing over a
-    // deletion that landed on an option the researcher never looked at.
-    expect(
-      await screen.findByText(
-        'This option was replaced while you were confirming, so nothing was removed. Check the list and remove it again if you still want to.',
-      ),
-    ).toBeInTheDocument();
-    expect(session.getSnapshot().editedSection.fields.options).toEqual([
-      { label: 'Zulu', value: 'zulu' },
-      { label: 'Alpha', value: 'alpha' },
-      { label: 'Bravo', value: 'bravo' },
-    ]);
+    await waitFor(() =>
+      expect(session.getSnapshot().editedSection.fields.options).toEqual([
+        { label: 'Zulu', value: 'zulu' },
+        { label: 'Alpha', value: 'alpha' },
+      ]),
+    );
   });
 
   it('removes the option it confirmed when the list has not moved', async () => {
@@ -687,6 +735,45 @@ describe('an inline list whose write the document does not take', () => {
     expect(
       screen.getAllByRole('button', { name: /^Edit option/ }),
     ).toHaveLength(1);
+  });
+
+  it('takes it back off screen when the key it would have repaired holds no list', async () => {
+    const user = userEvent.setup();
+    const legacy = { label: 'Yes', value: 'yes' };
+    const store = createSession({
+      title: 'Welcome',
+      // What an import, a migration or a legacy protocol can leave at a
+      // list's key. The editor draws the empty list for it with a working
+      // Add, and the write behind that Add carries the repair that makes the
+      // key a list — so a refusal here refuses BOTH, and the value the control
+      // is reconciled against never changes.
+      options: legacy,
+    } as SectionDoc);
+    renderOptions(withRevocableDispatch(store));
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Create new option' }),
+    );
+
+    expect(
+      await screen.findByText(
+        'This stage is read-only, so this item was not saved. Take over editing and try again.',
+      ),
+    ).toBeInTheDocument();
+    // The legacy value is still there: a repair rides with a write or not at
+    // all, and putting the empty list into the form value would discard it at
+    // the next submit for an edit that never landed.
+    expect(store.getSnapshot().editedSection.fields.options).toEqual(legacy);
+    // And the row is off the screen all the same. Nothing about the value can
+    // take it back — which is why the list is TOLD the write reached nothing;
+    // left there, it could never be edited or removed either, since every
+    // operation naming it resolves against the same foreign value.
+    expect(
+      screen.queryAllByRole('button', { name: /^Remove option/ }),
+    ).toHaveLength(0);
+    expect(
+      screen.queryByRole('textbox', { name: 'Value' }),
+    ).not.toBeInTheDocument();
   });
 
   it('keeps the row open while it puts back a keystroke the document did not take', async () => {
