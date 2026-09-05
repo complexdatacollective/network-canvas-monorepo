@@ -144,8 +144,10 @@ const REFUSAL_MESSAGES: Readonly<Record<CompoundEditFailureReason, string>> =
   Object.freeze({
     'compound-in-flight':
       'Another change to the codebook is still being saved. Wait for it to finish, then save this one.',
+    // No "see the details above": nothing renders the host's account of what
+    // it refused, and this alert is the first thing in the editor.
     'host-error':
-      'The protocol would not be valid with this change, so nothing was saved. Check the details above, or close this and try again once the rest of the stage is filled in.',
+      'The protocol would not be valid with this change, so nothing was saved. Adjust this type and try again, or close this and come back once the rest of the stage is filled in.',
     'invalid-request':
       'This change could not be sent, and nothing was saved. Close this editor and try again.',
     'invalid-response':
