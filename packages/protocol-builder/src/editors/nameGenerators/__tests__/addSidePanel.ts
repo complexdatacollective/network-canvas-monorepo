@@ -4,6 +4,23 @@ import { expect } from 'vitest';
 import type { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 
 /**
+ * Says what a stage being created works with.
+ *
+ * The first thing a researcher does to a new name generator, and a
+ * prerequisite for the sections that describe its people — a panel's filter
+ * asks about a node type, so the panels section waits for one.
+ */
+export async function chooseNodeType(
+  harness: ReturnType<typeof renderStageEditor>,
+  typeId: string,
+): Promise<void> {
+  await harness.user.click(screen.getByRole('radio', { name: typeId }));
+  await waitFor(() =>
+    expect(screen.getByRole('switch', { name: 'Side panels' })).toBeEnabled(),
+  );
+}
+
+/**
  * Adds one side panel drawing on the interview's own network, the way a
  * researcher does: switch the capability on, create a panel, name it, save the
  * row.

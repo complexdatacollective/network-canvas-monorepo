@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { nameGeneratorStageEditors } from '../../nameGeneratorStageEditors.ts';
-import { addInterviewNetworkPanel } from './addSidePanel.ts';
+import { addInterviewNetworkPanel, chooseNodeType } from './addSidePanel.ts';
 
 /**
  * The prompt and question text are rich-text editors, and their editing
@@ -184,11 +184,14 @@ describe('the name generator editor', () => {
       expect(stageNameInput()).toHaveValue('Form Name Generator'),
     );
 
+    // Naming the type is part of the proposal too, so the expected name
+    // carries it from here on.
+    await chooseNodeType(harness, 'person');
     await addInterviewNetworkPanel(harness, 'People you named earlier');
 
     await waitFor(() =>
       expect(stageNameInput()).toHaveValue(
-        'Form Name Generator with Network Panels',
+        'Person Form Name Generator with Network Panels',
       ),
     );
   });
@@ -206,10 +209,11 @@ describe('the name generator editor', () => {
     await waitFor(() =>
       expect(stageNameInput()).toHaveValue('Form Name Generator'),
     );
+    await chooseNodeType(harness, 'person');
     await addInterviewNetworkPanel(harness, 'People you named earlier');
     await waitFor(() =>
       expect(stageNameInput()).toHaveValue(
-        'Form Name Generator with Network Panels',
+        'Person Form Name Generator with Network Panels',
       ),
     );
 
@@ -221,7 +225,46 @@ describe('the name generator editor', () => {
     );
 
     await waitFor(() =>
+      expect(stageNameInput()).toHaveValue('Person Form Name Generator'),
+    );
+  });
+
+  /**
+   * And the same is true of the last panel being deleted, which leaves an
+   * EMPTY list rather than no list at all.
+   *
+   * A stage with no panels is named as if the section had never been switched
+   * on — the qualifier reads what the panels are, and there are none. Proved
+   * here rather than asserted by a guard on the way in: `resolvePanelQualifier`
+   * already answers `null` for an empty list, and a second guard upstream
+   * would only be a second thing to keep in step with it.
+   */
+  it('takes the panel qualifier back out when the last panel is deleted', async () => {
+    const harness = renderStageEditor({
+      create: { type: 'NameGenerator', position: NAME_GENERATOR_INDEX },
+      registry: nameGeneratorStageEditors,
+    });
+
+    await waitFor(() =>
       expect(stageNameInput()).toHaveValue('Form Name Generator'),
+    );
+    await chooseNodeType(harness, 'person');
+    await addInterviewNetworkPanel(harness, 'People you named earlier');
+    await waitFor(() =>
+      expect(stageNameInput()).toHaveValue(
+        'Person Form Name Generator with Network Panels',
+      ),
+    );
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Remove panel' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Remove panel' }),
+    );
+
+    await waitFor(() =>
+      expect(stageNameInput()).toHaveValue('Person Form Name Generator'),
     );
   });
 
@@ -236,6 +279,7 @@ describe('the name generator editor', () => {
     await harness.user.clear(stageNameInput());
     await harness.user.type(stageNameInput(), 'Close friends');
 
+    await chooseNodeType(harness, 'person');
     await addInterviewNetworkPanel(harness, 'People you named earlier');
 
     expect(stageNameInput()).toHaveValue('Close friends');
@@ -250,6 +294,7 @@ describe('the name generator editor', () => {
     await screen.findByText('Who are the people you know?');
     expect(stageNameInput()).toHaveValue('Name Generator');
 
+    await chooseNodeType(harness, 'person');
     await addInterviewNetworkPanel(harness, 'People you named earlier');
 
     expect(stageNameInput()).toHaveValue('Name Generator');

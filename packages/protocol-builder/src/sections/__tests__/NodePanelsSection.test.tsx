@@ -226,6 +226,40 @@ describe('the side panels a name generator shows', () => {
   });
 
   /**
+   * Two, because a name generator shows its panels beside the interview and a
+   * third would leave nothing to nominate into. The schema does not cap them,
+   * so nothing downstream would refuse a stage with three — the screen is the
+   * only thing that knows, and this is where it says so.
+   */
+  it('offers no third panel once there are two', async () => {
+    const harness = renderStageEditor({
+      stage: nameGeneratorWith([
+        { id: 'panel-1', title: 'First panel', dataSource: 'existing' },
+        { id: 'panel-2', title: 'Second panel', dataSource: 'existing' },
+      ]),
+      sections: panels,
+    });
+
+    expect(await screen.findByText('Second panel')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Create new panel' }),
+    ).not.toBeInTheDocument();
+
+    // And one panel is one short of the cap, so the control is there.
+    harness.unmount();
+    renderStageEditor({
+      stage: nameGeneratorWith([
+        { id: 'panel-1', title: 'First panel', dataSource: 'existing' },
+      ]),
+      sections: panels,
+    });
+
+    expect(
+      await screen.findByRole('button', { name: 'Create new panel' }),
+    ).toBeInTheDocument();
+  });
+
+  /**
    * A panel's filter asks about a node type, and its rules are chosen from
    * that type's attributes — so until the stage says what it works with there
    * is nothing for a panel to be about, and the section says so rather than

@@ -51,15 +51,15 @@ export function usePanelsForAutoName():
 
   return useMemo(() => {
     if (!Array.isArray(rawPanels)) return undefined;
-    const panels = rawPanels.filter(isRecord).map((panel) => ({
+    // An empty list is passed on as an empty list. `resolvePanelQualifier`
+    // already reads it as the same absence a missing list is — a stage with no
+    // panels is named as if the section had never been switched on — and a
+    // second guard here would only be a second thing to keep in step with it.
+    return rawPanels.filter(isRecord).map((panel) => ({
       dataSource:
         typeof panel.dataSource === 'string' && panel.dataSource !== ''
           ? panel.dataSource
           : INTERVIEW_NETWORK,
     }));
-    // An empty list is not "no panels chosen yet" to the qualifier, it is the
-    // same absence — a stage with no panels is named as if the section were
-    // never switched on.
-    return panels.length > 0 ? panels : undefined;
   }, [rawPanels]);
 }

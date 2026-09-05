@@ -7,7 +7,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { nameGeneratorStageEditors } from '../../nameGeneratorStageEditors.ts';
-import { addInterviewNetworkPanel } from './addSidePanel.ts';
+import { addInterviewNetworkPanel, chooseNodeType } from './addSidePanel.ts';
 
 /**
  * The prompt text is a rich-text editor, and its editing surface cannot be
@@ -172,6 +172,7 @@ describe('the quick-add name generator editor', () => {
       expect(stageNameInput()).toHaveValue('Quick Add Name Generator'),
     );
 
+    await chooseNodeType(harness, 'person');
     await addInterviewNetworkPanel(harness, 'People you named earlier');
 
     await waitFor(() =>
@@ -192,6 +193,7 @@ describe('the quick-add name generator editor', () => {
     await harness.user.clear(stageNameInput());
     await harness.user.type(stageNameInput(), 'People you see often');
 
+    await chooseNodeType(harness, 'person');
     await addInterviewNetworkPanel(harness, 'People you named earlier');
 
     expect(stageNameInput()).toHaveValue('People you see often');
@@ -206,6 +208,7 @@ describe('the quick-add name generator editor', () => {
     await screen.findByText('Quickly add people you know');
     expect(stageNameInput()).toHaveValue('Name Generator Quick Add');
 
+    await chooseNodeType(harness, 'person');
     await addInterviewNetworkPanel(harness, 'People you named earlier');
 
     expect(stageNameInput()).toHaveValue('Name Generator Quick Add');
