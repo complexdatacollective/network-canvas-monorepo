@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest';
 import type { CompleteSetupInput } from '@codaco/studio-rpc';
 
 import { stubAuthService } from '../../__tests__/support/auth.ts';
+import { enrollMigrationTestDatabase } from '../../__tests__/support/migrations.ts';
 import {
   createScratchDatabase,
   createScratchSchema,
@@ -171,12 +172,21 @@ describe.skipIf(!db)('self-hosted first-run bootstrap', () => {
       const scratch = await createScratchDatabase(db);
       const app = createPool(scratch.db);
       try {
+        const allowedLogins = await enrollMigrationTestDatabase(
+          scratch.pool,
+          db,
+        );
         if (path === 'upgrade') {
           const previous = migrations.slice(0, 2);
           const fingerprint = previous.at(-1)?.manifest.fingerprint;
           if (!fingerprint)
             throw new Error('The predecessor migration is missing.');
-          await migrateDatabase(scratch.pool, previous, fingerprint);
+          await migrateDatabase(
+            scratch.pool,
+            previous,
+            fingerprint,
+            allowedLogins,
+          );
           expect(
             (
               await scratch.pool.query(
@@ -186,7 +196,12 @@ describe.skipIf(!db)('self-hosted first-run bootstrap', () => {
           ).toEqual([{ instance: null }]);
         }
         expect(
-          await migrateDatabase(scratch.pool, migrations, SCHEMA_FINGERPRINT),
+          await migrateDatabase(
+            scratch.pool,
+            migrations,
+            SCHEMA_FINGERPRINT,
+            allowedLogins,
+          ),
         ).toEqual(
           (path === 'fresh' ? migrations : migrations.slice(2)).map(
             (migration) => migration.manifest.id,
@@ -196,7 +211,12 @@ describe.skipIf(!db)('self-hosted first-run bootstrap', () => {
         await completeSetup(app, token, input, randomUUID());
         expect(await counts(scratch.pool)).toEqual(completed);
         expect(
-          await migrateDatabase(scratch.pool, migrations, SCHEMA_FINGERPRINT),
+          await migrateDatabase(
+            scratch.pool,
+            migrations,
+            SCHEMA_FINGERPRINT,
+            allowedLogins,
+          ),
         ).toEqual([]);
         await expect(
           app.query('DELETE FROM studio_instance'),
