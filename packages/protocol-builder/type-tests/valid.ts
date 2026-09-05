@@ -5,7 +5,7 @@ import {
   type PartsAreDisjoint,
   type RegisteredIn,
   type UnregisteredIn,
-} from '../src/stageEditorRegistry.ts';
+} from '../src/stageEditorParts.ts';
 import { EgoFormEditor, InformationEditor } from './fixtures.ts';
 
 /**

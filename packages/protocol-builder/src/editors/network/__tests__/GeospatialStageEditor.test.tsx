@@ -15,18 +15,6 @@ import {
 } from './collaboratorChanges.ts';
 import { harnessEditor } from './editorFixtures.tsx';
 
-/**
- * The map SDK is replaced for this whole file. Mounting this editor pulls the
- * starting-view preview — and therefore `mapbox-gl` — into the module graph,
- * and a real Mapbox map would fetch a style, tiles, sprites and fonts from
- * Mapbox's servers as billed requests against a live account.
- */
-vi.mock('mapbox-gl/esm', async () => {
-  const { createMapboxMock } =
-    await import('../../../fields/geospatial/__tests__/mapboxMock.ts');
-  return createMapboxMock();
-});
-
 const TOKEN_ASSET = 'mapbox_token';
 const LAYER_ASSET = 'geo_data';
 

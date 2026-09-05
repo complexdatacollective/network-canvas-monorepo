@@ -23,11 +23,6 @@ import {
   setMapView,
 } from './mapboxMock.ts';
 
-vi.mock('mapbox-gl/esm', async () => {
-  const { createMapboxMock } = await import('./mapboxMock.ts');
-  return createMapboxMock();
-});
-
 /** The key's value, which must never reach the editor or the map. */
 const SECRET = 'pk.this-value-must-never-leave-the-host';
 

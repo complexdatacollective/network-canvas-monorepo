@@ -1,7 +1,7 @@
 import {
   defineStageEditorPart,
   type UnregisteredIn,
-} from '../src/stageEditorRegistry.ts';
+} from '../src/stageEditorParts.ts';
 import { InformationEditor } from './fixtures.ts';
 
 /**

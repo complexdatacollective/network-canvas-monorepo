@@ -30,10 +30,7 @@ const saveActions = ({ formId }: StageEditorActionContext) => (
  * chrome a host would supply.
  *
  * A function each test calls with its own editor, rather than a module listing
- * all four: one of these interfaces draws a map, and a shared list would pull
- * the Mapbox SDK into the module graph of three test files that never go near
- * one. `mapboxIsAlwaysMocked` reads that graph, and it should report what is
- * actually reachable.
+ * all four, so a test file's imports say which interface it is about.
  */
 export function harnessEditor<T extends StageType>(
   Editor: ComponentType<StageEditorProps<T>>,

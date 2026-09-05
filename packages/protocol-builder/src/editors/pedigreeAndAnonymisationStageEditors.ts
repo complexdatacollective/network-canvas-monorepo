@@ -1,4 +1,4 @@
-import { defineStageEditorPart } from '../stageEditorRegistry.ts';
+import { defineStageEditorPart } from '../stageEditorParts.ts';
 import { AnonymisationStageEditor } from './pedigree/AnonymisationStageEditor.tsx';
 import { FamilyPedigreeStageEditor } from './pedigree/FamilyPedigreeStageEditor.tsx';
 import { NarrativePedigreeStageEditor } from './pedigree/NarrativePedigreeStageEditor.tsx';

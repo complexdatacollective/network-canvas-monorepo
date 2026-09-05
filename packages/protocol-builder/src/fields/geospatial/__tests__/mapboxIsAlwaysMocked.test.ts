@@ -1,31 +1,50 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { dirname, join, relative, resolve } from 'node:path';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join, relative } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import { expectMapboxMocked } from './mapboxMock.ts';
+
 /**
- * No test in this package may reach the real Mapbox SDK.
+ * Nothing in this package may reach the real Mapbox SDK.
  *
  * A real `mapbox-gl` map fetches a style, tiles, sprites and fonts from
  * Mapbox's servers. Those are billed requests against a live account, made
- * from a suite that runs on every push — the failure mode is a bill, not a red
- * test — and the map needs a WebGL context jsdom does not have anyway.
+ * from a suite and a Storybook that run on every push — the failure mode is a
+ * bill, not a red test — and the map needs a WebGL context jsdom does not have
+ * anyway.
  *
- * Each test file that can reach the SDK declares `vi.mock('mapbox-gl/esm')`,
- * and this checks that every one of them does. It is a static check rather
- * than a runtime one on purpose: a runtime guard only protects the files that
- * remember to call it, and the file that forgets is exactly the one at risk.
- * The import graph is followed transitively, so a test mounting a section that
- * mounts a field that draws a map is covered without naming the SDK itself.
+ * The replacement is a resolver alias in each of the two runners rather than a
+ * `vi.mock` in each file that can reach the SDK, because which files those are
+ * is not a fact about the map. `stageEditorRegistry.ts` imports every editor
+ * family, so anything mounting the package's dispatcher — most of this suite,
+ * and every stage editor story — has the geospatial editor, and therefore the
+ * SDK, in its module graph. A rule each of those files had to remember would
+ * be forgotten by exactly the file at risk.
+ *
+ * So this file checks the two things that make the alias true rather than
+ * counting per-file mock declarations: that both runners are configured to
+ * swap the module, and — the claim that cannot be faked by reading
+ * configuration — that importing the SDK from inside a running test answers
+ * with the mock, and records where that test can read it.
  */
-const packageSource = join(process.cwd(), 'src');
+const packageRoot = join(process.cwd());
+const packageSource = join(packageRoot, 'src');
 
 const SOURCE_EXTENSIONS = ['.ts', '.tsx'];
 
-const DECLARES_MOCK = /vi\.mock\(\s*['"]mapbox-gl/;
 const IMPORTS_MAPBOX =
   /(?:from|import|require)\s*\(?\s*['"]mapbox-gl[^'"]*['"]/;
-const SPECIFIER = /(?:from|import|require)\s*\(?\s*['"]([^'"]+)['"]/g;
+
+/**
+ * The alias both runners spell the same way, as it appears in their source.
+ *
+ * Matched literally rather than by evaluating the configuration, because the
+ * two runners load their configuration in ways a test cannot reproduce — and
+ * because a deliberate change to which specifiers are covered should have to
+ * be made here too, in both places at once.
+ */
+const ALIAS_SOURCE = String.raw`/^mapbox-gl(\/esm)?$/`;
 
 function sourceFiles(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -37,58 +56,20 @@ function sourceFiles(directory: string): string[] {
   });
 }
 
-/**
- * The file a relative specifier names. This package writes explicit
- * extensions, so the specifier is the filename; the extensionless forms are
- * tried anyway rather than silently dropping an edge — a missed edge is a
- * missed test file, and the check would pass for the wrong reason.
- */
-function resolveLocal(fromFile: string, specifier: string): string | undefined {
-  if (!specifier.startsWith('.')) return undefined;
-  const base = resolve(dirname(fromFile), specifier);
-  const candidates = [
-    base,
-    ...SOURCE_EXTENSIONS.map((extension) => `${base}${extension}`),
-    ...SOURCE_EXTENSIONS.map((extension) => join(base, `index${extension}`)),
-  ];
-  return candidates.find(
-    (candidate) =>
-      existsSync(candidate) &&
-      SOURCE_EXTENSIONS.some((extension) => candidate.endsWith(extension)),
-  );
-}
-
 const files = sourceFiles(packageSource);
 const contents = new Map(
   files.map((file) => [file, readFileSync(file, 'utf8')]),
 );
-
-const importsOf = (file: string): string[] =>
-  [...(contents.get(file) ?? '').matchAll(SPECIFIER)].flatMap((match) => {
-    const resolved =
-      match[1] === undefined ? undefined : resolveLocal(file, match[1]);
-    return resolved === undefined ? [] : [resolved];
-  });
-
-/** Whether this file, or anything it imports, imports the Mapbox SDK. */
-function reachesMapbox(file: string, seen = new Set<string>()): boolean {
-  if (seen.has(file)) return false;
-  seen.add(file);
-  if (IMPORTS_MAPBOX.test(contents.get(file) ?? '')) return true;
-  return importsOf(file).some((imported) => reachesMapbox(imported, seen));
-}
-
-const testFiles = files.filter((file) => /\.test\.tsx?$/.test(file));
-const exposedTestFiles = testFiles.filter((file) => reachesMapbox(file));
 const shortName = (file: string) => relative(packageSource, file);
 
-describe('the Mapbox SDK in this package’s tests', () => {
+describe('the Mapbox SDK in this package', () => {
   /**
-   * One production module draws a map, and one test helper reaches for the
-   * module to prove it has been replaced. A third importer means something
-   * new can reach the SDK, and this check has to be extended to cover it.
+   * One production module draws a map, and the mock names the specifier so it
+   * can prove it replaced it. A third importer means something new can reach
+   * the SDK — and, more to the point, a second production one would mean the
+   * alias has a second route to cover, so it is named here deliberately.
    */
-  it('is imported by the map preview, and by the mock that replaces it', () => {
+  it('is named by the map preview, and by the mock that replaces it', () => {
     const importers = files
       .filter((file) => IMPORTS_MAPBOX.test(contents.get(file) ?? ''))
       .map(shortName)
@@ -100,22 +81,41 @@ describe('the Mapbox SDK in this package’s tests', () => {
     ]);
   });
 
-  it('is reachable from the tests this check is written for', () => {
-    // Non-vacuous: if the graph walk stopped finding anything, every test
-    // below would pass while proving nothing.
-    expect(exposedTestFiles.length).toBeGreaterThanOrEqual(2);
+  it.each([
+    {
+      runner: 'vitest.config.ts',
+      mock: 'src/fields/geospatial/__tests__/mapboxMock.ts',
+    },
+    { runner: '.storybook/main.ts', mock: 'mapboxMock.ts' },
+  ])('is swapped for a mock by $runner', ({ runner, mock }) => {
+    const config = readFileSync(join(packageRoot, runner), 'utf8');
+
+    expect(
+      config.includes(ALIAS_SOURCE),
+      `${runner} no longer aliases ${ALIAS_SOURCE}, so nothing stops it building a real map.`,
+    ).toBe(true);
+    expect(
+      config.includes(mock),
+      `${runner} aliases mapbox-gl somewhere other than ${mock}.`,
+    ).toBe(true);
+
+    // Declared AND applied. Both runners name the alias once where they build
+    // it and once where they hand it to the resolver, and a config that stopped
+    // doing the second would read exactly like one that still did.
+    expect(
+      config.split('MAPBOX_ALIAS').length - 1,
+      `${runner} declares an alias for mapbox-gl but never gives it to the resolver.`,
+    ).toBeGreaterThanOrEqual(2);
   });
 
-  it.each(exposedTestFiles.map(shortName))(
-    'is replaced by %s, which can otherwise reach it',
-    (name) => {
-      const file = exposedTestFiles.find(
-        (candidate) => shortName(candidate) === name,
-      );
-      expect(
-        DECLARES_MOCK.test(contents.get(file ?? '') ?? ''),
-        `${name} can reach mapbox-gl but does not mock it: running it would build a real Mapbox map.`,
-      ).toBe(true);
-    },
-  );
+  /**
+   * The claim reading configuration cannot make: that the module a test really
+   * gets when it imports the SDK is the mock, and that the map it builds is
+   * recorded where the test can read it. Both halves matter — a mock recording
+   * into a second copy of itself would leave every "what was built" assertion
+   * passing against an array nothing writes to.
+   */
+  it('answers a live import with the mock, recording where a test can read it', async () => {
+    await expectMapboxMocked();
+  });
 });

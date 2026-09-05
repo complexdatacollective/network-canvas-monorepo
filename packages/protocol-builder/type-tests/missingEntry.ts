@@ -2,7 +2,7 @@ import {
   type Assert,
   type AwaitingListIsComplete,
   defineStageEditorPart,
-} from '../src/stageEditorRegistry.ts';
+} from '../src/stageEditorParts.ts';
 import { InformationEditor } from './fixtures.ts';
 
 /**

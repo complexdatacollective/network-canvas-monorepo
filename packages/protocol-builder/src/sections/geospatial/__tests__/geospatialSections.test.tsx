@@ -24,18 +24,6 @@ import GeospatialPromptsSection from '../GeospatialPromptsSection.tsx';
 import MapAppearanceSection from '../MapAppearanceSection.tsx';
 import MapSourceSection from '../MapSourceSection.tsx';
 
-/**
- * The map SDK is replaced for this whole file. Mounting the map options
- * section pulls the preview dialog — and therefore `mapbox-gl` — into the
- * module graph, and a real Mapbox map would fetch a style, tiles, sprites and
- * fonts from Mapbox's servers as billed requests against a live account.
- */
-vi.mock('mapbox-gl/esm', async () => {
-  const { createMapboxMock } =
-    await import('../../../fields/geospatial/__tests__/mapboxMock.ts');
-  return createMapboxMock();
-});
-
 const ASSETS_SECTION = sectionId({ kind: 'assets' });
 
 /**

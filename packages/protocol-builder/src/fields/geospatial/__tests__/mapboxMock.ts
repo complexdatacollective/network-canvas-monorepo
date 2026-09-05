@@ -1,28 +1,22 @@
 import { expect, vi } from 'vitest';
 
 /**
- * The Mapbox SDK, replaced.
+ * The Mapbox SDK, replaced — this module IS `mapbox-gl` for the whole suite.
  *
  * NOTHING in this package's tests may build a real Mapbox map. A real one
  * fetches a style, tiles, sprites, and fonts from Mapbox's servers — billed
  * requests against a live account, from a test suite that runs on every push —
- * and needs a WebGL context jsdom does not have. Every test file that mounts
- * anything drawing a map therefore replaces the module, and asserts that it
- * did: `expectMapboxMocked` is called by each of those files, so a mock that
- * is removed or silently stops applying fails the suite instead of quietly
- * reaching the network.
+ * and needs a WebGL context jsdom does not have.
  *
- * Used as:
+ * `vitest.config.ts` aliases `mapbox-gl` and `mapbox-gl/esm` here, so a test
+ * reaches this whatever it imports and whichever module reached the SDK on its
+ * behalf. No test file asks for the replacement, which is the point: the
+ * package's registry imports every editor family, so most of the suite has the
+ * geospatial editor in its module graph, and a rule each of those files had to
+ * remember would be forgotten by exactly the file at risk.
  *
- * ```ts
- * vi.mock('mapbox-gl/esm', async () => {
- *   const { createMapboxMock } = await import('./mapboxMock.ts');
- *   return createMapboxMock();
- * });
- * ```
- *
- * The factory is hoisted above the file's imports, which is why it reaches
- * this module through a dynamic import rather than a binding.
+ * The exports below are the SDK's own surface, as `MapPreviewDialog` uses it.
+ * Everything else here is the recording the tests read.
  */
 export type MapboxMapOptions = Readonly<{
   container?: unknown;
@@ -46,11 +40,12 @@ type MapboxMockState = {
 /**
  * The recording lives on the global scope, not in this module.
  *
- * A `vi.mock` factory is evaluated in its own module registry, so the copy of
- * this file the factory imports is NOT the copy the test file imports. State
- * held here would be written by the map and read by nobody — every assertion
- * about what was built would pass on an empty array, which is the one way this
- * guard could fail open.
+ * The map writes it and the test reads it, and the two only agree while they
+ * hold the same copy of this module. A runner that ended up with two — a
+ * `vi.mock` registry, a second resolution of the alias — would leave every
+ * assertion about what was built passing against an array nothing writes to,
+ * which is the one way this guard could fail open. `expectMapboxMocked` proves
+ * it has not by building a map and reading it back.
  */
 type MapboxMockScope = typeof globalThis & {
   __protocolBuilderMapboxMock?: MapboxMockState;
@@ -111,46 +106,62 @@ export function emitMapEvent(event: string): void {
   handler();
 }
 
-export function createMapboxMock(): Record<string, unknown> {
-  const instance = {
-    addControl: () => {
-      state().controls += 1;
-      return instance;
-    },
-    getCenter: () => state().center,
-    getZoom: () => state().zoom,
-    on: (event: string, handler: () => void) => {
-      state().handlers.set(event, handler);
-      return instance;
-    },
-    remove: () => {
-      state().removed += 1;
-    },
-  };
+/**
+ * The one map instance every `new Map()` answers with.
+ *
+ * Shared rather than built per map, because everything a test asks about a map
+ * — where it is, what it registered, whether it was torn down — is kept in the
+ * recording above, and the dialog only ever holds one at a time.
+ */
+const instance = {
+  addControl: () => {
+    state().controls += 1;
+    return instance;
+  },
+  getCenter: () => state().center,
+  getZoom: () => state().zoom,
+  on: (event: string, handler: () => void) => {
+    state().handlers.set(event, handler);
+    return instance;
+  },
+  remove: () => {
+    state().removed += 1;
+  },
+};
 
-  return {
-    Map: vi.fn(function MapboxMap(options: MapboxMapOptions) {
-      state().built.push(options);
-      return instance;
-    }),
-    NavigationControl: vi.fn(function NavigationControl() {
-      return {};
-    }),
-  };
-}
+/**
+ * The SDK's own two exports, which is all `MapPreviewDialog` uses.
+ *
+ * Spies rather than plain functions: `expectMapboxMocked` reads
+ * `vi.isMockFunction` to prove the module reaching the dialog is this one and
+ * not the real SDK, which no other property of the value could establish.
+ */
+const MapboxMapMock = vi.fn(function MapboxMap(options: MapboxMapOptions) {
+  state().built.push(options);
+  return instance;
+});
+
+const NavigationControlMock = vi.fn(function NavigationControl() {
+  return {};
+});
+
+// Exported under the SDK's names rather than declared with them: a module-level
+// `const Map` would shadow the built-in this file's own recording is keyed on.
+export { MapboxMapMock as Map, NavigationControlMock as NavigationControl };
 
 /**
  * Refuses to continue unless the SDK reaching the editor is the mock.
  *
- * Asserted against the module the editor itself imports, so a change to the
- * specifier, to the mock's shape, or to vitest's module resolution is caught
- * here rather than by a billing alert.
+ * Asked of the specifier the dialog itself imports, so a change to the alias,
+ * to the specifier, or to vitest's module resolution is caught here rather
+ * than by a billing alert. It is what makes the alias a checked fact in a test
+ * that draws a map rather than a line of configuration nobody reads.
  */
 export async function expectMapboxMocked(): Promise<void> {
   const mapbox = await import('mapbox-gl/esm');
   expect(
     vi.isMockFunction(mapbox.Map),
-    'mapbox-gl/esm is NOT mocked in this test file: a real Mapbox map would be built.',
+    'mapbox-gl/esm is NOT replaced in this test run: a real Mapbox map would be built.',
   ).toBe(true);
   expect(vi.isMockFunction(mapbox.NavigationControl)).toBe(true);
 

@@ -2,7 +2,7 @@ import {
   type Assert,
   defineStageEditorPart,
   type PartsAreDisjoint,
-} from '../src/stageEditorRegistry.ts';
+} from '../src/stageEditorParts.ts';
 import { InformationEditor } from './fixtures.ts';
 
 /**

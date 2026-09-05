@@ -1,4 +1,4 @@
-import { defineStageEditorPart } from '../stageEditorRegistry.ts';
+import { defineStageEditorPart } from '../stageEditorParts.ts';
 import { GeospatialStageEditor } from './network/GeospatialStageEditor.tsx';
 import { NarrativeStageEditor } from './network/NarrativeStageEditor.tsx';
 import { NetworkComposerStageEditor } from './network/NetworkComposerStageEditor.tsx';
