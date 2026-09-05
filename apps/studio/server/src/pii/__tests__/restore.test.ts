@@ -1,7 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 
-import pg from 'pg';
 import { expect, it } from 'vitest';
 
 import { createTenantDb } from '@codaco/studio-sync/tenant';
@@ -11,6 +10,7 @@ import {
   reachableDb,
 } from '../../__tests__/support/postgres.ts';
 import { createBetterAuthInstance } from '../../auth/better-auth.ts';
+import { createMaintenancePool, createPool } from '../../db/pool.ts';
 import { checkSchema } from '../../db/schema.ts';
 import { readEnv } from '../../env.ts';
 import { createContactBlindIndex } from '../contacts.ts';
@@ -220,14 +220,11 @@ it('restores a real pre-rotation pg_dump with retained keys and refuses missing 
     ).toEqual([{ pii_key_id: 'v3' }]);
 
     const restored = await createScratchDatabase(database);
-    const app = new pg.Pool({
-      connectionString: restored.db.url,
-      options: `-c role=studio_app -c search_path=${schema}`,
-    });
-    const maintenance = new pg.Pool({
-      connectionString: restored.db.url,
-      options: `-c role=studio_maintenance -c search_path=${schema}`,
-    });
+    const scopedUrl = new URL(restored.db.url);
+    scopedUrl.searchParams.set('options', `-c search_path=${schema}`);
+    const restoredDb = { url: scopedUrl.toString() };
+    const app = createPool(restoredDb);
+    const maintenance = createMaintenancePool(restoredDb);
     try {
       const destination = new URL(restored.db.url).pathname.slice(1);
       expect(destination).toMatch(/^studio_test_db_[a-f0-9]{12}$/);

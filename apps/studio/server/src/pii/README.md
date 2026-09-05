@@ -205,7 +205,8 @@ rotates the source to a new root, and restores the old dump into a new database.
 It verifies participant/OAuth/webhook recovery, unchanged global suppression,
 absence of protected plaintext/root material in the dump, and refusal of
 missing historical IDs or wrong roots. It uses the repository's local/CI
-`postgres:18` Docker service and its matching PostgreSQL clients. This is
+`postgres:18` Docker service and its matching PostgreSQL clients. Restored reads
+use the production application and maintenance pool constructors. This is
 engineering restore evidence using the development superuser. A managed
 non-superuser backup needs its own verified backup identity: the schema owner
 faces forced RLS, and the runtime maintenance role deliberately cannot read
