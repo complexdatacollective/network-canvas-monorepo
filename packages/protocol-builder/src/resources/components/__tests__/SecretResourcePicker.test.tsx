@@ -300,15 +300,16 @@ describe('the control a key is typed into', () => {
  * one before it is answered with the one before it.
  */
 describe('a key edited after an uncertain failure', () => {
-  it('is added as the key the researcher entered, not the one they replaced', async () => {
-    const user = userEvent.setup();
-    const inner = new InMemoryResourceGateway();
+  /**
+   * A host that staged the key and lost only its answer — the one failure
+   * mode a stable request id exists for, and the only one in which the client
+   * and the host disagree about what is staged.
+   */
+  function lossyStageSecret(inner: InMemoryResourceGateway) {
     let calls = 0;
-    const gateway = overrideGateway(inner, {
+    return overrideGateway(inner, {
       stageSecret: async (request) => {
         calls += 1;
-        // The host really staged the first request; only its answer was lost,
-        // which is the case a request id exists for.
         const staged = await inner.stageSecret(request);
         return calls === 1
           ? resourceFailure<StagedSecret>(
@@ -318,6 +319,38 @@ describe('a key edited after an uncertain failure', () => {
           : staged;
       },
     });
+  }
+
+  it('settles the id it is abandoning, so the host is left holding nothing', async () => {
+    const user = userEvent.setup();
+    const inner = new InMemoryResourceGateway();
+    const gateway = lossyStageSecret(inner);
+    const staged = vi.fn<(descriptor: ResourceDescriptor) => void>();
+    render(
+      <ResourceGatewayProvider gateway={gateway}>
+        <ResourceSecretControl onStaged={staged} />
+      </ResourceGatewayProvider>,
+    );
+
+    await submitKey(user, 'Mapbox key', SECRET);
+    expect(
+      await screen.findByText('the key could not be added just now'),
+    ).toBeVisible();
+
+    // Correcting the key retires that request id. Nothing else in the session
+    // can name what it may have staged: a descriptor the client never received
+    // was never registered, so no finish and no cancel would ever reach it.
+    // Repeating the identical call under that same id is what names it.
+    await user.clear(screen.getByLabelText('Key'));
+    await user.type(screen.getByLabelText('Key'), 'pk.corrected');
+
+    await waitFor(() => expect(inner.getStagingResidue()).toEqual([]));
+  });
+
+  it('is added as the key the researcher entered, not the one they replaced', async () => {
+    const user = userEvent.setup();
+    const inner = new InMemoryResourceGateway();
+    const gateway = lossyStageSecret(inner);
     const stageSecret = vi.spyOn(gateway, 'stageSecret');
     const staged = vi.fn<(descriptor: ResourceDescriptor) => void>();
     render(

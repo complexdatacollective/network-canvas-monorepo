@@ -10,7 +10,9 @@ import type {
   ResourceDescriptor,
   ResourceSecretStorage,
   StagedSecret,
+  StageSecretRequest,
 } from '../gateway.ts';
+import { callGateway } from '../gatewayCall.ts';
 import { discardAbandonedStaging } from './abandonedStaging.ts';
 import ResourceFailureNotice from './ResourceFailureNotice.tsx';
 import { useResourceAttempt } from './useResourceAttempt.ts';
@@ -60,8 +62,13 @@ const asString = (value: unknown): string =>
  * control keeps is the asset id, which is what the field stores. The opaque
  * handle promotion needs never travels through the editor at all: the
  * session's gateway captured it as the secret was staged. Nothing here writes
- * the value to the stage draft, renders it once staged, or keeps it for a
- * later call.
+ * the value to the stage draft or renders it once staged.
+ *
+ * One submission does outlive its inputs. A call that failed in a way that may
+ * mean the host staged the key anyway is kept, request and all, until it is
+ * settled — because settling it means making that same call again. The retry
+ * offered to the researcher holds the same request for the same reason, and
+ * both go the moment the call is decided.
  */
 export default function ResourceSecretControl({
   onStaged,
@@ -80,6 +87,16 @@ export default function ResourceSecretControl({
   const requestId = useRef(uuid());
   /** Whether the id above has already been sent to the host. */
   const submitted = useRef(false);
+  /**
+   * The submission whose fate the researcher's client never learned, kept for
+   * exactly as long as it is undecided.
+   *
+   * It carries the key, because settling it is repeating it: the port makes a
+   * staging call idempotent under its request id, so the same call is what
+   * asks the host "did you keep this?" and is answered with the staged secret
+   * if it did.
+   */
+  const unsettled = useRef<StageSecretRequest | undefined>(undefined);
 
   /** Drops what was said about a field the researcher is now correcting. */
   const clearError = (field: 'name' | 'value') => {
@@ -92,15 +109,44 @@ export default function ResourceSecretControl({
   };
 
   /**
+   * Asks the host to drop whatever the abandoned request may have staged.
+   *
+   * Nothing else can. A descriptor the client never received was never
+   * registered in the session's staged set — the session remembers only what a
+   * staging call answered with — so a finish sweeping unreferenced staging
+   * cannot see it, and only a cancel, which drops everything indiscriminately,
+   * would ever reach it. The request id is the one name it has left, and
+   * repeating the identical call under it is what turns that name back into a
+   * descriptor: an idempotent host hands back exactly what it staged, and it
+   * is dropped there and then. A host that staged nothing stages nothing now
+   * either — it is the same call — and answers as it would have the first time.
+   *
+   * Only for a failure that said repeating it may still succeed. A definitive
+   * refusal staged nothing, and a call still in flight is disowned by
+   * `clear()` below and dropped by its own abandonment.
+   */
+  const settleAbandonedRequest = () => {
+    const request = unsettled.current;
+    unsettled.current = undefined;
+    if (request === undefined) return;
+    if (failure === undefined || !failure.retryable) return;
+    void (async () => {
+      const repeated = await callGateway(() => gateway.stageSecret(request));
+      if (repeated.status !== 'ok') return;
+      discardAbandonedStaging(gateway, repeated.data.descriptor);
+    })();
+  };
+
+  /**
    * Editing after a submission starts a new intent, so it gets a new id.
    *
    * An uncertain failure may mean the host staged the key and lost only its
    * answer. Sending an edited key under the same id would be answered with the
    * first one — the field would name a key the researcher never entered, and
    * the correction would be silently dropped. The stale failure goes with the
-   * id: repeating the previous call is no longer what "try again" means, and
-   * the key that first call may have staged is unreferenced, so the finish
-   * discards it.
+   * id: repeating the previous call is no longer what "try again" means. The
+   * key that first call may have staged is settled before the id is retired,
+   * because retiring the id is what would make it unnameable.
    *
    * A submission still in flight is superseded on exactly the same terms. It
    * is the one case where the researcher can see the value they are replacing
@@ -112,6 +158,7 @@ export default function ResourceSecretControl({
     clearError(field);
     if (!submitted.current) return;
     submitted.current = false;
+    settleAbandonedRequest();
     requestId.current = uuid();
     clear();
   };
@@ -129,19 +176,25 @@ export default function ResourceSecretControl({
     if (Object.keys(nextErrors).length > 0) return;
 
     submitted.current = true;
+    // Held rather than rebuilt per call, so the retry, the reconciliation, and
+    // this submission are all provably the same request.
+    const request: StageSecretRequest = {
+      requestId: requestId.current,
+      name: trimmedName,
+      value: trimmedSecret,
+    };
+    unsettled.current = request;
     run(
-      () =>
-        gateway.stageSecret({
-          requestId: requestId.current,
-          name: trimmedName,
-          value: trimmedSecret,
-        }),
+      () => gateway.stageSecret(request),
       (staged) => {
         // Cleared the moment the host has it: an input still holding the key
         // is the key, on screen and in the page.
         setName('');
         setSecret('');
         submitted.current = false;
+        // Decided, so there is nothing left to settle and no reason to go on
+        // holding the value it carried.
+        unsettled.current = undefined;
         requestId.current = uuid();
         setStatus(`${staged.descriptor.name} was added.`);
         onStaged(staged.descriptor);
