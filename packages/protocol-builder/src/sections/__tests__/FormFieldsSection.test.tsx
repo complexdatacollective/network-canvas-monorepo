@@ -1,6 +1,11 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { contentHash } from '@codaco/studio-sync/apply';
+import { sectionId } from '@codaco/studio-sync/taxonomy';
+
+import { FIXTURE_SESSION_OWNER } from '../../testing/fixtureSession.ts';
+import { loadFixtureStage } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import FormFieldsSection from '../FormFieldsSection.tsx';
 
@@ -49,6 +54,84 @@ const offeredAttributes = (dialog: ReturnType<typeof within>) =>
   within(dialog.getByRole('combobox', { name: 'Attribute' }))
     .getAllByRole('option')
     .map((option) => (option as HTMLOptionElement).value);
+
+/**
+ * Fills in a field that collects an attribute nobody has declared yet, and
+ * submits the row. The dialog is answered with, because whether it closes is
+ * the whole question when the codebook write it depends on can be refused.
+ */
+const addInventedNickname = async (
+  harness: ReturnType<typeof renderStageEditor>,
+) => {
+  const dialog = await openField(harness, 'Create new form field');
+  await harness.user.selectOptions(
+    dialog.getByRole('combobox', { name: 'Attribute' }),
+    '__create_new_attribute__',
+  );
+  await harness.user.type(
+    await dialog.findByRole('textbox', { name: 'Attribute name' }),
+    'nickname',
+  );
+  await harness.user.selectOptions(
+    dialog.getByRole('combobox', { name: 'Kind of answer' }),
+    'text',
+  );
+  await harness.user.type(
+    dialog.getByRole('textbox', { name: 'Question text' }),
+    'What do people call them?',
+  );
+  await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+  return dialog;
+};
+
+/** The same invention, where the codebook write is expected to be accepted. */
+const inventNickname = async (
+  harness: ReturnType<typeof renderStageEditor>,
+) => {
+  await addInventedNickname(harness);
+  await waitFor(() => expect(screen.queryAllByRole('dialog')).toHaveLength(0));
+};
+
+/** Renames the edited stage at the host, as a collaborator would. */
+const renameStageElsewhere = (
+  harness: ReturnType<typeof renderStageEditor>,
+) => {
+  const stageSection = sectionId({ kind: 'stage', stageId: harness.seeded.id });
+  const sections = harness.host.getSnapshot().protocolSections;
+  const result = harness.host.submit({
+    id: 'collaborator-rename',
+    description: 'Rename the stage from another session',
+    edits: [
+      {
+        kind: 'update',
+        sectionId: stageSection,
+        expectedContentHash: contentHash(sections[stageSection] ?? {}),
+        commands: [{ op: 'set', key: 'label', value: 'Renamed elsewhere' }],
+      },
+    ],
+    authority: {
+      sectionId: stageSection,
+      leaseOwner: FIXTURE_SESSION_OWNER,
+      leaseEpoch: 1n,
+    },
+  });
+  if (result.status !== 'applied') {
+    throw new Error('the collaborator’s rename did not apply');
+  }
+};
+
+/** The attribute the invention above should have written, and its record id. */
+const inventedNickname = (harness: ReturnType<typeof renderStageEditor>) => {
+  const person =
+    harness.host.getSnapshot().protocolSections['codebook:node:person'];
+  const variables =
+    typeof person === 'object' && person !== null
+      ? Reflect.get(person, 'variables')
+      : undefined;
+  return Object.entries(
+    (variables ?? {}) as Record<string, { name?: string; type?: string }>,
+  ).find(([, variable]) => variable.name === 'nickname');
+};
 
 const fieldsOf = (
   request: Awaited<ReturnType<ReturnType<typeof renderStageEditor>['submit']>>,
@@ -366,37 +449,9 @@ describe('the fields a form collects', () => {
       sections: <FormFieldsSection subject="node" />,
     });
 
-    const dialog = await openField(harness, 'Create new form field');
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Attribute' }),
-      '__create_new_attribute__',
-    );
-    await harness.user.type(
-      await dialog.findByRole('textbox', { name: 'Attribute name' }),
-      'nickname',
-    );
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Kind of answer' }),
-      'text',
-    );
-    await harness.user.type(
-      dialog.getByRole('textbox', { name: 'Question text' }),
-      'What do people call them?',
-    );
-    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
-    await waitFor(() =>
-      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
-    );
+    await inventNickname(harness);
 
-    const person =
-      harness.host.getSnapshot().protocolSections['codebook:node:person'];
-    const variables =
-      typeof person === 'object' && person !== null
-        ? Reflect.get(person, 'variables')
-        : undefined;
-    const created = Object.entries(
-      (variables ?? {}) as Record<string, { name?: string; type?: string }>,
-    ).find(([, variable]) => variable.name === 'nickname');
+    const created = inventedNickname(harness);
     expect(created?.[1]).toMatchObject({ name: 'nickname', type: 'text' });
 
     expect(fieldsOf(await harness.submit()).at(-1)).toEqual({
@@ -404,5 +459,191 @@ describe('the fields a form collects', () => {
       variable: created?.[0],
       prompt: 'What do people call them?',
     });
+  });
+
+  /**
+   * The same invention, from a stage the researcher is still CREATING.
+   *
+   * The codebook half is a compound edit, and the full protocol a host answers
+   * one with cannot contain a stage the interview does not have yet. Read as a
+   * broken answer, the attribute is written to the codebook and the researcher
+   * is told it was not — with the host's own sentence about a stage they never
+   * mentioned.
+   */
+  it('creates the attribute a field invents while the stage itself is being created', async () => {
+    const harness = renderStageEditor({
+      create: {
+        type: 'AlterForm',
+        position: 0,
+        // Everything a saved alter form needs except the fields themselves,
+        // because this journey ends in a save. `AlterForm`'s own template has
+        // no authored defaults, so a stage built from it alone is one no
+        // researcher could finish yet.
+        fields: {
+          ...loadFixtureStage('alter-form-1').fields,
+          label: 'New alter form',
+          form: { fields: [] },
+        },
+      },
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    await inventNickname(harness);
+
+    const created = inventedNickname(harness);
+    expect(created?.[1]).toMatchObject({ name: 'nickname', type: 'text' });
+    expect(fieldsOf(await harness.submit()).at(-1)).toEqual({
+      id: expect.any(String) as unknown as string,
+      variable: created?.[0],
+      prompt: 'What do people call them?',
+    });
+  });
+});
+
+/**
+ * What a spectator can do to the list: look at it. Every affordance that would
+ * write is unavailable, and a row dialog reached anyway commits nothing.
+ */
+describe('a spectator and the fields a form collects', () => {
+  it('offers no way to add, edit or remove a field', async () => {
+    renderStageEditor({
+      stageId: 'alter-form-1',
+      readOnly: true,
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const add = await screen.findByRole('button', {
+      name: 'Create new form field',
+    });
+    const edit = screen.getAllByRole('button', { name: 'Edit field' })[0]!;
+    const remove = screen.getAllByRole('button', { name: 'Remove field' })[0];
+
+    expect({
+      add: add.hasAttribute('disabled') || add.ariaDisabled === 'true',
+      edit: edit.hasAttribute('disabled') || edit.ariaDisabled === 'true',
+      remove:
+        remove === undefined ||
+        remove.hasAttribute('disabled') ||
+        remove.ariaDisabled === 'true',
+    }).toEqual({ add: true, edit: true, remove: true });
+  });
+
+  it('does not let a spectator change a row through the dialog', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      readOnly: true,
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    await harness.user.click(
+      screen.getAllByRole('button', { name: 'Edit field' })[0]!,
+    );
+    const dialogs = screen.queryAllByRole('dialog');
+    if (dialogs.length > 0) {
+      const dialog = within(dialogs[0]!);
+      const question = dialog.getByRole('textbox', { name: 'Question text' });
+      await harness.user.clear(question);
+      await harness.user.type(question, 'A spectator wrote this');
+      await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+      await waitFor(() =>
+        expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+      );
+    }
+
+    expect(harness.pendingCommands()).toHaveLength(0);
+  });
+});
+
+/**
+ * What a refusal READS like on the control the researcher was using.
+ *
+ * A compound result's own `message` is written for whoever reads a log — the
+ * protocol schema's words about a path, or the session's account of its own
+ * reconciliation — and neither names what the researcher did or what they can
+ * do next. So the words on the field are the authored ones, exactly as they
+ * are in the codebook's own editors.
+ */
+describe('a codebook write a field needs, refused', () => {
+  it('names the colleague who is holding the type', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      heldSections: [
+        {
+          sectionId: sectionId({ kind: 'codebookNode', typeId: 'person' }),
+          displayName: 'Priya Raman',
+        },
+      ],
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await addInventedNickname(harness);
+
+    expect(
+      await dialog.findByText(
+        'Priya Raman is currently editing a section needed for this change.',
+      ),
+    ).toBeInTheDocument();
+    expect(inventedNickname(harness)).toBeUndefined();
+  });
+
+  it('says what a stage that moved under the researcher means', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+    // Unsaved work on this stage, and a collaborator moving the stage the
+    // session is holding it against.
+    act(() => {
+      harness.session.dispatch([
+        { op: 'set', key: 'label', value: 'Renamed here' },
+      ]);
+    });
+    renameStageElsewhere(harness);
+
+    const dialog = await addInventedNickname(harness);
+
+    expect(
+      await dialog.findByText(
+        'Someone else changed this while you were editing it, so nothing was saved. Close and reopen this editor to load their version, then make your change again.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * The other codebook write a field makes: recording the control an EXISTING
+   * attribute is collected with. It is refused the same ways and reads the
+   * same, on the control that caused it.
+   */
+  it('names the colleague who is holding the type when a control is chosen', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      heldSections: [
+        {
+          sectionId: sectionId({ kind: 'codebookNode', typeId: 'person' }),
+          displayName: 'Priya Raman',
+        },
+      ],
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await openField(harness, 'Create new form field');
+    // An attribute the codebook records no control for, so settling one here
+    // is a codebook write rather than a repeat of what it already says.
+    await harness.user.selectOptions(
+      dialog.getByRole('combobox', { name: 'Attribute' }),
+      'age',
+    );
+    await dialog.findByRole('combobox', { name: 'Input control' });
+    await harness.user.type(
+      dialog.getByRole('textbox', { name: 'Question text' }),
+      'How old are they?',
+    );
+    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+
+    expect(
+      await dialog.findByText(
+        'Priya Raman is currently editing a section needed for this change.',
+      ),
+    ).toBeInTheDocument();
   });
 });

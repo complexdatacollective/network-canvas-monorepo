@@ -4,7 +4,11 @@ import { join } from 'node:path';
 
 import { describe, expect, it, vi } from 'vitest';
 
-import { missingStageEditors, STAGE_TYPES } from '../stage-editor-contract.ts';
+import {
+  defineStageEditorPart,
+  missingStageEditors,
+  STAGE_TYPES,
+} from '../stage-editor-contract.ts';
 import type {
   StageEditorComponent,
   StageEditorProps,
@@ -13,7 +17,6 @@ import { UnregisteredStageTypeError } from '../StageEditor.tsx';
 import {
   AWAITING_STAGE_EDITORS,
   composeStageEditorRegistry,
-  defineStageEditorPart,
   DuplicateStageEditorError,
   stageEditorRegistry,
 } from '../stageEditorRegistry.ts';
@@ -202,9 +205,15 @@ describe('the two lists a family edits', () => {
  * StageEditorRegistryPart` destroys. `actionsSlot.ts` is the control for the
  * fourth probe: an editor may ignore the host's action chrome or forward it,
  * and only one that INSISTS on it is refused.
+ *
+ * `partFromRegistry.ts` is a probe about the import graph rather than about
+ * coverage: the registry imports every family's part, so the helper a part is
+ * declared with must not be reachable through the registry, or a family closes
+ * the cycle again. Its control is every other probe in this project — they all
+ * import that helper from `stage-editor-contract.ts` and all compile.
  */
 describe('the compile-time coverage checks', () => {
-  it('refuses a missing entry, a stale entry, a duplicate claim and an editor that insists on chrome', () => {
+  it('refuses a missing entry, a stale entry, a duplicate claim, an editor that insists on chrome, and a part helper read from the registry', () => {
     const packageRoot = join(import.meta.dirname, '..', '..');
     let output = '';
     try {
@@ -223,6 +232,7 @@ describe('the compile-time coverage checks', () => {
     expect(filesWithErrors(output)).toEqual([
       'type-tests/duplicateEntry.ts',
       'type-tests/missingEntry.ts',
+      'type-tests/partFromRegistry.ts',
       'type-tests/requiredActions.ts',
       'type-tests/staleEntry.ts',
     ]);

@@ -9,6 +9,7 @@ import type {
   CodebookSubject,
   ProtocolBuilderProtocolContext,
 } from '../protocol-context.ts';
+import { compoundFailureMessage } from './compoundFailureCopy.ts';
 import {
   buildCreateVariableRequest,
   buildUpdateVariableRequest,
@@ -62,9 +63,6 @@ const NO_SUBJECT =
 const MISSING_TYPE =
   'This type is no longer in the codebook, so an attribute cannot be added to it.';
 
-const BLOCKED =
-  'Someone else is editing this type in the codebook. Try again once they have finished.';
-
 /** A builder's own refusal, in its own words, or a plain "nothing changed". */
 const refusalMessage = (error: unknown): string =>
   error instanceof Error && error.message !== ''
@@ -86,6 +84,13 @@ const refusalMessage = (error: unknown): string =>
  * a collaborator has just taken, or a stage whose own list edits are not saved
  * yet are all things the researcher can act on, and all of them mean the same
  * thing to the caller — nothing was written, so do not commit the row.
+ *
+ * What each refusal READS like is `compoundFailureCopy`'s, exactly as it is for
+ * the three codebook editors: a compound result's own `message` is written for
+ * whoever reads a log, and it lands here on the control the researcher was
+ * using — "Too small: expected array to have >=1 items" beside an attribute's
+ * name. The builder's own throws are the exception, because those are already
+ * written for the researcher and are about what they just typed.
  */
 export function useCreateCodebookVariable(
   subject: CodebookSubject | undefined,
@@ -138,10 +143,10 @@ export function useCreateCodebookVariable(
       if (result.status === 'applied') {
         return { status: 'created', variableId };
       }
-      if (result.status === 'blocked') {
-        return { status: 'refused', message: BLOCKED };
-      }
-      return { status: 'refused', message: result.message };
+      return {
+        status: 'refused',
+        message: compoundFailureMessage({ kind: 'result', result }),
+      };
     },
     [controller, protocolContext, subject],
   );
@@ -207,10 +212,10 @@ export function useSetVariableComponent(
 
       const result = await controller.requestCompoundEdit(request);
       if (result.status === 'applied') return { status: 'unchanged' };
-      if (result.status === 'blocked') {
-        return { status: 'refused', message: BLOCKED };
-      }
-      return { status: 'refused', message: result.message };
+      return {
+        status: 'refused',
+        message: compoundFailureMessage({ kind: 'result', result }),
+      };
     },
     [controller, protocolContext, subject],
   );

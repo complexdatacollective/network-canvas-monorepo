@@ -369,6 +369,23 @@ type CommittedDraft = Readonly<{
  *
  * Compared by content, not identity: the session freezes a fresh object into
  * every snapshot, and one lands whenever validation settles.
+ *
+ * A record that describes no transition is thrown away here, which is the only
+ * place that can see it. `own()` records the draft a write produced, and the
+ * record is spent by the transition it explains — but if something else moves
+ * the draft back in the same commit (a write and the undo of it, a submit and
+ * the rollback that followed), no transition is ever observed and the record
+ * outlives what it was about. Left standing, it is spent on the next arrival
+ * at that same content — the redo — so the controls keep the undone values and
+ * write them back over it.
+ *
+ * Expired by content rather than by a sequence number handed back from `own()`,
+ * because a sequence number only answers this question if it counts EVERY move
+ * of the draft, which is exactly the moves this hook cannot see and the session
+ * would have to count for it. This hook already renders on every snapshot and
+ * already canonicalises the draft to notice a transition at all, so "no
+ * transition happened" is a reading it has for free — and a record that cannot
+ * describe one has nothing left to explain.
  */
 function useCommittedFields(controller: StageEditorController): CommittedDraft {
   const { fields } = controller.snapshot.editedSection;
@@ -383,6 +400,8 @@ function useCommittedFields(controller: StageEditorController): CommittedDraft {
       fields,
       generation: committed.current.generation + (ownWrite ? 0 : 1),
     };
+  } else {
+    controller.forgetOwnWrite();
   }
   return committed.current;
 }

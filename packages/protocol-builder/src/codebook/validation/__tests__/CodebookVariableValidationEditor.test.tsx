@@ -9,6 +9,7 @@ import type {
   CompoundEditRequest,
   CompoundEditResult,
 } from '../../../session.ts';
+import type { AuxiliaryCodebookSubmitResult } from '../../editing.ts';
 import CodebookVariableValidationEditor, {
   type CodebookVariableValidationEditorProps,
 } from '../CodebookVariableValidationEditor.tsx';
@@ -75,11 +76,20 @@ const REFUSED = {
     'The protocol would not be valid with this change, so nothing was saved. Adjust this type and try again, or close this and come back once the rest of the stage is filled in.',
   'threw':
     'This change could not be saved, and nothing was altered. Wait a moment and try again.',
+  'invalid-request':
+    'This change could not be sent, and nothing was saved. Close this editor and try again.',
 } as const;
 
 /** What a host says. None of it reaches the researcher. */
 const HOST_WORDS =
   'Expected object, received undefined at codebook.node.person';
+
+/**
+ * What a surface that refused the draft itself says, in the shape
+ * `findDraftContradictions` writes. This one DOES reach the researcher.
+ */
+const CONTRADICTION =
+  '“Minimum value” is above the maximum this attribute is allowed to hold.';
 
 const blockedResult = (): Extract<
   CompoundEditResult,
@@ -324,6 +334,60 @@ describe('CodebookVariableValidationEditor', () => {
       ).toBeEnabled();
     },
   );
+
+  /**
+   * The one refusal shown in the words it arrived in.
+   *
+   * A contradiction — rules that cannot all hold at once for this attribute —
+   * is legal to the codebook schema and to the host, so nothing downstream
+   * refuses it. The surface that detects it says which rule is the problem,
+   * which is more than `compoundFailureCopy` could write about it.
+   *
+   * The control is the second case: the SAME sentence, reported the way it was
+   * before this channel existed, is discarded and the researcher is told the
+   * change could not be sent. That is the bug the status exists to fix, so the
+   * test would pass on the old code for the wrong reason without it.
+   */
+  it.each([
+    {
+      name: 'a contradiction the surface refused itself',
+      result: {
+        status: 'contradiction',
+        message: CONTRADICTION,
+      } satisfies AuxiliaryCodebookSubmitResult,
+      shown: CONTRADICTION,
+      hidden: REFUSED['invalid-request'],
+    },
+    {
+      name: 'the same sentence sent as a failed result',
+      result: {
+        status: 'failed',
+        reason: 'invalid-request',
+        message: CONTRADICTION,
+      } satisfies AuxiliaryCodebookSubmitResult,
+      shown: REFUSED['invalid-request'],
+      hidden: CONTRADICTION,
+    },
+  ])('reports $name', async ({ result, shown, hidden }) => {
+    const onSubmitRequest = vi.fn(() => result);
+    const onComplete = vi.fn();
+    renderEditor({ onSubmitRequest, onComplete });
+    const user = await replaceMinimumValue('5');
+
+    await user.click(screen.getByRole('button', { name: 'Save validation' }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(shown);
+    expect(alert).not.toHaveTextContent(hidden);
+    // Refused either way: the dirty draft stays put and the editor stays open.
+    expect(
+      screen.getByRole('spinbutton', { name: 'Minimum value' }),
+    ).toHaveValue(5);
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole('button', { name: 'Save validation' }),
+    ).toBeEnabled();
+  });
 
   it('uses a new intent id after editing a blocked validation draft', async () => {
     const createId = vi

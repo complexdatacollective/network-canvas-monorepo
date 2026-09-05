@@ -16,25 +16,23 @@
  * line, in alphabetical order, each with a trailing comma, so that families
  * landing on separate branches change separate lines. `__tests__/
  * stageEditorRegistry.test.tsx` holds that shape in place.
+ *
+ * A FAMILY DECLARES ITS PART IN `stage-editor-contract.ts`, never here. This
+ * module imports every family's part, so a part module that imported anything
+ * from this one would close a cycle: whichever of the two a program reaches
+ * first, the other is half-evaluated, and `REGISTRY_PARTS` reads a binding
+ * that does not hold its part yet. The contract is a leaf — it imports the
+ * controller and the stage types and nothing else — which is what makes it
+ * safe for a part to import, and it is where the rest of what a family writes
+ * against already lives. `defineStageEditorPart` is deliberately NOT
+ * re-exported from here: a family that reached it through this module would
+ * close the cycle again, and only sometimes.
  */
 import type { StageType } from '@codaco/protocol-validation';
 
 import { formStageEditors } from './editors/formStageEditors.ts';
 import { nameGeneratorStageEditors } from './editors/nameGeneratorStageEditors.ts';
 import type { StageEditorRegistryPart } from './stage-editor-contract.ts';
-
-/**
- * A family declares its part with `defineStageEditorPart`, and looks for it
- * here. It is DECLARED beside the editor props in `stage-editor-contract.ts`,
- * because this module imports every family's part: a family importing the
- * helper from here would put the two modules in a cycle, and whichever of them
- * a program reached first would build `REGISTRY_PARTS` out of bindings that
- * are not initialised yet.
- */
-export {
-  defineStageEditorPart,
-  type StageEditorRegistryPart,
-} from './stage-editor-contract.ts';
 
 /**
  * Thrown when two families claim the same interface.

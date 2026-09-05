@@ -58,17 +58,44 @@ const HELD_BY_SOMEONE_UNNAMED =
 export function compoundFailureMessage(
   failure: AuxiliaryCodebookDraftFailure,
 ): string {
-  // A thrown failure carries whatever the thing that threw had to say — a
-  // schema sentence, a transport error — so it is reported as the same
-  // "nothing was saved, try again" the reasons above end in.
-  if (failure.kind === 'error') return UNEXPLAINED_FAILURE;
-  if (failure.result.status === 'failed') {
-    return REFUSAL_MESSAGES[failure.result.reason];
+  switch (failure.kind) {
+    // A thrown failure carries whatever the thing that threw had to say — a
+    // schema sentence, a transport error — so it is reported as the same
+    // "nothing was saved, try again" the reasons above end in.
+    case 'error':
+      return UNEXPLAINED_FAILURE;
+
+    // The one failure whose own words are shown. Everything else here is
+    // rewritten because it arrives written for whoever reads a log; a
+    // contradiction arrives already written for the researcher, naming the
+    // rule and the values that cannot both hold, which is more than this
+    // module could say about it — it does not know which rule was broken.
+    // Rewriting it would be the bug this case exists to prevent.
+    case 'contradiction':
+      return failure.message;
+
+    case 'result': {
+      if (failure.result.status === 'failed') {
+        return REFUSAL_MESSAGES[failure.result.reason];
+      }
+      // A section id is an internal address, so a blocked change is reported
+      // by who is holding it, or not at all.
+      const blocker = failure.result.blockedSections[0];
+      return blocker?.holder === undefined
+        ? HELD_BY_SOMEONE_UNNAMED
+        : `${blocker.holder.displayName} is currently editing a section needed for this change.`;
+    }
+
+    // Every kind is spelled out above, so a new one cannot arrive as a blank
+    // alert: the compiler asks for it here, exactly as `REFUSAL_MESSAGES`
+    // asks for every reason.
+    default:
+      return unreachable(failure);
   }
-  // A section id is an internal address, so a blocked change is reported by who
-  // is holding it, or not at all.
-  const blocker = failure.result.blockedSections[0];
-  return blocker?.holder === undefined
-    ? HELD_BY_SOMEONE_UNNAMED
-    : `${blocker.holder.displayName} is currently editing a section needed for this change.`;
+}
+
+function unreachable(failure: never): never {
+  throw new TypeError(
+    `No researcher-facing words are written for this kind of refused codebook save: ${JSON.stringify(failure)}`,
+  );
 }

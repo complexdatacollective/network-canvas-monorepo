@@ -269,18 +269,38 @@ const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
 );
 Alert.displayName = 'Alert';
 
-const AlertTitle = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLHeadingElement>
->(({ className, ...props }, ref) => (
-  <Heading
-    level="h4"
-    variant="all-caps"
-    ref={ref}
-    className={cx('mt-0!', className)}
-    {...props}
-  />
-));
+export type AlertTitleProps = React.HTMLAttributes<HTMLHeadingElement> & {
+  /**
+   * Where this title sits in the page's heading outline. Defaults to `h4`.
+   *
+   * An alert can be raised anywhere — beside a page title, inside a section,
+   * within a dialog — and a heading level is only correct relative to the
+   * heading above it. Fixed at `h4`, an alert placed under an `h2` skips a
+   * level, which is a `heading-order` failure and, for anyone navigating by
+   * headings, a title that reads as belonging to a subsection that does not
+   * exist.
+   *
+   * Changes the element only. The title keeps the small all-caps treatment
+   * that makes it read as an alert's title at every level, because that is
+   * about what the thing IS rather than about how deep in the page it sits.
+   */
+  headingLevel?: 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
+};
+
+const AlertTitle = React.forwardRef<HTMLParagraphElement, AlertTitleProps>(
+  ({ className, headingLevel, ...props }, ref) => (
+    <Heading
+      level="h4"
+      variant="all-caps"
+      {...(headingLevel === undefined || headingLevel === 'h4'
+        ? {}
+        : { render: React.createElement(headingLevel) })}
+      ref={ref}
+      className={cx('mt-0!', className)}
+      {...props}
+    />
+  ),
+);
 AlertTitle.displayName = 'AlertTitle';
 
 const AlertDescription = React.forwardRef<

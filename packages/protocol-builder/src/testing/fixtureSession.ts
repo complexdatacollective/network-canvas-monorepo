@@ -1,7 +1,10 @@
 import type { StageType } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
-import { sectionId } from '@codaco/studio-sync/taxonomy';
+import {
+  sectionId,
+  type ProtocolSectionId,
+} from '@codaco/studio-sync/taxonomy';
 
 import { InMemoryCompoundHost } from '../compound-edit/InMemoryCompoundHost.ts';
 import {
@@ -54,6 +57,18 @@ export type FixtureSessionOptions = Readonly<{
   assets?: Readonly<Record<string, SectionDoc>>;
   /** Open the stage as a spectator, with editing held elsewhere. */
   readOnly?: boolean;
+  /**
+   * Sections another editor is holding while this session runs, so any change
+   * that needs one is blocked rather than applied.
+   *
+   * A blocked compound edit is the one refusal a researcher can act on by
+   * asking a named colleague, which is why the name is given here rather than
+   * generated: what an editor shows them has to be checkable.
+   */
+  heldSections?: readonly Readonly<{
+    sectionId: ProtocolSectionId;
+    displayName: string;
+  }>[];
   /**
    * Names staged resources. Left out, they are numbered globally, which is
    * fine for a test and wrong for a story: a page that renders the id it was
@@ -128,6 +143,18 @@ export function openFixtureStageSession(
           mode: 'editing',
         },
       },
+      ...(options.heldSections ?? []).map((held, index) => ({
+        sectionId: held.sectionId,
+        leaseOwner: `holder-${index}`,
+        leaseEpoch: 1n,
+        holder: {
+          sessionId: `holder-tab-${index}`,
+          userId: `holder-user-${index}`,
+          displayName: held.displayName,
+          sectionId: held.sectionId,
+          mode: 'editing' as const,
+        },
+      })),
     ],
   });
   const gateway = new InMemoryResourceGateway({

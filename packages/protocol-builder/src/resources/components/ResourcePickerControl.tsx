@@ -150,10 +150,6 @@ export default function ResourcePickerControl({
               ariaLabelledBy ?? (id === undefined ? undefined : `${id}-label`),
             'aria-describedby': ariaDescribedBy,
             'aria-label': ariaLabel,
-            // The group is the field, so it carries the field's validation
-            // state: without these a required picker announces as an ordinary
-            // one, and a failed submit says nothing at all.
-            'aria-invalid': ariaInvalid,
           })}
       data-name={name}
       onBlur={onBlur}

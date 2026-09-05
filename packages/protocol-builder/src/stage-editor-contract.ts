@@ -78,15 +78,16 @@ export type StageEditorRegistryPart = Partial<StageEditorRegistry>;
  * instead is what keeps "this family claims exactly these three interfaces" a
  * fact the type system still knows.
  *
- * It lives HERE, beside the props a family's editors are written against,
- * rather than in the registry that composes the parts. The registry imports
- * every family's part, so a family reaching back into it for this helper puts
- * the two modules in a cycle — and whichever of them a program happens to
- * reach first then builds `REGISTRY_PARTS` out of bindings that have not been
- * initialised yet. `stageEditorRegistry.ts` re-exports it, because that is
- * where a family looks.
+ * Here rather than beside the registry that composes the parts, because the
+ * registry imports every part: a family reaching back into it for this helper
+ * would close a cycle, and `REGISTRY_PARTS` would read a part binding that is
+ * not initialised yet whenever a program loads the family module first. This
+ * contract imports nothing but the controller and the stage types, so a part
+ * can always import it.
  *
- * `type-tests/` compiles the failures this prevents.
+ * `type-tests/` compiles the failures this prevents, `partFromRegistry.ts`
+ * among them: the registry must not offer this helper, or a family could reach
+ * it there and close the cycle again.
  */
 export function defineStageEditorPart<
   const Part extends StageEditorRegistryPart,
