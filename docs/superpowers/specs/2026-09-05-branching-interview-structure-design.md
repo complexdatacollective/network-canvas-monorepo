@@ -294,6 +294,44 @@ route on roster, starting-network, or metadata values before any stage) and
 directly after another decision point. It may not be the only item of the
 timeline, because every route must end at a finish stage (§8.2).
 
+### 6.4 Alternatives versus independent gates
+
+A decision point chooses **one** outcome. That makes a multi-outcome
+decision point the right shape for routes that exclude each other, and the
+wrong shape for modules a participant may need more than one of.
+
+The rule: one multi-outcome decision point for alternatives that exclude
+each other; one single-outcome decision point, a _gate_, in front of each
+module whose inclusion is independent of the others.
+
+Worked example. "Uses drugs → Drug use module; drinks alcohol → Alcohol
+module; otherwise → Closing questions" is a switch. A participant who does
+both matches the first outcome, enters the Drug use module, and its exit
+takes them past the Alcohol module. To let one participant see both modules,
+the timeline holds two gates in sequence:
+
+```text
+Relationships
+Drug use?          uses drugs → Drug use module · otherwise → Alcohol use?
+Drug use module    exit → next
+Alcohol use?       drinks alcohol → Alcohol module · otherwise → Closing questions
+Alcohol module     exit → next
+Closing questions
+```
+
+A participant who uses both enters the drug module, leaves it onto the
+alcohol gate, and enters the alcohol module too. One who does neither takes
+both "otherwise" links straight down the spine. On the timeline each gate
+sits on the centre line with its module to one side, which is also the shape
+the editor's "show this only when…" shortcut produces (§12) and the shape of
+every migrated skip rule (§10).
+
+Conditions themselves compose freely under #1661: an outcome may read "uses
+drugs and drinks alcohol" as one `and` node when that combination should go
+somewhere of its own. What a single decision point cannot do is send one
+participant down two outcomes, and it should not try to; two gates say that
+plainly, and the printed summary reads the same way.
+
 ## 7. Route evaluation
 
 ### 7.1 The rule
