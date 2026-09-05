@@ -11,12 +11,18 @@ import type { Rule } from './validateRule';
  * The identity `Field` hands its control, forwarded to the rule builder's
  * `role="group"` because a rule set is a region rather than a single input.
  * `RuleSetFields` fills these in; a caller outside a form may omit them.
+ *
+ * `aria-invalid` is global in ARIA 1.2, so the group may carry it.
+ * `aria-required` is not: `group` is not among the roles that support it, and
+ * axe reports it there as a critical `aria-allowed-attr` failure whatever the
+ * value. So the required state is deliberately absent from this type, and
+ * reaches assistive technology through the description instead — the visually
+ * hidden "Required" marker `BaseField` renders and `aria-describedby` names.
  */
 export type RuleSetGroupProps = {
   'id'?: string;
   'aria-labelledby'?: string;
   'aria-describedby'?: string;
-  'aria-required'?: boolean;
   'aria-invalid'?: boolean;
 };
 
@@ -73,7 +79,6 @@ const Rules = ({
   id,
   'aria-labelledby': ariaLabelledBy,
   'aria-describedby': ariaDescribedBy,
-  'aria-required': ariaRequired,
   'aria-invalid': ariaInvalid,
   addRuleLabel,
   onChange = () => {},
@@ -116,7 +121,6 @@ const Rules = ({
       role="group"
       aria-labelledby={ariaLabelledBy}
       aria-describedby={ariaDescribedBy}
-      aria-required={ariaRequired}
       aria-invalid={ariaInvalid}
       className="flex flex-col gap-8"
     >
