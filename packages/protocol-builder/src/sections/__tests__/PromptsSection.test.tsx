@@ -1,10 +1,14 @@
 import { screen, waitFor } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import PromptsSection from '../PromptsSection.tsx';
 import StageNameSection from '../StageNameSection.tsx';
-import { TestPromptEditor, TestPromptPreview } from './rowFixtures.tsx';
+import {
+  ExplodingRowEditor,
+  TestPromptEditor,
+  TestPromptPreview,
+} from './rowFixtures.tsx';
 
 const prompts = (
   <PromptsSection
@@ -224,5 +228,66 @@ describe('the prompt list a stage owns', () => {
     expect(
       screen.getByRole('button', { name: 'Create new prompt' }),
     ).toBeDisabled();
+  });
+});
+
+/**
+ * The fields inside a row dialog are a family's own code, mounted by machinery
+ * that knows nothing about them. Before the boundary, one of them throwing
+ * unmounted the whole React tree: the researcher lost the stage editor, every
+ * unsaved change in it, and was left on a blank page with no account of why.
+ */
+describe('a row editor with a defect in it', () => {
+  it('costs the researcher the dialog, and nothing else', async () => {
+    // React reports a caught render error to the console. Silenced so the
+    // expected failure does not read as a broken test run.
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+
+    try {
+      const harness = renderStageEditor({
+        stageId: 'name-generator-1',
+        sections: (
+          <>
+            <StageNameSection />
+            <PromptsSection
+              PromptEditor={ExplodingRowEditor}
+              PromptPreview={TestPromptPreview}
+              requiresSubject={false}
+            />
+          </>
+        ),
+      });
+
+      await harness.user.click(
+        screen.getByRole('button', { name: 'Create new prompt' }),
+      );
+
+      // Said where a form-level problem is already reported, and about what
+      // the researcher can do rather than about what threw.
+      expect(
+        await screen.findByText(/This editor could not be shown/),
+      ).toBeInTheDocument();
+      // The dialog's own close is still there, which is the point of catching
+      // inside the dialog rather than around it.
+      await harness.user.click(screen.getByRole('button', { name: 'Cancel' }));
+      await waitFor(() =>
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+      );
+
+      // The stage behind it never went anywhere: it still lists its prompts,
+      // still has its sections, and still saves what it opened with.
+      expect(
+        screen.getByText('Who are the people you know?'),
+      ).toBeInTheDocument();
+      expect(harness.outline().map((section) => section.title)).toEqual([
+        'Stage name',
+        'Prompts',
+      ]);
+      await harness.roundTrip();
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 });

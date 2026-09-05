@@ -74,3 +74,15 @@ export function TestItemPreview({ item }: RowPreviewProps) {
     </span>
   );
 }
+
+/**
+ * A family's row editor with a defect in it.
+ *
+ * The shared list field mounts fields this package did not write, so one of
+ * them throwing is a real failure mode rather than a hypothetical — a picker
+ * reading a codebook variable that has been deleted, say. What the tests using
+ * this are about is what the researcher is left with when it happens.
+ */
+export function ExplodingRowEditor(): never {
+  throw new Error('The row editor could not be rendered.');
+}
