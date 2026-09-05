@@ -12,6 +12,19 @@ const openEditor = () => ({
   sections: <CategoricalBinPromptsSection />,
 });
 
+/** What a host says about a refusal, in the words a log reader would want. */
+const HOST_WORDS = 'expected object, received undefined';
+
+/**
+ * The package's own words for that refusal, from `compoundFailureCopy`.
+ *
+ * Written out rather than imported: the point of the copy is that it is NOT
+ * the message the host sent, and a test reading the same table as the
+ * component would still pass if that table were replaced by a passthrough.
+ */
+const REFUSED_INVALID_REQUEST =
+  'This change could not be sent, and nothing was saved. Close this editor and try again.';
+
 const prompts = (stage: Record<string, unknown>): Record<string, unknown>[] =>
   Array.isArray(stage.prompts)
     ? stage.prompts.filter(
@@ -237,7 +250,7 @@ describe('creating a bin attribute from inside a prompt', () => {
     vi.spyOn(harness.host, 'submit').mockReturnValue({
       status: 'failed',
       reason: 'invalid-request',
-      message: 'The codebook rejected that attribute.',
+      message: HOST_WORDS,
     });
 
     await harness.user.click(
@@ -256,9 +269,12 @@ describe('creating a bin attribute from inside a prompt', () => {
       screen.getByRole('button', { name: 'Create attribute' }),
     );
 
-    expect(
-      await screen.findByText(/The codebook rejected that attribute\./),
-    ).toBeInTheDocument();
+    // The package's own words about the refusal, never the host's: the
+    // sentence a host sends is about a path in a protocol document, and the
+    // researcher was creating an attribute.
+    const report = await screen.findByRole('alert');
+    expect(report).toHaveTextContent(REFUSED_INVALID_REQUEST);
+    expect(report).not.toHaveTextContent(HOST_WORDS);
     expect(personVariables(harness)).toEqual(before);
 
     // Nothing was staged locally either: a refused compound edit leaves the
