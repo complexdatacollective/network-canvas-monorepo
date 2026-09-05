@@ -1,8 +1,11 @@
+import { useCallback, useRef } from 'react';
+
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import Section from '@codaco/fresco-ui/Section';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
+import { useDiscardDraftGuard } from '../../form/discardDraftGuard.ts';
 import type { ResourceDescriptor } from '../gateway.ts';
 import ResourceFailureNotice from './ResourceFailureNotice.tsx';
 import {
@@ -45,16 +48,35 @@ export default function ResourceBrowserDialog({
   disabled = false,
 }: ResourceBrowserDialogProps) {
   const copy = RESOURCE_PICKER_COPY[kind];
+  /**
+   * Whether the import control inside is holding work of the researcher's.
+   *
+   * A ref rather than state: nothing here renders differently for it, and a
+   * dialog that re-rendered on every keystroke of the key being typed into it
+   * would be re-rendering for a question only a dismissal ever asks.
+   */
+  const importDraft = useRef(false);
+  const onDraftChange = useCallback((hasDraft: boolean) => {
+    importDraft.current = hasDraft;
+  }, []);
+  const hasDraft = useCallback(() => importDraft.current, []);
+  // Escape, a click outside, the close button and Cancel all arrive here. The
+  // import control below holds a key being typed or a file being imported in
+  // its own state and nowhere else, so a dismissal is the whole of what stands
+  // between the researcher and losing it — and Escape is a reflex, not a
+  // decision. Routed through the same gate the package's other draft-holding
+  // dialogs use, so the question is asked in one voice.
+  const requestClose = useDiscardDraftGuard({ hasDraft, onClose });
 
   return (
     <Dialog
       open={open}
-      closeDialog={onClose}
+      closeDialog={requestClose}
       title={copy.browserTitle}
       description={copy.browserDescription}
       size="workspace"
       footer={
-        <Button type="button" color="default" onClick={onClose}>
+        <Button type="button" color="default" onClick={requestClose}>
           Cancel
         </Button>
       }
@@ -66,6 +88,7 @@ export default function ResourceBrowserDialog({
           kind={kind}
           {...(selectedId === undefined ? {} : { selectedId })}
           onSelect={onSelect}
+          onDraftChange={onDraftChange}
           disabled={disabled}
         />
       )}
@@ -77,6 +100,8 @@ type ResourceBrowserBodyProps = Readonly<{
   kind: ResourcePickerKind;
   selectedId?: string;
   onSelect: (descriptor: ResourceDescriptor) => void;
+  /** Reports whether the import control is holding unsaved researcher input. */
+  onDraftChange: (hasDraft: boolean) => void;
   disabled: boolean;
 }>;
 
@@ -84,6 +109,7 @@ function ResourceBrowserBody({
   kind,
   selectedId,
   onSelect,
+  onDraftChange,
   disabled,
 }: ResourceBrowserBodyProps) {
   const copy = RESOURCE_PICKER_COPY[kind];
@@ -93,11 +119,21 @@ function ResourceBrowserBody({
     <div className="flex flex-col gap-6">
       <Section title={copy.importTitle}>
         {kind === 'apikey' ? (
-          <ResourceSecretControl onStaged={onSelect} disabled={disabled} />
+          <ResourceSecretControl
+            onStaged={onSelect}
+            // The very list rendered below, so a name the control refuses is
+            // one the researcher can see they already have.
+            existingNames={library.resources.map(
+              (descriptor) => descriptor.name,
+            )}
+            onDraftChange={onDraftChange}
+            disabled={disabled}
+          />
         ) : (
           <ResourceUploadControl
             kind={kind}
             onStaged={onSelect}
+            onDraftChange={onDraftChange}
             disabled={disabled}
           />
         )}

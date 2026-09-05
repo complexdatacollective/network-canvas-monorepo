@@ -1,4 +1,4 @@
-import { useCallback, useId, useState, type DragEvent } from 'react';
+import { useCallback, useEffect, useId, useState, type DragEvent } from 'react';
 import { v4 as uuid } from 'uuid';
 
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -66,6 +66,14 @@ export type ResourceUploadControlProps = Readonly<{
   /** Which kinds this control will accept, and what it stages them as. */
   kind: Exclude<ResourcePickerKind, 'apikey'>;
   onStaged: (descriptor: ResourceDescriptor) => void;
+  /**
+   * Reports whether this control is holding work a dismissal would lose.
+   *
+   * The dialog around it decides what to do about that; nothing here changes
+   * because of it. Reported rather than inferred because the draft lives in
+   * this control's own state and nowhere the dialog can see.
+   */
+  onDraftChange?: (hasDraft: boolean) => void;
   disabled?: boolean;
 }>;
 
@@ -84,6 +92,7 @@ export type ResourceUploadControlProps = Readonly<{
 export default function ResourceUploadControl({
   kind,
   onStaged,
+  onDraftChange,
   disabled = false,
 }: ResourceUploadControlProps) {
   const gateway = useResourceGateway();
@@ -92,6 +101,15 @@ export default function ResourceUploadControl({
   const [rejected, setRejected] = useState<string | undefined>(undefined);
   const [status, setStatus] = useState('');
   const [dragging, setDragging] = useState(false);
+
+  // A file the researcher has chosen and the host is still reading or storing.
+  // It is not typed work, but it is a choice they made that nothing else
+  // records: dismissing here throws the import away and the file has to be
+  // found again.
+  useEffect(() => {
+    onDraftChange?.(busy);
+    return () => onDraftChange?.(false);
+  }, [busy, onDraftChange]);
 
   const stageFile = useCallback(
     async (file: File) => {

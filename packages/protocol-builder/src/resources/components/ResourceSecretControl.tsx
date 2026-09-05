@@ -1,9 +1,10 @@
-import { useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { v4 as uuid } from 'uuid';
 
 import Button from '@codaco/fresco-ui/Button';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import { normalizeForComparison } from '@codaco/shared-consts';
 
 import { useResourceGateway } from '../context.tsx';
 import type {
@@ -19,6 +20,8 @@ import { useResourceAttempt } from './useResourceAttempt.ts';
 
 const NAME_REQUIRED_MESSAGE = 'Enter a name for this key.';
 const VALUE_REQUIRED_MESSAGE = 'Enter the value of the key.';
+const DUPLICATE_NAME_MESSAGE =
+  'You already have a key called that. Choose a different name.';
 
 /**
  * What the researcher is told about the key before they paste it, chosen by
@@ -47,11 +50,33 @@ export type ResourceSecretControlProps = Readonly<{
    * the secret was staged, and no surface here has any use for it.
    */
   onStaged: (descriptor: ResourceDescriptor) => void;
+  /**
+   * Reports whether this control is holding work a dismissal would lose.
+   *
+   * The dialog around it decides what to do about that; nothing here changes
+   * because of it. Reported rather than inferred because the draft lives in
+   * this control's own state and nowhere the dialog can see.
+   */
+  onDraftChange?: (hasDraft: boolean) => void;
+  /**
+   * The names the protocol's keys already go by — committed and staged alike.
+   *
+   * A name already in use is refused rather than quietly accepted, because
+   * every surface that offers a key to a field offers it by its name and
+   * nothing else: two keys called "Mapbox" are two identical buttons, and the
+   * researcher choosing between them has no way to tell which is which, nor
+   * any way to learn that the key they think they just created already
+   * existed. This is the list they are looking at as they type, read where the
+   * browser reads it, so what is refused is exactly what they can see.
+   */
+  existingNames?: readonly string[];
   disabled?: boolean;
 }>;
 
 const asString = (value: unknown): string =>
   typeof value === 'string' ? value : '';
+
+const NO_EXISTING_NAMES: readonly string[] = Object.freeze([]);
 
 /**
  * Stages secret material — a map provider's API key — without the editor ever
@@ -72,6 +97,8 @@ const asString = (value: unknown): string =>
  */
 export default function ResourceSecretControl({
   onStaged,
+  onDraftChange,
+  existingNames = NO_EXISTING_NAMES,
   disabled = false,
 }: ResourceSecretControlProps) {
   const gateway = useResourceGateway();
@@ -97,6 +124,17 @@ export default function ResourceSecretControl({
    * if it did.
    */
   const unsettled = useRef<StageSecretRequest | undefined>(undefined);
+
+  // Either input holding anything at all is work the host has never seen: the
+  // key is in this control's state and nowhere else, so a dismissal is the
+  // whole of what stands between the researcher and losing it. Reported on the
+  // way out too, so a dialog that outlives this control is not left believing
+  // it still holds a draft.
+  const hasDraft = name.trim() !== '' || secret.trim() !== '';
+  useEffect(() => {
+    onDraftChange?.(hasDraft);
+    return () => onDraftChange?.(false);
+  }, [hasDraft, onDraftChange]);
 
   /** Drops what was said about a field the researcher is now correcting. */
   const clearError = (field: 'name' | 'value') => {
@@ -171,8 +209,14 @@ export default function ResourceSecretControl({
     const trimmedSecret = secret.trim();
     const nextErrors: { name?: string; value?: string } = {};
     if (trimmedName === '') nextErrors.name = NAME_REQUIRED_MESSAGE;
+    else if (namesAnExistingKey(existingNames, trimmedName)) {
+      nextErrors.name = DUPLICATE_NAME_MESSAGE;
+    }
     if (trimmedSecret === '') nextErrors.value = VALUE_REQUIRED_MESSAGE;
     setErrors(nextErrors);
+    // Reported on the name field rather than as a failure of the call, and
+    // before the call is made: nothing is staged, so there is nothing to
+    // retry, and the correction belongs where the researcher will make it.
     if (Object.keys(nextErrors).length > 0) return;
 
     submitted.current = true;
@@ -263,5 +307,24 @@ export default function ResourceSecretControl({
         {status}
       </span>
     </form>
+  );
+}
+
+/**
+ * Whether a key already goes by this name, asked the way every uniqueness
+ * check in this codebase asks it.
+ *
+ * `normalizeForComparison` is case-insensitive AND Unicode-canonical: two
+ * spellings that render identically are the same name, and comparing raw text
+ * would let one of each through — leaving the researcher exactly the pair of
+ * indistinguishable entries this refusal exists to prevent.
+ */
+function namesAnExistingKey(
+  existingNames: readonly string[],
+  name: string,
+): boolean {
+  const normalized = normalizeForComparison(name);
+  return existingNames.some(
+    (existing) => normalizeForComparison(existing.trim()) === normalized,
   );
 }

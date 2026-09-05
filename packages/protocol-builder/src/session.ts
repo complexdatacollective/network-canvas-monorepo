@@ -38,6 +38,7 @@ import {
   promotionContent,
   stageIndexForValidation,
   type SessionResourceGateway,
+  type StagedResourceCancelReport,
   type StagedResourceDiscardFailure,
   type StagedResourceFinishOutcome,
   type StagedResourceTracker,
@@ -244,8 +245,12 @@ export type ProtocolBuilderSession = {
    * host because they referenced that staging. Ok when the session has no
    * gateway — there is nothing to discard. Refused while a finish is
    * committing those very resources, because that promotion decides them.
+   *
+   * A resource whose promotion ended without saying what it did is kept
+   * rather than discarded, and named in the report: see
+   * {@link StagedResourceCancelReport}.
    */
-  cancel(): Promise<ResourceResult<undefined>>;
+  cancel(): Promise<ResourceResult<StagedResourceCancelReport>>;
   /**
    * The session-scoped resource gateway, or `undefined` when the host opened
    * the session without one. The shell provides it to editors; nothing else
@@ -756,6 +761,9 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     } finally {
       // Released before anything below can throw: a hold left standing would
       // refuse every later cancel, stranding the session's staged resources.
+      // Safe even when the promotion below was never decided: what a cancel
+      // may discard is fenced by that promotion's own outcome, inside the
+      // tracker, rather than by how long this finish holds the session.
       hold.data.settle();
     }
 
@@ -798,10 +806,17 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     }
   }
 
-  async cancel(): Promise<ResourceResult<undefined>> {
+  /**
+   * Ends the edit and discards what it staged, except anything a promotion
+   * left undecided — see {@link StagedResourceCancelReport}.
+   */
+  async cancel(): Promise<ResourceResult<StagedResourceCancelReport>> {
     const resources = this.resources;
     if (resources === undefined) {
-      return Object.freeze({ status: 'ok', data: undefined });
+      return Object.freeze({
+        status: 'ok',
+        data: Object.freeze({ keptUnreconciled: Object.freeze([]) }),
+      });
     }
     const result = await resources.cancel();
     if (result.status === 'ok') this.dropWithheldCommands();

@@ -621,6 +621,12 @@ const INTERLEAVINGS: readonly Interleaving[] = [
       );
       await waitFor(() => expect(stageUpload).toHaveBeenCalled());
       await user.click(screen.getByRole('button', { name: 'Cancel' }));
+      // An import still in flight is work the researcher chose and nothing
+      // else records, so the dismissal asks first; this row is about what
+      // happens once they have said to let it go.
+      await user.click(
+        await screen.findByRole('button', { name: 'Discard changes' }),
+      );
       // The host answers an import whose surface has gone. Suppressing the
       // callback is not enough: the resource exists, the session is tracking
       // it, and no field will ever name it.

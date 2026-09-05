@@ -552,7 +552,7 @@ describe('staged resource tracker', () => {
     const { tracker } = createTracker(host);
     const image = await stageImage(tracker.gateway);
     let discardDuringApply: ResourceResult<undefined> | undefined;
-    let cancelDuringApply: ResourceResult<undefined> | undefined;
+    let cancelDuringApply: ResourceResult<unknown> | undefined;
 
     const promotion = expectOk(
       await tracker.gateway.promote({

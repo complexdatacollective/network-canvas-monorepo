@@ -90,7 +90,8 @@ export type StagedResourceTracker = Readonly<{
     manifestSection: SectionDoc | undefined,
   ): readonly ResourceDescriptor[];
   /**
-   * Ends this session's staging and discards everything it staged.
+   * Ends this session's staging and discards everything it staged, except what
+   * a promotion left in doubt.
    *
    * Staging that is still in flight is covered: an upload or a secret that
    * lands after this is discarded at the host instead of being registered,
@@ -101,8 +102,11 @@ export type StagedResourceTracker = Readonly<{
    * through deciding — and then committing — exactly these resources:
    * discarding them now would leave the committed stage pointing at bytes this
    * session threw away, and would report a cancel that had not happened.
+   *
+   * A resource whose promotion ended without saying what it did is kept and
+   * reported rather than discarded: see {@link StagedResourceCancelReport}.
    */
-  cancel(): Promise<ResourceResult<undefined>>;
+  cancel(): Promise<ResourceResult<StagedResourceCancelReport>>;
   /**
    * Takes the session for one finish: closes the staging window and returns
    * what the finish has to decide — the same instant, on purpose.
@@ -127,10 +131,30 @@ export type StagedResourceTracker = Readonly<{
 }>;
 
 /**
+ * What a cancel did about the resources it could not simply discard.
+ *
+ * A promotion that ends without saying whether it committed leaves its
+ * resources in one state the session cannot tell apart from the other: the
+ * host may hold them as committed protocol assets, or may hold nothing at all.
+ * Discarding them would delete work the protocol has already taken, and
+ * reporting them as discarded would be reporting something that did not
+ * happen — so the cancel does neither, and says which resources those are. The
+ * way to settle it is to finish again: the promotion id is stable, so a host
+ * that really did promote hands that promotion back.
+ */
+export type StagedResourceCancelReport = Readonly<{
+  /** Descriptors the cancel deliberately left with the host. Usually empty. */
+  keptUnreconciled: readonly ResourceDescriptor[];
+}>;
+
+/**
  * One finish's hold on a session's staging, and the resources it decides.
  *
  * {@link settle} must run however the finish ends — including when it throws —
- * or the session can never be cancelled again.
+ * or the session can never be cancelled again. Releasing it is safe even for a
+ * finish whose promotion was never decided: what a cancel may then discard is
+ * fenced by the promotion's own outcome rather than by this hold, which is
+ * about one finish being under way at a time.
  */
 export type StagedResourceFinishHold = Readonly<{
   /** Descriptors only, as the staging window closed on them. */
@@ -168,6 +192,21 @@ export function createStagedResourceTracker(
   const host = resultChannelGateway(options.gateway);
   /** Ids of a promotion that is in flight; they cannot be discarded. */
   const promoting = new Set<string>();
+  /**
+   * Ids whose promotion ended without saying what it did, against the id of
+   * the promotion that left them that way.
+   *
+   * **A resource a promotion did not decide is never discarded.** A retryable
+   * promotion failure is the one answer that means both things at once: the
+   * host rolled back and holds the resource still, or the host committed it
+   * and lost only its reply. Nothing here can tell those apart, and the two
+   * call for opposite actions — so a discard of any kind refuses the resource
+   * until something settles it, and a cancel keeps it and says so. Only a
+   * promotion answering decisively settles it: `ok` means the host has it, and
+   * a refusal under the SAME promotion id means the host never took it, since
+   * a host that had would answer that id with the promotion it already made.
+   */
+  const unreconciled = new Map<string, string>();
   /**
    * Ids a discard is deciding right now. They take no new references: see
    * {@link StagedResourceReferenceGuard} for the rule and what it is for.
@@ -314,6 +353,9 @@ export function createStagedResourceTracker(
       if (promoting.has(resourceId)) {
         return saveInFlightFailure(resourceId);
       }
+      if (unreconciled.has(resourceId)) {
+        return promotionUndecidedFailure(resourceId);
+      }
       // Marked before the host is asked, and unmarked however it answers: a
       // discard the host refused leaves the resource staged and choosable
       // again, and one it carried out has already been forgotten, so the mark
@@ -330,6 +372,10 @@ export function createStagedResourceTracker(
 
     async discardAllStaged(): Promise<ResourceResult<undefined>> {
       if (promoting.size > 0) return saveInFlightFailure();
+      // Nothing here can spare one resource from a discard of everything, so
+      // an undecided promotion refuses the whole call rather than sweeping the
+      // resource it may already have committed away with the rest.
+      if (unreconciled.size > 0) return promotionUndecidedFailure();
       const all = [...entries.keys()];
       for (const resourceId of all) leaving.add(resourceId);
       try {
@@ -357,8 +403,26 @@ export function createStagedResourceTracker(
       for (const resourceId of request.resourceIds) promoting.add(resourceId);
       try {
         const result = await host.promote(request);
+        // Where the doubt is created and where it is settled, because this is
+        // the only place a promotion's outcome is seen. See `unreconciled`.
         if (result.status === 'ok') {
           markPromoted(result.data.promoted.map((descriptor) => descriptor.id));
+          for (const resourceId of request.resourceIds) {
+            unreconciled.delete(resourceId);
+          }
+        } else if (result.failure.retryable) {
+          for (const resourceId of request.resourceIds) {
+            unreconciled.set(resourceId, request.id);
+          }
+        } else {
+          for (const resourceId of request.resourceIds) {
+            // Only this promotion's own doubt: a refusal of a promotion the
+            // researcher started after editing the draft — a different id —
+            // says nothing about whether the earlier one committed.
+            if (unreconciled.get(resourceId) === request.id) {
+              unreconciled.delete(resourceId);
+            }
+          }
         }
         return result;
       } finally {
@@ -387,7 +451,7 @@ export function createStagedResourceTracker(
 
   return Object.freeze({
     gateway,
-    cancel: async (): Promise<ResourceResult<undefined>> => {
+    cancel: async (): Promise<ResourceResult<StagedResourceCancelReport>> => {
       // A finish that has started is the one deciding these resources, and it
       // decides them to the end: reporting a clean cancel here would be
       // reporting something the finish is in the middle of undoing.
@@ -396,9 +460,32 @@ export function createStagedResourceTracker(
       // is clearing up belongs to a session that is already over.
       cancelled = true;
       stagingWindow += 1;
-      const result = await host.discardAllStaged();
-      if (result.status === 'ok') forgetAllStaged();
-      return result;
+      const kept = [...entries.values()]
+        .filter(
+          (entry) => !entry.promoted && unreconciled.has(entry.descriptor.id),
+        )
+        .map((entry) => entry.descriptor);
+      if (kept.length === 0) {
+        const result = await host.discardAllStaged();
+        if (result.status !== 'ok') return result;
+        forgetAllStaged();
+        return resourceOk(
+          Object.freeze({ keptUnreconciled: Object.freeze([]) }),
+        );
+      }
+      // One at a time, because `discardAllStaged` cannot spare the resources
+      // above. Everything else this session staged goes exactly as it would
+      // have; a host that refuses one of them is reported as a failed cancel,
+      // because that resource really is still there.
+      for (const entry of entries.values()) {
+        if (entry.promoted || unreconciled.has(entry.descriptor.id)) continue;
+        const result = await host.discardStaged(entry.descriptor.id);
+        if (result.status !== 'ok') return result;
+        forget([entry.descriptor.id]);
+      }
+      return resourceOk(
+        Object.freeze({ keptUnreconciled: Object.freeze(kept) }),
+      );
     },
     finishing: (): ResourceResult<StagedResourceFinishHold> => {
       // A cancel sets this before it awaits its discard, so a finish starting
@@ -871,6 +958,23 @@ function saveInFlightFailure<T>(resourceId?: string): ResourceResult<T> {
   return resourceFailure(
     'unavailable',
     'these resources are being saved right now, so they cannot be discarded until the save finishes',
+    resourceId === undefined ? {} : { resourceId },
+  );
+}
+
+/**
+ * A discard refused because the last promotion of these resources never said
+ * what it did, so they may already be part of the protocol.
+ *
+ * Retryable, and true to the way out: finishing again asks the host under the
+ * same promotion id, which is what turns "maybe" into an answer — and once it
+ * has answered, the discard the researcher asked for either happens or has
+ * nothing left to do.
+ */
+function promotionUndecidedFailure<T>(resourceId?: string): ResourceResult<T> {
+  return resourceFailure(
+    'unavailable',
+    'the last attempt to save these resources did not say whether it finished, so they cannot be discarded until saving again settles it',
     resourceId === undefined ? {} : { resourceId },
   );
 }

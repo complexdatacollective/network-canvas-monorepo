@@ -11,6 +11,7 @@ import {
 import { InMemoryResourceGateway } from '../../InMemoryResourceGateway.ts';
 import { overrideGateway } from '../../overrideGateway.ts';
 import ResourcePreview, {
+  PREVIEW_RENEWAL_LEAD_MS,
   PREVIEW_RENEWAL_MIN_INTERVAL_MS,
 } from '../ResourcePreview.tsx';
 import { deferred, type Deferred } from './asyncControls.ts';
@@ -431,6 +432,40 @@ const LEASE_INTERLEAVINGS: readonly LeaseInterleaving[] = [
       ledger.leasesLastFor(60_000);
       await advance(PREVIEW_RENEWAL_MIN_INTERVAL_MS);
 
+      expect(shownLease()).toBe(2);
+      expectShownLeaseIsHeld(ledger);
+      unmount();
+      expectEveryLeaseReleasedOnce(ledger);
+    },
+  },
+  {
+    state: 'live',
+    event: 'the lease lasts longer than a timer delay can express',
+    rule: 'it is neither renewed nor released early, and its renewal still falls due on time',
+    check: async (ledger) => {
+      const image = await stageImage(ledger.inner, 'request-long', 'long.png');
+      // A signed URL a month out. `setTimeout` holds a signed 32-bit
+      // millisecond delay (about 24.8 days), and a delay past it wraps to
+      // something small — so a lease scheduled naively is renewed and released
+      // at once, and every replacement is too, which is a request loop for as
+      // long as the editor is open.
+      const thirtyDays = 30 * 24 * 60 * 60 * 1_000;
+      ledger.leasesLastFor(thirtyDays);
+      const { unmount } = renderPreview(ledger.gateway, image);
+      await advance(1);
+      expect(shownLease()).toBe(1);
+
+      await advance(60_000);
+
+      expect(ledger.issued()).toBe(1);
+      expect(shownLease()).toBe(1);
+      expect(ledger.releases()).toEqual([0]);
+
+      // Still armed for the moment it is really due, rather than dropped for
+      // being too far away: a lease that is never renewed stops resolving.
+      await advance(thirtyDays - 60_000 - PREVIEW_RENEWAL_LEAD_MS);
+
+      expect(ledger.issued()).toBe(2);
       expect(shownLease()).toBe(2);
       expectShownLeaseIsHeld(ledger);
       unmount();

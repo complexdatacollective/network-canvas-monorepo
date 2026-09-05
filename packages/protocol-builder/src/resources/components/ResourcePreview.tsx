@@ -44,6 +44,40 @@ export const PREVIEW_RENEWAL_LEAD_MS = 5_000;
 export const PREVIEW_RENEWAL_MIN_INTERVAL_MS = 5_000;
 
 /**
+ * The longest delay a timer can be asked to hold: 2³¹ − 1 milliseconds, about
+ * 24.8 days. `setTimeout` keeps its delay in a signed 32-bit field, and a
+ * larger one wraps — to a small number, or in some runtimes to zero — so the
+ * timer fires at once instead of far in the future.
+ */
+const MAX_TIMER_DELAY_MS = 2_147_483_647;
+
+/** One armed timer, however far away the moment it is armed for. */
+type PreviewTimer = Readonly<{ cancel: () => void }>;
+
+/**
+ * Runs `wake` in `delayMs`, for any delay a lease can carry.
+ *
+ * A host issuing month-long signed URLs is ordinary, and the delay that
+ * describes one is past what a timer can hold: asked for it directly, the
+ * timer fires immediately, so the lease is renewed and released the moment it
+ * arrives — and since each replacement is just as long-lived, the preview goes
+ * on asking the host for URLs as fast as it can answer them. So a long wait is
+ * served in instalments of the largest delay the platform does hold, and the
+ * work happens only when the whole of it has passed.
+ */
+function armTimer(wake: () => void, delayMs: number): PreviewTimer {
+  let handle: ReturnType<typeof setTimeout>;
+  let remaining = Math.max(delayMs, 0);
+  const arm = (): void => {
+    const step = Math.min(remaining, MAX_TIMER_DELAY_MS);
+    remaining -= step;
+    handle = setTimeout(remaining > 0 ? arm : wake, step);
+  };
+  arm();
+  return Object.freeze({ cancel: () => clearTimeout(handle) });
+}
+
+/**
  * Where a preview's lease has got to.
  *
  * Every state says two things: which lease, if any, this preview is holding
@@ -149,14 +183,14 @@ export default function ResourcePreview({
 
   useEffect(() => {
     let state: PreviewState = { name: 'resolving' };
-    let renewal: ReturnType<typeof setTimeout> | undefined;
-    let expiry: ReturnType<typeof setTimeout> | undefined;
+    let renewal: PreviewTimer | undefined;
+    let expiry: PreviewTimer | undefined;
     setPreview(undefined);
     setFailure(undefined);
 
     const clearTimers = (): void => {
-      if (renewal !== undefined) clearTimeout(renewal);
-      if (expiry !== undefined) clearTimeout(expiry);
+      renewal?.cancel();
+      expiry?.cancel();
       renewal = undefined;
       expiry = undefined;
     };
@@ -192,13 +226,13 @@ export default function ResourcePreview({
         // preview back.
         state = { name: 'waiting' };
         setPreview(undefined);
-        renewal = setTimeout(onRenewalDue, PREVIEW_RENEWAL_MIN_INTERVAL_MS);
+        renewal = armTimer(onRenewalDue, PREVIEW_RENEWAL_MIN_INTERVAL_MS);
         lease.release();
         return;
       }
       state = { name: 'live', lease };
       setPreview(lease);
-      renewal = setTimeout(
+      renewal = armTimer(
         onRenewalDue,
         Math.max(
           remaining - PREVIEW_RENEWAL_LEAD_MS,
@@ -209,7 +243,7 @@ export default function ResourcePreview({
       // for first. A lease shorter than the floor runs out before that ask,
       // and a renewal the host never answers would otherwise leave a dead URL
       // on screen and the host holding it for as long as the editor is open.
-      expiry = setTimeout(onLeaseExpired, remaining);
+      expiry = armTimer(onLeaseExpired, remaining);
     };
 
     const onResolved = (lease: ResolvedPreview): void => {

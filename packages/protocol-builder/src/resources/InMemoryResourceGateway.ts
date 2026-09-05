@@ -3,6 +3,7 @@ import csv from 'csvtojson';
 import type { Asset } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
+  VariableNameSchema,
   VariableValueSchema,
 } from '@codaco/shared-consts';
 import type { Command } from '@codaco/studio-sync/apply';
@@ -841,21 +842,69 @@ type RosterFacts = Readonly<{
 }>;
 
 /**
- * Why a file is not a network, in the researcher's terms. Lower case and
- * without a full stop, because every surface that shows it puts it after a
- * clause of its own.
+ * Why a file cannot be the roster a stage points at, in the researcher's
+ * terms. Lower case and without a full stop, because every surface that shows
+ * it puts it after a clause of its own.
  */
-type UnreadableRoster = Readonly<{ unreadable: string }>;
+type RosterProblem = Readonly<{ unreadable: string }>;
 
 const UNREADABLE_ROSTER = 'the selected file is not a readable network';
 
-function unreadableRoster(detail?: string): UnreadableRoster {
+function unreadableRoster(detail?: string): RosterProblem {
   return Object.freeze({
     unreadable:
       detail === undefined
         ? UNREADABLE_ROSTER
         : `${UNREADABLE_ROSTER}: ${detail}`,
   });
+}
+
+/**
+ * A file that parsed perfectly and still cannot be committed as a roster.
+ *
+ * Kept apart from {@link unreadableRoster} because it is a different thing to
+ * tell a researcher: nothing is wrong with how the file is written, so saying
+ * it "is not a readable network" would send them looking for a corruption that
+ * is not there.
+ */
+function unusableRoster(reason: string): RosterProblem {
+  return Object.freeze({ unreadable: reason });
+}
+
+/**
+ * A roster with nothing in it: the mistake a spreadsheet makes when a filtered
+ * or empty sheet is exported.
+ *
+ * Refused rather than described, because a stage pointing at it saves and
+ * validates exactly like any other and then presents no participant at all
+ * when the interview runs — and this is the last moment at which choosing a
+ * different file is still what the researcher would do.
+ */
+const EMPTY_ROSTER =
+  'the selected file has no records in it, so a stage using it would have nobody to show';
+
+/**
+ * The attribute names a roster may carry, which are the variable names the
+ * protocol will hold.
+ *
+ * {@link VariableNameSchema} is the rule the runtime and the protocol format
+ * already apply — NMTOKEN-compatible, because variable names reach XML-based
+ * exports — and it is used rather than restated so a name the protocol format
+ * learns to accept is one this gateway learns to accept. A spreadsheet's own
+ * headings routinely break it ("home address", "date of birth"), and a roster
+ * that only fails at export time is one the researcher cannot connect to the
+ * file they chose weeks earlier.
+ */
+function unusableAttributeName(
+  names: readonly string[],
+): RosterProblem | undefined {
+  for (const name of names) {
+    if (VariableNameSchema.safeParse(name).success) continue;
+    return unusableRoster(
+      `the "${name}" attribute cannot be used as a variable name: names may hold only letters, digits, and the characters . _ - :`,
+    );
+  }
+  return undefined;
 }
 
 /**
@@ -868,7 +917,7 @@ function unreadableRoster(detail?: string): UnreadableRoster {
 function parseRoster(
   descriptor: ResourceDescriptor,
   content: StoredContent,
-): Promise<RosterFacts | UnreadableRoster> {
+): Promise<RosterFacts | RosterProblem> {
   const text = new TextDecoder().decode(content.bytes);
   return isCsvRoster(descriptor, content)
     ? parseCsvRoster(text)
@@ -900,7 +949,7 @@ function isCsvRoster(
  */
 async function parseCsvRoster(
   text: string,
-): Promise<RosterFacts | UnreadableRoster> {
+): Promise<RosterFacts | RosterProblem> {
   const converter = csv({ checkColumn: true, flatKeys: true });
   // A mismatched row is reported as an event and the row is dropped: the parse
   // still settles, with a roster quietly shorter than the file. Listening is
@@ -926,9 +975,14 @@ async function parseCsvRoster(
     if (unreadableValue !== undefined) return unreadableValue;
   }
 
+  if (attributes.length === 0) return unusableRoster(EMPTY_ROSTER);
+  const variableNames = attributeNames(attributes);
+  const unusableName = unusableAttributeName(variableNames);
+  if (unusableName !== undefined) return unusableName;
+
   return Object.freeze({
     counts: Object.freeze({ nodes: attributes.length, edges: 0 }),
-    variableNames: attributeNames(attributes),
+    variableNames,
   });
 }
 
@@ -944,7 +998,7 @@ async function parseCsvRoster(
  * with a manifest entry that looks perfectly valid — so the entry is named
  * and the file is refused instead.
  */
-function parseJsonRoster(text: string): RosterFacts | UnreadableRoster {
+function parseJsonRoster(text: string): RosterFacts | RosterProblem {
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
@@ -982,9 +1036,16 @@ function parseJsonRoster(text: string): RosterFacts | UnreadableRoster {
     nodeAttributes.push(attributes);
   }
 
+  if (nodes.length === 0 && edges.length === 0) {
+    return unusableRoster(EMPTY_ROSTER);
+  }
+  const variableNames = attributeNames(nodeAttributes);
+  const unusableName = unusableAttributeName(variableNames);
+  if (unusableName !== undefined) return unusableName;
+
   return Object.freeze({
     counts: Object.freeze({ nodes: nodes.length, edges: edges.length }),
-    variableNames: attributeNames(nodeAttributes),
+    variableNames,
   });
 }
 
@@ -1007,7 +1068,7 @@ function parseJsonRoster(text: string): RosterFacts | UnreadableRoster {
 function unreadableAttributeValue(
   attributes: Readonly<Record<string, unknown>>,
   entry: string,
-): UnreadableRoster | undefined {
+): RosterProblem | undefined {
   for (const [name, value] of Object.entries(attributes)) {
     if (value === null || value === undefined) continue;
     if (VariableValueSchema.safeParse(value).success) continue;

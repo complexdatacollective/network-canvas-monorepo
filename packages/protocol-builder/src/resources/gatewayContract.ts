@@ -440,6 +440,70 @@ export function describeResourceGatewayContract(
       ]);
     });
 
+    it('refuses a roster whose attribute name a variable cannot be called, and names it', async () => {
+      const json = await stageJsonRoster('request-spaced-attribute-roster', {
+        nodes: [{ attributes: { 'name': 'Ada', 'home address': 'London' } }],
+        edges: [],
+      });
+      const csv = expectOk(
+        await gateway().stageUpload({
+          requestId: 'request-spaced-column-roster',
+          kind: 'network',
+          name: 'Roster with a spaced column',
+          source: 'spaced-roster.csv',
+          contentType: 'text/csv',
+          bytes: new TextEncoder().encode(
+            'name,home address\nAda,London\nGrace,Arlington\n',
+          ),
+        }),
+      );
+
+      const jsonFailure = expectFailure(await gateway().inspect(json.id));
+      const csvFailure = expectFailure(await gateway().inspect(csv.id));
+
+      // A roster's attribute names become variable names, and those must be
+      // NMTOKEN-compatible for the XML-based exports the protocol format
+      // produces. A spreadsheet's own column headings — "home address", "date
+      // of birth" — are not, so an adapter that only counts the columns lets a
+      // protocol commit a roster whose problem surfaces at export time, long
+      // after the researcher could have picked a different file. The offending
+      // name is reported because it is the whole of what they have to fix.
+      expect(jsonFailure.reason).toBe('invalid-content');
+      expect(jsonFailure.retryable).toBe(false);
+      expect(jsonFailure.message).toContain('home address');
+      expect(csvFailure.reason).toBe('invalid-content');
+      expect(csvFailure.message).toContain('home address');
+    });
+
+    it('refuses a roster with no records at all', async () => {
+      const json = await stageJsonRoster('request-empty-json-roster', {
+        nodes: [],
+        edges: [],
+      });
+      const csv = expectOk(
+        await gateway().stageUpload({
+          requestId: 'request-empty-csv-roster',
+          kind: 'network',
+          name: 'Roster with only a header',
+          source: 'empty-roster.csv',
+          contentType: 'text/csv',
+          bytes: new TextEncoder().encode('name,role\n'),
+        }),
+      );
+
+      const jsonFailure = expectFailure(await gateway().inspect(json.id));
+      const csvFailure = expectFailure(await gateway().inspect(csv.id));
+
+      // A header-only export is an ordinary spreadsheet mistake, and a stage
+      // pointing at one saves and validates perfectly while being unable to
+      // present a single participant at interview time. Refusing it here is
+      // the only moment the researcher can still choose another file.
+      expect(jsonFailure.reason).toBe('invalid-content');
+      expect(jsonFailure.retryable).toBe(false);
+      expect(csvFailure.reason).toBe('invalid-content');
+      expect(csvFailure.retryable).toBe(false);
+    });
+
     it('reads a CSV roster column named with dots as one attribute', async () => {
       const roster = expectOk(
         await gateway().stageUpload({

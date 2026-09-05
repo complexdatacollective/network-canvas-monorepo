@@ -42,7 +42,7 @@ async function submitKey(
   name: string,
   value: string,
 ) {
-  await user.type(screen.getByLabelText('Name'), name);
+  await user.type(await screen.findByLabelText('Name'), name);
   await user.type(screen.getByLabelText('Key'), value);
   await user.click(screen.getByRole('button', { name: 'Add API key' }));
 }
@@ -182,6 +182,149 @@ describe('the secret resource picker', () => {
       await screen.findByText('Enter the value of the key.'),
     ).toBeVisible();
     expect(stageSecret).not.toHaveBeenCalled();
+  });
+
+  it('asks before an accidental dismissal throws away a half-typed key', async () => {
+    const user = userEvent.setup();
+    const gateway = new InMemoryResourceGateway();
+    renderResourceEditor({
+      gateway,
+      children: (
+        <ProtocolField
+          component={ResourcePickerControl}
+          name="apiKey"
+          label="Map provider API key"
+          kind="apikey"
+        />
+      ),
+    });
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Select an API key' }),
+    );
+    await user.type(await screen.findByLabelText('Name'), 'Mapbox key');
+    await user.type(screen.getByLabelText('Key'), SECRET);
+    // Escape is the reflex, and it is the one dismissal a researcher reaches
+    // for without deciding anything: nothing here has been handed to the host,
+    // so the key would simply be gone.
+    await user.keyboard('{Escape}');
+
+    expect(
+      await screen.findByText(
+        'This editor holds changes that have not been saved. Closing it now discards them.',
+      ),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Keep editing' }));
+
+    expect(await screen.findByLabelText('Name')).toHaveValue('Mapbox key');
+    expect(screen.getByLabelText('Key')).toHaveValue(SECRET);
+  });
+
+  it('dismisses the browser without asking when nothing has been typed', async () => {
+    const user = userEvent.setup();
+    const gateway = new InMemoryResourceGateway();
+    renderResourceEditor({
+      gateway,
+      children: (
+        <ProtocolField
+          component={ResourcePickerControl}
+          name="apiKey"
+          label="Map provider API key"
+          kind="apikey"
+        />
+      ),
+    });
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Select an API key' }),
+    );
+    await screen.findByLabelText('Name');
+    await user.keyboard('{Escape}');
+
+    // Asking about work that does not exist is a question the researcher has
+    // to dismiss every time they open the browser to look.
+    await waitFor(() =>
+      expect(screen.queryByLabelText('Name')).not.toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByRole('button', { name: 'Keep editing' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('refuses a name the protocol already has a key under', async () => {
+    const user = userEvent.setup();
+    const gateway = new InMemoryResourceGateway({
+      committed: [
+        {
+          id: 'committed-key',
+          kind: 'apikey',
+          name: 'Mapbox',
+          value: SECOND_SECRET,
+        },
+      ],
+    });
+    const stageSecret = vi.spyOn(gateway, 'stageSecret');
+    renderResourceEditor({
+      gateway,
+      children: (
+        <ProtocolField
+          component={ResourcePickerControl}
+          name="apiKey"
+          label="Map provider API key"
+          kind="apikey"
+        />
+      ),
+    });
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Select an API key' }),
+    );
+    // Case and accent folding both, which is the question every uniqueness
+    // check in this codebase asks: two spellings of one name leave the
+    // researcher two buttons they cannot tell apart when they come to pick one.
+    await submitKey(user, ' mapbox ', SECRET);
+
+    expect(stageSecret).not.toHaveBeenCalled();
+    // The browser is still open, holding what was typed, with the reason on
+    // the field the researcher has to change.
+    expect(screen.getByLabelText('Name')).toHaveAccessibleDescription(
+      /You already have a key called that/,
+    );
+  });
+
+  it('refuses a name another key staged in this session already has', async () => {
+    const user = userEvent.setup();
+    const gateway = new InMemoryResourceGateway();
+    renderResourceEditor({
+      gateway,
+      children: (
+        <ProtocolField
+          component={ResourcePickerControl}
+          name="apiKey"
+          label="Map provider API key"
+          kind="apikey"
+        />
+      ),
+    });
+
+    await addKey(user, 'Mapbox');
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Change the API key' }),
+      ).toBeVisible(),
+    );
+    const stageSecret = vi.spyOn(gateway, 'stageSecret');
+
+    await user.click(
+      screen.getByRole('button', { name: 'Change the API key' }),
+    );
+    await submitKey(user, 'Mapbox', SECOND_SECRET);
+
+    expect(stageSecret).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('Name')).toHaveAccessibleDescription(
+      /You already have a key called that/,
+    );
   });
 });
 

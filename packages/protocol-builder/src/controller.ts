@@ -3,7 +3,10 @@ import { useId, useMemo, useSyncExternalStore } from 'react';
 import type { Command } from '@codaco/studio-sync/apply';
 
 import type { ResourceResult } from './resources/gateway.ts';
-import type { SessionResourceGateway } from './resources/lifecycle.ts';
+import type {
+  SessionResourceGateway,
+  StagedResourceCancelReport,
+} from './resources/lifecycle.ts';
 import {
   commandsFromDraftChange,
   type CompoundEditRequest,
@@ -47,8 +50,11 @@ export type StageEditorController = Readonly<{
     request: CompoundEditRequest,
   ): Promise<CompoundEditResult>;
   finish(): Promise<void>;
-  /** Closes the editor without finishing: staged resources are discarded. */
-  cancel(): Promise<ResourceResult<undefined>>;
+  /**
+   * Closes the editor without finishing: staged resources are discarded,
+   * except anything a promotion left undecided, which the report names.
+   */
+  cancel(): Promise<ResourceResult<StagedResourceCancelReport>>;
 }>;
 
 export function useStageEditorController(

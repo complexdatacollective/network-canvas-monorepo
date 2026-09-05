@@ -29,6 +29,7 @@ import {
   InMemoryResourceGateway,
   type InMemoryResourceGatewayOptions,
 } from '../InMemoryResourceGateway.ts';
+import type { StagedResourceCancelReport } from '../lifecycle.ts';
 
 const stageSection = sectionId({ kind: 'stage', stageId: 'stage-1' });
 const settingsSection = sectionId({ kind: 'settings' });
@@ -37,8 +38,10 @@ const assetsSection = sectionId({ kind: 'assets' });
 const personSection = sectionId({ kind: 'codebookNode', typeId: 'person' });
 
 const SECRET_VALUE = 'pk.session-secret-must-never-appear';
+// A roster with someone in it: a network with no records at all is one the
+// gateway refuses, because a stage using it has nobody to present.
 const ROSTER_BYTES = new TextEncoder().encode(
-  JSON.stringify({ nodes: [], edges: [] }),
+  JSON.stringify({ nodes: [{ attributes: { name: 'Ada' } }], edges: [] }),
 );
 
 const presence: ProtocolBuilderPresence = {
@@ -891,7 +894,7 @@ describe('a session that stages resources', () => {
   });
 
   it('refuses a cancel that arrives while the finish is still deciding', async () => {
-    const cancels: ResourceResult<undefined>[] = [];
+    const cancels: ResourceResult<StagedResourceCancelReport>[] = [];
     const { gateway, host, session } = createFixture({
       stage: 'NameGeneratorRoster',
       duringInspect: async (current) => {
@@ -922,13 +925,18 @@ describe('a session that stages resources', () => {
     expect(gateway.getStagingResidue()).toEqual([]);
   });
 
-  it('lets the session be cancelled after a finish that could not commit', async () => {
+  it('lets the session be cancelled after a finish the host definitively refused', async () => {
     const { gateway, session } = createFixture({
       stage: 'NameGeneratorRoster',
     });
     const roster = await stageRoster(session, 'roster-request');
     session.dispatch([{ op: 'set', key: 'dataSource', value: roster.id }]);
-    gateway.failNext('promote', { reason: 'unavailable', retryable: true });
+    // Not retryable, so the host has said this promotion committed nothing and
+    // never will: there is no doubt for the cancel to keep out of.
+    gateway.failNext('promote', {
+      reason: 'invalid-request',
+      retryable: false,
+    });
 
     await expect(session.finish()).rejects.toBeInstanceOf(
       ResourcePromotionError,
@@ -937,13 +945,94 @@ describe('a session that stages resources', () => {
     // The finish let the session go as it failed. A hold left standing would
     // refuse every cancel from here on, stranding the roster at the host with
     // nothing able to name it.
-    expect(await session.cancel()).toMatchObject({ status: 'ok' });
+    const report = expectOk(await session.cancel());
+    expect(report.keptUnreconciled).toEqual([]);
     expect(session.getSnapshot().stagedResources).toEqual([]);
     expect(gateway.getStagingResidue()).toEqual([]);
   });
 
+  it('keeps a cancel away from resources whose promotion never said what it did', async () => {
+    const { gateway, session } = createFixture({
+      stage: 'NameGeneratorRoster',
+      loseFirstPromotionAnswer: true,
+    });
+    const roster = await stageRoster(session, 'roster-request');
+    const abandoned = await stageRoster(session, 'unused-request', 'Unused');
+    session.dispatch([{ op: 'set', key: 'dataSource', value: roster.id }]);
+    const discardAllStaged = vi.spyOn(gateway, 'discardAllStaged');
+    const discardStaged = vi.spyOn(gateway, 'discardStaged');
+
+    // The host promoted the roster and applied its manifest entry for real;
+    // only the answer was lost, so the session is told it may finish again.
+    await expect(session.finish()).rejects.toBeInstanceOf(
+      ResourcePromotionError,
+    );
+    expect(Object.keys(gateway.getCommittedManifest())).toEqual([roster.id]);
+
+    const report = expectOk(await session.cancel());
+
+    // `discardAllStaged` cannot spare anything, and this roster may already be
+    // committed: dropping it here is asking the host to delete work the
+    // protocol has taken, over a promotion nobody has yet decided.
+    expect(discardAllStaged).not.toHaveBeenCalled();
+    expect(discardStaged).not.toHaveBeenCalledWith(roster.id);
+    expect(report.keptUnreconciled.map((kept) => kept.id)).toEqual([roster.id]);
+    expect(Object.keys(gateway.getCommittedManifest())).toEqual([roster.id]);
+    // Everything the promotion never touched is discarded as usual: only what
+    // is genuinely in doubt is kept.
+    expect(discardStaged).toHaveBeenCalledWith(abandoned.id);
+    expect(session.getSnapshot().stagedResources.map((one) => one.id)).toEqual([
+      roster.id,
+    ]);
+  });
+
+  it('refuses to discard a single resource whose promotion never said what it did', async () => {
+    const { session, resources } = createFixture({
+      stage: 'NameGeneratorRoster',
+      loseFirstPromotionAnswer: true,
+    });
+    const roster = await stageRoster(session, 'roster-request');
+    session.dispatch([{ op: 'set', key: 'dataSource', value: roster.id }]);
+
+    await expect(session.finish()).rejects.toBeInstanceOf(
+      ResourcePromotionError,
+    );
+
+    // The picker's own "discard this resource" is the same door onto the same
+    // bytes, so it is fenced by the same rule.
+    const failure = expectFailure(await resources.discardStaged(roster.id));
+    // `unavailable`, not `not-found`: the host answering "I am not holding
+    // that" is exactly what a resource it promoted looks like, and acting on
+    // it would forget the one record of a resource the protocol may now have.
+    expect(failure.reason).toBe('unavailable');
+    expect(failure.retryable).toBe(true);
+    expect(failure.resourceId).toBe(roster.id);
+  });
+
+  it('lets a repeated finish settle a promotion whose answer was lost', async () => {
+    const { gateway, session } = createFixture({
+      stage: 'NameGeneratorRoster',
+      loseFirstPromotionAnswer: true,
+    });
+    const roster = await stageRoster(session, 'roster-request');
+    session.dispatch([{ op: 'set', key: 'dataSource', value: roster.id }]);
+
+    await expect(session.finish()).rejects.toBeInstanceOf(
+      ResourcePromotionError,
+    );
+    // The same finish under the same promotion id: an idempotent host hands
+    // back the promotion it already made, and that is what settles the doubt.
+    await session.finish();
+
+    const report = expectOk(await session.cancel());
+    expect(report.keptUnreconciled).toEqual([]);
+    expect(session.getSnapshot().stagedResources).toEqual([]);
+    expect(Object.keys(gateway.getCommittedManifest())).toEqual([roster.id]);
+    expect(gateway.getStagingResidue()).toEqual([]);
+  });
+
   it('refuses a discard that arrives while the finish is committing the resource', async () => {
-    const attempts: ResourceResult<undefined>[] = [];
+    const attempts: ResourceResult<unknown>[] = [];
     const { gateway, session } = createFixture({
       stage: 'NameGeneratorRoster',
       duringApply: async (current) => {
@@ -1045,7 +1134,7 @@ describe('a session that stages resources', () => {
   });
 
   it('mints a new promotion id when the finish swaps the resource it promotes', async () => {
-    const { gateway, session } = createFixture();
+    const { gateway, onResourceCleanupFailed, session } = createFixture();
     const first = await stageImage(session, 'first');
     session.dispatch([
       { op: 'set', key: 'items', value: informationItems(first.id) },
@@ -1068,7 +1157,13 @@ describe('a session that stages resources', () => {
     const ids = promote.mock.calls.map(([request]) => request.id);
     expect(ids[1]).not.toBe(ids[0]);
     expect(Object.keys(gateway.getCommittedManifest())).toEqual([second.id]);
-    expect(gateway.getStagingResidue()).toEqual([]);
+    // The image the draft walked away from is the one whose own promotion was
+    // never decided, so the finish leaves it alone and says it did rather than
+    // dropping bytes the host may have committed under the earlier id.
+    expect(onResourceCleanupFailed).toHaveBeenCalledWith([
+      expect.objectContaining({ resourceId: first.id }),
+    ]);
+    expect(gateway.getStagingResidue()).toContain(`staged:${first.id}`);
   });
 
   it('refuses a changed draft rather than reporting the promotion of the one before it', async () => {
