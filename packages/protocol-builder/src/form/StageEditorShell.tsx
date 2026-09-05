@@ -487,12 +487,29 @@ function useCommittedFields(
 
   if (content !== seen.current) {
     seen.current = content;
-    // The marker describes ONE write, and is spent by the transition it
-    // explains. Undo and then redo returns the draft to that same content, and
-    // by then the controls are showing the undone values — a marker left
-    // standing would leave them there, to be saved back over the redo.
+    // The marker describes ONE write, and is spent by the FIRST transition
+    // this hook observes after it was left — whatever content that transition
+    // arrived at, and whether or not it is the one the marker names.
+    //
+    // Matching it says the arrival is the write, and the controls already show
+    // it. Not matching it says something else moved the draft too, and this
+    // render is showing that as well as the write: the controls have to be
+    // re-seeded for it, and the marker has nothing left to explain, because
+    // the transition it was about has now happened — inside this one. It is
+    // therefore cleared on BOTH answers rather than only on a match.
+    //
+    // Left standing on a mismatch it is not a marker any more, only a content
+    // that will one day come round again: `useSyncExternalStore` hands a render
+    // whatever the store holds at render time rather than every value it passed
+    // through, so a write and an acknowledgement landing in the same commit are
+    // one render showing the two together, and the write's own content is never
+    // seen. The next arrival AT that content — a collaborator withdrawing the
+    // change that had combined with it, an undo, a redo — would then read as
+    // this form's own doing, the re-seed it needed would be skipped, and the
+    // controls would keep values nobody agrees to for the next save to write
+    // back over the top.
     const ownFlush = content === flushed.current;
-    if (ownFlush) flushed.current = null;
+    flushed.current = null;
     committed.current = {
       fields,
       generation: committed.current.generation + (ownFlush ? 0 : 1),
