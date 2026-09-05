@@ -308,6 +308,49 @@ describe('a stage the session is creating', () => {
     expect(stageNameInput()).toHaveValue('Consent and welcome');
   });
 
+  /**
+   * And it saves. A stage the protocol does not hold yet is not in the stage
+   * order either, so validating it means putting it where it is going first —
+   * without that, assembling the candidate fails on a stage the order does not
+   * name and nothing about a new stage can ever be saved.
+   */
+  it('validates and saves where the host is about to put it', async () => {
+    const harness = renderStageEditor({
+      create: {
+        type: 'Information',
+        position: INFORMATION_INDEX,
+        fields: {
+          label: 'A new page',
+          title: 'A new page',
+          items: [],
+          // A destination its insertion position allows, so the schema's rule
+          // about skipping forwards is judged against the interview it joins.
+          skipLogic: {
+            action: 'SKIP',
+            filter: {
+              rules: [
+                {
+                  id: 'rule-a',
+                  type: 'ego',
+                  options: { attribute: 'ego_name', operator: 'EXISTS' },
+                },
+              ],
+            },
+            destination: { type: 'stage', stageId: 'geospatial-1' },
+          },
+        },
+      },
+      sections: commonSections,
+    });
+
+    const request = await harness.submit();
+    expect(request?.stageDocument).toMatchObject({
+      id: harness.seeded.id,
+      type: 'Information',
+      label: 'A new page',
+    });
+  });
+
   it('offers the destinations its insertion position allows', async () => {
     const harness = renderStageEditor({
       create: { type: 'Information', position: INFORMATION_INDEX },
