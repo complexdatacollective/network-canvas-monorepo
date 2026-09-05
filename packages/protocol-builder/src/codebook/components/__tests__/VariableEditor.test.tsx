@@ -28,6 +28,34 @@ const EMPTY_CONTEXT: ProtocolBuilderProtocolContext = {
   orderedStages: [],
   issues: [],
 };
+/**
+ * The package's own words for a refused save, from `compoundFailureCopy`.
+ *
+ * Written out here rather than imported: the point of the copy is that it is
+ * NOT the message the host sent, and a test that read the same table as the
+ * component would still pass if that table were replaced by a passthrough.
+ */
+const REFUSED = {
+  'heldByNobodyNamed':
+    'A section needed for this change is currently being edited.',
+  'heldBy': (who: string) =>
+    `${who} is currently editing a section needed for this change.`,
+  'stale-epoch':
+    'Editing access changed while this was being saved, so nothing was saved. Try again.',
+  'lease-lost':
+    'You are no longer the editor of this stage, so nothing was saved. Take over editing and try again.',
+  'stale-base':
+    'Someone else changed this while you were editing it, so nothing was saved. Close and reopen this editor to load their version, then make your change again.',
+  'host-error':
+    'The protocol would not be valid with this change, so nothing was saved.',
+  'threw':
+    'This change could not be saved, and nothing was altered. Wait a moment and try again.',
+} as const;
+
+/** What a host says. None of it reaches the researcher. */
+const HOST_WORDS =
+  'Expected object, received undefined at codebook.node.person';
+
 const APPLIED: CompoundEditResult = {
   status: 'applied',
   update: {
@@ -520,7 +548,7 @@ describe('VariableEditor', () => {
     await user.clear(name);
     await user.type(name, 'localComment');
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
-    await screen.findByText('The edit is blocked', { exact: false });
+    await screen.findByText(REFUSED.heldByNobodyNamed);
 
     const remoteDocument = personDocument({ comment: remoteVariable });
     rerender(
@@ -581,7 +609,7 @@ describe('VariableEditor', () => {
     await user.clear(name);
     await user.type(name, 'localComment');
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
-    await screen.findByText('Connection dropped.', { exact: false });
+    await screen.findByText(REFUSED.threw);
 
     rerender(
       <VariableEditor
@@ -637,7 +665,7 @@ describe('VariableEditor', () => {
     await user.clear(name);
     await user.type(name, 'localComment');
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
-    await screen.findByText('Connection dropped.', { exact: false });
+    await screen.findByText(REFUSED.threw);
 
     const changedParentDocument = personDocument({
       comment: initialVariable,
@@ -810,7 +838,10 @@ describe('VariableEditor', () => {
     await user.click(screen.getByRole('button', { name: 'Create attribute' }));
 
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('the variable draft is invalid');
+    // The draft never left the editor, so the alert says what happened rather
+    // than repeating the schema's account of which path was wrong.
+    expect(alert).toHaveTextContent(REFUSED.threw);
+    expect(alert).not.toHaveTextContent('the variable draft is invalid');
     expect(alert).toHaveFocus();
     expect(
       screen.getByRole('textbox', { name: /attribute name/i }),
@@ -837,16 +868,16 @@ describe('VariableEditor', () => {
           },
         ],
       } satisfies CompoundEditResult,
-      message: 'Another researcher (codebook:node:person)',
+      message: REFUSED.heldBy('Another researcher'),
     },
     {
       caseName: 'stale',
       result: {
         status: 'failed',
         reason: 'stale-epoch',
-        message: 'Editing authority changed.',
+        message: HOST_WORDS,
       } satisfies CompoundEditResult,
-      message: 'Editing authority changed.',
+      message: REFUSED['stale-epoch'],
     },
   ])(
     'preserves the draft after a $caseName result',
@@ -871,11 +902,16 @@ describe('VariableEditor', () => {
         screen.getByRole('button', { name: 'Create attribute' }),
       );
 
-      await screen.findByText(message, { exact: false });
+      await screen.findByText(message);
+      const report = screen.getByRole(
+        result.status === 'blocked' ? 'status' : 'alert',
+      );
+      // Never the host's own words, and never an internal section address: a
+      // researcher is told what happened to their change, not where.
+      expect(report).not.toHaveTextContent(HOST_WORDS);
+      expect(report).not.toHaveTextContent(PERSON_SECTION);
       expect(name).toHaveValue('preserved');
-      expect(
-        screen.getByRole(result.status === 'blocked' ? 'status' : 'alert'),
-      ).toHaveFocus();
+      expect(report).toHaveFocus();
       expect(
         screen.getByRole('button', { name: 'Create attribute' }),
       ).toBeEnabled();
@@ -895,7 +931,7 @@ describe('VariableEditor', () => {
         .mockReturnValueOnce({
           status: 'failed',
           reason,
-          message: 'The request base changed.',
+          message: HOST_WORDS,
         })
         .mockReturnValueOnce(APPLIED);
 
@@ -912,7 +948,7 @@ describe('VariableEditor', () => {
       await user.click(
         screen.getByRole('button', { name: 'Create attribute' }),
       );
-      await screen.findByText('The request base changed.', { exact: false });
+      await screen.findByText(REFUSED[reason]);
       await user.click(
         screen.getByRole('button', { name: 'Create attribute' }),
       );

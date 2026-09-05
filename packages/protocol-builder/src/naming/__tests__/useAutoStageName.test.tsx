@@ -28,6 +28,11 @@ import type { AutoStageNamePanel } from '../useAutoStageName.ts';
 
 const EDITED_STAGE_ID = 'stage-edited';
 
+type AutoNameProps = Readonly<{
+  propose?: boolean;
+  panels?: readonly AutoStageNamePanel[];
+}>;
+
 const personNode = (name: string): SectionDoc => ({
   name,
   color: 'node-color-seq-1',
@@ -67,6 +72,12 @@ function createSession(
     type?: StageType;
     fields?: SectionDoc;
     sections?: SectionMap;
+    /**
+     * Opens the stage as one the interview already contains, rather than one
+     * being created. Only a stage being created is named automatically, and
+     * that is what the session says — nothing is passed to the section.
+     */
+    existing?: boolean;
   }> = {},
 ) {
   return new ProtocolBuilderSessionStore({
@@ -75,6 +86,7 @@ function createSession(
       () => EDITED_STAGE_ID,
     ),
     fields: options.fields ?? { label: '' },
+    ...(options.existing === true ? {} : { creation: { position: 1 } }),
     protocolSections: options.sections ?? protocolSections(),
     manifestRevision: { sequence: 1n, hash: 'revision-1' },
     access: { mode: 'editable', leaseOwner: 'tab-1', leaseEpoch: 1n },
@@ -93,7 +105,7 @@ function Editor({
   onStore,
 }: {
   session: ProtocolBuilderSessionStore;
-  autoName: Readonly<{ panels?: readonly AutoStageNamePanel[] }> | undefined;
+  autoName: AutoNameProps | undefined;
   onStore: (storeApi: StageFormStoreApi) => void;
 }) {
   const controller = useStageEditorController(session, 'stage-form');
@@ -125,8 +137,14 @@ function renderEditor(
     type?: StageType;
     fields?: SectionDoc;
     sections?: SectionMap;
-    /** Left out entirely for a stage that is NOT being created. */
-    autoName?: Readonly<{ panels?: readonly AutoStageNamePanel[] }>;
+    /** Opens a stage the interview already contains. */
+    existing?: boolean;
+    /**
+     * The material only the editor can supply, and the override for whether to
+     * propose at all. Whether to propose is otherwise the session's answer, so
+     * this stays out unless the stage has panels.
+     */
+    autoName?: AutoNameProps;
   }> = {},
 ) {
   const session = createSession(options);
@@ -136,7 +154,7 @@ function renderEditor(
     <DialogProvider>
       <Editor
         session={session}
-        autoName={'autoName' in options ? options.autoName : {}}
+        autoName={options.autoName}
         onStore={(api) => {
           storeApi = api;
         }}
@@ -352,12 +370,39 @@ describe('useAutoStageName', () => {
     const { input, setValue } = renderEditor({
       type: 'Sociogram',
       fields: { label: 'Hand named' },
-      autoName: undefined,
+      existing: true,
     });
 
     setValue('subject', { entity: 'node', type: 'person' });
     await settle();
     expect(input).toHaveValue('Hand named');
+  });
+
+  /**
+   * The session's answer is a default, not a rule. An editor with a reason to
+   * disagree says so, and is obeyed in both directions.
+   */
+  it('proposes nothing for a stage being created when the editor says not to', async () => {
+    const { input, setValue } = renderEditor({
+      type: 'Sociogram',
+      fields: { label: '' },
+      autoName: { propose: false },
+    });
+
+    setValue('subject', { entity: 'node', type: 'person' });
+    await settle();
+    expect(input).toHaveValue('');
+  });
+
+  it('proposes for an existing stage when the editor asks it to', async () => {
+    const { input } = renderEditor({
+      type: 'Sociogram',
+      fields: { label: '' },
+      existing: true,
+      autoName: { propose: true },
+    });
+
+    await waitFor(() => expect(input).toHaveValue('Sociogram'));
   });
 
   it('leaves an existing stage with an empty name empty', async () => {
@@ -367,7 +412,7 @@ describe('useAutoStageName', () => {
     const { input } = renderEditor({
       type: 'Sociogram',
       fields: { label: '' },
-      autoName: undefined,
+      existing: true,
     });
 
     await settle();

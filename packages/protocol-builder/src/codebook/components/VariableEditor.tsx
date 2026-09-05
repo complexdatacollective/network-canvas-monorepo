@@ -29,6 +29,7 @@ import { canonicalize, type SectionDoc } from '@codaco/studio-sync/apply';
 
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
 import type { CompoundEditRequest, CompoundEditResult } from '../../session.ts';
+import { compoundFailureMessage } from '../compoundFailureCopy.ts';
 import {
   AuxiliaryCodebookDraftSession,
   buildCreateVariableRequest,
@@ -731,29 +732,23 @@ function messagesAt(
     .map((issue) => issue.message);
 }
 
+/**
+ * How a failed save is presented: what it means to the researcher, and how
+ * loudly to say it.
+ *
+ * The words are the package's own — see `compoundFailureCopy` — never the
+ * host's. A section held by a collaborator is something to wait for rather than
+ * something that went wrong, so it is the one failure shown as a warning.
+ */
 function failureFrom(failure: AuxiliaryCodebookDraftFailure | null): Readonly<{
   variant: 'warning' | 'destructive';
   message: string;
 }> | null {
   if (failure === null) return null;
-  if (failure.kind === 'error') {
-    return { variant: 'destructive', message: failure.message };
-  }
-  if (failure.result.status === 'blocked') {
-    const blockers = failure.result.blockedSections.map(
-      ({ sectionId, holder }) =>
-        holder === undefined
-          ? sectionId
-          : `${holder.displayName} (${sectionId})`,
-    );
-    return {
-      variant: 'warning',
-      message: `The edit is blocked by ${blockers.join(', ')}. Your draft has been preserved.`,
-    };
-  }
+  const held = failure.kind === 'result' && failure.result.status === 'blocked';
   return {
-    variant: 'destructive',
-    message: `${failure.result.message} Your draft has been preserved.`,
+    variant: held ? 'warning' : 'destructive',
+    message: compoundFailureMessage(failure),
   };
 }
 
