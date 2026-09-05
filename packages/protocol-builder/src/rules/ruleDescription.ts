@@ -8,8 +8,10 @@ import type {
 
 import {
   isFilterOperator,
+  isPresenceOperator,
   operatorsWithOptionCount,
   operatorsWithRegExp,
+  type PresenceOperator,
 } from './operators.ts';
 import { isCompleteRule, isRuleDraft, ruleDraftOptions } from './rule.ts';
 import {
@@ -224,11 +226,18 @@ const OPERATOR_TEXT: Readonly<
   },
 });
 
-/** How a presence operator reads when it is the whole predicate. */
-const PRESENCE_OPERATOR_TEXT: Readonly<Record<string, string>> = Object.freeze({
-  EXISTS: 'exists',
-  NOT_EXISTS: 'does not exist',
-});
+/**
+ * How a presence operator reads when it is the whole predicate.
+ *
+ * Total over the schema's type-level set, which is the only set a rule with no
+ * attribute may draw from — so a third one added there arrives as a typecheck
+ * failure rather than as a sentence reading its own token.
+ */
+const PRESENCE_OPERATOR_TEXT: Readonly<Record<PresenceOperator, string>> =
+  Object.freeze({
+    EXISTS: 'exists',
+    NOT_EXISTS: 'does not exist',
+  });
 
 const EGO_LABEL = 'Ego';
 
@@ -535,7 +544,12 @@ function operatorText(
 ): string {
   if (operatorId === undefined) return '';
   if (context.isPresenceRule) {
-    return PRESENCE_OPERATOR_TEXT[operatorId] ?? operatorId.toLowerCase();
+    // A presence rule holding an operator the schema does not allow one is
+    // read as its own token, for the same reason as below: a rule nobody can
+    // read is a rule nobody can fix.
+    return isPresenceOperator(operatorId)
+      ? PRESENCE_OPERATOR_TEXT[operatorId]
+      : operatorId.toLowerCase();
   }
   // An operator the schema itself does not have is read as its own token: a
   // hand-edited protocol can hold one, and printing it is what lets the

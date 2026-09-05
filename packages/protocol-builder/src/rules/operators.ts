@@ -87,6 +87,19 @@ const PRESENCE_OPERATORS: ReadonlySet<FilterOperator> = new Set(
   TypeLevelOperators.options,
 );
 
+/**
+ * One of them, as a type, so a table keyed on them is total over the schema's
+ * set rather than over whichever of them a reader happened to name.
+ */
+export type PresenceOperator = (typeof TypeLevelOperators.options)[number];
+
+const PRESENCE_OPERATOR_NAMES: ReadonlySet<string> = new Set(
+  TypeLevelOperators.options,
+);
+
+export const isPresenceOperator = (value: unknown): value is PresenceOperator =>
+  typeof value === 'string' && PRESENCE_OPERATOR_NAMES.has(value);
+
 const operatorsOfKind = (
   kind: FilterOperandKind,
 ): ReadonlySet<FilterOperator> =>
