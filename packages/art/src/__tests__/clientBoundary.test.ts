@@ -30,6 +30,14 @@ import { collectSourceFiles } from '@codaco/app-i18n/catalog-guards';
  * a statically exported documentation site for no gain.
  */
 
+/**
+ * Read against comment-stripped source: a directive may sit below a leading
+ * comment and still be the module's first statement, which is how it would be
+ * written in a file like `frameDelta.ts` that opens with an explanation. A
+ * pattern read against the raw text calls such a module unmarked and fails
+ * naming a file that is already correct. Stripping first also means a
+ * commented-out directive is not mistaken for a real one.
+ */
 const DIRECTIVE = /^\s*(['"])use client\1/;
 
 /**
@@ -73,8 +81,8 @@ const stripComments = (text: string): string =>
  */
 const HOOK_CALL = /(?<![\w.$])(?:React\.)?use[A-Z]\w*(?=\s*[(<])/g;
 
-const clientOnlyHooksCalledBy = (text: string): string[] =>
-  stripComments(text)
+const clientOnlyHooksCalledBy = (code: string): string[] =>
+  code
     .replace(/\bfunction\s+use[A-Z]\w*/g, '')
     .match(HOOK_CALL)
     ?.map((name) => name.replace(/^React\./, ''))
@@ -86,9 +94,9 @@ describe('the client boundary', () => {
   it('is declared by every module that runs a client-only hook', () => {
     const offenders = collectSourceFiles(src)
       .filter((file) => {
-        const text = readFileSync(file, 'utf8');
+        const code = stripComments(readFileSync(file, 'utf8'));
         return (
-          clientOnlyHooksCalledBy(text).length > 0 && !DIRECTIVE.test(text)
+          clientOnlyHooksCalledBy(code).length > 0 && !DIRECTIVE.test(code)
         );
       })
       .map((file) => relative(src, file));
