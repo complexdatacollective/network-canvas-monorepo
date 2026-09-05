@@ -1,7 +1,4 @@
-import type { StageEditorController } from '../../controller.ts';
-import StageEditorShell, {
-  type StageEditorShellProps,
-} from '../../form/StageEditorShell.tsx';
+import StageEditorShell from '../../form/StageEditorShell.tsx';
 import { interfaceDocumentationUrl } from '../../interfaces/documentation.ts';
 import InterviewerGuidanceSection from '../../sections/InterviewerGuidanceSection.tsx';
 import IntroductionSection from '../../sections/IntroductionSection.tsx';
@@ -9,14 +6,9 @@ import DyadCensusPromptsSection from '../../sections/prompts/DyadCensusPromptsSe
 import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
 import StageNameSection from '../../sections/StageNameSection.tsx';
 import SubjectSection from '../../sections/SubjectSection.tsx';
+import type { StageEditorProps } from '../../stage-editor-contract.ts';
 
 const DOCUMENTATION = interfaceDocumentationUrl('dyad-census');
-
-export type DyadCensusStageEditorProps = Readonly<{
-  controller: StageEditorController;
-  /** The host's action chrome, passed straight through to the shell. */
-  actions?: StageEditorShellProps['actions'];
-}>;
 
 /**
  * The editor for a Dyad Census stage.
@@ -29,7 +21,7 @@ export type DyadCensusStageEditorProps = Readonly<{
 export function DyadCensusStageEditor({
   controller,
   actions,
-}: DyadCensusStageEditorProps) {
+}: StageEditorProps<'DyadCensus'>) {
   return (
     <StageEditorShell
       controller={controller}

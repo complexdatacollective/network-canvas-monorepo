@@ -1,21 +1,13 @@
-import type { StageEditorController } from '../../controller.ts';
-import StageEditorShell, {
-  type StageEditorShellProps,
-} from '../../form/StageEditorShell.tsx';
+import StageEditorShell from '../../form/StageEditorShell.tsx';
 import { interfaceDocumentationUrl } from '../../interfaces/documentation.ts';
 import InterviewerGuidanceSection from '../../sections/InterviewerGuidanceSection.tsx';
 import OrdinalBinPromptsSection from '../../sections/prompts/OrdinalBinPromptsSection.tsx';
 import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
 import StageNameSection from '../../sections/StageNameSection.tsx';
 import SubjectSection from '../../sections/SubjectSection.tsx';
+import type { StageEditorProps } from '../../stage-editor-contract.ts';
 
 const DOCUMENTATION = interfaceDocumentationUrl('ordinal-bin');
-
-export type OrdinalBinStageEditorProps = Readonly<{
-  controller: StageEditorController;
-  /** The host's action chrome, passed straight through to the shell. */
-  actions?: StageEditorShellProps['actions'];
-}>;
 
 /**
  * The editor for an Ordinal Bin stage.
@@ -27,7 +19,7 @@ export type OrdinalBinStageEditorProps = Readonly<{
 export function OrdinalBinStageEditor({
   controller,
   actions,
-}: OrdinalBinStageEditorProps) {
+}: StageEditorProps<'OrdinalBin'>) {
   return (
     <StageEditorShell
       controller={controller}

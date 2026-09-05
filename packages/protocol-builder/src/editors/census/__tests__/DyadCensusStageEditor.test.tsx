@@ -14,9 +14,9 @@ import { DyadCensusStageEditor } from '../DyadCensusStageEditor.tsx';
  * chrome the host puts in its slot. Never disabled, so that a refused save can
  * be asked for and reported rather than hidden behind an inert button.
  */
-const editor: StageEditorComponent = ({ controller }) => (
+const editor: StageEditorComponent<'DyadCensus'> = (props) => (
   <DyadCensusStageEditor
-    controller={controller}
+    {...props}
     actions={({ formId }) => (
       <SubmitButton form={formId}>Save stage</SubmitButton>
     )}

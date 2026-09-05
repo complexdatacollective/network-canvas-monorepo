@@ -20,9 +20,9 @@ import { CategoricalBinStageEditor } from '../CategoricalBinStageEditor.tsx';
  * contract for a host's own buttons — an editor that rendered its own save
  * button would leave a host with two.
  */
-const editor: StageEditorComponent = ({ controller }) => (
+const editor: StageEditorComponent<'CategoricalBin'> = (props) => (
   <CategoricalBinStageEditor
-    controller={controller}
+    {...props}
     // Deliberately never disabled: a chrome that hides the control cannot
     // show that the EDITOR refuses a save it is asked for, which is the
     // refusal a host with its own toolbar depends on.
