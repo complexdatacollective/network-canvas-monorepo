@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { describe, expect, it, vi } from 'vitest';
@@ -101,6 +102,76 @@ describe('composing the registry from family parts', () => {
     );
 
     expect(registry.Information).toBe(InformationEditor);
+  });
+});
+
+/**
+ * Nineteen families are still to land, on branches of their own, and each of
+ * them edits the same two lists in `stageEditorRegistry.ts`. Written as one
+ * entry per line in a fixed alphabetical order, three concurrent one-line
+ * changes touch three different lines and merge; written any other way — a
+ * list collapsed onto one line, two entries sharing a line, an order nobody
+ * agrees on — every one of those merges is a conflict somebody resolves by
+ * hand, in the file whose whole job is to say which interfaces have an editor.
+ *
+ * Read out of the source rather than out of the values, because the shape is
+ * the point: the values are identical either way.
+ */
+describe('the two lists a family edits', () => {
+  const source = readFileSync(
+    join(process.cwd(), 'src', 'stageEditorRegistry.ts'),
+    'utf8',
+  );
+
+  /** The lines between a list's own brackets, comments and blanks dropped. */
+  const entriesOf = (name: string): string[] => {
+    const body = new RegExp(
+      `const ${name} = \\[\\n([\\s\\S]*?)\\n\\] as const`,
+    ).exec(source)?.[1];
+    if (body === undefined) {
+      throw new Error(
+        `${name} is not written as a list whose bracket opens on its own line, so a family adding an entry to it cannot be merged with another family doing the same.`,
+      );
+    }
+    return body
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line !== '' && !line.startsWith('//'));
+  };
+
+  it.each([
+    {
+      name: 'REGISTRY_PARTS',
+      // An imported part, never an inline object: a family's part is declared
+      // in the family's own module, and one identifier is one line.
+      entry: /^[A-Za-z_$][\w$]*,$/,
+      shape: 'an imported part name followed by a comma',
+    },
+    {
+      name: 'AWAITING_STAGE_EDITORS',
+      entry: /^'[A-Za-z]+',$/,
+      shape: 'a quoted stage type followed by a comma',
+    },
+  ])('writes one entry per line in $name', ({ name, entry, shape }) => {
+    for (const line of entriesOf(name)) {
+      expect(line, `${name} lines hold ${shape}`).toMatch(entry);
+    }
+  });
+
+  it.each(['REGISTRY_PARTS', 'AWAITING_STAGE_EDITORS'])(
+    'keeps %s in one agreed order',
+    (name) => {
+      const entries = entriesOf(name);
+      expect(entries).toEqual([...entries].toSorted());
+    },
+  );
+
+  it('says how to add a family, where a family will look', () => {
+    // Two lines, and which two. A recipe that stops matching the file is worse
+    // than none, so it is checked rather than trusted.
+    expect(source).toMatch(/ADDING A FAMILY IS TWO LINES/);
+    expect(source).toMatch(/add it to `REGISTRY_PARTS`/);
+    expect(source).toMatch(/from `AWAITING_STAGE_EDITORS`/);
   });
 });
 
