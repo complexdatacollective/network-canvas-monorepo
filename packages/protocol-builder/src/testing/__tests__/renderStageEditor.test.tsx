@@ -239,9 +239,10 @@ describe('the resources a harnessed stage can reach', () => {
 
 /** The interview the fixture describes, in order, as the researcher sees it. */
 const fixtureStageLabels = (): string[] =>
-  fixtureStageIds().map((id) =>
-    String(loadFixtureStage(id).fields.label ?? ''),
-  );
+  fixtureStageIds().map((id) => {
+    const label = loadFixtureStage(id).fields.label;
+    return typeof label === 'string' ? label : '';
+  });
 
 /** Where `information-1` sits in that interview. */
 const INFORMATION_INDEX = fixtureStageIds().indexOf('information-1');
