@@ -5,7 +5,7 @@ import type {
   StageType,
 } from '@codaco/protocol-validation';
 
-import type { Qualifier } from './generateStageLabel';
+import type { Qualifier } from './generateStageLabel.ts';
 
 type EntityNameResolver = (
   entity: 'node' | 'edge',

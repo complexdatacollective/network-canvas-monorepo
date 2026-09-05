@@ -25,6 +25,7 @@ import {
 const SUBJECT = { entity: 'node', type: 'person:adult' } as const;
 const EMPTY_CONTEXT = {
   codebook: { node: {}, edge: {} },
+  assets: {},
   orderedStages: [],
   issues: [],
 } as const;
@@ -243,6 +244,7 @@ describe('codebook variable requests', () => {
               },
             },
           },
+          assets: {},
           orderedStages: [],
           issues: [],
         },
