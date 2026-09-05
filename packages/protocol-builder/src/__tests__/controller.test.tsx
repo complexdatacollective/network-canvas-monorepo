@@ -151,4 +151,45 @@ describe('useStageEditorController', () => {
     expect(result.current.snapshot.stagedResources).toEqual([]);
     expect(host.getStagingResidue()).toEqual([]);
   });
+
+  it('answers an empty batch with the current draft rather than writing', async () => {
+    const { onCommands, session } = createSession();
+    const { result } = renderHook(() => useStageEditorController(session));
+
+    await act(async () => {
+      session.acknowledge({
+        fields: { label: 'Welcome', title: 'Renamed elsewhere', items: [] },
+        throughBatchId: 0,
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+      await session.validate();
+    });
+    onCommands.mockClear();
+
+    // An empty batch is how a list editor READS the draft the session holds
+    // right now — which is the whole point of asking rather than reading the
+    // snapshot it rendered against.
+    let answered: SectionDoc = {};
+    act(() => {
+      answered = result.current.applyCommands([]);
+    });
+
+    expect(answered.title).toBe('Renamed elsewhere');
+    expect(onCommands).not.toHaveBeenCalled();
+  });
+
+  it('reads the draft of a session that has stopped accepting writes', () => {
+    const { session } = createSession();
+    act(() => {
+      session.setAccess({ mode: 'readOnly', reason: 'lease-lost' });
+    });
+    const { result } = renderHook(() => useStageEditorController(session));
+
+    // Reading is not writing, and a spectator's list editor still has to be
+    // able to ask. A session refuses a dispatch it no longer holds the lease
+    // for by throwing, so an empty batch that reached one would take the
+    // editor down rather than answering the question it was asked.
+    expect(() => result.current.applyCommands([])).not.toThrow();
+    expect(result.current.applyCommands([]).title).toBe('Welcome');
+  });
 });

@@ -306,6 +306,129 @@ describe('StageEditorShell', () => {
     );
   });
 
+  it('reports a capability an arrival emptied as switched off', async () => {
+    const session = createSession({
+      fields: { ...initialFields, interviewScript: 'Read this aloud' },
+    });
+    renderEditor(session);
+    await waitFor(() =>
+      expect([...outlineItems()][2]?.textContent).toBe(
+        'Interviewer guidanceFinished',
+      ),
+    );
+
+    act(() => {
+      session.replaceAuthoritativeStage({
+        fields: initialFields,
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+    });
+
+    // Nothing the capability owns holds anything any more, and the panel it
+    // was configured in has closed itself over that. Saying "available" beside
+    // a closed, empty capability describes a stage nobody is looking at.
+    await waitFor(() =>
+      expect([...outlineItems()][2]?.textContent).toBe(
+        'Interviewer guidanceSwitched off',
+      ),
+    );
+  });
+
+  it('reads a null a stored protocol holds as nothing rather than throwing', async () => {
+    const session = createSession({
+      fields: { ...initialFields, title: 'Welcome to the study' },
+    });
+    renderEditor(session);
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
+        'Welcome to the study',
+      ),
+    );
+
+    // `null` is not in `FieldValue`'s union, but stored protocol data holds it
+    // — fresco-ui's own `fieldValueContract` names it as a shape every control
+    // must render — so the re-seed cannot be the one place that throws on it.
+    // A throw here is not cosmetic: the render never commits, and the editor
+    // goes down over an arrival the researcher did not cause.
+    act(() => {
+      session.replaceAuthoritativeStage({
+        fields: { ...initialFields, title: null },
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+    });
+
+    // Nothing is there, which this package spells `undefined` and shows as an
+    // empty control — never as the word "null".
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
+        '',
+      ),
+    );
+  });
+
+  it('reports a capability an arrival filled as available', async () => {
+    const session = createSession();
+    renderEditor(session);
+    await waitFor(() =>
+      expect([...outlineItems()][2]?.textContent).toBe(
+        'Interviewer guidanceSwitched off',
+      ),
+    );
+
+    act(() => {
+      session.replaceAuthoritativeStage({
+        fields: { ...initialFields, interviewScript: 'Read this aloud' },
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+    });
+
+    await waitFor(() =>
+      expect([...outlineItems()][2]?.textContent).toBe(
+        'Interviewer guidanceFinished',
+      ),
+    );
+  });
+
+  it('keeps a capability the researcher switched on when an arrival leaves it alone', async () => {
+    const user = userEvent.setup();
+    const session = createSession();
+    renderEditor(session);
+    await waitFor(() => expect(outlineItems()).toHaveLength(3));
+
+    // Switched on and not yet filled in: nothing the capability owns holds a
+    // value, so only the researcher's own decision says it is on.
+    await user.click(
+      screen.getByRole('switch', { name: 'Interviewer guidance' }),
+    );
+    await screen.findByRole('textbox', { name: 'Interviewer script text' });
+    expect([...outlineItems()][2]?.textContent).toBe(
+      'Interviewer guidanceFinished',
+    );
+
+    act(() => {
+      session.replaceAuthoritativeStage({
+        fields: { ...initialFields, title: 'Renamed elsewhere' },
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+    });
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
+        'Renamed elsewhere',
+      ),
+    );
+
+    // The arrival says nothing about this capability, so it says nothing about
+    // the decision the researcher just made about it either — and the panel
+    // that decision opened is still open, holding the field they were about to
+    // fill in.
+    expect({
+      outline: [...outlineItems()][2]?.textContent,
+      script:
+        screen.queryByRole('textbox', { name: 'Interviewer script text' }) !==
+        null,
+    }).toEqual({ outline: 'Interviewer guidanceFinished', script: true });
+  });
+
   it('keeps a section\u2019s fields when only its title changes', async () => {
     const session = createSession({ fields: { label: 'Welcome', items: [] } });
     const { rerender } = renderEditor(session);
@@ -460,12 +583,138 @@ describe('StageEditorShell', () => {
     });
 
     // A field that merely re-registers keeps the value it was holding, so
-    // without a fresh form the promoted editor would show — and then save —
-    // what it had typed over a screen that had moved on.
+    // without writing the new draft into the controls the promoted editor
+    // would show — and then save — what it had typed over a screen that had
+    // moved on.
     await waitFor(() =>
       expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
         'Refreshed elsewhere',
       ),
+    );
+  });
+
+  it('keeps a field the researcher is editing when an arrival moves another', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      fields: { ...initialFields, interviewScript: 'Read this aloud' },
+    });
+    renderEditor(session);
+
+    const script = await screen.findByRole('textbox', {
+      name: 'Interviewer script text',
+    });
+    await user.clear(script);
+    await user.type(script, 'Half-written note');
+
+    // An arrival that moves the heading and says nothing about the script.
+    act(() => {
+      session.replaceAuthoritativeStage({
+        fields: {
+          ...initialFields,
+          title: 'Renamed elsewhere',
+          interviewScript: 'Read this aloud',
+        },
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+    });
+
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
+        'Renamed elsewhere',
+      ),
+    );
+    // The script is exactly where the arrival left it, so there is nothing
+    // about it for the controls to take. Writing the agreed value back over
+    // the researcher's half-finished note would discard work nothing in the
+    // stage disagreed with.
+    expect(
+      screen.getByRole('textbox', { name: 'Interviewer script text' }),
+    ).toHaveValue('Half-written note');
+  });
+
+  it('keeps what was typed after a save when an arrival moves another field', async () => {
+    const user = userEvent.setup();
+    const session = createSession({ onFinish: () => undefined });
+    renderEditor(session);
+
+    const heading = screen.getByRole('textbox', { name: 'Page heading' });
+    await user.clear(heading);
+    await user.type(heading, 'Saved heading');
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+    await waitFor(() =>
+      expect(session.getSnapshot().editedSection.fields.title).toBe(
+        'Saved heading',
+      ),
+    );
+
+    // Still editing after the save, with the extra keystrokes in the form and
+    // nowhere else.
+    await user.type(heading, ' edited');
+
+    // The host acknowledges the save, and someone else renames the stage.
+    const [batch] = session.getSnapshot().pendingCommands;
+    if (batch === undefined) throw new Error('the save wrote no commands');
+    act(() => {
+      session.acknowledge({
+        fields: { label: 'Welcome', title: 'Saved heading', items: [] },
+        throughBatchId: batch.id,
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+      session.replaceAuthoritativeStage({
+        fields: {
+          label: 'Renamed by someone else',
+          title: 'Saved heading',
+          items: [],
+        },
+        manifestRevision: { sequence: 3n, hash: 'revision-3' },
+      });
+    });
+
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Stage name' })).toHaveValue(
+        'Renamed by someone else',
+      ),
+    );
+    // The heading the arrival carries is the one this form saved, so the
+    // arrival decided nothing about it — the draft it must be compared with is
+    // the one the save left agreed, not the one the stage was opened with.
+    expect(heading).toHaveValue('Saved heading edited');
+  });
+
+  it('reopens a capability an authoritative replacement has refilled', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      fields: { ...initialFields, interviewScript: 'Read this aloud' },
+    });
+    renderEditor(session);
+
+    await user.click(
+      screen.getByRole('switch', { name: 'Interviewer guidance' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Clear script' }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('textbox', { name: 'Interviewer script text' }),
+      ).toBeNull(),
+    );
+
+    act(() => {
+      session.replaceAuthoritativeStage({
+        fields: { ...initialFields, interviewScript: 'Read this instead' },
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+    });
+
+    // The stage the form now holds has interviewer guidance again, and a
+    // section that stays closed over content it is holding tells the
+    // researcher the opposite of what the next save will write. Writing the
+    // new draft into the controls is only half of taking it: the sections
+    // decide whether they are on from what those controls hold, and something
+    // has to tell them to ask again.
+    await waitFor(() =>
+      expect(
+        screen.getByRole('textbox', { name: 'Interviewer script text' }),
+      ).toHaveValue('Read this instead'),
     );
   });
 

@@ -142,6 +142,43 @@ describe('DialogForm', () => {
     });
   });
 
+  /**
+   * A dialog carrying a preview beside its fields needs the width to put the
+   * two side by side; `Dialog`'s own default is `readable`, half that. `size`
+   * is a preset name rather than a DOM attribute, so the max-width class the
+   * preset resolves to is the visible consequence, read alongside the dialog's
+   * own record of what it was handed.
+   */
+  it('widens itself to the workspace preset when it has an aside', async () => {
+    renderEditor({ aside: <p>Preview</p> });
+
+    expect(await screen.findByRole('dialog')).toHaveClass('max-w-7xl');
+    expect(dialogRenders).toHaveBeenCalledWith(
+      expect.objectContaining({ size: 'workspace' }),
+    );
+  });
+
+  it("takes the caller's size over the aside default", async () => {
+    renderEditor({ aside: <p>Preview</p>, size: 'editor' });
+
+    expect(await screen.findByRole('dialog')).toHaveClass('max-w-4xl');
+    expect(dialogRenders).toHaveBeenCalledWith(
+      expect.objectContaining({ size: 'editor' }),
+    );
+  });
+
+  it('leaves the width to Dialog when it has neither', async () => {
+    renderEditor();
+
+    // Nothing of its own — not a preset repeated here — so a dialog of fields
+    // alone stays whatever width Fresco calls readable, and follows it if that
+    // ever changes.
+    expect(await screen.findByRole('dialog')).toHaveClass('max-w-2xl');
+    expect(dialogRenders).toHaveBeenCalledWith(
+      expect.objectContaining({ size: undefined }),
+    );
+  });
+
   it('submits the draft once, with the values on screen', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();

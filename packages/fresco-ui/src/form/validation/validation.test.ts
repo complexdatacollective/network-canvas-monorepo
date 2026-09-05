@@ -8,8 +8,16 @@ import {
   type NcNetwork,
 } from '@codaco/shared-consts';
 
-import type { FieldValue, ValidationContext } from '../store/types';
-import { makeValidationHints, validateFieldValue } from './helpers';
+import type {
+  CustomFieldValidation,
+  FieldValue,
+  ValidationContext,
+} from '../store/types';
+import {
+  makeValidationHints,
+  messageRuleValidation,
+  validateFieldValue,
+} from './helpers';
 
 describe('Validation Utils', () => {
   const mockFormValues: Record<string, FieldValue> = {};
@@ -252,6 +260,92 @@ describe('Validation Utils', () => {
           }),
         ),
       ).toEqual(['Must be greater than your earlier answer.']);
+    });
+  });
+
+  describe('messageRuleValidation', () => {
+    function hintTexts(element: ReturnType<typeof makeValidationHints>) {
+      if (!element) return [];
+      const { container } = render(element);
+      return Array.from(container.querySelectorAll('li')).map(
+        (li) => li.textContent?.trim() ?? '',
+      );
+    }
+
+    async function messagesFor(
+      custom: CustomFieldValidation,
+      value: unknown,
+    ): Promise<string[]> {
+      const result = await validateFieldValue(
+        value,
+        custom.schema,
+        mockFormValues,
+      );
+      return result.success ? [] : result.error.issues.map((i) => i.message);
+    }
+
+    /** Fails only on the empty string, the way an array editor's rules read. */
+    const needsAValue = (value: unknown) =>
+      value === '' ? 'Every option needs a value.' : undefined;
+
+    it('blocks with the failing rule’s own message', async () => {
+      expect(
+        await messagesFor(messageRuleValidation([needsAValue]), ''),
+      ).toEqual(['Every option needs a value.']);
+    });
+
+    it('does not block when the rule passes', async () => {
+      expect(
+        await messagesFor(messageRuleValidation([needsAValue]), 'chosen'),
+      ).toEqual([]);
+    });
+
+    /**
+     * Pins which rule speaks: a passing rule must be stepped over silently
+     * rather than counted as a failure, and of the rules that do fail only the
+     * first is reported — a field shows one error at a time.
+     */
+    it('reports the first failing rule and stays silent about passing ones', async () => {
+      const custom = messageRuleValidation([
+        () => undefined,
+        () => 'Every option needs a value.',
+        () => 'Every option needs a unique value.',
+      ]);
+
+      expect(await messagesFor(custom, 'anything')).toEqual([
+        'Every option needs a value.',
+      ]);
+    });
+
+    it('omits the hint entirely when the caller gives none', () => {
+      const custom = messageRuleValidation([needsAValue]);
+
+      expect('hint' in custom).toBe(false);
+      expect(makeValidationHints({ custom })).toBeNull();
+    });
+
+    it('adds no empty bullet beside another rule’s hint', () => {
+      expect(
+        hintTexts(
+          makeValidationHints({
+            min: 10,
+            custom: messageRuleValidation([needsAValue]),
+          }),
+        ),
+      ).toEqual(['Enter a value greater than or equal to 10.']);
+    });
+
+    it('renders the hint when the caller supplies one', () => {
+      expect(
+        hintTexts(
+          makeValidationHints({
+            custom: messageRuleValidation(
+              [needsAValue],
+              'Every option needs a value.',
+            ),
+          }),
+        ),
+      ).toEqual(['Every option needs a value.']);
     });
   });
 });

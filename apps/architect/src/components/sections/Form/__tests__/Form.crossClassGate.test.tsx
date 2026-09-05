@@ -29,6 +29,13 @@ let capturedEditorValidate:
 // The picker's sibling list travels the other way, as `editorProps`. Both are
 // captured so a test can prove the gate and the picker read the same rows.
 let capturedEditorProps: Record<string, unknown> | undefined;
+// `Field` still injects `aria-required` into the prop bag it hands the array
+// field, so the stub captures it — but `role="list"` does not support the
+// attribute (axe reports it as a critical `aria-allowed-attr` failure), so the
+// real `ArrayField` drops it before spreading the bag onto its `<ul>` and this
+// stub mirrors that. The requirement reaches assistive technology through the
+// visually hidden "Required" marker named in `aria-describedby`.
+let capturedAriaRequired: boolean | undefined;
 vi.mock('~/components/Form/arrayFields/DialogArrayField', () => ({
   default: ({
     editorValidate,
@@ -48,10 +55,9 @@ vi.mock('~/components/Form/arrayFields/DialogArrayField', () => ({
   }) => {
     capturedEditorValidate = editorValidate;
     capturedEditorProps = editorProps;
+    capturedAriaRequired = ariaRequired;
     return (
       <ul
-        // oxlint-disable-next-line jsx-a11y/role-supports-aria-props -- mirrors ArrayField's current public accessibility props
-        aria-required={ariaRequired}
         aria-labelledby={ariaLabelledBy}
         aria-describedby={ariaDescribedBy}
         data-testid="dialog-array-field"
@@ -285,7 +291,11 @@ describe('Form.tsx cross-class gate (real role-map wiring)', () => {
     renderForm({ entity: 'node', type: 'person' });
 
     const fields = screen.getByRole('list', { name: 'Form fields' });
-    expect(fields).toHaveAttribute('aria-required', 'true');
+    // The constraint is delivered to the array field...
+    expect(capturedAriaRequired).toBe(true);
+    // ...and announced by the marker the list describes itself with, rather
+    // than by an `aria-required` its `list` role is not allowed to carry.
+    expect(fields).not.toHaveAttribute('aria-required');
     expect(fields).toHaveAccessibleDescription(/Required/);
 
     setFormFields([]);
