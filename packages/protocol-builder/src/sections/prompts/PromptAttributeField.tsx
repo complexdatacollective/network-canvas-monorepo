@@ -13,6 +13,7 @@ import type {
   AuxiliaryCodebookSubmitResult,
   CodebookVariableDraft,
 } from '../../codebook/editing.ts';
+import CodebookVariableValidationEditor from '../../codebook/validation/CodebookVariableValidationEditor.tsx';
 import type { WriterClass } from '../../codebook/variableRoles.ts';
 import { findDraftContradictions } from '../../codebook/variableValidation.ts';
 import { VariablePickerControl } from '../../fields/VariablePicker.tsx';
@@ -77,8 +78,22 @@ export type PromptAttributeFieldProps = Readonly<{
   writerClass: WriterClass;
   /** Visible text and accessible name of the create control. */
   createLabel: string;
-  /** Visible text and accessible name of the edit control. */
-  editLabel: string;
+  /**
+   * Visible text and accessible name of the control that edits the picked
+   * attribute's VALUES. Leave it off for a picker whose attribute type has no
+   * values to edit — a follow-up the participant types into is text, and a
+   * named control that can never appear reads like one a researcher cannot
+   * find.
+   */
+  editLabel?: string;
+  /**
+   * Visible text and accessible name of the control that edits the picked
+   * attribute's validation rules, which is the only thing standing between a
+   * participant TYPING an answer and one the study cannot use. Leave it off
+   * for a picker whose participant never types: a bin or a scale is answered
+   * by dragging or tapping, which no rule could refuse.
+   */
+  validationLabel?: string;
   emptyMessage: string;
   /** The pick this prompt already had, so reopening it never loses the pick. */
   committedValue?: string;
@@ -123,6 +138,7 @@ export default function PromptAttributeField({
   writerClass,
   createLabel,
   editLabel,
+  validationLabel,
   emptyMessage,
   committedValue,
   optionLimit,
@@ -153,11 +169,19 @@ export default function PromptAttributeField({
   const lockedOptions = useLockedOptions(subject, picked);
   const [editing, setEditing] = useState<{
     key: string;
+    /** The words on the control that opened it, which name what it does. */
+    label: string;
     mode: 'create' | 'update';
+    variableId: string;
+  } | null>(null);
+  /** The validation surface for the pick, open on the key it was opened at. */
+  const [validating, setValidating] = useState<{
+    key: string;
     variableId: string;
   } | null>(null);
   const createTrigger = useRef<HTMLButtonElement>(null);
   const editTrigger = useRef<HTMLButtonElement>(null);
+  const validationTrigger = useRef<HTMLButtonElement>(null);
   const latestDraft = useRef<CodebookVariableDraft | null>(null);
 
   const optionCount =
@@ -165,10 +189,23 @@ export default function PromptAttributeField({
       optionCountOf(variablesIn(codebookDocument)[picked ?? ''])) +
     extraCountedOptions;
   const overLimit = optionLimit !== undefined && optionCount > optionLimit;
-  const editableOptions =
+  /**
+   * The values control, or `null` where there is nothing for it to edit: an
+   * attribute this picker cannot offer one for, values another interface owns,
+   * or a type with no values at all.
+   */
+  const valuesEditor =
+    editLabel !== undefined &&
     picked !== undefined &&
     lockedOptions === undefined &&
-    OPTION_TYPES.includes(createType);
+    OPTION_TYPES.includes(createType)
+      ? { label: editLabel, variableId: picked }
+      : null;
+  /** The validation control, for a pick whose participant types their answer. */
+  const validationEditor =
+    validationLabel !== undefined && picked !== undefined
+      ? { label: validationLabel, variableId: picked }
+      : null;
 
   /**
    * Refuses values the attribute's own committed validation rules could never
@@ -229,12 +266,17 @@ export default function PromptAttributeField({
             size="sm"
             onClick={() => {
               latestDraft.current = null;
-              setEditing({ key: uuid(), mode: 'create', variableId: uuid() });
+              setEditing({
+                key: uuid(),
+                label: createLabel,
+                mode: 'create',
+                variableId: uuid(),
+              });
             }}
           >
             {createLabel}
           </Button>
-          {editableOptions && (
+          {valuesEditor !== null && (
             <Button
               ref={editTrigger}
               type="button"
@@ -242,10 +284,31 @@ export default function PromptAttributeField({
               size="sm"
               onClick={() => {
                 latestDraft.current = null;
-                setEditing({ key: uuid(), mode: 'update', variableId: picked });
+                setEditing({
+                  key: uuid(),
+                  label: valuesEditor.label,
+                  mode: 'update',
+                  variableId: valuesEditor.variableId,
+                });
               }}
             >
-              {editLabel}
+              {valuesEditor.label}
+            </Button>
+          )}
+          {validationEditor !== null && (
+            <Button
+              ref={validationTrigger}
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                setValidating({
+                  key: uuid(),
+                  variableId: validationEditor.variableId,
+                })
+              }
+            >
+              {validationEditor.label}
             </Button>
           )}
         </div>
@@ -262,7 +325,7 @@ export default function PromptAttributeField({
       {editing !== null && codebookDocument !== null && subject !== null && (
         <Dialog
           open
-          title={editing.mode === 'create' ? createLabel : editLabel}
+          title={editing.label}
           size="readable"
           closeDialog={closeEditor}
           finalFocus={() =>
@@ -305,8 +368,8 @@ export default function PromptAttributeField({
                 createType,
               )}
               allowedVariableTypes={types}
-              description={editLabel}
-              title={editLabel}
+              description={editing.label}
+              title={editing.label}
               createRequestId={() => uuid()}
               onDraftChange={(draft) => {
                 latestDraft.current = draft;
@@ -317,6 +380,34 @@ export default function PromptAttributeField({
           )}
         </Dialog>
       )}
+      {validating !== null &&
+        validationLabel !== undefined &&
+        codebookDocument !== null &&
+        subject !== null && (
+          <Dialog
+            open
+            title={validationLabel}
+            size="readable"
+            closeDialog={() => setValidating(null)}
+            finalFocus={() => validationTrigger.current}
+          >
+            <CodebookVariableValidationEditor
+              openId={validating.key}
+              subject={subject}
+              variableId={validating.variableId}
+              authoritativeEntityDocument={codebookDocument}
+              allSubjectVariables={variablesIn(codebookDocument)}
+              requestMetadata={{
+                createId: () => uuid(),
+                description: validationLabel,
+              }}
+              onSubmitRequest={(request) =>
+                controller.requestCompoundEdit(request)
+              }
+              onComplete={() => setValidating(null)}
+            />
+          </Dialog>
+        )}
     </>
   );
 

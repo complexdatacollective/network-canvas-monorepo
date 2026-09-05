@@ -466,6 +466,103 @@ describe('a codebook that changes while a bin prompt is open', () => {
 });
 
 /**
+ * The follow-up bin is the one place in this interface where the PARTICIPANT
+ * types an answer, so the attribute's own validation rules are the only thing
+ * standing between them and an answer the study cannot use.
+ *
+ * Architect mounts a `CodebookVariableValidationSection` here for the same
+ * reason ("Enable validation of the other attribute",
+ * `CategoricalBinPrompts/PromptFields.tsx`).
+ */
+describe('the rules the follow-up bin’s answers have to satisfy', () => {
+  const openWithFollowUpBin = () => ({
+    stage: {
+      type: 'CategoricalBin' as const,
+      fields: {
+        label: 'Categorical Bin',
+        subject: { entity: 'node', type: 'person' },
+        prompts: [
+          {
+            id: 'prompt-a',
+            text: 'What kind of contact?',
+            variable: 'contactType',
+            otherVariable: 'relationship_to_ego',
+            otherOptionLabel: 'Other',
+            otherVariablePrompt: 'Which?',
+          },
+        ],
+      },
+    },
+    sections: <CategoricalBinPromptsSection />,
+  });
+
+  const openFollowUpBin = async (harness: StageEditorHarness) => {
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole('switch', { name: 'A bin for anything else' }),
+      ).toBeChecked(),
+    );
+  };
+
+  it('saves a rule for the attribute the answers are stored in', async () => {
+    const harness = renderStageEditor(openWithFollowUpBin());
+    const submit = vi.spyOn(harness.host, 'submit');
+
+    await openFollowUpBin(harness);
+    await harness.user.click(
+      screen.getByRole('button', {
+        name: 'Set rules for what the participant types',
+      }),
+    );
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Edit validation for relationship_to_ego',
+      }),
+    ).toBeInTheDocument();
+    await harness.user.click(
+      screen.getByRole('checkbox', { name: 'Required' }),
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save validation' }),
+    );
+
+    // One compound edit, against the codebook section the attribute lives in.
+    await waitFor(() => expect(submit).toHaveBeenCalledTimes(1));
+    expect(submit.mock.calls[0]?.[0]?.edits[0]?.sectionId).toBe(
+      'codebook:node:person',
+    );
+    await waitFor(() =>
+      expect(personVariables(harness).relationship_to_ego).toMatchObject({
+        validation: { required: true },
+      }),
+    );
+  });
+
+  /**
+   * There is nothing to edit about a text attribute's VALUES — it has none —
+   * so the values control this picker offers everywhere else is not offered
+   * here. It used to be named and never rendered, which read like a control a
+   * researcher could not find.
+   */
+  it('offers no values control for an attribute that has no values', async () => {
+    const harness = renderStageEditor(openWithFollowUpBin());
+
+    await openFollowUpBin(harness);
+
+    expect(
+      screen.getByRole('button', { name: "Change this attribute's values" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Edit this attribute' }),
+    ).not.toBeInTheDocument();
+  });
+});
+
+/**
  * How many bins the participant is shown, which is not how many values the
  * attribute has: the follow-up bin is a bin too.
  *

@@ -124,6 +124,14 @@ function CategoricalBinPromptEditor({ item }: RowEditorProps) {
         disabled={!chosen}
         defaultOpen={committedOther !== ''}
       >
+        {/*
+          No values control, because a text attribute has no values to edit.
+          Validation is the control that matters here instead: this bin is the
+          one place in this interface where the participant TYPES an answer, so
+          the attribute's own rules are all that stand between them and an
+          answer the study cannot use. Architect mounts a validation section
+          here for the same reason.
+        */}
         <PromptAttributeField
           name="otherVariable"
           label="Attribute the answer is stored in"
@@ -134,7 +142,7 @@ function CategoricalBinPromptEditor({ item }: RowEditorProps) {
           createType="text"
           writerClass="validated"
           createLabel="Create a new text attribute"
-          editLabel="Edit this attribute"
+          validationLabel="Set rules for what the participant types"
           emptyMessage="This type has no text attributes yet. Create one to store what the participant types."
           {...(committedOther === '' ? {} : { committedValue: committedOther })}
         />
