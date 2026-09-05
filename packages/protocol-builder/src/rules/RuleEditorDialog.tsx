@@ -11,11 +11,7 @@ import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Section from '@codaco/fresco-ui/Section';
-import type {
-  Codebook,
-  DateFormat,
-  VariableType,
-} from '@codaco/protocol-validation';
+import type { Codebook, VariableType } from '@codaco/protocol-validation';
 
 import { EntitySelectControl } from '../fields/EntitySelectField.tsx';
 import { VariablePickerControl } from '../fields/VariablePicker.tsx';
@@ -35,12 +31,13 @@ import {
   isRuleTargetType,
   missingOperandOptions,
   type RuleChoiceOption,
+  type RuleDateParameters,
   type RuleEntityTarget,
   type RuleTargetType,
   type RuleVariableOption,
   ruleOperatorOptions,
   ruleVariableChoices,
-  ruleVariableDateResolution,
+  ruleVariableDateParameters,
   ruleVariableOptions,
   ruleVariables,
   ruleVariableType,
@@ -131,7 +128,46 @@ const RULE_KIND_OPTIONS: Readonly<
 export type RuleTypeOption = Readonly<{
   label: string;
   value: RuleTargetType;
+  /** Shown so a stored target is visible, but not offered as a choice. */
+  disabled?: boolean;
 }>;
+
+/**
+ * What each target is CALLED, for the one option the host does not supply.
+ *
+ * The host writes the sentences that describe what a target matches, because
+ * only it knows which rule sets it offers. A target a rule already holds that
+ * the host does not offer has no such sentence, so it is named — the entity
+ * class is a token, and these are the words for it — rather than left out.
+ */
+const RULE_TARGET_NAMES: Readonly<Record<RuleTargetType, string>> =
+  Object.freeze({ node: 'Node', edge: 'Edge', ego: 'Ego' });
+
+/**
+ * The targets on offer, plus the one this rule already has.
+ *
+ * The protocol schema accepts an ego, node or edge rule in any rule set, while
+ * a host offers only the targets its own rule set builds — so a stored rule can
+ * hold a target that is not on the list. Left out, the radio group showed
+ * nothing chosen over a rule that is pointed somewhere, and saved it back that
+ * way. Shown and disabled, the researcher can read what the rule targets and
+ * still has to choose again to change it.
+ */
+const ruleTargetOptions = (
+  offered: readonly RuleTypeOption[],
+  seeded: string,
+): readonly RuleTypeOption[] => {
+  if (!isRuleTargetType(seeded)) return offered;
+  if (offered.some((option) => option.value === seeded)) return offered;
+  return [
+    ...offered,
+    {
+      value: seeded,
+      label: `${RULE_TARGET_NAMES[seeded]} (not offered in this rule set)`,
+      disabled: true,
+    },
+  ];
+};
 
 const asString = (value: FieldValue | undefined): string | undefined =>
   typeof value === 'string' && value.length > 0 ? value : undefined;
@@ -290,7 +326,7 @@ type BranchProps = Readonly<{
   operatorOptions: readonly RuleOperatorOption[];
   variableType: VariableType | undefined;
   variableChoices: readonly RuleChoiceOption[] | undefined;
-  dateResolution: DateFormat;
+  dateParameters: RuleDateParameters;
 }>;
 
 function EgoRuleFields({
@@ -301,7 +337,7 @@ function EgoRuleFields({
   operatorOptions,
   variableType,
   variableChoices,
-  dateResolution,
+  dateParameters,
 }: BranchProps) {
   return (
     <Section title="Rule structure" description={RULE_STRUCTURE_DESCRIPTION}>
@@ -331,7 +367,7 @@ function EgoRuleFields({
         variableType={variableType}
         operator={operator}
         options={variableChoices}
-        dateResolution={dateResolution}
+        dateParameters={dateParameters}
         initialValue={seed.options?.value}
         regExpHint="Enter the value to compare against. You can use a regular expression to match multiple values."
       />
@@ -357,7 +393,7 @@ function EntityRuleFields({
   operatorOptions,
   variableType,
   variableChoices,
-  dateResolution,
+  dateParameters,
 }: EntityBranchProps) {
   // `rule.type` is the entity CLASS, so it is an internal token and never
   // display copy. Interpolating it produced "node Type" and "Choose an node
@@ -429,7 +465,7 @@ function EntityRuleFields({
             variableType={variableType}
             operator={operator}
             options={variableChoices}
-            dateResolution={dateResolution}
+            dateParameters={dateParameters}
             initialValue={seed.options?.value}
             regExpHint="Enter a regular expression to compare against."
           />
@@ -470,10 +506,18 @@ function RuleEditorFields({
       variableOptions: ruleVariableOptions(variables),
       variableType,
       variableChoices: ruleVariableChoices(variables, attributeId),
-      dateResolution: ruleVariableDateResolution(variables, attributeId),
-      operatorOptions: ruleOperatorOptions(variableType),
+      dateParameters: ruleVariableDateParameters(variables, attributeId),
     };
   }, [attributeId, codebook, entityTypeId, target]);
+
+  // The operator the rule HOLDS is part of the list, because a stored operator
+  // the editor no longer offers has to be visible rather than left showing the
+  // select's placeholder. Read from the field rather than from the seed, so it
+  // goes when the cascade clears it.
+  const operatorOptions = useMemo(
+    () => ruleOperatorOptions(derived.variableType, operator),
+    [derived.variableType, operator],
+  );
 
   // The operator is part of the answer: a categorical attribute empties to an
   // empty selection when its options are compared and to no number at all when
@@ -491,10 +535,10 @@ function RuleEditorFields({
     attributeId,
     operator,
     variableOptions: derived.variableOptions,
-    operatorOptions: derived.operatorOptions,
+    operatorOptions,
     variableType: derived.variableType,
     variableChoices: derived.variableChoices,
-    dateResolution: derived.dateResolution,
+    dateParameters: derived.dateParameters,
   };
 
   return (
@@ -510,7 +554,7 @@ function RuleEditorFields({
           label="Entity"
           hint="Select which network entity your rule should target."
           component={RadioGroupField}
-          options={[...ruleTypes]}
+          options={[...ruleTargetOptions(ruleTypes, seed.type)]}
           initialValue={seed.type === '' ? undefined : seed.type}
           required={REQUIRED_MESSAGE}
         />

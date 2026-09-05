@@ -894,6 +894,47 @@ describe('choosing where the interview continues', () => {
     ).not.toHaveAttribute('aria-invalid', 'true');
   });
 
+  /**
+   * A destination with no stage named is a destination the protocol schema
+   * refuses, and absence is how "continue at the next available stage" is
+   * spelled — so reading the two the same way left the control claiming the
+   * interview continued at the next stage while `finish` refused the save for
+   * a destination the researcher was never shown.
+   */
+  it('reports a destination it cannot read, rather than showing the next stage', async () => {
+    renderEditor(
+      createSession({ fields: configuredFields({ type: 'stage' }) }),
+    );
+
+    expect(
+      await screen.findByText(
+        'The stage this skips to cannot be read. Choose where the interview should continue instead.',
+      ),
+    ).toBeInTheDocument();
+    const destination = screen.getByRole('combobox', {
+      name: 'When this stage is skipped',
+    });
+    expect(destination).toHaveAttribute('aria-invalid', 'true');
+    expect(destination).not.toHaveValue('route:next');
+  });
+
+  it('attributes the refusal of one to the destination that holds it', async () => {
+    const session = createSession({
+      fields: configuredFields({ type: 'stage' }),
+    });
+
+    const validation = await session.validate();
+
+    // The control reports it so the researcher can act on it; the schema is
+    // what refuses it. Both have to be true, or a destination nobody can read
+    // is either invisible or unsaveable with no explanation.
+    expect(validation.status).toBe('invalid');
+    const issues = validation.status === 'invalid' ? validation.issues : [];
+    expect(issues.map((issue) => issue.path.slice(0, 4).join('.'))).toContain(
+      'stages.0.skipLogic.destination',
+    );
+  });
+
   it('reports a destination the interview now reaches first, without throwing', async () => {
     renderEditor(
       createSession({

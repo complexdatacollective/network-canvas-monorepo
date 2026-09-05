@@ -40,10 +40,26 @@ const OPERATOR_LABELS: readonly (readonly [FilterOperator, string])[] = [
 export type RuleOperatorOption = Readonly<{
   value: FilterOperator;
   label: string;
+  /** Shown so a stored operator is visible, but not offered as a choice. */
+  disabled?: boolean;
 }>;
 
 export const operatorsAsOptions: readonly RuleOperatorOption[] =
   OPERATOR_LABELS.map(([value, label]) => Object.freeze({ value, label }));
+
+const OPERATOR_LABELS_BY_VALUE: ReadonlyMap<FilterOperator, string> = new Map(
+  OPERATOR_LABELS,
+);
+
+/**
+ * How this operator reads, whether or not the editor offers it.
+ *
+ * Every operator the schema has is named above, so a stored one can always be
+ * shown to the researcher in the words the rest of the editor uses rather than
+ * as the token the protocol files it under.
+ */
+export const operatorLabel = (operator: FilterOperator): string =>
+  OPERATOR_LABELS_BY_VALUE.get(operator) ?? operator;
 
 const OPERATOR_NAMES: ReadonlySet<string> = new Set(AllOperators.options);
 
@@ -271,9 +287,19 @@ const isText = (value: unknown): boolean => typeof value === 'string';
 /**
  * What each control empties to, reads a seeded value with, and accepts.
  *
- * `undefined` is the empty numeric operand rather than `''`: an empty string
- * is not a number, and parking one there would put a value the interview
- * cannot compare into a field whose control would then show it as text.
+ * Every empty here has to be a value the form reads as UNANSWERED, because
+ * `required` is the only thing standing between an untouched operand and a
+ * saved rule — `isUnanswered` in fresco-ui is the shared definition, and
+ * `operandTable.test.tsx` holds every control to it. `false` is not one of
+ * them: it is what a yes/no control commits for "No", so emptying a boolean
+ * operand to it both answered the question on the researcher's behalf and
+ * satisfied the rule that exists to ask it. A boolean operand therefore starts
+ * at `undefined`, like every numeric one.
+ *
+ * `undefined` is the empty numeric operand rather than `''` for a related
+ * reason: an empty string is not a number, and parking one there would put a
+ * value the interview cannot compare into a field whose control would then
+ * show it as text.
  */
 const OPERAND_CONTROLS: Readonly<
   Record<
@@ -286,8 +312,10 @@ const OPERAND_CONTROLS: Readonly<
   >
 > = Object.freeze({
   boolean: {
-    empty: false,
-    parse: (value) => value === true,
+    empty: undefined,
+    // Read back as the answer it is, so a stored `false` opens on "No" and a
+    // rule with no operand yet opens on neither.
+    parse: (value) => (typeof value === 'boolean' ? value : undefined),
     holds: (value) => typeof value === 'boolean',
   },
   wholeNumber: {

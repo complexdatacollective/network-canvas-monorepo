@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
+import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 import {
   type FilterOperator,
   filterRuleSchema,
@@ -337,6 +338,28 @@ describe('the operand every offered rule commits', () => {
       // operand rules live: a relational operator holding a date string, or a
       // count holding a fraction, is refused here and nowhere earlier.
       expect(await validationIssues(rule!)).toEqual([]);
+    },
+  );
+});
+
+/**
+ * The other half of the sweep above: what the field holds BEFORE the
+ * researcher has entered anything.
+ *
+ * Every operand is required, and `required` is the only thing standing between
+ * an untouched operand and a saved rule. It reads emptiness through Fresco's
+ * own `isUnanswered`, so an empty sentinel that is a real answer — `false`,
+ * which is exactly what a yes/no control commits for "No" — satisfies the rule
+ * the moment an operator is chosen, and the researcher is never asked.
+ */
+describe('the operand every offered rule starts empty', () => {
+  it.each(cases)(
+    'empties a %s operand for %s to something the form reads as unanswered',
+    (variableType, operator) => {
+      const requirement = operandRequirement(variableType, operator);
+      expect(requirement?.kind).toBe('value');
+      if (requirement?.kind !== 'value') return;
+      expect(isUnanswered(requirement.empty)).toBe(true);
     },
   );
 });

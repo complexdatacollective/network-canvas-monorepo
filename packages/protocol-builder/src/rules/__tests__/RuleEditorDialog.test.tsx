@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createElement, useState } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -93,6 +99,20 @@ const baseSections: Record<string, SectionDoc> = {
       // A scalar is recorded as a number on a normalised scale, and is offered
       // the same comparison operators a number is.
       closeness: { name: 'Closeness', type: 'scalar' },
+      // A yes/no attribute: the one whose operand control has a value for
+      // every state it can be in, so "unanswered" cannot be one of them
+      // unless the operand table says so.
+      flag: { name: 'Flag', type: 'boolean', component: 'Boolean' },
+      // Text, so an operator a NUMBER accepts can be stored against it.
+      note: { name: 'Note', type: 'text' },
+      // A date attribute whose picker is bounded, and coarse enough that the
+      // bounds are readable off the control the researcher meets.
+      born: {
+        name: 'Born',
+        type: 'datetime',
+        component: 'DatePicker',
+        parameters: { type: 'year', min: '1800', max: '1810' },
+      },
       mood: {
         name: 'Mood',
         type: 'categorical',
@@ -811,6 +831,201 @@ describe('the operand a rule compares against', () => {
 
     await waitFor(() => expect(onSave).toHaveBeenCalled());
     expect(savedOptions(onSave).value).toEqual(['happy']);
+  });
+
+  it('asks for a yes/no operand rather than starting on one of the answers', async () => {
+    const user = userEvent.setup();
+    const { onSave } = renderSpiedEditor();
+
+    await buildNodeAttributeRuleUpTo(user, 'flag', 'EXACTLY');
+
+    // Choosing an operator is not choosing an operand. A control that opened
+    // on "No" would both put an answer nobody gave into the rule and satisfy
+    // the field's own `required`, so the researcher would never be asked.
+    expect(await screen.findByRole('radio', { name: 'Yes' })).not.toBeChecked();
+    expect(screen.getByRole('radio', { name: 'No' })).not.toBeChecked();
+
+    await finishAndClose(user);
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('radiogroup', { name: /Attribute value/ }),
+      ).toHaveAccessibleDescription(/This field is required\./),
+    );
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it('commits a yes/no operand of "No" as an answer', async () => {
+    const user = userEvent.setup();
+    const { onSave } = renderSpiedEditor();
+
+    await buildNodeAttributeRuleUpTo(user, 'flag', 'EXACTLY');
+    await user.click(await screen.findByRole('radio', { name: 'No' }));
+    await finishAndClose(user);
+
+    // `false` is an answer, not an absence: the rule the researcher meant to
+    // build has to still be buildable once the empty operand stops being one.
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    expect(savedOptions(onSave).value).toBe(false);
+  });
+
+  it('bounds a date operand by the attribute’s own earliest and latest date', async () => {
+    const user = userEvent.setup();
+    renderSpiedEditor();
+
+    await buildNodeAttributeRuleUpTo(user, 'born', 'EXACTLY');
+
+    // The operand is compared against the stored answer, so the dates it can
+    // take are the dates the attribute's own picker can record — bounds
+    // included. Without them the control offers every year back to 1920 and
+    // commits one the interview can never see.
+    const years = await screen.findByRole('combobox', {
+      name: /Attribute value/,
+    });
+    expect(
+      [...years.querySelectorAll('option')]
+        .map((option) => option.value)
+        .filter((value) => value !== ''),
+    ).toEqual([
+      '1810',
+      '1809',
+      '1808',
+      '1807',
+      '1806',
+      '1805',
+      '1804',
+      '1803',
+      '1802',
+      '1801',
+      '1800',
+    ]);
+  });
+});
+
+/**
+ * Every list in this dialog is narrower than what a stored rule may hold: the
+ * operators the editor offers are fewer than the schema accepts, the entity
+ * types come from today's codebook, and the targets come from the host's own
+ * rule set. A control given a value that matches none of its options shows
+ * nothing chosen — a native select falls back to its placeholder, a radio group
+ * checks nothing — and none of that clears the value, so what the researcher
+ * cannot see is saved back exactly as it was.
+ */
+describe('a choice a stored rule holds that the editor does not offer', () => {
+  const attributeRule = (operator: string): RuleDraft => ({
+    id: 'rule-a',
+    type: 'node',
+    options: { type: 'person', attribute: 'age', operator },
+  });
+
+  it('shows a stored presence operator instead of an empty select', async () => {
+    const user = userEvent.setup();
+    renderRuleList([attributeRule('EXISTS')]);
+
+    await openExistingRule(user);
+
+    const operator = await screen.findByRole('combobox', { name: /Operator/ });
+    expect(operator).toHaveValue('EXISTS');
+    // Named as what it is: the schema accepts it, so the researcher is being
+    // shown their rule rather than sent to fix something that is not wrong.
+    expect(
+      within(operator).getByRole('option', {
+        name: 'exists (no longer offered)',
+      }),
+    ).toBeEnabled();
+  });
+
+  it('saves a rule holding one back unchanged', async () => {
+    const user = userEvent.setup();
+    renderRuleList([attributeRule('EXISTS')]);
+
+    await openExistingRule(user);
+    await screen.findByRole('combobox', { name: /Operator/ });
+    await finishAndClose(user);
+
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: RULE_EDITOR })).toBeNull(),
+    );
+    expect(probedRuleSet()?.rules?.[0]).toMatchObject({
+      options: { attribute: 'age', operator: 'EXISTS' },
+    });
+  });
+
+  it('shows a rule target this rule set does not offer', async () => {
+    // `RULE_TYPES` offers node and ego rules only, which is a host's choice
+    // about its own rule set. The protocol schema accepts a node, edge or ego
+    // rule in every one of them, so a stored rule can hold a target the set
+    // would not build — and the target group then showed nothing chosen at all
+    // over a rule that is pointed somewhere.
+    renderSpiedEditor({
+      id: 'rule-a',
+      type: 'edge',
+      options: { type: 'friend', operator: 'EXISTS' },
+    });
+
+    const target = await screen.findByRole('radio', {
+      name: 'Edge (not offered in this rule set)',
+    });
+    expect(target).toBeChecked();
+    expect(target).toBeDisabled();
+  });
+
+  it('shows an entity type the codebook has lost, rather than nothing chosen', async () => {
+    const user = userEvent.setup();
+    renderRuleList([
+      {
+        id: 'rule-a',
+        type: 'node',
+        // A collaborator deleted the node type this rule is pointed at.
+        options: { type: 'ghost', operator: 'EXISTS' },
+      },
+    ]);
+
+    await openExistingRule(user);
+
+    // Same mechanism as the operator select and the attribute picker: a
+    // control that offers only what the codebook still has shows nothing
+    // chosen over a rule that is still pointed somewhere, and saves it back.
+    const missing = await screen.findByRole('radio', {
+      name: 'ghost — this type is no longer in the codebook',
+    });
+    expect(missing).toBeChecked();
+    expect(missing).toBeDisabled();
+    expect(
+      screen.getByText(
+        'This type is no longer in the codebook. Choose another one.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('shows an operator the attribute’s type does not allow, and refuses to offer it again', async () => {
+    const user = userEvent.setup();
+    renderRuleList([
+      {
+        id: 'rule-a',
+        type: 'node',
+        // A collaborator retyped the attribute under this rule: `note` is
+        // text, and the schema does not allow a relational comparison there.
+        options: {
+          type: 'person',
+          attribute: 'note',
+          operator: 'GREATER_THAN',
+          value: 30,
+        },
+      },
+    ]);
+
+    await openExistingRule(user);
+
+    const operator = await screen.findByRole('combobox', { name: /Operator/ });
+    expect(operator).toHaveValue('GREATER_THAN');
+    // Disabled, unlike the presence operator above: this one IS wrong, so the
+    // editor shows what the rule says without letting it be chosen again.
+    expect(
+      within(operator).getByRole('option', {
+        name: 'is greater than (not valid for this attribute)',
+      }),
+    ).toBeDisabled();
   });
 });
 

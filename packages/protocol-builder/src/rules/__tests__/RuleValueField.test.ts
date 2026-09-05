@@ -17,8 +17,11 @@ describe('emptyRuleValue', () => {
     expect(emptyRuleValue('categorical')).toEqual([]);
   });
 
-  it('empties a boolean operand as the unselected state', () => {
-    expect(emptyRuleValue('boolean')).toBe(false);
+  it('leaves a yes/no operand with no answer at all', () => {
+    // Never `false`: that is what a yes/no control commits for "No", so
+    // emptying to it both answered the question on the researcher's behalf and
+    // satisfied the `required` rule that exists to ask it.
+    expect(emptyRuleValue('boolean')).toBeUndefined();
   });
 
   it('leaves a numeric operand with no value at all', () => {

@@ -9,6 +9,7 @@ import {
   skipLogicDestinationOptions,
   skipLogicDestinationProblem,
   stagePlacement,
+  UNREADABLE_DESTINATION_PROBLEM,
 } from '../skipLogicDestination.ts';
 
 const stages = [
@@ -180,5 +181,62 @@ describe('what is wrong with a destination', () => {
         { index: 2, isNew: false },
       ),
     ).toBe(EARLIER_DESTINATION_PROBLEM);
+  });
+
+  /**
+   * Absence is how "continue at the next available stage" is spelled, so a
+   * destination the schema cannot read has to be told apart from one that was
+   * never there: the protocol schema refuses the first and accepts the second,
+   * and reading them the same way leaves the researcher looking at a control
+   * that says the interview continues at the next stage while the stage they
+   * cannot see is what the save is refused for.
+   */
+  it('reports a destination it cannot read as a problem, not as no destination', () => {
+    // Stated before the sweep so the sweep cannot pass by comparing one
+    // absent verdict against another.
+    expect(UNREADABLE_DESTINATION_PROBLEM).toEqual(expect.any(String));
+    for (const value of [
+      { type: 'stage' },
+      { type: 'stage', stageId: '' },
+      { type: 'somewhere-else' },
+      'route:next',
+      [],
+      null,
+    ]) {
+      expect(skipLogicDestinationProblem(value, stages, placement)).toBe(
+        UNREADABLE_DESTINATION_PROBLEM,
+      );
+    }
+  });
+
+  it('keeps saying nothing about a destination that is genuinely absent', () => {
+    expect(
+      skipLogicDestinationProblem(undefined, stages, placement),
+    ).toBeUndefined();
+  });
+});
+
+describe('a destination the control cannot read', () => {
+  const placement = { index: 0, isNew: false };
+
+  it('does not route to the next available stage', () => {
+    // The route the select speaks is what decides which option reads as
+    // chosen, so sharing the absent route is what made a malformed
+    // destination show as "Next available stage".
+    expect(destinationRoute({ type: 'stage' })).not.toBe(
+      destinationRoute(undefined),
+    );
+  });
+
+  it('is shown as an option of its own rather than falling back', () => {
+    const options = skipLogicDestinationOptions(stages, placement, {
+      type: 'stage',
+    });
+
+    expect(options.at(-1)).toEqual({
+      value: destinationRoute({ type: 'stage' }),
+      label: 'A destination this editor cannot read',
+      disabled: true,
+    });
   });
 });

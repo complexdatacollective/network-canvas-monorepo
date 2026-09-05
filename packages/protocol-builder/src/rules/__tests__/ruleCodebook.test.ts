@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { type Codebook, VariableTypesKeys } from '@codaco/protocol-validation';
+import {
+  type Codebook,
+  type Variables,
+  VariableTypesKeys,
+} from '@codaco/protocol-validation';
 
 import { operatorsForSubject, ruleVariableTypes } from '../operators.ts';
 import {
@@ -9,6 +13,7 @@ import {
   ruleEntityTypeOptions,
   ruleOperatorOptions,
   ruleVariableChoices,
+  ruleVariableDateParameters,
   ruleVariableOptions,
   ruleVariables,
   ruleVariableType,
@@ -78,6 +83,99 @@ describe('the rule variable-type catalogue', () => {
       'INCLUDES',
       'EXCLUDES',
     ]);
+  });
+});
+
+/**
+ * The list is narrower than the schema on purpose, and a native select shows
+ * its placeholder for a value that matches no option — so an operator left out
+ * of the list is one the researcher cannot see, cannot correct, and saves back
+ * unchanged.
+ */
+describe('an operator a stored rule holds that the list leaves out', () => {
+  it('adds a presence operator the schema still accepts, selectable', () => {
+    const options = ruleOperatorOptions('number', 'EXISTS');
+
+    expect(options.at(-1)).toEqual({
+      value: 'EXISTS',
+      label: 'exists (no longer offered)',
+    });
+    // The schema accepts it, so the researcher is being shown their own rule
+    // rather than sent to fix something that is not wrong.
+    expect(options.at(-1)?.disabled).toBeUndefined();
+  });
+
+  it('adds an operator the attribute’s type does not allow, disabled', () => {
+    expect(ruleOperatorOptions('text', 'GREATER_THAN').at(-1)).toEqual({
+      value: 'GREATER_THAN',
+      label: 'is greater than (not valid for this attribute)',
+      disabled: true,
+    });
+  });
+
+  it('adds nothing for an operator the list already holds, or for a non-operator', () => {
+    const offered = ruleOperatorOptions('number');
+    expect(ruleOperatorOptions('number', 'GREATER_THAN')).toEqual(offered);
+    expect(ruleOperatorOptions('number', undefined)).toEqual(offered);
+    expect(ruleOperatorOptions('number', 'NOT_AN_OPERATOR')).toEqual(offered);
+  });
+});
+
+/**
+ * A rule's operand is compared against the stored answer verbatim, so the date
+ * control has to be the same control the attribute is answered with — bounds
+ * included. Reading only the resolution left a rule able to name a date the
+ * attribute's own picker could never record.
+ */
+describe('the date picker a rule’s operand inherits', () => {
+  const variables: Readonly<Variables> = Object.freeze({
+    born: {
+      name: 'Born',
+      type: 'datetime',
+      component: 'DatePicker',
+      parameters: { type: 'year', min: '1800', max: '1810' },
+    },
+    seen: {
+      name: 'Seen',
+      type: 'datetime',
+      component: 'DatePicker',
+    },
+    met: {
+      name: 'Met',
+      type: 'datetime',
+      component: 'RelativeDatePicker',
+      parameters: { anchor: '2020-01-01', before: 30, after: 30 },
+    },
+    age: { name: 'Age', type: 'number' },
+  });
+
+  it('carries every bound the attribute’s own picker honours', () => {
+    expect(ruleVariableDateParameters(variables, 'born')).toEqual({
+      type: 'year',
+      min: '1800',
+      max: '1810',
+    });
+  });
+
+  it('invents no bound the codebook does not hold', () => {
+    expect(ruleVariableDateParameters(variables, 'seen')).toEqual({
+      type: 'full',
+    });
+  });
+
+  it('gives a relative date picker the full date it records, and no bounds', () => {
+    expect(ruleVariableDateParameters(variables, 'met')).toEqual({
+      type: 'full',
+    });
+  });
+
+  it('gives anything that is not a date attribute the default picker', () => {
+    expect(ruleVariableDateParameters(variables, 'age')).toEqual({
+      type: 'full',
+    });
+    expect(ruleVariableDateParameters(variables, undefined)).toEqual({
+      type: 'full',
+    });
   });
 });
 

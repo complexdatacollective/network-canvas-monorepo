@@ -7,14 +7,18 @@ import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
 import DatePickerField from '@codaco/fresco-ui/form/fields/DatePicker';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
-import type { DateFormat, VariableType } from '@codaco/protocol-validation';
+import type { VariableType } from '@codaco/protocol-validation';
 
 import {
   type OperandRequirement,
   operandRequirement,
   type OperandValue,
 } from './operators.ts';
-import type { RuleChoiceOption } from './ruleCodebook.ts';
+import {
+  DEFAULT_DATE_PARAMETERS,
+  type RuleChoiceOption,
+  type RuleDateParameters,
+} from './ruleCodebook.ts';
 
 /** Every rule operand is stored under this one path. */
 export const RULE_VALUE_FIELD = 'options.value';
@@ -122,8 +126,8 @@ type RuleValueFieldProps = Readonly<{
   /** What the operand table says this operator wants for this attribute. */
   requirement: ValueRequirement;
   options?: readonly RuleChoiceOption[];
-  /** The resolution a datetime attribute's answers are recorded at. */
-  dateResolution?: DateFormat;
+  /** How a datetime attribute's own date picker is configured. */
+  dateParameters?: RuleDateParameters;
   /** The operand as the rule was seeded with it. */
   initialValue?: unknown;
   /** The smallest value the operand may take, where one is meaningful. */
@@ -146,7 +150,7 @@ function RuleValueField({
   placeholder,
   requirement,
   options,
-  dateResolution,
+  dateParameters,
   initialValue,
   minValue,
 }: RuleValueFieldProps) {
@@ -174,7 +178,7 @@ function RuleValueField({
         <Field
           {...shared}
           component={BooleanField}
-          initialValue={seeded === true}
+          initialValue={asBooleanValue(seeded)}
         />
       );
     case 'optionList':
@@ -200,7 +204,14 @@ function RuleValueField({
         <Field
           {...shared}
           component={DatePickerField}
-          type={dateResolution ?? 'full'}
+          // Every part of the attribute's own picker the operand control
+          // honours, spread whole rather than picked apart here: a bound the
+          // codebook does not hold is absent rather than invented, and
+          // `min`/`max` are dual-use in Fresco — they bound the picker AND
+          // validate what is entered, so an operand the attribute could never
+          // record is refused rather than saved.
+          {...DEFAULT_DATE_PARAMETERS}
+          {...dateParameters}
           initialValue={asStringValue(seeded)}
         />
       );
@@ -247,6 +258,14 @@ const assertNoSuchControl = (control: never): never => {
 const asStringValue = (value: OperandValue): string =>
   typeof value === 'string' ? value : '';
 
+/**
+ * `undefined` rather than `false` for anything that is not a boolean: "No" is
+ * an answer, so a control opened on it would have answered the question the
+ * field's own `required` exists to ask.
+ */
+const asBooleanValue = (value: OperandValue): boolean | undefined =>
+  typeof value === 'boolean' ? value : undefined;
+
 const asNumberValue = (value: OperandValue): number | undefined =>
   typeof value === 'number' ? value : undefined;
 
@@ -257,7 +276,7 @@ export type RuleOperandFieldProps = Readonly<{
   variableType: VariableType | undefined;
   operator: unknown;
   options?: readonly RuleChoiceOption[];
-  dateResolution?: DateFormat;
+  dateParameters?: RuleDateParameters;
   initialValue?: unknown;
   /** Ego rules address the researcher about the ego's own attribute. */
   regExpHint: string;
@@ -276,7 +295,7 @@ export function RuleOperandField({
   variableType,
   operator,
   options,
-  dateResolution,
+  dateParameters,
   initialValue,
   regExpHint,
 }: RuleOperandFieldProps) {
@@ -313,7 +332,7 @@ export function RuleOperandField({
       }
       requirement={requirement}
       options={options}
-      dateResolution={dateResolution}
+      dateParameters={dateParameters}
       initialValue={initialValue}
     />
   );

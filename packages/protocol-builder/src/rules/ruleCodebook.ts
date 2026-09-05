@@ -17,6 +17,7 @@ import {
   isVariableType,
   operandDrawsOnOptions,
   operandRequirement,
+  operatorLabel,
   operatorsAsOptions,
   operatorsForSubject,
   type RuleOperatorOption,
@@ -152,27 +153,55 @@ export const ruleVariableType = (
 };
 
 /**
- * The resolution a datetime attribute's answers are recorded at.
+ * How a datetime attribute's own date picker is configured, as far as a rule's
+ * operand control honours it.
  *
  * A rule's operand is compared against the stored answer verbatim, so the date
- * control has to offer the same resolution the attribute's own picker does: a
- * year-resolution answer is `"1994"`, and a full date entered beside it equals
- * nothing. `full` is the schema's own default when the variable names none.
+ * control has to be the SAME control the attribute is answered with — every
+ * part of it, not only its resolution. The resolution decides what an answer
+ * looks like (a year-resolution answer is `"1994"`, and a full date entered
+ * beside it equals nothing); the bounds decide which answers exist at all, so
+ * an operand outside them is a rule that can never match, entered in a control
+ * that let the researcher pick it.
+ *
+ * Read structurally, because only one of the two datetime variable shapes
+ * carries any of this: a relative date picker records a full date and names no
+ * bounds. `full` is the schema's own default when a picker names no
+ * resolution, and a bound is carried only when the codebook holds one — the
+ * date control's own unbounded default is not a bound to invent here.
  */
-export const ruleVariableDateResolution = (
+export type RuleDateParameters = Readonly<{
+  type: DateFormat;
+  min?: string;
+  max?: string;
+}>;
+
+/** What a date operand's control is configured with when nothing says otherwise. */
+export const DEFAULT_DATE_PARAMETERS: RuleDateParameters = Object.freeze({
+  type: DEFAULT_DATE_FORMAT,
+});
+
+const dateBound = (parameters: object, bound: 'min' | 'max') => {
+  const value: unknown = Reflect.get(parameters, bound);
+  return typeof value === 'string' && value !== '' ? { [bound]: value } : {};
+};
+
+export const ruleVariableDateParameters = (
   variables: Readonly<Variables>,
   variableId: string | undefined,
-): DateFormat => {
+): RuleDateParameters => {
   const variable = ruleVariable(variables, variableId);
-  if (variable?.type !== 'datetime') return DEFAULT_DATE_FORMAT;
-  // Read structurally: only one of the two datetime variable shapes carries a
-  // resolution at all, and a relative date picker records a full date.
+  if (variable?.type !== 'datetime') return DEFAULT_DATE_PARAMETERS;
   const parameters: unknown = Reflect.get(variable, 'parameters');
   if (typeof parameters !== 'object' || parameters === null) {
-    return DEFAULT_DATE_FORMAT;
+    return DEFAULT_DATE_PARAMETERS;
   }
   const resolution: unknown = Reflect.get(parameters, 'type');
-  return isDateFormat(resolution) ? resolution : DEFAULT_DATE_FORMAT;
+  return {
+    type: isDateFormat(resolution) ? resolution : DEFAULT_DATE_FORMAT,
+    ...dateBound(parameters, 'min'),
+    ...dateBound(parameters, 'max'),
+  };
 };
 
 const DATE_FORMAT_NAMES: ReadonlySet<string> = new Set(DATE_FORMATS_KEYS);
@@ -211,15 +240,47 @@ export const ruleVariableChoices = (
  * The operators offered for an attribute of this type. A rule with no
  * attribute yet — a presence rule, or a variable rule mid-authoring — gets the
  * existence operators, which is what the `exists` subject holds.
+ *
+ * The operator the rule ALREADY holds is added to the list when the list does
+ * not contain it, in the same way `skipLogicDestinationOptions` keeps an
+ * unreachable destination and `VariablePickerControl` keeps a deleted
+ * attribute. The list is deliberately narrower than the schema — a stored
+ * protocol may hold an attribute-level `EXISTS` that today's editor would not
+ * build, and a collaborator's retype can leave an operator its new type does
+ * not allow — and a native select falls back to its placeholder when the value
+ * matches no option. That fallback is display-only: nothing clears the stored
+ * operator, so leaving it out showed the researcher an unanswered control over
+ * a rule that then saved exactly as it was.
+ *
+ * Whether the extra option can be CHOSEN again is the difference between the
+ * two cases. One the schema still accepts is the researcher's own rule, so it
+ * stays selectable; one the attribute's type does not allow has to be replaced,
+ * so it is shown and disabled.
  */
 export const ruleOperatorOptions = (
   variableType: VariableType | undefined,
+  operator?: unknown,
 ): RuleOperatorOption[] => {
   const allowed =
     variableType === undefined
       ? operatorsForSubject('exists')
       : operatorsForSubject(variableType);
-  return operatorsAsOptions.filter((option) => allowed.has(option.value));
+  const offered = operatorsAsOptions.filter((option) =>
+    allowed.has(option.value),
+  );
+  if (!isFilterOperator(operator) || allowed.has(operator)) return offered;
+
+  const stillValid = isOperatorValidForAttributeType(operator, variableType);
+  return [
+    ...offered,
+    {
+      value: operator,
+      label: `${operatorLabel(operator)} ${
+        stillValid ? '(no longer offered)' : '(not valid for this attribute)'
+      }`,
+      ...(stillValid ? {} : { disabled: true }),
+    },
+  ];
 };
 
 /**

@@ -37,6 +37,16 @@ const NEXT_AVAILABLE_ROUTE = 'route:next';
 const FINISH_ROUTE = 'route:finish';
 const STAGE_ROUTE_PREFIX = 'route:stage:';
 
+/**
+ * The route a destination this editor cannot read is shown under.
+ *
+ * It matches no option the control offers, so `skipLogicDestinationOptions`
+ * adds one for it and the select shows THAT rather than falling back to the
+ * next-available route — which is what made an unreadable destination read as
+ * a deliberate "continue at the next stage".
+ */
+const UNREADABLE_ROUTE = 'route:unreadable';
+
 const UNTITLED_STAGE = 'Untitled stage';
 
 export const MISSING_DESTINATION_PROBLEM =
@@ -45,15 +55,17 @@ export const MISSING_DESTINATION_PROBLEM =
 export const EARLIER_DESTINATION_PROBLEM =
   'The stage this skips to no longer comes after this one. Choose a later stage, or end the interview.';
 
+export const UNREADABLE_DESTINATION_PROBLEM =
+  'The stage this skips to cannot be read. Choose where the interview should continue instead.';
+
 /**
- * A stored value read back as a destination, or `undefined` when it is not
- * one — which is also what the absence of a destination means: continue at
- * the next available stage.
+ * A stored value read back as a destination, or `undefined` when it is not one.
  *
  * Tolerant rather than strict. The value arrives from a protocol someone else
  * may have edited, and a destination the schema would reject is a problem to
  * report, never a reason to throw inside a control the researcher needs in
- * order to fix it.
+ * order to fix it. `readDestination` is what decides WHICH problem it is;
+ * this answers only whether the value is a destination.
  */
 export const asSkipLogicDestination = (
   value: unknown,
@@ -70,12 +82,44 @@ export const asSkipLogicDestination = (
     : undefined;
 };
 
-export const destinationRoute = (value: unknown): string => {
+/**
+ * The three things a stored destination can be, told apart.
+ *
+ * Absence is how "continue at the next available stage" is spelled, and it is
+ * the one reading the protocol schema accepts — so a value that is PRESENT and
+ * unreadable is a different thing entirely, and reading the two the same way
+ * left the control saying the interview continued at the next stage while
+ * `finish` refused the save over a destination the researcher never saw.
+ *
+ * Only `undefined` is absence: `null`, a half-written `{ type: 'stage' }`, an
+ * unknown type and anything that is not an object at all are values the schema
+ * refuses, and every one of them is reported rather than swallowed.
+ */
+type StoredDestination =
+  | Readonly<{ kind: 'absent' }>
+  | Readonly<{ kind: 'unreadable' }>
+  | Readonly<{ kind: 'destination'; destination: SkipLogicDestination }>;
+
+const ABSENT: StoredDestination = Object.freeze({ kind: 'absent' as const });
+const UNREADABLE: StoredDestination = Object.freeze({
+  kind: 'unreadable' as const,
+});
+
+const readDestination = (value: unknown): StoredDestination => {
+  if (value === undefined) return ABSENT;
   const destination = asSkipLogicDestination(value);
-  if (destination === undefined) return NEXT_AVAILABLE_ROUTE;
-  return destination.type === 'finish'
+  return destination === undefined
+    ? UNREADABLE
+    : { kind: 'destination', destination };
+};
+
+export const destinationRoute = (value: unknown): string => {
+  const stored = readDestination(value);
+  if (stored.kind === 'absent') return NEXT_AVAILABLE_ROUTE;
+  if (stored.kind === 'unreadable') return UNREADABLE_ROUTE;
+  return stored.destination.type === 'finish'
     ? FINISH_ROUTE
-    : `${STAGE_ROUTE_PREFIX}${destination.stageId}`;
+    : `${STAGE_ROUTE_PREFIX}${stored.destination.stageId}`;
 };
 
 export const routeDestination = (
@@ -182,14 +226,22 @@ export function skipLogicDestinationOptions(
  *
  * A stage that still exists is named, so the researcher can see which one has
  * moved. A stage that has been deleted has no name left to give, so the option
- * says what happened to it instead of showing a raw id.
+ * says what happened to it instead of showing a raw id. A destination that is
+ * not one at all says so, rather than borrowing either sentence: nothing is
+ * known about where it pointed, and the researcher has to choose again.
  */
 function unavailableDestinationLabel(
   value: unknown,
   stages: readonly DestinationStage[],
 ): string {
-  const destination = asSkipLogicDestination(value);
-  if (destination === undefined || destination.type !== 'stage') {
+  const stored = readDestination(value);
+  if (stored.kind === 'unreadable') {
+    return 'A destination this editor cannot read';
+  }
+  if (stored.kind === 'absent')
+    return 'A destination that is no longer available';
+  const destination = stored.destination;
+  if (destination.type !== 'stage') {
     return 'A destination that is no longer available';
   }
   const index = stages.findIndex((stage) => stage.id === destination.stageId);
@@ -201,21 +253,28 @@ function unavailableDestinationLabel(
 /**
  * What is wrong with this destination, if anything.
  *
- * Both answers describe something that happened OUTSIDE this editor — a stage
- * deleted, or the interview reordered — so both are reported rather than
- * thrown, and neither is corrected automatically: which stage the interview
- * should continue at is the researcher's decision, not a gap to be filled in
- * on their behalf.
+ * Every answer describes something that happened OUTSIDE this editor — a stage
+ * deleted, the interview reordered, or a protocol hand-edited into a shape the
+ * schema refuses — so all of them are reported rather than thrown, and none is
+ * corrected automatically: which stage the interview should continue at is the
+ * researcher's decision, not a gap to be filled in on their behalf.
+ *
+ * A destination that cannot be read is one of them. It is not the absence of a
+ * destination, which is a perfectly good answer meaning "continue at the next
+ * available stage" — the protocol schema accepts that and refuses this, so
+ * reporting them the same way would leave the researcher with a control that
+ * looks answered and a save that is refused with no control to point at.
  */
 export function skipLogicDestinationProblem(
   value: unknown,
   stages: readonly DestinationStage[],
   placement: StagePlacement,
 ): string | undefined {
-  const destination = asSkipLogicDestination(value);
-  if (destination === undefined || destination.type === 'finish') {
-    return undefined;
-  }
+  const stored = readDestination(value);
+  if (stored.kind === 'unreadable') return UNREADABLE_DESTINATION_PROBLEM;
+  if (stored.kind === 'absent') return undefined;
+  const destination = stored.destination;
+  if (destination.type === 'finish') return undefined;
   const index = stages.findIndex((stage) => stage.id === destination.stageId);
   if (index === -1) return MISSING_DESTINATION_PROBLEM;
   return isLaterStage(index, placement)
