@@ -1,16 +1,16 @@
 import StageEditorShell from '../../form/StageEditorShell.tsx';
 import { interfaceDocumentationUrl } from '../../interfaces/documentation.ts';
 import InterviewerGuidanceSection from '../../sections/InterviewerGuidanceSection.tsx';
+import ContentBlockEditor from '../../sections/contentBlocks/ContentBlockEditor.tsx';
+import ContentBlockPreview from '../../sections/contentBlocks/ContentBlockPreview.tsx';
+import {
+  collapseContentBlock,
+  expandContentBlock,
+} from '../../sections/contentBlocks/contentBlockTypes.ts';
 import PageContentSection from '../../sections/PageContentSection.tsx';
 import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
 import StageNameSection from '../../sections/StageNameSection.tsx';
 import type { StageEditorProps } from '../../stage-editor-contract.ts';
-import ContentBlockEditor from './contentBlocks/ContentBlockEditor.tsx';
-import ContentBlockPreview from './contentBlocks/ContentBlockPreview.tsx';
-import {
-  collapseContentBlock,
-  expandContentBlock,
-} from './contentBlocks/contentBlockTypes.ts';
 import { saveStageAction } from './saveStageAction.tsx';
 
 /**
