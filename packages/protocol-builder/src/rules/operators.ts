@@ -450,7 +450,7 @@ export const operandRequirement = (
  *
  * Only the fact is stated here. WHICH options an attribute authored is a
  * question about the codebook, and this module deliberately knows nothing
- * about one; `missingOperandOptions` in `ruleCodebook.ts` asks it.
+ * about one; `operandOptionProblems` in `ruleCodebook.ts` asks it.
  */
 export const operandDrawsOnOptions = (
   variableType: VariableType | undefined,

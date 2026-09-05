@@ -163,7 +163,7 @@ const validateFilterRules = (
           // the very editor that can fix it. Membership is an editor rule: the
           // protocol builder refuses a non-member operand as it is authored,
           // and reports one it finds in a stored rule as a problem on that
-          // rule (`missingOperandOptions` in `@codaco/protocol-builder`).
+          // rule (`operandOptionProblems` in `@codaco/protocol-builder`).
           // Ruling recorded on issue #1548.
           const operandKind = FilterOperandKinds[rule.options.operator];
 
