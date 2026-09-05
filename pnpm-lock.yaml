@@ -2711,6 +2711,9 @@ importers:
 
   packages/protocol-builder:
     dependencies:
+      '@codaco/interface-images':
+        specifier: workspace:^
+        version: link:../interface-images
       '@codaco/protocol-validation':
         specifier: workspace:^
         version: link:../protocol-validation
@@ -2739,6 +2742,9 @@ importers:
       '@codaco/fresco-ui':
         specifier: workspace:^
         version: link:../fresco-ui
+      '@codaco/protocols':
+        specifier: workspace:^
+        version: link:../protocols
       '@codaco/tailwind-config':
         specifier: workspace:^
         version: link:../../tooling/tailwind
