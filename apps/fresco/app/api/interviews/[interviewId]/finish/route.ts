@@ -29,6 +29,10 @@ export async function POST(
       'Interview Completed',
       `Participant "${participantDisplay}" completed an interview`,
       {
+        kind: 'interviewCompleted',
+        values: { participant: participantDisplay },
+      },
+      {
         nodeCount: network?.nodes?.length ?? 0,
         edgeCount: network?.edges?.length ?? 0,
       },

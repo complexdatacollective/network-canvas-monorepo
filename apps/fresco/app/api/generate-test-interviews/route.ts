@@ -1,12 +1,15 @@
 import { createId } from '@paralleldrive/cuid2';
 
+import { createMessageError } from '@codaco/app-i18n/messages';
 import {
   generateNetwork,
   type GenerateNetworkParams,
 } from '@codaco/protocol-utilities';
+import { syntheticGenerationMessages } from '~/i18n/syntheticGenerationMessages';
 import { addEvent } from '~/lib/activityFeed';
 import { requireApiAuth } from '~/lib/auth/guards';
 import { prisma } from '~/lib/db';
+import { getSyntheticGenerationFailure } from '~/lib/syntheticGenerationFailure';
 import { generateSyntheticInterviewsSchema } from '~/schemas/synthetic-interviews';
 
 export async function POST(request: Request) {
@@ -15,26 +18,44 @@ export async function POST(request: Request) {
     const session = await requireApiAuth();
     username = session.user.username;
   } catch {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-    });
+    return Response.json(
+      {
+        error: createMessageError(syntheticGenerationMessages.signInRequired),
+        diagnostic: 'Unauthorized',
+      },
+      {
+        status: 401,
+      },
+    );
   }
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
-      status: 400,
-    });
+    return Response.json(
+      {
+        error: createMessageError(syntheticGenerationMessages.invalidRequest),
+        diagnostic: 'Invalid JSON body',
+      },
+      {
+        status: 400,
+      },
+    );
   }
 
   const parsed = generateSyntheticInterviewsSchema.safeParse(body);
 
   if (!parsed.success) {
-    return new Response(JSON.stringify({ error: 'Invalid request body' }), {
-      status: 400,
-    });
+    return Response.json(
+      {
+        error: createMessageError(syntheticGenerationMessages.invalidRequest),
+        diagnostic: 'Invalid request body',
+      },
+      {
+        status: 400,
+      },
+    );
   }
 
   const { protocolId, count, simulateDropOut, respectSkipLogicAndFiltering } =
@@ -45,9 +66,15 @@ export async function POST(request: Request) {
   });
 
   if (!protocol) {
-    return new Response(JSON.stringify({ error: 'Protocol not found' }), {
-      status: 404,
-    });
+    return Response.json(
+      {
+        error: createMessageError(syntheticGenerationMessages.missingProtocol),
+        diagnostic: 'Protocol not found',
+      },
+      {
+        status: 404,
+      },
+    );
   }
 
   const stream = new ReadableStream({
@@ -158,13 +185,16 @@ export async function POST(request: Request) {
         void addEvent(
           'Synthetic Data Generated',
           `User ${username} generated ${String(count)} synthetic interviews for protocol "${protocol.name}"`,
+          {
+            kind: 'syntheticGenerated',
+            values: { username, count, protocol: protocol.name },
+          },
         );
 
         send({ type: 'complete', created: count });
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : 'Unknown error';
-        send({ type: 'error', message });
+        const failure = getSyntheticGenerationFailure(error);
+        send({ type: 'error', message: failure.diagnostic, ...failure });
       } finally {
         controller.close();
       }

@@ -1,9 +1,10 @@
 'use client';
-
 import { X } from 'lucide-react';
 import { parseAsString, useQueryStates } from 'nuqs';
 import { useMemo } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 
 import { nuqsTableUrlKey, useNuqsTable } from './NuqsTableProvider';
@@ -26,8 +27,10 @@ type NuqsClearFiltersProps = {
  */
 export default function NuqsClearFilters({
   paramKeys,
-  label = 'Clear Filters',
+  label: labelProp,
 }: NuqsClearFiltersProps) {
+  const intl = useAppIntl();
+  const label = labelProp ?? intl.formatMessage(messages.NuqsClearFilterslabel);
   const { prefix, startTransition } = useNuqsTable();
 
   const parsers = useMemo(() => {
@@ -73,3 +76,11 @@ export default function NuqsClearFilters({
     </Button>
   );
 }
+
+const messages = defineMessages({
+  NuqsClearFilterslabel: {
+    id: 'fresco.tableFilters.NuqsClearFilterslabel',
+    defaultMessage: 'Clear Filters',
+    description: 'Researcher-facing tableFilters: Clear Filters',
+  },
+});

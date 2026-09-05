@@ -5,6 +5,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import z from 'zod';
 
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import { type FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import { addEvent } from '~/lib/activityFeed';
 import { getServerSession } from '~/lib/auth/guards';
@@ -14,9 +15,56 @@ import { safeUpdateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
 import { checkRateLimit, recordLoginAttempt } from '~/lib/rateLimit';
 import { getInstallationId, isAppConfigured } from '~/queries/appSettings';
-import { createUserSchema, loginSchema } from '~/schemas/auth';
+import { createAuthSchemas } from '~/schemas/auth';
 import { getClientIp } from '~/utils/getClientIp';
 import { hashPassword, verifyPassword } from '~/utils/password';
+
+const messages = defineMessages({
+  copySetupIsAlreadyComplete: {
+    id: 'fresco.actions.auth.copySetupIsAlreadyComplete',
+    defaultMessage: 'Setup is already complete.',
+    description: 'Researcher-facing actions / auth: Setup is already complete.',
+  },
+  copyInvalidFormSubmission: {
+    id: 'fresco.actions.auth.copyInvalidFormSubmission',
+    defaultMessage: 'Invalid form submission',
+    description: 'Researcher-facing actions / auth: Invalid form submission',
+  },
+  copyUsernameAlreadyTaken: {
+    id: 'fresco.actions.auth.copyUsernameAlreadyTaken',
+    defaultMessage: 'Username already taken',
+    description: 'Researcher-facing actions / auth: Username already taken',
+  },
+  copyIncorrectUsernameOrPassword: {
+    id: 'fresco.actions.auth.copyIncorrectUsernameOrPassword',
+    defaultMessage: 'Incorrect username or password',
+    description:
+      'Researcher-facing actions / auth: Incorrect username or password',
+  },
+  copyServerConfigurationErrorPleaseContactAnAdmin: {
+    id: 'fresco.actions.auth.copyServerConfigurationErrorPleaseContactAnAdmin',
+    defaultMessage: 'Server configuration error. Please contact an admin.',
+    description:
+      'Researcher-facing actions / auth: Server configuration error. Please contact an admin.',
+  },
+  copyTooManyAttemptsPleaseTryAgainLater: {
+    id: 'fresco.actions.auth.copyTooManyAttemptsPleaseTryAgainLater',
+    defaultMessage: 'Too many attempts. Please try again later.',
+    description:
+      'Researcher-facing actions / auth: Too many attempts. Please try again later.',
+  },
+  copyInvalidUsernameOrRecoveryCode: {
+    id: 'fresco.actions.auth.copyInvalidUsernameOrRecoveryCode',
+    defaultMessage: 'Invalid username or recovery code',
+    description:
+      'Researcher-facing actions / auth: Invalid username or recovery code',
+  },
+  copyUnauthorized: {
+    id: 'fresco.actions.auth.copyUnauthorized',
+    defaultMessage: 'Unauthorized',
+    description: 'Researcher-facing actions / auth: Unauthorized',
+  },
+});
 
 type RateLimited = {
   success: false;
@@ -45,11 +93,16 @@ async function getDummyPasswordHash(): Promise<string> {
 }
 
 export async function signup(formData: unknown) {
+  const { createUserSchema } = createAuthSchemas(createMessageError);
+
   // Account creation must be impossible once the app is configured. This is
   // enforced here (not only in the setup page) because Server Actions are
   // directly-invokable endpoints reachable regardless of which page rendered.
   if (await isAppConfigured()) {
-    return { success: false, error: 'Setup is already complete.' };
+    return {
+      success: false,
+      error: createMessageError(messages.copySetupIsAlreadyComplete),
+    };
   }
 
   // Password-based signup only. Passkey-only accounts must go through
@@ -62,7 +115,7 @@ export async function signup(formData: unknown) {
   if (!parsedFormData.success) {
     return {
       success: false,
-      error: 'Invalid form submission',
+      error: createMessageError(messages.copyInvalidFormSubmission),
     };
   }
 
@@ -85,7 +138,7 @@ export async function signup(formData: unknown) {
   } catch {
     return {
       success: false,
-      error: 'Username already taken',
+      error: createMessageError(messages.copyUsernameAlreadyTaken),
     };
   }
 
@@ -95,6 +148,8 @@ export async function signup(formData: unknown) {
 }
 
 export const login = async (data: unknown): Promise<LoginResult> => {
+  const { loginSchema } = createAuthSchemas(createMessageError);
+
   const parsedFormData = loginSchema.safeParse(data);
 
   if (!parsedFormData.success) {
@@ -127,7 +182,9 @@ export const login = async (data: unknown): Promise<LoginResult> => {
     await recordLoginAttempt(username, ipAddress, false);
     return {
       success: false,
-      formErrors: ['Incorrect username or password'],
+      formErrors: [
+        createMessageError(messages.copyIncorrectUsernameOrPassword),
+      ],
     };
   }
 
@@ -137,7 +194,9 @@ export const login = async (data: unknown): Promise<LoginResult> => {
     await recordLoginAttempt(username, ipAddress, false);
     return {
       success: false,
-      formErrors: ['Incorrect username or password'],
+      formErrors: [
+        createMessageError(messages.copyIncorrectUsernameOrPassword),
+      ],
     };
   }
 
@@ -152,7 +211,11 @@ export const login = async (data: unknown): Promise<LoginResult> => {
     if (!installationId) {
       return {
         success: false,
-        formErrors: ['Server configuration error. Please contact an admin.'],
+        formErrors: [
+          createMessageError(
+            messages.copyServerConfigurationErrorPleaseContactAnAdmin,
+          ),
+        ],
       };
     }
     const twoFactorToken = createTwoFactorToken(key.user_id, installationId);
@@ -165,7 +228,10 @@ export const login = async (data: unknown): Promise<LoginResult> => {
 
   await createSessionCookie(key.user_id);
 
-  void addEvent('User Login', `User ${username} logged in`);
+  void addEvent('User Login', `User ${username} logged in`, {
+    kind: 'userLogin',
+    values: { username },
+  });
   safeUpdateTag('activityFeed');
 
   return {
@@ -183,7 +249,9 @@ export async function recoveryCodeLogin(data: {
   if (!rateLimitResult.allowed) {
     return {
       success: false,
-      formErrors: ['Too many attempts. Please try again later.'],
+      formErrors: [
+        createMessageError(messages.copyTooManyAttemptsPleaseTryAgainLater),
+      ],
     };
   }
 
@@ -196,7 +264,9 @@ export async function recoveryCodeLogin(data: {
     await recordLoginAttempt(data.username, ipAddress, false);
     return {
       success: false,
-      formErrors: ['Invalid username or recovery code'],
+      formErrors: [
+        createMessageError(messages.copyInvalidUsernameOrRecoveryCode),
+      ],
     };
   }
 
@@ -215,7 +285,9 @@ export async function recoveryCodeLogin(data: {
     await recordLoginAttempt(data.username, ipAddress, false);
     return {
       success: false,
-      formErrors: ['Invalid username or recovery code'],
+      formErrors: [
+        createMessageError(messages.copyInvalidUsernameOrRecoveryCode),
+      ],
     };
   }
 
@@ -225,6 +297,7 @@ export async function recoveryCodeLogin(data: {
   void addEvent(
     'Recovery Code Used',
     `User ${user.username} logged in with a recovery code`,
+    { kind: 'recoveryLogin', values: { username: user.username } },
   );
 
   return { success: true };
@@ -234,7 +307,7 @@ export async function logout() {
   const session = await getServerSession();
   if (!session) {
     return {
-      error: 'Unauthorized',
+      error: createMessageError(messages.copyUnauthorized),
     };
   }
 

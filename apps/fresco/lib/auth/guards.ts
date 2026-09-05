@@ -32,6 +32,7 @@ export const getServerSession = cache(async () => {
     user: {
       userId: session.user_id,
       username: session.user.username,
+      locale: session.user.locale,
     },
   };
 });

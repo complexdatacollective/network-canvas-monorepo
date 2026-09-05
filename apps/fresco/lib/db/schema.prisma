@@ -14,6 +14,7 @@ datasource db {
 model User {
   id                  String               @id @default(cuid())
   username            String               @unique
+  locale              String?
   auth_session        Session[]
   key                 Key[]
   totpCredential      TotpCredential?
@@ -153,6 +154,9 @@ model Events {
   timestamp DateTime @default(now())
   type      String
   message   String
+  // Stable message kind and named values for new records. The original
+  // message remains the immutable audit/export record; legacy rows stay null.
+  localization Json?
 }
 
 model ApiToken {

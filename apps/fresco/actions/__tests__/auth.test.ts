@@ -1,3 +1,9 @@
+import { formatActionError } from './formatActionError';
+vi.mock('~/i18n/server', async () => {
+  const { createAppIntl } = await import('@codaco/app-i18n/messages');
+  return { getServerIntl: async () => createAppIntl({ locale: 'en' }) };
+});
+
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
@@ -145,12 +151,14 @@ vi.mock('~/queries/appSettings', () => ({
 }));
 
 vi.mock('~/schemas/auth', () => ({
-  loginSchema: {
-    safeParse: mockLoginSchemaSafeParse,
-  },
-  createUserSchema: {
-    safeParse: mockCreateUserSchemaSafeParse,
-  },
+  createAuthSchemas: () => ({
+    loginSchema: {
+      safeParse: mockLoginSchemaSafeParse,
+    },
+    createUserSchema: {
+      safeParse: mockCreateUserSchemaSafeParse,
+    },
+  }),
 }));
 
 import { login, signup } from '../auth';
@@ -229,7 +237,9 @@ describe('login', () => {
 
       expect(result.success).toBe(false);
       if (!result.success && 'formErrors' in result) {
-        expect(result.formErrors).toContain('Incorrect username or password');
+        expect(result.formErrors?.map(formatActionError)).toContain(
+          'Incorrect username or password',
+        );
       }
     });
 
@@ -251,7 +261,9 @@ describe('login', () => {
 
       expect(result.success).toBe(false);
       if (!result.success && 'formErrors' in result) {
-        expect(result.formErrors).toContain('Incorrect username or password');
+        expect(result.formErrors?.map(formatActionError)).toContain(
+          'Incorrect username or password',
+        );
       }
     });
 
@@ -292,7 +304,9 @@ describe('login', () => {
 
       expect(result.success).toBe(false);
       if (!result.success && 'formErrors' in result) {
-        expect(result.formErrors).toContain('Incorrect username or password');
+        expect(result.formErrors?.map(formatActionError)).toContain(
+          'Incorrect username or password',
+        );
       }
     });
 
@@ -454,7 +468,7 @@ describe('signup', () => {
       password: 'Sup3rSecret!',
     });
 
-    expect(result).toEqual({
+    expect({ ...result, error: formatActionError(result.error) }).toEqual({
       success: false,
       error: 'Setup is already complete.',
     });
@@ -467,7 +481,7 @@ describe('signup', () => {
 
     const result = await signup({ username: 'attacker', password: null });
 
-    expect(result).toEqual({
+    expect({ ...result, error: formatActionError(result.error) }).toEqual({
       success: false,
       error: 'Invalid form submission',
     });

@@ -37,7 +37,7 @@ export default function InfoTooltip({
 }: InfoTooltipProps) {
   return (
     <Popover {...rest}>
-      <PopoverTrigger openOnHover asChild>
+      <PopoverTrigger openOnHover asChild aria-label={title}>
         {trigger}
       </PopoverTrigger>
       <PopoverContent sideOffset={sideOffset} className="max-w-sm">

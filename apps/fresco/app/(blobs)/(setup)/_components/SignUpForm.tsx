@@ -8,6 +8,8 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useMediaQuery } from 'usehooks-ts';
 
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import { AppErrorMessage, useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import FieldGroup from '@codaco/fresco-ui/form/FieldGroup';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -24,13 +26,104 @@ import {
   generateSignupRegistrationOptions,
   signupWithPasskey,
 } from '~/actions/webauthn';
-import { createUserSchema } from '~/schemas/auth';
+import { createAuthSchemas } from '~/schemas/auth';
+
+const messages = defineMessages({
+  copyUsernameIsRequired: {
+    id: 'fresco.SignUpForm.copyUsernameIsRequired',
+    defaultMessage: 'Username is required',
+    description: 'Researcher-facing SignUpForm: Username is required',
+  },
+  copyFailedToStartPasskeyRegistration: {
+    id: 'fresco.SignUpForm.copyFailedToStartPasskeyRegistration',
+    defaultMessage: 'Failed to start passkey registration',
+    description:
+      'Researcher-facing SignUpForm: Failed to start passkey registration',
+  },
+  copyPasskeyRegistrationFailed: {
+    id: 'fresco.SignUpForm.copyPasskeyRegistrationFailed',
+    defaultMessage: 'Passkey registration failed',
+    description: 'Researcher-facing SignUpForm: Passkey registration failed',
+  },
+  username: {
+    id: 'fresco.SignUpForm.username',
+    defaultMessage: 'Username',
+    description: 'Researcher-facing SignUpForm: Username',
+  },
+  username2: {
+    id: 'fresco.SignUpForm.username2',
+    defaultMessage: 'username...',
+    description: 'Researcher-facing SignUpForm: username...',
+  },
+  yourUsernameShouldBeAtLeast4: {
+    id: 'fresco.SignUpForm.yourUsernameShouldBeAtLeast4',
+    defaultMessage:
+      'Your username should be at least 4 characters, and must not contain any spaces.',
+    description:
+      'Researcher-facing SignUpForm: Your username should be at least 4 characters, and must not contain any spaces.',
+  },
+  atLeast4CharactersNoSpaces: {
+    id: 'fresco.SignUpForm.atLeast4CharactersNoSpaces',
+    defaultMessage: 'At least 4 characters, no spaces',
+    description:
+      'Researcher-facing SignUpForm: At least 4 characters, no spaces',
+  },
+  authenticationMethod: {
+    id: 'fresco.SignUpForm.authenticationMethod',
+    defaultMessage: 'Authentication method',
+    description: 'Researcher-facing SignUpForm: Authentication method',
+  },
+  passkey: {
+    id: 'fresco.SignUpForm.passkey',
+    defaultMessage: 'Passkey',
+    description: 'Researcher-facing SignUpForm: Passkey',
+  },
+  useBiometricsOrYourDeviceSecurityTo: {
+    id: 'fresco.SignUpForm.useBiometricsOrYourDeviceSecurityTo',
+    defaultMessage:
+      'Use biometrics or your device security to sign in. No password to remember — the most secure option.',
+    description:
+      'Researcher-facing SignUpForm: Use biometrics or your device security to sign in. No password to remember — the most secure option.',
+  },
+  password: {
+    id: 'fresco.SignUpForm.password',
+    defaultMessage: 'Password',
+    description: 'Researcher-facing SignUpForm: Password',
+  },
+  traditionalUsernameAndPasswordRequiresAStrong: {
+    id: 'fresco.SignUpForm.traditionalUsernameAndPasswordRequiresAStrong',
+    defaultMessage:
+      'Traditional username and password. Requires a strong password.',
+    description:
+      'Researcher-facing SignUpForm: Traditional username and password. Requires a strong password.',
+  },
+  atLeast8CharactersWithLowercaseUppercase: {
+    id: 'fresco.SignUpForm.atLeast8CharactersWithLowercaseUppercase',
+    defaultMessage:
+      'At least 8 characters with lowercase, uppercase, number and symbol',
+    description:
+      'Researcher-facing SignUpForm: At least 8 characters with lowercase, uppercase, number and symbol',
+  },
+  confirmPassword: {
+    id: 'fresco.SignUpForm.confirmPassword',
+    defaultMessage: 'Confirm password',
+    description: 'Researcher-facing SignUpForm: Confirm password',
+  },
+  createAccount: {
+    id: 'fresco.SignUpForm.createAccount',
+    defaultMessage: 'Create account',
+    description: 'Researcher-facing SignUpForm: Create account',
+  },
+});
 
 type SignUpFormProps = {
   sandboxMode?: boolean;
 };
 
 export const SignUpForm = ({ sandboxMode = false }: SignUpFormProps) => {
+  const intl = useAppIntl();
+  const { createUserSchema } = createAuthSchemas(createMessageError);
+
   const router = useRouter();
   const [webauthnSupported, setWebauthnSupported] = useState(false);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
@@ -71,7 +164,7 @@ export const SignUpForm = ({ sandboxMode = false }: SignUpFormProps) => {
     if (!username) {
       return {
         success: false,
-        formErrors: ['Username is required'],
+        formErrors: [createMessageError(messages.copyUsernameIsRequired)],
       };
     }
 
@@ -86,7 +179,10 @@ export const SignUpForm = ({ sandboxMode = false }: SignUpFormProps) => {
         setPasskeyLoading(false);
         return {
           success: false,
-          formErrors: [genError ?? 'Failed to start passkey registration'],
+          formErrors: [
+            genError ??
+              createMessageError(messages.copyFailedToStartPasskeyRegistration),
+          ],
         };
       }
 
@@ -118,7 +214,9 @@ export const SignUpForm = ({ sandboxMode = false }: SignUpFormProps) => {
       setPasskeyLoading(false);
       return {
         success: false,
-        formErrors: ['Passkey registration failed'],
+        formErrors: [
+          createMessageError(messages.copyPasskeyRegistrationFailed),
+        ],
       };
     }
   };
@@ -129,12 +227,12 @@ export const SignUpForm = ({ sandboxMode = false }: SignUpFormProps) => {
     <Form onSubmit={handleSubmit} className="flex flex-col">
       <Field
         name="username"
-        label="Username"
-        placeholder="username..."
-        hint="Your username should be at least 4 characters, and must not contain any spaces."
+        label={intl.formatMessage(messages.username)}
+        placeholder={intl.formatMessage(messages.username2)}
+        hint={intl.formatMessage(messages.yourUsernameShouldBeAtLeast4)}
         custom={{
           schema: createUserSchema.shape.username,
-          hint: 'At least 4 characters, no spaces',
+          hint: intl.formatMessage(messages.atLeast4CharactersNoSpaces),
         }}
         component={InputField}
         autoComplete="do-not-autofill"
@@ -142,22 +240,24 @@ export const SignUpForm = ({ sandboxMode = false }: SignUpFormProps) => {
       {showAuthMethodChoice && (
         <Field
           name="authMethod"
-          label="Authentication method"
+          label={intl.formatMessage(messages.authenticationMethod)}
           component={RichSelectGroupField}
           orientation={isSmallScreen ? 'vertical' : 'horizontal'}
           initialValue="passkey"
           options={[
             {
-              label: 'Passkey',
+              label: intl.formatMessage(messages.passkey),
               value: 'passkey',
-              description:
-                'Use biometrics or your device security to sign in. No password to remember — the most secure option.',
+              description: intl.formatMessage(
+                messages.useBiometricsOrYourDeviceSecurityTo,
+              ),
             },
             {
-              label: 'Password',
+              label: intl.formatMessage(messages.password),
               value: 'password',
-              description:
-                'Traditional username and password. Requires a strong password.',
+              description: intl.formatMessage(
+                messages.traditionalUsernameAndPasswordRequiresAStrong,
+              ),
             },
           ]}
         />
@@ -168,11 +268,13 @@ export const SignUpForm = ({ sandboxMode = false }: SignUpFormProps) => {
       >
         <Field
           name="password"
-          label="Password"
-          placeholder="******************"
+          label={intl.formatMessage(messages.password)}
+          placeholder={passwordPlaceholder}
           custom={{
             schema: createUserSchema.shape.password,
-            hint: 'At least 8 characters with lowercase, uppercase, number and symbol',
+            hint: intl.formatMessage(
+              messages.atLeast8CharactersWithLowercaseUppercase,
+            ),
           }}
           component={PasswordField}
           showStrengthMeter
@@ -185,8 +287,8 @@ export const SignUpForm = ({ sandboxMode = false }: SignUpFormProps) => {
         >
           <Field
             name="confirmPassword"
-            label="Confirm password"
-            placeholder="******************"
+            label={intl.formatMessage(messages.confirmPassword)}
+            placeholder={passwordPlaceholder}
             sameAs="password"
             component={PasswordField}
             autoComplete="do-not-autofill"
@@ -194,11 +296,16 @@ export const SignUpForm = ({ sandboxMode = false }: SignUpFormProps) => {
         </FieldGroup>
       </FieldGroup>
       {passkeyError && (
-        <p className="text-destructive text-sm">{passkeyError}</p>
+        <p className="text-destructive text-sm">
+          <AppErrorMessage error={passkeyError} />
+        </p>
       )}
       <SubmitButton className="mt-6" disabled={passkeyLoading}>
-        Create account
+        {intl.formatMessage(messages.createAccount)}
       </SubmitButton>
     </Form>
   );
 };
+
+// Stable brand/data display; not translated application copy.
+const passwordPlaceholder = '******************';

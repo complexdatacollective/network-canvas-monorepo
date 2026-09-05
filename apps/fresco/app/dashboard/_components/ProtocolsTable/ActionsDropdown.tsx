@@ -4,6 +4,9 @@ import type { Row } from '@tanstack/react-table';
 import { Download, MoreHorizontal, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import {
   DropdownMenu,
@@ -19,11 +22,56 @@ import { useDownload } from '~/hooks/useDownload';
 
 import type { ProtocolWithInterviews } from './ProtocolsTableClient';
 
+const messages = defineMessages({
+  copyFailedToDownloadProtocolFile: {
+    id: 'fresco.ProtocolsTable.ActionsDropdown.copyFailedToDownloadProtocolFile',
+    defaultMessage: 'Failed to download protocol file',
+    description:
+      'Researcher-facing ProtocolsTable / ActionsDropdown: Failed to download protocol file',
+  },
+  copyDownloadingProtocol: {
+    id: 'fresco.ProtocolsTable.ActionsDropdown.copyDownloadingProtocol',
+    defaultMessage: 'Downloading protocol...',
+    description:
+      'Researcher-facing ProtocolsTable / ActionsDropdown: Downloading protocol...',
+  },
+  copyProtocolDownloaded: {
+    id: 'fresco.ProtocolsTable.ActionsDropdown.copyProtocolDownloaded',
+    defaultMessage: 'Protocol downloaded!',
+    description:
+      'Researcher-facing ProtocolsTable / ActionsDropdown: Protocol downloaded!',
+  },
+  openMenu: {
+    id: 'fresco.ProtocolsTable.ActionsDropdown.openMenu',
+    defaultMessage: 'Open menu',
+    description:
+      'Researcher-facing ProtocolsTable / ActionsDropdown: Open menu',
+  },
+  actions: {
+    id: 'fresco.ProtocolsTable.ActionsDropdown.actions',
+    defaultMessage: 'Actions',
+    description: 'Researcher-facing ProtocolsTable / ActionsDropdown: Actions',
+  },
+  failedToDownloadProtocol: {
+    id: 'fresco.ProtocolsTable.ActionsDropdown.failedToDownloadProtocol',
+    defaultMessage: 'Failed to download protocol.',
+    description:
+      'Researcher-facing ProtocolsTable / ActionsDropdown: Failed to download protocol.',
+  },
+  download: {
+    id: 'fresco.ProtocolsTable.ActionsDropdown.download',
+    defaultMessage: 'Download',
+    description: 'Researcher-facing ProtocolsTable / ActionsDropdown: Download',
+  },
+});
+
 export const ActionsDropdown = ({
   row,
 }: {
   row: Row<ProtocolWithInterviews>;
 }) => {
+  const intl = useAppIntl();
+
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [protocolToDelete, setProtocolToDelete] =
     useState<ProtocolWithInterviews[]>();
@@ -41,7 +89,9 @@ export const ActionsDropdown = ({
 
     const response = await fetch(originalFileUrl);
     if (!response.ok) {
-      throw new Error('Failed to download protocol file');
+      throw new Error(
+        intl.formatMessage(messages.copyFailedToDownloadProtocolFile),
+      );
     }
     const blob = await response.blob();
     const blobUrl = URL.createObjectURL(blob);
@@ -61,7 +111,7 @@ export const ActionsDropdown = ({
           render={
             <IconButton
               variant="text"
-              aria-label="Open menu"
+              aria-label={intl.formatMessage(messages.openMenu)}
               icon={<MoreHorizontal />}
               size="sm"
             />
@@ -70,26 +120,44 @@ export const ActionsDropdown = ({
         />
         <DropdownMenuContent align="end">
           <DropdownMenuGroup>
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            <DropdownMenuLabel>
+              {intl.formatMessage(messages.actions)}
+            </DropdownMenuLabel>
             {row.original.originalFileUrl && (
               <DropdownMenuItem
                 onClick={() =>
                   void promise(handleDownload(), {
-                    loading: 'Downloading protocol...',
-                    success: 'Protocol downloaded!',
-                    error: 'Failed to download protocol.',
+                    loading: {
+                      description: (
+                        <AppMessage
+                          message={messages.copyDownloadingProtocol}
+                        />
+                      ),
+                    },
+                    success: {
+                      description: (
+                        <AppMessage message={messages.copyProtocolDownloaded} />
+                      ),
+                    },
+                    error: {
+                      description: (
+                        <AppMessage
+                          message={messages.failedToDownloadProtocol}
+                        />
+                      ),
+                    },
                   })
                 }
                 icon={<Download />}
               >
-                Download
+                {intl.formatMessage(messages.download)}
               </DropdownMenuItem>
             )}
             <DropdownMenuItem
               onClick={() => handleDelete(row.original)}
               icon={<Trash2 />}
             >
-              Delete
+              {intl.formatMessage(commonMessages.delete)}
             </DropdownMenuItem>
           </DropdownMenuGroup>
         </DropdownMenuContent>

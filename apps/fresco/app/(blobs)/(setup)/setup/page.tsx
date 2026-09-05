@@ -1,6 +1,6 @@
-import { Loader2 } from 'lucide-react';
 import { Suspense } from 'react';
 
+import SetupLoading from '~/components/SetupLoading';
 import { env } from '~/env';
 import { getServerSession } from '~/lib/auth/guards';
 import { prisma } from '~/lib/db';
@@ -53,9 +53,7 @@ export type SetupData = Awaited<ReturnType<typeof getSetupData>>;
 
 export default function Page() {
   return (
-    <Suspense
-      fallback={<Loader2 className="text-background size-10 animate-spin" />}
-    >
+    <Suspense fallback={<SetupLoading />}>
       <SetupContent />
     </Suspense>
   );
