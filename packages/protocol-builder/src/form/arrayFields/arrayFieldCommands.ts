@@ -158,6 +158,18 @@ export function resolveMove<T extends ArrayRow>(
  * it changed is changed, and a key it removed is removed. `base` is the row
  * the edit was computed from, which is the only thing that tells "left alone"
  * apart from "deliberately set back to what it was".
+ *
+ * The question is asked LEAF by leaf, not key by key. A dialog that edits one
+ * leaf of a nested key — `edges.create` — makes the whole `edges` object
+ * differ from the one it started with, so a key-level comparison reads the
+ * untouched sibling `edges.display` as decided too, and writes the value the
+ * dialog opened with straight back over whatever reached it meanwhile. Nesting
+ * is where that arrives from in the first place: a stage document holds
+ * capabilities as objects, and two collaborators can be inside the same one.
+ *
+ * A list is a leaf. Its rows have no identity here, so merging two versions of
+ * one index by index would combine rows that are not the same row; a list the
+ * edit changed is the edit's, and one it left alone is the row's.
  */
 export function reseatEditedRow(
   base: unknown,
@@ -169,6 +181,14 @@ export function reseatEditedRow(
   // describes the whole row and re-seating it could only lose information.
   if (isEqual(base, latest)) return edited;
 
+  return reseatRecord(base, edited, latest);
+}
+
+function reseatRecord(
+  base: ArrayRow,
+  edited: ArrayRow,
+  latest: ArrayRow,
+): ArrayRow {
   const next: ArrayRow = { ...latest };
   for (const key of new Set([...Object.keys(base), ...Object.keys(edited)])) {
     const inEdited = Object.hasOwn(edited, key);
@@ -178,11 +198,17 @@ export function reseatEditedRow(
     ) {
       continue;
     }
-    if (inEdited) {
-      next[key] = edited[key];
-    } else {
+    if (!inEdited) {
       Reflect.deleteProperty(next, key);
+      continue;
     }
+    const editedValue = edited[key];
+    const baseValue = base[key];
+    const latestValue = next[key];
+    next[key] =
+      isRecord(baseValue) && isRecord(editedValue) && isRecord(latestValue)
+        ? reseatRecord(baseValue, editedValue, latestValue)
+        : editedValue;
   }
   return next;
 }

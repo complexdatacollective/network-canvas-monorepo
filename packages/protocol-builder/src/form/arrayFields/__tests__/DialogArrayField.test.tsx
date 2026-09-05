@@ -25,7 +25,9 @@ import {
 import { DialogFormField } from '../../DialogForm.tsx';
 import ProtocolArrayField from '../../ProtocolArrayField.tsx';
 import StageEditorShell from '../../StageEditorShell.tsx';
-import DialogArrayField from '../DialogArrayField.tsx';
+import DialogArrayField, {
+  type DialogArrayEditorValidate,
+} from '../DialogArrayField.tsx';
 import { useArrayFieldCommands } from '../useArrayFieldCommands.ts';
 
 /**
@@ -107,6 +109,10 @@ function withRevocableDispatch(store: ProtocolBuilderSessionStore) {
     session,
     revoke: () => {
       revoked = true;
+    },
+    /** Editing taken BACK, which is what the refusal asks the researcher for. */
+    restore: () => {
+      revoked = false;
     },
   };
 }
@@ -206,6 +212,7 @@ function renderPromptList(
     withPreview?: boolean;
     onBeforeSave?: (value: unknown) => unknown;
     editorFieldsComponent?: ComponentType<Record<string, unknown>>;
+    editorValidate?: DialogArrayEditorValidate;
   }>,
 ) {
   // How a test takes the list's own interactivity away mid-edit, the way a
@@ -238,6 +245,9 @@ function renderPromptList(
             {...(extra?.onBeforeSave === undefined
               ? {}
               : { onBeforeSave: extra.onBeforeSave })}
+            {...(extra?.editorValidate === undefined
+              ? {}
+              : { editorValidate: extra.editorValidate })}
           />
         </BuilderSection>
       </StageEditorShell>
@@ -899,6 +909,185 @@ describe('the row a save commits', () => {
     expect(promptText()).toHaveValue('Alpha edited');
     expect(promptsOf(store)).toEqual([{ id: 'a', text: 'Alpha' }]);
     expect(store.getSnapshot().pendingCommands).toEqual([]);
+  });
+});
+
+describe('a row editor whose row goes while the researcher is in it', () => {
+  it('commits the retry after a refusal to the row the draft was made on', async () => {
+    const user = userEvent.setup();
+    const store = createSession({ prompts: [{ id: 'a', text: 'Alpha' }] });
+    const { session, revoke, restore } = withRevocableDispatch(store);
+    renderPromptList(session);
+
+    const text = await editRow(user, 0);
+    await waitFor(() => expect(text).toHaveValue('Alpha'));
+    await user.clear(text);
+    await user.type(text, 'Alpha edited');
+
+    revoke();
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(
+      await screen.findByText(
+        'This stage is read-only, so this prompt was not saved. Take over editing and try again.',
+      ),
+    ).toBeInTheDocument();
+
+    // The refusal cleared the LIST's editing state on its way past — the row
+    // was handed over before the session declined the write — so the editor is
+    // open over a draft the list no longer has a row for. Taking editing back
+    // is exactly what the message asks for, and the retry has to reach the row
+    // the draft was made on rather than reading "no row" as "the same row" and
+    // reporting a commit that never happened.
+    restore();
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() =>
+      expect(promptsOf(store)).toEqual([{ id: 'a', text: 'Alpha edited' }]),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('textbox', { name: 'Prompt text' }),
+      ).not.toBeInTheDocument(),
+    );
+  });
+
+  it('asks before a row removed elsewhere takes an edited draft with it', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      prompts: [
+        { id: 'a', text: 'Alpha' },
+        { id: 'b', text: 'Bravo' },
+      ],
+    });
+    renderPromptList(session);
+
+    const text = await editRow(user, 1);
+    await waitFor(() => expect(text).toHaveValue('Bravo'));
+    await user.clear(text);
+    await user.type(text, 'Bravo edited');
+
+    // The row leaves the array with no save in flight: a collaborator removed
+    // it, or an undo did. `ArrayField` drops its editing session, and closing
+    // the dialog on that would throw the researcher's draft away without a
+    // word — the one thing this editor exists to prevent.
+    act(() => {
+      session.dispatch([{ op: 'removeItem', key: 'prompts', index: 1 }]);
+    });
+
+    expect(
+      await screen.findByText(
+        'This editor holds changes that have not been saved. Closing it now discards them.',
+      ),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Keep editing' }));
+
+    // The draft is still on screen to be rescued, and a save now says why
+    // there is nothing to save it to rather than reporting one that happened.
+    await waitFor(() => expect(promptText()).toHaveValue('Bravo edited'));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(
+      await screen.findByText(
+        /This prompt was removed while your changes were being saved/,
+      ),
+    ).toBeInTheDocument();
+    expect(promptsOf(session)).toEqual([{ id: 'a', text: 'Alpha' }]);
+  });
+
+  it('closes an untouched editor without asking when its row is removed', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      prompts: [
+        { id: 'a', text: 'Alpha' },
+        { id: 'b', text: 'Bravo' },
+      ],
+    });
+    renderPromptList(session);
+
+    const text = await editRow(user, 1);
+    await waitFor(() => expect(text).toHaveValue('Bravo'));
+
+    act(() => {
+      session.dispatch([{ op: 'removeItem', key: 'prompts', index: 1 }]);
+    });
+
+    // Nothing was typed, so there is nothing to lose and nothing to ask about.
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('textbox', { name: 'Prompt text' }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(screen.queryByText('Discard your changes?')).toBeNull();
+  });
+});
+
+describe('what a row editor validates against', () => {
+  /**
+   * The shape of every "unchanged pick" escape in this package: a value is
+   * refused unless it is the one the row already had — reselecting what is
+   * already saved is never a NEW contradiction. What answers "already had" is
+   * the row the dialog OPENED on.
+   */
+  const reservedText: DialogArrayEditorValidate = (values, context) => {
+    const initial = context?.initialValues;
+    const openedWith =
+      typeof initial === 'object' && initial !== null && 'text' in initial
+        ? initial.text
+        : undefined;
+    return values.text === 'Reserved' && openedWith !== 'Reserved'
+      ? { text: 'That name is reserved. Choose another.' }
+      : undefined;
+  };
+
+  it('judges a submitted value against the row the dialog opened on', async () => {
+    const user = userEvent.setup();
+    const session = createSession({ prompts: [{ id: 'a', text: 'Reserved' }] });
+    renderPromptList(session, { editorValidate: reservedText });
+
+    const text = await editRow(user, 0);
+    await waitFor(() => expect(text).toHaveValue('Reserved'));
+
+    // The row moves under the open editor. The draft is untouched, so what the
+    // researcher submits is still the value the row already had — and judged
+    // against the row as it stands NOW, that reads as a deliberate fresh pick
+    // of a reserved name and is refused.
+    act(() => {
+      session.dispatch([
+        { op: 'set', key: 'prompts', value: [{ id: 'a', text: 'Elsewhere' }] },
+      ]);
+    });
+    await waitFor(() =>
+      expect(promptsOf(session)).toEqual([{ id: 'a', text: 'Elsewhere' }]),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('textbox', { name: 'Prompt text' }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByText('That name is reserved. Choose another.'),
+    ).toBeNull();
+    // Nothing the researcher decided, so the arrival stands.
+    expect(promptsOf(session)).toEqual([{ id: 'a', text: 'Elsewhere' }]);
+  });
+
+  it('still refuses a value the researcher did choose', async () => {
+    const user = userEvent.setup();
+    const session = createSession({ prompts: [{ id: 'a', text: 'Alpha' }] });
+    renderPromptList(session, { editorValidate: reservedText });
+
+    const text = await editRow(user, 0);
+    await waitFor(() => expect(text).toHaveValue('Alpha'));
+    await user.clear(text);
+    await user.type(text, 'Reserved');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(
+      await screen.findByText('That name is reserved. Choose another.'),
+    ).toBeInTheDocument();
+    expect(promptsOf(session)).toEqual([{ id: 'a', text: 'Alpha' }]);
   });
 });
 

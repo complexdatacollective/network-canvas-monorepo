@@ -1,14 +1,20 @@
+import { isEqual } from 'es-toolkit/compat';
 import { Trash2 } from 'lucide-react';
 import {
   createContext,
   useCallback,
   useContext,
   useMemo,
+  useRef,
   type ComponentType,
 } from 'react';
 
 import { IconButton } from '@codaco/fresco-ui/Button';
-import type { ArrayFieldItemProps } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import {
+  stripManagedProperties,
+  type ArrayFieldItemProps,
+} from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import FrescoBooleanField from '@codaco/fresco-ui/form/fields/Boolean';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import type { Variables } from '@codaco/protocol-validation';
@@ -99,6 +105,15 @@ const BOOLEAN_OPTIONS = [
 ];
 
 const REQUIRED_ONLY: readonly RowValidator[] = [requiredRow()];
+
+/**
+ * Said when the row a new attribute was created from is no longer that row.
+ * The attribute itself exists — creating it is the host's write, and it
+ * succeeded — so this says where it went and what to do with it, rather than
+ * reporting a failure.
+ */
+const rowReplacedMessage = (variableName: string) =>
+  `The row you created “${variableName}” from was replaced while it was being created, so nothing has been assigned to it. Select “${variableName}” in the row you want it in.`;
 
 /**
  * Every variable id an array's COMMITTED value holds.
@@ -201,6 +216,11 @@ export default function Attribute({
     forceShowErrors,
   } = useAssignAttributesContext();
   const { protocolContext, identity } = useStageEditorForm();
+  const { openDialog } = useDialog();
+  // Read when the creation COMPLETES, not when the row was drawn: the whole
+  // point is that the two are different moments.
+  const rowRef = useRef(item);
+  rowRef.current = item;
   // A DISPLAY path only — the `data-field-name` seam E2E specs target. It is
   // the live position (fresco-ui's `committedIndex` holds it steady through a
   // drag preview) and is never an identity: nothing about this row's VALUE may
@@ -249,9 +269,35 @@ export default function Attribute({
 
   const handleCreateOption = onCreateVariable
     ? (variableName: string) => {
+        // The row this creation was started FROM, as it stands right now.
+        // Creating a codebook variable is a round trip through the host, and
+        // the list carries on moving while it runs — a collaborator's
+        // insertion, an undo, a rollback after a lost lease. These rows carry
+        // no id of their own, so `onUpdate` is bound to an internal id that
+        // `ArrayField` REUSES BY POSITION whenever the value is replaced: an
+        // insertion above hands this row's handle to whichever row has taken
+        // its place, and the new variable is stamped onto an attribute the
+        // researcher never looked at.
+        //
+        // Content is the only identity such a row has, and it is enough for
+        // the same reason it is enough in `useConfirmRowRemoval`: two rows the
+        // researcher cannot tell apart are two rows this control described
+        // identically.
+        const createdFrom = stripManagedProperties(rowRef.current);
         void (async () => {
           const created = await onCreateVariable(variableName);
-          if (created) onUpdate?.({ variable: created });
+          if (created === undefined) return;
+          if (!isEqual(stripManagedProperties(rowRef.current), createdFrom)) {
+            await openDialog({
+              type: 'acknowledge',
+              intent: 'warning',
+              title: `“${variableName}” was created but not assigned`,
+              description: rowReplacedMessage(variableName),
+              actions: { primary: { label: 'Continue', value: true } },
+            });
+            return;
+          }
+          onUpdate?.({ variable: created });
         })();
       }
     : undefined;

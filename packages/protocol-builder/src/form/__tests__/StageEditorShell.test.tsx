@@ -334,6 +334,38 @@ describe('StageEditorShell', () => {
     );
   });
 
+  it('reads a null a stored protocol holds as nothing rather than throwing', async () => {
+    const session = createSession({
+      fields: { ...initialFields, title: 'Welcome to the study' },
+    });
+    renderEditor(session);
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
+        'Welcome to the study',
+      ),
+    );
+
+    // `null` is not in `FieldValue`'s union, but stored protocol data holds it
+    // — fresco-ui's own `fieldValueContract` names it as a shape every control
+    // must render — so the re-seed cannot be the one place that throws on it.
+    // A throw here is not cosmetic: the render never commits, and the editor
+    // goes down over an arrival the researcher did not cause.
+    act(() => {
+      session.replaceAuthoritativeStage({
+        fields: { ...initialFields, title: null },
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+    });
+
+    // Nothing is there, which this package spells `undefined` and shows as an
+    // empty control — never as the word "null".
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
+        '',
+      ),
+    );
+  });
+
   it('reports a capability an arrival filled as available', async () => {
     const session = createSession();
     renderEditor(session);

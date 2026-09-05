@@ -1,8 +1,10 @@
 import {
   createContext,
   type ReactNode,
+  type RefObject,
   useCallback,
   useContext,
+  useEffect,
   useState,
 } from 'react';
 
@@ -57,6 +59,20 @@ export type DialogFormProps = Readonly<{
    * the researcher has nothing to lose by — or has confirmed.
    */
   onClose: () => void;
+  /**
+   * Receives this dialog's own DISMISSAL route — the one Cancel, Escape, the
+   * close button and a click outside all take, which asks before a draft the
+   * researcher would lose is discarded and refuses outright while a save is
+   * running.
+   *
+   * For an owner that has to close the dialog for a reason of its own: the row
+   * it is editing left the document, the session around it ended. Setting
+   * `open` to false from outside would take the editor down over unsaved work
+   * without a word, which is the one thing this dialog exists to prevent — so
+   * the outside route is the same route as the inside one. The dialog answers
+   * with `null` as it unmounts.
+   */
+  requestCloseRef?: RefObject<(() => void) | null>;
   title: string;
   /** Supporting prose under the title, for a dialog whose title cannot carry it. */
   description?: ReactNode;
@@ -215,6 +231,7 @@ const refusal = (errors: DialogFormErrors): FormSubmissionResult => ({
 function DialogFormBody({
   open,
   onClose,
+  requestCloseRef,
   title,
   description,
   formId,
@@ -292,6 +309,15 @@ function DialogFormBody({
       if (confirmed === true) onClose();
     })();
   }, [confirm, isDirty, isSubmitting, onClose]);
+
+  useEffect(() => {
+    const published = requestCloseRef;
+    if (published === undefined) return undefined;
+    published.current = requestClose;
+    return () => {
+      published.current = null;
+    };
+  }, [requestClose, requestCloseRef]);
 
   /**
    * Fresco runs every field's own validation before this is reached, so the

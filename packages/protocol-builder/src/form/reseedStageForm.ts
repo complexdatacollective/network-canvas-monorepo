@@ -10,29 +10,37 @@ import {
 import type { StageFormDraft } from '../session.ts';
 import type { StageFormStoreApi } from './stageEditorContext.ts';
 
-const isFieldValueArrayItem = (
-  value: unknown,
-): value is string | number | boolean | Record<string, unknown> =>
-  typeof value === 'string' ||
-  typeof value === 'number' ||
-  typeof value === 'boolean' ||
-  (typeof value === 'object' && value !== null && !Array.isArray(value));
-
+/**
+ * Whether the form store can hold this.
+ *
+ * A container's CONTENTS are not inspected, arrays included. fresco-ui's own
+ * render-tolerance contract (`useField`'s `fieldProps.value`, and the
+ * `fieldValueContract` suite that holds every control to it) says a connected
+ * control is handed the stored value verbatim and must render any shape of it
+ * without throwing — so refusing a list because of one entry inside it would
+ * create a crash exactly where that contract promises there is none.
+ */
 const isFieldValue = (value: unknown): value is FieldValue =>
   value === undefined ||
   typeof value === 'string' ||
   typeof value === 'number' ||
   typeof value === 'boolean' ||
-  (Array.isArray(value) && value.every(isFieldValueArrayItem)) ||
-  (typeof value === 'object' && value !== null && !Array.isArray(value));
+  (typeof value === 'object' && value !== null);
 
 /**
- * Narrows a value read out of the stage draft by path without weakening the
- * form store's contract. A draft holding something the form cannot store is an
- * invariant violation, and must stay visible rather than being silently
- * replaced by a cleared field.
+ * The draft's value at a path, as something the form can hold.
+ *
+ * `null` is not in `FieldValue`'s union, but stored protocol data holds it —
+ * fresco-ui's `fieldValueContract` names it as a shape every control must
+ * render — so a reseed cannot be the one place that throws on it. It means
+ * here what it means everywhere else in this package: nothing is there. It is
+ * written as `undefined`, the absent value, and never as `null`.
+ *
+ * Anything else outside the union is an invariant violation, and stays visible
+ * rather than being silently replaced by a cleared field.
  */
 const requireFieldValue = (value: unknown): FieldValue => {
+  if (value === null) return undefined;
   if (!isFieldValue(value)) {
     throw new TypeError('Stage draft values must satisfy the form contract.');
   }

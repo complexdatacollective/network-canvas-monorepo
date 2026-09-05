@@ -17,6 +17,7 @@ import { v4 as uuid } from 'uuid';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import type { DialogProps } from '@codaco/fresco-ui/dialogs/Dialog';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
+import { resolveFieldPath } from '@codaco/fresco-ui/form/FieldNamespace';
 import ArrayField, {
   ArrayFieldDragHandle,
   stripManagedProperties,
@@ -25,7 +26,14 @@ import ArrayField, {
   type ArrayFieldProps,
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
-import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
+import type {
+  FieldState,
+  FormSubmissionResult,
+} from '@codaco/fresco-ui/form/store/types';
+import {
+  getValue,
+  type ObjectPath,
+} from '@codaco/fresco-ui/form/utils/objectPath';
 
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
 import DialogForm, {
@@ -234,25 +242,53 @@ const mergeEditedRow = (
   storeApi: StageFormStoreApi | null,
   submitted: Record<string, FieldValue>,
 ): ArrayItem => {
-  const dormant = storeApi?.getState().dormantValues;
-  if (!dormant || dormant.size === 0) return { ...openedOn, ...submitted };
+  const state = storeApi?.getState();
+  if (state === undefined) return { ...openedOn, ...submitted };
 
-  // Start with the mounted fields' submitted snapshot, then replay genuine
-  // dormant edits at their exact paths. A shallow submitted object such as
-  // `{ edges: { create } }` must not erase a dormant sibling written at
-  // `edges.display`; the two fields cannot be both mounted and dormant at the
-  // same time, so the dormant path is the authoritative value for that leaf.
-  const merged = cloneDeep({ ...openedOn, ...submitted });
-  for (const [name, field] of dormant) {
+  // Every field is replayed at the exact path it registered under, mounted
+  // ones from the submitted snapshot and dormant ones from what the store
+  // parked. Spreading the submitted object over the row instead would replace
+  // a nested key WHOLE: an editor that renders `edges.create` submits
+  // `{ edges: { create } }`, which erases an `edges.display` no control in
+  // this dialog ever rendered. Shallowest first, so a leaf inside a container
+  // field wins over the container — the order `getFormValues` itself replays
+  // in, for the same reason.
+  const merged = cloneDeep(openedOn);
+  for (const { path } of fieldPaths(state.fields)) {
+    set(merged, path, getValue(submitted, path));
+  }
+  for (const { path, field } of fieldPaths(state.dormantValues)) {
     if (isEqual(field.value, field.initialValue)) continue;
     if (field.value === undefined) {
-      unset(merged, name);
+      unset(merged, path);
     } else {
-      set(merged, name, field.value);
+      set(merged, path, field.value);
     }
   }
 
   return merged;
+};
+
+/** A form store's fields, addressed structurally, shallowest path first. */
+const fieldPaths = (
+  fields: ReadonlyMap<string, FieldState>,
+): { path: ObjectPath; field: FieldState }[] =>
+  [...fields]
+    .flatMap(([name, field]) => {
+      // A stored path is authoritative; a name without one is a plain field
+      // whose own name is its path.
+      const path = field.path ?? safeFieldPath(name);
+      return path === null || path.length === 0 ? [] : [{ path, field }];
+    })
+    .toSorted((left, right) => left.path.length - right.path.length);
+
+/** A name that resolves to no path addresses nothing in the row. */
+const safeFieldPath = (name: string): ObjectPath | null => {
+  try {
+    return resolveFieldPath([], name);
+  } catch {
+    return null;
+  }
 };
 
 /** What every list inside a row dialog is: part of one row, not a key. */
@@ -524,44 +560,70 @@ function DialogEditor({
    */
   const refusedSaveRef = useRef(false);
   const rowId = rowIdentityOf(item);
+  /**
+   * The dialog's own dismissal route, so that a session ending OUTSIDE the
+   * dialog leaves by the same door the Cancel button does — see the effect
+   * below.
+   */
+  const requestCloseRef = useRef<(() => void) | null>(null);
+  /**
+   * Whether this session has already been asked to close. The question is
+   * asked once per session: `requestClose` opens a confirmation the researcher
+   * may answer with "Keep editing", and asking again on the next render would
+   * stack a second copy of it over the first.
+   */
+  const closeRequestedRef = useRef(false);
+  const sessionRef = useRef<EditorSession | null>(session);
+  sessionRef.current = session;
 
   useEffect(() => {
-    setSession((previous) => {
-      if (!item) {
-        // A save owns the dialog. The list clears its editing state the moment
-        // the row it was editing leaves the array, and closing here would take
-        // the editor down over an answer the researcher has not read — the
-        // refusal that save reported or is about to, and the draft it is
-        // asking them to rescue.
-        if (activeSaveRef.current !== null || refusedSaveRef.current) {
-          return previous;
+    if (item) {
+      closeRequestedRef.current = false;
+      setSession((previous) => {
+        if (
+          previous?.open &&
+          previous.rowId !== undefined &&
+          previous.rowId === rowId &&
+          previous.isNewItem === isNewItem
+        ) {
+          // The same row, in a new object: the list rebuilt its rows because
+          // its value moved. The draft on screen belongs to this session and
+          // stays; only the committed values a save will be merged over are
+          // refreshed, so an authoritative change to a key the editor does not
+          // render is not written back out of existence.
+          return previous.item === item && previous.index === index
+            ? previous
+            : { ...previous, item, index };
         }
-        return previous?.open ? { ...previous, open: false } : previous;
-      }
-      if (
-        previous?.open &&
-        previous.rowId !== undefined &&
-        previous.rowId === rowId &&
-        previous.isNewItem === isNewItem
-      ) {
-        // The same row, in a new object: the list rebuilt its rows because its
-        // value moved. The draft on screen belongs to this session and stays;
-        // only the committed values a save will be merged over are refreshed,
-        // so an authoritative change to a key the editor does not render is
-        // not written back out of existence.
-        return previous.item === item && previous.index === index
-          ? previous
-          : { ...previous, item, index };
-      }
-      return {
-        id: (previous?.id ?? 0) + 1,
-        rowId,
-        item,
-        index,
-        isNewItem,
-        open: true,
-      };
-    });
+        return {
+          id: (previous?.id ?? 0) + 1,
+          rowId,
+          item,
+          index,
+          isNewItem,
+          open: true,
+        };
+      });
+      return;
+    }
+
+    // The list has stopped editing a row: it left the array — removed by a
+    // collaborator, rolled back with a lease — or a commit cleared the
+    // editing state.
+    //
+    // A save owns the dialog through all of that. Closing here would take the
+    // editor down over an answer the researcher has not read: the refusal that
+    // save reported or is about to, and the draft it is asking them to rescue.
+    if (activeSaveRef.current !== null || refusedSaveRef.current) return;
+    if (!sessionRef.current?.open || closeRequestedRef.current) return;
+    closeRequestedRef.current = true;
+    // Everything else goes out through the dialog's own dismissal, which is
+    // the only route that asks before unsaved work is discarded. Setting
+    // `open` to false from here instead is a silent close, and a row vanishing
+    // from under an editor is precisely when the researcher has something on
+    // screen they have not saved anywhere else. The draft stays until they say
+    // otherwise; a save made afterwards reports that the row has gone.
+    requestCloseRef.current?.();
   }, [index, isNewItem, item, rowId]);
   // A new item is not in the committed array yet, so it has no index to
   // report. Derived once because `editorValidate` and the fields component
@@ -630,6 +692,16 @@ function DialogEditor({
    */
   const activeItemRef = useRef(item);
   activeItemRef.current = item;
+  /**
+   * The row THIS SESSION is editing, which outlives the list's editing state.
+   *
+   * A refused commit clears that state — `ArrayField` has already handed the
+   * row over by the time the session declines the write — while this dialog
+   * stays open over the draft it refused. The retry the researcher then makes
+   * has a row to commit to; the list simply is not the one that can name it.
+   */
+  const sessionItemRef = useRef<ArrayItem | undefined>(undefined);
+  sessionItemRef.current = session?.item;
   const isNewItemRef = useRef(false);
   isNewItemRef.current = session?.isNewItem ?? false;
   const itemValuesRef = useRef(itemValues);
@@ -660,7 +732,14 @@ function DialogEditor({
     async (
       values: Record<string, FieldValue>,
     ): Promise<void | DialogFormErrors> => {
-      const itemAtSaveStart = activeItemRef.current;
+      /** The row the LIST is editing, which a refused commit has cleared. */
+      const listItemAtSaveStart = activeItemRef.current;
+      /**
+       * The row this save is FOR. Two absent rows are not the same row: when
+       * the list has stopped editing, the session is what still knows which
+       * row the draft on screen belongs to.
+       */
+      const itemAtSaveStart = listItemAtSaveStart ?? sessionItemRef.current;
       const rowIdAtSaveStart = rowIdentityOf(itemAtSaveStart);
       const wasNewRow = isNewItemRef.current;
       /** The row's values the draft in this dialog was composed against. */
@@ -718,7 +797,8 @@ function DialogEditor({
        */
       const latestValues =
         rowIdAtSaveStart !== undefined &&
-        rowIdentityOf(activeItemRef.current) === rowIdAtSaveStart
+        rowIdentityOf(activeItemRef.current ?? sessionItemRef.current) ===
+          rowIdAtSaveStart
           ? itemValuesRef.current
           : baseValues;
       const rowToCommit = normalizeItem(
@@ -729,7 +809,16 @@ function DialogEditor({
       // the list's own save handles the commit — including a draft's
       // promotion to a confirmed row. The dialog closes itself once this
       // resolves with nothing to report.
-      if (mountedRef.current && activeItemRef.current === itemAtSaveStart) {
+      //
+      // "Still editing" has to mean a row: `ArrayField`'s save commits to
+      // whichever row it is editing NOW and answers nothing, so calling it
+      // when it is editing none is a commit that never happens reported as
+      // one that did — which closes the dialog over the researcher's draft.
+      if (
+        mountedRef.current &&
+        listItemAtSaveStart !== undefined &&
+        activeItemRef.current === listItemAtSaveStart
+      ) {
         onSaveRef.current?.(rowToCommit);
         // `ArrayField`'s save handler answers nothing, and the session can
         // still refuse the write it dispatches: a lease taken back after the
@@ -742,9 +831,11 @@ function DialogEditor({
           : undefined;
       }
 
-      // Otherwise the editor moved to a different session, or unmounted,
-      // while the pre-save work was in flight. `onSave` commits to whichever
-      // row the list is editing NOW, so it cannot be trusted here — but the
+      // Otherwise the list is editing no row, a different one, or this editor
+      // has unmounted: a save that was refused as it dispatched and is being
+      // retried, a row that left the array, a session replaced while the
+      // pre-save work was in flight. `onSave` commits to whichever row the
+      // list is editing NOW, so it cannot be trusted here — but the
       // researcher's edit must not be thrown away either. Commit it to the
       // row it was actually made on, addressed by that row's own id.
       if (
@@ -836,12 +927,19 @@ function DialogEditor({
       const fieldErrors = toFieldErrors(
         editorValidate(values, {
           ...(editIndex === undefined ? {} : { editIndex }),
-          initialValues: itemValues,
+          // The row this session OPENED on, for the same reason a save is
+          // composed against it. An unchanged-pick escape asks whether the
+          // researcher chose this value, and only what was on screen when they
+          // submitted can answer that. Judged against the row as it stands
+          // now, a value that arrived from elsewhere while the dialog was open
+          // reads as their choice — and the pick they actually made, and never
+          // touched, stops reading as one and is refused.
+          initialValues: sessionBaseRef.current,
         }),
       );
       return fieldErrors === undefined ? undefined : { fieldErrors };
     };
-  }, [editIndex, editorValidate, itemValues]);
+  }, [editIndex, editorValidate]);
 
   if (!session) return null;
 
@@ -860,6 +958,7 @@ function DialogEditor({
       key={session.id}
       open={session.open}
       onClose={handleClose}
+      requestCloseRef={requestCloseRef}
       title={session.isNewItem ? addTitle : editorTitle}
       formId={editFormName}
       /**

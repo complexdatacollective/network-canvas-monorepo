@@ -204,6 +204,74 @@ describe('a row that moved while its edit was being composed', () => {
     ]);
   });
 
+  it('keeps an arrival on a SIBLING LEAF of the key the edit changed', () => {
+    // A stage document holds a capability as one object, and two people can be
+    // inside the same one: this edit set `edges.create` while `edges.display`
+    // arrived from elsewhere. Compared key by key, `edges` differs — so the
+    // whole object the dialog opened with would be written back, taking
+    // `display` with it and undoing a change the editor never rendered.
+    const drawnEdges = {
+      id: 'b',
+      text: 'Bravo',
+      edges: { create: 'knows', display: 'as drawn' },
+    };
+    const arrivedEdges = {
+      id: 'b',
+      text: 'Bravo',
+      edges: { create: 'knows', display: 'from elsewhere' },
+    };
+    const editedEdges = {
+      id: 'b',
+      text: 'Bravo',
+      edges: { create: 'friends', display: 'as drawn' },
+    };
+
+    expect(
+      commandsForOperation(
+        'prompts',
+        [A, arrivedEdges],
+        [A, drawnEdges],
+        { type: 'replace', index: 1, item: editedEdges },
+        byId,
+      ),
+    ).toEqual([
+      {
+        op: 'set',
+        key: 'prompts',
+        value: [
+          A,
+          {
+            id: 'b',
+            text: 'Bravo',
+            edges: { create: 'friends', display: 'from elsewhere' },
+          },
+        ],
+      },
+    ]);
+  });
+
+  it('treats a list inside the row as one leaf', () => {
+    // Rows of a nested list have no identity here, so merging two versions of
+    // it index by index would combine rows that are not the same row. The edit
+    // changed it, so the edit's list is the one that is written.
+    const drawnRules = { id: 'b', rules: [{ property: 'name' }] };
+    const arrivedRules = { id: 'b', rules: [{ property: 'age' }] };
+    const editedRules = {
+      id: 'b',
+      rules: [{ property: 'name' }, { property: 'label' }],
+    };
+
+    expect(
+      commandsForOperation(
+        'prompts',
+        [A, arrivedRules],
+        [A, drawnRules],
+        { type: 'replace', index: 1, item: editedRules },
+        byId,
+      ),
+    ).toEqual([{ op: 'set', key: 'prompts', value: [A, editedRules] }]);
+  });
+
   it('still removes a property the edit itself cleared', () => {
     // Surviving an arrival must not mean ignoring the edit: a key the
     // researcher emptied is emptied, even though the row moved beneath them.

@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { type ComponentType, useMemo } from 'react';
 import { describe, expect, it } from 'vitest';
@@ -92,9 +92,30 @@ function createSession(fields: SectionDoc) {
   });
 }
 
+/**
+ * A picker that can CREATE. The real one is a host surface — it knows how that
+ * host lists, groups and creates variables — so all this stands in for is the
+ * one affordance that asks for a new attribute by name.
+ */
+function CreatingVariablePicker({
+  onCreateOption,
+}: {
+  onCreateOption?: (variableName: string) => void;
+}) {
+  return (
+    <button type="button" onClick={() => onCreateOption?.('Brand new')}>
+      Create an attribute
+    </button>
+  );
+}
+
 function renderAttributeList(
   session: ProtocolBuilderSessionStore,
   committed: readonly AttributeValue[],
+  extra?: Readonly<{
+    picker?: ComponentType<Record<string, unknown>>;
+    onCreateVariable?: (variableName: string) => Promise<string | undefined>;
+  }>,
 ) {
   function Host() {
     const controller = useStageEditorController(session, 'stage-form');
@@ -129,9 +150,12 @@ function renderAttributeList(
             component={AssignAttributes}
             subject={{ entity: 'node', type: 'person' }}
             variableOptions={VARIABLE_OPTIONS}
-            variablePickerComponent={VariablePicker}
+            variablePickerComponent={extra?.picker ?? VariablePicker}
             draftValidatedVariables={NO_DRAFT_VARIABLES}
             committedVariableIds={committedVariableIds}
+            {...(extra?.onCreateVariable === undefined
+              ? {}
+              : { onCreateVariable: extra.onCreateVariable })}
             {...validation}
           />
         </BuilderSection>
@@ -317,7 +341,128 @@ describe('a stage document holding something that is not a list', () => {
         }),
       ).toBeInTheDocument();
     });
+
+    it(`survives ${shape} ARRIVING while the editor is open`, async () => {
+      const session = createSession({
+        label: 'People',
+        subject: { entity: 'node', type: 'person' },
+        prompts: [{ id: 'p1', text: 'Who?' }],
+        additionalAttributes: [],
+      });
+      renderAttributeList(session, []);
+      await screen.findByRole('button', {
+        name: 'Add new attribute to assign',
+      });
+
+      // The other half of the contract, and the harder half: an arrival is
+      // written into the controls that are already on screen, and the re-seed
+      // that does it reads the value out of the draft by path. Refusing a
+      // shape there throws out of an effect the researcher did not cause, and
+      // takes the whole stage editor down with it.
+      act(() => {
+        session.dispatch([
+          { op: 'set', key: 'additionalAttributes', value: foreign },
+        ]);
+      });
+
+      expect(
+        await screen.findByRole('button', {
+          name: 'Add new attribute to assign',
+        }),
+      ).toBeInTheDocument();
+    });
   }
+});
+
+/**
+ * Creating a codebook variable is a round trip through the host, and the list
+ * carries on moving while it runs. These rows carry no id of their own, so
+ * `ArrayField` identifies them by an internal id it REUSES BY POSITION
+ * whenever the value is replaced — an insertion above hands a row's update
+ * handle to whichever row has taken its place. The deletion path already
+ * answers this by re-checking the row it was opened on
+ * (`useConfirmRowRemoval`); the creation path is the same window.
+ */
+describe('a variable created while the list is moving', () => {
+  const openList = (
+    attributes: readonly AttributeValue[],
+    onCreateVariable: (variableName: string) => Promise<string | undefined>,
+  ) => {
+    const session = createSession({
+      label: 'People',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [{ id: 'p1', text: 'Who?' }],
+      additionalAttributes: attributes,
+    });
+    renderAttributeList(session, attributes, {
+      picker: CreatingVariablePicker as ComponentType<Record<string, unknown>>,
+      onCreateVariable,
+    });
+    return session;
+  };
+
+  const attributesOf = (session: ProtocolBuilderSessionStore) =>
+    session.getSnapshot().editedSection.fields.additionalAttributes;
+
+  it('assigns the new attribute to the row it was created from', async () => {
+    const user = userEvent.setup();
+    const session = openList([{ variable: 'helpful', value: true }], () =>
+      Promise.resolve('worried'),
+    );
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Create an attribute' }),
+    );
+
+    await waitFor(() =>
+      expect(attributesOf(session)).toEqual([
+        { variable: 'worried', value: true },
+      ]),
+    );
+  });
+
+  it('refuses to stamp it onto a row that was replaced meanwhile', async () => {
+    const user = userEvent.setup();
+    let finishCreation: (id: string) => void = () => undefined;
+    const created = new Promise<string | undefined>((resolve) => {
+      finishCreation = resolve;
+    });
+    const session = openList(
+      [{ variable: 'helpful', value: true }],
+      () => created,
+    );
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Create an attribute' }),
+    );
+
+    // A row arrives above the one the creation was started from. Its update
+    // handle now names the newcomer, and stamping the new attribute through it
+    // would overwrite an assignment the researcher never looked at.
+    const arrived: AttributeValue[] = [
+      { variable: 'worried', value: false },
+      { variable: 'helpful', value: true },
+    ];
+    act(() => {
+      session.dispatch([
+        { op: 'set', key: 'additionalAttributes', value: arrived },
+      ]);
+    });
+    await waitFor(() => expect(attributesOf(session)).toEqual(arrived));
+
+    await act(async () => {
+      finishCreation('reassuring');
+      await created;
+    });
+
+    // The attribute itself was created — that is the host's write, and it
+    // succeeded — so the researcher is told where it went, not that something
+    // failed. Nothing in the list was touched.
+    expect(
+      await screen.findByText(/was replaced while it was being created/),
+    ).toBeInTheDocument();
+    expect(attributesOf(session)).toEqual(arrived);
+  });
 });
 
 describe('committedAttributeVariableIds', () => {
