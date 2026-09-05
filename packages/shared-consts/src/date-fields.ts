@@ -186,3 +186,161 @@ export function relativeDatePickerWindow(
     max: dateWithinPickerRange(anchor, after),
   };
 }
+
+/** The `min`/`max` a protocol declares on a `DatePicker`, as it declares them. */
+export type DatePickerBounds = Readonly<{ min?: string; max?: string }>;
+
+/** Two dates a date control holds an answer between, at full resolution. */
+export type DatePickerWindow = Readonly<{ min: string; max: string }>;
+
+/**
+ * The windows a `DatePicker` resolves its declared bounds to.
+ *
+ * `native` is what a full-resolution `<input type="date">` is given for its
+ * `min`/`max` attributes; `coarse` is what a month or year picker builds its
+ * dropdown lists from. They differ only in where a SYNTHESIZED edge is
+ * clamped, because the two controls can represent different things — the
+ * native input zero-pads any year from 0001, while the dropdowns store
+ * `String(year)` unpadded and so can only round-trip a four-digit one.
+ * `hasAuthoredBound` is what tells a fully unbounded full-resolution picker
+ * (which must stay unbounded) from a bounded one.
+ */
+export type DatePickerWindows = Readonly<{
+  native: DatePickerWindow;
+  coarse: DatePickerWindow;
+  hasAuthoredBound: boolean;
+}>;
+
+type PickerYmd = Readonly<{ year: number; month: number; day: number }>;
+
+/**
+ * A declared bound, read the way the control reads one.
+ *
+ * `YYYY[-MM[-DD]]`, with a missing month or day defaulting to 1 so a coarse
+ * bound still resolves to a date. Anything else is not a bound the control can
+ * honour, and is ABSENT to it: a string this rejects gets the same synthesized
+ * edge a missing one does, so every reader has to reject it identically or
+ * they will disagree about whether a window was authored at all.
+ */
+const PICKER_YMD_PATTERN = /^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?$/;
+
+function parsePickerYmd(value: string | undefined): PickerYmd | null {
+  if (value === undefined || value === '') return null;
+  const match = PICKER_YMD_PATTERN.exec(value);
+  if (!match?.[1]) return null;
+  const year = Number(match[1]);
+  const month = match[2] === undefined ? 1 : Number(match[2]);
+  const day = match[3] === undefined ? 1 : Number(match[3]);
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  return { year, month, day };
+}
+
+function requirePickerYmd(value: string): PickerYmd {
+  const parsed = parsePickerYmd(value);
+  if (!parsed) {
+    throw new Error(`Expected a YYYY-MM-DD date bound, received "${value}".`);
+  }
+  return parsed;
+}
+
+function comparePickerYmd(a: PickerYmd, b: PickerYmd): number {
+  if (a.year !== b.year) return a.year - b.year;
+  if (a.month !== b.month) return a.month - b.month;
+  return a.day - b.day;
+}
+
+const formatPickerYmd = ({ year, month, day }: PickerYmd): string =>
+  formatYmd(year, month, day);
+
+const DEFAULT_WINDOW_MIN: PickerYmd = requirePickerYmd(DATE_PICKER_DEFAULT_MIN);
+
+/**
+ * The years the coarse year/month dropdowns can round-trip. They store
+ * `String(year)` with no zero-padding, so the schema's `YYYY`/`YYYY-MM` values
+ * can only carry a four-digit year.
+ */
+const COARSE_MIN_YEAR = 1000;
+const COARSE_MAX_YEAR = Number(DATE_PICKER_LATEST_DATE.slice(0, 4));
+
+/**
+ * The years the full-resolution native input can offer that the form's own
+ * validators can also accept. `formatYmd` zero-pads, so the input can
+ * represent any magnitude — but a year below 1 formats with a leading `-`
+ * (which is not a valid HTML date string, so the browser drops the attribute)
+ * and a five-digit year sorts BELOW every four-digit one in the lexical
+ * comparison a min/max validator falls back to.
+ */
+const NATIVE_MIN_YEAR = Number(DATE_PICKER_EARLIEST_DATE.slice(0, 4));
+const NATIVE_MAX_YEAR = COARSE_MAX_YEAR;
+
+/**
+ * The two windows a `DatePicker` resolves `parameters.min`/`parameters.max`
+ * to, on the day the reader is asking.
+ *
+ * A `DatePicker` with BOTH bounds authored honours both exactly. With one
+ * authored, the missing side falls back to the default window's edge — 1920-01-01
+ * below, today above — unless the authored bound is already past that edge, in
+ * which case the missing side extends beyond it by the default window's own
+ * span (`today.year - 1920`) over whole calendar years, so the picker still
+ * offers a range rather than pinning the variable to a single value. With
+ * NEITHER authored the plain default window applies, and `hasAuthoredBound` is
+ * false — which is what lets a full-resolution input stay genuinely unbounded
+ * while the month and year dropdowns, which are closed lists and cannot offer
+ * anything outside a finite range, still get one.
+ *
+ * Lives here, beside the defaults and the clamp it is built from, because
+ * three packages have to reach the same answer: fresco-ui's `DatePickerField`
+ * renders it, `@codaco/protocol-builder` reports a rule operand outside the
+ * coarse window as a comparison no participant could satisfy, and
+ * `@codaco/protocol-validation`'s contradiction analyser models the same
+ * derivation without a clock (deliberately: protocol validity must not depend
+ * on when validation runs, so it substitutes a fixed horizon for `today` and
+ * cannot call this).
+ *
+ * `today` is passed in rather than read, for the same reason
+ * `relativeDatePickerWindow` takes it: the clock belongs to the caller.
+ */
+export function datePickerWindows(
+  bounds: DatePickerBounds,
+  today: string,
+): DatePickerWindows {
+  const authoredMin = parsePickerYmd(bounds.min);
+  const authoredMax = parsePickerYmd(bounds.max);
+  const now = requirePickerYmd(today);
+  const defaultWindowSpanYears = now.year - DEFAULT_WINDOW_MIN.year;
+
+  const resolvedMin: PickerYmd =
+    authoredMin ??
+    (authoredMax && comparePickerYmd(authoredMax, DEFAULT_WINDOW_MIN) < 0
+      ? { year: authoredMax.year - defaultWindowSpanYears, month: 1, day: 1 }
+      : DEFAULT_WINDOW_MIN);
+  const resolvedMax: PickerYmd =
+    authoredMax ??
+    (authoredMin && comparePickerYmd(authoredMin, now) > 0
+      ? { year: authoredMin.year + defaultWindowSpanYears, month: 12, day: 31 }
+      : now);
+
+  // Only the synthesized side is clamped. An authored bound is left exactly as
+  // authored — validating one is the schema's job — and each clamp is bounded
+  // by the authored opposite side so it can never invert the range.
+  const clampedMin = (floorYear: number): PickerYmd =>
+    authoredMin === null && resolvedMin.year < floorYear
+      ? { year: Math.min(floorYear, resolvedMax.year), month: 1, day: 1 }
+      : resolvedMin;
+  const clampedMax = (ceilingYear: number): PickerYmd =>
+    authoredMax === null && resolvedMax.year > ceilingYear
+      ? { year: Math.max(ceilingYear, resolvedMin.year), month: 12, day: 31 }
+      : resolvedMax;
+
+  return {
+    native: {
+      min: formatPickerYmd(clampedMin(NATIVE_MIN_YEAR)),
+      max: formatPickerYmd(clampedMax(NATIVE_MAX_YEAR)),
+    },
+    coarse: {
+      min: formatPickerYmd(clampedMin(COARSE_MIN_YEAR)),
+      max: formatPickerYmd(clampedMax(COARSE_MAX_YEAR)),
+    },
+    hasAuthoredBound: authoredMin !== null || authoredMax !== null,
+  };
+}
