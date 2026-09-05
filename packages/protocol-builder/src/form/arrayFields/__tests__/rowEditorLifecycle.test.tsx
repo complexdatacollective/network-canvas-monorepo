@@ -1,6 +1,6 @@
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -615,7 +615,21 @@ async function runStep(
 }
 
 async function assertModel(harness: Harness, model: Model): Promise<void> {
-  await waitFor(() => expect(editorIsOpen()).toBe(model.dialog !== null));
+  // Compared as text, so a failing sequence reports the row that differs
+  // rather than a truncated structural diff buried under the whole editor.
+  const expected = JSON.stringify(model.rows);
+
+  // Screen and document in ONE wait, not one wait each. Both have to be true
+  // at the same moment for the model to hold, and each `waitFor` costs a
+  // re-entry into `act` and a walk of the whole rendered tree per poll — paid
+  // on every step of every sequence.
+  await waitFor(() => {
+    expect(editorIsOpen()).toBe(model.dialog !== null);
+    const actual = JSON.stringify(harness.rows());
+    if (actual !== expected) {
+      throw new Error(`the list holds\n  ${actual}\nand not\n  ${expected}`);
+    }
+  });
 
   const { dialog } = model;
   if (dialog !== null) {
@@ -624,16 +638,6 @@ async function assertModel(harness: Harness, model: Model): Promise<void> {
     }
     if (dialog.refused) expect(refusalShown()).toBe(true);
   }
-
-  // Compared as text, so a failing sequence reports the row that differs
-  // rather than a truncated structural diff buried under the whole editor.
-  const expected = JSON.stringify(model.rows);
-  await waitFor(() => {
-    const actual = JSON.stringify(harness.rows());
-    if (actual !== expected) {
-      throw new Error(`the list holds\n  ${actual}\nand not\n  ${expected}`);
-    }
-  });
 }
 
 /** Deterministic, so a failing sequence is named by its seed and replayable. */
@@ -674,51 +678,118 @@ const pick = (
 const SEQUENCES = 200;
 const STEPS_PER_SEQUENCE = 8;
 
-describe('the row editor, over random lifecycles', () => {
-  it('keeps the dialog, the draft and the committed row where the model says', async () => {
-    for (let seed = 1; seed <= SEQUENCES; seed += 1) {
-      const random = randomFrom(seed);
-      const harness = withRefusableDispatch(createStore(INITIAL_ROWS));
-      const user = userEvent.setup();
-      renderLifecycleList(harness.session);
+/** One sequence: mount, drive the steps this seed picks, check after each. */
+async function runSequence(seed: number): Promise<void> {
+  const random = randomFrom(seed);
+  const harness = withRefusableDispatch(createStore(INITIAL_ROWS));
+  // No inter-event delay. Nothing in a sequence is scheduled to happen BETWEEN
+  // two keystrokes — every interleaving this test is about is a step of its
+  // own, dispatched between `user` calls — so the delay only buys a real timer
+  // per character, on every typing step of all 200 sequences.
+  const user = userEvent.setup({ delay: null });
+  renderLifecycleList(harness.session);
 
-      const model: Model = {
-        rows: structuredClone(INITIAL_ROWS) as PromptRow[],
-        dialog: null,
-        refusing: false,
-        readOnly: false,
-        staleList: false,
-      };
-      const taken: Step[] = [];
-      let counter = 0;
-      const typed = () => {
-        counter += 1;
-        return `v${seed}-${counter}`;
-      };
+  const model: Model = {
+    rows: structuredClone(INITIAL_ROWS) as PromptRow[],
+    dialog: null,
+    refusing: false,
+    readOnly: false,
+    staleList: false,
+  };
+  const taken: Step[] = [];
+  let counter = 0;
+  // Short, and distinct from every other value in play. Each keystroke is a
+  // dispatched event and an `act` flush, so a longer marker buys nothing and
+  // is paid for on every typing step of every sequence.
+  const typed = () => {
+    counter += 1;
+    return `v${counter}`;
+  };
 
-      try {
-        await screen.findByRole('button', { name: 'Create new prompt' });
-        for (let index = 0; index < STEPS_PER_SEQUENCE; index += 1) {
-          const available = STEPS.filter((step) => applicable(model, step));
-          const step = pick(random, available, taken);
-          taken.push(step);
-          await runStep(user, harness, model, step, typed);
-          await assertModel(harness, model);
-        }
-      } catch (failure) {
-        const reason =
-          failure instanceof Error ? failure.message : String(failure);
-        // The seed and the steps are what makes a failure reproducible; the
-        // original is kept as the cause so its own detail is not lost.
-        throw new Error(
-          `seed ${seed}, after [${taken.join(' → ')}]:\n${reason}`,
-          {
-            cause: failure,
-          },
-        );
-      } finally {
-        cleanup();
-      }
+  try {
+    // `render` is synchronous and nothing here is loaded on a later tick, so
+    // the list is on screen already: waiting for it would spend a poll
+    // interval per sequence to learn what the render just did.
+    screen.getByRole('button', { name: 'Create new prompt' });
+    for (let index = 0; index < STEPS_PER_SEQUENCE; index += 1) {
+      const available = STEPS.filter((step) => applicable(model, step));
+      const step = pick(random, available, taken);
+      taken.push(step);
+      await runStep(user, harness, model, step, typed);
+      await assertModel(harness, model);
     }
-  }, 300_000);
+  } catch (failure) {
+    const reason = failure instanceof Error ? failure.message : String(failure);
+    // The steps are what makes a failure reproducible beyond its seed, which
+    // the test's own name already carries; the original is kept as the cause
+    // so its own detail is not lost.
+    throw new Error(`after [${taken.join(' → ')}]:\n${reason}`, {
+      cause: failure,
+    });
+  } finally {
+    cleanup();
+  }
+}
+
+/**
+ * The seeds to run: all of them, or exactly the ones named in
+ * `ROW_EDITOR_SEEDS` (`ROW_EDITOR_SEEDS=137`, `ROW_EDITOR_SEEDS=137,204`).
+ *
+ * A reported failure names one seed, and replaying just that seed is how it is
+ * worked on — `-t 'seed 137'` would still mount the other 199.
+ */
+const seedsUnderTest = (): number[] => {
+  const requested = process.env.ROW_EDITOR_SEEDS;
+  if (requested === undefined || requested.trim() === '') {
+    return Array.from({ length: SEQUENCES }, (_, index) => index + 1);
+  }
+  return requested.split(',').map((entry) => {
+    const seed = Number(entry.trim());
+    // `randomFrom` takes anything (`NaN >>> 0` is 0), so a typo would quietly
+    // run some other sequence and report it under the name that was asked for.
+    if (!Number.isInteger(seed)) {
+      throw new Error(`ROW_EDITOR_SEEDS holds "${entry.trim()}", not a seed.`);
+    }
+    return seed;
+  });
+};
+
+/**
+ * One test per seed, rather than one test that sweeps every seed.
+ *
+ * A sequence costs ~200 ms here — a mount plus eight steps read back through
+ * the accessibility tree — and CI's shared runners are tens of times slower on
+ * this package's DOM tests. Swept in a single `it`, all 200 shared one budget
+ * and spent it: the CI `test` job failed with `Test timed out in 300000ms`.
+ * Per seed, each test carries only its own sequence, comfortably inside the
+ * suite's ordinary per-test timeout, and a failure names the seed that
+ * produced it instead of the sweep that contained it.
+ *
+ * The seed COUNT is not the thing to cut. Over the sequences this generator
+ * actually produces, the 200 seeds reach all 17 steps, 217 ordered step pairs
+ * and 705 ordered triples — and the last new pair arrives at seed 180, the
+ * last new triple at seed 200. Coverage is still growing where the sweep ends,
+ * so a shorter one would test strictly less; what was wrong was the budget
+ * they shared, not how many there are.
+ */
+describe('the row editor, over random lifecycles', () => {
+  // The first mount in a file pays for what every later one reuses — React's
+  // first render of this tree, the accessible-name machinery, the dialog
+  // layer. Left inside a test it lands on whichever seed happens to run first
+  // and roughly doubles that seed's measured cost, which is the number a
+  // per-test timeout is judged against. Paid here, each seed is measured as
+  // itself.
+  beforeAll(() => {
+    renderLifecycleList(
+      withRefusableDispatch(createStore(INITIAL_ROWS)).session,
+    );
+    cleanup();
+  });
+
+  it.each(seedsUnderTest())(
+    'keeps the dialog, the draft and the committed row where the model says, from seed %i',
+    async (seed) => {
+      await runSequence(seed);
+    },
+  );
 });
