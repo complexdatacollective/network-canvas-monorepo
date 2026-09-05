@@ -22,6 +22,9 @@ export const TENANT_ROLES = {
   maintenance: 'studio_maintenance',
 } as const;
 
+// Reserved for separately held operator backup credentials, never runtime DML.
+export const BACKUP_ROLE = 'studio_backup';
+
 export const TEAM_GUC = 'app.team_id';
 
 // NULLIF: once a transaction-scoped setting has expired,
