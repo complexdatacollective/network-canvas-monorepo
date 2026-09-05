@@ -61,14 +61,15 @@ export function base64url(input: Buffer): string {
 
 /**
  * A placeholder keying for the contact blind indexes, so seeded opt-outs
- * actually suppress seeded deliveries. #1258 has not chosen the deployment's
- * blind-index key or its derivation; when it does, this constant and every
- * caller move to that keying. It is published here deliberately — a
- * development-only key that protects nothing must not look like a secret.
+ * actually suppress seeded deliveries. The production foundation is in
+ * pii/contacts.ts; this deliberately remains synthetic hex until #1258's
+ * bytea schema/seed migration converts every caller. It is published here
+ * deliberately — a development-only key that protects nothing must not look
+ * like a secret.
  */
 const SEED_BLIND_INDEX_KEY = 'studio-development-blind-index-key';
 
-/** The HMAC the runtime will compute over a normalized recipient address. */
+/** Synthetic seed HMAC; never use this key or representation in production. */
 export function contactBlindIndex(address: string): string {
   return createHmac('sha256', SEED_BLIND_INDEX_KEY)
     .update(address.trim().toLowerCase())
