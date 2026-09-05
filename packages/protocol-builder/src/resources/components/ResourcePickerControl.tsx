@@ -249,9 +249,14 @@ export default function ResourcePickerControl({
               ariaLabelledBy ?? (id === undefined ? undefined : `${id}-label`),
             'aria-describedby': ariaDescribedBy,
             'aria-label': ariaLabel,
-            // The group is the field, so it carries the field's validation
-            // state: without these a required picker announces as an ordinary
-            // one, and a failed submit says nothing at all.
+            // The group IS the field here — there is no inner control to carry
+            // the field's validation state — so the group carries it.
+            // `FieldErrors` deliberately renders no `role="alert"`: an invalid
+            // field is announced by the control saying so, with the message
+            // reached through `aria-describedby`. With nothing on this group
+            // saying so, a required picker whose submit was refused announces
+            // exactly like one that was accepted, and a picker that never says
+            // it is required announces as an optional one.
             'aria-invalid': ariaInvalid,
             'aria-required': ariaRequired,
           })}

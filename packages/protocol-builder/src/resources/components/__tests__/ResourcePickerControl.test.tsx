@@ -1477,17 +1477,60 @@ describe('the validation state a picker exposes', () => {
     // The group IS the field, so the field's own validation state has to be on
     // it: a picker that never says it is required announces as an optional one.
     expect(group).toHaveAttribute('aria-required', 'true');
-    expect(group).toHaveAttribute('aria-invalid', 'false');
+    // Nothing has been refused yet. Asserted as "not invalid" rather than as
+    // the literal `false`, so that a group which says nothing at all fails on
+    // the refusal below — where the announcement is actually lost — rather
+    // than here.
+    expect(group).not.toHaveAttribute('aria-invalid', 'true');
+    expect(group).not.toHaveAccessibleDescription(/This field is required\./);
 
     await user.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(group).toHaveAttribute('aria-invalid', 'true'));
+    // Both halves, because neither announces the refusal on its own:
+    // `FieldErrors` deliberately renders no `role="alert"`, so the message is
+    // reached only from a control that says it is invalid — and without the
+    // state on this group, a refused save announces exactly like an accepted
+    // one.
+    expect(group).toHaveAccessibleDescription(/This field is required\./);
+  });
+
+  it('says the same on the group a required API key picker renders', async () => {
+    const user = userEvent.setup();
+    const gateway = new InMemoryResourceGateway();
+    renderResourceEditor({
+      gateway,
+      actions: ({ formId }) => <SubmitButton form={formId}>Save</SubmitButton>,
+      children: (
+        <ProtocolField
+          component={ResourcePickerControl}
+          name="apiKey"
+          label="Map provider API key"
+          kind="apikey"
+          required
+        />
+      ),
+    });
+
+    // The secret picker is this same control under another kind, so what it
+    // renders is this same group — the one that has to carry the refusal.
+    const group = await screen.findByRole('group', {
+      name: 'Map provider API key',
+    });
+    expect(group).not.toHaveAttribute('aria-invalid', 'true');
+
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(group).toHaveAttribute('aria-invalid', 'true'));
+    expect(group).toHaveAccessibleDescription(/This field is required\./);
   });
 
   it('tells assistive technology the same about a source radio group', async () => {
+    const user = userEvent.setup();
     const gateway = new InMemoryResourceGateway({ committed: [networkSeed] });
     renderResourceEditor({
       gateway,
+      actions: ({ formId }) => <SubmitButton form={formId}>Save</SubmitButton>,
       children: (
         <ProtocolField
           component={ResourcePickerControl}
@@ -1500,10 +1543,18 @@ describe('the validation state a picker exposes', () => {
       ),
     });
 
+    // With a source choice there IS an inner control: the div around it is a
+    // plain wrapper carrying no role and no ARIA, so the radio group is the
+    // field and the one that has to say it was refused.
     const group = await screen.findByRole('radiogroup', {
       name: 'Network data',
     });
     expect(group).toHaveAttribute('aria-required', 'true');
+
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(group).toHaveAttribute('aria-invalid', 'true'));
+    expect(group).toHaveAccessibleDescription(/This field is required\./);
   });
 });
 
