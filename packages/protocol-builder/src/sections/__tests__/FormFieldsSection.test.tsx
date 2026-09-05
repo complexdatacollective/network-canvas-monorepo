@@ -2,7 +2,6 @@ import { act, screen, waitFor, within } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { contentHash } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -10,12 +9,11 @@ import {
   buildVariableRoleMap,
   excludeUnvalidatedUses,
 } from '../../codebook/variableRoles.ts';
-import ProtocolField from '../../form/ProtocolField.tsx';
 import { protocolContextFromSections } from '../../protocol-context.ts';
 import { FIXTURE_SESSION_OWNER } from '../../testing/fixtureSession.ts';
 import { loadFixtureStage } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
-import BuilderSection, { type SectionCapability } from '../BuilderSection.tsx';
+import type { SectionCapability } from '../BuilderSection.tsx';
 import FormFieldsSection from '../FormFieldsSection.tsx';
 
 /**
@@ -782,53 +780,52 @@ const pedigreeForm = (
   request: Awaited<ReturnType<ReturnType<typeof renderStageEditor>['submit']>>,
 ): unknown => asRecord(request?.stageDocument.nodeConfig).form;
 
-/** The slots the pedigree fills from the tree, other than the form. */
-const NODE_CONFIG_SLOTS = [
-  'type',
-  'nodeLabelVariable',
-  'egoVariable',
-  'relationshipVariable',
-  'biologicalSexVariable',
-];
+/** The family-member form as the session holds it right now. */
+const formRows = (harness: ReturnType<typeof renderStageEditor>): unknown[] => {
+  const form = asRecord(
+    harness.session.getSnapshot().editedSection.fields.nodeConfig,
+  ).form;
+  return Array.isArray(form) ? form : [];
+};
+
+/** Every command this session has issued and not had acknowledged. */
+const commandsOf = (harness: ReturnType<typeof renderStageEditor>) =>
+  harness.pendingCommands().flatMap((batch) => [...batch.commands]);
 
 /**
- * The rest of `nodeConfig`, standing in for the section that owns it.
+ * Removes the only field through its own confirmation.
  *
- * A mounted field replaces its whole TOP-LEVEL key on save (see
- * `stageDraftFromSubmission`), so a section pointed at something nested writes
- * a coherent stage only beside the fields that own the rest of that object —
- * which is how the Family Pedigree editor mounts its node configuration. Left
- * out, every save here would drop four variable slots and be refused by the
- * schema, and the test would be about the mount rather than about the section.
+ * The confirmation's button carries the same name as the row's — it IS the
+ * row's confirmation. Waiting for the second one is what proves it opened.
  */
-function TheRestOfTheNodeConfiguration() {
-  return (
-    <BuilderSection title="Family members">
-      {NODE_CONFIG_SLOTS.map((slot) => (
-        <ProtocolField<typeof InputField>
-          key={slot}
-          name={`nodeConfig.${slot}`}
-          component={InputField}
-          label={slot}
-        />
-      ))}
-    </BuilderSection>
+const removeField = async (harness: ReturnType<typeof renderStageEditor>) => {
+  await harness.user.click(
+    await screen.findByRole('button', { name: 'Remove field' }),
   );
-}
+  await harness.user.click(
+    await screen.findByRole('button', { name: 'Remove field' }),
+  );
+};
 
-/** The pedigree's family-member form, as its own editor mounts it. */
+/**
+ * The pedigree's family-member form, and nothing else.
+ *
+ * Deliberately alone. A section pointed at a nested path owns that path and
+ * only that path: the other five things a pedigree keeps on its node
+ * configuration are edited by sections this test does not mount, and a save
+ * from here must leave them exactly where it found them. This file used to
+ * mount a stand-in for them, because a mounted field replaced its whole
+ * top-level key.
+ */
 const familyMemberForm = (
   props: Partial<ComponentProps<typeof FormFieldsSection>> = {},
 ) => (
-  <>
-    <TheRestOfTheNodeConfiguration />
-    <FormFieldsSection
-      subject="node"
-      fieldsPath="nodeConfig.form"
-      subjectTypePath="nodeConfig.type"
-      {...props}
-    />
-  </>
+  <FormFieldsSection
+    subject="node"
+    fieldsPath="nodeConfig.form"
+    subjectTypePath="nodeConfig.type"
+    {...props}
+  />
 );
 
 const FAMILY_MEMBER_FORM: SectionCapability = {
@@ -925,6 +922,56 @@ describe('a form the stage keeps somewhere other than `form.fields`', () => {
         'Add at least one field. A form with no fields collects nothing.',
       ),
     ).not.toBeInTheDocument();
+  });
+
+  it('leaves the rest of the node configuration to the sections that own it', async () => {
+    const seeded = pedigreeHoldingForm([
+      { variable: 'fm_name', prompt: 'What is their name?' },
+    ]);
+    const harness = renderStageEditor({
+      stage: seeded,
+      sections: familyMemberForm(),
+    });
+
+    const dialog = await openField(harness, 'Edit field');
+    const question = dialog.getByRole('textbox', { name: 'Question text' });
+    await harness.user.clear(question);
+    await harness.user.type(question, 'What do people call them?');
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    // Nothing here edits the node type or the four variable slots, and a save
+    // that dropped them would leave the pedigree unable to draw a tree — the
+    // same loss as deleting a top-level key no section renders, one level down.
+    // Only the form moved.
+    expect(
+      asRecord((await harness.submit())?.stageDocument.nodeConfig),
+    ).toEqual({
+      ...asRecord(seeded.fields.nodeConfig),
+      form: [{ variable: 'fm_name', prompt: 'What do people call them?' }],
+    });
+  });
+
+  it('commits a removed field as that row leaving the list it lives in', async () => {
+    const harness = renderStageEditor({
+      stage: pedigreeHoldingForm([
+        { variable: 'fm_name', prompt: 'What is their name?' },
+      ]),
+      sections: familyMemberForm({ optional: true }),
+    });
+
+    await removeField(harness);
+    await waitFor(() => expect(formRows(harness)).toHaveLength(0));
+
+    // The command says WHICH row went, and where the list it went from lives.
+    // A whole-value `set` on `nodeConfig` would say only "the node config is
+    // now this" — unmergeable with any change made elsewhere in it, and it
+    // would need every sibling slot mounted to say even that much.
+    expect(commandsOf(harness)).toEqual([
+      { op: 'removeItem', key: ['nodeConfig', 'form'], index: 0 },
+    ]);
   });
 
   it('asks in the owning interface’s words before switching the form off', async () => {
