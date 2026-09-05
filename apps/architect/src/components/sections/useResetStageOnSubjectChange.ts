@@ -1,8 +1,8 @@
 import { difference, get, isEqual, union } from 'es-toolkit/compat';
 import { useEffect, useRef } from 'react';
 
+import { getInterfaceTemplate } from '@codaco/protocol-builder/interfaces/templates';
 import type { StageSubject, StageType } from '@codaco/protocol-validation';
-import { getInterfaceTemplate } from '~/components/StageEditor/interfaceTemplates';
 import { requireStageFieldValue } from '~/components/StageEditor/requireStageFieldValue';
 import { useStageRestoreVersion } from '~/components/StageEditor/StageFormBridge';
 import { useStageFormContext } from '~/components/StageEditor/stageFormContext';
