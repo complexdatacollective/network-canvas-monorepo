@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { getInterfaceTemplate } from '../../../interfaces/templates.ts';
 import {
   fixtureProtocolSections,
   loadFixtureStage,
@@ -343,6 +344,11 @@ describe('a source stage that is no longer usable', () => {
    * different source invalidates all of them at once. They go rather than
    * being left to fail validation later, and they go as the loss of a whole
    * key — absence is how the schema spells "not configured".
+   *
+   * The choice that caused the loss has to survive it. The removal is a write
+   * to the same draft the form is showing, and a write the shell cannot tell
+   * from a draft arriving from elsewhere is written back over every control —
+   * putting the source select back to the stage the researcher just left.
    */
   it('drops the diseases that described it when another source is chosen', async () => {
     const harness = renderStageEditor(withMissingSource());
@@ -352,12 +358,45 @@ describe('a source stage that is no longer usable', () => {
     await waitFor(() =>
       expect(screen.queryByText('Condition X')).not.toBeInTheDocument(),
     );
+    expect(
+      screen.getByRole('combobox', { name: 'Source stage' }),
+    ).toHaveTextContent('Family Pedigree');
     expect(await harness.submit()).toBeNull();
     expect(
       await screen.findByText(
         'Add at least one disease. A narrative pedigree with none shows the participant an unmarked family.',
       ),
     ).toBeInTheDocument();
+  });
+
+  /**
+   * A stage created from the template carries `diseases: []` — nothing is
+   * mapped, so there is nothing for a new source to invalidate. Writing
+   * anyway would spend a marker on a transition that never happens, and the
+   * draft moving under the form takes the choice with it.
+   */
+  it('keeps the first source chosen on a stage that has mapped nothing', async () => {
+    const harness = renderStageEditor({
+      stage: {
+        id: 'narrative-pedigree-new',
+        type: 'NarrativePedigree',
+        fields: getInterfaceTemplate('NarrativePedigree'),
+      },
+      sections: narrativePedigreeSections,
+    });
+
+    await chooseOption(harness, 'Source stage', 'Family Pedigree');
+
+    expect(
+      screen.getByRole('combobox', { name: 'Source stage' }),
+    ).toHaveTextContent('Family Pedigree');
+    // And the section it unlocks is asking, rather than still waiting.
+    await waitFor(() =>
+      expect(
+        harness.outline().find((section) => section.title === 'Diseases')
+          ?.state,
+      ).not.toBe('Not available yet'),
+    );
   });
 
   it('waits for a source before asking about diseases', async () => {

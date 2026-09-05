@@ -6,7 +6,10 @@ import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 
 import ProtocolField from '../../form/ProtocolField.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
-import { useStageValue } from '../../form/stageFormHooks.ts';
+import {
+  useClearStageValue,
+  useStageValue,
+} from '../../form/stageFormHooks.ts';
 import BuilderSection from '../BuilderSection.tsx';
 import { resolveSourceStages, type SourceStageProblem } from './sourceStage.ts';
 
@@ -56,6 +59,10 @@ export type SourceStageSectionProps = Readonly<{
   copy?: Partial<SourceStageCopy>;
 }>;
 
+/** Whether anything is actually mapped here, in the form or in the draft. */
+const holdsDiseases = (value: unknown): boolean =>
+  Array.isArray(value) ? value.length > 0 : value !== undefined;
+
 /**
  * The family this stage draws, and the stage that collected it.
  *
@@ -65,15 +72,34 @@ export type SourceStageSectionProps = Readonly<{
  * against the new family, instead of saving a stage that points at attributes
  * the new node type does not have.
  *
- * The removal is a whole-draft change rather than a form write, because it is
- * the loss of a whole key: absence is how the schema spells "not configured",
- * and the controls showing those rows are re-seeded from the draft afterwards.
+ * The removal reaches the SESSION as one field-level command and the FORM as a
+ * clear, in that order, and neither half is optional. `applyOwnCommands` is
+ * what marks the write as this form's own; a whole-draft `changeFields` here
+ * is indistinguishable from a draft arriving from somewhere else, so the shell
+ * re-seeds every control from it — including the source select, which is put
+ * straight back to the stage the researcher had just moved away from. The form
+ * clear is the other half: a bound list resolves its next edit against the
+ * draft the session holds, so rows left on screen would be written back.
+ *
+ * A stage with nothing mapped is left completely alone. A narrative pedigree
+ * created from its template carries `diseases: []`, and issuing a write to
+ * remove nothing spends a marker on a transition that never happens — the
+ * marker then stands until some later arrival at the same content and
+ * suppresses the re-seed that one genuinely needed.
  */
 export default function SourceStageSection({ copy }: SourceStageSectionProps) {
   const words = { ...DEFAULT_COPY, ...copy };
-  const { committedFields, controller, identity, protocolContext } =
+  const { applyOwnCommands, committedFields, identity, protocolContext } =
     useStageEditorForm();
   const sourceStageId = useStageValue(SOURCE_FIELD);
+  const clearStageValue = useClearStageValue();
+  // Held in a ref rather than read in the effect's dependencies: what is
+  // mapped changes as the researcher edits the list, and re-running the reset
+  // effect for that would ask its "did the source move" question against
+  // bookkeeping that has already moved on.
+  const mappedDiseases = useStageValue(DISEASES_FIELD);
+  const diseases = useRef(mappedDiseases);
+  diseases.current = mappedDiseases;
 
   const { options, problem } = useMemo(
     () => resolveSourceStages(protocolContext, identity.id, sourceStageId),
@@ -125,12 +151,25 @@ export default function SourceStageSection({ copy }: SourceStageSectionProps) {
     awaitingReseedTo.current = null;
     if (expected !== null && isEqual(expected.value, sourceStageId)) return;
 
-    controller.changeFields((current) => {
-      if (!Object.hasOwn(current, DISEASES_FIELD)) return current;
-      const { [DISEASES_FIELD]: _diseases, ...rest } = current;
-      return rest;
-    });
-  }, [committedSource, controller, sourceStageId]);
+    // The draft the session holds NOW, read with the empty batch that reads
+    // without writing. A stage with nothing mapped — including the
+    // `diseases: []` a new one is created with — is left untouched.
+    const current = applyOwnCommands([]);
+    if (
+      !holdsDiseases(diseases.current) &&
+      !holdsDiseases(current[DISEASES_FIELD])
+    ) {
+      return;
+    }
+
+    if (Object.hasOwn(current, DISEASES_FIELD)) {
+      applyOwnCommands([{ op: 'unset', key: DISEASES_FIELD }]);
+    }
+    // The form as well as the session: the list is bound to the document key,
+    // so rows still on screen would be resolved against it by the next edit
+    // and written back.
+    clearStageValue(DISEASES_FIELD);
+  }, [applyOwnCommands, clearStageValue, committedSource, sourceStageId]);
 
   return (
     <BuilderSection title={words.sectionTitle} description={words.description}>
