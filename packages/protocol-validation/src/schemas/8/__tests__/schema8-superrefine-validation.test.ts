@@ -1601,6 +1601,124 @@ describe('Protocol Schema V8 - Superrefine Validation', () => {
       }
     });
 
+    /**
+     * A comparison value may be a fraction, because a scalar attribute records
+     * a normalised reading and a number attribute may hold any quantity. That
+     * latitude belongs to attributes ANSWERED with a number: an option-bearing
+     * attribute is answered with one of the options it authored, and an
+     * operand that is not one of them is a rule that can never match.
+     */
+    const ruleAgainst = (
+      attribute: string,
+      operator: string,
+      value: unknown,
+    ) => ({
+      ...baseValidProtocol,
+      stages: [
+        {
+          ...baseValidProtocol.stages[1],
+          filter: {
+            rules: [
+              {
+                id: 'rule1',
+                type: 'node',
+                options: { type: 'person', attribute, operator, value },
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    const optionIssue = (
+      result: ReturnType<typeof ProtocolSchemaV8.safeParse>,
+    ) =>
+      result.success
+        ? undefined
+        : result.error.issues.find((issue) =>
+            issue.message.includes('is not one of them'),
+          );
+
+    it('rejects a fractional operand against an ordinal attribute', () => {
+      const result = ProtocolSchemaV8.safeParse(
+        ruleAgainst('strength', 'EXACTLY', 0.5),
+      );
+
+      expect(result.success).toBe(false);
+      const issue = optionIssue(result);
+      expect(issue?.message).toBe(
+        'Operator "EXACTLY" compares attribute "strength" against one of its options, but 0.5 is not one of them',
+      );
+      expect(issue?.path).toEqual([
+        'stages',
+        0,
+        'filter',
+        'rules',
+        0,
+        'options',
+        'value',
+      ]);
+    });
+
+    it('accepts an operand that is one of the ordinal attribute’s options', () => {
+      const result = ProtocolSchemaV8.safeParse(
+        ruleAgainst('strength', 'EXACTLY', 2),
+      );
+
+      expect(result.success).toBe(true);
+    });
+
+    it('rejects an operand whose type is not the type the options use', () => {
+      // The options are whole numbers, and the interview compares the operand
+      // against the stored answer by identity: "2" equals none of them.
+      const result = ProtocolSchemaV8.safeParse(
+        ruleAgainst('strength', 'EXACTLY', '2'),
+      );
+
+      expect(result.success).toBe(false);
+      expect(optionIssue(result)?.message).toBe(
+        'Operator "EXACTLY" compares attribute "strength" against one of its options, but "2" is not one of them',
+      );
+    });
+
+    it('rejects an operand naming an option the codebook does not have', () => {
+      const result = ProtocolSchemaV8.safeParse(
+        ruleAgainst('category', 'INCLUDES', 'retired'),
+      );
+
+      expect(result.success).toBe(false);
+      expect(optionIssue(result)?.message).toBe(
+        'Operator "INCLUDES" compares attribute "category" against one of its options, but "retired" is not one of them',
+      );
+    });
+
+    it('accepts a list of the categorical attribute’s own options', () => {
+      const result = ProtocolSchemaV8.safeParse(
+        ruleAgainst('category', 'INCLUDES', ['friend', 'family']),
+      );
+
+      expect(result.success).toBe(true);
+    });
+
+    it('reports every member of a list that is not one of the options', () => {
+      const result = ProtocolSchemaV8.safeParse(
+        ruleAgainst('category', 'INCLUDES', ['friend', 'retired']),
+      );
+
+      expect(result.success).toBe(false);
+      expect(optionIssue(result)?.message).toBe(
+        'Operator "INCLUDES" compares attribute "category" against one of its options, but "retired" is not one of them',
+      );
+    });
+
+    it('keeps a fractional operand valid against a number attribute', () => {
+      const result = ProtocolSchemaV8.safeParse(
+        ruleAgainst('age', 'EXACTLY', 2.5),
+      );
+
+      expect(result.success).toBe(true);
+    });
+
     it('rejects nested filter rules with duplicate IDs', () => {
       const invalidProtocol = {
         ...baseValidProtocol,

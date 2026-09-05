@@ -18,6 +18,7 @@ import {
   isOperandValidForAttributeType,
   isOperatorValidForAttributeType,
   isRuleTargetType,
+  missingOperandOptions,
   type RuleTargetType,
   ruleVariable,
   ruleVariableChoices,
@@ -89,6 +90,7 @@ export type RuleProblemCode =
   | 'missingAttribute'
   | 'invalidOperator'
   | 'invalidOperand'
+  | 'missingOption'
   | 'incomplete';
 
 export type RuleProblem = Readonly<{
@@ -378,6 +380,21 @@ export function describeRule({
     });
   }
 
+  // The same codebook drift again, one step finer. The attribute is still
+  // there and still option-bearing, and the operand is still an option value —
+  // it is just no longer one this attribute offers, because a collaborator
+  // renamed or deleted that option. The rule reads perfectly and can never
+  // match, so nothing but this reports it.
+  if (
+    attribute !== undefined &&
+    !attribute.missing &&
+    operatorId !== undefined &&
+    missingOperandOptions(variables, attributeId, operatorId, options.value)
+      .length > 0
+  ) {
+    problems.push({ code: 'missingOption', message: MISSING_OPTION_MESSAGE });
+  }
+
   if (!isCompleteRule(rule)) {
     problems.push({ code: 'incomplete', message: INCOMPLETE_MESSAGE });
   }
@@ -510,5 +527,7 @@ const INVALID_OPERATOR_MESSAGE =
   'This rule uses an operator that is not valid for its attribute type. Edit or delete the rule.';
 const INVALID_OPERAND_MESSAGE =
   'This rule compares its attribute against a value of the wrong kind for the attribute’s type. Edit or delete the rule.';
+const MISSING_OPTION_MESSAGE =
+  'This rule compares its attribute against an option that is no longer one of that attribute’s choices. Edit or delete the rule.';
 const INCOMPLETE_MESSAGE =
   'This rule is not complete. Edit it to fill in every part, or delete it.';

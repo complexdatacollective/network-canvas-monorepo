@@ -553,6 +553,100 @@ describe('describeRule', () => {
     });
   });
 
+  /**
+   * The same drift one step finer than a retype. The attribute is still there
+   * and still answered by choosing from a list; the operand is still an option
+   * value. It is only no longer one of the options this attribute offers,
+   * because a collaborator renamed or deleted it — and a rule that reads
+   * perfectly and can never match is exactly the kind nothing else reports.
+   */
+  describe('an operand naming an option the attribute no longer offers', () => {
+    const MISSING_OPTION_MESSAGE =
+      'This rule compares its attribute against an option that is no longer one of that attribute’s choices. Edit or delete the rule.';
+
+    it('reports an option the codebook has lost', () => {
+      const description = describeRule({
+        rule: {
+          id: 'rule-28',
+          type: 'node',
+          options: {
+            type: 'person',
+            attribute: 'mood',
+            operator: 'EXACTLY',
+            value: ['retired'],
+          },
+        },
+        codebook,
+      });
+
+      expect(description.problems).toContainEqual({
+        code: 'missingOption',
+        message: MISSING_OPTION_MESSAGE,
+      });
+    });
+
+    it('reports one stale option inside a list of good ones', () => {
+      const description = describeRule({
+        rule: {
+          id: 'rule-29',
+          type: 'node',
+          options: {
+            type: 'person',
+            attribute: 'mood',
+            operator: 'INCLUDES',
+            value: ['happy', 'retired'],
+          },
+        },
+        codebook,
+      });
+
+      expect(description.problems.map((problem) => problem.code)).toEqual([
+        'missingOption',
+      ]);
+    });
+
+    it('says nothing about a rule whose options are all still authored', () => {
+      const description = describeRule({
+        rule: {
+          id: 'rule-30',
+          type: 'node',
+          options: {
+            type: 'person',
+            attribute: 'mood',
+            operator: 'INCLUDES',
+            value: ['happy', 'sad'],
+          },
+        },
+        codebook,
+      });
+
+      expect(description.problems).toEqual([]);
+    });
+
+    it('still reads the rule back as a sentence', () => {
+      // Reporting is not refusing to describe: the researcher has to be able
+      // to see the rule they are being asked to fix, and an option the
+      // codebook has lost has no label but its own value.
+      const description = describeRule({
+        rule: {
+          id: 'rule-31',
+          type: 'node',
+          options: {
+            type: 'person',
+            attribute: 'mood',
+            operator: 'EXACTLY',
+            value: ['retired'],
+          },
+        },
+        codebook,
+      });
+
+      expect(description.text).toBe(
+        'Person where Mood is exactly equal to retired',
+      );
+    });
+  });
+
   describe('a definition the codebook holds without a name', () => {
     /**
      * `name` is a required string in the schema but an empty one is legal, and

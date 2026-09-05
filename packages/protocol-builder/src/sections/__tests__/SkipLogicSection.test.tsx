@@ -42,11 +42,28 @@ const finalStage: SectionDoc = {
   items: [],
 };
 
+/**
+ * `mood` is here so a rule can name one of its OPTIONS: the codebook can move
+ * under a rule by renaming an option as well as by deleting or retyping the
+ * attribute itself.
+ */
+const personVariables = {
+  age: { name: 'Age', type: 'number' },
+  mood: {
+    name: 'Mood',
+    type: 'categorical',
+    options: [
+      { label: 'Happy', value: 'happy' },
+      { label: 'Sad', value: 'sad' },
+    ],
+  },
+};
+
 const personDefinition: SectionDoc = {
   name: 'Person',
   color: 'node-color-seq-2',
   shape: { default: 'square' },
-  variables: { age: { name: 'Age', type: 'number' } },
+  variables: personVariables,
 };
 
 const codebook = {
@@ -55,7 +72,7 @@ const codebook = {
       name: 'Person',
       color: 'node-color-seq-2',
       shape: { default: 'square' },
-      variables: { age: { name: 'Age', type: 'number' } },
+      variables: personVariables,
     },
   },
 };
@@ -504,6 +521,75 @@ describe('a rule set the researcher cannot save', () => {
     expect(
       await screen.findByText(
         'This rule uses an operator that is not valid for its attribute type. Edit or delete the rule.',
+      ),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(outlineText()?.[2]).toBe('Skip logicHas a problem'),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    expect(
+      await screen.findByText(
+        "Rule 1 no longer works with this protocol's codebook. Open it to fix it, or delete it.",
+      ),
+    ).toBeInTheDocument();
+    expect(onFinish).not.toHaveBeenCalled();
+  });
+
+  it('refuses a rule naming an option a collaborator has renamed', async () => {
+    const user = userEvent.setup();
+    const onFinish = vi.fn();
+    const session = createSession({
+      onFinish,
+      fields: {
+        label: 'Welcome',
+        title: 'Hello',
+        items: [],
+        skipLogic: {
+          action: 'SHOW',
+          filter: {
+            rules: [
+              {
+                id: 'rule-a',
+                type: 'node',
+                options: {
+                  type: 'person',
+                  attribute: 'mood',
+                  operator: 'INCLUDES',
+                  value: ['happy'],
+                },
+              },
+            ],
+          },
+        },
+      },
+    });
+    renderEditor(session);
+    await waitFor(() => expect(outlineText()?.[2]).toBe('Skip logicFinished'));
+
+    act(() => {
+      session.receiveAuthoritativeUpdate({
+        // The attribute is still a categorical and the operator is still legal
+        // for one. Only the option this rule names has gone.
+        protocolSections: personWith({
+          age: { name: 'Age', type: 'number' },
+          mood: {
+            name: 'Mood',
+            type: 'categorical',
+            options: [
+              { label: 'Not working', value: 'not-working' },
+              { label: 'Sad', value: 'sad' },
+            ],
+          },
+        }),
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+    });
+
+    expect(
+      await screen.findByText(
+        'This rule compares its attribute against an option that is no longer one of that attribute’s choices. Edit or delete the rule.',
       ),
     ).toBeInTheDocument();
     await waitFor(() =>

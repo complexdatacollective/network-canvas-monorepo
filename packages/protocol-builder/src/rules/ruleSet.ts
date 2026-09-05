@@ -89,6 +89,7 @@ const CODEBOOK_RULE_PROBLEMS: readonly RuleProblemCode[] = Object.freeze([
   'missingEntityType',
   'invalidOperator',
   'invalidOperand',
+  'missingOption',
 ]);
 
 export const isCodebookRuleProblem = (problem: RuleProblem): boolean =>

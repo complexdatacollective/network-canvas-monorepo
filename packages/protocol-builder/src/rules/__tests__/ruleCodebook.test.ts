@@ -4,6 +4,7 @@ import { type Codebook, VariableTypesKeys } from '@codaco/protocol-validation';
 
 import { operatorsForSubject, ruleVariableTypes } from '../operators.ts';
 import {
+  missingOperandOptions,
   ruleEntityTypeExists,
   ruleEntityTypeOptions,
   ruleOperatorOptions,
@@ -208,5 +209,98 @@ describe('reading the codebook for a rule', () => {
     expect(ruleEntityTypeOptions(codebook, 'edge')).toEqual([
       { value: 'friend', label: 'Friend', color: 'edge-color-seq-3' },
     ]);
+  });
+});
+
+/**
+ * A rule can be left naming an option that is no longer there — a collaborator
+ * renames "Retired" to "Not working", or deletes it — and nothing else notices:
+ * the attribute still exists, the operator is still legal for its type, and the
+ * operand is still the shape an option value has.
+ */
+describe('an operand naming an option the attribute no longer offers', () => {
+  const variables = ruleVariables(codebook, 'node', 'person');
+
+  it('names the option that went missing', () => {
+    expect(
+      missingOperandOptions(variables, 'mood', 'EXACTLY', 'retired'),
+    ).toEqual(['retired']);
+  });
+
+  it('says nothing about an option the attribute still authors', () => {
+    expect(
+      missingOperandOptions(variables, 'mood', 'EXACTLY', 'happy'),
+    ).toEqual([]);
+  });
+
+  it('checks every member of a list operand', () => {
+    expect(
+      missingOperandOptions(variables, 'mood', 'INCLUDES', [
+        'happy',
+        'retired',
+        'lapsed',
+      ]),
+    ).toEqual(['retired', 'lapsed']);
+  });
+
+  it('holds the option to the type the codebook authored it with', () => {
+    // The interview compares the operand against the stored answer by
+    // identity, so the string "1" is not the option whose value is 1.
+    const numericOptions: Readonly<Codebook> = {
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
+          variables: {
+            strength: {
+              name: 'Strength',
+              type: 'ordinal',
+              options: [
+                { label: 'Weak', value: 1 },
+                { label: 'Strong', value: 2 },
+              ],
+            },
+          },
+        },
+      },
+    };
+    const ordinal = ruleVariables(numericOptions, 'node', 'person');
+
+    expect(missingOperandOptions(ordinal, 'strength', 'EXACTLY', 1)).toEqual(
+      [],
+    );
+    expect(missingOperandOptions(ordinal, 'strength', 'EXACTLY', '1')).toEqual([
+      '1',
+    ]);
+    // The widening that let a number attribute take a fraction has no business
+    // here: an ordinal answers with one of its own options.
+    expect(missingOperandOptions(ordinal, 'strength', 'EXACTLY', 0.5)).toEqual([
+      0.5,
+    ]);
+  });
+
+  it('says nothing about a comparison whose operand is not an option', () => {
+    // A number attribute's operand is typed out, not picked, so there is no
+    // option list to hold it to; a presence rule compares nothing at all.
+    expect(missingOperandOptions(variables, 'age', 'EXACTLY', 41)).toEqual([]);
+    expect(
+      missingOperandOptions(variables, 'mood', 'EXISTS', 'retired'),
+    ).toEqual([]);
+  });
+
+  it('says nothing about an operand that has not been entered yet', () => {
+    expect(
+      missingOperandOptions(variables, 'mood', 'EXACTLY', undefined),
+    ).toEqual([]);
+    expect(missingOperandOptions(variables, 'mood', 'INCLUDES', [])).toEqual(
+      [],
+    );
+  });
+
+  it('says nothing about an attribute the codebook has lost', () => {
+    expect(
+      missingOperandOptions(variables, 'favouriteColour', 'EXACTLY', 'blue'),
+    ).toEqual([]);
   });
 });

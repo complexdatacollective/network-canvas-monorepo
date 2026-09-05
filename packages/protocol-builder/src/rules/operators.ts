@@ -369,6 +369,30 @@ export const operandRequirement = (
 };
 
 /**
+ * Whether this comparison's operand is PICKED FROM the attribute's own
+ * authored options rather than typed out.
+ *
+ * Read off the operand table above — the controls that enter an option, one or
+ * several — so the comparisons whose operand has to BE an option are exactly
+ * the ones the editor offers an option picker for, and adding an
+ * option-answered attribute type to `ANSWER_SHAPES` brings this with it.
+ *
+ * Only the fact is stated here. WHICH options an attribute authored is a
+ * question about the codebook, and this module deliberately knows nothing
+ * about one; `missingOperandOptions` in `ruleCodebook.ts` asks it.
+ */
+export const operandDrawsOnOptions = (
+  variableType: VariableType | undefined,
+  operator: unknown,
+): boolean => {
+  const requirement = operandRequirement(variableType, operator);
+  if (requirement === undefined || requirement.kind === 'none') return false;
+  return (
+    requirement.control === 'option' || requirement.control === 'optionList'
+  );
+};
+
+/**
  * The operators the editor OFFERS for an attribute of each type.
  *
  * Three narrowings of the schema's own `OperatorsByVariableType`, in order:

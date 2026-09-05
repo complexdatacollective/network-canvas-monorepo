@@ -11,6 +11,7 @@ import {
   filterRuleAttributeExists,
   filterRuleEntityExists,
   findDuplicateId,
+  getFilterRuleVariable,
   getFilterRuleVariableType,
   getVariablesForSubject,
   variableExists,
@@ -66,6 +67,51 @@ import {
 // the filter schema itself (`FilterOperandKinds`), because the protocol
 // builder chooses each operand's control from the same table.
 
+/**
+ * The attribute types whose answers are drawn from a list the codebook
+ * authored, so an operand compared against one has to BE one of those options.
+ *
+ * Everything else the `attribute` operand kind covers is answered with a value
+ * of its own — a number, a date, a piece of text — and a comparison against it
+ * is constrained by nothing but that shape.
+ */
+const OPTION_BEARING_VARIABLE_TYPES: ReadonlySet<string> = new Set([
+  'categorical',
+  'ordinal',
+]);
+
+/**
+ * The option values an attribute authored, or `undefined` when it authors
+ * none. Values keep the type the codebook gave them — an option value is a
+ * string or a whole number, and `1` is not `"1"` to the interview's own
+ * comparison.
+ */
+const authoredOptionValues = (
+  variable: Variable | undefined,
+): ReadonlySet<string | number> | undefined => {
+  if (variable === undefined || !('options' in variable)) return undefined;
+  const options: unknown = variable.options;
+  if (!Array.isArray(options)) return undefined;
+  const values = new Set<string | number>();
+  for (const option of options) {
+    const value: unknown =
+      typeof option === 'object' && option !== null
+        ? Reflect.get(option, 'value')
+        : undefined;
+    if (typeof value === 'string' || typeof value === 'number') {
+      values.add(value);
+    }
+  }
+  return values;
+};
+
+/**
+ * An operand as it reads in a message. Quoted when it is text, so the reason
+ * `"1"` was refused against the option whose value is `1` is legible.
+ */
+const describeOperand = (operand: unknown): string =>
+  typeof operand === 'string' ? `"${operand}"` : String(operand);
+
 type IssueReporter = (issue: {
   message: string;
   path: (string | number)[];
@@ -99,6 +145,8 @@ const validateFilterRules = (
       return;
     }
 
+    const attributeId =
+      'attribute' in rule.options ? rule.options.attribute : undefined;
     const hasAttribute = 'attribute' in rule.options && rule.options.attribute;
 
     // A type-level ego rule (no attribute) is degenerate: the ego entity always
@@ -151,10 +199,12 @@ const validateFilterRules = (
         if (rule.options.value !== undefined) {
           const value: unknown = rule.options.value;
           const valueType = Array.isArray(value) ? 'array' : typeof value;
-          // `attribute` and `none` are unconstrained here: the first is
-          // decided by the attribute's own type (INCLUDES/EXCLUDES accept one
-          // option or a list of them, and resolve the difference at runtime),
-          // and the second belongs to an operator that compares nothing.
+          // `none` belongs to an operator that compares nothing. `attribute`
+          // is decided by the attribute's own type — a number attribute takes
+          // any quantity the study measures, and an option-bearing one takes
+          // one of the options it authored, which is checked below.
+          // INCLUDES/EXCLUDES accept one option or a list of them, and resolve
+          // the difference at runtime.
           const operandKind = FilterOperandKinds[rule.options.operator];
 
           if (operandKind === 'number' && valueType !== 'number') {
@@ -186,6 +236,36 @@ const validateFilterRules = (
               message: `Operator "${rule.options.operator}" requires a string value, but got ${valueType}`,
               path: [...rulePath, 'options', 'value'],
             });
+          }
+
+          // A comparison against an option-bearing attribute is answered with
+          // one of the options that attribute authored, so an operand that is
+          // not one of them is a rule that can never match — a `0.5` beside an
+          // ordinal, or an option a collaborator has since renamed. The value
+          // schema accepts any number, string, boolean or list whatever the
+          // attribute is, so this is the only place it is caught. Membership
+          // is by identity, which is also what keeps `"1"` from standing in
+          // for the option whose value is `1`.
+          // No authored list at all is a broken attribute rather than a broken
+          // rule, and the codebook's own options check already says so — there
+          // is nothing here to compare the operand against.
+          const authored =
+            operandKind === 'attribute' &&
+            OPTION_BEARING_VARIABLE_TYPES.has(variableType)
+              ? authoredOptionValues(getFilterRuleVariable(rule, codebook))
+              : undefined;
+          if (authored !== undefined) {
+            const operands: unknown[] = Array.isArray(value) ? value : [value];
+            for (const operand of operands) {
+              const isAuthored =
+                (typeof operand === 'string' || typeof operand === 'number') &&
+                authored.has(operand);
+              if (isAuthored) continue;
+              addIssue({
+                message: `Operator "${rule.options.operator}" compares attribute "${String(attributeId)}" against one of its options, but ${describeOperand(operand)} is not one of them`,
+                path: [...rulePath, 'options', 'value'],
+              });
+            }
           }
         }
       }

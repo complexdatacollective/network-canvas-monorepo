@@ -15,6 +15,7 @@ import {
   canAuthorRuleForType,
   isFilterOperator,
   isVariableType,
+  operandDrawsOnOptions,
   operandRequirement,
   operatorsAsOptions,
   operatorsForSubject,
@@ -280,6 +281,49 @@ export const isOperandValidForAttributeType = (
   if (requirement.kind === 'none') return true;
   if (value === undefined || value === null) return true;
   return requirement.holds(value);
+};
+
+/**
+ * The option values this rule names that its attribute no longer offers.
+ *
+ * The third way the codebook can move under a rule, and the one neither
+ * `isOperatorValidForAttributeType` nor `isOperandValidForAttributeType`
+ * catches: the attribute is still there, still option-bearing, and the operand
+ * is still the SHAPE an option has — it is simply no longer one of the options
+ * the attribute authors, because a collaborator renamed or deleted it. Nothing
+ * about the rule looks wrong; it just cannot match an answer any participant
+ * can give.
+ *
+ * Compared by identity against the values the codebook holds, which is how the
+ * interview compares them: the option whose value is the number `1` is not
+ * matched by the string `"1"`, and `ruleVariableChoices` keeps the authored
+ * type for exactly this reason.
+ *
+ * Returns the offending values rather than a verdict, so a caller can say
+ * which option went missing. Empty for every comparison whose operand is not
+ * picked from an option list at all, and for an operand that is not there yet
+ * — an unfinished rule is reported as unfinished.
+ */
+export const missingOperandOptions = (
+  variables: Readonly<Variables>,
+  variableId: string | undefined,
+  operator: string,
+  value: unknown,
+): (string | number)[] => {
+  const variableType = ruleVariableType(variables, variableId);
+  if (!operandDrawsOnOptions(variableType, operator)) return [];
+
+  const authored = new Set<string | number>(
+    (ruleVariableChoices(variables, variableId) ?? []).map(
+      (choice) => choice.value,
+    ),
+  );
+  const items: unknown[] = Array.isArray(value) ? value : [value];
+  return items.filter(
+    (item): item is string | number =>
+      (typeof item === 'string' || typeof item === 'number') &&
+      !authored.has(item),
+  );
 };
 
 /**

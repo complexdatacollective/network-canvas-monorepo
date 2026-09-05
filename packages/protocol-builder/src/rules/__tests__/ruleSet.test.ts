@@ -190,6 +190,33 @@ describe('ruleSetValidationMessage', () => {
     );
   });
 
+  it('refuses a rule naming an option the attribute no longer offers', () => {
+    // Nothing about the SHAPE of this rule is wrong: `mood` is still a
+    // categorical, `INCLUDES` is still legal for one, and the operand is still
+    // an option value — it is just not one of `mood`'s options any more.
+    expect(
+      ruleSetValidationMessage(
+        {
+          rules: [
+            {
+              id: 'a',
+              type: 'node',
+              options: {
+                type: 'person',
+                attribute: 'mood',
+                operator: 'INCLUDES',
+                value: ['retired'],
+              },
+            },
+          ],
+        },
+        codebook,
+      ),
+    ).toBe(
+      "Rule 1 no longer works with this protocol's codebook. Open it to fix it, or delete it.",
+    );
+  });
+
   it('passes a healthy rule set', () => {
     expect(
       ruleSetValidationMessage({ rules: [presenceRule('a')] }, codebook),
