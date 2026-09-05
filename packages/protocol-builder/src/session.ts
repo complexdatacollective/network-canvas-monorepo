@@ -10,6 +10,7 @@ import {
   applyCommands,
   canonicalize,
   type Command,
+  contentHash,
   type SectionDoc,
 } from '@codaco/studio-sync/apply';
 import {
@@ -504,12 +505,6 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     this.assertEditable();
     const invalidRequest = validateCompoundEditRequest(request);
     if (invalidRequest !== null) return invalidRequest;
-    if (this.snapshot.pendingCommands.length !== 0) {
-      return compoundFailure(
-        'pending-commands',
-        'save the current stage changes before editing related sections',
-      );
-    }
     if (this.options.onCompoundEdit === undefined) {
       return compoundFailure('unavailable', 'compound editing is unavailable');
     }
@@ -519,6 +514,9 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
         'another compound edit is still in progress',
       );
     }
+
+    const folded = this.foldPendingIntoEdits(request);
+    if (folded.status === 'refused') return folded.failure;
 
     const access = this.snapshot.access;
     if (access.mode !== 'editable') {
@@ -531,6 +529,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     });
     const submission: CompoundEditSubmission = Object.freeze({
       ...request,
+      edits: folded.edits,
       authority,
     });
 
@@ -614,7 +613,15 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
         );
       }
 
-      const pendingCommands = this.snapshot.pendingCommands;
+      // The folded batches are in the authoritative stage the host answered
+      // with, so they are acknowledged rather than replayed onto it: replaying
+      // a `set` would be harmless, but replaying an `insertItem` would add the
+      // row twice, and leaving them pending would send them to the host again
+      // at finish. Batches made WHILE the edit was in flight were not folded
+      // and are still this session's own, so they are reconciled as usual.
+      const pendingCommands = this.snapshot.pendingCommands.filter(
+        (batch) => batch.id > folded.throughBatchId,
+      );
       this.baseFields = cloneDoc(fields);
       this.undoStack.length = 0;
       this.redoStack.length = 0;
@@ -627,6 +634,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
         },
         cloneDoc(this.baseFields),
       );
+      this.releaseWithheldFrom(pendingCommands);
       this.replaceSnapshot({
         fields: reconciledFields,
         protocolSections: result.update.protocolSections,
@@ -876,6 +884,88 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
    * resource field is covered as soon as its schema is tagged, and nothing
    * here has to know which field of which stage holds an asset id.
    */
+  /**
+   * The edits a compound request should actually carry: its own, plus this
+   * session's unsaved stage changes as the request's stage edit.
+   *
+   * A researcher configuring a stage reaches for a related section IN THE
+   * MIDDLE of that work — a name generator needs a node type that does not
+   * exist yet, and the prompts they have just written are exactly why they
+   * noticed. Refusing until the stage is saved is a deadlock whenever those
+   * changes are the ones that made the stage incomplete: there is nothing they
+   * can do to clear the pending batch except throw the work away.
+   *
+   * Folding keeps the atomicity the compound path exists for. The stage's
+   * pending commands and the related section move in one host apply, against
+   * the authoritative stage document those commands were built from — so a
+   * collaborator's change to this stage is caught by `stale-base` exactly as
+   * it would be for any other section, and a refusal leaves every pending
+   * batch untouched for the researcher to try again.
+   *
+   * Two cases keep the old refusal, because folding would be a lie:
+   *
+   * - A request that already edits this stage. It has decided what the stage
+   *   document should become, and two authorities over one section cannot be
+   *   merged here without guessing which wins.
+   * - A pending batch withheld from a live-applying host because it references
+   *   a resource this session has staged. Those bytes reach the protocol only
+   *   when `finish` promotes them, and sending the batch now would commit a
+   *   reference to a resource the protocol does not have.
+   */
+  private foldPendingIntoEdits(request: CompoundEditRequest):
+    | Readonly<{
+        status: 'folded';
+        edits: readonly CompoundSectionEdit[];
+        /** Batches up to and including this id are the host's once it applies. */
+        throughBatchId: number;
+      }>
+    | Readonly<{
+        status: 'refused';
+        failure: Extract<CompoundEditResult, { status: 'failed' }>;
+      }> {
+    const pending = this.snapshot.pendingCommands;
+    // `-1` precedes every batch id, so nothing is acknowledged by default.
+    if (pending.length === 0) {
+      return Object.freeze({
+        status: 'folded',
+        edits: request.edits,
+        throughBatchId: -1,
+      });
+    }
+
+    const stageSectionId = this.snapshot.editedSection.sectionId;
+    const authoritativeStage = this.snapshot.protocolSections[stageSectionId];
+    if (
+      this.withheldFromBatchId !== undefined ||
+      authoritativeStage === undefined ||
+      request.edits.some((edit) => edit.sectionId === stageSectionId)
+    ) {
+      return Object.freeze({
+        status: 'refused',
+        failure: compoundFailure(
+          'pending-commands',
+          'save the current stage changes before editing related sections',
+        ),
+      });
+    }
+
+    const commands = pending.flatMap((batch) => [...batch.commands]);
+    const throughBatchId = pending[pending.length - 1]?.id ?? -1;
+    return Object.freeze({
+      status: 'folded',
+      edits: [
+        ...request.edits,
+        Object.freeze({
+          kind: 'update' as const,
+          sectionId: stageSectionId,
+          expectedContentHash: contentHash(authoritativeStage),
+          commands: Object.freeze(commands),
+        }),
+      ],
+      throughBatchId,
+    });
+  }
+
   private withholdsFromHost(
     batch: PendingCommandBatch,
     fields: StageFormDraft,
