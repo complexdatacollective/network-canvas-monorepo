@@ -9,7 +9,6 @@ import RichSelectGroupField, {
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Section from '@codaco/fresco-ui/Section';
-import type { Variables } from '@codaco/protocol-validation';
 
 import { EntitySelectControl } from '../../fields/EntitySelectField.tsx';
 import RichTextField from '../../fields/RichTextField.tsx';
@@ -82,58 +81,6 @@ const TAP_OPTIONS: RichSelectOption[] = [
   },
 ];
 
-/**
- * The fixed "keep the order they were added in" key, which names no attribute
- * and so is never a dangling reference.
- */
-const ORIGINAL_ORDER_PROPERTY = '*';
-
-/** Names an attribute the researcher has since deleted, as the pickers do. */
-const missingSortPropertyLabel = (property: string): string =>
-  `${property} — this attribute is no longer in the codebook`;
-
-const sortRuleProperty = (rule: unknown): string | undefined => {
-  if (typeof rule !== 'object' || rule === null) return undefined;
-  const property = Reflect.get(rule, 'property');
-  return typeof property === 'string' && property !== '' ? property : undefined;
-};
-
-/**
- * Sort keys this prompt names that the codebook no longer describes.
- *
- * `SortRuleSchema.property` is `existence: 'unchecked'`, so a rule whose
- * attribute a collaborator deleted still validates and still saves — which is
- * right, because deleting an attribute must not make somebody else's stage
- * unopenable. But the cell renders from the option list, so an id no option
- * carries leaves the control BLANK while the value behind it is untouched:
- * the researcher sees an empty required cell, cannot find out what it points
- * at, and saves the dangling reference straight back.
- *
- * So the id is offered back as its own option, labelled for what it is. The
- * shared option getter disables an option a rule already names, which is
- * exactly this one, so it reads as the current choice without being a choice
- * anyone can make afresh.
- */
-const orphanedSortProperties = (
-  rules: unknown,
-  variables: Readonly<Variables>,
-): SortableProperty[] => {
-  if (!Array.isArray(rules)) return [];
-  const orphans = new Map<string, SortableProperty>();
-  for (const rule of rules) {
-    const property = sortRuleProperty(rule);
-    if (property === undefined || property === ORIGINAL_ORDER_PROPERTY) {
-      continue;
-    }
-    if (Object.hasOwn(variables, property)) continue;
-    orphans.set(property, {
-      value: property,
-      label: missingSortPropertyLabel(property),
-    });
-  }
-  return [...orphans.values()];
-};
-
 const tapBehaviourOf = (item: Record<string, unknown>): TapBehaviour => {
   if (asNestedText(item.edges, 'create') !== undefined) return TAP_CREATE_EDGE;
   if (asNestedText(item.highlight, 'variable') !== undefined) {
@@ -163,22 +110,14 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
   // stage collects, unfiltered by writer class — a rule reads an attribute
   // rather than writing one, so nothing is off limits.
   const subjectVariables = useSubjectVariables(subject);
-  const committedSortRules = item[SORT_ORDER_FIELD];
   const sortableProperties = useMemo<SortableProperty[]>(
-    () => [
-      ...Object.entries(subjectVariables).map(([value, variable]) => ({
+    () =>
+      Object.entries(subjectVariables).map(([value, variable]) => ({
         value,
         label: variable.name,
         type: variable.type,
       })),
-      // Last, and only once the stage names a type: without a subject there is
-      // no codebook to be missing from, and every rule would be reported as
-      // dangling.
-      ...(subject === undefined
-        ? []
-        : orphanedSortProperties(committedSortRules, subjectVariables)),
-    ],
-    [committedSortRules, subject, subjectVariables],
+    [subjectVariables],
   );
 
   const committedLayout = asNestedText(item.layout, 'layoutVariable');
@@ -329,11 +268,18 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
           The package's shared sort-order group, told which key this prompt
           keeps its rules at. What a sort order IS — an ordered list of
           property-and-direction rules, one rule per property, cleared
-          altogether by closing the group — is the same question a bin or a
-          census prompt asks, so the sociogram does not answer it again. What
-          it owns is the key (`sortOrder`), the attributes on offer, and the
-          words: these rules decide the order the participant is handed the
-          nodes they have not placed yet.
+          altogether by closing the group, and refused while a rule still
+          names an attribute the codebook has lost — is the same question a
+          bin or a census prompt asks, so the sociogram does not answer it
+          again. What it owns is the key (`sortOrder`), the attributes on
+          offer, and the words: these rules decide the order the participant
+          is handed the nodes they have not placed yet.
+
+          `properties` is therefore the LIVE codebook and nothing else. Folding
+          a deleted attribute into it would read as a fix and be a regression:
+          the shared helper judges "no longer in the codebook" against exactly
+          this list, so an orphan added here is an orphan it can no longer see,
+          and the save it should refuse goes through.
         */}
         <SortOrderRows
           name={SORT_ORDER_FIELD}

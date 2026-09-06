@@ -3,6 +3,10 @@ import { describe, expect, it } from 'vitest';
 
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import {
+  MISSING_SORT_PROPERTY_MESSAGE,
+  missingSortPropertyLabel,
+} from '../../../fields/sortOrderOptions.ts';
 import type { StageEditorHarness } from '../../../testing/renderStageEditor.tsx';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import AutomaticLayoutSection from '../AutomaticLayoutSection.tsx';
@@ -350,13 +354,22 @@ describe('the order a sociogram hands unplaced nodes over in', () => {
   });
 
   /**
-   * A rule whose attribute has been deleted still has to be readable.
+   * A rule whose attribute has been deleted still has to be readable, and
+   * still has to be impossible to save as it stands.
    *
    * The cell renders from the option list, so an id no option carries leaves
    * the control blank — while the value behind it is still there and still
    * saved. The researcher then sees an empty required cell with no way to
    * find out what it points at, and the dangling reference outlives every
    * attempt to fix it.
+   *
+   * Both halves belong to `SortOrderRows`, not to this family: the sociogram
+   * hands it the attributes and the words and nothing else. So this asserts
+   * the wording the shared module owns rather than restating it — a literal
+   * copy here would keep passing if the sociogram grew its own orphan
+   * handling again, because a family's local labelling and the shared one
+   * read identically. What such a copy could NOT do is refuse the save, which
+   * is why the refusal is what this test ends on.
    */
   it('shows a sort rule the attribute has been deleted out from under', async () => {
     const harness = renderStageEditor(openWithOrphanedSortRule());
@@ -367,9 +380,15 @@ describe('the order a sociogram hands unplaced nodes over in', () => {
     expect(property).toHaveValue(ORPHANED_PROPERTY);
     expect(
       within(property).getByRole('option', {
-        name: `${ORPHANED_PROPERTY} — this attribute is no longer in the codebook`,
+        name: missingSortPropertyLabel(ORPHANED_PROPERTY),
       }),
     ).toBeDisabled();
+
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
+    // Not "every row needs a value in each column": the row HAS a value in
+    // each column, and the id it holds is the whole problem.
+    await prompt.findByText(MISSING_SORT_PROPERTY_MESSAGE);
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 
   it('saves a rule the researcher added to a prompt that had none', async () => {
