@@ -142,6 +142,36 @@ async function verifyFingerprint(
   }
 }
 
+async function protectMigrationEvidence(
+  client: pg.PoolClient,
+  config: PostgresMigrationConfig,
+): Promise<void> {
+  const { historySchema, schemaName } = config;
+  const historyTable = `${escapeIdentifier(historySchema)}.history`;
+  const fingerprintTable = `${escapeIdentifier(schemaName)}.${escapeIdentifier(config.fingerprintTable)}`;
+  // Table REVOKE ALL also removes corresponding column grants in PostgreSQL.
+  const roles = config.runtimeRoles.map(escapeIdentifier).join(', ');
+  await client.query(`REVOKE ALL ON SCHEMA ${escapeIdentifier(historySchema)} FROM PUBLIC, ${roles};
+    REVOKE ALL ON ${historyTable} FROM PUBLIC, ${roles};
+    REVOKE ALL ON ${fingerprintTable} FROM PUBLIC, ${roles};
+    GRANT SELECT ON ${fingerprintTable} TO ${roles}`);
+  if (config.backupRole !== undefined) {
+    const backup = await client.query<{ present: boolean }>(
+      'SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = $1) AS present',
+      [config.backupRole],
+    );
+    if (backup.rows[0]?.present) {
+      // Backup provisioning owns read access. Remove writes and delegation,
+      // including column grants, without granting reads before its sidecar runs.
+      const backupRole = escapeIdentifier(config.backupRole);
+      await client.query(`REVOKE CREATE ON SCHEMA ${escapeIdentifier(historySchema)} FROM ${backupRole};
+        REVOKE GRANT OPTION FOR USAGE ON SCHEMA ${escapeIdentifier(historySchema)} FROM ${backupRole};
+        REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER, MAINTAIN ON ${historyTable}, ${fingerprintTable} FROM ${backupRole};
+        REVOKE GRANT OPTION FOR SELECT ON ${historyTable}, ${fingerprintTable} FROM ${backupRole}`);
+    }
+  }
+}
+
 /**
  * Only an explicit deployment command calls this. All pending SQL, sidecars,
  * history and fingerprints commit together, under the same lock development
@@ -181,6 +211,9 @@ async function migrateDatabase(
     await client.query("SELECT set_config('search_path', $1, true)", [
       escapeIdentifier(schemaName),
     ]);
+    // Catalog-only checks must precede every read of stored evidence. A valid
+    // checksum cannot establish integrity while runtime identities can forge it.
+    await enforceMigrationSecurity(client, allowedLogins, config);
     const probe = await client.query<{ present: boolean }>(
       'SELECT to_regclass($1) IS NOT NULL AS present',
       [historyTable],
@@ -216,8 +249,6 @@ async function migrateDatabase(
     if (previous)
       await verifyFingerprint(client, previous.fingerprint, fingerprintTable);
 
-    await enforceMigrationSecurity(client, allowedLogins, config);
-
     await client.query(`CREATE SCHEMA IF NOT EXISTS ${escapeIdentifier(historySchema)};
       REVOKE ALL ON SCHEMA ${escapeIdentifier(historySchema)} FROM PUBLIC;
       CREATE TABLE IF NOT EXISTS ${historyTable} (
@@ -234,6 +265,10 @@ async function migrateDatabase(
       // from today's source. Their order preserves narrow security revocations.
       await executeAtomicSql(client, migration.sql);
       await executeAtomicSql(client, migration.sidecars);
+      // Historical sidecars may grant broad evidence privileges. Contain those
+      // uncommitted grants before another migration or evidence write executes.
+      await protectMigrationEvidence(client, config);
+      await enforceMigrationSecurity(client, allowedLogins, config);
       await stampFingerprint(client, migration.manifest.fingerprint);
       await client.query(
         `INSERT INTO ${historyTable} (position, id, checksum, fingerprint) VALUES ($1, $2, $3, $4)`,
@@ -248,28 +283,8 @@ async function migrateDatabase(
     }
     // Repeatable security is independent of historical schema checksums. It
     // runs on no-op migrations too and contains grants in every old sidecar.
+    await protectMigrationEvidence(client, config);
     await enforceMigrationSecurity(client, allowedLogins, config);
-    // Table REVOKE ALL also removes corresponding column grants in PostgreSQL.
-    const roles = config.runtimeRoles.map(escapeIdentifier).join(', ');
-    await client.query(`REVOKE ALL ON SCHEMA ${escapeIdentifier(historySchema)} FROM PUBLIC, ${roles};
-      REVOKE ALL ON ${historyTable} FROM PUBLIC, ${roles};
-      REVOKE ALL ON ${fingerprintTable} FROM PUBLIC, ${roles};
-      GRANT SELECT ON ${fingerprintTable} TO ${roles}`);
-    if (config.backupRole !== undefined) {
-      const backup = await client.query<{ present: boolean }>(
-        'SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = $1) AS present',
-        [config.backupRole],
-      );
-      if (backup.rows[0]?.present) {
-        // Backup provisioning owns read access. Remove writes and delegation,
-        // including column grants, without granting reads before its sidecar runs.
-        const backupRole = escapeIdentifier(config.backupRole);
-        await client.query(`REVOKE CREATE ON SCHEMA ${escapeIdentifier(historySchema)} FROM ${backupRole};
-          REVOKE GRANT OPTION FOR USAGE ON SCHEMA ${escapeIdentifier(historySchema)} FROM ${backupRole};
-          REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER, MAINTAIN ON ${historyTable}, ${fingerprintTable} FROM ${backupRole};
-          REVOKE GRANT OPTION FOR SELECT ON ${historyTable}, ${fingerprintTable} FROM ${backupRole}`);
-      }
-    }
     await verifyFingerprint(client, expectedFingerprint, fingerprintTable);
     await client.query('COMMIT');
     return completed;

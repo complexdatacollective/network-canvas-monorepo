@@ -8,6 +8,7 @@ import {
   jsonHash,
   readMigrations,
   sha256,
+  type Migration,
 } from '@codaco/studio-sync/postgres-migration-artifacts';
 import { BACKUP_ROLE } from '@codaco/studio-sync/rls';
 import { runtimeRolesSql } from '@codaco/studio-sync/role-bootstrap';
@@ -104,40 +105,367 @@ async function connectAs(
   }
 }
 
+function nextMigration(
+  previous: Migration,
+  sql: string,
+  sidecars = '',
+): Migration {
+  const ordinal = Number(previous.manifest.id.slice(0, 4)) + 1;
+  const snapshot = { securityFixture: ordinal };
+  const manifest = {
+    format: 1 as const,
+    id: `${String(ordinal).padStart(4, '0')}_security_fixture`,
+    previous: previous.manifest.id,
+    fingerprint: sha256(sql + sidecars),
+    snapshotHash: jsonHash(snapshot),
+    sqlHash: sha256(sql),
+    sidecarsHash: sha256(sidecars),
+  };
+  return { manifest, snapshot, sql, sidecars, checksum: jsonHash(manifest) };
+}
+
 describe.skipIf(!database)('migration security invariants', () => {
-  it('keeps fingerprint evidence readable but refuses every runtime write, including after a no-op repair', async () => {
+  it.each(['studio_app', 'studio_maintenance', BACKUP_ROLE])(
+    'refuses valid-looking migration evidence forged by %s before skipping required SQL',
+    async (role) => {
+      await withDeployment(async ({ administrator, owner, logins }) => {
+        await administrator.query('BEGIN');
+        await administrator.query(runtimeRolesSql([BACKUP_ROLE]));
+        await administrator.query('COMMIT');
+        await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+        const next = nextMigration(
+          shipped.at(-1)!,
+          'CREATE TABLE required_migration_marker (id integer PRIMARY KEY)',
+        );
+        await administrator.query(`GRANT USAGE ON SCHEMA studio_migrations, public TO ${escapeIdentifier(role)};
+          GRANT INSERT ON studio_migrations.history TO ${escapeIdentifier(role)};
+          GRANT UPDATE (fingerprint) ON public."schemaFingerprint" TO ${escapeIdentifier(role)}`);
+        const attacker = await administrator.connect();
+        try {
+          await attacker.query('BEGIN');
+          await attacker.query(`SET LOCAL ROLE ${escapeIdentifier(role)}`);
+          expect(
+            (await attacker.query('SELECT current_user AS role')).rows,
+          ).toEqual([{ role }]);
+          expect(
+            (
+              await attacker.query(
+                'INSERT INTO studio_migrations.history (position, id, checksum, fingerprint) VALUES ($1, $2, $3, $4)',
+                [
+                  shipped.length + 1,
+                  next.manifest.id,
+                  next.checksum,
+                  next.manifest.fingerprint,
+                ],
+              )
+            ).rowCount,
+          ).toBe(1);
+          expect(
+            (
+              await attacker.query(
+                'UPDATE public."schemaFingerprint" SET fingerprint = $1',
+                [next.manifest.fingerprint],
+              )
+            ).rowCount,
+          ).toBe(1);
+          await attacker.query('COMMIT');
+        } finally {
+          await attacker.query('ROLLBACK');
+          attacker.release();
+        }
+        const forged = (
+          await administrator.query(
+            'SELECT * FROM studio_migrations.history ORDER BY position',
+          )
+        ).rows;
+        expect(forged).toHaveLength(shipped.length + 1);
+        expect(
+          (
+            await administrator.query(
+              "SELECT to_regclass('public.required_migration_marker') AS marker",
+            )
+          ).rows,
+        ).toEqual([{ marker: null }]);
+        await expect(
+          migrateDatabase(
+            owner,
+            [...shipped, next],
+            next.manifest.fingerprint,
+            logins,
+          ),
+        ).rejects.toThrow('migration evidence is writable');
+        expect(
+          (
+            await administrator.query(
+              'SELECT * FROM studio_migrations.history ORDER BY position',
+            )
+          ).rows,
+        ).toEqual(forged);
+        expect(
+          (
+            await administrator.query(
+              'SELECT fingerprint FROM public."schemaFingerprint"',
+            )
+          ).rows,
+        ).toEqual([{ fingerprint: next.manifest.fingerprint }]);
+        expect(
+          (
+            await administrator.query(
+              "SELECT to_regclass('public.required_migration_marker') AS marker",
+            )
+          ).rows,
+        ).toEqual([{ marker: null }]);
+        // Refusal must not revoke the unsafe grants and silently make forged
+        // evidence look trustworthy to the next invocation.
+        expect(
+          (
+            await administrator.query(
+              "SELECT has_table_privilege($1, 'studio_migrations.history', 'INSERT') AS writable",
+              [role],
+            )
+          ).rows,
+        ).toEqual([{ writable: true }]);
+      });
+    },
+  );
+
+  it.each(['studio_migrations.history', 'public."schemaFingerprint"'])(
+    'runs strict security preflight before reading %s',
+    async (table) => {
+      await withDeployment(async ({ administrator, owner, logins }) => {
+        await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+        await owner.query(`CREATE FUNCTION evidence_read_trap() RETURNS boolean LANGUAGE plpgsql AS 'BEGIN RAISE EXCEPTION ''evidence read before preflight''; END';
+          ALTER TABLE ${table} ENABLE ROW LEVEL SECURITY;
+          ALTER TABLE ${table} FORCE ROW LEVEL SECURITY;
+          CREATE POLICY evidence_read_trap ON ${table} FOR SELECT USING (evidence_read_trap());
+          GRANT UPDATE (fingerprint) ON public."schemaFingerprint" TO studio_app`);
+        // This actual owner read proves the RLS trap is active. Catalog-only
+        // preflight checks must reject the grant before reaching either read.
+        await expect(owner.query(`SELECT * FROM ${table}`)).rejects.toThrow(
+          'evidence read before preflight',
+        );
+        await expect(
+          migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+        ).rejects.toThrow('migration evidence is writable');
+        await administrator.query(`ALTER TABLE ${table} DISABLE ROW LEVEL SECURITY;
+          REVOKE UPDATE ON public."schemaFingerprint" FROM studio_app`);
+        expect(
+          await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+        ).toEqual([]);
+      });
+    },
+  );
+
+  it('contains historical evidence grants before the next migration SQL executes', async () => {
+    await withDeployment(async ({ administrator, owner, logins }) => {
+      await administrator.query('BEGIN');
+      await administrator.query(runtimeRolesSql([BACKUP_ROLE]));
+      await administrator.query('COMMIT');
+      const first = shipped[0]!;
+      const sidecars =
+        first.sidecars +
+        `\nGRANT USAGE ON SCHEMA studio_migrations TO ${BACKUP_ROLE};
+        GRANT ALL ON studio_migrations.history, public."schemaFingerprint" TO ${BACKUP_ROLE};
+        GRANT UPDATE (fingerprint) ON public."schemaFingerprint" TO PUBLIC;`;
+      const manifest = { ...first.manifest, sidecarsHash: sha256(sidecars) };
+      const initial = {
+        ...first,
+        sidecars,
+        manifest,
+        checksum: jsonHash(manifest),
+      };
+      const next = nextMigration(
+        initial,
+        `CREATE TABLE per_migration_guard (protected boolean NOT NULL CHECK (protected));
+        INSERT INTO per_migration_guard SELECT NOT (
+          has_any_column_privilege('studio_app', 'public."schemaFingerprint"', 'UPDATE')
+          OR has_any_column_privilege('${BACKUP_ROLE}', 'studio_migrations.history', 'INSERT,UPDATE')
+          OR has_any_column_privilege('${BACKUP_ROLE}', 'public."schemaFingerprint"', 'UPDATE')
+        );`,
+      );
+      expect(
+        await migrateDatabase(
+          owner,
+          [initial, next],
+          next.manifest.fingerprint,
+          logins,
+        ),
+      ).toEqual([initial.manifest.id, next.manifest.id]);
+      expect(
+        (await owner.query('SELECT * FROM per_migration_guard')).rows,
+      ).toEqual([{ protected: true }]);
+      expect(
+        (
+          await owner.query(
+            'SELECT id FROM studio_migrations.history ORDER BY position',
+          )
+        ).rows,
+      ).toEqual([{ id: initial.manifest.id }, { id: next.manifest.id }]);
+    });
+  });
+
+  it.each(['studio_app', 'studio_maintenance', BACKUP_ROLE, 'enrolled login'])(
+    'refuses large-object writes by %s while preserving reviewed backup reads',
+    async (identity) => {
+      await withDeployment(async ({ administrator, owner, logins }) => {
+        await administrator.query('BEGIN');
+        await administrator.query(runtimeRolesSql([BACKUP_ROLE]));
+        await administrator.query('COMMIT');
+        await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+        const role = identity === 'enrolled login' ? logins[1] : identity;
+        const object = (
+          await administrator.query<{ oid: number }>(
+            "SELECT lo_from_bytea(0, convert_to('original', 'UTF8')) AS oid",
+          )
+        ).rows[0]!;
+        expect(object.oid).toBeGreaterThan(0);
+        const history = (
+          await administrator.query('SELECT * FROM studio_migrations.history')
+        ).rows;
+        expect(history).toHaveLength(shipped.length);
+        await administrator.query(
+          `GRANT SELECT ON LARGE OBJECT ${object.oid} TO ${escapeIdentifier(role)}`,
+        );
+        const reader = await administrator.connect();
+        try {
+          await reader.query('BEGIN');
+          await reader.query(`SET LOCAL ROLE ${escapeIdentifier(role)}`);
+          expect(
+            (
+              await reader.query(
+                "SELECT convert_from(lo_get($1), 'UTF8') AS content",
+                [object.oid],
+              )
+            ).rows,
+          ).toEqual([{ content: 'original' }]);
+        } finally {
+          await reader.query('ROLLBACK');
+          reader.release();
+        }
+        if (role === BACKUP_ROLE) {
+          expect(
+            await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+          ).toEqual([]);
+        }
+        await administrator.query(
+          `GRANT UPDATE ON LARGE OBJECT ${object.oid} TO ${escapeIdentifier(role)}`,
+        );
+        const attacker = await administrator.connect();
+        try {
+          await attacker.query('BEGIN');
+          await attacker.query(`SET LOCAL ROLE ${escapeIdentifier(role)}`);
+          expect(
+            (await attacker.query('SELECT current_user AS role')).rows,
+          ).toEqual([{ role }]);
+          await attacker.query(
+            "SELECT lo_put($1, 0, convert_to('modified', 'UTF8'))",
+            [object.oid],
+          );
+          // Observe the uncommitted write before rolling the proof back.
+          await attacker.query('RESET ROLE');
+          expect(
+            (
+              await attacker.query(
+                "SELECT convert_from(lo_get($1), 'UTF8') AS content",
+                [object.oid],
+              )
+            ).rows,
+          ).toEqual([{ content: 'modified' }]);
+        } finally {
+          await attacker.query('ROLLBACK');
+          attacker.release();
+        }
+        if (role !== BACKUP_ROLE) {
+          // Isolate the UPDATE scan after the actual read/write proof, so the
+          // separate prohibition on runtime SELECT cannot mask a missing guard.
+          await administrator.query(
+            `REVOKE SELECT ON LARGE OBJECT ${object.oid} FROM ${escapeIdentifier(role)}`,
+          );
+        }
+        await expect(
+          migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+        ).rejects.toThrow('large object');
+        expect(
+          (await administrator.query('SELECT * FROM studio_migrations.history'))
+            .rows,
+        ).toEqual(history);
+        expect(
+          (
+            await administrator.query(
+              "SELECT convert_from(lo_get($1), 'UTF8') AS content",
+              [object.oid],
+            )
+          ).rows,
+        ).toEqual([{ content: 'original' }]);
+        await administrator.query(
+          `REVOKE UPDATE ON LARGE OBJECT ${object.oid} FROM ${escapeIdentifier(role)}`,
+        );
+        if (role !== BACKUP_ROLE) {
+          await administrator.query(
+            `GRANT SELECT ON LARGE OBJECT ${object.oid} TO ${escapeIdentifier(role)}`,
+          );
+          await expect(
+            migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+          ).rejects.toThrow('large object');
+          await administrator.query(
+            `REVOKE SELECT ON LARGE OBJECT ${object.oid} FROM ${escapeIdentifier(role)}`,
+          );
+        }
+        expect(
+          await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+        ).toEqual([]);
+        await administrator.query(
+          `ALTER LARGE OBJECT ${object.oid} OWNER TO ${escapeIdentifier(role)}`,
+        );
+        // Large-object ownership appears in the same pg_shdepend ownership
+        // scan as ordinary objects; no parallel owner check is needed.
+        expect(
+          (
+            await administrator.query(
+              `SELECT EXISTS (
+                SELECT 1 FROM pg_shdepend dependency
+                WHERE dependency.refclassid = 'pg_authid'::regclass
+                  AND dependency.refobjid = (SELECT oid FROM pg_roles WHERE rolname = $2)
+                  AND dependency.classid IN ('pg_largeobject'::regclass, 'pg_largeobject_metadata'::regclass)
+                  AND dependency.objid = $1 AND dependency.deptype = 'o'
+                  AND dependency.dbid = (SELECT oid FROM pg_database WHERE datname = current_database())
+              ) AS owned`,
+              [object.oid, role],
+            )
+          ).rows,
+        ).toEqual([{ owned: true }]);
+        await expect(
+          migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+        ).rejects.toThrow('own no database objects');
+      });
+    },
+  );
+
+  it('keeps fingerprint evidence readable but refuses every runtime write, including after a no-op migration', async () => {
     await withDeployment(async ({ administrator, owner, url, logins }) => {
       await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
       const before = (
         await administrator.query('SELECT * FROM public."schemaFingerprint"')
       ).rows;
-      for (const repair of [false, true]) {
-        if (repair) {
-          await administrator.query(
-            'GRANT ALL ON public."schemaFingerprint" TO studio_app, studio_maintenance; GRANT UPDATE (fingerprint) ON public."schemaFingerprint" TO studio_app, studio_maintenance',
-          );
+      expect(
+        await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+      ).toEqual([]);
+      for (const role of ['studio_app', 'studio_maintenance']) {
+        await connectAs(url, logins[1], `-c role=${role}`, async (pool) => {
           expect(
-            await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
-          ).toEqual([]);
-        }
-        for (const role of ['studio_app', 'studio_maintenance']) {
-          await connectAs(url, logins[1], `-c role=${role}`, async (pool) => {
-            expect(
-              (await pool.query('SELECT * FROM public."schemaFingerprint"'))
-                .rows,
-            ).toEqual(before);
-            for (const sql of [
-              'UPDATE public."schemaFingerprint" SET fingerprint = \'forged\'',
-              'DELETE FROM public."schemaFingerprint"',
-              'TRUNCATE public."schemaFingerprint"',
-              'INSERT INTO public."schemaFingerprint" (fingerprint) VALUES (\'forged\')',
-            ]) {
-              await expect(pool.query(sql)).rejects.toMatchObject({
-                code: '42501',
-              });
-            }
-          });
-        }
+            (await pool.query('SELECT * FROM public."schemaFingerprint"')).rows,
+          ).toEqual(before);
+          for (const sql of [
+            'UPDATE public."schemaFingerprint" SET fingerprint = \'forged\'',
+            'DELETE FROM public."schemaFingerprint"',
+            'TRUNCATE public."schemaFingerprint"',
+            'INSERT INTO public."schemaFingerprint" (fingerprint) VALUES (\'forged\')',
+          ]) {
+            await expect(pool.query(sql)).rejects.toMatchObject({
+              code: '42501',
+            });
+          }
+        });
       }
       expect(
         (await administrator.query('SELECT * FROM public."schemaFingerprint"'))
@@ -784,8 +1112,8 @@ describe.skipIf(!database)('migration security invariants', () => {
           const enrolled = [...logins, backup];
           await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, enrolled);
           // This is the legitimate read-only backup provisioning contract.
-          // The migration finalizer must repair evidence writes without
-          // removing these reads, including reads through backup-only views.
+          // Strict evidence checks preserve these reads, including reads
+          // through backup-only views; pre-existing writes are refused separately.
           await administrator.query(`GRANT USAGE ON SCHEMA public, studio_migrations TO ${BACKUP_ROLE};
             GRANT SELECT ON public."schemaFingerprint", studio_migrations.history TO ${BACKUP_ROLE};
             CREATE VIEW backup_evidence_view AS SELECT fingerprint FROM public."schemaFingerprint";
@@ -801,58 +1129,46 @@ describe.skipIf(!database)('migration security invariants', () => {
           ).rows;
           expect(history).toHaveLength(shipped.length);
           expect(stamp).toHaveLength(1);
-          for (const repair of [false, true]) {
-            if (repair) {
-              await administrator.query(`GRANT ALL ON studio_migrations.history, public."schemaFingerprint" TO ${BACKUP_ROLE};
-                GRANT UPDATE (checksum) ON studio_migrations.history TO ${BACKUP_ROLE};
-                GRANT UPDATE (fingerprint) ON public."schemaFingerprint" TO ${BACKUP_ROLE}`);
-            }
-            expect(
-              await migrateDatabase(
-                owner,
-                shipped,
-                SCHEMA_FINGERPRINT,
-                enrolled,
-              ),
-            ).toEqual([]);
-            await connectAs(
-              url,
-              backup,
-              `-c role=${BACKUP_ROLE}`,
-              async (pool) => {
+          expect(
+            await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, enrolled),
+          ).toEqual([]);
+          await connectAs(
+            url,
+            backup,
+            `-c role=${BACKUP_ROLE}`,
+            async (pool) => {
+              expect(
+                (await pool.query('SELECT * FROM studio_migrations.history'))
+                  .rows,
+              ).toEqual(history);
+              expect(
+                (await pool.query('SELECT * FROM public."schemaFingerprint"'))
+                  .rows,
+              ).toEqual(stamp);
+              for (const table of [
+                'backup_evidence_view',
+                'backup_evidence_snapshot',
+              ]) {
                 expect(
-                  (await pool.query('SELECT * FROM studio_migrations.history'))
-                    .rows,
-                ).toEqual(history);
-                expect(
-                  (await pool.query('SELECT * FROM public."schemaFingerprint"'))
-                    .rows,
-                ).toEqual(stamp);
-                for (const table of [
-                  'backup_evidence_view',
-                  'backup_evidence_snapshot',
-                ]) {
-                  expect(
-                    (await pool.query(`SELECT fingerprint FROM ${table}`)).rows,
-                  ).toEqual([{ fingerprint: SCHEMA_FINGERPRINT }]);
-                }
-                for (const statement of [
-                  "UPDATE studio_migrations.history SET checksum = 'forged'",
-                  'DELETE FROM studio_migrations.history',
-                  'TRUNCATE studio_migrations.history',
-                  "INSERT INTO studio_migrations.history (position, id, checksum, fingerprint) VALUES (100, 'forged', 'forged', 'forged')",
-                  'UPDATE public."schemaFingerprint" SET fingerprint = \'forged\'',
-                  'DELETE FROM public."schemaFingerprint"',
-                  'TRUNCATE public."schemaFingerprint"',
-                  'INSERT INTO public."schemaFingerprint" (fingerprint) VALUES (\'forged\')',
-                ]) {
-                  await expect(pool.query(statement)).rejects.toMatchObject({
-                    code: '42501',
-                  });
-                }
-              },
-            );
-          }
+                  (await pool.query(`SELECT fingerprint FROM ${table}`)).rows,
+                ).toEqual([{ fingerprint: SCHEMA_FINGERPRINT }]);
+              }
+              for (const statement of [
+                "UPDATE studio_migrations.history SET checksum = 'forged'",
+                'DELETE FROM studio_migrations.history',
+                'TRUNCATE studio_migrations.history',
+                "INSERT INTO studio_migrations.history (position, id, checksum, fingerprint) VALUES (100, 'forged', 'forged', 'forged')",
+                'UPDATE public."schemaFingerprint" SET fingerprint = \'forged\'',
+                'DELETE FROM public."schemaFingerprint"',
+                'TRUNCATE public."schemaFingerprint"',
+                'INSERT INTO public."schemaFingerprint" (fingerprint) VALUES (\'forged\')',
+              ]) {
+                await expect(pool.query(statement)).rejects.toMatchObject({
+                  code: '42501',
+                });
+              }
+            },
+          );
           await connectAs(
             url,
             backup,
