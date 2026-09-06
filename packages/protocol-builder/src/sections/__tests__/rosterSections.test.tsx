@@ -184,6 +184,39 @@ describe("what a roster's cards show", () => {
       additionalProperties: [{ variable: 'age', label: 'Age' }],
     });
   });
+
+  /**
+   * A roster's lists sit one level down — `cardOptions.additionalProperties`,
+   * not a key of the stage — and they are still edited with the document's own
+   * list commands, addressed all the way to where the list actually lives.
+   *
+   * The alternative is replacing `cardOptions` wholesale on every keystroke,
+   * which cannot be replayed onto a copy that has since changed: a
+   * collaborator adding a sort rule while this researcher adds a card detail
+   * would lose one of the two edits.
+   */
+  it('adds the row with a command addressed to the nested list', async () => {
+    const harness = renderStageEditor({
+      stage: rosterWith({ dataSource: 'roster_data' }),
+      sections: <CardDisplaySection />,
+    });
+
+    await harness.user.click(
+      await screen.findByRole('switch', { name: 'Card details' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Add new card detail' }),
+    );
+
+    expect(
+      harness.pendingCommands().flatMap((batch) => batch.commands),
+    ).toContainEqual(
+      expect.objectContaining({
+        op: 'insertItem',
+        key: ['cardOptions', 'additionalProperties'],
+      }),
+    );
+  });
 });
 
 describe('how a roster is ordered', () => {
