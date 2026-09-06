@@ -7,7 +7,13 @@ import {
   targetPath,
 } from '@codaco/studio-sync/apply';
 
-import { rowIdentity } from './form/arrayFields/arrayFieldCommands.ts';
+import {
+  type ArrayRow,
+  resolveInsertIndex,
+  resolveMove,
+  resolveRowIndex,
+  rowIdentity,
+} from './form/arrayFields/arrayFieldCommands.ts';
 
 /**
  * How deep a command may address.
@@ -23,6 +29,18 @@ export const MAX_COMMAND_PATH_SEGMENTS = 16;
 
 export const isDictionary = (value: unknown): value is SectionDoc =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * A list as the row resolvers read one.
+ *
+ * They are written in terms of records because that is what a row of an editor
+ * list is, and they only ever hand an entry to `canonicalize` or to the id
+ * reader — both of which take anything — so a list holding something else is
+ * resolved by content and position exactly as it should be.
+ */
+const asRows = (list: readonly unknown[]): readonly ArrayRow[] =>
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  list as readonly ArrayRow[];
 
 /** The list a command addresses, or `null` when that place holds something else. */
 function listAt(doc: SectionDoc, target: CommandTarget): unknown[] | null {
@@ -265,16 +283,23 @@ function mergeListArrival(
   return merged;
 }
 
-/** One command, re-expressed against a document whose list has moved. */
+/**
+ * One command, re-expressed against a document whose list has moved.
+ *
+ * `null` refuses the command outright, which is the only right answer when the
+ * row it named has left the list: applying it to whatever has moved into that
+ * position would remove or reorder a row the researcher never touched.
+ */
 function rebaseCommand(
   basis: SectionDoc,
   current: SectionDoc,
   command: Command,
-): Command {
-  // A whole-list `set` is the only command whose meaning a moved list can
-  // change: an `unset`, and a `set` of anything but a list, say the same thing
-  // wherever they land.
-  if (command.op !== 'set' || !Array.isArray(command.value)) return command;
+): Command | null {
+  // A `set` of anything but a list, and an `unset`, say what they say wherever
+  // they land: neither addresses a row.
+  if (command.op === 'unset') return command;
+  const written = command.op === 'set' ? command.value : undefined;
+  if (command.op === 'set' && !Array.isArray(written)) return command;
 
   const before = listAt(basis, command.key);
   const arrival = listAt(current, command.key);
@@ -284,20 +309,57 @@ function rebaseCommand(
   // byte-identical on the wire and in the command log.
   if (canonicalize(before) === canonicalize(arrival)) return command;
 
-  const value = mergeListArrival(before, arrival, command.value);
-  return canonicalize(value) === canonicalize(command.value)
+  if (command.op === 'set') {
+    if (!Array.isArray(written)) return command;
+    const value = mergeListArrival(before, arrival, written);
+    return canonicalize(value) === canonicalize(written)
+      ? command
+      : { ...command, value };
+  }
+
+  if (command.op === 'insertItem') {
+    const index = resolveInsertIndex(
+      arrival,
+      asRows(before),
+      command.index,
+      rowIdentity,
+    );
+    return index === command.index ? command : { ...command, index };
+  }
+
+  if (command.op === 'removeItem') {
+    const index = resolveRowIndex(
+      arrival,
+      asRows(before),
+      command.index,
+      rowIdentity,
+    );
+    if (index === undefined) return null;
+    return index === command.index ? command : { ...command, index };
+  }
+
+  const move = resolveMove(
+    arrival,
+    asRows(before),
+    command.from,
+    command.to,
+    rowIdentity,
+  );
+  if (move === undefined) return null;
+  return move.from === command.from && move.to === command.to
     ? command
-    : { ...command, value };
+    : { ...command, ...move };
 }
 
 /**
  * A batch of commands, re-expressed against a base that has moved beneath it.
  *
  * A batch describes an EDIT to the document it was made on, not a set of
- * values to write onto whatever arrives next. A whole-list `set` in it is the
- * list the researcher was looking at with one row rewritten — so replaying it
- * literally onto a base a collaborator has since added a row to throws their
- * row away.
+ * values to write onto whatever arrives next. An index in it is a position in
+ * the list the researcher was looking at, and a whole-list `set` in it is the
+ * list they were looking at with one row rewritten — so replaying either
+ * literally onto a base a collaborator has since added a row to lands the edit
+ * on the wrong row, or throws their row away.
  *
  * `basis` is the document the batch was applied to, which is what says what
  * each command MEANT; `current` is the document it is being replayed onto. The
@@ -320,8 +382,10 @@ export function rebaseCommands(
   for (const command of commands) {
     const next = rebaseCommand(basisDocument, currentDocument, command);
     if (next !== command) moved = true;
-    rebased.push(next);
-    currentDocument = applyCommand(currentDocument, next);
+    if (next !== null) {
+      rebased.push(next);
+      currentDocument = applyCommand(currentDocument, next);
+    }
     // Against the ORIGINAL command, because the basis is the ground the batch
     // was written on and the next command in it was written against what this
     // one left there.

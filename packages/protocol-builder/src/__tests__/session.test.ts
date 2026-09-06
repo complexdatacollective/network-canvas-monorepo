@@ -345,15 +345,18 @@ describe('ProtocolBuilderSessionStore', () => {
 
   /**
    * A pending batch describes an EDIT to the document the researcher was
-   * looking at, so a whole-list `set` in it is that list with one row
-   * rewritten. Replayed literally onto a base a collaborator has changed, it
-   * writes their rows back out of existence.
+   * looking at, so an index in it is a position in the list they could see and
+   * a whole-list `set` in it is that list with one row rewritten. Replayed
+   * literally onto a base a collaborator has changed, an append becomes a
+   * mid-list insert, a removal takes whichever row moved into that slot, and a
+   * `set` writes their rows back out of existence.
    */
   describe('a pending list command replayed onto a base that moved', () => {
     const rowA = { id: 'a' };
     const rowB = { id: 'b' };
     const rowC = { id: 'c' };
     const rowZ = { id: 'z' };
+    const addedRow = { id: 'x' };
     const rewrittenB = { id: 'b', prompt: 'Rewritten here' };
     const FORM = ['nodeConfig', 'form'];
 
@@ -389,6 +392,57 @@ describe('ProtocolBuilderSessionStore', () => {
       };
     };
 
+    it('keeps an append an append', () => {
+      const append: Command = {
+        op: 'insertItem',
+        key: FORM,
+        index: 3,
+        item: addedRow,
+      };
+      expect(replay(append, insertedAbove).form).toEqual([
+        rowZ,
+        rowA,
+        rowB,
+        rowC,
+        addedRow,
+      ]);
+      expect(replay(append, insertedBelow).form).toEqual([
+        rowA,
+        rowB,
+        rowC,
+        rowZ,
+        addedRow,
+      ]);
+      expect(replay(append, removedAbove).form).toEqual([rowB, rowC, addedRow]);
+    });
+
+    it('removes the row the removal named, wherever it has moved to', () => {
+      const remove: Command = { op: 'removeItem', key: FORM, index: 2 };
+      expect(replay(remove, insertedAbove).form).toEqual([rowZ, rowA, rowB]);
+      expect(replay(remove, insertedBelow).form).toEqual([rowA, rowB, rowZ]);
+      expect(replay(remove, removedAbove).form).toEqual([rowB]);
+    });
+
+    it('moves the row the move named, to the row it was going to follow', () => {
+      const move: Command = { op: 'moveItem', key: FORM, from: 2, to: 0 };
+      expect(replay(move, insertedAbove).form).toEqual([
+        rowZ,
+        rowC,
+        rowA,
+        rowB,
+      ]);
+      expect(replay(move, insertedBelow).form).toEqual([
+        rowC,
+        rowA,
+        rowB,
+        rowZ,
+      ]);
+      // The row it was to be put above has gone, so where the researcher meant
+      // it to land cannot be worked out and the move is refused rather than
+      // guessed at.
+      expect(replay(move, removedAbove).form).toEqual([rowB, rowC]);
+    });
+
     it('merges a whole-list rewrite row by row', () => {
       const rewrite: Command = {
         op: 'set',
@@ -410,6 +464,13 @@ describe('ProtocolBuilderSessionStore', () => {
       // The row the arrival removed stays removed: the local rewrite said
       // nothing about it, so it has no claim on it.
       expect(replay(rewrite, removedAbove).form).toEqual([rewrittenB, rowC]);
+    });
+
+    it('drops a row command whose row has left the list', () => {
+      const remove: Command = { op: 'removeItem', key: FORM, index: 2 };
+      const replayed = replay(remove, [rowA, rowB]);
+      expect(replayed.form).toEqual([rowA, rowB]);
+      expect(replayed.pending).toEqual([]);
     });
   });
 
