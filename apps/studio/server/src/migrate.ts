@@ -21,12 +21,10 @@ try {
     SCHEMA_FINGERPRINT,
     allowedLogins,
   );
-  // oxlint-disable-next-line no-console -- explicit operator command
-  console.log(
-    completed.length
-      ? `Applied Studio migrations: ${completed.join(', ')}`
-      : 'Studio migrations already current.',
-  );
+  const message = completed.length
+    ? `Applied Studio migrations: ${completed.join(', ')}`
+    : 'Studio migrations already current.';
+  process.stdout.write(`${message}\n`);
 } finally {
   await pool.end();
 }

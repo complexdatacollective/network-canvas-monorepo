@@ -116,7 +116,7 @@ export async function enforceMigrationSecurity(
     `WITH logins AS (
       SELECT oid FROM pg_roles WHERE rolname = ANY($1::text[])
     ), identities AS (
-      SELECT oid FROM pg_roles WHERE rolname = ANY($1::text[]) OR rolname = ANY($2::text[])
+      SELECT oid, rolname FROM pg_roles WHERE rolname = ANY($1::text[]) OR rolname = ANY($2::text[])
     ), namespaces AS (
       SELECT oid FROM pg_namespace WHERE nspname !~ '^pg_' AND nspname <> 'information_schema'
     ) SELECT NOT EXISTS (
@@ -135,6 +135,17 @@ export async function enforceMigrationSecurity(
           SELECT 1 FROM pg_proc routine WHERE routine.pronamespace IN (SELECT oid FROM namespaces)
             AND routine.prosecdef AND has_function_privilege(login.oid, routine.oid, 'EXECUTE')
         )
+        OR EXISTS (
+          SELECT 1 FROM pg_class object WHERE object.relnamespace IN (SELECT oid FROM namespaces)
+            AND CASE WHEN object.relkind IN ('v', 'm', 'f') THEN (
+              has_table_privilege(login.oid, object.oid, 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,MAINTAIN')
+              OR has_any_column_privilege(login.oid, object.oid, 'INSERT,UPDATE,REFERENCES')
+              OR (login.rolname <> $3 AND (
+                has_table_privilege(login.oid, object.oid, 'SELECT')
+                OR has_any_column_privilege(login.oid, object.oid, 'SELECT')
+              ))
+            ) ELSE false END
+        )
     ) AND NOT EXISTS (
       SELECT 1 FROM logins login WHERE EXISTS (
           SELECT 1 FROM pg_class object WHERE object.relnamespace IN (SELECT oid FROM namespaces)
@@ -150,11 +161,15 @@ export async function enforceMigrationSecurity(
               ELSE false END
         )
     ) AS safe`,
-    [restrictedLogins, [...Object.values(TENANT_ROLES), BACKUP_ROLE]],
+    [
+      restrictedLogins,
+      [...Object.values(TENANT_ROLES), BACKUP_ROLE],
+      BACKUP_ROLE,
+    ],
   );
   if (loginAccess.rows[0]?.safe !== true) {
     throw new Error(
-      'Runtime and backup identities must own no database objects and hold no access outside their reviewed Studio roles: remove direct or PUBLIC login data grants, CREATE, CONNECT grant options, and executable SECURITY DEFINER routines.',
+      'Runtime and backup identities must own no database objects and hold no access outside their reviewed Studio roles: remove direct or PUBLIC login data grants, CREATE, CONNECT grant options, executable SECURITY DEFINER routines, and view, materialized view, or foreign table access beyond read-only backup grants.',
     );
   }
   // CONNECT is checked only at connection admission. Enrollment must already
@@ -219,4 +234,16 @@ export async function protectMigrationEvidence(
     REVOKE ALL ON studio_migrations.history FROM PUBLIC, studio_app, studio_maintenance;
     REVOKE ALL ON public."schemaFingerprint" FROM PUBLIC, studio_app, studio_maintenance;
     GRANT SELECT ON public."schemaFingerprint" TO studio_app, studio_maintenance`);
+  const backup = await client.query<{ present: boolean }>(
+    'SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = $1) AS present',
+    [BACKUP_ROLE],
+  );
+  if (backup.rows[0]?.present) {
+    // Backup provisioning owns read access. Remove writes and delegation,
+    // including column grants, without granting reads before its sidecar runs.
+    await client.query(`REVOKE CREATE ON SCHEMA studio_migrations FROM ${BACKUP_ROLE};
+      REVOKE GRANT OPTION FOR USAGE ON SCHEMA studio_migrations FROM ${BACKUP_ROLE};
+      REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER, MAINTAIN ON studio_migrations.history, public."schemaFingerprint" FROM ${BACKUP_ROLE};
+      REVOKE GRANT OPTION FOR SELECT ON studio_migrations.history, public."schemaFingerprint" FROM ${BACKUP_ROLE}`);
+  }
 }

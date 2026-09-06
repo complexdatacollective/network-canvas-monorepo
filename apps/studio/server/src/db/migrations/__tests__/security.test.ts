@@ -780,6 +780,76 @@ describe.skipIf(!database)('migration security invariants', () => {
           );
           const enrolled = [...logins, backup];
           await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, enrolled);
+          // This is the legitimate read-only backup provisioning contract.
+          // The migration finalizer must repair evidence writes without
+          // removing these reads, including reads through backup-only views.
+          await administrator.query(`GRANT USAGE ON SCHEMA public, studio_migrations TO ${BACKUP_ROLE};
+            GRANT SELECT ON public."schemaFingerprint", studio_migrations.history TO ${BACKUP_ROLE};
+            CREATE VIEW backup_evidence_view AS SELECT fingerprint FROM public."schemaFingerprint";
+            CREATE MATERIALIZED VIEW backup_evidence_snapshot AS SELECT fingerprint FROM public."schemaFingerprint";
+            GRANT SELECT ON backup_evidence_view, backup_evidence_snapshot TO ${BACKUP_ROLE}`);
+          const history = (
+            await administrator.query('SELECT * FROM studio_migrations.history')
+          ).rows;
+          const stamp = (
+            await administrator.query(
+              'SELECT * FROM public."schemaFingerprint"',
+            )
+          ).rows;
+          expect(history).toHaveLength(shipped.length);
+          expect(stamp).toHaveLength(1);
+          for (const repair of [false, true]) {
+            if (repair) {
+              await administrator.query(`GRANT ALL ON studio_migrations.history, public."schemaFingerprint" TO ${BACKUP_ROLE};
+                GRANT UPDATE (checksum) ON studio_migrations.history TO ${BACKUP_ROLE};
+                GRANT UPDATE (fingerprint) ON public."schemaFingerprint" TO ${BACKUP_ROLE}`);
+            }
+            expect(
+              await migrateDatabase(
+                owner,
+                shipped,
+                SCHEMA_FINGERPRINT,
+                enrolled,
+              ),
+            ).toEqual([]);
+            await connectAs(
+              url,
+              backup,
+              `-c role=${BACKUP_ROLE}`,
+              async (pool) => {
+                expect(
+                  (await pool.query('SELECT * FROM studio_migrations.history'))
+                    .rows,
+                ).toEqual(history);
+                expect(
+                  (await pool.query('SELECT * FROM public."schemaFingerprint"'))
+                    .rows,
+                ).toEqual(stamp);
+                for (const table of [
+                  'backup_evidence_view',
+                  'backup_evidence_snapshot',
+                ]) {
+                  expect(
+                    (await pool.query(`SELECT fingerprint FROM ${table}`)).rows,
+                  ).toEqual([{ fingerprint: SCHEMA_FINGERPRINT }]);
+                }
+                for (const statement of [
+                  "UPDATE studio_migrations.history SET checksum = 'forged'",
+                  'DELETE FROM studio_migrations.history',
+                  'TRUNCATE studio_migrations.history',
+                  "INSERT INTO studio_migrations.history (position, id, checksum, fingerprint) VALUES (100, 'forged', 'forged', 'forged')",
+                  'UPDATE public."schemaFingerprint" SET fingerprint = \'forged\'',
+                  'DELETE FROM public."schemaFingerprint"',
+                  'TRUNCATE public."schemaFingerprint"',
+                  'INSERT INTO public."schemaFingerprint" (fingerprint) VALUES (\'forged\')',
+                ]) {
+                  await expect(pool.query(statement)).rejects.toMatchObject({
+                    code: '42501',
+                  });
+                }
+              },
+            );
+          }
           await connectAs(
             url,
             backup,
@@ -1099,4 +1169,171 @@ describe.skipIf(!database)('migration security invariants', () => {
       ).toEqual([{ rolcreatedb: false }]);
     });
   });
+
+  it.each(['studio_app', 'studio_maintenance', BACKUP_ROLE])(
+    'refuses owner-backed relation privileges held by scoped role %s',
+    async (role) => {
+      await withDeployment(async ({ administrator, owner, logins }) => {
+        // Any missing optional role is safely provisioned within a transaction;
+        // no existing cluster-wide role's attributes or memberships are changed.
+        await administrator.query(
+          `BEGIN; ${runtimeRolesSql([BACKUP_ROLE])} COMMIT`,
+        );
+        await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+        const before = (
+          await administrator.query('SELECT * FROM studio_migrations.history')
+        ).rows;
+        const stamp = (
+          await administrator.query('SELECT * FROM public."schemaFingerprint"')
+        ).rows;
+        expect(before).toHaveLength(shipped.length);
+        expect(stamp).toHaveLength(1);
+        const cases: {
+          kind: string;
+          create: string;
+          grant: string;
+          drop: string;
+          write?: string;
+        }[] = [
+          {
+            kind: 'view write',
+            create:
+              'CREATE VIEW runtime_evidence_view AS SELECT fingerprint, fingerprint AS sibling FROM public."schemaFingerprint"',
+            grant: 'UPDATE ON runtime_evidence_view',
+            drop: 'DROP VIEW runtime_evidence_view',
+            write: 'fingerprint',
+          },
+          {
+            kind: 'view sibling column write',
+            create:
+              'CREATE VIEW runtime_evidence_view AS SELECT fingerprint, fingerprint AS sibling FROM public."schemaFingerprint"',
+            grant: 'UPDATE (sibling) ON runtime_evidence_view',
+            drop: 'DROP VIEW runtime_evidence_view',
+            write: 'sibling',
+          },
+          {
+            kind: 'materialized view maintenance',
+            create:
+              'CREATE MATERIALIZED VIEW runtime_evidence_snapshot AS SELECT fingerprint FROM public."schemaFingerprint"',
+            grant: 'MAINTAIN ON runtime_evidence_snapshot',
+            drop: 'DROP MATERIALIZED VIEW runtime_evidence_snapshot',
+          },
+          {
+            kind: 'foreign table write',
+            create:
+              'CREATE FOREIGN DATA WRAPPER runtime_evidence_wrapper; CREATE SERVER runtime_evidence_server FOREIGN DATA WRAPPER runtime_evidence_wrapper; CREATE FOREIGN TABLE runtime_evidence_foreign (first_column text, sibling text) SERVER runtime_evidence_server',
+            grant: 'UPDATE ON runtime_evidence_foreign',
+            drop: 'DROP FOREIGN DATA WRAPPER runtime_evidence_wrapper CASCADE',
+          },
+          {
+            kind: 'foreign table sibling column write',
+            create:
+              'CREATE FOREIGN DATA WRAPPER runtime_evidence_wrapper; CREATE SERVER runtime_evidence_server FOREIGN DATA WRAPPER runtime_evidence_wrapper; CREATE FOREIGN TABLE runtime_evidence_foreign (first_column text, sibling text) SERVER runtime_evidence_server',
+            grant: 'UPDATE (sibling) ON runtime_evidence_foreign',
+            drop: 'DROP FOREIGN DATA WRAPPER runtime_evidence_wrapper CASCADE',
+          },
+          ...(role === BACKUP_ROLE
+            ? []
+            : [
+                {
+                  kind: 'view read',
+                  create:
+                    'CREATE VIEW runtime_evidence_view AS SELECT fingerprint, fingerprint AS sibling FROM public."schemaFingerprint"',
+                  grant: 'SELECT ON runtime_evidence_view',
+                  drop: 'DROP VIEW runtime_evidence_view',
+                },
+                {
+                  kind: 'view sibling column read',
+                  create:
+                    'CREATE VIEW runtime_evidence_view AS SELECT fingerprint, fingerprint AS sibling FROM public."schemaFingerprint"',
+                  grant: 'SELECT (sibling) ON runtime_evidence_view',
+                  drop: 'DROP VIEW runtime_evidence_view',
+                },
+                {
+                  kind: 'materialized view read',
+                  create:
+                    'CREATE MATERIALIZED VIEW runtime_evidence_snapshot AS SELECT fingerprint FROM public."schemaFingerprint"',
+                  grant: 'SELECT ON runtime_evidence_snapshot',
+                  drop: 'DROP MATERIALIZED VIEW runtime_evidence_snapshot',
+                },
+                {
+                  kind: 'foreign table read',
+                  create:
+                    'CREATE FOREIGN DATA WRAPPER runtime_evidence_wrapper; CREATE SERVER runtime_evidence_server FOREIGN DATA WRAPPER runtime_evidence_wrapper; CREATE FOREIGN TABLE runtime_evidence_foreign (first_column text, sibling text) SERVER runtime_evidence_server',
+                  grant: 'SELECT ON runtime_evidence_foreign',
+                  drop: 'DROP FOREIGN DATA WRAPPER runtime_evidence_wrapper CASCADE',
+                },
+                {
+                  kind: 'foreign table sibling column read',
+                  create:
+                    'CREATE FOREIGN DATA WRAPPER runtime_evidence_wrapper; CREATE SERVER runtime_evidence_server FOREIGN DATA WRAPPER runtime_evidence_wrapper; CREATE FOREIGN TABLE runtime_evidence_foreign (first_column text, sibling text) SERVER runtime_evidence_server',
+                  grant: 'SELECT (sibling) ON runtime_evidence_foreign',
+                  drop: 'DROP FOREIGN DATA WRAPPER runtime_evidence_wrapper CASCADE',
+                },
+              ]),
+        ];
+        expect(cases).toHaveLength(role === BACKUP_ROLE ? 5 : 10);
+        for (const fixture of cases) {
+          await administrator.query(
+            `${fixture.create}; GRANT ${fixture.grant} TO ${escapeIdentifier(role)}`,
+          );
+          if (fixture.write) {
+            const client = await administrator.connect();
+            try {
+              await client.query('BEGIN');
+              // Schema usage is local to this proof and rolls back. This also
+              // covers an optional role whose backup sidecar is not installed.
+              await client.query(
+                `GRANT USAGE ON SCHEMA public TO ${escapeIdentifier(role)}`,
+              );
+              await client.query(`SET LOCAL ROLE ${escapeIdentifier(role)}`);
+              expect(
+                (await client.query('SELECT current_user AS role')).rows,
+              ).toEqual([{ role }]);
+              expect(
+                (
+                  await client.query(
+                    `UPDATE public.runtime_evidence_view SET ${escapeIdentifier(fixture.write)} = repeat('a', 64)`,
+                  )
+                ).rowCount,
+              ).toBe(1);
+              await client.query('RESET ROLE');
+              expect(
+                (
+                  await client.query(
+                    'SELECT fingerprint FROM public."schemaFingerprint"',
+                  )
+                ).rows,
+              ).toEqual([{ fingerprint: 'a'.repeat(64) }]);
+            } finally {
+              await client.query('ROLLBACK');
+              client.release();
+            }
+          }
+          await expect(
+            migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+            fixture.kind,
+          ).rejects.toThrow('access outside their reviewed Studio roles');
+          expect(
+            (
+              await administrator.query(
+                'SELECT * FROM studio_migrations.history',
+              )
+            ).rows,
+          ).toEqual(before);
+          expect(
+            (
+              await administrator.query(
+                'SELECT * FROM public."schemaFingerprint"',
+              )
+            ).rows,
+          ).toEqual(stamp);
+          await administrator.query(fixture.drop);
+          expect(
+            await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+          ).toEqual([]);
+        }
+      });
+    },
+  );
 });
