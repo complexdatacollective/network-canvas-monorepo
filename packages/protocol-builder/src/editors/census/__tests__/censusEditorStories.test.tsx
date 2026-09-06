@@ -116,10 +116,10 @@ describe('the census and bin editor stories', () => {
    * The controls in each prompt that write to the CODEBOOK rather than to the
    * stage, reachable in the story an author opens.
    *
-   * This is the half that makes the spectator assertion below mean anything:
-   * these labels are the ones that must be missing there, and a label that had
-   * been renamed or a control that had been dropped would go on being missing
-   * for a spectator forever.
+   * A prompt is the only place these controls exist, so this is the assertion
+   * that holds their labels in place: a control renamed or dropped is a
+   * researcher who can no longer create the attribute or connection type the
+   * prompt needs, from a page nothing else in this package opens.
    */
   it.each(STORIES)(
     'reaches the codebook controls in a $name prompt as an author',
@@ -137,19 +137,23 @@ describe('the census and bin editor stories', () => {
   );
 
   /**
-   * A spectator can read the stage and change nothing — including the
-   * codebook, which is a different protocol section and would otherwise be
-   * reachable from inside a prompt while the stage itself stayed untouched.
+   * A spectator can read the stage and change nothing: every control that
+   * leads into a prompt is inert, so there is no way from here to the prompt
+   * dialog, and a disabled Save cannot be pressed.
    *
-   * A disabled Save alone does not say that: every control that writes the
-   * codebook does so through a compound edit of its own, which no stage save
-   * is involved in. So both halves are asserted — the controls that lead into
-   * a prompt are inert, and the codebook controls a prompt would have held are
-   * nowhere on the page.
+   * The codebook controls INSIDE a prompt are not asserted here, and used to
+   * be. They live in the row dialog, which a spectator cannot open — so
+   * "nowhere on the page" was equally true of an author who had not clicked
+   * anything, and a renamed or deleted control would have gone on being absent
+   * for a spectator forever. The reachable case is editing taken away while a
+   * prompt is already OPEN, which needs a session the test can change under
+   * the editor rather than a story's fixed arguments; it is asserted against
+   * each guard in `CategoricalBinPromptsSection.test.tsx` and
+   * `DyadCensusPromptsSection.test.tsx`.
    */
   it.each(STORIES)(
-    'offers a spectator of the $name story nothing that writes',
-    ({ meta, spectating, codebookControls }) => {
+    'offers a spectator of the $name story no way into a prompt',
+    ({ meta, spectating }) => {
       render(<StageEditorStoryHost {...meta.args} {...spectating.args} />);
 
       expect(screen.getByRole('button', { name: 'Save stage' })).toBeDisabled();
@@ -159,9 +163,6 @@ describe('the census and bin editor stories', () => {
         'Remove prompt',
       ]) {
         expect(screen.getByRole('button', { name })).toBeDisabled();
-      }
-      for (const name of codebookControls) {
-        expect(screen.queryByRole('button', { name })).not.toBeInTheDocument();
       }
     },
   );

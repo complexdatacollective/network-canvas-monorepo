@@ -41,6 +41,37 @@ const OPTION_COUNT_CONTRADICTION =
 const UNEXPLAINED_FAILURE =
   'This change could not be saved, and nothing was altered. Wait a moment and try again.';
 
+/** A prompt whose follow-up bin is already in use, so every control is on. */
+const openWithFollowUpBin = () => ({
+  stage: {
+    type: 'CategoricalBin' as const,
+    fields: {
+      label: 'Categorical Bin',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [
+        {
+          id: 'prompt-a',
+          text: 'What kind of contact?',
+          variable: 'contactType',
+          otherVariable: 'relationship_to_ego',
+          otherOptionLabel: 'Other',
+          otherVariablePrompt: 'Which?',
+        },
+      ],
+    },
+  },
+  sections: <CategoricalBinPromptsSection />,
+});
+
+const openFollowUpBin = async (harness: StageEditorHarness) => {
+  await harness.user.click(screen.getByRole('button', { name: 'Edit prompt' }));
+  await waitFor(() =>
+    expect(
+      screen.getByRole('switch', { name: 'A bin for anything else' }),
+    ).toBeChecked(),
+  );
+};
+
 const prompts = (stage: Record<string, unknown>): Record<string, unknown>[] =>
   Array.isArray(stage.prompts)
     ? stage.prompts.filter(
@@ -502,38 +533,6 @@ describe('a codebook that changes while a bin prompt is open', () => {
  * `CategoricalBinPrompts/PromptFields.tsx`).
  */
 describe('the rules the follow-up bin’s answers have to satisfy', () => {
-  const openWithFollowUpBin = () => ({
-    stage: {
-      type: 'CategoricalBin' as const,
-      fields: {
-        label: 'Categorical Bin',
-        subject: { entity: 'node', type: 'person' },
-        prompts: [
-          {
-            id: 'prompt-a',
-            text: 'What kind of contact?',
-            variable: 'contactType',
-            otherVariable: 'relationship_to_ego',
-            otherOptionLabel: 'Other',
-            otherVariablePrompt: 'Which?',
-          },
-        ],
-      },
-    },
-    sections: <CategoricalBinPromptsSection />,
-  });
-
-  const openFollowUpBin = async (harness: StageEditorHarness) => {
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Edit prompt' }),
-    );
-    await waitFor(() =>
-      expect(
-        screen.getByRole('switch', { name: 'A bin for anything else' }),
-      ).toBeChecked(),
-    );
-  };
-
   it('saves a rule for the attribute the answers are stored in', async () => {
     const harness = renderStageEditor(openWithFollowUpBin());
     const submit = vi.spyOn(harness.host, 'submit');
@@ -586,6 +585,55 @@ describe('the rules the follow-up bin’s answers have to satisfy', () => {
     expect(
       screen.queryByRole('button', { name: 'Edit this attribute' }),
     ).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * Every control in this prompt that writes the CODEBOOK, which is a different
+ * protocol section from the stage and is written by a compound edit of its
+ * own — so a disabled stage save says nothing about them.
+ *
+ * All four are `PromptAttributeField`'s: two on the attribute the bins come
+ * from, two on the attribute the follow-up bin stores.
+ */
+const CODEBOOK_CONTROLS = [
+  'Create a new attribute',
+  "Change this attribute's values",
+  'Create a new text attribute',
+  'Set rules for what the participant types',
+] as const;
+
+/**
+ * Editing taken away while a prompt is OPEN, which is the only way a read-only
+ * session ever sees the inside of one.
+ *
+ * A spectator cannot open a prompt at all, so the controls above are absent
+ * for them however this guard is written — and were once asserted that way,
+ * which proved nothing. Losing the lease mid-prompt is the case that can tell
+ * the two apart.
+ */
+describe('a bin prompt open when editing is taken away', () => {
+  it('takes every codebook control out of it', async () => {
+    const harness = renderStageEditor(openWithFollowUpBin());
+
+    await openFollowUpBin(harness);
+    for (const name of CODEBOOK_CONTROLS) {
+      expect(screen.getByRole('button', { name })).toBeInTheDocument();
+    }
+
+    harness.setReadOnly();
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: CODEBOOK_CONTROLS[0] }),
+      ).not.toBeInTheDocument(),
+    );
+    for (const name of CODEBOOK_CONTROLS) {
+      expect(screen.queryByRole('button', { name })).not.toBeInTheDocument();
+    }
+    // Still open and still readable: the prompt is not torn down, only the
+    // controls that would write another section of the protocol.
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 });
 

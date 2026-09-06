@@ -151,6 +151,37 @@ describe('creating a connection type from inside a prompt', () => {
   });
 });
 
+/**
+ * Editing taken away while a prompt is OPEN, which is the only way a read-only
+ * session ever sees the inside of one — and so the only way `CreateEdgeField`'s
+ * guard can be told apart from a spectator who could never open the prompt.
+ */
+describe('a dyad prompt open when editing is taken away', () => {
+  it('takes the connection-type control out of it', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    expect(
+      await screen.findByRole('button', {
+        name: 'Create a new connection type',
+      }),
+    ).toBeInTheDocument();
+
+    harness.setReadOnly();
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'Create a new connection type' }),
+      ).not.toBeInTheDocument(),
+    );
+    // Still open and still readable: only the control that would write the
+    // codebook is gone.
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+});
+
 describe('a codebook that changes while a dyad prompt is open', () => {
   it('offers a connection type a collaborator added, without echoing a command', async () => {
     const harness = renderStageEditor(openEditor());
