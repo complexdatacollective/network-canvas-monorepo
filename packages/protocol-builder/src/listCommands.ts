@@ -217,8 +217,9 @@ export function commandForListChange(
  *   somebody else's rewrite of it stands;
  * - a row the edit changed keeps the researcher's version;
  * - a row the edit removed goes, and a row the arrival added appears;
- * - a row the edit added is put back where the edit put it, after whichever
- *   row it followed there.
+ * - a row the edit added is put back beside the rows it was written beside —
+ *   after the nearest one it followed that is still here, else in front of the
+ *   nearest one it preceded.
  *
  * The arrival's order stands wherever the researcher's submit left the rows
  * where it found them: an edit about a row's CONTENTS says nothing about where
@@ -319,24 +320,45 @@ function mergeListArrival(
     });
   }
 
+  // Where one of the researcher's rows sits in the answer, or `-1`: the same
+  // row, not merely one that looks like it. Read by CONTENT, a list holding
+  // that row twice answered with the first copy wherever the researcher had
+  // written after the second, and a new row was put back several places from
+  // where they left it.
+  const slotOf = (local: number) =>
+    merged.findIndex((entry) => entry.local === local);
+
+  // Where a row the researcher added goes: after the nearest row it followed
+  // that is still here, else in front of the nearest row it preceded that is.
+  //
+  // Its immediate neighbour is the first answer and usually the only one
+  // needed, but the arrival may have deleted that row — and the rows further
+  // out still say where this one belongs. Falling back to the position the
+  // researcher left it at the moment the nearest neighbour was gone sent it
+  // PAST rows that had survived: `[a, b, c]` submitted as `[a, x, c]` and
+  // rebased onto an arrival that had deleted `a` put `x` after `c`, which is
+  // the row the researcher wrote it in front of.
+  //
+  // A row added later in the researcher's list is not looked for on the way
+  // forward, because it is not placed yet — these are dealt in order, so it
+  // will anchor on THIS row when its turn comes.
+  //
+  // An index is what is left when no row of theirs survived at all.
+  const placeFor = (index: number): number => {
+    for (let earlier = index - 1; earlier >= 0; earlier -= 1) {
+      const slot = slotOf(earlier);
+      if (slot !== -1) return slot + 1;
+    }
+    for (let later = index + 1; later < next.length; later += 1) {
+      const slot = slotOf(later);
+      if (slot !== -1) return slot;
+    }
+    return Math.min(index, merged.length);
+  };
+
   next.forEach((row, index) => {
     if (localOf.includes(index)) return;
-    // The row this one followed in the researcher's list, at its own place in
-    // the answer — the same row, not merely one that looks like it. Read by
-    // CONTENT, a list holding that row twice answered with the first copy
-    // wherever the researcher had written after the second, and the new row
-    // was put back several places from where they left it.
-    //
-    // `-1` — the arrival deleted the row this one followed, or this row is
-    // first — leaves the position the researcher left it at, which is the only
-    // thing left to go on.
-    const after =
-      index === 0 ? -1 : merged.findIndex((entry) => entry.local === index - 1);
-    merged.splice(
-      after === -1 ? Math.min(index, merged.length) : after + 1,
-      0,
-      { row, local: index },
-    );
+    merged.splice(placeFor(index), 0, { row, local: index });
   });
 
   return merged.map((entry) => entry.row);

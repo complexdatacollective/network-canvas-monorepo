@@ -310,10 +310,22 @@ export const movedRowIndex = <T extends ArrayRow>(
  *
  * A row the list holds twice is a place all the same. `resolveRowIndex`
  * refuses to say which copy a position names, because the answer decides which
- * row an edit is written INTO; here it decides only where a new row goes, and
- * the copies are paired off in order like everything else — so a row written
- * between two identical ones stays between them instead of landing in front of
- * both.
+ * row an edit is written INTO; here it decides only where a new row goes, so
+ * the whole question is put to `matchRows`, which pairs the copies off in
+ * order — a row written between two identical ones stays between them instead
+ * of landing in front of both. Asking `resolveRowIndex` first instead let its
+ * content search answer for a row that was NOT the one paired with: a list of
+ * three identical rows with two of them deleted has exactly one row matching
+ * that content, so a row written after the third of them was put in front of
+ * the survivor rather than after it.
+ *
+ * When the row a new one was written in front of has gone, the rows FURTHER
+ * out still say where it belongs: the nearest surviving row it preceded, else
+ * the nearest one it followed. Falling straight back to the position it was
+ * written at sent it past rows that had survived — a row written in front of
+ * the third of four, with the first and third deleted, went to the end.
+ *
+ * An index is what is left when no row the editor drew survived at all.
  */
 export function resolveInsertIndex<T extends ArrayRow>(
   current: readonly unknown[],
@@ -322,14 +334,18 @@ export function resolveInsertIndex<T extends ArrayRow>(
   getId?: ArrayRowIdentity<T>,
 ): number {
   if (index >= rendered.length) return current.length;
-  const successor = resolveRowIndex(current, rendered, index, getId);
-  if (successor !== undefined) return successor;
   const paired = matchRows(rendered, current, (row) =>
     isRecord(row) ? getId?.(row as T) : undefined,
-  )[index];
-  return paired === undefined || paired === -1
-    ? Math.min(index, current.length)
-    : paired;
+  );
+  for (let later = index; later < rendered.length; later += 1) {
+    const at = paired[later];
+    if (at !== undefined && at !== -1) return at;
+  }
+  for (let earlier = index - 1; earlier >= 0; earlier -= 1) {
+    const at = paired[earlier];
+    if (at !== undefined && at !== -1) return at + 1;
+  }
+  return Math.min(index, current.length);
 }
 
 /**

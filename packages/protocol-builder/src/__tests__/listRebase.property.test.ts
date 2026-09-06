@@ -117,6 +117,28 @@ function randomInsert(rng: Rng, list: readonly Row[], mint: () => Row): Row[] {
   return next;
 }
 
+/**
+ * Adds or deletes one row, which is all a `comings and goings` arrival does.
+ *
+ * A deletion says no more about where the rows still there belong than an
+ * insertion does, so the researcher's order for them is still the one answer —
+ * but it takes rows OUT from between them, which is what the anchors an added
+ * row is put back beside are read off.
+ */
+function randomInsertOrRemove(
+  rng: Rng,
+  list: readonly Row[],
+  mint: () => Row,
+): Row[] {
+  const next = list.map((row) => ({ ...row }));
+  if (next.length === 0 || rng() < 0.5) {
+    next.splice(int(rng, next.length + 1), 0, mint());
+    return next;
+  }
+  next.splice(int(rng, next.length), 1);
+  return next;
+}
+
 /** What the reference model calls a row: its id, or its whole content. */
 const keyOf = (row: Row): string => row.id ?? canonicalize(row);
 
@@ -227,12 +249,26 @@ type Trial = Readonly<{
 /**
  * What the collaborator did while the researcher was editing.
  *
- * `anything` is the general sweep. `inserts` is the arrival that says nothing
- * about where the rows already there belong — it only adds — which is what
- * makes the researcher's own order for them the one answer a merge can give,
- * and so the only arrival an order can be asserted against at all.
+ * `anything` is the general sweep. `inserts` and `comings and goings` are the
+ * arrivals that say nothing about where the rows already there belong — they
+ * only add, or add and delete — which is what makes the researcher's own order
+ * for them the one answer a merge can give, and so the only arrivals an order
+ * can be asserted against at all.
  */
-type Arrival = 'anything' | 'inserts';
+type Arrival = 'anything' | 'inserts' | 'comings and goings';
+
+const arrivalStep = (
+  arrival: Arrival,
+  rng: Rng,
+  mode: Mode,
+  list: readonly Row[],
+  mint: () => Row,
+): Row[] => {
+  if (arrival === 'inserts') return randomInsert(rng, list, mint);
+  if (arrival === 'comings and goings')
+    return randomInsertOrRemove(rng, list, mint);
+  return randomEdit(rng, mode, list, mint);
+};
 
 type Outcome =
   | { kind: 'threw'; error: unknown }
@@ -295,10 +331,7 @@ function runTrial(
   let remote: Row[] = base.map((row) => ({ ...row }));
   const remoteSteps = 1 + int(rng, 3);
   for (let step = 0; step < remoteSteps; step += 1) {
-    remote =
-      arrival === 'inserts'
-        ? randomInsert(rng, remote, mintRemote)
-        : randomEdit(rng, mode, remote, mintRemote);
+    remote = arrivalStep(arrival, rng, mode, remote, mintRemote);
   }
 
   const trial: Trial = {
@@ -364,6 +397,15 @@ const ORDER_TRIALS = 2000;
 const REORDERING_TRIALS: Readonly<Record<Mode, number>> = {
   identified: 100,
   idless: 5,
+};
+
+/**
+ * And how many must produce a new row whose neighbour above it the arrival
+ * deleted, which is the shape the anchoring rule exists for.
+ */
+const ORPHANED_TRIALS: Readonly<Record<Mode, number>> = {
+  identified: 300,
+  idless: 100,
 };
 
 function sweep(
@@ -473,6 +515,52 @@ function keepsTheLocalOrder(trial: Trial, outcome: Outcome): string | null {
   ].join('\n');
 }
 
+/**
+ * Whether a trial's arrival can be told from a REORDER at all.
+ *
+ * An id-less row's identity is its content, so a list holding the same row
+ * twice and arriving back holding it once has not said which copy went. Every
+ * correspondence here pairs the copies off in order, which reads that arrival
+ * as the FIRST copy surviving — and where the survivor sits at the other end
+ * of the list, that reading is a reorder, which the researcher's order does not
+ * win against (a collaborator who moves a row while the researcher only edits
+ * one keeps their move). There is no fact in either document that says
+ * otherwise, so those trials have no order to assert and are left out of this
+ * sweep rather than asserted about wrongly.
+ */
+function deletionsAreUnambiguous(trial: Trial): boolean {
+  const inBase = copies(trial.base);
+  const inRemote = copies(trial.remote);
+  return [...inBase].every(
+    ([key, count]) => count === 1 || (inRemote.get(key) ?? 0) >= count,
+  );
+}
+
+/**
+ * Whether a trial asks the question the anchoring rule exists for: a row the
+ * researcher added whose neighbour above it the arrival deleted.
+ *
+ * That is the only shape in which a new row has nothing immediately beside it
+ * to be put back after, and so the only one that reaches the rest of the rule.
+ */
+function addedRowLostItsPredecessor(trial: Trial): boolean {
+  const inBase = copies(trial.base);
+  const inLocal = copies(trial.local);
+  const inRemote = copies(trial.remote);
+  const added = (key: string) =>
+    (inLocal.get(key) ?? 0) > (inBase.get(key) ?? 0);
+  const deletedByTheArrival = (key: string) =>
+    (inRemote.get(key) ?? 0) < (inBase.get(key) ?? 0);
+  return trial.local.some((row, at) => {
+    const above = at === 0 ? undefined : trial.local[at - 1];
+    return (
+      above !== undefined &&
+      added(keyOf(row)) &&
+      deletedByTheArrival(keyOf(above))
+    );
+  });
+}
+
 /** Whether the researcher's steps gave the rows they kept a NEW order. */
 function localReordered(trial: Trial): boolean {
   const inBase = copies(trial.base);
@@ -541,6 +629,33 @@ describe('rebasing a list edit onto a collaborator’s arrival', () => {
         }
         expect(failures).toEqual([]);
         expect(reordering).toBeGreaterThan(REORDERING_TRIALS[mode]);
+      });
+
+      /**
+       * The same order question, asked of an arrival that also DELETES.
+       *
+       * Deleting says no more about where the surviving rows belong than
+       * inserting does, so the researcher's order is still the one answer —
+       * but it takes away the rows their new ones were written beside, which
+       * is what says where a new row goes. Anchoring only on the row directly
+       * above and falling back to a position the moment that row was gone sent
+       * a new row past rows that had survived: `[a, b, c]` submitted as
+       * `[a, x, c]` and rebased onto an arrival that deleted `a` answered
+       * `[c, x]`, with `x` behind the very row it was written in front of.
+       */
+      it('keeps the researcher’s order when the arrival only added and deleted rows', () => {
+        const failures: string[] = [];
+        let orphaned = 0;
+        for (let seed = 1; seed <= ORDER_TRIALS; seed += 1) {
+          const { trial, outcome } = runTrial(seed, mode, 'comings and goings');
+          if (!deletionsAreUnambiguous(trial)) continue;
+          if (addedRowLostItsPredecessor(trial)) orphaned += 1;
+          const problem = keepsTheLocalOrder(trial, outcome);
+          if (problem !== null && failures.length < 3)
+            failures.push(describeTrial(trial, problem));
+        }
+        expect(failures).toEqual([]);
+        expect(orphaned).toBeGreaterThan(ORPHANED_TRIALS[mode]);
       });
     });
   }

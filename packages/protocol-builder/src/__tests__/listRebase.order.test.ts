@@ -134,6 +134,35 @@ describe('a reordering submit rebased onto a collaborator’s arrival', () => {
       });
 
       /**
+       * Where a new row goes when the row it was written after has gone.
+       *
+       * A row the researcher added is put back after whichever row it followed
+       * in their list. When the arrival deleted that row there is still
+       * something to go on — the rows around it that DID survive — and falling
+       * back to the position the researcher left it at instead sends it past
+       * them: `[a, b, c]` submitted as `[a, x, c]` and rebased onto an arrival
+       * that deleted `a` put `x` after `c`, when `c` is the very row the
+       * researcher wrote it in front of.
+       */
+      it('puts a new row before the row it precedes when the one it followed is gone', () => {
+        const session = openSession([a, b, c]);
+        // One submit that deletes `b` and adds `x` in its place: two changes,
+        // so no single row operation says it — a whole-list `set`.
+        edit(session, [a, x, c]);
+        expect(session.getSnapshot().pendingCommands[0]?.commands[0]?.op).toBe(
+          'set',
+        );
+
+        // A collaborator deletes `a`, which is the row `x` was written after.
+        arrives(session, [b, c]);
+
+        // `x` still comes before `c`, the surviving row it was written above.
+        expect(
+          variableNames(readFields(session.getSnapshot().editedSection.fields)),
+        ).toEqual(['email', 'city']);
+      });
+
+      /**
        * The other direction, which the arrival's order is right for. A submit
        * that moved nothing says nothing about where the rows are, so a
        * collaborator's reorder of them stands.
