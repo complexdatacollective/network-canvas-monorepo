@@ -1,4 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { type ComponentType, type ReactNode, useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
@@ -99,6 +101,110 @@ describe('ProtocolField', () => {
       expect(screen.getByRole('textbox', { name: 'Age' })).toHaveValue(
         'seeded',
       ),
+    );
+  });
+});
+
+/** Mounts and unmounts its children on demand — a group that can be folded away again. */
+function Collapsible({
+  label,
+  children,
+}: Readonly<{ label: string; children: ReactNode }>) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" onClick={() => setOpen((current) => !current)}>
+        {open ? `Hide ${label}` : `Show ${label}`}
+      </button>
+      {open && children}
+    </>
+  );
+}
+
+/** Mounts its children only once asked to — a group of advanced options. */
+function Disclosure({
+  label,
+  children,
+}: Readonly<{ label: string; children: ReactNode }>) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}>
+        {label}
+      </button>
+      {open && children}
+    </>
+  );
+}
+
+/** A control that shows whatever value it is handed, of any shape. */
+const ValueOutput = (({ value }: Readonly<{ value?: unknown }>) => (
+  <output>{JSON.stringify(value ?? null)}</output>
+)) as ComponentType<Record<string, unknown>>;
+
+/** A control that writes one fixed value when pressed. */
+const SetBounds = (({
+  onChange,
+}: Readonly<{ onChange?: (value: unknown) => void }>) => (
+  <button type="button" onClick={() => onChange?.({ min: 'five' })}>
+    Set bounds
+  </button>
+)) as ComponentType<Record<string, unknown>>;
+
+/**
+ * Fields may overlap: one registered at a container, others at paths inside
+ * it. A leaf mounting beneath both starts from the committed draft, which is
+ * the one account of what a path holds — so an edit the form has PARKED
+ * cannot come back through it.
+ *
+ * That matters because a parked value under a mounted container is not a
+ * value the save will write: the form assembles its values from the fields
+ * that are mounted, and drops a parked write a mounted field overlaps. A leaf
+ * seeded from the parked edit instead would show the researcher something the
+ * next save is about to throw away, and put that edit back over the container
+ * as soon as they touched it.
+ */
+describe('a field mounting beneath overlapping fields', () => {
+  it('starts from the committed draft rather than a parked edit beneath a mounted container', async () => {
+    const user = userEvent.setup({ delay: null });
+    renderField(
+      createSession({
+        label: 'Welcome',
+        settings: { bounds: { min: 'one' } },
+      }),
+      <>
+        <ProtocolField
+          name="settings"
+          label="Settings"
+          component={ValueOutput}
+        />
+        <Collapsible label="bounds">
+          <ProtocolField
+            name="settings.bounds"
+            label="Bounds"
+            component={SetBounds}
+          />
+        </Collapsible>
+        <Disclosure label="Show minimum">
+          <ProtocolField
+            name="settings.bounds.min"
+            label="Minimum"
+            component={InputField}
+          />
+        </Disclosure>
+      </>,
+    );
+
+    // An edit made in the bounds control, then folded away: parked, with the
+    // settings container still mounted above it.
+    await user.click(screen.getByRole('button', { name: 'Show bounds' }));
+    await user.click(screen.getByRole('button', { name: 'Set bounds' }));
+    await user.click(screen.getByRole('button', { name: 'Hide bounds' }));
+
+    // The draft's value, not the parked one.
+    await user.click(screen.getByRole('button', { name: 'Show minimum' }));
+    expect(await screen.findByRole('textbox', { name: 'Minimum' })).toHaveValue(
+      'one',
     );
   });
 });
