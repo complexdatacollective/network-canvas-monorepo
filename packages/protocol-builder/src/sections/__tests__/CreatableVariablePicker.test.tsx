@@ -197,10 +197,10 @@ describe('the creatable attribute picker', () => {
     const harness = renderRows(<StampedAttributes />);
     await addRow(harness);
 
-    await harness.user.type(
-      await screen.findByRole('textbox', { name: 'Create a new attribute' }),
-      'nominated early',
-    );
+    const box = await screen.findByRole('textbox', {
+      name: 'Create a new attribute',
+    });
+    await harness.user.type(box, 'nominated early');
     await harness.user.click(
       screen.getByRole('button', { name: 'Create the attribute' }),
     );
@@ -208,6 +208,9 @@ describe('the creatable attribute picker', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       /draft is invalid/,
     );
+    // The refusal is about the name they typed, so the name is still there to
+    // be corrected.
+    expect(box).toHaveValue('nominated early');
     // Nothing was written, so the row still names nothing.
     expect(picker().value).toBe('');
     const person =

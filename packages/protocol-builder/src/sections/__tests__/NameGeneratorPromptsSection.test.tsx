@@ -320,6 +320,9 @@ describe("a name generator's prompts", () => {
    * and a create that quietly did nothing leaves the researcher pressing the
    * button again. The codebook refuses a name it cannot store (a space, here)
    * in its own words, and those are the words that appear.
+   *
+   * And the name stays in the box. The refusal is ABOUT the name they typed,
+   * so it is the one thing they need in front of them to act on it.
    */
   it('says why an attribute it could not create was not created', async () => {
     const harness = renderStageEditor({
@@ -331,10 +334,10 @@ describe("a name generator's prompts", () => {
     await harness.user.click(
       dialog.getByRole('button', { name: 'Add new attribute to assign' }),
     );
-    await harness.user.type(
-      await dialog.findByRole('textbox', { name: 'Create a new attribute' }),
-      'nominated early',
-    );
+    const box = await dialog.findByRole('textbox', {
+      name: 'Create a new attribute',
+    });
+    await harness.user.type(box, 'nominated early');
     await harness.user.click(
       dialog.getByRole('button', { name: 'Create the attribute' }),
     );
@@ -342,6 +345,7 @@ describe("a name generator's prompts", () => {
     expect(
       await dialog.findByRole('alert', undefined, { timeout: 2000 }),
     ).toHaveTextContent(/draft is invalid/);
+    expect(box).toHaveValue('nominated early');
     const picker = dialog.getByRole('combobox', {
       name: 'Create or select an attribute',
     });
