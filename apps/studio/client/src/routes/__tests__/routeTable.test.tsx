@@ -98,6 +98,14 @@ vi.mock('../../lib/auth.ts', () => ({
 
 vi.mock('../../lib/api.ts', () => ({
   orpc: {
+    setup: {
+      status: {
+        queryOptions: () => ({
+          queryKey: ['setup'],
+          queryFn: () => ({ state: 'complete' }),
+        }),
+      },
+    },
     me: {
       queryOptions: () => ({
         queryKey: ['me'],
@@ -628,6 +636,8 @@ describe('every destination in §5.2', () => {
   it.each(DESTINATIONS)(
     'renders $path with exactly one main landmark',
     async ({ url, heading, signedOut, teamless }) => {
+      if (url === '/setup')
+        fixtures.deployment = { mode: 'self-hosted', billing: false };
       if (signedOut) {
         fixtures.getSession.mockResolvedValue({ data: null, error: null });
       }

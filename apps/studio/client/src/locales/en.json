@@ -887,14 +887,6 @@
     "defaultMessage": "Pricing",
     "description": "Name of the Pricing screen at /pricing, used as its heading."
   },
-  "studio.screens.setupDescription": {
-    "defaultMessage": "Configures a freshly installed self-hosted instance: its first owner, its name, and how it sends mail and stores files.",
-    "description": "What the First-run setup screen at /setup will do, shown on it while it is not yet built."
-  },
-  "studio.screens.setupTitle": {
-    "defaultMessage": "First-run setup",
-    "description": "Name of the First-run setup screen at /setup, used as its heading."
-  },
   "studio.screens.signUpCheckoutDescription": {
     "defaultMessage": "Hands off to the payment provider's own checkout, so card details never reach Studio.",
     "description": "What the Checkout screen at /sign-up/checkout will do, shown on it while it is not yet built."
@@ -1070,6 +1062,98 @@
   "studio.screens.templatesTitle": {
     "defaultMessage": "Templates",
     "description": "Name of the Templates screen at /templates, used as its heading."
+  },
+  "studio.setup.complete": {
+    "defaultMessage": "Setup is complete. Sign in to continue.",
+    "description": "Confirmation after setup, also shown when reopening the completed setup page."
+  },
+  "studio.setup.email": {
+    "defaultMessage": "Email address",
+    "description": "Label for the first owner email address."
+  },
+  "studio.setup.emailHint": {
+    "defaultMessage": "The address you will use to sign in.",
+    "description": "Hint for the first owner email address."
+  },
+  "studio.setup.failed": {
+    "defaultMessage": "Setup could not be completed. Check the details and try again.",
+    "description": "Safe form error when the setup request fails."
+  },
+  "studio.setup.heading": {
+    "defaultMessage": "First-run setup",
+    "description": "Heading of the self-hosted first-run setup screen."
+  },
+  "studio.setup.instanceName": {
+    "defaultMessage": "Instance name",
+    "description": "Label for the installation and initial team name."
+  },
+  "studio.setup.introduction": {
+    "defaultMessage": "Name this Studio instance and create its first owner account. Your first team will use the same name.",
+    "description": "Explains what completing setup creates."
+  },
+  "studio.setup.loadFailed": {
+    "defaultMessage": "Setup availability could not be checked. Try again.",
+    "description": "Error when the setup state request fails."
+  },
+  "studio.setup.loading": {
+    "defaultMessage": "Checking setup availability…",
+    "description": "Status while the first-run state loads."
+  },
+  "studio.setup.nameHint": {
+    "defaultMessage": "Use 1–120 characters.",
+    "description": "Hint for the instance and owner names."
+  },
+  "studio.setup.nameInvalid": {
+    "defaultMessage": "Enter a name.",
+    "description": "Validation for a name containing only whitespace."
+  },
+  "studio.setup.notFound": {
+    "defaultMessage": "Page not found",
+    "description": "Heading when setup is visited on a managed deployment."
+  },
+  "studio.setup.notFoundDescription": {
+    "defaultMessage": "This page is not available on this server.",
+    "description": "Explanation when setup is visited on a managed deployment."
+  },
+  "studio.setup.ownerName": {
+    "defaultMessage": "Your name",
+    "description": "Label for the first owner display name."
+  },
+  "studio.setup.password": {
+    "defaultMessage": "Password",
+    "description": "Label for the first owner password."
+  },
+  "studio.setup.passwordHint": {
+    "defaultMessage": "Use 12–128 characters.",
+    "description": "Password length hint."
+  },
+  "studio.setup.retry": {
+    "defaultMessage": "Try again",
+    "description": "Retries loading the setup state."
+  },
+  "studio.setup.signIn": {
+    "defaultMessage": "Sign in",
+    "description": "Link from setup to the sign-in screen."
+  },
+  "studio.setup.submit": {
+    "defaultMessage": "Create instance",
+    "description": "Completes the first-run setup form."
+  },
+  "studio.setup.token": {
+    "defaultMessage": "Setup token",
+    "description": "Label for the secret token that authorizes initial setup."
+  },
+  "studio.setup.tokenHint": {
+    "defaultMessage": "Enter the token provided by the person configuring this server.",
+    "description": "Explains where to obtain the setup token."
+  },
+  "studio.setup.tokenInvalid": {
+    "defaultMessage": "That setup token is not valid. Check it and try again.",
+    "description": "Field error when the server refuses the setup token."
+  },
+  "studio.setup.unavailable": {
+    "defaultMessage": "First-run setup is unavailable. If you already have an account, sign in. Otherwise, contact the person configuring this server.",
+    "description": "Shown when the server has existing accounts or is not configured for first-run setup."
   },
   "studio.shell.accountMenuTrigger": {
     "defaultMessage": "Account",

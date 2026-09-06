@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { BootstrapTokenSchema } from '@codaco/studio-rpc';
 import { DEPLOYMENT_MODES } from '@codaco/studio-rpc/surfaces';
 
 import { isProxyAddress } from '../observability/proxy.ts';
@@ -40,6 +41,8 @@ export const serverSchemas = {
    * the default cannot live here.
    */
   STUDIO_DEPLOYMENT_MODE: z.enum(DEPLOYMENT_MODES).optional(),
+
+  STUDIO_BOOTSTRAP_TOKEN: BootstrapTokenSchema.optional(),
 
   // http(s) only: a bare `host:port` parses as a URL whose scheme is the
   // hostname, which the S3 client would then fail on far from here.

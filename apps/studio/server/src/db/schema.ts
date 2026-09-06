@@ -12,6 +12,7 @@ import {
   EXPERIMENT_TABLES,
 } from '../experiment/schema.ts';
 import { FEEDBACK_SIDECAR_SQL, FEEDBACK_TABLES } from '../feedback/schema.ts';
+import { INSTANCE_SIDECAR_SQL, INSTANCE_TABLES } from '../instance/schema.ts';
 import {
   MONITORING_SIDECAR_SQL,
   MONITORING_TABLES,
@@ -69,6 +70,7 @@ export const SCHEMA = {
   ...AUDIT_TABLES,
   ...INVITATION_DELIVERY_TABLES,
   ...PII_TABLES,
+  ...INSTANCE_TABLES,
   schemaFingerprint,
 };
 
@@ -98,6 +100,7 @@ export const SIDECARS = [
   MONITORING_SIDECAR_SQL,
   INVITATION_DELIVERY_SIDECAR_SQL,
   PII_SIDECAR_SQL,
+  INSTANCE_SIDECAR_SQL,
   AUDIT_SIDECAR_SQL,
 ];
 

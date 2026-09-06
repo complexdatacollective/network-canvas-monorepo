@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "id": "0003_instance_bootstrap",
+  "previous": "0002_pii_encryption",
+  "fingerprint": "92f955accacadeda4882e07ef1e71a0f1072b127d22829411e60c6aece1ff6e8",
+  "snapshotHash": "48fb95cabe4b285fb429fe9e20c812eb7352b2e446644c4b52c87539ebc07c00",
+  "sqlHash": "a2d0553869d9a962cdf3f0a6f008ae9c794c9cdbb6610e015e15d3e56b141c5d",
+  "sidecarsHash": "562790b25925a9604da13c788ccdd8d73798ba1355359f2637bdc75684167587"
+}
