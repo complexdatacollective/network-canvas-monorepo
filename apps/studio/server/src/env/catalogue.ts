@@ -72,6 +72,14 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
       'Never set. It is refused at boot unless `NODE_ENV` is `development` or `test`.',
     devDefault: '1',
   },
+  STUDIO_TELEMETRY: {
+    group: 'Process',
+    summary:
+      'Enable Studio analytics and sanitized exception reporting through the Network Canvas PostHog relay.',
+    deployment:
+      'Unset ⇒ true in BOTH managed and self-hosted deployments. Set false to prevent server and browser SDK initialization, telemetry hooks, timers and relay requests. The browser reads this runtime decision from status before loading its SDK; restart processes and reload open tabs after changing it. No separate browser consent setting or build-time switch exists.',
+    example: 'false',
+  },
   PORT: {
     group: 'Process',
     summary: 'TCP port the HTTP server listens on.',

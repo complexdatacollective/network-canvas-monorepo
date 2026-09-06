@@ -47,11 +47,13 @@ export function getDeploymentStatus(mode: DeploymentMode): DeploymentStatus {
 export function getInstanceStatus(
   auth: AuthCapabilities,
   deployment: DeploymentStatus,
+  telemetry: boolean,
 ): InstanceStatus {
   return {
     name: 'Network Canvas Studio',
     version: STUDIO_VERSION,
     auth,
     deployment,
+    telemetry,
   };
 }

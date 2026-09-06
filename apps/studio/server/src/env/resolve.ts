@@ -36,6 +36,7 @@ export type AuthEnv = {
 // An undefined s3, db, or auth means that surface is not configured and
 // refuses with 503; the server still boots.
 export type StudioEnv = {
+  telemetry: boolean;
   port: number;
   metricsToken: string | undefined;
   trustedProxies: string[];
@@ -244,6 +245,7 @@ export function resolve(raw: RawEnv): StudioEnv {
   }
 
   return {
+    telemetry: raw.STUDIO_TELEMETRY ?? true,
     port: raw.PORT ?? DEFAULT_PORT,
     metricsToken: raw.STUDIO_METRICS_TOKEN,
     trustedProxies: raw.TRUSTED_PROXIES ?? [],
