@@ -10,6 +10,7 @@ import {
 } from '../../fields/sortOrderOptions.ts';
 import MultiSelect, {
   makeMultiSelectValidation,
+  type MultiSelectProps,
   type PropertyField,
 } from '../../form/arrayFields/MultiSelect.tsx';
 import { DialogFormField } from '../../form/DialogForm.tsx';
@@ -19,6 +20,36 @@ const SORT_RULE_PROPERTIES: PropertyField[] = [
   { fieldName: 'property' },
   { fieldName: 'direction' },
 ];
+
+/**
+ * The rules list, with an emptied list spelled the way the protocol spells "no
+ * sort order at all": the key is not there.
+ *
+ * Deleting the last rule is the same decision as switching the group off — this
+ * prompt sorts by nothing in particular — and `MISSING_SORT_PROPERTY_MESSAGE`
+ * offers it as one of the two ways out of a dangling rule, so the two routes
+ * have to leave the prompt in the same state. `sortOrder` is optional in the
+ * prompt schema and an empty array round-trips as a configured-but-empty order:
+ * the group reopens on a list with no rows in it, and an export reader is left
+ * to guess what an order of nothing means.
+ *
+ * Held here rather than in `MultiSelect`, which is the general always-editing
+ * list and has no opinion about what an empty one means, and rather than in
+ * `withoutAbsentValues`, which keeps empty arrays on purpose — "only the field
+ * that owns a list can tell 'emptied on purpose' from 'never used'". This is
+ * that field. `undefined` is what both the row normaliser and
+ * `stageDraftFromSubmission` already read as "the stage holds nothing here".
+ */
+function SortRules({ onChange, ...props }: MultiSelectProps) {
+  return (
+    <MultiSelect
+      {...props}
+      onChange={(next) => {
+        onChange?.(next?.length === 0 ? undefined : next);
+      }}
+    />
+  );
+}
 
 export type SortOrderRowsProps = Readonly<{
   /**
@@ -144,11 +175,11 @@ export default function SortOrderRows({
       disabled={disabled}
       defaultOpen={configured}
     >
-      <DialogFormField<typeof MultiSelect>
+      <DialogFormField<typeof SortRules>
         name={name}
         label={label}
         hint={hint}
-        component={MultiSelect}
+        component={SortRules}
         addButtonLabel={addButtonLabel}
         emptyStateMessage={emptyStateMessage}
         properties={SORT_RULE_PROPERTIES}

@@ -36,7 +36,7 @@ const stageWith = (introScreen: SectionDoc | undefined): SectionDoc =>
 
 function openSession(introScreen: SectionDoc | undefined) {
   return new ProtocolBuilderSessionStore({
-    identity: createStageIdentity('FamilyTreeCensus', () => 'stage-1'),
+    identity: createStageIdentity('FamilyPedigree', () => 'stage-1'),
     fields: stageWith(introScreen),
     protocolSections: {},
     manifestRevision: revision(1n),

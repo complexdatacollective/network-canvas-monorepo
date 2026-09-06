@@ -344,7 +344,57 @@ describe('the sort order a prompt carries', () => {
       'Place the people who know each other close together',
     );
   });
+
+  /**
+   * The same answer by the other route. Emptying the list says exactly what
+   * switching the group off says — this prompt sorts by nothing in particular —
+   * and the two have to spell it the same way, or the second way out of a
+   * dangling rule (`MISSING_SORT_PROPERTY_MESSAGE` names both) would leave the
+   * prompt carrying the configured-but-empty order the switch-off avoids.
+   */
+  it('drops the key when the researcher deletes the last rule', async () => {
+    const harness = renderStageEditor(seededWithARule());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    await removeTheOnlyRule(harness);
+
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Save' }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const saved = savedPrompt(await harness.submit());
+    expect(Object.hasOwn(saved, 'sortOrder')).toBe(false);
+    expect(saved.text).toBe(
+      'Place the people who know each other close together',
+    );
+  });
 });
+
+/**
+ * Deleting the only rule, through the row's own remove control and its
+ * confirmation. Only the confirmation's button is reachable while it is open;
+ * the row's own is inert behind it, so both clicks name the same button.
+ */
+async function removeTheOnlyRule(
+  harness: Readonly<{ user: { click(element: Element): Promise<void> } }>,
+) {
+  await harness.user.click(
+    await screen.findByRole('button', { name: 'Remove item' }),
+  );
+  await harness.user.click(
+    await screen.findByRole('button', { name: 'Remove item' }),
+  );
+  await waitFor(() =>
+    expect(
+      document.querySelectorAll('[data-field-name^="sortOrder["]'),
+    ).toHaveLength(0),
+  );
+}
 
 /**
  * A rule whose attribute has been deleted still has to be readable, fixable,
