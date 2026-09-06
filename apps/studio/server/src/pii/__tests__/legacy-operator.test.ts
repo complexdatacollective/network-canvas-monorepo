@@ -137,6 +137,175 @@ async function withDeployment(
 }
 
 describe('operator-only retained OAuth credentials', () => {
+  it.each(
+    ['studio_app', 'studio_maintenance'].flatMap((role) =>
+      columns.map((field) => ({ role, field })),
+    ),
+  )(
+    'refuses $role clearing retained $field or bypassing the conversion boundary through sibling writes',
+    async ({ role, field }) => {
+      await withDeployment(
+        field,
+        async ({ app, maintenance, operator, keys }) => {
+          const runtime = role === 'studio_app' ? app : maintenance;
+          const column = escapeIdentifier(field);
+          await expect(
+            runtime.query(`UPDATE account SET ${column} = NULL WHERE id = $1`, [
+              accountId,
+            ]),
+          ).rejects.toMatchObject({ code: '42501' });
+          await expect(
+            runtime.query(
+              `UPDATE account SET ${column} = DEFAULT WHERE id = $1`,
+              [accountId],
+            ),
+          ).rejects.toMatchObject({ code: '42501' });
+          await expect(
+            runtime.query(
+              `INSERT INTO account (id, "userId", "accountId", "providerId", ${column}, "updatedAt") VALUES ('runtime-null-token', $1, 'external-new', 'google', NULL, now())`,
+              [userId],
+            ),
+          ).rejects.toMatchObject({ code: '42501' });
+          await expect(
+            runtime.query(
+              `INSERT INTO account (id, "userId", "accountId", "providerId", "updatedAt") VALUES ($1, $2, $1, 'google', now()) ON CONFLICT (id) DO UPDATE SET ${column} = NULL`,
+              [accountId, userId],
+            ),
+          ).rejects.toMatchObject({ code: '42501' });
+          await expect(
+            runtime.query(
+              `MERGE INTO account a USING (VALUES ($1::text)) source(id) ON a.id = source.id WHEN MATCHED THEN UPDATE SET ${column} = NULL`,
+              [accountId],
+            ),
+          ).rejects.toMatchObject({ code: '42501' });
+          await expect(
+            runtime.query(`COPY account (${column}) FROM STDIN`),
+          ).rejects.toMatchObject({ code: '42501' });
+          await expect(
+            runtime.query('TRUNCATE account CASCADE'),
+          ).rejects.toMatchObject({ code: '42501' });
+          await expect(
+            runtime.query(
+              'ALTER TABLE account DISABLE TRIGGER account_audit_deletion',
+            ),
+          ).rejects.toMatchObject({ code: '42501' });
+          expect(
+            (
+              await operator.query(
+                `SELECT ${column} AS token, legacy_tokens_present FROM account WHERE id = $1`,
+                [accountId],
+              )
+            ).rows,
+          ).toEqual([{ token: tokenCanary, legacy_tokens_present: true }]);
+          await expect(
+            initializeEncryption({
+              maintenancePool: maintenance,
+              configuration: configuration(),
+              loadRootKey: async () => rootOne,
+            }),
+          ).rejects.toThrow('Encryption key verification failed');
+          expect(
+            (await operator.query('SELECT action FROM credential_audit_events'))
+              .rows,
+          ).toEqual([]);
+          await expect(
+            migrateLegacyOAuthBatch(operator, keys, { limit: 1 }),
+          ).resolves.toMatchObject({ processed: 1 });
+          expect(
+            (
+              await operator.query(
+                `SELECT ${column} AS token, legacy_tokens_present FROM account WHERE id = $1`,
+                [accountId],
+              )
+            ).rows,
+          ).toEqual([{ token: null, legacy_tokens_present: false }]);
+          expect(
+            (await operator.query('SELECT action FROM credential_audit_events'))
+              .rows,
+          ).toEqual([{ action: 'migrate_legacy' }]);
+        },
+      );
+    },
+  );
+
+  it('retains a trigger boundary against accidental legacy write grants and audits the permitted deletion path', async () => {
+    await withDeployment(
+      'accessToken',
+      async ({ operator, app, maintenance }) => {
+        await operator.query(
+          `UPDATE account SET "refreshToken" = $1, "idToken" = $1`,
+          [tokenCanary],
+        );
+        for (const [role, runtime] of [
+          ['studio_app', app],
+          ['studio_maintenance', maintenance],
+        ] as const) {
+          for (const field of columns) {
+            const column = escapeIdentifier(field);
+            await operator.query(
+              `GRANT INSERT (${column}), UPDATE (${column}) ON account TO ${escapeIdentifier(role)}`,
+            );
+            await expect(
+              runtime.query(`UPDATE account SET ${column} = NULL`),
+            ).rejects.toMatchObject({
+              code: 'P0001',
+              message: 'retained OAuth token writes are forbidden',
+            });
+            await expect(
+              runtime.query(
+                `INSERT INTO account (id, "userId", "accountId", "providerId", ${column}, "updatedAt") VALUES ($1, $2, $1, 'google', $3, now())`,
+                [randomUUID(), userId, tokenCanary],
+              ),
+            ).rejects.toMatchObject({
+              code: 'P0001',
+              message: 'retained OAuth token writes are forbidden',
+            });
+            await operator.query(
+              `REVOKE INSERT (${column}), UPDATE (${column}) ON account FROM ${escapeIdentifier(role)}`,
+            );
+          }
+        }
+        expect(
+          (
+            await operator.query(
+              'SELECT "accessToken", "refreshToken", "idToken", legacy_tokens_present FROM account',
+            )
+          ).rows,
+        ).toEqual([
+          {
+            accessToken: tokenCanary,
+            refreshToken: tokenCanary,
+            idToken: tokenCanary,
+            legacy_tokens_present: true,
+          },
+        ]);
+        await operator.query(
+          'REVOKE INSERT ON credential_audit_events FROM studio_app',
+        );
+        await expect(
+          app.query('DELETE FROM account WHERE id = $1', [accountId]),
+        ).rejects.toMatchObject({ code: '42501' });
+        expect((await operator.query('SELECT id FROM account')).rows).toEqual([
+          { id: accountId },
+        ]);
+        await operator.query(
+          'GRANT INSERT ON credential_audit_events TO studio_app',
+        );
+        await app.query('DELETE FROM account WHERE id = $1', [accountId]);
+        expect((await operator.query('SELECT id FROM account')).rows).toEqual(
+          [],
+        );
+        expect(
+          (
+            await operator.query(
+              'SELECT account_id, action FROM credential_audit_events',
+            )
+          ).rows,
+        ).toEqual([{ account_id: accountId, action: 'delete' }]);
+      },
+    );
+  });
+
   it.each(columns)(
     'keeps retained %s unavailable to the enrolled runtime while the ordinary operator can convert it',
     async (field) => {
@@ -180,6 +349,11 @@ describe('operator-only retained OAuth credentials', () => {
               'UPDATE account SET legacy_tokens_present = false',
             ),
           ).rejects.toMatchObject({ code: '428C9' });
+          await expect(
+            maintenance.query(
+              'UPDATE account SET legacy_tokens_present = DEFAULT',
+            ),
+          ).rejects.toMatchObject({ code: '42501' });
           await expect(
             initializeEncryption({
               maintenancePool: maintenance,

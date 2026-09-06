@@ -185,9 +185,12 @@ legacy condition while retaining all key-proof checks.
 `migrateLegacyOAuthBatch` converts at most 100 accounts per call. It locks the
 row, seals the old values, clears plaintext and appends the immutable audit in
 one transaction; failure preserves the original data. Both `studio_app` and
-`studio_maintenance` refuse SELECT on every retained plaintext token column,
-including SELECT * and predicates that inspect those columns. The ordinary
-runtime login cannot convert them by assuming either role.
+`studio_maintenance` refuse SELECT, INSERT and UPDATE on every retained plaintext
+column, including SELECT *, predicates, explicit NULL/default assignments,
+upserts and COPY. The shared adapter projection grants runtime access only to
+current account columns. A trigger also refuses every runtime change to a
+retained value, including clearing it, if a column grant is mistakenly restored.
+The ordinary runtime login cannot convert them by assuming either role.
 
 Offline conversion alone opens a separate, unpinned operator connection from the
 command's `DATABASE_URL`. That login must connect as itself and own the account
@@ -201,7 +204,7 @@ Verification and rotation continue to use only the pinned maintenance pool;
 the unpinned pool is lazy and is never queried by those operations.
 
 The adapter uses an explicit model projection for every read and RETURNING path. Triggers
-forbid introducing new legacy plaintext and append one immutable deletion audit
+forbid changing retained legacy plaintext and append one immutable deletion audit
 per credential identity, including bulk deletes and user cascades. A failed
 audit insert rolls back the deleting SQL statement.
 

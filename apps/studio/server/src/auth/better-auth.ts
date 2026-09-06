@@ -136,11 +136,10 @@ export function createBetterAuthInstance(
           returned: false,
         },
       },
-      // A Google or Microsoft sign-in whose verified email matches an
-      // existing (verified, e.g. magic-link) user joins that user rather
-      // than erroring: both IdPs verify addresses, so the claim is trusted
-      // as ownership proof even where the id token omits `email_verified`
-      // (some Entra tenants).
+      // Self-hosts do not trust a provider name as proof of an email address.
+      // In particular, an Entra email claim is mutable; the enrollment hook
+      // requires provider-verified email evidence or the existing mailbox-proof
+      // flow. The managed provider policy remains separately configured below.
       accountLinking: {
         enabled: true,
         trustedProviders:
