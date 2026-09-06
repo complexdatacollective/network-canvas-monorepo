@@ -43,9 +43,17 @@ installFatalErrorHandlers({
 // and development serves them from the Vite dev server, which proxies API
 // paths here so both topologies present a single origin.
 
-const env = (() => {
+const { env, mailer } = (() => {
   try {
-    return readEnv();
+    const resolvedEnv = readEnv();
+    // One owned transport serves authentication and the invitation worker.
+    // Validate it before database work or request admission.
+    return {
+      env: resolvedEnv,
+      mailer: resolvedEnv.auth
+        ? createMailer(resolvedEnv.auth.mailer)
+        : undefined,
+    };
   } catch {
     logOperational('STUDIO_CONFIGURATION_INVALID');
     return process.exit(1);
@@ -78,6 +86,7 @@ function startDatabaseWorkers(): void {
     invitationDeliveryWorker ||
     !maintenancePool ||
     !env.auth ||
+    !mailer ||
     env.auth.mailer.kind === 'refuse'
   ) {
     return;
@@ -86,7 +95,7 @@ function startDatabaseWorkers(): void {
     pool: maintenancePool,
     observer: observability.metrics.observer,
     reportError: (error) => telemetry?.capture('server_worker', error),
-    mailer: createMailer(env.auth.mailer),
+    mailer,
     publicBaseUrl: env.auth.baseUrl,
   });
 }
@@ -169,6 +178,7 @@ if (pool) {
 
 const app = createApp(env, {
   telemetry,
+  mailer,
   assetStore,
   observability,
   invitationDeliveryAvailable: Boolean(
@@ -197,6 +207,7 @@ stopServing = () => {
   if ('closeAllConnections' in server) server.closeAllConnections();
   for (const socket of wsServer.clients) socket.terminate();
   void invitationDeliveryWorker?.stop();
+  mailer?.close();
   observability.stop();
 };
 
@@ -212,6 +223,11 @@ function shutdown() {
   shuttingDown = true;
   observability.stop();
   setTimeout(() => process.exit(1), 10_000).unref();
+  const workerStopped = invitationDeliveryWorker?.stop();
+  mailer?.close();
+  const httpClosed = new Promise<void>((resolve, reject) => {
+    server.close((error) => (error ? reject(error) : resolve()));
+  });
   const closing = [...wsServer.clients].map(
     (client) =>
       new Promise<void>((done) => {
@@ -219,25 +235,29 @@ function shutdown() {
         client.close(1001, 'Server shutting down');
       }),
   );
-  void Promise.all(closing).then(() => {
-    server.close(() => {
-      // Suppression summaries use the application pool, so give their
-      // bounded flush a chance to become immutable before closing database
-      // resources. The outer ten-second backstop still caps total shutdown.
-      void Promise.all([
-        invitationDeliveryWorker?.stop(),
-        flushDeniedAuditSummaries(),
-      ])
-        .catch(() => undefined)
-        .then(() => Promise.all([pool?.end(), maintenancePool?.end()]))
-        .catch(() => logOperational('STUDIO_SHUTDOWN_FAILED'))
-        .finally(async () => {
-          await telemetry?.close();
-          process.exit(0);
-        });
-    });
-    return undefined;
-  });
+  wsServer.close();
+  void (async () => {
+    let exitCode = 0;
+    try {
+      await Promise.all([httpClosed, workerStopped, ...closing]);
+      if (!(await flushDeniedAuditSummaries()))
+        throw new Error('Audit summaries did not flush.');
+    } catch {
+      logOperational('STUDIO_SHUTDOWN_FAILED');
+      exitCode = 1;
+    } finally {
+      const ended = await Promise.allSettled([
+        pool?.end(),
+        maintenancePool?.end(),
+        telemetry?.close(),
+      ]);
+      if (ended.some((result) => result.status === 'rejected')) {
+        logOperational('STUDIO_SHUTDOWN_FAILED');
+        exitCode = 1;
+      }
+      process.exit(exitCode);
+    }
+  })();
 }
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
