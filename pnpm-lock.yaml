@@ -1999,9 +1999,6 @@ importers:
       ipaddr.js:
         specifier: ^2.5.0
         version: 2.5.0
-      nodemailer:
-        specifier: 9.0.5
-        version: 9.0.5
       pg:
         specifier: ^8.22.0
         version: 8.22.0
@@ -2027,9 +2024,6 @@ importers:
       '@softwaretechnik/dbml-renderer':
         specifier: 1.0.31
         version: 1.0.31
-      '@types/nodemailer':
-        specifier: 8.0.1
-        version: 8.0.1
       '@types/pg':
         specifier: ^8.20.4
         version: 8.20.4
@@ -3077,6 +3071,9 @@ importers:
       file-type:
         specifier: ^22.0.2
         version: 22.0.2(supports-color@10.2.2)
+      nodemailer:
+        specifier: 9.0.5
+        version: 9.0.5
       pg:
         specifier: ^8.22.0
         version: 8.22.0
@@ -3090,6 +3087,9 @@ importers:
       '@codaco/tsconfig':
         specifier: workspace:^
         version: link:../../tooling/typescript
+      '@types/nodemailer':
+        specifier: 8.0.1
+        version: 8.0.1
       '@types/pg':
         specifier: ^8.20.4
         version: 8.20.4
