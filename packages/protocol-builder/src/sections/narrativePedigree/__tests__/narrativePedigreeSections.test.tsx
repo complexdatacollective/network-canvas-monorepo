@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
@@ -9,7 +9,10 @@ import {
   fixtureProtocolSections,
   loadFixtureStage,
 } from '../../../testing/protocolFixture.ts';
-import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import {
+  renderStageEditor,
+  type StageEditorHarness,
+} from '../../../testing/renderStageEditor.tsx';
 import AtRiskStatusesSection from '../AtRiskStatusesSection.tsx';
 import DiseasesSection from '../DiseasesSection.tsx';
 import SourceStageSection from '../SourceStageSection.tsx';
@@ -375,10 +378,11 @@ describe('a source stage that is no longer usable', () => {
   });
 
   /**
-   * A stage created from the template carries `diseases: []` — nothing is
-   * mapped, so there is nothing for a new source to invalidate. Writing
-   * anyway would spend a marker on a transition that never happens, and the
-   * draft moving under the form takes the choice with it.
+   * A stage created from the template carries `diseases: []`, which the
+   * reset removes like any other value the path holds — so this is the case
+   * where the draft moves under the form at the very moment the researcher is
+   * choosing. It has to be the form's own move and be recognised as one, or
+   * the re-seed writes the choice back to the source they just left.
    */
   it('keeps the first source chosen on a stage that has mapped nothing', async () => {
     const harness = renderStageEditor({
@@ -445,5 +449,157 @@ describe('a source pedigree that changes while this stage is open', () => {
     // would save it as ours.
     expect(dispatch).not.toHaveBeenCalled();
     expect(harness.pendingCommands()).toEqual([]);
+  });
+});
+
+/**
+ * The reset a source change causes is a decision the SESSION holds, not a
+ * clear the form makes on its own.
+ *
+ * `useDiscardStageValues` is the one seam that decision goes through, and it
+ * makes it ONE batch: the chosen pedigree first, the diseases it invalidated
+ * after it. Each part of that is a claim below, because a form-only clear
+ * looks identical on screen and differs only in what the next edit is resolved
+ * against and in what an undo can bring back.
+ */
+describe('the batch a source change makes', () => {
+  const withMissingSource = () => ({
+    stage: narrativePedigreeStageWith({
+      sourceStageId: 'a-pedigree-that-was-deleted',
+    }),
+    sections: narrativePedigreeSections,
+  });
+
+  const draftOf = (harness: StageEditorHarness) =>
+    harness.session.getSnapshot().editedSection.fields;
+
+  /**
+   * The source travels with the clears because it is an ordinary field, which
+   * otherwise waits for the submit that flushes it: sent alone, the clears
+   * would reach a host applying this session's edits live as a stage still
+   * naming the OLD pedigree with none of the diseases that described it, which
+   * is a stage nobody authored.
+   */
+  it('carries the chosen pedigree and the diseases it invalidated together', async () => {
+    const harness = renderStageEditor(withMissingSource());
+
+    await chooseOption(harness, 'Source stage', 'Family Pedigree');
+
+    await waitFor(() => expect(harness.pendingCommands()).toHaveLength(1));
+    expect(
+      harness.pendingCommands().flatMap((batch) => [...batch.commands]),
+    ).toEqual([
+      { op: 'set', key: 'sourceStageId', value: 'family-pedigree-1' },
+      { op: 'unset', key: 'diseases' },
+    ]);
+  });
+
+  /**
+   * The defect a form-only clear leaves behind. A bound list resolves every
+   * insertion against the draft the SESSION holds, so rows the session was
+   * never told about are still there to be resolved against — and the next
+   * disease the researcher describes arrives beside one about the pedigree
+   * they just left.
+   */
+  it('does not bring the old diseases back with the next one added', async () => {
+    const harness = renderStageEditor(withMissingSource());
+    await chooseOption(harness, 'Source stage', 'Family Pedigree');
+    await waitFor(() =>
+      expect(screen.queryByText('Condition X')).not.toBeInTheDocument(),
+    );
+
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Create new disease' }),
+    );
+    const disease = within(await screen.findByRole('dialog'));
+    await harness.user.type(
+      disease.getByRole('textbox', { name: 'Disease name' }),
+      'Cystic fibrosis',
+    );
+    await harness.user.selectOptions(
+      disease.getByRole('combobox', { name: 'Colour' }),
+      'Colour 2',
+    );
+    await harness.user.selectOptions(
+      disease.getByRole('combobox', { name: 'Affected-status attribute' }),
+      'hasConditionX',
+    );
+    await chooseOption(harness, 'Inheritance pattern', 'Autosomal recessive');
+    await harness.user.click(disease.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    expect(draftOf(harness).diseases).toEqual([
+      {
+        id: expect.any(String) as unknown as string,
+        label: 'Cystic fibrosis',
+        color: 'node-color-seq-2',
+        variable: 'hasConditionX',
+        inheritancePattern: 'autosomalRecessive',
+      },
+    ]);
+  });
+
+  /**
+   * Undo is the researcher's way back from a source they did not mean, and it
+   * has to bring back both halves at once: the pedigree they left AND the
+   * diseases that described it. One batch is what makes that a single step.
+   */
+  /**
+   * And the other side of the rule: a reset that finds nothing to throw away
+   * is not a reset, so it writes nothing at all — not even the source that
+   * would have caused it, which goes on waiting for the submit like the
+   * ordinary field it is. The cause travels because a discard does; a batch
+   * carrying it alone would spend a step of the session's history on a change
+   * nothing was lost for.
+   */
+  it('writes nothing when the stage held no diseases to lose', async () => {
+    const seeded = loadFixtureStage('narrative-pedigree-1');
+    const { diseases: _diseases, ...withoutDiseases } = seeded.fields;
+    const harness = renderStageEditor({
+      stage: {
+        id: seeded.id,
+        type: 'NarrativePedigree',
+        fields: {
+          ...withoutDiseases,
+          sourceStageId: 'a-pedigree-that-was-deleted',
+        },
+      },
+      sections: narrativePedigreeSections,
+    });
+
+    await chooseOption(harness, 'Source stage', 'Family Pedigree');
+
+    expect(
+      screen.getByRole('combobox', { name: 'Source stage' }),
+    ).toHaveTextContent('Family Pedigree');
+    expect(harness.pendingCommands()).toEqual([]);
+    expect(harness.liveCommands()).toEqual([]);
+  });
+
+  it('comes back whole, source included, when the session undoes it', async () => {
+    const harness = renderStageEditor(withMissingSource());
+    await chooseOption(harness, 'Source stage', 'Family Pedigree');
+    await waitFor(() =>
+      expect(draftOf(harness).sourceStageId).toBe('family-pedigree-1'),
+    );
+
+    act(() => {
+      harness.session.undo();
+    });
+
+    await waitFor(() =>
+      expect(draftOf(harness)).toMatchObject({
+        sourceStageId: 'a-pedigree-that-was-deleted',
+        diseases: [{ id: 'disease-1', label: 'Condition X' }],
+      }),
+    );
+    // And on screen: the controls are re-seeded from an arrival this form did
+    // not make, so the researcher sees what the undo restored.
+    expect(
+      await screen.findByRole('combobox', { name: 'Source stage' }),
+    ).toHaveTextContent('a-pedigree-that-was-deleted');
+    await screen.findByText('Condition X');
   });
 });

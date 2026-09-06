@@ -1,4 +1,10 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { RELATIONSHIP_TYPE_OPTIONS } from '@codaco/protocol-validation';
@@ -1039,5 +1045,136 @@ describe('what a family member form field’s attribute holds', () => {
       variable: diagnosedOn,
       prompt: 'Q?',
     });
+  });
+});
+
+/**
+ * The node type is what every attribute this stage binds means anything
+ * against, so choosing a different one invalidates all of them at once.
+ *
+ * The throwing away goes through `useDiscardStageValues`, which is the one
+ * seam a reset goes through: ONE batch, carrying the type that caused it in
+ * front of the values it cost, and the form emptied afterwards. Each half of
+ * that is a claim below, because a form-only clear passes the first two
+ * assertions of any test written about what is on screen.
+ */
+describe('a pedigree whose node type changes', () => {
+  /** The one radio that is not already chosen, named for its type. */
+  const chooseNodeType = async (harness: StageEditorHarness, name: string) => {
+    await harness.user.click(screen.getByRole('radio', { name }));
+  };
+
+  const nodeConfigOf = (
+    harness: StageEditorHarness,
+  ): Record<string, unknown> =>
+    isRecord(harness.session.getSnapshot().editedSection.fields.nodeConfig)
+      ? harness.session.getSnapshot().editedSection.fields.nodeConfig
+      : {};
+
+  /**
+   * The whole decision, in the order it happened: this type was chosen, and
+   * therefore these were thrown away.
+   *
+   * The type is in the batch because it is an ordinary field, which otherwise
+   * waits for the submit that flushes it — so a host applying this session's
+   * edits live would be given a pedigree still describing `family_member` with
+   * none of the attributes that described it, which is a stage nobody
+   * authored. `nodeConfig.type` itself is not among the unsets: the researcher
+   * is changing it, not losing it.
+   */
+  it('carries the chosen type and everything it invalidated in one batch', async () => {
+    const harness = renderStageEditor(openWithNominationPrompts());
+
+    await chooseNodeType(harness, 'person');
+
+    await waitFor(() => expect(harness.pendingCommands()).toHaveLength(1));
+    expect(commandsOf(harness)).toEqual([
+      { op: 'set', key: ['nodeConfig', 'type'], value: 'person' },
+      { op: 'unset', key: ['nodeConfig', 'biologicalSexVariable'] },
+      { op: 'unset', key: ['nodeConfig', 'egoVariable'] },
+      { op: 'unset', key: ['nodeConfig', 'nodeLabelVariable'] },
+      { op: 'unset', key: ['nodeConfig', 'relationshipVariable'] },
+      { op: 'unset', key: 'nominationPrompts' },
+    ]);
+  });
+
+  /**
+   * The defect a form-only clear leaves behind, stated as what the researcher
+   * sees.
+   *
+   * A bound list resolves every insertion against the draft the SESSION holds
+   * — that is what stops a row dialog's save from landing on whichever row has
+   * since moved into its position — so a clear the session was never told
+   * about leaves the old rows there to be resolved against, and the next
+   * prompt the researcher writes arrives beside a prompt about the type they
+   * left, asking for an attribute that type no longer has.
+   */
+  it('does not bring a prompt about the old type back with the next one added', async () => {
+    const harness = renderStageEditor(openWithNominationPrompts());
+
+    await chooseNodeType(harness, 'person');
+    await waitFor(() =>
+      expect(
+        screen.queryByText('Who has been unwell?'),
+      ).not.toBeInTheDocument(),
+    );
+
+    await harness.user.click(
+      await screen.findByRole('button', {
+        name: 'Create new nomination prompt',
+      }),
+    );
+    const prompt = within(await screen.findByRole('dialog'));
+    await harness.user.type(
+      prompt.getByRole('textbox', { name: 'Prompt text' }),
+      'Who?',
+    );
+    await harness.user.selectOptions(
+      prompt.getByRole('combobox', { name: 'Attribute' }),
+      'highlighted',
+    );
+    await harness.user.click(prompt.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    expect(
+      harness.session.getSnapshot().editedSection.fields.nominationPrompts,
+    ).toEqual([
+      {
+        id: expect.any(String) as unknown as string,
+        text: 'Who?',
+        variable: 'highlighted',
+      },
+    ]);
+  });
+
+  /**
+   * Undo is the researcher's way back from a type they did not mean, and it
+   * has to bring back BOTH halves: a stage holding the old type's attributes
+   * under the new type is one nobody authored, and so is the new type with
+   * nothing bound to it. One batch is what makes that a single step.
+   */
+  it('comes back whole, type included, when the session undoes it', async () => {
+    const harness = renderStageEditor(openWithNominationPrompts());
+    await chooseNodeType(harness, 'person');
+    await waitFor(() => expect(nodeConfigOf(harness).type).toBe('person'));
+
+    act(() => {
+      harness.session.undo();
+    });
+
+    await waitFor(() =>
+      expect(nodeConfigOf(harness)).toEqual(FIXTURE_NODE_CONFIG),
+    );
+    expect(
+      harness.session.getSnapshot().editedSection.fields.nominationPrompts,
+    ).toEqual(NOMINATION_ROWS);
+    // And on screen, not only in the session: the controls are re-seeded from
+    // an arrival this form did not make.
+    expect(
+      await screen.findByRole('radio', { name: 'family member' }),
+    ).toBeChecked();
+    await screen.findByText('Who has been unwell?');
   });
 });

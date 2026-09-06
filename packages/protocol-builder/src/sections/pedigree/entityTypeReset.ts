@@ -9,7 +9,7 @@ import {
 } from '../../codebook/variableRoles.ts';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import {
-  useClearStageValue,
+  useDiscardStageValues,
   useStageValue,
 } from '../../form/stageFormHooks.ts';
 
@@ -56,6 +56,17 @@ export function usePedigreeVariableIndexes(): Readonly<{
  * AGREED draft as well as the form. Those arrive carrying the configuration
  * that belongs to the type they bring with them, and clearing there would wipe
  * the half of the change the researcher was reaching for.
+ *
+ * The throwing away is `useDiscardStageValues`, which is the one seam a reset
+ * goes through: the SESSION is told, in one batch carrying the type that
+ * caused it, and the form is emptied afterwards. A form-only clear would leave
+ * the draft holding the old type's attributes, and the draft is what a bound
+ * list resolves its next row against and what every field seeds itself from —
+ * so the next form field the researcher adds would bring them back. The type
+ * travels in the same batch because it is an ordinary field, which waits for
+ * the submit that flushes it: sent alone, the clears would reach a
+ * live-applying host as a stage describing the OLD type with none of its
+ * attributes, which is a stage nobody authored.
  */
 export function useResetOnEntityTypeChange(
   typePath: string,
@@ -63,7 +74,7 @@ export function useResetOnEntityTypeChange(
 ): void {
   const { committedFields } = useStageEditorForm();
   const typeValue = useStageValue(typePath);
-  const clearStageValue = useClearStageValue();
+  const discardStageValues = useDiscardStageValues();
   const committedType: unknown = get(committedFields, typePath);
 
   const seenType = useRef(typeValue);
@@ -93,6 +104,9 @@ export function useResetOnEntityTypeChange(
     awaitingReseedTo.current = null;
     if (expected !== null && isEqual(expected.value, typeValue)) return;
 
-    for (const path of latestPaths.current) clearStageValue(path);
-  }, [clearStageValue, committedType, key, typeValue]);
+    discardStageValues(latestPaths.current, {
+      path: typePath,
+      value: typeValue,
+    });
+  }, [committedType, discardStageValues, key, typePath, typeValue]);
 }
