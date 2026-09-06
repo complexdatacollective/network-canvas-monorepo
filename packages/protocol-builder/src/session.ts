@@ -442,6 +442,24 @@ export function stageDocument(
  *   record a new `nodeConfig.type` is exactly the merge-blind write nested
  *   addressing exists to avoid.
  *
+ * A container the draft did not have before is diffed against an EMPTY one,
+ * for the second of those reasons. Said as one `set` of the whole object, it
+ * is a merge-blind write like any other: only a list-valued `set` is merged on
+ * the way out, so a sibling a collaborator wrote under the same container
+ * while this draft was being made — two researchers switching one capability
+ * on within a round trip of each other, each configuring the part of it they
+ * came for — is written straight back out of existence. An empty container is
+ * the exception, because it has no leaf to be said at: what an empty object
+ * means is a question about the document's schema, and the draft holding the
+ * container is the whole of the difference.
+ *
+ * The other direction is deliberately NOT symmetrical: a container the draft
+ * REMOVED is one `unset` of the container, which takes with it whatever the
+ * arrival wrote inside it. Switching a capability off is a decision about the
+ * capability rather than about the fields configured under it, and this is the
+ * merge rule the lists already follow — a row the edit removed goes, whatever
+ * the arrival did to it.
+ *
  * A one-segment path is still spelled as the bare key it always was
  * (`commandTarget`), so everything a top-level field emits is unchanged on the
  * wire and in the command log.
@@ -456,6 +474,9 @@ export function commandsFromDraftChange(
   collectDraftCommands([], previous, next, commands);
   return commands;
 }
+
+/** What a container the draft is creating is diffed against. */
+const EMPTY_CONTAINER: SectionDoc = Object.freeze({});
 
 function collectDraftCommands(
   path: readonly string[],
@@ -481,13 +502,25 @@ function collectDraftCommands(
     ) {
       continue;
     }
+    // The dictionary this key held, as the diff reads it: the one that was
+    // there, or an empty one when the draft is CREATING the container. See
+    // `commandsFromDraftChange` for why a created container is walked at all.
+    const container = isDictionary(before)
+      ? before
+      : before === undefined
+        ? EMPTY_CONTAINER
+        : undefined;
     if (
-      isDictionary(before) &&
+      container !== undefined &&
       isDictionary(after) &&
       here.length < MAX_COMMAND_PATH_SEGMENTS
     ) {
-      collectDraftCommands(here, before, after, commands);
-      continue;
+      const said = commands.length;
+      collectDraftCommands(here, container, after, commands);
+      // A container the draft created with nothing inside it to say — `{}`, or
+      // one holding only undefined members — is a difference all the same, and
+      // the container itself is the only place left to say it.
+      if (commands.length > said || container !== EMPTY_CONTAINER) continue;
     }
     if (Array.isArray(before) && Array.isArray(after)) {
       commands.push(commandForListChange(commandTarget(here), before, after));

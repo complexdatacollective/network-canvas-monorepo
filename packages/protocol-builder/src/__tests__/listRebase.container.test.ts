@@ -18,6 +18,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import {
+  commandsFromDraftChange,
   createStageIdentity,
   ProtocolBuilderSessionStore,
 } from '../session.ts';
@@ -149,6 +150,68 @@ describe('a nested list command whose container the arrival has dropped', () => 
         manifestRevision: revision(2n),
       });
     }).not.toThrow();
+  });
+});
+
+/**
+ * The same container, CREATED on both sides at once.
+ *
+ * Switching a capability on is a container the draft did not have before, and
+ * two researchers can switch the same one on within a round trip of each
+ * other — each configuring the part of it they came for.
+ */
+describe('a container this draft and the arrival both created', () => {
+  it('keeps the leaf the arrival wrote beside the one the draft did', () => {
+    const session = openSession(undefined);
+
+    // The researcher switches the introduction screen on and writes a block
+    // into it, which is one draft change: the container and its list at once.
+    session.dispatch(
+      commandsFromDraftChange(
+        session.getSnapshot().editedSection.fields,
+        stageWith({ items: [block('one')] }),
+      ),
+    );
+
+    // A collaborator switched the same screen on and gave it a title.
+    session.acknowledge({
+      fields: stageWith({ title: 'Welcome' }),
+      throughBatchId: 0,
+      manifestRevision: revision(2n),
+    });
+
+    expect(session.getSnapshot().editedSection.fields.introScreen).toEqual({
+      title: 'Welcome',
+      items: [block('one')],
+    });
+  });
+
+  /**
+   * The other direction, which is the rule this leaves standing: a container
+   * the researcher REMOVED goes whole, taking whatever the arrival wrote
+   * inside it. Switching a capability off is a decision about the capability,
+   * not about the fields that happened to be configured under it when it was
+   * switched off — and leaving the container behind because somebody else had
+   * just written a leaf into it would say the switch never happened.
+   */
+  it('removes a container the draft dropped, and the leaf the arrival wrote in it', () => {
+    const session = openSession({ items: [block('one')] });
+    session.dispatch(
+      commandsFromDraftChange(
+        session.getSnapshot().editedSection.fields,
+        stageWith(undefined),
+      ),
+    );
+
+    session.acknowledge({
+      fields: stageWith({ items: [block('one')], title: 'Welcome' }),
+      throughBatchId: 0,
+      manifestRevision: revision(2n),
+    });
+
+    expect(
+      session.getSnapshot().editedSection.fields.introScreen,
+    ).toBeUndefined();
   });
 });
 
