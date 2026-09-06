@@ -30,6 +30,7 @@
     "encryption": "node --env-file-if-exists=.env src/encryption.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-kms": "3.1102.0",
     "@aws-sdk/client-s3": "^3.1101.0",
     "@codaco/protocol-utilities": "workspace:^",
     "@codaco/protocol-validation": "workspace:^",

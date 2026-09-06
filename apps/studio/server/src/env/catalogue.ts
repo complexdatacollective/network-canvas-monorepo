@@ -61,8 +61,51 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
     summary:
       'Versioned encryption keyset JSON; contains key IDs and namespaced environment references, never root material.',
     deployment:
-      'Required when a database is configured. Every roots[].reference must name a STUDIO_ENCRYPTION_ROOT_* environment value holding a canonical base64 32-byte root. Studio verifies stored key proofs before auth, workers or traffic. Operator commands never choose public defaults; explicit local development may use the public fixture keyset. See server/src/pii/README.md for configuration and backup custody.',
+      'Required when a database is configured. Every roots[].reference must name a STUDIO_ENCRYPTION_ROOT_* environment value holding a canonical base64 32-byte root, or KMS ciphertext when STUDIO_ENCRYPTION_KEY_PROVIDER=aws-kms. Studio verifies stored key proofs before auth, workers or traffic. Operator commands never choose public defaults; explicit local development may use the public fixture keyset. See server/src/pii/README.md for configuration and backup custody.',
     example: 'REPLACE_WITH_KEYSET_JSON',
+  },
+  STUDIO_ENCRYPTION_KEY_PROVIDER: {
+    group: 'Database',
+    summary: 'Root key loader: environment (default) or aws-kms.',
+    deployment:
+      'Available with either deployment mode. KMS uses only explicit provider credentials and a fixed regional AWS endpoint; it never falls back to environment plaintext or development roots.',
+    example: 'environment',
+  },
+  STUDIO_ENCRYPTION_KMS_KEY_ARN: {
+    group: 'Database',
+    summary: 'Exact symmetric AWS KMS key ARN; mutable aliases are refused.',
+    deployment:
+      'Required for aws-kms. The ARN fixes the AWS commercial region, account and key. Grant only kms:Decrypt on this key with the documented encryption-context conditions.',
+    example: 'REPLACE_WITH_KMS_KEY_ARN',
+  },
+  STUDIO_ENCRYPTION_KMS_DEPLOYMENT: {
+    group: 'Database',
+    summary:
+      'Public deployment identifier authenticated in the KMS encryption context.',
+    deployment:
+      'Required for aws-kms. Use a stable lower-case identifier (up to 63 letters, digits or hyphens, starting with a letter), unique to the environment. It must match root wrapping and IAM conditions. Never use participant data.',
+    example: 'studio-staging',
+  },
+  STUDIO_ENCRYPTION_KMS_ACCESS_KEY_ID: {
+    group: 'Database',
+    summary: 'Dedicated KMS principal access key ID.',
+    deployment:
+      'Required for aws-kms. This identity is separate from R2/S3 and backup credentials. Supply through the deployment secret facility; ambient AWS profiles or metadata are never used.',
+    example: 'REPLACE_WITH_KMS_ACCESS_KEY_ID',
+  },
+  STUDIO_ENCRYPTION_KMS_SECRET_ACCESS_KEY: {
+    group: 'Database',
+    summary: 'Dedicated KMS principal secret access key.',
+    deployment:
+      'Required for aws-kms. Store in the deployment secret facility and rotate the credential independently of wrapped application roots. Never pass it as a command-line argument.',
+    example: 'REPLACE_WITH_KMS_SECRET_ACCESS_KEY',
+  },
+  STUDIO_ENCRYPTION_KMS_SESSION_TOKEN: {
+    group: 'Database',
+    summary: 'Session token when the KMS principal uses temporary credentials.',
+    deployment:
+      'Set with the matching temporary access key and secret. Refresh the complete credential set before expiry; unavailable credentials cause a startup refusal.',
+    example: 'REPLACE_WITH_KMS_SESSION_TOKEN',
   },
   NODE_ENV: {
     group: 'Process',
