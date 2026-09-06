@@ -1,5 +1,7 @@
 import { Fragment, type CSSProperties } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Icon from '@codaco/fresco-ui/Icon';
 import Node, {
   NodeColors,
@@ -17,6 +19,22 @@ import type {
   RuleDescriptionEntity,
   RuleDescriptionOperand,
 } from './ruleDescription.ts';
+import { ruleSubjectMessages } from './ruleMessages.ts';
+
+const messages = defineMessages({
+  attribute: {
+    id: 'protocolBuilder.rulePreview.attribute',
+    defaultMessage: '{label} (attribute type: {type})',
+    description:
+      'Read out in place of the attribute chip in a rule preview, so assistive technology says what kind of attribute it is as well as its name. label is the researcher’s own name for the attribute; type is the schema’s own word for the kind of value it holds — text, number, boolean, ordinal, categorical, datetime, scalar, location or layout — and is not translated.',
+  },
+  attributeMissing: {
+    id: 'protocolBuilder.rulePreview.attributeMissing',
+    defaultMessage: '{label} (attribute is no longer in the codebook)',
+    description:
+      'Read out in place of the attribute chip in a rule preview when the protocol’s codebook no longer describes that attribute, so its kind cannot be named. label is the researcher’s own name for the attribute.',
+  },
+});
 
 type ProtocolIconStyle = CSSProperties & {
   '--icon-tone-primary'?: string;
@@ -80,11 +98,15 @@ function RuleEntity({ entity }: { entity: RuleDescriptionEntity }) {
  * naming a type it cannot know.
  */
 function RuleAttribute({ attribute }: { attribute: RuleDescriptionAttribute }) {
+  const intl = useAppIntl();
   // A name followed by a labelled value, rather than a sentence assembled
   // around the type: nothing here has to agree grammatically with a type name.
   const description = attribute.missing
-    ? `${attribute.label} (attribute is no longer in the codebook)`
-    : `${attribute.label} (attribute type: ${attribute.type ?? 'text'})`;
+    ? intl.formatMessage(messages.attributeMissing, { label: attribute.label })
+    : intl.formatMessage(messages.attribute, {
+        label: attribute.label,
+        type: attribute.type ?? 'text',
+      });
 
   return (
     <span
@@ -188,6 +210,7 @@ export default function RulePreview({
   description,
   variant = 'default',
 }: RulePreviewProps) {
+  const intl = useAppIntl();
   const { entity, attribute, operator, operand, columns } = description;
   const isSummary = variant === 'summary';
   const isEgo = description.target === 'ego';
@@ -197,18 +220,30 @@ export default function RulePreview({
   // and no connector is written before it.
   const { attributePresence } = description;
 
-  const subject = (
-    <>
-      {entity !== undefined && <RuleEntity entity={entity} />}
-      {attribute !== undefined && !attributePresence && (
-        <>
-          {' '}
-          <span>{isEgo ? 'has' : 'where'}</span>{' '}
-          <RuleAttribute attribute={attribute} />
-        </>
-      )}
-    </>
-  );
+  // The connecting word and the two things it connects are ONE message, with
+  // the entity and the attribute passed in as the markup they are: a node
+  // glyph beside its type name, and the attribute's own chip. Written as
+  // markup with the word between them, a translator could not move it.
+  const subject =
+    attribute !== undefined && !attributePresence ? (
+      intl.formatMessage(
+        entity === undefined
+          ? isEgo
+            ? ruleSubjectMessages.egoAttributeUnknownEntity
+            : ruleSubjectMessages.alterAttributeUnknownEntity
+          : isEgo
+            ? ruleSubjectMessages.egoAttribute
+            : ruleSubjectMessages.alterAttribute,
+        {
+          ...(entity === undefined
+            ? {}
+            : { entity: <RuleEntity key="entity" entity={entity} /> }),
+          attribute: <RuleAttribute key="attribute" attribute={attribute} />,
+        },
+      )
+    ) : entity === undefined ? null : (
+      <RuleEntity entity={entity} />
+    );
   const predicate = <span data-rule-part="operator">{operator.text}</span>;
   const value =
     attributePresence && attribute !== undefined ? (

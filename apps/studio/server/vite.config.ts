@@ -1,10 +1,14 @@
 import { defineConfig } from 'vite';
 
+import { studioSourceMaps } from '../scripts/telemetry-plugins.ts';
+import { version } from './package.json';
+
 // Server bundle. npm dependencies stay external (installed in the Docker image
 // via `pnpm deploy`); workspace packages must be bundled, because `pnpm deploy`
 // installs them as source and Node refuses to type-strip under node_modules —
 // anything left external here dies at boot in the image.
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
+  plugins: studioSourceMaps(mode, import.meta.dirname, version),
   build: {
     ssr: 'src/index.ts',
     outDir: 'dist',
@@ -19,4 +23,4 @@ export default defineConfig({
       '@codaco/studio-sync',
     ],
   },
-});
+}));

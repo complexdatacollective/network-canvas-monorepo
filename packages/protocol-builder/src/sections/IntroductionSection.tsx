@@ -1,3 +1,5 @@
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 
 import RichTextField from '../fields/RichTextField.tsx';
@@ -14,33 +16,55 @@ const TEXT_FIELD = 'introductionPanel.text';
  */
 const TITLE_LIMIT = 50;
 
-export type IntroductionCopy = Readonly<{
-  /** Names the section in the outline and to assistive technology. */
-  sectionTitle: string;
-  description: string;
-  titleLabel: string;
-  titleHint: string;
-  titlePlaceholder: string;
-  textLabel: string;
-  textHint: string;
-  textPlaceholder: string;
-}>;
-
-const DEFAULT_COPY: IntroductionCopy = {
-  sectionTitle: 'Task introduction',
-  description: 'Introduce this task to the participant before they start it.',
-  titleLabel: 'Introduction heading',
-  titleHint: 'The heading shown at the top of the introduction screen.',
-  titlePlaceholder: 'Enter a heading...',
-  textLabel: 'Introduction text',
-  textHint:
-    'Explain what the participant is about to do. This is the only thing they will read before the task begins.',
-  textPlaceholder: 'Enter your introduction here...',
-};
-
-export type IntroductionSectionProps = Readonly<{
-  copy?: Partial<IntroductionCopy>;
-}>;
+const messages = defineMessages({
+  title: {
+    id: 'protocolBuilder.introduction.title',
+    defaultMessage: 'Task introduction',
+    description:
+      'Heading of the section where a researcher writes what a participant reads before this step of the interview begins.',
+  },
+  description: {
+    id: 'protocolBuilder.introduction.description',
+    defaultMessage:
+      'Introduce this task to the participant before they start it.',
+    description: 'Description of the task-introduction section.',
+  },
+  headingLabel: {
+    id: 'protocolBuilder.introduction.headingLabel',
+    defaultMessage: 'Introduction heading',
+    description:
+      'Label of the field holding the heading at the top of the introduction screen a participant reads.',
+  },
+  headingHint: {
+    id: 'protocolBuilder.introduction.headingHint',
+    defaultMessage: 'The heading shown at the top of the introduction screen.',
+    description: 'Guidance under the introduction-heading field.',
+  },
+  headingPlaceholder: {
+    id: 'protocolBuilder.introduction.headingPlaceholder',
+    defaultMessage: 'Enter a heading...',
+    description:
+      'Placeholder shown in the empty introduction-heading field. The trailing dots are an ellipsis written as three full stops.',
+  },
+  textLabel: {
+    id: 'protocolBuilder.introduction.textLabel',
+    defaultMessage: 'Introduction text',
+    description:
+      'Label of the field holding the prose a participant reads before this step of the interview begins.',
+  },
+  textHint: {
+    id: 'protocolBuilder.introduction.textHint',
+    defaultMessage:
+      'Explain what the participant is about to do. This is the only thing they will read before the task begins.',
+    description: 'Guidance under the introduction-text field.',
+  },
+  textPlaceholder: {
+    id: 'protocolBuilder.introduction.textPlaceholder',
+    defaultMessage: 'Enter your introduction here...',
+    description:
+      'Placeholder shown in the empty introduction-text field. The trailing dots are an ellipsis written as three full stops.',
+  },
+});
 
 /**
  * What the participant reads before this stage's task begins.
@@ -56,28 +80,29 @@ export type IntroductionSectionProps = Readonly<{
  * leaving one half unrendered would keep it rather than blank it — this is
  * about what the researcher can author, not about what the draft preserves.)
  */
-export default function IntroductionSection({
-  copy,
-}: IntroductionSectionProps) {
-  const words = { ...DEFAULT_COPY, ...copy };
+export default function IntroductionSection() {
+  const intl = useAppIntl();
 
   return (
-    <BuilderSection title={words.sectionTitle} description={words.description}>
+    <BuilderSection
+      title={intl.formatMessage(messages.title)}
+      description={intl.formatMessage(messages.description)}
+    >
       <ProtocolField<typeof InputField>
         name={TITLE_FIELD}
         component={InputField}
-        label={words.titleLabel}
-        hint={words.titleHint}
-        placeholder={words.titlePlaceholder}
+        label={intl.formatMessage(messages.headingLabel)}
+        hint={intl.formatMessage(messages.headingHint)}
+        placeholder={intl.formatMessage(messages.headingPlaceholder)}
         required
         maxLength={TITLE_LIMIT}
       />
       <ProtocolField<typeof RichTextField>
         name={TEXT_FIELD}
         component={RichTextField}
-        label={words.textLabel}
-        hint={words.textHint}
-        placeholder={words.textPlaceholder}
+        label={intl.formatMessage(messages.textLabel)}
+        hint={intl.formatMessage(messages.textHint)}
+        placeholder={intl.formatMessage(messages.textPlaceholder)}
         required
       />
     </BuilderSection>

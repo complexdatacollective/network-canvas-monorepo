@@ -2,8 +2,13 @@ import type { TeamRole } from '@codaco/studio-rpc';
 import {
   createSmtpEmailSender,
   type EmailSender,
+  type EmailAddress,
   validateEmailAddress,
 } from '@codaco/studio-sync/email-sender';
+import {
+  createPostmarkEmailSender,
+  validatePostmarkFrom,
+} from '@codaco/studio-sync/postmark-email-sender';
 
 import type { MailerEnv } from '../env.ts';
 
@@ -43,12 +48,11 @@ export function createConsoleMailer(): StudioMailer {
   };
 }
 
-function createSmtpMailer(
-  smtpUrl: string,
-  configuredFrom: string,
+function createTransportMailer(
+  sender: EmailSender,
+  configuredFrom: string | EmailAddress,
 ): StudioMailer {
   const from = validateEmailAddress(configuredFrom);
-  const sender = createSmtpEmailSender({ url: smtpUrl });
   return {
     close: () => sender.close(),
     sendMagicLink: async ({ email, url }) => {
@@ -103,11 +107,13 @@ function createRefusingMailer(): StudioMailer {
     close() {},
     sendMagicLink: () =>
       Promise.reject(
-        new Error('No SMTP transport is configured; cannot send sign-in email'),
+        new Error(
+          'No email transport is configured; cannot send sign-in email',
+        ),
       ),
     sendTeamInvitation: () =>
       Promise.reject(
-        new Error('No SMTP transport is configured; cannot send invitation'),
+        new Error('No email transport is configured; cannot send invitation'),
       ),
   };
 }
@@ -115,7 +121,18 @@ function createRefusingMailer(): StudioMailer {
 export function createMailer(mailer: MailerEnv): StudioMailer {
   switch (mailer.kind) {
     case 'smtp':
-      return createSmtpMailer(mailer.url, mailer.from);
+      return createTransportMailer(
+        createSmtpEmailSender({ url: mailer.url }),
+        mailer.from,
+      );
+    case 'postmark':
+      return createTransportMailer(
+        createPostmarkEmailSender({
+          serverToken: mailer.serverToken,
+          messageStream: mailer.messageStream,
+        }),
+        validatePostmarkFrom(mailer.from),
+      );
     case 'console':
       return createConsoleMailer();
     case 'refuse':

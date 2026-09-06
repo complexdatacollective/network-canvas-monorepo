@@ -1,5 +1,8 @@
 import { type ComponentType, useEffect, useRef, useState } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
@@ -11,9 +14,9 @@ import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import ResourcePickerControl from '../../resources/components/ResourcePickerControl.tsx';
 import type { RowEditorProps } from '../rowRenderers.tsx';
 import {
-  CONTENT_BLOCK_KIND_OPTIONS,
-  CONTENT_BLOCK_SIZE_OPTIONS,
   CONTENT_BLOCK_SLOTS,
+  contentBlockKindOptions,
+  contentBlockSizeOptions,
   type ContentBlockKind,
   type ContentDraftOutcome,
   contentKindChangedAnnouncement,
@@ -30,6 +33,135 @@ const ResourcePicker = ResourcePickerControl as ComponentType<
   Record<string, unknown>
 >;
 
+const messages = defineMessages({
+  sectionTitle: {
+    id: 'protocolBuilder.contentBlock.sectionTitle',
+    defaultMessage: 'Block details',
+    description:
+      'Heading of the dialog where a researcher says what one piece of a page holds and provides it.',
+  },
+  sectionDescription: {
+    id: 'protocolBuilder.contentBlock.sectionDescription',
+    defaultMessage:
+      'Choose what kind of content this block holds, and provide the content itself.',
+    description: 'Description under the block-details heading.',
+  },
+  kindLabel: {
+    id: 'protocolBuilder.contentBlock.kindLabel',
+    defaultMessage: 'Content type',
+    description:
+      'Label of the control choosing what kind of thing one piece of a page holds — a picture, a video, an audio recording, prose.',
+  },
+  kindHint: {
+    id: 'protocolBuilder.contentBlock.kindHint',
+    defaultMessage: 'Choose what this block shows the participant.',
+    description: 'Guidance under the content-type control.',
+  },
+  kindRequired: {
+    id: 'protocolBuilder.contentBlock.kindRequired',
+    defaultMessage: 'Choose what kind of content this block holds.',
+    description:
+      'Refusal shown under the content-type control when the researcher has chosen nothing.',
+  },
+  unusableTitle: {
+    id: 'protocolBuilder.contentBlock.unusableTitle',
+    defaultMessage: 'This block cannot be shown',
+    description:
+      'Warning heading shown when a piece of a page points at a file the page cannot present.',
+  },
+  missingResource: {
+    id: 'protocolBuilder.contentBlock.missingResource',
+    defaultMessage:
+      'This block’s resource is no longer in this protocol. Choose a content type above to replace it.',
+    description:
+      'Warning body shown when a piece of a page points at a file that has been deleted from the protocol, so it needs replacing.',
+  },
+  unpresentableResource: {
+    id: 'protocolBuilder.contentBlock.unpresentableResource',
+    defaultMessage:
+      'This block’s resource is not an image, audio or video file, so this block cannot show it. Choose a content type above to replace it.',
+    description:
+      'Warning body shown when a piece of a page points at a file that IS in the protocol but is not something a page can present — a roster of people, a map layer, a key. Distinct from a deleted file, because there is nothing missing to go looking for.',
+  },
+  contentLabel: {
+    id: 'protocolBuilder.contentBlock.contentLabel',
+    defaultMessage: 'Content',
+    description:
+      'Label of the control holding what one piece of a page actually shows, whichever kind it is.',
+  },
+  textHint: {
+    id: 'protocolBuilder.contentBlock.textHint',
+    defaultMessage:
+      'What the participant reads when they reach this block. Supports markdown formatting.',
+    description:
+      'Guidance under the control holding the prose of a text block. Markdown is the name of the formatting syntax and is not translated.',
+  },
+  textPlaceholder: {
+    id: 'protocolBuilder.contentBlock.textPlaceholder',
+    defaultMessage: 'Enter the text for this block...',
+    description:
+      'Placeholder shown in the empty prose control of a text block. The trailing dots are an ellipsis written as three full stops.',
+  },
+  textRequired: {
+    id: 'protocolBuilder.contentBlock.textRequired',
+    defaultMessage: 'Write the text this block shows.',
+    description:
+      'Refusal shown under the prose control of a text block when it has been left empty.',
+  },
+  imageHint: {
+    id: 'protocolBuilder.contentBlock.imageHint',
+    defaultMessage:
+      'The image the participant sees when they reach this block.',
+    description:
+      'Guidance under the file picker of a block that shows a picture.',
+  },
+  imageRequired: {
+    id: 'protocolBuilder.contentBlock.imageRequired',
+    defaultMessage: 'Choose the image this block shows.',
+    description:
+      'Refusal shown under the file picker of a picture block when nothing has been chosen.',
+  },
+  audioHint: {
+    id: 'protocolBuilder.contentBlock.audioHint',
+    defaultMessage:
+      'The audio the participant can play when they reach this block.',
+    description:
+      'Guidance under the file picker of a block that plays an audio recording.',
+  },
+  audioRequired: {
+    id: 'protocolBuilder.contentBlock.audioRequired',
+    defaultMessage: 'Choose the audio file this block plays.',
+    description:
+      'Refusal shown under the file picker of an audio block when nothing has been chosen.',
+  },
+  videoHint: {
+    id: 'protocolBuilder.contentBlock.videoHint',
+    defaultMessage:
+      'The video the participant can play when they reach this block.',
+    description:
+      'Guidance under the file picker of a block that plays a video.',
+  },
+  videoRequired: {
+    id: 'protocolBuilder.contentBlock.videoRequired',
+    defaultMessage: 'Choose the video this block plays.',
+    description:
+      'Refusal shown under the file picker of a video block when nothing has been chosen.',
+  },
+  sizeLabel: {
+    id: 'protocolBuilder.contentBlock.sizeLabel',
+    defaultMessage: 'Display size',
+    description:
+      'Label of the control constraining how tall a picture or video is drawn on a page.',
+  },
+  sizeHint: {
+    id: 'protocolBuilder.contentBlock.sizeHint',
+    defaultMessage:
+      'Optionally constrain the height of this block. Full size lets it show at its natural height.',
+    description:
+      'Guidance under the display-size control. "Full size" is the wording of the unconstrained choice it offers.',
+  },
+});
+
 /**
  * What each kind of media block asks for.
  *
@@ -40,20 +172,20 @@ const ResourcePicker = ResourcePickerControl as ComponentType<
 const MEDIA_COPY: Readonly<
   Record<
     Exclude<ContentBlockKind, 'text'>,
-    Readonly<{ hint: string; required: string }>
+    Readonly<{ hint: MessageDescriptor; required: MessageDescriptor }>
   >
 > = Object.freeze({
   image: Object.freeze({
-    hint: 'The image the participant sees when they reach this block.',
-    required: 'Choose the image this block shows.',
+    hint: messages.imageHint,
+    required: messages.imageRequired,
   }),
   audio: Object.freeze({
-    hint: 'The audio the participant can play when they reach this block.',
-    required: 'Choose the audio file this block plays.',
+    hint: messages.audioHint,
+    required: messages.audioRequired,
   }),
   video: Object.freeze({
-    hint: 'The video the participant can play when they reach this block.',
-    required: 'Choose the video this block plays.',
+    hint: messages.videoHint,
+    required: messages.videoRequired,
   }),
 });
 
@@ -68,12 +200,6 @@ const MEDIA_COPY: Readonly<
  * researcher their resource is missing would send them hunting for a deletion
  * that never happened.
  */
-const MISSING_RESOURCE_NOTICE =
-  'This block’s resource is no longer in this protocol. Choose a content type above to replace it.';
-
-const UNPRESENTABLE_RESOURCE_NOTICE =
-  'This block’s resource is not an image, audio or video file, so this block cannot show it. Choose a content type above to replace it.';
-
 const asString = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : undefined;
 
@@ -89,6 +215,7 @@ const asString = (value: unknown): string | undefined =>
  * keeps its draft separately.
  */
 export default function ContentBlockEditor({ item }: RowEditorProps) {
+  const intl = useAppIntl();
   const { identity, protocolContext } = useStageEditorForm();
   // The row's own kind until the control has registered, and the control's
   // afterwards: a field's value reaches the store in an effect, so reading only
@@ -97,7 +224,7 @@ export default function ContentBlockEditor({ item }: RowEditorProps) {
   const registered = useFormStore((state) => state.fields.get('type')?.value);
   const chosen = registered ?? item.type;
   const kind = isContentBlockKind(chosen) ? chosen : undefined;
-  const announcement = useContentKindAnnouncement(kind);
+  const announcement = useContentKindAnnouncement(kind, intl);
 
   // The block points at a resource that names no control: it has content, but
   // the kind it resolved to is not one a page can present. Saying nothing would
@@ -106,13 +233,13 @@ export default function ContentBlockEditor({ item }: RowEditorProps) {
     kind !== undefined || asString(item.content) === undefined
       ? undefined
       : protocolContext.assets[asString(item.content) ?? ''] === undefined
-        ? MISSING_RESOURCE_NOTICE
-        : UNPRESENTABLE_RESOURCE_NOTICE;
+        ? messages.missingResource
+        : messages.unpresentableResource;
 
   return (
     <Section
-      title="Block details"
-      description="Choose what kind of content this block holds, and provide the content itself."
+      title={intl.formatMessage(messages.sectionTitle)}
+      description={intl.formatMessage(messages.sectionDescription)}
     >
       {/* Mounted for the whole dialog rather than beside its first message: a
           live region that appears at the same moment as its text is not
@@ -123,35 +250,35 @@ export default function ContentBlockEditor({ item }: RowEditorProps) {
       <DialogFormField<typeof RadioGroupField>
         name="type"
         component={RadioGroupField}
-        label="Content type"
-        hint="Choose what this block shows the participant."
-        options={CONTENT_BLOCK_KIND_OPTIONS}
-        required="Choose what kind of content this block holds."
+        label={intl.formatMessage(messages.kindLabel)}
+        hint={intl.formatMessage(messages.kindHint)}
+        options={contentBlockKindOptions(intl)}
+        required={intl.formatMessage(messages.kindRequired)}
       />
       {unusable !== undefined && (
         <Alert variant="warning">
-          <AlertTitle>This block cannot be shown</AlertTitle>
-          <AlertDescription>{unusable}</AlertDescription>
+          <AlertTitle>{intl.formatMessage(messages.unusableTitle)}</AlertTitle>
+          <AlertDescription>{intl.formatMessage(unusable)}</AlertDescription>
         </Alert>
       )}
       {kind === 'text' && (
         <DialogFormField<typeof RichTextField>
           name={CONTENT_BLOCK_SLOTS.text}
           component={RichTextField}
-          label="Content"
-          hint="What the participant reads when they reach this block. Supports markdown formatting."
-          placeholder="Enter the text for this block..."
-          required="Write the text this block shows."
+          label={intl.formatMessage(messages.contentLabel)}
+          hint={intl.formatMessage(messages.textHint)}
+          placeholder={intl.formatMessage(messages.textPlaceholder)}
+          required={intl.formatMessage(messages.textRequired)}
         />
       )}
       {kind !== undefined && kind !== 'text' && (
         <DialogFormField<typeof ResourcePicker>
           name={CONTENT_BLOCK_SLOTS[kind]}
           component={ResourcePicker}
-          label="Content"
-          hint={MEDIA_COPY[kind].hint}
+          label={intl.formatMessage(messages.contentLabel)}
+          hint={intl.formatMessage(MEDIA_COPY[kind].hint)}
           kind={kind}
-          required={MEDIA_COPY[kind].required}
+          required={intl.formatMessage(MEDIA_COPY[kind].required)}
         />
       )}
       {pageBlocksCarrySize(identity.type) &&
@@ -159,9 +286,9 @@ export default function ContentBlockEditor({ item }: RowEditorProps) {
           <DialogFormField<typeof RadioGroupField>
             name="size"
             component={RadioGroupField}
-            label="Display size"
-            hint="Optionally constrain the height of this block. Full size lets it show at its natural height."
-            options={CONTENT_BLOCK_SIZE_OPTIONS}
+            label={intl.formatMessage(messages.sizeLabel)}
+            hint={intl.formatMessage(messages.sizeHint)}
+            options={contentBlockSizeOptions(intl)}
             orientation="horizontal"
             initialValue={asString(item.size) ?? ''}
           />
@@ -181,6 +308,7 @@ export default function ContentBlockEditor({ item }: RowEditorProps) {
  */
 function useContentKindAnnouncement(
   kind: ContentBlockKind | undefined,
+  intl: IntlShape,
 ): string {
   const getFieldState = useFormStore((state) => state.getFieldState);
   const [announcement, setAnnouncement] = useState('');
@@ -205,7 +333,7 @@ function useContentKindAnnouncement(
     // the first kind chosen for a new block, or the first for a block whose
     // saved reference could not be resolved.
     if (before === undefined) {
-      setAnnouncement(contentKindChosenAnnouncement(kind));
+      setAnnouncement(contentKindChosenAnnouncement(kind, intl));
       return;
     }
 
@@ -214,8 +342,8 @@ function useContentKindAnnouncement(
       : entered(before)
         ? 'kept'
         : 'empty';
-    setAnnouncement(contentKindChangedAnnouncement(kind, outcome));
-  }, [getFieldState, kind]);
+    setAnnouncement(contentKindChangedAnnouncement(kind, outcome, intl));
+  }, [getFieldState, intl, kind]);
 
   return announcement;
 }

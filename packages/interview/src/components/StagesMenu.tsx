@@ -5,6 +5,7 @@ import { motion, useReducedMotion, type Variants } from 'motion/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { Collection } from '@codaco/fresco-ui/collection/components/Collection';
 import { CollectionFilterInput } from '@codaco/fresco-ui/collection/components/CollectionFilterInput';
 import { ListLayout } from '@codaco/fresco-ui/collection/layout/ListLayout';
@@ -17,6 +18,7 @@ import manifest, {
 } from '@codaco/interface-images/manifest';
 
 import { useCurrentStep } from '../contexts/CurrentStepContext';
+import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 import {
   getSkipMap,
   getStageAvailabilityMap,
@@ -188,6 +190,7 @@ export default function StagesMenu({
   open,
   onClosed,
 }: StagesMenuProps) {
+  const intl = useAppIntl();
   const stages = useSelector(getProtocolStages);
   const { displayedStep: currentStageIndex } = useCurrentStep();
   const availabilityMap = useSelector(getStageAvailabilityMap);
@@ -211,13 +214,15 @@ export default function StagesMenu({
         id: stage.id,
         index,
         type: stage.type,
-        label: stage.label.trim() ? stage.label : 'Untitled stage',
-        position: String(index + 1),
+        label: stage.label.trim()
+          ? stage.label
+          : intl.formatMessage(messages.untitledStage),
+        position: intl.formatNumber(index + 1, { useGrouping: false }),
         isCurrent: index === currentStageIndex,
         isUnavailable: skipMap[index] === true,
         availability: availabilityMap[index] ?? { kind: 'available' },
       })),
-    [stages, currentStageIndex, availabilityMap, skipMap],
+    [stages, currentStageIndex, availabilityMap, skipMap, intl],
   );
 
   const currentId = items[currentStageIndex]?.id;
@@ -343,9 +348,9 @@ export default function StagesMenu({
 
     const availabilityStatus =
       item.availability.kind === 'local-skip'
-        ? 'Hidden by answers'
+        ? intl.formatMessage(messages.hiddenByAnswers)
         : item.availability.kind === 'bypassed'
-          ? 'Outside current path'
+          ? intl.formatMessage(messages.outsideCurrentPath)
           : null;
     const AvailabilityIcon =
       item.availability.kind === 'bypassed' ? RouteOff : EyeOff;
@@ -519,12 +524,12 @@ export default function StagesMenu({
       }}
       onFilterResultsChange={(keys) => setMatchingKeys(keys)}
       id={STAGES_MENU_LIST_ID}
-      aria-label="Interview screens"
+      aria-label={intl.formatMessage(messages.interviewScreens)}
       className="min-h-0 flex-1"
       viewportClassName={isHorizontal ? 'py-6' : 'py-4'}
       emptyState={
         <Paragraph margin="none" className="text-text/70 p-8 text-sm">
-          Nothing matched your search term.
+          <AppMessage message={messages.noSearchMatch} />
         </Paragraph>
       }
     >
@@ -535,7 +540,7 @@ export default function StagesMenu({
           {CollectionElements}
           <div className="border-text/10 shrink-0 border-t p-4">
             <CollectionFilterInput
-              placeholder="Filter..."
+              placeholder={intl.formatMessage(messages.filter)}
               size="sm"
               showResultCount={false}
             />

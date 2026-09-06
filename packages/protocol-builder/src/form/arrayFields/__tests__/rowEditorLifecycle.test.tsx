@@ -15,6 +15,7 @@ import {
   ProtocolBuilderSessionStore,
   SessionReadOnlyError,
 } from '../../../session.ts';
+import { fixtureMessage } from '../../../testing/i18n.ts';
 import { DialogFormField } from '../../DialogForm.tsx';
 import ProtocolArrayField from '../../ProtocolArrayField.tsx';
 import StageEditorShell from '../../StageEditorShell.tsx';
@@ -290,7 +291,7 @@ function renderLifecycleList(session: ProtocolBuilderSession) {
             addButtonLabel="Create new prompt"
             editorTitle="Edit prompt"
             addTitle="Add prompt"
-            itemLabel="prompt"
+            itemLabel={fixtureMessage('prompt')}
             previewComponent={PromptPreview}
             editorFieldsComponent={LifecycleFields}
           />

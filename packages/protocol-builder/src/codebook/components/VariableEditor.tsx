@@ -11,6 +11,8 @@ import {
   useSyncExternalStore,
 } from 'react';
 
+import type { IntlShape } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button, { IconButton } from '@codaco/fresco-ui/Button';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
@@ -212,6 +214,7 @@ export default function VariableEditor(props: VariableEditorProps) {
 }
 
 function VariableEditorInstance(props: VariableEditorInstanceProps) {
+  const intl = useAppIntl();
   const {
     subject,
     authoritativeDocument,
@@ -465,7 +468,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
     // schema takes any string as a label, so nothing downstream refuses an
     // answer with no words on it.
     if (optionsShape === 'boolean') {
-      const answerIssues = validateBooleanAnswers(snapshot.draft.options);
+      const answerIssues = validateBooleanAnswers(snapshot.draft.options, intl);
       if (hasBooleanAnswerIssues(answerIssues)) {
         activeRequestId.current = null;
         setIssues(
@@ -487,6 +490,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
       const parameterIssues = validateParameters(
         parameterShape,
         snapshot.draft.parameters,
+        intl,
       );
       if (hasParameterIssues(parameterIssues)) {
         activeRequestId.current = null;
@@ -560,7 +564,11 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
   const answerIssues = booleanAnswerMessages(issues);
   const parameterIssues = parameterMessages(issues);
   const contradictions = contradictionMessages(issues);
-  const failurePresentation = failureFrom(snapshot.lastFailure, contradictions);
+  const failurePresentation = failureFrom(
+    snapshot.lastFailure,
+    contradictions,
+    intl,
+  );
 
   return (
     <Surface
@@ -1161,6 +1169,7 @@ function contradictionMessages(
 function failureFrom(
   failure: AuxiliaryCodebookDraftFailure | null,
   contradictions: readonly string[],
+  intl: IntlShape,
 ): Readonly<{
   variant: 'warning' | 'destructive';
   messages: readonly string[];
@@ -1172,7 +1181,7 @@ function failureFrom(
   const held = failure.kind === 'result' && failure.result.status === 'blocked';
   return {
     variant: held ? 'warning' : 'destructive',
-    messages: [compoundFailureMessage(failure)],
+    messages: [compoundFailureMessage(failure, intl)],
   };
 }
 

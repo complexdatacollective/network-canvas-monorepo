@@ -1,11 +1,14 @@
 'use client';
-
 import { AnimatePresence, motion } from 'motion/react';
+import type { ComponentProps } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
+import type { IntlShape } from '@codaco/app-i18n/messages';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
+import type { FieldProps } from '@codaco/fresco-ui/form/Field/types';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 import UINode from '@codaco/fresco-ui/Node';
@@ -24,6 +27,7 @@ import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import { buildVariableLabels } from '../../forms/buildVariableLabels';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useStageSelector } from '../../hooks/useStageSelector';
+import { resolveInterviewIntl } from '../../i18n/resolveIntl';
 import {
   getValidationContext,
   selectValidationMetadataForVariable,
@@ -42,6 +46,7 @@ import { updateNode } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import type { StageProps } from '../../types';
 import { getNodeLabelAttribute } from '../../utils/getNodeLabelAttribute';
+import { interfaceMessages } from '../messages';
 import CategoricalBinItem from './components/CategoricalBinItem';
 import { useCategoricalBins } from './useCategoricalBins';
 
@@ -85,6 +90,7 @@ type CategoricalBinPrompts = Extract<
 const getNodeLabel = (
   node: NcNode,
   getCodebook: ReturnType<typeof makeGetCodebookForNodeType.resultFunc>,
+  intl?: IntlShape,
 ): string => {
   const codebook = getCodebook(node.type);
   const attributes = node[entityAttributesProperty];
@@ -100,8 +106,35 @@ const getNodeLabel = (
     }
   }
 
-  return codebook?.name ?? 'Node';
+  return (
+    codebook?.name ??
+    resolveInterviewIntl(intl).formatMessage(interfaceMessages.node)
+  );
 };
+
+// Queued dialog children subscribe themselves, so the placeholder and fallback
+// label follow a locale switch while the participant keeps their entered answer.
+function OtherResponseField(props: FieldProps<typeof InputField>) {
+  const intl = useAppIntl();
+  return (
+    <Field
+      {...props}
+      placeholder={intl.formatMessage(interfaceMessages.responsePlaceholder)}
+    />
+  );
+}
+
+function OtherResponseNode({
+  node,
+  getCodebook,
+  ...props
+}: Omit<ComponentProps<typeof UINode>, 'label'> & {
+  node: NcNode;
+  getCodebook: ReturnType<typeof makeGetCodebookForNodeType.resultFunc>;
+}) {
+  const intl = useAppIntl();
+  return <UINode {...props} label={getNodeLabel(node, getCodebook, intl)} />;
+}
 
 const CategoricalBin = (_props: CategoricalBinStageProps) => {
   const [expandedBinIndex, setExpandedBinIndex] = useState<number | null>(null);
@@ -256,11 +289,13 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
 
       const result = await openDialog({
         type: 'form',
-        title: 'Specify other',
+        title: <AppMessage message={interfaceMessages.specifyOther} />,
         children: (
           <div className="flex items-start gap-4">
             <div className="shrink-0">
-              <UINode
+              <OtherResponseNode
+                node={node}
+                getCodebook={getCodebookForNodeType}
                 color={nodeColor}
                 shape={
                   nodeTypeDefinition
@@ -270,12 +305,10 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
                       )
                     : undefined
                 }
-                label={getNodeLabel(node, getCodebookForNodeType)}
               />
             </div>
-            <Field
+            <OtherResponseField
               label={otherVariablePrompt}
-              placeholder="Enter your response here..."
               component={InputField}
               name={otherVariable}
               nameMode="opaque"

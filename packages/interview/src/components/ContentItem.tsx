@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useSelector } from 'react-redux';
 
+import { AppMessage } from '@codaco/app-i18n/react';
 import {
   ALLOWED_MARKDOWN_SECTION_TAGS,
   RenderMarkdown,
@@ -15,6 +16,7 @@ import type { Item } from '@codaco/protocol-validation';
 import { useCaptureException } from '../analytics/useTrack';
 import { useContractFlags } from '../contract/context';
 import { useAssetUrl } from '../hooks/useAssetUrl';
+import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 import { getAssetManifest } from '../store/modules/protocol';
 
 // UploadThing's CDN serves files uploaded via the `blob` router with an invalid
@@ -79,14 +81,14 @@ function getE2EVideoBoxClass(size: string | undefined): string {
   );
 }
 
-function ItemFallback({ message }: { message: string }) {
+function ItemFallback() {
   return (
     <div
       data-testid="information-item-fallback"
       className="border-accent flex items-center justify-center rounded border border-dashed p-4"
     >
       <Paragraph intent="smallText" className="text-center">
-        {message}
+        <AppMessage message={messages.itemUnavailable} />
       </Paragraph>
     </div>
   );
@@ -122,12 +124,14 @@ function VideoPlayer({
       {state === 'loading' && !isE2E && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
           <Spinner size="lg" />
-          <Paragraph intent="smallText">Loading video...</Paragraph>
+          <Paragraph intent="smallText">
+            <AppMessage message={messages.loadingVideo} />
+          </Paragraph>
         </div>
       )}
       {state === 'error' && (
         <Paragraph intent="smallText" className="text-center">
-          Video could not be loaded.
+          <AppMessage message={messages.videoUnavailable} />
         </Paragraph>
       )}
       <video
@@ -170,7 +174,7 @@ function AssetItem({ item, isE2E }: { item: Item; isE2E: boolean }) {
   const itemSize = item.type === 'asset' ? item.size : undefined;
 
   if (!assetMeta) {
-    return <ItemFallback message="This item could not be displayed." />;
+    return <ItemFallback />;
   }
 
   if (isLoading) {
@@ -191,7 +195,7 @@ function AssetItem({ item, isE2E }: { item: Item; isE2E: boolean }) {
   }
 
   if (!url) {
-    return <ItemFallback message="This item could not be displayed." />;
+    return <ItemFallback />;
   }
 
   switch (assetMeta.type) {
@@ -233,7 +237,7 @@ function AssetItem({ item, isE2E }: { item: Item; isE2E: boolean }) {
     case 'network':
     case 'geojson':
     case 'apikey':
-      return <ItemFallback message="This item could not be displayed." />;
+      return <ItemFallback />;
   }
 }
 

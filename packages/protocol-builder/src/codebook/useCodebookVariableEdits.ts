@@ -1,10 +1,12 @@
 import { useCallback, useMemo } from 'react';
 import { v4 as uuid } from 'uuid';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import type { IntlShape } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import type { VariableType } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import { allowedNameMessage } from '../form/arrayFields/rowValidators.ts';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import type {
   CodebookSubject,
@@ -60,23 +62,76 @@ export type SetVariableComponent = (
   component: string,
 ) => Promise<SetVariableComponentOutcome>;
 
-const REFUSED_UNCHANGED =
-  'This attribute could not be created, so nothing was changed. Try again.';
-
-const REFUSED_CONTROL_UNCHANGED =
-  'This attribute’s input control could not be changed, so nothing was changed. Try again.';
-
-const NO_SUBJECT =
-  'Choose what this stage works with before creating an attribute.';
-
-const MISSING_TYPE =
-  'This type is no longer in the codebook, so an attribute cannot be added to it.';
-
-const NAME_TAKEN =
-  'An attribute with this name already exists here. Choose another name.';
-
-const UNSUPPORTED_CONTROL =
-  'This attribute cannot be collected with that input control.';
+const messages = defineMessages({
+  refusedUnchanged: {
+    id: 'protocolBuilder.codebookEditing.createVariableRefused',
+    defaultMessage:
+      'This attribute could not be created, so nothing was changed. Try again.',
+    description:
+      'Refusal shown on the attribute control of a stage editor when inventing a new attribute (a codebook variable) failed for a reason with no explanation of its own.',
+  },
+  refusedControlUnchanged: {
+    id: 'protocolBuilder.codebookEditing.setComponentRefused',
+    defaultMessage:
+      'This attribute’s input control could not be changed, so nothing was changed. Try again.',
+    description:
+      'Refusal shown on the input-control dropdown of a stage editor when recording which control an attribute is collected with failed for a reason with no explanation of its own.',
+  },
+  noSubject: {
+    id: 'protocolBuilder.codebookEditing.noSubject',
+    defaultMessage:
+      'Choose what this stage works with before creating an attribute.',
+    description:
+      'Refusal shown when a researcher tries to invent an attribute before choosing which node or edge type the stage (one step of an interview) is about, so there is no codebook section to add it to.',
+  },
+  missingType: {
+    id: 'protocolBuilder.codebookEditing.missingType',
+    defaultMessage:
+      'This type is no longer in the codebook, so an attribute cannot be added to it.',
+    description:
+      'Refusal shown when the node or edge type the stage works with has been deleted from the codebook — the protocol’s definition of what an interview records — while the researcher was editing.',
+  },
+  nameTaken: {
+    id: 'protocolBuilder.codebookEditing.nameTaken',
+    defaultMessage:
+      'An attribute with this name already exists here. Choose another name.',
+    description:
+      'Refusal shown under the name field when another attribute of the same type is already called that.',
+  },
+  missingVariable: {
+    id: 'protocolBuilder.codebookEditing.missingVariableHere',
+    defaultMessage:
+      'This attribute is no longer in the codebook. Choose another one.',
+    description:
+      'Refusal shown on the attribute control of a stage editor when the attribute a row names has been deleted from the codebook while the researcher was editing.',
+  },
+  unsupportedControl: {
+    id: 'protocolBuilder.codebookEditing.unsupportedControl',
+    defaultMessage:
+      'This attribute cannot be collected with that input control.',
+    description:
+      'Refusal shown on the input-control dropdown when the control chosen cannot collect the kind of answer this attribute holds.',
+  },
+  nameInvalid: {
+    id: 'protocolBuilder.codebookEditing.newVariableNameInvalid',
+    defaultMessage:
+      'Not a valid attribute name. Only letters, numbers and the symbols ._-: are supported',
+    description:
+      'Refusal shown under the name field of a stage editor when the name typed for a new attribute holds characters the export formats cannot carry. The listed symbols are literal characters and must not be translated. Said in the same words as the row-cell rule that judges an attribute name as it is typed.',
+  },
+  createDescription: {
+    id: 'protocolBuilder.codebookEditing.createDescription',
+    defaultMessage: 'Create the attribute "{name}"',
+    description:
+      'What the change is called in the record a host keeps of protocol edits, and in any undo history it offers. name is the attribute name the researcher typed.',
+  },
+  setComponentDescription: {
+    id: 'protocolBuilder.codebookEditing.setComponentDescription',
+    defaultMessage: 'Set the input control for "{name}"',
+    description:
+      'What the change is called in the record a host keeps of protocol edits, and in any undo history it offers. name is the attribute’s researcher-facing name.',
+  },
+});
 
 /**
  * What ONE refusal from the codebook schema says to the researcher, or
@@ -89,9 +144,16 @@ const UNSUPPORTED_CONTROL =
  * `VariableEditor` does of the same issues, and the same words the row cell,
  * the entity editor and the request builder use for the name rule.
  */
-const draftIssueMessage = (issue: CodebookDraftIssue): string | undefined => {
-  if (issue.path[0] === 'name') return allowedNameMessage('attribute name');
-  if (issue.path[0] === 'component') return UNSUPPORTED_CONTROL;
+const draftIssueMessage = (
+  issue: CodebookDraftIssue,
+  intl: IntlShape,
+): string | undefined => {
+  if (issue.path[0] === 'name') {
+    return intl.formatMessage(messages.nameInvalid);
+  }
+  if (issue.path[0] === 'component') {
+    return intl.formatMessage(messages.unsupportedControl);
+  }
   return undefined;
 };
 
@@ -109,11 +171,17 @@ const draftIssueMessage = (issue: CodebookDraftIssue): string | undefined => {
  * what the researcher just asked for differs between inventing an attribute
  * and changing how one is collected.
  */
-const refusalMessage = (error: unknown, fallback: string): string => {
-  if (error instanceof DuplicateVariableNameError) return NAME_TAKEN;
+const refusalMessage = (
+  error: unknown,
+  fallback: string,
+  intl: IntlShape,
+): string => {
+  if (error instanceof DuplicateVariableNameError) {
+    return intl.formatMessage(messages.nameTaken);
+  }
   if (error instanceof InvalidCodebookDraftError) {
     for (const issue of error.issues) {
-      const message = draftIssueMessage(issue);
+      const message = draftIssueMessage(issue, intl);
       if (message !== undefined) return message;
     }
   }
@@ -147,16 +215,23 @@ export function useCreateCodebookVariable(
   subject: CodebookSubject | undefined,
 ): CreateCodebookVariable {
   const { controller, protocolContext } = useStageEditorForm();
+  const intl = useAppIntl();
 
   return useCallback(
     async (variable) => {
       if (subject === undefined) {
-        return { status: 'refused', message: NO_SUBJECT };
+        return {
+          status: 'refused',
+          message: intl.formatMessage(messages.noSubject),
+        };
       }
 
       const document = codebookDocument(protocolContext, subject);
       if (document === undefined) {
-        return { status: 'refused', message: MISSING_TYPE };
+        return {
+          status: 'refused',
+          message: intl.formatMessage(messages.missingType),
+        };
       }
 
       // The record id is minted here and never shown: a researcher renames an
@@ -167,7 +242,9 @@ export function useCreateCodebookVariable(
       try {
         request = buildCreateVariableRequest({
           requestId: uuid(),
-          description: `Create the attribute "${variable.name}"`,
+          description: intl.formatMessage(messages.createDescription, {
+            name: variable.name,
+          }),
           subject,
           authoritativeDocument: document,
           variableId,
@@ -190,7 +267,11 @@ export function useCreateCodebookVariable(
         // hook minted and nothing they can act on.
         return {
           status: 'refused',
-          message: refusalMessage(error, REFUSED_UNCHANGED),
+          message: refusalMessage(
+            error,
+            intl.formatMessage(messages.refusedUnchanged),
+            intl,
+          ),
         };
       }
 
@@ -200,10 +281,10 @@ export function useCreateCodebookVariable(
       }
       return {
         status: 'refused',
-        message: compoundFailureMessage({ kind: 'result', result }),
+        message: compoundFailureMessage({ kind: 'result', result }, intl),
       };
     },
-    [controller, protocolContext, subject],
+    [controller, intl, protocolContext, subject],
   );
 }
 
@@ -225,15 +306,22 @@ export function useSetVariableComponent(
   subject: CodebookSubject | undefined,
 ): SetVariableComponent {
   const { controller, protocolContext } = useStageEditorForm();
+  const intl = useAppIntl();
 
   return useCallback(
     async (variableId, component) => {
       if (subject === undefined) {
-        return { status: 'refused', message: NO_SUBJECT };
+        return {
+          status: 'refused',
+          message: intl.formatMessage(messages.noSubject),
+        };
       }
       const document = codebookDocument(protocolContext, subject);
       if (document === undefined) {
-        return { status: 'refused', message: MISSING_TYPE };
+        return {
+          status: 'refused',
+          message: intl.formatMessage(messages.missingType),
+        };
       }
       const variables = document.variables;
       const current =
@@ -243,8 +331,7 @@ export function useSetVariableComponent(
       if (typeof current !== 'object' || current === null) {
         return {
           status: 'refused',
-          message:
-            'This attribute is no longer in the codebook. Choose another one.',
+          message: intl.formatMessage(messages.missingVariable),
         };
       }
       if (Reflect.get(current, 'component') === component) {
@@ -286,7 +373,9 @@ export function useSetVariableComponent(
       try {
         request = buildUpdateVariableRequest({
           requestId: uuid(),
-          description: `Set the input control for "${Reflect.get(current, 'name') as string}"`,
+          description: intl.formatMessage(messages.setComponentDescription, {
+            name: Reflect.get(current, 'name') as string,
+          }),
           subject,
           authoritativeDocument: document,
           variableId,
@@ -304,7 +393,11 @@ export function useSetVariableComponent(
       } catch (error: unknown) {
         return {
           status: 'refused',
-          message: refusalMessage(error, REFUSED_CONTROL_UNCHANGED),
+          message: refusalMessage(
+            error,
+            intl.formatMessage(messages.refusedControlUnchanged),
+            intl,
+          ),
         };
       }
 
@@ -312,10 +405,10 @@ export function useSetVariableComponent(
       if (result.status === 'applied') return { status: 'unchanged' };
       return {
         status: 'refused',
-        message: compoundFailureMessage({ kind: 'result', result }),
+        message: compoundFailureMessage({ kind: 'result', result }, intl),
       };
     },
-    [controller, protocolContext, subject],
+    [controller, intl, protocolContext, subject],
   );
 }
 

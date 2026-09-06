@@ -6,8 +6,9 @@ import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 import { CurrentProtocolSchema } from '@codaco/protocol-validation';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 
+import { enIntl, readMessage } from '../../testing/i18n.ts';
 import {
-  resourceProblemClause,
+  resourceProblemMessage,
   schemaProblemSentence,
 } from '../schemaProblems.ts';
 
@@ -29,8 +30,19 @@ const RAW = 'Invalid input: expected string, received undefined';
 
 const FIELD = 'Node type';
 
+/**
+ * The sentence as the researcher reads it.
+ *
+ * `schemaProblemSentence` encodes a descriptor and the field's own name, which
+ * the outline decodes where it renders it — so a test asserting on what is
+ * written down has to decode it the same way. `readMessage` is that decode,
+ * and it passes a plain sentence (the validator's, under `custom`) through
+ * untouched, exactly as the render site does.
+ */
 const sentenceFor = (code: string): string =>
-  schemaProblemSentence({ code, message: RAW, absent: false }, FIELD);
+  readMessage(
+    schemaProblemSentence({ code, message: RAW, absent: false }, FIELD),
+  );
 
 describe('the words a schema refusal is put in', () => {
   it('has copy of its own for every code the validator can produce', () => {
@@ -65,14 +77,16 @@ describe('the words a schema refusal is put in', () => {
    */
   it('keeps the schema’s own words where they were written for a researcher', () => {
     expect(
-      schemaProblemSentence(
-        {
-          code: 'custom',
-          message:
-            'This stage uses a resource ("roster") that is not in the protocol.',
-          absent: false,
-        },
-        FIELD,
+      readMessage(
+        schemaProblemSentence(
+          {
+            code: 'custom',
+            message:
+              'This stage uses a resource ("roster") that is not in the protocol.',
+            absent: false,
+          },
+          FIELD,
+        ),
       ),
     ).toBe(
       'This stage uses a resource ("roster") that is not in the protocol.',
@@ -90,7 +104,9 @@ describe('the words a schema refusal is put in', () => {
       // `custom` is not a validator reaching for a code — see below.
       if (code === 'custom') continue;
       expect(
-        schemaProblemSentence({ code, message: RAW, absent: true }, FIELD),
+        readMessage(
+          schemaProblemSentence({ code, message: RAW, absent: true }, FIELD),
+        ),
       ).toBe('Node type has no value, and this stage needs one.');
     }
   });
@@ -106,14 +122,16 @@ describe('the words a schema refusal is put in', () => {
    */
   it('keeps those words even where the value they are about is missing', () => {
     expect(
-      schemaProblemSentence(
-        {
-          code: 'custom',
-          message:
-            'An ego rule must reference an attribute; a type-level ego rule (no attribute) is not valid.',
-          absent: true,
-        },
-        'Rules',
+      readMessage(
+        schemaProblemSentence(
+          {
+            code: 'custom',
+            message:
+              'An ego rule must reference an attribute; a type-level ego rule (no attribute) is not valid.',
+            absent: true,
+          },
+          'Rules',
+        ),
       ),
     ).toBe(
       'An ego rule must reference an attribute; a type-level ego rule (no attribute) is not valid.',
@@ -165,17 +183,23 @@ describe('a cross-reference rule reported where nothing is', () => {
     // So the researcher is told what the rule says, and not that a rule set
     // holding a rule is empty.
     expect(
-      schemaProblemSentence(
-        { code: issue.code, message: issue.message, absent },
-        'Rules',
+      readMessage(
+        schemaProblemSentence(
+          { code: issue.code, message: issue.message, absent },
+          'Rules',
+        ),
       ),
     ).toBe(issue.message);
   });
 });
 
 describe('the words a refused resource entry is described in', () => {
+  const RESOURCE = 'map-layers';
+
   const clauseFor = (code: string): string =>
-    resourceProblemClause({ code, absent: false });
+    enIntl.formatMessage(resourceProblemMessage({ code, absent: false }), {
+      resourceId: RESOURCE,
+    });
 
   it('has copy of its own for every code the validator can produce', () => {
     // Read the same way as above: a code with no entry falls back to the
@@ -206,8 +230,12 @@ describe('the words a refused resource entry is described in', () => {
 
   it('says a missing value is missing, whatever the code', () => {
     for (const code of EVERY_CODE) {
-      expect(resourceProblemClause({ code, absent: true })).toBe(
-        'part of its entry is missing.',
+      expect(
+        enIntl.formatMessage(resourceProblemMessage({ code, absent: true }), {
+          resourceId: RESOURCE,
+        }),
+      ).toBe(
+        'This stage points at a resource ("map-layers") the protocol cannot read: part of its entry is missing.',
       );
     }
   });

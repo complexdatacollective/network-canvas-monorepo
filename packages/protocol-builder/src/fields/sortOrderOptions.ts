@@ -1,4 +1,41 @@
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import type { IntlShape } from '@codaco/app-i18n/messages';
+
 import type { OptionGetter } from '../form/arrayFields/MultiSelect.tsx';
+
+const messages = defineMessages({
+  originalOrder: {
+    id: 'protocolBuilder.sortOrder.originalOrder',
+    defaultMessage: '*',
+    description:
+      'The choice a sort rule offers for "leave these in the order they already have" — the order network members were placed in, or the order a data file lists them in. Written as an asterisk because that is the value the protocol stores and the shorthand researchers already read in Architect; a language that has a better one-character shorthand may use it.',
+  },
+  descending: {
+    id: 'protocolBuilder.sortOrder.descending',
+    defaultMessage: 'Descending',
+    description:
+      'Direction offered for one sort rule: highest or latest first.',
+  },
+  ascending: {
+    id: 'protocolBuilder.sortOrder.ascending',
+    defaultMessage: 'Ascending',
+    description:
+      'Direction offered for one sort rule: lowest or earliest first.',
+  },
+  missingProperty: {
+    id: 'protocolBuilder.sortOrder.missingProperty',
+    defaultMessage: '{property} — this attribute is no longer in the codebook',
+    description:
+      'Label of the only choice left standing for a sort rule that names an attribute a collaborator has since deleted. property is the attribute’s stored record id, which the researcher never chose and which is all that is left of it. Rendered inside a plain dropdown option, which can carry no styling, so the explanation is part of the label.',
+  },
+  missingPropertyRefusal: {
+    id: 'protocolBuilder.sortOrder.missingPropertyRefusal',
+    defaultMessage:
+      'This rule points at an attribute no longer in the codebook. Choose another or delete the rule.',
+    description:
+      'Shown above a prompt’s sort rules when one of them names an attribute that has been deleted from the codebook — the protocol’s definition of what an interview records. Names both ways out, because the rule looks complete and is not.',
+  },
+});
 
 /**
  * One property or attribute a sort rule may order by — what a caller passes
@@ -33,14 +70,14 @@ const NON_SORTABLE_TYPES = ['layout'];
  */
 const ORIGINAL_ORDER_VALUE = '*';
 
-const ORIGINAL_ORDER_OPTION: SortableProperty = {
+const originalOrderOption = (intl: IntlShape): SortableProperty => ({
   value: ORIGINAL_ORDER_VALUE,
-  label: ORIGINAL_ORDER_VALUE,
-};
+  label: intl.formatMessage(messages.originalOrder),
+});
 
-const DIRECTION_OPTIONS: SortableProperty[] = [
-  { value: 'desc', label: 'Descending' },
-  { value: 'asc', label: 'Ascending' },
+const directionOptions = (intl: IntlShape): SortableProperty[] => [
+  { value: 'desc', label: intl.formatMessage(messages.descending) },
+  { value: 'asc', label: intl.formatMessage(messages.ascending) },
 ];
 
 // `allValues` is the array field's own value, so it is undefined until the
@@ -72,9 +109,16 @@ const toOption = ({
 /**
  * How a sort rule names an attribute that is no longer in the codebook, worded
  * the way the attribute pickers word it.
+ *
+ * Takes the reader's own formatter rather than reaching for one: this is a
+ * label the caller renders, and a module-level English formatter here would
+ * make the one option a dangling rule can still show the one option nobody can
+ * read in their own language.
  */
-export const missingSortPropertyLabel = (property: string): string =>
-  `${property} — this attribute is no longer in the codebook`;
+export const missingSortPropertyLabel = (
+  property: string,
+  intl: IntlShape,
+): string => intl.formatMessage(messages.missingProperty, { property });
 
 /**
  * What a researcher is told about a rule left pointing at a deleted attribute.
@@ -82,9 +126,14 @@ export const missingSortPropertyLabel = (property: string): string =>
  * The rule is not half-filled — it holds an id, and the id is exactly the
  * problem — so the generic "every row needs a value in each column" would be
  * both wrong and unhelpful. This one names the situation and both ways out.
+ *
+ * Encoded rather than formatted: it travels on `DanglingCells.message`, which
+ * a `messageRuleValidation` rule hands to the form as a plain string, and
+ * `FormErrors` decodes it where it is read.
  */
-export const MISSING_SORT_PROPERTY_MESSAGE =
-  'This rule points at an attribute no longer in the codebook. Choose another or delete the rule.';
+export const MISSING_SORT_PROPERTY_MESSAGE = createMessageError(
+  messages.missingPropertyRefusal,
+);
 
 const ruleProperty = (rule: unknown): string | undefined => {
   if (typeof rule !== 'object' || rule === null) return undefined;
@@ -123,6 +172,7 @@ const ruleProperty = (rule: unknown): string | undefined => {
 export const orphanedSortProperties = (
   rules: unknown,
   sortableProperties: readonly SortableProperty[] | undefined,
+  intl: IntlShape,
 ): SortableProperty[] => {
   if (!Array.isArray(rules) || sortableProperties === undefined) return [];
   const known = new Set(sortableProperties.map(({ value }) => value));
@@ -138,7 +188,7 @@ export const orphanedSortProperties = (
     }
     orphans.set(property, {
       value: property,
-      label: missingSortPropertyLabel(property),
+      label: missingSortPropertyLabel(property, intl),
       disabled: true,
     });
   }
@@ -158,7 +208,10 @@ export const orphanedSortProperties = (
  * is not yet an array of rows.
  */
 export const getSortOrderOptionGetter =
-  (sortableProperties: readonly SortableProperty[]): OptionGetter =>
+  (
+    sortableProperties: readonly SortableProperty[],
+    intl: IntlShape,
+  ): OptionGetter =>
   (fieldName, _rowValues, allValues) => {
     switch (fieldName) {
       case 'property': {
@@ -166,7 +219,7 @@ export const getSortOrderOptionGetter =
           ? allValues.filter(hasSortProperty).map((row) => row.property)
           : [];
 
-        return [ORIGINAL_ORDER_OPTION, ...sortableProperties]
+        return [originalOrderOption(intl), ...sortableProperties]
           .filter((option) => !NON_SORTABLE_TYPES.includes(option.type ?? ''))
           .map((option) =>
             used.includes(option.value)
@@ -175,7 +228,7 @@ export const getSortOrderOptionGetter =
           );
       }
       case 'direction':
-        return DIRECTION_OPTIONS;
+        return directionOptions(intl);
       default:
         return [];
     }
