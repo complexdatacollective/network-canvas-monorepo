@@ -32,3 +32,13 @@ Also adds a `LocaleSelect` field for choosing a language, exports the
 package's catalogs at `@codaco/fresco-ui/locales`, and converts the layout to
 logical properties (`start`/`end` rather than `left`/`right`) so the
 components lay out correctly in right-to-left languages.
+
+The shared catalog includes complete Spanish translations. Relative timestamps
+follow the active locale, and queued dialog/toast content can use reactive
+message nodes so titles, descriptions, action labels, and retry errors update
+when the language changes. Text-length guidance now describes the inclusive
+maximum correctly and uses singular or plural character counts.
+
+Submitted form errors can also carry a shared message descriptor through the
+existing string result contract. Field and form error displays translate it in
+the active language while preserving entered values, focus, and server refusals.
