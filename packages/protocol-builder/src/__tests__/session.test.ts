@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   applyCommands,
   contentHash,
+  type Command,
   type SectionDoc,
 } from '@codaco/studio-sync/apply';
 import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
@@ -38,6 +39,20 @@ const initialFields: SectionDoc = {
   title: 'Welcome',
   items: [],
 };
+
+/** A stage that keeps a list somewhere other than its top level. */
+const nestedNodeConfig: SectionDoc = {
+  type: 'family_member',
+  form: [{ id: 'row-a', prompt: 'Their name?' }],
+};
+
+const nestedFields: SectionDoc = {
+  label: 'Pedigree',
+  nodeConfig: nestedNodeConfig,
+};
+
+const lastBatchCommands = (session: ProtocolBuilderSessionStore) =>
+  session.getSnapshot().pendingCommands.at(-1)?.commands;
 
 function candidate(stage: SectionDoc) {
   return {
@@ -144,6 +159,61 @@ describe('ProtocolBuilderSessionStore', () => {
     ).toEqual([
       { op: 'set', key: 'label', value: 'New' },
       { op: 'unset', key: 'optional' },
+    ]);
+  });
+
+  /**
+   * A stage keeps lists and objects below its top level — a Family Pedigree's
+   * family-member form at `nodeConfig.form` — and the diff is the route undo,
+   * redo and every whole-draft change take. Writing the key ABOVE the
+   * difference is the merge-blind write nested addressing exists to avoid.
+   */
+  it('addresses a nested change at the path the change is at', () => {
+    expect(
+      commandsFromDraftChange(nestedFields, {
+        ...nestedFields,
+        nodeConfig: { ...nestedNodeConfig, type: 'person' },
+      }),
+    ).toEqual([{ op: 'set', key: ['nodeConfig', 'type'], value: 'person' }]);
+  });
+
+  it('keeps a top-level list addressed at its bare key', () => {
+    const commands = commandsFromDraftChange(
+      { prompts: [{ id: 'p1' }] },
+      { prompts: [{ id: 'p1' }, { id: 'p2' }] },
+    );
+    expect(commands).toEqual([
+      { op: 'insertItem', key: 'prompts', index: 1, item: { id: 'p2' } },
+    ]);
+    // The bare string, never a one-segment path: every command a top-level
+    // field emits stays what it was on the wire and in the command log.
+    expect(commands[0]?.key).toBe('prompts');
+  });
+
+  it('undoes and redoes a nested insert as the row operations that reverse it', () => {
+    const { session } = createSession({ fields: nestedFields });
+    session.dispatch([
+      {
+        op: 'insertItem',
+        key: ['nodeConfig', 'form'],
+        index: 1,
+        item: { id: 'row-b' },
+      },
+    ]);
+
+    session.undo();
+    expect(lastBatchCommands(session)).toEqual([
+      { op: 'removeItem', key: ['nodeConfig', 'form'], index: 1 },
+    ]);
+
+    session.redo();
+    expect(lastBatchCommands(session)).toEqual([
+      {
+        op: 'insertItem',
+        key: ['nodeConfig', 'form'],
+        index: 1,
+        item: { id: 'row-b' },
+      },
     ]);
   });
 
@@ -334,6 +404,158 @@ describe('ProtocolBuilderSessionStore', () => {
       label: 'First',
       title: 'Second',
     });
+  });
+
+  /**
+   * A pending batch describes an EDIT to the document the researcher was
+   * looking at, so an index in it is a position in the list they could see and
+   * a whole-list `set` in it is that list with one row rewritten. Replayed
+   * literally onto a base a collaborator has changed, an append becomes a
+   * mid-list insert, a removal takes whichever row moved into that slot, and a
+   * `set` writes their rows back out of existence.
+   */
+  describe('a pending list command replayed onto a base that moved', () => {
+    const rowA = { id: 'a' };
+    const rowB = { id: 'b' };
+    const rowC = { id: 'c' };
+    const rowZ = { id: 'z' };
+    const addedRow = { id: 'x' };
+    const rewrittenB = { id: 'b', prompt: 'Rewritten here' };
+    const FORM = ['nodeConfig', 'form'];
+
+    const stageWith = (form: readonly SectionDoc[]): SectionDoc => ({
+      label: 'Pedigree',
+      nodeConfig: { type: 'family_member', form: [...form] },
+    });
+
+    const insertedAbove = [rowZ, rowA, rowB, rowC];
+    const insertedBelow = [rowA, rowB, rowC, rowZ];
+    const removedAbove = [rowB, rowC];
+
+    const replay = (command: Command, arriving: readonly SectionDoc[]) => {
+      const { session } = createSession({
+        fields: stageWith([rowA, rowB, rowC]),
+      });
+      session.dispatch([command]);
+      session.acknowledge({
+        fields: stageWith(arriving),
+        throughBatchId: 0,
+        manifestRevision: revision(2n),
+      });
+      const { nodeConfig } = session.getSnapshot().editedSection.fields;
+      const form =
+        typeof nodeConfig === 'object' && nodeConfig !== null
+          ? Reflect.get(nodeConfig, 'form')
+          : undefined;
+      return {
+        form,
+        pending: session
+          .getSnapshot()
+          .pendingCommands.flatMap((batch) => [...batch.commands]),
+      };
+    };
+
+    it('keeps an append an append', () => {
+      const append: Command = {
+        op: 'insertItem',
+        key: FORM,
+        index: 3,
+        item: addedRow,
+      };
+      expect(replay(append, insertedAbove).form).toEqual([
+        rowZ,
+        rowA,
+        rowB,
+        rowC,
+        addedRow,
+      ]);
+      expect(replay(append, insertedBelow).form).toEqual([
+        rowA,
+        rowB,
+        rowC,
+        rowZ,
+        addedRow,
+      ]);
+      expect(replay(append, removedAbove).form).toEqual([rowB, rowC, addedRow]);
+    });
+
+    it('removes the row the removal named, wherever it has moved to', () => {
+      const remove: Command = { op: 'removeItem', key: FORM, index: 2 };
+      expect(replay(remove, insertedAbove).form).toEqual([rowZ, rowA, rowB]);
+      expect(replay(remove, insertedBelow).form).toEqual([rowA, rowB, rowZ]);
+      expect(replay(remove, removedAbove).form).toEqual([rowB]);
+    });
+
+    it('moves the row the move named, to the row it was going to follow', () => {
+      const move: Command = { op: 'moveItem', key: FORM, from: 2, to: 0 };
+      expect(replay(move, insertedAbove).form).toEqual([
+        rowZ,
+        rowC,
+        rowA,
+        rowB,
+      ]);
+      expect(replay(move, insertedBelow).form).toEqual([
+        rowC,
+        rowA,
+        rowB,
+        rowZ,
+      ]);
+      // The row it was to be put above has gone, so where the researcher meant
+      // it to land cannot be worked out and the move is refused rather than
+      // guessed at.
+      expect(replay(move, removedAbove).form).toEqual([rowB, rowC]);
+    });
+
+    it('merges a whole-list rewrite row by row', () => {
+      const rewrite: Command = {
+        op: 'set',
+        key: FORM,
+        value: [rowA, rewrittenB, rowC],
+      };
+      expect(replay(rewrite, insertedAbove).form).toEqual([
+        rowZ,
+        rowA,
+        rewrittenB,
+        rowC,
+      ]);
+      expect(replay(rewrite, insertedBelow).form).toEqual([
+        rowA,
+        rewrittenB,
+        rowC,
+        rowZ,
+      ]);
+      // The row the arrival removed stays removed: the local rewrite said
+      // nothing about it, so it has no claim on it.
+      expect(replay(rewrite, removedAbove).form).toEqual([rewrittenB, rowC]);
+    });
+
+    it('drops a row command whose row has left the list', () => {
+      const remove: Command = { op: 'removeItem', key: FORM, index: 2 };
+      const replayed = replay(remove, [rowA, rowB]);
+      expect(replayed.form).toEqual([rowA, rowB]);
+      expect(replayed.pending).toEqual([]);
+    });
+  });
+
+  /**
+   * The snapshot's own copy of the stage section is the only authoritative
+   * stage document a caller can read — the one a compound edit hashes, and the
+   * one `orderedStages` is built from — so an authoritative replacement moves
+   * it along with the base.
+   */
+  it('moves the stage document a caller reads when the stage is replaced', () => {
+    const { session } = createSession({
+      protocolSections: { [currentStageSection]: currentStageDocument },
+    });
+
+    session.replaceAuthoritativeStage({
+      fields: { ...initialFields, label: 'Remote' },
+      manifestRevision: revision(2n),
+    });
+
+    expect(session.getSnapshot().protocolSections[currentStageSection]).toEqual(
+      { ...currentStageDocument, label: 'Remote' },
+    );
   });
 
   it('stamps and atomically reconciles a structural compound edit', async () => {
@@ -606,6 +828,48 @@ describe('ProtocolBuilderSessionStore', () => {
       sectionId: currentStageSection,
     });
     expect(session.getSnapshot()).toBe(before);
+  });
+
+  /**
+   * The same answer, to a session on a stage that is being CREATED. The
+   * interview does not contain the stage, so no full protocol snapshot can,
+   * and the omission is the only correct answer rather than a broken one.
+   */
+  it('takes the same result for a stage the interview does not contain yet', async () => {
+    const onCompoundEdit = vi.fn().mockResolvedValue({
+      status: 'applied',
+      update: {
+        protocolSections: {
+          [nodeSection]: {
+            name: 'Person',
+            color: 'node-color-seq-1',
+            shape: { default: 'circle' },
+          },
+        },
+        manifestRevision: revision(2n),
+      },
+    });
+    const { session } = createSession({
+      onCompoundEdit,
+      creation: { position: 0 },
+    });
+    await session.validate();
+    const request: CompoundEditRequest = {
+      id: 'create-person-only',
+      description: 'Create person type',
+      edits: [compoundRequest().edits[0]!],
+    };
+
+    await expect(session.requestCompoundEdit(request)).resolves.toMatchObject({
+      status: 'applied',
+    });
+    expect(session.getSnapshot()).toMatchObject({
+      manifestRevision: revision(2n),
+      editedSection: { fields: initialFields },
+    });
+    expect(session.getSnapshot().protocolSections[nodeSection]).toMatchObject({
+      name: 'Person',
+    });
   });
 
   it('fences a compound result that resolves after lease loss', async () => {

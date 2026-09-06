@@ -1,7 +1,11 @@
 import { isEqual } from 'es-toolkit/compat';
 
 import type { ArrayFieldOperation } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
-import { type Command, canonicalize } from '@codaco/studio-sync/apply';
+import {
+  type Command,
+  type CommandTarget,
+  canonicalize,
+} from '@codaco/studio-sync/apply';
 
 export type ArrayRow = Record<string, unknown>;
 
@@ -12,6 +16,20 @@ export type ArrayRowIdentity<T extends ArrayRow> = (
 
 const isRecord = (value: unknown): value is ArrayRow =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * A row's own identity when nothing else has been said about it.
+ *
+ * `id` and nothing else: it is what a list editor mints when a row is added,
+ * what the protocol schema tolerates on a form field or a prompt for exactly
+ * this reason, and the only thing about a row that survives being edited,
+ * moved, and merged with somebody else's copy of the same list. A list whose
+ * rows are identified some other way says so with its own `getId`.
+ */
+export const rowIdentity = (row: unknown): string | undefined => {
+  if (!isRecord(row)) return undefined;
+  return typeof row.id === 'string' ? row.id : undefined;
+};
 
 export const readRows = (value: unknown): ArrayRow[] =>
   Array.isArray(value) ? value.filter(isRecord) : [];
@@ -342,10 +360,10 @@ function reseatRecord(
 /**
  * One committed list mutation, as commands against the stage document.
  *
- * A replace is a whole-key `set` rather than a remove-then-insert pair,
- * because the command vocabulary addresses a document KEY and cannot reach
- * inside a row: two commands would be two history entries for one edit, and a
- * list that briefly did not contain the row being edited. The replacement
+ * A replace is a whole-list `set` rather than a remove-then-insert pair,
+ * because the command vocabulary addresses a place in the document and cannot
+ * reach INSIDE a row: two commands would be two history entries for one edit,
+ * and a list that briefly did not contain the row being edited. The replacement
  * array is rebuilt from what the session holds now, and the replaced row is
  * re-seated on what the session holds for THAT row (see `reseatEditedRow`), so
  * a change that arrived from elsewhere survives the write whether it arrived
@@ -357,7 +375,7 @@ function reseatRecord(
  * the numbering its operation was made in. See `renderedRows`.
  */
 export function commandsForOperation<T extends ArrayRow>(
-  key: string,
+  key: CommandTarget,
   current: readonly unknown[],
   value: unknown,
   operation: ArrayFieldOperation<T>,
@@ -411,7 +429,7 @@ export function commandsForOperation<T extends ArrayRow>(
  * longest window of all for something to have reached the row meanwhile.
  */
 export function commandsForDetachedRow<T extends ArrayRow>(
-  key: string,
+  key: CommandTarget,
   current: readonly unknown[],
   row: T,
   id: string | undefined,

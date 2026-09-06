@@ -9,8 +9,11 @@ import {
 import {
   applyCommands,
   canonicalize,
+  commandTarget,
+  contentHash,
   type Command,
   type SectionDoc,
+  targetRoot,
 } from '@codaco/studio-sync/apply';
 import {
   type ProtocolSectionId,
@@ -18,6 +21,12 @@ import {
   sectionId,
 } from '@codaco/studio-sync/taxonomy';
 
+import {
+  commandForListChange,
+  isDictionary,
+  MAX_COMMAND_PATH_SEGMENTS,
+  rebaseCommands,
+} from './listCommands.ts';
 import {
   protocolContextFromSections,
   type ProtocolBuilderProtocolContext,
@@ -52,6 +61,22 @@ import {
 
 export type StageIdentity = Readonly<{ id: string; type: StageType }>;
 export type StageFormDraft = Readonly<SectionDoc>;
+
+/**
+ * A stage this session is CREATING rather than opening.
+ *
+ * Present only while the interview does not contain the stage yet, which is the
+ * one fact several parts of an editor need and none of them can work out for
+ * themselves: a new stage is the only one whose name may be proposed, and the
+ * only one whose place among the other stages is not in the stage order.
+ *
+ * The identity is settled before any of that — `createStageIdentity` fixes the
+ * id when the session opens, so a create session edits one stage under one id
+ * from its first keystroke — and `position` is where the host will insert it,
+ * counting from zero. Only the host knows that, so it says so when it opens
+ * the session.
+ */
+export type StageCreation = Readonly<{ position: number }>;
 
 export type ManifestRevision = Readonly<{
   sequence: bigint;
@@ -109,6 +134,8 @@ export type ProtocolBuilderSnapshot = Readonly<{
     sectionId: ProtocolSectionId;
     identity: StageIdentity;
     fields: StageFormDraft;
+    /** Absent for a stage the interview already contains. */
+    creation?: StageCreation;
   }>;
   protocolSections: Readonly<Record<string, SectionDoc>>;
   protocolContext: ProtocolBuilderProtocolContext;
@@ -266,6 +293,11 @@ export type ProtocolBuilderSession = {
 export type ProtocolBuilderSessionOptions = Readonly<{
   identity: StageIdentity;
   fields: StageFormDraft;
+  /**
+   * Supplied when the host opens the session to CREATE this stage, and left out
+   * when it opens one the interview already contains. See {@link StageCreation}.
+   */
+  creation?: StageCreation;
   protocolSections: Readonly<Record<string, SectionDoc>>;
   manifestRevision: ManifestRevision;
   access: ProtocolBuilderAccess;
@@ -393,6 +425,27 @@ export function stageDocument(
   return { id: identity.id, type: identity.type, ...cloneDoc(fields) };
 }
 
+/**
+ * The commands that turn one draft into another.
+ *
+ * Addressed at the deepest place the difference actually is, rather than at the
+ * top-level key above it. Two things follow from that, and both are the whole
+ * reason a command may address a nested path at all:
+ *
+ * - a difference that IS a list — one row inserted, removed or moved, wherever
+ *   the stage keeps that list — is said as the row operation it is, so undo,
+ *   redo and every other route through this diff stays as mergeable as the
+ *   list editor's own commit was. A change the vocabulary cannot express falls
+ *   back to a `set` at the list's own path;
+ * - a change to one member of a nested object is a `set` at that member, so a
+ *   sibling nobody touched is not rewritten. Writing `nodeConfig` whole to
+ *   record a new `nodeConfig.type` is exactly the merge-blind write nested
+ *   addressing exists to avoid.
+ *
+ * A one-segment path is still spelled as the bare key it always was
+ * (`commandTarget`), so everything a top-level field emits is unchanged on the
+ * wire and in the command log.
+ */
 export function commandsFromDraftChange(
   previous: StageFormDraft,
   next: StageFormDraft,
@@ -400,26 +453,52 @@ export function commandsFromDraftChange(
   assertNoIdentityFields(previous);
   assertNoIdentityFields(next);
   const commands: Command[] = [];
+  collectDraftCommands([], previous, next, commands);
+  return commands;
+}
+
+function collectDraftCommands(
+  path: readonly string[],
+  previous: SectionDoc,
+  next: SectionDoc,
+  commands: Command[],
+): void {
   const keys = new Set([...Object.keys(previous), ...Object.keys(next)]);
 
   for (const key of [...keys].toSorted()) {
+    const here = [...path, key];
     const before = previous[key];
     const after = next[key];
     if (after === undefined) {
       if (Object.hasOwn(previous, key) && before !== undefined) {
-        commands.push({ op: 'unset', key });
+        commands.push({ op: 'unset', key: commandTarget(here) });
       }
       continue;
     }
     if (
-      !Object.hasOwn(previous, key) ||
-      canonicalize(before) !== canonicalize(after)
+      Object.hasOwn(previous, key) &&
+      canonicalize(before) === canonicalize(after)
     ) {
-      commands.push({ op: 'set', key, value: cloneValue(after) });
+      continue;
     }
+    if (
+      isDictionary(before) &&
+      isDictionary(after) &&
+      here.length < MAX_COMMAND_PATH_SEGMENTS
+    ) {
+      collectDraftCommands(here, before, after, commands);
+      continue;
+    }
+    if (Array.isArray(before) && Array.isArray(after)) {
+      commands.push(commandForListChange(commandTarget(here), before, after));
+      continue;
+    }
+    commands.push({
+      op: 'set',
+      key: commandTarget(here),
+      value: cloneValue(after),
+    });
   }
-
-  return commands;
 }
 
 export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
@@ -566,12 +645,6 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     this.assertEditable();
     const invalidRequest = validateCompoundEditRequest(request);
     if (invalidRequest !== null) return invalidRequest;
-    if (this.snapshot.pendingCommands.length !== 0) {
-      return compoundFailure(
-        'pending-commands',
-        'save the current stage changes before editing related sections',
-      );
-    }
     if (this.options.onCompoundEdit === undefined) {
       return compoundFailure('unavailable', 'compound editing is unavailable');
     }
@@ -581,6 +654,9 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
         'another compound edit is still in progress',
       );
     }
+
+    const planned = this.planPendingCommands(request);
+    if (planned.status === 'refused') return planned.failure;
 
     const access = this.snapshot.access;
     if (access.mode !== 'editable') {
@@ -593,6 +669,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     });
     const submission: CompoundEditSubmission = Object.freeze({
       ...request,
+      edits: planned.edits,
       authority,
     });
 
@@ -644,6 +721,20 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       const stageSectionId = this.snapshot.editedSection.sectionId;
       const updatedStageDocument =
         result.update.protocolSections[stageSectionId];
+      /**
+       * A stage being CREATED is not in the protocol the host answers with,
+       * because it is not in the protocol at all until this session finishes.
+       * So its absence is the only correct answer to a create session's
+       * request, and refusing it would refuse every codebook edit a new
+       * stage's editor makes — after the host has already applied it.
+       *
+       * The host says nothing about this stage, so nothing about it moves:
+       * the base stands, the draft stands, the history stands, and only the
+       * sections and the revision the host DID decide are adopted below.
+       */
+      const stageAbsentByCreation =
+        updatedStageDocument === undefined &&
+        this.options.creation !== undefined;
       let fields: typeof this.snapshot.editedSection.fields;
       if (updatedStageDocument !== undefined) {
         try {
@@ -668,6 +759,12 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
             stageSectionId,
           );
         }
+      } else if (stageAbsentByCreation) {
+        // Read from `this.baseFields` rather than from the draft: the draft is
+        // the base plus the batches still pending, and adopting it as the base
+        // would either swallow those batches or replay them onto a document
+        // that already holds them.
+        fields = cloneDoc(this.baseFields);
       } else {
         return compoundFailure(
           'invalid-response',
@@ -676,19 +773,82 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
         );
       }
 
-      const pendingCommands = this.snapshot.pendingCommands;
-      this.baseFields = cloneDoc(fields);
-      this.undoStack.length = 0;
-      this.redoStack.length = 0;
-      this.historyGeneration += 1;
-      this.fencedAtRevision = result.update.manifestRevision;
-      const reconciledFields = pendingCommands.reduce<SectionDoc>(
-        (draft, batch) => {
-          this.undoStack.push(cloneDoc(draft));
-          return applyCommands(draft, [...batch.commands]);
-        },
-        cloneDoc(this.baseFields),
+      // The folded batches are in the authoritative stage the host answered
+      // with, so they are acknowledged rather than replayed onto it: replaying
+      // a `set` would be harmless, but replaying an `insertItem` would add the
+      // row twice, and leaving them pending would send them to the host again
+      // at finish.
+      let pendingCommands = this.snapshot.pendingCommands.filter(
+        (batch) => batch.id > planned.throughBatchId,
       );
+      // Whether this apply moved the ground the batches still pending stand on.
+      let rebased: boolean;
+      if (stageAbsentByCreation) {
+        // The host was not holding this stage and did not decide anything
+        // about it, so there is no new ground: `fields` is the base it already
+        // was, and the pending batches still stand on it.
+        rebased = false;
+      } else if (planned.throughBatchId >= 0) {
+        // This request carried the researcher's batches, so the stage it
+        // answers with is the new base and anything still pending was made
+        // after it — during the round trip — and has to be replayed onto it.
+        rebased = true;
+      } else if (planned.stageEdited || pendingCommands.length === 0) {
+        // The request itself decided what this stage becomes, or there is no
+        // unsaved work at stake. Either way the authoritative stage is simply
+        // adopted, and the history is fenced only if it actually moved.
+        rebased = canonicalize(fields) !== canonicalize(this.baseFields);
+      } else {
+        // A codebook-only request asked the host to leave this stage alone, so
+        // the stage it answers with is this session's own base plus however
+        // many of the delivered batches the host has already applied to it:
+        // none for a host that buffers them until finish, all of them for a
+        // host that applies `onCommands` live, and a leading run of them for
+        // one given a batch while this request was in flight. That prefix is
+        // the host's now — acknowledged by content, because the deferred
+        // acknowledgement naming it will arrive against a revision this apply
+        // has already superseded — and the rest stay pending. The draft on
+        // screen is base + prefix + the rest whichever host this is, so
+        // nothing is replayed and no undo is thrown away for a change that did
+        // not touch the stage.
+        const canonicalStage = canonicalize(fields);
+        const accounted = this.deliveredPrefixLength(
+          pendingCommands,
+          (candidate) => canonicalize(candidate) === canonicalStage,
+        );
+        if (accounted === null) {
+          // The authoritative stage moved for a reason this session cannot
+          // account for, and the batches it is holding were built against the
+          // base it moved from. Refused with the base, the batches, the draft
+          // and the history exactly as they were, so nothing local is lost and
+          // the researcher can make the change again.
+          return compoundFailure(
+            'stale-base',
+            'the authoritative stage changed while this change was being made, so nothing local was altered',
+            stageSectionId,
+          );
+        }
+        pendingCommands = pendingCommands.slice(accounted);
+        rebased = false;
+      }
+      let reconciledFields: StageFormDraft = this.snapshot.editedSection.fields;
+      if (rebased) {
+        // Read before the base moves: what each pending batch MEANT is a fact
+        // about the document it was made on. See `rebasePending`.
+        const outstanding = new Set(pendingCommands.map((batch) => batch.id));
+        const rebase = this.rebasePending(cloneDoc(fields), (batch) =>
+          outstanding.has(batch.id),
+        );
+        this.undoStack.length = 0;
+        this.redoStack.length = 0;
+        this.historyGeneration += 1;
+        this.fencedAtRevision = result.update.manifestRevision;
+        this.undoStack.push(...rebase.steps);
+        pendingCommands = rebase.batches;
+        reconciledFields = rebase.fields;
+      }
+      this.baseFields = cloneDoc(fields);
+      this.releaseWithheldFrom(pendingCommands);
       this.replaceSnapshot({
         fields: reconciledFields,
         protocolSections: result.update.protocolSections,
@@ -1027,24 +1187,110 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       return;
     }
     assertNoIdentityFields(params.fields);
-    this.baseFields = cloneDoc(params.fields);
-    const pendingCommands = this.snapshot.pendingCommands.filter(
+    // Read before the base moves, for the same reason `rebasePending` is.
+    const foreign = !this.isOwnAcknowledgedStage(
+      params.fields,
+      params.throughBatchId,
+    );
+    const rebase = this.rebasePending(
+      cloneDoc(params.fields),
       (batch) => batch.id > params.throughBatchId,
     );
-    const fields = pendingCommands.reduce<SectionDoc>(
-      (doc, batch) => applyCommands(doc, [...batch.commands]),
-      cloneDoc(this.baseFields),
-    );
+    this.baseFields = cloneDoc(params.fields);
+    const { batches: pendingCommands, fields } = rebase;
+    if (foreign) {
+      // An undo entry is a whole draft, and every one of these predates the
+      // arrival: undoing to one would take the collaborator's rows back out
+      // with the researcher's own edit. So the history is fenced and rebuilt
+      // out of the rebase's own steps — the draft before each rebased batch —
+      // exactly as the compound-edit apply rebuilds it, which leaves the
+      // researcher able to undo their own outstanding batches one at a time
+      // and nothing else. The generation and the revision are what let the UI
+      // say the history was cut and why.
+      this.undoStack.length = 0;
+      this.redoStack.length = 0;
+      this.historyGeneration += 1;
+      this.fencedAtRevision = params.manifestRevision;
+      this.undoStack.push(...rebase.steps);
+    }
     this.releaseWithheldFrom(pendingCommands);
     this.replaceSnapshot({
       fields,
       pendingCommands,
+      protocolSections: this.sectionsWithAuthoritativeStage(params.fields),
       manifestRevision: params.manifestRevision,
       attribution: params.attribution ?? this.snapshot.attribution,
       validation: pendingValidation(),
       validatedProtocol: null,
     });
     void this.runValidation();
+  }
+
+  /**
+   * Whether an acknowledged stage is nothing but this session's own work.
+   *
+   * The question the undo history turns on. A host that applies `onCommands`
+   * live acknowledges EVERY batch as it commits, so "the base moved" is the
+   * ordinary case and fencing on it would leave the researcher unable to undo
+   * anything they had saved. What actually invalidates the history is a stage
+   * carrying something this session did not put there — a collaborator's row —
+   * because an undo entry is a whole draft that predates it.
+   *
+   * So the base is walked through the batches the acknowledgement covers,
+   * which is the stage the host would be holding if it had applied those and
+   * nothing else, and compared with the one it answered with. A batch that no
+   * longer applies to the base it was made on says nothing reliable, and is
+   * answered the conservative way: treat the arrival as foreign, which fences
+   * the history rather than leaving a stale entry standing.
+   *
+   * Must be called BEFORE `baseFields` is replaced, exactly as
+   * {@link rebasePending} must.
+   */
+  private isOwnAcknowledgedStage(
+    fields: StageFormDraft,
+    throughBatchId: number,
+  ): boolean {
+    let document: SectionDoc = cloneDoc(this.baseFields);
+    for (const batch of this.snapshot.pendingCommands) {
+      if (batch.id > throughBatchId) break;
+      try {
+        document = applyCommands(document, [...batch.commands]);
+      } catch {
+        return false;
+      }
+    }
+    return canonicalize(document) === canonicalize(fields);
+  }
+
+  /**
+   * The protocol sections with this session's own copy of the edited stage
+   * moved to the document the host has just agreed to.
+   *
+   * The snapshot's stage section is the ONLY authoritative stage document a
+   * caller can read, and two things read it: a compound edit naming the
+   * document its stage commands will be applied to (`withStageSectionEdit`
+   * hashes it, and a hash of a superseded document is refused), and
+   * `protocolContext.orderedStages`, which is where a skip destination's list
+   * and the names an auto-named stage must not collide with come from. Moving
+   * the base without moving this leaves both a revision behind the host, so
+   * they move together.
+   *
+   * A stage being CREATED is left out: the interview does not contain it, an
+   * acknowledgement is not what puts it there, and a stage section outside the
+   * stage order is a protocol issue rather than a stage anything can read.
+   */
+  private sectionsWithAuthoritativeStage(
+    fields: StageFormDraft,
+  ): Readonly<Record<string, SectionDoc>> {
+    if (this.options.creation !== undefined)
+      return this.snapshot.protocolSections;
+    return {
+      ...this.snapshot.protocolSections,
+      [this.snapshot.editedSection.sectionId]: stageDocument(
+        this.options.identity,
+        fields,
+      ),
+    };
   }
 
   replaceAuthoritativeStage(
@@ -1070,6 +1316,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     this.redoStack.length = 0;
     this.replaceSnapshot({
       fields: params.fields,
+      protocolSections: this.sectionsWithAuthoritativeStage(params.fields),
       manifestRevision: params.manifestRevision,
       validation: pendingValidation(),
       validatedProtocol: null,
@@ -1139,6 +1386,261 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
   }
 
   /**
+   * The edits a compound request should actually carry, and how much of this
+   * session's unsaved work the host will own once it applies them.
+   *
+   * A researcher configuring a stage reaches for a related section IN THE
+   * MIDDLE of that work — a name generator needs a node type that does not
+   * exist yet, and the half-written prompts are exactly why they noticed. So
+   * the request has to survive an unsaved, and usually incomplete, stage.
+   *
+   * What the session sends therefore depends on whether the request says
+   * anything about this stage at all:
+   *
+   * - **It does not** — creating a node type, say. The request is sent alone,
+   *   and this session's pending commands stay the researcher's own. Folding
+   *   them in instead would make the host validate a stage the researcher is
+   *   in the middle of writing, and refuse the codebook change in the schema's
+   *   words for a stage they had not asked to save. Such an apply changes
+   *   nothing about the stage, but it still answers with the stage the host
+   *   holds — which, for a host that applies `onCommands` live, already
+   *   contains some of those pending batches. Which of them is read off the
+   *   answer rather than assumed: see `deliveredPrefixLength`.
+   * - **It does** — then it has decided what the stage document becomes, and
+   *   the researcher's unsaved commands have to go somewhere. They are folded
+   *   in front of the request's own commands in that one section update, so
+   *   both land in a single host apply against the document they were built
+   *   from, and the request's own decision wins wherever the two touch the same
+   *   key. Only the batches that document does NOT already contain are folded:
+   *   the request names it by content hash, which is the same evidence
+   *   `deliveredPrefixLength` reads on the other path, and folding a batch a
+   *   live-applying host has already applied would apply it twice. A stage
+   *   neither this session's base nor that base plus a run of its batches is
+   *   refused with `stale-base`, which leaves every pending batch untouched for
+   *   the researcher to try again.
+   *
+   * One case still refuses outright: a pending batch withheld from a
+   * live-applying host because it references a resource this session has
+   * staged. Those bytes reach the protocol only when `finish` promotes them,
+   * and neither sending that batch nor leaving the host to apply around it is
+   * honest while its resource does not exist.
+   */
+  private planPendingCommands(request: CompoundEditRequest):
+    | Readonly<{
+        status: 'send';
+        edits: readonly CompoundSectionEdit[];
+        /**
+         * Batches up to and including this id are the host's once it applies.
+         * `-1` precedes every batch id, and means nothing is acknowledged.
+         */
+        throughBatchId: number;
+        /**
+         * Whether the request says anything about the edited stage. When it
+         * does, the stage the host answers with is the request's own decision;
+         * when it does not, the host was asked to leave the stage alone, and
+         * what comes back has to be reconciled against what this session
+         * believes the host holds.
+         */
+        stageEdited: boolean;
+      }>
+    | Readonly<{
+        status: 'refused';
+        failure: Extract<CompoundEditResult, { status: 'failed' }>;
+      }> {
+    const stageSectionId = this.snapshot.editedSection.sectionId;
+    // An update specifically: `validateCompoundEditRequest` has already
+    // refused a structural create or removal of anything but a codebook
+    // section, so a stage edit that reaches here is always an update.
+    const stageEdit = request.edits.find(
+      (edit): edit is Extract<CompoundSectionEdit, { kind: 'update' }> =>
+        edit.sectionId === stageSectionId && edit.kind === 'update',
+    );
+    const stageEdited = stageEdit !== undefined;
+    const pending = this.snapshot.pendingCommands;
+    if (pending.length === 0) {
+      return Object.freeze({
+        status: 'send',
+        edits: request.edits,
+        throughBatchId: -1,
+        stageEdited,
+      });
+    }
+
+    if (this.withheldFromBatchId !== undefined) {
+      return Object.freeze({
+        status: 'refused',
+        failure: compoundFailure(
+          'pending-commands',
+          'save the current stage changes before editing related sections',
+        ),
+      });
+    }
+
+    if (stageEdit === undefined) {
+      return Object.freeze({
+        status: 'send',
+        edits: request.edits,
+        throughBatchId: -1,
+        stageEdited,
+      });
+    }
+
+    // Only the batches the host is not already holding. It names the document
+    // it will apply this update to by content hash, so which of them it has
+    // is read off the request rather than assumed: folding one a live-applying
+    // host has already applied would apply it twice, and an `insertItem`
+    // applied twice adds the row twice.
+    const identity = this.snapshot.editedSection.identity;
+    const accounted = this.deliveredPrefixLength(
+      pending,
+      (candidate) =>
+        contentHash(stageDocument(identity, candidate)) ===
+        stageEdit.expectedContentHash,
+    );
+    if (accounted === null) {
+      // The stage the request was built from is neither this session's base nor
+      // that base with any run of its batches applied. Refused with the base,
+      // the batches, the draft and the history exactly as they were.
+      return Object.freeze({
+        status: 'refused',
+        failure: compoundFailure(
+          'stale-base',
+          'the authoritative stage changed while this change was being made, so nothing local was altered',
+          stageSectionId,
+        ),
+      });
+    }
+    const commands = Object.freeze([
+      ...pending.slice(accounted).flatMap((batch) => [...batch.commands]),
+      ...stageEdit.commands,
+    ]);
+    return Object.freeze({
+      status: 'send',
+      edits: request.edits.map((edit) =>
+        edit === stageEdit ? Object.freeze({ ...stageEdit, commands }) : edit,
+      ),
+      throughBatchId: pending[pending.length - 1]?.id ?? -1,
+      stageEdited,
+    });
+  }
+
+  /**
+   * How many of these pending batches a host's stage already contains.
+   *
+   * A live-applying host receives the batches in order and applies them in
+   * order, so any stage it holds is this session's base plus a PREFIX of them:
+   * none if it buffers until finish, all of them if it applied every one it was
+   * given, a leading run if one was made while a request was in flight. `null`
+   * means the stage is none of those — it moved for a reason this session
+   * cannot account for.
+   *
+   * Which stage is being asked about differs by path, so the caller says how to
+   * recognise it: the codebook-only path compares the stage the host ANSWERED
+   * with, and the fold compares the content hash the request was BUILT from —
+   * the document the host is about to apply the folded commands to.
+   */
+  /**
+   * The outstanding batches, re-expressed against a base that has moved.
+   *
+   * A batch describes an EDIT the researcher made to the document they were
+   * looking at. Replayed literally onto a base a collaborator has since changed,
+   * an index in it addresses whatever row has moved into that position and a
+   * whole-list `set` in it writes their rows back out of existence — which is
+   * the same merge-blindness nested addressing was added to avoid, arriving one
+   * step later.
+   *
+   * So each batch is rebased against the document it was made on, which this
+   * session can always reconstruct: its own previous base with every earlier
+   * batch applied. `rebaseCommands` decides what each command means against the
+   * list that is there now.
+   *
+   * The rebased commands REPLACE the pending ones, because a batch that stays
+   * pending is a batch the host has still to be given — at finish, or in the
+   * fold of a later compound edit — and it has to describe the same edit the
+   * draft on screen is showing. A batch nothing moved under keeps its own
+   * command objects, so the common case is unchanged in every respect.
+   *
+   * Must be called BEFORE `baseFields` is replaced: the previous base is the
+   * foot of the walk.
+   */
+  private rebasePending(
+    base: SectionDoc,
+    stillPending: (batch: PendingCommandBatch) => boolean,
+  ): Readonly<{
+    batches: PendingCommandBatch[];
+    /** The draft before each rebased batch, in order: a rebase's undo entries. */
+    steps: SectionDoc[];
+    fields: SectionDoc;
+  }> {
+    const basisOf = new Map<number, SectionDoc>();
+    let basis: SectionDoc | null = cloneDoc(this.baseFields);
+    for (const batch of this.snapshot.pendingCommands) {
+      if (basis === null) break;
+      basisOf.set(batch.id, basis);
+      try {
+        basis = applyCommands(basis, [...batch.commands]);
+      } catch {
+        // A batch that no longer applies to the base it was made on says
+        // nothing reliable about the ones after it, which are then replayed
+        // exactly as they were — the behaviour this rebase replaces.
+        basis = null;
+      }
+    }
+
+    const batches: PendingCommandBatch[] = [];
+    const steps: SectionDoc[] = [];
+    let fields = cloneDoc(base);
+    for (const batch of this.snapshot.pendingCommands) {
+      if (!stillPending(batch)) continue;
+      const basisDocument = basisOf.get(batch.id);
+      const commands =
+        basisDocument === undefined
+          ? batch.commands
+          : rebaseCommands(basisDocument, fields, batch.commands);
+      const rebased =
+        commands === batch.commands
+          ? batch
+          : Object.freeze({
+              id: batch.id,
+              commands: Object.freeze([...commands]),
+            });
+      batches.push(rebased);
+      steps.push(cloneDoc(fields));
+      fields = applyCommands(fields, [...rebased.commands]);
+    }
+    return { batches, steps, fields };
+  }
+
+  private deliveredPrefixLength(
+    pending: readonly PendingCommandBatch[],
+    isHostStage: (fields: SectionDoc) => boolean,
+  ): number | null {
+    let document = cloneDoc(this.baseFields);
+    if (isHostStage(document)) return 0;
+    // Without an `onCommands` the host has been given nothing, so the base is
+    // the only stage it can honestly be holding.
+    if (this.options.onCommands === undefined) return null;
+    for (const [index, batch] of pending.entries()) {
+      // A withheld batch never reached the host, and neither did any after it.
+      if (
+        this.withheldFromBatchId !== undefined &&
+        batch.id >= this.withheldFromBatchId
+      ) {
+        return null;
+      }
+      try {
+        document = applyCommands(document, [...batch.commands]);
+      } catch {
+        // A batch that no longer applies to this base cannot describe the
+        // difference between it and the host's stage.
+        return null;
+      }
+      if (isHostStage(document)) return index + 1;
+    }
+    return null;
+  }
+
+  /**
    * Whether a batch has to wait for finish: it puts a resource this session
    * has staged into one of the fields it touches, and that resource's manifest
    * entry does not exist until the finish promotion writes it.
@@ -1147,6 +1649,15 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
    * the schema's own `assetReference` tags — so a stage type that gains a
    * resource field is covered as soon as its schema is tagged, and nothing
    * here has to know which field of which stage holds an asset id.
+   *
+   * A batch is judged on what it TOUCHES, which is why the editor's own rule
+   * matters here: an edit made BECAUSE a staged resource was chosen has to
+   * carry that choice, or the session sees only the consequence — a capability
+   * cleared because the data file changed, naming no resource at all — and
+   * lets it go while the file that explains it stays behind
+   * (`useDiscardStageValues`). Everything after such a batch is covered
+   * already, because the hold below is a suffix rather than a judgement of
+   * each batch in turn.
    */
   private withholdsFromHost(
     batch: PendingCommandBatch,
@@ -1159,7 +1670,11 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     const staged = this.resources?.staged() ?? NO_STAGED_RESOURCES;
     if (staged.length === 0) return false;
     const stagedIds = new Set(staged.map((descriptor) => descriptor.id));
-    const touched = new Set(batch.commands.map((command) => command.key));
+    // The top-level key each command reaches into, which is the depth a
+    // resource reference is addressed at.
+    const touched = new Set(
+      batch.commands.map((command) => targetRoot(command.key)),
+    );
     return collectStageResourceReferences(
       stageDocument(this.snapshot.editedSection.identity, fields),
     ).some(
@@ -1329,8 +1844,12 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
 
   private assertCommandsDoNotOwnIdentity(commands: readonly Command[]): void {
     for (const command of commands) {
-      if (command.key === 'id' || command.key === 'type') {
-        throw new StageIdentityCommandError(command.key);
+      // The ROOT of the path, not the whole address: a command reaching into
+      // `id` is writing the stage's identity just as surely as one replacing
+      // it, and the session owns that either way.
+      const key = targetRoot(command.key);
+      if (key === 'id' || key === 'type') {
+        throw new StageIdentityCommandError(key);
       }
     }
   }
@@ -1401,6 +1920,11 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
         }),
         identity: this.options.identity,
         fields: freezeDoc(params.fields),
+        // Settled when the session opened and never moved by an edit: whether
+        // this stage exists yet is the host's fact, not the draft's.
+        ...(this.options.creation === undefined
+          ? {}
+          : { creation: Object.freeze({ ...this.options.creation }) }),
       }),
       protocolSections,
       protocolContext,
@@ -1537,9 +2061,10 @@ function validateCompoundEditRequest(
       }
       if (
         ref.kind === 'stage' &&
-        edit.commands.some(
-          (command) => command.key === 'id' || command.key === 'type',
-        )
+        edit.commands.some((command) => {
+          const key = targetRoot(command.key);
+          return key === 'id' || key === 'type';
+        })
       ) {
         return compoundFailure(
           'invalid-request',
