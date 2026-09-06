@@ -398,10 +398,18 @@ describe('the order a sociogram hands unplaced nodes over in', () => {
   });
 
   /**
-   * Opening a prompt and saving it is not a decision about its sort order, so
-   * the order has to come back out of the dialog exactly as it went in.
+   * Opening a prompt and saving it is not a decision about anything, so the
+   * row has to come back out of the dialog exactly as it went in — key for
+   * key, and no key it did not arrive with.
+   *
+   * Asserted as the WHOLE row rather than as the keys the dialog rendered,
+   * because the failure this catches is an invention: the dialog wrote the
+   * tap-behaviour flag on mount, so a prompt that had never said anything
+   * about tapping came back saying it does not allow marking. An unanswered
+   * question saved as an answer is content in the researcher's protocol that
+   * the researcher did not write.
    */
-  it('keeps a sort order the researcher opened the prompt on and left alone', async () => {
+  it('saves a prompt it opened and left alone exactly as it arrived', async () => {
     const harness = renderStageEditor(openWithSortOrder());
 
     await openPrompt(harness);
@@ -411,12 +419,7 @@ describe('the order a sociogram hands unplaced nodes over in', () => {
     );
 
     const request = await harness.submit();
-    // Its own rules, and the layout attribute they are read against: a save
-    // from the dialog rebuilds the row out of the fields it rendered, so both
-    // are claims about what the dialog put back.
-    const saved = prompts(request?.stageDocument ?? {})[0];
-    expect(saved?.sortOrder).toEqual(SORTED_PROMPT.sortOrder);
-    expect(saved?.layout).toEqual(SORTED_PROMPT.layout);
+    expect(prompts(request?.stageDocument ?? {})[0]).toEqual(SORTED_PROMPT);
   });
 
   /**

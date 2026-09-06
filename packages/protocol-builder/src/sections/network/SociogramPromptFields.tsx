@@ -28,6 +28,7 @@ import {
 } from './codebookOptions.ts';
 import CreateVariableAction from './CreateVariableAction.tsx';
 import {
+  asNestedBoolean,
   asNestedIdList,
   asNestedText,
   asText,
@@ -190,6 +191,8 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
   );
   const committedCreate = asNestedText(item.edges, 'create');
   const committedHighlight = asNestedText(item.highlight, 'variable');
+  const committedAllowHighlighting =
+    asNestedBoolean(item.highlight, 'allowHighlighting') === true;
 
   const [tapBehaviour, setTapBehaviour] = useState<TapBehaviour>(() =>
     tapBehaviourOf(item),
@@ -228,15 +231,28 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
    * Written rather than rendered because there is no second decision to make:
    * the schema pairs `allowHighlighting` with `highlight.variable`, and a
    * control for it would only be able to contradict the behaviour chooser. It
-   * has to be written on EVERY opening of a marked prompt, not only when the
-   * choice changes — the dialog submits the `highlight` object it rendered,
-   * which replaces the committed one wholesale, and a `variable` arriving
-   * without its flag is a prompt that colours nodes rather than one that marks
-   * them.
+   * is written on EVERY opening of a marked prompt, not only when the choice
+   * changes, because a `variable` arriving without its flag is a prompt that
+   * colours nodes rather than one that marks them.
+   *
+   * Turned OFF only for a prompt that had it on. Writing `false` for every
+   * other prompt made opening a dialog and closing it again an answer: a
+   * prompt that had never said anything about tapping acquired
+   * `highlight.allowHighlighting: false` the first time anyone looked at it,
+   * and an unanswered question saved as an answer is content in the
+   * researcher's protocol that the researcher did not write. A committed `true`
+   * still has to be written over, though, and `undefined` will not do it — the
+   * row is rebuilt by laying the dialog's fields over the committed row, so a
+   * field holding nothing lets the committed value through.
    */
   useEffect(() => {
-    setRowValue(ALLOW_HIGHLIGHTING_FIELD, tapBehaviour === TAP_HIGHLIGHT);
-  }, [setRowValue, tapBehaviour]);
+    if (tapBehaviour === TAP_HIGHLIGHT) {
+      setRowValue(ALLOW_HIGHLIGHTING_FIELD, true);
+      return;
+    }
+    if (!committedAllowHighlighting) return;
+    setRowValue(ALLOW_HIGHLIGHTING_FIELD, false);
+  }, [committedAllowHighlighting, setRowValue, tapBehaviour]);
 
   /**
    * The connection being drawn is always among the connections shown.

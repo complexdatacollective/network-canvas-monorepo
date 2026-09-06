@@ -30,6 +30,16 @@ export const asNestedText = (
   return asText(Reflect.get(value, key));
 };
 
+/** A flag held inside a container the row may not have at all. */
+export const asNestedBoolean = (
+  value: unknown,
+  key: string,
+): boolean | undefined => {
+  if (typeof value !== 'object' || value === null) return undefined;
+  const flag = Reflect.get(value, key);
+  return typeof flag === 'boolean' ? flag : undefined;
+};
+
 /** A list of ids held inside a container the row may not have at all. */
 export const asNestedIdList = (
   value: unknown,
