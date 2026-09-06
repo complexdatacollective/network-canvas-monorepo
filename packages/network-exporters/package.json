@@ -15,6 +15,8 @@
   "main": "./src/pipeline.ts",
   "types": "./src/pipeline.ts",
   "exports": {
+    "./messages": "./src/messages.ts",
+    "./locales": "./src/locales/catalogs.ts",
     "./pipeline": "./src/pipeline.ts",
     "./options": "./src/options.ts",
     "./input": "./src/input.ts",
@@ -30,6 +32,14 @@
     "main": "./dist/pipeline.js",
     "types": "./dist/pipeline.d.ts",
     "exports": {
+      "./messages": {
+        "types": "./dist/messages.d.ts",
+        "import": "./dist/messages.js"
+      },
+      "./locales": {
+        "types": "./dist/locales/catalogs.d.ts",
+        "import": "./dist/locales.js"
+      },
       "./pipeline": {
         "types": "./dist/pipeline.d.ts",
         "import": "./dist/pipeline.js"
@@ -74,6 +84,7 @@
     "access": "public"
   },
   "scripts": {
+    "i18n:extract": "node scripts/extract-i18n.mjs",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest --run",
@@ -91,11 +102,20 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@codaco/app-i18n": "workspace:^",
     "@codaco/tsconfig": "workspace:^",
     "@types/node": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plugin-dts": "catalog:",
     "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "@codaco/app-i18n": "workspace:^"
+  },
+  "peerDependenciesMeta": {
+    "@codaco/app-i18n": {
+      "optional": true
+    }
   }
 }
