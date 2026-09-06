@@ -7,8 +7,10 @@ import pg from 'pg';
 import { expect, it } from 'vitest';
 
 import { BACKUP_ROLE, TENANT_ROLES } from '@codaco/studio-sync/rls';
+import { runtimeRolesSql } from '@codaco/studio-sync/role-bootstrap';
 import { createTenantDb } from '@codaco/studio-sync/tenant';
 
+import { enrollMigrationTestDatabase } from '../../__tests__/support/migrations.ts';
 import {
   createScratchDatabase,
   reachableDb,
@@ -67,16 +69,24 @@ async function backupFixture(
   let runtime: pg.Pool | undefined;
   const maintenance = createMaintenancePool(source.db);
   try {
-    await migrateDatabase(source.pool, migrations, SCHEMA_FINGERPRINT);
+    // Precreate the operator-only role before enrollment; a restricted
+    // migrator must be able to validate it without CREATEROLE privileges.
+    await source.pool.query(runtimeRolesSql([BACKUP_ROLE]));
     await source.pool
       .query(`CREATE ROLE ${pg.escapeIdentifier(backupLogin)} ${loginOptions} PASSWORD ${pg.escapeLiteral(backupPassword)};
       CREATE ROLE ${pg.escapeIdentifier(runtimeLogin)} ${loginOptions} PASSWORD ${pg.escapeLiteral(runtimePassword)}`);
     await source.pool
       .query(`GRANT ${BACKUP_ROLE} TO ${pg.escapeIdentifier(backupLogin)} WITH INHERIT FALSE, SET TRUE;
       GRANT ${TENANT_ROLES.app}, ${TENANT_ROLES.maintenance} TO ${pg.escapeIdentifier(runtimeLogin)} WITH INHERIT FALSE, SET TRUE`);
-    const dbName = decodeURIComponent(new URL(source.db.url).pathname.slice(1));
-    await source.pool.query(
-      `GRANT CONNECT ON DATABASE ${pg.escapeIdentifier(dbName)} TO ${pg.escapeIdentifier(backupLogin)}, ${pg.escapeIdentifier(runtimeLogin)}`,
+    const allowedLogins = await enrollMigrationTestDatabase(source.pool, db, [
+      backupLogin,
+      runtimeLogin,
+    ]);
+    await migrateDatabase(
+      source.pool,
+      migrations,
+      SCHEMA_FINGERPRINT,
+      allowedLogins,
     );
     const loginUrl = (username: string, password: string) => {
       const url = new URL(source.db.url);

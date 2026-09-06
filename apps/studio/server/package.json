@@ -28,6 +28,7 @@
     "start": "NODE_ENV=production CLIENT_DIST=../client/dist node --env-file-if-exists=.env dist/index.js",
     "typecheck": "tsc --build --noEmit",
     "test": "vitest run",
+    "test:qualification": "vitest run --config vitest.qualification.config.ts",
     "test:watch": "vitest"
   },
   "dependencies": {

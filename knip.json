@@ -178,9 +178,12 @@
         "scripts/auth-cli-config.ts!",
         // Resolved by vite.netlify.config.ts as a build input string, never
         // by an import — it is the Netlify Function entry.
-        "src/netlify.ts!"
+        "src/netlify.ts!",
+        // Explicit image commands are bundle input strings, not imports.
+        "src/configure.ts!",
+        "src/diagnostics.ts!"
       ],
-      "project": ["src/**/*.ts", "scripts/**/*.ts"]
+      "project": ["src/**/*.ts", "scripts/**/*.ts", "qualification/**/*.ts"]
     },
     "apps/interviewer": {
       "entry": [

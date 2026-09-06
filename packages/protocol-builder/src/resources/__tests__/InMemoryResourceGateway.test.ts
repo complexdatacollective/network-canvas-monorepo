@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import { assetSchema } from '@codaco/protocol-validation';
 
-import { type ResourceDescriptor, type ResourceResult } from '../gateway.ts';
+import {
+  resourceFailure,
+  type ResourceDescriptor,
+  type ResourceResult,
+} from '../gateway.ts';
 import {
   describeResourceGatewayContract,
   RESOURCE_GATEWAY_CONTRACT_SEED,
@@ -10,6 +14,7 @@ import {
   type ResourceGatewayContractHarness,
 } from '../gatewayContract.ts';
 import { InMemoryResourceGateway } from '../InMemoryResourceGateway.ts';
+import { overrideGateway } from '../overrideGateway.ts';
 
 const ROSTER_BYTES = new TextEncoder().encode(
   JSON.stringify({
@@ -62,6 +67,38 @@ function createHarness(): ResourceGatewayContractHarness {
 }
 
 describeResourceGatewayContract('InMemoryResourceGateway', createHarness);
+
+/**
+ * The adapter `gateway.ts` tells a Studio author to write today: a host that
+ * means to keep keys itself but has nowhere to keep them yet, so it refuses to
+ * stage one rather than putting the value somewhere nobody decided on.
+ *
+ * Run here because a contract an adapter following the port's own advice
+ * cannot pass is advice or a contract that is wrong, and neither is something
+ * the author of the Studio adapter should be the one to discover.
+ */
+function createHostWithoutSecretStoreHarness(): ResourceGatewayContractHarness {
+  const base = createHarness();
+  return {
+    ...base,
+    gateway: overrideGateway(base.gateway, {
+      secretStorage: 'vault',
+      stageSecret: () =>
+        Promise.resolve(
+          resourceFailure(
+            'unsupported-kind',
+            'This host cannot store API keys yet.',
+          ),
+        ),
+    }),
+  };
+}
+
+describeResourceGatewayContract(
+  'a host with nowhere to keep a secret',
+  createHostWithoutSecretStoreHarness,
+  { secrets: 'unsupported' },
+);
 
 describe('InMemoryResourceGateway', () => {
   const stageRoster = async (

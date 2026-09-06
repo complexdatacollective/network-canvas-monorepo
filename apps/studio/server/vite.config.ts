@@ -13,6 +13,8 @@ export default defineConfig({
         migrate: 'src/migrate.ts',
         encryption: 'src/encryption.ts',
         backup: 'src/backup.ts',
+        configure: 'src/configure.ts',
+        diagnostics: 'src/diagnostics.ts',
       },
     },
     outDir: 'dist',

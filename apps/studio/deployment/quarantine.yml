@@ -1,0 +1,11 @@
+# Recovery validation only: no proxy, no workers, no external network and no
+# mail delivery. Combine with docker-compose.yml, then start studio explicitly.
+services:
+  studio:
+    environment:
+      STUDIO_ROLE: web
+      SMTP_URL: ''
+      EMAIL_FROM: ''
+      STUDIO_TELEMETRY: 'off'
+      TRUSTED_PROXIES: ''
+    networks: !override [data]
