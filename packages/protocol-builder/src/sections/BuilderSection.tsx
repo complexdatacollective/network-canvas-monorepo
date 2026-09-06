@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useState } from 'react';
+import { type ReactNode, useCallback, useRef, useState } from 'react';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Section from '@codaco/fresco-ui/Section';
@@ -9,6 +9,7 @@ import {
 } from '../form/stageEditorContext.ts';
 import {
   useClearStageValue,
+  useFormRestoreVersion,
   useStageHasAnyValue,
 } from '../form/stageFormHooks.ts';
 import { useOutlineSection } from '../form/useOutlineSection.ts';
@@ -51,6 +52,44 @@ export type BuilderSectionProps = Readonly<{
 const NO_FIELDS: readonly string[] = Object.freeze([]);
 
 /**
+ * Keeps the researcher's switch in step with a draft that was replaced beneath
+ * it.
+ *
+ * The switch records a decision the researcher made, and nothing about the
+ * form's own editing should disturb it — emptying the last field inside an
+ * open capability is not switching it off. An authoritative arrival is the one
+ * exception: a replacement, an undo, a rollback after a lost lease can take
+ * every value a capability owns away, or bring a whole capability in, and a
+ * decision made about the draft that is gone no longer describes anything. The
+ * section's own panel is already reset from the same signal (Fresco's
+ * `Section` reapplies `defaultOpen` on a restore), so without this the outline
+ * would go on calling a capability available while the panel it lives in has
+ * closed itself over nothing.
+ *
+ * Only a capability whose OWN content changed across the arrival is touched:
+ * an arrival elsewhere in the stage says nothing about this capability, and
+ * must not undo a switch the researcher has just thrown.
+ *
+ * Adjusted during render rather than in an effect so the outline never commits
+ * a frame describing the draft that has just been replaced.
+ */
+function useSwitchFollowsTheDraft(
+  configured: boolean,
+  setSwitchedOn: (value: boolean) => void,
+): void {
+  const restoreVersion = useFormRestoreVersion();
+  const previous = useRef({ restoreVersion, configured });
+
+  if (
+    previous.current.restoreVersion !== restoreVersion &&
+    previous.current.configured !== configured
+  ) {
+    setSwitchedOn(configured);
+  }
+  previous.current = { restoreVersion, configured };
+}
+
+/**
  * One semantic section of a stage editor.
  *
  * Sections know what they are for, not where their values live: everything
@@ -74,6 +113,7 @@ export default function BuilderSection({
   const clearStageValue = useClearStageValue();
   const configured = useStageHasAnyValue(capability?.fields ?? NO_FIELDS);
   const [switchedOn, setSwitchedOn] = useState(configured);
+  useSwitchFollowsTheDraft(configured, setSwitchedOn);
   // Holding a value is itself proof the capability is on, so an undo that
   // restores what a switch-off cleared reopens the section — which is exactly
   // what Fresco's Section does with the same fact — without this mirror
@@ -159,7 +199,15 @@ export default function BuilderSection({
       description={description}
       disabled={isDisabled}
       toggleable
-      defaultOpen={configured}
+      /**
+       * `Section` reads this when it mounts, and again whenever the form is
+       * restored from an authoritative draft. Both times the question is the
+       * same one the outline answers — is this capability on — so it is
+       * answered with the same value. Reading `configured` alone would close a
+       * capability the researcher had switched on and not yet filled in,
+       * every time anything else in the stage moved.
+       */
+      defaultOpen={enabled}
       onOpenChange={requestOpenChange}
     >
       {body}

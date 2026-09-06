@@ -38,12 +38,18 @@ describe('startup diagnostic privacy', () => {
       .trim()
       .split('\n')
       .map((line) => JSON.parse(line) as Record<string, unknown>);
-    expect(records.at(-1)).toEqual({
-      level: 50,
-      time: expect.any(String),
-      event: 'operational',
-      code: 'STUDIO_PROCESS_FAILED',
-    });
+    // Static-asset probing can finish while fatal shutdown drains. Assert the
+    // fatal diagnostic itself; an unrelated warning may be emitted after it.
+    expect(
+      records.filter((record) => record.code === 'STUDIO_PROCESS_FAILED'),
+    ).toEqual([
+      {
+        level: 50,
+        time: expect.any(String),
+        event: 'operational',
+        code: 'STUDIO_PROCESS_FAILED',
+      },
+    ]);
     expect(child.stdout).not.toContain('secret-payload-canary');
   });
 
