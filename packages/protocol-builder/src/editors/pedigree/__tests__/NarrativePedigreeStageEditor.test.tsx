@@ -69,23 +69,34 @@ const openNewStage = () =>
  * own document and its place in the interview's order — and a deletion takes
  * both. Removing only the order entry would leave a stage the protocol cannot
  * even be assembled from, which is a broken host rather than a collaborator.
+ *
+ * So the change goes to the HOST, which issues the revision for it, and the
+ * session is told about the result under that same revision — the route
+ * `harness.receiveCodebookUpdate` takes for a codebook patch, taken here for
+ * the two sections a stage deletion touches. A helper that told the session
+ * alone, under a number it made up, left the host holding a stage the
+ * researcher can no longer see: every later compound edit is refused as stale
+ * against a base the host does not recognise, and the next arrival the host
+ * issues is older than what the session holds and is dropped silently. Neither
+ * is anything a collaborator can do, and both are invisible until some later
+ * assertion fails for a reason that has nothing to do with what it is testing.
  */
 function deleteStage(harness: StageEditorHarness, stageId: string): void {
-  const sections = { ...harness.session.getSnapshot().protocolSections };
+  const sections = harness.host.getSnapshot().protocolSections;
   const order = sections[STAGE_ORDER_SECTION]?.stages;
   const stages = Array.isArray(order)
     ? order.filter((entry): entry is string => typeof entry === 'string')
     : [];
-  delete sections[sectionId({ kind: 'stage', stageId })];
+  const applied = harness.host.receiveAuthoritativeSections({
+    [sectionId({ kind: 'stage', stageId })]: null,
+    [STAGE_ORDER_SECTION]: {
+      stages: stages.filter((entry) => entry !== stageId),
+    },
+  });
   act(() => {
     harness.session.receiveAuthoritativeUpdate({
-      protocolSections: {
-        ...sections,
-        [STAGE_ORDER_SECTION]: {
-          stages: stages.filter((entry) => entry !== stageId),
-        },
-      },
-      manifestRevision: { sequence: 9n, hash: 'revision-9' },
+      protocolSections: applied.protocolSections,
+      manifestRevision: applied.manifestRevision,
     });
   });
 }

@@ -728,7 +728,17 @@ describe('what a composer field’s control accepts', () => {
     // form's. A block written to the codebook instead would arrive at the host
     // as a compound edit over the whole person type, which is where the
     // attribute — and the settings — would then be.
-    expect(Object.hasOwn(personVariables(harness), 'met_on')).toBe(false);
+    //
+    // Read from the HOST's own codebook rather than from the session's copy,
+    // and by what `met_on` now holds rather than by whether it is there at
+    // all: the attribute was seeded through the host, so it is certainly
+    // there, and "is it there?" would answer yes however much this editor had
+    // written onto it. The claim is that it is still exactly what was seeded —
+    // in particular that it carries no `parameters`.
+    expect(harness.hostCodebook().node?.person?.variables?.met_on).toEqual({
+      name: 'met_on',
+      type: 'datetime',
+    });
   });
 
   it('records the same for a connection’s own form', async () => {

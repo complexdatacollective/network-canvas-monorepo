@@ -7,6 +7,7 @@ import {
   MISSING_SORT_PROPERTY_MESSAGE,
   missingSortPropertyLabel,
 } from '../../../fields/sortOrderOptions.ts';
+import type { ManifestRevision } from '../../../session.ts';
 import type { StageEditorHarness } from '../../../testing/renderStageEditor.tsx';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import AutomaticLayoutSection from '../AutomaticLayoutSection.tsx';
@@ -37,24 +38,39 @@ const prompts = (stage: Record<string, unknown>): Record<string, unknown>[] =>
  * Deletes the attribute every prompt positions its nodes with, as a
  * collaborator would — with the change attributed to them, in one authoritative
  * revision.
+ *
+ * The deletion reaches the HOST first, which issues that revision, and the
+ * session is told about the result under it: one change to one protocol, seen
+ * from both ends, the way `harness.receiveCodebookUpdate` seeds one. A helper
+ * that told the session alone, under a number of its own, leaves the host
+ * holding an attribute the researcher can no longer see — so a later compound
+ * edit is refused as stale against a base the host does not recognise, and the
+ * next arrival the host issues is older than what the session holds and is
+ * dropped in silence.
+ *
+ * The host cannot carry the attribution, which is why this is not simply
+ * `receiveCodebookUpdate`: whose change it was is the session's to record, and
+ * it has to name the revision the protocol is actually at, so it is written
+ * against the one the host just issued.
  */
-const deleteLayoutVariable = (harness: StageEditorHarness): void => {
-  const protocolSections = harness.session.getSnapshot().protocolSections;
-  const person = protocolSections[PERSON_SECTION];
+const deleteLayoutVariable = (
+  harness: StageEditorHarness,
+): ManifestRevision => {
+  const person = harness.host.getSnapshot().protocolSections[PERSON_SECTION];
   if (person === undefined) throw new Error('the fixture has no person type');
   const variables =
     typeof person.variables === 'object' && person.variables !== null
       ? (person.variables as Record<string, unknown>)
       : {};
   const { layout: _deleted, ...kept } = variables;
-  const manifestRevision = { sequence: 7n, hash: 'revision-7' };
+  const applied = harness.host.receiveAuthoritativeSections({
+    [PERSON_SECTION]: { ...person, variables: kept },
+  });
+  const manifestRevision = applied.manifestRevision;
 
   act(() => {
     harness.session.receiveAuthoritativeUpdate({
-      protocolSections: {
-        ...protocolSections,
-        [PERSON_SECTION]: { ...person, variables: kept },
-      },
+      protocolSections: applied.protocolSections,
       manifestRevision,
       attribution: {
         [PERSON_SECTION]: {
@@ -65,6 +81,12 @@ const deleteLayoutVariable = (harness: StageEditorHarness): void => {
       },
     });
   });
+
+  // Answered with the revision the HOST issued, so the test can name the one
+  // the protocol is actually at rather than restating a number written here.
+  // A literal expectation would go on passing if the deletion stopped reaching
+  // the host at all.
+  return manifestRevision;
 };
 
 describe('the tasks a sociogram sets', () => {
@@ -190,7 +212,7 @@ describe('the tasks a sociogram sets', () => {
       expect(harness.session.getSnapshot().validation.status).toBe('valid'),
     );
 
-    deleteLayoutVariable(harness);
+    const deletion = deleteLayoutVariable(harness);
 
     await waitFor(() =>
       expect(harness.session.getSnapshot().validation.status).toBe('invalid'),
@@ -205,7 +227,10 @@ describe('the tasks a sociogram sets', () => {
       attribution: {
         sessionId: 'other-tab',
         displayName: 'Dana',
-        revision: { sequence: 7n, hash: 'revision-7' },
+        // The revision the protocol is actually at, not a number this test
+        // wrote down: that is what attribution is matched by, so an issue
+        // naming any other one is blamed on a change nobody made.
+        revision: deletion,
       },
     });
     expect(blamed.some((issue) => issue.path.includes('layoutVariable'))).toBe(
@@ -389,6 +414,64 @@ describe('the order a sociogram hands unplaced nodes over in', () => {
     // each column, and the id it holds is the whole problem.
     await prompt.findByText(MISSING_SORT_PROPERTY_MESSAGE);
     expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  /**
+   * And the other side of the same rule: a stage that has not been told what it
+   * collects reports NO rule as dangling.
+   *
+   * `SortOrderRows` judges "no longer in the codebook" against the properties
+   * the family hands it, and it tells two answers apart — an empty list is a
+   * subject with nothing to sort by, where a rule certainly is dangling, and
+   * `undefined` is a family that does not know yet. A sociogram whose subject
+   * names no type is the second: there is no codebook to be missing from, and
+   * answering `[]` would mark every rule the prompt holds as pointing at a
+   * deleted attribute and refuse a save the researcher cannot fix — the type
+   * they need to choose is in another section, and choosing it is what makes
+   * the question answerable at all.
+   *
+   * Reachable because the prompts section opens on a subject that merely HAS a
+   * `type`, while reading the codebook needs one that names a type the codebook
+   * holds; a stage part-way through being told what it collects sits between
+   * the two.
+   */
+  it('judges no sort rule while the stage has not been told what it collects', async () => {
+    const harness = renderStageEditor({
+      stage: {
+        type: 'Sociogram' as const,
+        fields: {
+          label: 'Sociogram',
+          subject: { entity: 'node', type: '' },
+          prompts: [
+            {
+              ...SORTED_PROMPT,
+              sortOrder: [{ property: 'nickname', direction: 'asc' }],
+            },
+          ],
+        },
+      },
+      sections,
+    });
+
+    const prompt = await openPrompt(harness);
+
+    // The fixed "keep the source order" choice and nothing else: no codebook
+    // to draw from, and — the point — no orphan option manufactured out of the
+    // rule's own id.
+    expect(sortPropertyOptions(prompt)).toEqual(['*']);
+    expect(
+      prompt.queryByRole('option', {
+        name: missingSortPropertyLabel('nickname'),
+      }),
+    ).not.toBeInTheDocument();
+
+    // And the save is not refused for it. This is what a list of `[]` would
+    // cost: the same prompt, unopenable-to-fix, over an attribute that may
+    // well exist on the type the researcher is about to choose.
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
   });
 
   it('saves a rule the researcher added to a prompt that had none', async () => {

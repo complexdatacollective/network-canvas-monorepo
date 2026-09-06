@@ -109,15 +109,26 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
   // Everything a sort rule may order by: every attribute of the type this
   // stage collects, unfiltered by writer class — a rule reads an attribute
   // rather than writing one, so nothing is off limits.
+  //
+  // `undefined` until the stage has been told WHAT it collects, which is the
+  // answer `SortOrderRows` reads as "this family does not know its properties
+  // yet" and judges no rule against. An empty list is the other answer — a
+  // node type whose attributes have all been deleted, where every rule this
+  // prompt holds is certainly dangling and has to be shown and refused as
+  // such — and the codebook read below means exactly that whenever there is a
+  // subject to read it against. Saying `[]` for both would report every rule
+  // of a subjectless sociogram as pointing at a deleted attribute.
   const subjectVariables = useSubjectVariables(subject);
-  const sortableProperties = useMemo<SortableProperty[]>(
+  const sortableProperties = useMemo<SortableProperty[] | undefined>(
     () =>
-      Object.entries(subjectVariables).map(([value, variable]) => ({
-        value,
-        label: variable.name,
-        type: variable.type,
-      })),
-    [subjectVariables],
+      subject === undefined
+        ? undefined
+        : Object.entries(subjectVariables).map(([value, variable]) => ({
+            value,
+            label: variable.name,
+            type: variable.type,
+          })),
+    [subject, subjectVariables],
   );
 
   const committedLayout = asNestedText(item.layout, 'layoutVariable');

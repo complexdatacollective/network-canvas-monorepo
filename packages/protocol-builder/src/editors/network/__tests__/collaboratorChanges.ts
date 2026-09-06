@@ -19,33 +19,42 @@ const COLLABORATOR = Object.freeze({
   displayName: 'Dana',
 });
 
-/**
- * Revisions never repeat, and always move forward.
- *
- * Attribution is matched by revision: an issue is blamed on a change only when
- * that change's revision is the one the protocol is now at. A helper reusing a
- * sequence number the harness itself has already sent would blame the wrong
- * change, or none.
- */
-let sequence = 100n;
-
-const nextRevision = () => {
-  sequence += 1n;
-  return { sequence, hash: `revision-${sequence}` };
-};
-
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+/**
+ * Hands the changed sections to the HOST first, and tells the session about
+ * them under the revision the host issued for them.
+ *
+ * One change to one protocol, seen from both ends — the same route
+ * `harness.receiveCodebookUpdate` takes, and taken here for the same reason: a
+ * collaborator's edit is a real edit, so the authoritative protocol has to hold
+ * it. A helper that told the SESSION alone, under a revision it made up, left
+ * the host behind for the rest of the test: every later compound edit is built
+ * on a base the host does not recognise and is refused as stale, and the next
+ * arrival the host issues is older than what the session already holds and is
+ * dropped without a word. Neither is anything a collaborator can do.
+ *
+ * The host issuing the revision is also what keeps attribution honest.
+ * Attribution is matched by revision — an issue is blamed on a change only
+ * while that change's revision is the one the protocol is now at — so the
+ * number has to be the protocol's own rather than a fabrication racing the
+ * harness's.
+ *
+ * `null` removes a section, which is what the host's own arrival path means by
+ * it. Only the sections that actually CHANGED are passed: the host merges them
+ * into what it holds, and answers with the whole protocol at its new revision.
+ */
 function receive(
   harness: StageEditorHarness,
-  protocolSections: Record<string, SectionDoc>,
+  changed: Readonly<Record<string, SectionDoc | null>>,
   changedSectionId: string,
 ): void {
-  const manifestRevision = nextRevision();
+  const applied = harness.host.receiveAuthoritativeSections(changed);
+  const manifestRevision = applied.manifestRevision;
   act(() => {
     harness.session.receiveAuthoritativeUpdate({
-      protocolSections,
+      protocolSections: applied.protocolSections,
       manifestRevision,
       attribution: {
         [changedSectionId]: { ...COLLABORATOR, revision: manifestRevision },
@@ -67,8 +76,10 @@ export function deleteNodeVariable(
   variableId: string,
 ): void {
   const id = sectionId({ kind: 'codebookNode', typeId });
-  const sections = harness.session.getSnapshot().protocolSections;
-  const definition = sections[id];
+  // Read from the HOST, which is what this change is made against: the session
+  // is told about the result afterwards, and anything the editor has had
+  // applied since it last heard from the host is here and not there.
+  const definition = harness.host.getSnapshot().protocolSections[id];
   if (definition === undefined) {
     throw new Error(`the protocol has no "${typeId}" node type to change`);
   }
@@ -79,11 +90,7 @@ export function deleteNodeVariable(
     );
   }
   const { [variableId]: _deleted, ...kept } = variables;
-  receive(
-    harness,
-    { ...sections, [id]: { ...definition, variables: kept } },
-    id,
-  );
+  receive(harness, { [id]: { ...definition, variables: kept } }, id);
 }
 
 /** Removes one asset from the protocol's manifest, as a collaborator would. */
@@ -92,15 +99,14 @@ export function removeAsset(
   assetId: string,
 ): void {
   const id = sectionId({ kind: 'assets' });
-  const sections = harness.session.getSnapshot().protocolSections;
-  const manifest = { ...sections[id] };
+  const manifest = { ...harness.host.getSnapshot().protocolSections[id] };
   if (!Object.hasOwn(manifest, assetId)) {
     throw new Error(
       `the manifest has no "${assetId}" to remove. It holds: ${Object.keys(manifest).join(', ')}.`,
     );
   }
   delete manifest[assetId];
-  receive(harness, { ...sections, [id]: manifest }, id);
+  receive(harness, { [id]: manifest }, id);
 }
 
 /**

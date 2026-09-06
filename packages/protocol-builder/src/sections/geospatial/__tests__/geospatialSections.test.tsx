@@ -59,18 +59,34 @@ const mapOptions = (
   return options as Record<string, unknown>;
 };
 
-/** Applies a change to the authoritative asset manifest, as a collaborator. */
+/**
+ * Applies a change to the authoritative asset manifest, as a collaborator.
+ *
+ * The manifest goes to the HOST, which issues the revision for it, and the
+ * session is then told about the result under that same revision — one change
+ * to one protocol, seen from both ends, which is the route
+ * `harness.receiveCodebookUpdate` takes for the codebook. Telling the session
+ * alone under a number of the helper's own leaves the host behind for the rest
+ * of the test, where a later compound edit is refused as stale against a base
+ * the host does not recognise; and a FIXED number would make a second call in
+ * the same test no newer than the first, so the session would drop it in
+ * silence and the test would assert against a change that never arrived.
+ */
 function receiveManifest(
   harness: StageEditorHarness,
   change: (manifest: Record<string, unknown>) => void,
 ): void {
-  const sections = harness.session.getSnapshot().protocolSections;
-  const manifest = { ...sections[ASSETS_SECTION] };
+  const manifest = {
+    ...harness.host.getSnapshot().protocolSections[ASSETS_SECTION],
+  };
   change(manifest);
+  const applied = harness.host.receiveAuthoritativeSections({
+    [ASSETS_SECTION]: manifest,
+  });
   act(() => {
     harness.session.receiveAuthoritativeUpdate({
-      protocolSections: { ...sections, [ASSETS_SECTION]: manifest },
-      manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      protocolSections: applied.protocolSections,
+      manifestRevision: applied.manifestRevision,
     });
   });
 }
