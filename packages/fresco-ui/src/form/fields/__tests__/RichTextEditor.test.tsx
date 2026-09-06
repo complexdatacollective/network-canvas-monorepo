@@ -117,12 +117,6 @@ describe('RichTextEditorField', () => {
     expect(editor).toHaveTextContent('Existing content');
   });
 
-  /**
-   * A button unavailable because of where the caret is says so the way the
-   * ARIA toolbar pattern asks: still focusable, marked `aria-disabled`. Only a
-   * toolbar whose FIELD nobody can edit leaves the tab order, because there is
-   * nothing in it left to go and read.
-   */
   it('closes an open link popover when the field stops being editable', async () => {
     // The trigger is disabled with the rest of the toolbar, but the popover it
     // opened is a portal of its own: its URL box and its Apply and Remove
@@ -165,6 +159,12 @@ describe('RichTextEditorField', () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
+  /**
+   * A button unavailable because of where the caret is says so the way the
+   * ARIA toolbar pattern asks: still focusable, marked `aria-disabled`. Only a
+   * toolbar whose FIELD nobody can edit leaves the tab order, because there is
+   * nothing in it left to go and read.
+   */
   it('keeps a button the editor state disables reachable', async () => {
     render(
       <RichTextEditorField
