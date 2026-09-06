@@ -43,7 +43,12 @@ import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
  *   value, so a Studio adapter cannot yet resolve a handle at promotion the
  *   way Architect does by writing an `apiKey` asset. Until it has one, a
  *   Studio adapter should fail `stageSecret` with `unsupported-kind` rather
- *   than keep secret material somewhere unintended.
+ *   than keep secret material somewhere unintended — and say so to the shared
+ *   contract, which then holds it to that refusal instead of to the rows about
+ *   keeping a key: run `describeResourceGatewayContract` with
+ *   `{ secrets: 'unsupported' }`. `secretStorage` still has to say something,
+ *   because the port has no value for "nowhere": say where keys will go once
+ *   there is somewhere to put them.
  * - **Studio's delivery serves some kinds as attachments.** `svg`, `mov`,
  *   `m4a`, and `aiff` are served with a download disposition, so a
  *   `resolvePreview` URL for them will not render in an `img`, `video`, or
@@ -51,6 +56,17 @@ import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
  *   there; it is not something this port or an adapter can work around.
  */
 export type ProtocolBuilderResourceGateway = {
+  /**
+   * What promotion does with a staged secret's value.
+   *
+   * The editor never holds the value and never sees where it goes, so it
+   * cannot work this out: the handle is opaque, and resolving it is the
+   * adapter's own job. A researcher pasting an API key is nonetheless
+   * deciding whether to put a credential into a file they will send to other
+   * people, and only the adapter can tell them which it is — so it says, once,
+   * as a fact about itself. It does not change over an adapter's life.
+   */
+  readonly secretStorage: ResourceSecretStorage;
   /** Committed manifest resources plus everything staged in this session. */
   list(
     options?: ResourceListOptions,
@@ -80,7 +96,12 @@ export type ProtocolBuilderResourceGateway = {
   download(resourceId: string): Promise<ResourceResult<ResourceContent>>;
   /** Drops one staged resource and everything the host holds for it. */
   discardStaged(resourceId: string): Promise<ResourceResult<undefined>>;
-  /** Drops every staged resource — the cancel/discard path — leaving no residue. */
+  /**
+   * Drops every staged resource — the cancel/discard path — leaving no
+   * residue. A session with nothing staged answers ok: cancel calls this
+   * unconditionally, and a researcher who opened a stage, changed a prompt and
+   * backed out staged nothing at all.
+   */
   discardAllStaged(): Promise<ResourceResult<undefined>>;
   /**
    * Promotes staged resources and their manifest entries as one operation.
@@ -98,6 +119,25 @@ export type ProtocolBuilderResourceGateway = {
     request: ResourcePromotionRequest,
   ): Promise<ResourceResult<ResourcePromotion>>;
 };
+
+/**
+ * Where a promoted secret's value comes to rest.
+ *
+ * `plaintext` is Architect's answer: the value is written into the protocol's
+ * own `apiKey` asset, so it travels inside the protocol file and inside every
+ * export of it. `vault` is the answer a host with a secret store of its own
+ * gives: the manifest carries a reference and the value never leaves the host.
+ * The two are materially different promises to a researcher, which is why the
+ * port makes an adapter state which one it is keeping rather than letting an
+ * editor assume.
+ *
+ * There is deliberately no value for "nowhere". This is asked so the editor
+ * can tell a researcher pasting a key where it will end up, and a host that
+ * refuses to stage one never reaches that question; such an adapter says so to
+ * the shared contract instead, and says here where keys would go if it could
+ * take them.
+ */
+export type ResourceSecretStorage = 'plaintext' | 'vault';
 
 /** Manifest asset types whose content is bytes the host stores. */
 export type ResourceContentKind =
@@ -164,6 +204,17 @@ export type ResourceListOptions = Readonly<{
   kinds?: readonly ResourceKind[];
   status?: ResourceStatus;
 }>;
+
+/**
+ * The largest file an editor will read into memory to stage it.
+ *
+ * A limit the editor knows, not only one the host enforces: `stageUpload`
+ * takes bytes, so a control that waits for the host to refuse has already read
+ * the whole file to learn it was too big — and the file a researcher picks by
+ * mistake is exactly the one large enough to matter. A host may still refuse
+ * something smaller, and that refusal is reported as any other is.
+ */
+export const RESOURCE_UPLOAD_MAX_BYTE_LENGTH = 8 * 1024 * 1024;
 
 export type StageUploadRequest = Readonly<{
   /** Stable across an uncertain retry so a host stages the file once. */
@@ -242,7 +293,14 @@ export type ManifestApplyOutcome =
     }>;
 
 export type ResourcePromotionRequest = Readonly<{
-  /** Stable across an uncertain retry so a host promotes the intent once. */
+  /**
+   * Names this promotion's content: the resources below and the apply the
+   * gateway makes through `applyManifest`. Stable across an uncertain retry of
+   * the identical promotion, so a host promotes the intent once — and never
+   * carried onto a promotion that would commit anything else, because a host
+   * answering under an id it has already completed hands the completed
+   * promotion back without promoting or applying anything again.
+   */
   id: string;
   /** Staged resources the finished draft still references. */
   resourceIds: readonly string[];

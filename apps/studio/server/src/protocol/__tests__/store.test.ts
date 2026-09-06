@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
+import { SectionValidationFailedError } from '@codaco/studio-sync/section-validation';
 import {
   LeaseRejectedError,
   UnknownDraftError,
@@ -20,7 +21,6 @@ import {
 } from '../draft-structure.ts';
 import { ProtocolStore } from '../store.ts';
 import { createProtocolSyncServer } from '../sync.ts';
-import { SectionValidationFailedError } from '../validate.ts';
 import {
   TEST_TEAM_ID,
   baseProtocol,
