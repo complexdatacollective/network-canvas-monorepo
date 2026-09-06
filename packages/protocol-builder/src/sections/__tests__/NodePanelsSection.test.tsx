@@ -260,6 +260,54 @@ describe('the side panels a name generator shows', () => {
   });
 
   /**
+   * The schema caps nothing; the screen does. A protocol authored elsewhere —
+   * by hand, or by a tool that did not know — can therefore hold three, and
+   * hiding the add button says nothing about the three already there: the
+   * stage opened, rendered all of them, and saved them straight back.
+   *
+   * Refused rather than trimmed, because deleting a panel a researcher wrote
+   * is their decision, and every panel here has a delete beside it. Architect
+   * caps the same list at two (`components/sections/NodePanels/panelSlots.ts`)
+   * and shows only the first two, so a stage saved from here is one Architect
+   * can show as well.
+   */
+  it('refuses a stage carrying more panels than it can show', async () => {
+    const harness = renderStageEditor({
+      stage: nameGeneratorWith([
+        { id: 'panel-1', title: 'First panel', dataSource: 'existing' },
+        { id: 'panel-2', title: 'Second panel', dataSource: 'existing' },
+        { id: 'panel-3', title: 'Third panel', dataSource: 'existing' },
+      ]),
+      sections: panels,
+    });
+
+    expect(await screen.findByText('Third panel')).toBeInTheDocument();
+
+    expect(await harness.submit()).toBeNull();
+    // Nothing reached the session, so the refusal is this section's rather
+    // than a schema message arriving against a path after the write.
+    expect(harness.pendingCommands()).toHaveLength(0);
+    expect(
+      await screen.findByText(
+        'This stage has more side panels than a name generator can show. Delete panels until two are left.',
+      ),
+    ).toBeInTheDocument();
+
+    // And it is a refusal the researcher can act on: every panel on screen
+    // has a remove beside it, the extra one included.
+    const remove = screen.getAllByRole('button', { name: 'Remove panel' })[2];
+    if (remove === undefined) throw new Error('the third panel has no remove');
+    await harness.user.click(remove);
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Remove panel' }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByText('Third panel')).not.toBeInTheDocument(),
+    );
+    expect(panelsOf(await harness.submit())).toHaveLength(2);
+  });
+
+  /**
    * A panel's filter asks about a node type, and its rules are chosen from
    * that type's attributes — so until the stage says what it works with there
    * is nothing for a panel to be about, and the section says so rather than

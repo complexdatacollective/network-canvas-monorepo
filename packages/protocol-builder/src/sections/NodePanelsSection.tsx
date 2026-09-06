@@ -79,6 +79,21 @@ const EDGE_RULES_CONFIRM = {
 const INCOMPLETE_PANEL =
   'Every panel needs a title and a source of people. Open the unfinished panel and complete it.';
 
+/**
+ * The cap is the screen's, not the schema's: `panelSchema` accepts any number
+ * of panels, so a protocol authored elsewhere can arrive holding more than fit
+ * beside an interview. Hiding the add button said nothing about the ones
+ * already there — the stage opened, rendered all of them, and saved them
+ * straight back — so the researcher kept a stage this builder would not let
+ * them rebuild, and Architect (which caps the same list at two and shows only
+ * the first two) would not show them at all.
+ *
+ * Refused rather than trimmed: deleting a panel a researcher wrote is their
+ * decision, and each one on screen has a delete beside it.
+ */
+const TOO_MANY_PANELS =
+  'This stage has more side panels than a name generator can show. Delete panels until two are left.';
+
 const ResourcePicker = ResourcePickerControl as ComponentType<
   Record<string, unknown>
 >;
@@ -103,6 +118,8 @@ const rowsOf = (value: unknown): Record<string, unknown>[] =>
  */
 const panelsValidation = {
   custom: messageRuleValidation([
+    (value: unknown) =>
+      rowsOf(value).length > MAX_PANELS ? TOO_MANY_PANELS : undefined,
     (value: unknown) =>
       rowsOf(value).every(
         (panel) =>
