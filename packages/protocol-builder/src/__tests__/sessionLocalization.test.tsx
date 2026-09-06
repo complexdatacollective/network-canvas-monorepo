@@ -105,6 +105,53 @@ describe('a protocol context issue', () => {
     ).not.toBeInTheDocument();
     expect(screen.getByText(foreign, { exact: false })).toBeInTheDocument();
   });
+
+  it('reports a section id it cannot parse in the reader’s language', () => {
+    // `parseSectionId` reports an id it does not recognise by throwing, and
+    // the sentence it throws is written for whoever is reading a stack trace.
+    // Passed through, that is what a Spanish codebook shows — so this asserts
+    // on the words a researcher reads rather than on the fact that something
+    // was reported. The developer sentence names the id, which the row prints
+    // beside the message anyway, so nothing is lost by replacing it.
+    const context = protocolContextFromSections({
+      ...sections(),
+      'not-a-section': { anything: true },
+    });
+    const issue = context.issues.find(
+      (candidate) => candidate.sectionId === 'not-a-section',
+    );
+    if (issue === undefined) {
+      throw new Error('an unparseable section id reported no issue');
+    }
+
+    const english = readMessage(issue.message, enIntl);
+    const spanish = readMessage(issue.message, esIntl);
+    expect(english).toBe('Unknown protocol section id.');
+    expect(spanish).toBe('Identificador de sección del protocolo desconocido.');
+
+    const view = (locale: string) => (
+      <AppI18nProvider
+        locale={locale}
+        locales={ecosystemLocales}
+        messages={protocolBuilderCatalogs[locale]}
+      >
+        <CodebookSurface context={context} />
+      </AppI18nProvider>
+    );
+
+    const { rerender } = render(view('en'));
+    expect(screen.getByText(english, { exact: false })).toBeInTheDocument();
+
+    rerender(view('es'));
+    expect(screen.getByText(spanish, { exact: false })).toBeInTheDocument();
+    // The thrown sentence is not a descriptor, so it would survive the switch
+    // to Spanish word for word. Naming it is what separates a translated row
+    // from one that merely changed.
+    expect(
+      screen.queryByText('not a protocol-store section id', { exact: false }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('not-a-section', { exact: false })).toBeVisible();
+  });
 });
 
 describe('a compound edit refusal', () => {

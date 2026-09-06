@@ -15,7 +15,11 @@ import {
   type Variables,
 } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
-import { parseSectionId, sectionId } from '@codaco/studio-sync/taxonomy';
+import {
+  parseSectionId,
+  sectionId,
+  UnknownSectionIdError,
+} from '@codaco/studio-sync/taxonomy';
 
 /**
  * What is wrong with a protocol section this package could not read.
@@ -231,13 +235,20 @@ export function protocolContextFromSections(
     try {
       ref = parseSectionId(id);
     } catch (error) {
+      // `UnknownSectionIdError` names the id it could not parse — which the
+      // alert already prints beside the message — in a sentence written for
+      // whoever is reading a stack trace. A researcher gets this package's own
+      // sentence instead, in their own language; any other error is one that
+      // came with wording of its own, and it is passed through untouched.
       issues.push({
         sectionId: id,
         path: [],
         message:
-          error instanceof Error && error.message !== ''
-            ? error.message
-            : createMessageError(messages.unknownSectionId),
+          error instanceof UnknownSectionIdError ||
+          !(error instanceof Error) ||
+          error.message === ''
+            ? createMessageError(messages.unknownSectionId)
+            : error.message,
       });
       continue;
     }
