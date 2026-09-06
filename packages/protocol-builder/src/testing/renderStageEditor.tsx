@@ -14,7 +14,7 @@ import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { resolveFieldPath } from '@codaco/fresco-ui/form/FieldNamespace';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import type { StageType } from '@codaco/protocol-validation';
-import type { SectionDoc } from '@codaco/studio-sync/apply';
+import type { Command, SectionDoc } from '@codaco/studio-sync/apply';
 import {
   sectionId,
   type ProtocolSectionId,
@@ -81,6 +81,18 @@ export type StageEditorHarness = RenderResult &
     receiveCodebookUpdate(patch: CodebookPatch): void;
     /** Every local batch the authoritative protocol has not acknowledged. */
     pendingCommands(): readonly PendingCommandBatch[];
+    /**
+     * Every command a host applying this session's edits LIVE has been given,
+     * in the order it was given them.
+     *
+     * Most of what an editor does reaches such a host the moment it is done,
+     * and the session decides which edits may not: one naming a resource
+     * staged in this session, and everything after it, waits for the finish
+     * that promotes the file. So this is what a cancelled edit LEFT BEHIND —
+     * the one thing `pendingCommands` cannot say, because a batch that has
+     * gone to the host is pending there too until it is acknowledged.
+     */
+    liveCommands(): readonly Command[];
     /**
      * The top-level stage keys the mounted sections have a field for.
      *
@@ -229,6 +241,11 @@ export function renderStageEditor<T extends StageType = StageType>(
 ): StageEditorHarness {
   const seeded = seedFrom(options);
   const finishRequests: FinishRequest[] = [];
+  // What a host applying this session's edits live has been handed. Recorded
+  // rather than applied to `host`: the question a test asks of it is what LEFT
+  // the session, and a host that also applied them would answer every other
+  // test's questions about the authoritative protocol differently.
+  const liveCommands: Command[] = [];
   // The same session a story is opened over, built once in `fixtureSession`:
   // a test and a story that assembled the protocol differently would disagree
   // about what the editor is mounted over.
@@ -239,6 +256,9 @@ export function renderStageEditor<T extends StageType = StageType>(
     ...(options.heldSections === undefined
       ? {}
       : { heldSections: options.heldSections }),
+    onCommands: (batch) => {
+      liveCommands.push(...batch.commands);
+    },
     onFinish: (request) => {
       finishRequests.push(request);
     },
@@ -332,6 +352,7 @@ export function renderStageEditor<T extends StageType = StageType>(
       });
     },
     pendingCommands: () => session.getSnapshot().pendingCommands,
+    liveCommands: () => [...liveCommands],
     ownedKeys: () => readOwnedKeys(),
     roundTrip: async ({ unowned = [] } = {}) => {
       // Before the save, because it is a question about what is on screen and
