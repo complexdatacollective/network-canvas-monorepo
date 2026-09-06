@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Collection } from '@codaco/fresco-ui/collection/components/Collection';
 import { useDragAndDrop } from '@codaco/fresco-ui/collection/dnd/useDragAndDrop';
 import { InlineGridLayout } from '@codaco/fresco-ui/collection/layout/InlineGridLayout';
@@ -20,6 +21,7 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
+import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 import { makeGetCodebookVariablesForNodeType } from '../selectors/protocol';
 import { getNodeLabelAttribute } from '../utils/getNodeLabelAttribute';
 import Node from './ConnectedNode';
@@ -67,11 +69,12 @@ const NodeList = memo(
     animationKey,
     emptyState = null,
     announcedName,
-    'aria-label': ariaLabel = 'Node list',
+    'aria-label': ariaLabel,
     renderItem: renderItemOverride,
     // All other Collection props passed through
     ...collectionProps
   }: NodeListProps) => {
+    const intl = useAppIntl();
     const layout = useMemo(() => new InlineGridLayout<NcNode>({ gap: 4 }), []);
     // Safe animate so the exit fade skips (instant swap) under reduced
     // motion / MotionConfig skipAnimations; the scope doubles as the
@@ -251,7 +254,7 @@ const NodeList = memo(
             className={containerClasses}
             animate={animate}
             animationKey={displayAnimationKey}
-            aria-label={ariaLabel}
+            aria-label={ariaLabel ?? intl.formatMessage(messages.nodeList)}
             emptyState={emptyState}
             viewportClassName="p-4"
           >

@@ -1,38 +1,40 @@
 'use client';
 
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
 import BooleanField from '@codaco/fresco-ui/form/fields/Boolean';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import type { FramingId } from '@codaco/protocol-validation';
 
 import { useFamilyPedigreeStore } from '../../FamilyPedigreeContext';
-import { FRAMING_TERMS } from '../../framingTerms';
+import { getFramingTerms } from '../../framingTerms';
 import usePedigreeNodeForm from '../../hooks/usePedigreeNodeForm';
+import { messages } from '../../messages';
 import PersonNameField from '../PersonNameField';
 
-const INTRO_COPY: Record<FramingId, string> = {
-  gamete:
-    'Please answer the following questions about your egg parent. This is the person who contributed the egg that you were conceived with, which may be different from the person who carried you during pregnancy.',
-  gendered:
-    'Please answer the following questions about your mother. This is your biological mother, who may be different from the person who carried you during pregnancy.',
+const INTRO_COPY = {
+  gamete: messages.eggIntro,
+  gendered: messages.motherIntro,
 };
 
 export default function EggParentStep() {
+  const intl = useAppIntl();
   const framing = useFamilyPedigreeStore((s) => s.framing);
   const framingKey = framing ?? 'gamete';
-  const terms = FRAMING_TERMS[framingKey];
+  const terms = getFramingTerms(framingKey, intl);
 
   const { fieldComponents } = usePedigreeNodeForm();
 
   return (
     <>
-      <Paragraph>{INTRO_COPY[framingKey]}</Paragraph>
+      <Paragraph>
+        <AppMessage message={INTRO_COPY[framingKey]} />
+      </Paragraph>
       <hr />
       <FieldNamespace prefix="egg-parent">
         <PersonNameField
-          label="What is their name?"
-          hint="Leave blank if the name is not known"
+          label={intl.formatMessage(messages.whatName)}
+          hint={intl.formatMessage(messages.unknownNameHint)}
           autoFocus
         />
         <Field
@@ -45,7 +47,7 @@ export default function EggParentStep() {
         />
         <Field
           name="gestationalCarrier"
-          label="Did this parent carry you during pregnancy?"
+          label={intl.formatMessage(messages.parentCarriedYou)}
           component={BooleanField}
           initialValue={true}
           required

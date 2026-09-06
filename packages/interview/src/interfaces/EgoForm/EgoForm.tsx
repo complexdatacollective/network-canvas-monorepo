@@ -1,5 +1,4 @@
 'use client';
-
 import { ChevronDown } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import {
@@ -11,6 +10,8 @@ import {
   useState,
 } from 'react';
 
+import { createMessageError } from '@codaco/app-i18n/messages';
+import { AppMessage } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
 import { shouldShowFieldError } from '@codaco/fresco-ui/form/hooks/useField';
@@ -42,10 +43,12 @@ import useBeforeNext from '../../hooks/useBeforeNext';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
 import { useScrolledToBottom } from '../../hooks/useScrolledToBottom';
 import { useStageSelector } from '../../hooks/useStageSelector';
+import { runtimeMessages } from '../../i18n/runtimeMessages';
 import { getEgoAttributes } from '../../selectors/session';
 import { updateEgo } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import type { BeforeNextFunction, StageProps } from '../../types';
+import { interfaceMessages } from '../messages';
 
 type EgoFormProps = StageProps<'EgoForm'>;
 
@@ -133,13 +136,20 @@ const EgoFormInner = (props: EgoFormProps) => {
       if (isFormDirty && !isFormValid) {
         const result = await openDialog({
           type: 'choice',
-          title: 'Discard changes?',
-          description:
-            'This form contains invalid data, so it cannot be saved. If you continue it will be reset, and your changes will be lost. Do you want to discard your changes?',
+          title: <AppMessage message={interfaceMessages.discardChangesTitle} />,
+          description: (
+            <AppMessage message={interfaceMessages.discardChangesDescription} />
+          ),
           intent: 'destructive',
           actions: {
-            primary: { label: 'Discard changes', value: true },
-            cancel: { label: 'Keep changes', value: false },
+            primary: {
+              label: <AppMessage message={interfaceMessages.discardChanges} />,
+              value: true,
+            },
+            cancel: {
+              label: <AppMessage message={interfaceMessages.keepChanges} />,
+              value: false,
+            },
           },
         });
         if (result) {
@@ -195,7 +205,7 @@ const EgoFormInner = (props: EgoFormProps) => {
       if (!patchResult.success) {
         return {
           success: false,
-          formErrors: ['An error occurred while submitting the form.'],
+          formErrors: [createMessageError(runtimeMessages.submissionFailed)],
         };
       }
 
@@ -315,7 +325,7 @@ const EgoFormInner = (props: EgoFormProps) => {
                 <ChevronDown size="24" />
               </motion.div>
               <Heading level="label" margin="none">
-                Scroll to see more questions
+                <AppMessage message={interfaceMessages.scrollForQuestions} />
               </Heading>
               <motion.div
                 aria-hidden="true"

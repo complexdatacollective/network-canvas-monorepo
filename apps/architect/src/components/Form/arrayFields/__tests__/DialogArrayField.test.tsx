@@ -795,10 +795,11 @@ describe('DialogArrayField', () => {
       await gate.promise;
       return value;
     });
-    // Rows with no id of their own fall back to ArrayField's positional
-    // identity, so deleting the first row hands its editing session — and the
-    // still-open editor — to the second. Nothing here can be addressed by id,
-    // and the one thing the save must not do is write onto that neighbour.
+    // Rows with no id of their own are matched to an arriving value by
+    // CONTENT, so deleting the first row leaves the second one as itself
+    // rather than handing it the deleted row's identity. Nothing here can be
+    // addressed by id, and the one thing the save must not do is write onto
+    // that neighbour.
     setup({
       initialItems: [{ label: 'First' }, { label: 'Second' }],
       onBeforeSave,
@@ -814,9 +815,15 @@ describe('DialogArrayField', () => {
     await releaseAndSettle(gate);
 
     expect(getItems()).toEqual([{ label: 'Second' }]);
-    // The editor is still open — on the neighbour, showing its own value, not
-    // the edit that was in flight for the row that is gone.
-    expect(editorInput()).toHaveValue('Second');
+    // And the editor closes with the row it was opened on, exactly as it does
+    // for a row that carries an id (the test above): the row is gone from the
+    // value, which is what `ArrayField` gives up an editing session for. It
+    // used to stay open on the NEIGHBOUR, showing the neighbour's own value in
+    // a session opened on a row that no longer existed, because a deleted
+    // row's internal id was reused by position.
+    expect(
+      screen.queryByRole('textbox', { name: 'Item label' }),
+    ).not.toBeInTheDocument();
   });
 
   it('commits a row the researcher added even if the array editor unmounts first', async () => {

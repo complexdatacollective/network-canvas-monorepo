@@ -1,21 +1,17 @@
 'use client';
 
-import { useContext, useMemo } from 'react';
+import { useContext, useMemo, type ReactNode } from 'react';
 
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
-import { FRAMING_TERMS } from '../../../framingTerms';
+import { getFramingTerms } from '../../../framingTerms';
 import { useFramedTerms } from '../../../hooks/useFramedTerms';
+import { messages } from '../../../messages';
 import { BioTriadConfigContext } from './BioTriadStep';
-
-const partnershipOptions = [
-  { value: 'current', label: 'Current partners' },
-  { value: 'ex', label: 'Ex-partners' },
-  { value: 'none', label: 'Never partners' },
-];
 
 const WATCHED_FIELDS = [
   'egg-source',
@@ -25,6 +21,10 @@ const WATCHED_FIELDS = [
   'new-sperm-source.name',
   'new-carrier.name',
 ] as const;
+
+function emphasize(chunks: ReactNode) {
+  return <strong>{chunks}</strong>;
+}
 
 type ParentKey = 'egg-source' | 'sperm-source' | 'carrier-source';
 
@@ -45,6 +45,7 @@ function getNewParentLabel(
   values: Record<string, unknown>,
   newEggParentLabel: string,
   newSpermParentLabel: string,
+  newCarrierLabel: string,
 ): string {
   const nameMap: Record<ParentKey, string> = {
     'egg-source': 'new-egg-source.name',
@@ -55,7 +56,7 @@ function getNewParentLabel(
   const fallbackMap: Record<ParentKey, string> = {
     'egg-source': newEggParentLabel,
     'sperm-source': newSpermParentLabel,
-    'carrier-source': 'New gestational carrier',
+    'carrier-source': newCarrierLabel,
   };
 
   const name = values[nameMap[key]];
@@ -80,16 +81,23 @@ export function shouldSkipNewParentPartnerships({
 }
 
 export default function NewParentPartnershipsStep() {
+  const intl = useAppIntl();
+  const partnershipOptions = [
+    { value: 'current', label: intl.formatMessage(messages.currentPartners) },
+    { value: 'ex', label: intl.formatMessage(messages.exPartners) },
+    { value: 'none', label: intl.formatMessage(messages.neverPartners) },
+  ];
+
   const formValues = useFormValue(WATCHED_FIELDS);
   const { existingNodes } = useContext(BioTriadConfigContext);
-  const terms = useFramedTerms() ?? FRAMING_TERMS.gamete;
+  const terms = useFramedTerms() ?? getFramingTerms('gamete', intl);
   const nodeMap = useMemo(() => {
     const map = new Map<string, string>();
     for (const node of existingNodes ?? []) {
-      map.set(node.value, node.label);
+      map.set(node.value, node.getLabel?.(intl) ?? node.label);
     }
     return map;
-  }, [existingNodes]);
+  }, [existingNodes, intl]);
 
   const parents = useMemo<ParentEntry[]>(() => {
     const list: ParentEntry[] = [];
@@ -106,6 +114,7 @@ export default function NewParentPartnershipsStep() {
             formValues,
             terms.newEggParent,
             terms.newSpermParent,
+            intl.formatMessage(messages.newCarrier),
           ),
           isNew: true,
         });
@@ -113,17 +122,18 @@ export default function NewParentPartnershipsStep() {
         const fallbackMap: Record<ParentKey, string> = {
           'egg-source': terms.unknownEggParent,
           'sperm-source': terms.unknownSpermParent,
-          'carrier-source': 'Unknown gestational carrier',
+          'carrier-source': intl.formatMessage(messages.unknownCarrier),
         };
         list.push({ key, label: fallbackMap[key], isNew: false });
       } else {
-        const label = nodeMap.get(selection) ?? 'Unknown person';
+        const label =
+          nodeMap.get(selection) ?? intl.formatMessage(messages.unknownPerson);
         list.push({ key, label, isNew: false });
       }
     }
 
     return list;
-  }, [formValues, nodeMap, terms]);
+  }, [formValues, nodeMap, terms, intl]);
 
   const pairs = useMemo(() => {
     const result: [ParentEntry, ParentEntry][] = [];
@@ -145,17 +155,26 @@ export default function NewParentPartnershipsStep() {
     <>
       <div className="mb-8">
         <Paragraph>
-          We now want to ask about relationships between the parents you named.
-          This includes current and past romantic partnerships, but{' '}
-          <strong>not co-parenting partnerships</strong> where the parents were
-          never romantically involved.
+          <AppMessage
+            message={messages.newPartnershipIntro}
+            values={{ strong: emphasize }}
+          />
         </Paragraph>
       </div>
       {pairs.map(([a, b]) => (
         <Field
           key={`partnership-${a.key}-${b.key}`}
           name={`partnership-${a.key}-${b.key}`}
-          label={`Are ${a.label} and ${b.label} partners?`}
+          label={
+            <AppMessage
+              message={messages.arePartners}
+              values={{
+                people: intl.formatList([a.label, b.label], {
+                  type: 'conjunction',
+                }),
+              }}
+            />
+          }
           component={RadioGroupField}
           options={partnershipOptions}
           required

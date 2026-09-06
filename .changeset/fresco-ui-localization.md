@@ -42,3 +42,12 @@ maximum correctly and uses singular or plural character counts.
 Submitted form errors can also carry a shared message descriptor through the
 existing string result contract. Field and form error displays translate it in
 the active language while preserving entered values, focus, and server refusals.
+
+Fields and radio options also accept rich React labels, so translated questions
+can include literal person names without treating those names as Markdown.
+String labels keep their existing Markdown rendering. Detached drag-and-drop
+announcements carry their own language and direction when embedded in a host
+using another language.
+
+Long PIN fields fit narrow layouts, and a PIN retry restores focus after the
+form becomes enabled without taking focus again on a later language change.

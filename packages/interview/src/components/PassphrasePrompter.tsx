@@ -9,6 +9,7 @@ import {
 } from 'motion/react';
 import { useCallback, useEffect, useId, useState } from 'react';
 
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
@@ -16,6 +17,7 @@ import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import { usePortalContainer } from '@codaco/fresco-ui/PortalContainer';
 
+import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 import { usePassphrase } from '../interfaces/Anonymisation/usePassphrase';
 import Overlay from './Overlay';
 
@@ -27,6 +29,7 @@ const transition: Transition = {
 };
 
 export default function PassphrasePrompter() {
+  const intl = useAppIntl();
   const { setPassphrase, showPassphrasePrompter, passphraseInvalid } =
     usePassphrase();
   const [showPassphraseOverlay, setShowPassphraseOverlay] = useState(false);
@@ -70,6 +73,7 @@ export default function PassphrasePrompter() {
               <Tooltip.Trigger
                 render={
                   <motion.button
+                    aria-label={intl.formatMessage(messages.enterPassphrase)}
                     key="lock"
                     layout
                     className="bg-platinum group flex size-[calc(4.8*var(--theme-root-size))] cursor-pointer items-center justify-center rounded-full"
@@ -84,6 +88,7 @@ export default function PassphrasePrompter() {
                     onClick={() => setShowPassphraseOverlay(true)}
                   >
                     <motion.span className="animate-shake scale-90 text-4xl transition-transform group-hover:scale-100">
+                      {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- Decorative status glyph; the button has a localized accessible name. */}
                       {passphraseInvalid ? '⚠️' : '🔑'}
                     </motion.span>
                   </motion.button>
@@ -104,9 +109,13 @@ export default function PassphrasePrompter() {
                 }
               >
                 <div>
-                  {passphraseInvalid
-                    ? 'There was a problem decrypting the data. Please re-enter your passphrase.'
-                    : 'Your passphrase is needed to show data on this screen. Click here to enter it.'}
+                  <AppMessage
+                    message={
+                      passphraseInvalid
+                        ? messages.decryptRetry
+                        : messages.passphraseNeeded
+                    }
+                  />
                 </div>
                 <Tooltip.Arrow className="fill-surface" />
               </Tooltip.Popup>
@@ -132,6 +141,7 @@ const PassphraseOverlay = ({
   show: boolean;
   onClose: () => void;
 }) => {
+  const intl = useAppIntl();
   const { passphraseInvalid } = usePassphrase();
   const formId = useId();
 
@@ -145,21 +155,22 @@ const PassphraseOverlay = ({
     <FormStoreProvider>
       <Overlay
         show={show}
-        title="Enter your Passphrase"
+        title={intl.formatMessage(messages.enterPassphrase)}
         onClose={onClose}
-        footer={<SubmitButton form={formId}>Submit passphrase</SubmitButton>}
+        footer={
+          <SubmitButton form={formId}>
+            <AppMessage message={messages.submitPassphrase} />
+          </SubmitButton>
+        }
       >
         <div className="flex flex-col">
           {passphraseInvalid && (
             <p className="bg-accent/50 rounded p-6 text-white">
-              There was an error decrypting the data with the passphrase
-              entered. Please try again.
+              <AppMessage message={messages.decryptFailed} />
             </p>
           )}
           <p>
-            Enter your passphrase in order to unlock the data on this screen. If
-            you cannot remember your passphrase, please contact the person who
-            recruited you to this study.
+            <AppMessage message={messages.passphraseHelp} />
           </p>
           <FormWithoutProvider
             id={formId}
@@ -169,8 +180,8 @@ const PassphraseOverlay = ({
             <Field
               component={InputField}
               name="passphrase"
-              label="Passphrase"
-              placeholder="Enter your passphrase..."
+              label={intl.formatMessage(messages.passphrase)}
+              placeholder={intl.formatMessage(messages.passphrasePlaceholder)}
               required
               autoFocus
             />
