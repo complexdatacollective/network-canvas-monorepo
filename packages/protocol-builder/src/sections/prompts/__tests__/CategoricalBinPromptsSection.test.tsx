@@ -588,6 +588,114 @@ describe('the rules the follow-up bin’s answers have to satisfy', () => {
   });
 });
 
+/** How many dialogs are stacked on screen right now. */
+const openDialogs = () => screen.queryAllByRole('dialog').length;
+
+/**
+ * A codebook dialog opened from inside a prompt is a form INSIDE the prompt's
+ * form, so saving it submits the prompt around it: the row closes, and closes
+ * carrying whatever the researcher had half-written in it.
+ *
+ * Skipped rather than removed, because the fix is not this family's to make.
+ * It is a `stopPropagation` on the submit each nested codebook editor issues,
+ * in `VariableEditor`, `CodebookVariableValidationEditor` and
+ * `CodebookEntityEditor` — all of them shared components landing on
+ * `feat/protocol-builder-editor-sections`. These four cases fail today and are
+ * the ones that say the fix arrived, so they un-skip on the next merge from
+ * that branch rather than being written again afterwards.
+ */
+describe('a codebook dialog saved from inside a prompt', () => {
+  it.skip('leaves the prompt open when the attribute’s values are saved', async () => {
+    const harness = renderStageEditor(openWithFollowUpBin());
+
+    await openFollowUpBin(harness);
+    expect(openDialogs()).toBe(1);
+
+    await harness.user.click(
+      screen.getByRole('button', { name: "Change this attribute's values" }),
+    );
+    const attributeName = await screen.findByRole('textbox', {
+      name: 'Attribute name',
+    });
+    expect(openDialogs()).toBe(2);
+    await harness.user.clear(attributeName);
+    await harness.user.type(attributeName, 'renamedAttribute');
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save attribute' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('textbox', { name: 'Attribute name' }),
+      ).not.toBeInTheDocument(),
+    );
+
+    expect(openDialogs()).toBe(1);
+  });
+
+  it.skip('leaves the prompt open when the attribute’s rules are saved', async () => {
+    const harness = renderStageEditor(openWithFollowUpBin());
+
+    await openFollowUpBin(harness);
+    expect(openDialogs()).toBe(1);
+
+    await harness.user.click(
+      screen.getByRole('button', {
+        name: 'Set rules for what the participant types',
+      }),
+    );
+    await screen.findByRole('button', { name: 'Save validation' });
+    expect(openDialogs()).toBe(2);
+
+    await harness.user.click(
+      screen.getByRole('checkbox', { name: 'Required' }),
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save validation' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'Save validation' }),
+      ).not.toBeInTheDocument(),
+    );
+
+    expect(openDialogs()).toBe(1);
+  });
+
+  /**
+   * And the row is not merely closed — it is COMMITTED, with whatever the
+   * researcher had half-typed in it, by a submit they never asked for.
+   */
+  it.skip('leaves a half-written prompt uncommitted', async () => {
+    const harness = renderStageEditor(openWithFollowUpBin());
+
+    await openFollowUpBin(harness);
+    const promptText = screen.getByRole('textbox', { name: 'Prompt text' });
+    await harness.user.clear(promptText);
+    await harness.user.type(promptText, 'Half finished');
+
+    await harness.user.click(
+      screen.getByRole('button', {
+        name: 'Set rules for what the participant types',
+      }),
+    );
+    await screen.findByRole('button', { name: 'Save validation' });
+    await harness.user.click(
+      screen.getByRole('checkbox', { name: 'Required' }),
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save validation' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'Save validation' }),
+      ).not.toBeInTheDocument(),
+    );
+
+    // A committed row draws its text in the list behind the dialog.
+    expect(screen.queryAllByText('Half finished')).toHaveLength(0);
+  });
+});
+
 /**
  * Every control in this prompt that writes the CODEBOOK, which is a different
  * protocol section from the stage and is written by a compound edit of its

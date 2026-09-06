@@ -291,6 +291,51 @@ describe('creating a scale from inside a tie-strength prompt', () => {
   });
 });
 
+/**
+ * The same nesting the categorical bin has, reached here through the scale
+ * that hangs off the connection: a codebook dialog opened from inside a prompt
+ * is a form INSIDE the prompt's form, so saving it submits the prompt around
+ * it and the row closes.
+ *
+ * Skipped rather than removed, because the fix is not this family's to make.
+ * It is a `stopPropagation` on the submit each nested codebook editor issues,
+ * in `VariableEditor`, `CodebookVariableValidationEditor` and
+ * `CodebookEntityEditor` — shared components landing on
+ * `feat/protocol-builder-editor-sections`. This case fails today and is the
+ * one that says the fix arrived, so it un-skips on the next merge from that
+ * branch. Its three siblings are in `CategoricalBinPromptsSection.test.tsx`.
+ */
+describe('a codebook dialog saved from inside a tie-strength prompt', () => {
+  it.skip('leaves the prompt open when the scale is saved', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    await screen.findByRole('combobox', { name: 'Attribute' });
+    expect(screen.queryAllByRole('dialog')).toHaveLength(1);
+
+    await harness.user.click(
+      screen.getByRole('button', { name: "Change this attribute's values" }),
+    );
+    const scaleName = await screen.findByRole('textbox', {
+      name: 'Attribute name',
+    });
+    await harness.user.clear(scaleName);
+    await harness.user.type(scaleName, 'renamedScale');
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save attribute' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('textbox', { name: 'Attribute name' }),
+      ).not.toBeInTheDocument(),
+    );
+
+    expect(screen.queryAllByRole('dialog')).toHaveLength(1);
+  });
+});
+
 describe('a codebook that changes while a tie-strength prompt is open', () => {
   it('follows an attribute a collaborator deleted, without echoing a command', async () => {
     const harness = renderStageEditor(openEditor());
