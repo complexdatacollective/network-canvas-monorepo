@@ -19,12 +19,16 @@ to ship."
 
 ## Phase 1 — Open the PR
 
-1. **Visual baselines** — invoke `preparing-e2e-visual-baselines` to inspect
-   the complete branch and working-tree diff. If pixels or captured UI state
-   may have changed, regenerate and visually inspect only the affected
-   Architect, Interview, and/or Interviewer baselines in pinned Docker before
-   staging. Record the suites in the test plan. Do not proceed with unexplained
-   PNG churn.
+1. **Visual baselines — assess only.** Run the classifier and diff inspection
+   from `preparing-e2e-visual-baselines` ("Determine affected suites") to
+   decide whether the branch can move any Architect, Interview, or Interviewer
+   PNG baseline. **Never generate PNGs locally — not natively and not in the
+   pinned Docker image.** Canonical baselines come only from the
+   `Regenerate E2E Visual Snapshots` GitHub Actions workflow: an arm64 host
+   runs the amd64 image under emulation and rasterises different pixels, so a
+   locally written baseline is contaminated even when it looks right. The
+   workflow checks out a pushed ref, so generation happens in step 5, after
+   the push. Note the affected suites now.
 2. **Changeset** — invoke `creating-a-changeset` to decide whether one is
    needed and, if so, author it in the correct lane (library vs app). Commit it
    with the rest of the change.
@@ -49,7 +53,16 @@ to ship."
    `.github/PULL_REQUEST_TEMPLATE/`) first and follow it if one exists. Keep the
    title under ~70 characters; put detail in the body.
 
-5. Capture the PR number from the `gh pr create` output — every command below
+5. **Baselines in CI** — if step 1 found affected suites, invoke
+   `regenerating-e2e-visual-snapshots`: dispatch
+   `regenerate-e2e-visual-snapshots.yml` against the PR branch once per
+   suite, download each artifact, byte-compare it against the committed
+   baselines to find what actually changed, inspect every changed image
+   (invoke `adopting-a-test-baseline`), and commit only the intended PNGs.
+   Push them as a normal commit; that head is what CI and reviewers judge.
+   Record the suites and run ids in the test plan. Do not proceed with
+   unexplained PNG churn.
+6. Capture the PR number from the `gh pr create` output — every command below
    needs it.
 
 ## Phase 2 — Monitor until mergeable
@@ -196,18 +209,19 @@ reason.
 
 ## Common mistakes
 
-| Mistake                                              | Do instead                                                                     |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------ |
-| Opening the PR then ending the turn                  | Move straight into Phase 2 monitoring — that's the point of this skill.        |
-| Busy-polling with `sleep` in a loop                  | Use available wakeup/automation tooling when present, or report pending state. |
-| Applying every review comment verbatim               | Verify the feedback before implementing.                                       |
-| Triaging by severity badge instead of mechanism      | Read what actually breaks; badges are confidence, not severity.                |
-| Leaving a thread unresolved because it needed no fix | Reply with the evidence and resolve it — unresolved threads hold `BLOCKED`.    |
-| Force-pushing to satisfy a check                     | Fix root cause and push a normal commit; don't rewrite history reflexively.    |
-| Merging once checks go green                         | Merging is the user's call — report readiness, don't merge automatically.      |
-| Re-guessing the same fix after two failed attempts   | Stop and hand back to the user with the failure history.                       |
-| Pushing after each individual fix                    | Fix everything a round raised, then push once — each push is a round.          |
-| Fixing only the instance a finding names             | Check the same mechanism across the PR's diff first; the sibling arrives next. |
-| Treating no new review as a clean round              | Look for the reviewer's thumbs-up on the PR, dated after your last push.       |
-| Patching one mechanism round after round             | Stop; review it as a whole with a failing test per candidate, then push once.  |
-| Deferring real defects to end the loop               | Fix them here; flat rounds mean the fixes need rethinking, not a lower bar.    |
+| Mistake                                              | Do instead                                                                                   |
+| ---------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Opening the PR then ending the turn                  | Move straight into Phase 2 monitoring — that's the point of this skill.                      |
+| Busy-polling with `sleep` in a loop                  | Use available wakeup/automation tooling when present, or report pending state.               |
+| Applying every review comment verbatim               | Verify the feedback before implementing.                                                     |
+| Triaging by severity badge instead of mechanism      | Read what actually breaks; badges are confidence, not severity.                              |
+| Leaving a thread unresolved because it needed no fix | Reply with the evidence and resolve it — unresolved threads hold `BLOCKED`.                  |
+| Force-pushing to satisfy a check                     | Fix root cause and push a normal commit; don't rewrite history reflexively.                  |
+| Generating PNG baselines locally (native or Docker)  | Dispatch the CI regeneration workflow against the pushed branch and adopt from its artifact. |
+| Merging once checks go green                         | Merging is the user's call — report readiness, don't merge automatically.                    |
+| Re-guessing the same fix after two failed attempts   | Stop and hand back to the user with the failure history.                                     |
+| Pushing after each individual fix                    | Fix everything a round raised, then push once — each push is a round.                        |
+| Fixing only the instance a finding names             | Check the same mechanism across the PR's diff first; the sibling arrives next.               |
+| Treating no new review as a clean round              | Look for the reviewer's thumbs-up on the PR, dated after your last push.                     |
+| Patching one mechanism round after round             | Stop; review it as a whole with a failing test per candidate, then push once.                |
+| Deferring real defects to end the loop               | Fix them here; flat rounds mean the fixes need rethinking, not a lower bar.                  |

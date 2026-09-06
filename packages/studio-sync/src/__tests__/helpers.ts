@@ -7,6 +7,7 @@ import {
 import pg from 'pg';
 
 import type { SectionDoc } from '../apply.ts';
+import { createPostgresPool } from '../postgres-pool.ts';
 import { TENANT_ROLES } from '../rls.ts';
 import { SYNC_SIDECAR_SQL, SYNC_TABLES } from '../schema.ts';
 import {
@@ -73,14 +74,11 @@ async function createSyncDatabase(
   await admin.end();
 
   const connect = (role?: string) =>
-    new pg.Pool({
-      host: '127.0.0.1',
-      port,
-      user: 'postgres',
-      password: 'spike',
-      database: name,
+    createPostgresPool({
+      connectionString: `postgres://postgres:spike@127.0.0.1:${port}/${name}`,
       max: 20,
-      ...(role === undefined ? {} : { options: `-c role=${role}` }),
+      role,
+      onIdleError: () => console.warn('SYNC_TEST_DATABASE_IDLE_ERROR'),
     });
   const db = connect();
   const statements = await generateMigration(
