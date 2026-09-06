@@ -25,7 +25,7 @@ export const DEV = {
   // The Vite dev server, which proxies every server path — the single-origin
   // invariant (#1245).
   baseUrl: 'http://localhost:5173',
-  emailFrom: 'studio-dev@localhost',
+  emailFrom: 'studio-dev@localhost.test',
 } as const;
 
 export const DEV_DATABASE_URL = `postgres://${DEV.pgUser}:${DEV.pgPassword}@${DEV.pgHost}:${DEV.pgPort}/${DEV.pgDatabase}`;

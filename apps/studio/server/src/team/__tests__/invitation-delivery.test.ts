@@ -20,6 +20,7 @@ import {
   reachableDb,
 } from '../../__tests__/support/postgres.ts';
 import { createMailer, type InvitationMailer } from '../../auth/email.ts';
+import { DEV } from '../../env/catalogue.ts';
 import type { OutboxLifecycleEvent } from '../../outbox/instrumentation.ts';
 import { cancelTeamInvitation } from '../commands.ts';
 import {
@@ -920,6 +921,26 @@ describe.skipIf(!db)('Postmark invitation delivery outcomes', () => {
 });
 
 describe.skipIf(!db)('SMTP invitation delivery outcomes', () => {
+  it('delivers Mailpit magic links with the documented development sender', async () => {
+    const peer = await smtpFixture();
+    try {
+      const mailer = createMailer({
+        kind: 'smtp',
+        url: peer.url,
+        from: DEV.emailFrom,
+      });
+      await mailer.sendMagicLink({
+        email: 'developer@example.test',
+        url: 'http://localhost:5173/test-sign-in',
+      });
+      expect(peer.messages).toHaveLength(1);
+      expect(peer.commands).toContain(`MAIL FROM:<${DEV.emailFrom}>`);
+      expect(peer.messages[0]).toContain('http://localhost:5173/test-sign-in');
+    } finally {
+      await peer.close();
+    }
+  });
+
   it('persists post-DATA uncertainty after a transient heartbeat failure and does not send again', async () => {
     const scratch = await seededScratch();
     const peer = await smtpFixture('silent_data');
@@ -986,6 +1007,93 @@ describe.skipIf(!db)('SMTP invitation delivery outcomes', () => {
         }),
       );
       // Force immediate re-eligibility if the uncertainty marker is missing;
+      // this is a real SQL lease-clock boundary, independent of fake JS time.
+      await scratch.pool.query(
+        'DROP TRIGGER fail_smtp_heartbeat ON team_invitation_deliveries',
+      );
+      await scratch.pool.query(
+        `UPDATE team_invitation_deliveries SET lease_expires_at = clock_timestamp() - interval '1 second'
+        WHERE invitation_id = $1 AND lease_owner IS NOT NULL`,
+        [invitation.invitationId],
+      );
+      expect(
+        (await dispatcher(scratch.maintenance, mailer).runOnce()).claimed,
+      ).toBe(0);
+      expect(peer.messages).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+      await peer.close();
+      await scratch.dispose();
+    }
+  });
+
+  it('persists successful acceptance after a transient heartbeat failure and does not send again', async () => {
+    const scratch = await seededScratch();
+    const peer = await smtpFixture('silent_data');
+    try {
+      const invitation = await seedInvitation(scratch);
+      await enqueue(scratch, invitation);
+      await scratch.pool
+        .query(`CREATE FUNCTION fail_smtp_heartbeat() RETURNS trigger LANGUAGE plpgsql AS $body$
+        BEGIN
+          IF NEW.lease_owner = OLD.lease_owner
+            AND NEW.lease_owner IS NOT NULL
+            AND NEW.lease_expires_at IS DISTINCT FROM OLD.lease_expires_at THEN
+            RAISE EXCEPTION 'transient heartbeat failure';
+          END IF;
+          RETURN NEW;
+        END $body$;
+        CREATE TRIGGER fail_smtp_heartbeat BEFORE UPDATE ON team_invitation_deliveries
+        FOR EACH ROW EXECUTE FUNCTION fail_smtp_heartbeat()`);
+      const mailer = createMailer({
+        kind: 'smtp',
+        url: peer.url,
+        from: 'Studio <sender@example.test>',
+      });
+      const heartbeatFailed = deferred();
+      const events: OutboxLifecycleEvent[] = [];
+      const worker = dispatcher(scratch.maintenance, mailer, {
+        leaseMs: 30_000,
+        observer: (event) => {
+          events.push(event);
+          if (event.kind === 'heartbeat' && event.outcome === 'error')
+            heartbeatFailed.resolve();
+        },
+      });
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      const running = worker.runOnce();
+      await peer.dataReceived;
+      await vi.advanceTimersByTimeAsync(10_001);
+      await heartbeatFailed.promise;
+      peer.acceptPending();
+      await running;
+      const stored = await scratch.pool.query<{
+        delivered: boolean;
+        attempts: number;
+        lease_owner: string | null;
+        last_error: string | null;
+      }>(
+        `SELECT sent_at IS NOT NULL AS delivered, attempt_count AS attempts, lease_owner, last_error
+        FROM team_invitation_deliveries WHERE invitation_id = $1`,
+        [invitation.invitationId],
+      );
+      expect(stored.rows).toEqual([
+        {
+          delivered: true,
+          attempts: 1,
+          lease_owner: null,
+          last_error: null,
+        },
+      ]);
+      expect(events).toContainEqual(
+        expect.objectContaining({
+          kind: 'dispatch',
+          completed: 1,
+          retried: 0,
+          leaseLost: 0,
+        }),
+      );
+      // Force immediate re-eligibility if the delivered marker is missing;
       // this is a real SQL lease-clock boundary, independent of fake JS time.
       await scratch.pool.query(
         'DROP TRIGGER fail_smtp_heartbeat ON team_invitation_deliveries',

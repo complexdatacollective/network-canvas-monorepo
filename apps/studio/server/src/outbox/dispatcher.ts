@@ -233,11 +233,10 @@ export class OutboxDispatcher<Claim extends OutboxClaim> {
       return result;
     }
 
-    if (!(await heartbeat.stop())) {
-      result.leaseLost = 1;
-      return result;
-    }
+    await heartbeat.stop();
 
+    // A renewal error does not establish that ownership changed. Always try
+    // the ownership CAS after acceptance, without overwriting a new owner.
     // The provider accepted, but a failed commit must never become a normal
     // retry. A process crash still leaves the lease reclaimable: this retains
     // the invitation outbox's at-least-once crash semantics.

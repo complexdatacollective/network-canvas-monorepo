@@ -1,4 +1,5 @@
 import { setImmediate } from 'node:timers/promises';
+import tls from 'node:tls';
 
 import nodemailer from 'nodemailer';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -22,10 +23,14 @@ const message: EmailMessage = {
 describe('bounded SMTP EmailSender using the real Nodemailer transport', () => {
   const peers: Awaited<ReturnType<typeof smtpFixture>>[] = [];
   const senders: EmailSender[] = [];
-  const setup = async (behavior?: SmtpBehavior) => {
+  const setup = async (behavior?: SmtpBehavior, authenticated = false) => {
     const peer = await smtpFixture(behavior);
     peers.push(peer);
-    const sender = createSmtpEmailSender({ url: peer.url });
+    const sender = createSmtpEmailSender({
+      url: authenticated
+        ? peer.url.replace('smtp://', 'smtp://synthetic:fixture@')
+        : peer.url,
+    });
     senders.push(sender);
     return { peer, sender };
   };
@@ -125,7 +130,7 @@ describe('bounded SMTP EmailSender using the real Nodemailer transport', () => {
     },
   );
 
-  it('bounds a greeting wait with the enforced timeout and preserves uncertainty conservatively', async () => {
+  it('bounds a greeting wait as definitely unsent and retryable', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     const { sender, peer } = await setup('silent_greeting');
     let outcome: unknown;
@@ -136,11 +141,57 @@ describe('bounded SMTP EmailSender using the real Nodemailer transport', () => {
     await setImmediate();
     await vi.advanceTimersByTimeAsync(10_001);
     expect(outcome).toMatchObject({
-      disposition: 'uncertain',
-      message: 'EMAIL_DELIVERY_UNCERTAIN',
+      disposition: 'retryable',
+      message: 'EMAIL_DELIVERY_RETRYABLE',
     });
     await pending;
     expect(peer.messages).toHaveLength(0);
+  });
+
+  it.each([
+    'silent_auth',
+    'silent_mail',
+    'silent_rcpt',
+    'silent_data_command',
+  ] as const)(
+    'retries a deadline at %s before any message content is sent',
+    async (behavior) => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      const { sender, peer } = await setup(behavior, true);
+      const pending = sender.send(message).catch((error: unknown) => error);
+      await peer.commandReceived;
+      await vi.advanceTimersByTimeAsync(40_001);
+      await expect(pending).resolves.toMatchObject({
+        disposition: 'retryable',
+      });
+      expect(peer.messages).toEqual([]);
+    },
+  );
+
+  it('retries a transient STARTTLS connection reset before any message content', async () => {
+    const { sender, peer } = await setup('disconnect_tls');
+    const pending = sender.send(message).catch((error: unknown) => error);
+    await peer.commandReceived;
+    await expect(pending).resolves.toMatchObject({ disposition: 'retryable' });
+    expect(peer.commands).toContain('STARTTLS');
+    expect(peer.messages).toEqual([]);
+  });
+
+  it('retries an ETLS transport failure during STARTTLS setup', async () => {
+    // Nodemailer wraps setup errors as ETLS, whereas native handshake reset
+    // events can arrive first as ESOCKET. Exercise both public error paths.
+    const handshake = vi.spyOn(tls, 'connect').mockImplementationOnce(() => {
+      throw Object.assign(new Error('Synthetic connection reset'), {
+        code: 'ECONNRESET',
+      });
+    });
+    const { sender, peer } = await setup('disconnect_tls');
+    await expect(sender.send(message)).rejects.toMatchObject({
+      disposition: 'retryable',
+    });
+    expect(handshake).toHaveBeenCalledOnce();
+    expect(peer.commands).toContain('STARTTLS');
+    expect(peer.messages).toEqual([]);
   });
 
   it('cancels a silent post-DATA acceptance wait at the absolute deadline', async () => {
@@ -173,7 +224,9 @@ describe('bounded SMTP EmailSender using the real Nodemailer transport', () => {
   it('classifies a refused TCP connection as definitely unsent and retryable', async () => {
     const peer = await smtpFixture();
     await peer.close();
-    const sender = createSmtpEmailSender({ url: peer.url });
+    const sender = createSmtpEmailSender({
+      url: peer.url,
+    });
     senders.push(sender);
     await expect(sender.send(message)).rejects.toMatchObject({
       disposition: 'retryable',
