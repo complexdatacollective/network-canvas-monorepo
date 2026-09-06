@@ -156,6 +156,31 @@ describe('the map a geospatial stage shows', () => {
     expect(document.body.innerHTML).not.toContain('pk.eyJ1');
   });
 
+  /**
+   * TODO(S): the property a participant's answer is stored as is read from
+   * the layer itself, and the fixture gateway serves no bytes for
+   * `regions.geojson` — `FIXTURE_ASSET_CONTENT` in
+   * `src/testing/protocolFixture.ts` holds only `roster.json` — so the field
+   * reports the layer as unreadable and offers no property at all. Nothing in
+   * this suite can therefore prove the picker lists what is really in the
+   * layer, which is the one thing it exists to do. Un-skip once the fixture
+   * serves that asset; the fixture layer's features carry `name`.
+   */
+  it('offers the properties the chosen map layer actually carries', async (ctx) => {
+    ctx.skip(
+      'the fixture gateway serves no content for regions.geojson (S owns src/testing/protocolFixture.ts)',
+    );
+    openEditor();
+
+    const picker = await screen.findByRole('combobox', {
+      name: 'Recorded property',
+    });
+
+    expect(
+      [...picker.querySelectorAll('option')].map((option) => option.value),
+    ).toContain('name');
+  });
+
   it('saves a different basemap, transit, and starting zoom', async () => {
     const harness = openEditor();
 

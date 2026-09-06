@@ -47,6 +47,24 @@ const crossClassMessage: Readonly<
   validated: unvalidatedElsewhereMessage,
 });
 
+/**
+ * The same two refusals, when the other writer is THIS stage's own unsaved
+ * draft.
+ *
+ * Different words, not a variant of the ones above: the form and the slots are
+ * both on the screen the researcher is looking at, one section apart, and
+ * "elsewhere in this protocol" sends them looking through their other stages
+ * for something that is right in front of them.
+ */
+const draftCrossClassMessage: Readonly<
+  Record<WriterClass, (variableName: string) => string>
+> = Object.freeze({
+  unvalidated: (variableName: string): string =>
+    `"${variableName}" is collected by this stage’s own form, so it cannot also be written by this slot (values written here would bypass its validation)`,
+  validated: (variableName: string): string =>
+    `"${variableName}" is written without validation by another slot in this stage, so it cannot be used as a form field`,
+});
+
 /** A codebook attribute as a picker option, carrying what a filter needs. */
 export type SlotVariableOption = VariablePickerOption &
   Readonly<{ options?: readonly VariableOption[] }>;
@@ -205,9 +223,10 @@ export function slotCrossClassIssue({
   const ownedIssue = interfaceOwnedPickIssue(slotMap, subject, pick, ownSlot);
   if (ownedIssue !== undefined) return ownedIssue;
 
-  const message = crossClassMessage[writerClass];
   if (draftConflicting?.includes(pick) === true) {
-    return message(variableDisplayName(allVariables, pick));
+    return draftCrossClassMessage[writerClass](
+      variableDisplayName(allVariables, pick),
+    );
   }
 
   return crossClassPickIssue({
@@ -216,7 +235,7 @@ export function slotCrossClassIssue({
     hasConflictingUse: (id) =>
       hasConflictingUse(roleMap, subject, id, writerClass),
     allVariables,
-    message,
+    message: crossClassMessage[writerClass],
   });
 }
 

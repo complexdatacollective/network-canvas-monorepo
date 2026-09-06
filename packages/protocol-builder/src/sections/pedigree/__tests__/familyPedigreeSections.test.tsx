@@ -313,9 +313,12 @@ describe('the attributes a pedigree may bind', () => {
     );
 
     expect(await harness.submit()).toBeNull();
+    // Said as what it is: the form doing the collecting is on this screen, one
+    // section further down. "Elsewhere in this protocol" would send the
+    // researcher looking through their other stages for it.
     expect(
       await screen.findByText(
-        '"unwell" is collected by a form elsewhere in this protocol, so it cannot be written by this stage (values written here would bypass its validation)',
+        '"unwell" is collected by this stage’s own form, so it cannot also be written by this slot (values written here would bypass its validation)',
       ),
     ).toBeInTheDocument();
   });
@@ -348,6 +351,73 @@ describe('the attributes a pedigree may bind', () => {
     expect(offered).not.toContain('is_ego');
     expect(offered).not.toContain('fm_relationship_to_ego');
     expect(offered).not.toContain('biologicalSex');
+  });
+
+  /**
+   * TODO(S): the other half of the rule the test above states, in the window
+   * where only this session knows about it.
+   *
+   * The form picker's exclusions are built from the SAVED protocol, so an
+   * attribute a structural slot was bound to in this session is invisible to
+   * it — and creating one from the slot itself writes the attribute to the
+   * codebook at once, so it appears in the form picker while the slot that
+   * claims it is still unsaved. The pedigree writes it from the tree the
+   * participant draws, without validation; collecting it through a form field
+   * as well is the mix the whole rule exists to stop.
+   *
+   * The pedigree already refuses this in the opposite direction, because
+   * `SlotVariableField` takes `draftConflicting`. Un-skip once
+   * `FormFieldsSection` takes the matching `draftUnvalidatedVariables` prop
+   * and the pedigree passes it the slots' live values (S owns
+   * `src/sections/FormFieldsSection.tsx`).
+   */
+  it('never offers the family member form an attribute a slot took this session', async (ctx) => {
+    ctx.skip(
+      'FormFieldsSection has no draftUnvalidatedVariables prop yet (S owns src/sections/FormFieldsSection.tsx)',
+    );
+    const harness = renderStageEditor(openFixture());
+
+    // Created FROM the slot, so the attribute reaches the codebook — and
+    // therefore the form's picker — while the slot binding it is still the
+    // researcher's unsaved draft. That is the only window in which a picker
+    // reading the saved protocol can be wrong.
+    await harness.user.click(
+      screen.getByRole('button', {
+        name: 'Create a new relationship attribute',
+      }),
+    );
+    const creator = within(
+      await screen.findByRole('dialog', {
+        name: 'Create a new relationship attribute',
+      }),
+    );
+    await harness.user.type(
+      creator.getByRole('textbox', { name: /name/i }),
+      'kinship',
+    );
+    await harness.user.click(
+      creator.getByRole('button', { name: /^(Save|Create)/ }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Family member form' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Create new form field' }),
+    );
+    const field = within(await screen.findByRole('dialog'));
+    // By name rather than by id: the attribute was invented a moment ago and
+    // its id is a fresh uuid.
+    const offered = [
+      ...field
+        .getByRole('combobox', { name: 'Attribute' })
+        .querySelectorAll('option'),
+    ].map((option) => option.textContent);
+
+    expect(offered).not.toContain('kinship');
   });
 });
 
