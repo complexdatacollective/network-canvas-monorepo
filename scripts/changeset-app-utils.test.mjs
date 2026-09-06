@@ -129,6 +129,33 @@ test('releaseLaneForProduct maps only separately gated products', () => {
   assert.equal(releaseLaneForProduct('@codaco/studio-rpc'), 'studio');
   assert.equal(releaseLaneForProduct('@codaco/studio-server'), 'studio');
   assert.equal(releaseLaneForProduct('@codaco/studio-sync'), 'studio');
+  assert.equal(releaseLaneForProduct('@codaco/template-registry'), 'studio');
+});
+
+test('registry changesets share Studio but cannot enter the normal lane', () => {
+  const registry = { name: '@codaco/template-registry', type: 'minor' };
+  assert.deepEqual(classifyChangeset({ releases: [registry] }), {
+    gatedProductReleases: [registry],
+    normalReleases: [],
+  });
+  assert.equal(
+    isMixedChangeset({
+      releases: [registry, { name: '@codaco/shared-consts', type: 'patch' }],
+    }),
+    true,
+  );
+  assert.equal(
+    isMultiProductLaneChangeset({
+      releases: [registry, { name: '@codaco/studio-server', type: 'patch' }],
+    }),
+    false,
+  );
+  assert.equal(
+    isMultiProductLaneChangeset({
+      releases: [registry, { name: 'networkcanvas.com', type: 'patch' }],
+    }),
+    true,
+  );
 });
 
 test('isMultiProductLaneChangeset allows products in one release lane', () => {

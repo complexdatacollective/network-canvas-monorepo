@@ -96,9 +96,10 @@ edge.
   superseded run opened.
 - **Separately gated products** are Documentation, networkcanvas.com, and
   Studio. Documentation and Website keep independent stable-semver release PRs,
-  production deploys, and Git tags. The Studio lane covers all four Studio
+  production deploys, and Git tags. The Studio lane covers the four Studio
   workspace packages (`@codaco/studio-client`, `@codaco/studio-server`,
-  `@codaco/studio-rpc`, `@codaco/studio-sync`); its release PR records versions
+  `@codaco/studio-rpc`, `@codaco/studio-sync`) and the independent
+  `@codaco/template-registry`; its release PR records versions
   and changelogs only — Studio has no automated production deploy lane yet.
 - **One release lane per changeset.** A normal-lane changeset may combine
   libraries, Architect, Background Creator, Interviewer, and Fresco. A Studio
