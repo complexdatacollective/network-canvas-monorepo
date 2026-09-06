@@ -1,5 +1,4 @@
 - main:
-  - text: Family member added. Your family pedigree now has 2 members.
   - status:
     - heading "Please build your family pedigree." [level=2]
   - button "You"

@@ -148,7 +148,7 @@ parity, missing/blank entries, sparse overrides and extraction freshness.
   language. Full browser matrix, canonical Linux pixels, dependent app
   integration and current-head CI/review remain the final gates.
 
-## Main integration and final delivery checkpoint
+## Main integration history
 
 The user requested that the already reviewed prerequisite #1702 land as soon as
 its main conflict is resolved. This newer runtime implementation is therefore
@@ -192,3 +192,109 @@ requires initial focus on Language, then Tab to the number field before proving
 keyboard scaling; all seven Navigation stories pass. No production behavior was
 changed to satisfy that assertion. Canonical PNGs, app integration gates and the
 runtime follow-up's current-head CI/review remain outstanding.
+
+## Current runtime delivery checkpoint
+
+Prerequisite [#1702](https://github.com/complexdatacollective/network-canvas-monorepo/pull/1702)
+merged at `39f59598be90c8413a49710364db477c7a3c2711` after its resolved head
+received a clean explicit Codex review, green required CI and green merge-group
+checks. Both the reviewed head and merge commit are ancestors of freshly fetched
+main. Runtime [#1719](https://github.com/complexdatacollective/network-canvas-monorepo/pull/1719)
+is ready for review on main at source checkpoint
+`5128f4942c67dee5e8690fd43852887b23a24593`. The app PRs temporarily target the
+runtime branch to keep their reviews focused; they must target main after this
+prerequisite lands and pass fresh automatic CI.
+
+The complete cold Interview Storybook run passes 244 cases. First PR CI also
+passed units, lint, quality support, all 293 native runtime cases and the
+Architect and Interviewer pixel jobs. Two consumer test failures were diagnosed:
+
+- Interviewer's Storybook optimizer discovered `intl-localematcher` only when
+  opening a lazy Shell path, reloaded the browser and invalidated imports. Its
+  eager dependency list now includes that same transitive entry already used
+  by the Interviewer app PR. A cold rerun then exposed a separate carousel
+  readiness race: pagination renders before ResizeObserver mounts the actual
+  import card. Keyboard activation now waits for that real card. The final
+  cold Interviewer run passes all 97 existing cases across 36 files without
+  an optimizer reload. No production behavior or assertions were weakened.
+- Interviewer's native sociogram test still requested the old application
+  name, “Sociogram Canvas.” Its three exact name references now use the
+  reviewed built-in “Placement area” name. A fresh production host and the
+  original keyboard-placement scenario pass without changing any expected
+  stored data or navigation behavior.
+
+The first runtime pixel job uses the pre-adoption images; its result is not the
+final pixel gate. Canonical captures were generated solely by the dedicated
+GitHub workflow on the pushed source, then reviewed before adoption. Normal CI
+on the next committed head must verify the adopted images without updates.
+
+### Canonical image review
+
+Independent CI captures [34053232920](https://github.com/complexdatacollective/network-canvas-monorepo/actions/runs/34053232920)
+and [34053362247](https://github.com/complexdatacollective/network-canvas-monorepo/actions/runs/34053362247)
+both succeeded on the same `5128f49` source. Of 438 PNGs, 384 intentionally
+change and 54 stay byte-identical to their committed baseline. There are no
+missing images or dimension changes. The first run supplies all adopted bytes.
+
+All 384 before/after images were reviewed through 105 exact changed-region
+groups: 134 Chromium images (38 groups), 125 Firefox images (33 groups) and
+125 WebKit images (34 groups). The lead reviewed Firefox; separate app owners
+reviewed Chromium and WebKit, with the lead additionally inspecting the unstable
+Chromium crops. Per-image SHA-256 checks and independent RGBA scans establish
+that each member has the reviewed change signature and every pixel outside its
+reported bounds is unchanged. The new Settings button, corresponding navigation
+space and whole-message unplaced-count label account for the changes. Shallow
+roster views retain all names and values while the new navigation minimum gives
+the card body slightly more visible space. No missing assets, loading states,
+font fallback or authored-data changes were found. Geospatial captures also
+include the intended shared navigation change and were byte-stable between runs.
+
+433 of 438 captures are byte-identical across the independent runs. Five small
+repeat variants remain: one Chromium circle edge, two Chromium roster
+text/scrollbar edges, one WebKit convex-hull edge and one WebKit pedigree legend.
+Each pair passes the real Playwright buffer image matcher with the repository's
+unchanged color threshold and `maxDiffPixels: 250`, with snapshot writes disabled.
+All three Chromium pairs even have zero pixels above the normal color threshold.
+The reviewed variants preserve text, values, order and topology; no threshold or
+assertion was relaxed. These captures were adopted only after this review, and
+the next normal PR CI run must verify the committed baseline set.
+
+### Current-head accessibility review correction
+
+Codex's first runtime review found that a successful person-edit event remained
+in state. Changing `intl` could announce that old save again. The submission is
+now consumed after announcing; saving the same person again still creates a new
+event. The sibling audit found the build-stage add/remove/completion message
+was also retained indefinitely and retranslated through `AppMessage`. It now
+uses the existing finite accessibility live-region hook; existing count and
+checklist transition refs ensure that only a new action emits another message.
+Current visible condition, focus and checklist summaries remain reactive.
+
+Both new tests first failed against the old implementation for the reported
+mechanism. The edit test uses the real dialog, fields, store and locale/live-region
+providers; the build test uses the real stage/store/provider and event detection,
+with child controls and host selectors replaced to drive the count/checklist
+transitions. The restored run passes 15 tests across three files, covering
+English, Spanish and British English, repeated identical saves, later add/remove
+actions, repeated completion and preservation of literal authored values.
+
+The real production browser check exposed exactly three final Chromium ARIA
+expectations that pinned the obsolete persistent “Family member added” text
+inside main. Only those three text lines were removed after explicit diff
+review. The finite body live region remains tested through the real hook; no
+control, heading, role or accessible name was removed from a snapshot. The
+existing 36-case accessible-name corpus guard also passes without modification.
+
+After adopting those exact ARIA changes, all 17 affected FamilyPedigree native
+scenarios pass across Chromium, Firefox and WebKit against a fresh production
+host, using the normal assertions with snapshot writes disabled. The root
+configured Knip check passes; Interviewer consumer typecheck and scoped lint
+also pass. Production source and canonical PNG hashes stayed fixed throughout
+this focused verification.
+
+The final full Interview package typecheck passes all three TypeScript programs.
+The new regression fixture initially needed the existing branded attribute
+reference helper and a string guard for its literal label; that test-only
+correction passes the full typecheck and the restored 15-case regression run.
+Scoped type-aware lint and formatting pass, with existing repository warnings
+and the deliberate event-consumption effect's additional-render warning retained.
