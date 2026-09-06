@@ -2,6 +2,7 @@ import { act, screen, waitFor } from '@testing-library/react';
 import { useEffect, useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
+import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useResourceGateway } from '../../resources/context.tsx';
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import InterviewerGuidanceSection from '../../sections/InterviewerGuidanceSection.tsx';
@@ -60,6 +61,71 @@ function RosterColumnsSection({
         {unreadable || columns.length === 0
           ? 'That roster could not be read.'
           : `Columns: ${columns.join(', ')}`}
+      </p>
+    </BuilderSection>
+  );
+}
+
+/**
+ * A section that reads a map LAYER, the way a geospatial stage's target-feature
+ * section does: the properties it offers a researcher are the layer's own, and
+ * only the file has them. Seeded with a placeholder body — valid JSON with no
+ * features in it — this section would offer nothing at all and say the layer
+ * cannot be read.
+ */
+function LayerFeaturesSection({
+  resourceId,
+  property,
+}: Readonly<{ resourceId: string; property: string }>) {
+  const gateway = useResourceGateway();
+  const [features, setFeatures] = useState<readonly string[]>([]);
+  const [unreadable, setUnreadable] = useState(false);
+
+  useEffect(() => {
+    let current = true;
+    const readFeatures = async () => {
+      const result = await gateway.download(resourceId);
+      if (!current) return;
+      const layer =
+        result.status === 'ok'
+          ? (JSON.parse(new TextDecoder().decode(result.data.bytes)) as unknown)
+          : undefined;
+      const collection =
+        typeof layer === 'object' && layer !== null && 'features' in layer
+          ? layer.features
+          : undefined;
+      if (!Array.isArray(collection) || collection.length === 0) {
+        setUnreadable(true);
+        return;
+      }
+      setFeatures(
+        collection.map((feature: unknown) => {
+          const properties =
+            typeof feature === 'object' &&
+            feature !== null &&
+            'properties' in feature
+              ? feature.properties
+              : undefined;
+          const value =
+            typeof properties === 'object' && properties !== null
+              ? (properties as Record<string, unknown>)[property]
+              : undefined;
+          return typeof value === 'string' ? value : '';
+        }),
+      );
+    };
+    void readFeatures();
+    return () => {
+      current = false;
+    };
+  }, [gateway, property, resourceId]);
+
+  return (
+    <BuilderSection title="Target feature">
+      <p>
+        {unreadable
+          ? 'That layer could not be read as GeoJSON.'
+          : `Features: ${features.join(', ')}`}
       </p>
     </BuilderSection>
   );
@@ -191,6 +257,122 @@ describe('the stage-editor test harness', () => {
 });
 
 /**
+ * A stub editor whose only behaviour is one write to the stage draft.
+ *
+ * Written through `applyOwnCommands` — the same door a list editor commits a
+ * row through — rather than by mounting a control that misbehaves, because
+ * what is under test is the harness's comparison and not any section: a stub
+ * that could only fail by rendering something would prove the check catches
+ * that one control, and nothing about the check.
+ */
+function WritesToTheDraft({
+  stageKey,
+  value,
+}: Readonly<{ stageKey: string; value: unknown }>) {
+  const { applyOwnCommands } = useStageEditorForm();
+
+  useEffect(() => {
+    applyOwnCommands([{ op: 'set', key: stageKey, value }]);
+  }, [applyOwnCommands, stageKey, value]);
+
+  return null;
+}
+
+/** The fixture's geospatial stage, with one more setting on its map. */
+const geospatialShowingTransit = () => {
+  const geospatial = loadFixtureStage('geospatial-1');
+  const mapOptions =
+    typeof geospatial.fields.mapOptions === 'object' &&
+    geospatial.fields.mapOptions !== null
+      ? (geospatial.fields.mapOptions as Record<string, unknown>)
+      : {};
+  return {
+    seeded: {
+      id: geospatial.id,
+      type: geospatial.type,
+      fields: {
+        ...geospatial.fields,
+        mapOptions: { ...mapOptions, showTransit: true },
+      },
+    },
+    /** The same map options with that setting gone, and nothing else moved. */
+    withoutTransit: mapOptions,
+  };
+};
+
+/**
+ * A round trip is a claim about the WHOLE stage, in both directions.
+ *
+ * A key nothing authored is content in the researcher's protocol they did not
+ * write — a control's default stamped on a save that was meant to change
+ * nothing — and it is invisible to a comparison that only walks the seeded
+ * stage. A key nested inside one an editor does render is invisible to a
+ * comparison that stops at the top, and `unowned` is not a place it could be
+ * declared either: `unowned` is about which sections exist, not about what a
+ * save does inside a section that does.
+ */
+describe('what a round trip refuses', () => {
+  it('refuses a stage that came back with a key nobody authored', async () => {
+    const harness = renderStageEditor({
+      stageId: 'information-1',
+      sections: (
+        <>
+          <StageNameSection />
+          <WritesToTheDraft
+            stageKey="interviewScript"
+            value="Read this aloud."
+          />
+        </>
+      ),
+    });
+
+    await expect(
+      harness.roundTrip({ unowned: ['title', 'items'] }),
+    ).rejects.toThrow(/Added: interviewScript\./);
+  });
+
+  it('refuses a stage that came back missing a key nested inside one', async () => {
+    const { seeded, withoutTransit } = geospatialShowingTransit();
+    const harness = renderStageEditor({
+      stage: seeded,
+      sections: (
+        <>
+          <StageNameSection />
+          <WritesToTheDraft stageKey="mapOptions" value={withoutTransit} />
+        </>
+      ),
+    });
+
+    // Named by its own path, not as "mapOptions changed": which of the map's
+    // eight settings went is the whole of what a reader needs.
+    await expect(
+      harness.roundTrip({ unowned: ['subject', 'mapOptions', 'prompts'] }),
+    ).rejects.toThrow(/Dropped: mapOptions\.showTransit\./);
+  });
+
+  /**
+   * The same stage, saved by an editor that leaves it alone, still round-trips
+   * — so the two refusals above are about what the stub did, not about the
+   * stage being unable to survive a save at all.
+   */
+  it('accepts the same stage from an editor that changes nothing', async () => {
+    const { seeded } = geospatialShowingTransit();
+    const harness = renderStageEditor({
+      stage: seeded,
+      sections: <StageNameSection />,
+    });
+
+    const request = await harness.roundTrip({
+      unowned: ['subject', 'mapOptions', 'prompts'],
+    });
+
+    expect(request.stageDocument.mapOptions).toMatchObject({
+      showTransit: true,
+    });
+  });
+});
+
+/**
  * The protocol's asset manifest and the resource gateway are two halves of one
  * fact: a stage may reference a resource only if the manifest lists it AND the
  * host holds its bytes. The harness seeds both from the same manifest, so a
@@ -213,6 +395,29 @@ describe('the resources a harnessed stage can reach', () => {
     expect(
       listed.data.find((resource) => resource.id === 'roster_data'),
     ).toMatchObject({ name: 'Roster', kind: 'network', status: 'committed' });
+  });
+
+  /**
+   * The same claim for the OTHER file the protocol ships. A layer seeded with
+   * a placeholder parses as JSON and holds no features, so every geospatial
+   * section that reads it shows its unreadable state — which is what the whole
+   * interface's tests and stories were doing.
+   */
+  it('hands a section the features of the map layer the fixture ships', async () => {
+    const harness = renderStageEditor({
+      stageId: 'geospatial-1',
+      sections: <LayerFeaturesSection resourceId="geo_data" property="name" />,
+    });
+
+    // The layer's own regions, named by the property `geospatial-1` targets.
+    expect(
+      await screen.findByText('Features: Downtown, Uptown'),
+    ).toBeInTheDocument();
+    const listed = await harness.gateway.list();
+    if (listed.status !== 'ok') throw new Error('the gateway refused to list');
+    expect(
+      listed.data.find((resource) => resource.id === 'geo_data'),
+    ).toMatchObject({ name: 'Regions', kind: 'geojson', status: 'committed' });
   });
 
   it('joins an extra asset to the manifest and the gateway together', async () => {

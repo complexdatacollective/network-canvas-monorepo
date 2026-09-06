@@ -334,23 +334,57 @@ export const AcquireSectionResultSchema = z.discriminatedUnion('mode', [
   z.object({ mode: z.literal('readOnly') }),
 ]);
 
+/**
+ * Where a command applies: a top-level key, or a path of object keys reaching a
+ * value nested inside the section document (`@codaco/studio-sync/apply`'s
+ * `CommandTarget`).
+ *
+ * The path form is an array rather than a dotted string so that a server which
+ * predates nested addressing refuses it here instead of reading it as a
+ * top-level key that happens to contain a dot and writing the value somewhere
+ * the document does not keep one. Depth is bounded for the same reason the
+ * command count is: the commit work this describes has to stay predictable.
+ * A prototype name is refused outright — the apply engine will not follow one,
+ * and a command is better rejected at the boundary than part-way through a
+ * transaction.
+ */
+const UNSAFE_PATH_SEGMENTS = new Set(['__proto__', 'constructor', 'prototype']);
+const CommandTargetSchema = z.union([
+  z.string(),
+  z
+    .array(z.string().min(1))
+    .min(1)
+    .max(16)
+    .refine(
+      (path) => path.every((segment) => !UNSAFE_PATH_SEGMENTS.has(segment)),
+      { message: 'must not name a prototype' },
+    )
+    // Readonly to match the apply engine's own `CommandTarget`: nothing
+    // downstream may rewrite an address after it has been validated.
+    .readonly(),
+]);
+
 const CommandSchema = z.discriminatedUnion('op', [
-  z.object({ op: z.literal('set'), key: z.string(), value: z.unknown() }),
-  z.object({ op: z.literal('unset'), key: z.string() }),
+  z.object({
+    op: z.literal('set'),
+    key: CommandTargetSchema,
+    value: z.unknown(),
+  }),
+  z.object({ op: z.literal('unset'), key: CommandTargetSchema }),
   z.object({
     op: z.literal('insertItem'),
-    key: z.string(),
+    key: CommandTargetSchema,
     index: z.number().int().nonnegative(),
     item: z.unknown(),
   }),
   z.object({
     op: z.literal('removeItem'),
-    key: z.string(),
+    key: CommandTargetSchema,
     index: z.number().int().nonnegative(),
   }),
   z.object({
     op: z.literal('moveItem'),
-    key: z.string(),
+    key: CommandTargetSchema,
     from: z.number().int().nonnegative(),
     to: z.number().int().nonnegative(),
   }),

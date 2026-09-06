@@ -1,7 +1,8 @@
 import { createContext, useCallback, useContext, useMemo, useRef } from 'react';
 
 import type { ArrayFieldOperation } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
-import type { Command } from '@codaco/studio-sync/apply';
+import { getValue } from '@codaco/fresco-ui/form/utils/objectPath';
+import { commandTarget, type Command } from '@codaco/studio-sync/apply';
 
 import { useStageEditorForm } from '../stageEditorContext.ts';
 import {
@@ -13,16 +14,18 @@ import {
 } from './arrayFieldCommands.ts';
 
 /**
- * Which key of the stage document a list editor is bound to, or `undefined`
- * when it is not bound to one at all.
+ * Where in the stage document a list editor is bound, or `undefined` when it is
+ * not bound at all.
  *
- * A list nested inside a row — `additionalAttributes` on a prompt — has no key
- * of its own: the command vocabulary addresses a top-level document key, and
- * the row it lives in is edited as a whole by the dialog around it. Such a
+ * A list nested inside a row — `additionalAttributes` on a prompt — has no
+ * place of its own that stays true: it is reached through the row's position,
+ * and the row it lives in is edited as a whole by the dialog around it. Such a
  * list stays an ordinary form value and commits with its dialog, which is why
  * this is an option rather than a requirement.
  */
-export type ArrayFieldBinding = Readonly<{ documentKey: string | undefined }>;
+export type ArrayFieldBinding = Readonly<{
+  documentPath: readonly string[] | undefined;
+}>;
 
 export const ArrayFieldBindingContext = createContext<ArrayFieldBinding | null>(
   null,
@@ -67,7 +70,7 @@ export function useArrayFieldCommands<T extends ArrayRow>(
   getId?: ArrayRowIdentity<T>,
 ): ArrayFieldCommands<T> {
   const { applyOwnCommands } = useStageEditorForm();
-  const documentKey = useContext(ArrayFieldBindingContext)?.documentKey;
+  const documentPath = useContext(ArrayFieldBindingContext)?.documentPath;
 
   // Read at commit time rather than closed over. A dialog's save can land
   // after the list has moved on, and the values it should be judged against
@@ -80,15 +83,16 @@ export function useArrayFieldCommands<T extends ArrayRow>(
   getIdRef.current = getId;
 
   const readCurrent = useCallback(
-    (key: string) => readArray(applyOwnCommands([])[key]),
+    (path: readonly string[]) =>
+      readArray(getValue(applyOwnCommands([]), [...path])),
     [applyOwnCommands],
   );
 
   const commit = useCallback(
-    (key: string, commands: readonly Command[]) => {
+    (path: readonly string[], commands: readonly Command[]) => {
       if (commands.length === 0) return false;
       const next = applyOwnCommands(commands);
-      onChangeRef.current?.(readRows(next[key]) as T[]);
+      onChangeRef.current?.(readRows(getValue(next, [...path])) as T[]);
       return true;
     },
     [applyOwnCommands],
@@ -96,24 +100,24 @@ export function useArrayFieldCommands<T extends ArrayRow>(
 
   const handleOperation = useCallback(
     (operation: ArrayFieldOperation<T>) => {
-      if (documentKey === undefined) return;
+      if (documentPath === undefined) return;
       commit(
-        documentKey,
+        documentPath,
         commandsForOperation(
-          documentKey,
-          readCurrent(documentKey),
+          commandTarget(documentPath),
+          readCurrent(documentPath),
           renderedRef.current,
           operation,
           getIdRef.current,
         ),
       );
     },
-    [commit, documentKey, readCurrent],
+    [commit, documentPath, readCurrent],
   );
 
   const commitDetachedRow = useCallback(
     (row: T, id: string | undefined, isNewRow: boolean): boolean => {
-      if (documentKey === undefined) {
+      if (documentPath === undefined) {
         const committed = renderedRef.current;
         const index =
           id === undefined
@@ -133,10 +137,10 @@ export function useArrayFieldCommands<T extends ArrayRow>(
       }
 
       return commit(
-        documentKey,
+        documentPath,
         commandsForDetachedRow(
-          documentKey,
-          readCurrent(documentKey),
+          commandTarget(documentPath),
+          readCurrent(documentPath),
           row,
           id,
           isNewRow,
@@ -144,14 +148,14 @@ export function useArrayFieldCommands<T extends ArrayRow>(
         ),
       );
     },
-    [commit, documentKey, readCurrent],
+    [commit, documentPath, readCurrent],
   );
 
   return useMemo(
     () => ({
-      onOperation: documentKey === undefined ? undefined : handleOperation,
+      onOperation: documentPath === undefined ? undefined : handleOperation,
       commitDetachedRow,
     }),
-    [commitDetachedRow, documentKey, handleOperation],
+    [commitDetachedRow, documentPath, handleOperation],
   );
 }

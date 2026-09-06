@@ -12,6 +12,7 @@ import {
   contentHash,
   manifestHash,
   type SectionDoc,
+  targetRoot,
 } from '@codaco/studio-sync/apply';
 import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
 import {
@@ -547,9 +548,10 @@ function validateSubmissionShape(
     if (
       edit.kind === 'update' &&
       ref.kind === 'stage' &&
-      edit.commands.some(
-        (command) => command.key === 'id' || command.key === 'type',
-      )
+      edit.commands.some((command) => {
+        const key = targetRoot(command.key);
+        return key === 'id' || key === 'type';
+      })
     ) {
       return failed(
         'invalid-request',

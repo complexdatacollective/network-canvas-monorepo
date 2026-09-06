@@ -25,8 +25,12 @@ const SORT_RULE_PROPERTIES: PropertyField[] = [
 const SORT_RULE_VALIDATION = makeMultiSelectValidation(SORT_RULE_PROPERTIES);
 
 export type SortOrderRowsProps = Readonly<{
-  /** The prompt key these rules are held at. */
-  name: 'binSortOrder' | 'bucketSortOrder';
+  /**
+   * The prompt key these rules are held at. A bin or census prompt holds two
+   * orders and names each one; a sociogram prompt holds a single `sortOrder`,
+   * the order the nodes still to be placed are handed over in.
+   */
+  name: 'binSortOrder' | 'bucketSortOrder' | 'sortOrder';
   title: string;
   description: string;
   label: string;

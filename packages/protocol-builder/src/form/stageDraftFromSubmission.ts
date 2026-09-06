@@ -31,7 +31,14 @@ export type StageDraftSubmission = Readonly<{
   currentFields: StageFormDraft;
   /** What the form handed the submit handler: mounted fields only. */
   submittedValues: Readonly<Record<string, FieldValue>>;
-  /** Where the still-mounted fields live, so a hidden one cannot outrank them. */
+  /**
+   * Where the still-mounted fields live.
+   *
+   * Two jobs, and they are the same fact. It says which parts of
+   * `submittedValues` this submit is entitled to write, and where each one
+   * goes; and it says which parts of the draft a hidden field must not be
+   * replayed over.
+   */
   mountedPaths: readonly ObjectPath[];
   dormantFields: readonly DormantField[];
 }>;
@@ -41,12 +48,16 @@ export type StageDraftSubmission = Readonly<{
  *
  * Four rules, applied in this order:
  *
- * 1. Keys the editor never rendered survive untouched. An interface with no
- *    section for `skipLogic` must not delete skip logic someone authored
- *    before switching interfaces.
- * 2. Fields the form still has mounted replace their top-level key outright.
- *    That is the unit the session turns into a command, and it is why a
- *    section owning part of a nested value has to render every part of it.
+ * 1. Anything the editor never rendered survives untouched. An interface with
+ *    no section for `skipLogic` must not delete skip logic someone authored
+ *    before switching interfaces — and neither must a section that owns one
+ *    part of a nested value delete the parts beside it. A Family Pedigree's
+ *    form section owns `nodeConfig.form` and nothing else under `nodeConfig`.
+ * 2. Fields the form still has mounted replace the value at their OWN path,
+ *    shallowest first. That is the unit the session turns into a command, and
+ *    writing at the path rather than at the top-level key above it is what
+ *    lets a section own a nested value without having to render every sibling
+ *    it happens to share a key with.
  * 3. A hidden field's value is written back where it belongs. Hiding a field
  *    is not a decision about its value.
  * 4. A discarded field is REMOVED rather than set to anything. Absence is how
@@ -56,10 +67,26 @@ export type StageDraftSubmission = Readonly<{
 export function stageDraftFromSubmission(
   submission: StageDraftSubmission,
 ): SectionDoc {
-  let draft: SectionDoc = {
-    ...submission.currentFields,
-    ...submission.submittedValues,
-  };
+  let draft: SectionDoc = { ...submission.currentFields };
+
+  // Shallowest first, for the reason the dormant writes below are: a field
+  // registered at a container path must not overwrite the edit made to a field
+  // registered inside it. Fresco's own assembly of the submitted values
+  // resolves that overlap in the same order.
+  //
+  // `setValue` copies every container it traverses, so this cannot write
+  // through into the session's own frozen snapshot.
+  for (const path of submission.mountedPaths.toSorted(
+    (a, b) => a.length - b.length,
+  )) {
+    const submitted = submittedValueAt(submission.submittedValues, path);
+    // Only what the submission actually carries. A field the submitted values
+    // have nothing at is a field that was not registered when they were
+    // assembled, and writing `undefined` there would delete a value on the
+    // strength of a reading that never happened. A field holding `undefined`
+    // is the opposite — the researcher emptied it — and that IS carried.
+    if (submitted.present) setValue(draft, path, submitted.value);
+  }
 
   const { writes, removals } = partitionDormant(submission.dormantFields);
 
@@ -127,6 +154,36 @@ export function stageDraftFromSubmission(
   }
 
   return draft;
+}
+
+/**
+ * What the submitted values hold at a path, and whether they hold anything
+ * there at all.
+ *
+ * The two answers have to be separable: a field the researcher emptied is
+ * carried as `undefined`, and a path the submission never reached is also
+ * `undefined` to a plain read. Own properties only, so nothing arrives from a
+ * prototype.
+ */
+function submittedValueAt(
+  values: Readonly<Record<string, FieldValue>>,
+  path: ObjectPath,
+): Readonly<{ present: boolean; value: FieldValue }> {
+  let cursor: unknown = values;
+  for (const segment of path) {
+    if (cursor === null || typeof cursor !== 'object') {
+      return { present: false, value: undefined };
+    }
+    const descriptor = Object.getOwnPropertyDescriptor(cursor, segment);
+    if (descriptor === undefined || !('value' in descriptor)) {
+      return { present: false, value: undefined };
+    }
+    cursor = descriptor.value;
+  }
+  // Everything the form store holds is a `FieldValue`, and every container it
+  // assembled them into is one too.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return { present: true, value: cursor as FieldValue };
 }
 
 type ResolvedDormant = Readonly<{ path: ObjectPath; value: FieldValue }>;

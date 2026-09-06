@@ -12,6 +12,7 @@ import {
   contentHash,
   type Command,
   type SectionDoc,
+  targetRoot,
 } from '@codaco/studio-sync/apply';
 import {
   type ProtocolSectionId,
@@ -1206,7 +1207,11 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     const staged = this.resources?.staged() ?? NO_STAGED_RESOURCES;
     if (staged.length === 0) return false;
     const stagedIds = new Set(staged.map((descriptor) => descriptor.id));
-    const touched = new Set(batch.commands.map((command) => command.key));
+    // The top-level key each command reaches into, which is the depth a
+    // resource reference is addressed at.
+    const touched = new Set(
+      batch.commands.map((command) => targetRoot(command.key)),
+    );
     return collectStageResourceReferences(
       stageDocument(this.snapshot.editedSection.identity, fields),
     ).some(
@@ -1357,8 +1362,12 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
 
   private assertCommandsDoNotOwnIdentity(commands: readonly Command[]): void {
     for (const command of commands) {
-      if (command.key === 'id' || command.key === 'type') {
-        throw new StageIdentityCommandError(command.key);
+      // The ROOT of the path, not the whole address: a command reaching into
+      // `id` is writing the stage's identity just as surely as one replacing
+      // it, and the session owns that either way.
+      const key = targetRoot(command.key);
+      if (key === 'id' || key === 'type') {
+        throw new StageIdentityCommandError(key);
       }
     }
   }
@@ -1570,9 +1579,10 @@ function validateCompoundEditRequest(
       }
       if (
         ref.kind === 'stage' &&
-        edit.commands.some(
-          (command) => command.key === 'id' || command.key === 'type',
-        )
+        edit.commands.some((command) => {
+          const key = targetRoot(command.key);
+          return key === 'id' || key === 'type';
+        })
       ) {
         return compoundFailure(
           'invalid-request',

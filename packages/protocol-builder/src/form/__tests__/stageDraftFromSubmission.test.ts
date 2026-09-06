@@ -10,7 +10,7 @@ describe('stageDraftFromSubmission', () => {
         skipLogic: { action: 'SKIP', filter: { rules: [], join: 'OR' } },
       },
       submittedValues: { label: 'Close friends' },
-      mountedPaths: [],
+      mountedPaths: [['label']],
       dormantFields: [],
     });
 
@@ -126,15 +126,38 @@ describe('stageDraftFromSubmission', () => {
     expect(Object.hasOwn(draft, 'behaviours')).toBe(true);
   });
 
-  it('replaces a submitted key outright rather than merging into it', () => {
+  it('replaces the value at a mounted path outright rather than merging into it', () => {
     const draft = stageDraftFromSubmission({
       currentFields: { prompts: [{ id: 'a' }, { id: 'b' }] },
       submittedValues: { prompts: [{ id: 'b' }] },
-      mountedPaths: [],
+      mountedPaths: [['prompts']],
       dormantFields: [],
     });
 
+    // The field is registered at `prompts` itself, so what it holds is the
+    // whole list. Merging into the old one would resurrect the deleted row.
     expect(draft.prompts).toEqual([{ id: 'b' }]);
+  });
+
+  it('leaves the rest of a key alone when a section owns one path inside it', () => {
+    const draft = stageDraftFromSubmission({
+      currentFields: {
+        nodeConfig: { type: 'family_member', form: [{ variable: 'fm_name' }] },
+      },
+      // What the form assembles when the only section pointed inside
+      // `nodeConfig` is the one owning the form.
+      submittedValues: { nodeConfig: { form: [{ variable: 'fm_age' }] } },
+      mountedPaths: [['nodeConfig', 'form']],
+      dormantFields: [],
+    });
+
+    // `nodeConfig.type` is nobody's field here, and a save that dropped it
+    // would leave the pedigree with no node type — the same loss as deleting a
+    // top-level key no section renders, one level down.
+    expect(draft.nodeConfig).toEqual({
+      type: 'family_member',
+      form: [{ variable: 'fm_age' }],
+    });
   });
 
   it('lets a nested hidden field win over the container it sits in', () => {
@@ -224,8 +247,10 @@ describe('stageDraftFromSubmission', () => {
     });
 
     // Replaying the container the researcher last saw would put the stale
-    // reading of a field they can still see back over what it now holds.
-    expect(draft.parameters).toEqual({ bounds: { min: 9 } });
+    // reading of a field they can still see back over what it now holds. What
+    // nothing on screen edits stays as the draft has it: `style` is not part
+    // of this submit, and the container's stale copy is not evidence about it.
+    expect(draft.parameters).toEqual({ bounds: { min: 9 }, style: 'plain' });
   });
 
   it('leaves an emptied row in place rather than punching a hole in the list', () => {

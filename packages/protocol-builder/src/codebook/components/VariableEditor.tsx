@@ -389,7 +389,8 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
   const nameErrors = messagesAt(issues, 'name');
   const typeErrors = messagesAt(issues, 'type');
   const optionErrors = messagesAt(issues, 'options');
-  const failurePresentation = failureFrom(snapshot.lastFailure);
+  const contradictions = contradictionMessages(issues);
+  const failurePresentation = failureFrom(snapshot.lastFailure, contradictions);
 
   return (
     <Surface
@@ -416,7 +417,17 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
           className="focusable"
         >
           <AlertTitle>Attribute not saved</AlertTitle>
-          <AlertDescription>{failurePresentation.message}</AlertDescription>
+          <AlertDescription>
+            {failurePresentation.messages.length === 1 ? (
+              failurePresentation.messages[0]
+            ) : (
+              <ul className="list-disc pl-5">
+                {failurePresentation.messages.map((message) => (
+                  <li key={message}>{message}</li>
+                ))}
+              </ul>
+            )}
+          </AlertDescription>
         </Alert>
       )}
       {snapshot.authoritativeChanged && (
@@ -742,22 +753,68 @@ function messagesAt(
 }
 
 /**
+ * The refusals in this batch that already read as sentences for a researcher.
+ *
+ * `buildUpdateVariableRequest` parses the whole entity, so its issues arrive
+ * anchored inside the entity document at `variables/<id>/…`, one level deeper
+ * than the ones `VariableSchema` raises about the draft on screen. The ones
+ * anchored at a RULE are the record-level refinements — a validation rule the
+ * attribute's options can no longer satisfy, "answer at least three" with two
+ * options left — and their message names the rule and the values that cannot
+ * both hold, exactly as `findDraftContradictions` writes them for the
+ * validation editor.
+ *
+ * Reported against the form rather than against a control, for two reasons:
+ * validation rules belong to the separate validation surface, so this editor
+ * has no control to hang them on; and the rule that can no longer hold may
+ * belong to a DIFFERENT attribute than the one being edited — `<id>` is
+ * whichever variable the analyser chose to anchor the strip at — in which case
+ * the message names that attribute and nothing on this form is wrong.
+ *
+ * Everything else `validateEntityDocument` can raise is a shape complaint
+ * written for whoever reads a log, and keeps the package's own copy for a save
+ * that did not happen. See `compoundFailureCopy`.
+ */
+function contradictionMessages(
+  issues: readonly CodebookDraftIssue[],
+): string[] {
+  return issues
+    .filter(
+      (issue) =>
+        issue.path[0] === 'variables' && issue.path[2] === 'validation',
+    )
+    .map((issue) => issue.message);
+}
+
+/**
  * How a failed save is presented: what it means to the researcher, and how
  * loudly to say it.
  *
  * The words are the package's own — see `compoundFailureCopy` — never the
- * host's. A section held by a collaborator is something to wait for rather than
+ * host's, with the one exception every codebook surface makes: a refusal that
+ * arrives already written for a researcher, naming the rule and the values
+ * that cannot both hold, is shown as it was written. It replaces the generic
+ * copy rather than joining it, which would otherwise tell the researcher to
+ * wait and try a save that cannot succeed until they change something.
+ *
+ * A section held by a collaborator is something to wait for rather than
  * something that went wrong, so it is the one failure shown as a warning.
  */
-function failureFrom(failure: AuxiliaryCodebookDraftFailure | null): Readonly<{
+function failureFrom(
+  failure: AuxiliaryCodebookDraftFailure | null,
+  contradictions: readonly string[],
+): Readonly<{
   variant: 'warning' | 'destructive';
-  message: string;
+  messages: readonly string[];
 }> | null {
+  if (contradictions.length > 0) {
+    return { variant: 'destructive', messages: contradictions };
+  }
   if (failure === null) return null;
   const held = failure.kind === 'result' && failure.result.status === 'blocked';
   return {
     variant: held ? 'warning' : 'destructive',
-    message: compoundFailureMessage(failure),
+    messages: [compoundFailureMessage(failure)],
   };
 }
 
