@@ -567,10 +567,9 @@ jobs:
       - name: Build shared packages and release-sensitive apps
         id: build
         continue-on-error: true
-        # Background Creator has no E2E suite. Architect and Interviewer's
-        # PostHog source-map path is credential-gated and otherwise runs only
-        # after a release PR merges. A local CLI stub exercises app and worker
-        # source-map processing plus deletion without contacting PostHog.
+        # Background Creator has no E2E suite. The apps' PostHog source-map
+        # path is credential-gated. A local CLI stub exercises app, worker,
+        # Studio Node and preview-function maps plus deletion without upload.
         env:
           POSTHOG_PERSONAL_API_KEY: ci-release-build-preflight
           POSTHOG_PROJECT_ID: '1'
@@ -579,6 +578,18 @@ jobs:
           pnpm exec turbo run build --filter='./packages/*' --filter=@codaco/background-creator
           pnpm --filter=@codaco/architect build
           pnpm --filter=@codaco/interviewer build
+          pnpm --filter=@codaco/studio-client build
+          pnpm --filter=@codaco/studio-server build
+          pnpm --filter=@codaco/studio-server build:netlify
+      - name: Verify Studio telemetry opt-out and browser privacy
+        id: studio-telemetry
+        continue-on-error: true
+        # This uses the built deployables and real browser SDK. External
+        # requests are intercepted locally, including the enabled controls.
+        # The server subprocess suite runs in the existing Studio test step.
+        run: |
+          pnpm --filter @codaco/studio-client exec playwright install --with-deps chromium
+          pnpm --filter @codaco/studio-client test:telemetry
       - name: Typecheck workspaces
         id: typecheck
         continue-on-error: true
@@ -594,6 +605,7 @@ jobs:
           NPM_VERSIONS_OUTCOME: ${{ steps.npm_versions.outcome }}
           SCRIPTS_OUTCOME: ${{ steps.scripts.outcome }}
           BUILD_OUTCOME: ${{ steps.build.outcome }}
+          STUDIO_TELEMETRY_OUTCOME: ${{ steps.studio-telemetry.outcome }}
           TYPECHECK_OUTCOME: ${{ steps.typecheck.outcome }}
         run: |
           failed=false
@@ -606,6 +618,7 @@ jobs:
             "npm-versions=$NPM_VERSIONS_OUTCOME" \
             "scripts=$SCRIPTS_OUTCOME" \
             "build=$BUILD_OUTCOME" \
+            "studio-telemetry=$STUDIO_TELEMETRY_OUTCOME" \
             "typecheck=$TYPECHECK_OUTCOME"; do
             echo "$result"
             if [[ "${result#*=}" != "success" ]]; then

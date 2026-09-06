@@ -79,6 +79,10 @@ uncaught errors, non-Error rejections, clean SIGTERM and a receiver that never
 answers. The existing startup-log tests explicitly disable telemetry so their
 deliberate faults cannot reach the live relay.
 
+The existing CI quality-support job runs the client, Node and preview-function
+builds through the source-map upload stub, then requires the browser privacy
+probe to pass. No live telemetry or source maps are uploaded by this job.
+
 After building both deployables, run:
 
 ```sh
