@@ -52,13 +52,6 @@ function openSession(introScreen: SectionDoc | undefined) {
   });
 }
 
-const itemsOf = (session: ProtocolBuilderSessionStore): unknown => {
-  const { introScreen } = session.getSnapshot().editedSection.fields;
-  return typeof introScreen === 'object' && introScreen !== null
-    ? Reflect.get(introScreen, 'items')
-    : undefined;
-};
-
 describe('a nested list command whose container the arrival has dropped', () => {
   it('does not take the session down when a row was inserted', () => {
     const session = openSession({ items: [block('one')] });
@@ -134,10 +127,12 @@ describe('a nested list command whose container the arrival has dropped', () => 
 
   /**
    * The control that pins the mechanism on the intermediate segment: an insert
-   * at index 0 was always fine, because the index the un-rebased command
-   * carried happened to be in range for the empty list the apply engine read.
+   * at index 0 never threw, because the index the un-rebased command carried
+   * happened to be in range for the empty list the apply engine read. It is
+   * refused now for the same reason every other one is — landing it would put
+   * the switched-off screen back around the row.
    */
-  it('goes through when the insert is at index 0', () => {
+  it('is refused rather than landed when the insert is at index 0', () => {
     const session = openSession({ items: [] });
     session.dispatch([
       {
@@ -154,6 +149,10 @@ describe('a nested list command whose container the arrival has dropped', () => 
         manifestRevision: revision(2n),
       });
     }).not.toThrow();
+
+    expect(
+      session.getSnapshot().editedSection.fields.introScreen,
+    ).toBeUndefined();
   });
 });
 
