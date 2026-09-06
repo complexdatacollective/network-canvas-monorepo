@@ -4,6 +4,7 @@ import { v4 as uuid } from 'uuid';
 import type { VariableType } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
+import { allowedNameMessage } from '../form/arrayFields/rowValidators.ts';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import type {
   CodebookSubject,
@@ -13,6 +14,9 @@ import { compoundFailureMessage } from './compoundFailureCopy.ts';
 import {
   buildCreateVariableRequest,
   buildUpdateVariableRequest,
+  type CodebookDraftIssue,
+  DuplicateVariableNameError,
+  InvalidCodebookDraftError,
 } from './editing.ts';
 import { optionsShapeFor } from './variableOptions.ts';
 
@@ -58,17 +62,62 @@ export type SetVariableComponent = (
 const REFUSED_UNCHANGED =
   'This attribute could not be created, so nothing was changed. Try again.';
 
+const REFUSED_CONTROL_UNCHANGED =
+  'This attribute’s input control could not be changed, so nothing was changed. Try again.';
+
 const NO_SUBJECT =
   'Choose what this stage works with before creating an attribute.';
 
 const MISSING_TYPE =
   'This type is no longer in the codebook, so an attribute cannot be added to it.';
 
-/** A builder's own refusal, in its own words, or a plain "nothing changed". */
-const refusalMessage = (error: unknown): string =>
-  error instanceof Error && error.message !== ''
-    ? error.message
-    : REFUSED_UNCHANGED;
+const NAME_TAKEN =
+  'An attribute with this name already exists here. Choose another name.';
+
+const UNSUPPORTED_CONTROL =
+  'This attribute cannot be collected with that input control.';
+
+/**
+ * What ONE refusal from the codebook schema says to the researcher, or
+ * `undefined` when it is not about anything they can see.
+ *
+ * An `InvalidCodebookDraftError` carries the schema's own issues, and those are
+ * written for whoever reads a log: a name with a space in it comes back as a
+ * pattern complaint against a path. Which control the researcher has to fix in
+ * is decided here, by what the issue is ANCHORED at — the same reading
+ * `VariableEditor` does of the same issues, and the same words the row cell,
+ * the entity editor and the request builder use for the name rule.
+ */
+const draftIssueMessage = (issue: CodebookDraftIssue): string | undefined => {
+  if (issue.path[0] === 'name') return allowedNameMessage('attribute name');
+  if (issue.path[0] === 'component') return UNSUPPORTED_CONTROL;
+  return undefined;
+};
+
+/**
+ * What the researcher is told about a codebook write the builder refused.
+ *
+ * Never `error.message`. Every throw the builder raises is written for whoever
+ * reads a log — `InvalidCodebookDraftError`'s is the module-internal "the
+ * variable draft is invalid", and the id errors name a record id the researcher
+ * has never seen — and this message lands on the control they were using: the
+ * Attribute picker on a form-field row, the Input control select. The same rule
+ * `compoundFailureCopy` follows for a refusal from the host.
+ *
+ * `fallback` is the caller's own sentence for "nothing was written", because
+ * what the researcher just asked for differs between inventing an attribute
+ * and changing how one is collected.
+ */
+const refusalMessage = (error: unknown, fallback: string): string => {
+  if (error instanceof DuplicateVariableNameError) return NAME_TAKEN;
+  if (error instanceof InvalidCodebookDraftError) {
+    for (const issue of error.issues) {
+      const message = draftIssueMessage(issue);
+      if (message !== undefined) return message;
+    }
+  }
+  return fallback;
+};
 
 /**
  * Adds an attribute to the codebook from inside a stage editor.
@@ -90,8 +139,8 @@ const refusalMessage = (error: unknown): string =>
  * the three codebook editors: a compound result's own `message` is written for
  * whoever reads a log, and it lands here on the control the researcher was
  * using — "Too small: expected array to have >=1 items" beside an attribute's
- * name. The builder's own throws are the exception, because those are already
- * written for the researcher and are about what they just typed.
+ * name. The builder's own throws are no exception: see `refusalMessage`, which
+ * reads what the schema refused and says it in this package's own words.
  */
 export function useCreateCodebookVariable(
   subject: CodebookSubject | undefined,
@@ -135,9 +184,13 @@ export function useCreateCodebookVariable(
         });
       } catch (error: unknown) {
         // The builder refuses a duplicate name, an id already in use and a
-        // draft the codebook schema will not accept. All three are the
-        // researcher's to resolve, and all three are said in their own words.
-        return { status: 'refused', message: refusalMessage(error) };
+        // draft the codebook schema will not accept. The first and the last are
+        // the researcher's to resolve; an id already in use is a collision this
+        // hook minted and nothing they can act on.
+        return {
+          status: 'refused',
+          message: refusalMessage(error, REFUSED_UNCHANGED),
+        };
       }
 
       const result = await controller.requestCompoundEdit(request);
@@ -220,7 +273,10 @@ export function useSetVariableComponent(
               : [],
         });
       } catch (error: unknown) {
-        return { status: 'refused', message: refusalMessage(error) };
+        return {
+          status: 'refused',
+          message: refusalMessage(error, REFUSED_CONTROL_UNCHANGED),
+        };
       }
 
       const result = await controller.requestCompoundEdit(request);

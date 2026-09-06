@@ -71,8 +71,9 @@ const offeredAttributes = (dialog: ReturnType<typeof within>) =>
  * submits the row. The dialog is answered with, because whether it closes is
  * the whole question when the codebook write it depends on can be refused.
  */
-const addInventedNickname = async (
+const addInventedAttribute = async (
   harness: ReturnType<typeof renderStageEditor>,
+  attributeName: string,
 ) => {
   const dialog = await openField(harness, 'Create new form field');
   await harness.user.selectOptions(
@@ -81,7 +82,7 @@ const addInventedNickname = async (
   );
   await harness.user.type(
     await dialog.findByRole('textbox', { name: 'Attribute name' }),
-    'nickname',
+    attributeName,
   );
   await harness.user.selectOptions(
     dialog.getByRole('combobox', { name: 'Kind of answer' }),
@@ -94,6 +95,9 @@ const addInventedNickname = async (
   await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
   return dialog;
 };
+
+const addInventedNickname = (harness: ReturnType<typeof renderStageEditor>) =>
+  addInventedAttribute(harness, 'nickname');
 
 /** The same invention, where the codebook write is expected to be accepted. */
 const inventNickname = async (
@@ -623,6 +627,56 @@ describe('a codebook write a field needs, refused', () => {
         'Someone else changed this while you were editing it, so nothing was saved. Close and reopen this editor to load their version, then make your change again.',
       ),
     ).toBeInTheDocument();
+  });
+
+  /**
+   * A refusal the codebook SCHEMA raised, rather than one the host answered
+   * with.
+   *
+   * `InvalidCodebookDraftError`'s own message is the module-internal "the
+   * variable draft is invalid" and its `issues` are the schema's own, written
+   * for whoever reads a log. Neither belongs on the Attribute control: what the
+   * researcher needs to be told is the one thing this refusal is actually
+   * about, in the words every other surface uses for the same rule.
+   */
+  it('says what is wrong with a name the codebook cannot store', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    await addInventedAttribute(harness, 'first name');
+
+    // Nothing was written, and the dialog stays open over the draft.
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(1),
+    );
+    expect(inventedNickname(harness)).toBeUndefined();
+
+    expect(
+      await screen.findByText(
+        'Not a valid attribute name. Only letters, numbers and the symbols ._-: are supported',
+      ),
+    ).toBeVisible();
+    expect(screen.queryByText('the variable draft is invalid')).toBeNull();
+  });
+
+  it('control: a name made of the symbols the rule allows is created', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    await addInventedAttribute(harness, 'first_name');
+
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+    expect(
+      Object.values(personVariables(harness)).some(
+        (variable) => Reflect.get(asRecord(variable), 'name') === 'first_name',
+      ),
+    ).toBe(true);
   });
 
   /**

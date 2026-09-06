@@ -63,8 +63,25 @@ export function CreatableVariablePickerControl({
 
   const create = async () => {
     setBusy(true);
-    const created = await onCreateOption(name.trim());
-    setBusy(false);
+    let created = false;
+    try {
+      created = await onCreateOption(name.trim());
+    } catch {
+      // A caller that throws — synchronously, or by rejecting — has broken the
+      // promise `onCreateOption` makes, and from here the two are the same
+      // broken promise: the attribute does not exist, there is nothing more
+      // specific the researcher could be told about it, and the name they typed
+      // stays in the box for another try. `callGateway` answers a host that
+      // throws the same way, for the same reason. The call is inside the `try`
+      // rather than before it, so a synchronous throw is caught too.
+      created = false;
+    } finally {
+      // In a `finally` because the button is disabled while this is true: a
+      // create that ended in a throw would otherwise leave the researcher
+      // looking at a Create button that never comes back, with no way to try
+      // again.
+      setBusy(false);
+    }
     if (created) setName('');
   };
 
@@ -76,7 +93,11 @@ export function CreatableVariablePickerControl({
         component={InputField}
         label="Create a new attribute"
         hint="Adds it to this type’s codebook and selects it above."
-        placeholder="nominated early"
+        // A name the codebook would actually take. `VariableNameSchema` allows
+        // letters, digits and `. _ - :` and nothing else, so a placeholder with
+        // a space in it showed the researcher an example of a name that is
+        // refused the moment they type it.
+        placeholder="nominated_early"
         value={name}
         disabled={disabled || readOnly}
         onChange={(next: unknown) =>
