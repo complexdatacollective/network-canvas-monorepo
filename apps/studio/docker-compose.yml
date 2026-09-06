@@ -40,7 +40,7 @@ x-studio: &studio
     STUDIO_TELEMETRY: ${STUDIO_TELEMETRY:-on}
     TRUSTED_PROXIES: ${STUDIO_PROXY_IP:-172.30.240.2}
   networks: [edge, data]
-  depends_on:
+  depends_on: &studio-dependencies
     postgres:
       condition: service_healthy
     minio-init:
@@ -49,6 +49,31 @@ x-studio: &studio
 services:
   studio:
     <<: *studio
+    environment:
+      <<: *studio-environment
+      STUDIO_CLIENT_ASSET_CACHE: /retained-assets
+    volumes:
+      - client-assets:/retained-assets:ro
+    depends_on:
+      <<: *studio-dependencies
+      client-assets:
+        condition: service_completed_successfully
+
+  client-assets:
+    image: ${STUDIO_IMAGE:?Run configure with the released image digest}
+    entrypoint: [node, dist/client-cache.js]
+    command: [retain, --directory, /retained-assets]
+    user: '0:0'
+    read_only: true
+    network_mode: none
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    healthcheck:
+      disable: true
+    # Only this offline operator can write the cache. No auth, database,
+    # encryption or network configuration enters this service.
+    volumes:
+      - client-assets:/retained-assets
 
   worker:
     <<: *studio
@@ -185,3 +210,4 @@ volumes:
   postgres:
   minio:
   acme:
+  client-assets:

@@ -131,6 +131,8 @@ async function alternateRestoreTargets(
     'orphan-network',
     'orphan-volume',
     'bind-data',
+    'bind-client-assets',
+    'misrouted-client-assets',
     'driver-bind-data',
     'inspection-failure',
     'network-inspection-failure',
@@ -259,6 +261,14 @@ async function alternateRestoreTargets(
           kind === 'bind-data'
             ? `services:\n  postgres:\n    volumes: !override\n      - type: bind\n        source: ${JSON.stringify(path)}\n        target: /var/lib/postgresql\n`
             : `volumes:\n  postgres:\n    driver: local\n    driver_opts:\n      type: none\n      o: bind\n      device: ${JSON.stringify(path)}\n`;
+      } else if (kind === 'bind-client-assets') {
+        const path = join(probe.root, 'existing-data');
+        await mkdir(path);
+        await writeFile(join(path, 'canary'), 'Existing bind bytes\n');
+        override = `services:\n  client-assets:\n    volumes: !override\n      - type: bind\n        source: ${JSON.stringify(path)}\n        target: /retained-assets\n`;
+      } else if (kind === 'misrouted-client-assets') {
+        override =
+          'services:\n  studio:\n    volumes: !override\n      - wrong-assets:/retained-assets:ro\nvolumes:\n  wrong-assets:\n';
       } else if (kind === 'unsupported-network-driver') {
         override =
           'networks:\n  data:\n    driver: unsupported-qualification-driver\n';
@@ -315,6 +325,8 @@ async function alternateRestoreTargets(
         inspectionFailure ||
           kind === 'unsupported-network-driver' ||
           kind === 'bind-data' ||
+          kind === 'bind-client-assets' ||
+          kind === 'misrouted-client-assets' ||
           kind === 'driver-bind-data'
           ? 'unable to verify a new Compose project'
           : guardedNetwork
@@ -382,7 +394,11 @@ async function alternateRestoreTargets(
         ).toBe(`${networkCanary} running`);
         await networkAliases();
       }
-      if (kind === 'bind-data' || kind === 'driver-bind-data')
+      if (
+        kind === 'bind-data' ||
+        kind === 'bind-client-assets' ||
+        kind === 'driver-bind-data'
+      )
         expect(
           await readFile(join(probe.root, 'existing-data/canary'), 'utf8'),
         ).toBe('Existing bind bytes\n');
@@ -869,6 +885,9 @@ it('installs an immutable built image, drains a populated backup and restores al
     expect((await stat(join(backup, 'images.tar'))).size).toBeGreaterThan(
       100 * 1024 ** 2,
     );
+    expect(
+      (await stat(join(backup, 'client-assets.tar'))).size,
+    ).toBeGreaterThan(512);
     const imageReferences = (await readFile(join(backup, 'images.txt'), 'utf8'))
       .trim()
       .split('\n');

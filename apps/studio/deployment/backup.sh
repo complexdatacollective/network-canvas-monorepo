@@ -61,6 +61,11 @@ compose stop minio
 compose run --rm --no-deps -T --entrypoint tar minio -C /data -cf - . \
   > "$backup/minio.tar"
 test -s "$backup/minio.tar"
+# Lock and verify the complete retained generation while archiving it. Include
+# no unfinished writer state and no historical shell/index from another image.
+compose run --rm --no-deps -T client-assets archive --directory /retained-assets \
+  > "$backup/client-assets.tar"
+test -s "$backup/client-assets.tar"
 # Preserve runnable bytes for every service, including infrastructure images.
 # Restoring an independent copy must not require the primary registry account.
 docker compose --profile '*' config --images | sort -u > "$backup/images.txt"

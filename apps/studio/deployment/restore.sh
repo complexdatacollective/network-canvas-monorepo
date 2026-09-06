@@ -15,6 +15,7 @@ compose() { docker compose --profile worker "$@"; }
 test -f "$backup/COMPLETE"
 test -s "$backup/studio.dump"
 test -s "$backup/minio.tar"
+test -s "$backup/client-assets.tar"
 test -s "$backup/images.tar"
 test -s "$backup/images.txt"
 test -s "$backup/images.ids"
@@ -59,7 +60,11 @@ target_metadata=$(printf '%s\n' "$target_config" | jq -cer '
        (.name | test("^[a-zA-Z0-9][a-zA-Z0-9_.-]*$")) == false or
        (.driver // "bridge") != "bridge" or (.driver_opts // {}) != {}) or
      (named_data_volume("postgres"; "/var/lib/postgresql") | not) or
-     (named_data_volume("minio"; "/data") | not)
+     (named_data_volume("minio"; "/data") | not) or
+     (named_data_volume("client-assets"; "/retained-assets") | not) or
+     (named_data_volume("studio"; "/retained-assets") | not) or
+     ([.services["client-assets"].volumes[] | select(.target == "/retained-assets")][0].source !=
+      [.services.studio.volumes[] | select(.target == "/retained-assets")][0].source)
   then error("Unsupported recovery target metadata")
   else {project: .name, volumes: [.volumes[].name], networks: [.networks[].name]} end
 ') || inspection_failed
@@ -145,9 +150,14 @@ END $$;
 SQL
 compose run --rm --no-deps -T --entrypoint sh minio \
   -c 'test -z "$(ls -A /data)"'
+compose run --rm --no-deps -T --entrypoint sh client-assets \
+  -c 'test -z "$(ls -A /retained-assets)"'
 compose exec -T postgres pg_restore -U postgres -d studio \
   --exit-on-error --single-transaction < "$backup/studio.dump"
 compose run --rm --no-deps -T --entrypoint tar minio -C /data -xf - \
   < "$backup/minio.tar"
+compose run --rm --no-deps -T --entrypoint tar client-assets -C /retained-assets -xf - \
+  < "$backup/client-assets.tar"
+compose run --rm --no-deps -T client-assets verify --directory /retained-assets
 compose up -d minio-init
 printf '%s\n' 'Data restored. Keep admission closed; verify all keys and run recovery smoke checks in quarantine before starting the proxy or workers.'
