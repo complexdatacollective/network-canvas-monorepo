@@ -247,12 +247,15 @@ export default function Attribute({
     [crossClassValidate],
   );
 
+  // Answered rather than fired and forgotten: the picker keeps the name the
+  // researcher typed until it hears the attribute exists, because a refusal is
+  // about that name.
   const handleCreateOption = onCreateVariable
-    ? (variableName: string) => {
-        void (async () => {
-          const created = await onCreateVariable(variableName);
-          if (created) onUpdate?.({ variable: created });
-        })();
+    ? async (variableName: string) => {
+        const created = await onCreateVariable(variableName);
+        if (created === undefined) return false;
+        onUpdate?.({ variable: created });
+        return true;
       }
     : undefined;
 
