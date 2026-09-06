@@ -29,9 +29,12 @@ import type { RuleOperatorOption } from './operators.ts';
 import { incompleteRulePart, type RuleDraft, type RulePart } from './rule.ts';
 import {
   assertNoSuchDateProblem,
+  assertNoSuchNumberProblem,
   isRuleTargetType,
   type OperandDateProblem,
   operandDateProblems,
+  type OperandNumberProblem,
+  operandNumberProblems,
   type OperandOptionProblem,
   operandOptionProblems,
   type RuleChoiceOption,
@@ -284,6 +287,25 @@ const staleRuleDates = (
 };
 
 /**
+ * The numbers this draft compares against that its attribute can never reach.
+ * Asked of the whole draft for the same reason as the options and dates above.
+ */
+const staleRuleNumbers = (
+  codebook: Readonly<Codebook>,
+  rule: RuleDraft,
+): OperandNumberProblem[] => {
+  const target = isRuleTargetType(rule.type) ? rule.type : undefined;
+  if (target === undefined) return [];
+  const variables = ruleVariables(codebook, target, draftString(rule, 'type'));
+  return operandNumberProblems(
+    variables,
+    draftString(rule, 'attribute'),
+    draftString(rule, 'operator') ?? '',
+    rule.options?.value,
+  );
+};
+
+/**
  * An operand as it reads in the refusal. Quoted when it is text, so the reason
  * `"1"` was refused against the option whose value is `1` is legible.
  */
@@ -348,6 +370,28 @@ const staleDatesMessage = (problems: readonly OperandDateProblem[]): string => {
       return `“${problem.value}” is outside the dates this attribute can record, so the rule can never match. Choose a date inside them.`;
     default:
       return assertNoSuchDateProblem(problem);
+  }
+};
+
+/**
+ * Why a number operand is refused, in the voice of the control holding it.
+ *
+ * The two ranges are named rather than the fault: how many options there are
+ * to select, and the scale a scalar attribute is read on, are what the
+ * researcher has to choose inside.
+ */
+const unreachableNumbersMessage = (
+  problems: readonly OperandNumberProblem[],
+): string => {
+  const [problem] = problems;
+  if (problem === undefined) return INVALID_OPERAND_MESSAGE;
+  switch (problem.kind) {
+    case 'unreachableOptionCount':
+      return `This attribute offers ${problem.optionCount} ${problem.optionCount === 1 ? 'option' : 'options'}, so between 0 and ${problem.optionCount} of them can be selected. Choose a number in that range.`;
+    case 'unreachableScale':
+      return `This attribute is answered on a scale from ${problem.min} to ${problem.max}. Choose a number in that range.`;
+    default:
+      return assertNoSuchNumberProblem(problem);
   }
 };
 
@@ -469,6 +513,13 @@ const RULE_PROBLEM_PLACEMENTS: Readonly<
   unusableDate: (rule, codebook) => ({
     field: RULE_VALUE_FIELD,
     message: staleDatesMessage(staleRuleDates(codebook, rule)),
+  }),
+  // And of a number: how many options there are to select, and the scale a
+  // scalar attribute is read on, are both the attribute's, so the refusal
+  // names the range the researcher has to choose inside.
+  unusableNumber: (rule, codebook) => ({
+    field: RULE_VALUE_FIELD,
+    message: unreachableNumbersMessage(staleRuleNumbers(codebook, rule)),
   }),
   // Reported by the control that holds the gap rather than as a sentence about
   // the rule that names no control at all.

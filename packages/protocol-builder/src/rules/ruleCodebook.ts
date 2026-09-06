@@ -24,10 +24,12 @@ import {
   isVariableType,
   operandDrawsOnOptions,
   operandIsDate,
+  operandNumberRange,
   operandRequirement,
   operatorLabel,
   operatorsAsOptions,
   operatorsForSubject,
+  rangeSatisfiesComparison,
   type RuleOperatorOption,
 } from './operators.ts';
 
@@ -637,6 +639,93 @@ export const operandDateProblems = (
     return [{ kind: 'outOfRange', value }];
   }
   return [];
+};
+
+/**
+ * What is wrong with a number a rule compares an attribute against.
+ *
+ * `unreachableOptionCount` — the rule counts selected options, and names a
+ * count this attribute's own option list puts out of reach: an attribute
+ * offering two options can only ever have 0, 1 or 2 of them selected, so
+ * `more than 2`, `exactly 3` and `fewer than 0` are comparisons no answer
+ * satisfies. The count is bounded by the codebook, and a collaborator deleting
+ * an option moves that bound under a rule that was reachable when it was
+ * written.
+ * `unreachableScale` — the attribute records a normalised reading, and the
+ * rule names a number off that scale. A variable retyped to `scalar` leaves
+ * behind the operand it was compared against as a plain number, and `more than
+ * 5` is then a comparison no reading can satisfy.
+ */
+export type OperandNumberProblem =
+  | Readonly<{
+      kind: 'unreachableOptionCount';
+      value: number;
+      optionCount: number;
+    }>
+  | Readonly<{
+      kind: 'unreachableScale';
+      value: number;
+      min: number;
+      max: number;
+    }>;
+
+/**
+ * A number problem nobody has written words for, which TypeScript proves
+ * cannot happen — the same guard `assertNoSuchDateProblem` is, and for the
+ * same two readers: the row and the dialog.
+ */
+export const assertNoSuchNumberProblem = (problem: never): never => {
+  throw new Error(
+    `No message is written for the number problem ${JSON.stringify(problem)}.`,
+  );
+};
+
+/**
+ * Everything wrong with the number this rule compares against.
+ *
+ * The third companion to `operandOptionProblems` and `operandDateProblems`,
+ * for the third way an attribute's answers are drawn from a known set: a
+ * count of selected options runs from none to all of them, and a scalar
+ * reading runs from 0 to 1. Both bounds are the codebook's, and neither is
+ * checked anywhere else — the operand table asks only that the value be a
+ * number of the right kind, the protocol schema asks the same, and the
+ * interview compares it against the stored answer verbatim. So a rule left
+ * asking for three selected options against an attribute that offers two
+ * reads perfectly and can never match.
+ *
+ * Only what can NEVER match is reported, which is why the operator decides and
+ * not the range alone: `not exactly 3` beside the same two-option attribute
+ * matches every answer there is, and calling that broken would send a
+ * researcher to fix a rule that fires for everyone.
+ *
+ * Empty for every comparison the codebook does not bound — a number attribute
+ * holds whatever quantity the study measures — and for an operand that is not
+ * a number, which is either an unfinished rule or the wrong kind of value, and
+ * is reported as one of those.
+ */
+export const operandNumberProblems = (
+  variables: Readonly<Variables>,
+  variableId: string | undefined,
+  operator: string,
+  value: unknown,
+): OperandNumberProblem[] => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return [];
+  if (!isFilterOperator(operator)) return [];
+
+  const variableType = ruleVariableType(variables, variableId);
+  const range = operandNumberRange(
+    variableType,
+    operator,
+    ruleVariableChoices(variables, variableId)?.length,
+  );
+  if (range === undefined) return [];
+  if (rangeSatisfiesComparison(operator, range, value)) return [];
+
+  return [
+    range.subject === 'optionCount'
+      ? { kind: 'unreachableOptionCount', value, optionCount: range.max }
+      : { kind: 'unreachableScale', value, min: range.min, max: range.max },
+  ];
 };
 
 /**

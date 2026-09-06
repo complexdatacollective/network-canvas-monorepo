@@ -18,6 +18,7 @@ import {
 import { isCompleteRule, isRuleDraft, ruleDraftOptions } from './rule.ts';
 import {
   assertNoSuchDateProblem,
+  assertNoSuchNumberProblem,
   codebookLabel,
   DEFAULT_EDGE_COLOR,
   DEFAULT_NODE_COLOR,
@@ -26,6 +27,8 @@ import {
   isRuleTargetType,
   type OperandDateProblem,
   operandDateProblems,
+  type OperandNumberProblem,
+  operandNumberProblems,
   operandOptionProblems,
   type RuleTargetType,
   ruleVariable,
@@ -113,6 +116,7 @@ export const RULE_PROBLEM_CODES = [
   'missingOption',
   'unusableOption',
   'unusableDate',
+  'unusableNumber',
   'incomplete',
   'missingId',
   'duplicateId',
@@ -608,6 +612,23 @@ export function describeRule({
     });
   }
 
+  // And once more for the third attribute whose answers are a known set: the
+  // NUMBER of options a categorical attribute can have selected runs from none
+  // of them to all of them, and a scalar attribute records a reading on a
+  // normalised 0-1 scale. A count past the end of an option list — left there
+  // by a collaborator deleting an option — is a comparison no answer can
+  // satisfy, and nothing but this reports it.
+  const [numberProblem] =
+    attribute !== undefined && !attribute.missing && operatorId !== undefined
+      ? operandNumberProblems(variables, attributeId, operatorId, options.value)
+      : [];
+  if (numberProblem !== undefined) {
+    problems.push({
+      code: 'unusableNumber',
+      message: unusableNumberMessage(numberProblem),
+    });
+  }
+
   if (!isCompleteRule(rule)) {
     problems.push({ code: 'incomplete', message: INCOMPLETE_MESSAGE });
   }
@@ -807,6 +828,18 @@ const unusableDateMessage = (problem: OperandDateProblem): string => {
       return `This rule compares its attribute against “${problem.value}”, which is outside the dates that attribute can record. Edit or delete the rule.`;
     default:
       return assertNoSuchDateProblem(problem);
+  }
+};
+
+/** The same, for a number outside the answers the attribute can record. */
+const unusableNumberMessage = (problem: OperandNumberProblem): string => {
+  switch (problem.kind) {
+    case 'unreachableOptionCount':
+      return `This rule compares the number of selected options against ${problem.value}. This attribute offers ${problem.optionCount} ${problem.optionCount === 1 ? 'option' : 'options'}, so between 0 and ${problem.optionCount} of them can be selected. Edit or delete the rule.`;
+    case 'unreachableScale':
+      return `This rule compares its attribute against ${problem.value}. The attribute is answered on a scale from ${problem.min} to ${problem.max}. Edit or delete the rule.`;
+    default:
+      return assertNoSuchNumberProblem(problem);
   }
 };
 const unusableOptionMessage = (describedAs: string) =>

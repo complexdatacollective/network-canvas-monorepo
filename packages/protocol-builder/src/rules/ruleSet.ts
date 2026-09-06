@@ -200,6 +200,11 @@ const RULE_PROBLEM_SUMMARIES: Readonly<
   missingOption: 'codebook',
   unusableOption: 'codebook',
   unusableDate: 'codebook',
+  // A count past the end of an option list, or a number off a scalar's scale.
+  // Both bounds are the codebook's: deleting an option shortens the first, and
+  // retyping a variable to `scalar` imposes the second on an operand that was
+  // entered for something else.
+  unusableNumber: 'codebook',
   incomplete: 'unfinished',
   // The rule is exactly as it was written, and the protocol schema refuses it
   // where it sits: nothing about the codebook, and nothing the researcher left

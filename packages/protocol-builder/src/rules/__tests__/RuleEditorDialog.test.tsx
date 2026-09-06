@@ -1301,6 +1301,18 @@ describe('a rule the codebook has moved out from under', () => {
           value: '2020-05-14',
         },
       },
+      // A count of selected options the attribute's own option list puts out
+      // of reach: `mood` offers two, so three can never be selected.
+      unusableNumber: {
+        id: 'rule-1',
+        type: 'node',
+        options: {
+          type: 'person',
+          attribute: 'mood',
+          operator: 'OPTIONS_EQUALS',
+          value: 3,
+        },
+      },
       // The only part of a rule no control on screen asks for — and the one
       // the protocol schema requires of every rule in both of its shapes.
       missingId: {

@@ -10,6 +10,7 @@ import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import type { VariableType } from '@codaco/protocol-validation';
 
 import {
+  operandNumberRange,
   type OperandRequirement,
   operandRequirement,
   type OperandValue,
@@ -192,6 +193,8 @@ type RuleValueFieldProps = Readonly<{
   initialValue?: unknown;
   /** The smallest value the operand may take, where one is meaningful. */
   minValue?: number;
+  /** The largest, likewise. */
+  maxValue?: number;
 }>;
 
 /**
@@ -213,6 +216,7 @@ function RuleValueField({
   dateParameters,
   initialValue,
   minValue,
+  maxValue,
 }: RuleValueFieldProps) {
   const { control, parse } = requirement;
   // `initialValue` is a registration dependency, so a value rebuilt every
@@ -227,6 +231,7 @@ function RuleValueField({
     // rather than as `true`, whose Fresco wording addresses a participant.
     required: REQUIRED_MESSAGE,
     ...(minValue === undefined ? {} : { minValue }),
+    ...(maxValue === undefined ? {} : { maxValue }),
   };
 
   // `parse` has already produced the shape each control takes; these say so to
@@ -362,6 +367,21 @@ export function RuleOperandField({
   const requirement = operandRequirement(variableType, operator);
   if (requirement === undefined || requirement.kind === 'none') return null;
 
+  // What the attribute's own answers can be, where the codebook bounds them:
+  // the count of options there are to select, and the scale a scalar reading
+  // is taken on. Read from the same place `operandNumberProblems` reports a
+  // stored operand outside it, so the control cannot commit a number the row
+  // beneath it would then mark as unreachable.
+  //
+  // A count below zero is not a stricter rule than the schema's, it is a rule
+  // that cannot be read at all; a count above the end of the option list is a
+  // comparison no answer satisfies. Stated as rules rather than as the
+  // control's own `min`/`max`, which the form never consults: it is submitted
+  // with native browser validation off.
+  const range = operandNumberRange(variableType, operator, options?.length);
+  const bounds =
+    range === undefined ? {} : { minValue: range.min, maxValue: range.max };
+
   if (requirement.operandKind === 'integer') {
     return (
       <RuleValueField
@@ -370,13 +390,11 @@ export function RuleOperandField({
         placeholder="Enter a value..."
         requirement={requirement}
         initialValue={initialValue}
-        // A count below zero is not a stricter rule than the schema's, it is a
-        // rule that cannot be read at all — `OPTIONS_GREATER_THAN -1` matches
-        // an attribute nobody answered, and `OPTIONS_LESS_THAN -1` matches
-        // nothing there is. Stated as a rule rather than as the control's own
-        // `min`, which the form never consults: it is submitted with native
-        // browser validation off.
+        // Bounded below whether or not the attribute's options are known, so a
+        // negative count is refused even where nothing says how many there are
+        // to select.
         minValue={0}
+        {...bounds}
       />
     );
   }
@@ -394,6 +412,7 @@ export function RuleOperandField({
       options={options}
       dateParameters={dateParameters}
       initialValue={initialValue}
+      {...bounds}
     />
   );
 }

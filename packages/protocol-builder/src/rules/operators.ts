@@ -545,6 +545,106 @@ export const operandIsDate = (
 };
 
 /**
+ * The numbers this comparison's own side of the comparison can take.
+ *
+ * The third thing an attribute's answers are drawn from a KNOWN set rather
+ * than being anything of the right type, after its authored options and its
+ * date picker's window — and the one that is a number, so it bounds a numeric
+ * operand from both ends rather than listing values.
+ *
+ * Two comparisons have one:
+ *
+ * - the COUNT of selected options runs from none of them to all of them, so a
+ *   categorical attribute offering two options can only ever have 0, 1 or 2
+ *   selected — `optionsLength` in `@codaco/network-query` counts the stored
+ *   array, and an unanswered attribute counts as none;
+ * - a SCALAR answer is a reading on a normalised 0-1 scale. The schema refuses
+ *   `minValue`/`maxValue` on a scalar variable for exactly that reason
+ *   (`scalarValidations` in protocol-validation's `variable.ts`), so nothing in
+ *   a codebook can move the scale, and the interview renders it as a visual
+ *   analogue scale from 0 to 1.
+ *
+ * `undefined` everywhere else, which is not a gap: a number attribute holds
+ * whatever quantity the study measures, so nothing bounds a comparison against
+ * one, and a comparison that is not against a number has no range at all.
+ *
+ * The option count is handed in rather than read, for the same reason
+ * `operandDrawsOnOptions` states only the fact: which options an attribute
+ * authored is a question about the codebook, and this module deliberately
+ * knows nothing about one. `operandNumberProblems` in `ruleCodebook.ts` asks
+ * it, and `RuleOperandField` bounds its control from the same answer — one
+ * statement of the range, so the control a researcher is given and the stored
+ * operand the editor reports cannot disagree.
+ */
+export type OperandNumberRange = Readonly<{
+  min: number;
+  max: number;
+  /** Which of the two ranges this is, so a caller can say so in words. */
+  subject: 'optionCount' | 'scale';
+}>;
+
+export const operandNumberRange = (
+  variableType: VariableType | undefined,
+  operator: unknown,
+  /** How many options the attribute authors, where it authors any. */
+  optionCount: number | undefined,
+): OperandNumberRange | undefined => {
+  const requirement = operandRequirement(variableType, operator);
+  if (requirement === undefined || requirement.kind === 'none')
+    return undefined;
+  if (requirement.operandKind === 'integer') {
+    return optionCount === undefined
+      ? undefined
+      : { min: 0, max: optionCount, subject: 'optionCount' };
+  }
+  if (variableType !== 'scalar') return undefined;
+  return requirement.control === 'decimalNumber' ||
+    requirement.control === 'wholeNumber'
+    ? { min: 0, max: 1, subject: 'scale' }
+    : undefined;
+};
+
+/**
+ * Whether any answer inside the range satisfies this comparison.
+ *
+ * Asked of the range rather than of a sample of answers, because the interview
+ * compares a number against a number and the answer is anywhere in between:
+ * `greater than` is satisfiable exactly when the range reaches above the
+ * operand, `less than` when it reaches below it, and equality when the operand
+ * is inside it.
+ *
+ * Everything else answers `true`, and deliberately. The remaining operators
+ * are satisfied by an answer that does NOT equal the operand, so an operand
+ * outside the range makes them match every answer rather than none — `not` and
+ * `does not have exactly` beside an impossible number are useless rules, not
+ * unmatchable ones, and reporting them would tell a researcher a rule that
+ * fires for every participant can never fire at all.
+ */
+export const rangeSatisfiesComparison = (
+  operator: FilterOperator,
+  range: OperandNumberRange,
+  value: number,
+): boolean => {
+  switch (operator) {
+    case 'GREATER_THAN':
+    case 'OPTIONS_GREATER_THAN':
+      return range.max > value;
+    case 'GREATER_THAN_OR_EQUAL':
+      return range.max >= value;
+    case 'LESS_THAN':
+    case 'OPTIONS_LESS_THAN':
+      return range.min < value;
+    case 'LESS_THAN_OR_EQUAL':
+      return range.min <= value;
+    case 'EXACTLY':
+    case 'OPTIONS_EQUALS':
+      return value >= range.min && value <= range.max;
+    default:
+      return true;
+  }
+};
+
+/**
  * The operators the editor OFFERS for an attribute of each type.
  *
  * Three narrowings of the schema's own `OperatorsByVariableType`, in order:

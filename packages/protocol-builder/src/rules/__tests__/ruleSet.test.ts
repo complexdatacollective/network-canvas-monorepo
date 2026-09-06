@@ -290,6 +290,18 @@ const RULE_BY_PROBLEM: Readonly<Record<RuleProblemCode, RuleDraft>> =
         value: '2020-05-14',
       },
     },
+    // A count of selected options past the end of the attribute's own option
+    // list: `mood` offers two, so no answer can ever have three selected.
+    unusableNumber: {
+      id: 'a',
+      type: 'node',
+      options: {
+        type: 'person',
+        attribute: 'mood',
+        operator: 'OPTIONS_EQUALS',
+        value: 3,
+      },
+    },
     // Every part the editor asks for is answered; the one part it never asks
     // for, and the protocol schema requires, is not there.
     missingId: {

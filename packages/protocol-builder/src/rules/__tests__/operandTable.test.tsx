@@ -217,12 +217,17 @@ const ENTER_OPERAND: Readonly<
       { target: { value: '0.5' } },
     );
   },
+  // One, not two: the only attribute this control is offered against is the
+  // two-option `Mood`, and the count of options it can have selected runs from
+  // none of them to both. `more than 2` is a comparison no answer satisfies,
+  // and the editor refuses it — so it is not a value this sweep can use to
+  // prove what the editor COMMITS.
   wholeNumber: async () => {
     fireEvent.change(
       await screen.findByRole('spinbutton', {
         name: /Selected option count|Attribute value/,
       }),
-      { target: { value: '2' } },
+      { target: { value: '1' } },
     );
   },
   text: async (user) => {

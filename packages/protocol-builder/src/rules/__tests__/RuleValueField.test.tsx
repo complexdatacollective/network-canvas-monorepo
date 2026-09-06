@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
+import type { VariableType } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -12,6 +13,7 @@ import {
   createStageIdentity,
   ProtocolBuilderSessionStore,
 } from '../../session.ts';
+import type { RuleChoiceOption } from '../ruleCodebook.ts';
 import {
   emptyRuleValue,
   RULE_VALUE_FIELD,
@@ -97,15 +99,24 @@ function OperandProbe() {
 const probedOperand = (): unknown =>
   JSON.parse(screen.getByTestId('operand').textContent ?? 'null') as unknown;
 
-function OperandEditor({ operator }: { operator: string }) {
+function OperandEditor({
+  operator,
+  variableType = 'number',
+  options,
+}: {
+  operator: string;
+  variableType?: VariableType;
+  options?: readonly RuleChoiceOption[];
+}) {
   const [session] = useState(createSession);
   const controller = useStageEditorController(session, 'stage-form');
 
   return (
     <StageEditorShell controller={controller}>
       <RuleOperandField
-        variableType="number"
+        variableType={variableType}
         operator={operator}
+        {...(options === undefined ? {} : { options })}
         regExpHint="Enter a regular expression."
       />
       <OperandProbe />
@@ -119,6 +130,69 @@ const renderOperand = async (operator = 'GREATER_THAN') => {
   // first snapshot has landed before the control is driven.
   return await screen.findByRole('spinbutton', { name: /Attribute value/ });
 };
+
+/**
+ * The bounds the codebook puts on a numeric operand, as the control states
+ * them.
+ *
+ * Two comparisons have an answer range the operand is judged against — the
+ * count of options there are to select, and the 0-1 scale a scalar reading is
+ * taken on — and `operandNumberRange` is the one statement of both. Asserted
+ * through the control because the point is that the researcher meets the
+ * bound while they are entering the number, rather than only afterwards on the
+ * row that reports the rule.
+ */
+describe('an operand the codebook bounds', () => {
+  const twoOptions: readonly RuleChoiceOption[] = [
+    { value: 'happy', label: 'Happy' },
+    { value: 'sad', label: 'Sad' },
+  ];
+
+  it('bounds a selected-option count by the options there are to select', async () => {
+    render(
+      <OperandEditor
+        operator="OPTIONS_GREATER_THAN"
+        variableType="categorical"
+        options={twoOptions}
+      />,
+    );
+
+    const input = await screen.findByRole('spinbutton', {
+      name: /Selected option count/,
+    });
+    fireEvent.change(input, { target: { value: '3' } });
+    fireEvent.blur(input);
+
+    expect(
+      await screen.findByText(/Value must be at most 2/),
+    ).toBeInTheDocument();
+  });
+
+  it('bounds a scalar operand to the scale it is read on', async () => {
+    render(<OperandEditor operator="GREATER_THAN" variableType="scalar" />);
+
+    const input = await screen.findByRole('spinbutton', {
+      name: /Attribute value/,
+    });
+    fireEvent.change(input, { target: { value: '5' } });
+    fireEvent.blur(input);
+
+    expect(
+      await screen.findByText(/Value must be at most 1/),
+    ).toBeInTheDocument();
+  });
+
+  it('leaves a plain number operand unbounded', async () => {
+    // Nothing in a codebook says how large a measured quantity can be, so a
+    // bound here would refuse a value the study can legitimately record.
+    const input = await renderOperand();
+    fireEvent.change(input, { target: { value: '5000' } });
+    fireEvent.blur(input);
+
+    expect(screen.queryByText(/Value must be at most/)).toBeNull();
+    expect(probedOperand()).toBe(5000);
+  });
+});
 
 /**
  * A number the researcher types a character at a time.
