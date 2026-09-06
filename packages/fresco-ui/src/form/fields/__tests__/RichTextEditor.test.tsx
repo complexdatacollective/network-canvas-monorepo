@@ -475,6 +475,28 @@ const LIST_DOCUMENT = {
 };
 
 /**
+ * The same passage carrying a mark rather than a block: a phrase the author
+ * linked. Whether the schema has a `link` mark is a toolbar option, and by
+ * default it does not.
+ */
+const LINKED_DOCUMENT = {
+  type: 'doc',
+  content: [
+    {
+      type: 'paragraph',
+      content: [
+        { type: 'text', text: 'Never met ' },
+        {
+          type: 'text',
+          marks: [{ type: 'link', attrs: { href: 'https://example.com/' } }],
+          text: 'in person',
+        },
+      ],
+    },
+  ],
+};
+
+/**
  * A clipboard payload the editor's paste handler can read. jsdom implements no
  * `DataTransfer`, and the handler only ever asks one for the flavours it was
  * given.
@@ -734,6 +756,61 @@ describe('a single-line RichTextEditorField', () => {
     const editor = await field.editor();
 
     expect(editor.textContent).toBe('Never met in person');
+  });
+
+  it('keeps the words of a mark its schema has no room for', async () => {
+    // A link is a MARK, and marks are the half of a document the flattener
+    // carries through untouched. Turn links off — the default — and the
+    // schema has no `link` mark at all, so reading the flattened value fails
+    // on the mark instead of on a block, and the reader answers a failure the
+    // only way it can: with an empty document. The value said something; the
+    // field showed nothing, and the next edit saved the nothing.
+    const field = renderSingleLine({ value: LINKED_DOCUMENT });
+    const editor = await field.editor();
+
+    expect(editor.textContent).toBe('Never met in person');
+    expect(editor.querySelector('a')).toBe(null);
+  });
+
+  it('keeps a mark its schema does have', async () => {
+    // The other side of the same rule: what is dropped is the mark this
+    // schema cannot express, not formatting in general.
+    const field = renderSingleLine({
+      value: {
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            content: [
+              { type: 'text', text: 'Never met ' },
+              {
+                type: 'text',
+                marks: [{ type: 'bold' }],
+                text: 'in person',
+              },
+            ],
+          },
+        ],
+      },
+    });
+    const editor = await field.editor();
+
+    expect(editor.textContent).toBe('Never met in person');
+    expect(editor.querySelector('strong')).toHaveTextContent('in person');
+  });
+
+  it('keeps a link when the field offers one', async () => {
+    const field = renderSingleLine({
+      toolbarOptions: { links: true },
+      value: LINKED_DOCUMENT,
+    });
+    const editor = await field.editor();
+
+    expect(editor.textContent).toBe('Never met in person');
+    expect(editor.querySelector('a')).toHaveAttribute(
+      'href',
+      'https://example.com/',
+    );
   });
 
   it('offers no control that would need a block it cannot hold', async () => {

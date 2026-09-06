@@ -7,6 +7,7 @@ import {
   type AnyExtension,
   createNodeFromContent,
   Extension,
+  getSchema,
   isProseMirrorFragment,
   Node as TiptapNode,
 } from '@tiptap/core';
@@ -315,6 +316,26 @@ const addTextLines = (
 };
 
 /**
+ * The marks a text node can keep: the ones this schema has a type for.
+ *
+ * Marks are the half of a document the flattener carries through untouched,
+ * and that was only safe while every schema had the same marks. It does not:
+ * links are a toolbar option, and a field offering none has no `link` mark to
+ * read one back into. `Node.fromJSON` refuses a mark type it does not know
+ * exactly as it refuses a node type it does not know, and the reader answers
+ * that the same way — with an EMPTY document. So a linked phrase blanked the
+ * whole field, and the next edit saved the blank.
+ *
+ * The words are what a single-line field promised to keep; the link is a
+ * decoration the field was never offering to hold.
+ */
+const marksInSchema = (
+  marks: JSONContent['marks'],
+  schema: Schema,
+): JSONContent['marks'] =>
+  marks?.filter((mark) => Object.hasOwn(schema.marks, mark.type));
+
+/**
  * Every line of a document, run together as the inline content of one.
  *
  * This works on the JSON rather than on a parsed document, because on the way
@@ -341,11 +362,12 @@ const addTextLines = (
 const collectOneLine = (
   content: JSONContent[] | null | undefined,
   run: OneLineRun,
+  schema: Schema,
 ) => {
   for (const node of content ?? []) {
     if (node.type === 'text') {
       if (node.text) {
-        addTextLines(run, node.text, node.marks);
+        addTextLines(run, node.text, marksInSchema(node.marks, schema));
       }
       continue;
     }
@@ -353,7 +375,7 @@ const collectOneLine = (
     // Owed on both sides of whatever this node holds: the text after a block
     // is on a new line, and so is the text after the block ends.
     run.breakPending = true;
-    collectOneLine(node.content, run);
+    collectOneLine(node.content, run, schema);
     run.breakPending = true;
   }
 };
@@ -361,9 +383,10 @@ const collectOneLine = (
 /** The inline content a document's lines make when run together as one. */
 const oneLineContentOf = (
   content: JSONContent[] | null | undefined,
+  schema: Schema,
 ): JSONContent[] => {
   const run: OneLineRun = { collected: [], breakPending: false };
-  collectOneLine(content, run);
+  collectOneLine(content, run, schema);
   return run.collected;
 };
 
@@ -374,8 +397,8 @@ const oneLineContentOf = (
  * writes one: the flattened value has to be comparable to the document the
  * editor holds, key for key.
  */
-const oneLineDocumentOf = (value: JSONContent): JSONContent => {
-  const content = oneLineContentOf(value.content);
+const oneLineDocumentOf = (value: JSONContent, schema: Schema): JSONContent => {
+  const content = oneLineContentOf(value.content, schema);
 
   return {
     type: 'doc',
@@ -394,12 +417,12 @@ const oneLineDocumentOf = (value: JSONContent): JSONContent => {
  * document through the schema fills in the mark attributes a stored value can
  * leave out, so a host echoing its own value back settles instead of having
  * the document replaced on every pass. The document is a paragraph of text by
- * then, so the read cannot fail on a node type — and a MARK the schema does
- * not have degrades exactly as it always did, because `createNodeFromContent`
- * is the reader TipTap's own `content` option uses.
+ * then, and the marks are the ones this schema has, so the read cannot fail
+ * on a type it does not know. `createNodeFromContent` is the reader TipTap's
+ * own `content` option uses, so both ways in agree.
  */
 const asOneLine = (value: JSONContent, schema: Schema): JSONContent => {
-  const flattened = oneLineDocumentOf(value);
+  const flattened = oneLineDocumentOf(value, schema);
   const parsed = createNodeFromContent(flattened, schema, { slice: false });
 
   // A fragment only comes back from that reader's own empty-content fallback.
@@ -453,7 +476,7 @@ const SingleLineInput = Extension.create({
           // with this schema, so everything in it can be read back.
           transformPasted: (slice: Slice) => {
             const pasted = slice.content.toJSON() as JSONContent[] | null;
-            const nodes = oneLineContentOf(pasted).map((node) =>
+            const nodes = oneLineContentOf(pasted, schema).map((node) =>
               schema.nodeFromJSON(node),
             );
 
@@ -865,6 +888,13 @@ export default function RichTextEditorField({
       placeholder,
     ],
   );
+  // The schema these extensions make, worked out before there is an editor to
+  // ask. A value has to be flattened against the marks the field will actually
+  // have, and the first value is read while the editor is being built.
+  const editorSchema = useMemo(
+    () => getSchema(editorExtensions),
+    [editorExtensions],
+  );
 
   const editor = useEditor(
     {
@@ -878,7 +908,9 @@ export default function RichTextEditorField({
       // over — it fires a tick after the field has painted, and by then the
       // document it would flatten is already empty.
       content:
-        singleLine && value !== undefined ? oneLineDocumentOf(value) : value,
+        singleLine && value !== undefined
+          ? oneLineDocumentOf(value, editorSchema)
+          : value,
       editable: !disabled && !readOnly,
       autofocus: autoFocus ? 'end' : false,
       onUpdate: ({ editor: updateEditor }) => {
