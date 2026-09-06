@@ -1062,3 +1062,72 @@ name the head containing those images and any final runtime merge. A historical
 clean verdict, dispatch success or completed local gates cannot replace these
 remaining delivery gates. The lead owns PR merge sequencing; no release or
 production deployment is part of this app handoff.
+
+### Canonical CI baseline adoption — 2026-09-06
+
+The normal merge of final shared checkpoint
+`5128f4942c67dee5e8690fd43852887b23a24593` produced app head
+`8db90a1ceacce6997de21d499572f2f54bdf573d`, with first parent
+`10138a29eee23521406519baf87dad39524a7449`. All 14 independently reviewed app
+file hashes survived the commit hooks and merge unchanged. The additional
+shared delta contains a Navigation story keyboard-order correction and unrelated
+landed main work; it changes no Architect or interview runtime production code.
+PR #1705 now targets `feat/interview-interface-i18n`, the branch for
+[runtime PR #1719](https://github.com/complexdatacollective/network-canvas-monorepo/pull/1719).
+
+The two independent forced (`update_mode=all`) Architect capture runs
+[34053348544](https://github.com/complexdatacollective/network-canvas-monorepo/actions/runs/34053348544)
+and [34053362502](https://github.com/complexdatacollective/network-canvas-monorepo/actions/runs/34053362502)
+each passed both capture cases on this exact head. Both used
+`mcr.microsoft.com/playwright:v1.62.1-noble`, image digest
+`sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e`.
+All 28 generated PNGs are byte-identical between runs. Seventeen differ from
+the committed set, with every image dimension unchanged. The 11 other PNGs
+and all 19 protocol JSON baselines remain unchanged.
+
+Every changed pixel was located programmatically. The app owner inspected all
+40 changed bands as old/new comparison crops, and the lead independently
+inspected every band in native-resolution contact sheets and checked the
+two-run byte inventory. The lead approved exactly these 17 canonical files:
+
+| PNG stem (under `apps/architect/e2e/visual-snapshots/chromium/`) | Changed pixels | Reviewed change                                                                                           |
+| ---------------------------------------------------------------- | -------------: | --------------------------------------------------------------------------------------------------------- |
+| `summary-resource-library`                                       |          2,472 | Printed attribute lists now read “name and age”, matching the reviewed locale-aware whole-list formatter. |
+| `summary-stage-family-pedigree-1`                                |              8 | Rounded table/container edges; content and geometry unchanged.                                            |
+| `summary-stage-dyad-census-1`                                    |            138 | Node/edge glyph and container edges; content and geometry unchanged.                                      |
+| `summary-stage-narrative-pedigree-1`                             |             26 | Thumbnail/container corner edges; content and geometry unchanged.                                         |
+| `summary-stage-one-to-many-dyad-census-1`                        |            110 | Node glyph and rounded container edges; content and geometry unchanged.                                   |
+| `summary-stage-sociogram-1`                                      |            159 | Stage-number circle, node glyph, pill and container edges; content and geometry unchanged.                |
+| `summary-stage-ordinal-bin-1`                                    |            121 | Node glyph, thumbnail corner and pill/container edges; content and geometry unchanged.                    |
+| `summary-stage-name-generator-quick-add-1`                       |            110 | Node glyph and thumbnail corner edges; content and geometry unchanged.                                    |
+| `summary-stage-categorical-bin-1`                                |            135 | Node glyph and thumbnail corner edges; content and geometry unchanged.                                    |
+| `summary-stage-alter-form-1`                                     |            188 | Stage-number circle, node glyph, pill and container edges; content and geometry unchanged.                |
+| `summary-stage-name-generator-1`                                 |            106 | Node glyph edge, with a maximum one-unit channel difference; content and geometry unchanged.              |
+| `summary-stage-anonymisation-1`                                  |             11 | Thumbnail/container corner edges; content and geometry unchanged.                                         |
+| `summary-stage-alter-edge-form-1`                                |             18 | Thumbnail corner edges; content and geometry unchanged.                                                   |
+| `summary-stage-narrative-1`                                      |            220 | Node glyph, pill and container edges; content and geometry unchanged.                                     |
+| `summary-stage-ego-form-1`                                       |             41 | Rounded table, thumbnail and pill/container edges; content and geometry unchanged.                        |
+| `summary-stage-tie-strength-census-1`                            |            112 | Node/edge glyph and rounded container edges; content and geometry unchanged.                              |
+| `summary-stage-network-composer-1`                               |            112 | Node glyph and rounded container edges; content and geometry unchanged.                                   |
+
+The 16 raster-only updates replace earlier local emulated-container captures
+with stable canonical CI output. No source thumbnail assets changed, no text
+or controls disappeared, and unchanged pixels outside the reviewed bands were
+verified directly. Their acceptance rests on complete visual inspection and
+two independent identical captures, not on a threshold or pixel-count heuristic.
+Only the approved artifact PNGs were copied; derived comparison crops are not
+baselines. Exact hashes, dimensions, coordinates and comparison images remain
+in `/private/tmp/nc-architect-ci-visual-comparison.json` and
+`/private/tmp/nc-architect-ci-visual-inspection/`.
+
+Interim package CI
+[34053336072](https://github.com/complexdatacollective/network-canvas-monorepo/actions/runs/34053336072)
+runs on the source head above with `force_run=true` and `release_app=none`.
+Its manual-dispatch policy selects no E2E or release jobs. The automatic review
+of that head reported two separately owned Interviewer host concerns (device
+preference across vault locks and its finish-copy override); the lead is
+coordinating those against the Interviewer app PR. It reported no new Architect
+inline thread, and both original threads remain resolved. The explicit app-only
+review is requested again after this baseline checkpoint is pushed. A fresh
+normal no-write pixel/native gate remains required after retargeting to main;
+capture success is generation evidence, not that final comparison verdict.
