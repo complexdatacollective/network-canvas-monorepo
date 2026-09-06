@@ -205,11 +205,12 @@ export const anonymisationScenarios: InterfaceScenarios = {
         await anon.fillPassphrase('this passphrase is far too long');
         await anon.submit();
         await expect(anon.passphraseError()).toContainText(
-          /enter fewer than 20 characters/i,
+          /enter at most 20 characters/i,
         );
         await expect(anon.successAlert()).toHaveCount(0);
 
-        await anon.fillPassphrase('just right!');
+        // The stated maximum is inclusive: exactly 20 characters is valid.
+        await anon.fillPassphrase('p'.repeat(20));
         await anon.submit();
         await expect(anon.successAlert()).toBeVisible();
 

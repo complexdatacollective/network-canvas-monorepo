@@ -88,6 +88,7 @@ export default defineConfig({
             '@codaco/fresco-ui > @codaco/app-i18n > @formatjs/icu-messageformat-parser',
             '@codaco/fresco-ui > @codaco/app-i18n > @formatjs/intl-localematcher',
             '@codaco/fresco-ui > @codaco/app-i18n > react-intl',
+            '@codaco/fresco-ui > @codaco/app-i18n > react-intl/server',
             '@base-ui/react',
             '@base-ui/react/accordion',
             '@base-ui/react/checkbox',

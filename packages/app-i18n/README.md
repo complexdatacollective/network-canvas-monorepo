@@ -58,6 +58,23 @@ Formatting to a string when an operation starts freezes the old language.
 Fresco UI dialog titles, descriptions, action labels, and `describeError`
 callbacks accept these nodes.
 
+For existing string-only error/result contracts, `createMessageError` from
+`@codaco/app-i18n/messages` preserves a plain-text descriptor and its named values
+without capturing the active locale. It retains both source defaults and compiled
+ICU AST. Fresco UI's existing field/form error renderers resolve these messages at
+display time and preserve server refusals during a language switch. Use
+`AppErrorMessage` from `@codaco/app-i18n/react` for other stored string errors, or
+`formatMessageError(error, intl) ?? error` in a string renderer. Ordinary
+validation/diagnostic text remains unchanged. A transported list uses
+`{ dependencies: { list: dependencyIds } }`, so conjunctions are formatted in the
+reader's language rather than captured before the switch.
+
+When a whole message contains a separately owned translated label, pass
+`{ rule: { messageError: createMessageError(ruleDescriptor) } }`. List items
+also accept this explicit wrapper. Ordinary strings are always literal data,
+even if they happen to resemble an encoded error. This keeps shared rule names
+and unnamed-attribute labels reactive without duplicating their translations.
+
 ## Host responsibilities
 
 Mount `AppI18nProvider` with the active locale, supported registry, and merged
@@ -113,7 +130,7 @@ const nextConfig: NextConfig = {
       ...(process.env.NODE_ENV === 'production'
         ? {
             '@formatjs/icu-messageformat-parser':
-              '@formatjs/icu-messageformat-parser/no-parser',
+              '@formatjs/icu-messageformat-parser/no-parser.js',
           }
         : {}),
     },
@@ -135,7 +152,11 @@ Framework-free worker/CLI diagnostics remain available unchanged. Researcher
 hosts can opt into localized presentation through the owning package:
 
 - `@codaco/protocol-validation/messages`: protocol-file error descriptors,
-  validation-rule labels, and actionable contradiction summaries.
+  validation-rule labels, actionable contradiction summaries, and
+  `formatMigrationNotes(version, notes, intl)` for migration approval guidance.
+  Known migration versions translate each complete Markdown bullet while
+  preserving list structure and literal protocol defaults; unknown versions
+  retain their supplied notes. Core migration notes remain English.
 - `@codaco/protocol-utilities/messages`: generation conflict guidance selected
   by stable reason codes; original technical diagnostics remain available.
 - `@codaco/network-exporters/messages`: export progress descriptors selected

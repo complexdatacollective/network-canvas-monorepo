@@ -108,7 +108,7 @@ export const constraintReasonMessages = defineMessages({
   fixedValueRejected: {
     id: 'protocolUtilities.constraint.fixedValueRejected',
     defaultMessage:
-      'A question assigns fixed values that these validation rules reject. Change the fixed values or the conflicting rules.',
+      'The assigned fixed values conflict with these validation rules. Change the fixed values or the conflicting rules.',
     description:
       'Researcher-facing explanation and repair guidance when synthetic interview data cannot be generated: fixedValueRejected.',
   },
@@ -157,7 +157,7 @@ export const constraintReasonMessages = defineMessages({
   duplicateFixedValues: {
     id: 'protocolUtilities.constraint.duplicateFixedValues',
     defaultMessage:
-      'The protocol or roster assigns the same value to multiple nodes or links, but the value must be unique. Change the fixed values or the uniqueness rule.',
+      'The same value is assigned to multiple nodes or links, but the value must be unique. Change the fixed values or the uniqueness rule.',
     description:
       'Researcher-facing explanation and repair guidance when synthetic interview data cannot be generated: duplicateFixedValues.',
   },
@@ -185,7 +185,7 @@ export const constraintReasonMessages = defineMessages({
   incompatibleDateControls: {
     id: 'protocolUtilities.constraint.incompatibleDateControls',
     defaultMessage:
-      'Forms use incompatible date controls for the same attribute. Give those controls a common date range and resolution.',
+      'Forms use incompatible input controls for the same attribute. Use controls that allow a common set of values.',
     description:
       'Researcher-facing explanation and repair guidance when synthetic interview data cannot be generated: incompatibleDateControls.',
   },
