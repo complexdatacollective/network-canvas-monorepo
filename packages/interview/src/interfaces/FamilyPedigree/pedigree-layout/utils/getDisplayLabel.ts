@@ -1,3 +1,4 @@
+import type { IntlShape } from '@codaco/app-i18n/messages';
 import type { FramingId, RelationshipType } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -5,7 +6,9 @@ import {
   type NcNode,
 } from '@codaco/shared-consts';
 
-import { FRAMING_TERMS } from '../../framingTerms';
+import { resolveInterviewIntl } from '../../../../i18n/resolveIntl';
+import { getFramingTerms } from '../../framingTerms';
+import { messages } from '../../messages';
 import type { FamilyEdge, GameteRole, VariableConfig } from '../../store';
 import { getEdgeRelationshipType } from '../../utils/edgeUtils';
 
@@ -213,15 +216,17 @@ function gameteParentLabel(
   gameteRole: GameteRole,
   kind: RelationshipKind,
   framing: FramingId,
+  intl?: IntlShape,
 ): string {
-  const terms = FRAMING_TERMS[framing];
+  const terms = getFramingTerms(framing, intl);
   if (kind === 'donor') {
     return gameteRole === 'egg' ? terms.eggDonor : terms.spermDonor;
   }
   return gameteRole === 'egg' ? terms.eggParent : terms.spermParent;
 }
 
-const RELATIONSHIP_LABELS: Record<RelationshipKind, string> = {
+// Canonical research values. Never translate these or write display labels here.
+const CANONICAL_RELATIONSHIP_VALUES: Record<RelationshipKind, string> = {
   'parent': 'Parent',
   'social-parent': 'Social Parent',
   'donor': 'Donor',
@@ -241,6 +246,28 @@ const RELATIONSHIP_LABELS: Record<RelationshipKind, string> = {
   'child-in-law': "Child's Partner",
   'great-grandparent': 'Great-Grandparent',
   'great-grandchild': 'Great-Grandchild',
+};
+
+const relationshipMessages = {
+  'parent': messages.parent,
+  'social-parent': messages.socialParent,
+  'donor': messages.donor,
+  'surrogate': messages.surrogate,
+  'child': messages.child,
+  'partner': messages.partner,
+  'sibling': messages.sibling,
+  'step-parent': messages.stepParent,
+  'step-child': messages.stepChild,
+  'grandparent': messages.grandparent,
+  'grandparent-partner': messages.grandparentPartner,
+  'grandchild': messages.grandchild,
+  'aunt-uncle': messages.auntUncle,
+  'cousin': messages.cousin,
+  'niece-nephew': messages.nieceNephew,
+  'sibling-in-law': messages.siblingPartner,
+  'child-in-law': messages.childPartner,
+  'great-grandparent': messages.greatGrandparent,
+  'great-grandchild': messages.greatGrandchild,
 };
 
 /**
@@ -267,12 +294,21 @@ function findNearestNamedIntermediary(
  * Determine the relationship label from the intermediary to the target node.
  * This is the "last hop" label used in possessive form: "{name}'s {label}".
  */
-function getLastHopLabel(path: PathStep[]): string {
+function namedIntermediaryLabel(
+  path: PathStep[],
+  name: string,
+  intl: IntlShape,
+): string {
   const lastStep = path[path.length - 1];
-  if (lastStep === 'parent') return 'Parent';
-  if (lastStep === 'child') return 'Child';
-  if (lastStep === 'partner') return 'Partner';
-  return 'Relative';
+  const message =
+    lastStep === 'parent'
+      ? messages.namedParent
+      : lastStep === 'child'
+        ? messages.namedChild
+        : lastStep === 'partner'
+          ? messages.namedPartner
+          : messages.namedRelative;
+  return intl.formatMessage(message, { name });
 }
 
 /**
@@ -289,9 +325,11 @@ export function getDisplayLabel(
   edges: Map<string, NcEdge>,
   variableConfig: VariableConfig,
   framing: FramingId,
+  intl?: IntlShape,
 ): string {
+  const formatter = resolveInterviewIntl(intl);
   const node = nodes.get(nodeId);
-  if (!node) return 'Family Member';
+  if (!node) return formatter.formatMessage(messages.familyMember);
 
   // Return stored name if present
   const storedName = node[entityAttributesProperty][
@@ -302,11 +340,11 @@ export function getDisplayLabel(
   // BFS to find path from ego to this node
   const bfsResults = bfsFromEgo(egoId, nodes, edges, variableConfig);
   const entry = bfsResults.get(nodeId);
-  if (!entry) return 'Family Member';
+  if (!entry) return formatter.formatMessage(messages.familyMember);
 
   // Classify the relationship from the path
   let kind = classifyPath(entry.path);
-  if (!kind) return 'Family Member';
+  if (!kind) return formatter.formatMessage(messages.familyMember);
 
   // For direct parents, refine the kind based on edge type
   if (kind === 'parent') {
@@ -325,7 +363,8 @@ export function getDisplayLabel(
       edges,
       variableConfig,
     );
-    if (gameteRole) return gameteParentLabel(gameteRole, kind, framing);
+    if (gameteRole)
+      return gameteParentLabel(gameteRole, kind, framing, formatter);
   }
 
   // Relationships where the direct label is more descriptive than possessive form
@@ -342,12 +381,11 @@ export function getDisplayLabel(
       variableConfig,
     );
     if (intermediary) {
-      const lastHop = getLastHopLabel(entry.path);
-      return `${intermediary.name}'s ${lastHop}`;
+      return namedIntermediaryLabel(entry.path, intermediary.name, formatter);
     }
   }
 
-  return RELATIONSHIP_LABELS[kind];
+  return formatter.formatMessage(relationshipMessages[kind]);
 }
 
 /**
@@ -361,7 +399,9 @@ export function computeAllDisplayLabels(
   edges: Map<string, NcEdge>,
   variableConfig: VariableConfig,
   framing: FramingId,
+  intl?: IntlShape,
 ): Map<string, string> {
+  const formatter = resolveInterviewIntl(intl);
   const bfsResults = bfsFromEgo(egoId, nodes, edges, variableConfig);
   const labels = new Map<string, string>();
 
@@ -381,13 +421,13 @@ export function computeAllDisplayLabels(
 
     const entry = bfsResults.get(nodeId);
     if (!entry) {
-      labels.set(nodeId, 'Family Member');
+      labels.set(nodeId, formatter.formatMessage(messages.familyMember));
       continue;
     }
 
     let kind = classifyPath(entry.path);
     if (!kind) {
-      labels.set(nodeId, 'Family Member');
+      labels.set(nodeId, formatter.formatMessage(messages.familyMember));
       continue;
     }
 
@@ -406,7 +446,10 @@ export function computeAllDisplayLabels(
         variableConfig,
       );
       if (gameteRole) {
-        labels.set(nodeId, gameteParentLabel(gameteRole, kind, framing));
+        labels.set(
+          nodeId,
+          gameteParentLabel(gameteRole, kind, framing, formatter),
+        );
         continue;
       }
     }
@@ -418,13 +461,15 @@ export function computeAllDisplayLabels(
         variableConfig,
       );
       if (intermediary) {
-        const lastHop = getLastHopLabel(entry.path);
-        labels.set(nodeId, `${intermediary.name}'s ${lastHop}`);
+        labels.set(
+          nodeId,
+          namedIntermediaryLabel(entry.path, intermediary.name, formatter),
+        );
         continue;
       }
     }
 
-    labels.set(nodeId, RELATIONSHIP_LABELS[kind]);
+    labels.set(nodeId, formatter.formatMessage(relationshipMessages[kind]));
   }
 
   return labels;
@@ -466,7 +511,7 @@ export function computeRelationshipsToEgo(
       else if (edgeType === 'surrogate') kind = 'surrogate';
     }
 
-    relationships.set(nodeId, RELATIONSHIP_LABELS[kind]);
+    relationships.set(nodeId, CANONICAL_RELATIONSHIP_VALUES[kind]);
   }
 
   return relationships;
@@ -484,7 +529,9 @@ export function getNodeLabel(
   edges: Map<string, FamilyEdge>,
   variableConfig: VariableConfig,
   framing: FramingId,
+  intl?: IntlShape,
 ): string {
+  const formatter = resolveInterviewIntl(intl);
   const egoEntry = [...nodes.entries()].find(
     ([, n]) => n[entityAttributesProperty][variableConfig.egoVariable] === true,
   );
@@ -495,7 +542,7 @@ export function getNodeLabel(
       ];
     return typeof name === 'string' && name.length > 0
       ? name
-      : 'Unknown person';
+      : formatter.formatMessage(messages.unknownPerson);
   }
   // The BFS never revisits its start node, so ego has no relationship path and
   // would fall through to the generic fallback. Label it explicitly.
@@ -504,7 +551,9 @@ export function getNodeLabel(
       nodes.get(nodeId)?.[entityAttributesProperty][
         variableConfig.nodeLabelVariable
       ];
-    return typeof name === 'string' && name.length > 0 ? name : 'You';
+    return typeof name === 'string' && name.length > 0
+      ? name
+      : formatter.formatMessage(messages.you);
   }
   return getDisplayLabel(
     nodeId,
@@ -513,5 +562,6 @@ export function getNodeLabel(
     edges,
     variableConfig,
     framing,
+    formatter,
   );
 }

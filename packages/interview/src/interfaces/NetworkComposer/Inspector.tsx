@@ -1,8 +1,10 @@
 'use client';
-
 import { useCallback, useContext, useEffect, useMemo, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { createMessageError } from '@codaco/app-i18n/messages';
+import { AppMessage } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
@@ -17,8 +19,10 @@ import type { entityAttributesProperty, NcNode } from '@codaco/shared-consts';
 
 import { formValuesToAttributePatch } from '../../forms/formValuesToAttributePatch';
 import useProtocolForm from '../../forms/useProtocolForm';
+import { runtimeMessages } from '../../i18n/runtimeMessages';
 import type { Subject } from '../../selectors/forms';
 import type { AttributePatch } from '../../store/entityAttributePatch';
+import { interfaceMessages } from '../messages';
 
 type Attributes = NcNode[typeof entityAttributesProperty];
 
@@ -132,7 +136,7 @@ function AttributeFormInner({
 
       if (!patchResult.success) {
         storeApi?.getState().setErrors({
-          formErrors: ['An error occurred while submitting the form.'],
+          formErrors: [createMessageError(runtimeMessages.submissionFailed)],
           fieldErrors: {},
         });
         return;
@@ -179,7 +183,7 @@ export default function Inspector({
         </FormStoreProvider>
       ) : (
         <div className="text-text/60 flex min-h-0 flex-1 items-center justify-center p-6 text-center">
-          No attributes to edit
+          <AppMessage message={interfaceMessages.noAttributes} />
         </div>
       )}
       <div className="flex shrink-0 items-center border-t border-current/10 p-4">
@@ -189,7 +193,7 @@ export default function Inspector({
           color="destructive"
           onClick={() => onDelete(entityId)}
         >
-          Delete
+          <AppMessage message={commonMessages.delete} />
         </Button>
       </div>
     </div>

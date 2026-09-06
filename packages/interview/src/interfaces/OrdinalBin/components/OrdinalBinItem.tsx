@@ -1,8 +1,8 @@
 'use client';
-
 import { motion } from 'motion/react';
 import { memo, useRef } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
@@ -18,6 +18,7 @@ import useSortedNodeList from '../../../hooks/useSortedNodeList';
 import { updateNode } from '../../../store/modules/session';
 import { useAppDispatch } from '../../../store/store';
 import { getEntityAttributes } from '../../../utils/networkEntities';
+import { interfaceMessages } from '../../messages';
 import type { OrdinalBinItem as OrdinalBinItemType } from '../useOrdinalBins';
 
 type OrdinalBinItemProps = {
@@ -70,6 +71,7 @@ const getPromptColorClass = (color: OrdinalBinPrompt['color']) => {
 };
 
 const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
+  const intl = useAppIntl();
   const {
     bin,
     index,
@@ -181,7 +183,9 @@ const OrdinalBinItem = memo((props: OrdinalBinItemProps) => {
         nodeSize="sm"
         orientation={isPortrait ? 'horizontal' : 'vertical'}
         className={bodyClasses}
-        announcedName={`Container for the value '${bin.label}'`}
+        announcedName={intl.formatMessage(interfaceMessages.ordinalContainer, {
+          label: bin.label,
+        })}
         onDrop={handleDrop}
         accepts={['NODE']}
       />
