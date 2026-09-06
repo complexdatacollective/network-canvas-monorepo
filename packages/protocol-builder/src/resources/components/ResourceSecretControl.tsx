@@ -56,6 +56,12 @@ export default function ResourceSecretControl({
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    // Stops at this form: the resource browser is a `Dialog`, which portals
+    // out of the DOM but stays a React descendant of whatever opened it — a
+    // content block's row dialog, or the stage form — so React would otherwise
+    // hand this submit on and save that instead. `preventDefault` alone only
+    // stops the browser's own navigation, which is not what propagates here.
+    event.stopPropagation();
     if (disabled || busy) return;
 
     const trimmedName = name.trim();

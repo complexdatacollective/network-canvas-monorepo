@@ -321,6 +321,12 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    // Stops at this form: a `Dialog` portals out of the DOM but stays a React
+    // descendant, so React would otherwise hand this submit to the form the
+    // editor was opened from — a prompt row, or the stage itself — and save
+    // that instead. `preventDefault` alone only stops the browser's own
+    // navigation, which is not what propagates here.
+    event.stopPropagation();
     if (interactionDisabled) return;
     if (authoritativeTypeConflict) {
       activeRequestId.current = null;

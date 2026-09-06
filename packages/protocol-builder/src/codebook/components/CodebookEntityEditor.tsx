@@ -325,6 +325,12 @@ export default function CodebookEntityEditor({
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    // Stops at this form: a `Dialog` portals out of the DOM but stays a React
+    // descendant, so React would otherwise hand this submit to the form the
+    // editor was opened from — `SubjectSection` mounts it inside the stage
+    // form — and save that instead. `preventDefault` alone only stops the
+    // browser's own navigation, which is not what propagates here.
+    event.stopPropagation();
     if (
       readOnly ||
       snapshot.status !== 'editing' ||
