@@ -1,0 +1,53 @@
+{
+  "name": "@codaco/template-registry",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The independent public Network Canvas template registry.",
+  "author": "Complex Data Collective <hello@complexdatacollective.org>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/complexdatacollective/network-canvas-monorepo.git",
+    "directory": "apps/template-registry"
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "node --env-file-if-exists=.env --watch src/index.ts",
+    "build": "vite build",
+    "start": "node dist/index.js",
+    "migrate": "node --env-file-if-exists=.env src/migrate.ts",
+    "operator": "node --env-file-if-exists=.env src/operator.ts",
+    "sync-fingerprint": "node scripts/sync-fingerprint.ts",
+    "generate-migration": "node scripts/generate-migration.ts",
+    "generate:openapi": "node scripts/generate-openapi.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "backup:verify": "node --env-file-if-exists=.env src/backup.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1101.0",
+    "@codaco/protocol-validation": "workspace:^",
+    "@codaco/studio-sync": "workspace:^",
+    "@hono/node-server": "^2.1.0",
+    "@orpc/contract": "2.0.0-beta.26",
+    "@orpc/openapi": "2.0.0-beta.26",
+    "@orpc/server": "2.0.0-beta.26",
+    "@orpc/zod": "2.0.0-beta.26",
+    "better-auth": "catalog:",
+    "drizzle-orm": "catalog:",
+    "hono": "^4.13.0",
+    "pg": "^8.22.0",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@codaco/tsconfig": "workspace:^",
+    "@types/pg": "^8.20.4",
+    "drizzle-kit": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

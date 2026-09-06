@@ -1,0 +1,3631 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "Network Canvas Template Registry API",
+    "version": "1.0.0",
+    "license": {
+      "name": "CC0-1.0",
+      "identifier": "CC0-1.0"
+    }
+  },
+  "servers": [
+    {
+      "url": "/api/v1"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "registryToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "ncr1_<256-bit secret>",
+        "description": "Registry-issued credentials. Studio instance API tokens do not authenticate here."
+      },
+      "registrySession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "__Secure-registry.session_token",
+        "description": "Verified email session issued by this registry. Account writes also require the registry Origin header."
+      }
+    },
+    "schemas": {
+      "ListEntries": {
+        "type": "object",
+        "properties": {
+          "cursor": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024,
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "limit": {
+            "default": 20,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "protocol",
+              "stage",
+              "entity_definition",
+              "variable_set",
+              "generator_prompt_set"
+            ]
+          },
+          "license": {
+            "type": "string",
+            "enum": ["CC-BY-4.0", "CC0-1.0"]
+          },
+          "keyword": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "author": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "curated": {
+            "type": "string",
+            "enum": ["true", "false"]
+          }
+        },
+        "additionalProperties": false
+      },
+      "EntrySummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "publisher": {
+            "$ref": "#/components/schemas/Publisher"
+          },
+          "root": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "template": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "protocol",
+                  "stage",
+                  "entity_definition",
+                  "variable_set",
+                  "generator_prompt_set"
+                ]
+              },
+              "version": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 2147483647
+              },
+              "summary": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              }
+            },
+            "required": ["name", "kind", "version"],
+            "additionalProperties": false
+          },
+          "license": {
+            "type": "string",
+            "enum": ["CC-BY-4.0", "CC0-1.0"]
+          },
+          "curated": {
+            "type": "boolean"
+          },
+          "yanked": {
+            "type": "boolean"
+          },
+          "published_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+          }
+        },
+        "required": [
+          "id",
+          "publisher",
+          "root",
+          "template",
+          "license",
+          "curated",
+          "yanked",
+          "published_at"
+        ],
+        "additionalProperties": false
+      },
+      "Publisher": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "orcid": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{4}-\\d{4}-\\d{3}[\\dX]$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": ["id", "name", "orcid"],
+        "additionalProperties": false
+      },
+      "UndefinedError": {
+        "type": "object",
+        "properties": {
+          "defined": {
+            "const": false
+          },
+          "inferable": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "status": {
+            "type": "number"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {}
+        },
+        "required": ["defined", "inferable", "code", "status", "message"]
+      },
+      "RegistryProblem": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "AUTHENTICATION_REQUIRED",
+              "FORBIDDEN",
+              "REQUEST_TIMEOUT",
+              "INVALID_REQUEST",
+              "NOT_FOUND",
+              "CONTENT_REMOVED",
+              "CONFLICT",
+              "CONTENT_TOO_LARGE",
+              "RATE_LIMITED",
+              "STORAGE_LIMIT_REACHED",
+              "ARTIFACT_INVALID",
+              "FORMAT_UNSUPPORTED",
+              "SCHEMA_UNSUPPORTED",
+              "CURATION_METADATA_REQUIRED",
+              "SERVICE_UNAVAILABLE",
+              "INTERNAL_SERVER_ERROR"
+            ]
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "context": {
+            "type": "object",
+            "properties": {
+              "supported_schema_version": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "artifact_schema_version": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "retry_after_seconds": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 86400
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": ["type", "title", "status", "code", "request_id"],
+        "additionalProperties": false
+      },
+      "Entry": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "publisher": {
+            "$ref": "#/components/schemas/Publisher"
+          },
+          "root": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "template": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "protocol",
+                  "stage",
+                  "entity_definition",
+                  "variable_set",
+                  "generator_prompt_set"
+                ]
+              },
+              "version": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 2147483647
+              },
+              "summary": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              }
+            },
+            "required": ["name", "kind", "version"],
+            "additionalProperties": false
+          },
+          "license": {
+            "type": "string",
+            "enum": ["CC-BY-4.0", "CC0-1.0"]
+          },
+          "curated": {
+            "type": "boolean"
+          },
+          "yanked": {
+            "type": "boolean"
+          },
+          "published_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+          },
+          "metadata": {
+            "type": "object",
+            "properties": {
+              "schema_version": {
+                "type": "number",
+                "const": 1
+              },
+              "authors": {
+                "maxItems": 100,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    },
+                    "affiliation": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 500
+                    },
+                    "orcid": {
+                      "type": "string",
+                      "pattern": "^\\d{4}-\\d{4}-\\d{4}-\\d{3}[\\dX]$"
+                    }
+                  },
+                  "required": ["name"],
+                  "additionalProperties": false
+                }
+              },
+              "keywords": {
+                "maxItems": 100,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                }
+              },
+              "description": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 20000
+              },
+              "publications": {
+                "maxItems": 100,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "doi": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 255,
+                      "pattern": "^10\\.\\d{4,9}\\/[^\\s]+$"
+                    },
+                    "citation": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 4000
+                    },
+                    "relation": {
+                      "type": "string",
+                      "enum": ["describes", "validates", "uses"]
+                    }
+                  },
+                  "required": ["citation", "relation"],
+                  "additionalProperties": false
+                }
+              },
+              "related_links": {
+                "maxItems": 100,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string",
+                      "maxLength": 2048,
+                      "format": "uri"
+                    },
+                    "label": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    }
+                  },
+                  "required": ["url"],
+                  "additionalProperties": false
+                }
+              },
+              "funding": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4000
+              }
+            },
+            "required": ["schema_version"],
+            "additionalProperties": false
+          },
+          "artifact_url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "report_url": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "required": [
+          "id",
+          "publisher",
+          "root",
+          "template",
+          "license",
+          "curated",
+          "yanked",
+          "published_at",
+          "metadata",
+          "artifact_url",
+          "report_url"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "paths": {
+    "/entries": {
+      "get": {
+        "operationId": "listEntries",
+        "summary": "Browse published entries",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024,
+              "pattern": "^[A-Za-z0-9_-]+$"
+            },
+            "allowEmptyValue": true,
+            "allowReserved": true
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "allowEmptyValue": true,
+            "allowReserved": true
+          },
+          {
+            "in": "query",
+            "name": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "allowEmptyValue": true,
+            "allowReserved": true
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "protocol",
+                "stage",
+                "entity_definition",
+                "variable_set",
+                "generator_prompt_set"
+              ]
+            },
+            "allowEmptyValue": true,
+            "allowReserved": true
+          },
+          {
+            "in": "query",
+            "name": "license",
+            "schema": {
+              "type": "string",
+              "enum": ["CC-BY-4.0", "CC0-1.0"]
+            },
+            "allowEmptyValue": true,
+            "allowReserved": true
+          },
+          {
+            "in": "query",
+            "name": "keyword",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "allowEmptyValue": true,
+            "allowReserved": true
+          },
+          {
+            "in": "query",
+            "name": "author",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "allowEmptyValue": true,
+            "allowReserved": true
+          },
+          {
+            "in": "query",
+            "name": "curated",
+            "schema": {
+              "type": "string",
+              "enum": ["true", "false"]
+            },
+            "allowEmptyValue": true,
+            "allowReserved": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/EntrySummary"
+                      }
+                    },
+                    "next_cursor": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": ["data", "next_cursor"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the registry contract.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Registry authentication is required.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "This registry account cannot perform that action.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The registry resource was not found.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "The registry request body timed out.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current registry state., The registry storage allowance has been reached.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "An operator has removed this content.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request exceeds the registry size limit.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The template artifact failed verification., This template exchange format is not supported., This protocol schema version is not supported., Curation requires an author, description, and keywords.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The registry request limit has been reached.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The registry could not complete this request.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The registry is temporarily unavailable.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "publish",
+        "summary": "Publish a verified template artifact",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "artifact": {
+                    "type": "string",
+                    "format": "binary",
+                    "contentEncoding": "binary",
+                    "maxLength": 26214400
+                  }
+                },
+                "required": ["artifact"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Entry"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the registry contract.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Registry authentication is required.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "This registry account cannot perform that action.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The registry resource was not found.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "The registry request body timed out.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current registry state., The registry storage allowance has been reached.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "An operator has removed this content.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request exceeds the registry size limit.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The template artifact failed verification., This template exchange format is not supported., This protocol schema version is not supported., Curation requires an author, description, and keywords.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The registry request limit has been reached.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The registry could not complete this request.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The registry is temporarily unavailable.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "registryToken": []
+          }
+        ]
+      }
+    },
+    "/entries/{id}": {
+      "get": {
+        "operationId": "entry",
+        "summary": "Read frozen entry metadata",
+        "parameters": [
+          {
+            "in": "path",
+            "required": true,
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Entry"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the registry contract.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Registry authentication is required.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "This registry account cannot perform that action.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The registry resource was not found.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "The registry request body timed out.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current registry state., The registry storage allowance has been reached.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "An operator has removed this content.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request exceeds the registry size limit.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The template artifact failed verification., This template exchange format is not supported., This protocol schema version is not supported., Curation requires an author, description, and keywords.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The registry request limit has been reached.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The registry could not complete this request.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The registry is temporarily unavailable.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/artifacts/{root}": {
+      "get": {
+        "operationId": "artifact",
+        "summary": "Fetch a verified artifact by its registry-independent root",
+        "parameters": [
+          {
+            "in": "path",
+            "required": true,
+            "name": "root",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/vnd.networkcanvas.template+zip": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary",
+                  "contentEncoding": "binary",
+                  "maxLength": 26214400,
+                  "contentMediaType": "application/vnd.networkcanvas.template+zip"
+                }
+              }
+            },
+            "headers": {
+              "content-type": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "application/vnd.networkcanvas.template+zip"
+                }
+              },
+              "content-disposition": {
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "cache-control": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              },
+              "etag": {
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "x-template-root": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              },
+              "x-registry-yanked": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "enum": ["true", "false"],
+                  "description": "True only when every publisher entry for this root has been yanked. Individual entry responses retain their own publisher withdrawal state."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the registry contract.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Registry authentication is required.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "This registry account cannot perform that action.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The registry resource was not found.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "The registry request body timed out.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current registry state., The registry storage allowance has been reached.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "An operator has removed this content.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request exceeds the registry size limit.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The template artifact failed verification., This template exchange format is not supported., This protocol schema version is not supported., Curation requires an author, description, and keywords.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The registry request limit has been reached.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The registry could not complete this request.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The registry is temporarily unavailable.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/entries/{id}/yank": {
+      "post": {
+        "operationId": "yank",
+        "summary": "Withdraw an entry from browsing",
+        "parameters": [
+          {
+            "in": "path",
+            "required": true,
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Entry"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the registry contract.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Registry authentication is required.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "This registry account cannot perform that action.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The registry resource was not found.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "The registry request body timed out.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current registry state., The registry storage allowance has been reached.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "An operator has removed this content.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request exceeds the registry size limit.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The template artifact failed verification., This template exchange format is not supported., This protocol schema version is not supported., Curation requires an author, description, and keywords.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The registry request limit has been reached.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The registry could not complete this request.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The registry is temporarily unavailable.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "registryToken": []
+          }
+        ]
+      }
+    },
+    "/entries/{id}/reports": {
+      "post": {
+        "operationId": "report",
+        "summary": "Report an entry",
+        "parameters": [
+          {
+            "in": "path",
+            "required": true,
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "category": {
+                    "type": "string",
+                    "enum": [
+                      "privacy",
+                      "copyright",
+                      "harmful_content",
+                      "spam",
+                      "other"
+                    ]
+                  },
+                  "details": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  }
+                },
+                "required": ["category", "details"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    }
+                  },
+                  "required": ["id"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the registry contract.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Registry authentication is required.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "This registry account cannot perform that action.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The registry resource was not found.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "The registry request body timed out.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current registry state., The registry storage allowance has been reached.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "An operator has removed this content.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request exceeds the registry size limit.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The template artifact failed verification., This template exchange format is not supported., This protocol schema version is not supported., Curation requires an author, description, and keywords.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The registry request limit has been reached.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The registry could not complete this request.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The registry is temporarily unavailable.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/publisher": {
+      "get": {
+        "operationId": "me",
+        "summary": "Verify the registry credential and publisher",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Publisher"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the registry contract.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Registry authentication is required.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "This registry account cannot perform that action.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The registry resource was not found.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "The registry request body timed out.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current registry state., The registry storage allowance has been reached.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "An operator has removed this content.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request exceeds the registry size limit.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The template artifact failed verification., This template exchange format is not supported., This protocol schema version is not supported., Curation requires an author, description, and keywords.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The registry request limit has been reached.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The registry could not complete this request.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The registry is temporarily unavailable.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "registryToken": []
+          }
+        ]
+      }
+    },
+    "/account/publisher": {
+      "post": {
+        "operationId": "claimPublisher",
+        "summary": "Claim a named publisher with a verified registry email",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "orcid": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{4}-\\d{4}-\\d{3}[\\dX]$"
+                  }
+                },
+                "required": ["name"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Publisher"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the registry contract.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Registry authentication is required.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "This registry account cannot perform that action.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The registry resource was not found.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "The registry request body timed out.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current registry state., The registry storage allowance has been reached.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "An operator has removed this content.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request exceeds the registry size limit.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The template artifact failed verification., This template exchange format is not supported., This protocol schema version is not supported., Curation requires an author, description, and keywords.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The registry request limit has been reached.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The registry could not complete this request.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The registry is temporarily unavailable.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "registrySession": []
+          }
+        ]
+      }
+    },
+    "/account/tokens": {
+      "post": {
+        "operationId": "createToken",
+        "summary": "Issue a registry credential",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "scopes": {
+                    "minItems": 1,
+                    "maxItems": 2,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": ["publish", "moderate"]
+                    }
+                  },
+                  "lifetime_days": {
+                    "default": 90,
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 365
+                  }
+                },
+                "required": ["name", "scopes"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "token": {
+                      "type": "string"
+                    },
+                    "credential": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "scopes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": ["publish", "moderate"]
+                          }
+                        },
+                        "created_at": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                        },
+                        "expires_at": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                        },
+                        "revoked_at": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "scopes",
+                        "created_at",
+                        "expires_at",
+                        "revoked_at"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["token", "credential"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the registry contract.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Registry authentication is required.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "This registry account cannot perform that action.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The registry resource was not found.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "The registry request body timed out.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current registry state., The registry storage allowance has been reached.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "An operator has removed this content.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request exceeds the registry size limit.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The template artifact failed verification., This template exchange format is not supported., This protocol schema version is not supported., Curation requires an author, description, and keywords.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The registry request limit has been reached.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The registry could not complete this request.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The registry is temporarily unavailable.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "registrySession": []
+          }
+        ]
+      },
+      "get": {
+        "operationId": "listTokens",
+        "summary": "List this account’s active registry credentials",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "scopes": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": ["publish", "moderate"]
+                            }
+                          },
+                          "created_at": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                          },
+                          "expires_at": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                          },
+                          "revoked_at": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "scopes",
+                          "created_at",
+                          "expires_at",
+                          "revoked_at"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": ["data"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the registry contract.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Registry authentication is required.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "This registry account cannot perform that action.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The registry resource was not found.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "The registry request body timed out.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current registry state., The registry storage allowance has been reached.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "An operator has removed this content.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request exceeds the registry size limit.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The template artifact failed verification., This template exchange format is not supported., This protocol schema version is not supported., Curation requires an author, description, and keywords.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The registry request limit has been reached.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The registry could not complete this request.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The registry is temporarily unavailable.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "registrySession": []
+          }
+        ]
+      }
+    },
+    "/account/tokens/{id}": {
+      "delete": {
+        "operationId": "revokeToken",
+        "summary": "Revoke a registry credential",
+        "parameters": [
+          {
+            "in": "path",
+            "required": true,
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": ["ok"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the registry contract.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Registry authentication is required.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "This registry account cannot perform that action.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The registry resource was not found.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "The registry request body timed out.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current registry state., The registry storage allowance has been reached.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "An operator has removed this content.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request exceeds the registry size limit.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The template artifact failed verification., This template exchange format is not supported., This protocol schema version is not supported., Curation requires an author, description, and keywords.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The registry request limit has been reached.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The registry could not complete this request.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The registry is temporarily unavailable.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "registrySession": []
+          }
+        ]
+      }
+    },
+    "/moderation/entries/{id}/takedown": {
+      "post": {
+        "operationId": "takedown",
+        "summary": "Remove access to an entry’s artifact across all locators",
+        "parameters": [
+          {
+            "in": "path",
+            "required": true,
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": ["ok"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the registry contract.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Registry authentication is required.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "This registry account cannot perform that action.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The registry resource was not found.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "The registry request body timed out.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current registry state., The registry storage allowance has been reached.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "An operator has removed this content.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request exceeds the registry size limit.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The template artifact failed verification., This template exchange format is not supported., This protocol schema version is not supported., Curation requires an author, description, and keywords.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The registry request limit has been reached.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The registry could not complete this request.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The registry is temporarily unavailable.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "registryToken": []
+          }
+        ]
+      }
+    },
+    "/moderation/entries/{id}/restore": {
+      "post": {
+        "operationId": "restore",
+        "summary": "Restore access after a takedown",
+        "parameters": [
+          {
+            "in": "path",
+            "required": true,
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": ["ok"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the registry contract.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Registry authentication is required.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "This registry account cannot perform that action.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The registry resource was not found.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "The registry request body timed out.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current registry state., The registry storage allowance has been reached.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "An operator has removed this content.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request exceeds the registry size limit.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The template artifact failed verification., This template exchange format is not supported., This protocol schema version is not supported., Curation requires an author, description, and keywords.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The registry request limit has been reached.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The registry could not complete this request.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The registry is temporarily unavailable.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "registryToken": []
+          }
+        ]
+      }
+    },
+    "/moderation/artifacts/{root}": {
+      "delete": {
+        "operationId": "hardDelete",
+        "summary": "Permanently remove content and queue object cleanup",
+        "parameters": [
+          {
+            "in": "path",
+            "required": true,
+            "name": "root",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": ["ok"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the registry contract.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Registry authentication is required.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "This registry account cannot perform that action.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The registry resource was not found.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "The registry request body timed out.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current registry state., The registry storage allowance has been reached.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "An operator has removed this content.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request exceeds the registry size limit.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The template artifact failed verification., This template exchange format is not supported., This protocol schema version is not supported., Curation requires an author, description, and keywords.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The registry request limit has been reached.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The registry could not complete this request.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The registry is temporarily unavailable.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "registryToken": []
+          }
+        ]
+      }
+    },
+    "/moderation/publishers/{id}/suspension": {
+      "put": {
+        "operationId": "suspendPublisher",
+        "summary": "Suspend or reinstate a publisher",
+        "parameters": [
+          {
+            "in": "path",
+            "required": true,
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "suspended": {
+                    "type": "boolean"
+                  }
+                },
+                "required": ["suspended"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": ["ok"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the registry contract.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Registry authentication is required.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "This registry account cannot perform that action.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The registry resource was not found.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "The registry request body timed out.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current registry state., The registry storage allowance has been reached.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "An operator has removed this content.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request exceeds the registry size limit.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The template artifact failed verification., This template exchange format is not supported., This protocol schema version is not supported., Curation requires an author, description, and keywords.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The registry request limit has been reached.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The registry could not complete this request.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The registry is temporarily unavailable.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "registryToken": []
+          }
+        ]
+      }
+    },
+    "/moderation/entries/{id}/curation": {
+      "put": {
+        "operationId": "curate",
+        "summary": "Grant or revoke the curated badge",
+        "parameters": [
+          {
+            "in": "path",
+            "required": true,
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "curated": {
+                    "type": "boolean"
+                  }
+                },
+                "required": ["curated"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": ["ok"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the registry contract.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Registry authentication is required.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "This registry account cannot perform that action.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The registry resource was not found.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "The registry request body timed out.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current registry state., The registry storage allowance has been reached.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "An operator has removed this content.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request exceeds the registry size limit.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The template artifact failed verification., This template exchange format is not supported., This protocol schema version is not supported., Curation requires an author, description, and keywords.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The registry request limit has been reached.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The registry could not complete this request.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The registry is temporarily unavailable.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "registryToken": []
+          }
+        ]
+      }
+    },
+    "/moderation/reports": {
+      "get": {
+        "operationId": "reports",
+        "summary": "Read pending reports",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "after",
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$"
+            },
+            "allowEmptyValue": true,
+            "allowReserved": true
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "allowEmptyValue": true,
+            "allowReserved": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "entry_id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "category": {
+                            "type": "string",
+                            "enum": [
+                              "privacy",
+                              "copyright",
+                              "harmful_content",
+                              "spam",
+                              "other"
+                            ]
+                          },
+                          "details": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "created_at": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "entry_id",
+                          "category",
+                          "details",
+                          "created_at"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "next_cursor": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": ["data", "next_cursor"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request does not match the registry contract.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Registry authentication is required.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "This registry account cannot perform that action.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The registry resource was not found.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "The registry request body timed out.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The request conflicts with the current registry state., The registry storage allowance has been reached.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "An operator has removed this content.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request exceeds the registry size limit.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The template artifact failed verification., This template exchange format is not supported., This protocol schema version is not supported., Curation requires an author, description, and keywords.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "The registry request limit has been reached.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "The registry could not complete this request.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The registry is temporarily unavailable.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryProblem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "registryToken": []
+          }
+        ]
+      }
+    }
+  }
+}
