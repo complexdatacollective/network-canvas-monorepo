@@ -357,17 +357,23 @@ const DATE_RESOLUTION_NAMES: Readonly<Record<DateFormat, string>> =
  * places: the attribute records a different KIND of date now, the date is
  * outside the range it records at all, or the date is not one the calendar
  * has.
+ *
+ * None of them says the rule can never match, because beside a negating
+ * operator that is untrue: `not` is satisfied by every answer that fails the
+ * comparison, so a date the attribute cannot record makes such a rule match
+ * every participant rather than none. Each states the fact and what to choose
+ * instead, which is right whichever operator is above it.
  */
 const staleDatesMessage = (problems: readonly OperandDateProblem[]): string => {
   const [problem] = problems;
   if (problem === undefined) return INVALID_OPERAND_MESSAGE;
   switch (problem.kind) {
     case 'wrongResolution':
-      return `This attribute is now answered with ${DATE_RESOLUTION_NAMES[problem.resolution]}, so “${problem.value}” can never match it. Choose a date it can record.`;
+      return `This attribute is now answered with ${DATE_RESOLUTION_NAMES[problem.resolution]}, which “${problem.value}” is not. Choose a date it can record.`;
     case 'impossibleDate':
-      return `“${problem.value}” is not a date on the calendar, so the rule can never match. Choose a real date.`;
+      return `“${problem.value}” is not a date on the calendar. Choose a real date.`;
     case 'outOfRange':
-      return `“${problem.value}” is outside the dates this attribute can record, so the rule can never match. Choose a date inside them.`;
+      return `“${problem.value}” is outside the dates this attribute can record. Choose a date inside them.`;
     default:
       return assertNoSuchDateProblem(problem);
   }
@@ -1118,5 +1124,8 @@ const INVALID_OPERATOR_MESSAGE =
   'This operator is not valid for this attribute’s type. Choose another one.';
 const INVALID_PRESENCE_OPERATOR_MESSAGE =
   'This operator cannot ask whether an entity type is present. Choose another one.';
+// Says what the value IS rather than what the rule will do, for the reason
+// `staleDatesMessage` gives: beside a negating operator a value that can never
+// be compared makes the rule match every participant, not none of them.
 const INVALID_OPERAND_MESSAGE =
-  'This is not the kind of value this attribute is answered with, so the rule can never match. Enter one it can be compared against.';
+  'This is not the kind of value this attribute is answered with. Enter one it can be compared against.';

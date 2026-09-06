@@ -818,12 +818,23 @@ const DATE_RESOLUTION_NAMES: Readonly<Record<DateFormat, string>> =
     year: 'a year',
   });
 
+/**
+ * Why a date operand is reported, as a fact about the rule and nothing more.
+ *
+ * None of these says the rule can never match, because for some of them that
+ * is not true: `not` and `does not contain` are satisfied by every answer that
+ * fails the comparison, so a date no attribute can record makes such a rule
+ * match every participant rather than none of them. The fact — this is the
+ * date, and this is what the attribute records — is what sends the researcher
+ * to the right rule either way, and it is how the option messages beside these
+ * already read.
+ */
 const unusableDateMessage = (problem: OperandDateProblem): string => {
   switch (problem.kind) {
     case 'wrongResolution':
-      return `This rule compares its attribute against “${problem.value}”, but the attribute is now answered with ${DATE_RESOLUTION_NAMES[problem.resolution]}, so the rule can never match. Edit or delete the rule.`;
+      return `This rule compares its attribute against “${problem.value}”, but the attribute is now answered with ${DATE_RESOLUTION_NAMES[problem.resolution]}. Edit or delete the rule.`;
     case 'impossibleDate':
-      return `This rule compares its attribute against “${problem.value}”, which is not a date on the calendar, so the rule can never match. Edit or delete the rule.`;
+      return `This rule compares its attribute against “${problem.value}”, which is not a date on the calendar. Edit or delete the rule.`;
     case 'outOfRange':
       return `This rule compares its attribute against “${problem.value}”, which is outside the dates that attribute can record. Edit or delete the rule.`;
     default:

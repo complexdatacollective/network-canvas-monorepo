@@ -737,7 +737,7 @@ describe('a rule set the researcher cannot save', () => {
 
     expect(
       await screen.findByText(
-        'This rule compares its attribute against “2020-05-14”, but the attribute is now answered with a year, so the rule can never match. Edit or delete the rule.',
+        'This rule compares its attribute against “2020-05-14”, but the attribute is now answered with a year. Edit or delete the rule.',
       ),
     ).toBeInTheDocument();
     await waitFor(() =>

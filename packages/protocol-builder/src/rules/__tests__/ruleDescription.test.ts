@@ -862,3 +862,129 @@ describe('describeRule', () => {
     });
   });
 });
+
+/**
+ * What a problem message may and may not claim.
+ *
+ * A rule the codebook has moved under is reported wherever it is found, and
+ * the message is read by a researcher deciding which rule to open. It may
+ * therefore state facts — this is the value, this is what the attribute
+ * records — and it may not state a consequence that depends on the operator
+ * above it: `not` and `does not contain` are TRUE whenever the comparison
+ * fails, so an operand no answer can equal makes such a rule match every
+ * participant rather than none of them. Saying "the rule can never match"
+ * beside one is the opposite of what happens.
+ */
+describe('a problem beside an operator that negates its comparison', () => {
+  const yearCodebook: Readonly<Codebook> = {
+    node: {
+      person: {
+        name: 'Person',
+        color: 'node-color-seq-1',
+        shape: { default: 'circle' },
+        variables: {
+          met: {
+            name: 'Met on',
+            type: 'datetime',
+            component: 'DatePicker',
+            parameters: { type: 'year' },
+          },
+        },
+      },
+    },
+  } as unknown as Codebook;
+
+  const ruleWith = (operator: string) => ({
+    id: 'rule-1',
+    type: 'node' as const,
+    options: {
+      type: 'person',
+      attribute: 'met',
+      operator,
+      value: '2020-05-14',
+    },
+  });
+
+  it('reports the date without saying the rule can never match', () => {
+    const { problems } = describeRule({
+      rule: ruleWith('NOT'),
+      codebook: yearCodebook,
+    });
+
+    expect(problems.map((problem) => problem.code)).toEqual(['unusableDate']);
+    expect(problems.map((problem) => problem.message)).toEqual([
+      'This rule compares its attribute against “2020-05-14”, but the attribute is now answered with a year. Edit or delete the rule.',
+    ]);
+  });
+
+  it('says the same thing beside the operator that does match nothing', () => {
+    // The fact is what sends the researcher to the rule, and it is the same
+    // fact either way — which is why the message does not try to say what the
+    // rule will do.
+    const { problems } = describeRule({
+      rule: ruleWith('EXACTLY'),
+      codebook: yearCodebook,
+    });
+
+    expect(problems.map((problem) => problem.message)).toEqual([
+      'This rule compares its attribute against “2020-05-14”, but the attribute is now answered with a year. Edit or delete the rule.',
+    ]);
+  });
+
+  /**
+   * All three date problems at once, against a picker that can produce each:
+   * a date at the wrong precision, one the calendar does not have, and one
+   * outside the bounds the attribute records between.
+   */
+  it('makes no never-match claim in any date message', () => {
+    const boundedCodebook: Readonly<Codebook> = {
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
+          variables: {
+            met: {
+              name: 'Met on',
+              type: 'datetime',
+              component: 'DatePicker',
+              parameters: {
+                type: 'full',
+                min: '1800-01-01',
+                max: '1810-12-31',
+              },
+            },
+          },
+        },
+      },
+    } as unknown as Codebook;
+
+    const codes: string[] = [];
+    const messages: string[] = [];
+    for (const value of ['2020', '1805-02-31', '2020-05-14']) {
+      const { problems } = describeRule({
+        rule: {
+          id: 'rule-1',
+          type: 'node',
+          options: {
+            type: 'person',
+            attribute: 'met',
+            operator: 'NOT',
+            value,
+          },
+        },
+        codebook: boundedCodebook,
+      });
+      codes.push(...problems.map((problem) => problem.code));
+      messages.push(...problems.map((problem) => problem.message));
+    }
+
+    // Each value reaches a different branch of the date message, so a claim
+    // left in any one of them is caught.
+    expect(codes).toEqual(['unusableDate', 'unusableDate', 'unusableDate']);
+    expect(new Set(messages).size).toBe(3);
+    for (const message of messages) {
+      expect(message).not.toContain('can never match');
+    }
+  });
+});
