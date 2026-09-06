@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { contentHash, type SectionDoc } from '@codaco/studio-sync/apply';
+import {
+  contentHash,
+  type Command,
+  type SectionDoc,
+} from '@codaco/studio-sync/apply';
 import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -336,6 +340,76 @@ describe('ProtocolBuilderSessionStore', () => {
     expect(session.getSnapshot().editedSection.fields).toMatchObject({
       label: 'First',
       title: 'Second',
+    });
+  });
+
+  /**
+   * A pending batch describes an EDIT to the document the researcher was
+   * looking at, so a whole-list `set` in it is that list with one row
+   * rewritten. Replayed literally onto a base a collaborator has changed, it
+   * writes their rows back out of existence.
+   */
+  describe('a pending list command replayed onto a base that moved', () => {
+    const rowA = { id: 'a' };
+    const rowB = { id: 'b' };
+    const rowC = { id: 'c' };
+    const rowZ = { id: 'z' };
+    const rewrittenB = { id: 'b', prompt: 'Rewritten here' };
+    const FORM = ['nodeConfig', 'form'];
+
+    const stageWith = (form: readonly SectionDoc[]): SectionDoc => ({
+      label: 'Pedigree',
+      nodeConfig: { type: 'family_member', form: [...form] },
+    });
+
+    const insertedAbove = [rowZ, rowA, rowB, rowC];
+    const insertedBelow = [rowA, rowB, rowC, rowZ];
+    const removedAbove = [rowB, rowC];
+
+    const replay = (command: Command, arriving: readonly SectionDoc[]) => {
+      const { session } = createSession({
+        fields: stageWith([rowA, rowB, rowC]),
+      });
+      session.dispatch([command]);
+      session.acknowledge({
+        fields: stageWith(arriving),
+        throughBatchId: 0,
+        manifestRevision: revision(2n),
+      });
+      const { nodeConfig } = session.getSnapshot().editedSection.fields;
+      const form =
+        typeof nodeConfig === 'object' && nodeConfig !== null
+          ? Reflect.get(nodeConfig, 'form')
+          : undefined;
+      return {
+        form,
+        pending: session
+          .getSnapshot()
+          .pendingCommands.flatMap((batch) => [...batch.commands]),
+      };
+    };
+
+    it('merges a whole-list rewrite row by row', () => {
+      const rewrite: Command = {
+        op: 'set',
+        key: FORM,
+        value: [rowA, rewrittenB, rowC],
+      };
+      expect(replay(rewrite, insertedAbove).form).toEqual([
+        rowZ,
+        rowA,
+        rewrittenB,
+        rowC,
+      ]);
+      expect(replay(rewrite, insertedBelow).form).toEqual([
+        rowA,
+        rewrittenB,
+        rowC,
+        rowZ,
+      ]);
+      // The row the arrival removed stays removed: the local rewrite said
+      // nothing about it, so it has no claim on it.
+      expect(replay(rewrite, removedAbove).form).toEqual([rewrittenB, rowC]);
     });
   });
 

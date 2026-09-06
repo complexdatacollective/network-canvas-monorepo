@@ -1,9 +1,13 @@
 import {
+  applyCommand,
   canonicalize,
   type Command,
   type CommandTarget,
   type SectionDoc,
+  targetPath,
 } from '@codaco/studio-sync/apply';
+
+import { rowIdentity } from './form/arrayFields/arrayFieldCommands.ts';
 
 /**
  * How deep a command may address.
@@ -19,6 +23,20 @@ export const MAX_COMMAND_PATH_SEGMENTS = 16;
 
 export const isDictionary = (value: unknown): value is SectionDoc =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/** The list a command addresses, or `null` when that place holds something else. */
+function listAt(doc: SectionDoc, target: CommandTarget): unknown[] | null {
+  let cursor: unknown = doc;
+  for (const segment of targetPath(target)) {
+    if (!isDictionary(cursor)) return null;
+    cursor = cursor[segment];
+  }
+  // Absent reads as empty, the way the apply engine's own list operations read
+  // it: inserting the first row of a list the document does not keep yet is an
+  // insert into nothing, not a failure.
+  if (cursor === undefined) return [];
+  return Array.isArray(cursor) ? [...cursor] : null;
+}
 
 type ListOperation =
   | Readonly<{ op: 'insertItem'; index: number; item: unknown }>
@@ -148,4 +166,167 @@ export function commandForListChange(
     return { op: 'removeItem', key, index: operation.index };
   }
   return { op: 'moveItem', key, from: operation.from, to: operation.to };
+}
+
+/**
+ * Where a row of `before` is in `list` now.
+ *
+ * Its own id when it has one, then its content when that content appears
+ * exactly once, and only then its position — the same cascade the list editors
+ * resolve a rendered index with, for the same reason: an id survives every
+ * reorder, identical rows are genuinely indistinguishable, and a position is
+ * the only thing that tells two of those apart. `-1` means the row is not
+ * there at all.
+ */
+function findRow(
+  list: readonly unknown[],
+  row: unknown,
+  index: number,
+): number {
+  const id = rowIdentity(row);
+  if (id !== undefined) {
+    return list.findIndex((candidate) => rowIdentity(candidate) === id);
+  }
+  const content = canonicalize(row);
+  const matches = list.reduce<number[]>((found, candidate, candidateIndex) => {
+    if (canonicalize(candidate) === content) found.push(candidateIndex);
+    return found;
+  }, []);
+  if (matches.length === 1) return matches[0]!;
+  return matches.includes(index) ? index : -1;
+}
+
+/**
+ * A whole-list `set` made against `before`, merged with the list a new base
+ * holds.
+ *
+ * A `set` is what a list editor commits when it rewrites one row — the
+ * vocabulary cannot reach inside a row, so the whole list is written — and
+ * replaying that value onto a base that has moved writes a collaborator's rows
+ * back out of existence. Row by row instead, against the list the edit was
+ * made on as the common ancestor:
+ *
+ * - a row the edit left exactly as it found it follows the ARRIVAL, so
+ *   somebody else's rewrite of it stands;
+ * - a row the edit changed keeps the researcher's version;
+ * - a row the edit removed goes, and a row the arrival added appears;
+ * - a row the edit added is put back where the edit put it, after whichever
+ *   row it followed there.
+ *
+ * The arrival's order stands, because the edit that produced a `set` is about
+ * a row's contents rather than about where the rows are — a reorder is a
+ * `moveItem`, which is rebased rather than merged.
+ */
+function mergeListArrival(
+  before: readonly unknown[],
+  arrival: readonly unknown[],
+  next: readonly unknown[],
+): unknown[] {
+  // Where each ancestor row ended up on each side. An id-less row in a list the
+  // edit did not resize is matched by POSITION: such an edit rewrote one row in
+  // place, and its rewritten content is exactly what content matching cannot
+  // find.
+  const localOf = before.map((row, index) =>
+    rowIdentity(row) === undefined && next.length === before.length
+      ? index
+      : findRow(next, row, index),
+  );
+  const remoteOf = before.map((row, index) => findRow(arrival, row, index));
+
+  const merged: unknown[] = [];
+  arrival.forEach((row, index) => {
+    const ancestor = remoteOf.indexOf(index);
+    if (ancestor === -1) {
+      merged.push(row);
+      return;
+    }
+    const local = localOf[ancestor];
+    if (local === undefined || local === -1) return;
+    const localRow = next[local];
+    merged.push(
+      canonicalize(localRow) === canonicalize(before[ancestor])
+        ? row
+        : localRow,
+    );
+  });
+
+  next.forEach((row, index) => {
+    if (localOf.includes(index)) return;
+    const predecessor = index === 0 ? undefined : next[index - 1];
+    const after =
+      predecessor === undefined ? -1 : findRow(merged, predecessor, index - 1);
+    merged.splice(
+      after === -1 ? Math.min(index, merged.length) : after + 1,
+      0,
+      row,
+    );
+  });
+
+  return merged;
+}
+
+/** One command, re-expressed against a document whose list has moved. */
+function rebaseCommand(
+  basis: SectionDoc,
+  current: SectionDoc,
+  command: Command,
+): Command {
+  // A whole-list `set` is the only command whose meaning a moved list can
+  // change: an `unset`, and a `set` of anything but a list, say the same thing
+  // wherever they land.
+  if (command.op !== 'set' || !Array.isArray(command.value)) return command;
+
+  const before = listAt(basis, command.key);
+  const arrival = listAt(current, command.key);
+  if (before === null || arrival === null) return command;
+  // Nothing moved under this command, so it means exactly what it meant — and
+  // the command object itself is kept, so a batch that needs no rebasing stays
+  // byte-identical on the wire and in the command log.
+  if (canonicalize(before) === canonicalize(arrival)) return command;
+
+  const value = mergeListArrival(before, arrival, command.value);
+  return canonicalize(value) === canonicalize(command.value)
+    ? command
+    : { ...command, value };
+}
+
+/**
+ * A batch of commands, re-expressed against a base that has moved beneath it.
+ *
+ * A batch describes an EDIT to the document it was made on, not a set of
+ * values to write onto whatever arrives next. A whole-list `set` in it is the
+ * list the researcher was looking at with one row rewritten — so replaying it
+ * literally onto a base a collaborator has since added a row to throws their
+ * row away.
+ *
+ * `basis` is the document the batch was applied to, which is what says what
+ * each command MEANT; `current` is the document it is being replayed onto. The
+ * commands are walked in order against both, so a batch that touches one list
+ * twice resolves its second command against the list its first one produced.
+ *
+ * The batch is returned unchanged — the same array, holding the same command
+ * objects — when nothing it addresses has moved.
+ */
+export function rebaseCommands(
+  basis: SectionDoc,
+  current: SectionDoc,
+  commands: readonly Command[],
+): readonly Command[] {
+  let basisDocument = basis;
+  let currentDocument = current;
+  const rebased: Command[] = [];
+  let moved = false;
+
+  for (const command of commands) {
+    const next = rebaseCommand(basisDocument, currentDocument, command);
+    if (next !== command) moved = true;
+    rebased.push(next);
+    currentDocument = applyCommand(currentDocument, next);
+    // Against the ORIGINAL command, because the basis is the ground the batch
+    // was written on and the next command in it was written against what this
+    // one left there.
+    basisDocument = applyCommand(basisDocument, command);
+  }
+
+  return moved ? rebased : commands;
 }
