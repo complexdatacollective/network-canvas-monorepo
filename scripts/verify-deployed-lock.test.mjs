@@ -239,3 +239,64 @@ test('refuses an empty or unsupported lock instead of returning an empty passing
   f.target.packages = {};
   assert.throws(f.graph, /outside its selected/);
 });
+
+for (const location of [
+  'node_modules/rogue',
+  'node_modules/@scope/rogue',
+  'node_modules/.pnpm/node_modules/rogue',
+  'node_modules/.pnpm/node_modules/@scope/rogue',
+])
+  test(`refuses an unreferenced physical package at ${location}`, (t) => {
+    const f = fixture(t);
+    const path = join(f.directory, location);
+    mkdirSync(path, { recursive: true });
+    writeFileSync(
+      join(path, 'package.json'),
+      JSON.stringify({ name: 'rogue', version: '1.0.0' }),
+    );
+    assert.throws(
+      () => verifyInstalledDeployment(f.directory, f.graph()),
+      /outside the verified dependency graph/,
+    );
+  });
+
+for (const location of [
+  'node_modules/rogue',
+  'node_modules/.pnpm/node_modules/@scope/rogue',
+])
+  test(`refuses an unreferenced package link at ${location}`, (t) => {
+    const f = fixture(t);
+    const target = join(f.directory, 'unreferenced-package');
+    mkdirSync(target);
+    writeFileSync(
+      join(target, 'package.json'),
+      JSON.stringify({ name: 'rogue', version: '1.0.0' }),
+    );
+    const path = join(f.directory, location);
+    mkdirSync(dirname(path), { recursive: true });
+    symlinkSync(target, path);
+    assert.throws(
+      () => verifyInstalledDeployment(f.directory, f.graph()),
+      /outside the verified dependency graph/,
+    );
+  });
+
+test('accepts ordinary package hoists, binary shims, known bundled workspace links and pnpm links to omitted optional stores', (t) => {
+  const f = fixture(t);
+  writeFileSync(
+    join(f.directory, 'package.json'),
+    JSON.stringify({ name: '@codaco/test-server' }),
+  );
+  const hoisted = join(f.directory, 'node_modules/.pnpm');
+  f.link(hoisted, 'leaf', f.leaf);
+  f.link(f.directory, 'bundled', join(f.directory, '../bundled-source'));
+  f.link(hoisted, '@codaco/test-server', f.directory);
+  f.link(
+    hoisted,
+    'platform',
+    join(hoisted, 'platform@1.0.0/node_modules/platform'),
+  );
+  mkdirSync(join(f.directory, 'node_modules/.bin'));
+  writeFileSync(join(f.directory, 'node_modules/.bin/leaf'), '#!/bin/sh\n');
+  assert.equal(verifyInstalledDeployment(f.directory, f.graph()).length, 2);
+});

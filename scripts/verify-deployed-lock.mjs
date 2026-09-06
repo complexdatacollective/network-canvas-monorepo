@@ -3,11 +3,12 @@ import {
   existsSync,
   lstatSync,
   readFileSync,
+  readlinkSync,
   readdirSync,
   realpathSync,
   writeFileSync,
 } from 'node:fs';
-import { dirname, join, resolve, sep } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 
@@ -180,8 +181,58 @@ export function verifyInstalledDeployment(directory, graph) {
     for (const [name, dependency] of Object.entries(graph.root[group] ?? {}))
       if (!dependency.version.startsWith('link:'))
         visit(root, name, dependency.version, group === 'optionalDependencies');
-  // A hidden, unreferenced package must not bypass the selected graph check.
+  // Inspect every package-bearing root, including hoists outside virtual-store
+  // entries. A package directory or link cannot hide beside the normal root
+  // links or under .pnpm/node_modules. This is a package-closure check, not an
+  // attestation of arbitrary package file contents or generated .bin shims.
   const store = join(modules, '.pnpm');
+  const bundled = new Set(
+    groups.flatMap((group) =>
+      Object.entries(graph.root[group] ?? {})
+        .filter(([, dependency]) => dependency.version.startsWith('link:'))
+        .map(([name]) => name),
+    ),
+  );
+  const application = join(root, 'package.json');
+  if (existsSync(application)) {
+    const name = JSON.parse(readFileSync(application, 'utf8')).name;
+    if (typeof name === 'string' && name) bundled.add(name);
+  }
+  function inspectPackages(nested) {
+    const packages = readdirSync(nested).flatMap((name) => {
+      if (name.startsWith('.')) return []; // pnpm metadata and binary shims.
+      return name.startsWith('@')
+        ? readdirSync(join(nested, name)).map((child) => `${name}/${child}`)
+        : [name];
+    });
+    for (const name of packages) {
+      const path = join(nested, name);
+      const info = lstatSync(path);
+      if (!info.isDirectory() && !info.isSymbolicLink()) continue;
+      // pnpm preserves these source-first links during deploy. The app bundles
+      // the selected workspace source; no extra physical package is allowed.
+      if (info.isSymbolicLink() && bundled.has(name)) continue;
+      if (info.isSymbolicLink() && !existsSync(path)) {
+        // Optional platform packages may leave inert links into an omitted
+        // virtual store. A link outside that store is never such a placeholder.
+        const target = resolve(dirname(path), readlinkSync(path));
+        let ancestor = dirname(target);
+        while (!existsSync(ancestor)) ancestor = dirname(ancestor);
+        const canonical = resolve(
+          realpathSync(ancestor),
+          relative(ancestor, target),
+        );
+        if (canonical.startsWith(`${store}${sep}`)) continue;
+      }
+      if (!existsSync(path) || !visited.has(realpathSync(path)))
+        throw new Error(
+          'An installed package is outside the verified dependency graph.',
+        );
+    }
+  }
+  inspectPackages(modules);
+  if (existsSync(join(store, 'node_modules')))
+    inspectPackages(join(store, 'node_modules'));
   for (const entry of readdirSync(store, { withFileTypes: true })) {
     const nested = join(store, entry.name, 'node_modules');
     if (
@@ -190,24 +241,7 @@ export function verifyInstalledDeployment(directory, graph) {
       !existsSync(nested)
     )
       continue;
-    const packages = readdirSync(nested).flatMap((name) =>
-      name.startsWith('@')
-        ? readdirSync(join(nested, name)).map((child) =>
-            join(nested, name, child),
-          )
-        : [join(nested, name)],
-    );
-    for (const path of packages) {
-      if (
-        !lstatSync(path).isDirectory() ||
-        !existsSync(join(path, 'package.json'))
-      )
-        continue;
-      if (!visited.has(realpathSync(path)))
-        throw new Error(
-          'An installed package is outside the verified dependency graph.',
-        );
-    }
+    inspectPackages(nested);
   }
   if (!visited.size)
     throw new Error('The deployed dependency inventory is empty.');
