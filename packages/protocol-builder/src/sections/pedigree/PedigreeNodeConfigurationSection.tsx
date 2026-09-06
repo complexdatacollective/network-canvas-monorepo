@@ -163,11 +163,11 @@ export default function PedigreeNodeConfigurationSection({
   );
 
   // A structural slot is an UNVALIDATED writer, so it may not take an
-  // attribute this stage's own unsaved form already collects — and the display
-  // label, which IS collected through a form field, may not take one the
-  // structural slots claim. Read from the live rows: a field added in this
-  // session is not saved yet, and one just deleted must free its attribute at
-  // once.
+  // attribute this stage's own unsaved form already collects — and neither the
+  // display label, which IS collected through a form field, nor the form
+  // itself may take one the structural slots claim. Both directions read from
+  // the live draft: a field or a binding made in this session is not saved
+  // yet, and one just cleared must free its attribute at once.
   const draftFormVariables = useMemo(
     () => draftFormFieldVariables(formRows),
     [formRows],
@@ -279,8 +279,11 @@ export default function PedigreeNodeConfigurationSection({
             so the pedigree does not answer it a second time. What it does own
             is where the list lives (`nodeConfig.form`), which type it
             collects into (`nodeConfig.type` rather than a stage `subject`),
-            that the form may be left out altogether, and what is lost by
-            switching it off.
+            that the form may be left out altogether, what is lost by switching
+            it off, and which of its own slots are writing unvalidated right
+            now — the three below are the pedigree's unvalidated writers, and
+            the shared section cannot find them because they are this session's
+            draft rather than anything the saved protocol holds.
           */}
           <FormFieldsSection
             subject="node"
@@ -288,6 +291,7 @@ export default function PedigreeNodeConfigurationSection({
             fieldsPath={FORM_FIELD}
             optional
             capability={FORM_CAPABILITY}
+            draftUnvalidatedVariables={draftStructuralVariables}
             copy={{
               sectionTitle: words.formSectionTitle,
               description: words.formSectionDescription,

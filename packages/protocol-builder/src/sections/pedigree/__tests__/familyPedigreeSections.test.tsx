@@ -354,27 +354,22 @@ describe('the attributes a pedigree may bind', () => {
   });
 
   /**
-   * TODO(S): the other half of the rule the test above states, in the window
-   * where only this session knows about it.
+   * The other half of the rule the test above states, in the window where only
+   * this session knows about it.
    *
    * The form picker's exclusions are built from the SAVED protocol, so an
-   * attribute a structural slot was bound to in this session is invisible to
-   * it — and creating one from the slot itself writes the attribute to the
-   * codebook at once, so it appears in the form picker while the slot that
-   * claims it is still unsaved. The pedigree writes it from the tree the
-   * participant draws, without validation; collecting it through a form field
-   * as well is the mix the whole rule exists to stop.
+   * attribute a structural slot was bound to in this session would be
+   * invisible to it — and creating one from the slot itself writes the
+   * attribute to the codebook at once, so it appears in the form picker while
+   * the slot that claims it is still unsaved. The pedigree writes it from the
+   * tree the participant draws, without validation; collecting it through a
+   * form field as well is the mix the whole rule exists to stop.
    *
-   * The pedigree already refuses this in the opposite direction, because
-   * `SlotVariableField` takes `draftConflicting`. Un-skip once
-   * `FormFieldsSection` takes the matching `draftUnvalidatedVariables` prop
-   * and the pedigree passes it the slots' live values (S owns
-   * `src/sections/FormFieldsSection.tsx`).
+   * The pedigree closes the window by handing the shared section its three
+   * unvalidated slots' live values as `draftUnvalidatedVariables`, which is
+   * the mirror of the `draftConflicting` the slots already take.
    */
-  it('never offers the family member form an attribute a slot took this session', async (ctx) => {
-    ctx.skip(
-      'FormFieldsSection has no draftUnvalidatedVariables prop yet (S owns src/sections/FormFieldsSection.tsx)',
-    );
+  it('never offers the family member form an attribute a slot took this session', async () => {
     const harness = renderStageEditor(openFixture());
 
     // Created FROM the slot, so the attribute reaches the codebook — and
