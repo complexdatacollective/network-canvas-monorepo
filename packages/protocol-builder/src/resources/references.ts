@@ -1,3 +1,4 @@
+import { createMessageError } from '@codaco/app-i18n/messages';
 import { getValue } from '@codaco/fresco-ui/form/utils/objectPath';
 import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 import {
@@ -7,7 +8,7 @@ import {
 } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import { resourceProblemClause } from '../form/schemaProblems.ts';
+import { resourceProblemMessage } from '../form/schemaProblems.ts';
 
 export type StageResourceReference = Readonly<{
   /** Path from the stage document root to the field holding the id. */
@@ -123,20 +124,27 @@ export function findDanglingResourceReferences(
  *
  * The refusal is optional because a failed parse carrying no issue is a shape
  * the types allow and nothing produces: with none, what comes back is the
- * clause for a refusal this package has no words for, which is what that is.
+ * sentence for a refusal this package has no words for, which is what that is.
+ *
+ * Encoded rather than formatted: this runs where a draft is judged, with no
+ * reader and no language, and the sentence travels on a
+ * `ProtocolValidationIssue.message` — a string-only contract — to whichever
+ * form region reports it. `FormErrors` and `SectionOutline` decode it there.
  */
 function unreadableResourceMessage(
   manifest: SectionDoc,
   resourceId: string,
   refusal: Readonly<{ code: string; path: readonly PropertyKey[] }> | undefined,
 ): string {
-  const clause = resourceProblemClause({
-    code: refusal?.code ?? '',
-    absent:
-      refusal !== undefined &&
-      isMissingAt(manifest, [resourceId, ...refusal.path]),
-  });
-  return `This stage points at a resource ("${resourceId}") the protocol cannot read: ${clause}`;
+  return createMessageError(
+    resourceProblemMessage({
+      code: refusal?.code ?? '',
+      absent:
+        refusal !== undefined &&
+        isMissingAt(manifest, [resourceId, ...refusal.path]),
+    }),
+    { resourceId },
+  );
 }
 
 /**

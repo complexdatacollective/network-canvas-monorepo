@@ -4,6 +4,7 @@ import { assetSchema } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { readMessage } from '../../testing/i18n.ts';
 import { attributeValidationIssues } from '../../validationAttribution.ts';
 import {
   collectStageResourceReferences,
@@ -124,7 +125,7 @@ describe('findDanglingResourceReferences', () => {
     expect(problems).toHaveLength(1);
     expect(problems[0]?.resourceId).toBe('map-layers');
     expect(problems[0]?.path).toEqual(['mapOptions', 'dataSourceAssetId']);
-    expect(problems[0]?.message).toBe(
+    expect(readMessage(problems[0]?.message ?? '')).toBe(
       'This stage uses a resource ("map-layers") that is not in the protocol.',
     );
   });
@@ -138,7 +139,7 @@ describe('findDanglingResourceReferences', () => {
       'map-token',
       'map-layers',
     ]);
-    expect(problems.map((problem) => problem.message)).toEqual([
+    expect(problems.map((problem) => readMessage(problem.message))).toEqual([
       'This stage uses a resource ("map-token") that is not in the protocol.',
       'This stage uses a resource ("map-layers") that is not in the protocol.',
     ]);
@@ -155,10 +156,12 @@ describe('findDanglingResourceReferences', () => {
 
     expect(problems).toHaveLength(1);
     expect(problems[0]?.resourceId).toBe('map-layers');
-    expect(problems[0]?.message).toBe(
+    expect(readMessage(problems[0]?.message ?? '')).toBe(
       'This stage points at a resource ("map-layers") the protocol cannot read: part of its entry is missing.',
     );
-    expect(problems[0]?.message).not.toContain('not in the protocol');
+    expect(readMessage(problems[0]?.message ?? '')).not.toContain(
+      'not in the protocol',
+    );
   });
 
   it('reports a committed entry that holds the wrong kind of value', () => {
@@ -172,7 +175,7 @@ describe('findDanglingResourceReferences', () => {
 
     expect(problems).toHaveLength(1);
     expect(problems[0]?.resourceId).toBe('map-layers');
-    expect(problems[0]?.message).toBe(
+    expect(readMessage(problems[0]?.message ?? '')).toBe(
       'This stage points at a resource ("map-layers") the protocol cannot read: part of its entry holds the wrong kind of value.',
     );
   });
@@ -193,7 +196,10 @@ describe('findDanglingResourceReferences', () => {
         stageDocument: geospatialStage,
         manifestSection: { ...validManifest, 'map-layers': entry },
       });
-      const message = problems[0]?.message ?? '';
+      // Read the way the render sites read it, so the assertions below are
+      // about the sentence a researcher meets rather than about the envelope
+      // it travelled in.
+      const message = readMessage(problems[0]?.message ?? '');
 
       // The entry has to be one the schema actually refuses, or the case would
       // pass by saying nothing at all.
