@@ -45,7 +45,10 @@ const cursorSchema = z.strictObject({
 export type RotationCursor = z.infer<typeof cursorSchema>;
 
 export function parseRotationCursor(value: unknown): RotationCursor {
-  return cursorSchema.parse(value);
+  const cursor = cursorSchema.parse(value);
+  if (cursor.afterId !== null && cursor.phase !== 'oauth')
+    z.uuid().parse(cursor.afterId);
+  return cursor;
 }
 
 export function parseLegacyCursor(value: unknown): string | null {
@@ -340,14 +343,33 @@ async function rotateOAuth(
   );
 }
 
-const OLD_OAUTH = OAUTH_FIELDS.map(
-  ({ keyColumn }) => `(${keyColumn} IS NOT NULL AND ${keyColumn} <> $1)`,
-).join(' OR ');
+/**
+ * RLS selectivity estimates can otherwise choose an eager bitmap/heap sort of
+ * the entire suffix before LIMIT. These maintenance-only, transaction-local
+ * settings retain native PK ordering and never affect application sessions.
+ */
+async function readMaintenancePage<Row extends pg.QueryResultRow>(
+  pool: pg.Pool,
+  statement: string,
+  values: (string | number)[],
+): Promise<pg.QueryResult<Row>> {
+  return credentialTransaction(
+    pool,
+    async (client) => {
+      await client.query(
+        'SET LOCAL enable_bitmapscan = off; SET LOCAL enable_seqscan = off; SET LOCAL enable_sort = off',
+      );
+      return client.query<Row>(statement, values);
+    },
+    true,
+  );
+}
 
 /**
- * One bounded, resumable pass. The cursor is non-secret, binds target key IDs,
- * and advances only after committed records. Failure leaves the caller's last
- * returned cursor safe to replay. No keys/proofs are deleted on completion.
+ * Visit at most limit rows in native primary-key order, including rows already
+ * using the target keys. No remaining-corpus scan runs between pages. A cursor
+ * advances only after committed records and binds both target key purposes.
+ * passComplete means traversal exhaustion, not permission to retire old roots.
  */
 export async function rotateEncryptionBatch(
   pool: pg.Pool,
@@ -355,8 +377,9 @@ export async function rotateEncryptionBatch(
   input: { limit: number; cursor?: RotationCursor | null },
 ): Promise<{
   processed: number;
+  scanned: number;
+  passComplete: boolean;
   cursor: RotationCursor | null;
-  remaining: number;
 }> {
   const limit = limitSchema.parse(input.limit);
   const start: RotationCursor = input.cursor
@@ -375,58 +398,72 @@ export async function rotateEncryptionBatch(
   await credentialTransaction(pool, async () => undefined, true);
   let cursor = { ...start };
   let processed = 0;
-  while (processed < limit) {
-    const cap = limit - processed;
+  let scanned = 0;
+  while (scanned < limit) {
+    const cap = limit - scanned;
+    // Separate first/subsequent-page predicates let PostgreSQL use the native
+    // PK index directly, including when the prepared plan becomes generic.
+    const where = cursor.afterId === null ? '' : 'WHERE id > $2';
+    const values = cursor.afterId === null ? [cap] : [cap, cursor.afterId];
     let ids: string[];
     if (cursor.phase === 'participants') {
-      const selected = await pool.query<ParticipantCiphertextRow>(
-        `SELECT id, team_id, study_id, participant_code, pii_key_id, pii_algorithm, email_ciphertext, phone_ciphertext, name_ciphertext, attributes_ciphertext FROM participants WHERE pii_key_id IS NOT NULL AND pii_key_id <> $1 AND ($2::text IS NULL OR id::text > $2) ORDER BY id::text LIMIT $3`,
-        [cursor.piiKeyId, cursor.afterId, cap],
+      const selected = await readMaintenancePage<ParticipantCiphertextRow>(
+        pool,
+        `SELECT id, team_id, study_id, participant_code, pii_key_id, pii_algorithm, email_ciphertext, phone_ciphertext, name_ciphertext, attributes_ciphertext FROM participants ${where} ORDER BY id LIMIT $1`,
+        values,
       );
       ids = selected.rows.map((row) => row.id);
-      for (const row of selected.rows) await rotateParticipant(pool, keys, row);
+      for (const row of selected.rows) {
+        if (row.pii_key_id !== null && row.pii_key_id !== cursor.piiKeyId) {
+          await rotateParticipant(pool, keys, row);
+          processed += 1;
+        }
+      }
     } else if (cursor.phase === 'webhooks') {
-      const selected = await pool.query<WebhookCiphertextRow>(
-        'SELECT id, team_id, secret_ciphertext, secret_key_id, secret_algorithm, state FROM webhook_subscriptions WHERE secret_key_id <> $1 AND ($2::text IS NULL OR id::text > $2) ORDER BY id::text LIMIT $3',
-        [cursor.integrationKeyId, cursor.afterId, cap],
+      const selected = await readMaintenancePage<WebhookCiphertextRow>(
+        pool,
+        `SELECT id, team_id, secret_ciphertext, secret_key_id, secret_algorithm, state FROM webhook_subscriptions ${where} ORDER BY id LIMIT $1`,
+        values,
       );
       ids = selected.rows.map((row) => row.id);
-      for (const row of selected.rows) await rotateWebhook(pool, keys, row);
+      for (const row of selected.rows) {
+        if (row.secret_key_id !== cursor.integrationKeyId) {
+          await rotateWebhook(pool, keys, row);
+          processed += 1;
+        }
+      }
     } else {
-      const selected = await pool.query<OAuthRow>(
-        `SELECT ${OAUTH_SELECT} FROM account WHERE (${OLD_OAUTH}) AND ($2::text IS NULL OR id > $2) ORDER BY id LIMIT $3`,
-        [cursor.integrationKeyId, cursor.afterId, cap],
+      const selected = await readMaintenancePage<OAuthRow>(
+        pool,
+        `SELECT ${OAUTH_SELECT} FROM account ${where} ORDER BY id LIMIT $1`,
+        values,
       );
       ids = selected.rows.map((row) => row.id);
-      for (const row of selected.rows) await rotateOAuth(pool, keys, row);
+      for (const row of selected.rows) {
+        if (
+          OAUTH_FIELDS.some(
+            ({ keyId }) =>
+              row[keyId] !== null && row[keyId] !== cursor.integrationKeyId,
+          )
+        ) {
+          await rotateOAuth(pool, keys, row);
+          processed += 1;
+        }
+      }
     }
-    processed += ids.length;
-    if (ids.length === cap) {
-      cursor.afterId = ids.at(-1)!;
-      break;
-    }
+    scanned += ids.length;
+    if (ids.length === cap)
+      return {
+        processed,
+        scanned,
+        passComplete: false,
+        cursor: { ...cursor, afterId: ids.at(-1)! },
+      };
     const next = PHASES[PHASES.indexOf(cursor.phase) + 1];
-    if (!next) break;
+    if (!next) return { processed, scanned, passComplete: true, cursor: null };
     cursor = { ...cursor, phase: next, afterId: null };
   }
-  const count = await pool.query<{ remaining: number }>(
-    `SELECT ((SELECT count(*) FROM participants WHERE pii_key_id IS NOT NULL AND pii_key_id <> $2) + (SELECT count(*) FROM webhook_subscriptions WHERE secret_key_id <> $1) + (SELECT count(*) FROM account WHERE ${OLD_OAUTH}))::int AS remaining`,
-    [cursor.integrationKeyId, cursor.piiKeyId],
-  );
-  const remaining = count.rows[0]?.remaining ?? -1;
-  if (remaining < 0) throw new ProtectedDataError();
-  // Another old replica may have written behind this cursor. Restart a pass
-  // instead of falsely reporting success; operators stop old writers first.
-  return {
-    processed,
-    remaining,
-    cursor:
-      remaining === 0
-        ? null
-        : processed < limit
-          ? { ...start, phase: 'participants', afterId: null }
-          : cursor,
-  };
+  throw new ProtectedDataError();
 }
 
 /** Offline only: preserve legacy values until encryption and audit commit. */
@@ -434,18 +471,26 @@ export async function migrateLegacyOAuthBatch(
   pool: pg.Pool,
   keys: EncryptionKeys,
   input: { limit: number; afterId?: string | null },
-): Promise<{ processed: number; afterId: string | null; remaining: number }> {
+): Promise<{
+  processed: number;
+  scanned: number;
+  afterId: string | null;
+  passComplete: boolean;
+}> {
   const limit = limitSchema.parse(input.limit);
   const afterId = parseLegacyCursor(input.afterId ?? null);
   const legacyWhere =
     '"accessToken" IS NOT NULL OR "refreshToken" IS NOT NULL OR "idToken" IS NOT NULL';
   await credentialTransaction(pool, async () => undefined, true);
-  const ids = await pool.query<{ id: string }>(
-    `SELECT id FROM account WHERE (${legacyWhere}) AND ($1::text IS NULL OR id > $1) ORDER BY id LIMIT $2`,
-    [afterId, limit],
+  const ids = await readMaintenancePage<{ id: string; legacy: boolean }>(
+    pool,
+    `SELECT id, (${legacyWhere}) AS legacy FROM account ${afterId === null ? '' : 'WHERE id > $2'} ORDER BY id LIMIT $1`,
+    afterId === null ? [limit] : [limit, afterId],
   );
-  for (const { id } of ids.rows) {
-    await credentialTransaction(
+  let processed = 0;
+  for (const { id, legacy } of ids.rows) {
+    if (!legacy) continue;
+    const converted = await credentialTransaction(
       pool,
       async (client) => {
         const selected = await client.query<
@@ -465,7 +510,7 @@ export async function migrateLegacyOAuthBatch(
             (value) => value === null,
           )
         )
-          return;
+          return false;
         if (OAUTH_FIELDS.some(({ field }) => row[field] !== null))
           throw new ProtectedDataError();
         const sealed = sealOAuthFields(keys, row, {
@@ -480,19 +525,17 @@ export async function migrateLegacyOAuthBatch(
           'migrate_legacy',
           randomUUID(),
         );
+        return true;
       },
       true,
     );
+    if (converted) processed += 1;
   }
-  const count = await pool.query<{ remaining: number }>(
-    `SELECT count(*)::int AS remaining FROM account WHERE ${legacyWhere}`,
-  );
-  const remaining = count.rows[0]?.remaining ?? -1;
-  if (remaining < 0) throw new ProtectedDataError();
+  const passComplete = ids.rows.length < limit;
   return {
-    processed: ids.rows.length,
-    remaining,
-    afterId:
-      remaining === 0 || ids.rows.length < limit ? null : ids.rows.at(-1)!.id,
+    processed,
+    scanned: ids.rows.length,
+    passComplete,
+    afterId: passComplete ? null : ids.rows.at(-1)!.id,
   };
 }

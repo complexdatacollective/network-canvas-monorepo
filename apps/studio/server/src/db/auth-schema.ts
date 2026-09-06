@@ -70,9 +70,8 @@ const session = pgTable(
   (table) => [index('session_userId_idx').on(table.userId)],
 );
 
-const account = pgTable(
-  'account',
-  {
+function accountColumns() {
+  return {
     id: text('id').primaryKey(),
     accountId: text('accountId').notNull(),
     providerId: text('providerId').notNull(),
@@ -116,7 +115,12 @@ const account = pgTable(
       .notNull()
       .defaultNow(),
     updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull(),
-  },
+  };
+}
+
+const account = pgTable(
+  'account',
+  accountColumns(),
   // (issuer, accountId) is the external identity better-auth's own schema
   // declares unique; without it two concurrent sign-ins for one identity can
   // each insert a row, after which lookups pick one arbitrarily.
@@ -250,4 +254,18 @@ export const AUTH_TABLES = {
   teams,
   team_members,
   team_invitations,
+};
+
+// The adapter uses SELECT/RETURNING without an explicit projection. The same
+// column builders keep its runtime model aligned with the physical schema,
+// while excluding legacy plaintext even on create, update and joined reads.
+const {
+  legacyAccessToken: _legacyAccessToken,
+  legacyRefreshToken: _legacyRefreshToken,
+  legacyIdToken: _legacyIdToken,
+  ...runtimeAccountColumns
+} = accountColumns();
+export const AUTH_RUNTIME_TABLES = {
+  ...AUTH_TABLES,
+  account: pgTable('account', runtimeAccountColumns),
 };

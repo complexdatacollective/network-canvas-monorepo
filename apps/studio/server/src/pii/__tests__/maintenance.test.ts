@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 
 import { createTenantDb } from '@codaco/studio-sync/tenant';
 
@@ -69,6 +70,123 @@ async function addWebhook(
 }
 
 describe('bounded encryption maintenance and retained suppression', () => {
+  it('visits a bounded native-PK page even when the corpus has no old-key rows', async () => {
+    await participantFixture(async ({ scratch, keys, context, target }) => {
+      await scratch.pool.query(
+        `INSERT INTO participants (id, team_id, study_id, participant_code) SELECT gen_random_uuid(), $1, $2, 'B-' || n FROM generate_series(1, 10000) AS n`,
+        [context.tenantDb.teamId, target.studyId],
+      );
+      await scratch.pool.query('ANALYZE participants');
+      const boundary = (
+        await scratch.pool.query<{ id: string }>(
+          'SELECT id FROM participants ORDER BY id OFFSET 9900 LIMIT 1',
+        )
+      ).rows[0]!.id;
+      const observedClient = await scratch.maintenance.connect();
+      const queries = vi.spyOn(observedClient, 'query');
+      observedClient.release();
+      const result = await rotateEncryptionBatch(scratch.maintenance, keys, {
+        limit: 1,
+        cursor: {
+          phase: 'participants',
+          afterId: boundary,
+          piiKeyId: 'v1',
+          integrationKeyId: 'v1',
+        },
+      });
+      expect(result).toMatchObject({
+        processed: 0,
+        scanned: 1,
+        passComplete: false,
+        cursor: { phase: 'participants' },
+      });
+      const calls = [...queries.mock.calls];
+      queries.mockRestore();
+      expect(
+        calls.some(([sql]) => typeof sql === 'string' && /count\(/i.test(sql)),
+      ).toBe(false);
+      const page = calls.find(
+        ([sql]) => typeof sql === 'string' && sql.includes('FROM participants'),
+      );
+      if (!page || typeof page[0] !== 'string' || !Array.isArray(page[1]))
+        throw new Error('The actual participant page query was not observed.');
+      const planSchema = z.object({
+        Plan: z.object({
+          'Shared Hit Blocks': z.number(),
+          'Shared Read Blocks': z.number(),
+        }),
+      });
+      const buffers = (value: unknown) => {
+        const plan = planSchema.parse(value).Plan;
+        return plan['Shared Hit Blocks'] + plan['Shared Read Blocks'];
+      };
+      const explainClient = await scratch.maintenance.connect();
+      try {
+        await explainClient.query('BEGIN');
+        for (const [statement] of calls) {
+          if (
+            typeof statement === 'string' &&
+            statement.startsWith('SET LOCAL enable_')
+          )
+            await explainClient.query(statement);
+        }
+        const plan = await explainClient.query(
+          'EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ' + page[0],
+          page[1],
+        );
+        expect(buffers(plan.rows[0]['QUERY PLAN'][0])).toBeLessThan(32);
+      } finally {
+        await explainClient.query('ROLLBACK');
+        explainClient.release();
+      }
+      // Positive control: the former UUID-to-text traversal really walks the
+      // corpus. This distinguishes an indexed page from a vacuous empty query.
+      const control = await scratch.maintenance.query(
+        'EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) SELECT id FROM participants WHERE id::text > $1 ORDER BY id::text LIMIT 1',
+        [boundary],
+      );
+      expect(buffers(control.rows[0]['QUERY PLAN'][0])).toBeGreaterThan(100);
+    });
+  });
+
+  it('advances the legacy cursor through non-legacy rows without a whole-corpus recount', async () => {
+    await participantFixture(async ({ scratch, keys, context }) => {
+      await scratch.pool.query(
+        `INSERT INTO account (id, "userId", "accountId", "providerId", issuer, "updatedAt") VALUES ('already-current', $1, 'already-current', 'google', 'https://accounts.google.com', now())`,
+        [context.principal.userId],
+      );
+      const observedClient = await scratch.maintenance.connect();
+      const queries = vi.spyOn(observedClient, 'query');
+      observedClient.release();
+      const first = await migrateLegacyOAuthBatch(scratch.maintenance, keys, {
+        limit: 1,
+      });
+      expect(first).toEqual({
+        processed: 0,
+        scanned: 1,
+        afterId: 'already-current',
+        passComplete: false,
+      });
+      expect(
+        await migrateLegacyOAuthBatch(scratch.maintenance, keys, {
+          limit: 1,
+          afterId: first.afterId,
+        }),
+      ).toEqual({
+        processed: 0,
+        scanned: 0,
+        afterId: null,
+        passComplete: true,
+      });
+      expect(
+        queries.mock.calls.some(
+          ([sql]) => typeof sql === 'string' && /count\(/i.test(sql),
+        ),
+      ).toBe(false);
+      queries.mockRestore();
+    });
+  });
+
   it('resumes across PII, webhook and OAuth rows while keeping all contact indexes stable', async () => {
     await participantFixture(async (fixture) => {
       const { scratch, keys, context, target } = fixture;
@@ -125,12 +243,14 @@ describe('bounded encryption maintenance and retained suppression', () => {
           { limit: 1, cursor },
         );
         expect(result.processed).toBeLessThanOrEqual(1);
-        counts.push(result.remaining);
+        counts.push(result.processed);
+        expect(result.scanned).toBeLessThanOrEqual(1);
+        expect(result.passComplete).toBe(result.cursor === null);
         cursor = result.cursor;
         if (counts.length > 6)
           throw new Error('Rotation did not make bounded progress.');
       } while (cursor);
-      expect(counts).toEqual([2, 1, 0]);
+      expect(counts).toEqual([1, 1, 1, 0]);
       const after = await scratch.pool.query(
         'SELECT email_index, phone_index, blind_index_key_id, email_ciphertext, pii_key_id FROM participants WHERE id = $1',
         [target.participantId],
@@ -201,7 +321,12 @@ describe('bounded encryption maintenance and retained suppression', () => {
       expect(oauthAudit.rowCount).toBe(1);
       await expect(
         rotateEncryptionBatch(scratch.maintenance, rotatedKeys, { limit: 100 }),
-      ).resolves.toMatchObject({ processed: 0, remaining: 0, cursor: null });
+      ).resolves.toMatchObject({
+        processed: 0,
+        scanned: 3,
+        passComplete: true,
+        cursor: null,
+      });
     });
   });
 
@@ -259,6 +384,30 @@ describe('bounded encryption maintenance and retained suppression', () => {
           },
         }),
       ).rejects.toThrow(ProtectedDataError);
+    });
+  });
+
+  it('refuses malformed UUID, phase and stale purpose-target cursors', async () => {
+    await participantFixture(async ({ scratch, keys }) => {
+      const valid = {
+        phase: 'participants',
+        afterId: null,
+        piiKeyId: 'v1',
+        integrationKeyId: 'v1',
+      } as const;
+      for (const cursor of [
+        { ...valid, afterId: 'not-a-uuid' },
+        { ...valid, phase: 'invalid' },
+        { ...valid, piiKeyId: 'v2' },
+        { ...valid, integrationKeyId: 'v2' },
+      ]) {
+        await expect(
+          rotateEncryptionBatch(scratch.maintenance, keys, {
+            limit: 1,
+            cursor: cursor as RotationCursor,
+          }),
+        ).rejects.toThrow();
+      }
     });
   });
 
@@ -382,7 +531,12 @@ describe('bounded encryption maintenance and retained suppression', () => {
       const keys = await initializeCredentialMigration(input);
       await expect(
         migrateLegacyOAuthBatch(scratch.maintenance, keys, { limit: 1 }),
-      ).resolves.toEqual({ processed: 1, afterId: null, remaining: 0 });
+      ).resolves.toEqual({
+        processed: 1,
+        scanned: 1,
+        afterId: id,
+        passComplete: false,
+      });
       await expect(initializeEncryption(input)).resolves.toBeDefined();
       const row = await scratch.pool.query(
         'SELECT "accessToken", "refreshToken", access_token_ciphertext, access_token_key_id FROM account WHERE id = $1',

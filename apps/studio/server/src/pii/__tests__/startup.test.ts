@@ -203,7 +203,8 @@ describe('actual server encryption startup and operator entrypoints', () => {
         ).resolves.toEqual({
           operation: 'rotate',
           processed: 0,
-          remaining: 0,
+          scanned: 0,
+          passComplete: true,
           cursor: null,
         });
         await expect(
@@ -215,9 +216,91 @@ describe('actual server encryption startup and operator entrypoints', () => {
         ).resolves.toEqual({
           operation: 'migrate-legacy',
           processed: 0,
-          remaining: 0,
+          scanned: 0,
+          passComplete: true,
           afterId: null,
         });
+      } finally {
+        await maintenance.end();
+      }
+    });
+  });
+
+  it('performs a full first-batch verification and proof-only resume without corpus scans', async () => {
+    await withDatabase(async ({ db, pool }) => {
+      await pool.query(
+        `INSERT INTO "user" (id, name, email, "emailVerified") VALUES ('bounded-user', 'Synthetic', 'bounded@example.test', true)`,
+      );
+      await pool.query(
+        `INSERT INTO account (id, "userId", "accountId", "providerId", issuer, "updatedAt") VALUES ('bounded-account', 'bounded-user', 'bounded-account', 'google', 'https://accounts.google.com', now())`,
+      );
+      const maintenance = createMaintenancePool(db);
+      const encryption = {
+        configuration: configuration(),
+        loadRootKey: async () => rootOne,
+      };
+      try {
+        const client = await maintenance.connect();
+        const queries = vi.spyOn(client, 'query');
+        client.release();
+        const first = await runEncryptionCommand(
+          ['rotate', '--limit', '1'],
+          maintenance,
+          encryption,
+        );
+        expect(first).toMatchObject({
+          operation: 'rotate',
+          processed: 0,
+          scanned: 1,
+          passComplete: false,
+        });
+        expect(
+          queries.mock.calls.some(
+            ([sql]) =>
+              typeof sql === 'string' &&
+              sql.includes("SELECT DISTINCT 'pii-enc'"),
+          ),
+        ).toBe(true);
+        if (!('cursor' in first) || !first.cursor)
+          throw new Error('Expected a real resumable cursor.');
+        queries.mockClear();
+        expect(
+          await runEncryptionCommand(
+            [
+              'rotate',
+              '--limit',
+              '1',
+              '--cursor',
+              JSON.stringify(first.cursor),
+            ],
+            maintenance,
+            encryption,
+          ),
+        ).toEqual({
+          operation: 'rotate',
+          processed: 0,
+          scanned: 0,
+          passComplete: true,
+          cursor: null,
+        });
+        const resumed = queries.mock.calls.map(([sql]) =>
+          typeof sql === 'string' ? sql : '',
+        );
+        expect(
+          resumed.some((sql) => sql.includes('SELECT purpose, key_id')),
+        ).toBe(true);
+        expect(
+          resumed.some((sql) =>
+            /SELECT DISTINCT|count\(|SELECT EXISTS|INSERT INTO encryption_key_verifications/i.test(
+              sql,
+            ),
+          ),
+        ).toBe(false);
+        queries.mockRestore();
+        expect(
+          (await pool.query('SELECT * FROM encryption_key_verifications'))
+            .rowCount,
+        ).toBe(8);
       } finally {
         await maintenance.end();
       }

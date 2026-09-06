@@ -6,7 +6,7 @@ import type { BetterAuthOptions } from 'better-auth/types';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type pg from 'pg';
 
-import { AUTH_TABLES } from '../db/auth-schema.ts';
+import { AUTH_RUNTIME_TABLES } from '../db/auth-schema.ts';
 import type { EncryptionKeys } from '../pii/keys.ts';
 import {
   appendCredentialAudit,
@@ -70,7 +70,7 @@ export function encryptedAuthAdapter(pool: pg.Pool, keys?: EncryptionKeys) {
     const baseFor = (client: pg.Pool | pg.PoolClient) =>
       drizzleAdapter(drizzle({ client }), {
         provider: 'pg',
-        schema: AUTH_TABLES,
+        schema: AUTH_RUNTIME_TABLES,
       })(options);
     const base = baseFor(pool);
 
@@ -99,6 +99,8 @@ export function encryptedAuthAdapter(pool: pg.Pool, keys?: EncryptionKeys) {
       return row;
     }
 
+    // account_audit_deletion covers delete/deleteMany and user FK cascades
+    // in their deleting SQL statement. Do not append a second adapter audit.
     const secure: DBAdapter = {
       ...base,
       async create<T extends Record<string, unknown>, R = T>(

@@ -25,7 +25,7 @@ CREATE TABLE "credential_audit_events" (
 	"outcome" text NOT NULL,
 	"request_id" uuid NOT NULL,
 	"occurred_at" timestamp with time zone DEFAULT statement_timestamp() NOT NULL,
-	CONSTRAINT "credential_audit_events_action_check" CHECK ("action" IN ('read', 'write', 'rotate', 'migrate_legacy')),
+	CONSTRAINT "credential_audit_events_action_check" CHECK ("action" IN ('read', 'write', 'rotate', 'migrate_legacy', 'delete')),
 	CONSTRAINT "credential_audit_events_outcome_check" CHECK ("outcome" IN ('succeeded', 'denied', 'failed')),
 	CONSTRAINT "credential_audit_events_identifiers_check" CHECK (char_length("user_id") BETWEEN 1 AND 255 AND char_length("account_id") BETWEEN 1 AND 255)
 );

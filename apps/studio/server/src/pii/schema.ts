@@ -1,4 +1,4 @@
-import { sql } from 'drizzle-orm';
+import { getTableColumns, sql } from 'drizzle-orm';
 import {
   bytea,
   check,
@@ -11,6 +11,8 @@ import {
 } from 'drizzle-orm/pg-core';
 
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
+
+import { AUTH_RUNTIME_TABLES } from '../db/auth-schema.ts';
 
 // A non-PII proof of every key the database has depended on. Keeping proofs
 // after live rotation makes dropping a historical restore key fail at boot.
@@ -66,7 +68,7 @@ const credentialAuditEvents = pgTable(
     ),
     check(
       'credential_audit_events_action_check',
-      sql`${table.action} IN ('read', 'write', 'rotate', 'migrate_legacy')`,
+      sql`${table.action} IN ('read', 'write', 'rotate', 'migrate_legacy', 'delete')`,
     ),
     check(
       'credential_audit_events_outcome_check',
@@ -84,6 +86,32 @@ export const PII_TABLES = { encryptionKeyVerifications, credentialAuditEvents };
 export const PII_SIDECAR_SQL = `
 -- Historical OAuth plaintext is readable only by the offline converter.
 -- Runtime code cannot introduce another value into these legacy columns.
+-- The general auth grants run earlier, so remove both table- and column-level
+-- access before enrolling the adapter's explicit non-legacy column projection.
+REVOKE SELECT ON account FROM PUBLIC, ${TENANT_ROLES.app};
+REVOKE SELECT ("accessToken", "refreshToken", "idToken") ON account FROM PUBLIC, ${TENANT_ROLES.app};
+GRANT SELECT (${Object.values(getTableColumns(AUTH_RUNTIME_TABLES.account))
+  .map((column) => `"${column.name.replaceAll('"', '""')}"`)
+  .join(', ')}) ON account TO ${TENANT_ROLES.app};
+
+-- SECURITY INVOKER is intentional: the deleting role must also be allowed to
+-- append the mandatory event. A failed audit aborts single/bulk/cascade deletes.
+-- Every account is a credential identity, including local password accounts.
+CREATE OR REPLACE FUNCTION account_audit_deletion() RETURNS trigger AS $$
+BEGIN
+  -- Bind the target to the triggering table, not an invoker's search_path:
+  -- a temporary table must never absorb mandatory durable evidence.
+  EXECUTE pg_catalog.format(
+    'INSERT INTO %I.credential_audit_events (id, user_id, account_id, action, outcome, request_id) VALUES (pg_catalog.gen_random_uuid(), $1, $2, ''delete'', ''succeeded'', pg_catalog.gen_random_uuid())',
+    TG_TABLE_SCHEMA
+  ) USING OLD."userId", OLD.id;
+  RETURN OLD;
+END;
+$$ LANGUAGE plpgsql SECURITY INVOKER;
+CREATE OR REPLACE TRIGGER account_audit_deletion
+  BEFORE DELETE ON account
+  FOR EACH ROW EXECUTE FUNCTION account_audit_deletion();
+
 CREATE OR REPLACE FUNCTION account_refuse_new_plaintext_tokens() RETURNS trigger AS $$
 BEGIN
   IF current_user IN ('studio_app', 'studio_maintenance') AND (

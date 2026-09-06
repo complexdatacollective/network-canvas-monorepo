@@ -7,6 +7,7 @@ import type { EncryptionEnv } from '../env/encryption.ts';
 import {
   initializeCredentialMigration,
   initializeEncryption,
+  resumeEncryptionMaintenance,
 } from './initialize.ts';
 import {
   migrateLegacyOAuthBatch,
@@ -57,9 +58,14 @@ export async function runEncryptionCommand(
   if ((await checkSchema(maintenancePool)).kind !== 'current')
     throw new Error('Encryption maintenance requires the current schema.');
   const input = { maintenancePool, ...encryption };
-  const keys = await (operation === 'migrate-legacy'
-    ? initializeCredentialMigration(input)
-    : initializeEncryption(input));
+  const resumed =
+    (operation === 'rotate' && cursor !== undefined) ||
+    (operation === 'migrate-legacy' && afterId !== null);
+  const keys = await (resumed
+    ? resumeEncryptionMaintenance(input)
+    : operation === 'migrate-legacy'
+      ? initializeCredentialMigration(input)
+      : initializeEncryption(input));
   if (operation === 'verify') return { operation, verified: true } as const;
   if (operation === 'rotate')
     return {

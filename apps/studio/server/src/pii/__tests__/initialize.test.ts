@@ -13,6 +13,7 @@ import {
   EncryptionStartupError,
   initializeCredentialMigration,
   initializeEncryption,
+  resumeEncryptionMaintenance,
 } from '../initialize.ts';
 import type { KeysetConfiguration } from '../keys.ts';
 import { configuration, rootOne } from './fixtures.ts';
@@ -65,6 +66,55 @@ describe('durable encryption startup verification', () => {
         'SELECT * FROM encryption_key_verifications ORDER BY purpose, key_id',
       );
       expect(after.rows).toEqual(before.rows);
+    });
+  });
+
+  it('refuses unregistered resume keys without registering or retiring any evidence', async () => {
+    await withDatabase(async ({ pool, maintenance, app }) => {
+      await expect(
+        resumeEncryptionMaintenance(input(maintenance)),
+      ).rejects.toThrow(EncryptionStartupError);
+      expect(
+        (await pool.query('SELECT * FROM encryption_key_verifications'))
+          .rowCount,
+      ).toBe(0);
+      await initializeEncryption(input(maintenance));
+      const before = (
+        await pool.query(
+          'SELECT * FROM encryption_key_verifications ORDER BY purpose, key_id',
+        )
+      ).rows;
+      await expect(
+        resumeEncryptionMaintenance(input(maintenance)),
+      ).resolves.toBeDefined();
+      await expect(resumeEncryptionMaintenance(input(app))).rejects.toThrow(
+        EncryptionStartupError,
+      );
+      await expect(
+        resumeEncryptionMaintenance({
+          ...input(maintenance),
+          loadRootKey: async () => Buffer.alloc(32, 199),
+        }),
+      ).rejects.toThrow(EncryptionStartupError);
+      const addition = configuration();
+      addition.pii.current = 'v3';
+      addition.pii.keys.push({ id: 'v3', rootId: 'root-2' });
+      await expect(
+        resumeEncryptionMaintenance(input(maintenance, addition)),
+      ).rejects.toThrow(EncryptionStartupError);
+      const removal = configuration();
+      removal.pii.current = 'v2';
+      removal.pii.keys = removal.pii.keys.filter(({ id }) => id !== 'v1');
+      await expect(
+        resumeEncryptionMaintenance(input(maintenance, removal)),
+      ).rejects.toThrow(EncryptionStartupError);
+      expect(
+        (
+          await pool.query(
+            'SELECT * FROM encryption_key_verifications ORDER BY purpose, key_id',
+          )
+        ).rows,
+      ).toEqual(before);
     });
   });
 

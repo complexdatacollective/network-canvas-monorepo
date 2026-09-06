@@ -2032,6 +2032,30 @@ REVOKE UPDATE, DELETE ON team_invitation_deliveries FROM studio_app;
 
 -- Historical OAuth plaintext is readable only by the offline converter.
 -- Runtime code cannot introduce another value into these legacy columns.
+-- The general auth grants run earlier, so remove both table- and column-level
+-- access before enrolling the adapter's explicit non-legacy column projection.
+REVOKE SELECT ON account FROM PUBLIC, studio_app;
+REVOKE SELECT ("accessToken", "refreshToken", "idToken") ON account FROM PUBLIC, studio_app;
+GRANT SELECT ("id", "accountId", "providerId", "issuer", "userId", "access_token_ciphertext", "access_token_key_id", "access_token_algorithm", "refresh_token_ciphertext", "refresh_token_key_id", "refresh_token_algorithm", "id_token_ciphertext", "id_token_key_id", "id_token_algorithm", "accessTokenExpiresAt", "refreshTokenExpiresAt", "scope", "password", "createdAt", "updatedAt") ON account TO studio_app;
+
+-- SECURITY INVOKER is intentional: the deleting role must also be allowed to
+-- append the mandatory event. A failed audit aborts single/bulk/cascade deletes.
+-- Every account is a credential identity, including local password accounts.
+CREATE OR REPLACE FUNCTION account_audit_deletion() RETURNS trigger AS $$
+BEGIN
+  -- Bind the target to the triggering table, not an invoker's search_path:
+  -- a temporary table must never absorb mandatory durable evidence.
+  EXECUTE pg_catalog.format(
+    'INSERT INTO %I.credential_audit_events (id, user_id, account_id, action, outcome, request_id) VALUES (pg_catalog.gen_random_uuid(), $1, $2, ''delete'', ''succeeded'', pg_catalog.gen_random_uuid())',
+    TG_TABLE_SCHEMA
+  ) USING OLD."userId", OLD.id;
+  RETURN OLD;
+END;
+$$ LANGUAGE plpgsql SECURITY INVOKER;
+CREATE OR REPLACE TRIGGER account_audit_deletion
+  BEFORE DELETE ON account
+  FOR EACH ROW EXECUTE FUNCTION account_audit_deletion();
+
 CREATE OR REPLACE FUNCTION account_refuse_new_plaintext_tokens() RETURNS trigger AS $$
 BEGIN
   IF current_user IN ('studio_app', 'studio_maintenance') AND (

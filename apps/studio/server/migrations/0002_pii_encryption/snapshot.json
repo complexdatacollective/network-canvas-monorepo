@@ -13942,7 +13942,7 @@
       "table": "encryption_key_verifications"
     },
     {
-      "value": "\"action\" IN ('read', 'write', 'rotate', 'migrate_legacy')",
+      "value": "\"action\" IN ('read', 'write', 'rotate', 'migrate_legacy', 'delete')",
       "name": "credential_audit_events_action_check",
       "entityType": "checks",
       "schema": "public",

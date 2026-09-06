@@ -130,7 +130,7 @@
 <!-- account -->
 <g id="account" class="node">
 <title>account</title>
-<g id="a_account"><a xlink:title="account&#10;sidecar trigger account_no_new_plaintext_tokens: BEFORE INSERT OR UPDATE calls account_refuse_new_plaintext_tokens()">
+<g id="a_account"><a xlink:title="account&#10;sidecar trigger account_audit_deletion: BEFORE DELETE calls account_audit_deletion(); sidecar trigger account_no_new_plaintext_tokens: BEFORE INSERT OR UPDATE calls account_refuse_new_plaintext_tokens()">
 <ellipse fill="none" stroke="black" stroke-width="0" cx="1993.98" cy="-12625.24" rx="376.78" ry="1021.12"/>
 <polygon fill="#1d71b8" stroke="transparent" points="1729.98,-13285.24 1729.98,-13345.24 2258.98,-13345.24 2258.98,-13285.24 1729.98,-13285.24"/>
 <polygon fill="none" stroke="#29235c" points="1729.98,-13285.24 1729.98,-13345.24 2258.98,-13345.24 2258.98,-13285.24 1729.98,-13285.24"/>

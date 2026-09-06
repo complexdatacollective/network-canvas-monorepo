@@ -11,7 +11,7 @@ import {
 import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
 import { readMigrations } from '../../db/migrations/artifact.ts';
 import { migrateDatabase } from '../../db/migrations/migrate.ts';
-import { createMaintenancePool } from '../../db/pool.ts';
+import { createPool, createMaintenancePool } from '../../db/pool.ts';
 import { EncryptionStartupError, initializeEncryption } from '../initialize.ts';
 import { configuration, rootOne } from './fixtures.ts';
 
@@ -183,7 +183,26 @@ it('preserves populated legacy credentials and index bytes through migration0002
       ).rows,
     ).toEqual([{ relrowsecurity: false, relforcerowsecurity: false }]);
     const maintenance = createMaintenancePool(scratch.db);
+    const app = createPool(scratch.db);
     try {
+      for (const column of [
+        '"accessToken"',
+        '"refreshToken"',
+        '"idToken"',
+        '*',
+      ]) {
+        await expect(
+          app.query(`SELECT ${column} FROM account WHERE id = $1`, [accountId]),
+        ).rejects.toMatchObject({ code: '42501' });
+      }
+      expect(
+        (
+          await maintenance.query(
+            'SELECT "accessToken" FROM account WHERE id = $1',
+            [accountId],
+          )
+        ).rows,
+      ).toEqual([{ accessToken: 'synthetic-legacy-token' }]);
       await expect(
         initializeEncryption({
           maintenancePool: maintenance,
@@ -192,6 +211,7 @@ it('preserves populated legacy credentials and index bytes through migration0002
         }),
       ).rejects.toThrow(EncryptionStartupError);
     } finally {
+      await app.end();
       await maintenance.end();
     }
   } finally {

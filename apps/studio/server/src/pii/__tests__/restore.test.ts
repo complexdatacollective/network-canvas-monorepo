@@ -209,7 +209,12 @@ it('restores a real pre-rotation pg_dump with retained keys and refuses missing 
     });
     await expect(
       rotateEncryptionBatch(scratch.maintenance, rotated, { limit: 100 }),
-    ).resolves.toEqual({ processed: 3, remaining: 0, cursor: null });
+    ).resolves.toEqual({
+      processed: 3,
+      scanned: 3,
+      passComplete: true,
+      cursor: null,
+    });
     expect(
       (
         await scratch.pool.query(
