@@ -191,8 +191,10 @@ describe('the creatable attribute picker', () => {
   /**
    * A row is handed a variable id or nothing, so it cannot carry a refusal —
    * and a create that quietly did nothing leaves the researcher pressing the
-   * button again. The codebook refuses a name it cannot store (a space, here)
-   * in its own words, and those are the words that appear.
+   * button again. The codebook refuses a name it cannot store (a space, here),
+   * and what appears is the rule said in the words every other surface says it
+   * in — not the schema's own complaint about a path, and not the request
+   * builder's internal "the variable draft is invalid".
    */
   it('says why an attribute it could not create was not created', async () => {
     const harness = renderRows(<StampedAttributes />);
@@ -207,7 +209,7 @@ describe('the creatable attribute picker', () => {
     );
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      /draft is invalid/,
+      'Not a valid attribute name. Only letters, numbers and the symbols ._-: are supported',
     );
     // The refusal is about the name they typed, so the name is still there to
     // be corrected.
@@ -260,9 +262,11 @@ describe('the creatable attribute picker', () => {
 describe('the create control while the codebook write is in flight', () => {
   const mountControl = () => {
     let answer: ((created: boolean) => void) | undefined;
+    let refuse: ((reason: Error) => void) | undefined;
     const onCreateOption = () =>
-      new Promise<boolean>((resolve) => {
+      new Promise<boolean>((resolve, reject) => {
         answer = resolve;
+        refuse = reject;
       });
     render(
       <CreatableVariablePickerControl
@@ -278,6 +282,11 @@ describe('the create control while the codebook write is in flight', () => {
       answerWith: (created: boolean) => {
         if (answer === undefined) throw new Error('Nothing is waiting.');
         answer(created);
+      },
+      /** Fails it instead, the way a host that throws out of its own commit does. */
+      throwFrom: (reason: Error) => {
+        if (refuse === undefined) throw new Error('Nothing is waiting.');
+        refuse(reason);
       },
     };
   };
@@ -307,6 +316,26 @@ describe('the create control while the codebook write is in flight', () => {
     // create that landed: there is no longer a name to create.
     answerWith(true);
     await waitFor(() => expect(nameBox()).toHaveValue(''));
+  });
+
+  /**
+   * A caller that REJECTS rather than answering — a host that throws out of its
+   * own commit — is not an answer the control can act on, but it is still the
+   * end of the write. Without the button coming back the researcher is left
+   * looking at a control that never recovers, with the name they typed still in
+   * the box and no way to try again.
+   */
+  it('gives the button back when the create fails outright', async () => {
+    const { user, throwFrom } = mountControl();
+
+    await user.type(nameBox(), 'nominated_early');
+    await user.click(createButton());
+    expect(createButton()).toBeDisabled();
+
+    throwFrom(new Error('the host refused the commit'));
+
+    await waitFor(() => expect(createButton()).toBeEnabled());
+    expect(nameBox()).toHaveValue('nominated_early');
   });
 
   /** The refusal is about that name, so the box is what they correct. */

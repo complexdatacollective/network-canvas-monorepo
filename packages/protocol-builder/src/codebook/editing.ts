@@ -22,6 +22,7 @@ import {
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
+import { allowedNameMessage } from '../form/arrayFields/rowValidators.ts';
 import type {
   CodebookSubject,
   ProtocolBuilderProtocolContext,
@@ -342,8 +343,7 @@ const categoricalOptionIssue = (
   ) {
     return Object.freeze({
       path: Object.freeze(['options']),
-      message:
-        'Not a valid option value. Only letters, numbers and the symbols ._-: are supported',
+      message: allowedNameMessage('option value'),
     });
   }
   return null;

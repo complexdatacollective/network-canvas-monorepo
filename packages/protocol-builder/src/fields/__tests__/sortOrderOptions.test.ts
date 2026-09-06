@@ -227,14 +227,35 @@ describe('orphanedSortProperties', () => {
 
   /**
    * The state every caller passes through: a prompt whose stage has not been
-   * told what it collects draws its properties from an empty codebook. Judging
-   * rules there would report every one of them as dangling, and the researcher
+   * told what it collects has nothing to judge its rules against yet. Judging
+   * them there would report every one of them as dangling, and the researcher
    * would be told to fix a protocol that is not broken.
    */
-  it('reports nothing while the caller has no properties to judge against', () => {
+  it('reports nothing while the caller does not know its properties yet', () => {
+    expect(
+      orphanedSortProperties(
+        [{ property: 'nickname', direction: 'asc' }],
+        undefined,
+      ),
+    ).toEqual([]);
+  });
+
+  /**
+   * And the state that is not that one. A subject with nothing to sort by is a
+   * real answer, and there every rule the prompt holds is certainly dangling —
+   * so it is reported, rather than the control going blank and the rule saving
+   * itself straight back.
+   */
+  it('judges the rules against a subject with nothing to sort by', () => {
     expect(
       orphanedSortProperties([{ property: 'nickname', direction: 'asc' }], []),
-    ).toEqual([]);
+    ).toEqual([
+      {
+        value: 'nickname',
+        label: 'nickname — this attribute is no longer in the codebook',
+        disabled: true,
+      },
+    ]);
   });
 
   it.each([
