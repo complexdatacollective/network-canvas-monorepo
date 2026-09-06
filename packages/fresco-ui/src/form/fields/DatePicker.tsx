@@ -4,11 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import {
-  DATE_PICKER_DEFAULT_MIN,
-  DATE_PICKER_EARLIEST_DATE,
-  DATE_PICKER_LATEST_DATE,
-} from '@codaco/shared-consts';
+import { datePickerWindows } from '@codaco/shared-consts';
 
 import { cx } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
@@ -49,9 +45,10 @@ function parseYmd(value: string): Ymd | null {
   return { year, month, day };
 }
 
-// The shared default arrives in the same YYYY-MM-DD form a caller-supplied
-// bound does, so it is read by the same parser rather than restated as parts
-// here. A malformed shared value is a source mistake, not a bound to ignore.
+// The shared derivation answers in the same YYYY-MM-DD form a caller-supplied
+// bound arrives in, so its four dates are read back by the same parser rather
+// than restated as parts here. A malformed one is a source mistake, not a
+// bound to ignore.
 function requireYmd(value: string): Ymd {
   const parsed = parseYmd(value);
   if (!parsed) {
@@ -60,44 +57,12 @@ function requireYmd(value: string): Ymd {
   return parsed;
 }
 
-function compareYmd(a: Ymd, b: Ymd): number {
-  if (a.year !== b.year) return a.year - b.year;
-  if (a.month !== b.month) return a.month - b.month;
-  return a.day - b.day;
-}
-
 function formatYmd(ymd: Ymd): string {
   const year = ymd.year.toString().padStart(4, '0');
   const month = ymd.month.toString().padStart(2, '0');
   const day = ymd.day.toString().padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
-
-const DEFAULT_MIN: Ymd = requireYmd(DATE_PICKER_DEFAULT_MIN);
-
-// The coarse year/month dropdowns store `y.toString()` with no zero-padding,
-// so the protocol schema's YYYY/YYYY-MM coarse values can only round-trip a
-// four-digit year (1000-9999). These bracket the synthesized (non-authored)
-// far bound below so the dropdown never offers a year it cannot itself emit.
-const COARSE_MIN_YEAR = 1000;
-const COARSE_MAX_YEAR = Number(DATE_PICKER_LATEST_DATE.slice(0, 4));
-
-// The full-resolution native <input type="date"> is a different concern
-// from the coarse dropdowns above: `formatYmd` always zero-pads to four
-// digits, so it can mechanically represent any magnitude. But a year below 1
-// formats with a leading '-' (not a valid HTML date string, so the browser
-// drops the attribute entirely), and a year above 9999 is native-input-legal
-// yet unreachable through `useProtocolForm`'s min/max validation, which
-// compares the typed value against the AUTHORED bound string using
-// four-digit LEXICAL comparison (`compareDateStrings`) — a five-digit
-// synthesized year like "10105" sorts *before* a four-digit "9999"
-// character-by-character, so every value between the authored bound and the
-// synthesized one fails validation despite being pickable. These bracket the
-// synthesized (non-authored) side of minYmd/maxYmd to the four-digit year
-// range (0001-9999) so the native input never offers a value the validator
-// can't accept.
-const NATIVE_MIN_YEAR = Number(DATE_PICKER_EARLIEST_DATE.slice(0, 4));
-const NATIVE_MAX_YEAR = Number(DATE_PICKER_LATEST_DATE.slice(0, 4));
 
 const messages = defineMessages({
   year: {
@@ -180,113 +145,43 @@ export default function DatePickerField(props: DatePickerFieldProps) {
     ...rest
   } = props;
 
-  // Twenty-third-wave Findings 4, 5, and 8: an authored bound outside the
-  // default 1920-to-today window must not collapse the resolvable range to
-  // nothing OR to a single point. An absent (or unparseable) min falls back
-  // to the default lower bound UNLESS the authored max is earlier than that
-  // default, in which case the lower bound extends BELOW it by the default
-  // window's own span (today's year minus 1920) so the picker still offers a
-  // genuine range rather than pinning the variable to one value; an absent
-  // max falls back to today UNLESS the authored min is later than today, in
-  // which case the upper bound extends ABOVE it by the same span. The
-  // extended bound reuses DEFAULT_MIN's month/day convention (a full
-  // calendar year, January 1 through December 31) rather than the authored
-  // bound's own month/day, so a partial month/year authored bound doesn't
-  // leak an arbitrary sub-year boundary onto the far, unconstrained end.
-  // When both bounds are authored, both are honoured exactly. `minYmd`/
-  // `maxYmd` feed the full-resolution native input's `min`/`max` attributes
-  // (only once at least one bound is authored — see `hasAuthoredBound` below;
-  // a fully unbounded full-resolution DatePicker must stay genuinely
-  // unbounded, matching how @codaco/protocol-validation's contradiction
-  // analyser models it as contributing no interval). They're bracketed by
-  // NATIVE_MIN_YEAR/NATIVE_MAX_YEAR (see that constant's comment) on the
-  // SYNTHESIZED side only — an authored bound is left exactly as authored,
-  // the schema's own job to validate — bounded by the authored opposite side
-  // so the clamp can never invert the range (an authored `min: '9999-12-31'`
-  // alone clamps its synthesized max to '9999-12-31' too, collapsing to a
-  // genuine single-day domain rather than inverting past it).
+  // What a DatePicker's declared bounds resolve to, and where a bound it does
+  // NOT declare falls: 1920-01-01 below and today above, extended by the
+  // default window's own span when an authored bound already sits past that
+  // edge, and clamped on the synthesized side to what each control can offer —
+  // the four-digit year the coarse dropdowns store unpadded, and the
+  // 0001-9999 range the native input's own min/max validator compares
+  // lexically. All of that is `datePickerWindows` in `@codaco/shared-consts`,
+  // because two other packages have to predict this exact window:
+  // `@codaco/protocol-builder` reports a filter operand a coarse picker could
+  // never offer, and `@codaco/protocol-validation`'s contradiction analyser
+  // models the same derivation against a fixed horizon rather than a clock. A
+  // copy per reader is what let them drift.
   //
-  // `coarseMinYmd`/`coarseMaxYmd` separately bracket the SYNTHESIZED
-  // (non-authored) side to the four-digit year range (1000-9999) the coarse
-  // year/month dropdowns can round-trip: those controls store `y.toString()`
-  // with no zero-padding, so an unclamped synthesized edge like 894 would
-  // offer a three-digit "894" the schema's YYYY/YYYY-MM coarse values can
-  // never represent. This is a different concern from the native clamp
-  // above (dropdown storage grammar vs. native-input/validator legality), so
-  // the two pairs clamp to different bounds and are computed independently
-  // from the same raw resolvedMin/resolvedMax. The year loop and the month
-  // filtering at boundary years read the coarse pair.
+  // `hasAuthoredBound` is why the derivation cannot simply be applied: a fully
+  // unbounded FULL-resolution picker must stay unbounded (the native input
+  // gets no min/max at all), while the month and year dropdowns are closed
+  // lists and take the synthesized window either way.
   const { minYmd, maxYmd, coarseMinYmd, coarseMaxYmd, hasAuthoredBound } =
     useMemo(() => {
-      const authoredMin = min ? parseYmd(min) : null;
-      const authoredMax = max ? parseYmd(max) : null;
       // "Today" is read in UTC, from the same helper the relative picker
       // anchors on and the same one that produces the dates this field is
       // asked to display. A local reading would put this ceiling a day either
       // side of every other date in the system, so the offered months would
       // disagree with the value.
-      const today = requireYmd(todayYmd());
-      const defaultWindowSpanYears = today.year - DEFAULT_MIN.year;
-
-      const resolvedMin =
-        authoredMin ??
-        (authoredMax && compareYmd(authoredMax, DEFAULT_MIN) < 0
-          ? {
-              year: authoredMax.year - defaultWindowSpanYears,
-              month: 1,
-              day: 1,
-            }
-          : DEFAULT_MIN);
-      const resolvedMax =
-        authoredMax ??
-        (authoredMin && compareYmd(authoredMin, today) > 0
-          ? {
-              year: authoredMin.year + defaultWindowSpanYears,
-              month: 12,
-              day: 31,
-            }
-          : today);
-
-      const nativeMin =
-        authoredMin === null && resolvedMin.year < NATIVE_MIN_YEAR
-          ? {
-              year: Math.min(NATIVE_MIN_YEAR, resolvedMax.year),
-              month: 1,
-              day: 1,
-            }
-          : resolvedMin;
-      const nativeMax =
-        authoredMax === null && resolvedMax.year > NATIVE_MAX_YEAR
-          ? {
-              year: Math.max(NATIVE_MAX_YEAR, resolvedMin.year),
-              month: 12,
-              day: 31,
-            }
-          : resolvedMax;
-
-      const coarseMin =
-        authoredMin === null && resolvedMin.year < COARSE_MIN_YEAR
-          ? {
-              year: Math.min(COARSE_MIN_YEAR, resolvedMax.year),
-              month: 1,
-              day: 1,
-            }
-          : resolvedMin;
-      const coarseMax =
-        authoredMax === null && resolvedMax.year > COARSE_MAX_YEAR
-          ? {
-              year: Math.max(COARSE_MAX_YEAR, resolvedMin.year),
-              month: 12,
-              day: 31,
-            }
-          : resolvedMax;
-
+      const windows = datePickerWindows(
+        {
+          ...(min === undefined ? {} : { min }),
+          ...(max === undefined ? {} : { max }),
+        },
+        todayYmd(),
+      );
       return {
-        minYmd: nativeMin,
-        maxYmd: nativeMax,
-        coarseMinYmd: coarseMin,
-        coarseMaxYmd: coarseMax,
-        hasAuthoredBound: authoredMin !== null || authoredMax !== null,
+        minYmd: requireYmd(windows.native.min),
+        maxYmd: requireYmd(windows.native.max),
+        coarseMinYmd: requireYmd(windows.coarse.min),
+        coarseMaxYmd: requireYmd(windows.coarse.max),
+        hasAuthoredBound: windows.hasAuthoredBound,
       };
     }, [min, max]);
 
