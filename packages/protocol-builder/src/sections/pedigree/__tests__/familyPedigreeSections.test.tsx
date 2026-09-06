@@ -818,3 +818,207 @@ describe('creating an attribute a slot needs without leaving the stage', () => {
     ).not.toBeInTheDocument();
   });
 });
+
+/** Every attribute the host currently files under the pedigree's node type. */
+function familyMemberVariables(
+  harness: StageEditorHarness,
+): Record<string, unknown> {
+  const definition =
+    harness.host.getSnapshot().protocolSections[FAMILY_MEMBER_SECTION];
+  const variables = isRecord(definition) ? definition.variables : undefined;
+  return isRecord(variables) ? variables : {};
+}
+
+/** Opens one already-saved form field's dialog, and answers with the dialog. */
+async function openFormField(
+  harness: StageEditorHarness,
+  index: number,
+): Promise<ReturnType<typeof within>> {
+  const trigger = screen.getAllByRole('button', { name: 'Edit field' })[index];
+  if (trigger === undefined) {
+    throw new Error(`The form has no field ${index} to edit.`);
+  }
+  await harness.user.click(trigger);
+  return within(await screen.findByRole('dialog'));
+}
+
+/** Adds one value to the attribute list the codebook editor is showing. */
+async function addOption(
+  harness: StageEditorHarness,
+  position: number,
+  label: string,
+  value: string,
+): Promise<void> {
+  await harness.user.click(screen.getByRole('button', { name: 'Add option' }));
+  await harness.user.type(
+    screen.getByRole('textbox', { name: `Option ${position} label` }),
+    label,
+  );
+  await harness.user.type(
+    screen.getByRole('textbox', { name: `Option ${position} value` }),
+    value,
+  );
+}
+
+/**
+ * The family member form is the shared `FormFieldsSection`, so what a field's
+ * attribute HOLDS is authored from the field that collects it — the values a
+ * participant chooses between, and the settings the chosen control takes.
+ *
+ * Asserted here as well as in that section's own suite because the pedigree is
+ * the one caller that mounts it somewhere other than `form.fields`: its fields
+ * live at `nodeConfig.form`, and its node type is named at `nodeConfig.type`
+ * rather than by a `subject` of the stage's own. Everything below writes to the
+ * codebook rather than to the stage, so a pedigree wired to the wrong subject
+ * would author a perfectly good attribute on the wrong node type — which the
+ * stage-shaped assertions in this file cannot see.
+ */
+describe('what a family member form field’s attribute holds', () => {
+  it('creates a categorical field together with the values it offers', async () => {
+    const harness = renderStageEditor(openWithFamilyMemberForm());
+
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Create new form field' }),
+    );
+    const field = within(await screen.findByRole('dialog'));
+    await harness.user.selectOptions(
+      field.getByRole('combobox', { name: 'Attribute' }),
+      '__create_new_attribute__',
+    );
+    // An attribute participants choose from IS its values, so the name box
+    // gives way to the editor that authors both.
+    await harness.user.selectOptions(
+      await field.findByRole('combobox', { name: 'Kind of answer' }),
+      'categorical',
+    );
+    await harness.user.click(
+      field.getByRole('button', {
+        name: 'Create this attribute and its values',
+      }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Attribute name' }),
+      'household_role',
+    );
+    await addOption(harness, 1, 'Parent', 'parent');
+    await addOption(harness, 2, 'Sibling', 'sibling');
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create attribute' }),
+    );
+
+    const created = await waitFor(() => {
+      const entry = Object.entries(familyMemberVariables(harness)).find(
+        ([, variable]) =>
+          isRecord(variable) && variable.name === 'household_role',
+      );
+      if (entry === undefined) throw new Error('the attribute was not created');
+      return entry;
+    });
+    // On the pedigree's OWN node type, with both values.
+    expect(created[1]).toMatchObject({
+      type: 'categorical',
+      options: [
+        { label: 'Parent', value: 'parent' },
+        { label: 'Sibling', value: 'sibling' },
+      ],
+    });
+
+    // And the field is now bound to what was just created, so finishing the
+    // row records a question against it rather than against nothing.
+    await harness.user.selectOptions(
+      await field.findByRole('combobox', { name: 'Input control' }),
+      'CheckboxGroup',
+    );
+    await harness.user.type(
+      field.getByRole('textbox', { name: 'Question text' }),
+      'Q?',
+    );
+    await harness.user.click(field.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    expect(formRows(harness)).toEqual([
+      { variable: 'fm_name', prompt: 'What do they go by?' },
+      {
+        id: expect.any(String) as unknown as string,
+        variable: created[0],
+        prompt: 'Q?',
+      },
+    ]);
+  });
+
+  it('writes a date field’s settings onto the attribute it collects', async () => {
+    const harness = renderStageEditor(openWithFamilyMemberForm());
+
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Create new form field' }),
+    );
+    const creating = within(await screen.findByRole('dialog'));
+    await harness.user.selectOptions(
+      creating.getByRole('combobox', { name: 'Attribute' }),
+      '__create_new_attribute__',
+    );
+    await harness.user.selectOptions(
+      await creating.findByRole('combobox', { name: 'Kind of answer' }),
+      'datetime',
+    );
+    await harness.user.type(
+      await creating.findByRole('textbox', { name: 'Attribute name' }),
+      'diagnosed_on',
+    );
+    await harness.user.selectOptions(
+      await creating.findByRole('combobox', { name: 'Input control' }),
+      'DatePicker',
+    );
+    await harness.user.type(
+      creating.getByRole('textbox', { name: 'Question text' }),
+      'Q?',
+    );
+    await harness.user.click(creating.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    // Two steps, because the settings belong to an attribute: there is nothing
+    // to configure until the attribute exists, and it is the row's save that
+    // creates it.
+    const diagnosedOn = variableIdByName(harness, 'diagnosed_on');
+    if (diagnosedOn === undefined) {
+      throw new Error('the attribute was not created');
+    }
+    const editing = await openFormField(harness, 1);
+    await harness.user.click(
+      await editing.findByRole('button', {
+        name: 'Set what this field accepts',
+      }),
+    );
+    await screen.findByRole('button', { name: 'Save attribute' });
+    await harness.user.selectOptions(
+      screen.getByRole('combobox', { name: 'Date resolution' }),
+      'year',
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save attribute' }),
+    );
+
+    // Written on the family member's attribute, beside the control they were
+    // authored for — not on the form row, which holds only its question.
+    await waitFor(() =>
+      expect(
+        isRecord(familyMemberVariables(harness)[diagnosedOn])
+          ? familyMemberVariables(harness)[diagnosedOn]
+          : {},
+      ).toMatchObject({
+        name: 'diagnosed_on',
+        type: 'datetime',
+        component: 'DatePicker',
+        parameters: { type: 'year' },
+      }),
+    );
+    expect(formRows(harness)[1]).toEqual({
+      id: expect.any(String) as unknown as string,
+      variable: diagnosedOn,
+      prompt: 'Q?',
+    });
+  });
+});
