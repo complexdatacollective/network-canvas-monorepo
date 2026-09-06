@@ -1,3 +1,7 @@
+import { useMemo } from 'react';
+
+import { draftAdditionalAttributeVariableIds } from '../../codebook/variableValidation.ts';
+import { useStageValue } from '../../form/stageFormHooks.ts';
 import { interfaceDocumentationUrl } from '../../interfaces/documentation.ts';
 import AlterLimitsSection from '../../sections/AlterLimitsSection.tsx';
 import FormFieldsSection from '../../sections/FormFieldsSection.tsx';
@@ -39,15 +43,48 @@ export function NameGeneratorStageEditor({
       {...(actions === undefined ? {} : { actions })}
     >
       <SubjectSection entity="node" />
-      {/*
-        The interview shows this form's title above it, so the researcher
-        authors one — which is what separates it from the three form stages,
-        whose own stage name does that job.
-      */}
-      <FormFieldsSection subject="node" hasTitle />
+      <NodeFormFields />
       <NameGeneratorPromptsSection />
       <NodePanelsSection />
       <AlterLimitsSection />
     </NameGeneratorFrame>
+  );
+}
+
+/**
+ * The form, told what this stage's own prompts already stamp.
+ *
+ * The two sections write the same subject with opposite validation: a field
+ * asks the participant and checks the answer, a stamp sets a value with nobody
+ * to check. The schema refuses an attribute written both ways, and the prompts
+ * section already excludes what the live form collects — this is that rule read
+ * in the other direction, so binding a stamp withdraws the attribute from the
+ * form's picker at once instead of letting the contradiction surface at stage
+ * submit, against the prompt the researcher was not looking at.
+ *
+ * Read here rather than by the editor above because the stage form only exists
+ * inside the shell, and mounted as its own component so the subscription
+ * re-renders the form section alone.
+ */
+function NodeFormFields() {
+  const prompts = useStageValue('prompts');
+  // Stable across renders that did not change the prompts: a fresh array
+  // re-registers the field list's validator.
+  const draftUnvalidatedVariables = useMemo(
+    () => [...draftAdditionalAttributeVariableIds(prompts)],
+    [prompts],
+  );
+
+  return (
+    /*
+      The interview shows this form's title above it, so the researcher authors
+      one — which is what separates it from the three form stages, whose own
+      stage name does that job.
+    */
+    <FormFieldsSection
+      subject="node"
+      hasTitle
+      draftUnvalidatedVariables={draftUnvalidatedVariables}
+    />
   );
 }

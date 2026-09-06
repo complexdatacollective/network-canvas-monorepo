@@ -1,6 +1,8 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { sectionId } from '@codaco/studio-sync/taxonomy';
+
 import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { nameGeneratorStageEditors } from '../../nameGeneratorStageEditors.ts';
@@ -402,5 +404,114 @@ describe('the name generator editor', () => {
         'This stage is read-only, so your changes were not saved. Take over editing and try again.',
       ),
     ).toBeInTheDocument();
+  });
+});
+
+/**
+ * The two sections of this editor that write the same node, with opposite
+ * validation: a form field asks the participant and checks the answer, a
+ * prompt stamp sets a value with nobody to check. The schema refuses an
+ * attribute written both ways, so each has to see what the other has bound in
+ * THIS session — the role map is built from the saved protocol, and knows
+ * neither.
+ *
+ * The prompts section reads the live form itself. The other direction is the
+ * editor's to supply, because it is the one component that knows both sections
+ * are on screen, and this is what says it does.
+ *
+ * Only the withdrawal is covered here. The save-time refusal behind it belongs
+ * to `FormFieldsSection`, which owns it and can reach it: once a field is
+ * bound the stamp picker stops offering the attribute, so no order of clicks
+ * in THIS editor produces the contradiction — which is the point of the
+ * withdrawal.
+ */
+describe('a form field and a prompt stamp reaching for the same attribute', () => {
+  /**
+   * An attribute of the fixture's person type that nothing writes yet.
+   *
+   * The fixture's own attributes are all spoken for — every one the form
+   * offers is refused by the stamp picker and the other way about, because the
+   * protocol already exercises those rules elsewhere. So the test needs one
+   * free attribute, added the way a collaborator would add it.
+   */
+  const FREE_ATTRIBUTE = 'nominated_early';
+
+  const addFreeAttribute = (harness: ReturnType<typeof renderStageEditor>) => {
+    const person =
+      harness.session.getSnapshot().protocolSections[
+        sectionId({ kind: 'codebookNode', typeId: 'person' })
+      ];
+    if (person === undefined) throw new Error('the person type is gone');
+
+    harness.receiveCodebookUpdate({
+      node: {
+        person: {
+          ...person,
+          variables: {
+            ...(person.variables as Record<string, unknown>),
+            [FREE_ATTRIBUTE]: {
+              name: FREE_ATTRIBUTE,
+              type: 'boolean',
+              component: 'Boolean',
+            },
+          },
+        },
+      },
+    });
+  };
+
+  /** Which attributes a form-field dialog is offering. */
+  const offeredAttributes = (dialog: ReturnType<typeof within>): string[] =>
+    within(dialog.getByRole('combobox', { name: 'Attribute' }))
+      .getAllByRole('option')
+      .map((option) => (option as HTMLOptionElement).value);
+
+  const closeDialog = async (
+    harness: ReturnType<typeof renderStageEditor>,
+    dialog: ReturnType<typeof within>,
+  ) => {
+    await harness.user.click(dialog.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+  };
+
+  it('withdraws it from the form the moment a prompt stamps it', async () => {
+    const harness = mountFixture();
+    await screen.findByRole('textbox', { name: 'Form title' });
+    addFreeAttribute(harness);
+
+    // Nothing writes it unvalidated yet, so the form may collect it.
+    const before = await openDialog(harness, 'Create new form field');
+    expect(offeredAttributes(before)).toContain(FREE_ATTRIBUTE);
+    await closeDialog(harness, before);
+
+    // The researcher stamps it on everyone this prompt names instead.
+    const prompt = await openDialog(harness, 'Edit prompt');
+    await harness.user.click(
+      prompt.getByRole('button', { name: 'Add new attribute to assign' }),
+    );
+    await harness.user.selectOptions(
+      await prompt.findByRole('combobox', {
+        name: 'Create or select an attribute',
+      }),
+      FREE_ATTRIBUTE,
+    );
+    await harness.user.click(prompt.getByRole('radio', { name: 'True' }));
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    // Nothing has been saved: the stamp is a draft write, invisible to the
+    // role map, and this is the editor handing it to the form.
+    expect(harness.pendingCommands().length).toBeGreaterThan(0);
+
+    const after = await openDialog(harness, 'Create new form field');
+    const offered = offeredAttributes(after);
+    // Not the empty picker: everything else about this node type is still
+    // offered, so the section is filtering rather than failing.
+    expect(offered).toContain('flagged');
+    expect(offered).not.toContain(FREE_ATTRIBUTE);
   });
 });
