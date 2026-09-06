@@ -20,6 +20,11 @@ test -s "$backup/images.tar"
 test -s "$backup/images.txt"
 test -s "$backup/images.ids"
 test -s "$backup/deployment/recovery-images.yml"
+if [ ! -s "$backup/deployment/postgres-privileges.sql" ] ||
+   [ ! -s deployment/postgres-privileges.sql ]; then
+  echo 'Restore refused: administrator privilege configuration is missing.' >&2
+  exit 1
+fi
 test -s "$custody"
 # Compose must parse its narrow env_file even for operator services. Point it
 # at the independently held file; it is not copied into the data backup.

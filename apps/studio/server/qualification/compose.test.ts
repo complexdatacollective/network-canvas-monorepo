@@ -8,6 +8,7 @@ import {
   readFile,
   readdir,
   rename,
+  rm,
   stat,
   writeFile,
 } from 'node:fs/promises';
@@ -137,6 +138,7 @@ async function alternateRestoreTargets(
     'inspection-failure',
     'network-inspection-failure',
     'unsupported-network-driver',
+    'missing-administrator-configuration',
   ] as const) {
     const probe = await localDeployment(kind);
     const resource = `${probe.project}-existing`;
@@ -190,7 +192,9 @@ async function alternateRestoreTargets(
         kind,
       );
       const inspectionFailure = kind.endsWith('inspection-failure');
-      if (kind === 'project-name') {
+      if (kind === 'missing-administrator-configuration') {
+        await rm(join(probe.directory, 'deployment/postgres-privileges.sql'));
+      } else if (kind === 'project-name') {
         // An empty environment value lets the top-level Compose name win.
         environment.COMPOSE_PROJECT_NAME = '';
         override = `name: ${existing.project}\n`;
@@ -322,16 +326,18 @@ async function alternateRestoreTargets(
         /Loaded image(?: ID)?:/,
       );
       expect(refused.stderr.toString(), kind).toContain(
-        inspectionFailure ||
-          kind === 'unsupported-network-driver' ||
-          kind === 'bind-data' ||
-          kind === 'bind-client-assets' ||
-          kind === 'misrouted-client-assets' ||
-          kind === 'driver-bind-data'
-          ? 'unable to verify a new Compose project'
-          : guardedNetwork
-            ? 'target Compose network already exists'
-            : 'target Compose project or named volumes already exist',
+        kind === 'missing-administrator-configuration'
+          ? 'administrator privilege configuration is missing'
+          : inspectionFailure ||
+              kind === 'unsupported-network-driver' ||
+              kind === 'bind-data' ||
+              kind === 'bind-client-assets' ||
+              kind === 'misrouted-client-assets' ||
+              kind === 'driver-bind-data'
+            ? 'unable to verify a new Compose project'
+            : guardedNetwork
+              ? 'target Compose network already exists'
+              : 'target Compose project or named volumes already exist',
       );
       expect(await existingRestoreState(existing), kind).toEqual(
         protectedState,
