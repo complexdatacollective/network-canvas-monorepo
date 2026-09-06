@@ -20,6 +20,7 @@
     "./schema": "./src/schema.ts",
     "./taxonomy": "./src/taxonomy.ts",
     "./tenant": "./src/tenant.ts",
+    "./email-sender": "./src/email-sender.ts",
     "./section-validation": "./src/section-validation.ts",
     "./template-metadata": "./src/template-metadata.ts",
     "./template-exchange": "./src/template-exchange.ts"
@@ -36,12 +37,14 @@
     "drizzle-orm": "catalog:",
     "fflate": "^0.8.3",
     "file-type": "^22.0.2",
+    "nodemailer": "9.0.5",
     "pg": "^8.22.0",
     "pg-connection-string": "^2.14.0",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@codaco/tsconfig": "workspace:^",
+    "@types/nodemailer": "8.0.1",
     "@types/pg": "^8.20.4",
     "drizzle-kit": "catalog:",
     "fast-check": "^4.9.0",
