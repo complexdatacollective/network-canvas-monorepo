@@ -92,6 +92,11 @@ describe.skipIf(!reachable)('PostgreSQL catalog privilege boundary', () => {
     await client.query(
       `ALTER ROLE ${escapeIdentifier(roles.login)} LOGIN PASSWORD 'synthetic-catalog-fixture-only'`,
     );
+    // Production callers must deny database TEMP independently. PostgreSQL
+    // synthesizes current-temp namespace CREATE from that database privilege.
+    await client.query(
+      `REVOKE TEMPORARY ON DATABASE ${escapeIdentifier(database)} FROM PUBLIC, ${Object.values(roles).map(escapeIdentifier).join(', ')}`,
+    );
   });
   afterEach(async () => {
     vi.restoreAllMocks();
@@ -222,6 +227,138 @@ describe.skipIf(!reachable)('PostgreSQL catalog privilege boundary', () => {
       }
     }
   });
+
+  it.each(
+    (['pg_catalog', 'information_schema'] as const).flatMap((namespace) =>
+      (['runtime', 'backup', 'login', 'inherited', 'PUBLIC'] as const).map(
+        (principal) => ({ namespace, principal }),
+      ),
+    ),
+  )(
+    'refuses $principal CREATE on $namespace before a harmful object must exist',
+    async ({ namespace, principal }) => {
+      const grantee =
+        principal === 'PUBLIC' ? 'PUBLIC' : escapeIdentifier(roles[principal]);
+      const identity =
+        principal === 'PUBLIC' || principal === 'inherited'
+          ? roles.runtime
+          : roles[principal];
+      if (principal === 'inherited') {
+        await client.query(
+          `GRANT ${escapeIdentifier(roles.inherited)} TO ${escapeIdentifier(roles.runtime)} WITH INHERIT TRUE, SET FALSE`,
+        );
+      }
+      await client.query(`GRANT CREATE ON SCHEMA ${namespace} TO ${grantee}`);
+      // Observe the decision before creation. The capability is usable even
+      // while every existing routine and relation still has its stock grants.
+      const decision = await assertSafePostgresCatalogPrivileges(
+        client,
+        identities,
+      ).then(
+        () => null,
+        (error: unknown) => error,
+      );
+      await asIdentity(client, identity, async () => {
+        await client.query(
+          `CREATE FUNCTION ${namespace}.catalog_namespace_probe() RETURNS boolean LANGUAGE sql AS 'SELECT true'`,
+        );
+        expect(
+          (
+            await client.query(
+              `SELECT ${namespace}.catalog_namespace_probe() AS reached`,
+            )
+          ).rows,
+        ).toEqual([{ reached: true }]);
+      });
+      expect(decision).toEqual(new Error(UNSAFE));
+    },
+  );
+
+  it.each(
+    (['pg_catalog', 'information_schema'] as const).flatMap((namespace) =>
+      (['runtime', 'backup', 'login', 'inherited'] as const).map(
+        (principal) => ({ namespace, principal }),
+      ),
+    ),
+  )(
+    'refuses $principal USAGE grant delegation on $namespace',
+    async ({ namespace, principal }) => {
+      const identity =
+        principal === 'inherited' ? roles.runtime : roles[principal];
+      const recipient = `catalog_delegate_${suffix}`;
+      await client.query(`CREATE ROLE ${escapeIdentifier(recipient)} NOLOGIN`);
+      if (principal === 'inherited') {
+        await client.query(
+          `GRANT ${escapeIdentifier(roles.inherited)} TO ${escapeIdentifier(roles.runtime)} WITH INHERIT TRUE, SET FALSE`,
+        );
+      }
+      await client.query(
+        `GRANT USAGE ON SCHEMA ${namespace} TO ${escapeIdentifier(roles[principal])} WITH GRANT OPTION`,
+      );
+      const decision = await assertSafePostgresCatalogPrivileges(
+        client,
+        identities,
+      ).then(
+        () => null,
+        (error: unknown) => error,
+      );
+      await asIdentity(client, identity, async () => {
+        await client.query(
+          `GRANT USAGE ON SCHEMA ${namespace} TO ${escapeIdentifier(recipient)}`,
+        );
+        expect(
+          (
+            await client.query(
+              `SELECT EXISTS (
+        SELECT 1 FROM pg_namespace namespace, aclexplode(namespace.nspacl) privilege
+        WHERE namespace.nspname=$1 AND privilege.privilege_type='USAGE'
+          AND privilege.grantee=(SELECT oid FROM pg_roles WHERE rolname=$2)
+          AND privilege.grantor=(SELECT oid FROM pg_roles WHERE rolname=$3)
+      ) AS delegated`,
+              [namespace, recipient, roles[principal]],
+            )
+          ).rows,
+        ).toEqual([{ delegated: true }]);
+      });
+      expect(decision).toEqual(new Error(UNSAFE));
+    },
+  );
+
+  it.each(['pg_catalog', 'information_schema'] as const)(
+    'refuses restricted ownership of %s even after direct CREATE is revoked',
+    async (namespace) => {
+      await client.query(
+        `ALTER SCHEMA ${namespace} OWNER TO ${escapeIdentifier(roles.runtime)}; REVOKE ALL ON SCHEMA ${namespace} FROM ${escapeIdentifier(roles.runtime)}`,
+      );
+      expect(
+        (
+          await client.query(
+            "SELECT has_schema_privilege($1, $2, 'CREATE') AS create",
+            [roles.runtime, namespace],
+          )
+        ).rows,
+      ).toEqual([{ create: false }]);
+      const decision = await assertSafePostgresCatalogPrivileges(
+        client,
+        identities,
+      ).then(
+        () => null,
+        (error: unknown) => error,
+      );
+      await asIdentity(client, roles.runtime, async () => {
+        await client.query(`GRANT CREATE ON SCHEMA ${namespace} TO ${escapeIdentifier(roles.runtime)};
+          CREATE FUNCTION ${namespace}.catalog_namespace_probe() RETURNS boolean LANGUAGE sql AS 'SELECT true'`);
+        expect(
+          (
+            await client.query(
+              `SELECT ${namespace}.catalog_namespace_probe() AS reached`,
+            )
+          ).rows,
+        ).toEqual([{ reached: true }]);
+      });
+      expect(decision).toEqual(new Error(UNSAFE));
+    },
+  );
 
   it.each(['table', 'column'] as const)(
     'refuses pg_settings UPDATE grant options at %s level',
@@ -728,6 +865,54 @@ describe.skipIf(!reachable)('PostgreSQL catalog privilege boundary', () => {
       assertSafePostgresCatalogPrivileges(client, identities),
     ).rejects.toThrow(UNSAFE);
   });
+
+  it.each(['runtime', 'backup', 'login', 'inherited', 'PUBLIC'] as const)(
+    'refuses %s database TEMP through the actual current temporary namespace',
+    async (principal) => {
+      await client.query('CREATE TEMP TABLE administrator_temp(value integer)');
+      const identity =
+        principal === 'inherited' || principal === 'PUBLIC'
+          ? roles.runtime
+          : roles[principal];
+      const grantee =
+        principal === 'PUBLIC' ? 'PUBLIC' : escapeIdentifier(roles[principal]);
+      if (principal === 'inherited') {
+        await client.query(
+          `GRANT ${escapeIdentifier(roles.inherited)} TO ${escapeIdentifier(roles.runtime)} WITH INHERIT TRUE, SET FALSE`,
+        );
+      }
+      expect(
+        (
+          await client.query(
+            "SELECT pg_my_temp_schema() <> 0 AS initialized, has_schema_privilege($1, pg_my_temp_schema(), 'CREATE') AS can_create",
+            [identity],
+          )
+        ).rows,
+      ).toEqual([{ initialized: true, can_create: false }]);
+      await expect(
+        assertSafePostgresCatalogPrivileges(client, identities),
+      ).resolves.toBeUndefined();
+      await client.query(
+        `GRANT TEMPORARY ON DATABASE ${escapeIdentifier(database)} TO ${grantee}`,
+      );
+      const decision = await assertSafePostgresCatalogPrivileges(
+        client,
+        identities,
+      ).then(
+        () => null,
+        (error: unknown) => error,
+      );
+      await asIdentity(client, identity, async () => {
+        await client.query(
+          'CREATE TEMP TABLE restricted_temp(value integer); INSERT INTO restricted_temp VALUES(1)',
+        );
+        expect(
+          (await client.query('SELECT value FROM restricted_temp')).rows,
+        ).toEqual([{ value: 1 }]);
+      });
+      expect(decision).toEqual(new Error(UNSAFE));
+    },
+  );
 
   it('rejects absent identities instead of passing an empty catalog scan', async () => {
     await expect(
