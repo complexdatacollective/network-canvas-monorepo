@@ -6,7 +6,6 @@ import { Toolbar } from '@base-ui/react/toolbar';
 import {
   type AnyExtension,
   createNodeFromContent,
-  type Editor,
   Extension,
   isProseMirrorFragment,
   Node as TiptapNode,
@@ -19,7 +18,6 @@ import { Placeholder } from '@tiptap/extension-placeholder';
 import {
   type DOMOutputSpec,
   Fragment,
-  type Node as ProseMirrorNode,
   type Schema,
   Slice,
 } from '@tiptap/pm/model';
@@ -31,6 +29,7 @@ import {
   useEditorState,
 } from '@tiptap/react';
 import { StarterKit } from '@tiptap/starter-kit';
+import { isEqual } from 'es-toolkit';
 import {
   Bold,
   Check,
@@ -236,135 +235,148 @@ const SingleLineDocument = TiptapNode.create({
   content: 'paragraph',
 });
 
-/**
- * Every inline node of a fragment, with each break between them spelled as a
- * space: block boundaries, and inline nodes that are not text (a hard break,
- * or an atom this field has no room for).
- *
- * Text nodes are carried over rather than re-made, so pasting a formatted
- * phrase into a single-line field keeps its bold and italic runs — the line
- * loses its line breaks, not its formatting.
- *
- * The space goes between blocks that SAID something, and once per boundary.
- * Counting every block as a predecessor spelled a boundary twice wherever
- * blocks nest — a pasted list put one space after the item and another after
- * the paragraph inside it, so two bullets arrived as "One  Two" — and put a
- * space beside a block with nothing on the other side of it, so an empty
- * paragraph between two others did the same, and a trailing one left the line
- * ending in a space. Each of those was then saved as part of the
- * researcher's question. Architect's markdown adapter reduces its own blocks
- * by this same rule.
- */
-const inlineNodesOf = (
-  fragment: Fragment,
-  schema: Schema,
-): ProseMirrorNode[] => {
-  const collected: ProseMirrorNode[] = [];
-
-  fragment.forEach((node) => {
-    if (node.isText) {
-      collected.push(node);
-      return;
-    }
-
-    if (node.isInline) {
-      collected.push(schema.text(' '));
-      return;
-    }
-
-    // One boundary, however deeply the block that follows it is nested: the
-    // separator belongs to the run of inline content a block contributes, not
-    // to each level of wrapping it arrives inside.
-    const contributed = inlineNodesOf(node.content, schema);
-
-    if (contributed.length === 0) {
-      return;
-    }
-
-    if (collected.length > 0) {
-      collected.push(schema.text(' '));
-    }
-
-    collected.push(...contributed);
-  });
-
-  return collected;
+/** The line being collected, and whether a break is owed before its next text. */
+type OneLineRun = {
+  collected: JSONContent[];
+  breakPending: boolean;
 };
 
+const SPACE = ' ';
+
 /**
- * The one-paragraph document a fragment's inline content makes, or `null` in
- * a schema with no paragraph to put it in.
+ * Adds text to the line, joining it to the run before it when they carry the
+ * same marks. That is what ProseMirror itself holds, so a flattened value
+ * compares equal to the document the editor makes of it.
  */
-const oneLineDocumentOf = (
-  content: Fragment,
-  schema: Schema,
-): ProseMirrorNode | null => {
-  const paragraphType = schema.nodes.paragraph;
+const pushRun = (
+  run: OneLineRun,
+  text: string,
+  marks: JSONContent['marks'],
+) => {
+  const carried = marks && marks.length > 0 ? marks : undefined;
+  const previous = run.collected.at(-1);
 
-  if (!paragraphType) return null;
+  if (previous?.type === 'text' && isEqual(previous.marks, carried)) {
+    previous.text = `${previous.text ?? ''}${text}`;
+    return;
+  }
 
-  return schema.topNodeType.create(
-    null,
-    paragraphType.create(
-      null,
-      Fragment.fromArray(inlineNodesOf(content, schema)),
-    ),
+  run.collected.push(
+    carried === undefined
+      ? { type: 'text', text }
+      : { type: 'text', marks: carried, text },
   );
 };
 
 /**
- * A document handed to a single-line field, flattened before the field is
- * asked to hold it.
+ * Adds a text node to the line, spelling any break owed before it as one
+ * space. The space carries no marks of its own: a bold space would serialise
+ * as part of the bold run, and markdown will not open emphasis on a space.
+ */
+const addText = (
+  run: OneLineRun,
+  text: string,
+  marks: JSONContent['marks'],
+) => {
+  if (run.breakPending && run.collected.length > 0) {
+    pushRun(run, SPACE, undefined);
+  }
+
+  run.breakPending = false;
+  pushRun(run, text, marks);
+};
+
+/**
+ * Every line of a document, run together as the inline content of one.
  *
- * The schema refuses a second block, but only to content the editor MAKES.
- * A value is read with `Node.fromJSON`, which builds the node it is told to
- * build without asking the schema whether that content fits, so a stored
- * two-paragraph document arrived whole and the field showed two lines while
- * promising one. A hard break came in the same way, and the schema was never
- * going to refuse that at all: it sits inside the paragraph rather than
- * beside it.
+ * This works on the JSON rather than on a parsed document, because on the way
+ * IN there is nothing parsed yet — and for a single-line field there cannot
+ * be. Its schema has no heading, list or rule in it, `Node.fromJSON` throws on
+ * a node type it does not know, and TipTap answers that by handing back an
+ * EMPTY document. So a stored heading did not arrive flattened; it arrived as
+ * nothing at all, and the next edit saved that emptiness over the researcher's
+ * words. Reading the value first is the very thing that fails, so the shape is
+ * changed before anything reads it.
  *
- * Flattening has to happen BEFORE the document reaches the editor, because
- * the other way a value arrives — `setContent` — replaces the document
- * through the schema, which fits what it can and silently drops the rest. A
- * two-paragraph value pushed through there lost its second line outright
- * rather than joining it on.
+ * Text is carried over whole, so a formatted phrase keeps its bold and italic
+ * runs: the line loses its line breaks, not its formatting.
  *
- * `createNodeFromContent` is the reader TipTap's own `content` option uses,
- * so a value this schema cannot express at all — a heading, say, in a field
- * that offers none — still degrades the way it always did instead of
- * throwing.
+ * Every other node is a BREAK in the line — a block boundary, a hard break, an
+ * atom this field has no room for — and however many of them fall together
+ * they spell ONE space, and only between text that says something on both
+ * sides. Spelling each break separately put one in twice wherever blocks nest
+ * (a pasted list arrived as "One  Two"), put one beside an empty paragraph
+ * that has nothing on the other side of it, and left the saved line ending in
+ * one. Architect's markdown adapter reduces its own blocks by this same rule.
+ */
+const collectOneLine = (
+  content: JSONContent[] | null | undefined,
+  run: OneLineRun,
+) => {
+  for (const node of content ?? []) {
+    if (node.type === 'text') {
+      if (node.text) {
+        addText(run, node.text, node.marks);
+      }
+      continue;
+    }
+
+    // Owed on both sides of whatever this node holds: the text after a block
+    // is on a new line, and so is the text after the block ends.
+    run.breakPending = true;
+    collectOneLine(node.content, run);
+    run.breakPending = true;
+  }
+};
+
+/** The inline content a document's lines make when run together as one. */
+const oneLineContentOf = (
+  content: JSONContent[] | null | undefined,
+): JSONContent[] => {
+  const run: OneLineRun = { collected: [], breakPending: false };
+  collectOneLine(content, run);
+  return run.collected;
+};
+
+/**
+ * The one-paragraph document a value makes.
+ *
+ * An empty paragraph carries no `content` at all, which is how ProseMirror
+ * writes one: the flattened value has to be comparable to the document the
+ * editor holds, key for key.
+ */
+const oneLineDocumentOf = (value: JSONContent): JSONContent => {
+  const content = oneLineContentOf(value.content);
+
+  return {
+    type: 'doc',
+    content: [
+      content.length > 0
+        ? { type: 'paragraph', content }
+        : { type: 'paragraph' },
+    ],
+  };
+};
+
+/**
+ * The flattened value as the editor will hold it.
+ *
+ * Only the comparison in the sync effect needs this: reading the flattened
+ * document through the schema fills in the mark attributes a stored value can
+ * leave out, so a host echoing its own value back settles instead of having
+ * the document replaced on every pass. The document is a paragraph of text by
+ * then, so the read cannot fail on a node type — and a MARK the schema does
+ * not have degrades exactly as it always did, because `createNodeFromContent`
+ * is the reader TipTap's own `content` option uses.
  */
 const asOneLine = (value: JSONContent, schema: Schema): JSONContent => {
-  const parsed = createNodeFromContent(value, schema);
-  const oneLine = oneLineDocumentOf(
-    isProseMirrorFragment(parsed) ? parsed : parsed.content,
-    schema,
-  );
+  const flattened = oneLineDocumentOf(value);
+  const parsed = createNodeFromContent(flattened, schema, { slice: false });
 
-  return oneLine === null ? value : (oneLine.toJSON() as JSONContent);
-};
-
-/**
- * Holds the document the editor was BUILT with to one line.
- *
- * `useEditor` reads its `content` option itself, so this is the one arrival
- * that cannot be flattened on the way in.
- */
-const holdToOneLine = (editor: Editor) => {
-  const { doc, schema } = editor.state;
-  const oneLine = oneLineDocumentOf(doc.content, schema);
-
-  if (oneLine === null || doc.eq(oneLine)) return;
-
-  // `preventUpdate` is what `setContent`'s own `emitUpdate: false` sets:
-  // making a document expressible is not an edit the host asked for, and it
-  // learns the flattened value the next time the field is edited or left.
-  editor.view.dispatch(
-    editor.state.tr
-      .replaceWith(0, doc.content.size, oneLine.content)
-      .setMeta('preventUpdate', true),
-  );
+  // A fragment only comes back from that reader's own empty-content fallback.
+  return isProseMirrorFragment(parsed)
+    ? flattened
+    : (parsed.toJSON() as JSONContent);
 };
 
 const swallowKeystroke = () => true;
@@ -405,8 +417,17 @@ const SingleLineInput = Extension.create({
           // The last step of every paste, whichever flavour the clipboard
           // offered: plain text is parsed into paragraphs first, so
           // transforming the text as well would only do this twice.
+          //
+          // Through the same flattening a value goes through, so however a
+          // line reaches this field a break is spelled the same way. The
+          // round trip is safe in this direction: a pasted slice was parsed
+          // with this schema, so everything in it can be read back.
           transformPasted: (slice: Slice) => {
-            const nodes = inlineNodesOf(slice.content, schema);
+            const pasted = slice.content.toJSON() as JSONContent[] | null;
+            const nodes = oneLineContentOf(pasted).map((node) =>
+              schema.nodeFromJSON(node),
+            );
+
             return nodes.length === 0
               ? Slice.empty
               : new Slice(Fragment.fromArray(nodes), 0, 0);
@@ -817,19 +838,15 @@ export default function RichTextEditorField({
         attributes: editorAttributes,
       },
       extensions: editorExtensions,
-      content: value,
+      // Flattened here rather than after the editor exists: `useEditor` reads
+      // this option itself, and reading a value with a block the single-line
+      // schema has no type for is what loses it. `onCreate` is too late twice
+      // over — it fires a tick after the field has painted, and by then the
+      // document it would flatten is already empty.
+      content:
+        singleLine && value !== undefined ? oneLineDocumentOf(value) : value,
       editable: !disabled && !readOnly,
       autofocus: autoFocus ? 'end' : false,
-      onCreate: ({ editor: createdEditor }) => {
-        // `useEditor` reads `content` itself, so this is the one arrival the
-        // flattening cannot meet on the way in. The sync effect below would
-        // catch it a tick later, but a tick later is after the field has
-        // painted: a stored two-paragraph value would show as two lines and
-        // then collapse to one.
-        if (singleLine) {
-          holdToOneLine(createdEditor);
-        }
-      },
       onUpdate: ({ editor: updateEditor }) => {
         if (changeModeRef.current === 'input') {
           onChangeRef.current?.(updateEditor.getJSON());
@@ -863,7 +880,13 @@ export default function RichTextEditorField({
   });
 
   useEffect(() => {
-    if (!editor) return;
+    // A destroyed editor keeps its last document but nothing to change it
+    // with: `destroy` drops the schema and the command manager. Changing what
+    // the field offers — the single-line restriction included — rebuilds the
+    // editor, and this effect runs once more against the outgoing one before
+    // the new one arrives. The rebuilt editor is created from `value`, so
+    // there is nothing to sync here anyway.
+    if (!editor || editor.isDestroyed) return;
 
     if (value === undefined) {
       if (!editor.isEmpty) {

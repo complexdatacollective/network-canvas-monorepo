@@ -394,6 +394,45 @@ const TWO_PARAGRAPH_DOCUMENT = {
 };
 
 /**
+ * The same passage stored as blocks a single-line field has no schema for at
+ * all. A value like this is what an author's markdown becomes the moment the
+ * field it was written in is turned into a single-line one.
+ */
+const HEADING_DOCUMENT = {
+  type: 'doc',
+  content: [
+    {
+      type: 'heading',
+      attrs: { level: 2 },
+      content: [{ type: 'text', text: 'Never met' }],
+    },
+    { type: 'paragraph', content: [{ type: 'text', text: 'in person' }] },
+  ],
+};
+
+const LIST_DOCUMENT = {
+  type: 'doc',
+  content: [
+    {
+      type: 'bulletList',
+      content: [
+        {
+          type: 'listItem',
+          content: [
+            {
+              type: 'paragraph',
+              content: [{ type: 'text', text: 'Never met' }],
+            },
+          ],
+        },
+      ],
+    },
+    { type: 'horizontalRule' },
+    { type: 'paragraph', content: [{ type: 'text', text: 'in person' }] },
+  ],
+};
+
+/**
  * A clipboard payload the editor's paste handler can read. jsdom implements no
  * `DataTransfer`, and the handler only ever asks one for the flavours it was
  * given.
@@ -579,6 +618,59 @@ describe('a single-line RichTextEditorField', () => {
       null,
     );
     expect(editor.textContent).toBe('Never met in person');
+  });
+
+  /**
+   * A block this schema does not have at all, which is the harder half of the
+   * same problem: the flattening cannot ask the editor to read the value
+   * first, because reading it is what fails.
+   */
+  it('flattens a heading it is mounted with', async () => {
+    const field = renderSingleLine({ value: HEADING_DOCUMENT });
+    const editor = await field.editor();
+
+    expect(editor.querySelectorAll('p')).toHaveLength(1);
+    expect(editor.textContent).toBe('Never met in person');
+  });
+
+  it('flattens a list and a rule that arrive later', async () => {
+    const field = renderSingleLine();
+    const editor = await field.editor();
+
+    field.setValue(LIST_DOCUMENT);
+
+    await waitFor(() => {
+      expect(editor.textContent).toBe('Never met in person');
+    });
+    expect(editor.querySelectorAll('p')).toHaveLength(1);
+  });
+
+  it('keeps what a field held when it becomes single-line', async () => {
+    // Changing the restriction rebuilds the editor around the new schema, and
+    // the value it is rebuilt from is the one the host is still holding: the
+    // blocks it had a moment ago.
+    const multiLineField = (singleLine: boolean) => (
+      <RichTextEditorField
+        id="label"
+        name="label"
+        aria-describedby="label-hint"
+        aria-label="Answer"
+        changeMode="input"
+        value={HEADING_DOCUMENT}
+        onChange={() => undefined}
+        {...(singleLine ? { singleLine: true } : {})}
+      />
+    );
+    const { rerender } = render(multiLineField(false));
+    const before = await screen.findByRole('textbox', { name: 'Answer' });
+    expect(before.textContent).toBe('Never metin person');
+
+    rerender(multiLineField(true));
+
+    const after = await screen.findByRole('textbox', { name: 'Answer' });
+    await waitFor(() => {
+      expect(after.textContent).toBe('Never met in person');
+    });
   });
 
   it('offers no control that would need a block it cannot hold', async () => {
