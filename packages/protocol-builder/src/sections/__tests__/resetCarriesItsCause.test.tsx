@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { Button } from '@codaco/fresco-ui/Button';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -13,6 +14,7 @@ import ProtocolArrayField from '../../form/ProtocolArrayField.tsx';
 import ProtocolField from '../../form/ProtocolField.tsx';
 import ResourcePickerControl from '../../resources/components/ResourcePickerControl.tsx';
 import { fixtureMessage } from '../../testing/i18n.ts';
+import { loadFixtureStage } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import BuilderSection, { type SectionCapability } from '../BuilderSection.tsx';
 
@@ -778,6 +780,166 @@ describe('a section resetting on a path a command cannot address', () => {
 
     await expect(harness.user.type(text, '!')).rejects.toThrow(
       /no command can address/,
+    );
+  });
+});
+
+const RadioGroup = RadioGroupField as ComponentType<Record<string, unknown>>;
+
+/**
+ * A capability whose one value lives INSIDE the container its cause
+ * discriminates.
+ *
+ * `skipLogic.destination` is a choice between object shapes — a later stage
+ * XOR the finish screen — which makes it an exclusive-variant container
+ * (`EXCLUSIVE_VARIANT_CONTAINERS`), and such a container may only be written
+ * whole. So the stage this skip names is not discarded with an `unset` of its
+ * own: the diff answers with a single `set` of the whole destination.
+ */
+const SKIP_DESTINATION_STAGE: SectionCapability = {
+  fields: ['skipLogic.destination.stageId'],
+  confirmClear: {
+    title: fixtureMessage('This will clear the stage the skip jumps to'),
+    description: fixtureMessage('The stage this skip continues at will go.'),
+    confirmLabel: fixtureMessage('Clear the destination'),
+  },
+};
+
+function SkipDestinationSections() {
+  return (
+    <>
+      <BuilderSection title="Where a skipped stage continues">
+        <ProtocolField<typeof RadioGroup>
+          name="skipLogic.destination.type"
+          label="Continue at"
+          component={RadioGroup}
+          options={[
+            { value: 'stage', label: 'A later stage' },
+            { value: 'finish', label: 'The end of the interview' },
+          ]}
+        />
+      </BuilderSection>
+      <BuilderSection
+        title="Destination stage"
+        capability={SKIP_DESTINATION_STAGE}
+        resetOn="skipLogic.destination.type"
+      >
+        <ProtocolField
+          name="skipLogic.destination.stageId"
+          label="Stage"
+          component={InputField}
+        />
+      </BuilderSection>
+    </>
+  );
+}
+
+/**
+ * The stage seeded with a skip that jumps to a later one, which is the state
+ * the reset below starts from. `sociogram-1` follows the roster in the
+ * fixture's interview, so it is a destination the schema allows.
+ */
+const openSkipDestination = () => {
+  const roster = loadFixtureStage('name-generator-roster-1');
+  return renderStageEditor({
+    stage: {
+      id: roster.id,
+      type: roster.type,
+      fields: {
+        ...roster.fields,
+        skipLogic: {
+          action: 'SKIP',
+          filter: { rules: [] },
+          destination: { type: 'stage', stageId: 'sociogram-1' },
+        },
+      },
+    },
+    sections: <SkipDestinationSections />,
+  });
+};
+
+const destinationOf = (
+  harness: ReturnType<typeof renderStageEditor>,
+): unknown => {
+  const skipLogic = harness.session.getSnapshot().editedSection.fields
+    .skipLogic as Readonly<Record<string, unknown>> | undefined;
+  return skipLogic?.destination;
+};
+
+/**
+ * A discard whose CAUSE is inside the container the discard rewrites.
+ *
+ * The whole destination travels in one `set`, and that `set` is assembled out
+ * of the draft the discard is diffed against — so a diff taken against a draft
+ * the cause has not reached rebuilds the container around the value the
+ * researcher has just replaced. The batch was then `set
+ * skipLogic.destination.type = "finish"` followed by `set
+ * skipLogic.destination = {type: "stage"}`, and the second command undid the
+ * first: the researcher's choice reverted on the spot, and the undo behind it
+ * had no choice left to bring back.
+ *
+ * So the cause goes into the draft the discards are read against, and a cause
+ * an ancestor `set` already carries is not also sent on its own — a second
+ * command saying what the first one already says, which a reader of the log
+ * would have to work out does not disagree with it.
+ */
+describe('a capability reset from inside the variant container it lives in', () => {
+  it('writes the container once, with the cause already in it', async () => {
+    const harness = openSkipDestination();
+    expect(await screen.findByRole('textbox', { name: 'Stage' })).toHaveValue(
+      'sociogram-1',
+    );
+
+    await harness.user.click(
+      await screen.findByRole('radio', { name: 'The end of the interview' }),
+    );
+
+    // ONE command. Not the leaf-then-container pair, whose second half put the
+    // researcher's own choice back to what it was.
+    await waitFor(() =>
+      expect(
+        harness.pendingCommands().flatMap((batch) => [...batch.commands]),
+      ).toEqual([
+        {
+          op: 'set',
+          key: ['skipLogic', 'destination'],
+          value: { type: 'finish' },
+        },
+      ]),
+    );
+    // And what it leaves is the destination the researcher chose, with nothing
+    // of the one it replaced still clinging to it.
+    expect(destinationOf(harness)).toEqual({ type: 'finish' });
+  });
+
+  it('brings the whole destination back when the session undoes it', async () => {
+    const harness = openSkipDestination();
+    await screen.findByRole('textbox', { name: 'Stage' });
+
+    await harness.user.click(
+      await screen.findByRole('radio', { name: 'The end of the interview' }),
+    );
+    await waitFor(() =>
+      expect(destinationOf(harness)).toEqual({ type: 'finish' }),
+    );
+
+    act(() => {
+      harness.session.undo();
+    });
+
+    // Both halves, together: the choice the researcher made and the stage it
+    // cost them are one command, so one step of history takes back both.
+    await waitFor(() =>
+      expect(destinationOf(harness)).toEqual({
+        type: 'stage',
+        stageId: 'sociogram-1',
+      }),
+    );
+    expect(
+      await screen.findByRole('radio', { name: 'A later stage' }),
+    ).toBeChecked();
+    expect(await screen.findByRole('textbox', { name: 'Stage' })).toHaveValue(
+      'sociogram-1',
     );
   });
 });

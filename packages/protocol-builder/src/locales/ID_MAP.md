@@ -185,22 +185,52 @@ editor report the same conflict, so a translator answers once.
 
 Named here so a later split takes the name rather than inventing a synonym.
 
-| `<area>`               | Will own the copy in                         | Expected in |
-| ---------------------- | -------------------------------------------- | ----------- |
-| `subjectSelect`        | `fields/SubjectSelectField.tsx`              | splits 3–6  |
-| `nodePanels`           | `sections/NodePanelsSection`                 | family D    |
-| `searchOptions`        | `sections/SearchOptionsSection`              | family D    |
-| `alterLimits`          | `sections/AlterLimitsSection`                | family D    |
-| `quickAdd`             | `sections/QuickAddSection`                   | family D    |
-| `sortOptions`          | `sections/SortOptionsSection`                | family D    |
-| `nameGeneratorPrompts` | `sections/NameGeneratorPromptsSection`       | family D    |
-| `cardDisplay`          | `sections/CardDisplaySection`                | family D    |
-| `externalDataSource`   | `sections/ExternalDataSourceSection`         | family D    |
-| `networkCanvas`        | `sections/network/`                          | family F    |
-| `pedigree`             | `sections/pedigree/`                         | family F    |
-| `narrativePedigree`    | `sections/narrativePedigree/`                | family F    |
-| `geospatial`           | `sections/geospatial/`, geospatial `fields/` | family F    |
-| `anonymisation`        | `sections/anonymisation/`                    | family F    |
+| `<area>`               | Will own the copy in                   | Expected in |
+| ---------------------- | -------------------------------------- | ----------- |
+| `subjectSelect`        | `fields/SubjectSelectField.tsx`        | splits 3–6  |
+| `nodePanels`           | `sections/NodePanelsSection`           | family D    |
+| `searchOptions`        | `sections/SearchOptionsSection`        | family D    |
+| `alterLimits`          | `sections/AlterLimitsSection`          | family D    |
+| `quickAdd`             | `sections/QuickAddSection`             | family D    |
+| `sortOptions`          | `sections/SortOptionsSection`          | family D    |
+| `nameGeneratorPrompts` | `sections/NameGeneratorPromptsSection` | family D    |
+| `cardDisplay`          | `sections/CardDisplaySection`          | family D    |
+| `externalDataSource`   | `sections/ExternalDataSourceSection`   | family D    |
+
+### Part converted — family F
+
+These five are OPEN: each already declares the ids its sections hand to a
+shared component, and each still holds English `DEFAULT_COPY` literals for
+everything it renders itself. Both halves live under the same area name, so
+the rest of the conversion adds ids here and renames none.
+
+What crossed first is what a shared component says on the family's behalf and
+could not be given as a string: `SectionCapability.confirmClear`, the row noun
+`DialogArrayField` builds its affordances and refusals around, and the
+sentences `PromptsSection` and `FormFieldsSection` say for one interface. Those
+are declared in each family's own `*Messages.ts` — the one file per area named
+below — and are covered by the catalog guards like any other id.
+
+What has NOT crossed is each section's own `copy?: Partial<…Copy>` of plain
+strings. `src/__tests__/hostCopyOverrides.test.ts` excludes these five
+directories by name for exactly as long as that is true, and each exclusion
+goes with the family's conversion.
+
+| `<area>`            | Owns the copy in                             | Declared in                                               |
+| ------------------- | -------------------------------------------- | --------------------------------------------------------- |
+| `networkCanvas`     | `sections/network/`                          | `sections/network/networkCanvasMessages.ts`               |
+| `pedigree`          | `sections/pedigree/`                         | `sections/pedigree/pedigreeMessages.ts`                   |
+| `narrativePedigree` | `sections/narrativePedigree/`                | `sections/narrativePedigree/narrativePedigreeMessages.ts` |
+| `geospatial`        | `sections/geospatial/`, geospatial `fields/` | `sections/geospatial/geospatialMessages.ts`               |
+| `anonymisation`     | `sections/anonymisation/`                    | `sections/anonymisation/anonymisationMessages.ts`         |
+
+A `*Messages.ts` per area rather than descriptors beside each section's markup,
+which is the rule for a converted module. The reason is the seam: every id here
+is rendered somewhere ELSE — in `BuilderSection`'s confirmation, in
+`DialogArrayField`'s refusals, in the shared prompt and form sections — so a
+translator reading one of these files sees the whole of what a family says
+through other people's components, and the family's own copy joins it there
+when the rest is converted.
 
 Three reserved areas turned out to need no ids at all, and two name files that
 do not exist yet. Recorded rather than dropped, so nobody re-reserves a name

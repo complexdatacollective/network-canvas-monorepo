@@ -8,7 +8,7 @@ import type { VariableType } from '@codaco/protocol-validation';
 import type { CrossClassPick } from '../../codebook/variableValidation.ts';
 import { OrdinalColorControl } from '../../fields/OrdinalColorField.tsx';
 import { DialogFormField } from '../../form/DialogForm.tsx';
-import PromptsSection, { type PromptsSectionCopy } from '../PromptsSection.tsx';
+import PromptsSection from '../PromptsSection.tsx';
 import type { RowEditorProps } from '../rowRenderers.tsx';
 import { censusPromptsMessages } from './censusPromptsMessages.ts';
 import PromptAttributeField from './PromptAttributeField.tsx';
@@ -33,12 +33,6 @@ const PICKS: readonly CrossClassPick[] = Object.freeze([
 
 /** What this interface can show at once before the bins stop being readable. */
 const BIN_LIMIT = 5;
-
-/** What this stage shows the participant, said in the section's own words. */
-const WORDS: PromptsSectionCopy = Object.freeze({
-  description: censusPromptsMessages.binDescription,
-  fieldHint: censusPromptsMessages.ordinalBinFieldHint,
-});
 
 /**
  * What only this family says. Everything a bin shares with the categorical
@@ -271,7 +265,8 @@ export default function OrdinalBinPromptsSection() {
         it had one.
       */
       itemTemplate={() => ({ color: 'ord-color-seq-1' })}
-      words={WORDS}
+      description={censusPromptsMessages.binDescription}
+      fieldHint={censusPromptsMessages.ordinalBinFieldHint}
     />
   );
 }

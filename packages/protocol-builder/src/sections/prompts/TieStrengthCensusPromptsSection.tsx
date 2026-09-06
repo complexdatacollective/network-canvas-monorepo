@@ -11,7 +11,7 @@ import type { VariableType } from '@codaco/protocol-validation';
 import type { CrossClassPick } from '../../codebook/variableValidation.ts';
 import RichTextField from '../../fields/RichTextField.tsx';
 import { DialogFormField } from '../../form/DialogForm.tsx';
-import PromptsSection, { type PromptsSectionCopy } from '../PromptsSection.tsx';
+import PromptsSection from '../PromptsSection.tsx';
 import type { RowEditorProps } from '../rowRenderers.tsx';
 import { censusPromptsMessages } from './censusPromptsMessages.ts';
 import CreateEdgeField from './CreateEdgeField.tsx';
@@ -41,12 +41,6 @@ const PICKS: readonly CrossClassPick[] = Object.freeze([
  * (`TieStrengthCensusPrompts/PromptFields.tsx`).
  */
 const SCALE_LIMIT = 5;
-
-/** What this stage shows the participant, said in the section's own words. */
-const WORDS: PromptsSectionCopy = Object.freeze({
-  description: censusPromptsMessages.pairDescription,
-  fieldHint: censusPromptsMessages.pairFieldHint,
-});
 
 /**
  * What only this family says. The words it shares with the other two censuses,
@@ -323,7 +317,8 @@ export default function TieStrengthCensusPromptsSection() {
       PromptEditor={TieStrengthCensusPromptEditor}
       PromptPreview={PromptTextPreview}
       editorValidate={pickGate}
-      words={WORDS}
+      description={censusPromptsMessages.pairDescription}
+      fieldHint={censusPromptsMessages.pairFieldHint}
     />
   );
 }

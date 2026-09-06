@@ -112,27 +112,6 @@ const promptsValidation = {
   ]),
 };
 
-/**
- * The two sentences a family may say in its own words.
- *
- * `MessageDescriptor`s, never resolved words: a string handed in here would be
- * invisible to `extractMessages`, absent from the catalogs and covered by no
- * guard, so the one part of this section a family cared enough to write would
- * be the one part that stayed English. `src/__tests__/hostCopyOverrides.test.ts`
- * is what holds that line for every bundle like this one.
- *
- * Only these two. Everything else the section says is about the list rather
- * than about the interface — what a row is called, what the add button does,
- * that a stage must ask something — and reads the same whatever the stage
- * shows the participant.
- */
-export type PromptsSectionCopy = Readonly<{
-  /** Said in place of the section's own description, once a subject exists. */
-  description: MessageDescriptor;
-  /** Said in place of the guidance under the list. */
-  fieldHint: MessageDescriptor;
-}>;
-
 export type PromptsSectionProps = Readonly<{
   /**
    * The family's own prompt fields, rendered inside the row dialog.
@@ -193,18 +172,30 @@ export type PromptsSectionProps = Readonly<{
    */
   normalizeRow?: (row: unknown) => unknown;
   /**
-   * What this family's prompts are about, where the generic sentence would be
-   * wrong about what the participant is looking at.
+   * Sentences this interface's prompts need instead of the generic ones.
    *
-   * A Dyad Census asks about a PAIR of people and a bin stage is answered by
-   * dragging, neither of which "the questions this stage asks" describes. Left
-   * out by a family the ordinary sentence already fits.
+   * DESCRIPTORS, and named one at a time rather than bundled behind a `copy`
+   * object — see `src/__tests__/hostCopyOverrides.test.ts`. A string handed
+   * across a seam like this is invisible to extraction, absent from the
+   * catalogs and covered by no guard, so the words an interface cared enough
+   * to write for itself would be the only words that stayed English. A
+   * descriptor declared in the interface's own messages file is extracted,
+   * translated and guarded exactly like this section's own.
    *
-   * The section still owns the words the researcher reads while it is waiting
-   * on a subject: nothing has been chosen yet, so a sentence about pairs or
-   * bins would be describing a stage that does not exist.
+   * Whole sentences per interface rather than a noun swapped into a shared
+   * frame: a sociogram's prompts set TASKS performed on a canvas and a
+   * geospatial stage's ask WHERE something is, and neither reads as the
+   * generic "question the participant answers" with one word changed.
+   *
+   * Deliberately only these four. The section's own heading, its field label
+   * and everything about the dialog stay shared, so a researcher moving
+   * between two interfaces is not learning two vocabularies for one control.
    */
-  words?: PromptsSectionCopy;
+  description?: MessageDescriptor;
+  /** Said instead of `description` while the section waits on a subject. */
+  waitingDescription?: MessageDescriptor;
+  fieldHint?: MessageDescriptor;
+  emptyState?: MessageDescriptor;
 }>;
 
 /**
@@ -227,7 +218,10 @@ export default function PromptsSection({
   editorValidate,
   itemTemplate,
   normalizeRow = withoutAbsentValues,
-  words,
+  description = messages.description,
+  waitingDescription = messages.waitingDescription,
+  fieldHint = messages.fieldHint,
+  emptyState = messages.emptyState,
 }: PromptsSectionProps) {
   const intl = useAppIntl();
   const subject = useStageValue('subject');
@@ -245,22 +239,20 @@ export default function PromptsSection({
     <BuilderSection
       title={intl.formatMessage(messages.title)}
       description={intl.formatMessage(
-        waiting
-          ? messages.waitingDescription
-          : (words?.description ?? messages.description),
+        waiting ? waitingDescription : description,
       )}
       disabled={waiting}
     >
       <ProtocolArrayField<typeof DialogArrayField>
         name={PROMPTS_FIELD}
         label={intl.formatMessage(messages.fieldLabel)}
-        hint={intl.formatMessage(words?.fieldHint ?? messages.fieldHint)}
+        hint={intl.formatMessage(fieldHint)}
         component={DialogArrayField}
         addButtonLabel={intl.formatMessage(messages.addLabel)}
         addTitle={intl.formatMessage(messages.addTitle)}
         editorTitle={intl.formatMessage(messages.editTitle)}
         itemLabel={messages.itemNoun}
-        emptyStateMessage={intl.formatMessage(messages.emptyState)}
+        emptyStateMessage={intl.formatMessage(emptyState)}
         editorFieldsComponent={editorFieldsComponent}
         previewComponent={previewComponent}
         editorDialogSize="editor"

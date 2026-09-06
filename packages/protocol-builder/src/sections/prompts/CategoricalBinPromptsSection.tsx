@@ -8,7 +8,7 @@ import type { VariableType } from '@codaco/protocol-validation';
 import type { CrossClassPick } from '../../codebook/variableValidation.ts';
 import RichTextField from '../../fields/RichTextField.tsx';
 import { DialogFormField } from '../../form/DialogForm.tsx';
-import PromptsSection, { type PromptsSectionCopy } from '../PromptsSection.tsx';
+import PromptsSection from '../PromptsSection.tsx';
 import type { RowEditorProps } from '../rowRenderers.tsx';
 import { censusPromptsMessages } from './censusPromptsMessages.ts';
 import PromptAttributeField from './PromptAttributeField.tsx';
@@ -43,12 +43,6 @@ const PICKS: readonly CrossClassPick[] = Object.freeze([
 
 /** What this interface can show at once before the bins stop being readable. */
 const BIN_LIMIT = 8;
-
-/** What this stage shows the participant, said in the section's own words. */
-const WORDS: PromptsSectionCopy = Object.freeze({
-  description: censusPromptsMessages.binDescription,
-  fieldHint: censusPromptsMessages.categoricalBinFieldHint,
-});
 
 /**
  * What only this family says. Everything a bin shares with the ordinal bin, or
@@ -393,7 +387,8 @@ export default function CategoricalBinPromptsSection() {
       PromptEditor={CategoricalBinPromptEditor}
       PromptPreview={PromptTextPreview}
       editorValidate={pickGate}
-      words={WORDS}
+      description={censusPromptsMessages.binDescription}
+      fieldHint={censusPromptsMessages.categoricalBinFieldHint}
     />
   );
 }

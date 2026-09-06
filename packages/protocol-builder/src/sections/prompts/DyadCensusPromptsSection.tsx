@@ -2,16 +2,10 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 
-import PromptsSection, { type PromptsSectionCopy } from '../PromptsSection.tsx';
+import PromptsSection from '../PromptsSection.tsx';
 import { censusPromptsMessages } from './censusPromptsMessages.ts';
 import CreateEdgeField from './CreateEdgeField.tsx';
 import { PromptTextField, PromptTextPreview } from './promptText.tsx';
-
-/** What this stage shows the participant, said in the section's own words. */
-const WORDS: PromptsSectionCopy = Object.freeze({
-  description: censusPromptsMessages.pairDescription,
-  fieldHint: censusPromptsMessages.pairFieldHint,
-});
 
 /**
  * What only this family says. The words it shares with the other two censuses
@@ -104,7 +98,8 @@ export default function DyadCensusPromptsSection() {
     <PromptsSection
       PromptEditor={DyadCensusPromptEditor}
       PromptPreview={PromptTextPreview}
-      words={WORDS}
+      description={censusPromptsMessages.pairDescription}
+      fieldHint={censusPromptsMessages.pairFieldHint}
     />
   );
 }
