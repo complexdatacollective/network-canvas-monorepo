@@ -724,9 +724,19 @@ describe('a session that stages resources', () => {
     // Releasing the hold here would send batch 3 to a host that never saw
     // batch 2, and acknowledging 3 would drop the user's edit for good.
     expect(onCommands).not.toHaveBeenCalled();
+    // Batch 1 is the host's — the apply carried it — so it is retired rather
+    // than left for the next finish to send a second time. The two the apply
+    // did not carry stay pending, in order, and still held.
     expect(
       session.getSnapshot().pendingCommands.map((batch) => batch.id),
-    ).toEqual([1, 2, 3]);
+    ).toEqual([2, 3]);
+    // Retiring is not forgetting: the researcher's draft still reads exactly
+    // as it did, batch 1 included.
+    expect(session.getSnapshot().editedSection.fields).toMatchObject({
+      items: informationItems(staged.id),
+      title: 'Renamed mid-save',
+      label: 'Renamed again',
+    });
   });
 
   it('discards an upload that lands while the finish is deciding what to promote', async () => {
@@ -1352,8 +1362,114 @@ describe('a session that stages resources', () => {
     expect(gateway.getStagingResidue()).toEqual([]);
   });
 
+  it('does not carry the batches of a finish that succeeded into the next one', async () => {
+    const { host, onFinish, session } = createFixture({
+      stage: 'NameGeneratorRoster',
+      fields: reorderableRosterFields,
+    });
+    const roster = await stageRoster(session, 'roster-request');
+    session.dispatch([{ op: 'set', key: 'dataSource', value: roster.id }]);
+    session.dispatch([{ op: 'moveItem', key: 'prompts', from: 0, to: 1 }]);
+
+    await session.finish();
+
+    expect(host.getSnapshot().protocolSections[stageSection]).toMatchObject({
+      prompts: reorderedPrompts,
+    });
+
+    // One more edit and one more save — no failure anywhere, and no
+    // acknowledgement either, which a host owes the session at no point.
+    session.dispatch([{ op: 'set', key: 'label', value: 'Second thoughts' }]);
+    await session.finish();
+
+    // The first finish's batches are the host's already. Sending them again
+    // replays the move onto prompts that have moved, putting them back in the
+    // order the researcher changed — under a save that reports success.
+    expect(
+      onFinish.mock.calls.at(-1)?.[0].pendingCommands.map((batch) => batch.id),
+    ).toEqual([3]);
+    expect(host.getSnapshot().protocolSections[stageSection]).toMatchObject({
+      prompts: reorderedPrompts,
+      label: 'Second thoughts',
+    });
+  });
+
+  it('retires what the first attempt carried when the host answers the retry out of its promotion cache', async () => {
+    const { host, onFinish, session } = createFixture({
+      stage: 'NameGeneratorRoster',
+      fields: reorderableRosterFields,
+      loseFirstPromotionAnswer: true,
+    });
+    const roster = await stageRoster(session, 'roster-request');
+    session.dispatch([{ op: 'set', key: 'dataSource', value: roster.id }]);
+    session.dispatch([{ op: 'moveItem', key: 'prompts', from: 0, to: 1 }]);
+
+    // The host promoted and applied for real, and lost only its answer.
+    await expect(session.finish()).rejects.toBeInstanceOf(
+      ResourcePromotionError,
+    );
+    expect(host.getSnapshot().protocolSections[stageSection]).toMatchObject({
+      prompts: reorderedPrompts,
+    });
+
+    // "Try again", with nothing changed in between — the most ordinary
+    // reaction there is, and the one the stable promotion id exists for. The
+    // host hands back the promotion it already made without applying anything,
+    // so this finish succeeds having carried nothing: proof that the first
+    // apply committed, and therefore that its batches are the host's.
+    await session.finish();
+    session.dispatch([{ op: 'set', key: 'label', value: 'Second thoughts' }]);
+    await session.finish();
+
+    expect(
+      onFinish.mock.calls.at(-1)?.[0].pendingCommands.map((batch) => batch.id),
+    ).toEqual([3]);
+    expect(host.getSnapshot().protocolSections[stageSection]).toMatchObject({
+      prompts: reorderedPrompts,
+      label: 'Second thoughts',
+    });
+  });
+
+  it('keeps holding the batches a cached promotion answer proves nothing about', async () => {
+    const { onCommands, session } = createFixture({
+      stage: 'NameGeneratorRoster',
+      fields: reorderableRosterFields,
+      loseFirstPromotionAnswer: true,
+    });
+    const first = await stageRoster(session, 'first-roster');
+    session.dispatch([{ op: 'set', key: 'dataSource', value: first.id }]);
+    session.dispatch([{ op: 'moveItem', key: 'prompts', from: 0, to: 1 }]);
+
+    await expect(session.finish()).rejects.toBeInstanceOf(
+      ResourcePromotionError,
+    );
+
+    // A second import, looked at and then thought better of. The draft ends up
+    // exactly where it was, so saving again is still the identical finish and
+    // still asks under the same promotion id — but these two batches were made
+    // after that promotion's apply and have been nowhere.
+    const second = await stageRoster(session, 'second-roster');
+    session.dispatch([{ op: 'set', key: 'dataSource', value: second.id }]);
+    session.dispatch([{ op: 'set', key: 'dataSource', value: first.id }]);
+
+    await session.finish();
+
+    // The host answered out of its promotion cache, so this finish applied
+    // nothing: what it proves the host holds is what the first attempt carried,
+    // not what this one was about to hand over.
+    expect(
+      session.getSnapshot().pendingCommands.map((batch) => batch.id),
+    ).toEqual([3, 4]);
+
+    session.dispatch([{ op: 'set', key: 'label', value: 'Second thoughts' }]);
+
+    // And because the host never saw batches 3 and 4, nothing after them may
+    // overtake them to a live-applying host.
+    expect(onCommands).not.toHaveBeenCalled();
+  });
+
   it('retires the stage commands the promotion it settled already carried', async () => {
-    const { host, session } = createFixture({
+    const { host, onFinish, session } = createFixture({
       stage: 'NameGeneratorRoster',
       fields: reorderableRosterFields,
       loseFirstPromotionAnswer: true,
@@ -1388,8 +1504,11 @@ describe('a session that stages resources', () => {
       label: 'Second thoughts',
     });
     expect(
-      session.getSnapshot().pendingCommands.map((batch) => batch.id),
+      onFinish.mock.calls.at(-1)?.[0].pendingCommands.map((batch) => batch.id),
     ).toEqual([3]);
+    // And that finish's own batch is the host's too, so nothing is left for a
+    // third one to send.
+    expect(session.getSnapshot().pendingCommands).toEqual([]);
   });
 
   it('keeps the stage commands of a promotion the host never made', async () => {

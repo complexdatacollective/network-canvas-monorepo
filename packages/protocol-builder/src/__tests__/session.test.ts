@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { contentHash, type SectionDoc } from '@codaco/studio-sync/apply';
+import {
+  applyCommands,
+  contentHash,
+  type SectionDoc,
+} from '@codaco/studio-sync/apply';
 import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -15,6 +19,7 @@ import {
   StageIdentityCommandError,
   type CompoundEditResult,
   type CompoundEditRequest,
+  type FinishRequest,
   type ProtocolBuilderSessionOptions,
 } from '../session.ts';
 
@@ -267,6 +272,43 @@ describe('ProtocolBuilderSessionStore', () => {
     await expect(session.finish()).rejects.toBeInstanceOf(
       InvalidProtocolDraftError,
     );
+  });
+
+  it('does not carry the batches of a finish that succeeded into the next one', async () => {
+    // The whole of a buffering host: it applies what each finish carries, and
+    // acknowledges nothing, which it owes the session at no point.
+    let committed: SectionDoc = { ...initialFields };
+    const onFinish = vi.fn(({ pendingCommands }: FinishRequest) => {
+      committed = pendingCommands.reduce<SectionDoc>(
+        (document, batch) => applyCommands(document, [...batch.commands]),
+        committed,
+      );
+    });
+    const { session } = createSession({ onFinish });
+
+    session.dispatch([
+      {
+        op: 'insertItem',
+        key: 'items',
+        index: 0,
+        item: { id: 'item-1', type: 'text', content: 'First' },
+      },
+    ]);
+    await session.finish();
+
+    session.dispatch([{ op: 'set', key: 'title', value: 'Second thoughts' }]);
+    await session.finish();
+
+    // Sending the first finish's batch again inserts the item a second time,
+    // under a save that reports success. `items` is index-based, and nothing
+    // but the researcher reading their own stage would ever notice.
+    expect(
+      onFinish.mock.calls.at(-1)?.[0].pendingCommands.map((batch) => batch.id),
+    ).toEqual([2]);
+    expect(committed).toEqual(session.getSnapshot().editedSection.fields);
+    expect(committed.items).toEqual([
+      { id: 'item-1', type: 'text', content: 'First' },
+    ]);
   });
 
   it('acknowledges own commands but refuses generic authoritative rebasing', () => {

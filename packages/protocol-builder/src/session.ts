@@ -721,6 +721,12 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
    * That apply is also where the batches withheld from a live-applying host
    * are released: they reference resources whose manifest entries are in the
    * very same apply, so this is the first moment they are safe to send.
+   *
+   * A finish that succeeds also retires the batches the host now holds, the
+   * same way an acknowledgement of them would. Nothing else will: the host's
+   * own acknowledgement is optional and may never come, and `insertItem`,
+   * `removeItem` and `moveItem` are index-based, so a batch left pending is a
+   * command the next finish replays against a document that has already moved.
    */
   async finish(): Promise<void> {
     this.assertEditable();
@@ -749,7 +755,9 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
 
     const resources = this.resources;
     if (resources === undefined) {
-      await applyStageCarrying(this.snapshot.pendingCommands)();
+      const pendingCommands = this.snapshot.pendingCommands;
+      await applyStageCarrying(pendingCommands)();
+      this.retirePendingCommandsThrough(pendingCommands.at(-1)?.id ?? 0);
       return;
     }
 
@@ -766,6 +774,10 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
 
     let outcome: StagedResourceFinishOutcome;
     let carriedThroughBatchId = 0;
+    // What the attempt that made the promotion this finish is asking under
+    // carried, which is what the host holds if it answers out of its promotion
+    // cache instead of applying anything here.
+    let promotedThroughBatchId = 0;
     try {
       // Decided after the hold, because the hold is what fixes the staged set
       // this finish promotes: content read before it could still change.
@@ -774,6 +786,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
         document,
         hold.data.staged,
       );
+      promotedThroughBatchId = promotion.carriedThroughBatchId;
       // Read after that settling, not before it: settling a promotion the host
       // turns out to hold retires the batches its apply already committed, and
       // this apply must not carry them again.
@@ -818,11 +831,15 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       throw new ResourcePromotionError(outcome.failure);
     }
     this.promotion = undefined;
-    // Only the batches this apply actually carried are released. An edit made
-    // while the apply was in flight is not among them, and letting a later
-    // batch overtake it would leave the host holding a gap an acknowledgement
-    // would close over the missing edit.
-    this.releaseWithheldThrough(carriedThroughBatchId);
+    // Only the batches the host actually received are retired and released. An
+    // edit made while the apply was in flight is not among them, and letting a
+    // later batch overtake it would leave the host holding a gap an
+    // acknowledgement would close over the missing edit. When the gateway
+    // answered out of its promotion cache, this apply carried nothing at all
+    // and the host holds what the attempt that made that promotion carried.
+    this.retirePendingCommandsThrough(
+      outcome.applied ? carriedThroughBatchId : promotedThroughBatchId,
+    );
     if (outcome.discardFailures.length > 0) {
       try {
         this.options.onResourceCleanupFailed?.(outcome.discardFailures);
@@ -865,9 +882,25 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     resources: StagedResourceTracker,
     document: SectionDoc,
     staged: readonly ResourceDescriptor[],
-  ): Promise<Readonly<{ id: string; staged: readonly ResourceDescriptor[] }>> {
+  ): Promise<
+    Readonly<{
+      id: string;
+      staged: readonly ResourceDescriptor[];
+      /**
+       * The batches the attempt that made this key carried. A host answering
+       * under a key it has already completed applies nothing, so this — not
+       * what the finish asking is about to hand to its own apply — is what
+       * that answer proves the host holds.
+       */
+      carriedThroughBatchId: number;
+    }>
+  > {
     if (this.promotion?.content === promotionContent(document, staged)) {
-      return Object.freeze({ id: this.promotion.id, staged });
+      return Object.freeze({
+        id: this.promotion.id,
+        staged,
+        carriedThroughBatchId: this.promotion.carriedThroughBatchId,
+      });
     }
 
     const outstanding = this.promotion;
@@ -892,19 +925,23 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       content: promotionContent(document, promoting),
       carriedThroughBatchId: this.snapshot.pendingCommands.at(-1)?.id ?? 0,
     });
-    return Object.freeze({ id: this.promotion.id, staged: promoting });
+    return Object.freeze({
+      id: this.promotion.id,
+      staged: promoting,
+      carriedThroughBatchId: this.promotion.carriedThroughBatchId,
+    });
   }
 
   /**
-   * Drops the batches an apply the session has since proved committed.
+   * Drops the batches an apply has committed.
    *
    * The same delivered-prefix reconciliation {@link acknowledge} performs, for
-   * the one apply no acknowledgement is coming for: the finish that carried
-   * these batches was told its promotion had failed, so the host's own
-   * acknowledgement of that revision — if it was ever sent — belongs to a
-   * finish this session gave up on. Leaving them pending is what makes the
-   * next finish send them a second time, and `insertItem`, `removeItem` and
-   * `moveItem` are index-based: replayed against the document they have
+   * the applies no acknowledgement is coming for. A finish's apply is one:
+   * the host's own acknowledgement of that revision is optional, it may never
+   * be sent, and when the finish was told its promotion had failed it belongs
+   * to a finish this session gave up on. Leaving them pending is what makes
+   * the next finish send them a second time, and `insertItem`, `removeItem`
+   * and `moveItem` are index-based: replayed against the document they have
    * already moved, they duplicate an item or reorder the wrong one, and the
    * finish that does it reports success.
    *
@@ -913,6 +950,10 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
    * the researcher is looking at, and the validation of them, are unchanged.
    */
   private retirePendingCommandsThrough(throughBatchId: number): void {
+    // The host has everything through here, so the hold moves past it whether
+    // or not any batch is still pending to be retired: a finish whose batches
+    // an acknowledgement already dropped has still delivered them.
+    this.releaseWithheldThrough(throughBatchId);
     const retired = this.snapshot.pendingCommands.filter(
       (batch) => batch.id <= throughBatchId,
     );
@@ -921,9 +962,6 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       (doc, batch) => applyCommands(doc, [...batch.commands]),
       cloneDoc(this.baseFields),
     );
-    // The host has these, so the hold moves past them exactly as it does for a
-    // finish that carried them and was told so.
-    this.releaseWithheldThrough(throughBatchId);
     this.replaceSnapshot({
       pendingCommands: this.snapshot.pendingCommands.filter(
         (batch) => batch.id > throughBatchId,

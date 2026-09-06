@@ -841,6 +841,19 @@ export type StagedResourceDiscardFailure = Readonly<{
 export type StagedResourceFinishOutcome =
   | Readonly<{
       status: 'finished';
+      /**
+       * Whether {@link StagedResourceFinishOptions.applyStage} ran in this
+       * call.
+       *
+       * False only when the gateway answered under the id of a promotion it
+       * had already made, which it does without applying anything a second
+       * time. The finish succeeded either way, and the same edits reached the
+       * host either way — but in that case they reached it during the attempt
+       * that made the promotion, not during this one. A caller that tracks
+       * what it has delivered has to know which, because the batches this call
+       * handed to `applyStage` are not the batches the host received.
+       */
+      applied: boolean;
       promoted: readonly ResourceDescriptor[];
       discarded: readonly string[];
       /** Abandoned resources the host would not drop. Usually empty. */
@@ -935,6 +948,9 @@ export async function finishStagedResources(
     const cleanup = await discardEach(options.gateway, plan.discard);
     return Object.freeze({
       status: 'finished' as const,
+      // Called directly above, so there is no promotion cache between this
+      // finish and the host.
+      applied: true,
       promoted: Object.freeze([]),
       ...cleanup,
     });
@@ -946,6 +962,9 @@ export async function finishStagedResources(
   });
 
   let applyError: Readonly<{ error: unknown }> | undefined;
+  // Set by the gateway calling back, so it distinguishes a promotion this call
+  // made from one the gateway already held and handed straight back.
+  let applied = false;
   // A gateway that throws is reported as a rolled-back promotion rather than
   // as an exception, because that is the outcome the caller can act on: the
   // promotion id makes finishing again safe, and a gateway that had in fact
@@ -958,6 +977,7 @@ export async function finishStagedResources(
       applyManifest: async (manifest: ManifestApplyRequest) => {
         try {
           await options.applyStage(manifest);
+          applied = true;
           return Object.freeze({ status: 'applied' as const });
         } catch (error: unknown) {
           applyError = Object.freeze({ error });
@@ -988,6 +1008,7 @@ export async function finishStagedResources(
   const cleanup = await discardEach(options.gateway, plan.discard);
   return Object.freeze({
     status: 'finished' as const,
+    applied,
     promoted: result.data.promoted,
     ...cleanup,
   });
