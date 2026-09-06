@@ -355,7 +355,7 @@ describe('a section that speaks once a data file has been read', () => {
     });
 
     await screen.findByText(
-      'The people in it carry these attributes: age, name.',
+      'The people in it carry these attributes: age and name.',
     );
 
     expect(

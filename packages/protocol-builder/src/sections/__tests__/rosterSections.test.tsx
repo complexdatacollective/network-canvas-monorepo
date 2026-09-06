@@ -120,7 +120,7 @@ describe("a roster stage's data file", () => {
     // a roster is external data and its columns are whatever it contains.
     expect(
       await screen.findByText(
-        'The people in it carry these attributes: age, name.',
+        'The people in it carry these attributes: age and name.',
       ),
     ).toBeInTheDocument();
   });
@@ -194,7 +194,7 @@ describe("what a roster's cards show", () => {
     // The columns arrive from the gateway, so nothing on this stage can be
     // judged until they have: a section rendered before them offers nothing.
     await screen.findByText(
-      'The people in it carry these attributes: age, name.',
+      'The people in it carry these attributes: age and name.',
     );
     // The stage's name, the type it lists, what it asks and how it behaves
     // belong to sections this mount does not include.

@@ -11,6 +11,62 @@
     "defaultMessage": "This will clear your nomination limits",
     "description": "Title of the dialog asking a researcher to confirm switching off the section that caps how many people one stage of an interview may name."
   },
+  "protocolBuilder.alterLimits.description": {
+    "defaultMessage": "Limit how many people this stage may name, counted across the whole stage.",
+    "description": "Description of the nomination-limits section. A stage is one step of an interview, and it may ask several questions; the cap covers all of them together."
+  },
+  "protocolBuilder.alterLimits.maxBelowMin": {
+    "defaultMessage": "The maximum cannot be less than the minimum.",
+    "description": "Refusal shown against the maximum box when it holds fewer people than the minimum beside it, which no stage could satisfy."
+  },
+  "protocolBuilder.alterLimits.maxHint": {
+    "defaultMessage": "Leave empty for no maximum.",
+    "description": "Guidance under the box holding the largest number of people this step of the interview may name."
+  },
+  "protocolBuilder.alterLimits.maxIsZero": {
+    "defaultMessage": "A maximum of 0 would let the stage name nobody.",
+    "description": "Refusal shown against the maximum box when the researcher capped the stage at zero people, which leaves the stage nothing to do. A stage is one step of an interview."
+  },
+  "protocolBuilder.alterLimits.maxLabel": {
+    "defaultMessage": "Most people",
+    "description": "Label of the box holding the largest number of people this step of the interview may name."
+  },
+  "protocolBuilder.alterLimits.maxPlaceholder": {
+    "defaultMessage": "No limit",
+    "description": "Placeholder shown in the empty maximum box, saying what an unanswered maximum means: the stage may name as many people as the participant wants to."
+  },
+  "protocolBuilder.alterLimits.minAboveMax": {
+    "defaultMessage": "The minimum cannot be more than the maximum.",
+    "description": "Refusal shown against the minimum box when it holds more people than the maximum beside it, which no stage could satisfy."
+  },
+  "protocolBuilder.alterLimits.minBelowZero": {
+    "defaultMessage": "The smallest a minimum can be is 0.",
+    "description": "Refusal shown against the minimum box when the researcher entered a negative number of people."
+  },
+  "protocolBuilder.alterLimits.minHint": {
+    "defaultMessage": "Leave empty for no minimum.",
+    "description": "Guidance under the box holding the smallest number of people this step of the interview may name."
+  },
+  "protocolBuilder.alterLimits.minLabel": {
+    "defaultMessage": "Fewest people",
+    "description": "Label of the box holding the smallest number of people this step of the interview may name."
+  },
+  "protocolBuilder.alterLimits.noEndAnswered": {
+    "defaultMessage": "Set the fewest people, the most people, or both. Switch these limits off if this stage has no limit.",
+    "description": "Refusal shown against the minimum box when the researcher switched the nomination limits on and left both ends empty. Names the switch, because an unlimited stage is said by switching the section off rather than by leaving the boxes blank."
+  },
+  "protocolBuilder.alterLimits.title": {
+    "defaultMessage": "Nomination limits",
+    "description": "Heading of the section capping how many people one step of an interview may name."
+  },
+  "protocolBuilder.alterLimits.wholeStageDescription": {
+    "defaultMessage": "This stage asks several questions, and the limits apply to all of them together rather than to each one. Consider splitting the questions across stages, or say in the questions themselves how many people you are asking for.",
+    "description": "Warning body shown when the stage asks several questions, naming the two ways a researcher can ask for a number per question instead. A stage is one step of an interview."
+  },
+  "protocolBuilder.alterLimits.wholeStageTitle": {
+    "defaultMessage": "These limits cover the whole stage",
+    "description": "Warning heading shown when the stage asks several questions, because the cap is counted across all of them rather than per question. A stage is one step of an interview."
+  },
   "protocolBuilder.arrayField.addRowTitle": {
     "defaultMessage": "Add {itemLabel}",
     "description": "Title of the dialog a researcher fills in to add a row to a list, where the list has offered no title of its own. itemLabel is the list’s own noun for one of its rows, already in the reader’s language."
@@ -103,6 +159,14 @@
     "defaultMessage": "Change this attribute’s values",
     "description": "Button that opens the codebook editor for the list of answers a participant chooses between. Also the title of the dialog it opens."
   },
+  "protocolBuilder.cardDisplay.addLabel": {
+    "defaultMessage": "Add new card detail",
+    "description": "Button that adds one more attribute to what a roster card shows. Whole rather than a generic \"Add\", because a stage editor shows several lists at once and they would otherwise be indistinguishable to anyone navigating by a list of buttons."
+  },
+  "protocolBuilder.cardDisplay.attributeColumn": {
+    "defaultMessage": "Attribute",
+    "description": "Heading of the column of the card-details list holding which attribute of the data file a row shows."
+  },
   "protocolBuilder.cardDisplay.clearConfirm": {
     "defaultMessage": "Clear card details",
     "description": "Action that confirms switching the roster card details off and discarding them."
@@ -114,6 +178,42 @@
   "protocolBuilder.cardDisplay.clearTitle": {
     "defaultMessage": "This will clear the card details",
     "description": "Title of the dialog asking a researcher to confirm switching off the section that chooses what the cards in a roster show about each person."
+  },
+  "protocolBuilder.cardDisplay.description": {
+    "defaultMessage": "Show extra attributes on each roster card, so the participant can tell two similar people apart.",
+    "description": "Description of the card-details section. An attribute is one field the data file records about a person."
+  },
+  "protocolBuilder.cardDisplay.emptyState": {
+    "defaultMessage": "No extra attributes are shown on a card.",
+    "description": "Shown in place of the list while a roster card shows nothing but the person’s name."
+  },
+  "protocolBuilder.cardDisplay.fieldHint": {
+    "defaultMessage": "Each attribute appears beneath the name, under the label you give it here.",
+    "description": "Guidance under the list of extra attributes shown on a roster card."
+  },
+  "protocolBuilder.cardDisplay.fieldLabel": {
+    "defaultMessage": "Attributes shown on a card",
+    "description": "Label of the list of extra attributes each roster card shows beneath the person’s name."
+  },
+  "protocolBuilder.cardDisplay.labelColumn": {
+    "defaultMessage": "Label",
+    "description": "Heading of the column of the card-details list holding the words the participant reads beside the attribute’s value on a card."
+  },
+  "protocolBuilder.cardDisplay.labelPlaceholder": {
+    "defaultMessage": "Age",
+    "description": "Example label shown in an empty label cell of the card-details list. An example rather than an instruction, so a translation should be an equally ordinary thing a study records about a person."
+  },
+  "protocolBuilder.cardDisplay.title": {
+    "defaultMessage": "Card details",
+    "description": "Heading of the section choosing what each card in a roster shows about a person besides their name. A roster is a list of people imported from a data file."
+  },
+  "protocolBuilder.cardDisplay.titledByName": {
+    "defaultMessage": "Every card is titled with the person’s <strong>name</strong> from the data file. These attributes appear beneath it.",
+    "description": "Notice above the list saying which column titles a card, so a researcher does not add the name a second time. The strong tag emphasises the word for the column the interview reads as a person’s name; move the tag with the word it marks."
+  },
+  "protocolBuilder.cardDisplay.waitingDescription": {
+    "defaultMessage": "Choose a roster data file before deciding what its cards show.",
+    "description": "Shown in place of the card-details section’s description while no data file has been chosen, so there are no columns for a card to show."
   },
   "protocolBuilder.codebookEditing.createDescription": {
     "defaultMessage": "Create the attribute \"{name}\"",
@@ -359,6 +459,46 @@
     "defaultMessage": "Choose the video this block plays.",
     "description": "Refusal shown under the file picker of a video block when nothing has been chosen."
   },
+  "protocolBuilder.externalDataSource.columnsDescription": {
+    "defaultMessage": "The people in it carry these attributes: {names}.",
+    "description": "Body of the notice listing the attributes the chosen data file’s people carry. names is the column headings read out of the file, already joined into a list in the reader’s own language; they are the researcher’s own words and are never translated."
+  },
+  "protocolBuilder.externalDataSource.columnsTitle": {
+    "defaultMessage": "What this data file holds",
+    "description": "Heading of the notice listing the attributes the chosen data file’s people carry."
+  },
+  "protocolBuilder.externalDataSource.description": {
+    "defaultMessage": "Choose the data file listing the people this stage offers the participant.",
+    "description": "Description of the roster-source section. A stage is one step of an interview."
+  },
+  "protocolBuilder.externalDataSource.fieldHint": {
+    "defaultMessage": "A CSV or JSON file of people. Everything else on this stage is chosen from its columns.",
+    "description": "Guidance under the roster data-file control. CSV and JSON are file formats and are not translated. A stage is one step of an interview."
+  },
+  "protocolBuilder.externalDataSource.fieldLabel": {
+    "defaultMessage": "Roster data file",
+    "description": "Label of the control choosing which imported data file the roster lists people from."
+  },
+  "protocolBuilder.externalDataSource.fieldRequired": {
+    "defaultMessage": "Choose the data file this roster lists people from.",
+    "description": "Refusal shown when a researcher saves a roster stage without choosing a data file, which leaves the stage with nobody to offer."
+  },
+  "protocolBuilder.externalDataSource.noColumnsDescription": {
+    "defaultMessage": "The people in it carry no attributes, so there is nothing to show on a card, sort by, or search. Check that the file is formatted as Network Canvas expects.",
+    "description": "Warning body shown when the chosen data file’s people carry no attributes, naming the three things the rest of the stage would have chosen from them. Network Canvas is the product name and is not translated."
+  },
+  "protocolBuilder.externalDataSource.noColumnsTitle": {
+    "defaultMessage": "This data file has no attributes",
+    "description": "Warning heading shown when the chosen data file was read and its people carry no attributes at all. An attribute is one field the file records about a person."
+  },
+  "protocolBuilder.externalDataSource.title": {
+    "defaultMessage": "Roster source",
+    "description": "Heading of the section choosing the data file a roster stage lists people from. A roster is a list of people imported from a data file rather than named by the participant."
+  },
+  "protocolBuilder.externalDataSource.unreadableTitle": {
+    "defaultMessage": "This data file could not be read",
+    "description": "Warning heading shown when the chosen data file could not be opened. The reason underneath comes from the application hosting this editor."
+  },
   "protocolBuilder.formFields.addLabel": {
     "defaultMessage": "Create new form field",
     "description": "Button that opens the dialog for adding one more question to a form. Whole rather than a generic \"Add\", because a stage editor shows several lists at once."
@@ -559,6 +699,10 @@
     "defaultMessage": "Choose what this stage works with before writing its form.",
     "description": "Shown in place of the form-fields section’s description while the researcher has not yet chosen which node or edge type the stage is about."
   },
+  "protocolBuilder.integerField.notAWholeNumber": {
+    "defaultMessage": "This has to be a whole number of people.",
+    "description": "Refusal shown against a box that counts people when the researcher has typed something that is not a whole number — a decimal on its way to being one, or a stray character. Every control this rule guards counts people, which is why the sentence names them rather than saying \"a whole number\"."
+  },
   "protocolBuilder.interface.alterEdgeForm": {
     "defaultMessage": "Per Alter Edge Form",
     "description": "Researcher-facing interface name. Form for reporting relationships for each network member. Not a protocol-authored stage label."
@@ -715,6 +859,50 @@
     "defaultMessage": "Reorder item {position} of {count, number}",
     "description": "Accessible name of the handle that drags one row of a list into a different position. position is the row’s own place in the list, counting from one; count is how many rows the list holds."
   },
+  "protocolBuilder.nameGeneratorPrompts.assignmentsHint": {
+    "defaultMessage": "Use these values in skip logic or in a stage’s filter.",
+    "description": "Guidance under the attribute-assignments list, naming the two places a later stage can read the assigned values. Skip logic decides whether a stage runs at all; a filter decides what reaches it."
+  },
+  "protocolBuilder.nameGeneratorPrompts.assignmentsLabel": {
+    "defaultMessage": "Attribute assignments",
+    "description": "Label of the list pairing an attribute with the fixed value everyone named on this prompt is given."
+  },
+  "protocolBuilder.nameGeneratorPrompts.attributesGroupDescription": {
+    "defaultMessage": "Give every person named on this prompt a fixed value, so later stages can ask about them.",
+    "description": "Description of the additional-attributes half of the name-generator prompt dialog. A stage is one step of an interview."
+  },
+  "protocolBuilder.nameGeneratorPrompts.attributesGroupTitle": {
+    "defaultMessage": "Additional attributes",
+    "description": "Heading of the second half of the dialog for one name-generator prompt, holding the fixed values given to everyone named under it."
+  },
+  "protocolBuilder.nameGeneratorPrompts.promptGroupDescription": {
+    "defaultMessage": "Write the question this prompt asks the participant.",
+    "description": "Description of the first half of the dialog for one name-generator prompt."
+  },
+  "protocolBuilder.nameGeneratorPrompts.promptGroupTitle": {
+    "defaultMessage": "Participant prompt",
+    "description": "Heading of the first half of the dialog for one name-generator prompt, holding the question the participant reads. A prompt is one question a participant is asked."
+  },
+  "protocolBuilder.nameGeneratorPrompts.stampSummary": {
+    "defaultMessage": "{count, plural, one {Assigns # additional attribute.} other {Assigns # additional attributes.}}",
+    "description": "One line summarising a name-generator prompt in the list beneath its question, saying how many fixed values it gives everyone named on it. Shown only when there is at least one."
+  },
+  "protocolBuilder.nameGeneratorPrompts.textHint": {
+    "defaultMessage": "Shown to the participant while they name people. Supports markdown formatting.",
+    "description": "Guidance under the prompt-text box. Markdown is the name of a text formatting syntax and is not translated."
+  },
+  "protocolBuilder.nameGeneratorPrompts.textLabel": {
+    "defaultMessage": "Prompt text",
+    "description": "Label of the box holding the question one name-generator prompt asks the participant."
+  },
+  "protocolBuilder.nameGeneratorPrompts.textPlaceholder": {
+    "defaultMessage": "Who are the people you know?",
+    "description": "Example shown in the empty prompt-text box. Written as a participant would read it, because that is who reads the prompt."
+  },
+  "protocolBuilder.nameGeneratorPrompts.textRequired": {
+    "defaultMessage": "Write the question this prompt asks.",
+    "description": "Refusal shown when a researcher saves a name-generator prompt with no question in it."
+  },
   "protocolBuilder.networkFilter.clearConfirm": {
     "defaultMessage": "Clear filter",
     "description": "Action that confirms switching the stage filter off and discarding its rules."
@@ -759,6 +947,14 @@
     "defaultMessage": "Stage filter",
     "description": "Heading of the section where a researcher narrows which parts of the interview network one stage works on. A stage is one step of an interview."
   },
+  "protocolBuilder.nodePanels.addLabel": {
+    "defaultMessage": "Create new panel",
+    "description": "Button that opens the dialog for adding one more side panel. Whole rather than a generic \"Add\", because a stage editor shows several lists at once and they would otherwise be indistinguishable to anyone navigating by a list of buttons."
+  },
+  "protocolBuilder.nodePanels.addTitle": {
+    "defaultMessage": "Create panel",
+    "description": "Title of the dialog a researcher fills in to add one more side panel."
+  },
   "protocolBuilder.nodePanels.clearConfirm": {
     "defaultMessage": "Remove panels",
     "description": "Action that confirms switching the side panels off and deleting them."
@@ -771,9 +967,137 @@
     "defaultMessage": "This will delete your side panels",
     "description": "Title of the dialog asking a researcher to confirm switching off the section that adds panels of people beside a name generator for the participant to nominate from."
   },
+  "protocolBuilder.nodePanels.description": {
+    "defaultMessage": "Show a list of people beside this stage, so the participant can nominate someone without typing their name again.",
+    "description": "Description of the side-panels section. A stage is one step of an interview."
+  },
+  "protocolBuilder.nodePanels.edgeRulesClearConfirm": {
+    "defaultMessage": "Delete the rules",
+    "description": "Action that confirms deleting a side panel’s connection rules so the panel can list an imported file instead."
+  },
+  "protocolBuilder.nodePanels.edgeRulesClearDescription": {
+    "defaultMessage": "Rules about connections ask about the network the participant is building, and an imported file has none — so they would match nobody. Delete them and use the file, or cancel to keep the rules and go on listing the people named so far.",
+    "description": "Body of the dialog asked when a side panel stops listing the interview’s own network, naming both answers: delete the connection rules, or cancel and keep reading the interview."
+  },
+  "protocolBuilder.nodePanels.edgeRulesClearTitle": {
+    "defaultMessage": "This will delete this panel’s connection rules",
+    "description": "Title of the dialog asked when a side panel stops listing the interview’s own network, because rules about connections between people cannot be answered by an imported file."
+  },
+  "protocolBuilder.nodePanels.editTitle": {
+    "defaultMessage": "Edit panel",
+    "description": "Title of the dialog a researcher fills in to change a side panel they have already added."
+  },
+  "protocolBuilder.nodePanels.emptyState": {
+    "defaultMessage": "No panels yet. Create one to offer people the participant has already named.",
+    "description": "Shown in place of the side-panel list while the stage has none."
+  },
+  "protocolBuilder.nodePanels.fieldHint": {
+    "defaultMessage": "Up to two panels, shown in this order. Each draws from the interview so far or from a network you have imported.",
+    "description": "Guidance under the list of side panels."
+  },
+  "protocolBuilder.nodePanels.fieldLabel": {
+    "defaultMessage": "Panels",
+    "description": "Label of the list of side panels inside the section."
+  },
+  "protocolBuilder.nodePanels.filterClearConfirm": {
+    "defaultMessage": "Clear filter",
+    "description": "Action that confirms switching one side panel’s filter off and discarding its rules."
+  },
+  "protocolBuilder.nodePanels.filterClearDescription": {
+    "defaultMessage": "This will clear the filter, and delete any rules you have created for it. Do you want to continue?",
+    "description": "Body of the dialog confirming that switching one side panel’s filter off throws away every rule in it."
+  },
+  "protocolBuilder.nodePanels.filterClearTitle": {
+    "defaultMessage": "This will clear this panel’s filter",
+    "description": "Title of the dialog asking a researcher to confirm switching off one side panel’s filter, which throws away every rule in it."
+  },
+  "protocolBuilder.nodePanels.filterGroupDescription": {
+    "defaultMessage": "Narrow the panel to the people this stage is about.",
+    "description": "Description of the panel-filter half of the side-panel dialog. A stage is one step of an interview."
+  },
+  "protocolBuilder.nodePanels.filterGroupTitle": {
+    "defaultMessage": "Panel filter",
+    "description": "Heading of the second half of the dialog for one side panel, narrowing who appears in it."
+  },
+  "protocolBuilder.nodePanels.filterRulesHint": {
+    "defaultMessage": "Only people matching these rules appear in the panel. With no rules, everyone does.",
+    "description": "Guidance under one side panel’s filter rules."
+  },
+  "protocolBuilder.nodePanels.filterRulesLabel": {
+    "defaultMessage": "Filter rules",
+    "description": "Label of the rule builder narrowing which people appear in one side panel."
+  },
+  "protocolBuilder.nodePanels.incompletePanel": {
+    "defaultMessage": "Every panel needs a title and a source of people. Open the unfinished panel and complete it.",
+    "description": "Refusal shown above the side-panel list when a panel is missing its title or the source of the people it lists."
+  },
+  "protocolBuilder.nodePanels.interviewSource": {
+    "defaultMessage": "the people named so far",
+    "description": "How a side panel’s source reads inside the sentence summarising the panel in the list — \"Lists the people named so far.\" — when the panel draws on the interview’s own network. Lower case and mid-sentence."
+  },
   "protocolBuilder.nodePanels.itemNoun": {
     "defaultMessage": "panel",
     "description": "What one row of the side-panel list is called inside things said ABOUT it — \"Edit panel\", \"Remove this panel?\" — so it is lower case and singular. A side panel lists people beside a name generator for the participant to nominate from."
+  },
+  "protocolBuilder.nodePanels.missingSource": {
+    "defaultMessage": "a network that is no longer in this protocol",
+    "description": "How a side panel’s source reads inside the sentence summarising the panel in the list when it names an imported file the protocol no longer holds. Lower case and mid-sentence."
+  },
+  "protocolBuilder.nodePanels.panelGroupDescription": {
+    "defaultMessage": "Name the panel, and say where the people in it come from.",
+    "description": "Description of the first half of the dialog for one side panel."
+  },
+  "protocolBuilder.nodePanels.panelGroupTitle": {
+    "defaultMessage": "Panel",
+    "description": "Heading of the first half of the dialog for one side panel, holding what the panel is called and who it lists."
+  },
+  "protocolBuilder.nodePanels.panelSummary": {
+    "defaultMessage": "{rules, plural, =0 {Lists {source}.} one {Lists {source}, narrowed by # rule.} other {Lists {source}, narrowed by # rules.}}",
+    "description": "One line summarising a side panel in the list beneath its title. source is the phrase naming where its people come from, already lower case and written to sit mid-sentence; rules is how many filter rules narrow it."
+  },
+  "protocolBuilder.nodePanels.panelTitleHint": {
+    "defaultMessage": "Shown above the panel. Say what is in it, such as “People you named earlier”.",
+    "description": "Guidance under the panel-title box. The quoted phrase is an example title a researcher might write, and should read naturally rather than literally."
+  },
+  "protocolBuilder.nodePanels.panelTitleLabel": {
+    "defaultMessage": "Panel title",
+    "description": "Label of the box holding the words the participant reads above one side panel."
+  },
+  "protocolBuilder.nodePanels.panelTitlePlaceholder": {
+    "defaultMessage": "People you named earlier",
+    "description": "Example shown in the empty panel-title box. Written as a participant would read it, because that is who reads the title."
+  },
+  "protocolBuilder.nodePanels.panelTitleRequired": {
+    "defaultMessage": "Give this panel a title.",
+    "description": "Refusal shown when a researcher saves a side panel with no title, which the participant would read as an unlabelled list."
+  },
+  "protocolBuilder.nodePanels.sourceHint": {
+    "defaultMessage": "The interview's own network so far, or a network file you have imported.",
+    "description": "Guidance under the control choosing where one side panel’s people come from, naming the two kinds of source."
+  },
+  "protocolBuilder.nodePanels.sourceLabel": {
+    "defaultMessage": "People in this panel",
+    "description": "Label of the control choosing where the people one side panel lists come from."
+  },
+  "protocolBuilder.nodePanels.sourceRequired": {
+    "defaultMessage": "Choose where the people in this panel come from.",
+    "description": "Refusal shown when a researcher saves a side panel without saying who it lists."
+  },
+  "protocolBuilder.nodePanels.title": {
+    "defaultMessage": "Side panels",
+    "description": "Heading of the section adding lists of people beside a name generator, so the participant can nominate someone without typing their name again. A name generator is the step of an interview where a participant names the people they know."
+  },
+  "protocolBuilder.nodePanels.tooManyPanels": {
+    "defaultMessage": "This stage has more side panels than a name generator can show. Delete panels until two are left.",
+    "description": "Refusal shown above the side-panel list when the stage arrived holding more panels than fit beside an interview. Refused rather than trimmed, because deleting a panel a researcher wrote is their decision. A stage is one step of an interview."
+  },
+  "protocolBuilder.nodePanels.untitledPanel": {
+    "defaultMessage": "Untitled panel",
+    "description": "Stands in for the name of a side panel in the list while the researcher has not given it one."
+  },
+  "protocolBuilder.nodePanels.waitingDescription": {
+    "defaultMessage": "Choose what this stage works with before adding side panels.",
+    "description": "Shown in place of the side-panels section’s description while the researcher has not yet chosen which node type the stage is about, so a panel would have nothing to be about."
   },
   "protocolBuilder.operators.contains": {
     "defaultMessage": "contains",
@@ -1026,6 +1350,94 @@
   "protocolBuilder.promptsSection.waitingDescription": {
     "defaultMessage": "Choose what this stage works with before writing its prompts.",
     "description": "Shown in place of the prompts section’s description while the researcher has not yet chosen which node or edge type the stage is about, so there is nothing for a prompt to be written against."
+  },
+  "protocolBuilder.quickAdd.canBeEmptyDescription": {
+    "defaultMessage": "What the participant types here is the only thing they gave, so a person added without it has no name. Requiring an answer changes the attribute everywhere the protocol uses it.",
+    "description": "Warning body offering to make the quick-add attribute one that has to be answered, and saying that the change reaches every other stage using the same attribute."
+  },
+  "protocolBuilder.quickAdd.canBeEmptyTitle": {
+    "defaultMessage": "This attribute can be left empty",
+    "description": "Warning heading shown when the attribute quick add fills in does not have to be answered, so a person could be created with no name."
+  },
+  "protocolBuilder.quickAdd.createAttribute": {
+    "defaultMessage": "Create the attribute",
+    "description": "Action that adds the named text attribute to the codebook and selects it for quick add."
+  },
+  "protocolBuilder.quickAdd.description": {
+    "defaultMessage": "Choose the attribute the participant fills in when they add someone with a single box.",
+    "description": "Description of the quick-add section."
+  },
+  "protocolBuilder.quickAdd.fieldHint": {
+    "defaultMessage": "What the participant types goes here. Use the attribute holding a person’s name unless you have a reason not to — the interview labels people by it.",
+    "description": "Guidance under the quick-add attribute control."
+  },
+  "protocolBuilder.quickAdd.fieldLabel": {
+    "defaultMessage": "Attribute filled in",
+    "description": "Label of the control choosing which attribute receives what the participant types into the quick-add box."
+  },
+  "protocolBuilder.quickAdd.fieldRequired": {
+    "defaultMessage": "Choose the attribute quick add fills in.",
+    "description": "Refusal shown when a researcher saves a quick-add stage without saying which attribute receives what the participant types, which would create people with no name at all."
+  },
+  "protocolBuilder.quickAdd.missingType": {
+    "defaultMessage": "This type is no longer in the codebook, so its attributes cannot be changed.",
+    "description": "Refusal shown when the node type the stage works with has been deleted from the codebook — the protocol’s definition of what an interview records — while the researcher was editing."
+  },
+  "protocolBuilder.quickAdd.nameTheAttribute": {
+    "defaultMessage": "Name the attribute quick add should fill in.",
+    "description": "Refusal shown when a researcher asks to create a quick-add attribute without typing a name for it."
+  },
+  "protocolBuilder.quickAdd.newAttributeHint": {
+    "defaultMessage": "Adds a text attribute to this type’s codebook and fills it in here.",
+    "description": "Guidance under the box naming a new quick-add attribute, saying that inventing one also selects it above."
+  },
+  "protocolBuilder.quickAdd.newAttributeLabel": {
+    "defaultMessage": "Create a new attribute",
+    "description": "Label of the box naming an attribute to add to the codebook for quick add to fill in."
+  },
+  "protocolBuilder.quickAdd.newAttributePlaceholder": {
+    "defaultMessage": "name",
+    "description": "Example shown in the empty box naming a new quick-add attribute. The attribute most studies want here is the one holding a person’s name, so the example is that word, lower case as an attribute name is written."
+  },
+  "protocolBuilder.quickAdd.noTextAttribute": {
+    "defaultMessage": "This type has no text attribute quick add could fill in. Create one below.",
+    "description": "Shown in place of the quick-add attribute list when the chosen node type has no attribute holding typed text. Points at the control beneath, which invents one."
+  },
+  "protocolBuilder.quickAdd.nowRequired": {
+    "defaultMessage": "This attribute now has to be answered, everywhere the protocol uses it.",
+    "description": "Confirmation shown to the researcher who just asked for the quick-add attribute to be required, because focus has moved to a control that says nothing about what changed."
+  },
+  "protocolBuilder.quickAdd.refusedUnchanged": {
+    "defaultMessage": "This attribute could not be changed, so nothing was changed. Try again.",
+    "description": "Refusal shown when requiring an answer for the quick-add attribute failed for a reason with no explanation of its own."
+  },
+  "protocolBuilder.quickAdd.requireAnswer": {
+    "defaultMessage": "Require an answer",
+    "description": "Action that adds \"must be answered\" to the rules of the attribute quick add fills in."
+  },
+  "protocolBuilder.quickAdd.requireAnswerDescription": {
+    "defaultMessage": "Require an answer for the quick-add attribute",
+    "description": "What the change is called in the record a host keeps of protocol edits, and in any undo history it offers."
+  },
+  "protocolBuilder.quickAdd.title": {
+    "defaultMessage": "Quick add",
+    "description": "Heading of the section choosing which attribute a participant fills in when they add someone with a single box. An attribute is one field the protocol records about a person."
+  },
+  "protocolBuilder.quickAdd.waitingDescription": {
+    "defaultMessage": "Choose what this stage works with before setting up quick add.",
+    "description": "Shown in place of the quick-add section’s description while the researcher has not yet chosen which node type the stage is about, so there are no attributes to choose from."
+  },
+  "protocolBuilder.rosterColumns.missingColumn": {
+    "defaultMessage": "{column} — this attribute is not in the data file",
+    "description": "Label of the only choice left standing for a roster list that names a column the chosen data file does not carry. column is the heading the stage still holds, which is the researcher’s own word and is never translated. Rendered inside a plain dropdown option, which can carry no styling, so the explanation is part of the label."
+  },
+  "protocolBuilder.rosterColumns.missingColumnRefusal": {
+    "defaultMessage": "This row points at an attribute that is not in the data file. Choose another or delete the row.",
+    "description": "Shown above a roster list when one of its rows names a column the chosen data file does not carry. Names both ways out, because the row looks complete and is not."
+  },
+  "protocolBuilder.rosterColumns.missingSearchColumnRefusal": {
+    "defaultMessage": "This search matches an attribute that is not in the data file. Uncheck it and choose another.",
+    "description": "Shown above the roster-search checkboxes when a checked column is not in the chosen data file. Names the one way out — unchecking — because a checkbox has no row to delete and no cell to repoint."
   },
   "protocolBuilder.ruleCodebook.operatorNoLongerOffered": {
     "defaultMessage": "{operator} (no longer offered)",
@@ -1791,6 +2203,62 @@
     "defaultMessage": "This will turn off roster search",
     "description": "Title of the dialog asking a researcher to confirm switching off the section that lets a participant search a roster."
   },
+  "protocolBuilder.searchOptions.description": {
+    "defaultMessage": "Let the participant find someone by typing, and choose what their typing is matched against.",
+    "description": "Description of the roster-search section."
+  },
+  "protocolBuilder.searchOptions.keystrokeNotice": {
+    "defaultMessage": "Every attribute you choose is searched on each keystroke, so a long roster searches faster with fewer of them.",
+    "description": "Notice above the checkboxes, saying why choosing fewer attributes makes a long roster feel faster to the participant."
+  },
+  "protocolBuilder.searchOptions.matchHint": {
+    "defaultMessage": "What the participant types is compared against these. Choose the ones they would actually search for.",
+    "description": "Guidance under the checkboxes choosing what a participant’s search is matched against."
+  },
+  "protocolBuilder.searchOptions.matchLabel": {
+    "defaultMessage": "Attributes a search matches",
+    "description": "Label of the checkboxes choosing which attributes of the data file a participant’s typing is compared against."
+  },
+  "protocolBuilder.searchOptions.matchRequired": {
+    "defaultMessage": "Choose at least one attribute for a search to match against.",
+    "description": "Refusal shown against the checkboxes when roster search is switched on and nothing is checked, which would find nobody whatever the participant types."
+  },
+  "protocolBuilder.searchOptions.title": {
+    "defaultMessage": "Roster search",
+    "description": "Heading of the section letting a participant find someone in a roster by typing. A roster is a list of people imported from a data file."
+  },
+  "protocolBuilder.searchOptions.toleranceClose": {
+    "defaultMessage": "Close matches only",
+    "description": "The second of four search tolerances, between \"Exact\" and \"Allow small differences\"."
+  },
+  "protocolBuilder.searchOptions.toleranceExact": {
+    "defaultMessage": "Exact",
+    "description": "The strictest of four search tolerances: only what the participant typed, exactly, is a match."
+  },
+  "protocolBuilder.searchOptions.toleranceHint": {
+    "defaultMessage": "A stricter setting narrows a roster of similar people; a looser one forgives typos.",
+    "description": "Guidance under the scale choosing how closely a participant’s search must match."
+  },
+  "protocolBuilder.searchOptions.toleranceLabel": {
+    "defaultMessage": "How closely a search must match",
+    "description": "Label of the scale choosing how much difference between what a participant types and what the data file holds still counts as a match."
+  },
+  "protocolBuilder.searchOptions.toleranceRequired": {
+    "defaultMessage": "Choose how closely a search must match.",
+    "description": "Refusal shown against the tolerance scale when roster search is switched on and no tolerance has been chosen."
+  },
+  "protocolBuilder.searchOptions.toleranceSmallDifferences": {
+    "defaultMessage": "Allow small differences",
+    "description": "The third of four search tolerances, between \"Close matches only\" and \"Allow typos and misspellings\"."
+  },
+  "protocolBuilder.searchOptions.toleranceTypos": {
+    "defaultMessage": "Allow typos and misspellings",
+    "description": "The loosest of four search tolerances: a word the participant spelled wrongly still finds the person."
+  },
+  "protocolBuilder.searchOptions.waitingDescription": {
+    "defaultMessage": "Choose a roster data file before setting up its search.",
+    "description": "Shown in place of the roster-search section’s description while no data file has been chosen, so there are no columns for a search to match against."
+  },
   "protocolBuilder.shell.formUnavailableRefusal": {
     "defaultMessage": "This stage could not be saved because its form is no longer available. Reopen the stage and try again.",
     "description": "Shown above a stage editor’s fields when a save arrives after the editor’s own form has been taken down, so there are no values left to save."
@@ -1802,6 +2270,10 @@
   "protocolBuilder.shell.saveFailedRefusal": {
     "defaultMessage": "This stage could not be saved. Wait a moment and try again.",
     "description": "Shown above a stage editor’s fields when saving failed for a reason that carried no explanation of its own. The last resort, used only when the failure said nothing readable."
+  },
+  "protocolBuilder.shell.saveStage": {
+    "defaultMessage": "Save stage",
+    "description": "Action that saves the step of the interview a researcher is editing. Names the stage rather than saying only \"Save\", because a host may show its own controls beside this one."
   },
   "protocolBuilder.skipLogic.actionHint": {
     "defaultMessage": "What should happen when the rules match?",
@@ -1855,6 +2327,10 @@
     "defaultMessage": "Skip logic",
     "description": "Heading of the section where a researcher decides whether one step of an interview runs at all."
   },
+  "protocolBuilder.sortOptions.attributeColumn": {
+    "defaultMessage": "Attribute",
+    "description": "Heading of the column of either roster-order list holding which attribute of the data file a row is about."
+  },
   "protocolBuilder.sortOptions.clearConfirm": {
     "defaultMessage": "Clear sorting",
     "description": "Action that confirms switching roster sorting off and discarding it."
@@ -1866,6 +2342,62 @@
   "protocolBuilder.sortOptions.clearTitle": {
     "defaultMessage": "This will clear your sorting",
     "description": "Title of the dialog asking a researcher to confirm switching off the section that decides the order a roster is shown in and what a participant may reorder it by."
+  },
+  "protocolBuilder.sortOptions.description": {
+    "defaultMessage": "Decide the order people appear in, and which attributes the participant may reorder them by.",
+    "description": "Description of the roster-order section. An attribute is one field the data file records about a person."
+  },
+  "protocolBuilder.sortOptions.directionColumn": {
+    "defaultMessage": "Direction",
+    "description": "Heading of the column of the starting-order rule holding whether the roster is sorted upwards or downwards by the chosen attribute."
+  },
+  "protocolBuilder.sortOptions.labelColumn": {
+    "defaultMessage": "Label",
+    "description": "Heading of the column of the sortable-attribute list holding the words the participant reads on the control that reorders the roster."
+  },
+  "protocolBuilder.sortOptions.labelPlaceholder": {
+    "defaultMessage": "Age",
+    "description": "Example label shown in an empty label cell of the sortable-attribute list. An example rather than an instruction, so a translation should be an equally ordinary thing a study records about a person."
+  },
+  "protocolBuilder.sortOptions.orderAddLabel": {
+    "defaultMessage": "Add new sort rule",
+    "description": "Button that adds the roster’s starting-order rule. Whole rather than a generic \"Add\", because this section shows two lists and they would otherwise be indistinguishable to anyone navigating by a list of buttons."
+  },
+  "protocolBuilder.sortOptions.orderEmptyState": {
+    "defaultMessage": "People appear in the order the data file lists them.",
+    "description": "Shown in place of the starting-order rule while the roster has none, saying what that means rather than that nothing is there."
+  },
+  "protocolBuilder.sortOptions.orderHint": {
+    "defaultMessage": "How the roster is sorted before the participant changes anything. Without a rule, people keep the order the data file lists them in.",
+    "description": "Guidance under the roster’s starting-order rule."
+  },
+  "protocolBuilder.sortOptions.orderLabel": {
+    "defaultMessage": "Starting order",
+    "description": "Label of the rule deciding how the roster is sorted before the participant changes anything."
+  },
+  "protocolBuilder.sortOptions.sortableAddLabel": {
+    "defaultMessage": "Add new sortable attribute",
+    "description": "Button that offers the participant one more attribute to reorder the roster by. Whole rather than a generic \"Add\", because this section shows two lists and they would otherwise be indistinguishable to anyone navigating by a list of buttons."
+  },
+  "protocolBuilder.sortOptions.sortableEmptyState": {
+    "defaultMessage": "The participant cannot reorder the roster.",
+    "description": "Shown in place of the sortable-attribute list while none is offered, saying what that means rather than that nothing is there."
+  },
+  "protocolBuilder.sortOptions.sortableHint": {
+    "defaultMessage": "Each becomes a control above the roster, under the label you give it here.",
+    "description": "Guidance under the list of attributes the participant may reorder the roster by."
+  },
+  "protocolBuilder.sortOptions.sortableLabel": {
+    "defaultMessage": "Attributes the participant may sort by",
+    "description": "Label of the list of attributes offered to the participant as ways to reorder the roster."
+  },
+  "protocolBuilder.sortOptions.title": {
+    "defaultMessage": "Roster order",
+    "description": "Heading of the section deciding the order a roster’s people appear in and what a participant may reorder them by. A roster is a list of people imported from a data file."
+  },
+  "protocolBuilder.sortOptions.waitingDescription": {
+    "defaultMessage": "Choose a roster data file before deciding how its people are ordered.",
+    "description": "Shown in place of the roster-order section’s description while no data file has been chosen, so there are no columns to order by."
   },
   "protocolBuilder.sortOrder.ascending": {
     "defaultMessage": "Ascending",

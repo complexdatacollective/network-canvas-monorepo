@@ -41,8 +41,10 @@ vi.mock('../../../fields/RichTextField.tsx', () => ({
 /** A roster of different people, carrying different attributes. */
 const OTHER_ROSTER = 'name,city\nAda,Lagos\nGrace,Kyoto\n';
 
-const FIXTURE_COLUMNS = 'The people in it carry these attributes: age, name.';
-const STAGED_COLUMNS = 'The people in it carry these attributes: city, name.';
+const FIXTURE_COLUMNS =
+  'The people in it carry these attributes: age and name.';
+const STAGED_COLUMNS =
+  'The people in it carry these attributes: city and name.';
 
 /**
  * The editor as a host reaches it: through its family's registry part, so

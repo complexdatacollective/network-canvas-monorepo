@@ -118,6 +118,33 @@ name not here adds it here first, in the same pull request.
 | `pageContent`               | `sections/PageContentSection.tsx`                                                                                                                                                | sections  |
 | `contentBlock`              | `sections/contentBlocks/contentBlockTypes.ts`, `ContentBlockEditor.tsx`, `ContentBlockPreview.tsx`                                                                               | sections  |
 | `promptsSection`            | `sections/PromptsSection.tsx`                                                                                                                                                    | sections  |
+| `shell`                     | also `editors/saveStageAction.tsx`                                                                                                                                               | family D  |
+| `integerField`              | `fields/IntegerField.tsx`                                                                                                                                                        | family D  |
+| `rosterColumns`             | `sections/useRosterColumns.ts`                                                                                                                                                   | family D  |
+| `alterLimits`               | `sections/AlterLimitsSection.tsx`                                                                                                                                                | family D  |
+| `cardDisplay`               | `sections/CardDisplaySection.tsx`                                                                                                                                                | family D  |
+| `externalDataSource`        | `sections/ExternalDataSourceSection.tsx`                                                                                                                                         | family D  |
+| `nameGeneratorPrompts`      | `sections/NameGeneratorPromptsSection.tsx`                                                                                                                                       | family D  |
+| `nodePanels`                | `sections/NodePanelsSection.tsx`                                                                                                                                                 | family D  |
+| `quickAdd`                  | `sections/QuickAddSection.tsx`                                                                                                                                                   | family D  |
+| `searchOptions`             | `sections/SearchOptionsSection.tsx`                                                                                                                                              | family D  |
+| `sortOptions`               | `sections/SortOptionsSection.tsx`                                                                                                                                                | family D  |
+
+Family D added three second-level segments the reserved list did not hold. One
+line each, because a closed list is only closed if adding to it is argued:
+
+- **`integerField`** — `fields/IntegerField.tsx` exports the whole-number rule
+  every section that counts people owes its boxes, so the refusal belongs to
+  the control rather than to whichever section happens to mount it, exactly as
+  `entitySelect` and `variablePicker` own the words of the controls they are.
+- **`rosterColumns`** — `sections/useRosterColumns.ts` says what a row or a
+  checkbox naming a column the data file has not got is told, and card details,
+  roster order and roster search all ask it; none of the three owns the answer,
+  and a translator should read it once.
+- **`shell`** gains `editors/saveStageAction.tsx` rather than an area of its
+  own: the fallback save control is the shell's action slot standing in for a
+  host that rendered none, and its words are the shell's chrome like the
+  refusals already declared there.
 
 The `*Messages.ts` files are the homes for copy more than one module renders —
 `extractMessages` throws when the same id is declared twice, so a shared string
@@ -138,13 +165,13 @@ has to have exactly one:
   be the single home of each id.
 - `form/arrayFields/arrayMessages.ts` — the generic row noun every array-field
   sentence is built around.
-- `sections/sectionMessages.ts` — the few words family D's sections have to say
-  as descriptors before the rest of their copy is converted: what each
-  capability's `confirmClear` warns before throwing values away, and the side
-  panel list's row noun. Those two seams take a `MessageDescriptor` and nothing
-  else, so the ids exist ahead of the areas that will own them. It declares ids
-  in five areas, which is allowed for the same reason `codebookMessages.ts`
-  declares two.
+  `sections/sectionMessages.ts` was a sixth. It held the few words family D's
+  sections had to say as descriptors before the rest of their copy was converted
+  — each capability's `confirmClear`, and the side-panel list's row noun, because
+  those two seams take a `MessageDescriptor` and nothing else. Family D's
+  conversion moved every one of those ids beside the section that owns it, so the
+  file is gone; the ids are unchanged, because a renamed id is a translation
+  silently orphaned.
 
 Two areas own the same sentence in two modules, and the sentence is declared
 once: `form/arrayFields/crossClassPick.ts` re-exports the cross-class refusals
@@ -156,32 +183,17 @@ editor report the same conflict, so a translator answers once.
 
 Named here so a later split takes the name rather than inventing a synonym.
 
-Five of family D's areas are PARTLY converted: `sections/sectionMessages.ts`
-already declares their `clearTitle`/`clearDescription`/`clearConfirm` — and
-`nodePanels.itemNoun` — because the shared seams those reach take a
-`MessageDescriptor` and nothing else. The conversion that finishes each section
-adds the rest of its area and moves these beside them; the ids do not change,
-because a renamed id is a translation silently orphaned.
-
-| `<area>`                   | Will own the copy in                         | Expected in | Partly converted |
-| -------------------------- | -------------------------------------------- | ----------- | ---------------- |
-| `subjectSelect`            | `fields/SubjectSelectField.tsx`              | splits 3–6  |                  |
-| `nodePanels`               | `sections/NodePanelsSection`                 | family D    | yes              |
-| `searchOptions`            | `sections/SearchOptionsSection`              | family D    | yes              |
-| `alterLimits`              | `sections/AlterLimitsSection`                | family D    | yes              |
-| `quickAdd`                 | `sections/QuickAddSection`                   | family D    |                  |
-| `sortOptions`              | `sections/SortOptionsSection`                | family D    | yes              |
-| `nameGeneratorPrompts`     | `sections/NameGeneratorPromptsSection`       | family D    |                  |
-| `cardDisplay`              | `sections/CardDisplaySection`                | family D    | yes              |
-| `externalDataSource`       | `sections/ExternalDataSourceSection`         | family D    |                  |
-| `censusPrompts`            | `sections/prompts/`                          | family E    |                  |
-| `removeAfterConsideration` | `sections/RemoveAfterConsiderationSection`   | family E    |                  |
-| `ordinalColor`             | `fields/OrdinalColorField`                   | family E    |                  |
-| `networkCanvas`            | `sections/network/`                          | family F    |                  |
-| `pedigree`                 | `sections/pedigree/`                         | family F    |                  |
-| `narrativePedigree`        | `sections/narrativePedigree/`                | family F    |                  |
-| `geospatial`               | `sections/geospatial/`, geospatial `fields/` | family F    |                  |
-| `anonymisation`            | `sections/anonymisation/`                    | family F    |                  |
+| `<area>`                   | Will own the copy in                         | Expected in |
+| -------------------------- | -------------------------------------------- | ----------- |
+| `subjectSelect`            | `fields/SubjectSelectField.tsx`              | splits 3–6  |
+| `censusPrompts`            | `sections/prompts/`                          | family E    |
+| `removeAfterConsideration` | `sections/RemoveAfterConsiderationSection`   | family E    |
+| `ordinalColor`             | `fields/OrdinalColorField`                   | family E    |
+| `networkCanvas`            | `sections/network/`                          | family F    |
+| `pedigree`                 | `sections/pedigree/`                         | family F    |
+| `narrativePedigree`        | `sections/narrativePedigree/`                | family F    |
+| `geospatial`               | `sections/geospatial/`, geospatial `fields/` | family F    |
+| `anonymisation`            | `sections/anonymisation/`                    | family F    |
 
 Three reserved areas turned out to need no ids at all, and two name files that
 do not exist yet. Recorded rather than dropped, so nobody re-reserves a name

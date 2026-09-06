@@ -45,7 +45,7 @@ export const Editing: Story = {
     await awaitPassiveEffects();
 
     await canvas.findByText(
-      'The people in it carry these attributes: age, name.',
+      'The people in it carry these attributes: age and name.',
     );
     await userEvent.type(
       canvas.getByRole('textbox', { name: 'Stage name' }),
