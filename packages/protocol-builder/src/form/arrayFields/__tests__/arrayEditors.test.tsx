@@ -385,6 +385,76 @@ describe('Options', () => {
     );
   });
 
+  /**
+   * The same arrival, met by an open row editor rather than a confirm dialog,
+   * and carrying two ordinary collaborator edits at once: the row the
+   * researcher has open is renamed, and another row is inserted above it.
+   *
+   * An option has no id of its own, so the list infers which arriving row is
+   * which from content — and the one row it cannot recognise here is the row
+   * that was both rewritten AND moved. Giving it the id that used to sit at
+   * its position would hand the open editor to the row the collaborator just
+   * added, and the next keystroke would overwrite their row. So the row gets a
+   * new id, the editor closes with the row it was holding, and the researcher
+   * opens whichever row they now want.
+   */
+  it('closes the open editor rather than moving it onto the row that arrived', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      title: 'Welcome',
+      options: [
+        { label: 'Alpha', value: 'alpha' },
+        { label: 'Bravo', value: 'bravo' },
+      ],
+    });
+    renderOptions(session);
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Edit option 1' }),
+    );
+    expect(await screen.findByRole('textbox', { name: 'Value' })).toHaveValue(
+      'alpha',
+    );
+
+    act(() => {
+      session.replaceAuthoritativeStage({
+        fields: {
+          title: 'Welcome',
+          options: [
+            { label: 'Zulu', value: 'zulu' },
+            { label: 'Alpha renamed', value: 'alpha' },
+            { label: 'Bravo', value: 'bravo' },
+          ],
+        },
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+    });
+    await waitFor(() =>
+      expect(
+        document.querySelectorAll('[aria-label^="Remove option "]'),
+      ).toHaveLength(3),
+    );
+
+    expect(
+      screen.queryByRole('textbox', { name: 'Value' }),
+    ).not.toBeInTheDocument();
+
+    // Their own row is still there to go back to, and typing in it reaches it
+    // and nothing else — the row the collaborator added is untouched.
+    await user.click(screen.getByRole('button', { name: 'Edit option 2' }));
+    const value = screen.getByRole('textbox', { name: 'Value' });
+    await user.clear(value);
+    await user.type(value, 'mine');
+
+    await waitFor(() =>
+      expect(session.getSnapshot().editedSection.fields.options).toEqual([
+        { label: 'Zulu', value: 'zulu' },
+        { label: 'Alpha renamed', value: 'mine' },
+        { label: 'Bravo', value: 'bravo' },
+      ]),
+    );
+  });
+
   it('removes the option it confirmed when the list has not moved', async () => {
     const user = userEvent.setup();
     const session = createSession({

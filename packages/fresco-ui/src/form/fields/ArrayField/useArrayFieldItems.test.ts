@@ -160,6 +160,181 @@ describe('internal ids across a value the parent replaced', () => {
   });
 });
 
+const mulberry32 = (seed: number) => {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+};
+
+/**
+ * A row carrying, in a key this hook never reads, which row it IS. The three
+ * tests above each name one arrival; this is what lets a sweep of arrivals be
+ * judged without naming any of them.
+ */
+type TaggedRow = Record<string, unknown> & { _probe: string; label: string };
+
+/** A fresh object graph, the way an immutable form store hands one back. */
+const rebuilt = (rows: readonly TaggedRow[]): TaggedRow[] =>
+  rows.map((row) => ({ ...row }));
+
+type ArrivingEdit =
+  | { kind: 'insert'; at: number }
+  | { kind: 'remove'; at: number }
+  | { kind: 'move'; from: number; to: number }
+  | { kind: 'retitle'; at: number };
+
+const applyEdit = (
+  rows: TaggedRow[],
+  edit: ArrivingEdit,
+  mint: () => string,
+): TaggedRow[] => {
+  const next = [...rows];
+  if (edit.kind === 'insert') {
+    const tag = mint();
+    next.splice(edit.at, 0, { _probe: tag, label: `label-${tag}` });
+    return next;
+  }
+  if (edit.kind === 'remove') {
+    next.splice(edit.at, 1);
+    return next;
+  }
+  if (edit.kind === 'move') {
+    const [moved] = next.splice(edit.from, 1);
+    if (moved === undefined) return next;
+    next.splice(edit.to, 0, moved);
+    return next;
+  }
+  const row = next[edit.at];
+  if (row === undefined) return next;
+  next[edit.at] = { ...row, label: `${row.label}-${mint()}` };
+  return next;
+};
+
+/**
+ * What is left over once identity is inferred as well as it can be.
+ *
+ * A row with no id of its own has only its content, so a same-length arrival
+ * that removed row N and inserted a different row N is the same list of rows,
+ * in the same order, as one that merely rewrote row N — which is a keystroke,
+ * and must keep its id. The two cannot be told apart, and this is how often
+ * these 240 sequences ask. It is a ceiling, not a target: a change that lowers
+ * it is an improvement, and this number should come down with it.
+ */
+const AMBIGUOUS_ARRIVALS = 26;
+
+/**
+ * The two promises above, asked of arrivals nobody chose.
+ *
+ * Each sequence tags every row with the row it is, applies one or two edits per
+ * arrival — a collaborator who renamed a row and added another, an undo of two
+ * commands, a save — and then asks only what the hook undertakes: that no id is
+ * handed out twice, and that an id which survives an arrival still names the
+ * same row.
+ */
+describe('internal ids over arrivals nobody chose', () => {
+  it('hands no id to two rows, and moves none between rows of a list that resized', () => {
+    const duplicated: string[] = [];
+    const crossed: string[] = [];
+    const crossedWhileResizing: string[] = [];
+
+    for (let seed = 1; seed <= 240; seed += 1) {
+      const random = mulberry32(seed);
+      let minted = 0;
+      const mint = () => `${seed}-${(minted += 1)}`;
+
+      let rows: TaggedRow[] = Array.from(
+        { length: 2 + Math.floor(random() * 4) },
+        () => {
+          const tag = mint();
+          return { _probe: tag, label: `label-${tag}` };
+        },
+      );
+
+      const { result, rerender } = renderHook(
+        ({ value }: { value: TaggedRow[] }) =>
+          useArrayFieldItems<TaggedRow>(value),
+        { initialProps: { value: rebuilt(rows) } },
+      );
+
+      let rowNamedBy = new Map(
+        result.current.items.map((item) => [item._internalId, item._probe]),
+      );
+      let sizeBefore = result.current.items.length;
+
+      for (let arrival = 0; arrival < 6; arrival += 1) {
+        const editCount = 1 + Math.floor(random() * 2);
+        for (let edit = 0; edit < editCount; edit += 1) {
+          if (rows.length === 0) {
+            rows = applyEdit(rows, { kind: 'insert', at: 0 }, mint);
+            continue;
+          }
+          const pick = random();
+          const at = Math.floor(random() * rows.length);
+          rows = applyEdit(
+            rows,
+            pick < 0.3
+              ? { kind: 'insert', at }
+              : pick < 0.5
+                ? { kind: 'remove', at }
+                : pick < 0.75
+                  ? {
+                      kind: 'move',
+                      from: at,
+                      to: Math.floor(random() * rows.length),
+                    }
+                  : { kind: 'retitle', at },
+            mint,
+          );
+        }
+
+        act(() => {
+          rerender({ value: rebuilt(rows) });
+        });
+        const items = result.current.items;
+
+        const seen = new Set<string>();
+        for (const item of items) {
+          if (seen.has(item._internalId)) {
+            duplicated.push(
+              `seed ${seed} arrival ${arrival}: id ${item._internalId} on two rows`,
+            );
+          }
+          seen.add(item._internalId);
+        }
+
+        for (const item of items) {
+          const named = rowNamedBy.get(item._internalId);
+          if (named === undefined || named === item._probe) continue;
+          const report = `seed ${seed} arrival ${arrival}: an id named row ${named}, now names row ${item._probe}`;
+          crossed.push(report);
+          // The product failure: a row inserted above an edited one takes the
+          // edited row's id, so an open editor follows the id onto a row the
+          // researcher never opened. A resized list is exactly that shape.
+          if (items.length !== sizeBefore) crossedWhileResizing.push(report);
+        }
+
+        rowNamedBy = new Map(
+          items.map((item) => [item._internalId, item._probe]),
+        );
+        sizeBefore = items.length;
+      }
+    }
+
+    expect({
+      duplicated: duplicated.slice(0, 3),
+      crossedWhileResizing: crossedWhileResizing.slice(0, 3),
+    }).toEqual({ duplicated: [], crossedWhileResizing: [] });
+    // And what is left is the same-length ambiguity above, and nothing more:
+    // anything past the ceiling is printed here as the crossing it is.
+    expect(crossed.slice(AMBIGUOUS_ARRIVALS)).toEqual([]);
+  });
+});
+
 /**
  * A consumer that commits somewhere other than its own `value` — a stage
  * document, in Architect's protocol builder — can refuse a write without the

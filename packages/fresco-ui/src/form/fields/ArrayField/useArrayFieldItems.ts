@@ -151,8 +151,17 @@ const contentKey = (item: unknown): string =>
  *    those ids ends up naming a row the researcher never picked up — the drag
  *    finishes by moving it, and the consumer is told about a row it did not
  *    touch.
- * 3. otherwise the position's id if nothing has claimed it — which is the row
- *    that (1) found changed — and failing that a new one.
+ * 3. otherwise the position's id, but only while every OTHER row is still
+ *    exactly where it was and kept its own id. That is the keystroke of (1)
+ *    seen from the other side — one row's content changed and nothing else
+ *    moved — and it is the only shape in which the id at a position still
+ *    names the row that is now at it. Once anything else has shifted, that id
+ *    belongs to a row which has gone somewhere else, and handing it over would
+ *    put an open editor or a drag in progress onto a row the researcher never
+ *    touched. So a row arriving into a list that moved gets a NEW id: for a
+ *    row with no id of its own, content is what carries it through an
+ *    insertion above it, and a row whose content changed in the same arrival
+ *    that moved it is one this hook cannot recognise.
  *
  * No id is handed out twice: two rows sharing one are a single row to React,
  * and to every consumer resolving an operation by it.
@@ -203,12 +212,26 @@ const reuseInternalIds = <T extends Record<string, unknown>>(
     if (candidate !== undefined) claim(index, candidate);
   });
 
+  /**
+   * Whether the arriving list is the previous list with only this row's
+   * content changed: the same number of rows, and every other one already
+   * resolved to the id the previous list held at that same position.
+   */
+  const isTheOnlyRowThatChanged = (index: number): boolean =>
+    value.length === previousConfirmed.length &&
+    previousConfirmed.every(
+      (previous, other) =>
+        other === index || resolved[other] === previous._internalId,
+    );
+
   return value.map((_item, index) => {
     const already = resolved[index];
     if (already !== undefined) return already;
     const positional = previousConfirmed[index]?._internalId;
     const id =
-      positional !== undefined && !claimed.has(positional)
+      positional !== undefined &&
+      !claimed.has(positional) &&
+      isTheOnlyRowThatChanged(index)
         ? positional
         : crypto.randomUUID();
     claimed.add(id);
