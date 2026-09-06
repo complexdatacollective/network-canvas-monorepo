@@ -112,7 +112,10 @@ export async function enforceMigrationSecurity(
       'Runtime and backup login memberships must grant only SET access to the reviewed Studio roles, without inheritance or administration; backup membership must be separate from runtime membership.',
     );
   }
-  const loginAccess = await client.query<{ safe: boolean }>(
+  const loginAccess = await client.query<{
+    safe: boolean;
+    evidence_safe: boolean;
+  }>(
     `WITH logins AS (
       SELECT oid FROM pg_roles WHERE rolname = ANY($1::text[])
     ), identities AS (
@@ -136,6 +139,11 @@ export async function enforceMigrationSecurity(
             AND routine.prosecdef AND has_function_privilege(login.oid, routine.oid, 'EXECUTE')
         )
         OR EXISTS (
+          SELECT 1 FROM pg_largeobject_metadata object WHERE
+            has_largeobject_privilege(login.oid, object.oid, 'UPDATE')
+            OR (login.rolname <> $3 AND has_largeobject_privilege(login.oid, object.oid, 'SELECT'))
+        )
+        OR EXISTS (
           SELECT 1 FROM pg_class object WHERE object.relnamespace IN (SELECT oid FROM namespaces)
             AND CASE WHEN object.relkind IN ('v', 'm', 'f') THEN (
               has_table_privilege(login.oid, object.oid, 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,MAINTAIN')
@@ -148,9 +156,7 @@ export async function enforceMigrationSecurity(
         )
         OR (login.rolname = $3 AND EXISTS (
           SELECT 1 FROM pg_class object WHERE object.relnamespace IN (SELECT oid FROM namespaces)
-            AND CASE WHEN object.relkind IN ('r', 'p')
-              AND object.oid IS DISTINCT FROM to_regclass($4)
-              AND object.oid IS DISTINCT FROM to_regclass($5) THEN (
+            AND CASE WHEN object.relkind IN ('r', 'p') THEN (
                 has_table_privilege(login.oid, object.oid, 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,MAINTAIN')
                 OR has_any_column_privilege(login.oid, object.oid, 'INSERT,UPDATE,REFERENCES')
               ) WHEN object.relkind = 'S'
@@ -171,7 +177,14 @@ export async function enforceMigrationSecurity(
               THEN has_sequence_privilege(login.oid, object.oid, 'SELECT,USAGE,UPDATE')
               ELSE false END
         )
-    ) AS safe`,
+    ) AS safe, NOT EXISTS (
+      SELECT 1 FROM identities login CROSS JOIN pg_class object
+      WHERE object.oid IN (to_regclass($4), to_regclass($5))
+        AND CASE WHEN object.relkind IN ('r', 'p', 'v', 'm', 'f') THEN (
+          has_table_privilege(login.oid, object.oid, 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,MAINTAIN')
+          OR has_any_column_privilege(login.oid, object.oid, 'INSERT,UPDATE,REFERENCES')
+        ) ELSE false END
+    ) AS evidence_safe`,
     [
       restrictedLogins,
       [...Object.values(TENANT_ROLES), BACKUP_ROLE],
@@ -180,9 +193,14 @@ export async function enforceMigrationSecurity(
       'public."schemaFingerprint"',
     ],
   );
-  if (loginAccess.rows[0]?.safe !== true) {
+  if (loginAccess.rows[0]?.evidence_safe !== true) {
     throw new Error(
-      'Runtime and backup identities must own no database objects and hold no access outside their reviewed Studio roles: remove direct or PUBLIC login data grants, CREATE, CONNECT grant options, executable SECURITY DEFINER routines, view, materialized view, or foreign table access beyond read-only backup grants, and backup table or sequence writes.',
+      'Runtime and backup identities have access outside their reviewed Studio roles: existing migration evidence is writable and cannot be trusted. Restore a verified backup before migrating.',
+    );
+  }
+  if (!loginAccess.rows[0].safe) {
+    throw new Error(
+      'Runtime and backup identities must own no database objects and hold no access outside their reviewed Studio roles: remove direct or PUBLIC login data grants, CREATE, CONNECT grant options, executable SECURITY DEFINER routines, view, materialized view, foreign table, or large object access beyond read-only backup grants, and backup table or sequence writes.',
     );
   }
   // CONNECT is checked only at connection admission. Enrollment must already
