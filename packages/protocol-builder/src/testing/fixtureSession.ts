@@ -1,5 +1,5 @@
 import type { StageType } from '@codaco/protocol-validation';
-import type { SectionDoc } from '@codaco/studio-sync/apply';
+import { applyCommands, type SectionDoc } from '@codaco/studio-sync/apply';
 import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
 import {
   sectionId,
@@ -77,13 +77,23 @@ export type FixtureSessionOptions = Readonly<{
    */
   createResourceId?: () => string;
   /**
-   * Each batch as a host that applies edits LIVE would be handed it.
+   * Each batch as a host that applies edits LIVE is handed it.
    *
    * A host need not wait for the save, and most of what an editor does reaches
    * one the moment it is done — so "what has already left this session" is a
    * question about the editor that only this port can answer. The batches a
    * session is holding back (a reference to a resource staged here, and
    * everything after it) never arrive, which is the whole point of asking.
+   *
+   * Supplying this makes the fixture's host a live-applying one: every batch
+   * handed over is applied to `host` before this is called. A host cannot be
+   * given a batch and decline to apply it — nothing the session could ask it
+   * afterwards would say which of the two it had done, so the session reads a
+   * delivered batch as the host's (`deliveredPrefixLength`). A port that only
+   * recorded the batch left the host answering a later compound edit with a
+   * stage missing the researcher's own unsaved work, which the session then
+   * read as a collaborator's edit and retired: the row vanished from the
+   * draft.
    */
   onCommands?: (batch: PendingCommandBatch) => void;
   onFinish: (request: FinishRequest) => void;
@@ -168,6 +178,36 @@ export function openFixtureStageSession(
       })),
     ],
   });
+  /**
+   * The host applying a batch the moment it is handed one.
+   *
+   * See `onCommands` above: delivery is what the session reads a host's later
+   * answers against, so a host that is given batches has to be holding them.
+   *
+   * Written straight into the section rather than submitted as a compound
+   * edit, because a batch is not a save. It is one keystroke's worth of the
+   * researcher's work in progress — a row added before anything has been typed
+   * into it, a capability cleared before the field replacing it is filled in —
+   * and the protocol is only whole again at the finish that submits it. A host
+   * that validated every batch would refuse the states an editor is drawn in.
+   *
+   * Not ACKNOWLEDGED, which is a separate message and stays the caller's to
+   * send: a batch the host holds is still pending here until one arrives,
+   * which is exactly what `liveCommands` exists to be able to say.
+   *
+   * A stage being CREATED has no section on the host to update — the protocol
+   * does not hold it until the finish that creates it — so nothing is applied
+   * and nothing is claimed: the session reads such an answer by creation
+   * (`stageAbsentByCreation`) rather than by prefix.
+   */
+  const applyLive = (batch: PendingCommandBatch): void => {
+    const held = host.getSnapshot().protocolSections[stageSectionId];
+    if (held === undefined) return;
+    host.receiveAuthoritativeSections({
+      [stageSectionId]: applyCommands(held, [...batch.commands]),
+    });
+  };
+
   const gateway = new InMemoryResourceGateway({
     committed: manifestResources(assetManifest),
     ...(options.createResourceId === undefined
@@ -214,7 +254,12 @@ export function openFixtureStageSession(
     onCompoundEdit: (submission) => host.submit(submission),
     ...(options.onCommands === undefined
       ? {}
-      : { onCommands: options.onCommands }),
+      : {
+          onCommands: (batch: PendingCommandBatch) => {
+            applyLive(batch);
+            options.onCommands?.(batch);
+          },
+        }),
     onFinish: options.onFinish,
   });
 

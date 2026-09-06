@@ -70,14 +70,14 @@ name not here adds it here first, in the same pull request.
 | `interface`                 | `interfaces/interfaceNames.ts`                                                                                                                                                   | #1702     |
 | `stageTypeImage`            | `interfaces/StageTypeImage.tsx`                                                                                                                                                  | #1702     |
 | `stageName`                 | `sections/StageNameSection.tsx`                                                                                                                                                  | #1702     |
-| `operators`                 | `rules/operators.ts`                                                                                                                                                             | i18n-1    |
-| `ruleEditor`                | `rules/RuleEditorDialog.tsx`, `rules/ruleMessages.ts`                                                                                                                            | i18n-1    |
-| `ruleSet`                   | `rules/ruleSet.ts`, `rules/RuleSetField.tsx`                                                                                                                                     | i18n-1    |
-| `ruleValue`                 | `rules/RuleValueField.tsx`                                                                                                                                                       | i18n-1    |
-| `ruleList`                  | `rules/RuleList.tsx`                                                                                                                                                             | i18n-1    |
-| `rulePreview`               | `rules/RulePreview.tsx`                                                                                                                                                          | i18n-1    |
-| `ruleDescription`           | `rules/ruleDescription.ts`, `rules/ruleMessages.ts`                                                                                                                              | i18n-1    |
-| `ruleCodebook`              | `rules/ruleCodebook.ts`                                                                                                                                                          | i18n-1    |
+| `operators`                 | `rules/operators.ts`                                                                                                                                                             | i18n-1a   |
+| `ruleEditor`                | `rules/RuleEditorDialog.tsx`, `rules/ruleMessages.ts`                                                                                                                            | i18n-1a   |
+| `ruleSet`                   | `rules/ruleSet.ts`, `rules/RuleSetField.tsx`                                                                                                                                     | i18n-1a   |
+| `ruleValue`                 | `rules/RuleValueField.tsx`                                                                                                                                                       | i18n-1a   |
+| `ruleList`                  | `rules/RuleList.tsx`                                                                                                                                                             | i18n-1a   |
+| `rulePreview`               | `rules/RulePreview.tsx`                                                                                                                                                          | i18n-1a   |
+| `ruleDescription`           | `rules/ruleDescription.ts`, `rules/ruleMessages.ts`                                                                                                                              | i18n-1a   |
+| `ruleCodebook`              | `rules/ruleCodebook.ts`                                                                                                                                                          | i18n-1a   |
 | `resourceKinds`             | `resources/components/resourceKinds.ts`                                                                                                                                          | i18n-1    |
 | `resourcePicker`            | `resources/components/ResourcePickerControl.tsx`                                                                                                                                 | i18n-1    |
 | `resourceBrowser`           | `resources/components/ResourceBrowserDialog.tsx`                                                                                                                                 | i18n-1    |
@@ -149,36 +149,25 @@ editor report the same conflict, so a translator answers once.
 
 Named here so a later split takes the name rather than inventing a synonym.
 
-| `<area>`                    | Will own the copy in                         | Expected in |
-| --------------------------- | -------------------------------------------- | ----------- |
-| `variableParameters`        | `codebook/components/` parameter editors     | splits 3–6  |
-| `compoundFailure`           | `codebook/compoundFailureCopy.ts`            | splits 3–6  |
-| `schemaProblem`             | `form/schemaProblems.ts`                     | split 4     |
-| `subjectSelect`             | `fields/SubjectSelectField.tsx`              | splits 3–6  |
-| `sortOrder`                 | `fields/sortOrderOptions`                    | splits 3–6  |
-| `formFields`                | `sections/FormFieldsSection`                 | splits 3–6  |
-| `subjectSection`            | `sections/SubjectSection`                    | splits 3–6  |
-| `introduction`              | `sections/IntroductionSection`               | splits 3–6  |
-| `pageContent`               | `sections/PageContentSection`                | splits 3–6  |
-| `contentBlock`              | `sections/contentBlocks/`                    | splits 3–6  |
-| `promptsSection`            | `sections/PromptsSection`                    | splits 3–6  |
-| `attributeCodebookControls` | `sections/AttributeCodebookControls`         | splits 3–6  |
-| `nodePanels`                | `sections/NodePanelsSection`                 | family D    |
-| `searchOptions`             | `sections/SearchOptionsSection`              | family D    |
-| `alterLimits`               | `sections/AlterLimitsSection`                | family D    |
-| `quickAdd`                  | `sections/QuickAddSection`                   | family D    |
-| `sortOptions`               | `sections/SortOptionsSection`                | family D    |
-| `nameGeneratorPrompts`      | `sections/NameGeneratorPromptsSection`       | family D    |
-| `cardDisplay`               | `sections/CardDisplaySection`                | family D    |
-| `externalDataSource`        | `sections/ExternalDataSourceSection`         | family D    |
-| `censusPrompts`             | `sections/prompts/`                          | family E    |
-| `removeAfterConsideration`  | `sections/RemoveAfterConsiderationSection`   | family E    |
-| `ordinalColor`              | `fields/OrdinalColorField`                   | family E    |
-| `networkCanvas`             | `sections/network/`                          | family F    |
-| `pedigree`                  | `sections/pedigree/`                         | family F    |
-| `narrativePedigree`         | `sections/narrativePedigree/`                | family F    |
-| `geospatial`                | `sections/geospatial/`, geospatial `fields/` | family F    |
-| `anonymisation`             | `sections/anonymisation/`                    | family F    |
+| `<area>`                   | Will own the copy in                         | Expected in |
+| -------------------------- | -------------------------------------------- | ----------- |
+| `subjectSelect`            | `fields/SubjectSelectField.tsx`              | splits 3–6  |
+| `nodePanels`               | `sections/NodePanelsSection`                 | family D    |
+| `searchOptions`            | `sections/SearchOptionsSection`              | family D    |
+| `alterLimits`              | `sections/AlterLimitsSection`                | family D    |
+| `quickAdd`                 | `sections/QuickAddSection`                   | family D    |
+| `sortOptions`              | `sections/SortOptionsSection`                | family D    |
+| `nameGeneratorPrompts`     | `sections/NameGeneratorPromptsSection`       | family D    |
+| `cardDisplay`              | `sections/CardDisplaySection`                | family D    |
+| `externalDataSource`       | `sections/ExternalDataSourceSection`         | family D    |
+| `censusPrompts`            | `sections/prompts/`                          | family E    |
+| `removeAfterConsideration` | `sections/RemoveAfterConsiderationSection`   | family E    |
+| `ordinalColor`             | `fields/OrdinalColorField`                   | family E    |
+| `networkCanvas`            | `sections/network/`                          | family F    |
+| `pedigree`                 | `sections/pedigree/`                         | family F    |
+| `narrativePedigree`        | `sections/narrativePedigree/`                | family F    |
+| `geospatial`               | `sections/geospatial/`, geospatial `fields/` | family F    |
+| `anonymisation`            | `sections/anonymisation/`                    | family F    |
 
 Three reserved areas turned out to need no ids at all, and two name files that
 do not exist yet. Recorded rather than dropped, so nobody re-reserves a name

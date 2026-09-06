@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import { type ComponentType, useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
@@ -251,12 +251,16 @@ const openRoster = () =>
   renderStageEditor({
     stageId: 'name-generator-roster-1',
     sections: <RosterSections />,
+    // What is asked here is which batches LEFT the session and which the hold
+    // kept back, so the host under it has to be one that is handed them.
+    applyLive: true,
   });
 
 const openUnconfiguredRoster = () =>
   renderStageEditor({
     stageId: 'name-generator-roster-1',
     sections: <UnconfiguredRosterSections />,
+    applyLive: true,
   });
 
 /** Imports a data file, which stages it with the host and selects it. */
@@ -447,6 +451,7 @@ describe('a capability reset by a data file staged in this session', () => {
     const harness = renderStageEditor({
       stageId: 'name-generator-roster-1',
       sections: <RosterSections />,
+      applyLive: true,
       assets: {
         other_roster: {
           type: 'network',
@@ -688,8 +693,24 @@ describe('a staged data file the researcher discards again', () => {
       expect(harness.liveCommands().length).toBeGreaterThan(0),
     );
 
+    // The discard took the stage's data file away with the batches it
+    // released, and this host holds what it is handed — so the protocol it is
+    // asked to validate is now one the researcher is halfway through writing.
+    // That is the host answering about the PROTOCOL, which is only something
+    // it can do once the request reaches it at all: the hold is what is being
+    // proved gone, and a hold still in place refuses here rather than there.
     await expect(
       harness.session.requestCompoundEdit(rename('years_old')),
+    ).resolves.toMatchObject({ status: 'failed', reason: 'host-error' });
+
+    // And with a file named again, the very same request applies.
+    act(() => {
+      harness.session.dispatch([
+        { op: 'set', key: 'dataSource', value: 'roster_data' },
+      ]);
+    });
+    await expect(
+      harness.session.requestCompoundEdit(rename('years_older')),
     ).resolves.toMatchObject({ status: 'applied' });
   });
 

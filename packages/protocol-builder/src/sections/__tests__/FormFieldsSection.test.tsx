@@ -607,7 +607,25 @@ describe('a codebook write a field needs, refused', () => {
     expect(inventedNickname(harness)).toBeUndefined();
   });
 
-  it('says what a stage that moved under the researcher means', async () => {
+  /**
+   * A stage a collaborator moved is NOT one of the refusals, and this says so
+   * where a researcher would meet it.
+   *
+   * Inventing an attribute asks the host to write the codebook and says
+   * nothing about the stage, so there is nothing about the stage to check
+   * before the request goes out: this session finds out only from the answer,
+   * and by then the host has APPLIED the write and is answering with its own
+   * stage beside it. Refusing there would be a refusal of something that has
+   * already happened — the type exists on the host, and the session would be
+   * left on the revision before it — so the stage is adopted instead and the
+   * researcher's unsaved rename is rebased onto it. See
+   * `sessionIntegration.test.ts`, "adopts a stage it cannot account for".
+   *
+   * The `stale-base` copy this used to be the surface for is what the FOLD's
+   * own stale base still reads like; `VariableEditor` and
+   * `CodebookVariableValidationEditor` are where it is pinned.
+   */
+  it('adopts a stage that moved under the researcher, and still writes', async () => {
     const harness = renderStageEditor({
       stageId: 'alter-form-1',
       sections: <FormFieldsSection subject="node" />,
@@ -621,13 +639,26 @@ describe('a codebook write a field needs, refused', () => {
     });
     renameStageElsewhere(harness);
 
-    const dialog = await addInventedNickname(harness);
+    // Nothing is refused: the dialog closes and the attribute exists.
+    await inventNickname(harness);
+    expect(inventedNickname(harness)).toBeDefined();
 
+    // The collaborator's rename is this session's stage now...
+    const stageSection = sectionId({
+      kind: 'stage',
+      stageId: harness.seeded.id,
+    });
     expect(
-      await dialog.findByText(
-        'Someone else changed this while you were editing it, so nothing was saved. Close and reopen this editor to load their version, then make your change again.',
-      ),
-    ).toBeInTheDocument();
+      harness.session.getSnapshot().protocolSections[stageSection],
+    ).toMatchObject({ label: 'Renamed elsewhere' });
+    // ...and the researcher's own unsaved rename is rebased onto it rather
+    // than dropped: still pending, and still what the editor is showing.
+    expect(
+      harness.pendingCommands().flatMap((batch) => [...batch.commands]),
+    ).toContainEqual({ op: 'set', key: 'label', value: 'Renamed here' });
+    expect(harness.session.getSnapshot().editedSection.fields).toMatchObject({
+      label: 'Renamed here',
+    });
   });
 
   /**

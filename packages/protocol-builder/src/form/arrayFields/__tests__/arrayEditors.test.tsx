@@ -955,15 +955,87 @@ describe('an inline list whose write the document does not take', () => {
     ]);
   });
 
-  it('says so and puts the sort rule back when the move names no row', async () => {
+  /**
+   * The move whose ROW names two places.
+   *
+   * Which of two rules nothing tells apart the researcher took hold of is the
+   * same question as which of them a destination sits after, and it has the
+   * same answer: the rules are paired off in order with the document's, so a
+   * position names the second of them at both ends. Resolving the row on its
+   * own — by content, and only while exactly one row matched — refused every
+   * such reorder outright, telling the researcher a list they could see
+   * perfectly well had changed underneath them.
+   *
+   * The refusal that reading exists for is still made where the answer decides
+   * which row an edit is written INTO: see the keystroke above, which is put
+   * back rather than landed on a guess.
+   */
+  it('moves the rule the researcher took hold of past the one between the copies', async () => {
     const user = userEvent.setup();
     const session = createSession({
       title: 'Welcome',
-      // A list an import left a hole in, holding two rows the researcher
-      // cannot tell apart. `ArrayField` draws no rows for a list with a hole
-      // in it, so the add below appends past the hole and hands the control
-      // the rows WITHOUT it — which is what leaves the control and the
-      // document numbered differently for everything after.
+      // A list an import left a hole in, holding two rules the researcher
+      // cannot tell apart with a third between them. `ArrayField` draws no
+      // rows for a list with a hole in it, so the add below appends past the
+      // hole and hands the control the rows WITHOUT it — which is what leaves
+      // the control and the document numbered differently for everything
+      // after.
+      sortOrder: [
+        null,
+        { property: 'name', direction: 'asc' },
+        { property: 'age', direction: 'desc' },
+        { property: 'name', direction: 'asc' },
+      ],
+    });
+    renderSortRules(session);
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Add new sort rule' }),
+    );
+    await waitFor(() =>
+      expect(screen.getAllByRole('textbox', { name: 'Property' })).toHaveLength(
+        4,
+      ),
+    );
+
+    // The SECOND of the two rules that cannot be told apart moves up one, past
+    // the rule that was between them.
+    fireEvent.keyDown(
+      screen.getByRole('button', { name: 'Reorder item 3 of 4' }),
+      { key: 'ArrowUp' },
+    );
+
+    await waitFor(() =>
+      expect(session.getSnapshot().editedSection.fields.sortOrder).toEqual([
+        null,
+        { property: 'name', direction: 'asc' },
+        { property: 'name', direction: 'asc' },
+        { property: 'age', direction: 'desc' },
+        {},
+      ]),
+    );
+    await waitFor(() =>
+      expect(
+        screen
+          .getAllByRole('textbox', { name: 'Property' })
+          .map((cell) => (cell as HTMLInputElement).value),
+      ).toEqual(['name', 'name', 'age', '']),
+    );
+  });
+
+  /**
+   * The move whose destination — and not whose row — names two places.
+   *
+   * A row the list holds twice is a place all the same: the rows are paired off
+   * in order, so "after the first of them" is one position and "after the
+   * second" is another. Refusing over that told the researcher their reorder
+   * went nowhere for a list they could see perfectly well, and the same reading
+   * is what puts a NEW row back between two identical ones.
+   */
+  it('moves a rule to a place between two rules it cannot tell apart', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      title: 'Welcome',
       sortOrder: [
         null,
         { property: 'name', direction: 'asc' },
@@ -981,31 +1053,27 @@ describe('an inline list whose write the document does not take', () => {
       ),
     );
 
-    // The blank row moves up one. Its own place in the document can be found,
-    // but the row it would have to sit beside cannot be told from its twin, so
-    // the move resolves to no row rather than to a guess.
+    // The blank row moves up one, which is between the two twins — and the
+    // hole the editor never drew stays where the import left it.
     fireEvent.keyDown(
       screen.getByRole('button', { name: 'Reorder item 3 of 3' }),
       { key: 'ArrowUp' },
     );
 
-    expect(
-      await screen.findByText(
-        'This list changed while you were editing, so this item could not be matched to a row in it and nothing was saved. Copy anything you want to keep, then check the list and make the change again.',
-      ),
-    ).toBeInTheDocument();
-    expect(session.getSnapshot().editedSection.fields.sortOrder).toEqual([
-      null,
-      { property: 'name', direction: 'asc' },
-      { property: 'name', direction: 'asc' },
-      {},
-    ]);
+    await waitFor(() =>
+      expect(session.getSnapshot().editedSection.fields.sortOrder).toEqual([
+        null,
+        { property: 'name', direction: 'asc' },
+        {},
+        { property: 'name', direction: 'asc' },
+      ]),
+    );
     await waitFor(() =>
       expect(
         screen
           .getAllByRole('textbox', { name: 'Property' })
           .map((cell) => (cell as HTMLInputElement).value),
-      ).toEqual(['name', 'name', '']),
+      ).toEqual(['name', '', 'name']),
     );
   });
 });

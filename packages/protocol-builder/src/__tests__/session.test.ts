@@ -177,6 +177,39 @@ describe('ProtocolBuilderSessionStore', () => {
     ).toEqual([{ op: 'set', key: ['nodeConfig', 'type'], value: 'person' }]);
   });
 
+  /**
+   * A container the draft did not have before is a difference at every leaf
+   * inside it, not one difference at the container. Said as the container, it
+   * is a `set` of a whole object — and a `set` of an object is replayed
+   * literally, so a sibling a collaborator wrote under the same container while
+   * this draft was being made is written back out of existence.
+   */
+  it('addresses a container the draft creates at its own leaves', () => {
+    expect(
+      commandsFromDraftChange(
+        { label: 'Pedigree' },
+        { label: 'Pedigree', nodeConfig: { type: 'family_member', form: [] } },
+      ),
+    ).toEqual([
+      { op: 'set', key: ['nodeConfig', 'form'], value: [] },
+      { op: 'set', key: ['nodeConfig', 'type'], value: 'family_member' },
+    ]);
+  });
+
+  /**
+   * Except an EMPTY one, which has no leaf to say it with. What an empty
+   * object means is a question about the document's schema, and the draft
+   * saying the container is there is the whole of the difference.
+   */
+  it('says an empty container the draft creates as the container', () => {
+    expect(
+      commandsFromDraftChange(
+        { label: 'Pedigree' },
+        { label: 'Pedigree', nodeConfig: {} },
+      ),
+    ).toEqual([{ op: 'set', key: 'nodeConfig', value: {} }]);
+  });
+
   it('keeps a top-level list addressed at its bare key', () => {
     const commands = commandsFromDraftChange(
       { prompts: [{ id: 'p1' }] },
@@ -500,10 +533,10 @@ describe('ProtocolBuilderSessionStore', () => {
         rowB,
         rowZ,
       ]);
-      // The row it was to be put above has gone, so where the researcher meant
-      // it to land cannot be worked out and the move is refused rather than
-      // guessed at.
-      expect(replay(move, removedAbove).form).toEqual([rowB, rowC]);
+      // The row it was to be put above has gone — and the rows further down
+      // still say where it belongs, so the move lands in front of the nearest
+      // of them that survived rather than being thrown away.
+      expect(replay(move, removedAbove).form).toEqual([rowC, rowB]);
     });
 
     it('merges a whole-list rewrite row by row', () => {

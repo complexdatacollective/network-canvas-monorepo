@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import type { PostHog } from 'posthog-js';
 import {
   type CSSProperties,
+  type ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -15,6 +16,7 @@ import {
 } from 'react';
 import { Provider } from 'react-redux';
 
+import { useAppLocale } from '@codaco/app-i18n/react';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { DndStoreProvider } from '@codaco/fresco-ui/dnd/dnd';
 import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
@@ -40,6 +42,8 @@ import type {
 } from './contract/types';
 import useInterviewNavigation from './hooks/useInterviewNavigation';
 import useMediaQuery from './hooks/useMediaQuery';
+import { InterviewI18nProvider } from './i18n/InterviewI18nProvider';
+import type { RequestedLocale } from './i18n/locales';
 import { getLastAvailableAuthoredStageIndex } from './selectors/skip-logic';
 import { store, type RootState } from './store/store';
 import { SyncFlushProvider } from './store/SyncFlushContext';
@@ -47,7 +51,6 @@ import {
   InterviewToastProvider,
   InterviewToastViewport,
 } from './toast/InterviewToast';
-import { interviewToastManager } from './toast/interviewToastManager';
 
 // `interface` is required (not `type`) so this declaration MERGES with the
 // global Window from lib.dom.d.ts instead of replacing it. Exposes the live
@@ -95,6 +98,7 @@ function Interview({
   navigationClassnames,
   allowStageNavigation,
   allowUserScaling,
+  allowLanguageSelection,
   initialTextScale,
   onTextScaleChange,
   initialStageOverrideIndex,
@@ -106,11 +110,13 @@ function Interview({
   navigationClassnames?: NavigationClassnames;
   allowStageNavigation?: boolean;
   allowUserScaling?: boolean;
+  allowLanguageSelection?: boolean;
   initialTextScale?: number;
   onTextScaleChange?: (scale: number) => void;
   initialStageOverrideIndex?: number;
   reviewMode?: boolean;
 }) {
+  const { locale, direction } = useAppLocale();
   const {
     stage,
     displayedStep,
@@ -137,6 +143,7 @@ function Interview({
 
   const forwardButtonRef = useRef<HTMLButtonElement>(null);
   const backButtonRef = useRef<HTMLButtonElement>(null);
+  const [toastManager] = useState(() => Toast.createToastManager());
 
   // When the host doesn't force an orientation, derive it from the viewport
   // aspect ratio: tall viewports get a horizontal (bottom) nav bar, wide ones
@@ -173,6 +180,8 @@ function Interview({
   return (
     <ThemedRegion
       theme="interview"
+      lang={locale}
+      dir={direction}
       render={
         <main
           style={textScaleStyle}
@@ -199,6 +208,7 @@ function Interview({
         <DndStoreProvider>
           <StageMetadataProvider value={registerBeforeNext}>
             <InterviewToastProvider
+              toastManager={toastManager}
               forwardButtonRef={forwardButtonRef}
               backButtonRef={backButtonRef}
               orientation={navigationOrientation}
@@ -262,19 +272,20 @@ function Interview({
               onExit={onExit}
               reviewMode={reviewMode}
               allowUserScaling={allowUserScaling}
+              allowLanguageSelection={allowLanguageSelection}
               textScale={textScale}
               onTextScaleChange={handleTextScaleChange}
             />
           )}
           {/*
-           * Self-contained Toast.Provider for the interview manager so
-           * the viewport's portal lands inside ThemedRegion (themed
+           * A stable manager belongs to this Shell alone. The
+           * viewport's portal lands inside ThemedRegion (themed
            * surface + portal-container context) regardless of what the
            * host sets up. Hosts may still mount their own app-level
            * Toast.Provider for non-interview toasts; the two are
-           * independent channels.
+           * independent channels, as are other Shells on the same page.
            */}
-          <Toast.Provider toastManager={interviewToastManager}>
+          <Toast.Provider toastManager={toastManager}>
             <InterviewToastViewport />
           </Toast.Provider>
         </DndStoreProvider>
@@ -291,6 +302,28 @@ function Interview({
  * one) is unsupported.
  */
 type ShellProps = {
+  /**
+   * Requested language for the package's built-in controls and messages. A
+   * host may pass a device preference, its negotiated locale, or an ordered
+   * preference list. The package best-fits this against its own supported
+   * languages and falls back to English. It does not read browser/storage
+   * globals, inherit the host registry, or translate protocol-authored text.
+   */
+  requestedLocale?: RequestedLocale;
+  /**
+   * Optional controlled menu preference. Undefined uses package-local state;
+   * null follows requestedLocale; a string is matched against package locales.
+   * Pair with onLocaleChange to mirror a host's persisted explicit/automatic choice.
+   */
+  localePreference?: string | null;
+  /**
+   * Called when the menu selects an interface language. Hosts may persist
+   * the canonical tag; null clears the menu override and follows requestedLocale.
+   * Choosing a language never changes the payload or collected answers.
+   */
+  onLocaleChange?: (locale: string | null) => void;
+  /** Show the interface-language chooser in the settings menu. Default true. */
+  allowLanguageSelection?: boolean;
   payload: InterviewPayload;
   onSync: SyncHandler;
   onFinish: FinishHandler;
@@ -304,7 +337,7 @@ type ShellProps = {
   /**
    * Host-specific explanation shown in the finish confirmation dialog.
    */
-  finishConfirmationDescription?: string;
+  finishConfirmationDescription?: ReactNode;
   onExit?: () => void;
   /**
    * Adapt the Shell for reviewing an existing interview: stop at the final
@@ -333,8 +366,8 @@ type ShellProps = {
    * Let the participant adjust the interview's text size from a settings menu
    * in the Navigation. The chosen size multiplies the whole interview scale
    * (type, spacing, and touch targets together) and lasts for the current
-   * session. When neither this nor `onExit` is set, the Navigation renders no
-   * settings menu.
+   * session. A settings menu is shown when language selection, scaling, or
+   * exiting is available.
    */
   allowUserScaling?: boolean;
   /**
@@ -358,6 +391,10 @@ type ShellProps = {
 };
 
 const Shell = ({
+  requestedLocale,
+  localePreference,
+  onLocaleChange,
+  allowLanguageSelection = true,
   payload,
   onSync,
   onFinish,
@@ -509,47 +546,54 @@ const Shell = ({
   ]);
 
   return (
-    <AnalyticsProvider
-      analytics={analytics}
-      posthogClient={posthogClient}
-      disableAnalytics={disableAnalytics || reviewMode === true}
-      payload={payload}
-      onTrackerChange={onTrackerChange}
+    <InterviewI18nProvider
+      requestedLocale={requestedLocale}
+      localePreference={localePreference}
+      onLocaleChange={onLocaleChange}
     >
-      <Provider store={reduxStore}>
-        <SyncFlushProvider flush={reduxStore.flushSync}>
-          <ContractProvider
-            onFinish={onFinish}
-            onRequestAsset={onRequestAsset}
-            flags={flags}
-            finishConfirmationDescription={finishConfirmationDescription}
-          >
-            <CurrentStepProvider
-              currentStep={reviewEntry.currentStep}
-              onStepChange={onStepChange}
+      <AnalyticsProvider
+        analytics={analytics}
+        posthogClient={posthogClient}
+        disableAnalytics={disableAnalytics || reviewMode === true}
+        payload={payload}
+        onTrackerChange={onTrackerChange}
+      >
+        <Provider store={reduxStore}>
+          <SyncFlushProvider flush={reduxStore.flushSync}>
+            <ContractProvider
+              onFinish={onFinish}
+              onRequestAsset={onRequestAsset}
+              flags={flags}
+              finishConfirmationDescription={finishConfirmationDescription}
             >
-              <Interview
-                onExit={onExit}
-                hideNavigation={hideNavigation}
-                navigationOrientation={navigationOrientation}
-                navigationClassnames={navigationClassnames}
-                allowStageNavigation={
-                  allowStageNavigation &&
-                  (currentStep === undefined || onStepChange !== undefined)
-                }
-                allowUserScaling={allowUserScaling}
-                initialTextScale={initialTextScale}
-                onTextScaleChange={onTextScaleChange}
-                initialStageOverrideIndex={
-                  reviewEntry.initialStageOverrideIndex
-                }
-                reviewMode={reviewMode}
-              />
-            </CurrentStepProvider>
-          </ContractProvider>
-        </SyncFlushProvider>
-      </Provider>
-    </AnalyticsProvider>
+              <CurrentStepProvider
+                currentStep={reviewEntry.currentStep}
+                onStepChange={onStepChange}
+              >
+                <Interview
+                  onExit={onExit}
+                  hideNavigation={hideNavigation}
+                  navigationOrientation={navigationOrientation}
+                  navigationClassnames={navigationClassnames}
+                  allowStageNavigation={
+                    allowStageNavigation &&
+                    (currentStep === undefined || onStepChange !== undefined)
+                  }
+                  allowUserScaling={allowUserScaling}
+                  allowLanguageSelection={allowLanguageSelection}
+                  initialTextScale={initialTextScale}
+                  onTextScaleChange={onTextScaleChange}
+                  initialStageOverrideIndex={
+                    reviewEntry.initialStageOverrideIndex
+                  }
+                  reviewMode={reviewMode}
+                />
+              </CurrentStepProvider>
+            </ContractProvider>
+          </SyncFlushProvider>
+        </Provider>
+      </AnalyticsProvider>
+    </InterviewI18nProvider>
   );
 };
 

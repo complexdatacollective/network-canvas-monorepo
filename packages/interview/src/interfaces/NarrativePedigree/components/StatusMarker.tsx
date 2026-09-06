@@ -215,6 +215,7 @@ function AtRiskQuery({
         fill={color}
         data-question-mark
       >
+        {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx -- Nonlinguistic pedigree uncertainty glyph; its meaning is translated in the notation key. */}
         ?
       </text>
     </>

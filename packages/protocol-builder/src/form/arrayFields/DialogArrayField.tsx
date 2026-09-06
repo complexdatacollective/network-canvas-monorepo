@@ -48,7 +48,11 @@ import {
   useStageEditorForm,
   type StageFormStoreApi,
 } from '../stageEditorContext.ts';
-import { reseatEditedRow, rowIdentity } from './arrayFieldCommands.ts';
+import {
+  reseatEditedRow,
+  rowIdentity,
+  rowPathFor,
+} from './arrayFieldCommands.ts';
 import { DEFAULT_ITEM_LABEL } from './arrayMessages.ts';
 import {
   readOnlyMessage,
@@ -640,6 +644,20 @@ function DialogEditor({
     writeThrough,
   } = useDialogArrayContext();
   const { protocolContext, readOnly } = useStageEditorForm();
+  /**
+   * Where the rows of the list this dialog edits live in the stage document.
+   *
+   * Read from the LIST's binding, which is the one this component sits under:
+   * the editor's own fields are wrapped in `NESTED_IN_A_ROW` below, and that
+   * provider is inside this component's own JSX rather than above it.
+   * `undefined` for a list with no document path of its own — a list nested
+   * inside another row — which is a row the dialog around it commits.
+   */
+  const listBinding = useContext(ArrayFieldBindingContext);
+  const rowPath =
+    listBinding?.documentPath === undefined
+      ? undefined
+      : rowPathFor(listBinding.documentPath);
 
   // `item` is undefined between edits. The last session stays mounted so the
   // dialog can animate closed, but every session gets its own `id` — and so
@@ -903,7 +921,7 @@ function DialogEditor({
           ? itemValuesRef.current
           : baseValues;
       const rowToCommit = normalizeItem(
-        reseatEditedRow(baseValues, valueToSave, latestValues),
+        reseatEditedRow(baseValues, valueToSave, latestValues, rowPath),
       ) as ArrayItem;
 
       // The happy path: this editor is still the one editing this row, so
@@ -968,7 +986,14 @@ function DialogEditor({
       // for the edit to be committed to at all.
       return { formErrors: [rowRemovedMessage(itemLabel)] };
     },
-    [commitDetachedRow, itemLabel, normalizeItem, onBeforeSave, writeThrough],
+    [
+      commitDetachedRow,
+      itemLabel,
+      normalizeItem,
+      onBeforeSave,
+      rowPath,
+      writeThrough,
+    ],
   );
 
   const handleSave = useCallback(

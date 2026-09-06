@@ -474,7 +474,16 @@ export function useArrayFieldCommands<T extends ArrayRow>(
               );
         if (index !== -1) {
           const next = [...committed];
-          next[index] = reseatEditedRow(base, row, committed[index]) as T;
+          // No document path, so no variant rule to apply: a list inside a
+          // row is part of the row around it, and it is that row's own commit
+          // — through `commandsForDetachedRow` below — that knows where it
+          // lives.
+          next[index] = reseatEditedRow(
+            base,
+            row,
+            committed[index],
+            undefined,
+          ) as T;
           onChangeRef.current?.(next);
           return WRITTEN;
         }

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import { commandForListChange } from '../listCommands.ts';
+import type { SectionDoc } from '@codaco/studio-sync/apply';
+
+import { commandForListChange, rebaseCommands } from '../listCommands.ts';
 
 const a = { id: 'a' };
 const b = { id: 'b' };
@@ -75,6 +77,28 @@ describe('the command a list change is said as', () => {
       key: 'prompts',
       value: [a, c],
     });
+  });
+
+  /**
+   * A list kept under a key every object also INHERITS.
+   *
+   * `valueOf`, `toString` and their siblings are ordinary document keys, and
+   * the place a rebase reads for one has to be the place the apply engine
+   * writes: what the document holds there, never what it inherits. Reading the
+   * inherited function said "not a list, do not rebase" for a container the
+   * apply reads as empty, and let the researcher's row command through
+   * un-rebased — landing it in front of the collaborator's row rather than
+   * after it.
+   */
+  it('rebases a list under a key every object inherits', () => {
+    const key = ['valueOf', 'items'];
+    const basis: SectionDoc = { label: 'S' };
+    const arrival: SectionDoc = { label: 'S', valueOf: { items: [c] } };
+    expect(
+      rebaseCommands(basis, arrival, [
+        { op: 'insertItem', key, index: 0, item: a },
+      ]),
+    ).toEqual([{ op: 'insertItem', key, index: 1, item: a }]);
   });
 
   it('holds none of the caller’s own objects', () => {

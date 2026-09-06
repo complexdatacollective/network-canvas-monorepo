@@ -133,6 +133,9 @@ export type StageEditorHarness = RenderResult &
      * that promotes the file. So this is what a cancelled edit LEFT BEHIND —
      * the one thing `pendingCommands` cannot say, because a batch that has
      * gone to the host is pending there too until it is acknowledged.
+     *
+     * Empty unless the harness was opened with `applyLive`, which is what
+     * puts a live host under it at all.
      */
     liveCommands(): readonly Command[];
     /**
@@ -283,6 +286,24 @@ export type RenderStageEditorOptions<T extends StageType = StageType> =
       sectionId: ProtocolSectionId;
       displayName: string;
     }>[];
+    /**
+     * Open the stage over a host that applies each batch as it is made,
+     * instead of the buffering one that is handed nothing until the finish.
+     *
+     * Off by default, because a buffering host is what almost every test here
+     * wants: an editor draws work in progress — a row added before anything
+     * has been typed into it, a capability cleared before the field replacing
+     * it is filled in — and a host holding that would refuse the very next
+     * compound edit for a protocol the researcher has not finished writing.
+     *
+     * On, `host` really holds every batch it is handed, which is the only
+     * honest way to claim delivery: the session reads a host's later answers
+     * against what it was GIVEN (`deliveredPrefixLength`), so a port that
+     * recorded a batch and left the host where it was made the session read
+     * its own unsaved work as a collaborator's edit and retire it. Turn it on
+     * for what only a live host can be asked — see `liveCommands`.
+     */
+    applyLive?: boolean;
   }>;
 
 /**
@@ -331,10 +352,10 @@ export function renderStageEditor<T extends StageType = StageType>(
   const seeded = seedFrom(options);
   const stageSectionId = sectionId({ kind: 'stage', stageId: seeded.id });
   const finishRequests: FinishRequest[] = [];
-  // What a host applying this session's edits live has been handed. Recorded
-  // rather than applied to `host`: the question a test asks of it is what LEFT
-  // the session, and a host that also applied them would answer every other
-  // test's questions about the authoritative protocol differently.
+  // What a host applying this session's edits live has been handed, for a
+  // harness opened with `applyLive`. `host` really applies them: claiming
+  // delivery without holding the batch is a host the session cannot read —
+  // see the option.
   const liveCommands: Command[] = [];
   // The same session a story is opened over, built once in `fixtureSession`:
   // a test and a story that assembled the protocol differently would disagree
@@ -346,9 +367,13 @@ export function renderStageEditor<T extends StageType = StageType>(
     ...(options.heldSections === undefined
       ? {}
       : { heldSections: options.heldSections }),
-    onCommands: (batch) => {
-      liveCommands.push(...batch.commands);
-    },
+    ...(options.applyLive === true
+      ? {
+          onCommands: (batch: PendingCommandBatch) => {
+            liveCommands.push(...batch.commands);
+          },
+        }
+      : {}),
     onFinish: (request) => {
       finishRequests.push(request);
     },

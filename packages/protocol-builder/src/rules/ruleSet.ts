@@ -1,3 +1,9 @@
+import {
+  createAppIntl,
+  createMessageError,
+  defineMessages,
+} from '@codaco/app-i18n/messages';
+import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import type { Codebook } from '@codaco/protocol-validation';
 
 import type { RuleDraft } from './rule.ts';
@@ -8,6 +14,16 @@ import {
   type RuleProblem,
   type RuleProblemCode,
 } from './ruleDescription.ts';
+
+/**
+ * The formatter used when a caller has none of its own.
+ *
+ * The rule-set field and the section that mounts it thread the researcher's
+ * own formatter in. This is the fallback for a caller reading a set's verdict
+ * without one — this package's own module tests, and a host asking what is
+ * wrong with a stored protocol.
+ */
+const englishIntl = createAppIntl({ locale: 'en' });
 
 /** How several rules in one set combine. */
 export type RuleSetJoin = 'AND' | 'OR';
@@ -56,13 +72,36 @@ export type RuleSetValue = {
   join?: string;
 };
 
-export const JOIN_OPTIONS: readonly Readonly<{
+const JOIN_MESSAGES = defineMessages({
+  AND: {
+    id: 'protocolBuilder.ruleSet.joinAll',
+    defaultMessage: 'All rules must match',
+    description:
+      'Choice offered to a researcher whose rule set holds more than one rule: the set only applies when every rule in it is satisfied.',
+  },
+  OR: {
+    id: 'protocolBuilder.ruleSet.joinAny',
+    defaultMessage: 'Any rule can match',
+    description:
+      'Choice offered to a researcher whose rule set holds more than one rule: the set applies as soon as any one rule in it is satisfied.',
+  },
+}) satisfies Record<RuleSetJoin, MessageDescriptor>;
+
+export const joinOptions = (
+  intl: IntlShape = englishIntl,
+): readonly Readonly<{
   value: RuleSetJoin;
   label: string;
-}>[] = Object.freeze([
-  Object.freeze({ value: 'AND' as const, label: 'All rules must match' }),
-  Object.freeze({ value: 'OR' as const, label: 'Any rule can match' }),
-]);
+}>[] => [
+  Object.freeze({
+    value: 'AND' as const,
+    label: intl.formatMessage(JOIN_MESSAGES.AND),
+  }),
+  Object.freeze({
+    value: 'OR' as const,
+    label: intl.formatMessage(JOIN_MESSAGES.OR),
+  }),
+];
 
 const isRuleSetJoin = (value: unknown): value is RuleSetJoin =>
   value === 'AND' || value === 'OR';
@@ -127,19 +166,26 @@ export const ruleSetRules = (value: unknown): readonly RuleDraft[] =>
  * hold: the question here is what the SCHEMA will find, and it refuses a
  * number as surely as it refuses `"XOR"`.
  */
-export const ruleSetProblem = (value: unknown): string | undefined => {
+export const ruleSetProblem = (
+  value: unknown,
+  intl: IntlShape = englishIntl,
+): string | undefined => {
   const record = asRuleSetRecord(value);
   if (record === undefined) return undefined;
 
   const rules = ruleSetRules(record);
-  if (rules.length === 0) return NO_RULES_MESSAGE;
+  if (rules.length === 0) {
+    return intl.formatMessage(shapeMessages.noRules);
+  }
 
   const join: unknown = Reflect.get(record, 'join');
   if (rules.length > 1) {
     // The join control is on screen, showing nothing selected for a value that
     // matches neither option, so a set that never chose and a set holding a
     // value the schema refuses are asked the same question.
-    return isRuleSetJoin(join) ? undefined : NO_JOIN_MESSAGE;
+    return isRuleSetJoin(join)
+      ? undefined
+      : intl.formatMessage(shapeMessages.noJoin);
   }
 
   // One rule combines with nothing, so no join control is rendered for it and
@@ -152,7 +198,7 @@ export const ruleSetProblem = (value: unknown): string | undefined => {
   // set that is down to one rule; that is the repair the message names.
   return join === undefined || isRuleSetJoin(join)
     ? undefined
-    : UNUSABLE_JOIN_MESSAGE;
+    : intl.formatMessage(shapeMessages.unusableJoin);
 };
 
 /**
@@ -242,6 +288,7 @@ export const ruleSetIssues = (
   value: unknown,
   codebook: Readonly<Codebook>,
   targets: readonly RuleTargetType[],
+  intl: IntlShape = englishIntl,
 ): RuleSetIssue[] => {
   const rules = ruleSetRules(value);
   // Worked out once for the set rather than per rule: whether an id is a
@@ -254,6 +301,7 @@ export const ruleSetIssues = (
       codebook,
       targets,
       duplicateIds,
+      intl,
     });
     return problems.map((problem) => ({
       position: index + 1,
@@ -273,11 +321,12 @@ export const ruleSetValidationMessage = (
   value: unknown,
   codebook: Readonly<Codebook>,
   targets: readonly RuleTargetType[],
+  intl: IntlShape = englishIntl,
 ): string | undefined => {
-  const shape = ruleSetProblem(value);
+  const shape = ruleSetProblem(value, intl);
   if (shape !== undefined) return shape;
 
-  const issues = ruleSetIssues(value, codebook, targets);
+  const issues = ruleSetIssues(value, codebook, targets, intl);
   const first = issues[0];
   if (first === undefined) return undefined;
   // Counted by ROW, not by problem. One rule can carry several — losing its
@@ -290,10 +339,14 @@ export const ruleSetValidationMessage = (
       SUMMARY_RANK[issue.summary] < SUMMARY_RANK[worst] ? issue.summary : worst,
     'unfinished',
   );
-  const sentences = SUMMARY_SENTENCES[summary];
-  return brokenRules.size === 1
-    ? sentences.one(first.position)
-    : sentences.several(brokenRules.size);
+  // One message per kind of problem, with both the count and the position in
+  // it: the singular arm names WHICH rule to open, the plural arm says how
+  // many there are to open. Splitting them into two descriptors would leave a
+  // translator choosing the plural category by hand.
+  return intl.formatMessage(SUMMARY_SENTENCES[summary], {
+    count: brokenRules.size,
+    position: first.position,
+  });
 };
 
 /**
@@ -314,32 +367,50 @@ export const ruleSetValidationMessage = (
 const SUMMARY_RANK: Readonly<Record<RuleProblemSummary, number>> =
   Object.freeze({ codebook: 0, unusable: 1, unfinished: 2 });
 
-const SUMMARY_SENTENCES: Readonly<
-  Record<
-    RuleProblemSummary,
-    Readonly<{
-      one: (position: number) => string;
-      several: (count: number) => string;
-    }>
-  >
-> = Object.freeze({
+const SUMMARY_SENTENCES = defineMessages({
   unusable: {
-    one: (position) =>
-      `Rule ${position} cannot be used as it stands. Open it to fix it, or delete it.`,
-    several: (count) =>
-      `${count} of these rules cannot be used as they stand. Open each marked rule to fix it, or delete it.`,
+    id: 'protocolBuilder.ruleSet.summaryUnusable',
+    defaultMessage:
+      '{count, plural, one {Rule {position, number} cannot be used as it stands. Open it to fix it, or delete it.} other {# of these rules cannot be used as they stand. Open each marked rule to fix it, or delete it.}}',
+    description:
+      'The one error a rule-set field shows when its rules are exactly as the researcher wrote them and the protocol still cannot use them where they sit. count is how many rules are affected; position is the 1-based position of the single affected rule, as the researcher counts the rows on screen. Each row also carries its own message saying what is wrong with it.',
   },
   codebook: {
-    one: (position) =>
-      `Rule ${position} no longer works with this protocol's codebook. Open it to fix it, or delete it.`,
-    several: (count) =>
-      `${count} of these rules no longer work with this protocol's codebook. Open each marked rule to fix it, or delete it.`,
+    id: 'protocolBuilder.ruleSet.summaryCodebook',
+    defaultMessage:
+      "{count, plural, one {Rule {position, number} no longer works with this protocol's codebook. Open it to fix it, or delete it.} other {# of these rules no longer work with this protocol's codebook. Open each marked rule to fix it, or delete it.}}",
+    description:
+      'The one error a rule-set field shows when a rule was finished and the protocol moved under it — an attribute or a type it names has been renamed, retyped or deleted. The codebook is the protocol’s definition of the node types, edge types and attributes a study records. count is how many rules are affected; position is the 1-based position of the single affected rule.',
   },
   unfinished: {
-    one: (position) =>
-      `Rule ${position} is not finished. Open it to fill in every part, or delete it.`,
-    several: (count) =>
-      `${count} of these rules are not finished. Open each marked rule to fill in every part, or delete it.`,
+    id: 'protocolBuilder.ruleSet.summaryUnfinished',
+    defaultMessage:
+      '{count, plural, one {Rule {position, number} is not finished. Open it to fill in every part, or delete it.} other {# of these rules are not finished. Open each marked rule to fill in every part, or delete it.}}',
+    description:
+      'The one error a rule-set field shows when a rule was never completed. count is how many rules are affected; position is the 1-based position of the single affected rule.',
+  },
+}) satisfies Record<RuleProblemSummary, MessageDescriptor>;
+
+/** What is wrong with the SHAPE of a rule set, in the field's own words. */
+const shapeMessages = defineMessages({
+  noRules: {
+    id: 'protocolBuilder.ruleSet.noRules',
+    defaultMessage: 'Please create at least one rule.',
+    description:
+      'Shown when a researcher has switched a rule builder on and created no rules, or deleted the last one. Also the rule-set field’s own required message, so both read alike.',
+  },
+  noJoin: {
+    id: 'protocolBuilder.ruleSet.noJoin',
+    defaultMessage: 'Please choose how these rules should be combined.',
+    description:
+      'Shown when a rule set holds more than one rule and the researcher has not said whether every rule has to match or any one of them will do.',
+  },
+  unusableJoin: {
+    id: 'protocolBuilder.ruleSet.unusableJoin',
+    defaultMessage:
+      'These rules record a way of combining them that this protocol cannot use. Edit or delete a rule to clear it.',
+    description:
+      'Shown when a rule set of one rule still records how several rules combine, in a form the protocol will not accept. No control is on screen to choose again, so the sentence names the repair instead: editing or deleting a rule rewrites the set and clears it.',
   },
 });
 
@@ -352,16 +423,11 @@ const SUMMARY_SENTENCES: Readonly<
  * words as one whose last rule was deleted. "This field is required" is what
  * Fresco would otherwise say about a rule builder, which names neither the
  * rules nor the thing to do about them.
- */
-export const NO_RULES_MESSAGE = 'Please create at least one rule.';
-const NO_JOIN_MESSAGE = 'Please choose how these rules should be combined.';
-/**
- * What a set holding a combination the protocol cannot use says, when there is
- * no control on screen to choose a different one.
  *
- * Names the repair rather than the value: a set of one rule renders no join
- * control at all, so "choose how these rules combine" would send the
- * researcher looking for something that is not there.
+ * Encoded rather than formatted, because a `required` message is handed to a
+ * field as a plain string and only rendered much later: `FieldErrors` decodes
+ * it in the reader's own language. `ruleSetProblem` formats the same
+ * descriptor directly, because it already has a formatter and its caller wants
+ * the sentence rather than a token.
  */
-const UNUSABLE_JOIN_MESSAGE =
-  'These rules record a way of combining them that this protocol cannot use. Edit or delete a rule to clear it.';
+export const NO_RULES_MESSAGE = createMessageError(shapeMessages.noRules);

@@ -735,6 +735,70 @@
     "defaultMessage": "Stage filter",
     "description": "Heading of the section where a researcher narrows which parts of the interview network one stage works on. A stage is one step of an interview."
   },
+  "protocolBuilder.operators.contains": {
+    "defaultMessage": "contains",
+    "description": "Researcher-facing name for the rule operator that matches an attribute whose text answer matches a regular expression. Read as a whole phrase before the pattern being compared against."
+  },
+  "protocolBuilder.operators.doesNotContain": {
+    "defaultMessage": "does not contain",
+    "description": "Researcher-facing name for the rule operator that matches an attribute whose text answer does not match a regular expression. Read as a whole phrase before the pattern being compared against."
+  },
+  "protocolBuilder.operators.exactly": {
+    "defaultMessage": "is exactly",
+    "description": "Researcher-facing name for the rule operator that matches an attribute answered with exactly this value. Read as a whole phrase before the value being compared against."
+  },
+  "protocolBuilder.operators.excludes": {
+    "defaultMessage": "excludes",
+    "description": "Researcher-facing name for the rule operator that matches an attribute answered with none of a chosen set of options. Read as a whole phrase before the options being compared against."
+  },
+  "protocolBuilder.operators.exists": {
+    "defaultMessage": "exists",
+    "description": "Researcher-facing name for the rule operator that matches when the thing being asked about is present in the interview network at all. Compares no value."
+  },
+  "protocolBuilder.operators.greaterThan": {
+    "defaultMessage": "is greater than",
+    "description": "Researcher-facing name for the rule operator that matches an attribute answered with a number above this value. Read as a whole phrase before the value being compared against."
+  },
+  "protocolBuilder.operators.greaterThanOrEqual": {
+    "defaultMessage": "is greater than or exactly",
+    "description": "Researcher-facing name for the rule operator that matches an attribute answered with a number above this value or equal to it. Read as a whole phrase before the value being compared against."
+  },
+  "protocolBuilder.operators.includes": {
+    "defaultMessage": "includes",
+    "description": "Researcher-facing name for the rule operator that matches an attribute answered with one of a chosen set of options. Read as a whole phrase before the options being compared against."
+  },
+  "protocolBuilder.operators.lessThan": {
+    "defaultMessage": "is less than",
+    "description": "Researcher-facing name for the rule operator that matches an attribute answered with a number below this value. Read as a whole phrase before the value being compared against."
+  },
+  "protocolBuilder.operators.lessThanOrEqual": {
+    "defaultMessage": "is less than or exactly",
+    "description": "Researcher-facing name for the rule operator that matches an attribute answered with a number below this value or equal to it. Read as a whole phrase before the value being compared against."
+  },
+  "protocolBuilder.operators.not": {
+    "defaultMessage": "is not",
+    "description": "Researcher-facing name for the rule operator that matches an attribute answered with anything other than this value. Read as a whole phrase before the value being compared against."
+  },
+  "protocolBuilder.operators.notExists": {
+    "defaultMessage": "does not exist",
+    "description": "Researcher-facing name for the rule operator that matches when the thing being asked about is absent from the interview network. Compares no value."
+  },
+  "protocolBuilder.operators.optionsEquals": {
+    "defaultMessage": "number of selected options is exactly",
+    "description": "Researcher-facing name for the rule operator that counts how many options a multiple-choice attribute was answered with and matches exactly this number. Read as a whole phrase before the number being compared against."
+  },
+  "protocolBuilder.operators.optionsGreaterThan": {
+    "defaultMessage": "number of selected options is greater than",
+    "description": "Researcher-facing name for the rule operator that counts how many options a multiple-choice attribute was answered with and matches a count above this number. Read as a whole phrase before the number being compared against."
+  },
+  "protocolBuilder.operators.optionsLessThan": {
+    "defaultMessage": "number of selected options is less than",
+    "description": "Researcher-facing name for the rule operator that counts how many options a multiple-choice attribute was answered with and matches a count below this number. Read as a whole phrase before the number being compared against."
+  },
+  "protocolBuilder.operators.optionsNotEquals": {
+    "defaultMessage": "number of selected options is not",
+    "description": "Researcher-facing name for the rule operator that counts how many options a multiple-choice attribute was answered with and matches any count other than this number. Read as a whole phrase before the number being compared against."
+  },
   "protocolBuilder.option.optionNoun": {
     "defaultMessage": "option",
     "description": "Noun for one row of the list of options a categorical or ordinal attribute offers. Interpolated mid-sentence into things said ABOUT a row (\"This option was replaced…\"), so it is lower case and singular."
@@ -922,6 +986,658 @@
   "protocolBuilder.promptsSection.waitingDescription": {
     "defaultMessage": "Choose what this stage works with before writing its prompts.",
     "description": "Shown in place of the prompts section’s description while the researcher has not yet chosen which node or edge type the stage is about, so there is nothing for a prompt to be written against."
+  },
+  "protocolBuilder.ruleCodebook.operatorNoLongerOffered": {
+    "defaultMessage": "{operator} (no longer offered)",
+    "description": "Label for an operator a stored rule already uses which this editor no longer offers, shown so the researcher can read their own rule. The protocol schema still accepts it, so it can be chosen again. operator is the operator phrase, e.g. \"is greater than\"."
+  },
+  "protocolBuilder.ruleCodebook.operatorNotValidHere": {
+    "defaultMessage": "{operator} (not valid for this attribute)",
+    "description": "Label for an operator a stored rule already uses which the protocol schema does not allow against this attribute type, usually because a collaborator changed the attribute. Shown but not selectable. operator is the operator phrase, e.g. \"is greater than\"."
+  },
+  "protocolBuilder.ruleCodebook.unusableValueBoolean": {
+    "defaultMessage": "a true/false value",
+    "description": "Noun phrase naming what a rule compares an attribute against when a yes/no value is stored where one option was expected. Interpolated into a sentence saying that value cannot be one of the attribute’s authored choices, so it reads as the object of \"compares against\"."
+  },
+  "protocolBuilder.ruleCodebook.unusableValueEmpty": {
+    "defaultMessage": "an empty value",
+    "description": "Noun phrase naming what a rule compares an attribute against when nothing is stored there. Interpolated into a sentence saying that value cannot be one of the attribute’s authored choices, so it reads as the object of \"compares against\"."
+  },
+  "protocolBuilder.ruleCodebook.unusableValueList": {
+    "defaultMessage": "a list",
+    "description": "Noun phrase naming what a rule compares an attribute against when several values are stored where one option was expected. Interpolated into a sentence saying that value cannot be one of the attribute’s authored choices, so it reads as the object of \"compares against\"."
+  },
+  "protocolBuilder.ruleCodebook.unusableValueObject": {
+    "defaultMessage": "an object",
+    "description": "Noun phrase naming what a rule compares an attribute against when a structured value is stored where one option was expected. Interpolated into a sentence saying that value cannot be one of the attribute’s authored choices, so it reads as the object of \"compares against\"."
+  },
+  "protocolBuilder.ruleCodebook.unusableValueOther": {
+    "defaultMessage": "a value an option cannot have",
+    "description": "Noun phrase naming what a rule compares an attribute against when the stored value is of no kind an authored option could ever be. Interpolated into a sentence saying that value cannot be one of the attribute’s authored choices, so it reads as the object of \"compares against\"."
+  },
+  "protocolBuilder.ruleDescription.alterContains": {
+    "defaultMessage": "contains",
+    "description": "Phrase for the rule operator that matches an attribute whose text answer matches the regular expression that follows. Read inside a sentence about a network member (an alter), between the attribute name and the value: \"Person where Age is greater than 30\"."
+  },
+  "protocolBuilder.ruleDescription.alterDoesNotContain": {
+    "defaultMessage": "does not contain",
+    "description": "Phrase for the rule operator that matches an attribute whose text answer does not match the regular expression that follows. Read inside a sentence about a network member (an alter), between the attribute name and the value: \"Person where Age is greater than 30\"."
+  },
+  "protocolBuilder.ruleDescription.alterExactly": {
+    "defaultMessage": "is exactly equal to",
+    "description": "Phrase for the rule operator that matches an attribute answered with exactly the value that follows. Read inside a sentence about a network member (an alter), between the attribute name and the value: \"Person where Age is greater than 30\"."
+  },
+  "protocolBuilder.ruleDescription.alterExcludes": {
+    "defaultMessage": "excludes",
+    "description": "Phrase for the rule operator that matches an attribute answered with none of the options that follow. Read inside a sentence about a network member (an alter), between the attribute name and the value: \"Person where Age is greater than 30\"."
+  },
+  "protocolBuilder.ruleDescription.alterExists": {
+    "defaultMessage": "where",
+    "description": "Phrase for the rule operator that asks only whether the attribute was answered at all. In the alter voice it introduces the attribute rather than following it, so the whole sentence reads \"Person where Age\". Read inside a sentence about a network member (an alter), between the attribute name and the value: \"Person where Age is greater than 30\"."
+  },
+  "protocolBuilder.ruleDescription.alterGreaterThan": {
+    "defaultMessage": "is greater than",
+    "description": "Phrase for the rule operator that matches an attribute answered with a number above the value that follows. Read inside a sentence about a network member (an alter), between the attribute name and the value: \"Person where Age is greater than 30\"."
+  },
+  "protocolBuilder.ruleDescription.alterGreaterThanOrEqual": {
+    "defaultMessage": "is greater than or equal to",
+    "description": "Phrase for the rule operator that matches an attribute answered with a number above the value that follows, or equal to it. Read inside a sentence about a network member (an alter), between the attribute name and the value: \"Person where Age is greater than 30\"."
+  },
+  "protocolBuilder.ruleDescription.alterIncludes": {
+    "defaultMessage": "includes",
+    "description": "Phrase for the rule operator that matches an attribute answered with one of the options that follow. Read inside a sentence about a network member (an alter), between the attribute name and the value: \"Person where Age is greater than 30\"."
+  },
+  "protocolBuilder.ruleDescription.alterLessThan": {
+    "defaultMessage": "is less than",
+    "description": "Phrase for the rule operator that matches an attribute answered with a number below the value that follows. Read inside a sentence about a network member (an alter), between the attribute name and the value: \"Person where Age is greater than 30\"."
+  },
+  "protocolBuilder.ruleDescription.alterLessThanOrEqual": {
+    "defaultMessage": "is less than or equal to",
+    "description": "Phrase for the rule operator that matches an attribute answered with a number below the value that follows, or equal to it. Read inside a sentence about a network member (an alter), between the attribute name and the value: \"Person where Age is greater than 30\"."
+  },
+  "protocolBuilder.ruleDescription.alterNot": {
+    "defaultMessage": "is not",
+    "description": "Phrase for the rule operator that matches an attribute answered with anything other than the value that follows. Read inside a sentence about a network member (an alter), between the attribute name and the value: \"Person where Age is greater than 30\"."
+  },
+  "protocolBuilder.ruleDescription.alterNotExists": {
+    "defaultMessage": "without",
+    "description": "Phrase for the rule operator that asks whether the attribute was left unanswered. In the alter voice it introduces the attribute rather than following it, so the whole sentence reads \"Person without Age\". Read inside a sentence about a network member (an alter), between the attribute name and the value: \"Person where Age is greater than 30\"."
+  },
+  "protocolBuilder.ruleDescription.alterOptionsEquals": {
+    "defaultMessage": "has selected options equal to",
+    "description": "Phrase for the rule operator that counts how many options a multiple-choice attribute was answered with and matches exactly the number that follows. Read inside a sentence about a network member (an alter), between the attribute name and the value: \"Person where Age is greater than 30\"."
+  },
+  "protocolBuilder.ruleDescription.alterOptionsGreaterThan": {
+    "defaultMessage": "has selected options greater than",
+    "description": "Phrase for the rule operator that counts how many options a multiple-choice attribute was answered with and matches a count above the number that follows. Read inside a sentence about a network member (an alter), between the attribute name and the value: \"Person where Age is greater than 30\"."
+  },
+  "protocolBuilder.ruleDescription.alterOptionsLessThan": {
+    "defaultMessage": "has selected options less than",
+    "description": "Phrase for the rule operator that counts how many options a multiple-choice attribute was answered with and matches a count below the number that follows. Read inside a sentence about a network member (an alter), between the attribute name and the value: \"Person where Age is greater than 30\"."
+  },
+  "protocolBuilder.ruleDescription.alterOptionsNotEquals": {
+    "defaultMessage": "has selected options not equal to",
+    "description": "Phrase for the rule operator that counts how many options a multiple-choice attribute was answered with and matches any count other than the number that follows. Read inside a sentence about a network member (an alter), between the attribute name and the value: \"Person where Age is greater than 30\"."
+  },
+  "protocolBuilder.ruleDescription.dateResolutionFull": {
+    "defaultMessage": "a full date",
+    "description": "Noun phrase naming the precision a date attribute records answers at: a day, a month and a year together. Interpolated into a sentence about a rule that compares against a date, so it reads as the object of \"answered with\"."
+  },
+  "protocolBuilder.ruleDescription.dateResolutionMonth": {
+    "defaultMessage": "a month and a year",
+    "description": "Noun phrase naming the precision a date attribute records answers at: a month and a year, with no day. Interpolated into a sentence about a rule that compares against a date, so it reads as the object of \"answered with\"."
+  },
+  "protocolBuilder.ruleDescription.dateResolutionYear": {
+    "defaultMessage": "a year",
+    "description": "Noun phrase naming the precision a date attribute records answers at: a year alone. Interpolated into a sentence about a rule that compares against a date, so it reads as the object of \"answered with\"."
+  },
+  "protocolBuilder.ruleDescription.egoContains": {
+    "defaultMessage": "that contains",
+    "description": "Phrase for the rule operator that matches an attribute whose text answer matches the regular expression that follows. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: \"Ego has Age that is greater than 30\". English uses a relative clause here where the alter voice does not."
+  },
+  "protocolBuilder.ruleDescription.egoDoesNotContain": {
+    "defaultMessage": "that does not contain",
+    "description": "Phrase for the rule operator that matches an attribute whose text answer does not match the regular expression that follows. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: \"Ego has Age that is greater than 30\". English uses a relative clause here where the alter voice does not."
+  },
+  "protocolBuilder.ruleDescription.egoExactly": {
+    "defaultMessage": "that is exactly equal to",
+    "description": "Phrase for the rule operator that matches an attribute answered with exactly the value that follows. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: \"Ego has Age that is greater than 30\". English uses a relative clause here where the alter voice does not."
+  },
+  "protocolBuilder.ruleDescription.egoExcludes": {
+    "defaultMessage": "that excludes",
+    "description": "Phrase for the rule operator that matches an attribute answered with none of the options that follow. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: \"Ego has Age that is greater than 30\". English uses a relative clause here where the alter voice does not."
+  },
+  "protocolBuilder.ruleDescription.egoExists": {
+    "defaultMessage": "has",
+    "description": "Phrase for the rule operator that asks only whether the attribute was answered at all. In the alter voice it introduces the attribute rather than following it, so the whole sentence reads \"Person where Age\". Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: \"Ego has Age that is greater than 30\". English uses a relative clause here where the alter voice does not."
+  },
+  "protocolBuilder.ruleDescription.egoGreaterThan": {
+    "defaultMessage": "that is greater than",
+    "description": "Phrase for the rule operator that matches an attribute answered with a number above the value that follows. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: \"Ego has Age that is greater than 30\". English uses a relative clause here where the alter voice does not."
+  },
+  "protocolBuilder.ruleDescription.egoGreaterThanOrEqual": {
+    "defaultMessage": "that is greater than or equal to",
+    "description": "Phrase for the rule operator that matches an attribute answered with a number above the value that follows, or equal to it. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: \"Ego has Age that is greater than 30\". English uses a relative clause here where the alter voice does not."
+  },
+  "protocolBuilder.ruleDescription.egoIncludes": {
+    "defaultMessage": "that includes",
+    "description": "Phrase for the rule operator that matches an attribute answered with one of the options that follow. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: \"Ego has Age that is greater than 30\". English uses a relative clause here where the alter voice does not."
+  },
+  "protocolBuilder.ruleDescription.egoLabel": {
+    "defaultMessage": "Ego",
+    "description": "What a rule about the interview participant themselves is said to be about. \"Ego\" is the network-research term for that participant, as opposed to the alters they name. Reads as the subject of the rule sentence: \"Ego has Age\"."
+  },
+  "protocolBuilder.ruleDescription.egoLessThan": {
+    "defaultMessage": "that is less than",
+    "description": "Phrase for the rule operator that matches an attribute answered with a number below the value that follows. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: \"Ego has Age that is greater than 30\". English uses a relative clause here where the alter voice does not."
+  },
+  "protocolBuilder.ruleDescription.egoLessThanOrEqual": {
+    "defaultMessage": "that is less than or equal to",
+    "description": "Phrase for the rule operator that matches an attribute answered with a number below the value that follows, or equal to it. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: \"Ego has Age that is greater than 30\". English uses a relative clause here where the alter voice does not."
+  },
+  "protocolBuilder.ruleDescription.egoNot": {
+    "defaultMessage": "that is not",
+    "description": "Phrase for the rule operator that matches an attribute answered with anything other than the value that follows. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: \"Ego has Age that is greater than 30\". English uses a relative clause here where the alter voice does not."
+  },
+  "protocolBuilder.ruleDescription.egoNotExists": {
+    "defaultMessage": "without",
+    "description": "Phrase for the rule operator that asks whether the attribute was left unanswered. In the alter voice it introduces the attribute rather than following it, so the whole sentence reads \"Person without Age\". Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: \"Ego has Age that is greater than 30\". English uses a relative clause here where the alter voice does not."
+  },
+  "protocolBuilder.ruleDescription.egoOptionsEquals": {
+    "defaultMessage": "that has selected options equal to",
+    "description": "Phrase for the rule operator that counts how many options a multiple-choice attribute was answered with and matches exactly the number that follows. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: \"Ego has Age that is greater than 30\". English uses a relative clause here where the alter voice does not."
+  },
+  "protocolBuilder.ruleDescription.egoOptionsGreaterThan": {
+    "defaultMessage": "that has selected options greater than",
+    "description": "Phrase for the rule operator that counts how many options a multiple-choice attribute was answered with and matches a count above the number that follows. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: \"Ego has Age that is greater than 30\". English uses a relative clause here where the alter voice does not."
+  },
+  "protocolBuilder.ruleDescription.egoOptionsLessThan": {
+    "defaultMessage": "that has selected options less than",
+    "description": "Phrase for the rule operator that counts how many options a multiple-choice attribute was answered with and matches a count below the number that follows. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: \"Ego has Age that is greater than 30\". English uses a relative clause here where the alter voice does not."
+  },
+  "protocolBuilder.ruleDescription.egoOptionsNotEquals": {
+    "defaultMessage": "that has selected options not equal to",
+    "description": "Phrase for the rule operator that counts how many options a multiple-choice attribute was answered with and matches any count other than the number that follows. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: \"Ego has Age that is greater than 30\". English uses a relative clause here where the alter voice does not."
+  },
+  "protocolBuilder.ruleDescription.presenceExists": {
+    "defaultMessage": "exists",
+    "description": "The whole predicate of a rule that asks only whether any network member of a given type is present in the interview network: \"Person exists\". Follows the type name."
+  },
+  "protocolBuilder.ruleDescription.presenceNotExists": {
+    "defaultMessage": "does not exist",
+    "description": "The whole predicate of a rule that asks whether no network member of a given type is present in the interview network: \"Person does not exist\". Follows the type name."
+  },
+  "protocolBuilder.ruleDescription.problemDuplicateId": {
+    "defaultMessage": "Another rule in this set has the same identifier, so this protocol cannot be saved with both. Edit or delete the rule.",
+    "description": "Shown on the rows of both rules in a rule set that share one internal identifier. Opening and saving either rule gives it a fresh one."
+  },
+  "protocolBuilder.ruleDescription.problemIncomplete": {
+    "defaultMessage": "This rule is not complete. Edit it to fill in every part, or delete it.",
+    "description": "Shown on a rule’s row in the rule list when one of the rule’s parts was never answered."
+  },
+  "protocolBuilder.ruleDescription.problemInvalidOperand": {
+    "defaultMessage": "This rule compares its attribute against a value of the wrong kind for the attribute’s type. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the stored comparison value is of a kind the attribute is never answered with, so the interview could never match it."
+  },
+  "protocolBuilder.ruleDescription.problemInvalidOperator": {
+    "defaultMessage": "This rule uses an operator that is not valid for its attribute type. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the comparison the rule makes is not one the protocol allows for that kind of attribute — usually because someone changed the attribute after the rule was written."
+  },
+  "protocolBuilder.ruleDescription.problemInvalidPattern": {
+    "defaultMessage": "This rule compares its attribute against a pattern that is not a valid regular expression, so the interview cannot apply the rule. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the rule’s comparison value is meant to be a regular expression and will not compile. \"The interview\" is the session a participant takes."
+  },
+  "protocolBuilder.ruleDescription.problemInvalidPresenceOperator": {
+    "defaultMessage": "This rule asks whether an entity type is present, but uses an operator that cannot ask that. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when a rule about whether any node or edge of a type exists at all uses a comparison that cannot answer that question."
+  },
+  "protocolBuilder.ruleDescription.problemMissingAttribute": {
+    "defaultMessage": "This rule refers to an attribute that is no longer in the codebook. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the attribute the rule asks about has been deleted. An attribute is one variable a study records about a node, an edge or the ego."
+  },
+  "protocolBuilder.ruleDescription.problemMissingEdgeType": {
+    "defaultMessage": "This rule refers to an edge type that is no longer in the codebook. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the edge type the rule names has been deleted. An edge is a relationship between two network members; the codebook is the protocol’s definition of the types and attributes a study records."
+  },
+  "protocolBuilder.ruleDescription.problemMissingEgo": {
+    "defaultMessage": "This rule refers to the ego, but this protocol no longer defines any ego attributes. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the rule is about the interview participant themselves (the ego) and the protocol records nothing about them any more."
+  },
+  "protocolBuilder.ruleDescription.problemMissingId": {
+    "defaultMessage": "This rule has no identifier, so this protocol cannot be saved with it. Edit the rule to give it one, or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the rule carries no internal identifier. Nothing on screen asks for one — opening and saving the rule supplies it — so the sentence names that repair."
+  },
+  "protocolBuilder.ruleDescription.problemMissingNodeType": {
+    "defaultMessage": "This rule refers to a node type that is no longer in the codebook. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the node type the rule names has been deleted. The codebook is the protocol’s definition of the node types, edge types and attributes a study records."
+  },
+  "protocolBuilder.ruleDescription.problemMissingOption": {
+    "defaultMessage": "This rule compares its attribute against an option that is no longer one of that attribute’s choices. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the rule names one of a multiple-choice attribute’s options and that option has since been renamed or deleted."
+  },
+  "protocolBuilder.ruleDescription.problemUnknownTarget": {
+    "defaultMessage": "This rule does not say whether it is about a node, an edge, or the ego. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the rule never recorded what it is about. Node and edge are the two kinds of thing in a network; ego is the interview participant themselves."
+  },
+  "protocolBuilder.ruleDescription.problemUnusableDateImpossible": {
+    "defaultMessage": "This rule compares its attribute against “{value}”, which is not a date on the calendar. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the rule’s stored date is the right shape but not a real date, e.g. 31 February. value is the stored date, unchanged."
+  },
+  "protocolBuilder.ruleDescription.problemUnusableDateOutOfRange": {
+    "defaultMessage": "This rule compares its attribute against “{value}”, which is outside the dates that attribute can record. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the rule’s stored date falls outside the range the attribute’s own date picker offers. value is the stored date, unchanged."
+  },
+  "protocolBuilder.ruleDescription.problemUnusableDateWrongResolution": {
+    "defaultMessage": "This rule compares its attribute against “{value}”, but the attribute is now answered with {resolution}. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the attribute records dates at a different precision from the one the rule’s date is written at. value is the stored date, unchanged; resolution is a noun phrase such as \"a year\"."
+  },
+  "protocolBuilder.ruleDescription.problemUnusableNumberOptionCount": {
+    "defaultMessage": "This rule compares the number of selected options against {value}. This attribute offers {optionCount, plural, one {# option} other {# options}}, so between 0 and {optionCount, number} of them can be selected. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the rule counts how many options a multiple-choice attribute was answered with and names a count the option list puts out of reach. value is the number the rule names; optionCount is how many options the attribute offers."
+  },
+  "protocolBuilder.ruleDescription.problemUnusableNumberScale": {
+    "defaultMessage": "This rule compares its attribute against {value}. The attribute is answered on a scale from {min} to {max}. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the attribute records a reading on a fixed scale and the rule names a number off it. value is the number the rule names; min and max are the ends of the scale."
+  },
+  "protocolBuilder.ruleDescription.problemUnusableOption": {
+    "defaultMessage": "This rule compares its attribute against {describedAs}, which cannot be one of that attribute’s choices. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the stored comparison value is of no kind an authored option could ever be. describedAs is a noun phrase naming that kind, e.g. \"a true/false value\"."
+  },
+  "protocolBuilder.ruleDescription.sentenceAttributePresence": {
+    "defaultMessage": "{entity} {operator} {attribute}",
+    "description": "A whole rule sentence for a rule that asks only whether an attribute was answered at all, where the operator introduces the attribute: \"Person where Age\", \"Person without Age\". entity and attribute are the researcher’s own codebook names and are not translated; operator is the phrase for the comparison."
+  },
+  "protocolBuilder.ruleDescription.sentenceAttributePresenceUnknownEntity": {
+    "defaultMessage": "{operator} {attribute}",
+    "description": "The same sentence as sentenceAttributePresence, for a broken rule that never said what it is about, so there is no entity to name. attribute is the researcher’s own codebook name; operator is the phrase for the comparison."
+  },
+  "protocolBuilder.ruleDescription.subjectAlterAttribute": {
+    "defaultMessage": "{entity} where {attribute}",
+    "description": "Subject of a sentence reading a rule back to a researcher, for a rule about a network member (an alter) rather than about the interview participant. entity is the codebook name of the node or edge type; attribute is the codebook name of the variable the rule asks about. A comparison follows."
+  },
+  "protocolBuilder.ruleDescription.subjectAlterAttributeUnknownEntity": {
+    "defaultMessage": "where {attribute}",
+    "description": "The same subject as subjectAlterAttribute, for a broken rule that never said what it is about, so there is no entity to name. attribute is the codebook name of the variable the rule asks about. A comparison follows."
+  },
+  "protocolBuilder.ruleDescription.subjectEgoAttribute": {
+    "defaultMessage": "{entity} has {attribute}",
+    "description": "Subject of a sentence reading a rule back to a researcher, for a rule about the ego — the interview participant themselves. entity is the word for the ego; attribute is the codebook name of the ego variable the rule asks about. A comparison follows."
+  },
+  "protocolBuilder.ruleDescription.subjectEgoAttributeUnknownEntity": {
+    "defaultMessage": "has {attribute}",
+    "description": "The same subject as subjectEgoAttribute, for a broken rule that never said what it is about, so there is no entity to name. attribute is the codebook name of the ego variable the rule asks about. A comparison follows."
+  },
+  "protocolBuilder.ruleDescription.targetNotOfferedEdge": {
+    "defaultMessage": "This rule is about an edge, which these rules cannot ask about. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the rule asks about an edge — a relationship between two network members — and this kind of rule set is not allowed to."
+  },
+  "protocolBuilder.ruleDescription.targetNotOfferedEgo": {
+    "defaultMessage": "This rule is about the ego, which these rules cannot ask about. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the rule asks about the interview participant themselves (the ego) and this kind of rule set is not allowed to."
+  },
+  "protocolBuilder.ruleDescription.targetNotOfferedNode": {
+    "defaultMessage": "This rule is about a node, which these rules cannot ask about. Edit or delete the rule.",
+    "description": "Shown on a rule’s row in the rule list when the rule asks about a node — a member of the interview network — and this kind of rule set is not allowed to."
+  },
+  "protocolBuilder.ruleDescription.unreadableOperand": {
+    "defaultMessage": "(a value this editor cannot read)",
+    "description": "Stands in for the value a rule compares against when the protocol holds something there that cannot be written out at all. Shown in place of the value inside the rule sentence, so the researcher can see which rule to repair."
+  },
+  "protocolBuilder.ruleEditor.attributeHint": {
+    "defaultMessage": "Select an attribute to base this rule on.",
+    "description": "Guidance under the control where a researcher chooses which attribute of a node or edge a rule asks about."
+  },
+  "protocolBuilder.ruleEditor.attributeOperatorHint": {
+    "defaultMessage": "Select the operator that will be used to compare the attribute to the value.",
+    "description": "Guidance under the comparison control, for a rule about one of a node or edge type’s attributes."
+  },
+  "protocolBuilder.ruleEditor.attributeRegExpHint": {
+    "defaultMessage": "Enter a regular expression to compare against.",
+    "description": "Guidance under the value control, for a rule about a node or edge attribute whose comparison matches text against a regular expression."
+  },
+  "protocolBuilder.ruleEditor.description": {
+    "defaultMessage": "Rules are used to filter the data in your study. You can use them to show or hide nodes and edges based on their attributes. For help with constructing rules, see our documentation articles on <skipLogic>skip logic</skipLogic> and <networkFiltering>network filtering</networkFiltering>.",
+    "description": "Opening paragraph of the rule editor. Nodes are the members of an interview network and edges the relationships between them. The two tags wrap the link text for documentation articles: skip logic decides whether a stage is shown to a participant, network filtering narrows what a stage works on."
+  },
+  "protocolBuilder.ruleEditor.edgeAttributeEmpty": {
+    "defaultMessage": "This edge type has no attributes a rule can compare.",
+    "description": "Shown in place of the attribute list when the chosen edge type records nothing a rule could compare."
+  },
+  "protocolBuilder.ruleEditor.edgeAttributeLabel": {
+    "defaultMessage": "Edge attribute",
+    "description": "Label of the control where a researcher chooses which attribute of an edge — a relationship between network members — a rule asks about."
+  },
+  "protocolBuilder.ruleEditor.edgeTypeHint": {
+    "defaultMessage": "Choose an edge type to base your rule on. Remember you can add multiple rules if you need to cover different types.",
+    "description": "Guidance under the control where a researcher chooses which kind of edge a rule is about. One rule covers one type, so several types need several rules."
+  },
+  "protocolBuilder.ruleEditor.edgeTypeLabel": {
+    "defaultMessage": "Edge type",
+    "description": "Label of the control where a researcher chooses which kind of edge — which kind of relationship between network members — a rule is about."
+  },
+  "protocolBuilder.ruleEditor.egoAttributeEmpty": {
+    "defaultMessage": "This protocol has no ego attributes a rule can compare.",
+    "description": "Shown in place of the attribute list when the protocol records nothing about the ego — the interview participant themselves — that a rule could compare."
+  },
+  "protocolBuilder.ruleEditor.egoAttributeHint": {
+    "defaultMessage": "Select the ego attribute this rule will be based on.",
+    "description": "Guidance under the control where a researcher chooses which attribute of the ego — the interview participant themselves — a rule asks about."
+  },
+  "protocolBuilder.ruleEditor.egoAttributeLabel": {
+    "defaultMessage": "Ego attribute",
+    "description": "Label of the control where a researcher chooses which attribute of the ego — the interview participant themselves — a rule asks about."
+  },
+  "protocolBuilder.ruleEditor.egoOperatorHint": {
+    "defaultMessage": "Select the operator that will be used to compare the ego attribute to the value.",
+    "description": "Guidance under the comparison control, for a rule about the ego — the interview participant themselves."
+  },
+  "protocolBuilder.ruleEditor.egoRegExpHint": {
+    "defaultMessage": "Enter the value to compare against. You can use a regular expression to match multiple values.",
+    "description": "Guidance under the value control, for a rule about the ego — the interview participant themselves — whose comparison matches text against a regular expression."
+  },
+  "protocolBuilder.ruleEditor.entityHint": {
+    "defaultMessage": "Select which network entity your rule should target.",
+    "description": "Guidance under the control where a researcher chooses whether a rule is about a node, an edge, or the ego."
+  },
+  "protocolBuilder.ruleEditor.entityLabel": {
+    "defaultMessage": "Entity",
+    "description": "Label of the control where a researcher chooses whether a rule is about a node, an edge, or the ego. Entity is the general word for a thing in the interview network."
+  },
+  "protocolBuilder.ruleEditor.entityTypeOperatorHint": {
+    "defaultMessage": "Select the operator that will be used to compare the entity type to the value.",
+    "description": "Guidance under the comparison control, for a rule about whether anything of a node or edge type is in the interview network at all."
+  },
+  "protocolBuilder.ruleEditor.nodeAttributeEmpty": {
+    "defaultMessage": "This node type has no attributes a rule can compare.",
+    "description": "Shown in place of the attribute list when the chosen node type records nothing a rule could compare."
+  },
+  "protocolBuilder.ruleEditor.nodeAttributeLabel": {
+    "defaultMessage": "Node attribute",
+    "description": "Label of the control where a researcher chooses which attribute of a node — a member of the interview network — a rule asks about."
+  },
+  "protocolBuilder.ruleEditor.nodeTypeHint": {
+    "defaultMessage": "Choose a node type to base your rule on. Remember you can add multiple rules if you need to cover different types.",
+    "description": "Guidance under the control where a researcher chooses which kind of node a rule is about. One rule covers one type, so several types need several rules."
+  },
+  "protocolBuilder.ruleEditor.nodeTypeLabel": {
+    "defaultMessage": "Node type",
+    "description": "Label of the control where a researcher chooses which kind of node — which kind of network member — a rule is about."
+  },
+  "protocolBuilder.ruleEditor.operatorLabel": {
+    "defaultMessage": "Operator",
+    "description": "Label of the control where a researcher chooses the comparison a rule makes — is exactly, is greater than, and so on."
+  },
+  "protocolBuilder.ruleEditor.operatorPlaceholder": {
+    "defaultMessage": "Select an operator…",
+    "description": "Placeholder shown in the empty control where a researcher chooses the comparison a rule makes."
+  },
+  "protocolBuilder.ruleEditor.presenceConditionSection": {
+    "defaultMessage": "Presence condition",
+    "description": "Heading of the section where a researcher says whether the rule matches when an entity type is present or when it is absent."
+  },
+  "protocolBuilder.ruleEditor.refuseIncomplete": {
+    "defaultMessage": "This rule cannot be saved until this question is answered.",
+    "description": "Refusal shown on whichever control in the rule editor is still unanswered when the researcher tries to finish the rule."
+  },
+  "protocolBuilder.ruleEditor.refuseInvalidOperand": {
+    "defaultMessage": "This is not the kind of value this attribute is answered with. Enter one it can be compared against.",
+    "description": "Refusal shown on the value control when the stored comparison value is of a kind the attribute is never answered with, so the interview could never match it."
+  },
+  "protocolBuilder.ruleEditor.refuseInvalidOperator": {
+    "defaultMessage": "This operator is not valid for this attribute’s type. Choose another one.",
+    "description": "Refusal shown on the comparison control when the protocol does not allow that comparison against this kind of attribute, usually because someone changed the attribute after the rule was written."
+  },
+  "protocolBuilder.ruleEditor.refuseInvalidPresenceOperator": {
+    "defaultMessage": "This operator cannot ask whether an entity type is present. Choose another one.",
+    "description": "Refusal shown on the comparison control of a rule about whether anything of a node or edge type is in the interview network at all, when the chosen comparison cannot answer that question."
+  },
+  "protocolBuilder.ruleEditor.refuseMissingAttribute": {
+    "defaultMessage": "This rule is about \"{attributeId}\", which is no longer in the codebook. Choose another attribute.",
+    "description": "Refusal shown on the attribute control when the attribute the rule asks about has been deleted. attributeId is that attribute’s own identifier, shown unchanged so the researcher can match it against the rule."
+  },
+  "protocolBuilder.ruleEditor.refuseMissingAttributeUnnamed": {
+    "defaultMessage": "This rule is about an attribute that is no longer in the codebook. Choose another one.",
+    "description": "Refusal shown on the attribute control when the attribute the rule asks about has been deleted and the rule records no identifier to name."
+  },
+  "protocolBuilder.ruleEditor.refuseMissingEgo": {
+    "defaultMessage": "This protocol no longer defines any ego attributes, so this rule cannot be about the ego. Choose another target.",
+    "description": "Refusal shown on the target control when the rule is about the ego — the interview participant themselves — and the protocol records nothing about them any more."
+  },
+  "protocolBuilder.ruleEditor.refuseMissingEntityType": {
+    "defaultMessage": "This rule is pointed at \"{typeId}\", which is no longer in the codebook. Choose another type.",
+    "description": "Refusal shown on the type control when the node or edge type the rule names has been deleted. typeId is that type’s own identifier, shown unchanged so the researcher can match it against the rule. The codebook is the protocol’s definition of the types and attributes a study records."
+  },
+  "protocolBuilder.ruleEditor.refuseMissingEntityTypeUnnamed": {
+    "defaultMessage": "This rule is pointed at a type that is no longer in the codebook. Choose another one.",
+    "description": "Refusal shown on the type control when the node or edge type the rule names has been deleted and the rule records no identifier to name."
+  },
+  "protocolBuilder.ruleEditor.refuseMissingId": {
+    "defaultMessage": "This rule has no identifier. Answer this question again to give it one.",
+    "description": "Refusal shown on the first control of the rule editor when the rule carries no internal identifier. Nothing on screen asks for one, so answering the question again is what supplies it."
+  },
+  "protocolBuilder.ruleEditor.refuseRegExp": {
+    "defaultMessage": "This is not a valid regular expression. Correct it, or choose a different operator.",
+    "description": "Refusal shown on the value control when the pattern the rule compares against will not compile as a regular expression."
+  },
+  "protocolBuilder.ruleEditor.refuseTargetEdge": {
+    "defaultMessage": "These rules cannot ask about an edge. Choose another target.",
+    "description": "Refusal shown on the target control when the rule is about an edge — a relationship between network members — and this kind of rule set is not allowed to ask about one."
+  },
+  "protocolBuilder.ruleEditor.refuseTargetEgo": {
+    "defaultMessage": "These rules cannot ask about the ego. Choose another target.",
+    "description": "Refusal shown on the target control when the rule is about the ego — the interview participant themselves — and this kind of rule set is not allowed to ask about them."
+  },
+  "protocolBuilder.ruleEditor.refuseTargetNode": {
+    "defaultMessage": "These rules cannot ask about a node. Choose another target.",
+    "description": "Refusal shown on the target control when the rule is about a node — a member of the interview network — and this kind of rule set is not allowed to ask about one."
+  },
+  "protocolBuilder.ruleEditor.required": {
+    "defaultMessage": "This field is required.",
+    "description": "Shown under any unanswered control in the rule editor when the researcher tries to finish the rule. Addresses the researcher authoring the protocol, not a participant answering it."
+  },
+  "protocolBuilder.ruleEditor.ruleBasisSection": {
+    "defaultMessage": "Rule basis",
+    "description": "Heading of the section where a researcher says whether the rule asks about the presence of a node or edge type or about one of its attributes."
+  },
+  "protocolBuilder.ruleEditor.ruleKindAttribute": {
+    "defaultMessage": "Attribute",
+    "description": "One of two choices for what a rule is based on: one of the entity’s attributes — the variables a study records about it."
+  },
+  "protocolBuilder.ruleEditor.ruleKindEdgeAttributeHint": {
+    "defaultMessage": "Rule based on the value of this edge type's attributes.",
+    "description": "Explains the \"Attribute\" choice for a rule about an edge — a relationship between two network members."
+  },
+  "protocolBuilder.ruleEditor.ruleKindEdgePresenceHint": {
+    "defaultMessage": "Based on the presence or absence of this edge type in the interview network.",
+    "description": "Explains the \"Presence\" choice for a rule about an edge — a relationship between two network members."
+  },
+  "protocolBuilder.ruleEditor.ruleKindHint": {
+    "defaultMessage": "Select whether this rule will be based on the entity type or an attribute.",
+    "description": "Guidance under the control where a researcher says whether the rule asks about the presence of a node or edge type or about one of its attributes."
+  },
+  "protocolBuilder.ruleEditor.ruleKindLabel": {
+    "defaultMessage": "Rule type",
+    "description": "Label of the control where a researcher says whether the rule asks about the presence of a node or edge type or about one of its attributes."
+  },
+  "protocolBuilder.ruleEditor.ruleKindNodeAttributeHint": {
+    "defaultMessage": "Rule based on the value of this node type's attributes.",
+    "description": "Explains the \"Attribute\" choice for a rule about a node — a member of the interview network."
+  },
+  "protocolBuilder.ruleEditor.ruleKindNodePresenceHint": {
+    "defaultMessage": "Based on the presence or absence of this node type in the interview network.",
+    "description": "Explains the \"Presence\" choice for a rule about a node — a member of the interview network."
+  },
+  "protocolBuilder.ruleEditor.ruleKindPresence": {
+    "defaultMessage": "Presence",
+    "description": "One of two choices for what a rule is based on: whether anything of this type is in the interview network at all."
+  },
+  "protocolBuilder.ruleEditor.ruleStructureHint": {
+    "defaultMessage": "Choose an attribute, operator, and comparison value to define this rule.",
+    "description": "Guidance under the heading of the section where a researcher chooses the attribute, the comparison and the value a rule is made of."
+  },
+  "protocolBuilder.ruleEditor.ruleStructureSection": {
+    "defaultMessage": "Rule structure",
+    "description": "Heading of the section where a researcher chooses the attribute, the comparison and the value a rule is made of."
+  },
+  "protocolBuilder.ruleEditor.ruleTargetSection": {
+    "defaultMessage": "Rule target",
+    "description": "Heading of the first section of the rule editor, where the researcher says what the rule is about."
+  },
+  "protocolBuilder.ruleEditor.staleDateImpossible": {
+    "defaultMessage": "“{value}” is not a date on the calendar. Choose a real date.",
+    "description": "Refusal shown on the value control when the rule’s stored date is the right shape but not a real date, e.g. 31 February. value is the stored date, unchanged."
+  },
+  "protocolBuilder.ruleEditor.staleDateOutOfRange": {
+    "defaultMessage": "“{value}” is outside the dates this attribute can record. Choose a date inside them.",
+    "description": "Refusal shown on the value control when the rule’s stored date falls outside the range the attribute’s own date picker offers. value is the stored date, unchanged."
+  },
+  "protocolBuilder.ruleEditor.staleDateWrongResolution": {
+    "defaultMessage": "This attribute is now answered with {resolution}, which “{value}” is not. Choose a date it can record.",
+    "description": "Refusal shown on the value control when the attribute records dates at a different precision from the rule’s date. resolution is a noun phrase such as \"a year\"; value is the stored date, unchanged."
+  },
+  "protocolBuilder.ruleEditor.staleMissingOptions": {
+    "defaultMessage": "This rule compares against {list}, which this attribute no longer offers. Choose from the options it does.",
+    "description": "Refusal shown on the value control when the rule names options this attribute has since stopped offering. list is the offending values, joined for the reader’s language; text values are shown in quotation marks."
+  },
+  "protocolBuilder.ruleEditor.staleUnusableOptions": {
+    "defaultMessage": "This rule compares against {list}, which cannot be one of this attribute’s options. Choose from the options it offers.",
+    "description": "Refusal shown on the value control when the rule holds values of a kind no authored option could ever be. list is the offending values, joined for the reader’s language — each is a noun phrase such as \"a true/false value\"."
+  },
+  "protocolBuilder.ruleEditor.submit": {
+    "defaultMessage": "Finish and Close",
+    "description": "Action that commits the rule being built and closes the rule editor dialog."
+  },
+  "protocolBuilder.ruleEditor.targetNotOfferedEdgeLabel": {
+    "defaultMessage": "Edge (not offered in this rule set)",
+    "description": "The choice shown, and disabled, when a stored rule is about an edge — a relationship between two network members — and this rule set does not build edge rules."
+  },
+  "protocolBuilder.ruleEditor.targetNotOfferedEgoLabel": {
+    "defaultMessage": "Ego (not offered in this rule set)",
+    "description": "The choice shown, and disabled, when a stored rule is about the ego — the interview participant themselves — and this rule set does not build ego rules."
+  },
+  "protocolBuilder.ruleEditor.targetNotOfferedNodeLabel": {
+    "defaultMessage": "Node (not offered in this rule set)",
+    "description": "The choice shown, and disabled, when a stored rule is about a node — a member of the interview network — and this rule set does not build node rules. Shown so the researcher can read what their rule targets."
+  },
+  "protocolBuilder.ruleEditor.title": {
+    "defaultMessage": "Construct a Rule",
+    "description": "Title of the dialog a researcher builds one rule in. A rule decides which parts of an interview network a stage works on, or whether a stage is shown at all."
+  },
+  "protocolBuilder.ruleEditor.unreachableOptionCount": {
+    "defaultMessage": "This attribute offers {optionCount, plural, one {# option} other {# options}}, so between 0 and {optionCount, number} of them can be selected. Choose a number in that range.",
+    "description": "Refusal shown on the value control when a rule counts how many options a multiple-choice attribute was answered with and names a count the option list puts out of reach. optionCount is how many options the attribute offers."
+  },
+  "protocolBuilder.ruleEditor.unreachableScale": {
+    "defaultMessage": "This attribute is answered on a scale from {min} to {max}. Choose a number in that range.",
+    "description": "Refusal shown on the value control when the attribute records a reading on a fixed scale and the rule names a number off it. min and max are the ends of the scale."
+  },
+  "protocolBuilder.ruleList.deleteAction": {
+    "defaultMessage": "Delete rule:",
+    "description": "Read out before the rule itself to name the control that removes one row of a rule list, so a screen reader says \"Delete rule: Person where Age is greater than 30\". Not shown on screen."
+  },
+  "protocolBuilder.ruleList.editAction": {
+    "defaultMessage": "Edit rule:",
+    "description": "Read out before the rule itself to name the control that opens one row of a rule list for editing, so a screen reader says \"Edit rule: Person where Age is greater than 30\". Not shown on screen."
+  },
+  "protocolBuilder.ruleList.emptyState": {
+    "defaultMessage": "No rules have been created yet.",
+    "description": "Shown in place of the list when a researcher has added no rules to a rule set yet."
+  },
+  "protocolBuilder.ruleList.saveUnavailable": {
+    "defaultMessage": "These rules are no longer editable, so this rule cannot be saved. Copy anything you want to keep, then close the editor.",
+    "description": "Shown inside the rule editor when the list it was opened from stopped accepting changes while the dialog was open — the rule cannot be committed, and the draft is kept on screen so nothing the researcher wrote is lost."
+  },
+  "protocolBuilder.rulePreview.attribute": {
+    "defaultMessage": "{label} (attribute type: {type})",
+    "description": "Read out in place of the attribute chip in a rule preview, so assistive technology says what kind of attribute it is as well as its name. label is the researcher’s own name for the attribute; type is the schema’s own word for the kind of value it holds — text, number, boolean, ordinal, categorical, datetime, scalar, location or layout — and is not translated."
+  },
+  "protocolBuilder.rulePreview.attributeMissing": {
+    "defaultMessage": "{label} (attribute is no longer in the codebook)",
+    "description": "Read out in place of the attribute chip in a rule preview when the protocol’s codebook no longer describes that attribute, so its kind cannot be named. label is the researcher’s own name for the attribute."
+  },
+  "protocolBuilder.ruleSet.addFilterRule": {
+    "defaultMessage": "Add new filter rule",
+    "description": "Action that adds a rule to the set narrowing which parts of the interview network a stage works on. A stage is one step of an interview. Named for its own rule set because a stage editor commonly shows two rule builders at once."
+  },
+  "protocolBuilder.ruleSet.addSkipLogicRule": {
+    "defaultMessage": "Add new skip logic rule",
+    "description": "Action that adds a rule to the set deciding whether a stage is shown to a participant at all. A stage is one step of an interview. Named for its own rule set because a stage editor commonly shows two rule builders at once."
+  },
+  "protocolBuilder.ruleSet.joinAll": {
+    "defaultMessage": "All rules must match",
+    "description": "Choice offered to a researcher whose rule set holds more than one rule: the set only applies when every rule in it is satisfied."
+  },
+  "protocolBuilder.ruleSet.joinAny": {
+    "defaultMessage": "Any rule can match",
+    "description": "Choice offered to a researcher whose rule set holds more than one rule: the set applies as soon as any one rule in it is satisfied."
+  },
+  "protocolBuilder.ruleSet.joinHint": {
+    "defaultMessage": "When you have multiple rules, how should matching work?",
+    "description": "Guidance under the control where a researcher says whether every rule in a set has to match or any one of them will do."
+  },
+  "protocolBuilder.ruleSet.joinLabel": {
+    "defaultMessage": "Rule Matching",
+    "description": "Label of the control where a researcher says whether every rule in a set has to match or any one of them will do."
+  },
+  "protocolBuilder.ruleSet.noJoin": {
+    "defaultMessage": "Please choose how these rules should be combined.",
+    "description": "Shown when a rule set holds more than one rule and the researcher has not said whether every rule has to match or any one of them will do."
+  },
+  "protocolBuilder.ruleSet.noRules": {
+    "defaultMessage": "Please create at least one rule.",
+    "description": "Shown when a researcher has switched a rule builder on and created no rules, or deleted the last one. Also the rule-set field’s own required message, so both read alike."
+  },
+  "protocolBuilder.ruleSet.summaryCodebook": {
+    "defaultMessage": "{count, plural, one {Rule {position, number} no longer works with this protocol's codebook. Open it to fix it, or delete it.} other {# of these rules no longer work with this protocol's codebook. Open each marked rule to fix it, or delete it.}}",
+    "description": "The one error a rule-set field shows when a rule was finished and the protocol moved under it — an attribute or a type it names has been renamed, retyped or deleted. The codebook is the protocol’s definition of the node types, edge types and attributes a study records. count is how many rules are affected; position is the 1-based position of the single affected rule."
+  },
+  "protocolBuilder.ruleSet.summaryUnfinished": {
+    "defaultMessage": "{count, plural, one {Rule {position, number} is not finished. Open it to fill in every part, or delete it.} other {# of these rules are not finished. Open each marked rule to fill in every part, or delete it.}}",
+    "description": "The one error a rule-set field shows when a rule was never completed. count is how many rules are affected; position is the 1-based position of the single affected rule."
+  },
+  "protocolBuilder.ruleSet.summaryUnusable": {
+    "defaultMessage": "{count, plural, one {Rule {position, number} cannot be used as it stands. Open it to fix it, or delete it.} other {# of these rules cannot be used as they stand. Open each marked rule to fix it, or delete it.}}",
+    "description": "The one error a rule-set field shows when its rules are exactly as the researcher wrote them and the protocol still cannot use them where they sit. count is how many rules are affected; position is the 1-based position of the single affected rule, as the researcher counts the rows on screen. Each row also carries its own message saying what is wrong with it."
+  },
+  "protocolBuilder.ruleSet.targetEdge": {
+    "defaultMessage": "Edge - match an edge type or one of its attributes.",
+    "description": "Choice offered when a researcher starts a rule: the rule will be about an edge — a relationship between two network members — either that an edge of some type exists at all, or that one of its attributes has a particular value."
+  },
+  "protocolBuilder.ruleSet.targetEgo": {
+    "defaultMessage": "Ego - match one of the ego attributes.",
+    "description": "Choice offered when a researcher starts a rule: the rule will be about the ego — the interview participant themselves — and about one of the attributes recorded for them."
+  },
+  "protocolBuilder.ruleSet.targetNode": {
+    "defaultMessage": "Node - match a node type or one of its attributes.",
+    "description": "Choice offered when a researcher starts a rule: the rule will be about a node — a member of the interview network — either that a node of some type exists at all, or that one of its attributes has a particular value."
+  },
+  "protocolBuilder.ruleSet.unusableJoin": {
+    "defaultMessage": "These rules record a way of combining them that this protocol cannot use. Edit or delete a rule to clear it.",
+    "description": "Shown when a rule set of one rule still records how several rules combine, in a form the protocol will not accept. No control is on screen to choose again, so the sentence names the repair instead: editing or deleting a rule rewrites the set and clears it."
+  },
+  "protocolBuilder.ruleValue.compareHint": {
+    "defaultMessage": "Enter the value to compare against.",
+    "description": "Guidance under the control where a researcher enters the value a rule compares an attribute against."
+  },
+  "protocolBuilder.ruleValue.optionCountHint": {
+    "defaultMessage": "Enter the number of options that must be selected for this rule to pass.",
+    "description": "Guidance under the control where a researcher enters how many options a multiple-choice attribute must have been answered with. \"Pass\" means the rule matches."
+  },
+  "protocolBuilder.ruleValue.optionCountLabel": {
+    "defaultMessage": "Selected option count",
+    "description": "Label of the control where a researcher enters how many options a multiple-choice attribute must have been answered with for the rule to match."
+  },
+  "protocolBuilder.ruleValue.patternPlaceholder": {
+    "defaultMessage": "Enter a regular expression...",
+    "description": "Placeholder inside the empty control where a researcher enters the regular expression a rule matches an attribute’s text answer against."
+  },
+  "protocolBuilder.ruleValue.valueLabel": {
+    "defaultMessage": "Attribute value",
+    "description": "Label of the control where a researcher enters the value a rule compares an attribute against."
+  },
+  "protocolBuilder.ruleValue.valuePlaceholder": {
+    "defaultMessage": "Enter a value...",
+    "description": "Placeholder inside the empty control where a researcher enters the value a rule compares an attribute against."
   },
   "protocolBuilder.schemaProblem.invalidElement": {
     "defaultMessage": "{fieldLabel} holds an entry this stage cannot use.",
