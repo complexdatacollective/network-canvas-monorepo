@@ -1,6 +1,9 @@
 import { createEnv } from '@t3-oss/env-core';
+import { z } from 'zod';
 
-import { resolve, type StudioEnv } from './env/resolve.ts';
+import { validateRoleNames } from '@codaco/studio-sync/role-bootstrap';
+
+import { resolve, type DbEnv, type StudioEnv } from './env/resolve.ts';
 import { serverSchemas, type VariableName } from './env/variables.ts';
 
 // The single sanctioned environment boundary for the Studio server: the only
@@ -94,4 +97,30 @@ export function readEnv(options: ReadEnvOptions = {}): StudioEnv {
   });
 
   return resolve(raw);
+}
+
+/** Offline schema administration needs only database credentials, never auth. */
+export function readMigrationDatabase(): DbEnv {
+  /* oxlint-disable-next-line node/no-process-env -- the environment boundary */
+  const url = serverSchemas.DATABASE_URL.parse(process.env.DATABASE_URL);
+  if (!url)
+    throw new Error('DATABASE_URL is required to run Studio migrations.');
+  return { url };
+}
+
+/** Read the explicit, precommitted deployment enrollment without inferring logins. */
+export function readMigrationAllowedLogins(): string[] {
+  /* oxlint-disable-next-line node/no-process-env -- the environment boundary */
+  const source = process.env.STUDIO_DATABASE_ALLOWED_LOGINS;
+  let value: unknown;
+  try {
+    value = JSON.parse(source ?? '');
+  } catch {
+    throw new Error(
+      'STUDIO_DATABASE_ALLOWED_LOGINS is required as a JSON array of this deployment’s login names.',
+    );
+  }
+  const logins = z.array(z.string()).parse(value);
+  validateRoleNames(logins);
+  return logins;
 }
