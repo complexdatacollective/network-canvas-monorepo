@@ -97,6 +97,50 @@ describe('the nomination limits a name generator may set', () => {
   });
 
   /**
+   * Switching a capability on is not answering it. A stage saved with the
+   * limits open and neither end entered grew a `behaviours` container holding
+   * nothing — which serialises to `{}`, the empty container the whole
+   * switched-off path exists to keep out of the protocol.
+   */
+  it('refuses a stage whose limits are switched on and unanswered', async () => {
+    const harness = renderStageEditor(unlimitedStage);
+
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Nomination limits' }),
+    );
+    await screen.findByRole('spinbutton', { name: /Fewest people/ });
+
+    expect(await harness.submit()).toBeNull();
+    expect(harness.pendingCommands()).toHaveLength(0);
+    expect(
+      await screen.findByText(
+        'Set the fewest people, the most people, or both. Switch these limits off if this stage has no limit.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /** One end is an answer, and the end nobody set is simply not there. */
+  it('writes only the end of the window the researcher answered', async () => {
+    const harness = renderStageEditor(unlimitedStage);
+
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Nomination limits' }),
+    );
+    await harness.user.type(
+      await screen.findByRole('spinbutton', { name: /Most people/ }),
+      '5',
+    );
+
+    const request = await harness.submit();
+    // Read as the protocol is stored rather than as the draft is held: a key
+    // carrying `undefined` is not in the saved protocol, and a key carrying
+    // an empty object is.
+    expect(
+      JSON.parse(JSON.stringify(request?.stageDocument.behaviours)) as unknown,
+    ).toEqual({ maxNodes: 5 });
+  });
+
+  /**
    * The window is one fact, not two numbers: a stage that must name at least
    * six people and at most two can never finish, and the schema's own refusal
    * arrives against a path long after the researcher has moved on.

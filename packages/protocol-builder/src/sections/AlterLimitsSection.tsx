@@ -37,6 +37,33 @@ const countAt = (values: Record<string, FieldValue>, key: string): number => {
 const asCount = (value: unknown): number =>
   typeof value === 'number' ? value : Number.NaN;
 
+/** Whether either end of the window is holding anything at all. */
+const hasEitherEnd = (values: Record<string, FieldValue>): boolean => {
+  const behaviours = values.behaviours;
+  if (typeof behaviours !== 'object' || behaviours === null) return false;
+  return ['minNodes', 'maxNodes'].some(
+    (key) => Reflect.get(behaviours, key) !== undefined,
+  );
+};
+
+/**
+ * Switching a capability on is not answering it.
+ *
+ * Saving with both ends empty wrote a `behaviours` container holding two
+ * absent keys onto a stage that had none — `{}` once it is serialised, which
+ * is the empty container `BuilderSection`'s switch-off path exists to keep out
+ * of the protocol. Absence is how the schema spells "no limit", and a
+ * researcher who wants that has a switch that says it.
+ *
+ * Stated on the minimum alone, because it is the pair's rule rather than
+ * either control's: shown against both it would say the same sentence twice,
+ * and shown against neither there would be nothing for `focusFirstError` to
+ * take the researcher to. The minimum is the first control in the section, so
+ * that is where the refusal lands.
+ */
+const NO_END_ANSWERED =
+  'Set the fewest people, the most people, or both. Switch these limits off if this stage has no limit.';
+
 /**
  * The window has to be satisfiable, and the schema says so too — but it says
  * it as "maxNodes must be greater than or equal to minNodes" against a path,
@@ -54,6 +81,7 @@ const asCount = (value: unknown): number =>
  */
 const minValidation = messageRuleValidation([
   wholeNumberRule,
+  (_value, values) => (hasEitherEnd(values) ? undefined : NO_END_ANSWERED),
   (value, values) => {
     const min = asCount(value);
     if (Number.isNaN(min)) return undefined;
