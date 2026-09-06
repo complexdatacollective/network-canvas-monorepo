@@ -4,12 +4,13 @@ import { describe, expect, it, vi } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
-import type { StageType } from '@codaco/protocol-validation';
+import type { Codebook, StageType } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { useStageEditorController } from '../../controller.ts';
 import StageEditorShell from '../../form/StageEditorShell.tsx';
+import { ruleSetIssues, ruleSetTargets } from '../../rules/ruleSet.ts';
 import {
   createStageIdentity,
   type FinishRequest,
@@ -35,12 +36,16 @@ const personDefinition: SectionDoc = {
 const baseSections: Record<string, SectionDoc> = {
   [settingsSection]: { name: 'Filter editing', schemaVersion: 8 },
   [stageOrderSection]: { stages: ['stage-1'] },
+  [sectionId({ kind: 'codebookEgo' })]: {
+    variables: { egoName: { name: 'EgoName', type: 'text' } },
+  },
   [personSection]: personDefinition,
   [friendSection]: { name: 'Friend', color: 'edge-color-seq-3' },
   [bestSection]: { name: 'Best friend', color: 'edge-color-seq-4' },
 };
 
-const codebook = {
+const codebook: Codebook = {
+  ego: { variables: { egoName: { name: 'EgoName', type: 'text' } } },
   node: {
     person: {
       name: 'Person',
@@ -135,8 +140,48 @@ function renderEditor(
   );
 }
 
-const switchFilter = async (user: ReturnType<typeof userEvent.setup>) =>
-  user.click(screen.getByRole('switch', { name: 'Stage filter' }));
+const filterSwitch = () => screen.getByRole('switch', { name: 'Stage filter' });
+
+/**
+ * Switch the section on, and wait for the panel that opens.
+ *
+ * Opening is asynchronous from end to end: `BuilderSection` answers Fresco's
+ * `Section` with a promise, and the section sets its own open state only once
+ * that promise has settled. So the click resolving is not the panel being on
+ * screen — one macrotask anywhere in that chain, which is what a loaded CI
+ * runner supplies, puts the whole panel after it. Waited for here rather than
+ * at each call site, because a caller cannot read a control out of a panel
+ * this has not returned from.
+ */
+const switchFilterOn = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(filterSwitch());
+  await screen.findByRole('group', { name: /Filter rules/ });
+};
+
+/**
+ * Switch the section off, and wait for the click to have been answered.
+ *
+ * Either answer will do, because which one arrives is what the test around
+ * this asserts: a filter holding rules asks before it clears them, and one
+ * holding nothing simply closes.
+ */
+const switchFilterOff = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(filterSwitch());
+  await waitFor(() => {
+    const asked =
+      screen.queryByRole('button', { name: 'Clear filter' }) !== null;
+    const closed =
+      screen.queryByRole('group', { name: /Filter rules/ }) === null;
+    expect(asked || closed).toBe(true);
+  });
+};
+
+const outlineItems = () =>
+  screen
+    .getByRole('navigation', { name: 'Stage sections' })
+    .querySelectorAll('button');
+
+const outlineText = () => [...outlineItems()].map((item) => item.textContent);
 
 describe('what the section says it is for', () => {
   it('names the nodes a node stage filters', () => {
@@ -201,7 +246,7 @@ describe('switching the filter off', () => {
       }),
     );
 
-    await switchFilter(user);
+    await switchFilterOff(user);
     await user.click(screen.getByRole('button', { name: 'Clear filter' }));
     await user.click(screen.getByRole('button', { name: 'Finished editing' }));
 
@@ -218,7 +263,7 @@ describe('switching the filter off', () => {
       createSession({ fields: { ...alterFormFields, filter: nodeFilter } }),
     );
 
-    await switchFilter(user);
+    await switchFilterOff(user);
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
 
     await waitFor(() =>
@@ -233,13 +278,13 @@ describe('switching the filter off', () => {
       createSession({ fields: { ...alterFormFields, filter: nodeFilter } }),
     );
 
-    await switchFilter(user);
+    await switchFilterOff(user);
     await user.click(screen.getByRole('button', { name: 'Clear filter' }));
     await waitFor(() =>
       expect(screen.queryByRole('group', { name: /Filter rules/ })).toBeNull(),
     );
 
-    await switchFilter(user);
+    await switchFilterOn(user);
 
     expect(
       await screen.findByRole('group', { name: /Filter rules/ }),
@@ -322,6 +367,138 @@ describe('rules that contradict the rest of the stage', () => {
     ).toBeInTheDocument();
   });
 
+  it('stays quiet when the only rules are about nodes', () => {
+    renderEditor(
+      createSession({
+        type: 'Sociogram',
+        // A rule about a node type says nothing about which edges reach the
+        // stage. Folding its entity type into the edge comparison makes the
+        // configured `friend` edge look like one no rule lets through.
+        fields: sociogramFields(nodeFilter),
+      }),
+    );
+
+    expect(
+      screen.queryByText('Filter rules hide configured values'),
+    ).toBeNull();
+  });
+
+  it('still warns about an edge rule standing beside a node rule', () => {
+    renderEditor(
+      createSession({
+        type: 'Sociogram',
+        fields: sociogramFields({
+          join: 'AND',
+          rules: [
+            {
+              id: 'rule-a',
+              type: 'node',
+              options: { type: 'person', operator: 'EXISTS' },
+            },
+            {
+              id: 'rule-b',
+              type: 'edge',
+              options: { type: 'best', operator: 'EXISTS' },
+            },
+          ],
+        }),
+      }),
+    );
+
+    expect(
+      screen.getByText('Filter rules hide configured values'),
+    ).toBeInTheDocument();
+  });
+
+  it('warns when rules that must ALL match require different edge types', () => {
+    renderEditor(
+      createSession({
+        type: 'Sociogram',
+        fields: sociogramFields({
+          join: 'AND',
+          rules: [
+            {
+              id: 'rule-a',
+              type: 'edge',
+              options: { type: 'friend', operator: 'EXISTS' },
+            },
+            {
+              id: 'rule-b',
+              type: 'edge',
+              options: { type: 'best', operator: 'EXISTS' },
+            },
+          ],
+        }),
+      }),
+    );
+
+    // `AND` feeds each rule's result into the next, so an edge has to survive
+    // both — and no edge is of two types at once. A check that merely unioned
+    // the types the rules NAME saw the configured Friend edge in the list and
+    // said nothing, while the stage in fact shows no edges at all.
+    expect(
+      screen.getByText('Filter rules hide configured values'),
+    ).toBeInTheDocument();
+  });
+
+  it('stays quiet when either of those rules would match on its own', () => {
+    renderEditor(
+      createSession({
+        type: 'Sociogram',
+        fields: sociogramFields({
+          join: 'OR',
+          rules: [
+            {
+              id: 'rule-a',
+              type: 'edge',
+              options: { type: 'friend', operator: 'EXISTS' },
+            },
+            {
+              id: 'rule-b',
+              type: 'edge',
+              options: { type: 'best', operator: 'EXISTS' },
+            },
+          ],
+        }),
+      }),
+    );
+
+    // The same two rules under `OR` run on the whole network and are merged,
+    // so the configured Friend edge comes through the first of them.
+    expect(
+      screen.queryByText('Filter rules hide configured values'),
+    ).toBeNull();
+  });
+
+  it('stays quiet when a node rule can bring the edges back under OR', () => {
+    renderEditor(
+      createSession({
+        type: 'Sociogram',
+        fields: sociogramFields({
+          join: 'OR',
+          rules: [
+            {
+              id: 'rule-a',
+              type: 'edge',
+              options: { type: 'best', operator: 'EXISTS' },
+            },
+            {
+              id: 'rule-b',
+              type: 'node',
+              options: { type: 'person', operator: 'EXISTS' },
+            },
+          ],
+        }),
+      }),
+    );
+
+    // Under `OR` the edges between the alters a node rule keeps are merged
+    // back in whatever type they are, so no edge type is certainly hidden.
+    expect(
+      screen.queryByText('Filter rules hide configured values'),
+    ).toBeNull();
+  });
+
   it('counts the edges a prompt only displays, not just the ones it creates', () => {
     renderEditor(
       createSession({
@@ -345,6 +522,112 @@ describe('rules that contradict the rest of the stage', () => {
     expect(
       screen.getByText('Filter rules hide configured values'),
     ).toBeInTheDocument();
+  });
+
+  /**
+   * The Sociogram's `edges.create` is not the only way a prompt names an edge
+   * type. DyadCensus, TieStrengthCensus and OneToManyDyadCensus each carry a
+   * required top-level `createEdge`, and the interfaces then read their edges
+   * through `getNetworkEdges` — which is derived from the FILTERED network, so
+   * an edge the stage filter hides reads as one that does not exist and the
+   * participant is asked to create it again.
+   */
+  const dyadCensusFields = (filter: unknown): SectionDoc => ({
+    label: 'Pairs',
+    subject: { entity: 'node', type: 'person' },
+    prompts: [
+      { id: 'prompt-1', text: 'Do you know each other?', createEdge: 'friend' },
+    ],
+    introductionPanel: { title: 'Pairs', text: 'A few questions.' },
+    ...(filter === undefined ? {} : { filter }),
+  });
+
+  it('warns when the rules would hide an edge a DyadCensus prompt creates', () => {
+    renderEditor(
+      createSession({
+        type: 'DyadCensus',
+        fields: dyadCensusFields(edgeRule('best', 'EXISTS')),
+      }),
+      'edge',
+    );
+
+    expect(
+      screen.getByText('Filter rules hide configured values'),
+    ).toBeInTheDocument();
+  });
+
+  it('stays quiet when those rules let the created edge through', () => {
+    renderEditor(
+      createSession({
+        type: 'DyadCensus',
+        fields: dyadCensusFields(edgeRule('friend', 'EXISTS')),
+      }),
+      'edge',
+    );
+
+    expect(
+      screen.queryByText('Filter rules hide configured values'),
+    ).toBeNull();
+  });
+});
+
+/**
+ * A stage's node/edge filter cannot ask about the ego: the protocol schema
+ * refuses one there and accepts it in skip logic, because an ego rule inside a
+ * filter either keeps every entity or none. The editor already declines to
+ * OFFER an ego rule here, so a stored one arrived from a protocol authored
+ * elsewhere — and until the rule set said which targets it may HOLD, nothing
+ * on screen knew that the rule in front of the researcher was the problem.
+ */
+describe('a rule this filter cannot be about', () => {
+  const egoFilterFields: SectionDoc = {
+    ...alterFormFields,
+    filter: {
+      rules: [
+        {
+          id: 'rule-a',
+          type: 'ego',
+          options: {
+            attribute: 'egoName',
+            operator: 'EXACTLY',
+            value: 'Ada',
+          },
+        },
+      ],
+    },
+  };
+
+  it('marks a stored ego rule on its own row and refuses the stage', async () => {
+    const user = userEvent.setup();
+    const onFinish = vi.fn();
+    renderEditor(createSession({ onFinish, fields: egoFilterFields }));
+
+    expect(
+      await screen.findByText(
+        'This rule is about the ego, which these rules cannot ask about. Edit or delete the rule.',
+      ),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(outlineText()).toContain('Stage filterHas a problem'),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    expect(
+      await screen.findByText(
+        'Rule 1 cannot be used as it stands. Open it to fix it, or delete it.',
+      ),
+    ).toBeInTheDocument();
+    expect(onFinish).not.toHaveBeenCalled();
+  });
+
+  it('leaves the same rule alone in a rule set that may hold it', () => {
+    // The rule is not broken; it is in the wrong kind of rule set. Skip logic
+    // is the kind that may ask about the ego, and reporting it there would
+    // send the researcher to fix a rule the schema accepts.
+    expect(
+      ruleSetIssues(egoFilterFields.filter, codebook, ruleSetTargets('query')),
+    ).toEqual([]);
   });
 });
 
@@ -370,5 +653,55 @@ describe('a filter the researcher cannot save', () => {
       await screen.findByText('Please create at least one rule.'),
     ).toBeInTheDocument();
     expect(onFinish).not.toHaveBeenCalled();
+  });
+
+  it('refuses a filter switched on and left empty', async () => {
+    const user = userEvent.setup();
+    const onFinish = vi.fn();
+    renderEditor(createSession({ onFinish }));
+
+    await switchFilterOn(user);
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    // Switching the capability on writes nothing on its own, so an editor that
+    // closed here would save a stage with no filter key — and the toggle would
+    // be off again the next time the stage was opened, with nothing having
+    // said so. The section stays on and unfinished until a rule is added or
+    // the switch is turned off, and says which in the rule set's own words.
+    expect(
+      await screen.findByText('Please create at least one rule.'),
+    ).toBeInTheDocument();
+    expect(onFinish).not.toHaveBeenCalled();
+  });
+
+  it('reports a filter switched on and left empty as unfinished, not switched off', async () => {
+    const user = userEvent.setup();
+    renderEditor(createSession());
+    await waitFor(() => expect(outlineItems().length).toBeGreaterThan(0));
+    expect(outlineText()).toContain('Stage filterSwitched off');
+
+    await switchFilterOn(user);
+
+    await waitFor(() =>
+      expect(outlineText()).toContain('Stage filterNot finished'),
+    );
+  });
+
+  it('saves a stage with no filter key once the switch goes back off', async () => {
+    const user = userEvent.setup();
+    const onFinish = vi.fn();
+    renderEditor(createSession({ onFinish }));
+
+    await switchFilterOn(user);
+    // Nothing was entered, so there is nothing to lose and nothing to confirm.
+    await switchFilterOff(user);
+    await waitFor(() =>
+      expect(screen.queryByRole('group', { name: /Filter rules/ })).toBeNull(),
+    );
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    await waitFor(() => expect(onFinish).toHaveBeenCalled());
+    const request = onFinish.mock.calls[0]?.[0] as FinishRequest;
+    expect(Object.hasOwn(request.stageDocument, 'filter')).toBe(false);
   });
 });

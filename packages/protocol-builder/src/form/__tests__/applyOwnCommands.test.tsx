@@ -11,10 +11,12 @@ import BuilderSection from '../../sections/BuilderSection.tsx';
 import {
   createStageIdentity,
   ProtocolBuilderSessionStore,
-  type StageFormDraft,
 } from '../../session.ts';
 import ProtocolField from '../ProtocolField.tsx';
-import { useStageEditorForm } from '../stageEditorContext.ts';
+import {
+  type OwnCommandsResult,
+  useStageEditorForm,
+} from '../stageEditorContext.ts';
 import StageEditorShell from '../StageEditorShell.tsx';
 
 /**
@@ -26,7 +28,9 @@ import StageEditorShell from '../StageEditorShell.tsx';
  * write, and a session that has stopped accepting writes takes neither. Going
  * through a list would make each of those a fact about that list.
  */
-type ApplyOwnCommands = (commands: readonly Command[]) => StageFormDraft;
+type ApplyOwnCommands = (commands: readonly Command[]) => OwnCommandsResult;
+
+const NOTHING_APPLIED: OwnCommandsResult = { draft: {}, refused: false };
 
 const initialFields: SectionDoc = {
   label: 'Welcome',
@@ -83,7 +87,7 @@ function renderEditor(session: ProtocolBuilderSessionStore) {
 
   return {
     apply: (commands: readonly Command[]) => {
-      let answered: StageFormDraft = {};
+      let answered: OwnCommandsResult = NOTHING_APPLIED;
       act(() => {
         answered = held.apply!(commands);
       });
@@ -109,9 +113,84 @@ describe('the form’s own structural writes', () => {
       { op: 'set', key: 'title', value: 'Written anyway' },
     ]);
 
-    expect(answered.title).toBe('Welcome to the study');
+    expect(answered.draft.title).toBe('Welcome to the study');
+    // Answered with the draft it already held, which is indistinguishable from
+    // a write that changed nothing — so the refusal is said out loud, for the
+    // row dialog whose draft depends on hearing it.
+    expect(answered.refused).toBe(true);
     expect(session.getSnapshot().pendingCommands).toEqual([]);
     expect(heading()).toHaveValue('Welcome to the study');
+  });
+
+  it('reports a stage that was already read-only in the same words as one that becomes it', async () => {
+    const session = createSession(true);
+    const { apply } = renderEditor(session);
+    await screen.findByRole('textbox', { name: 'Page heading' });
+
+    apply([{ op: 'set', key: 'title', value: 'Written anyway' }]);
+
+    // The two ways a write is refused for the lease — the stage was already
+    // read-only when this handler was built, or the lease went between that
+    // render and the dispatch — are the same news about the same form, and a
+    // caller cannot be asked to know which of them it met. Answering `refused`
+    // and saying nothing is the one that reads as the editor being broken.
+    expect(
+      await screen.findByText(
+        'This stage is read-only, so your changes were not saved. Take over editing and try again.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('says so rather than throwing when the lease goes before the write lands', async () => {
+    const session = createSession();
+    const { raw } = renderEditor(session);
+    await screen.findByRole('textbox', { name: 'Page heading' });
+
+    let answered: OwnCommandsResult = NOTHING_APPLIED;
+    act(() => {
+      // The lease is revoked, and a row operation dispatches before React has
+      // rendered that: the form still believes it can write, and the session
+      // refuses by throwing — out of a click handler, where nothing catches it.
+      session.setAccess({ mode: 'readOnly', reason: 'lease-lost' });
+      answered = raw([
+        { op: 'set', key: 'prompts', value: [{ id: 'a', text: 'Who?' }] },
+      ]);
+    });
+
+    expect(answered.refused).toBe(true);
+    expect(session.getSnapshot().pendingCommands).toEqual([]);
+    // A refusal the researcher can read, in the same words the stage's own
+    // submit uses: the lease is what went, and taking editing back is the move.
+    expect(
+      await screen.findByText(
+        'This stage is read-only, so your changes were not saved. Take over editing and try again.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('re-seeds the controls when an arrival is folded into its own write', async () => {
+    const session = createSession();
+    const { raw } = renderEditor(session);
+    await screen.findByRole('textbox', { name: 'Page heading' });
+
+    act(() => {
+      // An authoritative replacement lands, and a list editor commits a row
+      // before React has rendered it. The draft the session now holds is both
+      // changes at once, and only the row is the form's own.
+      session.replaceAuthoritativeStage({
+        fields: { label: 'Welcome', title: 'Renamed elsewhere' },
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+      raw([{ op: 'set', key: 'prompts', value: [{ id: 'a', text: 'Who?' }] }]);
+    });
+
+    // Claiming the combined content as the form's own write suppresses the
+    // re-seed the arrival earned, and the control goes on showing — and would
+    // save back — the heading the replacement moved away from.
+    await waitFor(() => expect(heading()).toHaveValue('Renamed elsewhere'));
+    expect(session.getSnapshot().editedSection.fields.prompts).toEqual([
+      { id: 'a', text: 'Who?' },
+    ]);
   });
 
   it('leaves everything typed in place when the form writes for itself', async () => {
@@ -144,7 +223,10 @@ describe('the form’s own structural writes', () => {
     // A list editor asking what the session holds right now. It writes
     // nothing, so it has no transition to explain and must leave no record
     // that it did.
-    expect(apply([]).title).toBe('Welcome to the study');
+    const read = apply([]);
+    expect(read.draft.title).toBe('Welcome to the study');
+    // A read writes nothing, so there is nothing for the session to refuse.
+    expect(read.refused).toBe(false);
 
     act(() => {
       session.dispatch([{ op: 'set', key: 'title', value: 'Renamed here' }]);
@@ -167,7 +249,7 @@ describe('the form’s own structural writes', () => {
     const { raw } = renderEditor(session);
     await screen.findByRole('textbox', { name: 'Page heading' });
 
-    let read: StageFormDraft = {};
+    let read: OwnCommandsResult = NOTHING_APPLIED;
     act(() => {
       // A list editor reading the draft in the same tick an arrival lands: it
       // is answered with the arrival's own content, while the form has not yet
@@ -179,7 +261,7 @@ describe('the form’s own structural writes', () => {
       read = raw([]);
     });
 
-    expect(read.title).toBe('Renamed here');
+    expect(read.draft.title).toBe('Renamed here');
     await waitFor(() => expect(heading()).toHaveValue('Renamed here'));
   });
 

@@ -5,7 +5,11 @@ import type { CustomFieldValidation } from '@codaco/fresco-ui/form/store/types';
 
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useStageValue } from '../form/stageFormHooks.ts';
-import { ruleSetValidationMessage } from './ruleSet.ts';
+import {
+  type RuleSetVariant,
+  ruleSetTargets,
+  ruleSetValidationMessage,
+} from './ruleSet.ts';
 
 /**
  * The rule set's own verdict, expressed as the field's validation.
@@ -25,10 +29,19 @@ import { ruleSetValidationMessage } from './ruleSet.ts';
  * belongs to the `Field`, not to what it renders: the section that mounts the
  * rule builder is the thing that can state it.
  */
-export function useRuleSetValidation(name: string): CustomFieldValidation {
+export function useRuleSetValidation(
+  name: string,
+  /**
+   * Which rule set this is, which decides what its rules may be about. Named
+   * by the section rather than inferred from the field, because the section is
+   * what mounts the matching control.
+   */
+  variant: RuleSetVariant,
+): CustomFieldValidation {
   const { protocolContext, storeApi } = useStageEditorForm();
   const codebook = protocolContext.codebook;
   const value = useStageValue(name);
+  const targets = ruleSetTargets(variant);
 
   // `useField` memoises its validation function on `JSON.stringify` of the
   // validation props, and a function does not survive that serialisation: a
@@ -38,6 +51,11 @@ export function useRuleSetValidation(name: string): CustomFieldValidation {
   // verdict live without ever re-registering the field.
   const codebookRef = useRef(codebook);
   codebookRef.current = codebook;
+  // Read through a ref for the same reason, so that the one registered
+  // validation reads the set this field is for rather than the one it was for
+  // when the field registered.
+  const targetsRef = useRef(targets);
+  targetsRef.current = targets;
   const validation = useRef<CustomFieldValidation | undefined>(undefined);
   validation.current ??= {
     // The rules are not a shape that can be summarised as an up-front
@@ -49,6 +67,7 @@ export function useRuleSetValidation(name: string): CustomFieldValidation {
           const message = ruleSetValidationMessage(
             fieldValue,
             codebookRef.current,
+            targetsRef.current,
           );
           if (message === undefined) return;
           ctx.addIssue({
@@ -61,7 +80,7 @@ export function useRuleSetValidation(name: string): CustomFieldValidation {
       ),
   };
 
-  const message = ruleSetValidationMessage(value, codebook);
+  const message = ruleSetValidationMessage(value, codebook, targets);
 
   // Field validation runs when the researcher touches a field, and on submit.
   // Neither covers the two ways a rule set goes wrong on its own: an edit made

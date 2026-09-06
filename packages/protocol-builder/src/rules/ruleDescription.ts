@@ -1,21 +1,35 @@
 import type {
   Codebook,
   ColorReference,
+  DateFormat,
+  FilterOperator,
   NodeShape,
   VariableType,
 } from '@codaco/protocol-validation';
 
 import {
+  isCompilablePattern,
   isFilterOperator,
+  isPresenceOperator,
   operatorsWithOptionCount,
   operatorsWithRegExp,
+  type PresenceOperator,
 } from './operators.ts';
 import { isCompleteRule, isRuleDraft, ruleDraftOptions } from './rule.ts';
 import {
+  assertNoSuchDateProblem,
+  assertNoSuchNumberProblem,
+  codebookLabel,
   DEFAULT_EDGE_COLOR,
   DEFAULT_NODE_COLOR,
+  isOperandValidForAttributeType,
   isOperatorValidForAttributeType,
   isRuleTargetType,
+  type OperandDateProblem,
+  operandDateProblems,
+  type OperandNumberProblem,
+  operandNumberProblems,
+  operandOptionProblems,
   type RuleTargetType,
   ruleVariable,
   ruleVariableChoices,
@@ -81,12 +95,66 @@ export type RuleDescriptionOperand = Readonly<{
   authoredLabels: boolean;
 }>;
 
-export type RuleProblemCode =
-  | 'unknownTarget'
-  | 'missingEntityType'
-  | 'missingAttribute'
-  | 'invalidOperator'
-  | 'incomplete';
+/**
+ * Everything that can be wrong with a rule, as one closed list.
+ *
+ * Enumerated rather than only unioned so that the decision about what the
+ * editor DOES with each of them can be a total mapping over this list — see
+ * `RULE_PROBLEM_SUMMARIES` in `ruleSet.ts`. The two places that used to name
+ * the reportable subset by hand each missed a code, twice: an allowlist cannot
+ * be checked against a union, and a rule the row never marked was a rule the
+ * researcher had no way of seeing.
+ */
+export const RULE_PROBLEM_CODES = [
+  'unknownTarget',
+  'targetNotOffered',
+  'missingEntityType',
+  'missingAttribute',
+  'invalidOperator',
+  'invalidOperand',
+  'invalidPattern',
+  'missingOption',
+  'unusableOption',
+  'unusableDate',
+  'unusableNumber',
+  'incomplete',
+  'missingId',
+  'duplicateId',
+] as const;
+
+export type RuleProblemCode = (typeof RULE_PROBLEM_CODES)[number];
+
+/**
+ * The ids held by more than one rule in a set.
+ *
+ * The one thing wrong with a rule that cannot be seen from the rule: an id is
+ * a duplicate only relative to the other rules beside it, so the set has to
+ * work it out and hand it in. Stated here, next to the description that
+ * reports it, because every reader of a set — the rule list, the field's own
+ * verdict, and a host printing a stage out — has to reach the same answer.
+ *
+ * Only string ids count. A rule holding no id, or something that is not a
+ * string, is already reported as `missingId`, and calling two of those
+ * duplicates of each other would mark the same rule twice for one fault.
+ *
+ * The id is read without asking whether the row is a readable rule at all: a
+ * rule that does not say what it is about still occupies its id, and the
+ * schema counts it when it looks for a duplicate.
+ */
+export const duplicateRuleIds = (
+  rules: readonly unknown[],
+): ReadonlySet<string> => {
+  const seen = new Set<string>();
+  const duplicated = new Set<string>();
+  for (const rule of rules) {
+    if (typeof rule !== 'object' || rule === null) continue;
+    const id: unknown = Reflect.get(rule, 'id');
+    if (typeof id !== 'string') continue;
+    if (seen.has(id)) duplicated.add(id);
+    seen.add(id);
+  }
+  return duplicated;
+};
 
 export type RuleProblem = Readonly<{
   code: RuleProblemCode;
@@ -146,6 +214,32 @@ export type DescribeRuleInput = Readonly<{
   /** A stored or in-progress rule. Any shape; nothing here trusts it. */
   rule: unknown;
   codebook: Readonly<Codebook>;
+  /**
+   * What the rule set holding this rule may be about, when it is being read
+   * inside one.
+   *
+   * The protocol schema accepts an ego, node or edge rule in a filter's shape
+   * and then refuses some of them by WHERE the filter sits: an ego rule is
+   * degenerate inside a stage's node/edge filter, so the schema rejects it
+   * there and accepts it in skip logic. Which is which is a property of the
+   * rule set, not of the rule, so the set has to say — and a set that says
+   * nothing (a host printing a rule out of a validated protocol) constrains
+   * nothing.
+   */
+  targets?: readonly RuleTargetType[];
+  /**
+   * The ids held by more than one rule in the set this rule sits in, from
+   * `duplicateRuleIds`.
+   *
+   * The other thing only the SET can answer. The protocol schema refuses a
+   * filter whose rules repeat an id (`findDuplicateId`), and no rule can tell
+   * on its own that its id is a repeat. A caller that says nothing — a host
+   * printing one rule out of a validated protocol, or the dialog judging the
+   * draft it is about to save — reports no duplicate, which is right: a
+   * validated protocol has none, and the dialog mints a fresh id rather than
+   * committing a second copy of one.
+   */
+  duplicateIds?: ReadonlySet<string>;
 }>;
 
 /**
@@ -154,9 +248,13 @@ export type DescribeRuleInput = Readonly<{
  * An ego rule reads "Ego has Age that is greater than 30"; an alter rule reads
  * "Person where Age is greater than 30". Whole phrases either way — assembling
  * one from "that" plus the alter wording only composes in English.
+ *
+ * Total over the schema's own operator set, so an operator added to
+ * `AllOperators` arrives here as a typecheck failure rather than as a sentence
+ * reading the token the protocol files it under.
  */
 const OPERATOR_TEXT: Readonly<
-  Record<string, Readonly<{ alter: string; ego: string }>>
+  Record<FilterOperator, Readonly<{ alter: string; ego: string }>>
 > = Object.freeze({
   // These two introduce the attribute instead of following it — "Person
   // without Age", "Ego has EgoName" — so each voice states the whole
@@ -200,20 +298,62 @@ const OPERATOR_TEXT: Readonly<
   },
 });
 
-/** How a presence operator reads when it is the whole predicate. */
-const PRESENCE_OPERATOR_TEXT: Readonly<Record<string, string>> = Object.freeze({
-  EXISTS: 'exists',
-  NOT_EXISTS: 'does not exist',
-});
+/**
+ * How a presence operator reads when it is the whole predicate.
+ *
+ * Total over the schema's type-level set, which is the only set a rule with no
+ * attribute may draw from — so a third one added there arrives as a typecheck
+ * failure rather than as a sentence reading its own token.
+ */
+const PRESENCE_OPERATOR_TEXT: Readonly<Record<PresenceOperator, string>> =
+  Object.freeze({
+    EXISTS: 'exists',
+    NOT_EXISTS: 'does not exist',
+  });
 
 const EGO_LABEL = 'Ego';
 
-const operandItems = (value: unknown): (string | number)[] => {
+/**
+ * A stored value that is not a string or a number, written out as it stands.
+ *
+ * Never thrown from and never empty: this is the last thing between a stored
+ * operand and a sentence that does not mention it.
+ */
+const operandLiteral = (item: unknown): string => {
+  if (typeof item === 'boolean') return item ? 'true' : 'false';
+  try {
+    return JSON.stringify(item) ?? UNREADABLE_OPERAND;
+  } catch {
+    return UNREADABLE_OPERAND;
+  }
+};
+
+/**
+ * The operands a rule compares, each ready to be read out.
+ *
+ * Two things this deliberately does NOT do. It does not drop a value it cannot
+ * recognise — a rule comparing against `[true]` or `[null]` reads as one that
+ * compares against nothing at all if it does, which is the one rule the
+ * researcher most needs to see. And it substitutes an option's LABEL only for
+ * a value that is genuinely one of the shapes an option has: the boolean
+ * `true` was previously stringified first and then looked up, so a rule that
+ * can never match the option `"true"` was printed under that option's own
+ * label.
+ *
+ * `undefined` is the exception, and is absence rather than a value: an operand
+ * that was never entered has nothing to read, and is reported as unfinished.
+ */
+const operandItems = (
+  value: unknown,
+  label: (item: string | number) => string | number,
+): (string | number)[] => {
   const items = Array.isArray(value) ? value : [value];
   return items.flatMap<string | number>((item) => {
-    if (typeof item === 'string' || typeof item === 'number') return [item];
-    if (typeof item === 'boolean') return [item ? 'true' : 'false'];
-    return [];
+    if (typeof item === 'string' || typeof item === 'number') {
+      return [label(item)];
+    }
+    if (item === undefined) return [];
+    return [operandLiteral(item)];
   });
 };
 
@@ -227,6 +367,8 @@ const operandItems = (value: unknown): (string | number)[] => {
 export function describeRule({
   rule,
   codebook,
+  targets,
+  duplicateIds,
 }: DescribeRuleInput): RuleDescription {
   const problems: RuleProblem[] = [];
 
@@ -253,6 +395,21 @@ export function describeRule({
   const target = isRuleTargetType(rule.type) ? rule.type : undefined;
   if (target === undefined) {
     problems.push({ code: 'unknownTarget', message: UNKNOWN_TARGET_MESSAGE });
+  }
+
+  // A rule that is about something this rule set is not allowed to ask about.
+  // The editor does not offer the target here, so the rule was authored
+  // elsewhere — and the protocol schema refuses it at the very end, naming a
+  // position in an array rather than the row the researcher can act on.
+  if (
+    target !== undefined &&
+    targets !== undefined &&
+    !targets.includes(target)
+  ) {
+    problems.push({
+      code: 'targetNotOffered',
+      message: TARGET_NOT_OFFERED_MESSAGES[target],
+    });
   }
 
   const entityTypeId =
@@ -288,10 +445,7 @@ export function describeRule({
       ? undefined
       : Object.freeze({
           id: attributeId,
-          label:
-            definition?.name === undefined || definition.name === ''
-              ? attributeId
-              : definition.name,
+          label: codebookLabel(definition?.name, attributeId),
           type: attributeType,
           missing: definition === undefined,
         });
@@ -332,14 +486,14 @@ export function describeRule({
     isFilterOperator(operatorId) && operatorsWithOptionCount.has(operatorId);
   const matchesPattern =
     isFilterOperator(operatorId) && operatorsWithRegExp.has(operatorId);
-  const rawItems = isExistenceOperator ? [] : operandItems(options.value);
+  const rawItems = isExistenceOperator
+    ? []
+    : operandItems(options.value, countsOptions ? (item) => item : labelFor);
   const operand: RuleDescriptionOperand | undefined =
     rawItems.length === 0
       ? undefined
       : Object.freeze({
-          items: Object.freeze(
-            countsOptions ? rawItems : rawItems.map(labelFor),
-          ),
+          items: Object.freeze(rawItems),
           authoredLabels: authoredLabels && !countsOptions && !matchesPattern,
         });
 
@@ -360,8 +514,143 @@ export function describeRule({
     });
   }
 
+  // The same question, asked of a rule that names no attribute at all. Its
+  // operator IS the whole predicate, so the only ones the schema allows are
+  // the two that ask whether the type is there — anything else is a
+  // comparison against nothing, and the row is where the researcher has to see
+  // it. Asked only once the target is readable: which operators are legal
+  // depends on what the rule is about, and a rule that does not say is already
+  // reported for that.
+  if (
+    isPresenceRule &&
+    target !== undefined &&
+    operatorId !== undefined &&
+    !isPresenceOperator(operatorId)
+  ) {
+    problems.push({
+      code: 'invalidOperator',
+      message: INVALID_PRESENCE_OPERATOR_MESSAGE,
+    });
+  }
+
+  // The same retype seen from the other side. An operator can outlive a change
+  // of attribute type where the operand it was entered for cannot — `EXACTLY`
+  // is legal for a number and for a multi-select alike, but one answers with a
+  // number and the other with the list of options that were selected — and the
+  // protocol schema accepts either shape at `value` whatever the attribute is,
+  // so nothing downstream of the builder can catch it.
+  if (
+    attribute !== undefined &&
+    !attribute.missing &&
+    operatorId !== undefined &&
+    !isOperandValidForAttributeType(operatorId, attributeType, options.value)
+  ) {
+    problems.push({
+      code: 'invalidOperand',
+      message: INVALID_OPERAND_MESSAGE,
+    });
+  }
+
+  // A `contains` operand is a regular expression, and one that will not
+  // compile is a rule that does not ask what it says: the interview swallows
+  // the compile error on purpose, so that one malformed pattern cannot break
+  // navigation, and then silently matches nothing — or, for "does not
+  // contain", everything — for every participant. Nothing downstream of the
+  // builder can report it, because a pattern that will not compile is still a
+  // string, which is all the protocol schema asks of one.
+  if (
+    matchesPattern &&
+    typeof options.value === 'string' &&
+    options.value !== '' &&
+    !isCompilablePattern(options.value)
+  ) {
+    problems.push({ code: 'invalidPattern', message: INVALID_PATTERN_MESSAGE });
+  }
+
+  // The same codebook drift again, one step finer. The attribute is still
+  // there and still option-bearing, and the operand is still an option value —
+  // it is just no longer one this attribute offers, because a collaborator
+  // renamed or deleted that option. The rule reads perfectly and can never
+  // match, so nothing but this reports it.
+  //
+  // Reported in two voices, because the operand can fail in two ways: it names
+  // an option this attribute does not have, or it is not the kind of value an
+  // option can be at all. The second is not a subset of the first — a boolean
+  // left behind by the v8 migration compares against a string option — and
+  // saying so in the same sentence would send the researcher looking for an
+  // option that never existed.
+  const optionProblems =
+    attribute !== undefined && !attribute.missing && operatorId !== undefined
+      ? operandOptionProblems(variables, attributeId, operatorId, options.value)
+      : [];
+  if (optionProblems.some((problem) => problem.kind === 'unknownOption')) {
+    problems.push({ code: 'missingOption', message: MISSING_OPTION_MESSAGE });
+  }
+  const unusable = optionProblems.find(
+    (problem) => problem.kind === 'unusableValue',
+  );
+  if (unusable !== undefined) {
+    problems.push({
+      code: 'unusableOption',
+      message: unusableOptionMessage(unusable.describedAs),
+    });
+  }
+
+  // The same codebook drift once more, for the other attribute whose answers
+  // are a known set rather than anything of the right type: a datetime
+  // attribute records dates at one resolution and between two bounds, and a
+  // rule written before either was changed compares against a date no
+  // participant can now record.
+  const [dateProblem] =
+    attribute !== undefined && !attribute.missing && operatorId !== undefined
+      ? operandDateProblems(variables, attributeId, operatorId, options.value)
+      : [];
+  if (dateProblem !== undefined) {
+    problems.push({
+      code: 'unusableDate',
+      message: unusableDateMessage(dateProblem),
+    });
+  }
+
+  // And once more for the third attribute whose answers are a known set: the
+  // NUMBER of options a categorical attribute can have selected runs from none
+  // of them to all of them, and a scalar attribute records a reading on a
+  // normalised 0-1 scale. A count past the end of an option list — left there
+  // by a collaborator deleting an option — is a comparison no answer can
+  // satisfy, and nothing but this reports it.
+  const [numberProblem] =
+    attribute !== undefined && !attribute.missing && operatorId !== undefined
+      ? operandNumberProblems(variables, attributeId, operatorId, options.value)
+      : [];
+  if (numberProblem !== undefined) {
+    problems.push({
+      code: 'unusableNumber',
+      message: unusableNumberMessage(numberProblem),
+    });
+  }
+
   if (!isCompleteRule(rule)) {
     problems.push({ code: 'incomplete', message: INCOMPLETE_MESSAGE });
+  }
+
+  // The one part of a rule no control asks for. Both branches of
+  // `filterRuleSchema` require `id: z.string()`, so a rule that has none — or
+  // holds something that is not a string — is refused when the STAGE is saved,
+  // by an issue naming a position in an array rather than the row the
+  // researcher can act on. The editor mints one for every rule it commits, so
+  // this arrives from a protocol authored elsewhere or merged from a
+  // collaborator's edit; reported last because it is the only problem here the
+  // researcher repairs simply by opening the rule and finishing it again.
+  if (typeof rule.id !== 'string') {
+    problems.push({ code: 'missingId', message: MISSING_ID_MESSAGE });
+  } else if (duplicateIds?.has(rule.id) === true) {
+    // The same id, twice in one set. `findDuplicateId` refuses the protocol
+    // for it, and the rule ITSELF looks perfect — so this is the one problem
+    // that cannot be found without the rules beside it, and the one the
+    // researcher has no other way of seeing. Reported on BOTH rows, because
+    // neither is the wrong one: repairing either repairs the set, and the
+    // editor mints a fresh id for whichever is opened and saved.
+    problems.push({ code: 'duplicateId', message: DUPLICATE_ID_MESSAGE });
   }
 
   const attributePresence = attribute !== undefined && isExistenceOperator;
@@ -408,7 +697,7 @@ function describeEntity(
     return Object.freeze({
       kind: 'edge' as const,
       typeId: entityTypeId,
-      label: definition?.name ?? entityTypeId ?? '',
+      label: codebookLabel(definition?.name, entityTypeId ?? ''),
       color: definition?.color ?? DEFAULT_EDGE_COLOR,
       missing: definition === undefined,
     });
@@ -419,7 +708,7 @@ function describeEntity(
   return Object.freeze({
     kind: 'node' as const,
     typeId: entityTypeId,
-    label: definition?.name ?? entityTypeId ?? '',
+    label: codebookLabel(definition?.name, entityTypeId ?? ''),
     color: definition?.color ?? DEFAULT_NODE_COLOR,
     shape: definition?.shape.default,
     missing: definition === undefined,
@@ -432,10 +721,18 @@ function operatorText(
 ): string {
   if (operatorId === undefined) return '';
   if (context.isPresenceRule) {
-    return PRESENCE_OPERATOR_TEXT[operatorId] ?? operatorId.toLowerCase();
+    // A presence rule holding an operator the schema does not allow one is
+    // read as its own token, for the same reason as below: a rule nobody can
+    // read is a rule nobody can fix.
+    return isPresenceOperator(operatorId)
+      ? PRESENCE_OPERATOR_TEXT[operatorId]
+      : operatorId.toLowerCase();
   }
+  // An operator the schema itself does not have is read as its own token: a
+  // hand-edited protocol can hold one, and printing it is what lets the
+  // researcher see which rule to fix.
+  if (!isFilterOperator(operatorId)) return operatorId.toLowerCase();
   const phrasing = OPERATOR_TEXT[operatorId];
-  if (phrasing === undefined) return operatorId.toLowerCase();
   return context.isEgo ? phrasing.ego : phrasing.alter;
 }
 
@@ -490,5 +787,79 @@ const MISSING_ATTRIBUTE_MESSAGE =
   'This rule refers to an attribute that is no longer in the codebook. Edit or delete the rule.';
 const INVALID_OPERATOR_MESSAGE =
   'This rule uses an operator that is not valid for its attribute type. Edit or delete the rule.';
+const INVALID_PRESENCE_OPERATOR_MESSAGE =
+  'This rule asks whether an entity type is present, but uses an operator that cannot ask that. Edit or delete the rule.';
+const INVALID_OPERAND_MESSAGE =
+  'This rule compares its attribute against a value of the wrong kind for the attribute’s type. Edit or delete the rule.';
+const INVALID_PATTERN_MESSAGE =
+  'This rule compares its attribute against a pattern that is not a valid regular expression, so the interview cannot apply the rule. Edit or delete the rule.';
+const MISSING_OPTION_MESSAGE =
+  'This rule compares its attribute against an option that is no longer one of that attribute’s choices. Edit or delete the rule.';
+
+/**
+ * What a rule set that cannot be about this target says, in whole sentences.
+ *
+ * One per target rather than a sentence built around the name of one: the
+ * entity class is an internal token, and "This rule is about a ego" is what
+ * interpolating it produces.
+ */
+const TARGET_NOT_OFFERED_MESSAGES: Readonly<Record<RuleTargetType, string>> =
+  Object.freeze({
+    ego: 'This rule is about the ego, which these rules cannot ask about. Edit or delete the rule.',
+    node: 'This rule is about a node, which these rules cannot ask about. Edit or delete the rule.',
+    edge: 'This rule is about an edge, which these rules cannot ask about. Edit or delete the rule.',
+  });
+
+/** How a date attribute records an answer, in the researcher's own words. */
+const DATE_RESOLUTION_NAMES: Readonly<Record<DateFormat, string>> =
+  Object.freeze({
+    full: 'a full date',
+    month: 'a month and a year',
+    year: 'a year',
+  });
+
+/**
+ * Why a date operand is reported, as a fact about the rule and nothing more.
+ *
+ * None of these says the rule can never match, because for some of them that
+ * is not true: `not` and `does not contain` are satisfied by every answer that
+ * fails the comparison, so a date no attribute can record makes such a rule
+ * match every participant rather than none of them. The fact — this is the
+ * date, and this is what the attribute records — is what sends the researcher
+ * to the right rule either way, and it is how the option messages beside these
+ * already read.
+ */
+const unusableDateMessage = (problem: OperandDateProblem): string => {
+  switch (problem.kind) {
+    case 'wrongResolution':
+      return `This rule compares its attribute against “${problem.value}”, but the attribute is now answered with ${DATE_RESOLUTION_NAMES[problem.resolution]}. Edit or delete the rule.`;
+    case 'impossibleDate':
+      return `This rule compares its attribute against “${problem.value}”, which is not a date on the calendar. Edit or delete the rule.`;
+    case 'outOfRange':
+      return `This rule compares its attribute against “${problem.value}”, which is outside the dates that attribute can record. Edit or delete the rule.`;
+    default:
+      return assertNoSuchDateProblem(problem);
+  }
+};
+
+/** The same, for a number outside the answers the attribute can record. */
+const unusableNumberMessage = (problem: OperandNumberProblem): string => {
+  switch (problem.kind) {
+    case 'unreachableOptionCount':
+      return `This rule compares the number of selected options against ${problem.value}. This attribute offers ${problem.optionCount} ${problem.optionCount === 1 ? 'option' : 'options'}, so between 0 and ${problem.optionCount} of them can be selected. Edit or delete the rule.`;
+    case 'unreachableScale':
+      return `This rule compares its attribute against ${problem.value}. The attribute is answered on a scale from ${problem.min} to ${problem.max}. Edit or delete the rule.`;
+    default:
+      return assertNoSuchNumberProblem(problem);
+  }
+};
+const unusableOptionMessage = (describedAs: string) =>
+  `This rule compares its attribute against ${describedAs}, which cannot be one of that attribute’s choices. Edit or delete the rule.`;
 const INCOMPLETE_MESSAGE =
   'This rule is not complete. Edit it to fill in every part, or delete it.';
+const MISSING_ID_MESSAGE =
+  'This rule has no identifier, so this protocol cannot be saved with it. Edit the rule to give it one, or delete the rule.';
+const DUPLICATE_ID_MESSAGE =
+  'Another rule in this set has the same identifier, so this protocol cannot be saved with both. Edit or delete the rule.';
+/** What an operand no reader can make sense of is printed as. */
+const UNREADABLE_OPERAND = '(a value this editor cannot read)';

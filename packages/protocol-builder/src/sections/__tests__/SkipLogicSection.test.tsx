@@ -1,5 +1,6 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
@@ -42,11 +43,39 @@ const finalStage: SectionDoc = {
   items: [],
 };
 
+/**
+ * `mood` is here so a rule can name one of its OPTIONS: the codebook can move
+ * under a rule by renaming an option as well as by deleting or retyping the
+ * attribute itself.
+ */
+const personVariables = {
+  age: { name: 'Age', type: 'number' },
+  // Text, because the comparison operators whose operand is a regular
+  // expression are offered against it.
+  note: { name: 'Note', type: 'text' },
+  // A date recorded to the day, so a rule can hold one and the variable can
+  // then be retyped to record something coarser.
+  born: {
+    name: 'Born',
+    type: 'datetime',
+    component: 'DatePicker',
+    parameters: { type: 'full' },
+  },
+  mood: {
+    name: 'Mood',
+    type: 'categorical',
+    options: [
+      { label: 'Happy', value: 'happy' },
+      { label: 'Sad', value: 'sad' },
+    ],
+  },
+};
+
 const personDefinition: SectionDoc = {
   name: 'Person',
   color: 'node-color-seq-2',
   shape: { default: 'square' },
-  variables: { age: { name: 'Age', type: 'number' } },
+  variables: personVariables,
 };
 
 const codebook = {
@@ -55,7 +84,7 @@ const codebook = {
       name: 'Person',
       color: 'node-color-seq-2',
       shape: { default: 'square' },
-      variables: { age: { name: 'Age', type: 'number' } },
+      variables: personVariables,
     },
   },
 };
@@ -134,20 +163,19 @@ function createSession(
 }
 
 /**
- * The composition under test: the three sections every stage editor has, plus
- * one stage-specific section between them, in the order every editor uses.
+ * A real stage editor around whatever sections a test mounts in it: the same
+ * shell, the same controller, the same submit button every editor has.
  *
  * Nothing here is told where the stage lives. No stage path, no selector, no
  * codebook prop, no host store — a name and a label per field, and the
  * sections read everything else from the editor's own context.
  */
-function Editor({
+function EditorShell({
   session,
-  position,
+  children,
 }: {
   session: ProtocolBuilderSessionStore;
-  /** Where a stage being CREATED will be inserted. */
-  position?: number;
+  children: ReactNode;
 }) {
   const controller = useStageEditorController(session, 'stage-form');
 
@@ -158,6 +186,25 @@ function Editor({
         <SubmitButton form={formId}>Finished editing</SubmitButton>
       )}
     >
+      {children}
+    </StageEditorShell>
+  );
+}
+
+/**
+ * The composition under test: the three sections every stage editor has, plus
+ * one stage-specific section between them, in the order every editor uses.
+ */
+function Editor({
+  session,
+  position,
+}: {
+  session: ProtocolBuilderSessionStore;
+  /** Where a stage being CREATED will be inserted. */
+  position?: number;
+}) {
+  return (
+    <EditorShell session={session}>
       <StageNameSection position={{ index: 1, total: 3 }} />
       <BuilderSection title="Page content">
         <ProtocolField
@@ -168,7 +215,7 @@ function Editor({
       </BuilderSection>
       <SkipLogicSection {...(position === undefined ? {} : { position })} />
       <InterviewerGuidanceSection />
-    </StageEditorShell>
+    </EditorShell>
   );
 }
 
@@ -183,6 +230,28 @@ function renderEditor(session: ProtocolBuilderSessionStore, position?: number) {
   );
 }
 
+/**
+ * The same editor with nothing in it but the section under test.
+ *
+ * Every event re-renders every section the editor holds, and the sections
+ * around this one are what the outline tests are for — a chain that never
+ * touches them pays for them anyway. Opening the rule dialog costs about 90ms
+ * here against about 230ms in the full composition, and on a CI runner
+ * sharing four cores between several packages' suites those milliseconds are
+ * multiplied by fifty. Used only where the assertions are about the section
+ * itself; anything about how the section sits among the others mounts the
+ * whole editor.
+ */
+function renderSkipLogicSection(session: ProtocolBuilderSessionStore) {
+  return render(
+    <DialogProvider>
+      <EditorShell session={session}>
+        <SkipLogicSection />
+      </EditorShell>
+    </DialogProvider>,
+  );
+}
+
 const outlineItems = () =>
   screen
     .getByRole('navigation', { name: 'Stage sections' })
@@ -190,30 +259,54 @@ const outlineItems = () =>
 
 const outlineText = () => [...outlineItems()].map((item) => item.textContent);
 
-const switchOn = async (user: ReturnType<typeof userEvent.setup>) =>
-  user.click(screen.getByRole('switch', { name: 'Skip logic' }));
+/**
+ * What drives this editor, set up once so every test drives it the same way.
+ *
+ * `delay: null` is what makes the difference on a loaded CI runner. The
+ * default asks user-event to wait a macrotask between the events of every
+ * interaction, and a chain of them spends a third of its event-loop turns on
+ * those waits alone — turns that cost about a millisecond here and far more
+ * where several vitest workers share two cores. Nothing here needs time to
+ * pass between a pointer-down and its click; the components that do (a
+ * press-and-hold) have tests of their own.
+ */
+const setupUser = () => userEvent.setup({ delay: null });
 
-const addNodeExistsRule = async (
-  user: ReturnType<typeof userEvent.setup>,
-): Promise<void> => {
-  await user.click(
-    screen.getByRole('button', { name: 'Add new skip logic rule' }),
-  );
-  await screen.findByRole('dialog', { name: 'Construct a Rule' });
-  await user.click(
-    screen.getByRole('radio', {
-      name: 'Node - match a node type or one of its attributes.',
-    }),
-  );
-  await user.click(await screen.findByRole('radio', { name: 'Person' }));
-  await user.click(await screen.findByRole('option', { name: /Presence/ }));
-  await user.click(await screen.findByRole('radio', { name: 'exists' }));
-  await user.click(screen.getByRole('button', { name: 'Finish and Close' }));
-  await waitFor(() =>
-    expect(
-      screen.queryByRole('dialog', { name: 'Construct a Rule' }),
-    ).toBeNull(),
-  );
+const skipLogicSwitch = () =>
+  screen.getByRole('switch', { name: 'Skip logic' });
+
+/**
+ * Switch the section on, and wait for the panel that opens.
+ *
+ * Opening is asynchronous from end to end: `BuilderSection` answers Fresco's
+ * `Section` with a promise, and the section sets its own open state only once
+ * that promise has settled. So the click resolving is not the panel being on
+ * screen — one macrotask anywhere in that chain, which is what a loaded CI
+ * runner supplies, puts the whole panel after it. Waited for here rather than
+ * at each call site, because a caller cannot read a control out of a panel
+ * this has not returned from.
+ */
+const switchOn = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(skipLogicSwitch());
+  await screen.findByRole('radio', { name: 'Skip this stage' });
+};
+
+/**
+ * Switch the section off, and wait for the click to have been answered.
+ *
+ * Either answer will do, because which one arrives is what the test around
+ * this asserts: a section holding something asks before it clears it, and one
+ * holding nothing simply closes.
+ */
+const switchOff = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(skipLogicSwitch());
+  await waitFor(() => {
+    const asked =
+      screen.queryByRole('button', { name: 'Clear skip logic' }) !== null;
+    const closed =
+      screen.queryByRole('radio', { name: 'Skip this stage' }) === null;
+    expect(asked || closed).toBe(true);
+  });
 };
 
 const configuredFields = (
@@ -226,6 +319,24 @@ const configuredFields = (
     action: 'SKIP',
     filter: { rules: [nodeRule('rule-a')] },
     ...(destination === undefined ? {} : { destination }),
+  },
+});
+
+/**
+ * Skip logic switched on and pointed somewhere, with no rules in it yet: the
+ * state a researcher is in the moment they reach for the Add button.
+ *
+ * Stated as fields rather than reached by clicking, so a test about what the
+ * rule editor builds spends its budget on the rule editor.
+ */
+const awaitingRulesFields = (): SectionDoc => ({
+  label: 'Welcome',
+  title: 'Hello',
+  items: [],
+  skipLogic: {
+    action: 'SKIP',
+    destination: { type: 'stage', stageId: 'stage-3' },
+    filter: { rules: [] },
   },
 });
 
@@ -257,7 +368,7 @@ describe('a stage editor composing the skip-logic section', () => {
   });
 
   it('reports a switched-on section whose required fields are empty as unfinished', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     renderEditor(createSession());
     await waitFor(() => expect(outlineItems()).toHaveLength(4));
 
@@ -268,14 +379,76 @@ describe('a stage editor composing the skip-logic section', () => {
     );
   });
 
-  it('builds skip logic the protocol schema accepts, with no stage path anywhere', async () => {
-    const user = userEvent.setup();
-    const onFinish = vi.fn();
-    renderEditor(createSession({ onFinish }));
+  /**
+   * Building skip logic from nothing is three chains, not one: switching the
+   * section on and answering it, creating a rule in the editor it opens, and
+   * saving what that produced. They were one test, whose interactions added up
+   * to about half a second here and past the 20s budget on a CI runner sharing
+   * four cores between several packages' suites — and whose failure said only
+   * that the whole thing had stopped somewhere. One test per chain, each
+   * mounted fresh on the state the one before it leaves behind, keeps every
+   * assertion and puts a budget and a name on each.
+   */
+  it('records the action and the destination the researcher chooses', async () => {
+    const user = setupUser();
+    renderEditor(createSession());
 
     await switchOn(user);
     await user.click(screen.getByRole('radio', { name: 'Skip this stage' }));
-    await addNodeExistsRule(user);
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'When this stage is skipped' }),
+      'route:stage:stage-3',
+    );
+
+    expect(
+      screen.getByRole('radio', { name: 'Skip this stage' }),
+    ).toBeChecked();
+    expect(
+      screen.getByRole('combobox', { name: 'When this stage is skipped' }),
+    ).toHaveValue('route:stage:stage-3');
+  });
+
+  /**
+   * Where the middle chain stops, and why.
+   *
+   * Answering the rule editor is seven interactions against a mounted stage
+   * editor, and it is the same seven wherever a rule set appears: the rule set
+   * field owns them, and `RuleSetField.test.tsx` drives them end to end
+   * ("adds a rule through the editor and shows it as a sentence") against the
+   * same assertions — a node rule about people, about whether one exists,
+   * reaching the field's value and reading back as a sentence. The sibling
+   * section that also embeds a rule set, `NetworkFilterSection.test.tsx`,
+   * states its rules as fields for the same reason.
+   *
+   * What is this section's own is that ITS button opens that editor, and that
+   * whatever the editor leaves in the rule set reaches `skipLogic.filter` —
+   * the first below, the second in the test after it.
+   */
+  it('opens the rule editor from its own button', async () => {
+    const user = setupUser();
+    renderSkipLogicSection(createSession({ fields: awaitingRulesFields() }));
+
+    await user.click(
+      screen.getByRole('button', { name: 'Add new skip logic rule' }),
+    );
+
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Construct a Rule',
+    });
+    // Opened on a new rule rather than on one of the set's own: it asks what
+    // the rule is about, which a rule that already had an answer would not.
+    expect(
+      within(dialog).getByRole('radio', {
+        name: 'Node - match a node type or one of its attributes.',
+      }),
+    ).not.toBeChecked();
+  });
+
+  it('builds skip logic the protocol schema accepts, with no stage path anywhere', async () => {
+    const user = setupUser();
+    const onFinish = vi.fn();
+    renderEditor(createSession({ onFinish, fields: configuredFields() }));
+
     await user.selectOptions(
       screen.getByRole('combobox', { name: 'When this stage is skipped' }),
       'route:stage:stage-3',
@@ -314,7 +487,7 @@ describe('the rules inside skip logic', () => {
   };
 
   it('keeps the surviving rule when one is deleted', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const onFinish = vi.fn();
     renderEditor(createSession({ fields: twoRuleFields, onFinish }));
 
@@ -331,7 +504,7 @@ describe('the rules inside skip logic', () => {
   });
 
   it('moves a rule without changing which rule it is', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const onFinish = vi.fn();
     renderEditor(createSession({ fields: twoRuleFields, onFinish }));
 
@@ -381,7 +554,7 @@ describe('a rule set the researcher cannot save', () => {
   });
 
   it('refuses two rules that never said how they combine', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const onFinish = vi.fn();
     renderEditor(
       createSession({
@@ -419,7 +592,7 @@ describe('a rule set the researcher cannot save', () => {
   });
 
   it('refuses a rule set the researcher has emptied', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const onFinish = vi.fn();
     renderEditor(
       createSession({
@@ -450,8 +623,139 @@ describe('a rule set the researcher cannot save', () => {
     expect(onFinish).not.toHaveBeenCalled();
   });
 
+  /**
+   * A comparison pattern that will not compile, which nothing outside the
+   * builder can report: the protocol schema asks only that the operand be a
+   * string, and the interview swallows the compile error on purpose so that
+   * one malformed rule cannot break navigation — after which the rule matches
+   * nothing (or, for "does not contain", everything) for every participant.
+   * It used to be caught only by reopening that exact rule and submitting it.
+   */
+  it('refuses a rule whose comparison pattern will not compile', async () => {
+    const user = setupUser();
+    const onFinish = vi.fn();
+    renderEditor(
+      createSession({
+        onFinish,
+        fields: {
+          label: 'Welcome',
+          title: 'Hello',
+          items: [],
+          skipLogic: {
+            action: 'SHOW',
+            filter: {
+              rules: [
+                {
+                  id: 'rule-a',
+                  type: 'node',
+                  options: {
+                    type: 'person',
+                    attribute: 'note',
+                    operator: 'CONTAINS',
+                    // An unterminated character class.
+                    value: '[unclosed',
+                  },
+                },
+              ],
+            },
+          },
+        },
+      }),
+    );
+
+    expect(
+      await screen.findByText(
+        'This rule compares its attribute against a pattern that is not a valid regular expression, so the interview cannot apply the rule. Edit or delete the rule.',
+      ),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(outlineText()?.[2]).toBe('Skip logicHas a problem'),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    expect(
+      await screen.findByText(
+        'Rule 1 cannot be used as it stands. Open it to fix it, or delete it.',
+      ),
+    ).toBeInTheDocument();
+    expect(onFinish).not.toHaveBeenCalled();
+  });
+
+  /**
+   * A datetime attribute records answers at ONE resolution, and retyping it is
+   * an ordinary codebook edit made by someone who cannot see this rule. The
+   * operand is still a string, still the shape the schema and the operand
+   * table ask for, and can never equal an answer again.
+   */
+  it('refuses a rule whose date the attribute can no longer record', async () => {
+    const user = setupUser();
+    const onFinish = vi.fn();
+    const session = createSession({
+      onFinish,
+      fields: {
+        label: 'Welcome',
+        title: 'Hello',
+        items: [],
+        skipLogic: {
+          action: 'SHOW',
+          filter: {
+            rules: [
+              {
+                id: 'rule-a',
+                type: 'node',
+                options: {
+                  type: 'person',
+                  attribute: 'born',
+                  operator: 'EXACTLY',
+                  value: '2020-05-14',
+                },
+              },
+            ],
+          },
+        },
+      },
+    });
+    renderEditor(session);
+    await waitFor(() => expect(outlineText()?.[2]).toBe('Skip logicFinished'));
+
+    act(() => {
+      session.receiveAuthoritativeUpdate({
+        // The attribute is still a datetime and the operator is still legal
+        // for one. Only the dates it records have changed.
+        protocolSections: personWith({
+          born: {
+            name: 'Born',
+            type: 'datetime',
+            component: 'DatePicker',
+            parameters: { type: 'year' },
+          },
+        }),
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+    });
+
+    expect(
+      await screen.findByText(
+        'This rule compares its attribute against “2020-05-14”, but the attribute is now answered with a year. Edit or delete the rule.',
+      ),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(outlineText()?.[2]).toBe('Skip logicHas a problem'),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    expect(
+      await screen.findByText(
+        "Rule 1 no longer works with this protocol's codebook. Open it to fix it, or delete it.",
+      ),
+    ).toBeInTheDocument();
+    expect(onFinish).not.toHaveBeenCalled();
+  });
+
   it('refuses a rule whose attribute a collaborator has deleted', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const onFinish = vi.fn();
     const session = createSession({ onFinish, fields: attributeRuleFields });
     renderEditor(session);
@@ -486,7 +790,7 @@ describe('a rule set the researcher cannot save', () => {
   });
 
   it('refuses a rule whose operator the attribute’s new type does not allow', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const onFinish = vi.fn();
     const session = createSession({ onFinish, fields: attributeRuleFields });
     renderEditor(session);
@@ -520,8 +824,262 @@ describe('a rule set the researcher cannot save', () => {
     expect(onFinish).not.toHaveBeenCalled();
   });
 
+  it('refuses a rule naming an option a collaborator has renamed', async () => {
+    const user = setupUser();
+    const onFinish = vi.fn();
+    const session = createSession({
+      onFinish,
+      fields: {
+        label: 'Welcome',
+        title: 'Hello',
+        items: [],
+        skipLogic: {
+          action: 'SHOW',
+          filter: {
+            rules: [
+              {
+                id: 'rule-a',
+                type: 'node',
+                options: {
+                  type: 'person',
+                  attribute: 'mood',
+                  operator: 'INCLUDES',
+                  value: ['happy'],
+                },
+              },
+            ],
+          },
+        },
+      },
+    });
+    renderEditor(session);
+    await waitFor(() => expect(outlineText()?.[2]).toBe('Skip logicFinished'));
+
+    act(() => {
+      session.receiveAuthoritativeUpdate({
+        // The attribute is still a categorical and the operator is still legal
+        // for one. Only the option this rule names has gone.
+        protocolSections: personWith({
+          age: { name: 'Age', type: 'number' },
+          mood: {
+            name: 'Mood',
+            type: 'categorical',
+            options: [
+              { label: 'Not working', value: 'not-working' },
+              { label: 'Sad', value: 'sad' },
+            ],
+          },
+        }),
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+    });
+
+    expect(
+      await screen.findByText(
+        'This rule compares its attribute against an option that is no longer one of that attribute’s choices. Edit or delete the rule.',
+      ),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(outlineText()?.[2]).toBe('Skip logicHas a problem'),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    expect(
+      await screen.findByText(
+        "Rule 1 no longer works with this protocol's codebook. Open it to fix it, or delete it.",
+      ),
+    ).toBeInTheDocument();
+    expect(onFinish).not.toHaveBeenCalled();
+  });
+
+  it('opens a stage whose stored rule already names a missing option', async () => {
+    const user = setupUser();
+    const onFinish = vi.fn();
+    // The deployed-protocol case, and the reason membership is an editor rule
+    // rather than a load-time error (ruling on issue #1548): the shared
+    // validator accepts this protocol, so the editor is what has to open it,
+    // show the researcher the rule, and refuse the save.
+    renderEditor(
+      createSession({
+        onFinish,
+        fields: {
+          label: 'Welcome',
+          title: 'Hello',
+          items: [],
+          skipLogic: {
+            action: 'SHOW',
+            filter: {
+              rules: [
+                {
+                  id: 'rule-a',
+                  type: 'node',
+                  options: {
+                    type: 'person',
+                    attribute: 'mood',
+                    operator: 'INCLUDES',
+                    value: ['retired'],
+                  },
+                },
+              ],
+            },
+          },
+        },
+      }),
+    );
+
+    // The rule is on screen and readable, with the option it names printed as
+    // the bare value the codebook has no label for — reporting a rule is not
+    // refusing to show it.
+    const row = await screen.findByRole('button', { name: /^Edit rule:/ });
+    expect(row).toHaveAccessibleName(/Mood.*includes.*retired/s);
+    expect(
+      screen.getByText(
+        'This rule compares its attribute against an option that is no longer one of that attribute’s choices. Edit or delete the rule.',
+      ),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(outlineText()?.[2]).toBe('Skip logicHas a problem'),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    expect(
+      await screen.findByText(
+        "Rule 1 no longer works with this protocol's codebook. Open it to fix it, or delete it.",
+      ),
+    ).toBeInTheDocument();
+    expect(onFinish).not.toHaveBeenCalled();
+  });
+
+  /**
+   * The protocol schema refuses a filter whose rules repeat an id
+   * (`findDuplicateId`), and no control here asks for one — so a stage holding
+   * two rules under one id can only have arrived by import, by hand-editing,
+   * or from a merge. Nothing used to report it, and the list keyed both rows
+   * by that one id, which made them one row to `ArrayField`.
+   */
+  it('refuses a stage whose rules share an identifier', async () => {
+    const user = setupUser();
+    const onFinish = vi.fn();
+    renderEditor(
+      createSession({
+        onFinish,
+        fields: {
+          label: 'Welcome',
+          title: 'Hello',
+          items: [],
+          skipLogic: {
+            action: 'SHOW',
+            filter: {
+              join: 'AND',
+              rules: [
+                {
+                  id: 'rule-a',
+                  type: 'node',
+                  options: { type: 'person', operator: 'EXISTS' },
+                },
+                {
+                  id: 'rule-a',
+                  type: 'node',
+                  options: {
+                    type: 'person',
+                    attribute: 'age',
+                    operator: 'EXACTLY',
+                    value: 30,
+                  },
+                },
+              ],
+            },
+          },
+        },
+      }),
+    );
+
+    // Both rows are there, and both are marked: neither is the wrong one.
+    expect(
+      await screen.findAllByRole('button', { name: /^Edit rule:/ }),
+    ).toHaveLength(2);
+    expect(
+      screen.getAllByText(
+        'Another rule in this set has the same identifier, so this protocol cannot be saved with both. Edit or delete the rule.',
+      ),
+    ).toHaveLength(2);
+    await waitFor(() =>
+      expect(outlineText()?.[2]).toBe('Skip logicHas a problem'),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    expect(
+      await screen.findByText(
+        '2 of these rules cannot be used as they stand. Open each marked rule to fix it, or delete it.',
+      ),
+    ).toBeInTheDocument();
+    expect(onFinish).not.toHaveBeenCalled();
+  });
+
+  /**
+   * The rule dialog refuses every gap, so a rule with no operand cannot have
+   * been built here: it arrived by import, by hand-editing, or from another
+   * session. The protocol schema accepts it — `value` is optional there — and
+   * the interview then runs `EXACTLY` with nothing to compare, which is a
+   * presence test the researcher never wrote. The editor is the only thing
+   * that can say so.
+   */
+  it('refuses a stored rule whose operator was never given its operand', async () => {
+    const user = setupUser();
+    const onFinish = vi.fn();
+    renderEditor(
+      createSession({
+        onFinish,
+        fields: {
+          label: 'Welcome',
+          title: 'Hello',
+          items: [],
+          skipLogic: {
+            action: 'SHOW',
+            filter: {
+              rules: [
+                {
+                  id: 'rule-a',
+                  type: 'node',
+                  options: {
+                    type: 'person',
+                    attribute: 'age',
+                    operator: 'EXACTLY',
+                  },
+                },
+              ],
+            },
+          },
+        },
+      }),
+    );
+
+    // On the row, where the researcher can act on it, and in the outline, so
+    // the section stops claiming to be finished.
+    expect(
+      await screen.findByText(
+        'This rule is not complete. Edit it to fill in every part, or delete it.',
+      ),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(outlineText()?.[2]).toBe('Skip logicHas a problem'),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    expect(
+      await screen.findByText(
+        'Rule 1 is not finished. Open it to fill in every part, or delete it.',
+      ),
+    ).toBeInTheDocument();
+    expect(onFinish).not.toHaveBeenCalled();
+  });
+
   it('asks for the rules a switched-on skip logic has none of', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const onFinish = vi.fn();
     renderEditor(createSession({ onFinish }));
 
@@ -534,10 +1092,14 @@ describe('a rule set the researcher cannot save', () => {
     await user.click(screen.getByRole('button', { name: 'Finished editing' }));
 
     // Rules are what skip logic IS: a stage that switches it on and creates
-    // none has said nothing about when to skip.
+    // none has said nothing about when to skip. Said in the rule set's own
+    // words — the same sentence a set whose last rule was deleted is refused
+    // with — rather than in Fresco's wording for an unanswered field.
     const rules = screen.getByRole('group', { name: /Rules/ });
     await waitFor(() =>
-      expect(rules).toHaveAccessibleDescription(/This field is required/),
+      expect(rules).toHaveAccessibleDescription(
+        /Please create at least one rule\./,
+      ),
     );
     expect(onFinish).not.toHaveBeenCalled();
   });
@@ -634,6 +1196,108 @@ describe('choosing where the interview continues', () => {
     ).not.toHaveAttribute('aria-invalid', 'true');
   });
 
+  /**
+   * A destination with no stage named is a destination the protocol schema
+   * refuses, and absence is how "continue at the next available stage" is
+   * spelled — so reading the two the same way left the control claiming the
+   * interview continued at the next stage while `finish` refused the save for
+   * a destination the researcher was never shown.
+   */
+  it('reports a destination it cannot read, rather than showing the next stage', async () => {
+    renderEditor(
+      createSession({ fields: configuredFields({ type: 'stage' }) }),
+    );
+
+    expect(
+      await screen.findByText(
+        'The stage this skips to cannot be read. Choose where the interview should continue instead.',
+      ),
+    ).toBeInTheDocument();
+    const destination = screen.getByRole('combobox', {
+      name: 'When this stage is skipped',
+    });
+    expect(destination).toHaveAttribute('aria-invalid', 'true');
+    expect(destination).not.toHaveValue('route:next');
+  });
+
+  /**
+   * The same gap on its other axis. The schema's two destination shapes are
+   * `strictObject`s, so a stray key beside a valid discriminator is a
+   * destination it refuses — and a reader that took the discriminator and
+   * dropped the rest showed "End the interview" as a finished answer over a
+   * stored value that could not be saved.
+   */
+  it('reports a destination carrying a key the schema refuses', async () => {
+    renderEditor(
+      createSession({
+        fields: configuredFields({ type: 'finish', stageId: 'stale' }),
+      }),
+    );
+
+    expect(
+      await screen.findByText(
+        'The stage this skips to cannot be read. Choose where the interview should continue instead.',
+      ),
+    ).toBeInTheDocument();
+    const destination = screen.getByRole('combobox', {
+      name: 'When this stage is skipped',
+    });
+    expect(destination).toHaveAttribute('aria-invalid', 'true');
+    expect(destination).not.toHaveValue('route:finish');
+  });
+
+  it('refuses to finish a stage holding one', async () => {
+    const user = setupUser();
+    const onFinish = vi.fn();
+    renderEditor(
+      createSession({
+        onFinish,
+        fields: configuredFields({ type: 'finish', stageId: 'stale' }),
+      }),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+
+    await waitFor(() => expect(onFinish).not.toHaveBeenCalled());
+    expect(
+      screen.getByRole('combobox', { name: 'When this stage is skipped' }),
+    ).toHaveAttribute('aria-invalid', 'true');
+  });
+
+  it('attributes the refusal of an extra key to the destination that holds it', async () => {
+    const session = createSession({
+      fields: configuredFields({ type: 'finish', stageId: 'stale' }),
+    });
+
+    const validation = await session.validate();
+
+    // Reporting is not refusing: the control says which answer to change, and
+    // the schema is what stops the stage being saved. Both have to be true,
+    // or the researcher meets a refusal with no control to point at.
+    expect(validation.status).toBe('invalid');
+    const issues = validation.status === 'invalid' ? validation.issues : [];
+    expect(issues.map((issue) => issue.path.slice(0, 4).join('.'))).toContain(
+      'stages.0.skipLogic.destination',
+    );
+  });
+
+  it('attributes the refusal of one to the destination that holds it', async () => {
+    const session = createSession({
+      fields: configuredFields({ type: 'stage' }),
+    });
+
+    const validation = await session.validate();
+
+    // The control reports it so the researcher can act on it; the schema is
+    // what refuses it. Both have to be true, or a destination nobody can read
+    // is either invisible or unsaveable with no explanation.
+    expect(validation.status).toBe('invalid');
+    const issues = validation.status === 'invalid' ? validation.issues : [];
+    expect(issues.map((issue) => issue.path.slice(0, 4).join('.'))).toContain(
+      'stages.0.skipLogic.destination',
+    );
+  });
+
   it('reports a destination the interview now reaches first, without throwing', async () => {
     renderEditor(
       createSession({
@@ -660,7 +1324,7 @@ describe('choosing where the interview continues', () => {
  */
 describe('saving a stage whose destination is no longer reachable', () => {
   it('refuses a destination whose stage has left the interview', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const onFinish = vi.fn();
     renderEditor(
       createSession({
@@ -681,7 +1345,7 @@ describe('saving a stage whose destination is no longer reachable', () => {
   });
 
   it('refuses a destination the interview now reaches first', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const onFinish = vi.fn();
     renderEditor(
       createSession({
@@ -725,7 +1389,7 @@ describe('saving a stage whose destination is no longer reachable', () => {
   });
 
   it('saves the same stage once the destination is chosen again', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const onFinish = vi.fn();
     renderEditor(
       createSession({
@@ -753,7 +1417,7 @@ describe('saving a stage whose destination is no longer reachable', () => {
 
 describe('switching skip logic off', () => {
   it('removes it from the stage entirely', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     const onFinish = vi.fn();
     renderEditor(
       createSession({
@@ -762,7 +1426,7 @@ describe('switching skip logic off', () => {
       }),
     );
 
-    await switchOn(user);
+    await switchOff(user);
     await user.click(screen.getByRole('button', { name: 'Clear skip logic' }));
     await user.click(screen.getByRole('button', { name: 'Finished editing' }));
 
@@ -775,7 +1439,7 @@ describe('switching skip logic off', () => {
   });
 
   it('asks first, and keeps everything when the answer is no', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     renderEditor(
       createSession({
         fields: configuredFields({ type: 'stage', stageId: 'stage-3' }),
@@ -783,7 +1447,7 @@ describe('switching skip logic off', () => {
     );
     await waitFor(() => expect(outlineItems()).toHaveLength(4));
 
-    await switchOn(user);
+    await switchOff(user);
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
 
     await waitFor(() =>
@@ -801,7 +1465,7 @@ describe('switching skip logic off', () => {
   });
 
   it('asks about a destination even when no rules have been created', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     renderEditor(createSession());
 
     await switchOn(user);
@@ -809,7 +1473,7 @@ describe('switching skip logic off', () => {
       screen.getByRole('combobox', { name: 'When this stage is skipped' }),
       'route:finish',
     );
-    await switchOn(user);
+    await switchOff(user);
 
     // Where the interview continues is part of the skip logic, so switching
     // off destroys it too — the rules are not the only thing there is to lose.
@@ -819,14 +1483,14 @@ describe('switching skip logic off', () => {
   });
 
   it('switches back on with an editable, empty rule set', async () => {
-    const user = userEvent.setup();
+    const user = setupUser();
     renderEditor(
       createSession({
         fields: configuredFields({ type: 'stage', stageId: 'stage-3' }),
       }),
     );
 
-    await switchOn(user);
+    await switchOff(user);
     await user.click(screen.getByRole('button', { name: 'Clear skip logic' }));
     await waitFor(() =>
       expect(screen.queryByRole('group', { name: /Rules/ })).toBeNull(),

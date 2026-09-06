@@ -10,29 +10,37 @@ import {
 import type { StageFormDraft } from '../session.ts';
 import type { StageFormStoreApi } from './stageEditorContext.ts';
 
-const isFieldValueArrayItem = (
-  value: unknown,
-): value is string | number | boolean | Record<string, unknown> =>
-  typeof value === 'string' ||
-  typeof value === 'number' ||
-  typeof value === 'boolean' ||
-  (typeof value === 'object' && value !== null && !Array.isArray(value));
-
+/**
+ * Whether the form store can hold this.
+ *
+ * A container's CONTENTS are not inspected, arrays included. fresco-ui's own
+ * render-tolerance contract (`useField`'s `fieldProps.value`, and the
+ * `fieldValueContract` suite that holds every control to it) says a connected
+ * control is handed the stored value verbatim and must render any shape of it
+ * without throwing — so refusing a list because of one entry inside it would
+ * create a crash exactly where that contract promises there is none.
+ */
 const isFieldValue = (value: unknown): value is FieldValue =>
   value === undefined ||
   typeof value === 'string' ||
   typeof value === 'number' ||
   typeof value === 'boolean' ||
-  (Array.isArray(value) && value.every(isFieldValueArrayItem)) ||
-  (typeof value === 'object' && value !== null && !Array.isArray(value));
+  (typeof value === 'object' && value !== null);
 
 /**
- * Narrows a value read out of the stage draft by path without weakening the
- * form store's contract. A draft holding something the form cannot store is an
- * invariant violation, and must stay visible rather than being silently
- * replaced by a cleared field.
+ * The draft's value at a path, as something the form can hold.
+ *
+ * `null` is not in `FieldValue`'s union, but stored protocol data holds it —
+ * fresco-ui's `fieldValueContract` names it as a shape every control must
+ * render — so a reseed cannot be the one place that throws on it. It means
+ * here what it means everywhere else in this package: nothing is there. It is
+ * written as `undefined`, the absent value, and never as `null`.
+ *
+ * Anything else outside the union is an invariant violation, and stays visible
+ * rather than being silently replaced by a cleared field.
  */
 const requireFieldValue = (value: unknown): FieldValue => {
+  if (value === null) return undefined;
   if (!isFieldValue(value)) {
     throw new TypeError('Stage draft values must satisfy the form contract.');
   }
@@ -50,7 +58,7 @@ function safeFieldPath(name: string): ObjectPath | null {
 }
 
 /**
- * Writes an authoritative draft into the controls that are already on screen.
+ * Writes what an arrival DECIDED into the controls that are already on screen.
  *
  * This is what a stage editor does instead of rebuilding itself when the draft
  * moves for a reason that is not its own submit — an undo, a redo, an
@@ -59,6 +67,28 @@ function safeFieldPath(name: string): ObjectPath | null {
  * everything typed but not yet saved, and it destroys any row dialog open over
  * the editor, along with the draft inside it and the message the save was about
  * to report.
+ *
+ * `previous` is the agreed draft the controls were already level with, and it
+ * is what `next` is compared against — never the values on screen. That
+ * comparison is the whole rule:
+ *
+ *   a key is written only where the AGREED draft moved at it. A key the
+ *   arrival left exactly as it found it is the researcher's, however far the
+ *   control has since been typed away from it.
+ *
+ * Comparing against the screen instead answers a different question. Typing
+ * never reaches the session, so every half-finished field differs from the
+ * agreed draft by definition; an undo of a list edit, an acknowledgement of
+ * some other key, a collaborator renaming a prompt — each of them replaces the
+ * whole draft, and each would then write the pre-typing value back over every
+ * field the researcher had touched, for a change that was about none of them.
+ * That is the same leaf-level "only what the edit decided" rule this package
+ * applies to a row being replaced (`reseatEditedRow`), asked here of the
+ * arrival rather than of the edit.
+ *
+ * A key the arrival DID move is written whatever the control holds, including
+ * one the researcher is typing in at that moment: two answers to the same key
+ * cannot both stand, and the agreed one is the one the next save writes.
  *
  * Two kinds of holder are written, because a value the editor is showing can be
  * in either:
@@ -89,6 +119,7 @@ function safeFieldPath(name: string): ObjectPath | null {
 export function reseedStageForm(
   storeApi: StageFormStoreApi,
   next: StageFormDraft,
+  previous: StageFormDraft,
 ): void {
   const state = storeApi.getState();
   const { pathOperations } = state;
@@ -113,7 +144,14 @@ export function reseedStageForm(
   for (const { name, field } of known) {
     const path = field.path ?? safeFieldPath(name);
     if (path === null || path.length === 0) continue;
-    const target = requireFieldValue(getValue(next, path));
+    // Asked of the two agreed drafts at the field's OWN path, which is the
+    // finest grain the form can be written at: a control owning a container
+    // (`settings`) is written when anything inside it moved, and one owning a
+    // leaf inside a container (`skipLogic.action`) is left alone when only its
+    // sibling did.
+    const arrived = getValue(next, path);
+    if (isEqual(getValue(previous, path), arrived)) continue;
+    const target = requireFieldValue(arrived);
     if (isEqual(field.value, target)) continue;
     write(name, path, target);
   }

@@ -1,11 +1,21 @@
 import { useMemo } from 'react';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
+import {
+  collectEntityTypeReferencesFromSchema,
+  stageSchema,
+  type StageType,
+} from '@codaco/protocol-validation';
 
 import ProtocolField from '../form/ProtocolField.tsx';
+import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useStageValue } from '../form/stageFormHooks.ts';
-import { ruleDraftOptions } from '../rules/rule.ts';
-import { ruleSetRules } from '../rules/ruleSet.ts';
+import { type RuleDraftOptions, ruleDraftOptions } from '../rules/rule.ts';
+import {
+  asRuleSetValue,
+  NO_RULES_MESSAGE,
+  ruleSetRules,
+} from '../rules/ruleSet.ts';
 import { FilterRuleSetField } from '../rules/RuleSetField.tsx';
 import { useRuleSetValidation } from '../rules/useRuleSetValidation.ts';
 import BuilderSection, { type SectionCapability } from './BuilderSection.tsx';
@@ -87,13 +97,14 @@ export default function NetworkFilterSection({
   copy,
 }: NetworkFilterSectionProps) {
   const words = { ...DEFAULT_COPY[subject], ...copy };
+  const { identity } = useStageEditorForm();
   const filter = useStageValue(FILTER_FIELD);
   const prompts = useStageValue('prompts');
-  const rulesValidation = useRuleSetValidation(FILTER_FIELD);
+  const rulesValidation = useRuleSetValidation(FILTER_FIELD, 'filter');
 
   const configuredEdgeTypes = useMemo(
-    () => promptEdgeTypes(prompts),
-    [prompts],
+    () => promptEdgeTypes(identity.type, prompts),
+    [identity.type, prompts],
   );
   const hidesConfiguredEdges =
     configuredEdgeTypes.length > 0 &&
@@ -114,11 +125,19 @@ export default function NetworkFilterSection({
           </AlertDescription>
         </Alert>
       )}
+      {/*
+        Required, because a filter switched ON is a filter the stage is
+        waiting for: the capability holds no value until a rule is added, and
+        without this the editor would close on a stage whose filter key was
+        never written — leaving the section switched off again next time it
+        was opened, with nothing having said so.
+      */}
       <ProtocolField<typeof FilterRuleSetField>
         name={FILTER_FIELD}
         label={words.fieldLabel}
         hint={words.fieldHint}
         component={FilterRuleSetField}
+        required={NO_RULES_MESSAGE}
         custom={rulesValidation}
       />
     </BuilderSection>
@@ -126,57 +145,95 @@ export default function NetworkFilterSection({
 }
 
 /**
- * Every edge type this stage's prompts create or display.
+ * Every edge type this stage's prompts name.
  *
- * Read tolerantly from the draft rather than from a typed prompt list: the
- * prompts belong to sections this one knows nothing about, and a stage part
- * way through being configured holds whatever the researcher has entered so
- * far.
+ * Asked of the SCHEMA rather than read from the two or three paths this
+ * section happens to know. A Sociogram prompt names its edge types under
+ * `edges.create`/`edges.display`; DyadCensus, TieStrengthCensus and
+ * OneToManyDyadCensus each name theirs at a top-level `createEdge`, which is a
+ * different field and not a synonym — so a hand-written pair of paths saw
+ * nothing at all for those three interfaces, and the warning that a filter
+ * hides the edge they create never fired. `entityTypeReference` is the
+ * schema's own tag for a field holding a codebook type id, and
+ * `collectEntityTypeReferencesFromSchema` finds every one of them, so an
+ * interface that gains an edge-type field is covered the moment its schema is
+ * tagged.
+ *
+ * Read tolerantly, from a fragment rather than a whole protocol: the prompts
+ * belong to sections this one knows nothing about, and a stage part way
+ * through being configured holds whatever the researcher has entered so far.
+ * Restricted to the prompts, because the stage's own SUBJECT is an edge type
+ * on some interfaces and is not something a rule "hides" — the filter is what
+ * decides which of its entities reach the stage.
  */
-function promptEdgeTypes(prompts: unknown): string[] {
+function promptEdgeTypes(stageType: StageType, prompts: unknown): string[] {
   if (!Array.isArray(prompts)) return [];
 
-  const types: string[] = [];
-  for (const prompt of prompts) {
-    if (typeof prompt !== 'object' || prompt === null) continue;
-    const edges = Reflect.get(prompt, 'edges');
-    if (typeof edges !== 'object' || edges === null) continue;
+  return collectEntityTypeReferencesFromSchema(stageSchema, {
+    type: stageType,
+    prompts,
+  }).flatMap((hit) =>
+    hit.entity === 'edge' && hit.path[0] === 'prompts' && hit.typeId !== ''
+      ? [hit.typeId]
+      : [],
+  );
+}
 
-    const create = Reflect.get(edges, 'create');
-    if (typeof create === 'string' && create !== '') types.push(create);
-
-    const display = Reflect.get(edges, 'display');
-    if (!Array.isArray(display)) continue;
-    for (const entry of display) {
-      if (typeof entry === 'string' && entry !== '') types.push(entry);
-    }
+/**
+ * Whether one rule lets edges of this type through at all.
+ *
+ * Read off the interview's own edge rule (`@codaco/network-query`): a rule
+ * with no attribute keeps the edges of its type, or — for "must not exist" —
+ * every edge that is NOT of its type. A rule WITH an attribute keeps only
+ * edges of its own type that also match the attribute, so at the level of
+ * types it admits exactly its own and excludes every other.
+ */
+function ruleAdmitsEdgeType(
+  options: RuleDraftOptions,
+  edgeType: string,
+): boolean {
+  const isPresenceRule = !Object.hasOwn(options, 'attribute');
+  if (isPresenceRule && options.operator === 'NOT_EXISTS') {
+    return options.type !== edgeType;
   }
-  return types;
+  return options.type === edgeType;
 }
 
 /**
  * Whether these rules would keep any of these edge types off the stage.
  *
- * Four cases, and only two of them are a problem: an edge type the rules
- * require to exist is fine, and an edge type no "must not exist" rule names is
- * fine. An edge type left out of a set of "must exist" rules will not survive
- * them, and one a "must not exist" rule names is being excluded by name.
+ * How the rules COMBINE decides this, so the set's `join` is read rather than
+ * the rules alone. `AND` feeds each rule's result into the next, so an edge
+ * type survives only if every rule admits it — two rules each requiring a
+ * different edge type to exist leave no edges at all, which a union of the
+ * types they name cannot see. `OR` runs each rule on the whole network and
+ * merges the results, so one rule admitting the type is enough. A set with a
+ * single rule carries no join, and the runtime reads that as `OR`.
+ *
+ * Only edge rules are read. `options.type` is an entity type id whose codebook
+ * is decided by the rule's own `type`, so a node rule folded into these sets
+ * puts a NODE type id where an edge type id is compared: "this stage needs a
+ * Person to exist" then made the configured Friend edge look like one no rule
+ * lets through, and warned about a rule that excludes nothing. Under `OR` a
+ * node rule is a reason to say nothing at all: the edges between the alters it
+ * keeps are merged back in whatever type they are.
  */
 function filterHidesAnyEdgeType(
   filter: unknown,
   edgeTypes: readonly string[],
 ): boolean {
-  const rules = ruleSetRules(filter).map((rule) => ruleDraftOptions(rule));
-  const requiredTypes = rules
-    .filter((options) => options.operator === 'EXISTS')
-    .map((options) => options.type);
-  const excludedTypes = rules
-    .filter((options) => options.operator === 'NOT_EXISTS')
-    .map((options) => options.type);
+  const rules = ruleSetRules(filter);
+  const edgeRules = rules
+    .filter((rule) => rule.type === 'edge')
+    .map((rule) => ruleDraftOptions(rule));
+  if (edgeRules.length === 0) return false;
 
-  return edgeTypes.some((edgeType) => {
-    if (requiredTypes.includes(edgeType)) return false;
-    if (requiredTypes.length > 0) return true;
-    return excludedTypes.includes(edgeType);
-  });
+  const joinsWithAll = asRuleSetValue(filter)?.join === 'AND';
+  if (!joinsWithAll && rules.some((rule) => rule.type === 'node')) return false;
+
+  return edgeTypes.some((edgeType) =>
+    joinsWithAll
+      ? !edgeRules.every((options) => ruleAdmitsEdgeType(options, edgeType))
+      : !edgeRules.some((options) => ruleAdmitsEdgeType(options, edgeType)),
+  );
 }
