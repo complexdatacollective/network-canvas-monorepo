@@ -11,6 +11,8 @@ import { AlterFormStageEditor } from '../AlterFormStageEditor.tsx';
 import {
   fieldsOf,
   mountedAs,
+  authorsDateSettingsFromField,
+  authorsValuesFromField,
   openField,
   personDefinition,
   removeRow,
@@ -302,5 +304,29 @@ describe('the editor for a form about each person', () => {
     expect(
       await screen.findByText('This stage is read-only', { exact: false }),
     ).toBeInTheDocument();
+  });
+
+  /**
+   * The section's own tests prove these controls; these prove the wiring —
+   * that this editor's form fields reach the codebook for the subject IT is
+   * about, and write what the researcher authored into the person codebook
+   * rather than into the editor's own stage document.
+   */
+  it('changes, in the person codebook, the values a field offers', async () => {
+    const harness = renderStageEditor(openFixture());
+
+    await authorsValuesFromField(harness, {
+      kind: 'codebookNode',
+      typeId: 'person',
+    });
+  });
+
+  it('sets, in the person codebook, what a date field accepts', async () => {
+    const harness = renderStageEditor(openFixture());
+
+    await authorsDateSettingsFromField(harness, {
+      kind: 'codebookNode',
+      typeId: 'person',
+    });
   });
 });

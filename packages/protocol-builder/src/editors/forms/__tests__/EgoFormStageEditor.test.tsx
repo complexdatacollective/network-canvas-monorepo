@@ -8,6 +8,8 @@ import { EgoFormStageEditor } from '../EgoFormStageEditor.tsx';
 import {
   fieldsOf,
   mountedAs,
+  authorsDateSettingsFromField,
+  authorsValuesFromField,
   openField,
   removeRow,
   stageNameInput,
@@ -247,5 +249,23 @@ describe('the editor for a form about the participant', () => {
     expect(
       await screen.findByText('This stage is read-only', { exact: false }),
     ).toBeInTheDocument();
+  });
+
+  /**
+   * The section's own tests prove these controls; these prove the wiring —
+   * that this editor's form fields reach the codebook for the subject IT is
+   * about, and write what the researcher authored into the participant’s codebook
+   * rather than into the editor's own stage document.
+   */
+  it('changes, in the participant’s codebook, the values a field offers', async () => {
+    const harness = renderStageEditor(openFixture());
+
+    await authorsValuesFromField(harness, { kind: 'codebookEgo' });
+  });
+
+  it('sets, in the participant’s codebook, what a date field accepts', async () => {
+    const harness = renderStageEditor(openFixture());
+
+    await authorsDateSettingsFromField(harness, { kind: 'codebookEgo' });
   });
 });

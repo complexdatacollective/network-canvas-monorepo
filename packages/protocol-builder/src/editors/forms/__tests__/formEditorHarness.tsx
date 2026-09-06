@@ -1,7 +1,9 @@
 import { screen, waitFor, within } from '@testing-library/react';
+import { expect } from 'vitest';
 
 import type { StageType } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
+import { sectionId, type SectionRef } from '@codaco/studio-sync/taxonomy';
 
 import type { StageEditorComponent } from '../../../stage-editor-contract.ts';
 import type { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
@@ -45,6 +47,20 @@ export const stageNameInput = (): HTMLInputElement =>
 /** Opens a form field's dialog, and scopes queries to it. */
 export const openField = async (harness: Harness, name: string) => {
   await harness.user.click(screen.getByRole('button', { name }));
+  return within(await screen.findByRole('dialog'));
+};
+
+/**
+ * The same, for the LAST row carrying that control — the one a journey has
+ * just added. Asked for by position from the end because each editor's fixture
+ * arrives with a different number of fields, and the row just added is the one
+ * past all of them whatever that number is.
+ */
+const openLastField = async (harness: Harness, name: string) => {
+  const triggers = screen.getAllByRole('button', { name });
+  const trigger = triggers[triggers.length - 1];
+  if (trigger === undefined) throw new Error(`There is no "${name}".`);
+  await harness.user.click(trigger);
   return within(await screen.findByRole('dialog'));
 };
 
@@ -111,3 +127,202 @@ export const knowsDefinition = (
   color: 'edge-color-seq-2',
   variables,
 });
+
+const asRecord = (value: unknown): Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+
+/**
+ * The attributes the host holds for one codebook subject.
+ *
+ * Read from the host rather than from the stage: an attribute a form field
+ * collects belongs to the codebook, and a form editor writing it there — not
+ * into its own stage document — is the whole claim these journeys make. Each
+ * form editor asks about a different subject, which is why the section is a
+ * parameter and not a constant.
+ */
+const codebookVariables = (harness: Harness, subject: SectionRef) =>
+  asRecord(
+    asRecord(harness.host.getSnapshot().protocolSections[sectionId(subject)])
+      .variables,
+  );
+
+/** One attribute of that subject, by the name the researcher gave it. */
+const attributeNamed = (harness: Harness, subject: SectionRef, name: string) =>
+  Object.entries(codebookVariables(harness, subject)).find(
+    ([, variable]) => asRecord(variable).name === name,
+  );
+
+/** The same, waited for: the codebook write it comes from is asynchronous. */
+const savedAttribute = (harness: Harness, subject: SectionRef, name: string) =>
+  waitFor(() => {
+    const entry = attributeNamed(harness, subject, name);
+    if (entry === undefined) throw new Error(`${name} was not created`);
+    return entry;
+  });
+
+/**
+ * Adds one value to the attribute list a codebook editor is showing. The
+ * editor opens on the values the attribute already has, so a new one lands in
+ * the row past them.
+ */
+const addOption = async (
+  harness: Harness,
+  position: number,
+  label: string,
+  value: string,
+) => {
+  await harness.user.click(screen.getByRole('button', { name: 'Add option' }));
+  await harness.user.type(
+    screen.getByRole('textbox', { name: `Option ${position} label` }),
+    label,
+  );
+  await harness.user.type(
+    screen.getByRole('textbox', { name: `Option ${position} value` }),
+    value,
+  );
+};
+
+/**
+ * Invents the categorical attribute a field collects, with its first two
+ * values, through the control the row dialog offers for it.
+ *
+ * The fixture's own categorical attributes are written unvalidated by a bin
+ * stage, so a form may collect none of them — which is why a journey that
+ * needs one starts by making it.
+ */
+const createCategoricalAttribute = async (
+  harness: Harness,
+  dialog: ReturnType<typeof within>,
+  name: string,
+) => {
+  await harness.user.selectOptions(
+    dialog.getByRole('combobox', { name: 'Attribute' }),
+    '__create_new_attribute__',
+  );
+  await harness.user.selectOptions(
+    await dialog.findByRole('combobox', { name: 'Kind of answer' }),
+    'categorical',
+  );
+  await harness.user.click(
+    dialog.getByRole('button', {
+      name: 'Create this attribute and its values',
+    }),
+  );
+  await harness.user.type(
+    await screen.findByRole('textbox', { name: 'Attribute name' }),
+    name,
+  );
+  await addOption(harness, 1, 'At home', 'home');
+  await addOption(harness, 2, 'At work', 'work');
+  await harness.user.click(
+    screen.getByRole('button', { name: 'Create attribute' }),
+  );
+};
+
+/**
+ * Changes, from the row that collects it, the values a categorical attribute
+ * offers — while that row is still being written.
+ *
+ * Shared because it is one journey asked of three editors. The section's own
+ * tests prove the control; what each editor's copy proves is that the section
+ * it mounts reaches the codebook for the subject THAT editor is about — a node
+ * type, an edge type, or the participant — and writes there rather than into
+ * its own stage document.
+ */
+export const authorsValuesFromField = async (
+  harness: Harness,
+  subject: SectionRef,
+) => {
+  const creating = await openField(harness, 'Create new form field');
+  await createCategoricalAttribute(harness, creating, 'contact_setting');
+  const [categoricalId] = await savedAttribute(
+    harness,
+    subject,
+    'contact_setting',
+  );
+
+  await harness.user.click(
+    await creating.findByRole('button', {
+      name: 'Change this attribute’s values',
+    }),
+  );
+  await addOption(harness, 3, 'Somewhere else', 'elsewhere');
+  await harness.user.click(
+    screen.getByRole('button', { name: 'Save attribute' }),
+  );
+
+  await waitFor(() =>
+    expect(
+      asRecord(codebookVariables(harness, subject)[categoricalId]).options,
+    ).toEqual([
+      { label: 'At home', value: 'home' },
+      { label: 'At work', value: 'work' },
+      { label: 'Somewhere else', value: 'elsewhere' },
+    ]),
+  );
+};
+
+/**
+ * Sets, from the row that collects it, what a date attribute accepts — which
+ * is no list of values at all.
+ *
+ * Two steps, because the settings belong to an attribute: there is nothing to
+ * configure until it exists, and it is the row's save that creates it.
+ */
+export const authorsDateSettingsFromField = async (
+  harness: Harness,
+  subject: SectionRef,
+) => {
+  const dating = await openField(harness, 'Create new form field');
+  await harness.user.selectOptions(
+    dating.getByRole('combobox', { name: 'Attribute' }),
+    '__create_new_attribute__',
+  );
+  await harness.user.selectOptions(
+    await dating.findByRole('combobox', { name: 'Kind of answer' }),
+    'datetime',
+  );
+  await harness.user.type(
+    await dating.findByRole('textbox', { name: 'Attribute name' }),
+    'met_on',
+  );
+  await harness.user.selectOptions(
+    await dating.findByRole('combobox', { name: 'Input control' }),
+    'DatePicker',
+  );
+  await harness.user.type(
+    dating.getByRole('textbox', { name: 'Question text' }),
+    'When did you first meet?',
+  );
+  await harness.user.click(dating.getByRole('button', { name: 'Add' }));
+  await waitFor(() => expect(screen.queryAllByRole('dialog')).toHaveLength(0));
+  const [dateId] = await savedAttribute(harness, subject, 'met_on');
+
+  const editing = await openLastField(harness, 'Edit field');
+  await harness.user.click(
+    await editing.findByRole('button', { name: 'Set what this field accepts' }),
+  );
+  await screen.findByRole('button', { name: 'Save attribute' });
+  await harness.user.selectOptions(
+    screen.getByRole('combobox', { name: 'Date resolution' }),
+    'year',
+  );
+  await harness.user.click(
+    screen.getByRole('button', { name: 'Save attribute' }),
+  );
+
+  await waitFor(() =>
+    expect(
+      asRecord(codebookVariables(harness, subject)[dateId]).parameters,
+    ).toEqual({ type: 'year' }),
+  );
+  // Written on the attribute, beside the control they were authored for — not
+  // on the form field, which holds only its question.
+  expect(asRecord(codebookVariables(harness, subject)[dateId])).toMatchObject({
+    name: 'met_on',
+    type: 'datetime',
+    component: 'DatePicker',
+  });
+};
