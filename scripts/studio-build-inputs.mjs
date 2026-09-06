@@ -97,18 +97,46 @@ export function lockedBuildInputs(
   };
 }
 
-/** Inputs copied into or executing the distribution build, outside workspaces. */
+// These files can change the executable backend even when every workspace
+// source and dependency is unchanged. Keep the actual image recipes and
+// entrypoints here; Compose, installer and recovery files do not enter this
+// projection. A recipe change conservatively invalidates its whole backend.
+const IMAGE_RUNTIME_PATHS = {
+  studio: [
+    '.dockerignore',
+    'apps/studio/Dockerfile',
+    'apps/studio/Dockerfile.dockerignore',
+    'apps/studio/docker-entrypoint.sh',
+  ],
+  registry: [
+    '.dockerignore',
+    'apps/template-registry/Dockerfile',
+    'apps/template-registry/Dockerfile.dockerignore',
+  ],
+};
+const RUNTIME_PATHS = new Set(Object.values(IMAGE_RUNTIME_PATHS).flat());
+
+/** Bind image execution and context filtering to its backend selection. */
+export function imageRuntimeInputs(candidate, image) {
+  const paths = IMAGE_RUNTIME_PATHS[image];
+  if (!paths) throw new Error('Unknown Studio release image.');
+  return candidate.files
+    .filter(({ path }) => paths.includes(path))
+    .map(({ path, mode, oid }) => [path, mode, oid]);
+}
+
+/** Installer and release inputs beyond the component/image runtime closures. */
 export function distributionInputs(candidate) {
   const workspaces = [...candidate.packages.values()].map(
     ({ dir }) => `${dir}/`,
   );
   return candidate.files
     .filter(({ path }) => {
+      if (RUNTIME_PATHS.has(path)) return false;
       if (
         [
           'package.json',
           'pnpm-workspace.yaml',
-          '.dockerignore',
           '.npmrc',
           '.nvmrc',
           'turbo.json',
@@ -119,15 +147,12 @@ export function distributionInputs(candidate) {
       if (path.startsWith('scripts/')) return !/\.(?:test|spec)\./.test(path);
       if (path.startsWith('.github/workflows/'))
         return path.includes('studio') || path.endsWith('ci-and-release.yml');
-      // Studio's Dockerfile, Compose, entrypoint, recovery scripts and embedded
-      // operator documentation are real image/installer inputs. Package source
-      // is recorded through the component closure instead.
+      // Embedded operator documentation, Compose and recovery scripts still
+      // require a new distribution, without restarting an unchanged backend.
+      // Package source and executable image inputs are already recorded above.
       if (path.startsWith('apps/studio/'))
         return !workspaces.some((dir) => path.startsWith(dir));
-      return (
-        path.startsWith('apps/template-registry/deployment/') ||
-        path === 'apps/template-registry/Dockerfile'
-      );
+      return path.startsWith('apps/template-registry/deployment/');
     })
     .map(({ path, mode, oid }) => [path, mode, oid]);
 }

@@ -12,6 +12,7 @@ import {
 import { collectWorkspacePackages } from './release-e2e-policy.mjs';
 import {
   distributionInputs,
+  imageRuntimeInputs,
   lockedBuildInputs,
 } from './studio-build-inputs.mjs';
 import { npmPublication } from './studio-npm-publication.mjs';
@@ -120,10 +121,16 @@ function runtimePath(path) {
   const parts = path.split('/');
   const filename = parts.at(-1);
   // Markdown imported from source or served as a public asset is runtime.
-  // Docker/deployment changes have their own artifact input identity and do
-  // not require an artificial package version or backend restart.
+  // Image recipes/context filters and deployment files have their own input
+  // identities and do not require artificial package versions. Executable
+  // image inputs still invalidate the relevant backend component below.
   return (
-    !['README.md', 'CHANGELOG.md', 'Dockerfile'].includes(path) &&
+    ![
+      'README.md',
+      'CHANGELOG.md',
+      'Dockerfile',
+      'Dockerfile.dockerignore',
+    ].includes(path) &&
     !path.startsWith('deployment/') &&
     !parts.some((part) =>
       ['__tests__', 'e2e', 'qualification', '.storybook'].includes(part),
@@ -325,7 +332,7 @@ function sourceConsent(candidate) {
   }
 }
 
-function component(candidate, subjects) {
+function component(candidate, subjects, image) {
   const packages = dependencyClosure(candidate, subjects);
   return {
     packages,
@@ -336,6 +343,7 @@ function component(candidate, subjects) {
         packageSource(candidate, name),
       ]),
       locked: lockedBuildInputs(candidate, packages),
+      image: image ? imageRuntimeInputs(candidate, image) : [],
     }),
   };
 }
@@ -399,14 +407,15 @@ export async function studioReleaseEligibility(
   }
   const components = {
     client: component(candidate, ['@codaco/studio-client']),
-    server: component(candidate, ['@codaco/studio-server']),
-    registry: component(candidate, ['@codaco/template-registry']),
+    server: component(candidate, ['@codaco/studio-server'], 'studio'),
+    registry: component(candidate, ['@codaco/template-registry'], 'registry'),
     // Self-hosting deliberately updates one composite image, even for a
     // client-only change. Managed CDN/backend selection uses the two above.
-    studio: component(candidate, [
-      '@codaco/studio-client',
-      '@codaco/studio-server',
-    ]),
+    studio: component(
+      candidate,
+      ['@codaco/studio-client', '@codaco/studio-server'],
+      'studio',
+    ),
   };
   return {
     status: blockers.length ? 'deferred' : 'ready',

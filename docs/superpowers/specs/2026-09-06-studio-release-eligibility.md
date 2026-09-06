@@ -31,8 +31,9 @@ an existing Studio version.
 
 Tests, stories and release notes do not participate in package source hashes;
 imported Markdown, public assets, migration artifacts, styles and build
-configuration do. Dockerfiles and deployment files participate in distribution
-identity separately and do not require fabricated package version bumps.
+configuration do. Dockerfiles, Docker context filters and deployment files
+participate in image/distribution identity separately and do not require
+fabricated package version bumps.
 
 ## Published dependency evidence
 
@@ -66,11 +67,21 @@ every actual consumer. Managed client-only publication can preserve its backend;
 self-hosting deliberately updates the composite client/server image and uses
 the documented admission drain, WebSocket close and reconnect procedure.
 
-Distribution identity additionally includes Dockerfiles, Compose, installer and
-release scripts, embedded operator documentation, base-image pins and root
-release-tool dependencies. Unconsumed lockfile records do not trigger an
-artifact. Publication uses a full source commit identity, not the server's
-package semver alone.
+Backend component identity also binds its actual Dockerfile, including base-image
+pins and build commands, and its context filter. Studio's executable
+`docker-entrypoint.sh` participates in both server and composite identity;
+registry's Dockerfile selects its independent image. The shared `.dockerignore`
+conservatively selects both images. These changes require the affected backend
+to be promoted even when package source and versions remain unchanged. A future
+image entrypoint or recipe outside its workspace must be added to this explicit
+image input projection when it is introduced.
+
+Distribution identity additionally includes Compose, installer and release
+scripts, embedded operator documentation and root release-tool dependencies.
+Installer-only and Compose-only changes produce a new distribution while
+preserving backend component identity. Unconsumed lockfile records do not
+trigger an artifact. Publication uses a full source commit identity, not the
+server's package semver alone.
 
 ## Combined distribution ordering
 

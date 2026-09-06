@@ -117,7 +117,16 @@ function fixture(t) {
     "packages:\n  - 'apps/*'\n  - 'apps/studio/*'\n  - 'packages/*'\n",
   );
   write('pnpm-lock.yaml', stringify(lock));
-  write('apps/studio/Dockerfile', 'FROM scratch\n');
+  write(
+    'apps/studio/Dockerfile',
+    `FROM node:24-slim@sha256:${'a'.repeat(64)}\n`,
+  );
+  write(
+    'apps/studio/docker-entrypoint.sh',
+    '#!/bin/sh\nexec node dist/index.js\n',
+  );
+  write('apps/template-registry/Dockerfile', 'FROM node:24-slim\n');
+  write('.dockerignore', '.git\n**/node_modules\n');
   write('apps/studio/docker-compose.yml', 'services: {}\n');
   write('scripts/studio-install.mjs', 'export const version = 1;\n');
   write(
@@ -459,10 +468,84 @@ test('shared RPC and sync changes invalidate every actual consumer', async (t) =
   assert.equal(rpc.components.registry.source, sync.components.registry.source);
 });
 
+for (const [path, value] of [
+  ['apps/studio/Dockerfile', `FROM node:24-slim@sha256:${'b'.repeat(64)}\n`],
+  [
+    'apps/studio/docker-entrypoint.sh',
+    '#!/bin/sh\nexec node --disable-proto=throw dist/index.js\n',
+  ],
+  [
+    'apps/studio/Dockerfile.dockerignore',
+    '.git\n**/node_modules\n**/local-only\n',
+  ],
+])
+  test(`Studio image runtime input ${path} changes select the backend and composite image`, async (t) => {
+    const f = fixture(t);
+    const before = await f.eligible();
+    f.write(path, value);
+    f.commit();
+    const after = await f.eligible();
+    assert.equal(after.status, 'ready');
+    assert.deepEqual(after.versions, before.versions);
+    for (const component of ['server', 'studio'])
+      assert.notEqual(
+        after.components[component].source,
+        before.components[component].source,
+      );
+    for (const component of ['client', 'registry'])
+      assert.equal(
+        after.components[component].source,
+        before.components[component].source,
+      );
+    assert.notEqual(after.artifact, before.artifact);
+  });
+
 for (const path of [
-  'apps/studio/Dockerfile',
+  'apps/template-registry/Dockerfile',
+  'apps/template-registry/Dockerfile.dockerignore',
+])
+  test(`registry image runtime input ${path} changes select only the registry image`, async (t) => {
+    const f = fixture(t);
+    const before = await f.eligible();
+    f.write(path, `FROM node:24-slim@sha256:${'c'.repeat(64)}\n`);
+    f.commit();
+    const after = await f.eligible();
+    assert.equal(after.status, 'ready');
+    assert.deepEqual(after.versions, before.versions);
+    assert.notEqual(
+      after.components.registry.source,
+      before.components.registry.source,
+    );
+    for (const component of ['client', 'server', 'studio'])
+      assert.equal(
+        after.components[component].source,
+        before.components[component].source,
+      );
+    assert.notEqual(after.artifact, before.artifact);
+  });
+
+test('shared Docker context filtering selects both backend images without changing client assets', async (t) => {
+  const f = fixture(t);
+  const before = await f.eligible();
+  f.write('.dockerignore', '.git\n**/node_modules\n**/local-only\n');
+  f.commit();
+  const after = await f.eligible();
+  assert.equal(after.status, 'ready');
+  assert.deepEqual(after.versions, before.versions);
+  for (const component of ['server', 'studio', 'registry'])
+    assert.notEqual(
+      after.components[component].source,
+      before.components[component].source,
+    );
+  assert.equal(after.components.client.source, before.components.client.source);
+  assert.notEqual(after.artifact, before.artifact);
+});
+
+for (const path of [
   'apps/studio/docker-compose.yml',
   'scripts/studio-install.mjs',
+  'apps/studio/deployment/restore.sh',
+  'apps/template-registry/deployment/compose.yml',
 ])
   test(`distribution-only ${path} changes require a new artifact without fabricated package versions`, async (t) => {
     const f = fixture(t);
