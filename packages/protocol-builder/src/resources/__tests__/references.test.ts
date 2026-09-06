@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { assetSchema } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -40,6 +41,38 @@ const validManifest: SectionDoc = {
     source: 'layers.geojson',
   },
 };
+
+/**
+ * Entries the asset schema refuses, one per way it can refuse: a key that is
+ * not there, a value of the wrong kind, a kind of resource that does not
+ * exist, a setting no resource has, a rule of its own about how a source is
+ * written, and something that is not an entry at all.
+ */
+const refusedEntries: readonly (readonly [string, unknown])[] = [
+  ['a missing key', { type: 'geojson', name: 'Layers' }],
+  [
+    'a value of the wrong kind',
+    { type: 'geojson', name: 'Layers', source: 42 },
+  ],
+  [
+    'a kind of resource that does not exist',
+    { type: 'spreadsheet', name: 'Layers', source: 'layers.csv' },
+  ],
+  [
+    'a setting no resource has',
+    {
+      type: 'geojson',
+      name: 'Layers',
+      source: 'layers.geojson',
+      projection: 'EPSG:4326',
+    },
+  ],
+  [
+    'a source that climbs out of the protocol',
+    { type: 'geojson', name: 'Layers', source: '../layers.geojson' },
+  ],
+  ['nothing that is an entry at all', 'layers.geojson'],
+];
 
 describe('collectStageResourceReferences', () => {
   it('finds every tagged resource reference in a stage draft', () => {
@@ -111,7 +144,7 @@ describe('findDanglingResourceReferences', () => {
     ]);
   });
 
-  it('reports a committed entry that does not satisfy the asset schema', () => {
+  it('reports a committed entry that is missing part of itself', () => {
     const problems = findDanglingResourceReferences({
       stageDocument: geospatialStage,
       manifestSection: {
@@ -122,11 +155,58 @@ describe('findDanglingResourceReferences', () => {
 
     expect(problems).toHaveLength(1);
     expect(problems[0]?.resourceId).toBe('map-layers');
-    expect(problems[0]?.message).toContain(
-      'The resource ("map-layers") this stage uses is not valid',
+    expect(problems[0]?.message).toBe(
+      'This stage points at a resource ("map-layers") the protocol cannot read: part of its entry is missing.',
     );
     expect(problems[0]?.message).not.toContain('not in the protocol');
   });
+
+  it('reports a committed entry that holds the wrong kind of value', () => {
+    const problems = findDanglingResourceReferences({
+      stageDocument: geospatialStage,
+      manifestSection: {
+        ...validManifest,
+        'map-layers': { type: 'geojson', name: 'Layers', source: 42 },
+      },
+    });
+
+    expect(problems).toHaveLength(1);
+    expect(problems[0]?.resourceId).toBe('map-layers');
+    expect(problems[0]?.message).toBe(
+      'This stage points at a resource ("map-layers") the protocol cannot read: part of its entry holds the wrong kind of value.',
+    );
+  });
+
+  /**
+   * Whatever the schema refuses about an entry, the researcher reads this
+   * package's words about it and never the validator's. Each entry below is
+   * put through the same schema the code puts it through, and every sentence
+   * the validator would have said about it is asserted absent from the message
+   * the researcher sees — so a message built out of one fails here rather than
+   * reaching a stage editor.
+   */
+  it.each(refusedEntries)(
+    'never repeats the validator about an entry with %s',
+    (_what, entry) => {
+      const refusal = assetSchema.safeParse(entry);
+      const problems = findDanglingResourceReferences({
+        stageDocument: geospatialStage,
+        manifestSection: { ...validManifest, 'map-layers': entry },
+      });
+      const message = problems[0]?.message ?? '';
+
+      // The entry has to be one the schema actually refuses, or the case would
+      // pass by saying nothing at all.
+      expect(refusal.success).toBe(false);
+      expect(problems).toHaveLength(1);
+      expect(message).toContain('"map-layers"');
+      expect(message).not.toContain('Invalid input');
+      expect(message).not.toMatch(/expected .+, received .+/);
+      for (const issue of refusal.success ? [] : refusal.error.issues) {
+        expect(message).not.toContain(issue.message);
+      }
+    },
+  );
 
   it('prefixes paths so the issues attribute to the owning stage section', () => {
     const stageSection = sectionId({ kind: 'stage', stageId: 'stage-1' });

@@ -130,3 +130,64 @@ export function schemaProblemSentence(
     ? problem.message
     : `${fieldLabel} ${copy.sentence}`;
 }
+
+/**
+ * What each kind of refusal is called when what was refused is a resource as
+ * the protocol stores it, rather than a control on this form.
+ *
+ * A second set of words rather than the one above because those all answer for
+ * the stage — "holds settings this stage does not have" — and a stage is not
+ * what refuses a stored resource: a resource is written the same way whichever
+ * stage points at it, and the researcher fixes it where resources are managed
+ * rather than in the control that names it. Each sentence completes a frame
+ * that has already named the resource, so none of them name it again.
+ *
+ * `custom` is authored here as well, unlike above. The rules that raise it on
+ * a stored resource are the asset schema's own — how a file name may be
+ * written, that a key is not empty — and their messages are written about a
+ * schema, not about this protocol.
+ */
+const RESOURCE_PROBLEM_COPY: Readonly<Record<SchemaIssueCode, string>> =
+  Object.freeze({
+    invalid_type: 'part of its entry holds the wrong kind of value.',
+    invalid_value: 'part of its entry holds a value no resource can take.',
+    invalid_format:
+      'part of its entry is not written the way a resource needs it.',
+    invalid_union: 'its entry is not any of the kinds of resource there are.',
+    too_big: 'part of its entry holds more than a resource allows.',
+    too_small: 'part of its entry holds less than a resource needs.',
+    not_multiple_of:
+      'part of its entry holds a number that is not one of the steps a resource allows.',
+    unrecognized_keys: 'its entry holds settings a resource does not have.',
+    invalid_key:
+      'its entry holds a part named something a resource cannot use.',
+    invalid_element: 'its entry holds a part a resource cannot use.',
+    custom: 'its entry breaks one of the rules a resource is stored under.',
+  });
+
+/** A resource entry with nothing where the protocol needs something. */
+const RESOURCE_NOTHING_THERE = 'part of its entry is missing.';
+
+/** The `UNRECOGNISED` of the record above, for the same reason. */
+const RESOURCE_UNRECOGNISED =
+  'its entry holds something the protocol cannot use.';
+
+const RESOURCE_COPY_BY_CODE: ReadonlyMap<string, string> = new Map(
+  Object.entries(RESOURCE_PROBLEM_COPY),
+);
+
+/**
+ * What is wrong with a stored resource, for a caller that has already said
+ * which resource it is.
+ *
+ * Takes the problem WITHOUT the validator's message, which is how this one
+ * cannot do what `schemaProblemSentence` does for `custom`: there is no
+ * message here to hand back, so nothing a validator wrote can reach a
+ * researcher through it.
+ */
+export function resourceProblemClause(
+  problem: Omit<SchemaProblem, 'message'>,
+): string {
+  if (problem.absent) return RESOURCE_NOTHING_THERE;
+  return RESOURCE_COPY_BY_CODE.get(problem.code) ?? RESOURCE_UNRECOGNISED;
+}

@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
-import { schemaProblemSentence } from '../schemaProblems.ts';
+import {
+  resourceProblemClause,
+  schemaProblemSentence,
+} from '../schemaProblems.ts';
 
 /**
  * Every code the validator can attach to an issue, read from the validator
@@ -82,6 +85,46 @@ describe('the words a schema refusal is put in', () => {
       expect(
         schemaProblemSentence({ code, message: RAW, absent: true }, FIELD),
       ).toBe('Node type has no value, and this stage needs one.');
+    }
+  });
+});
+
+describe('the words a refused resource entry is described in', () => {
+  const clauseFor = (code: string): string =>
+    resourceProblemClause({ code, absent: false });
+
+  it('has copy of its own for every code the validator can produce', () => {
+    // Read the same way as above: a code with no entry falls back to the
+    // clause for a refusal this package has never heard of, and a missing
+    // entry shows up as a collision with it.
+    const unrecognised = clauseFor('a_code_from_a_later_validator');
+
+    for (const code of EVERY_CODE) {
+      expect(clauseFor(code), `no copy is written for "${code}"`).not.toBe(
+        unrecognised,
+      );
+    }
+  });
+
+  /**
+   * `custom` is answered here in this package's words, unlike a refusal about
+   * a control. A stored resource is refused by the asset schema, whose custom
+   * rules are about how a file name may be written rather than about anything
+   * in this protocol — so there is no message worth keeping, and the signature
+   * of this one cannot take one.
+   */
+  it('never repeats the validator, whatever it refused', () => {
+    for (const code of EVERY_CODE) {
+      expect(clauseFor(code)).not.toContain(RAW);
+      expect(clauseFor(code)).not.toContain('Invalid input');
+    }
+  });
+
+  it('says a missing value is missing, whatever the code', () => {
+    for (const code of EVERY_CODE) {
+      expect(resourceProblemClause({ code, absent: true })).toBe(
+        'part of its entry is missing.',
+      );
     }
   });
 });
