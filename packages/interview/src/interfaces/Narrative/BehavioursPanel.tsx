@@ -1,11 +1,16 @@
+'use client';
+
 import { Pause, Pencil, Play, RotateCcw, Snowflake } from 'lucide-react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import {
   SegmentedToolbar,
   ToolbarGroup,
   ToolbarIconButton,
   ToolbarSeparator,
 } from '@codaco/fresco-ui/SegmentedToolbar';
+
+import { interfaceMessages } from '../messages';
 
 type BehavioursPanelProps = {
   // Auto-layout pause/resume. Shown whenever the automatic layout is active
@@ -37,21 +42,25 @@ export default function BehavioursPanel({
   onToggleFreeze,
   onReset,
 }: BehavioursPanelProps) {
+  const intl = useAppIntl();
   if (!showLayoutToggle && !showDrawingControls) return null;
 
   return (
     <SegmentedToolbar
-      aria-label="Layout and drawing tools"
+      aria-label={intl.formatMessage(interfaceMessages.layoutAndDrawing)}
       size="lg"
       className="absolute bottom-10 left-10 z-10"
     >
       {showLayoutToggle ? (
-        <ToolbarGroup key="layout" aria-label="Layout controls">
+        <ToolbarGroup
+          key="layout"
+          aria-label={intl.formatMessage(interfaceMessages.layoutControls)}
+        >
           <ToolbarIconButton
             aria-label={
               simulationEnabled
-                ? 'Pause automatic layout'
-                : 'Resume automatic layout'
+                ? intl.formatMessage(interfaceMessages.pauseAutomaticLayout)
+                : intl.formatMessage(interfaceMessages.resumeAutomaticLayout)
             }
             icon={simulationEnabled ? <Pause /> : <Play />}
             onClick={onToggleSimulation}
@@ -64,23 +73,32 @@ export default function BehavioursPanel({
       ) : null}
 
       {showDrawingControls ? (
-        <ToolbarGroup key="drawing" aria-label="Drawing controls">
+        <ToolbarGroup
+          key="drawing"
+          aria-label={intl.formatMessage(interfaceMessages.drawingControls)}
+        >
           <ToolbarIconButton
-            aria-label={isDrawingEnabled ? 'Disable drawing' : 'Enable drawing'}
+            aria-label={
+              isDrawingEnabled
+                ? intl.formatMessage(interfaceMessages.disableDrawing)
+                : intl.formatMessage(interfaceMessages.enableDrawing)
+            }
             icon={<Pencil />}
             pressed={isDrawingEnabled}
             onPressedChange={onToggleDrawing}
           />
           <ToolbarIconButton
             aria-label={
-              isFrozen ? 'Unfreeze annotations' : 'Freeze annotations'
+              isFrozen
+                ? intl.formatMessage(interfaceMessages.unfreezeAnnotations)
+                : intl.formatMessage(interfaceMessages.freezeAnnotations)
             }
             icon={<Snowflake />}
             pressed={isFrozen}
             onPressedChange={onToggleFreeze}
           />
           <ToolbarIconButton
-            aria-label="Reset annotations"
+            aria-label={intl.formatMessage(interfaceMessages.resetAnnotations)}
             icon={<RotateCcw />}
             onClick={onReset}
           />

@@ -10,9 +10,13 @@ import { isEqual } from 'es-toolkit/compat';
 import type { ReactNode } from 'react';
 import { expect } from 'vitest';
 
+import { commonCatalogs } from '@codaco/app-i18n/common';
+import { ecosystemLocales, mergeCatalogs } from '@codaco/app-i18n/locales';
+import { AppI18nProvider } from '@codaco/app-i18n/react';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { resolveFieldPath } from '@codaco/fresco-ui/form/FieldNamespace';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
+import { frescoUiCatalogs } from '@codaco/fresco-ui/locales';
 import type { Codebook, StageType } from '@codaco/protocol-validation';
 import type { Command, SectionDoc } from '@codaco/studio-sync/apply';
 import {
@@ -24,6 +28,7 @@ import type { InMemoryCompoundHost } from '../compound-edit/InMemoryCompoundHost
 import { useStageEditorController } from '../controller.ts';
 import StageEditorShell from '../form/StageEditorShell.tsx';
 import { getInterfaceTemplate } from '../interfaces/templates.ts';
+import { protocolBuilderCatalogs } from '../locales/catalogs.ts';
 import { protocolContextFromSections } from '../protocol-context.ts';
 import type { InMemoryResourceGateway } from '../resources/InMemoryResourceGateway.ts';
 import type {
@@ -128,6 +133,9 @@ export type StageEditorHarness = RenderResult &
      * that promotes the file. So this is what a cancelled edit LEFT BEHIND —
      * the one thing `pendingCommands` cannot say, because a batch that has
      * gone to the host is pending there too until it is acknowledged.
+     *
+     * Empty unless the harness was opened with `applyLive`, which is what
+     * puts a live host under it at all.
      */
     liveCommands(): readonly Command[];
     /**
@@ -254,6 +262,23 @@ export type RenderStageEditorOptions<T extends StageType = StageType> =
     /** Open the stage as a spectator. */
     readOnly?: boolean;
     /**
+     * Read the editor in this language.
+     *
+     * Left out, NO provider is mounted at all, `useAppIntl()` falls back to a
+     * shared English formatter over no catalog, and every descriptor renders
+     * its own `defaultMessage`. That is what lets the several hundred English
+     * assertions in this package's suite stand unchanged through the
+     * conversion, and it is deliberate rather than incidental: a harness that
+     * always mounted a provider would make every one of them a test of the
+     * catalog as well as of the component.
+     *
+     * Given, the same three catalogs a host merges are merged in the same
+     * order, so a locale-parity test proves the wiring a host will actually
+     * have. `manageDocument` is off: a test must not rewrite the jsdom
+     * document's own language out from under the rest of the suite.
+     */
+    locale?: string;
+    /**
      * Sections another editor is holding, named by who is holding them, so a
      * change that needs one is blocked rather than applied.
      */
@@ -261,6 +286,24 @@ export type RenderStageEditorOptions<T extends StageType = StageType> =
       sectionId: ProtocolSectionId;
       displayName: string;
     }>[];
+    /**
+     * Open the stage over a host that applies each batch as it is made,
+     * instead of the buffering one that is handed nothing until the finish.
+     *
+     * Off by default, because a buffering host is what almost every test here
+     * wants: an editor draws work in progress — a row added before anything
+     * has been typed into it, a capability cleared before the field replacing
+     * it is filled in — and a host holding that would refuse the very next
+     * compound edit for a protocol the researcher has not finished writing.
+     *
+     * On, `host` really holds every batch it is handed, which is the only
+     * honest way to claim delivery: the session reads a host's later answers
+     * against what it was GIVEN (`deliveredPrefixLength`), so a port that
+     * recorded a batch and left the host where it was made the session read
+     * its own unsaved work as a collaborator's edit and retire it. Turn it on
+     * for what only a live host can be asked — see `liveCommands`.
+     */
+    applyLive?: boolean;
   }>;
 
 /**
@@ -273,16 +316,46 @@ export type RenderStageEditorOptions<T extends StageType = StageType> =
  * accepts it, and a test that creates a codebook entity has proved the host
  * could apply both halves at once.
  */
+/**
+ * Mounts a provider only when a test asks for one.
+ *
+ * Without a locale there is deliberately no provider in the tree at all —
+ * see `RenderStageEditorOptions.locale` — so this renders its children
+ * untouched rather than mounting an English one, which would be a different
+ * thing: a provider carries a catalog, and an English one over the merged
+ * catalogs is not the same as no catalog at all.
+ */
+function LocaleFrame({
+  locale,
+  children,
+}: Readonly<{ locale?: string; children: ReactNode }>) {
+  if (locale === undefined) return children;
+  return (
+    <AppI18nProvider
+      locale={locale}
+      locales={ecosystemLocales}
+      messages={mergeCatalogs(
+        commonCatalogs[locale] ?? {},
+        frescoUiCatalogs[locale] ?? {},
+        protocolBuilderCatalogs[locale] ?? {},
+      )}
+      manageDocument={false}
+    >
+      {children}
+    </AppI18nProvider>
+  );
+}
+
 export function renderStageEditor<T extends StageType = StageType>(
   options: RenderStageEditorOptions<T> = {},
 ): StageEditorHarness {
   const seeded = seedFrom(options);
   const stageSectionId = sectionId({ kind: 'stage', stageId: seeded.id });
   const finishRequests: FinishRequest[] = [];
-  // What a host applying this session's edits live has been handed. Recorded
-  // rather than applied to `host`: the question a test asks of it is what LEFT
-  // the session, and a host that also applied them would answer every other
-  // test's questions about the authoritative protocol differently.
+  // What a host applying this session's edits live has been handed, for a
+  // harness opened with `applyLive`. `host` really applies them: claiming
+  // delivery without holding the batch is a host the session cannot read —
+  // see the option.
   const liveCommands: Command[] = [];
   // The same session a story is opened over, built once in `fixtureSession`:
   // a test and a story that assembled the protocol differently would disagree
@@ -294,9 +367,13 @@ export function renderStageEditor<T extends StageType = StageType>(
     ...(options.heldSections === undefined
       ? {}
       : { heldSections: options.heldSections }),
-    onCommands: (batch) => {
-      liveCommands.push(...batch.commands);
-    },
+    ...(options.applyLive === true
+      ? {
+          onCommands: (batch: PendingCommandBatch) => {
+            liveCommands.push(...batch.commands);
+          },
+        }
+      : {}),
     onFinish: (request) => {
       finishRequests.push(request);
     },
@@ -304,20 +381,26 @@ export function renderStageEditor<T extends StageType = StageType>(
 
   const submitLabel = options.submitLabel ?? DEFAULT_SUBMIT_LABEL;
   const view = render(
-    <DialogProvider>
-      <HarnessEditor
-        session={session}
-        submitLabel={submitLabel}
-        {...(options.actions === undefined ? {} : { actions: options.actions })}
-        {...(options.editor === undefined ? {} : { editor: options.editor })}
-        {...(options.sections === undefined
-          ? {}
-          : { sections: options.sections })}
-        {...(options.registry === undefined
-          ? {}
-          : { registry: options.registry })}
-      />
-    </DialogProvider>,
+    <LocaleFrame
+      {...(options.locale === undefined ? {} : { locale: options.locale })}
+    >
+      <DialogProvider>
+        <HarnessEditor
+          session={session}
+          submitLabel={submitLabel}
+          {...(options.actions === undefined
+            ? {}
+            : { actions: options.actions })}
+          {...(options.editor === undefined ? {} : { editor: options.editor })}
+          {...(options.sections === undefined
+            ? {}
+            : { sections: options.sections })}
+          {...(options.registry === undefined
+            ? {}
+            : { registry: options.registry })}
+        />
+      </DialogProvider>
+    </LocaleFrame>,
   );
 
   // No wait between keystrokes. user-event's default schedules a real 0ms
@@ -835,8 +918,12 @@ function readOwnedKeys(): string[] {
 }
 
 function readOutline(): { title: string; state: string }[] {
-  const nav = screen.queryByRole('navigation', { name: 'Stage sections' });
-  if (nav === null) return [];
+  // By role alone, not by the landmark's own name: the harness mounts exactly
+  // one navigation, and the name is copy — read under a locale that translates
+  // it, a name-matched query would find nothing and report an editor with no
+  // sections at all, which is a passing assertion about the wrong thing.
+  const [nav] = screen.queryAllByRole('navigation');
+  if (nav === undefined) return [];
   return [...nav.querySelectorAll('button')].map((button) => {
     const [title, state] = [...button.querySelectorAll('span')];
     return {

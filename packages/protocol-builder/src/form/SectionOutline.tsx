@@ -1,6 +1,9 @@
 import { AlertCircle, Check, Circle, Lock, MinusCircle } from 'lucide-react';
 import { useSyncExternalStore } from 'react';
 
+import { defineMessages, formatMessageError } from '@codaco/app-i18n/messages';
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
@@ -12,32 +15,90 @@ import {
 import { useStageEditorForm } from './stageEditorContext.ts';
 
 /**
+ * What each state of a section is CALLED, keyed by the state itself so the
+ * record stays exhaustive: a state added to `SectionOutlineStatus` with no
+ * words for it is a section a screen-reader user is told nothing about, and
+ * this is what turns that into a typecheck failure rather than a silence.
+ */
+const STATUS_LABELS = defineMessages({
+  error: {
+    id: 'protocolBuilder.outline.errorStatus',
+    defaultMessage: 'Has a problem',
+    description:
+      'Spoken state of one section of a stage editor (a stage is one step of an interview): something the researcher has entered in it is not valid. Read out after the section’s own name, and never shown on screen — the same state is drawn as a colour and an icon.',
+  },
+  incomplete: {
+    id: 'protocolBuilder.outline.incompleteStatus',
+    defaultMessage: 'Not finished',
+    description:
+      'Spoken state of one section of a stage editor: it still has required fields the researcher has not filled in. Read out after the section’s own name, and never shown on screen.',
+  },
+  complete: {
+    id: 'protocolBuilder.outline.completeStatus',
+    defaultMessage: 'Finished',
+    description:
+      'Spoken state of one section of a stage editor: everything it asks for has been filled in and nothing in it is invalid. Read out after the section’s own name, and never shown on screen.',
+  },
+  switchedOff: {
+    id: 'protocolBuilder.outline.switchedOffStatus',
+    defaultMessage: 'Switched off',
+    description:
+      'Spoken state of one section of a stage editor: the researcher has turned this optional part of the stage off, so it asks for nothing. Read out after the section’s own name, and never shown on screen.',
+  },
+  unavailable: {
+    id: 'protocolBuilder.outline.unavailableStatus',
+    defaultMessage: 'Not available yet',
+    description:
+      'Spoken state of one section of a stage editor: it cannot be filled in until something else in the stage has been chosen. Read out after the section’s own name, and never shown on screen.',
+  },
+}) satisfies Record<SectionOutlineStatus, MessageDescriptor>;
+
+const messages = defineMessages({
+  landmark: {
+    id: 'protocolBuilder.outline.landmarkLabel',
+    defaultMessage: 'Stage sections',
+    description:
+      'Accessible name of the navigation landmark listing the sections of the stage being edited. A stage is one step of an interview.',
+  },
+  statusWithProblems: {
+    id: 'protocolBuilder.outline.statusWithProblems',
+    defaultMessage: '{status}. {problems}',
+    description:
+      'Read out for a section of a stage editor whose only account of what is wrong is here. status is the section’s spoken state ("Has a problem"); problems is one or more whole sentences describing what the protocol refused, already in the reader’s language. Both are complete sentences, so this is only the punctuation that separates them.',
+  },
+});
+
+/**
  * Status is carried by an icon AND by words, never by colour alone: the four
  * states are the difference between "you still have work here" and "this is
  * done", which nobody should have to distinguish by hue.
  */
 const STATUS_PRESENTATION: Record<
   SectionOutlineStatus,
-  Readonly<{ label: string; icon: typeof Check; className: string }>
+  Readonly<{ label: MessageDescriptor; icon: typeof Check; className: string }>
 > = {
   error: {
-    label: 'Has a problem',
+    label: STATUS_LABELS.error,
     icon: AlertCircle,
     className: 'text-destructive',
   },
   incomplete: {
-    label: 'Not finished',
+    label: STATUS_LABELS.incomplete,
     icon: Circle,
     className: 'text-current/60',
   },
-  complete: { label: 'Finished', icon: Check, className: 'text-success' },
+  complete: {
+    label: STATUS_LABELS.complete,
+    icon: Check,
+    className: 'text-success',
+  },
   switchedOff: {
-    label: 'Switched off',
+    label: STATUS_LABELS.switchedOff,
     icon: MinusCircle,
     className: 'text-current/40',
   },
   unavailable: {
-    label: 'Not available yet',
+    label: STATUS_LABELS.unavailable,
     icon: Lock,
     className: 'text-current/40',
   },
@@ -54,6 +115,7 @@ const STATUS_PRESENTATION: Record<
  * semantics, and nothing that only works at one size.
  */
 export default function SectionOutline() {
+  const intl = useAppIntl();
   const { outline } = useStageEditorForm();
   const sections = useSyncExternalStore(
     outline.subscribe,
@@ -65,7 +127,7 @@ export default function SectionOutline() {
 
   return (
     <nav
-      aria-label="Stage sections"
+      aria-label={intl.formatMessage(messages.landmark)}
       className="@min-[60rem]:sticky @min-[60rem]:top-0 @min-[60rem]:max-h-dvh @min-[60rem]:overflow-y-auto @min-[60rem]:py-14"
     >
       <ol className="flex list-none gap-2 overflow-x-auto p-0 @min-[60rem]:flex-col @min-[60rem]:overflow-visible">
@@ -80,6 +142,7 @@ export default function SectionOutline() {
 }
 
 function SectionOutlineItem({ section }: { section: OutlineSection }) {
+  const intl = useAppIntl();
   const status = useFormStore((state) =>
     sectionOutlineStatus(section, {
       getFieldState: (name) => state.getFieldState(name),
@@ -102,10 +165,24 @@ function SectionOutlineItem({ section }: { section: OutlineSection }) {
   // else on the page can explain the state — a reference to a resource the
   // protocol does not have, a type a collaborator deleted — because then this
   // is the only place it is written down.
+  //
+  // The problems are DECODED here rather than read as they were stored: the
+  // outline store has no reader, so each one arrives as an encoded descriptor
+  // (`schemaProblemSentence`) — or as a plain sentence a host or the protocol
+  // schema wrote, which the same call passes through untouched.
+  const statusLabel = intl.formatMessage(presentation.label);
   const announced =
     status === 'error' && !hasFieldError && section.issues.length > 0
-      ? `${presentation.label}. ${section.issues.join(' ')}`
-      : presentation.label;
+      ? intl.formatMessage(messages.statusWithProblems, {
+          status: statusLabel,
+          // Joined with a space rather than through `formatList`: these are
+          // whole sentences in sequence, not the members of a list, and "a, b
+          // and c" would read them as one thing that is three ways wrong.
+          problems: section.issues
+            .map((issue) => formatMessageError(issue, intl) ?? issue)
+            .join(' '),
+        })
+      : statusLabel;
 
   return (
     <button

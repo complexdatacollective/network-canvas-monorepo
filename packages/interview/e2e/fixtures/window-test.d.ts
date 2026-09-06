@@ -24,6 +24,7 @@ declare global {
       rejectManualFinish(message: string): void;
       getFinishCalls(): { interviewId: string; aborted: boolean }[];
       setAllowStageNavigation(enabled: boolean): void;
+      setRequestedLocale(locale: string | readonly string[] | null): void;
     };
     __e2eMap?: {
       getSource(id: string): unknown;

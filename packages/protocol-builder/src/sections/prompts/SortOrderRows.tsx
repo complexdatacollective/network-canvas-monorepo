@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Section from '@codaco/fresco-ui/Section';
 
 import {
@@ -95,13 +96,14 @@ export default function SortOrderRows({
    * a collaborator's stage unopenable), so every family that holds a sort
    * order inherits the same dangling reference and the same two ways out.
    */
+  const intl = useAppIntl();
   const orphans = useMemo(
-    () => orphanedSortProperties(committedRules, properties),
-    [committedRules, properties],
+    () => orphanedSortProperties(committedRules, properties, intl),
+    [committedRules, intl, properties],
   );
   const options = useMemo(
-    () => getSortOrderOptionGetter([...(properties ?? []), ...orphans]),
-    [orphans, properties],
+    () => getSortOrderOptionGetter([...(properties ?? []), ...orphans], intl),
+    [intl, orphans, properties],
   );
   /**
    * The rule that can actually refuse the save. A row's own cells only display

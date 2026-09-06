@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 
+import { AppMessage } from '@codaco/app-i18n/react';
 import RichSelectGroupField, {
   type RichSelectOption,
 } from '@codaco/fresco-ui/form/fields/RichSelectGroup';
@@ -51,6 +52,7 @@ import {
   isDyadCensusMetadata,
   matchEntry,
 } from '../DyadCensus/helpers';
+import { interfaceMessages } from '../messages';
 import IntroPanel from '../SlidesForm/IntroPanel';
 import { getTieStrengthHasEdge } from './helpers';
 
@@ -220,7 +222,9 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
         isMet: isIntroduction || hasEdge !== null,
         kind: 'comparison_response_required',
         toast: {
-          description: 'Please select a response before continuing.',
+          description: (
+            <AppMessage message={interfaceMessages.selectResponse} />
+          ),
           variant: 'destructive',
           anchor: 'forward',
         },

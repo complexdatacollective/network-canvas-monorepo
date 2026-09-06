@@ -21,7 +21,9 @@ import { orpc } from './api.ts';
  * stale. It is deliberately not a boot snapshot baked into the client — one
  * bundle is served by both topologies, so the answer cannot be compiled in.
  */
-const statusQueryOptions = orpc.status.queryOptions({ staleTime: Infinity });
+export const statusQueryOptions = orpc.status.queryOptions({
+  staleTime: Infinity,
+});
 
 /**
  * Which of the two topologies this deployment serves (§10.4), for a

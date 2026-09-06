@@ -6,6 +6,9 @@ import {
   useMemo,
 } from 'react';
 
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import type { IntlShape } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -96,17 +99,329 @@ const NEW_VARIABLE_NAME = '_newVariableName';
 const NEW_VARIABLE_TYPE = '_newVariableType';
 const INPUT_CONTROL = '_component';
 
-const AT_LEAST_ONE_FIELD =
-  'Add at least one field. A form with no fields collects nothing.';
+const messages = defineMessages({
+  atLeastOne: {
+    id: 'protocolBuilder.formFields.atLeastOne',
+    defaultMessage:
+      'Add at least one field. A form with no fields collects nothing.',
+    description:
+      'Refusal shown above a form’s list of fields when a researcher saves a form that asks nothing. A field is one question bound to one attribute of a network member.',
+  },
+  incompleteField: {
+    id: 'protocolBuilder.formFields.incompleteField',
+    defaultMessage:
+      'Every field needs both an attribute and a question. Open the incomplete field and finish it.',
+    description:
+      'Refusal shown above a form’s list of fields when one of them names no attribute, or asks no question.',
+  },
+  duplicateField: {
+    id: 'protocolBuilder.formFields.duplicateField',
+    defaultMessage:
+      'Two fields collect the same attribute. Each attribute may be collected once per form.',
+    description:
+      'Refusal shown above a form’s list of fields when two of them record their answers under the same attribute, which would leave only one of the answers.',
+  },
+  createWithValuesFirst: {
+    id: 'protocolBuilder.formFields.createWithValuesFirst',
+    defaultMessage:
+      'Create this attribute and the values it offers before adding the field that collects it.',
+    description:
+      'Refusal shown under the kind-of-answer control when a researcher tries to invent an attribute whose answers come from a list, which cannot be made from a name and a kind alone.',
+  },
+  scopeMissing: {
+    id: 'protocolBuilder.formFields.scopeMissing',
+    defaultMessage:
+      'Choose what this stage works with before adding fields to its form.',
+    description:
+      'Shown inside the field editor when the researcher has not yet chosen which node or edge type the stage (one step of an interview) is about, so there is no codebook to draw attributes from.',
+  },
+  title: {
+    id: 'protocolBuilder.formFields.title',
+    defaultMessage: 'Form fields',
+    description:
+      'Heading of the section holding the questions a form asks and the attributes each answer is recorded under.',
+  },
+  description: {
+    id: 'protocolBuilder.formFields.description',
+    defaultMessage:
+      'Choose the attributes this form collects, and write the question the participant answers for each.',
+    description: 'Description of the form-fields section.',
+  },
+  waitingDescription: {
+    id: 'protocolBuilder.formFields.waitingDescription',
+    defaultMessage:
+      'Choose what this stage works with before writing its form.',
+    description:
+      'Shown in place of the form-fields section’s description while the researcher has not yet chosen which node or edge type the stage is about.',
+  },
+  formTitleLabel: {
+    id: 'protocolBuilder.formFields.formTitleLabel',
+    defaultMessage: 'Form title',
+    description:
+      'Label of the field holding the heading shown above the form a participant fills in.',
+  },
+  formTitleHint: {
+    id: 'protocolBuilder.formFields.formTitleHint',
+    defaultMessage:
+      'Shown above the form. Use a short phrase describing what it collects, such as "Add a person".',
+    description:
+      'Guidance under the form-title field. The quoted phrase is an example a researcher might write, and should be translated as such.',
+  },
+  formTitlePlaceholder: {
+    id: 'protocolBuilder.formFields.formTitlePlaceholder',
+    defaultMessage: 'Add a person',
+    description:
+      'Example form title shown in the empty field. An example a researcher might write, not a value that is stored.',
+  },
+  formTitleRequired: {
+    id: 'protocolBuilder.formFields.formTitleRequired',
+    defaultMessage: 'Give this form a title.',
+    description:
+      'Refusal shown under the form-title field when it has been left empty.',
+  },
+  fieldLabel: {
+    id: 'protocolBuilder.formFields.fieldLabel',
+    defaultMessage: 'Fields',
+    description: 'Label of the ordered list of questions a form asks.',
+  },
+  fieldHint: {
+    id: 'protocolBuilder.formFields.fieldHint',
+    defaultMessage:
+      'The participant answers these one after another, in this order. Add at least one.',
+    description: 'Guidance under the list of form fields.',
+  },
+  addLabel: {
+    id: 'protocolBuilder.formFields.addLabel',
+    defaultMessage: 'Create new form field',
+    description:
+      'Button that opens the dialog for adding one more question to a form. Whole rather than a generic "Add", because a stage editor shows several lists at once.',
+  },
+  addTitle: {
+    id: 'protocolBuilder.formFields.addTitle',
+    defaultMessage: 'Create form field',
+    description:
+      'Title of the dialog a researcher fills in to add one more question to a form.',
+  },
+  editTitle: {
+    id: 'protocolBuilder.formFields.editTitle',
+    defaultMessage: 'Edit form field',
+    description:
+      'Title of the dialog a researcher fills in to change a question a form already asks.',
+  },
+  itemNoun: {
+    id: 'protocolBuilder.formFields.itemNoun',
+    defaultMessage: 'field',
+    description:
+      'What one row of a form’s list of questions is called inside things said ABOUT it — "Edit field", "Remove this field?" — so it is lower case and singular.',
+  },
+  emptyState: {
+    id: 'protocolBuilder.formFields.emptyState',
+    defaultMessage: 'No fields yet. Create one to say what this form collects.',
+    description:
+      'Shown in place of the list of form fields while a form asks nothing yet.',
+  },
+  attributeSectionTitle: {
+    id: 'protocolBuilder.formFields.attributeSectionTitle',
+    defaultMessage: 'Attribute',
+    description:
+      'Heading of the half of the field dialog that says which attribute this question’s answer is recorded under.',
+  },
+  attributeSectionDescription: {
+    id: 'protocolBuilder.formFields.attributeSectionDescription',
+    defaultMessage:
+      'Choose the attribute this field collects, or create one for it.',
+    description: 'Description under the Attribute heading.',
+  },
+  questionSectionTitle: {
+    id: 'protocolBuilder.formFields.questionSectionTitle',
+    defaultMessage: 'Question',
+    description:
+      'Heading of the half of the field dialog that says what the participant is asked.',
+  },
+  questionSectionDescription: {
+    id: 'protocolBuilder.formFields.questionSectionDescription',
+    defaultMessage:
+      'Write what the participant is asked, and how much help they are given.',
+    description: 'Description under the Question heading.',
+  },
+  newTypeLabel: {
+    id: 'protocolBuilder.formFields.newTypeLabel',
+    defaultMessage: 'Kind of answer',
+    description:
+      'Label of the control choosing what sort of value a new attribute holds — text, a number, a date, a choice from a list.',
+  },
+  newTypeHint: {
+    id: 'protocolBuilder.formFields.newTypeHint',
+    defaultMessage:
+      'What this attribute holds. It cannot be changed once answers have been collected.',
+    description: 'Guidance under the kind-of-answer control.',
+  },
+  newTypeRequired: {
+    id: 'protocolBuilder.formFields.newTypeRequired',
+    defaultMessage: 'Choose what kind of answer this attribute holds.',
+    description:
+      'Refusal shown under the kind-of-answer control when nothing has been chosen.',
+  },
+  newNameLabel: {
+    id: 'protocolBuilder.formFields.newNameLabel',
+    defaultMessage: 'Attribute name',
+    description:
+      'Label of the field naming an attribute the researcher is inventing.',
+  },
+  newNameHint: {
+    id: 'protocolBuilder.formFields.newNameHint',
+    defaultMessage:
+      'How this attribute is named in the codebook and in exported data.',
+    description:
+      'Guidance under the new-attribute name field. The codebook is the protocol’s definition of what an interview records; exported data is the file a researcher analyses afterwards.',
+  },
+  newNamePlaceholder: {
+    id: 'protocolBuilder.formFields.newNamePlaceholder',
+    defaultMessage: 'Nickname',
+    description:
+      'Example attribute name shown in the empty field. An example a researcher might write, not a value that is stored.',
+  },
+  newNameRequired: {
+    id: 'protocolBuilder.formFields.newNameRequired',
+    defaultMessage: 'Name the attribute this field collects.',
+    description:
+      'Refusal shown under the new-attribute name field when it has been left empty.',
+  },
+  promptLabel: {
+    id: 'protocolBuilder.formFields.promptLabel',
+    defaultMessage: 'Question text',
+    description:
+      'Label of the field holding what the participant is asked for this one answer.',
+  },
+  promptHint: {
+    id: 'protocolBuilder.formFields.promptHint',
+    defaultMessage:
+      'Shown to the participant above the control. Supports markdown formatting.',
+    description:
+      'Guidance under the question-text field. Markdown is the name of the formatting syntax and is not translated.',
+  },
+  promptPlaceholder: {
+    id: 'protocolBuilder.formFields.promptPlaceholder',
+    defaultMessage: 'What is this person\u2019s name?',
+    description:
+      'Example question shown in the empty question-text field. An example a researcher might write, not a value that is stored.',
+  },
+  promptRequired: {
+    id: 'protocolBuilder.formFields.promptRequired',
+    defaultMessage: 'Write the question this field asks.',
+    description:
+      'Refusal shown under the question-text field when it has been left empty.',
+  },
+  hintLabel: {
+    id: 'protocolBuilder.formFields.hintLabel',
+    defaultMessage: 'Hint text',
+    description:
+      'Label of the optional field holding extra guidance shown to the participant under the question.',
+  },
+  hintHint: {
+    id: 'protocolBuilder.formFields.hintHint',
+    defaultMessage:
+      'Optional guidance shown below the question, for a field participants may find ambiguous.',
+    description: 'Guidance under the hint-text field.',
+  },
+  hintPlaceholder: {
+    id: 'protocolBuilder.formFields.hintPlaceholder',
+    defaultMessage: 'Select all that apply',
+    description:
+      'Example hint shown in the empty hint-text field. An example a researcher might write, not a value that is stored.',
+  },
+  validationHintsLabel: {
+    id: 'protocolBuilder.formFields.validationHintsLabel',
+    defaultMessage: 'Show validation hints',
+    description:
+      'Label of the switch that tells the participant what a valid answer to this question looks like.',
+  },
+  validationHintsHint: {
+    id: 'protocolBuilder.formFields.validationHintsHint',
+    defaultMessage:
+      'Tells the participant what a valid answer looks like, derived from the attribute’s own rules.',
+    description: 'Guidance under the validation-hints switch.',
+  },
+  componentLabel: {
+    id: 'protocolBuilder.formFields.componentLabel',
+    defaultMessage: 'Input control',
+    description:
+      'Label of the control choosing what the participant uses to answer — a text box, a slider, a set of buttons.',
+  },
+  componentHint: {
+    id: 'protocolBuilder.formFields.componentHint',
+    defaultMessage:
+      'What the participant uses to answer. Changing it changes how this attribute is collected everywhere.',
+    description:
+      'Guidance under the input-control field, warning that the control belongs to the attribute rather than to this one question.',
+  },
+  componentRequired: {
+    id: 'protocolBuilder.formFields.componentRequired',
+    defaultMessage: 'Choose how the participant answers this field.',
+    description:
+      'Refusal shown under the input-control field when nothing has been chosen.',
+  },
+  createNewOption: {
+    id: 'protocolBuilder.formFields.createNewOption',
+    defaultMessage: 'Create a new attribute…',
+    description:
+      'The last choice in the attribute list, which stands for an attribute that does not exist yet and asks the researcher to name one. The trailing character is an ellipsis.',
+  },
+  attributeLabel: {
+    id: 'protocolBuilder.formFields.attributeLabel',
+    defaultMessage: 'Attribute',
+    description:
+      'Label of the control choosing which attribute this question’s answer is recorded under. The same word as the section heading above it, and translated once for each.',
+  },
+  attributeHint: {
+    id: 'protocolBuilder.formFields.attributeHint',
+    defaultMessage: 'The codebook attribute this field’s answer is stored in.',
+    description:
+      'Guidance under the attribute control. The codebook is the protocol’s definition of what an interview records.',
+  },
+  attributeEmpty: {
+    id: 'protocolBuilder.formFields.attributeEmpty',
+    defaultMessage:
+      'Every attribute of this type is already collected or written elsewhere. Create a new one instead.',
+    description:
+      'Shown in place of the attribute list when every attribute of this node or edge type is either already collected by another field of the same form, or written somewhere the protocol will not let a form field also write.',
+  },
+  attributeRequired: {
+    id: 'protocolBuilder.formFields.attributeRequired',
+    defaultMessage: 'Choose the attribute this field collects.',
+    description:
+      'Refusal shown under the attribute control when nothing has been chosen.',
+  },
+  attributeTaken: {
+    id: 'protocolBuilder.formFields.attributeTaken',
+    defaultMessage:
+      'Another field in this form already collects this attribute. Choose a different one, or edit that field instead.',
+    description:
+      'Refusal shown under the attribute control when a sibling field of the same form already records its answer under the attribute just chosen.',
+  },
+  previewMissing: {
+    id: 'protocolBuilder.formFields.previewMissing',
+    defaultMessage: 'This attribute is no longer in the codebook.',
+    description:
+      'Shown in the collapsed row of a form’s list of questions when the attribute it records into has been deleted from the codebook.',
+  },
+  previewCollects: {
+    id: 'protocolBuilder.formFields.previewCollects',
+    defaultMessage: 'Collects "{name}" as {type}.',
+    description:
+      'Shown in the collapsed row of a form’s list of questions, saying which attribute it records into and what kind of value that holds. name is the attribute’s researcher-facing name; type is a schema token such as text, number or ordinal, which is not translated.',
+  },
+});
 
-const INCOMPLETE_FIELD =
-  'Every field needs both an attribute and a question. Open the incomplete field and finish it.';
+const AT_LEAST_ONE_FIELD = createMessageError(messages.atLeastOne);
 
-const DUPLICATE_FIELD =
-  'Two fields collect the same attribute. Each attribute may be collected once per form.';
+const INCOMPLETE_FIELD = createMessageError(messages.incompleteField);
 
-const CREATE_WITH_VALUES_FIRST =
-  'Create this attribute and the values it offers before adding the field that collects it.';
+const DUPLICATE_FIELD = createMessageError(messages.duplicateField);
+
+const CREATE_WITH_VALUES_FIRST = createMessageError(
+  messages.createWithValuesFirst,
+);
 
 /** Stable identity: `options` is a memo dependency of the picker below. */
 const NO_OPTIONS: VariablePickerOption[] = [];
@@ -220,37 +535,6 @@ function useFormFieldsScope(): FormFieldsScope {
   return scope;
 }
 
-export type FormFieldsCopy = Readonly<{
-  /** Names the section in the outline and to assistive technology. */
-  sectionTitle: string;
-  description: string;
-  /** Said instead of `description` while the section is waiting on a subject. */
-  waitingDescription: string;
-  titleLabel: string;
-  titleHint: string;
-  fieldLabel: string;
-  fieldHint: string;
-  addButtonLabel: string;
-  emptyStateMessage: string;
-}>;
-
-const DEFAULT_COPY: FormFieldsCopy = {
-  sectionTitle: 'Form fields',
-  description:
-    'Choose the attributes this form collects, and write the question the participant answers for each.',
-  waitingDescription:
-    'Choose what this stage works with before writing its form.',
-  titleLabel: 'Form title',
-  titleHint:
-    'Shown above the form. Use a short phrase describing what it collects, such as "Add a person".',
-  fieldLabel: 'Fields',
-  fieldHint:
-    'The participant answers these one after another, in this order. Add at least one.',
-  addButtonLabel: 'Create new form field',
-  emptyStateMessage:
-    'No fields yet. Create one to say what this form collects.',
-};
-
 export type FormFieldsSectionProps = Readonly<{
   /** Whose codebook these fields collect into. */
   subject: SubjectEntity;
@@ -303,7 +587,6 @@ export type FormFieldsSectionProps = Readonly<{
    * stable array — a fresh one each render re-registers the list's validator.
    */
   draftUnvalidatedVariables?: readonly string[];
-  copy?: Partial<FormFieldsCopy>;
 }>;
 
 /**
@@ -329,9 +612,8 @@ export default function FormFieldsSection({
   capability,
   hasTitle = false,
   draftUnvalidatedVariables = NO_DRAFT_UNVALIDATED,
-  copy,
 }: FormFieldsSectionProps) {
-  const words = { ...DEFAULT_COPY, ...copy };
+  const intl = useAppIntl();
   const codebookSubject = useStageSubject(subject, subjectTypePath);
   const waiting = codebookSubject === undefined;
   const { editorFieldsComponent, previewComponent } = useRowRenderers(
@@ -342,11 +624,12 @@ export default function FormFieldsSection({
     () => new Set(draftUnvalidatedVariables),
     [draftUnvalidatedVariables],
   );
-  const onBeforeSave = useCommitFormField(codebookSubject);
+  const onBeforeSave = useCommitFormField(codebookSubject, intl);
   const editorValidate = useFormFieldValidate(
     codebookSubject,
     fieldsPath,
     draftUnvalidated,
+    intl,
   );
   const scope = useMemo(
     () => ({ fieldsPath, subject: codebookSubject, draftUnvalidated }),
@@ -355,8 +638,10 @@ export default function FormFieldsSection({
 
   return (
     <BuilderSection
-      title={words.sectionTitle}
-      description={waiting ? words.waitingDescription : words.description}
+      title={intl.formatMessage(messages.title)}
+      description={intl.formatMessage(
+        waiting ? messages.waitingDescription : messages.description,
+      )}
       disabled={waiting}
       {...(capability === undefined ? {} : { capability })}
     >
@@ -364,23 +649,23 @@ export default function FormFieldsSection({
         <ProtocolField<typeof InputField>
           name={TITLE}
           component={InputField}
-          label={words.titleLabel}
-          hint={words.titleHint}
-          placeholder="Add a person"
-          required="Give this form a title."
+          label={intl.formatMessage(messages.formTitleLabel)}
+          hint={intl.formatMessage(messages.formTitleHint)}
+          placeholder={intl.formatMessage(messages.formTitlePlaceholder)}
+          required={intl.formatMessage(messages.formTitleRequired)}
         />
       )}
       <FormFieldsScopeContext value={scope}>
         <ProtocolArrayField<typeof DialogArrayField>
           name={fieldsPath}
-          label={words.fieldLabel}
-          hint={words.fieldHint}
+          label={intl.formatMessage(messages.fieldLabel)}
+          hint={intl.formatMessage(messages.fieldHint)}
           component={DialogArrayField}
-          addButtonLabel={words.addButtonLabel}
-          addTitle="Create form field"
-          editorTitle="Edit form field"
-          itemLabel="field"
-          emptyStateMessage={words.emptyStateMessage}
+          addButtonLabel={intl.formatMessage(messages.addLabel)}
+          addTitle={intl.formatMessage(messages.addTitle)}
+          editorTitle={intl.formatMessage(messages.editTitle)}
+          itemLabel={messages.itemNoun}
+          emptyStateMessage={intl.formatMessage(messages.emptyState)}
           editorFieldsComponent={editorFieldsComponent}
           previewComponent={previewComponent}
           editorDialogSize="editor"
@@ -435,6 +720,7 @@ function normalizeFormField(value: unknown): unknown {
  */
 function useCommitFormField(
   codebookSubject: CodebookSubject | undefined,
+  intl: IntlShape,
 ): (value: unknown) => Promise<unknown> {
   const createVariable = useCreateCodebookVariable(codebookSubject);
   const setComponent = useSetVariableComponent(codebookSubject);
@@ -460,7 +746,7 @@ function useCommitFormField(
         return {
           success: false,
           fieldErrors: {
-            [INPUT_CONTROL]: 'Choose how the participant answers this field.',
+            [INPUT_CONTROL]: intl.formatMessage(messages.componentRequired),
           },
         };
       }
@@ -483,10 +769,10 @@ function useCommitFormField(
           success: false,
           fieldErrors: {
             [NEW_VARIABLE_NAME]:
-              name === '' ? 'Name the attribute this field collects.' : '',
+              name === '' ? intl.formatMessage(messages.newNameRequired) : '',
             [NEW_VARIABLE_TYPE]: isCollectableType(type)
               ? ''
-              : 'Choose what kind of answer this attribute holds.',
+              : intl.formatMessage(messages.newTypeRequired),
           },
         };
       }
@@ -499,7 +785,7 @@ function useCommitFormField(
           }
         : { ...value, variable: outcome.variableId };
     },
-    [createVariable, setComponent],
+    [createVariable, intl, setComponent],
   );
 }
 
@@ -518,6 +804,7 @@ function useFormFieldValidate(
   codebookSubject: CodebookSubject | undefined,
   fieldsPath: string,
   draftUnvalidated: ReadonlySet<string>,
+  intl: IntlShape,
 ) {
   const { protocolContext } = useStageEditorForm();
   const fields = useStageValue(fieldsPath);
@@ -576,10 +863,7 @@ function useFormFieldValidate(
         variable !== NEW_VARIABLE &&
         siblings.some((row) => row.variable === variable)
       ) {
-        return {
-          variable:
-            'Another field in this form already collects this attribute. Choose a different one, or edit that field instead.',
-        };
+        return { variable: intl.formatMessage(messages.attributeTaken) };
       }
       // Two refusals this deliberately does NOT make.
       //
@@ -604,7 +888,7 @@ function useFormFieldValidate(
         ? undefined
         : { variable: issues.variable };
     };
-  }, [allVariables, codebookSubject, draftUnvalidated, fields, roleMap]);
+  }, [allVariables, codebookSubject, draftUnvalidated, fields, intl, roleMap]);
 }
 
 /**
@@ -664,6 +948,7 @@ function hasUnvalidatedUseFor(
  * saves, and no cell of it is ever registered on the stage.
  */
 function FormFieldEditor({ item, editIndex }: RowEditorProps) {
+  const intl = useAppIntl();
   const { subject } = useFormFieldsScope();
   const inventing = useInventingAttribute(item);
   const newType = asString(useRowValue(NEW_VARIABLE_TYPE)) ?? '';
@@ -675,8 +960,8 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
   return (
     <>
       <Section
-        title="Attribute"
-        description="Choose the attribute this field collects, or create one for it."
+        title={intl.formatMessage(messages.attributeSectionTitle)}
+        description={intl.formatMessage(messages.attributeSectionDescription)}
       >
         <AttributePicker item={item} editIndex={editIndex} />
         {inventing && (
@@ -685,22 +970,22 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
           <Field<typeof SelectControl>
             name={NEW_VARIABLE_TYPE}
             component={SelectControl}
-            label="Kind of answer"
-            hint="What this attribute holds. It cannot be changed once answers have been collected."
+            label={intl.formatMessage(messages.newTypeLabel)}
+            hint={intl.formatMessage(messages.newTypeHint)}
             options={TYPE_OPTIONS}
             initialValue={asString(item[NEW_VARIABLE_TYPE]) ?? ''}
-            required="Choose what kind of answer this attribute holds."
+            required={intl.formatMessage(messages.newTypeRequired)}
           />
         )}
         {inventing && !inventingWithValues && (
           <Field<typeof InputField>
             name={NEW_VARIABLE_NAME}
             component={InputField}
-            label="Attribute name"
-            hint="How this attribute is named in the codebook and in exported data."
-            placeholder="Nickname"
+            label={intl.formatMessage(messages.newNameLabel)}
+            hint={intl.formatMessage(messages.newNameHint)}
+            placeholder={intl.formatMessage(messages.newNamePlaceholder)}
             initialValue={asString(item[NEW_VARIABLE_NAME]) ?? ''}
-            required="Name the attribute this field collects."
+            required={intl.formatMessage(messages.newNameRequired)}
           />
         )}
         {/* The input control belongs to an attribute that exists. While one
@@ -715,38 +1000,38 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
         />
         {subject === undefined && (
           <p className="text-sm text-current/70">
-            Choose what this stage works with before adding fields to its form.
+            {intl.formatMessage(messages.scopeMissing)}
           </p>
         )}
       </Section>
       <Section
-        title="Question"
-        description="Write what the participant is asked, and how much help they are given."
+        title={intl.formatMessage(messages.questionSectionTitle)}
+        description={intl.formatMessage(messages.questionSectionDescription)}
       >
         <Field<typeof RichTextField>
           name="prompt"
           component={RichTextField}
-          label="Question text"
-          hint="Shown to the participant above the control. Supports markdown formatting."
-          placeholder="What is this person's name?"
+          label={intl.formatMessage(messages.promptLabel)}
+          hint={intl.formatMessage(messages.promptHint)}
+          placeholder={intl.formatMessage(messages.promptPlaceholder)}
           singleLine
           initialValue={asString(item.prompt)}
-          required="Write the question this field asks."
+          required={intl.formatMessage(messages.promptRequired)}
         />
         <Field<typeof RichTextField>
           name="hint"
           component={RichTextField}
-          label="Hint text"
-          hint="Optional guidance shown below the question, for a field participants may find ambiguous."
-          placeholder="Select all that apply"
+          label={intl.formatMessage(messages.hintLabel)}
+          hint={intl.formatMessage(messages.hintHint)}
+          placeholder={intl.formatMessage(messages.hintPlaceholder)}
           singleLine
           initialValue={asString(item.hint)}
         />
         <Field<typeof ToggleField>
           name="showValidationHints"
           component={ToggleField}
-          label="Show validation hints"
-          hint="Tells the participant what a valid answer looks like, derived from the attribute's own rules."
+          label={intl.formatMessage(messages.validationHintsLabel)}
+          hint={intl.formatMessage(messages.validationHintsHint)}
           inline
           initialValue={item.showValidationHints === true}
         />
@@ -768,6 +1053,7 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
 function InputControlField({
   item,
 }: Readonly<{ item: RowEditorProps['item'] }>) {
+  const intl = useAppIntl();
   const { protocolContext } = useStageEditorForm();
   const { subject } = useFormFieldsScope();
   const chosen = asString(useRowValue('variable') ?? item.variable) ?? '';
@@ -796,11 +1082,11 @@ function InputControlField({
     <Field<typeof SelectControl>
       name={INPUT_CONTROL}
       component={SelectControl}
-      label="Input control"
-      hint="What the participant uses to answer. Changing it changes how this attribute is collected everywhere."
+      label={intl.formatMessage(messages.componentLabel)}
+      hint={intl.formatMessage(messages.componentHint)}
       options={options}
       initialValue={committed ?? options[0]?.value ?? ''}
-      required="Choose how the participant answers this field."
+      required={intl.formatMessage(messages.componentRequired)}
     />
   );
 }
@@ -818,6 +1104,7 @@ function AttributePicker({
   item,
   editIndex,
 }: Readonly<{ item: RowEditorProps['item']; editIndex?: number }>) {
+  const intl = useAppIntl();
   const { protocolContext } = useStageEditorForm();
   const { fieldsPath, subject, draftUnvalidated } = useFormFieldsScope();
   const fields = useStageValue(fieldsPath);
@@ -853,13 +1140,17 @@ function AttributePicker({
           // is about to refuse.
           (!siblings.has(value) && !draftUnvalidated.has(value)),
       ),
-      { value: NEW_VARIABLE, label: 'Create a new attribute…' },
+      {
+        value: NEW_VARIABLE,
+        label: intl.formatMessage(messages.createNewOption),
+      },
     ];
   }, [
     committed,
     draftUnvalidated,
     editIndex,
     fields,
+    intl,
     protocolContext,
     roleMap,
     subject,
@@ -869,18 +1160,19 @@ function AttributePicker({
     <Field<typeof VariablePicker>
       name="variable"
       component={VariablePicker}
-      label="Attribute"
-      hint="The codebook attribute this field's answer is stored in."
+      label={intl.formatMessage(messages.attributeLabel)}
+      hint={intl.formatMessage(messages.attributeHint)}
       options={options}
-      emptyMessage="Every attribute of this type is already collected or written elsewhere. Create a new one instead."
+      emptyMessage={intl.formatMessage(messages.attributeEmpty)}
       initialValue={committed}
-      required="Choose the attribute this field collects."
+      required={intl.formatMessage(messages.attributeRequired)}
     />
   );
 }
 
 /** How one field reads in the list when its dialog is closed. */
 function FormFieldPreview({ item }: RowPreviewProps) {
+  const intl = useAppIntl();
   const { protocolContext } = useStageEditorForm();
   const { subject } = useFormFieldsScope();
   const variableId = asString(item.variable) ?? '';
@@ -897,8 +1189,11 @@ function FormFieldPreview({ item }: RowPreviewProps) {
       <div>
         <Badge>
           {variable === undefined
-            ? 'This attribute is no longer in the codebook.'
-            : `Collects "${variable.name}" as ${variable.type}.`}
+            ? intl.formatMessage(messages.previewMissing)
+            : intl.formatMessage(messages.previewCollects, {
+                name: variable.name,
+                type: variable.type,
+              })}
         </Badge>
       </div>
     </div>

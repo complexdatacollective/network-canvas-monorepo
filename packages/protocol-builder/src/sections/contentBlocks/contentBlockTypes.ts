@@ -1,4 +1,84 @@
+import { defineMessages } from '@codaco/app-i18n/messages';
+import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import type { StageType } from '@codaco/protocol-validation';
+
+const messages = defineMessages({
+  kindImage: {
+    id: 'protocolBuilder.contentBlock.kindImage',
+    defaultMessage: 'Image',
+    description:
+      'Choice offered for what one piece of a page holds: a picture.',
+  },
+  kindVideo: {
+    id: 'protocolBuilder.contentBlock.kindVideo',
+    defaultMessage: 'Video',
+    description: 'Choice offered for what one piece of a page holds: a video.',
+  },
+  kindAudio: {
+    id: 'protocolBuilder.contentBlock.kindAudio',
+    defaultMessage: 'Audio',
+    description:
+      'Choice offered for what one piece of a page holds: an audio recording.',
+  },
+  kindText: {
+    id: 'protocolBuilder.contentBlock.kindText',
+    defaultMessage: 'Text',
+    description:
+      'Choice offered for what one piece of a page holds: prose the participant reads.',
+  },
+  sizeFull: {
+    id: 'protocolBuilder.contentBlock.sizeFull',
+    defaultMessage: 'Full size',
+    description:
+      'Choice offered for how tall a picture or video on a page is drawn: however tall it naturally is, unconstrained.',
+  },
+  sizeSmall: {
+    id: 'protocolBuilder.contentBlock.sizeSmall',
+    defaultMessage: 'Small',
+    description:
+      'Choice offered for how tall a picture or video on a page is drawn.',
+  },
+  sizeMedium: {
+    id: 'protocolBuilder.contentBlock.sizeMedium',
+    defaultMessage: 'Medium',
+    description:
+      'Choice offered for how tall a picture or video on a page is drawn.',
+  },
+  sizeLarge: {
+    id: 'protocolBuilder.contentBlock.sizeLarge',
+    defaultMessage: 'Large',
+    description:
+      'Choice offered for how tall a picture or video on a page is drawn.',
+  },
+  kindChosen: {
+    id: 'protocolBuilder.contentBlock.kindChosen',
+    defaultMessage:
+      'Content type set to {kind}. A content field for it has been added below.',
+    description:
+      'Announcement made when a researcher first says what kind of thing one piece of a page holds, which mounts a control for it. kind is that choice — Image, Video, Audio, Text — already in the reader’s language.',
+  },
+  kindChangedRestored: {
+    id: 'protocolBuilder.contentBlock.kindChangedRestored',
+    defaultMessage:
+      'Content type changed to {kind}. The content you entered for {kind} earlier has been restored.',
+    description:
+      'Announcement made when a researcher changes what kind of thing one piece of a page holds, back to a kind they had already filled in, so their earlier answer comes back. kind is that choice, already in the reader’s language.',
+  },
+  kindChangedKept: {
+    id: 'protocolBuilder.contentBlock.kindChangedKept',
+    defaultMessage:
+      'Content type changed to {kind}. The content you entered for the previous type is kept, and returns if you change back to it.',
+    description:
+      'Announcement made when a researcher changes what kind of thing one piece of a page holds, away from a kind they had filled in, which is kept rather than thrown away. kind is the new choice, already in the reader’s language.',
+  },
+  kindChangedEmpty: {
+    id: 'protocolBuilder.contentBlock.kindChangedEmpty',
+    defaultMessage:
+      'Content type changed to {kind}. Nothing has been entered for {kind} yet.',
+    description:
+      'Announcement made when a researcher changes what kind of thing one piece of a page holds and neither the old nor the new kind has anything in it. kind is the new choice, already in the reader’s language.',
+  },
+});
 
 import type { DialogArrayItemSelector } from '../../form/arrayFields/DialogArrayField.tsx';
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
@@ -43,15 +123,30 @@ export const isContentBlockKind = (value: unknown): value is ContentBlockKind =>
  * translation would carry — and a test pins the announcements below to them,
  * so the two cannot drift.
  */
-export const CONTENT_BLOCK_KIND_OPTIONS: {
-  value: ContentBlockKind;
-  label: string;
-}[] = [
-  { value: 'image', label: 'Image' },
-  { value: 'video', label: 'Video' },
-  { value: 'audio', label: 'Audio' },
-  { value: 'text', label: 'Text' },
-];
+const CONTENT_BLOCK_KIND_LABELS: Readonly<
+  Record<ContentBlockKind, MessageDescriptor>
+> = Object.freeze({
+  image: messages.kindImage,
+  video: messages.kindVideo,
+  audio: messages.kindAudio,
+  text: messages.kindText,
+});
+
+/** The order they are offered in, which the record above does not carry. */
+const CONTENT_BLOCK_KINDS: readonly ContentBlockKind[] = Object.freeze([
+  'image',
+  'video',
+  'audio',
+  'text',
+]);
+
+export const contentBlockKindOptions = (
+  intl: IntlShape,
+): { value: ContentBlockKind; label: string }[] =>
+  CONTENT_BLOCK_KINDS.map((value) => ({
+    value,
+    label: intl.formatMessage(CONTENT_BLOCK_KIND_LABELS[value]),
+  }));
 
 /**
  * The display sizes an asset block may be constrained to.
@@ -60,11 +155,13 @@ export const CONTENT_BLOCK_KIND_OPTIONS: {
  * by the key being absent, and a radio group needs something for the
  * researcher to choose in order to say so.
  */
-export const CONTENT_BLOCK_SIZE_OPTIONS: { value: string; label: string }[] = [
-  { value: '', label: 'Full size' },
-  { value: 'SMALL', label: 'Small' },
-  { value: 'MEDIUM', label: 'Medium' },
-  { value: 'LARGE', label: 'Large' },
+export const contentBlockSizeOptions = (
+  intl: IntlShape,
+): { value: string; label: string }[] => [
+  { value: '', label: intl.formatMessage(messages.sizeFull) },
+  { value: 'SMALL', label: intl.formatMessage(messages.sizeSmall) },
+  { value: 'MEDIUM', label: intl.formatMessage(messages.sizeMedium) },
+  { value: 'LARGE', label: intl.formatMessage(messages.sizeLarge) },
 ];
 
 /** The sizes the schema accepts, so nothing else can ever be written. */
@@ -196,23 +293,28 @@ export function collapseContentBlock(value: unknown): unknown {
  */
 export type ContentDraftOutcome = 'restored' | 'kept' | 'empty';
 
-const kindLabel = (kind: ContentBlockKind): string =>
-  CONTENT_BLOCK_KIND_OPTIONS.find((option) => option.value === kind)?.label ??
-  kind;
+const OUTCOME_MESSAGES: Readonly<
+  Record<ContentDraftOutcome, MessageDescriptor>
+> = Object.freeze({
+  restored: messages.kindChangedRestored,
+  kept: messages.kindChangedKept,
+  empty: messages.kindChangedEmpty,
+});
 
-export const contentKindChosenAnnouncement = (kind: ContentBlockKind): string =>
-  `Content type set to ${kindLabel(kind)}. A content field for it has been added below.`;
+const kindLabel = (kind: ContentBlockKind, intl: IntlShape): string =>
+  intl.formatMessage(CONTENT_BLOCK_KIND_LABELS[kind]);
+
+export const contentKindChosenAnnouncement = (
+  kind: ContentBlockKind,
+  intl: IntlShape,
+): string =>
+  intl.formatMessage(messages.kindChosen, { kind: kindLabel(kind, intl) });
 
 export const contentKindChangedAnnouncement = (
   kind: ContentBlockKind,
   outcome: ContentDraftOutcome,
-): string => {
-  const label = kindLabel(kind);
-  if (outcome === 'restored') {
-    return `Content type changed to ${label}. The content you entered for ${label} earlier has been restored.`;
-  }
-  if (outcome === 'kept') {
-    return `Content type changed to ${label}. The content you entered for the previous type is kept, and returns if you change back to it.`;
-  }
-  return `Content type changed to ${label}. Nothing has been entered for ${label} yet.`;
-};
+  intl: IntlShape,
+): string =>
+  intl.formatMessage(OUTCOME_MESSAGES[outcome], {
+    kind: kindLabel(kind, intl),
+  });

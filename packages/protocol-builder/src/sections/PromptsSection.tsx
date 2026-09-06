@@ -1,3 +1,5 @@
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 
 import { withoutAbsentValues } from '../form/absentValues.ts';
@@ -17,8 +19,80 @@ import {
 /** Every interface that asks questions keeps them here. */
 const PROMPTS_FIELD = 'prompts';
 
-const AT_LEAST_ONE_PROMPT =
-  'Create at least one prompt. A stage with no prompts asks the participant nothing.';
+const messages = defineMessages({
+  atLeastOne: {
+    id: 'protocolBuilder.promptsSection.atLeastOne',
+    defaultMessage:
+      'Create at least one prompt. A stage with no prompts asks the participant nothing.',
+    description:
+      'Refusal shown above the prompt list when a researcher saves a stage that asks nothing. A prompt is one question a participant is asked; a stage is one step of an interview.',
+  },
+  title: {
+    id: 'protocolBuilder.promptsSection.title',
+    defaultMessage: 'Prompts',
+    description:
+      'Heading of the section holding the questions this step of the interview asks the participant.',
+  },
+  description: {
+    id: 'protocolBuilder.promptsSection.description',
+    defaultMessage:
+      'Write the questions this stage asks, and drag them into the order the participant answers them.',
+    description:
+      'Description of the prompts section. A stage is one step of an interview.',
+  },
+  waitingDescription: {
+    id: 'protocolBuilder.promptsSection.waitingDescription',
+    defaultMessage:
+      'Choose what this stage works with before writing its prompts.',
+    description:
+      'Shown in place of the prompts section’s description while the researcher has not yet chosen which node or edge type the stage is about, so there is nothing for a prompt to be written against.',
+  },
+  fieldLabel: {
+    id: 'protocolBuilder.promptsSection.fieldLabel',
+    defaultMessage: 'Prompts',
+    description:
+      'Label of the list of questions inside the prompts section. The same word as the section heading, and translated once for each: the heading names the part of the stage, and this names the control.',
+  },
+  fieldHint: {
+    id: 'protocolBuilder.promptsSection.fieldHint',
+    defaultMessage:
+      'The participant answers these one at a time, in this order. Add at least one.',
+    description: 'Guidance under the list of prompts.',
+  },
+  addLabel: {
+    id: 'protocolBuilder.promptsSection.addLabel',
+    defaultMessage: 'Create new prompt',
+    description:
+      'Button that opens the dialog for writing one more question. Whole rather than a generic "Add", because a stage editor shows several lists at once and they would otherwise be indistinguishable to anyone navigating by a list of buttons.',
+  },
+  addTitle: {
+    id: 'protocolBuilder.promptsSection.addTitle',
+    defaultMessage: 'Create prompt',
+    description:
+      'Title of the dialog a researcher fills in to write one more question.',
+  },
+  editTitle: {
+    id: 'protocolBuilder.promptsSection.editTitle',
+    defaultMessage: 'Edit prompt',
+    description:
+      'Title of the dialog a researcher fills in to change a question they have already written.',
+  },
+  itemNoun: {
+    id: 'protocolBuilder.promptsSection.itemNoun',
+    defaultMessage: 'prompt',
+    description:
+      'What one row of the prompt list is called inside things said ABOUT it — "Edit prompt", "Remove this prompt?" — so it is lower case and singular. A prompt is one question a participant is asked.',
+  },
+  emptyState: {
+    id: 'protocolBuilder.promptsSection.emptyState',
+    defaultMessage:
+      'No prompts yet. Create one to say what this stage asks the participant.',
+    description:
+      'Shown in place of the prompt list while a stage asks nothing yet.',
+  },
+});
+
+const AT_LEAST_ONE_PROMPT = createMessageError(messages.atLeastOne);
 
 /**
  * The rule that can actually refuse a save.
@@ -35,47 +109,6 @@ const promptsValidation = {
         ? undefined
         : AT_LEAST_ONE_PROMPT,
   ]),
-};
-
-export type PromptsCopy = Readonly<{
-  /** Names the section in the outline and to assistive technology. */
-  sectionTitle: string;
-  description: string;
-  /**
-   * Said instead of `description` while the section is waiting on a subject,
-   * so the outline's "not available yet" has an explanation beside it.
-   */
-  waitingDescription: string;
-  fieldLabel: string;
-  fieldHint: string;
-  /**
-   * Visible text and accessible name of the add button. Whole, and required:
-   * a stage editor mounts several list editors at once, and named "Add" they
-   * are all the same control to anyone navigating by a list of buttons.
-   */
-  addButtonLabel: string;
-  addTitle: string;
-  editorTitle: string;
-  /** Noun used in row affordances ("Edit prompt", "Remove prompt"). */
-  itemLabel: string;
-  emptyStateMessage: string;
-}>;
-
-const DEFAULT_COPY: PromptsCopy = {
-  sectionTitle: 'Prompts',
-  description:
-    'Write the questions this stage asks, and drag them into the order the participant answers them.',
-  waitingDescription:
-    'Choose what this stage works with before writing its prompts.',
-  fieldLabel: 'Prompts',
-  fieldHint:
-    'The participant answers these one at a time, in this order. Add at least one.',
-  addButtonLabel: 'Create new prompt',
-  addTitle: 'Create prompt',
-  editorTitle: 'Edit prompt',
-  itemLabel: 'prompt',
-  emptyStateMessage:
-    'No prompts yet. Create one to say what this stage asks the participant.',
 };
 
 export type PromptsSectionProps = Readonly<{
@@ -137,7 +170,6 @@ export type PromptsSectionProps = Readonly<{
    * than an empty one.
    */
   normalizeRow?: (row: unknown) => unknown;
-  copy?: Partial<PromptsCopy>;
 }>;
 
 /**
@@ -160,9 +192,8 @@ export default function PromptsSection({
   editorValidate,
   itemTemplate,
   normalizeRow = withoutAbsentValues,
-  copy,
 }: PromptsSectionProps) {
-  const words = { ...DEFAULT_COPY, ...copy };
+  const intl = useAppIntl();
   const subject = useStageValue('subject');
   const hasSubject =
     typeof subject === 'object' &&
@@ -176,20 +207,22 @@ export default function PromptsSection({
 
   return (
     <BuilderSection
-      title={words.sectionTitle}
-      description={waiting ? words.waitingDescription : words.description}
+      title={intl.formatMessage(messages.title)}
+      description={intl.formatMessage(
+        waiting ? messages.waitingDescription : messages.description,
+      )}
       disabled={waiting}
     >
       <ProtocolArrayField<typeof DialogArrayField>
         name={PROMPTS_FIELD}
-        label={words.fieldLabel}
-        hint={words.fieldHint}
+        label={intl.formatMessage(messages.fieldLabel)}
+        hint={intl.formatMessage(messages.fieldHint)}
         component={DialogArrayField}
-        addButtonLabel={words.addButtonLabel}
-        addTitle={words.addTitle}
-        editorTitle={words.editorTitle}
-        itemLabel={words.itemLabel}
-        emptyStateMessage={words.emptyStateMessage}
+        addButtonLabel={intl.formatMessage(messages.addLabel)}
+        addTitle={intl.formatMessage(messages.addTitle)}
+        editorTitle={intl.formatMessage(messages.editTitle)}
+        itemLabel={messages.itemNoun}
+        emptyStateMessage={intl.formatMessage(messages.emptyState)}
         editorFieldsComponent={editorFieldsComponent}
         previewComponent={previewComponent}
         editorDialogSize="editor"

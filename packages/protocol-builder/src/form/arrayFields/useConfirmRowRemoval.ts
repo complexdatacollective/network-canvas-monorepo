@@ -1,6 +1,8 @@
 import { isEqual } from 'es-toolkit/compat';
 import { useCallback, useRef, type RefObject } from 'react';
 
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { stripManagedProperties } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 
@@ -60,31 +62,46 @@ const resolveRemovalFocus = (
 };
 
 /**
- * Said when the row a confirm was opened on is no longer the row that control
- * names. It stays in the dialog the researcher is looking at, which is still
- * open, so the next click is theirs to make against the list as it now stands.
- */
-const rowReplacedMessage = (itemLabel: string) =>
-  `This ${itemLabel} was replaced while you were confirming, so nothing was removed. Check the list and remove it again if you still want to.`;
-
-/**
- * Said when the list stopped accepting changes while the confirm was open.
+ * What a refused removal is called.
  *
- * `ArrayField` WITHDRAWS a row's delete handler the moment its list becomes
- * read-only or disabled — a lost lease, a section whose prerequisite is no
- * longer chosen — and a confirm is a window the researcher can answer after
- * that has happened. Calling a handler that is no longer there removes
- * nothing, so the list's capability is asked about at the same moment its
- * content is, and for the same reason.
+ * Both cross a string-only contract: they are thrown out of `onConfirm`, which
+ * `confirm` renders as the dialog's own error through `AppErrorMessage` — so
+ * they are encoded here and decoded there, and the row noun travels with them
+ * as a nested reference rather than as a word already resolved to whichever
+ * language was current when the confirm was opened.
  */
-const removalUnavailableMessage = (itemLabel: string) =>
-  `This list stopped accepting changes while you were confirming, so this ${itemLabel} was not removed. Remove it again once the list can be edited.`;
+const refusalMessages = defineMessages({
+  rowReplaced: {
+    id: 'protocolBuilder.arrayField.rowReplacedRefusal',
+    defaultMessage:
+      'This {itemLabel} was replaced while you were confirming, so nothing was removed. Check the list and remove it again if you still want to.',
+    description:
+      'Shown inside a removal confirmation when the row it was opened on has been replaced by a different one while the researcher was reading it, so nothing was deleted. itemLabel is the list’s own noun for one of its rows — "prompt", "option", "item" — already in the reader’s language.',
+  },
+  removalUnavailable: {
+    id: 'protocolBuilder.arrayField.removalUnavailableRefusal',
+    defaultMessage:
+      'This list stopped accepting changes while you were confirming, so this {itemLabel} was not removed. Remove it again once the list can be edited.',
+    description:
+      'Shown inside a removal confirmation when the list stopped accepting changes while the researcher was reading it, so nothing was deleted. itemLabel is the list’s own noun for one of its rows, already in the reader’s language.',
+  },
+});
+
+const refusal = (message: MessageDescriptor, itemLabel: MessageDescriptor) =>
+  createMessageError(message, {
+    itemLabel: { messageError: createMessageError(itemLabel) },
+  });
 
 export type RowRemoval = Readonly<{
   /** The row being removed, as the list is rendering it right now. */
   item: Record<string, unknown>;
-  /** Noun for the row, used in what the confirm says when it refuses. */
-  itemLabel: string;
+  /**
+   * Noun for the row, used in what the confirm says when it refuses. A
+   * descriptor rather than a word: the refusals it goes into are read
+   * somewhere else, and a caller that resolved it first would put its own
+   * language's noun into the reader's sentence.
+   */
+  itemLabel: MessageDescriptor;
   /** The row's position, for naming the row that takes its place. */
   index: number;
   onDelete: (() => void) | undefined;
@@ -161,10 +178,12 @@ export function useConfirmRowRemoval<E extends HTMLElement = HTMLDivElement>(
           // FIRST: a list that will not accept the removal is what determines
           // what the researcher can do next, whichever row is now here.
           if (onDelete === undefined) {
-            throw new Error(removalUnavailableMessage(itemLabel));
+            throw new Error(
+              refusal(refusalMessages.removalUnavailable, itemLabel),
+            );
           }
           if (!isEqual(stripManagedProperties(item), confirmedRow)) {
-            throw new Error(rowReplacedMessage(itemLabel));
+            throw new Error(refusal(refusalMessages.rowReplaced, itemLabel));
           }
           onDelete();
         },

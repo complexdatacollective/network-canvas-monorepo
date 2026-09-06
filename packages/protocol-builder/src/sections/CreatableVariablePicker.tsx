@@ -1,5 +1,7 @@
 import { useState } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -8,6 +10,33 @@ import {
   VariablePickerControl,
   type VariablePickerProps,
 } from '../fields/VariablePicker.tsx';
+
+const messages = defineMessages({
+  createLabel: {
+    id: 'protocolBuilder.variablePicker.createLabel',
+    defaultMessage: 'Create a new attribute',
+    description:
+      'Label of the box where a researcher types the name of an attribute that does not exist yet, beside the list of the ones that do. An attribute is one thing an interview records about a network member.',
+  },
+  createHint: {
+    id: 'protocolBuilder.variablePicker.createHint',
+    defaultMessage: 'Adds it to this type’s codebook and selects it above.',
+    description:
+      'Guidance under the box for naming a new attribute, saying that it lands in the codebook — the protocol’s definition of what an interview records — and becomes the choice made above.',
+  },
+  createPlaceholder: {
+    id: 'protocolBuilder.variablePicker.createPlaceholder',
+    defaultMessage: 'nominated_early',
+    description:
+      'Example attribute name shown in the empty box. A name the codebook would accept: letters, digits and the symbols . _ - : only, so it deliberately has no space in it. Translate it to an equally valid example if that reads better.',
+  },
+  createAction: {
+    id: 'protocolBuilder.variablePicker.createAction',
+    defaultMessage: 'Create the attribute',
+    description:
+      'Button that adds the attribute named in the box beside it to the codebook and selects it.',
+  },
+});
 
 export type CreatableVariablePickerProps = VariablePickerProps &
   Readonly<{
@@ -53,6 +82,7 @@ export function CreatableVariablePickerControl({
   onCreateOption,
   ...pickerProps
 }: CreatableVariablePickerProps) {
+  const intl = useAppIntl();
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const { disabled = false, readOnly = false } = pickerProps;
@@ -91,13 +121,13 @@ export function CreatableVariablePickerControl({
       <UnconnectedField<typeof InputField>
         name="newAttributeName"
         component={InputField}
-        label="Create a new attribute"
-        hint="Adds it to this type’s codebook and selects it above."
+        label={intl.formatMessage(messages.createLabel)}
+        hint={intl.formatMessage(messages.createHint)}
         // A name the codebook would actually take. `VariableNameSchema` allows
         // letters, digits and `. _ - :` and nothing else, so a placeholder with
         // a space in it showed the researcher an example of a name that is
         // refused the moment they type it.
-        placeholder="nominated_early"
+        placeholder={intl.formatMessage(messages.createPlaceholder)}
         value={name}
         disabled={disabled || readOnly}
         onChange={(next: unknown) =>
@@ -111,7 +141,7 @@ export function CreatableVariablePickerControl({
         disabled={disabled || readOnly || busy || name.trim() === ''}
         onClick={() => void create()}
       >
-        Create the attribute
+        {intl.formatMessage(messages.createAction)}
       </Button>
     </div>
   );

@@ -1,8 +1,8 @@
 'use client';
-
 import { invariant } from 'es-toolkit';
 import { useCallback, useMemo } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import {
   type EntityPrimaryKey,
   entityPrimaryKeyProperty,
@@ -21,6 +21,7 @@ import {
 import getParentKeyByNameValue from '../../utils/getParentKeyByNameValue';
 import { getEntityAttributes } from '../../utils/networkEntities';
 import { resolveRosterNodeLabel } from '../../utils/resolveRosterNodeLabel';
+import { interfaceMessages } from '../messages';
 import type { NameGeneratorRosterProps } from './helpers';
 
 /**
@@ -72,6 +73,7 @@ export type UseItemElement = {
 
 // Returns all nodes associated with external data
 const useItems = (props: NameGeneratorRosterProps) => {
+  const intl = useAppIntl();
   const nodeTypeDefinition = useStageSelector(getNodeTypeDefinition);
   const { externalData, status } = useExternalData(
     props.stage.dataSource,
@@ -88,16 +90,19 @@ const useItems = (props: NameGeneratorRosterProps) => {
   // data, meaning we do not expect it to be encrypted.
   // TODO: this must be updated if we want rosters to support encrypted data.
   const codebookVariables = nodeTypeDefinition?.variables;
-  const subjectLabel = nodeTypeDefinition?.name ?? 'node';
+  const subjectLabel =
+    nodeTypeDefinition?.name ??
+    intl.formatMessage(interfaceMessages.nodeSubject);
   const getNodeLabel = useCallback(
     (node: NcNode, sequentialNumber: number) =>
       resolveRosterNodeLabel({
         codebookVariables,
+        intl,
         node,
         subjectLabel,
         sequentialNumber,
       }),
-    [codebookVariables, subjectLabel],
+    [codebookVariables, subjectLabel, intl],
   );
 
   const items = useMemo(() => {

@@ -136,6 +136,29 @@ describe('the commit input this server validates against', () => {
     }
   });
 
+  it('refuses the same paths written as a bare key', () => {
+    // A one-segment path is written as the plain string — `commandTarget`
+    // answers `"prompts"`, not `["prompts"]` — so the string form carries every
+    // one-segment address there is, and the same two rules have to hold of it.
+    // Applying them only to the array form left `""` and `"__proto__"` through
+    // the boundary to `targetPath`, which throws inside the commit: after the
+    // draft head is locked, and as an unclassified server fault rather than the
+    // bad request it is.
+    for (const key of ['', '__proto__', 'constructor', 'prototype']) {
+      expect(
+        CommitSectionInputSchema.safeParse(
+          commit([{ op: 'set', key, value: 1 }]),
+        ).success,
+      ).toBe(false);
+    }
+    // An ordinary key still parses, whichever form it is written in.
+    expect(
+      CommitSectionInputSchema.safeParse(
+        commit([{ op: 'set', key: 'prompts', value: [] }]),
+      ).success,
+    ).toBe(true);
+  });
+
   it('hands the apply engine exactly the address it parsed', () => {
     // The parse must not reshape an address on its way through: a schema that
     // coerced the array to a string would put the boundary and the engine into

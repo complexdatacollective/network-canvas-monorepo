@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { CustomFieldValidation } from '@codaco/fresco-ui/form/store/types';
 
+import { readMessage } from '../../../testing/i18n.ts';
 import { makeAssignAttributesValidation } from '../AssignAttributes.tsx';
 import { makeMultiSelectValidation } from '../MultiSelect.tsx';
 import { optionsValidation } from '../Options.tsx';
@@ -22,7 +23,11 @@ async function arrayIssue(
       ? await custom.schema({})
       : custom.schema;
   const result = await schema.safeParseAsync(value);
-  return result.success ? undefined : result.error.issues[0]?.message;
+  if (result.success) return undefined;
+  const message = result.error.issues[0]?.message;
+  // Read the way `FormErrors` reads it: a rule that answers with an encoded
+  // descriptor is answering with the sentence, and a plain one passes through.
+  return message === undefined ? undefined : readMessage(message);
 }
 
 describe('optionsValidation', () => {
@@ -146,8 +151,7 @@ describe('makeMultiSelectValidation', () => {
    * gone, so the owner supplies them and the sentence to refuse them with.
    */
   describe('a column that can name something deleted', () => {
-    const MISSING =
-      'This rule points at an attribute no longer in the codebook. Choose another or delete the rule.';
+    const MISSING = 'This rule points at an attribute that no longer exists.';
 
     const { custom: withDangling } = makeMultiSelectValidation(
       [{ fieldName: 'property' }, { fieldName: 'direction' }],

@@ -338,9 +338,19 @@ const DialogItem = ({
           // `itemLabel` is caller-supplied, and this runs inside Base UI's
           // layout-effect cleanup — an unescaped quote would throw a
           // SyntaxError out of an unmount.
-          const remaining = list.querySelectorAll<HTMLElement>(
-            `[aria-label="${CSS.escape(`Remove ${itemLabel}`)}"]`,
-          );
+          const remaining = Array.from(
+            list.querySelectorAll<HTMLElement>(
+              `[aria-label="${CSS.escape(`Remove ${itemLabel}`)}"]`,
+            ),
+          )
+            // This runs while the confirmed row — and any row removed just
+            // before it — is still mounted playing its exit animation. Those
+            // rows are already out of the field's value and out of the
+            // accessibility tree, and their controls go with them when the
+            // animation ends, so counting them hands focus to a node with
+            // nothing behind it: with two rows and the first removed, index 0
+            // is the dying row's own Remove button.
+            .filter((control) => !control.closest('[aria-hidden="true"]'));
           // The row that has taken this one's place, or the last one if this
           // was the last row.
           const neighbour = remaining[Math.min(index, remaining.length - 1)];
