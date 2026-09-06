@@ -8,7 +8,7 @@ import CloseButton from '../CloseButton';
 import { surfaceSpacingVariants } from '../layout/Surface';
 import Modal from '../Modal';
 import { ScrollArea } from '../ScrollArea';
-import { EnclosingHeadingLevel } from '../Section';
+import { EnclosingHeadingLevel } from '../typography/EnclosingHeadingLevel';
 import Heading from '../typography/Heading';
 import Paragraph from '../typography/Paragraph';
 import { cx } from '../utils/cva';
@@ -147,9 +147,11 @@ export default function Dialog({
             </BaseDialog.Description>
           )}
           {/* The title above is an `h2` wherever the dialog was opened from,
-              so a section in here starts the outline at `h3`. Without this it
-              read its level from Surface depth, which `DialogPopup` restarts
-              at 1 for the overlay's color ladder — an `h4` under an `h2`. */}
+              so a section or an alert title in here starts the outline at
+              `h3`. Without this a section read its level from Surface depth,
+              which `DialogPopup` restarts at 1 for the overlay's color ladder,
+              and an alert title was a fixed `h4` — both an `h4` under an
+              `h2`. */}
           <EnclosingHeadingLevel level="h2">{children}</EnclosingHeadingLevel>
         </DialogContent>
         <DialogFooter>{footer}</DialogFooter>

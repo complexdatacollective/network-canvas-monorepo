@@ -1,5 +1,6 @@
 import { Lock, Plus, Trash2 } from 'lucide-react';
 import {
+  createElement,
   type FormEvent,
   useCallback,
   useEffect,
@@ -16,6 +17,11 @@ import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import Surface from '@codaco/fresco-ui/layout/Surface';
+import {
+  EnclosingHeadingLevel,
+  headingTagBelow,
+  useEnclosingHeadingLevel,
+} from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
@@ -316,6 +322,17 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
       replaceProperties,
     );
   const statusId = useId();
+  // The editor writes a title of its own, so it owns a rung of the outline and
+  // has to say which one. Opened from a dialog it is the dialog's title that
+  // is above it; opened as a page of its own there is nothing above it, and
+  // `h3` is the level this title has always carried. Either way the alerts and
+  // sections below count from HERE, which is what stops an alert the editor
+  // raises reading as a peer of the editor's own title.
+  const enclosingHeadingLevel = useEnclosingHeadingLevel();
+  const headingTag =
+    enclosingHeadingLevel === null
+      ? 'h3'
+      : headingTagBelow(enclosingHeadingLevel);
 
   useEffect(() => {
     if (firstRender.current) {
@@ -555,261 +572,274 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
       aria-labelledby={`${statusId}-title`}
       data-status={snapshot.status}
     >
-      <Heading id={`${statusId}-title`} level="h3" margin="none">
+      <Heading
+        id={`${statusId}-title`}
+        level="h3"
+        margin="none"
+        // The element only — `level` still carries the type treatment.
+        {...(headingTag === 'h3' ? {} : { render: createElement(headingTag) })}
+      >
         {title}
       </Heading>
       <Paragraph emphasis="muted" className="mt-2">
         Define the attribute name and the kind of answer it holds.
       </Paragraph>
 
-      {failurePresentation !== null && (
-        <Alert
-          ref={failureRef}
-          tabIndex={-1}
-          variant={failurePresentation.variant}
-          className="focusable"
-        >
-          <AlertTitle>Attribute not saved</AlertTitle>
-          <AlertDescription>
-            {failurePresentation.messages.length === 1 ? (
-              failurePresentation.messages[0]
-            ) : (
-              <ul className="list-disc pl-5">
-                {failurePresentation.messages.map((message) => (
-                  <li key={message}>{message}</li>
-                ))}
-              </ul>
-            )}
-          </AlertDescription>
-        </Alert>
-      )}
-      {snapshot.authoritativeChanged && (
-        <Alert variant="warning">
-          <AlertTitle>The codebook changed</AlertTitle>
-          <AlertDescription>
-            A newer version arrived while you were editing. Your draft has been
-            preserved; review it before trying again.
-          </AlertDescription>
-        </Alert>
-      )}
-      {snapshot.status === 'awaiting-authoritative' && (
-        <Alert variant="success">
-          <AlertTitle>Attribute saved</AlertTitle>
-          <AlertDescription>
-            Waiting for the host to publish the authoritative codebook update.
-          </AlertDescription>
-        </Alert>
-      )}
-      {snapshot.status === 'submitting' && (
-        <p role="status" className="sr-only">
-          Saving attribute.
-        </p>
-      )}
-
-      <form className="mt-8" onSubmit={(event) => void handleSubmit(event)}>
-        <UnconnectedField
-          name="variable-name"
-          label="Attribute name"
-          hint="This name is used when referring to the attribute and in exported data."
-          component={InputField}
-          value={
-            typeof snapshot.draft.name === 'string' ? snapshot.draft.name : ''
-          }
-          onChange={(value) => replaceProperty('name', value ?? '')}
-          autoFocus={!readOnly}
-          required
-          readOnly={interactionDisabled}
-          errors={nameErrors}
-          showErrors={nameErrors.length > 0}
-        />
-        <UnconnectedField
-          name="variable-type"
-          label="Attribute type"
-          component={NativeSelectField}
-          placeholder="Select an attribute type"
-          options={typeOptions}
-          value={selectedType ?? ''}
-          onChange={handleTypeChange}
-          required
-          readOnly={interactionDisabled || optionsLocked}
-          errors={typeErrors}
-          showErrors={typeErrors.length > 0}
-        />
-
-        {hasOptions && (
-          <fieldset
-            className="mb-8 min-w-0"
-            aria-invalid={optionErrors.length > 0 || undefined}
-            aria-describedby={
-              optionErrors.length > 0 ? `${statusId}-option-errors` : undefined
-            }
+      <EnclosingHeadingLevel level={headingTag}>
+        {failurePresentation !== null && (
+          <Alert
+            ref={failureRef}
+            tabIndex={-1}
+            variant={failurePresentation.variant}
+            className="focusable"
           >
-            <legend className="font-heading mb-2 font-bold">
-              Allowed values <span className="text-destructive">*</span>
-            </legend>
-            <p className="text-muted mb-4 text-sm">
-              Add at least two participant-facing labels and their stored
-              values.
-            </p>
-            {optionsLocked ? (
-              <LockedOptions options={options} />
-            ) : (
-              <div className="flex flex-col gap-4">
-                {options.map((option, index) => (
-                  <Surface
-                    key={optionKeys[index] ?? `option-${index}`}
-                    noContainer
-                    spacing="sm"
-                    shadow="xs"
-                    series="accent"
-                    className="w-full overflow-visible!"
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className="min-w-0 flex-1">
-                        <UnconnectedField
-                          name={`option-${index + 1}-label`}
-                          label={`Option ${index + 1} label`}
-                          component={InputField}
-                          value={option.label}
-                          onChange={(label) => {
-                            const next = [...options];
-                            next[index] = { ...option, label: label ?? '' };
-                            replaceOptions(next);
+            <AlertTitle>Attribute not saved</AlertTitle>
+            <AlertDescription>
+              {failurePresentation.messages.length === 1 ? (
+                failurePresentation.messages[0]
+              ) : (
+                <ul className="list-disc pl-5">
+                  {failurePresentation.messages.map((message) => (
+                    <li key={message}>{message}</li>
+                  ))}
+                </ul>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
+        {snapshot.authoritativeChanged && (
+          <Alert variant="warning">
+            <AlertTitle>The codebook changed</AlertTitle>
+            <AlertDescription>
+              A newer version arrived while you were editing. Your draft has
+              been preserved; review it before trying again.
+            </AlertDescription>
+          </Alert>
+        )}
+        {snapshot.status === 'awaiting-authoritative' && (
+          <Alert variant="success">
+            <AlertTitle>Attribute saved</AlertTitle>
+            <AlertDescription>
+              Waiting for the host to publish the authoritative codebook update.
+            </AlertDescription>
+          </Alert>
+        )}
+        {snapshot.status === 'submitting' && (
+          <p role="status" className="sr-only">
+            Saving attribute.
+          </p>
+        )}
+
+        <form className="mt-8" onSubmit={(event) => void handleSubmit(event)}>
+          <UnconnectedField
+            name="variable-name"
+            label="Attribute name"
+            hint="This name is used when referring to the attribute and in exported data."
+            component={InputField}
+            value={
+              typeof snapshot.draft.name === 'string' ? snapshot.draft.name : ''
+            }
+            onChange={(value) => replaceProperty('name', value ?? '')}
+            autoFocus={!readOnly}
+            required
+            readOnly={interactionDisabled}
+            errors={nameErrors}
+            showErrors={nameErrors.length > 0}
+          />
+          <UnconnectedField
+            name="variable-type"
+            label="Attribute type"
+            component={NativeSelectField}
+            placeholder="Select an attribute type"
+            options={typeOptions}
+            value={selectedType ?? ''}
+            onChange={handleTypeChange}
+            required
+            readOnly={interactionDisabled || optionsLocked}
+            errors={typeErrors}
+            showErrors={typeErrors.length > 0}
+          />
+
+          {hasOptions && (
+            <fieldset
+              className="mb-8 min-w-0"
+              aria-invalid={optionErrors.length > 0 || undefined}
+              aria-describedby={
+                optionErrors.length > 0
+                  ? `${statusId}-option-errors`
+                  : undefined
+              }
+            >
+              <legend className="font-heading mb-2 font-bold">
+                Allowed values <span className="text-destructive">*</span>
+              </legend>
+              <p className="text-muted mb-4 text-sm">
+                Add at least two participant-facing labels and their stored
+                values.
+              </p>
+              {optionsLocked ? (
+                <LockedOptions options={options} />
+              ) : (
+                <div className="flex flex-col gap-4">
+                  {options.map((option, index) => (
+                    <Surface
+                      key={optionKeys[index] ?? `option-${index}`}
+                      noContainer
+                      spacing="sm"
+                      shadow="xs"
+                      series="accent"
+                      className="w-full overflow-visible!"
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className="min-w-0 flex-1">
+                          <UnconnectedField
+                            name={`option-${index + 1}-label`}
+                            label={`Option ${index + 1} label`}
+                            component={InputField}
+                            value={option.label}
+                            onChange={(label) => {
+                              const next = [...options];
+                              next[index] = { ...option, label: label ?? '' };
+                              replaceOptions(next);
+                            }}
+                            required
+                            readOnly={interactionDisabled}
+                          />
+                          <UnconnectedField
+                            name={`option-${index + 1}-value`}
+                            label={`Option ${index + 1} value`}
+                            component={InputField}
+                            value={String(option.value)}
+                            onChange={(value) => {
+                              const next = [...options];
+                              next[index] = {
+                                ...option,
+                                value: parseOptionValue(value ?? ''),
+                              };
+                              replaceOptions(next);
+                            }}
+                            required
+                            readOnly={interactionDisabled}
+                          />
+                        </div>
+                        <IconButton
+                          icon={<Trash2 aria-hidden="true" />}
+                          aria-label={`Remove option ${index + 1}`}
+                          color="destructive"
+                          disabled={interactionDisabled}
+                          onClick={() => {
+                            setOptionKeys((current) =>
+                              current.filter(
+                                (_, keyIndex) => keyIndex !== index,
+                              ),
+                            );
+                            replaceOptions(
+                              options.filter(
+                                (_, optionIndex) => optionIndex !== index,
+                              ),
+                            );
                           }}
-                          required
-                          readOnly={interactionDisabled}
-                        />
-                        <UnconnectedField
-                          name={`option-${index + 1}-value`}
-                          label={`Option ${index + 1} value`}
-                          component={InputField}
-                          value={String(option.value)}
-                          onChange={(value) => {
-                            const next = [...options];
-                            next[index] = {
-                              ...option,
-                              value: parseOptionValue(value ?? ''),
-                            };
-                            replaceOptions(next);
-                          }}
-                          required
-                          readOnly={interactionDisabled}
                         />
                       </div>
-                      <IconButton
-                        icon={<Trash2 aria-hidden="true" />}
-                        aria-label={`Remove option ${index + 1}`}
-                        color="destructive"
-                        disabled={interactionDisabled}
-                        onClick={() => {
-                          setOptionKeys((current) =>
-                            current.filter((_, keyIndex) => keyIndex !== index),
-                          );
-                          replaceOptions(
-                            options.filter(
-                              (_, optionIndex) => optionIndex !== index,
-                            ),
-                          );
-                        }}
-                      />
-                    </div>
-                  </Surface>
-                ))}
-                <Button
-                  type="button"
-                  variant="dashed"
-                  color="primary"
-                  icon={<Plus aria-hidden="true" />}
-                  disabled={interactionDisabled}
-                  onClick={() => {
-                    setOptionKeys((current) => [
-                      ...current,
-                      `new-option-${optionKeySequence.current++}`,
-                    ]);
-                    replaceOptions([...options, { label: '', value: '' }]);
-                  }}
+                    </Surface>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="dashed"
+                    color="primary"
+                    icon={<Plus aria-hidden="true" />}
+                    disabled={interactionDisabled}
+                    onClick={() => {
+                      setOptionKeys((current) => [
+                        ...current,
+                        `new-option-${optionKeySequence.current++}`,
+                      ]);
+                      replaceOptions([...options, { label: '', value: '' }]);
+                    }}
+                  >
+                    Add option
+                  </Button>
+                </div>
+              )}
+              {optionErrors.length > 0 && (
+                <ul
+                  id={`${statusId}-option-errors`}
+                  className="text-destructive mt-3 list-disc pl-5"
                 >
-                  Add option
-                </Button>
-              </div>
-            )}
-            {optionErrors.length > 0 && (
-              <ul
-                id={`${statusId}-option-errors`}
-                className="text-destructive mt-3 list-disc pl-5"
-              >
-                {optionErrors.map((message) => (
-                  <li key={message}>{message}</li>
-                ))}
-              </ul>
-            )}
-          </fieldset>
-        )}
+                  {optionErrors.map((message) => (
+                    <li key={message}>{message}</li>
+                  ))}
+                </ul>
+              )}
+            </fieldset>
+          )}
 
-        {optionsShape === 'boolean' && (
-          <fieldset className="mb-8 min-w-0">
-            <legend className="font-heading mb-2 font-bold">
-              The two answers
-            </legend>
-            <p className="text-muted mb-4 text-sm">
-              Write what the participant chooses between. Left empty, they are
-              offered Yes and No. A negative answer is shown in red when it is
-              selected.
-            </p>
-            <VariableBooleanAnswerFields
-              answers={booleanAnswers}
-              onChange={replaceAnswer}
-              issues={answerIssues}
-              readOnly={interactionDisabled || optionsLocked}
-            />
-          </fieldset>
-        )}
+          {optionsShape === 'boolean' && (
+            <fieldset className="mb-8 min-w-0">
+              <legend className="font-heading mb-2 font-bold">
+                The two answers
+              </legend>
+              <p className="text-muted mb-4 text-sm">
+                Write what the participant chooses between. Left empty, they are
+                offered Yes and No. A negative answer is shown in red when it is
+                selected.
+              </p>
+              <VariableBooleanAnswerFields
+                answers={booleanAnswers}
+                onChange={replaceAnswer}
+                issues={answerIssues}
+                readOnly={interactionDisabled || optionsLocked}
+              />
+            </fieldset>
+          )}
 
-        {parameterShape !== null && (
-          <fieldset
-            className="mb-8 min-w-0"
-            aria-invalid={
-              (parameterIssues[PARAMETERS_BLOCK]?.length ?? 0) > 0 || undefined
-            }
-          >
-            <legend className="font-heading mb-2 font-bold">
-              What this control accepts
-            </legend>
-            <p className="text-muted mb-4 text-sm">
-              These settings belong to the input control this attribute is
-              collected with, so they apply wherever it is asked for.
-            </p>
-            {(parameterIssues[PARAMETERS_BLOCK]?.length ?? 0) > 0 && (
-              <ul
-                id={`${statusId}-parameter-errors`}
-                className="text-destructive mb-3 list-disc pl-5"
-              >
-                {parameterIssues[PARAMETERS_BLOCK]?.map((message) => (
-                  <li key={message}>{message}</li>
-                ))}
-              </ul>
-            )}
-            <VariableParameterFields
-              shape={parameterShape}
-              parameters={snapshot.draft.parameters}
-              onChange={replaceParameter}
-              issues={parameterIssues}
-              readOnly={interactionDisabled}
-            />
-          </fieldset>
-        )}
+          {parameterShape !== null && (
+            <fieldset
+              className="mb-8 min-w-0"
+              aria-invalid={
+                (parameterIssues[PARAMETERS_BLOCK]?.length ?? 0) > 0 ||
+                undefined
+              }
+            >
+              <legend className="font-heading mb-2 font-bold">
+                What this control accepts
+              </legend>
+              <p className="text-muted mb-4 text-sm">
+                These settings belong to the input control this attribute is
+                collected with, so they apply wherever it is asked for.
+              </p>
+              {(parameterIssues[PARAMETERS_BLOCK]?.length ?? 0) > 0 && (
+                <ul
+                  id={`${statusId}-parameter-errors`}
+                  className="text-destructive mb-3 list-disc pl-5"
+                >
+                  {parameterIssues[PARAMETERS_BLOCK]?.map((message) => (
+                    <li key={message}>{message}</li>
+                  ))}
+                </ul>
+              )}
+              <VariableParameterFields
+                shape={parameterShape}
+                parameters={snapshot.draft.parameters}
+                onChange={replaceParameter}
+                issues={parameterIssues}
+                readOnly={interactionDisabled}
+              />
+            </fieldset>
+          )}
 
-        <div className="flex justify-end">
-          <Button
-            type="submit"
-            color="primary"
-            disabled={interactionDisabled || unchangedUpdate}
-            aria-busy={snapshot.status === 'submitting'}
-          >
-            {props.mode === 'create' ? 'Create attribute' : 'Save attribute'}
-          </Button>
-        </div>
-      </form>
+          <div className="flex justify-end">
+            <Button
+              type="submit"
+              color="primary"
+              disabled={interactionDisabled || unchangedUpdate}
+              aria-busy={snapshot.status === 'submitting'}
+            >
+              {props.mode === 'create' ? 'Create attribute' : 'Save attribute'}
+            </Button>
+          </div>
+        </form>
+      </EnclosingHeadingLevel>
     </Surface>
   );
 }

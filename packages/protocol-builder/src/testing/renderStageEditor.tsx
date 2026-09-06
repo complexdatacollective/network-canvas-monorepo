@@ -277,6 +277,7 @@ export function renderStageEditor<T extends StageType = StageType>(
   options: RenderStageEditorOptions<T> = {},
 ): StageEditorHarness {
   const seeded = seedFrom(options);
+  const stageSectionId = sectionId({ kind: 'stage', stageId: seeded.id });
   const finishRequests: FinishRequest[] = [];
   // What a host applying this session's edits live has been handed. Recorded
   // rather than applied to `host`: the question a test asks of it is what LEFT
@@ -385,7 +386,11 @@ export function renderStageEditor<T extends StageType = StageType>(
       );
       act(() => {
         session.receiveAuthoritativeUpdate({
-          protocolSections: applied.protocolSections,
+          protocolSections: sectionsKeepingSavedStage(
+            applied.protocolSections,
+            session,
+            stageSectionId,
+          ),
           manifestRevision: applied.manifestRevision,
         });
       });
@@ -672,6 +677,32 @@ function seedFrom<T extends StageType>(
     );
   }
   return loadFixtureStage(options.stageId);
+}
+
+/**
+ * The host's sections, with the edited stage left as the SESSION holds it.
+ *
+ * The harness's `onFinish` records the save instead of applying it — a test
+ * asks what left the session, and a host that also committed it would answer
+ * every other test's questions about the authoritative protocol differently.
+ * So the host is deliberately a save behind on this one section, and handing
+ * its copy back would undo the save inside the session: the editor would go on
+ * describing the stage as it was before the researcher saved it.
+ *
+ * A codebook arrival says nothing about the stage anyway, which is what makes
+ * keeping the session's own copy the honest answer rather than a patch over
+ * the harness's shortcut. A stage being CREATED has no section in either place
+ * yet, and is left exactly as the host answered.
+ */
+function sectionsKeepingSavedStage(
+  hostSections: Readonly<Record<string, SectionDoc>>,
+  session: ProtocolBuilderSessionStore,
+  stageSectionId: ProtocolSectionId,
+): Readonly<Record<string, SectionDoc>> {
+  const saved = session.getSnapshot().protocolSections[stageSectionId];
+  return saved === undefined
+    ? hostSections
+    : { ...hostSections, [stageSectionId]: saved };
 }
 
 /** A codebook patch as the sections it changes, `null` for the ones it removes. */

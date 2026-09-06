@@ -1,7 +1,8 @@
-import { useId } from 'react';
+import { createElement, useId } from 'react';
 
 import { Badge } from '@codaco/fresco-ui/Badge';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
+import { useEnclosingHeadingLevel } from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
@@ -88,6 +89,11 @@ export default function StageNameSection({
   const words = { ...DEFAULT_COPY, ...copy };
   const { sectionId } = useOutlineSection(words.sectionTitle);
   const headingId = useId();
+  // AT the level the shell states rather than one below it: this section wears
+  // the page's heading, so it IS the heading everything else in the editor
+  // counts down from. Absent a shell — a section rendered on its own — an `h2`
+  // is what a page heading is.
+  const headingLevel = useEnclosingHeadingLevel() ?? 'h2';
   const interfaceName = interfaceDisplayName(identity.type) ?? identity.type;
   const { onLabelBlur } = useAutoStageName({
     isNewStage: autoName?.propose ?? creation !== undefined,
@@ -103,9 +109,19 @@ export default function StageNameSection({
       // under the position line, as one block of heading.
       className="flex min-w-0 flex-col justify-center pt-7 outline-none *:data-[field-name=label]:m-0"
     >
-      <span id={headingId} className="sr-only">
-        {words.sectionTitle}
-      </span>
+      {/*
+        A real heading rather than a label: the visible one is the name field
+        itself, which is a control and cannot be a heading, so without this the
+        stage editor has no heading at the rung every section below counts
+        from — nothing for a reader navigating by headings to arrive at, and a
+        level the shell states that nothing in the document occupies. Visually
+        hidden, so the hero input is still the only stage title on screen.
+      */}
+      {createElement(
+        headingLevel,
+        { id: headingId, className: 'sr-only' },
+        words.sectionTitle,
+      )}
       {position && (
         <Paragraph
           className={headingVariants({

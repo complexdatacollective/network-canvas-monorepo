@@ -1139,6 +1139,23 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
    * The draft is untouched. What the batches say is already in it, and moving
    * them into the base is exactly what the host did with them — so the fields
    * the researcher is looking at, and the validation of them, are unchanged.
+   *
+   * The section moves with the base, by {@link sectionsWithAuthoritativeStage}.
+   * There is no host answer to read here — `onFinish` returns nothing — but
+   * the base after this retire IS the stage the host now holds: this session's
+   * previous base with exactly the batches the apply carried applied to it, in
+   * order, which is the same document the apply handed over. Leaving the
+   * section behind would leave every reader of it describing the stage as it
+   * was BEFORE the save, for the rest of the session: `protocolContext`'s
+   * ordered stages and the role maps built from them, the issues attributed
+   * against them, and a caller naming the authoritative stage by content hash
+   * in a compound edit — which the host then refuses as `stale-base`, telling
+   * the researcher a collaborator moved a stage that only they had saved.
+   *
+   * The revision does NOT move with it, because the host does not say which
+   * revision it committed under. That is safe in the direction it matters: an
+   * authoritative arrival that is genuinely newer still replaces these
+   * sections wholesale.
    */
   private retirePendingCommandsThrough(throughBatchId: number): void {
     // The host has everything through here, so the hold moves past it whether
@@ -1157,6 +1174,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       pendingCommands: this.snapshot.pendingCommands.filter(
         (batch) => batch.id > throughBatchId,
       ),
+      protocolSections: this.sectionsWithAuthoritativeStage(this.baseFields),
     });
   }
 

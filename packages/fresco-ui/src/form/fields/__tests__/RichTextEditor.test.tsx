@@ -117,6 +117,48 @@ describe('RichTextEditorField', () => {
     expect(editor).toHaveTextContent('Existing content');
   });
 
+  it('closes an open link popover when the field stops being editable', async () => {
+    // The trigger is disabled with the rest of the toolbar, but the popover it
+    // opened is a portal of its own: its URL box and its Apply and Remove
+    // buttons went on running editor commands against a field the host had
+    // just made read-only, and the change was reported back as if a
+    // researcher had made it.
+    const onChange = vi.fn();
+    const user = userEvent.setup();
+    const field = (readOnly: boolean) => (
+      <RichTextEditorField
+        id="bio"
+        name="bio"
+        aria-describedby="bio-hint"
+        aria-label="Biography"
+        changeMode="input"
+        toolbarOptions={{ links: true }}
+        value={documentWithText}
+        onChange={onChange}
+        readOnly={readOnly}
+      />
+    );
+    const { rerender } = render(field(false));
+    await screen.findByRole('textbox', { name: 'Biography' });
+
+    await user.click(screen.getByRole('button', { name: 'Add link' }));
+    const url = await screen.findByLabelText('Link URL');
+    await user.type(url, 'https://example.com');
+
+    rerender(field(true));
+
+    // Gone, rather than merely dimmed: the panel is what could still reach the
+    // editor, and with Apply on screen a click on it inserted the link and
+    // reported the document back as an edit.
+    await waitFor(() => {
+      expect(screen.queryByLabelText('Link URL')).not.toBeInTheDocument();
+    });
+    expect(
+      screen.queryByRole('button', { name: 'Apply link' }),
+    ).not.toBeInTheDocument();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   /**
    * A button unavailable because of where the caret is says so the way the
    * ARIA toolbar pattern asks: still focusable, marked `aria-disabled`. Only a
@@ -384,6 +426,76 @@ const TWO_PARAGRAPHS = {
   'text/html': '<p>Never <strong>met</strong></p><p>in person</p>',
 };
 
+/** The same passage as a stored value, which is the other way in. */
+const TWO_PARAGRAPH_DOCUMENT = {
+  type: 'doc',
+  content: [
+    { type: 'paragraph', content: [{ type: 'text', text: 'Never met' }] },
+    { type: 'paragraph', content: [{ type: 'text', text: 'in person' }] },
+  ],
+};
+
+/**
+ * The same passage stored as blocks a single-line field has no schema for at
+ * all. A value like this is what an author's markdown becomes the moment the
+ * field it was written in is turned into a single-line one.
+ */
+const HEADING_DOCUMENT = {
+  type: 'doc',
+  content: [
+    {
+      type: 'heading',
+      attrs: { level: 2 },
+      content: [{ type: 'text', text: 'Never met' }],
+    },
+    { type: 'paragraph', content: [{ type: 'text', text: 'in person' }] },
+  ],
+};
+
+const LIST_DOCUMENT = {
+  type: 'doc',
+  content: [
+    {
+      type: 'bulletList',
+      content: [
+        {
+          type: 'listItem',
+          content: [
+            {
+              type: 'paragraph',
+              content: [{ type: 'text', text: 'Never met' }],
+            },
+          ],
+        },
+      ],
+    },
+    { type: 'horizontalRule' },
+    { type: 'paragraph', content: [{ type: 'text', text: 'in person' }] },
+  ],
+};
+
+/**
+ * The same passage carrying a mark rather than a block: a phrase the author
+ * linked. Whether the schema has a `link` mark is a toolbar option, and by
+ * default it does not.
+ */
+const LINKED_DOCUMENT = {
+  type: 'doc',
+  content: [
+    {
+      type: 'paragraph',
+      content: [
+        { type: 'text', text: 'Never met ' },
+        {
+          type: 'text',
+          marks: [{ type: 'link', attrs: { href: 'https://example.com/' } }],
+          text: 'in person',
+        },
+      ],
+    },
+  ],
+};
+
 /**
  * A clipboard payload the editor's paste handler can read. jsdom implements no
  * `DataTransfer`, and the handler only ever asks one for the flavours it was
@@ -398,12 +510,15 @@ const clipboardOf = (data: Readonly<Record<string, string>>) =>
   }) as unknown as DataTransfer;
 
 describe('a single-line RichTextEditorField', () => {
-  const renderSingleLine = (
-    props?: Pick<ComponentProps<typeof RichTextEditorField>, 'toolbarOptions'>,
-  ) => {
+  type SingleLineProps = Pick<
+    ComponentProps<typeof RichTextEditorField>,
+    'toolbarOptions' | 'value'
+  >;
+
+  const renderSingleLine = (props?: SingleLineProps) => {
     const user = userEvent.setup();
 
-    render(
+    const singleLineField = (overrides?: SingleLineProps) => (
       <RichTextEditorField
         id="label"
         name="label"
@@ -414,12 +529,16 @@ describe('a single-line RichTextEditorField', () => {
         value={emptyDocument}
         onChange={() => undefined}
         {...props}
-      />,
+        {...overrides}
+      />
     );
+
+    const { rerender } = render(singleLineField());
 
     return {
       user,
       editor: () => screen.findByRole('textbox', { name: 'Answer' }),
+      setValue: (value: JSONContent) => rerender(singleLineField({ value })),
     };
   };
 
@@ -475,6 +594,292 @@ describe('a single-line RichTextEditorField', () => {
     expect(editor.querySelectorAll('p')).toHaveLength(1);
     expect(editor).toHaveTextContent('Never met in person');
     expect(editor.querySelector('strong')).toHaveTextContent('met');
+  });
+
+  it('spells one boundary per pasted line however deeply it is nested', async () => {
+    const field = renderSingleLine();
+    const editor = await field.editor();
+
+    fireEvent.focus(editor);
+    fireEvent.paste(editor, {
+      clipboardData: clipboardOf({
+        'text/html': '<ul><li>Never met</li><li>in person</li></ul>',
+      }),
+    });
+
+    // A list item wraps a paragraph, so counting every block as a boundary
+    // spelled this one twice and saved "Never met  in person". Read through
+    // `textContent`: `toHaveTextContent` collapses runs of whitespace, and so
+    // cannot see the difference at all.
+    expect(editor.querySelectorAll('p')).toHaveLength(1);
+    expect(editor.textContent).toBe('Never met in person');
+  });
+
+  it('drops a pasted paragraph that says nothing rather than spelling it', async () => {
+    const field = renderSingleLine();
+    const editor = await field.editor();
+
+    fireEvent.focus(editor);
+    fireEvent.paste(editor, {
+      clipboardData: clipboardOf({
+        'text/html': '<p>Never met</p><p></p><p>in person</p><p></p>',
+      }),
+    });
+
+    // Nothing sits on the other side of an empty paragraph, so there is
+    // nothing to separate from: the one in the middle used to double the
+    // space, and the one at the end used to leave the line ending in one.
+    expect(editor.textContent).toBe('Never met in person');
+  });
+
+  /**
+   * The schema is not consulted on the way IN: a value is read with
+   * `Node.fromJSON`, which builds what it is told to build. Every document
+   * that arrives is therefore flattened by the rule a paste uses, so the
+   * field cannot be handed a line it has promised it cannot show.
+   */
+  it('flattens a two-paragraph value it is mounted with', async () => {
+    const field = renderSingleLine({ value: TWO_PARAGRAPH_DOCUMENT });
+    const editor = await field.editor();
+
+    expect(editor.querySelectorAll('p')).toHaveLength(1);
+    expect(editor.textContent).toBe('Never met in person');
+  });
+
+  it('flattens a two-paragraph value that arrives later', async () => {
+    const field = renderSingleLine();
+    const editor = await field.editor();
+
+    field.setValue(TWO_PARAGRAPH_DOCUMENT);
+
+    await waitFor(() => {
+      expect(editor.textContent).toBe('Never met in person');
+    });
+    expect(editor.querySelectorAll('p')).toHaveLength(1);
+  });
+
+  it('spells a hard break in an incoming value as a space', async () => {
+    // A hard break sits INSIDE the paragraph, so a document holding one is a
+    // document the single-line schema was never going to refuse.
+    const field = renderSingleLine({
+      value: {
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            content: [
+              { type: 'text', text: 'Never met' },
+              { type: 'hardBreak' },
+              { type: 'text', text: 'in person' },
+            ],
+          },
+        ],
+      },
+    });
+    const editor = await field.editor();
+
+    expect(editor.querySelector('br:not(.ProseMirror-trailingBreak)')).toBe(
+      null,
+    );
+    expect(editor.textContent).toBe('Never met in person');
+  });
+
+  /**
+   * A block this schema does not have at all, which is the harder half of the
+   * same problem: the flattening cannot ask the editor to read the value
+   * first, because reading it is what fails.
+   */
+  it('flattens a heading it is mounted with', async () => {
+    const field = renderSingleLine({ value: HEADING_DOCUMENT });
+    const editor = await field.editor();
+
+    expect(editor.querySelectorAll('p')).toHaveLength(1);
+    expect(editor.textContent).toBe('Never met in person');
+  });
+
+  it('flattens a list and a rule that arrive later', async () => {
+    const field = renderSingleLine();
+    const editor = await field.editor();
+
+    field.setValue(LIST_DOCUMENT);
+
+    await waitFor(() => {
+      expect(editor.textContent).toBe('Never met in person');
+    });
+    expect(editor.querySelectorAll('p')).toHaveLength(1);
+  });
+
+  it('keeps what a field held when it becomes single-line', async () => {
+    // Changing the restriction rebuilds the editor around the new schema, and
+    // the value it is rebuilt from is the one the host is still holding: the
+    // blocks it had a moment ago.
+    const multiLineField = (singleLine: boolean) => (
+      <RichTextEditorField
+        id="label"
+        name="label"
+        aria-describedby="label-hint"
+        aria-label="Answer"
+        changeMode="input"
+        value={HEADING_DOCUMENT}
+        onChange={() => undefined}
+        {...(singleLine ? { singleLine: true } : {})}
+      />
+    );
+    const { rerender } = render(multiLineField(false));
+    const before = await screen.findByRole('textbox', { name: 'Answer' });
+    expect(before.textContent).toBe('Never metin person');
+
+    rerender(multiLineField(true));
+
+    const after = await screen.findByRole('textbox', { name: 'Answer' });
+    await waitFor(() => {
+      expect(after.textContent).toBe('Never met in person');
+    });
+  });
+
+  it('keeps typing the host has not been told about when it becomes single-line', async () => {
+    // `changeMode="blur"` is the default, and it means the host's `value` is
+    // deliberately BEHIND what the field holds for as long as the caret is in
+    // it. Changing the restriction rebuilds the editor around a new schema,
+    // and rebuilding it from that stale value threw away everything typed
+    // since the field was entered — silently, mid-sentence.
+    const onChange = vi.fn();
+    const user = userEvent.setup();
+    const field = (singleLine: boolean) => (
+      <RichTextEditorField
+        id="label"
+        name="label"
+        aria-describedby="label-hint"
+        aria-label="Answer"
+        value={emptyDocument}
+        onChange={onChange}
+        {...(singleLine ? { singleLine: true } : {})}
+      />
+    );
+    const { rerender } = render(field(false));
+    const before = await screen.findByRole('textbox', { name: 'Answer' });
+
+    await user.click(before);
+    await user.type(before, 'Never met');
+    expect(onChange).not.toHaveBeenCalled();
+
+    rerender(field(true));
+
+    const after = await screen.findByRole('textbox', { name: 'Answer' });
+    await waitFor(() => {
+      expect(after.textContent).toBe('Never met');
+    });
+    // And the host is told, because the document it holds is now one the
+    // field's schema could not have made a moment ago.
+    expect(onChange).toHaveBeenCalled();
+  });
+
+  it('flattens typing the host has not been told about', async () => {
+    const onChange = vi.fn();
+    const user = userEvent.setup();
+    const field = (singleLine: boolean) => (
+      <RichTextEditorField
+        id="label"
+        name="label"
+        aria-describedby="label-hint"
+        aria-label="Answer"
+        value={emptyDocument}
+        onChange={onChange}
+        {...(singleLine ? { singleLine: true } : {})}
+      />
+    );
+    const { rerender } = render(field(false));
+    const before = await screen.findByRole('textbox', { name: 'Answer' });
+
+    await user.click(before);
+    await user.type(before, 'Never met');
+    await user.keyboard('{Enter}');
+    await user.type(before, 'in person');
+    expect(before.querySelectorAll('p')).toHaveLength(2);
+
+    rerender(field(true));
+
+    const after = await screen.findByRole('textbox', { name: 'Answer' });
+    await waitFor(() => {
+      expect(after.textContent).toBe('Never met in person');
+    });
+    expect(after.querySelectorAll('p')).toHaveLength(1);
+  });
+
+  it('spells a newline inside an incoming text node as a space', async () => {
+    // Markdown's own line break: a paragraph holding one arrives as a single
+    // text node with the newline still in it, which no schema is going to
+    // refuse either. `white-space: pre-wrap` is what the editor renders with,
+    // so the field showed the second line under `aria-multiline="false"`.
+    const field = renderSingleLine({
+      value: {
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            content: [{ type: 'text', text: 'Never met\r\nin person' }],
+          },
+        ],
+      },
+    });
+    const editor = await field.editor();
+
+    expect(editor.textContent).toBe('Never met in person');
+  });
+
+  it('keeps the words of a mark its schema has no room for', async () => {
+    // A link is a MARK, and marks are the half of a document the flattener
+    // carries through untouched. Turn links off — the default — and the
+    // schema has no `link` mark at all, so reading the flattened value fails
+    // on the mark instead of on a block, and the reader answers a failure the
+    // only way it can: with an empty document. The value said something; the
+    // field showed nothing, and the next edit saved the nothing.
+    const field = renderSingleLine({ value: LINKED_DOCUMENT });
+    const editor = await field.editor();
+
+    expect(editor.textContent).toBe('Never met in person');
+    expect(editor.querySelector('a')).toBe(null);
+  });
+
+  it('keeps a mark its schema does have', async () => {
+    // The other side of the same rule: what is dropped is the mark this
+    // schema cannot express, not formatting in general.
+    const field = renderSingleLine({
+      value: {
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            content: [
+              { type: 'text', text: 'Never met ' },
+              {
+                type: 'text',
+                marks: [{ type: 'bold' }],
+                text: 'in person',
+              },
+            ],
+          },
+        ],
+      },
+    });
+    const editor = await field.editor();
+
+    expect(editor.textContent).toBe('Never met in person');
+    expect(editor.querySelector('strong')).toHaveTextContent('in person');
+  });
+
+  it('keeps a link when the field offers one', async () => {
+    const field = renderSingleLine({
+      toolbarOptions: { links: true },
+      value: LINKED_DOCUMENT,
+    });
+    const editor = await field.editor();
+
+    expect(editor.textContent).toBe('Never met in person');
+    expect(editor.querySelector('a')).toHaveAttribute(
+      'href',
+      'https://example.com/',
+    );
   });
 
   it('offers no control that would need a block it cannot hold', async () => {
