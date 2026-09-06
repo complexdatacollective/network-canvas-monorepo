@@ -383,9 +383,12 @@ function mergeListArrival(
 /**
  * One command, re-expressed against a document whose list has moved.
  *
- * `null` refuses the command outright, which is the only right answer when the
- * row it named has left the list: applying it to whatever has moved into that
- * position would remove or reorder a row the researcher never touched.
+ * `null` refuses the command outright. That is the only right answer when the
+ * row it named has left the list — applying it to whatever has moved into that
+ * position would remove or reorder a row the researcher never touched — and it
+ * is the answer for a rebase that leaves nothing to do as well: a command that
+ * writes the list already there is no command, and a `set` of one is not even
+ * inert, because it writes the containers on the way to its key.
  */
 function rebaseCommand(
   basis: SectionDoc,
@@ -409,6 +412,21 @@ function rebaseCommand(
   if (command.op === 'set') {
     if (!Array.isArray(written)) return command;
     const value = mergeListArrival(before, arrival, written);
+    // A merge that answers with the list already there is a command with
+    // nothing left to say, and saying it anyway is not free: a `set` WRITES
+    // the containers on the way to its key, so replaying one whose rows the
+    // arrival has all taken away put the container itself back. A collaborator
+    // switching the introduction screen off while the researcher rewrites its
+    // only block left `{ introScreen: { items: [] } }` — the screen back on,
+    // empty, and neither of them having asked for that.
+    //
+    // Refusing it is the same answer `removeItem` gives when the row it named
+    // has gone, and `rebasePending` drops a batch these leave empty along with
+    // its undo entry. Rows of the researcher's that survive the merge are
+    // written as they always were, container and all: a row the arrival never
+    // saw is one their edit said nothing about, which is why an `insertItem`
+    // into a dropped container puts the container back too.
+    if (canonicalize(value) === canonicalize(arrival)) return null;
     return canonicalize(value) === canonicalize(written)
       ? command
       : { ...command, value };

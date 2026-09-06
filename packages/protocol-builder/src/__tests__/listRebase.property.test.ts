@@ -280,6 +280,17 @@ const docWith = (path: readonly string[], list: readonly Row[]): SectionDoc => {
   return { label: 'S', nodeConfig: { type: 'x', [path[1]!]: [...list] } };
 };
 
+/**
+ * Whether a document holds the container an arrival's dropped capability took
+ * away.
+ *
+ * The stage document is the container for a top-level list and holds it under
+ * its own key, so it is the same question at both depths: is the key the
+ * collaborator removed there?
+ */
+const heldTheContainer = (document: SectionDoc, path: readonly string[]) =>
+  Object.hasOwn(document, path[0]!);
+
 // ---------------------------------------------------------------- fuzz
 
 type Trial = Readonly<{
@@ -301,8 +312,19 @@ type Trial = Readonly<{
  * only add, or add and delete — which is what makes the researcher's own order
  * for them the one answer a merge can give, and so the only arrivals an order
  * can be asserted against at all.
+ *
+ * `dropped container` is not a list edit at all: the collaborator switched off
+ * the capability the list lives inside, so the key above it is gone and the
+ * list reads as empty at every depth. Every ancestor row went with it, which
+ * leaves only the rows the researcher added — and a command carrying none of
+ * those has nothing to write, into a container that is not there to write it
+ * into.
  */
-type Arrival = 'anything' | 'inserts' | 'comings and goings';
+type Arrival =
+  | 'anything'
+  | 'inserts'
+  | 'comings and goings'
+  | 'dropped container';
 
 const arrivalStep = (
   arrival: Arrival,
@@ -319,7 +341,26 @@ const arrivalStep = (
 
 type Outcome =
   | { kind: 'threw'; error: unknown }
-  | { kind: 'ok'; result: Row[]; rebased: Command[][] };
+  | {
+      kind: 'ok';
+      result: Row[];
+      rebased: Command[][];
+      /**
+       * Whole-list `set`s the rebase emitted that write the list ALREADY at
+       * their key, reading an absent one as empty the way the rebase and the
+       * apply engine both read it.
+       *
+       * Such a command has nothing to say, and it does not land inertly: a
+       * `set` writes every container on the way to its key, so one whose rows
+       * the arrival has all taken away puts the container itself back.
+       */
+      inert: Command[];
+      /**
+       * How many whole-list `set`s the rebase refused into a container that is
+       * no longer there — the shape above, answered.
+       */
+      refusedIntoNothing: number;
+    };
 
 function runTrial(
   seed: number,
@@ -375,8 +416,11 @@ function runTrial(
     local = after;
   }
 
-  let remote: Row[] = base.map((row) => ({ ...row }));
-  const remoteSteps = 1 + int(rng, 3);
+  // A dropped container took every ancestor row with it, which is the empty
+  // list the rebase reads at that path — and there is no list edit to make.
+  const dropped = arrival === 'dropped container';
+  let remote: Row[] = dropped ? [] : base.map((row) => ({ ...row }));
+  const remoteSteps = dropped ? 0 : 1 + int(rng, 3);
   for (let step = 0; step < remoteSteps; step += 1) {
     remote = arrivalStep(arrival, rng, mode, remote, mintRemote);
   }
@@ -398,17 +442,40 @@ function runTrial(
     // earlier batch, as issued) onto the new base plus every earlier REBASED
     // batch.
     let basis = docWith(path, base);
-    let fields = docWith(path, remote);
+    let fields: SectionDoc = dropped ? { label: 'S' } : docWith(path, remote);
     const rebased: Command[][] = [];
+    const inert: Command[] = [];
+    let refusedIntoNothing = 0;
     for (const batch of batches) {
       const next = rebaseCommands(basis, fields, batch);
+      const here = readList(fields, path);
+      for (const command of next) {
+        if (command.op !== 'set' || !Array.isArray(command.value)) continue;
+        if (canonicalize(command.value) === canonicalize(here))
+          inert.push(command);
+      }
+      if (
+        next.length < batch.length &&
+        batch.some(
+          (command) => command.op === 'set' && Array.isArray(command.value),
+        ) &&
+        !heldTheContainer(fields, path)
+      ) {
+        refusedIntoNothing += 1;
+      }
       rebased.push([...next]);
       fields = applyCommands(fields, [...next]);
       basis = applyCommands(basis, [...batch]);
     }
     return {
       trial,
-      outcome: { kind: 'ok', result: readList(fields, path), rebased },
+      outcome: {
+        kind: 'ok',
+        result: readList(fields, path),
+        rebased,
+        inert,
+        refusedIntoNothing,
+      },
     };
   } catch (error) {
     return { trial, outcome: { kind: 'threw', error } };
@@ -460,6 +527,16 @@ const ORPHANED_TRIALS: Readonly<Record<Mode, number>> = {
  * property the researcher's submit left alone.
  */
 const CROSS_EDIT_TRIALS = 75;
+
+/**
+ * And how many whole-list `set`s the dropped-container sweep must actually
+ * refuse: the command that had nothing left to write, into the container that
+ * is not there to write it into.
+ */
+const DROPPED_CONTAINER_TRIALS: Readonly<Record<Mode, number>> = {
+  identified: 75,
+  idless: 5,
+};
 
 /**
  * The leaf sweep runs wider than the general one for the same reason the order
@@ -653,6 +730,23 @@ function sidesEditedDifferentLeaves(trial: Trial): boolean {
   });
 }
 
+/**
+ * Whether the rebase emitted a whole-list `set` with nothing left to say.
+ *
+ * The merge can answer with the list the arrival already holds — every row the
+ * `set` carried is one the arrival took away — and the command is then a
+ * command about nothing. Emitting it anyway is not inert: a `set` writes every
+ * container on the way to its key, so one merged to an empty list put back the
+ * capability the collaborator had just switched off, holding nothing.
+ */
+function saysNothing(_trial: Trial, outcome: Outcome): string | null {
+  if (outcome.kind !== 'ok' || outcome.inert.length === 0) return null;
+  return [
+    `rebased  ${JSON.stringify(outcome.rebased)}`,
+    `wrote the list already there: ${JSON.stringify(outcome.inert)}`,
+  ].join('\n');
+}
+
 /** Whether a trial's diff fell back to writing a whole list out. */
 const carriesAWholeListSet = (trial: Trial): boolean =>
   trial.batches.some((batch) =>
@@ -737,6 +831,44 @@ describe('rebasing a list edit onto a collaborator’s arrival', () => {
         }
         expect(failures).toEqual([]);
         expect(orphaned).toBeGreaterThan(ORPHANED_TRIALS[mode]);
+      });
+
+      /**
+       * The arrival that is not a list edit at all: the collaborator switched
+       * OFF the capability the list lives inside, so the container above it is
+       * gone and every ancestor row with it.
+       *
+       * That leaves a whole-list `set` carrying only the rows the researcher
+       * ADDED — and where they added none, carrying nothing. Such a command
+       * has to be refused rather than emitted, because a `set` writes every
+       * container on the way to its key: comparing the merge with what the
+       * RESEARCHER wrote called it changed and put the switched-off capability
+       * back, holding an empty list.
+       *
+       * `mergesLikeTheModel` is the half of the question that keeps this from
+       * being answered by refusing everything: a row the researcher added is
+       * one the arrival never saw, so it is written back — container and all,
+       * exactly as an `insertItem` into a dropped container is.
+       *
+       * The count is what keeps the refusal itself from going unexercised: the
+       * number of batches whose whole-list `set` was refused into a container
+       * that is no longer there. It is zero for the rule this replaces.
+       */
+      it('never puts back a container the arrival dropped', () => {
+        const failures: string[] = [];
+        let refused = 0;
+        for (let seed = 1; seed <= TRIALS; seed += 1) {
+          const { trial, outcome } = runTrial(seed, mode, 'dropped container');
+          if (outcome.kind === 'ok') refused += outcome.refusedIntoNothing;
+          const problem =
+            neverRefused(trial, outcome) ??
+            saysNothing(trial, outcome) ??
+            mergesLikeTheModel(trial, outcome);
+          if (problem !== null && failures.length < 3)
+            failures.push(describeTrial(trial, problem));
+        }
+        expect(failures).toEqual([]);
+        expect(refused).toBeGreaterThan(DROPPED_CONTAINER_TRIALS[mode]);
       });
     });
   }

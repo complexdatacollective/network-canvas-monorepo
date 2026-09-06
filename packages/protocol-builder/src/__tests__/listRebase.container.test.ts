@@ -154,6 +154,75 @@ describe('a nested list command whose container the arrival has dropped', () => 
 });
 
 /**
+ * The same arrival under a whole-list `set`.
+ *
+ * A list editor that rewrites a row commits the whole list, so this is the
+ * shape the container question takes for every edit the command vocabulary
+ * cannot say structurally — and a `set` writes the containers on its way down,
+ * which the row commands do not. The merge answers with the rows that survive
+ * it, and what the command does with that answer decides whether a container
+ * the collaborator switched off comes back.
+ */
+describe('a whole-list set whose container the arrival has dropped', () => {
+  it('is dropped when the merge leaves nothing of the researcher’s', () => {
+    const session = openSession({ items: [block('one')] });
+
+    // The researcher rewrites the only block. No single row operation says
+    // that, so the diff is the whole-list `set` this merge exists for.
+    session.dispatch(
+      commandsFromDraftChange(
+        session.getSnapshot().editedSection.fields,
+        stageWith({ items: [{ ...block('one'), content: 'Rewritten' }] }),
+      ),
+    );
+
+    // A collaborator switches the introduction screen off, taking the row the
+    // rewrite was about with it.
+    session.acknowledge({
+      fields: stageWith(undefined),
+      throughBatchId: 0,
+      manifestRevision: revision(2n),
+    });
+
+    // Nothing of the researcher's is left to write, so there is nothing to
+    // write it into: a `set []` here would put the switched-off screen back as
+    // an empty one.
+    expect(
+      session.getSnapshot().editedSection.fields.introScreen,
+    ).toBeUndefined();
+  });
+
+  /**
+   * The sibling case, and the rule it leaves standing: a row the researcher
+   * ADDED is one the arrival never saw, so switching the screen off says
+   * nothing about it and it is written back — container and all, exactly as
+   * the `insertItem` above is.
+   */
+  it('puts back a row the arrival never saw, container and all', () => {
+    const session = openSession({ items: [block('one')] });
+
+    // One submit that rewrites the existing block and adds another: again no
+    // single row operation, so again a whole-list `set`.
+    session.dispatch(
+      commandsFromDraftChange(
+        session.getSnapshot().editedSection.fields,
+        stageWith({
+          items: [{ ...block('one'), content: 'Rewritten' }, block('two')],
+        }),
+      ),
+    );
+
+    session.acknowledge({
+      fields: stageWith(undefined),
+      throughBatchId: 0,
+      manifestRevision: revision(2n),
+    });
+
+    expect(itemsOf(session)).toEqual([block('two')]);
+  });
+});
+
+/**
  * The same container, CREATED on both sides at once.
  *
  * Switching a capability on is a container the draft did not have before, and
