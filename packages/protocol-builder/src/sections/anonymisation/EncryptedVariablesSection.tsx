@@ -1,6 +1,8 @@
 import { createElement, useMemo, useState } from 'react';
 import { v4 as uuid } from 'uuid';
 
+import { formatMessageError, type IntlShape } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
 import {
@@ -18,6 +20,7 @@ import {
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import BuilderSection from '../BuilderSection.tsx';
+import { anonymisationMessages } from './anonymisationMessages.ts';
 
 /**
  * Encryption protects TEXT only.
@@ -29,30 +32,6 @@ import BuilderSection from '../BuilderSection.tsx';
  * from the codebook every time rather than remembered.
  */
 const TEXT = VariableTypes.text;
-
-export type EncryptedVariablesCopy = Readonly<{
-  sectionTitle: string;
-  description: string;
-  storageNotice: string;
-  emptyMessage: string;
-  noTextAttributes: string;
-}>;
-
-const DEFAULT_COPY: EncryptedVariablesCopy = {
-  sectionTitle: 'Encrypted attributes',
-  description:
-    'Choose which text attributes are protected by the participant’s passphrase.',
-  storageNotice:
-    'An encrypted attribute is stored so that only the passphrase can unlock it. It cannot be read, exported, or recovered without it.',
-  emptyMessage:
-    'This protocol has no types yet, so there is nothing to encrypt. Add one in the codebook.',
-  noTextAttributes:
-    'This type has no text attributes, so it has nothing that can be encrypted.',
-};
-
-export type EncryptedVariablesSectionProps = Readonly<{
-  copy?: Partial<EncryptedVariablesCopy>;
-}>;
 
 type NodeTypeView = Readonly<{
   typeId: string;
@@ -72,15 +51,14 @@ type NodeTypeView = Readonly<{
  */
 function NodeTypeAttributes({
   view,
-  noTextAttributes,
   disabled,
   onChange,
 }: Readonly<{
   view: NodeTypeView;
-  noTextAttributes: string;
   disabled: boolean;
   onChange: (next: readonly unknown[]) => void;
 }>) {
+  const intl = useAppIntl();
   const enclosingHeadingLevel = useEnclosingHeadingLevel();
   const headingTag =
     enclosingHeadingLevel === null
@@ -99,12 +77,15 @@ function NodeTypeAttributes({
       </Heading>
       {view.options.length === 0 ? (
         <Paragraph margin="none" emphasis="muted">
-          {noTextAttributes}
+          {intl.formatMessage(anonymisationMessages.noTextAttributes)}
         </Paragraph>
       ) : (
         <CheckboxGroupField
           name={`encrypted-attributes-${view.typeId}`}
-          aria-label={`Encrypted attributes for ${view.name}`}
+          aria-label={intl.formatMessage(
+            anonymisationMessages.attributeGroupLabel,
+            { typeName: view.name },
+          )}
           options={[...view.options]}
           value={[...view.encrypted]}
           disabled={disabled}
@@ -115,13 +96,26 @@ function NodeTypeAttributes({
   );
 }
 
+/**
+ * Produces copy without rendering it, so it is handed the formatter rather
+ * than reaching for one of its own.
+ *
+ * A refusal the host wrote arrives as a bare `message`, which is a string-only
+ * contract: read back through the same decoder as every other one in this
+ * package, so a host that encoded a descriptor reaches the researcher in their
+ * own language and a host that wrote a plain sentence passes through as it
+ * always did.
+ */
 const editFailureMessage = (
   result:
     | Readonly<{ status: 'blocked'; blockedSections: readonly unknown[] }>
     | Readonly<{ status: 'failed'; message: string }>,
+  intl: IntlShape,
 ): string => {
-  if (result.status === 'failed') return result.message;
-  return 'Someone else is editing this type right now, so the change was not made. Try again in a moment.';
+  if (result.status === 'failed') {
+    return formatMessageError(result.message, intl) ?? result.message;
+  }
+  return intl.formatMessage(anonymisationMessages.typeHeldRefusal);
 };
 
 /**
@@ -140,10 +134,8 @@ const editFailureMessage = (
  * whose `encrypted` flag the codebook editor clears with it — is reflected
  * here without this section issuing anything of its own.
  */
-export default function EncryptedVariablesSection({
-  copy,
-}: EncryptedVariablesSectionProps) {
-  const words = { ...DEFAULT_COPY, ...copy };
+export default function EncryptedVariablesSection() {
+  const intl = useAppIntl();
   const { controller, readOnly } = useStageEditorForm();
   const [status, setStatus] = useState('');
   const [failure, setFailure] = useState<string | undefined>(undefined);
@@ -184,7 +176,7 @@ export default function EncryptedVariablesSection({
       variableId;
     if (authoritativeDocument === undefined) {
       setFailure(
-        'That type is not available right now, so the change was not made.',
+        intl.formatMessage(anonymisationMessages.typeUnavailableRefusal),
       );
       return;
     }
@@ -194,9 +186,12 @@ export default function EncryptedVariablesSection({
     try {
       const request = buildUpdateVariableRequest({
         requestId: uuid(),
-        description: encrypted
-          ? `Encrypt ${label} on ${view.name}`
-          : `Stop encrypting ${label} on ${view.name}`,
+        description: intl.formatMessage(
+          encrypted
+            ? anonymisationMessages.encryptEditDescription
+            : anonymisationMessages.stopEncryptingEditDescription,
+          { attributeName: label, typeName: view.name },
+        ),
         subject,
         authoritativeDocument,
         variableId,
@@ -209,18 +204,19 @@ export default function EncryptedVariablesSection({
       });
       const result = await controller.requestCompoundEdit(request);
       if (result.status !== 'applied') {
-        setFailure(editFailureMessage(result));
+        setFailure(editFailureMessage(result, intl));
         return;
       }
       setStatus(
-        encrypted
-          ? `${label} is now encrypted.`
-          : `${label} is no longer encrypted.`,
+        intl.formatMessage(
+          encrypted
+            ? anonymisationMessages.encryptedAnnouncement
+            : anonymisationMessages.notEncryptedAnnouncement,
+          { attributeName: label },
+        ),
       );
     } catch {
-      setFailure(
-        'That change could not be made. Check the attribute in the codebook and try again.',
-      );
+      setFailure(intl.formatMessage(anonymisationMessages.editFailedRefusal));
     } finally {
       setBusy(false);
     }
@@ -238,9 +234,16 @@ export default function EncryptedVariablesSection({
   };
 
   return (
-    <BuilderSection title={words.sectionTitle} description={words.description}>
+    <BuilderSection
+      title={intl.formatMessage(anonymisationMessages.encryptedAttributesTitle)}
+      description={intl.formatMessage(
+        anonymisationMessages.encryptedAttributesDescription,
+      )}
+    >
       <Alert variant="info" density="compact">
-        <AlertDescription>{words.storageNotice}</AlertDescription>
+        <AlertDescription>
+          {intl.formatMessage(anonymisationMessages.storageNotice)}
+        </AlertDescription>
       </Alert>
 
       {failure !== undefined && (
@@ -251,7 +254,7 @@ export default function EncryptedVariablesSection({
 
       {nodeTypes.length === 0 && (
         <Paragraph margin="none" emphasis="muted">
-          {words.emptyMessage}
+          {intl.formatMessage(anonymisationMessages.noTypesEmptyState)}
         </Paragraph>
       )}
 
@@ -259,7 +262,6 @@ export default function EncryptedVariablesSection({
         <NodeTypeAttributes
           key={view.typeId}
           view={view}
-          noTextAttributes={words.noTextAttributes}
           disabled={readOnly || busy}
           onChange={(next) => handleChange(view, next)}
         />

@@ -1,3 +1,4 @@
+import { createMessageError } from '@codaco/app-i18n/messages';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 
 import VariableValidationEditor from '../../codebook/validation/VariableValidationEditor.tsx';
@@ -6,6 +7,7 @@ import {
   ruleMapPrecheck,
   type ValidationMap,
 } from '../../codebook/variableValidation.ts';
+import { anonymisationMessages } from './anonymisationMessages.ts';
 
 /**
  * The variable type whose rule catalogue is exactly the passphrase's:
@@ -61,6 +63,23 @@ export default function PassphraseRulesControl({
 }
 
 /**
+ * A field's `custom` rule answers with a string or nothing, so the two
+ * refusals this one writes cross the package's string-only contract encoded:
+ * the descriptor and its id travel inside the string, and the form's own error
+ * region decodes them in the reader's language. A refusal `ruleMapPrecheck`
+ * wrote is passed through as it stands — it belongs to the rule editor, and is
+ * either encoded there already or a plain sentence the same decoder leaves
+ * alone.
+ */
+const RULES_UNREADABLE = createMessageError(
+  anonymisationMessages.passphraseRulesUnreadable,
+);
+
+const MINIMUM_ABOVE_MAXIMUM = createMessageError(
+  anonymisationMessages.passphraseRulesMinimumAboveMaximum,
+);
+
+/**
  * The rule about the rules, in the section that holds them.
  *
  * A rule switched on but left without a value is kept as `null` on purpose, so
@@ -70,9 +89,7 @@ export default function PassphraseRulesControl({
  */
 export function passphraseRulesIssue(value: unknown): string | undefined {
   if (value === undefined || value === null) return undefined;
-  if (!isValidationMap(value)) {
-    return 'These passphrase rules could not be read. Switch them off and set them again.';
-  }
+  if (!isValidationMap(value)) return RULES_UNREADABLE;
 
   const { issue, complete } = ruleMapPrecheck(value);
   if (issue !== undefined) return issue;
@@ -84,7 +101,7 @@ export function passphraseRulesIssue(value: unknown): string | undefined {
     typeof maximum === 'number' &&
     minimum > maximum
   ) {
-    return 'The shortest passphrase you allow cannot be longer than the longest one.';
+    return MINIMUM_ABOVE_MAXIMUM;
   }
   return undefined;
 }
