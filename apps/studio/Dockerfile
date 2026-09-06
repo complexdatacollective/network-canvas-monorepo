@@ -33,18 +33,24 @@ ENV HUSKY=0
 COPY --from=pruner /repo/out/json/ .
 RUN pnpm install --frozen-lockfile
 COPY --from=pruner /repo/out/full/ .
-COPY --from=pruner /repo/pnpm-lock.yaml /source-lock.yaml
-COPY scripts/verify-deployed-lock.mjs ./scripts/verify-deployed-lock.mjs
 RUN pnpm --filter @codaco/studio-client build && pnpm --filter @codaco/studio-server build
 # pnpm's legacy deployment re-resolves peer labels even after a frozen build.
-# Refuse changed selected edges/integrities and check actual installed links.
-RUN pnpm --filter @codaco/studio-server deploy --prod --legacy /deploy && \
-  node scripts/verify-deployed-lock.mjs /source-lock.yaml /deploy apps/studio/server /deploy/runtime-dependencies.json
+RUN pnpm --filter @codaco/studio-server deploy --prod --legacy /deploy
+
+# Verify the exact shipped filesystem boundary. Builder-only /repo sources
+# must not make preserved workspace links appear to be installed packages.
+# The verifier/parser/source lock never enter the runtime image.
+FROM base AS verified
+COPY --from=builder /deploy /app
+COPY --from=pruner /repo/pnpm-lock.yaml /verifier/source-lock.yaml
+COPY --from=builder /repo/node_modules/yaml /verifier/node_modules/yaml
+COPY scripts/verify-deployed-lock.mjs /verifier/verify-deployed-lock.mjs
+RUN node /verifier/verify-deployed-lock.mjs /verifier/source-lock.yaml /app apps/studio/server /app/runtime-dependencies.json
 
 FROM node:24.18.0-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d AS runner
 ENV NODE_ENV=production
 WORKDIR /app
-COPY --from=builder /deploy .
+COPY --from=verified /app .
 COPY --from=builder /repo/apps/studio/server/dist ./dist
 COPY --from=builder /repo/apps/studio/server/migrations ./migrations
 COPY --chmod=755 apps/studio/docker-entrypoint.sh ./docker-entrypoint.sh

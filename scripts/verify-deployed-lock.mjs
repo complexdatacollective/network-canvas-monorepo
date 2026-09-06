@@ -194,9 +194,10 @@ export function verifyInstalledDeployment(directory, graph) {
     ),
   );
   const application = join(root, 'package.json');
+  let applicationName;
   if (existsSync(application)) {
     const name = JSON.parse(readFileSync(application, 'utf8')).name;
-    if (typeof name === 'string' && name) bundled.add(name);
+    if (typeof name === 'string' && name) applicationName = name;
   }
   function inspectPackages(nested) {
     const packages = readdirSync(nested).flatMap((name) => {
@@ -209,9 +210,22 @@ export function verifyInstalledDeployment(directory, graph) {
       const path = join(nested, name);
       const info = lstatSync(path);
       if (!info.isDirectory() && !info.isSymbolicLink()) continue;
-      // pnpm preserves these source-first links during deploy. The app bundles
-      // the selected workspace source; no extra physical package is allowed.
-      if (info.isSymbolicLink() && bundled.has(name)) continue;
+      // Source-first links may remain inert in the final image. Their names
+      // cannot authorize an existing unreviewed physical package. A resolvable
+      // application self link must actually point to this deployed application.
+      if (info.isSymbolicLink()) {
+        if (
+          !existsSync(path) &&
+          (bundled.has(name) || name === applicationName)
+        )
+          continue;
+        if (name === applicationName && existsSync(path)) {
+          if (realpathSync(path) === root) continue;
+          throw new Error(
+            'An installed package is outside the verified dependency graph.',
+          );
+        }
+      }
       if (info.isSymbolicLink() && !existsSync(path)) {
         // Optional platform packages may leave inert links into an omitted
         // virtual store. A link outside that store is never such a placeholder.

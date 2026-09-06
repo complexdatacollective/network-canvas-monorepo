@@ -300,3 +300,29 @@ test('accepts ordinary package hoists, binary shims, known bundled workspace lin
   writeFileSync(join(f.directory, 'node_modules/.bin/leaf'), '#!/bin/sh\n');
   assert.equal(verifyInstalledDeployment(f.directory, f.graph()).length, 2);
 });
+
+for (const name of ['bundled', '@codaco/test-server'])
+  test(`refuses a known ${name} link redirected to an unreviewed physical package`, (t) => {
+    const f = fixture(t);
+    writeFileSync(
+      join(f.directory, 'package.json'),
+      JSON.stringify({ name: '@codaco/test-server' }),
+    );
+    const target = join(f.directory, 'unreviewed-source');
+    mkdirSync(target);
+    writeFileSync(
+      join(target, 'package.json'),
+      JSON.stringify({ name, version: '9.9.9' }),
+    );
+    f.link(
+      name === 'bundled'
+        ? f.directory
+        : join(f.directory, 'node_modules/.pnpm'),
+      name,
+      target,
+    );
+    assert.throws(
+      () => verifyInstalledDeployment(f.directory, f.graph()),
+      /outside the verified dependency graph/,
+    );
+  });
