@@ -97,12 +97,44 @@ type BoundArray = Readonly<{
  * do. A hole is a document row the editor does not render, and it is answered
  * where that matters, at the index resolver: see `renderedRows` in
  * `arrayFieldCommands`.
+ *
+ * A list the FORM HAS CLEARED is the one other value that is replaced.
+ * Switching a capability off empties the list in the form and nowhere else —
+ * the clear reaches the session only with the save — so the session goes on
+ * holding the rows meanwhile, and an operation resolved against them would
+ * land the first row added afterwards beside the rows the researcher had just
+ * confirmed the removal of, and put them back. So when the field was handed no
+ * list, or an empty one, while the session holds rows, the batch first `set`s
+ * the key to the empty list the editor drew: the same rule as for a foreign
+ * value, for the same reason, and with the same undo — one batch, one history
+ * entry, so undoing the add puts the cleared rows back too. Read off the ROWS
+ * the session holds rather than its entries, so a document holding only holes
+ * is not mistaken for one the form cleared.
  */
-const readArray = (key: string, value: unknown): BoundArray => {
-  if (Array.isArray(value)) return { current: [...value], repair: [] };
+const readArray = (
+  key: string,
+  value: unknown,
+  rendered: unknown,
+): BoundArray => {
+  if (Array.isArray(value)) {
+    return clearedOnScreen(rendered, value)
+      ? { current: [], repair: [{ op: 'set', key, value: [] }] }
+      : { current: [...value], repair: [] };
+  }
   if (value === undefined || value === null) return { current: [], repair: [] };
   return { current: [], repair: [{ op: 'set', key, value: [] }] };
 };
+
+/**
+ * Whether the field shows an empty list where the session holds rows — the
+ * shape a form-local clear leaves, and nothing else: every other write to a
+ * bound list reaches the session first and is read back from it.
+ */
+const clearedOnScreen = (rendered: unknown, held: readonly unknown[]) =>
+  (rendered === undefined ||
+    rendered === null ||
+    (Array.isArray(rendered) && rendered.length === 0)) &&
+  readRows(held).length > 0;
 
 /**
  * What the list's form value becomes when it is brought level with the
@@ -244,7 +276,8 @@ export function useArrayFieldCommands<T extends ArrayRow>(
   getIdRef.current = getId;
 
   const readCurrent = useCallback(
-    (key: string) => readArray(key, applyOwnCommands([]).draft[key]),
+    (key: string) =>
+      readArray(key, applyOwnCommands([]).draft[key], renderedRef.current),
     [applyOwnCommands],
   );
 
@@ -410,11 +443,13 @@ export function useArrayFieldCommands<T extends ArrayRow>(
       // reads it, so a refusal and a write cannot leave the control saying
       // different things about the same document.
       //
-      // Not when the document holds something that is NOT a list, though. The
-      // empty list is what the editor drew for such a value, but writing it
-      // into the form value would replace the value on the next submit — for an
-      // edit that was refused, which is precisely the discard `readArray`'s
-      // rule refuses to make. A repair rides with a write or not at all.
+      // Not when the write would have replaced the document's value first,
+      // though — a value that is not a list, or rows the form has cleared. What
+      // the document holds is then not what the editor drew, and writing it
+      // into the form value for an edit that was refused would either replace a
+      // foreign value on the next submit or put the cleared rows back on
+      // screen: the discard, and the resurrection, that `readArray`'s rules
+      // refuse to make. A repair rides with a write or not at all.
       if (bound.repair.length === 0) {
         onChangeRef.current?.(renderableRows<T>(bound.current));
       }

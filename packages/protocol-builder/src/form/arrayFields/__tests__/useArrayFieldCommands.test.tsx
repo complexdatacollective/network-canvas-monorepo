@@ -699,3 +699,95 @@ describe('what a list write answers', () => {
     expect(outcome).toEqual({ kind: 'refused', reason: 'row-removed' });
   });
 });
+
+/**
+ * Switching a capability off clears the list in the FORM, and the form keeps
+ * that clear to itself until the save. The session goes on holding the rows
+ * meanwhile — and every list operation is resolved against what the session
+ * holds, so the first add after a clear would land beside the rows the
+ * researcher had just confirmed the removal of, and put them back.
+ */
+describe('a list the form has cleared', () => {
+  const addFirstRow = { type: 'insert', index: 0, item: { id: 'n' } } as const;
+
+  it('replaces the document’s rows in the same batch, so the added row lands in an empty list', () => {
+    const session = createSession({ prompts: [A, B] });
+    const onChange = vi.fn();
+    // The field was handed nothing: the clear emptied it.
+    const commands = renderCommands(session, [], 'prompts', onChange);
+
+    act(() => {
+      commands.onOperation?.(addFirstRow);
+    });
+
+    expect(session.getSnapshot().editedSection.fields.prompts).toEqual([
+      { id: 'n' },
+    ]);
+    // One batch, and so one history entry: undoing the add puts the cleared
+    // rows back too, because the clear reached the document with it.
+    expect(
+      session.getSnapshot().pendingCommands.map((batch) => batch.commands),
+    ).toEqual([
+      [
+        { op: 'set', key: 'prompts', value: [] },
+        { op: 'insertItem', key: 'prompts', index: 0, item: { id: 'n' } },
+      ],
+    ]);
+    expect(onChange).toHaveBeenLastCalledWith([{ id: 'n' }]);
+  });
+
+  it('replaces them for a save that outlived its editor too', () => {
+    const session = createSession({ prompts: [A, B] });
+    const commands = renderCommands(session, [], 'prompts', vi.fn());
+
+    let committed: ArrayWriteOutcome | undefined;
+    act(() => {
+      committed = commands.commitDetachedRow({ id: 'n' }, 'n', true);
+    });
+
+    expect(committed).toEqual({ kind: 'written' });
+    expect(session.getSnapshot().editedSection.fields.prompts).toEqual([
+      { id: 'n' },
+    ]);
+  });
+
+  it('does not mistake a document holding only holes for a cleared list', () => {
+    // Nothing here was cleared: the document holds no ROW for the field to
+    // have drawn. A hole is never repaired away (see `readArray`), so the add
+    // appends past it exactly as it does for any other holed list.
+    const session = createSession({ prompts: [null] });
+    const commands = renderCommands(session, [], 'prompts', vi.fn());
+
+    act(() => {
+      commands.onOperation?.(addFirstRow);
+    });
+
+    expect(session.getSnapshot().editedSection.fields.prompts).toEqual([
+      null,
+      { id: 'n' },
+    ]);
+    expect(
+      session.getSnapshot().pendingCommands.map((batch) => batch.commands),
+    ).toEqual([
+      [{ op: 'insertItem', key: 'prompts', index: 1, item: { id: 'n' } }],
+    ]);
+  });
+
+  it('repairs nothing when the document is as empty as the list drawn', () => {
+    const session = createSession({ prompts: [] });
+    const commands = renderCommands(session, [], 'prompts', vi.fn());
+
+    act(() => {
+      commands.onOperation?.(addFirstRow);
+    });
+
+    expect(session.getSnapshot().editedSection.fields.prompts).toEqual([
+      { id: 'n' },
+    ]);
+    expect(
+      session.getSnapshot().pendingCommands.map((batch) => batch.commands),
+    ).toEqual([
+      [{ op: 'insertItem', key: 'prompts', index: 0, item: { id: 'n' } }],
+    ]);
+  });
+});
