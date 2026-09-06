@@ -2,6 +2,10 @@ import { act, screen, waitFor } from '@testing-library/react';
 import { useEffect, useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
+import type { SectionDoc } from '@codaco/studio-sync/apply';
+import { sectionId } from '@codaco/studio-sync/taxonomy';
+
+import { buildUpdateVariableRequest } from '../../codebook/editing.ts';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useResourceGateway } from '../../resources/context.tsx';
 import BuilderSection from '../../sections/BuilderSection.tsx';
@@ -9,6 +13,7 @@ import InterviewerGuidanceSection from '../../sections/InterviewerGuidanceSectio
 import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
 import StageNameSection from '../../sections/StageNameSection.tsx';
 import SubjectSection from '../../sections/SubjectSection.tsx';
+import type { CompoundEditResult } from '../../session.ts';
 import type {
   StageEditorComponent,
   StageEditorProps,
@@ -17,6 +22,7 @@ import { fixtureStageIds, loadFixtureStage } from '../protocolFixture.ts';
 import {
   renderStageEditor,
   type RenderStageEditorOptions,
+  type StageEditorHarness,
 } from '../renderStageEditor.tsx';
 
 const commonSections = (
@@ -649,5 +655,160 @@ describe('the harness editor slot', () => {
     };
 
     expect(mismatched.editor).toBe(EgoFormEditor);
+  });
+});
+
+/**
+ * The harness seeds a codebook the way a collaborator changes one, and both
+ * ends of the session have to hear about it: the editor under test, which
+ * reads the session, and the host, which is what a later compound edit is
+ * judged against.
+ *
+ * They used to hear different stories. The seeded attribute reached the
+ * session alone, under a revision the harness made up, so the host's copy of
+ * the entity still hashed to what it held before — and the next compound edit
+ * touching that entity, built (correctly) on what the session was shown, was
+ * refused as `stale-base`. A family test that needed an existing attribute had
+ * to create one through the dialog instead of seeding it, and "nothing reached
+ * the codebook" could only be asserted as "the host's type never gained it",
+ * which nothing could seed in the first place.
+ */
+describe('a codebook change the harness seeds', () => {
+  const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: 'person' });
+  const NICKNAME = Object.freeze({
+    name: 'nickname',
+    type: 'text',
+    component: 'Text',
+  });
+
+  const isRecord = (value: unknown): value is Record<string, unknown> =>
+    typeof value === 'object' && value !== null && !Array.isArray(value);
+
+  /** The fixture's `person` type, as the session currently holds it. */
+  const personDocument = (harness: StageEditorHarness): SectionDoc => {
+    const person =
+      harness.session.getSnapshot().protocolSections[PERSON_SECTION];
+    if (person === undefined) {
+      throw new Error('the fixture has no "person" node type');
+    }
+    return person;
+  };
+
+  /**
+   * The fixture's `person` type with one more attribute on it.
+   *
+   * Refuses an id the fixture already carries: seeding an attribute that was
+   * there anyway would let every assertion below pass without the seeding
+   * having done anything.
+   */
+  const personWithNickname = (harness: StageEditorHarness): SectionDoc => {
+    const person = personDocument(harness);
+    const variables = isRecord(person.variables) ? person.variables : {};
+    if (Object.hasOwn(variables, 'nickname')) {
+      throw new Error(
+        'the fixture already gives "person" a "nickname" attribute, so seeding one proves nothing',
+      );
+    }
+    return { ...person, variables: { ...variables, nickname: NICKNAME } };
+  };
+
+  const seededHarness = (): StageEditorHarness => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: commonSections,
+    });
+    harness.receiveCodebookUpdate({
+      node: { person: personWithNickname(harness) },
+    });
+    return harness;
+  };
+
+  /** The rename a codebook editor sends when the researcher renames one. */
+  const renameNickname = async (
+    harness: StageEditorHarness,
+  ): Promise<CompoundEditResult> => {
+    const request = buildUpdateVariableRequest({
+      requestId: 'rename-the-seeded-attribute',
+      description: 'Rename an attribute',
+      subject: { entity: 'node', type: 'person' },
+      // What an editor builds its edit from: the entity the SESSION showed it.
+      authoritativeDocument: personDocument(harness),
+      variableId: 'nickname',
+      draft: { name: 'preferred_name' },
+    });
+    let result: CompoundEditResult | undefined;
+    await act(async () => {
+      result = await harness.session.requestCompoundEdit(request);
+    });
+    if (result === undefined)
+      throw new Error('the compound edit never settled');
+    return result;
+  };
+
+  it('reaches the host as well as the session', () => {
+    const harness = seededHarness();
+
+    expect(
+      harness.hostCodebook().node?.person?.variables?.nickname,
+    ).toMatchObject({ name: 'nickname' });
+    expect(harness.session.getSnapshot().manifestRevision).toEqual(
+      harness.host.getSnapshot().manifestRevision,
+    );
+  });
+
+  it('is a base a later compound edit is accepted against', async () => {
+    const harness = seededHarness();
+
+    await expect(renameNickname(harness)).resolves.toMatchObject({
+      status: 'applied',
+    });
+    expect(
+      harness.hostCodebook().node?.person?.variables?.nickname,
+    ).toMatchObject({ name: 'preferred_name' });
+  });
+
+  /**
+   * The escape hatch, and the reason it stays: a session whose base has moved
+   * out from under the host is a real state, and nothing else can produce it
+   * now that seeding keeps the two in step.
+   */
+  it('can be fabricated for the session alone, leaving the host behind', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: commonSections,
+    });
+    harness.receiveConflictingCodebookUpdate({
+      node: { person: personWithNickname(harness) },
+    });
+
+    expect(personDocument(harness).variables).toHaveProperty('nickname');
+    expect(harness.hostCodebook().node?.person?.variables).not.toHaveProperty(
+      'nickname',
+    );
+    await expect(renameNickname(harness)).resolves.toMatchObject({
+      status: 'failed',
+      reason: 'stale-base',
+    });
+  });
+
+  /**
+   * And says so rather than dropping the next arrival in silence: a session
+   * already past the host refuses every revision the host issues after it, and
+   * `receiveAuthoritativeUpdate` refuses without a word.
+   */
+  it('refuses to seed a session a fabricated arrival has taken past the host', () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: commonSections,
+    });
+    harness.receiveConflictingCodebookUpdate({
+      node: { person: personWithNickname(harness) },
+    });
+
+    expect(() =>
+      harness.receiveCodebookUpdate({
+        node: { person: personDocument(harness) },
+      }),
+    ).toThrow(/did not take the seeded codebook change/);
   });
 });

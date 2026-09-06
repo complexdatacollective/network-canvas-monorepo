@@ -13,7 +13,7 @@ import { expect } from 'vitest';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { resolveFieldPath } from '@codaco/fresco-ui/form/FieldNamespace';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
-import type { StageType } from '@codaco/protocol-validation';
+import type { Codebook, StageType } from '@codaco/protocol-validation';
 import type { Command, SectionDoc } from '@codaco/studio-sync/apply';
 import {
   sectionId,
@@ -24,6 +24,7 @@ import type { InMemoryCompoundHost } from '../compound-edit/InMemoryCompoundHost
 import { useStageEditorController } from '../controller.ts';
 import StageEditorShell from '../form/StageEditorShell.tsx';
 import { getInterfaceTemplate } from '../interfaces/templates.ts';
+import { protocolContextFromSections } from '../protocol-context.ts';
 import type { InMemoryResourceGateway } from '../resources/InMemoryResourceGateway.ts';
 import type {
   FinishRequest,
@@ -77,8 +78,44 @@ export type StageEditorHarness = RenderResult &
     submit(): Promise<FinishRequest | null>;
     /** Ends the session without finishing, discarding anything staged. */
     cancel(): Promise<void>;
-    /** Applies a codebook change as if another session had made it. */
+    /**
+     * Applies a codebook change as if another session had made it.
+     *
+     * It reaches the HOST first, which issues the revision for it, and the
+     * session is then told about it under that same revision — so this is one
+     * change to one protocol, seen from both ends, rather than a story the
+     * session alone has been told. A later compound edit touching what was
+     * seeded is therefore built on a base the host recognises and is accepted;
+     * before this went to the host, every such edit was refused as stale, and
+     * a family test that needed a seeded attribute had to drive the create
+     * dialog to get one.
+     *
+     * See `receiveConflictingCodebookUpdate` for the arrival the host has NOT
+     * accepted.
+     */
     receiveCodebookUpdate(patch: CodebookPatch): void;
+    /**
+     * Tells the SESSION ALONE about a codebook change, under a revision the
+     * host never issued.
+     *
+     * The escape hatch for the one scenario the honest path cannot produce: a
+     * session whose base has moved out from under the host, where the next
+     * compound edit must be refused as `stale-base`. It is named rather than a
+     * flag because it leaves the harness lopsided on purpose — the host is
+     * behind the session from here on, `hostCodebook()` will not show what was
+     * seeded, and `receiveCodebookUpdate` afterwards throws rather than let the
+     * session silently drop an arrival whose revision it has already passed.
+     */
+    receiveConflictingCodebookUpdate(patch: CodebookPatch): void;
+    /**
+     * The codebook as the HOST holds it, read the way an editor reads one.
+     *
+     * The session's copy answers "what was this editor told?"; this answers
+     * "what does the protocol actually hold?" — the only way to prove that
+     * something an editor did (or refused to do) reached the codebook, or that
+     * nothing did.
+     */
+    hostCodebook(): Readonly<Codebook>;
     /** Every local batch the authoritative protocol has not acknowledged. */
     pendingCommands(): readonly PendingCommandBatch[];
     /**
@@ -299,7 +336,9 @@ export function renderStageEditor<T extends StageType = StageType>(
   // arrives here only after the whole string is in — so these tests exercise
   // one scheduling of a change, not the one a person produces.
   const user = userEvent.setup({ delay: null });
-  let revision = 1n;
+  // Only fabricated revisions are numbered here. A real seeded change takes
+  // the number the host gives it.
+  let fabrications = 0n;
 
   const submit = async (): Promise<FinishRequest | null> => {
     const before = finishRequests.length;
@@ -337,7 +376,37 @@ export function renderStageEditor<T extends StageType = StageType>(
       });
     },
     receiveCodebookUpdate: (patch) => {
-      revision += 1n;
+      const applied = host.receiveAuthoritativeSections(
+        codebookSections(patch),
+      );
+      act(() => {
+        session.receiveAuthoritativeUpdate({
+          protocolSections: applied.protocolSections,
+          manifestRevision: applied.manifestRevision,
+        });
+      });
+      // The session may refuse an arrival, and refusing is silent by design.
+      // The only way it can refuse this one is if a fabricated revision has
+      // already taken the session past the host, so say that rather than leave
+      // a test asserting against a codebook change that never landed.
+      if (
+        session.getSnapshot().manifestRevision.hash !==
+        applied.manifestRevision.hash
+      ) {
+        throw new Error(
+          'The session did not take the seeded codebook change. `receiveConflictingCodebookUpdate` has put this session ahead of the host, so nothing the host issues from here on is newer than what the session holds.',
+        );
+      }
+    },
+    receiveConflictingCodebookUpdate: (patch) => {
+      // Past whichever of the two is further ahead, so the session takes it
+      // however many revisions the host has issued, and unknown to the host,
+      // which is the whole point.
+      const sessionSequence = session.getSnapshot().manifestRevision.sequence;
+      const hostSequence = host.getSnapshot().manifestRevision.sequence;
+      const fabricated =
+        (sessionSequence > hostSequence ? sessionSequence : hostSequence) + 1n;
+      fabrications += 1n;
       act(() => {
         session.receiveAuthoritativeUpdate({
           protocolSections: patchedCodebook(
@@ -345,12 +414,14 @@ export function renderStageEditor<T extends StageType = StageType>(
             patch,
           ),
           manifestRevision: {
-            sequence: revision,
-            hash: `revision-${revision}`,
+            sequence: fabricated,
+            hash: `fabricated-revision-${fabrications}`,
           },
         });
       });
     },
+    hostCodebook: () =>
+      protocolContextFromSections(host.getSnapshot().protocolSections).codebook,
     pendingCommands: () => session.getSnapshot().pendingCommands,
     liveCommands: () => [...liveCommands],
     ownedKeys: () => readOwnedKeys(),
@@ -490,25 +561,32 @@ function seedFrom<T extends StageType>(
   return loadFixtureStage(options.stageId);
 }
 
+/** A codebook patch as the sections it changes, `null` for the ones it removes. */
+function codebookSections(
+  patch: CodebookPatch,
+): Record<string, SectionDoc | null> {
+  const changed: Record<string, SectionDoc | null> = {};
+  for (const [typeId, definition] of Object.entries(patch.node ?? {})) {
+    changed[sectionId({ kind: 'codebookNode', typeId })] = definition;
+  }
+  for (const [typeId, definition] of Object.entries(patch.edge ?? {})) {
+    changed[sectionId({ kind: 'codebookEdge', typeId })] = definition;
+  }
+  if (patch.ego !== undefined) {
+    changed[sectionId({ kind: 'codebookEgo' })] = patch.ego;
+  }
+  return changed;
+}
+
+/** The sections a patch would leave behind, applied to a copy of `sections`. */
 function patchedCodebook(
   sections: Readonly<Record<string, SectionDoc>>,
   patch: CodebookPatch,
 ): Record<string, SectionDoc> {
   const next: Record<string, SectionDoc> = { ...sections };
-  for (const [typeId, definition] of Object.entries(patch.node ?? {})) {
-    const id = sectionId({ kind: 'codebookNode', typeId });
+  for (const [id, definition] of Object.entries(codebookSections(patch))) {
     if (definition === null) delete next[id];
     else next[id] = definition;
-  }
-  for (const [typeId, definition] of Object.entries(patch.edge ?? {})) {
-    const id = sectionId({ kind: 'codebookEdge', typeId });
-    if (definition === null) delete next[id];
-    else next[id] = definition;
-  }
-  if (patch.ego !== undefined) {
-    const id = sectionId({ kind: 'codebookEgo' });
-    if (patch.ego === null) delete next[id];
-    else next[id] = patch.ego;
   }
   return next;
 }
