@@ -971,6 +971,52 @@ describe('a codebook change the harness seeds', () => {
   });
 
   /**
+   * The harness's `onFinish` records the save rather than applying it, so the
+   * host is deliberately a save behind on the edited stage's own section.
+   * Seeding hands the session the host's whole snapshot, which would carry
+   * that lag back in: the editor would go on describing the stage as it was
+   * before the researcher saved it, because a collaborator added an attribute
+   * somewhere else entirely.
+   */
+  it('does not put the host’s older stage back into the session', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-roster-1',
+      sections: (
+        <>
+          <StageNameSection />
+          <SubjectSection entity="node" />
+        </>
+      ),
+    });
+    const name = await screen.findByRole('textbox', { name: 'Stage name' });
+    await harness.user.clear(name);
+    await harness.user.type(name, 'Renamed roster');
+    const request = await harness.submit();
+    expect(request?.stageDocument.label).toBe('Renamed roster');
+
+    const stageKey = sectionId({
+      kind: 'stage',
+      stageId: 'name-generator-roster-1',
+    });
+    const labelNow = () =>
+      harness.session.getSnapshot().protocolSections[stageKey]?.label;
+    // Reported as a pair, so a save the session never took is told apart from
+    // a seeding that undid one.
+    const beforeSeeding = labelNow();
+
+    harness.receiveCodebookUpdate({
+      node: {
+        place: { name: 'Place', color: 'sea-green', variables: {} },
+      },
+    });
+
+    expect({ beforeSeeding, afterSeeding: labelNow() }).toEqual({
+      beforeSeeding: 'Renamed roster',
+      afterSeeding: 'Renamed roster',
+    });
+  });
+
+  /**
    * And says so rather than dropping the next arrival in silence: a session
    * already past the host refuses every revision the host issues after it, and
    * `receiveAuthoritativeUpdate` refuses without a word.
