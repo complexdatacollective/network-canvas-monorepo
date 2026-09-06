@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useRef } from 'react';
 
 import type { ArrayFieldOperation } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
-import type { Command } from '@codaco/studio-sync/apply';
+import { canonicalize, type Command } from '@codaco/studio-sync/apply';
 
 import { useStageEditorForm } from '../stageEditorContext.ts';
 import {
@@ -12,6 +12,7 @@ import {
   movedRowIndex,
   readRows,
   reseatEditedRow,
+  resolveRowIndex,
 } from './arrayFieldCommands.ts';
 import {
   type ArrayWriteRefusal,
@@ -97,12 +98,83 @@ type BoundArray = Readonly<{
  * do. A hole is a document row the editor does not render, and it is answered
  * where that matters, at the index resolver: see `renderedRows` in
  * `arrayFieldCommands`.
+ *
+ * The rows the FORM HAS CLEARED are the one other thing a write replaces.
+ * Switching a capability off empties the list in the form and nowhere else —
+ * the clear reaches the session only with the save — so the session goes on
+ * holding the rows meanwhile, and an operation resolved against them would
+ * land the first row added afterwards beside the rows the researcher had just
+ * confirmed the removal of, and put them back.
+ *
+ * Which rows those are is read off the draft the form is LEVEL WITH
+ * (`committedFields`), not off the session: a field handed no list, or an
+ * empty one, while that draft holds rows has cleared exactly those rows. The
+ * session is the wrong baseline because it can be ahead of the form — a row
+ * that arrived a moment ago, while a save that had already begun was still on
+ * its way — and a mismatch read against it would call every such row cleared
+ * and `set` it away. So the batch first `set`s the key to the session's list
+ * with the cleared rows taken out of it, and a row the clear did not cover
+ * stays where it is. A cleared row is found by its id when it has one, and
+ * otherwise by content — as a MULTISET, each cleared row claiming the first
+ * entry not already claimed, because an options list legitimately holds two
+ * identical id-less rows and both of them were cleared: asking which of the
+ * two each one is (the question `resolveRowIndex` rightly refuses to guess
+ * at) would take neither out. The same rule as for a foreign value, for the
+ * same reason, and with the same undo — one batch, one history entry, so
+ * undoing the add puts the cleared rows back too. A hole is not a row, so a
+ * document holding only holes is never mistaken for one the form cleared,
+ * and a hole beside the cleared rows is left in place as it is everywhere
+ * else.
  */
-const readArray = (key: string, value: unknown): BoundArray => {
-  if (Array.isArray(value)) return { current: [...value], repair: [] };
+const readArray = <T extends ArrayRow>(
+  key: string,
+  value: unknown,
+  rendered: unknown,
+  agreed: unknown,
+  getId: ArrayRowIdentity<T> | undefined,
+): BoundArray => {
+  if (Array.isArray(value)) {
+    // The rows the form has cleared: every row of the draft it is level with,
+    // when the field shows no list or an empty one. Nothing else leaves that
+    // shape — every other write to a bound list reaches the session first and
+    // is read back from it.
+    const cleared = showsNoRows(rendered) ? renderableRows<T>(agreed) : NO_ROWS;
+    const removed = new Set<number>();
+    for (const [index, row] of cleared.entries()) {
+      const at =
+        getId?.(row) === undefined
+          ? firstUnclaimedMatch(value, canonicalize(row), removed)
+          : resolveRowIndex(value, cleared, index, getId);
+      if (at !== undefined) removed.add(at);
+    }
+    if (removed.size === 0) return { current: [...value], repair: [] };
+    const remaining = value.filter((_, index) => !removed.has(index));
+    return {
+      current: remaining,
+      repair: [{ op: 'set', key, value: remaining }],
+    };
+  }
   if (value === undefined || value === null) return { current: [], repair: [] };
   return { current: [], repair: [{ op: 'set', key, value: [] }] };
 };
+
+/** The first entry with this canonical `content` that no earlier cleared row has claimed. */
+const firstUnclaimedMatch = (
+  entries: readonly unknown[],
+  content: string,
+  claimed: ReadonlySet<number>,
+): number | undefined => {
+  const at = entries.findIndex(
+    (entry, index) => !claimed.has(index) && canonicalize(entry) === content,
+  );
+  return at === -1 ? undefined : at;
+};
+
+/** Whether a list field is showing nothing: no list at all, or an empty one. */
+const showsNoRows = (rendered: unknown): boolean =>
+  rendered === undefined ||
+  rendered === null ||
+  (Array.isArray(rendered) && rendered.length === 0);
 
 /**
  * What the list's form value becomes when it is brought level with the
@@ -230,7 +302,8 @@ export function useArrayFieldCommands<T extends ArrayRow>(
   getId?: ArrayRowIdentity<T>,
   itemLabel: string = DEFAULT_ITEM_LABEL,
 ): ArrayFieldCommands<T> {
-  const { applyOwnCommands, reportRefusedWrite } = useStageEditorForm();
+  const { applyOwnCommands, committedFields, reportRefusedWrite } =
+    useStageEditorForm();
   const documentKey = useContext(ArrayFieldBindingContext)?.documentKey;
 
   // Read at commit time rather than closed over. A dialog's save can land
@@ -244,8 +317,15 @@ export function useArrayFieldCommands<T extends ArrayRow>(
   getIdRef.current = getId;
 
   const readCurrent = useCallback(
-    (key: string) => readArray(key, applyOwnCommands([]).draft[key]),
-    [applyOwnCommands],
+    (key: string) =>
+      readArray(
+        key,
+        applyOwnCommands([]).draft[key],
+        renderedRef.current,
+        committedFields[key],
+        getIdRef.current,
+      ),
+    [applyOwnCommands, committedFields],
   );
 
   /**
@@ -410,11 +490,13 @@ export function useArrayFieldCommands<T extends ArrayRow>(
       // reads it, so a refusal and a write cannot leave the control saying
       // different things about the same document.
       //
-      // Not when the document holds something that is NOT a list, though. The
-      // empty list is what the editor drew for such a value, but writing it
-      // into the form value would replace the value on the next submit — for an
-      // edit that was refused, which is precisely the discard `readArray`'s
-      // rule refuses to make. A repair rides with a write or not at all.
+      // Not when the write would have replaced the document's value first,
+      // though — a value that is not a list, or rows the form has cleared. What
+      // the document holds is then not what the editor drew, and writing it
+      // into the form value for an edit that was refused would either replace a
+      // foreign value on the next submit or put the cleared rows back on
+      // screen: the discard, and the resurrection, that `readArray`'s rules
+      // refuse to make. A repair rides with a write or not at all.
       if (bound.repair.length === 0) {
         onChangeRef.current?.(renderableRows<T>(bound.current));
       }

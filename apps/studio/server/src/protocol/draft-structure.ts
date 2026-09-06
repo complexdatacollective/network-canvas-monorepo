@@ -6,11 +6,11 @@ import {
   contentHash,
   manifestHash,
 } from '@codaco/studio-sync/apply';
+import { assertSectionValid } from '@codaco/studio-sync/section-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 import type { TenantDb } from '@codaco/studio-sync/tenant';
 
 import { runNoAuditTenantTransaction } from '../audit/transaction.ts';
-import { assertSectionValid } from './validate.ts';
 
 export class DraftStructureError extends Error {}
 

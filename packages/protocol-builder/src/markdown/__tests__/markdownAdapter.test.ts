@@ -39,6 +39,39 @@ describe('RichText markdown adapter', () => {
     expect(roundTrip('A **bold** label', true)).toBe('A **bold** label');
   });
 
+  /**
+   * An empty block is not a block the next one has to be separated from.
+   *
+   * An editor leaves one behind whenever a selection is cleared and the caret
+   * lands in a sibling paragraph rather than the emptied one — and the leading
+   * space it used to serialise as was saved into the researcher's own question.
+   */
+  it('does not open with a space when the first block is empty', () => {
+    const content: RichTextContent = {
+      type: 'doc',
+      content: [
+        { type: 'paragraph' },
+        { type: 'paragraph', content: [{ type: 'text', text: 'Who else?' }] },
+      ],
+    };
+
+    expect(richTextContentToMarkdown(content, true)).toBe('Who else?');
+  });
+
+  /** And an empty block BETWEEN two others separates them once, not twice. */
+  it('separates the blocks that said something, not the gaps between them', () => {
+    const content: RichTextContent = {
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'First' }] },
+        { type: 'paragraph' },
+        { type: 'paragraph', content: [{ type: 'text', text: 'Second' }] },
+      ],
+    };
+
+    expect(richTextContentToMarkdown(content, true)).toBe('First Second');
+  });
+
   it('keeps all top-level blocks when serializing inline content', () => {
     const content: RichTextContent = {
       type: 'doc',
