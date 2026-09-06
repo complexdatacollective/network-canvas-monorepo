@@ -8,6 +8,11 @@ export type SmtpBehavior =
   | 'reject_data_temporary'
   | 'reject_data_permanent'
   | 'disconnect_data'
+  | 'silent_auth'
+  | 'silent_mail'
+  | 'silent_rcpt'
+  | 'silent_data_command'
+  | 'disconnect_tls'
   | 'silent_greeting'
   | 'silent_data';
 
@@ -18,6 +23,10 @@ export async function smtpFixture(behavior: SmtpBehavior = 'accept') {
   const commands: string[] = [];
   let connected: () => void = () => undefined;
   let received: () => void = () => undefined;
+  let commandReached: () => void = () => undefined;
+  const commandReceived = new Promise<void>((resolve) => {
+    commandReached = resolve;
+  });
   const connection = new Promise<void>((resolve) => {
     connected = resolve;
   });
@@ -31,7 +40,14 @@ export async function smtpFixture(behavior: SmtpBehavior = 'accept') {
     socket.setEncoding('utf8');
     let pending = '';
     let inData = false;
+    let startingTls = false;
     socket.on('data', (chunk: string) => {
+      if (startingTls) {
+        // The actual TLS ClientHello proves the peer entered negotiation.
+        commandReached();
+        socket.destroy();
+        return;
+      }
       pending += chunk;
       for (;;) {
         if (inData) {
@@ -60,6 +76,24 @@ export async function smtpFixture(behavior: SmtpBehavior = 'accept') {
         const command = pending.slice(0, end);
         pending = pending.slice(end + 2);
         commands.push(command);
+        if (
+          (behavior === 'silent_auth' && command.startsWith('AUTH')) ||
+          (behavior === 'silent_mail' && command.startsWith('MAIL FROM')) ||
+          (behavior === 'silent_rcpt' && command.startsWith('RCPT TO')) ||
+          (behavior === 'silent_data_command' && command === 'DATA')
+        ) {
+          commandReached();
+          continue;
+        }
+        if (behavior === 'disconnect_tls') {
+          if (command.startsWith('EHLO'))
+            socket.write('250-local-smtp.test\r\n250 STARTTLS\r\n');
+          else if (command === 'STARTTLS') {
+            startingTls = true;
+            socket.write('220 Begin TLS\r\n');
+          }
+          continue;
+        }
         if (command.startsWith('EHLO') || command.startsWith('HELO'))
           socket.write('250-local-smtp.test\r\n250 AUTH PLAIN\r\n');
         else if (command.startsWith('AUTH'))
@@ -96,6 +130,12 @@ export async function smtpFixture(behavior: SmtpBehavior = 'accept') {
     commands,
     connection,
     dataReceived,
+    commandReceived,
+    acceptPending() {
+      if (behavior !== 'silent_data' || messages.length !== 1)
+        throw new Error('No held message');
+      for (const socket of sockets) socket.write('250 Accepted\r\n');
+    },
     async close() {
       for (const socket of sockets) socket.destroy();
       await new Promise<void>((resolve) => server.close(() => resolve()));

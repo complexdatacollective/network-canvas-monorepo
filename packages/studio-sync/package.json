@@ -27,7 +27,9 @@
     "./role-bootstrap": "./src/role-bootstrap.ts",
     "./postgres-migrations": "./src/postgres-migrations.ts",
     "./postgres-migration-artifacts": "./src/postgres-migration-artifacts.ts",
-    "./postgres-migration-authoring": "./src/postgres-migration-authoring.ts"
+    "./postgres-migration-authoring": "./src/postgres-migration-authoring.ts",
+    "./postmark-email-sender": "./src/postmark-email-sender.ts",
+    "./postgres-backup": "./src/postgres-backup.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

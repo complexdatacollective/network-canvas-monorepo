@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { createConnection, type Socket } from 'node:net';
+import { Readable } from 'node:stream';
 
 import nodemailer from 'nodemailer';
 import parseAddresses from 'nodemailer/lib/addressparser/index.js';
@@ -65,7 +66,8 @@ const messageSchema = z.strictObject({
     .optional(),
 });
 
-function normalizeMailbox(value: string): string {
+/** Normalize only the domain of an already validated addr-spec. */
+export function normalizeMailbox(value: string): string {
   const boundary = value.lastIndexOf('@');
   // Nodemailer normalizes domains before reporting accepted recipients. Local
   // parts remain case sensitive, so compare the exact normalized envelope.
@@ -81,6 +83,34 @@ function address(value: string | EmailAddress): EmailAddress {
     address: single.address,
     ...(single.name ? { name: single.name } : {}),
   });
+}
+
+/** Both transports enforce the same single-recipient and header boundary. */
+export function normalizeEmailMessage(value: EmailMessage) {
+  try {
+    const message = messageSchema.parse(value);
+    return {
+      ...message,
+      from: address(message.from),
+      to: normalizeMailbox(message.to),
+      replyTo:
+        message.replyTo === undefined ? undefined : address(message.replyTo),
+      messageId: message.messageId ?? `<${randomUUID()}@networkcanvas.local>`,
+    };
+  } catch {
+    throw new EmailDeliveryError('permanent');
+  }
+}
+
+/** Validate operator-configured senders before a deployment accepts work. */
+export function validateEmailAddress(
+  value: string | EmailAddress,
+): EmailAddress {
+  try {
+    return address(addressInput.parse(value));
+  } catch {
+    throw new EmailDeliveryError('permanent');
+  }
 }
 
 /** Reject transport toggles; a URL must describe only an SMTP authority. */
@@ -128,7 +158,7 @@ function connectionOptions(value: string) {
   }
 }
 
-function failure(error: unknown, connected: boolean): EmailDeliveryError {
+function failure(error: unknown, contentStarted: boolean): EmailDeliveryError {
   if (error instanceof EmailDeliveryError) return error;
   if (error !== null && typeof error === 'object') {
     const responseCode =
@@ -142,15 +172,13 @@ function failure(error: unknown, connected: boolean): EmailDeliveryError {
     }
     const code = 'code' in error ? error.code : undefined;
     if (
-      ['EAUTH', 'EENVELOPE', 'EMESSAGE', 'ETLS', 'EREQUIRETLS'].includes(
-        String(code),
-      )
+      ['EAUTH', 'EENVELOPE', 'EMESSAGE', 'EREQUIRETLS'].includes(String(code))
     )
       return new EmailDeliveryError('permanent');
   }
-  // Nodemailer labels both greeting and post-DATA timeouts ETIMEDOUT/CONN.
-  // A connected timeout or unexplained close is conservatively terminal.
-  return new EmailDeliveryError(connected ? 'uncertain' : 'retryable');
+  // Greeting, authentication, envelope and TLS failures cannot deliver mail
+  // before the peer permits DATA and starts consuming the message stream.
+  return new EmailDeliveryError(contentStarted ? 'uncertain' : 'retryable');
 }
 
 export function createSmtpEmailSender({ url }: { url: string }): EmailSender {
@@ -159,23 +187,12 @@ export function createSmtpEmailSender({ url }: { url: string }): EmailSender {
   let closed = false;
   return {
     async send(value) {
-      let message;
-      let from;
-      let replyTo;
-      try {
-        message = messageSchema.parse(value);
-        from = address(message.from);
-        replyTo =
-          message.replyTo === undefined ? undefined : address(message.replyTo);
-      } catch {
-        throw new EmailDeliveryError('permanent');
-      }
+      const message = normalizeEmailMessage(value);
+      const { from, to, replyTo, messageId } = message;
       if (closed) throw new EmailDeliveryError('retryable');
-      const messageId =
-        message.messageId ?? `<${randomUUID()}@networkcanvas.local>`;
-      const to = normalizeMailbox(message.to);
       let socket: Socket | undefined;
-      let connected = false;
+      let contentStarted = false;
+      const streams = new Set<Readable>();
       let canceled = false;
       const { promise: deadline, reject: rejectDeadline } =
         Promise.withResolvers<never>();
@@ -183,7 +200,7 @@ export function createSmtpEmailSender({ url }: { url: string }): EmailSender {
         canceled = true;
         socket?.destroy();
         rejectDeadline(
-          new EmailDeliveryError(connected ? 'uncertain' : 'retryable'),
+          new EmailDeliveryError(contentStarted ? 'uncertain' : 'retryable'),
         );
       };
       active.add(cancel);
@@ -233,10 +250,32 @@ export function createSmtpEmailSender({ url }: { url: string }): EmailSender {
               callback(new EmailDeliveryError('retryable'), false);
               return;
             }
-            connected = true;
             callback(null, { connection });
           });
         },
+      });
+      transport.use('stream', (mail, callback) => {
+        mail.message.processFunc((source) => {
+          // This must be lazy: eagerly piping into a Transform would mark mail
+          // as sent while SMTP is still negotiating the envelope. Nodemailer
+          // consumes this stream only after the DATA response. Explicit SMTP
+          // rejection remains authoritative even if it drains the stream.
+          const observed = Readable.from(
+            (async function* () {
+              for await (const chunk of source as AsyncIterable<
+                Buffer | string
+              >) {
+                contentStarted = true;
+                yield chunk;
+              }
+            })(),
+            { objectMode: false },
+          );
+          streams.add(source);
+          streams.add(observed);
+          return observed;
+        });
+        callback();
       });
       try {
         const receipt: SMTPTransport.SentMessageInfo = await Promise.race([
@@ -266,11 +305,12 @@ export function createSmtpEmailSender({ url }: { url: string }): EmailSender {
           throw new EmailDeliveryError('uncertain');
         return { status: 'accepted', messageId };
       } catch (error) {
-        throw failure(error, connected);
+        throw failure(error, contentStarted);
       } finally {
         clearTimeout(timer);
         active.delete(cancel);
         socket?.destroy();
+        for (const stream of streams) stream.destroy();
         transport.close();
       }
     },
