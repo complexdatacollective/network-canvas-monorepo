@@ -387,7 +387,10 @@ function pathHasAnswer(
  *    between it and the draft's memory of the value.
  * 3. Otherwise the draft's value, minus every sub-path a record BELOW has
  *    since emptied. A container the form emptied altogether starts absent
- *    rather than as `{}`, which is not a value the schema accepts anywhere.
+ *    rather than as `{}`, which is not a value the schema accepts anywhere —
+ *    unless it is a ROW, which stays an empty row as it does everywhere else
+ *    a clear reaches one: removing an array index leaves a hole rather than
+ *    closing the gap, and taking a row out is a deliberate array operation.
  */
 function startingValue(
   state: FormStoreState,
@@ -412,7 +415,9 @@ function startingValue(
     if (record.value !== undefined || !isBelow(record.path, target)) continue;
     value = clearInside(value, record.path.slice(target.length));
   }
-  return isEmptyDictionary(value) && !isEmptyDictionary(committed)
+  return isEmptyDictionary(value) &&
+    !isEmptyDictionary(committed) &&
+    typeof target.at(-1) !== 'number'
     ? undefined
     : value;
 }

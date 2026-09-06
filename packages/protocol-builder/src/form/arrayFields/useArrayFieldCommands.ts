@@ -12,6 +12,7 @@ import {
   movedRowIndex,
   readRows,
   reseatEditedRow,
+  resolveRowIndex,
 } from './arrayFieldCommands.ts';
 import {
   type ArrayWriteRefusal,
@@ -98,43 +99,64 @@ type BoundArray = Readonly<{
  * where that matters, at the index resolver: see `renderedRows` in
  * `arrayFieldCommands`.
  *
- * A list the FORM HAS CLEARED is the one other value that is replaced.
+ * The rows the FORM HAS CLEARED are the one other thing a write replaces.
  * Switching a capability off empties the list in the form and nowhere else —
  * the clear reaches the session only with the save — so the session goes on
  * holding the rows meanwhile, and an operation resolved against them would
  * land the first row added afterwards beside the rows the researcher had just
- * confirmed the removal of, and put them back. So when the field was handed no
- * list, or an empty one, while the session holds rows, the batch first `set`s
- * the key to the empty list the editor drew: the same rule as for a foreign
- * value, for the same reason, and with the same undo — one batch, one history
- * entry, so undoing the add puts the cleared rows back too. Read off the ROWS
- * the session holds rather than its entries, so a document holding only holes
- * is not mistaken for one the form cleared.
+ * confirmed the removal of, and put them back.
+ *
+ * Which rows those are is read off the draft the form is LEVEL WITH
+ * (`committedFields`), not off the session: a field handed no list, or an
+ * empty one, while that draft holds rows has cleared exactly those rows. The
+ * session is the wrong baseline because it can be ahead of the form — a row
+ * that arrived a moment ago, while a save that had already begun was still on
+ * its way — and a mismatch read against it would call every such row cleared
+ * and `set` it away. So the batch first `set`s the key to the session's list
+ * with the cleared rows taken out of it, each found the way every other
+ * operation finds its row (`resolveRowIndex`: by id, else by position while
+ * the lists agree, else by unique content), and a row the clear did not cover
+ * stays where it is. The same rule as for a foreign value, for the same
+ * reason, and with the same undo — one batch, one history entry, so undoing
+ * the add puts the cleared rows back too. A hole is not a row, so a document
+ * holding only holes is never mistaken for one the form cleared, and a hole
+ * beside the cleared rows is left in place as it is everywhere else.
  */
-const readArray = (
+const readArray = <T extends ArrayRow>(
   key: string,
   value: unknown,
   rendered: unknown,
+  agreed: unknown,
+  getId: ArrayRowIdentity<T> | undefined,
 ): BoundArray => {
   if (Array.isArray(value)) {
-    return clearedOnScreen(rendered, value)
-      ? { current: [], repair: [{ op: 'set', key, value: [] }] }
-      : { current: [...value], repair: [] };
+    // The rows the form has cleared: every row of the draft it is level with,
+    // when the field shows no list or an empty one. Nothing else leaves that
+    // shape — every other write to a bound list reaches the session first and
+    // is read back from it.
+    const cleared = showsNoRows(rendered) ? renderableRows<T>(agreed) : NO_ROWS;
+    const removed = new Set(
+      cleared.flatMap((_, index) => {
+        const at = resolveRowIndex(value, cleared, index, getId);
+        return at === undefined ? [] : [at];
+      }),
+    );
+    if (removed.size === 0) return { current: [...value], repair: [] };
+    const remaining = value.filter((_, index) => !removed.has(index));
+    return {
+      current: remaining,
+      repair: [{ op: 'set', key, value: remaining }],
+    };
   }
   if (value === undefined || value === null) return { current: [], repair: [] };
   return { current: [], repair: [{ op: 'set', key, value: [] }] };
 };
 
-/**
- * Whether the field shows an empty list where the session holds rows — the
- * shape a form-local clear leaves, and nothing else: every other write to a
- * bound list reaches the session first and is read back from it.
- */
-const clearedOnScreen = (rendered: unknown, held: readonly unknown[]) =>
-  (rendered === undefined ||
-    rendered === null ||
-    (Array.isArray(rendered) && rendered.length === 0)) &&
-  readRows(held).length > 0;
+/** Whether a list field is showing nothing: no list at all, or an empty one. */
+const showsNoRows = (rendered: unknown): boolean =>
+  rendered === undefined ||
+  rendered === null ||
+  (Array.isArray(rendered) && rendered.length === 0);
 
 /**
  * What the list's form value becomes when it is brought level with the
@@ -262,7 +284,8 @@ export function useArrayFieldCommands<T extends ArrayRow>(
   getId?: ArrayRowIdentity<T>,
   itemLabel: string = DEFAULT_ITEM_LABEL,
 ): ArrayFieldCommands<T> {
-  const { applyOwnCommands, reportRefusedWrite } = useStageEditorForm();
+  const { applyOwnCommands, committedFields, reportRefusedWrite } =
+    useStageEditorForm();
   const documentKey = useContext(ArrayFieldBindingContext)?.documentKey;
 
   // Read at commit time rather than closed over. A dialog's save can land
@@ -277,8 +300,14 @@ export function useArrayFieldCommands<T extends ArrayRow>(
 
   const readCurrent = useCallback(
     (key: string) =>
-      readArray(key, applyOwnCommands([]).draft[key], renderedRef.current),
-    [applyOwnCommands],
+      readArray(
+        key,
+        applyOwnCommands([]).draft[key],
+        renderedRef.current,
+        committedFields[key],
+        getIdRef.current,
+      ),
+    [applyOwnCommands, committedFields],
   );
 
   /**

@@ -773,6 +773,67 @@ describe('a list the form has cleared', () => {
     ]);
   });
 
+  it('keeps a row that arrived after the form fell behind the session', () => {
+    // Nothing was cleared here. The form is level with an empty list, and a
+    // row then reached the session that the form has not caught up with — the
+    // moment an asynchronous save can land in. `commands` is that form: the
+    // closure built before the arrival, which is the one such a save holds.
+    const session = createSession({ prompts: [] });
+    const commands = renderCommands(session, [], 'prompts', vi.fn());
+    act(() => {
+      session.acknowledge({
+        fields: { prompts: [A] },
+        throughBatchId: 0,
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+    });
+
+    act(() => {
+      commands.onOperation?.(addFirstRow);
+    });
+
+    expect(session.getSnapshot().editedSection.fields.prompts).toEqual([
+      A,
+      { id: 'n' },
+    ]);
+    expect(
+      session.getSnapshot().pendingCommands.map((batch) => batch.commands),
+    ).toEqual([
+      [{ op: 'insertItem', key: 'prompts', index: 1, item: { id: 'n' } }],
+    ]);
+  });
+
+  it('removes only the rows the clear covered when another arrived meanwhile', () => {
+    const session = createSession({ prompts: [A] });
+    // Level with Alpha and showing nothing: the form cleared Alpha, and only
+    // Alpha.
+    const commands = renderCommands(session, [], 'prompts', vi.fn());
+    act(() => {
+      session.acknowledge({
+        fields: { prompts: [A, B] },
+        throughBatchId: 0,
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+    });
+
+    act(() => {
+      commands.onOperation?.(addFirstRow);
+    });
+
+    expect(session.getSnapshot().editedSection.fields.prompts).toEqual([
+      B,
+      { id: 'n' },
+    ]);
+    expect(
+      session.getSnapshot().pendingCommands.map((batch) => batch.commands),
+    ).toEqual([
+      [
+        { op: 'set', key: 'prompts', value: [B] },
+        { op: 'insertItem', key: 'prompts', index: 1, item: { id: 'n' } },
+      ],
+    ]);
+  });
+
   it('repairs nothing when the document is as empty as the list drawn', () => {
     const session = createSession({ prompts: [] });
     const commands = renderCommands(session, [], 'prompts', vi.fn());

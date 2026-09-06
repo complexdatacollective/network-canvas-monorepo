@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { type ReactNode, useState } from 'react';
+import { type ComponentType, type ReactNode, useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
@@ -24,7 +24,7 @@ import MultiSelect, {
 import ProtocolArrayField from '../ProtocolArrayField.tsx';
 import ProtocolField from '../ProtocolField.tsx';
 import StageEditorShell from '../StageEditorShell.tsx';
-import { useStageValue } from '../stageFormHooks.ts';
+import { useClearStageValue, useStageValue } from '../stageFormHooks.ts';
 
 function createSession(fields: SectionDoc) {
   return new ProtocolBuilderSessionStore({
@@ -306,5 +306,82 @@ describe('a capability switched off and back on', () => {
     expect(
       cards().getAllByRole('combobox', { name: 'Attribute' }),
     ).toHaveLength(1);
+  });
+});
+
+/** Empties a stage path the way a capability's switch does. */
+function ClearButton({ path }: Readonly<{ path: string }>) {
+  const clear = useClearStageValue();
+  return (
+    <button type="button" onClick={() => clear(path)}>
+      Clear {path}
+    </button>
+  );
+}
+
+/** A control that shows whatever value it is handed, of any shape. */
+const ValueOutput = (({ value }: Readonly<{ value?: unknown }>) => (
+  <output data-testid="field-value">{JSON.stringify(value ?? null)}</output>
+)) as ComponentType<Record<string, unknown>>;
+
+/**
+ * The form can empty part of a container before any field has registered at
+ * the container itself — a capability owning a leaf inside it, cleared while
+ * the compound control above is still behind a disclosure. What that control
+ * then starts out holding follows the same rule every other clear applies to
+ * an emptied container.
+ */
+describe('a field mounting over a path the form has emptied inside', () => {
+  it('starts a container the form emptied absent rather than as an empty object', async () => {
+    const user = userEvent.setup({ delay: null });
+    renderEditor(
+      createSession({
+        label: 'Welcome',
+        title: 'Hello',
+        items: [],
+        extras: { note: 'Remember this' },
+      }),
+      <BuilderSection title="Extras">
+        <ClearButton path="extras.note" />
+        <Disclosure label="Show extras">
+          <ProtocolField name="extras" label="Extras" component={ValueOutput} />
+        </Disclosure>
+        <ValueProbe path="extras" />
+      </BuilderSection>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Clear extras.note' }));
+    await user.click(screen.getByRole('button', { name: 'Show extras' }));
+
+    // `{}` is not "no extras" to the schema; absence is.
+    await waitFor(() => expect(probedValue('extras')).toBeNull());
+  });
+
+  it('keeps a row the form emptied as an empty row', async () => {
+    const user = userEvent.setup({ delay: null });
+    renderEditor(
+      createSession({
+        label: 'Welcome',
+        title: 'Hello',
+        items: [{ content: 'Old' }],
+      }),
+      <BuilderSection title="Items">
+        <ClearButton path="items[0].content" />
+        <Disclosure label="Show item">
+          <ProtocolField name="items[0]" label="Item" component={ValueOutput} />
+        </Disclosure>
+        <ValueProbe path="items[0]" />
+      </BuilderSection>,
+    );
+
+    await user.click(
+      screen.getByRole('button', { name: 'Clear items[0].content' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Show item' }));
+
+    // Removing an array index leaves a hole rather than closing the gap, so an
+    // emptied row stays an empty row; taking one out is a deliberate array
+    // operation, not a consequence of clearing one of its settings.
+    await waitFor(() => expect(probedValue('items[0]')).toEqual({}));
   });
 });
