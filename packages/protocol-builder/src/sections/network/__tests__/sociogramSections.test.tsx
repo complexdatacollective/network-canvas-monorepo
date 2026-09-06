@@ -249,6 +249,33 @@ const openPrompt = async (harness: StageEditorHarness): Promise<void> => {
   await screen.findByRole('dialog');
 };
 
+/**
+ * The attribute ids a sort rule is currently offering to order by.
+ *
+ * The placeholder is dropped: it is the cell's "nothing chosen yet" rather
+ * than a property on offer, and counting it would let an empty list pass.
+ */
+const sortPropertyOptions = (): string[] =>
+  [
+    ...screen
+      .getByRole('combobox', { name: 'Property' })
+      .querySelectorAll('option'),
+  ]
+    .map((option) => option.value)
+    .filter((value) => value !== '');
+
+/** Every attribute of the type this sociogram collects, as the fixture holds it. */
+const personVariables = (
+  harness: StageEditorHarness,
+): [string, { type?: unknown }][] => {
+  const person = harness.session.getSnapshot().protocolSections[PERSON_SECTION];
+  const variables = person?.variables;
+  if (typeof variables !== 'object' || variables === null) {
+    throw new Error('the fixture person type has no attributes');
+  }
+  return Object.entries(variables) as [string, { type?: unknown }][];
+};
+
 describe('the order a sociogram hands unplaced nodes over in', () => {
   /**
    * An order the prompt already has opens switched ON, holding its rules.
@@ -272,6 +299,30 @@ describe('the order a sociogram hands unplaced nodes over in', () => {
     expect(screen.getByRole('combobox', { name: 'Direction' })).toHaveValue(
       'asc',
     );
+  });
+
+  /**
+   * A rule READS an attribute rather than writing one, so nothing this stage
+   * collects is off limits to it — with one exception. A `layout` attribute
+   * holds where a node sits on the canvas, which is a pair of coordinates
+   * rather than a value one node can be ordered before another by; offering it
+   * would let a researcher build a rule the interview cannot apply.
+   *
+   * Asserted as the whole list rather than as the absence of `layout` alone,
+   * because the exclusion is a filter on the attribute's TYPE: one written
+   * against the wrong key would take every attribute out with it, and an
+   * absence-only claim would call that a pass.
+   */
+  it('offers every attribute of the type it collects as a sort key, except the one holding positions', async () => {
+    const harness = renderStageEditor(openWithSortOrder());
+
+    await openPrompt(harness);
+
+    const sortable = personVariables(harness)
+      .filter(([, variable]) => variable.type !== 'layout')
+      .map(([id]) => id);
+    expect(sortable).toContain('name');
+    expect(sortPropertyOptions()).toEqual(['*', ...sortable]);
   });
 
   it('saves a rule the researcher added to a prompt that had none', async () => {
