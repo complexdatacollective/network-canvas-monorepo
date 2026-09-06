@@ -1,10 +1,17 @@
-import { useCallback, useMemo, useRef, useSyncExternalStore } from 'react';
+import {
+  useCallback,
+  useContext,
+  useMemo,
+  useRef,
+  useSyncExternalStore,
+} from 'react';
 
 import {
   type FieldNameMode,
   resolveFieldPath,
   useFieldNamespacePath,
 } from '@codaco/fresco-ui/form/FieldNamespace';
+import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import {
   formatObjectPath,
@@ -24,32 +31,49 @@ import {
 type FormStoreState = ReturnType<StageFormStoreApi['getState']>;
 
 /**
- * Where a field actually lives, and what the committed draft holds there.
+ * Where a field actually lives, and what it should start out holding.
  *
  * A field's name is not always its path: an enclosing `FieldNamespace`
  * prefixes it, and `nameMode="opaque"` makes a name containing dots a single
  * segment rather than a route through the document. Both are resolved here
  * exactly as Fresco's `Field` resolves them, so the name the outline asks the
- * store about and the path the committed value is read from are the ones the
+ * store about and the path the starting value is read for are the ones the
  * field is really registered under.
+ *
+ * The starting value is the committed draft's, except where the stage form
+ * already knows better — see `startingValue`. Switching a capability off
+ * parks a tombstone at the path it owns, and a field mounting beneath that
+ * tombstone for the first time has no parked value of its own for the store
+ * to prefer: seeded from the draft, it would start out holding exactly what
+ * the clear promised to remove, and save it back. Only a field of the stage
+ * form is resolved this way. One inside a dialog registers with a store of
+ * its own, whose records say nothing about the stage's paths.
  *
  * The value is memoised because `initialValue` is a dependency of the effect
  * that registers a field: an unstable one re-registers it on every render.
+ * The form's records are read at that moment rather than subscribed to: a
+ * starting value is consulted when the field registers, and a field that is
+ * already registered is never re-seeded from it — the store keeps a parked
+ * value over `initialValue` when a field comes back.
  */
 export function useResolvedFieldIdentity(
   name: string,
   nameMode: FieldNameMode = 'legacy',
-): Readonly<{ registeredName: string; committedValue: unknown }> {
-  const { committedFields } = useStageEditorForm();
+): Readonly<{ registeredName: string; initialValue: unknown }> {
+  const { storeApi, committedFields } = useStageEditorForm();
+  const nearestStore = useContext(FormStoreContext);
   const namespace = useFieldNamespacePath();
 
   return useMemo(() => {
     const path = resolveFieldPath(namespace, name, nameMode);
     return {
       registeredName: formatObjectPath(path),
-      committedValue: getValue(committedFields, path),
+      initialValue:
+        nearestStore === storeApi
+          ? startingValue(storeApi.getState(), committedFields, path)
+          : getValue(committedFields, path),
     };
-  }, [committedFields, name, nameMode, namespace]);
+  }, [committedFields, name, nameMode, namespace, nearestStore, storeApi]);
 }
 
 /**
@@ -176,6 +200,35 @@ export function useStageValue(path: string): unknown {
       ? pathOperations.getValue(target)
       : getValue(committedFields, target);
   }, [committedFields, path, storeApi]);
+
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+}
+
+/**
+ * How many times the stage form has been written to from an authoritative
+ * draft.
+ *
+ * The form-owned record of `reseedStageForm` having run — a count Fresco's own
+ * `Section` already watches to reapply `defaultOpen`. Anything in the editor
+ * holding state OF ITS OWN about the draft has the same problem the panel does
+ * (it was decided from a draft that has since been replaced beneath it) and so
+ * needs the same signal, or the two disagree about the same capability.
+ *
+ * Deliberately not the session's own generation: what matters is not that the
+ * draft moved but that the CONTROLS were rewritten from it, and only the form
+ * knows when that happened.
+ */
+export function useFormRestoreVersion(): number {
+  const { storeApi } = useStageEditorForm();
+
+  const subscribe = useCallback(
+    (onStoreChange: () => void) => storeApi.subscribe(onStoreChange),
+    [storeApi],
+  );
+  const getSnapshot = useCallback(
+    () => storeApi.getState().formRestoreVersion,
+    [storeApi],
+  );
 
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
@@ -316,6 +369,66 @@ function pathHasAnswer(
   return hasAnswer(committed);
 }
 
+/**
+ * What a field registering at this path should start out holding.
+ *
+ * The committed draft is where a starting value comes from, and the form
+ * outranks it the way `pathHasAnswer` says it does, record by record:
+ *
+ * 1. A record AT the path is left to the store, which prefers a parked value
+ *    to `initialValue` when the field registers. The draft's value is answered
+ *    so that the baseline a field is compared against for dirtiness is the
+ *    draft it was opened with, exactly as it is for every other field.
+ * 2. The nearest record ABOVE it owns the subtree, and what it holds at the
+ *    path is the answer — nothing at all, when the record is the tombstone a
+ *    cleared capability parked or a container the clear emptied. This is the
+ *    case the store cannot see for itself: a field that had never registered
+ *    when the clear ran has no record of its own, so nothing but this stands
+ *    between it and the draft's memory of the value. A REGISTERED ancestor is
+ *    asked before a dormant one whatever their depths, because that is the
+ *    store's own precedence: the form's values are assembled from registered
+ *    fields alone, and the submit drops a parked write that a mounted field
+ *    overlaps — so a dormant ancestor's value is the form's knowledge only
+ *    where no mounted field owns the path, and a leaf seeded from it under a
+ *    mounted container would put the parked edit back over that container.
+ * 3. Otherwise the draft's value, minus every sub-path a record BELOW has
+ *    since emptied. A container the form emptied altogether starts absent
+ *    rather than as `{}`, which is not a value the schema accepts anywhere —
+ *    unless it is a ROW, which stays an empty row as it does everywhere else
+ *    a clear reaches one: removing an array index leaves a hole rather than
+ *    closing the gap, and taking a row out is a deliberate array operation.
+ */
+function startingValue(
+  state: FormStoreState,
+  committedFields: StageFormDraft,
+  target: ObjectPath,
+): unknown {
+  const committed = getValue(committedFields, target);
+  const registered = recordsIn(state.fields);
+  const dormant = recordsIn(state.dormantValues);
+  const records = [...registered, ...dormant];
+  if (records.some((record) => samePath(record.path, target))) {
+    return committed;
+  }
+
+  const above =
+    nearestAbove(registered, target) ?? nearestAbove(dormant, target);
+  if (above !== undefined) {
+    return readInside(above.value, target.slice(above.path.length));
+  }
+
+  let value = committed;
+  for (const record of records) {
+    if (record.value !== undefined || !isBelow(record.path, target)) continue;
+    value = clearInside(value, record.path.slice(target.length));
+  }
+  return isEmptyDictionary(value) &&
+    !isEmptyDictionary(committed) &&
+    typeof target.at(-1) !== 'number'
+    ? undefined
+    : value;
+}
+
 function readInside(value: unknown, relative: ObjectPath): unknown {
   if (typeof value !== 'object' || value === null) return undefined;
   // Every node reachable inside a container field's value is itself a value.
@@ -374,21 +487,33 @@ function safePath(
   }
 }
 
+type FormRecord = Readonly<{ path: ObjectPath; value: unknown }>;
+
 /** Every field the form holds, mounted or parked, addressed structurally. */
-function formRecords(
-  state: FormStoreState,
-): { path: ObjectPath; value: unknown }[] {
-  const records: { path: ObjectPath; value: unknown }[] = [];
-  for (const source of [state.fields, state.dormantValues]) {
-    for (const [name, field] of source) {
-      // A stored path is authoritative; a name without one is a plain field
-      // whose own name is its path.
-      const path = field.path ?? safePath(name, 'legacy');
-      if (path !== null) records.push({ path, value: field.value });
-    }
+function formRecords(state: FormStoreState): FormRecord[] {
+  return [...recordsIn(state.fields), ...recordsIn(state.dormantValues)];
+}
+
+/** The fields of one of the form's two maps, addressed structurally. */
+function recordsIn(source: FormStoreState['fields']): FormRecord[] {
+  const records: FormRecord[] = [];
+  for (const [name, field] of source) {
+    // A stored path is authoritative; a name without one is a plain field
+    // whose own name is its path.
+    const path = field.path ?? safePath(name, 'legacy');
+    if (path !== null) records.push({ path, value: field.value });
   }
   return records;
 }
+
+/** The deepest of these records that sits strictly above `target`. */
+const nearestAbove = (
+  records: readonly FormRecord[],
+  target: ObjectPath,
+): FormRecord | undefined =>
+  records
+    .filter((record) => isAbove(record.path, target))
+    .toSorted((a, b) => b.path.length - a.path.length)[0];
 
 const samePath = (a: ObjectPath, b: ObjectPath) =>
   a.length === b.length && a.every((segment, index) => b[index] === segment);
