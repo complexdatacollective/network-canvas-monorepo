@@ -77,6 +77,18 @@ const openWithFamilyMemberForm = () => ({
 const commandsOf = (harness: StageEditorHarness) =>
   harness.pendingCommands().flatMap((batch) => [...batch.commands]);
 
+/**
+ * What the outline says about one section, by its title.
+ *
+ * Undefined rather than a default when the section is not listed at all, so a
+ * test asserting a state cannot pass against a section that has gone.
+ */
+const outlineStateOf = (
+  harness: StageEditorHarness,
+  title: string,
+): string | undefined =>
+  harness.outline().find((section) => section.title === title)?.state;
+
 /** The family member form as the session holds it right now. */
 const formRows = (harness: StageEditorHarness): unknown[] => {
   const nodeConfig =
@@ -1082,6 +1094,15 @@ describe('a pedigree whose node type changes', () => {
    * none of the attributes that described it, which is a stage nobody
    * authored. `nodeConfig.type` itself is not among the unsets: the researcher
    * is changing it, not losing it.
+   *
+   * ONE batch even though TWO sections reset on this type: the node
+   * configuration lists every path the type invalidates, and the nomination
+   * prompts section names the same type in its own `resetOn` so that its
+   * switch goes off with them. The node configuration's reset runs first — it
+   * is the earlier section, and passive effects run in tree order — so by the
+   * time the prompts section looks, the draft holds nothing at its path and a
+   * discard that finds nothing to discard writes nothing. The two compose
+   * instead of costing the researcher two steps of undo.
    */
   it('carries the chosen type and everything it invalidated in one batch', async () => {
     const harness = renderStageEditor(openWithNominationPrompts());
@@ -1097,6 +1118,66 @@ describe('a pedigree whose node type changes', () => {
       { op: 'unset', key: ['nodeConfig', 'relationshipVariable'] },
       { op: 'unset', key: 'nominationPrompts' },
     ]);
+  });
+
+  /**
+   * The prompts were a capability the researcher had switched ON, and the type
+   * change takes every one of them away. The switch has to go with them.
+   *
+   * Left standing it says the section is configured while the list behind it
+   * is empty, and the outline reads the same fact the same way: an optional
+   * section nobody has filled in reported as finished, which is the one thing
+   * an outline is for and the one thing it must not get wrong. The researcher
+   * would have to open the section and close it again to find out.
+   *
+   * `resetOn` is the seam that says it: the section names the path its content
+   * only means anything against, and the switch, the panel and the discard all
+   * follow from that one fact rather than from three sections agreeing.
+   */
+  it('switches the nomination prompts off rather than calling an empty section finished', async () => {
+    const harness = renderStageEditor(openWithNominationPrompts());
+    expect(
+      await screen.findByRole('switch', { name: 'Nomination prompts' }),
+    ).toBeChecked();
+    await waitFor(() =>
+      expect(outlineStateOf(harness, 'Nomination prompts')).toBe('Finished'),
+    );
+
+    await chooseNodeType(harness, 'person');
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('switch', { name: 'Nomination prompts' }),
+      ).not.toBeChecked(),
+    );
+    expect(outlineStateOf(harness, 'Nomination prompts')).toBe('Switched off');
+  });
+
+  /**
+   * And the other side of it, which is what the arrival guard in
+   * `useOnResearcherChange` exists for: an undo moves the same value, so a
+   * reset that acted on the value merely MOVING would throw the prompts away
+   * again the instant the undo brought them back — leaving the researcher able
+   * to restore the type and never the prompts.
+   */
+  it('keeps the prompts an undo restores, and switches the section back on', async () => {
+    const harness = renderStageEditor(openWithNominationPrompts());
+    await chooseNodeType(harness, 'person');
+    await waitFor(() =>
+      expect(
+        screen.getByRole('switch', { name: 'Nomination prompts' }),
+      ).not.toBeChecked(),
+    );
+
+    act(() => {
+      harness.session.undo();
+    });
+
+    await screen.findByText('Who has been unwell?');
+    expect(
+      screen.getByRole('switch', { name: 'Nomination prompts' }),
+    ).toBeChecked();
+    expect(outlineStateOf(harness, 'Nomination prompts')).toBe('Finished');
   });
 
   /**
@@ -1120,6 +1201,12 @@ describe('a pedigree whose node type changes', () => {
       ).not.toBeInTheDocument(),
     );
 
+    // The section went off with the prompts it lost, so writing another one
+    // starts by asking for it back. See "switches the nomination prompts off"
+    // below.
+    await harness.user.click(
+      await screen.findByRole('switch', { name: 'Nomination prompts' }),
+    );
     await harness.user.click(
       await screen.findByRole('button', {
         name: 'Create new nomination prompt',

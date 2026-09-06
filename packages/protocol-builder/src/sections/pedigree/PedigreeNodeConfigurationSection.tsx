@@ -36,6 +36,15 @@ const FORM_FIELD = 'nodeConfig.form';
  * type does not have. The pedigree's framing, boundaries, census prompt and
  * edge configuration say nothing about the node type and are deliberately
  * absent: clearing them would leave a stage the schema refuses.
+ *
+ * `nominationPrompts` is here even though its own section also names this path
+ * in `resetOn` — that is how its switch goes off with the prompts it lost —
+ * and the two do not collide. This reset runs first (it belongs to the earlier
+ * section, and passive effects run in tree order), so the prompts section
+ * finds nothing left at its path and a discard that finds nothing to discard
+ * writes nothing. Taking it out of this list instead splits the change into
+ * TWO batches, and one undo then restores only half of it: measured, and the
+ * reason it stays.
  */
 const NODE_TYPE_DEPENDENT_FIELDS: readonly string[] = Object.freeze([
   LABEL_FIELD,

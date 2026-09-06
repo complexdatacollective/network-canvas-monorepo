@@ -84,6 +84,14 @@ export type NominationPromptsSectionProps = Readonly<{
  * this" as the key's absence — so switching the section off removes it rather
  * than leaving an empty array behind.
  *
+ * Every prompt names an attribute of the node type, so the section resets on
+ * that type. `resetOn` is what takes the SWITCH off with the prompts: the node
+ * configuration's own reset already discards them, but nothing there can reach
+ * this section's switch, so it would stand open over an empty list and the
+ * outline would call an optional section nobody has filled in finished. The
+ * two resets compose into one batch rather than costing two steps of undo —
+ * see `NODE_TYPE_DEPENDENT_FIELDS`.
+ *
  * Each prompt writes its attribute through a per-person toggle the participant
  * operates, which makes it an UNVALIDATED writer. Two rules follow, and they
  * are enforced twice each — once by the picker, which never offers a refused
@@ -185,6 +193,7 @@ export default function NominationPromptsSection({
       title={words.sectionTitle}
       description={waiting ? words.waitingDescription : words.description}
       disabled={waiting}
+      resetOn={NODE_TYPE_FIELD}
       capability={{
         fields: [PROMPTS_FIELD],
         confirmClear: {

@@ -1,5 +1,4 @@
-import { get, isEqual } from 'es-toolkit/compat';
-import { useEffect, useMemo, useRef } from 'react';
+import { useMemo, useRef } from 'react';
 
 import {
   buildExclusiveVariableSlotMap,
@@ -8,10 +7,8 @@ import {
   type VariableRoleMap,
 } from '../../codebook/variableRoles.ts';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
-import {
-  useDiscardStageValues,
-  useStageValue,
-} from '../../form/stageFormHooks.ts';
+import { useDiscardStageValues } from '../../form/stageFormHooks.ts';
+import { useOnResearcherChange } from '../researcherChange.ts';
 
 /**
  * The two indexes every pedigree picker asks about a pick: which attributes an
@@ -47,15 +44,9 @@ export function usePedigreeVariableIndexes(): Readonly<{
  * nothing against a different type, and a stage saved still holding one points
  * at attributes that type does not have.
  *
- * An observer effect rather than an `onChange` handler, because a caller's
- * `onChange` on a Fresco field REPLACES the store's own write rather than
- * running beside it.
- *
  * A researcher picking a different type is told apart from the draft moving
- * beneath the form — an undo, a redo, a collaborator's change — by watching the
- * AGREED draft as well as the form. Those arrive carrying the configuration
- * that belongs to the type they bring with them, and clearing there would wipe
- * the half of the change the researcher was reaching for.
+ * beneath the form — an undo, a redo, a collaborator's change — by
+ * `useOnResearcherChange`, which is the one place that distinction is made.
  *
  * The throwing away is `useDiscardStageValues`, which is the one seam a reset
  * goes through: the SESSION is told, in one batch carrying the type that
@@ -72,41 +63,16 @@ export function useResetOnEntityTypeChange(
   typePath: string,
   dependentPaths: readonly string[],
 ): void {
-  const { committedFields } = useStageEditorForm();
-  const typeValue = useStageValue(typePath);
   const discardStageValues = useDiscardStageValues();
-  const committedType: unknown = get(committedFields, typePath);
-
-  const seenType = useRef(typeValue);
-  const seenCommittedType = useRef(committedType);
-  const awaitingReseedTo = useRef<{ value: unknown } | null>(null);
   // The paths themselves, not the array carrying them: a section that spells
   // its list inline hands over a new array on every render.
-  const key = JSON.stringify(dependentPaths);
   const latestPaths = useRef(dependentPaths);
   latestPaths.current = dependentPaths;
 
-  useEffect(() => {
-    const previousType = seenType.current;
-    seenType.current = typeValue;
-    const previousCommitted = seenCommittedType.current;
-    seenCommittedType.current = committedType;
-
-    if (!isEqual(previousCommitted, committedType)) {
-      awaitingReseedTo.current = { value: committedType };
-    }
-
-    // The first type a stage is given has nothing to clear: there was no
-    // previous type for its attributes to belong to.
-    if (previousType === undefined || isEqual(previousType, typeValue)) return;
-
-    const expected = awaitingReseedTo.current;
-    awaitingReseedTo.current = null;
-    if (expected !== null && isEqual(expected.value, typeValue)) return;
-
+  useOnResearcherChange(typePath, (typeValue) => {
     discardStageValues(latestPaths.current, {
       path: typePath,
       value: typeValue,
     });
-  }, [committedType, discardStageValues, key, typePath, typeValue]);
+  });
 }
