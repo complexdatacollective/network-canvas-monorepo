@@ -128,7 +128,9 @@ export type SchemaProblem = Exclude<SchemaState, { kind: 'current' }>;
  * failure: anything this throws is transient, and everything it returns is an
  * answer.
  */
-export async function checkSchema(pool: pg.Pool): Promise<SchemaState> {
+export async function checkSchema(
+  pool: pg.Pool | pg.PoolClient,
+): Promise<SchemaState> {
   const probe = await pool.query<{ stamped: boolean; tables: boolean }>(
     `select to_regclass('"schemaFingerprint"') is not null as stamped,
             ${SCHEMA_TABLES.map(
