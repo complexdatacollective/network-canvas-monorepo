@@ -1525,3 +1525,415 @@ describe('the settings the chosen input control takes', () => {
     });
   });
 });
+
+/**
+ * The two answers a boolean puts in front of a participant.
+ *
+ * A boolean records true or false, and the `Boolean` control is the one that
+ * makes the participant choose between them by name — so the words on those
+ * two answers are the researcher's, and the schema holds them under `options`
+ * in a shape of their own (`booleanOptionsSchema`: a label, the boolean it
+ * records, and whether it is shown as the negative choice). Architect has
+ * authored them since it had a form editor at all; until now this package's
+ * options editor was reached by type alone, so a boolean's labels could not be
+ * written here.
+ *
+ * The other control a boolean can be collected with, `Toggle`, is a switch
+ * that is on or off: its variable schema is strict and has no `options` key at
+ * all, so a pair written beside it is a variable the codebook refuses outright.
+ */
+describe('the two answers a boolean offers', () => {
+  const booleanProps = (
+    variable: Readonly<Record<string, unknown>>,
+    onSubmitRequest: VariableEditorProps['onSubmitRequest'],
+  ): Extract<VariableEditorProps, { mode: 'update' }> => ({
+    openId: 'boolean-open',
+    mode: 'update',
+    subject: SUBJECT,
+    authoritativeDocument: personDocument({ flagged: variable }),
+    variableId: 'flagged',
+    initialDraft: variable,
+    description: 'Update the attribute',
+    createRequestId: () => 'request-boolean',
+    onSubmitRequest,
+    onComplete: () => undefined,
+  });
+
+  const savedVariable = (
+    onSubmitRequest: ReturnType<typeof vi.fn>,
+  ): Record<string, unknown> => {
+    const request = onSubmitRequest.mock.calls[0]?.[0] as
+      | CompoundEditRequest
+      | undefined;
+    if (request === undefined) throw new Error('nothing was submitted');
+    const variable = submittedVariables(request).flagged;
+    if (!isRecord(variable)) throw new Error('the attribute was not submitted');
+    return variable;
+  };
+
+  it('names the two answers a boolean choice shows, and marks one as negative', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const variable = { name: 'flagged', type: 'boolean', component: 'Boolean' };
+    render(<VariableEditor {...booleanProps(variable, onSubmitRequest)} />);
+
+    await user.type(
+      screen.getByRole('textbox', { name: 'Label for “true”' }),
+      'Yes, always',
+    );
+    await user.type(
+      screen.getByRole('textbox', { name: 'Label for “false”' }),
+      'No, never',
+    );
+    await user.click(
+      screen.getByRole('switch', { name: 'Style “false” as negative' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    // The schema's own shape for a boolean's answers: the label is authored,
+    // the value is the boolean it records, and `negative` is carried only
+    // where it was switched on.
+    expect(savedVariable(onSubmitRequest)).toEqual({
+      name: 'flagged',
+      type: 'boolean',
+      component: 'Boolean',
+      options: [
+        { label: 'Yes, always', value: true },
+        { label: 'No, never', value: false, negative: true },
+      ],
+    });
+  });
+
+  it('offers no answers to name for a boolean collected with a toggle', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const variable = { name: 'flagged', type: 'boolean', component: 'Toggle' };
+    render(<VariableEditor {...booleanProps(variable, onSubmitRequest)} />);
+
+    expect(screen.queryByText('The two answers')).toBeNull();
+    expect(
+      screen.queryByRole('textbox', { name: 'Label for “true”' }),
+    ).toBeNull();
+
+    const name = screen.getByRole('textbox', { name: /attribute name/i });
+    await user.clear(name);
+    await user.type(name, 'starred');
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitRequest)).toEqual({
+      name: 'starred',
+      type: 'boolean',
+      component: 'Toggle',
+    });
+  });
+
+  /**
+   * The host opens this editor on the control the researcher has just chosen,
+   * which may not be the one the codebook still records — so a boolean whose
+   * field has moved to a toggle arrives here with answers the control it is
+   * moving to cannot show, and a variable carrying both is one the schema will
+   * not take.
+   */
+  it('drops the answers when the control that showed them is left behind', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const committed = {
+      name: 'flagged',
+      type: 'boolean',
+      component: 'Boolean',
+      options: [
+        { label: 'Yes', value: true },
+        { label: 'No', value: false, negative: true },
+      ],
+    };
+    render(
+      <VariableEditor
+        {...booleanProps(committed, onSubmitRequest)}
+        initialDraft={{ ...committed, component: 'Toggle' }}
+      />,
+    );
+
+    expect(
+      screen.queryByRole('textbox', { name: 'Label for “true”' }),
+    ).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    const saved = savedVariable(onSubmitRequest);
+    expect(Object.hasOwn(saved, 'options')).toBe(false);
+    // The control itself stays the row's to commit — this editor writes it
+    // only where it writes answers that depend on it.
+    expect(saved).toEqual({
+      name: 'flagged',
+      type: 'boolean',
+      component: 'Boolean',
+    });
+  });
+
+  /**
+   * The control the answers were authored FOR is written with them.
+   *
+   * A field moved from a toggle to a choice reaches this editor naming the
+   * control the row has just chosen, which the codebook does not record yet —
+   * and a pair written beside the toggle the codebook still holds is a
+   * variable the schema refuses outright, so the two have to land together.
+   */
+  it('writes the control the answers were authored for, not the one the codebook holds', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const committed = {
+      name: 'flagged',
+      type: 'boolean',
+      component: 'Toggle',
+    };
+    render(
+      <VariableEditor
+        {...booleanProps(committed, onSubmitRequest)}
+        initialDraft={{ ...committed, component: 'Boolean' }}
+      />,
+    );
+
+    await user.type(
+      screen.getByRole('textbox', { name: 'Label for “true”' }),
+      'Yes',
+    );
+    await user.type(
+      screen.getByRole('textbox', { name: 'Label for “false”' }),
+      'No',
+    );
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitRequest)).toEqual({
+      name: 'flagged',
+      type: 'boolean',
+      component: 'Boolean',
+      options: [
+        { label: 'Yes', value: true },
+        { label: 'No', value: false },
+      ],
+    });
+  });
+
+  it('shows a spectator both answers without letting them be rewritten', () => {
+    render(
+      <VariableEditor
+        {...booleanProps(
+          {
+            name: 'flagged',
+            type: 'boolean',
+            component: 'Boolean',
+            options: [
+              { label: 'Yes', value: true },
+              { label: 'No', value: false },
+            ],
+          },
+          () => APPLIED,
+        )}
+        readOnly
+      />,
+    );
+
+    expect(
+      screen.getByRole('textbox', { name: 'Label for “false”' }),
+    ).toHaveAttribute('readonly');
+  });
+
+  it('leaves a pair of answers nobody touched exactly as it was', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const committed = {
+      name: 'flagged',
+      type: 'boolean',
+      component: 'Boolean',
+      options: [
+        { label: 'Yes', value: true },
+        { label: 'No', value: false, negative: true },
+      ],
+    };
+    render(<VariableEditor {...booleanProps(committed, onSubmitRequest)} />);
+
+    expect(
+      screen.getByRole('textbox', { name: 'Label for “true”' }),
+    ).toHaveValue('Yes');
+    expect(
+      screen.getByRole('switch', { name: 'Style “false” as negative' }),
+    ).toBeChecked();
+    // Nothing was changed, so there is nothing to save.
+    expect(
+      screen.getByRole('button', { name: 'Save attribute' }),
+    ).toBeDisabled();
+
+    const name = screen.getByRole('textbox', { name: /attribute name/i });
+    await user.clear(name);
+    await user.type(name, 'starred');
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitRequest).options).toEqual(committed.options);
+  });
+
+  /**
+   * Which answer records which boolean is the protocol's, not this editor's.
+   *
+   * The schema constrains neither the order of the two answers nor which
+   * boolean each carries, and answers already collected mean whatever the pair
+   * said when they were given — so a protocol that stores the false answer
+   * first keeps storing it first, and each field says which value it is
+   * labelling rather than assuming.
+   */
+  it('keeps which answer records which value when a protocol stores false first', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const committed = {
+      name: 'flagged',
+      type: 'boolean',
+      component: 'Boolean',
+      options: [
+        { label: 'Never', value: false, negative: true },
+        { label: 'Always', value: true },
+      ],
+    };
+    render(<VariableEditor {...booleanProps(committed, onSubmitRequest)} />);
+
+    expect(
+      screen.getByRole('textbox', { name: 'Label for “false”' }),
+    ).toHaveValue('Never');
+    expect(
+      screen.getByRole('textbox', { name: 'Label for “true”' }),
+    ).toHaveValue('Always');
+
+    const name = screen.getByRole('textbox', { name: /attribute name/i });
+    await user.clear(name);
+    await user.type(name, 'starred');
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitRequest).options).toEqual(committed.options);
+  });
+
+  /**
+   * One answer named and the other blank is a control with a button nobody can
+   * read — the case the schema accepts (`label` is any string) and a
+   * participant cannot answer.
+   */
+  it('refuses a pair with only one of its answers named', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const variable = { name: 'flagged', type: 'boolean', component: 'Boolean' };
+    render(<VariableEditor {...booleanProps(variable, onSubmitRequest)} />);
+
+    await user.type(
+      screen.getByRole('textbox', { name: 'Label for “true”' }),
+      'Yes, always',
+    );
+    await user.type(
+      screen.getByRole('textbox', { name: 'Label for “false”' }),
+      '   ',
+    );
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    expect(
+      await screen.findByText(
+        'Write what this answer says, or clear both to offer Yes and No.',
+      ),
+    ).toBeVisible();
+    expect(onSubmitRequest).not.toHaveBeenCalled();
+  });
+
+  /**
+   * Clearing both answers is an answer of its own: the interview offers Yes
+   * and No when the protocol names no options at all, and offers nothing at
+   * all when it names an empty list — which is why the key goes rather than
+   * being written empty.
+   */
+  it('takes the answers away again when both are cleared', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const committed = {
+      name: 'flagged',
+      type: 'boolean',
+      component: 'Boolean',
+      options: [
+        { label: 'Yes', value: true },
+        { label: 'No', value: false },
+      ],
+    };
+    render(<VariableEditor {...booleanProps(committed, onSubmitRequest)} />);
+
+    await user.clear(screen.getByRole('textbox', { name: 'Label for “true”' }));
+    await user.clear(
+      screen.getByRole('textbox', { name: 'Label for “false”' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    const saved = savedVariable(onSubmitRequest);
+    expect(Object.hasOwn(saved, 'options')).toBe(false);
+    expect(saved).toEqual({
+      name: 'flagged',
+      type: 'boolean',
+      component: 'Boolean',
+    });
+  });
+
+  it('creates a boolean together with the answers it offers', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    render(
+      <VariableEditor
+        {...createProps({
+          variableId: 'flagged',
+          initialDraft: { name: '', type: 'boolean', component: 'Boolean' },
+          onSubmitRequest,
+        })}
+      />,
+    );
+
+    await user.type(
+      screen.getByRole('textbox', { name: /attribute name/i }),
+      'flagged',
+    );
+    await user.type(
+      screen.getByRole('textbox', { name: 'Label for “true”' }),
+      'Yes',
+    );
+    await user.type(
+      screen.getByRole('textbox', { name: 'Label for “false”' }),
+      'No',
+    );
+    await user.click(screen.getByRole('button', { name: 'Create attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    const request = onSubmitRequest.mock.calls[0]?.[0] as CompoundEditRequest;
+    expect(submittedVariables(request).flagged).toEqual({
+      name: 'flagged',
+      type: 'boolean',
+      component: 'Boolean',
+      options: [
+        { label: 'Yes', value: true },
+        { label: 'No', value: false },
+      ],
+    });
+  });
+});
