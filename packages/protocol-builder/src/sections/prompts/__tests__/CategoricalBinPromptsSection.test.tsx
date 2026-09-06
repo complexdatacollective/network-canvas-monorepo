@@ -25,6 +25,22 @@ const HOST_WORDS = 'expected object, received undefined';
 const REFUSED_INVALID_REQUEST =
   'This change could not be sent, and nothing was saved. Close this editor and try again.';
 
+/**
+ * The codebook schema's own sentence about a rule the options can no longer
+ * satisfy, naming the rule and both numbers.
+ *
+ * The one refusal shown in the words it arrived in — see `VariableEditor` —
+ * because it is already written for a researcher and says what to change.
+ * Written out rather than imported, for the reason above: a test that read the
+ * schema's own message would still pass if the editor rendered none of it.
+ */
+const OPTION_COUNT_CONTRADICTION =
+  'Attribute "contactType": minSelected (3) is greater than the number of options (2)';
+
+/** What that refusal would read like if it fell through to the generic copy. */
+const UNEXPLAINED_FAILURE =
+  'This change could not be saved, and nothing was altered. Wait a moment and try again.';
+
 const prompts = (stage: Record<string, unknown>): Record<string, unknown>[] =>
   Array.isArray(stage.prompts)
     ? stage.prompts.filter(
@@ -351,9 +367,12 @@ describe('creating a bin attribute from inside a prompt', () => {
    * by the time one could refuse this it would be refusing it for the wrong
    * reason.
    *
-   * What the researcher is TOLD is `VariableEditor`'s business, and S is
-   * giving that refusal its own words; this only asserts that the draft is
-   * refused, kept, and never sent.
+   * The words the researcher gets are the schema's own, shown through by
+   * `VariableEditor`: they name the rule and both numbers, so the researcher
+   * can see which of the two things they wrote to change. The generic "this
+   * could not be sent" copy would be wrong twice over here — nothing was sent,
+   * and it asks for a retry that cannot succeed until something changes — so
+   * this asserts the sentence rather than merely that an alert appeared.
    */
   it('never asks the host to leave the values a committed rule needs', async () => {
     const harness = renderStageEditor(openEditor());
@@ -392,9 +411,11 @@ describe('creating a bin attribute from inside a prompt', () => {
       screen.getByRole('button', { name: 'Save attribute' }),
     );
 
-    // Refused, and the researcher is told so with the editor still holding
-    // their draft.
-    await screen.findByRole('alert');
+    // Refused in the schema's own words, naming the rule and both numbers,
+    // with the editor still holding their draft.
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(OPTION_COUNT_CONTRADICTION);
+    expect(alert).not.toHaveTextContent(UNEXPLAINED_FAILURE);
     expect(
       screen.getByRole('button', { name: 'Save attribute' }),
     ).toBeInTheDocument();
