@@ -1,5 +1,6 @@
 'use client';
 
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
@@ -9,29 +10,42 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import usePedigreeNodeForm from '../../hooks/usePedigreeNodeForm';
+import { messages } from '../../messages';
 import PersonNameField from '../PersonNameField';
 
-const PARENT_ROLE_OPTIONS = [
-  { value: 'step-parent', label: 'Step-parent' },
-  { value: 'adoptive-parent', label: 'Adoptive parent' },
-  { value: 'raised-me', label: 'Parent who raised me' },
-];
-
 function AdditionalParentFields({ index }: { index: number }) {
+  const intl = useAppIntl();
+  const PARENT_ROLE_OPTIONS = [
+    {
+      value: 'step-parent',
+      label: intl.formatMessage(messages.stepParentRole),
+    },
+    {
+      value: 'adoptive-parent',
+      label: intl.formatMessage(messages.adoptiveParentRole),
+    },
+    { value: 'raised-me', label: intl.formatMessage(messages.raisedMeRole) },
+  ];
+
   const { fieldComponents } = usePedigreeNodeForm();
 
   return (
     <Surface spacing="sm" shadow="sm">
       <FieldNamespace prefix={`additional-parent[${String(index)}]`}>
-        <Heading level="h3">Additional Parent {index + 1}</Heading>
+        <Heading level="h3">
+          <AppMessage
+            message={messages.additionalParentNumber}
+            values={{ number: index + 1 }}
+          />
+        </Heading>
         <Field
           name="role"
-          label="What role did this parent have?"
+          label={intl.formatMessage(messages.parentRole)}
           component={RadioGroupField}
           options={PARENT_ROLE_OPTIONS}
           required
         />
-        <PersonNameField label="What is their name?" />
+        <PersonNameField label={intl.formatMessage(messages.whatName)} />
         {fieldComponents}
       </FieldNamespace>
     </Surface>
@@ -45,9 +59,7 @@ export default function AdditionalParentsStep() {
   return (
     <>
       <Paragraph>
-        Please tell us about each of your additional parents. This includes
-        step-parents, adoptive parents, or other people who played a parental
-        role in your life.
+        <AppMessage message={messages.additionalParentsIntro} />
       </Paragraph>
       <div className="flex flex-col gap-6">
         {Array.from({ length: count }, (_, i) => (

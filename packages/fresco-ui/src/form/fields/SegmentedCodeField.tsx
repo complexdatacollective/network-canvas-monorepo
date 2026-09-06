@@ -25,7 +25,7 @@ import { getInputState } from '../utils/getInputState';
 const segmentGroupVariants = compose(
   textSizeVariants,
   cva({
-    base: cx('flex max-w-full items-center'),
+    base: cx('flex max-w-full min-w-0 items-center'),
     variants: {
       size: {
         sm: 'gap-1.5',
@@ -160,7 +160,19 @@ function SegmentedCodeField(props: SegmentedCodeFieldProps) {
   // fieldset's test id.
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const pendingAutoFocus = useRef(Boolean(autoFocus));
   const { pattern, inputMode } = CHARACTER_SETS[characterSet];
+
+  // A retry can mount the fresh control while the form is still submitting.
+  // Native autofocus is ignored on a disabled input; honor that one request
+  // when it becomes enabled, without refocusing later renders or locale changes.
+  useEffect(() => {
+    if (!autoFocus || disabled || !pendingAutoFocus.current) return;
+    const firstInput = inputRefs.current[0];
+    if (!firstInput) return;
+    firstInput.focus();
+    pendingAutoFocus.current = false;
+  }, [autoFocus, disabled]);
 
   // Rendering only: for one render the store can still hold the previous
   // field's value (see the render-tolerance contract on `useField`), and

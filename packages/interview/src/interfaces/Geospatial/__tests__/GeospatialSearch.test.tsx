@@ -46,6 +46,7 @@ vi.mock('es-toolkit', () => ({
 
 import type { Map as MapboxMap } from 'mapbox-gl/esm';
 
+import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 import GeospatialSearch from '../GeospatialSearch';
 
 // jsdom has neither, and fresco-ui's Collection/ScrollArea construct both on
@@ -114,6 +115,89 @@ describe('GeospatialSearch', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  describe('live built-in locale', () => {
+    const localizedTree = (locale: string) => (
+      <InterviewI18nProvider requestedLocale={locale}>
+        <GeospatialSearch accessToken="test-token" map={mockMap} />
+      </InterviewI18nProvider>
+    );
+
+    it('keeps a pending place selection and announces its outcome in the current language', async () => {
+      let completeRetrieve: (
+        value: Awaited<ReturnType<typeof mockRetrieve>>,
+      ) => void = () => {
+        throw new Error('The controlled retrieve request has not started');
+      };
+      mockRetrieve.mockReturnValueOnce(
+        new Promise((resolve) => {
+          completeRetrieve = resolve;
+        }),
+      );
+      const user = userEvent.setup();
+      const view = render(localizedTree('en'));
+      const toggle = screen.getByRole('button', { name: 'Search location' });
+      await openAndSearch(user, toggle);
+      const options = await screen.findAllByRole('option');
+      expect(options[0]).toHaveTextContent('Sidetrack');
+      await user.click(options[0]!);
+      expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+      view.rerender(localizedTree('es-MX'));
+      expect(screen.getByRole('button', { name: 'Buscar ubicación' })).toBe(
+        toggle,
+      );
+      completeRetrieve({
+        features: [{ geometry: { type: 'Point', coordinates: [-87.6, 41.9] } }],
+      });
+      const status = screen.getByTestId('geospatial-search-status');
+      await waitFor(() =>
+        expect(status.textContent).toBe(
+          'El mapa se ha desplazado a Sidetrack.',
+        ),
+      );
+      expect(flyTo).toHaveBeenCalledExactlyOnceWith({
+        center: [-87.6, 41.9],
+        zoom: 14,
+      });
+      expect(mockRetrieve).toHaveBeenCalledTimes(1);
+
+      view.rerender(localizedTree('en-GB'));
+      expect(status.textContent).toBe('Map moved to Sidetrack.');
+      expect(flyTo).toHaveBeenCalledTimes(1);
+    });
+
+    it('relocalizes a completed failure while retaining the existing query and search outcome', async () => {
+      mockSuggest.mockRejectedValue(new Error('offline'));
+      const user = userEvent.setup();
+      const view = render(localizedTree('en'));
+      const input = await openAndSearch(
+        user,
+        screen.getByRole('button', { name: 'Search location' }),
+        'Sidetrack',
+      );
+      const status = screen.getByTestId('geospatial-search-status');
+      await waitFor(() =>
+        expect(status.textContent).toBe(
+          'Search could not be completed. Try again in a moment.',
+        ),
+      );
+      const searchCount = mockSuggest.mock.calls.length;
+
+      view.rerender(localizedTree('es'));
+      expect(screen.getByRole('combobox')).toBe(input);
+      expect(input).toHaveValue('Sidetrack');
+      expect(input).toHaveAttribute('placeholder', 'Busca un lugar...');
+      expect(status.textContent).toBe(
+        'No se pudo completar la búsqueda. Vuelve a intentarlo en un momento.',
+      );
+      expect(
+        screen.getByRole('listbox', { name: 'Sugerencias de búsqueda' }),
+      ).toHaveTextContent('No se pudo completar la búsqueda.');
+      expect(mockSuggest).toHaveBeenCalledTimes(searchCount);
+      expect(flyTo).not.toHaveBeenCalled();
+    });
   });
 
   describe('focus on close', () => {

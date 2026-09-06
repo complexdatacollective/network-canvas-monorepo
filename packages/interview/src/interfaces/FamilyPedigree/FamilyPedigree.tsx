@@ -2,6 +2,8 @@
 
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -31,6 +33,7 @@ import EgoCellWizard from './components/wizards/EgoCellWizard';
 import { useFamilyPedigreeStore } from './FamilyPedigreeContext';
 import { useFamilyPedigreeDialog } from './familyPedigreeDialog';
 import { FamilyPedigreeProvider } from './FamilyPedigreeProvider';
+import { messages } from './messages';
 import FamilyPedigreePlaceholder from './pedigree-layout/components/FamilyPedigreePlaceholder';
 import PedigreeView from './pedigree-layout/components/PedigreeView';
 import { SuppressPedigreeHintContext } from './pedigreeHintContext';
@@ -51,7 +54,10 @@ import {
 } from './utils/nodeUtils';
 import { pedigreeMemberIds } from './utils/pedigreeMembership';
 import { getBoundaries } from './utils/stageConfig';
-import { validatePedigreeCompleteness } from './utils/validatePedigree';
+import {
+  validatePedigreeCompleteness,
+  type Boundaries,
+} from './utils/validatePedigree';
 
 // The interview network is a single shared graph, so getNetworkNodes/Edges
 // return entities of every type. Restrict the nomination-phase override maps to
@@ -83,6 +89,7 @@ export const buildOverrideEdgesMap = (edges: NcEdge[], edgeType: string) =>
   );
 
 const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
+  const intl = useAppIntl();
   const {
     stage: { censusPrompt, nominationPrompts },
   } = props;
@@ -215,7 +222,10 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
   // relative was added or removed, or that the pedigree can now be finalized.
   // The count is included so consecutive additions re-announce (identical text
   // is not re-read by assistive technology).
-  const [buildAnnouncement, setBuildAnnouncement] = useState('');
+  const [buildAnnouncement, setBuildAnnouncement] = useState<{
+    kind: 'complete' | 'added' | 'removed';
+    count: number;
+  } | null>(null);
   const prevNonEgoCountRef = useRef(nonEgoNodeCount);
   const prevChecklistCompleteRef = useRef(checklistComplete);
   useEffect(() => {
@@ -224,19 +234,12 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
       prevChecklistCompleteRef.current = checklistComplete;
       return;
     }
-    const memberWord = nonEgoNodeCount === 1 ? 'member' : 'members';
     if (checklistComplete && !prevChecklistCompleteRef.current) {
-      setBuildAnnouncement(
-        'All tasks are complete. You can now finalize your family pedigree.',
-      );
+      setBuildAnnouncement({ kind: 'complete', count: nonEgoNodeCount });
     } else if (nonEgoNodeCount > prevNonEgoCountRef.current) {
-      setBuildAnnouncement(
-        `Family member added. Your family pedigree now has ${String(nonEgoNodeCount)} ${memberWord}.`,
-      );
+      setBuildAnnouncement({ kind: 'added', count: nonEgoNodeCount });
     } else if (nonEgoNodeCount < prevNonEgoCountRef.current) {
-      setBuildAnnouncement(
-        `Family member removed. Your family pedigree now has ${String(nonEgoNodeCount)} ${memberWord}.`,
-      );
+      setBuildAnnouncement({ kind: 'removed', count: nonEgoNodeCount });
     }
     prevNonEgoCountRef.current = nonEgoNodeCount;
     prevChecklistCompleteRef.current = checklistComplete;
@@ -273,12 +276,14 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
           // Ego wizard not yet completed
           void openDialog({
             type: 'acknowledge',
-            title: 'Pedigree is incomplete',
-            description:
-              'You have not created your family pedigree yet. Please complete the pedigree wizard to create your pedigree before continuing. Click the button in the bottom right to get started.',
+            title: <AppMessage message={messages.incompleteTitle} />,
+            description: <AppMessage message={messages.incompleteNoFamily} />,
             intent: 'destructive',
             actions: {
-              primary: { label: 'OK', value: true as const },
+              primary: {
+                label: <AppMessage message={messages.okay} />,
+                value: true as const,
+              },
             },
           });
         } else {
@@ -325,35 +330,42 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
       boundaries,
       isFamilyPedigreeStageMetadata(stageMetadata) &&
         stageMetadata.noChildrenAffirmed === true,
+      intl,
     );
 
     if (issues.length > 0) {
       await openDialog({
         type: 'acknowledge',
-        title: 'Pedigree is incomplete',
+        title: <AppMessage message={messages.incompleteTitle} />,
         intent: 'destructive',
-        description:
-          "It looks like you haven't completed all the required tasks for your family pedigree. The following issues must be resolved before you can continue:",
+        description: <AppMessage message={messages.incompleteIssues} />,
         children: (
-          <ul className="list-disc space-y-1 pl-5">
-            {issues.map((issue) => (
-              <li key={issue.message}>{issue.message}</li>
-            ))}
-          </ul>
+          <PedigreeValidationIssues
+            nodes={nodesMap}
+            edges={edgesMap}
+            variableConfig={variableConfig}
+            boundaries={boundaries}
+            noChildrenAffirmed={
+              isFamilyPedigreeStageMetadata(stageMetadata) &&
+              stageMetadata.noChildrenAffirmed === true
+            }
+          />
         ),
         actions: {
-          primary: { label: 'Return to editing', value: true as const },
+          primary: {
+            label: <AppMessage message={messages.returnToEditing} />,
+            value: true as const,
+          },
         },
       });
       return;
     }
 
     const result = await confirm({
-      title: 'Finalize your family pedigree?',
-      description:
-        'Once you continue, you will not be able to add or remove family members. You can still edit their details.',
-      confirmLabel: 'Finalize',
-      cancelLabel: 'Keep editing',
+      title: <AppMessage message={messages.finalizeQuestion} />,
+      description: <AppMessage message={messages.finalizeDescription} />,
+      confirmLabel: <AppMessage message={messages.finalize} />,
+      cancelLabel: <AppMessage message={messages.keepEditing} />,
       intent: 'default',
       onConfirm: async () => {
         await finalizeNetwork();
@@ -374,11 +386,10 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
 
   const handleResetPedigree = async () => {
     await confirm({
-      title: 'Reset family pedigree?',
-      description:
-        'This will delete all family members and relationships. This action cannot be undone.',
-      confirmLabel: 'Reset',
-      cancelLabel: 'Cancel',
+      title: <AppMessage message={messages.resetQuestion} />,
+      description: <AppMessage message={messages.resetDescription} />,
+      confirmLabel: <AppMessage message={messages.reset} />,
+      cancelLabel: <AppMessage message={commonMessages.cancel} />,
       intent: 'destructive',
       onConfirm: () => {
         resetNetwork();
@@ -425,7 +436,18 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
             removing a relative, and when the pedigree can be finalized) to
             screen readers, which get no feedback from the context-menu wizards. */}
         <div aria-live="polite" aria-atomic="true" className="sr-only">
-          {buildAnnouncement}
+          {buildAnnouncement && (
+            <AppMessage
+              message={
+                buildAnnouncement.kind === 'complete'
+                  ? messages.buildComplete
+                  : buildAnnouncement.kind === 'added'
+                    ? messages.memberAdded
+                    : messages.memberRemoved
+              }
+              values={{ count: buildAnnouncement.count }}
+            />
+          )}
         </div>
         <Prompts
           prompts={allPrompts}
@@ -443,13 +465,17 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
                 className="rounded bg-black/50 px-2 py-1 text-xs text-white opacity-50 hover:opacity-100"
                 onClick={handleDumpNetwork}
               >
-                {dumpCopied ? 'Copied to clipboard!' : 'Dump'}
+                {dumpCopied
+                  ? intl.formatMessage(messages.copied)
+                  : intl.formatMessage(messages.dump)}
               </button>
               <button
                 type="button"
                 className="rounded bg-black/50 px-2 py-1 text-xs text-white opacity-50 hover:opacity-100"
                 onClick={() => {
-                  const json = window.prompt('Paste network JSON:');
+                  const json = window.prompt(
+                    intl.formatMessage(messages.pasteJson),
+                  );
                   if (!json) return;
                   try {
                     const data = JSON.parse(json) as {
@@ -490,7 +516,7 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
                   }
                 }}
               >
-                Load
+                <AppMessage message={messages.load} />
               </button>
             </div>
           )}
@@ -499,18 +525,17 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
               <div className="flex h-full w-full flex-col items-center justify-center gap-12 py-10">
                 <FamilyPedigreePlaceholder className="hidden min-h-0 w-full flex-1 [@media_((min-height:800px))]:block" />
                 <div className="max-w-prose shrink-0 text-center">
-                  <Heading level="h3">Build your family pedigree</Heading>
+                  <Heading level="h3">
+                    <AppMessage message={messages.buildTitle} />
+                  </Heading>
                   <Paragraph emphasis="muted">
-                    A family pedigree is a diagram of your relatives and how
-                    they are connected to you.
+                    <AppMessage message={messages.buildDefinition} />
                   </Paragraph>
                   <Paragraph emphasis="muted">
-                    To begin, we will ask a few quick questions and sketch out
-                    your immediate family for you. From there, you can click on
-                    any person to add more relatives and fill in their details.
+                    <AppMessage message={messages.buildInstructions} />
                   </Paragraph>
                   <Paragraph emphasis="muted" margin="none">
-                    Click the button below to get started.
+                    <AppMessage message={messages.buildGetStarted} />
                   </Paragraph>
                 </div>
               </div>
@@ -541,14 +566,14 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
               {showResetOption && (
                 <div className="absolute bottom-4 flex flex-col items-center gap-2">
                   <Paragraph emphasis="muted" margin="none">
-                    Your family pedigree has been finalized.
+                    <AppMessage message={messages.finalized} />
                   </Paragraph>
                   <Button
                     size="sm"
                     color="destructive"
                     onClick={() => void handleResetPedigree()}
                   >
-                    Reset family pedigree
+                    <AppMessage message={messages.resetPedigree} />
                   </Button>
                 </div>
               )}
@@ -589,5 +614,36 @@ export default function FamilyPedigreeWithProvider(
     <FamilyPedigreeProvider nodes={allNodes} edges={allEdges}>
       <FamilyPedigree {...props} />
     </FamilyPedigreeProvider>
+  );
+}
+
+function PedigreeValidationIssues({
+  nodes,
+  edges,
+  variableConfig,
+  boundaries,
+  noChildrenAffirmed,
+}: {
+  nodes: Map<string, NcNode>;
+  edges: Map<string, NcEdge>;
+  variableConfig: VariableConfig;
+  boundaries: Boundaries;
+  noChildrenAffirmed: boolean;
+}) {
+  const intl = useAppIntl();
+  const issues = validatePedigreeCompleteness(
+    nodes,
+    edges,
+    variableConfig,
+    boundaries,
+    noChildrenAffirmed,
+    intl,
+  );
+  return (
+    <ul className="list-disc space-y-1 pl-5">
+      {issues.map((issue, index) => (
+        <li key={`${issue.nodeId}-${index}`}>{issue.message}</li>
+      ))}
+    </ul>
   );
 }

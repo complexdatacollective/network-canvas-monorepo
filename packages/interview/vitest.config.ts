@@ -71,15 +71,19 @@ export default defineConfig({
         // "dependencies optimized:" / "dependency optimized:" lines report.
         // Deps owned by a workspace package are not resolvable from this
         // root, so they need Vite's `<owner> > <dep>` form — and the owner
-        // has to be named the whole way down. `react-intl` arrives here as
-        // interview → fresco-ui → app-i18n, so neither `react-intl` nor
-        // `@codaco/app-i18n > react-intl` resolves: this package depends on
-        // neither, and an entry Vite cannot resolve is ignored in silence.
+        // has to be named the whole way down. This package now directly owns
+        // app-i18n for its built-in messages and locale negotiation.
         optimizeDeps: {
           include: [
             '@base-ui/react/accordion',
             '@base-ui/react/checkbox',
+            // Reached through `Dialog`, which reads the enclosing heading level
+            // a `Section` inside it counts down from — so every dialog these
+            // stories open now pulls in fresco-ui's `Section` and the
+            // Collapsible it is built on.
+            '@base-ui/react/collapsible',
             '@base-ui/react/dialog',
+            '@base-ui/react/direction-provider',
             '@base-ui/react/menu',
             '@base-ui/react/popover',
             '@base-ui/react/progress',
@@ -87,9 +91,10 @@ export default defineConfig({
             '@base-ui/react/slider',
             '@base-ui/react/switch',
             '@base-ui/react/toolbar',
-            '@codaco/fresco-ui > @codaco/app-i18n > @formatjs/icu-messageformat-parser',
-            '@codaco/fresco-ui > @codaco/app-i18n > react-intl',
-            '@codaco/fresco-ui > @codaco/app-i18n > react-intl/server',
+            '@codaco/app-i18n > @formatjs/icu-messageformat-parser',
+            '@codaco/app-i18n > @formatjs/intl-localematcher',
+            '@codaco/app-i18n > react-intl',
+            '@codaco/app-i18n > react-intl/server',
             '@codaco/fresco-ui > @radix-ui/react-slot',
             '@codaco/fresco-ui > comlink',
             '@codaco/fresco-ui > cva',

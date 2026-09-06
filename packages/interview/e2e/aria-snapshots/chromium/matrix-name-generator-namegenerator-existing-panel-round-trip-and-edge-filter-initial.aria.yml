@@ -11,6 +11,7 @@
   - button "Add a person":
     - img "Add a person"
   - navigation:
+    - button "Settings"
     - button "Previous Step"
     - progressbar "Progress indicator": x
     - button "Next Step"

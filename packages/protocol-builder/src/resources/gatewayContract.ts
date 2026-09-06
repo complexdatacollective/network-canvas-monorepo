@@ -15,7 +15,32 @@ import type {
   ResourceDescriptor,
   ResourceGatewayFailure,
   ResourceResult,
+  ResourceSecretStorage,
 } from './gateway.ts';
+
+/**
+ * What the host behind this adapter can do, for the rows that only mean
+ * something to a host that can do it.
+ *
+ * The port cannot say all of this by itself. `secretStorage` says where a
+ * promoted key comes to rest, because that is what the editor tells a
+ * researcher pasting one — and a host with nowhere to put a key never reaches
+ * that question, so there is no value of it meaning "nowhere". Declared here
+ * instead, and the contract holds such an adapter to the one thing it must do:
+ * refuse.
+ *
+ * This is not a way to opt out of a row that is inconvenient. Everything a
+ * capability turns off is replaced by what the absence itself requires, and
+ * every row that merely used the capability in passing still runs.
+ */
+export type ResourceGatewayContractCapabilities = Readonly<{
+  /**
+   * Where a promoted secret comes to rest, or `'unsupported'` for a host with
+   * nowhere to keep one. Omitted, the adapter's own `secretStorage` decides
+   * and every secret row runs.
+   */
+  secrets?: ResourceSecretStorage | 'unsupported';
+}>;
 
 /**
  * What an adapter must expose for the contract to observe host state it cannot
@@ -84,7 +109,12 @@ export function describeResourceGatewayContract(
   createHarness: () =>
     | ResourceGatewayContractHarness
     | Promise<ResourceGatewayContractHarness>,
+  capabilities: ResourceGatewayContractCapabilities = {},
 ): void {
+  // Read here rather than off the harness: which rows exist is decided while
+  // the suite is being registered, and no harness has been made yet.
+  const keepsSecrets = capabilities.secrets !== 'unsupported';
+
   describe(`resource gateway contract: ${name}`, () => {
     let current: ResourceGatewayContractHarness | undefined;
 
@@ -126,6 +156,22 @@ export function describeResourceGatewayContract(
         }),
       );
 
+    /** Stages an arbitrary network document, for the rosters that are wrong. */
+    const stageJsonRoster = async (
+      requestId: string,
+      network: unknown,
+    ): Promise<ResourceDescriptor> =>
+      expectOk(
+        await gateway().stageUpload({
+          requestId,
+          kind: 'network',
+          name: 'Staged JSON roster',
+          source: `${requestId}.json`,
+          contentType: 'application/json',
+          bytes: new TextEncoder().encode(JSON.stringify(network)),
+        }),
+      );
+
     const stageCsvRoster = async (
       requestId = 'request-csv-roster',
     ): Promise<ResourceDescriptor> =>
@@ -149,6 +195,16 @@ export function describeResourceGatewayContract(
         }),
       );
 
+    /**
+     * The staged secret, or nothing when this host has nowhere to keep one.
+     * For the rows that use a secret to ask about something else, so they hold
+     * an adapter without a secret store to everything they are actually about.
+     */
+    const stageSecretIfKept = async (
+      requestId?: string,
+    ): Promise<Awaited<ReturnType<typeof stageSecret>> | undefined> =>
+      keepsSecrets ? stageSecret(requestId) : undefined;
+
     it('lists the committed manifest and nothing staged', async () => {
       const listed = expectOk(await gateway().list());
 
@@ -157,6 +213,53 @@ export function describeResourceGatewayContract(
       ]);
       expect(listed[0]?.status).toBe('committed');
       expect(harness().stagingResidue()).toEqual([]);
+    });
+
+    it('lists only the kinds it was asked for, committed and staged alike', async () => {
+      const image = await stageImage();
+      const roster = await stageRoster();
+      const secret = await stageSecretIfKept();
+
+      const listed = async (
+        options: Parameters<ProtocolBuilderResourceGateway['list']>[0],
+      ): Promise<readonly string[]> =>
+        expectOk(await gateway().list(options))
+          .map((descriptor) => descriptor.id)
+          .toSorted();
+
+      // Every picker's own filter, one row each. A field holds one kind of
+      // resource — an image field an image, a roster field a data file, a key
+      // field a key — and this option is the whole of how it asks for them. An
+      // adapter that ignores it hands the editor everything, and the API key
+      // browser offers a backdrop image and a roster as keys to choose from.
+      expect(await listed({ kinds: ['image'] })).toEqual(
+        [RESOURCE_GATEWAY_CONTRACT_SEED.committedImage.id, image.id].toSorted(),
+      );
+      expect(await listed({ kinds: ['network'] })).toEqual([roster.id]);
+      expect(await listed({ kinds: ['apikey'] })).toEqual(
+        secret === undefined ? [] : [secret.descriptor.id],
+      );
+      expect(await listed({ kinds: ['audio', 'video', 'geojson'] })).toEqual(
+        [],
+      );
+      // Several kinds at once: the untyped picker asks for all of them.
+      expect(await listed({ kinds: ['image', 'network'] })).toEqual(
+        [
+          RESOURCE_GATEWAY_CONTRACT_SEED.committedImage.id,
+          image.id,
+          roster.id,
+        ].toSorted(),
+      );
+      // And with the other option, because a picker asks for both together.
+      expect(await listed({ kinds: ['image'], status: 'staged' })).toEqual([
+        image.id,
+      ]);
+      expect(await listed({ kinds: ['image'], status: 'committed' })).toEqual([
+        RESOURCE_GATEWAY_CONTRACT_SEED.committedImage.id,
+      ]);
+      // Asked for nothing, answered with nothing: a picker whose field accepts
+      // no kind at all must not be handed the whole manifest.
+      expect(await listed({ kinds: [] })).toEqual([]);
     });
 
     it('stages an upload with a referenceable asset id, outside the committed manifest', async () => {
@@ -184,49 +287,147 @@ export function describeResourceGatewayContract(
       );
     });
 
-    it('stages a secret as an opaque handle and keeps the value off every surface', async () => {
-      const secret = await stageSecret();
+    // Everything a host with nowhere to keep secret material cannot be asked,
+    // and — below — the one thing it must do instead.
+    describe.runIf(keepsSecrets)('secret material', () => {
+      it('keeps an upload and a secret that share a request id apart', async () => {
+        // A request id is unique to the picker that made it, not across pickers:
+        // two of them can hand the host the same id for entirely different work.
+        const upload = await stageImage('request-shared');
+        const secret = await stageSecret('request-shared');
 
-      expect(secret.descriptor.kind).toBe('apikey');
-      expect(secret.descriptor.status).toBe('staged');
-      expect(String(secret.handle)).not.toContain(SECRET_VALUE);
-      expect(SECRET_VALUE).not.toContain(String(secret.handle));
+        expect(secret.descriptor.id).not.toBe(upload.id);
 
-      const listed = expectOk(await gateway().list());
-      const inspected = expectOk(await gateway().inspect(secret.descriptor.id));
-      const previewFailure = expectFailure(
-        await gateway().resolvePreview(secret.descriptor.id),
-      );
-      const downloadFailure = expectFailure(
-        await gateway().download(secret.descriptor.id),
-      );
-      // What a stage draft would actually hold: the asset id, never the value.
-      const draftSnapshot = {
-        editedSection: { fields: { token: secret.descriptor.id } },
-        resources: listed,
-        inspected,
-        failures: [previewFailure, downloadFailure],
-        handle: secret.handle,
-        descriptor: secret.descriptor,
-      };
+        const retriedUpload = await stageImage('request-shared');
+        const retriedSecret = await stageSecret('request-shared');
 
-      expect(JSON.stringify(draftSnapshot)).not.toContain(SECRET_VALUE);
-      expect(JSON.stringify(harness().stagingResidue())).not.toContain(
-        SECRET_VALUE,
-      );
+        // Each retry is its own operation's retry: an upload that came back as
+        // the secret's descriptor would put a key where a file belongs.
+        expect(retriedUpload.id).toBe(upload.id);
+        expect(retriedUpload.kind).toBe('image');
+        expect(retriedSecret.descriptor.id).toBe(secret.descriptor.id);
+        expect(String(retriedSecret.handle)).toBe(String(secret.handle));
+        expect(
+          expectOk(await gateway().list({ status: 'staged' }))
+            .map((descriptor) => descriptor.id)
+            .toSorted(),
+        ).toEqual([upload.id, secret.descriptor.id].toSorted());
+
+        // Discarding one must not take the other's retry identity with it.
+        expectOk(await gateway().discardStaged(upload.id));
+
+        expect((await stageSecret('request-shared')).descriptor.id).toBe(
+          secret.descriptor.id,
+        );
+      });
+
+      it('stages a secret as an opaque handle and keeps the value off every surface', async () => {
+        const secret = await stageSecret();
+
+        expect(secret.descriptor.kind).toBe('apikey');
+        expect(secret.descriptor.status).toBe('staged');
+        expect(String(secret.handle)).not.toContain(SECRET_VALUE);
+        expect(SECRET_VALUE).not.toContain(String(secret.handle));
+
+        const listed = expectOk(await gateway().list());
+        const inspected = expectOk(
+          await gateway().inspect(secret.descriptor.id),
+        );
+        const previewFailure = expectFailure(
+          await gateway().resolvePreview(secret.descriptor.id),
+        );
+        const downloadFailure = expectFailure(
+          await gateway().download(secret.descriptor.id),
+        );
+        // What a stage draft would actually hold: the asset id, never the value.
+        const draftSnapshot = {
+          editedSection: { fields: { token: secret.descriptor.id } },
+          resources: listed,
+          inspected,
+          failures: [previewFailure, downloadFailure],
+          handle: secret.handle,
+          descriptor: secret.descriptor,
+        };
+
+        expect(JSON.stringify(draftSnapshot)).not.toContain(SECRET_VALUE);
+        expect(JSON.stringify(harness().stagingResidue())).not.toContain(
+          SECRET_VALUE,
+        );
+      });
+
+      it('promotes a secret the way it says it stores one', async () => {
+        const secret = await stageSecret();
+        // A harness that declared where its keys go is held to that too, so the
+        // declaration and the manifest cannot drift apart in silence.
+        if (capabilities.secrets !== undefined) {
+          expect(gateway().secretStorage).toBe(capabilities.secrets);
+        }
+
+        expectOk(
+          await gateway().promote({
+            id: 'promotion-secret-storage',
+            resourceIds: [secret.descriptor.id],
+            secretHandles: [secret.handle],
+            applyManifest: () => ({ status: 'applied' }),
+          }),
+        );
+
+        // The editor tells the researcher where the key they are pasting will
+        // end up, and it can only repeat what the adapter says. An adapter whose
+        // answer and whose manifest disagree makes that a lie in one direction
+        // or the other — a credential written into a shareable protocol file
+        // while the researcher was told it stays on the server, or a warning
+        // about distributing a key that never leaves the host.
+        const entry = JSON.stringify(
+          harness().committedManifest()[secret.descriptor.id],
+        );
+        if (gateway().secretStorage === 'plaintext') {
+          expect(entry).toContain(SECRET_VALUE);
+        } else {
+          expect(entry).not.toContain(SECRET_VALUE);
+        }
+      });
+
+      it('refuses to preview or download secret material', async () => {
+        const secret = await stageSecret();
+
+        expect(
+          expectFailure(await gateway().resolvePreview(secret.descriptor.id))
+            .reason,
+        ).toBe('unsupported-kind');
+        expect(
+          expectFailure(await gateway().download(secret.descriptor.id)).reason,
+        ).toBe('unsupported-kind');
+      });
     });
 
-    it('refuses to preview or download secret material', async () => {
-      const secret = await stageSecret();
+    it.runIf(!keepsSecrets)(
+      'refuses to stage a secret it has nowhere to keep, and keeps nothing',
+      async () => {
+        const refusal = expectFailure(
+          await gateway().stageSecret({
+            requestId: 'request-unsupported-secret',
+            name: 'Map token',
+            value: SECRET_VALUE,
+          }),
+        );
 
-      expect(
-        expectFailure(await gateway().resolvePreview(secret.descriptor.id))
-          .reason,
-      ).toBe('unsupported-kind');
-      expect(
-        expectFailure(await gateway().download(secret.descriptor.id)).reason,
-      ).toBe('unsupported-kind');
-    });
+        // The one answer a host without a secret store may give. Anything else
+        // — an `unavailable` a picker would offer to retry, or an ok over a
+        // value kept somewhere unintended — puts a credential the researcher
+        // was told about somewhere nobody decided on.
+        expect(refusal.reason).toBe('unsupported-kind');
+        expect(refusal.retryable).toBe(false);
+        expect(refusal.message).not.toBe('');
+        expect(JSON.stringify(refusal)).not.toContain(SECRET_VALUE);
+        expect(expectOk(await gateway().list({ status: 'staged' }))).toEqual(
+          [],
+        );
+        expect(JSON.stringify(harness().stagingResidue())).not.toContain(
+          SECRET_VALUE,
+        );
+      },
+    );
 
     it('resolves previews for committed and staged content', async () => {
       const staged = await stageImage();
@@ -281,6 +482,182 @@ export function describeResourceGatewayContract(
       ]);
     });
 
+    it('refuses a JSON roster whose entries are not objects, and names the one that is not', async () => {
+      const holed = await stageJsonRoster('request-holed-roster', {
+        nodes: [{ attributes: { name: 'Ada' } }, null],
+        edges: [],
+      });
+      const badAttributes = await stageJsonRoster(
+        'request-bad-attributes-roster',
+        { nodes: [{ attributes: 'Ada' }], edges: [] },
+      );
+
+      const holedFailure = expectFailure(await gateway().inspect(holed.id));
+      const attributesFailure = expectFailure(
+        await gateway().inspect(badAttributes.id),
+      );
+
+      // The interview's own loader throws on both of these, so an adapter that
+      // only counts the array lets a protocol commit a field pointing at a
+      // roster that fails the moment the interview opens it — with a manifest
+      // entry that looks perfectly valid. The row is named because that is the
+      // one thing the researcher has to go and fix.
+      expect(holedFailure.reason).toBe('invalid-content');
+      expect(holedFailure.retryable).toBe(false);
+      expect(holedFailure.message).toContain('node 2');
+      expect(attributesFailure.reason).toBe('invalid-content');
+      expect(attributesFailure.message).toContain('node 1');
+    });
+
+    it('refuses a JSON roster carrying an attribute value the interview cannot hold, and names it', async () => {
+      const roster = await stageJsonRoster('request-nested-value-roster', {
+        nodes: [
+          { attributes: { name: 'Ada' } },
+          { attributes: { name: 'Grace', address: { city: 'Arlington' } } },
+        ],
+        edges: [],
+      });
+
+      const failure = expectFailure(await gateway().inspect(roster.id));
+
+      // The interview parses every attribute value through the same schema
+      // that decides what a variable may hold, and throws on one it rejects.
+      // An adapter that checks only the shape of the attributes object lets a
+      // protocol commit a field pointing at a roster that fails the moment the
+      // interview opens it. The attribute is named alongside its row because
+      // between them they are the whole of what the researcher has to fix.
+      expect(failure.reason).toBe('invalid-content');
+      expect(failure.retryable).toBe(false);
+      expect(failure.message).toContain('node 2');
+      expect(failure.message).toContain('address');
+    });
+
+    it('reads the attribute values the interview accepts, and passes over the empty ones', async () => {
+      const roster = await stageJsonRoster('request-value-shapes-roster', {
+        nodes: [
+          {
+            attributes: {
+              name: 'Ada',
+              age: 36,
+              consented: true,
+              languages: ['English', 'French'],
+              home: { x: 0.25, y: 0.5 },
+              nickname: null,
+            },
+          },
+        ],
+        edges: [],
+      });
+
+      const inspection = expectOk(await gateway().inspect(roster.id));
+
+      // Every one of these is a value a variable holds — a layout coordinate
+      // and a categorical selection included — and a null is a cell the
+      // researcher left empty, which the interview skips rather than refuses.
+      // An adapter stricter than the runtime turns ordinary rosters away.
+      expect(inspection.counts).toEqual({ nodes: 1, edges: 0 });
+      expect([...(inspection.variableNames ?? [])].toSorted()).toEqual([
+        'age',
+        'consented',
+        'home',
+        'languages',
+        'name',
+        'nickname',
+      ]);
+    });
+
+    it('refuses a roster whose attribute name a variable cannot be called, and names it', async () => {
+      const json = await stageJsonRoster('request-spaced-attribute-roster', {
+        nodes: [{ attributes: { 'name': 'Ada', 'home address': 'London' } }],
+        edges: [],
+      });
+      const csv = expectOk(
+        await gateway().stageUpload({
+          requestId: 'request-spaced-column-roster',
+          kind: 'network',
+          name: 'Roster with a spaced column',
+          source: 'spaced-roster.csv',
+          contentType: 'text/csv',
+          bytes: new TextEncoder().encode(
+            'name,home address\nAda,London\nGrace,Arlington\n',
+          ),
+        }),
+      );
+
+      const jsonFailure = expectFailure(await gateway().inspect(json.id));
+      const csvFailure = expectFailure(await gateway().inspect(csv.id));
+
+      // A roster's attribute names become variable names, and those must be
+      // NMTOKEN-compatible for the XML-based exports the protocol format
+      // produces. A spreadsheet's own column headings — "home address", "date
+      // of birth" — are not, so an adapter that only counts the columns lets a
+      // protocol commit a roster whose problem surfaces at export time, long
+      // after the researcher could have picked a different file. The offending
+      // name is reported because it is the whole of what they have to fix.
+      expect(jsonFailure.reason).toBe('invalid-content');
+      expect(jsonFailure.retryable).toBe(false);
+      expect(jsonFailure.message).toContain('home address');
+      expect(csvFailure.reason).toBe('invalid-content');
+      expect(csvFailure.message).toContain('home address');
+    });
+
+    it('refuses a roster with no records at all', async () => {
+      const json = await stageJsonRoster('request-empty-json-roster', {
+        nodes: [],
+        edges: [],
+      });
+      const csv = expectOk(
+        await gateway().stageUpload({
+          requestId: 'request-empty-csv-roster',
+          kind: 'network',
+          name: 'Roster with only a header',
+          source: 'empty-roster.csv',
+          contentType: 'text/csv',
+          bytes: new TextEncoder().encode('name,role\n'),
+        }),
+      );
+
+      const jsonFailure = expectFailure(await gateway().inspect(json.id));
+      const csvFailure = expectFailure(await gateway().inspect(csv.id));
+
+      // A header-only export is an ordinary spreadsheet mistake, and a stage
+      // pointing at one saves and validates perfectly while being unable to
+      // present a single participant at interview time. Refusing it here is
+      // the only moment the researcher can still choose another file.
+      expect(jsonFailure.reason).toBe('invalid-content');
+      expect(jsonFailure.retryable).toBe(false);
+      expect(csvFailure.reason).toBe('invalid-content');
+      expect(csvFailure.retryable).toBe(false);
+    });
+
+    it('reads a CSV roster column named with dots as one attribute', async () => {
+      const roster = expectOk(
+        await gateway().stageUpload({
+          requestId: 'request-dotted-csv-roster',
+          kind: 'network',
+          name: 'Roster with a dotted column',
+          source: 'dotted-roster.csv',
+          contentType: 'text/csv',
+          bytes: new TextEncoder().encode(
+            'name,home.city\nAda,London\nGrace,Arlington\n',
+          ),
+        }),
+      );
+
+      const inspection = expectOk(await gateway().inspect(roster.id));
+
+      // A spreadsheet exports a column called `home.city` as one column, and
+      // the interview reads it as one attribute of that name. An adapter whose
+      // CSV parser folds the dots into a nested object reports a variable the
+      // roster does not have — and gives that variable a value no attribute may
+      // hold, so the roster it just described would also be refused.
+      expect(inspection.counts).toEqual({ nodes: 2, edges: 0 });
+      expect([...(inspection.variableNames ?? [])].toSorted()).toEqual([
+        'home.city',
+        'name',
+      ]);
+    });
+
     it('downloads the exact bytes of committed and staged content', async () => {
       const staged = await stageImage();
 
@@ -326,7 +703,7 @@ export function describeResourceGatewayContract(
 
     it('discards all staging with no residue and no change to the committed manifest', async () => {
       const image = await stageImage();
-      const secret = await stageSecret();
+      const secret = await stageSecretIfKept();
       const preview = expectOk(await gateway().resolvePreview(image.id));
       expect(preview.url).not.toBe('');
 
@@ -337,24 +714,47 @@ export function describeResourceGatewayContract(
       expect(expectFailure(await gateway().inspect(image.id)).reason).toBe(
         'not-found',
       );
-      expect(
-        expectFailure(await gateway().inspect(secret.descriptor.id)).reason,
-      ).toBe('not-found');
+      if (secret !== undefined) {
+        expect(
+          expectFailure(await gateway().inspect(secret.descriptor.id)).reason,
+        ).toBe('not-found');
+      }
       expect(Object.keys(harness().committedManifest())).toEqual([
         RESOURCE_GATEWAY_CONTRACT_SEED.committedImage.id,
       ]);
     });
 
+    it('discards all staging in a session that staged nothing', async () => {
+      // The cancel path calls this unconditionally, and a session is cancelled
+      // far more often with nothing staged than with something: a researcher
+      // who opens a stage, changes a prompt and backs out never imported
+      // anything. An adapter that answers "nothing to discard" as a failure
+      // turns that into a stage the editor refuses to close.
+      expectOk(await gateway().discardAllStaged());
+
+      expect(harness().stagingResidue()).toEqual([]);
+      expect(Object.keys(harness().committedManifest())).toEqual([
+        RESOURCE_GATEWAY_CONTRACT_SEED.committedImage.id,
+      ]);
+      // And again, because a cancel can follow a cancel that already emptied
+      // the session — a retry of one whose answer was lost, for instance.
+      expectOk(await gateway().discardAllStaged());
+    });
+
     it('promotes every staged resource and its manifest entry together', async () => {
       const image = await stageImage();
-      const secret = await stageSecret();
+      const secret = await stageSecretIfKept();
+      const roster = secret === undefined ? await stageRoster() : undefined;
+      // Two resources of whatever kinds this host can hold, because what the
+      // row is about is that they travel with their manifest entries as one.
+      const second = secret?.descriptor ?? roster;
       const applied: ManifestApplyRequest[] = [];
 
       const promotion = expectOk(
         await gateway().promote({
           id: 'promotion-1',
-          resourceIds: [image.id, secret.descriptor.id],
-          secretHandles: [secret.handle],
+          resourceIds: [image.id, second?.id ?? ''],
+          ...(secret === undefined ? {} : { secretHandles: [secret.handle] }),
           applyManifest: (request) => {
             applied.push(request);
             return { status: 'applied' };
@@ -367,7 +767,7 @@ export function describeResourceGatewayContract(
       expect(request?.sectionId).toBe(ASSETS_SECTION);
       expect(request?.commands.map((command) => command.key)).toEqual([
         image.id,
-        secret.descriptor.id,
+        second?.id,
       ]);
       for (const command of request?.commands ?? []) {
         expect(command.op).toBe('set');
@@ -385,7 +785,7 @@ export function describeResourceGatewayContract(
         [
           RESOURCE_GATEWAY_CONTRACT_SEED.committedImage.id,
           image.id,
-          secret.descriptor.id,
+          second?.id ?? '',
         ].toSorted(),
       );
       expect(harness().stagingResidue()).toEqual([]);
@@ -483,8 +883,51 @@ export function describeResourceGatewayContract(
       expect(harness().stagingResidue()).toEqual([]);
     });
 
+    it('coalesces concurrent promotions of one id into a single apply', async () => {
+      const image = await stageImage();
+      let releaseApply: (() => void) | undefined;
+      const applyGate = new Promise<void>((resolve) => {
+        releaseApply = resolve;
+      });
+      let applies = 0;
+      // The second apply fails, so a gateway that runs it rolls back — and the
+      // rollback deletes what the first apply committed.
+      const applyManifest = vi.fn(async (): Promise<ManifestApplyOutcome> => {
+        applies += 1;
+        if (applies > 1) {
+          return {
+            status: 'failed',
+            retryable: true,
+            message: 'the protocol changed while finishing',
+          };
+        }
+        await applyGate;
+        return { status: 'applied' };
+      });
+      const promotion = {
+        id: 'promotion-concurrent',
+        resourceIds: [image.id],
+        applyManifest,
+      };
+
+      const first = gateway().promote(promotion);
+      const second = gateway().promote(promotion);
+      releaseApply?.();
+      const outcomes = [expectOk(await first), expectOk(await second)];
+
+      expect(applyManifest).toHaveBeenCalledTimes(1);
+      expect(outcomes[1]).toEqual(outcomes[0]);
+      expect(outcomes[0]?.promoted.map((descriptor) => descriptor.id)).toEqual([
+        image.id,
+      ]);
+      expect(Object.keys(harness().committedManifest()).toSorted()).toEqual(
+        [RESOURCE_GATEWAY_CONTRACT_SEED.committedImage.id, image.id].toSorted(),
+      );
+      expect(harness().stagingResidue()).toEqual([]);
+    });
+
     it('refuses to promote an unknown resource or a secret without its handle', async () => {
-      const secret = await stageSecret();
+      const secret = await stageSecretIfKept();
       const applyManifest = vi.fn((): ManifestApplyOutcome => ({
         status: 'applied',
       }));
@@ -496,17 +939,19 @@ export function describeResourceGatewayContract(
           applyManifest,
         }),
       );
-      const withoutHandle = expectFailure(
-        await gateway().promote({
-          id: 'promotion-handleless',
-          resourceIds: [secret.descriptor.id],
-          applyManifest,
-        }),
-      );
 
       expect(unknown.reason).toBe('not-found');
-      expect(withoutHandle.reason).toBe('invalid-request');
-      expect(withoutHandle.retryable).toBe(false);
+      if (secret !== undefined) {
+        const withoutHandle = expectFailure(
+          await gateway().promote({
+            id: 'promotion-handleless',
+            resourceIds: [secret.descriptor.id],
+            applyManifest,
+          }),
+        );
+        expect(withoutHandle.reason).toBe('invalid-request');
+        expect(withoutHandle.retryable).toBe(false);
+      }
       expect(applyManifest).not.toHaveBeenCalled();
       expect(Object.keys(harness().committedManifest())).toEqual([
         RESOURCE_GATEWAY_CONTRACT_SEED.committedImage.id,

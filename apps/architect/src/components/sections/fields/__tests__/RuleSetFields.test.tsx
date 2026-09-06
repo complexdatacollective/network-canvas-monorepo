@@ -110,10 +110,14 @@ describe('the rule-builder field', () => {
     expect(document.getElementById(fieldLabel().htmlFor)).toBe(group());
   });
 
-  it('marks the rule builder required and names what describes it', () => {
+  it('describes the rule builder as required without marking the group', () => {
     renderRuleSetField(FILTER);
 
-    expect(group()).toHaveAttribute('aria-required', 'true');
+    // `role="group"` does not support `aria-required` — axe reports it as a
+    // critical `aria-allowed-attr` failure — so the requirement has to reach a
+    // screen reader through the description instead.
+    expect(group()).not.toHaveAttribute('aria-required');
+    expect(group()).toHaveAccessibleDescription(/Required/);
 
     const fieldId = fieldLabel().id.replace(/-label$/, '');
     const ids = (group().getAttribute('aria-describedby') ?? '')

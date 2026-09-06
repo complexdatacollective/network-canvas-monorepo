@@ -1,13 +1,21 @@
 'use client';
+import type { ReactNode } from 'react';
 
+import { AppMessage } from '@codaco/app-i18n/react';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { NcNode } from '@codaco/shared-consts';
 
 import { useNodeLabel } from '../../Anonymisation/useNodeLabel';
+import { interfaceMessages } from '../../messages';
 
 type BinSummaryProps = {
   nodes: NcNode[];
 };
+
+const renderSummaryName = (chunks: ReactNode[]) => (
+  <span className="line-clamp-2">{chunks}</span>
+);
+const renderSummaryCount = (chunks: ReactNode[]) => <span>{chunks}</span>;
 
 const BinSummary = ({ nodes }: BinSummaryProps) => {
   const firstNode = nodes[0];
@@ -16,20 +24,16 @@ const BinSummary = ({ nodes }: BinSummaryProps) => {
 
   return (
     <Paragraph margin="none" className="catbin-summary-text">
-      {/* Clamped on its own element rather than on the paragraph: a label long
-          enough to fill the bin would otherwise push the count outside the
-          clamp, leaving the summary claiming the bin holds one thing. */}
-      <span className="line-clamp-2">{label}</span>
-      {otherCount > 0 && (
-        <>
-          {/* A whitespace-only flex item is not rendered (the visible gap comes
-              from column-gap), but it survives into the paragraph's text
-              content — without it a screen reader reads "Amyand 2 others". */}{' '}
-          <span>
-            {otherCount === 1 ? 'and 1 other' : `and ${otherCount} others`}
-          </span>
-        </>
-      )}
+      <AppMessage
+        message={interfaceMessages.binSummary}
+        values={{
+          name: label ?? '',
+          otherCount: Math.max(0, otherCount),
+          // The separate spans keep a long authored name from hiding the count.
+          label: renderSummaryName,
+          count: renderSummaryCount,
+        }}
+      />
     </Paragraph>
   );
 };

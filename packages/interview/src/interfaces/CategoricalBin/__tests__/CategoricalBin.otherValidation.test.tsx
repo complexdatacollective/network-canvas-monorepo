@@ -27,6 +27,7 @@ import {
 
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import type { ProtocolPayload } from '../../../contract/types';
+import { InterviewI18nProvider } from '../../../i18n/InterviewI18nProvider';
 import protocol from '../../../store/modules/protocol';
 import session, { type SessionState } from '../../../store/modules/session';
 import ui from '../../../store/modules/ui';
@@ -277,32 +278,39 @@ function renderCategoricalBin(
 
   let dndStore: StoreApi<DndStore> | null = null;
 
-  render(
-    <Provider store={store}>
-      <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
-        <DialogProvider>
-          <DndStoreProvider>
-            <CaptureDndStore
-              onStore={(s) => {
-                dndStore = s;
-              }}
-            />
-            {/* CategoricalBin never reads its props (destructures `_props`);
+  const tree = (locale: string) => (
+    <InterviewI18nProvider requestedLocale={locale}>
+      <Provider store={store}>
+        <CurrentStepProvider currentStep={0} onStepChange={vi.fn()}>
+          <DialogProvider>
+            <DndStoreProvider>
+              <CaptureDndStore
+                onStore={(s) => {
+                  dndStore = s;
+                }}
+              />
+              {/* CategoricalBin never reads its props (destructures `_props`);
                 these satisfy the type without any bearing on behaviour. */}
-            <CategoricalBin
-              stage={buildStage(otherVariable)}
-              getNavigationHelpers={() => ({
-                moveForward: () => {},
-                moveBackward: () => {},
-              })}
-            />
-          </DndStoreProvider>
-        </DialogProvider>
-      </CurrentStepProvider>
-    </Provider>,
+              <CategoricalBin
+                stage={buildStage(otherVariable)}
+                getNavigationHelpers={() => ({
+                  moveForward: () => {},
+                  moveBackward: () => {},
+                })}
+              />
+            </DndStoreProvider>
+          </DialogProvider>
+        </CurrentStepProvider>
+      </Provider>
+    </InterviewI18nProvider>
   );
+  const view = render(tree('en'));
 
-  return { store, getDndStore: () => dndStore! };
+  return {
+    store,
+    getDndStore: () => dndStore!,
+    setLocale: (locale: string) => view.rerender(tree(locale)),
+  };
 }
 
 /** Simulate dropping `node` onto the "other" bin by driving the dnd store
@@ -407,7 +415,7 @@ describe('CategoricalBin other-input honours codebook validation', () => {
 
     expect(getOtherAttribute(store)).toBe('');
     expect(
-      screen.getByRole('button', { name: 'Category Other, 1 items' }),
+      screen.getByRole('button', { name: 'Category Other, 1 item' }),
     ).toBeInTheDocument();
     expect(celebrate).toHaveBeenCalledOnce();
     expect(track).toHaveBeenCalledWith('node_binned', {
@@ -631,5 +639,39 @@ describe('CategoricalBin other-input honours codebook validation', () => {
     await waitForDialogToClose();
 
     expect(getOtherAttribute(store)).toBe('a genuinely new reason');
+  });
+});
+
+describe('CategoricalBin queued dialog localization', () => {
+  it('updates an already-open Other dialog without remounting its answer or translating the authored question', async () => {
+    const { store, getDndStore, setLocale } = renderCategoricalBin(undefined);
+    await dropNodeIntoOtherBin(getDndStore);
+    const input = await screen.findByRole('textbox', {
+      name: OTHER_PROMPT_TEXT,
+    });
+    expect(screen.getByRole('dialog')).toHaveAccessibleName('Specify other');
+    expect(input).toHaveAttribute('placeholder', 'Enter your response here...');
+    fireEvent.change(input, { target: { value: 'Respuesta literal á' } });
+    expect(getOtherAttribute(store)).toBeUndefined();
+
+    setLocale('es-MX');
+    expect(screen.getByRole('dialog')).toHaveAccessibleName(
+      'Especificar otra respuesta',
+    );
+    expect(screen.getByRole('textbox', { name: OTHER_PROMPT_TEXT })).toBe(
+      input,
+    );
+    expect(input).toHaveValue('Respuesta literal á');
+    expect(input).toHaveAttribute(
+      'placeholder',
+      'Introduce tu respuesta aquí...',
+    );
+    expect(getOtherAttribute(store)).toBeUndefined();
+
+    fireEvent.click(screen.getByTestId('dialog-submit'));
+    await waitFor(() =>
+      expect(getOtherAttribute(store)).toBe('Respuesta literal á'),
+    );
+    await waitForDialogToClose();
   });
 });

@@ -68,7 +68,11 @@ describe('Options', () => {
     setup();
 
     const options = screen.getByRole('list', { name: 'Options' });
-    expect(options).toHaveAttribute('aria-required', 'true');
+    // `role="list"` does not support `aria-required` — axe reports it as a
+    // critical `aria-allowed-attr` failure — so the list must NOT carry it.
+    // The requirement reaches assistive technology through the visually hidden
+    // "Required" marker the field names in `aria-describedby` instead.
+    expect(options).not.toHaveAttribute('aria-required');
     expect(options).toHaveAccessibleDescription(/Required/);
   });
 

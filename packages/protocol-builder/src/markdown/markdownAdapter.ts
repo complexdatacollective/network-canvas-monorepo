@@ -479,22 +479,33 @@ const getInlineContent = (node: RichTextContent): RichTextContent[] => {
   }
 };
 
+/**
+ * Every block's text, run together on one line with a space between blocks.
+ *
+ * The space goes between blocks that SAID something, not after every block
+ * that was not the first one. A block contributing nothing is dropped, so
+ * counting it as a predecessor puts a separator where there is nothing to
+ * separate from: a document whose first paragraph is empty — which an editor
+ * leaves behind whenever a selection is cleared and the caret lands in a
+ * sibling — serialised with a leading space, and the space was then saved as
+ * part of the researcher's question.
+ */
 const flattenInlineContent = (
   content: RichTextContent[] | undefined,
 ): RichTextContent[] =>
-  (content ?? []).flatMap((node, index) => {
+  (content ?? []).reduce<RichTextContent[]>((flattened, node) => {
     const inlineContent = getInlineContent(node);
 
     if (inlineContent.length === 0) {
-      return [];
+      return flattened;
     }
 
-    if (index === 0) {
+    if (flattened.length === 0) {
       return inlineContent;
     }
 
-    return [{ type: 'text', text: ' ' }, ...inlineContent];
-  });
+    return [...flattened, { type: 'text', text: ' ' }, ...inlineContent];
+  }, []);
 
 const indentBlock = (value: string): string =>
   value

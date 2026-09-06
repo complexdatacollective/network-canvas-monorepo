@@ -92,6 +92,11 @@ export default defineConfig({
             '@base-ui/react',
             '@base-ui/react/accordion',
             '@base-ui/react/checkbox',
+            // Reached through `Dialog`, which reads the enclosing heading level
+            // a `Section` inside it counts down from — so every dialog these
+            // stories open now pulls in fresco-ui's `Section` and the
+            // Collapsible it is built on.
+            '@base-ui/react/collapsible',
             '@base-ui/react/combobox',
             '@base-ui/react/drawer',
             '@base-ui/react/menu',
