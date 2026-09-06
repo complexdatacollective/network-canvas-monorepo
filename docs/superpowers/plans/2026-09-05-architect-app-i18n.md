@@ -14,19 +14,19 @@ The existing app-i18n APIs, Studio implementation and PR #1651 were inspected.
 This table records the current implementation status; the dated checkpoints
 below preserve earlier results without promoting them to final evidence.
 
-| Surface / acceptance area              | Implementation and evidence                                                                                                                                  | Current status                                                                                                                                                                                                                                                                                    |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Device preference and language setting | Immediate en/es/en-GB selection, Automatic, persistence, rejected-storage feedback and cross-tab updates                                                     | Six production language workflows pass on the round-two source, including existing menu, resource and queued-preview checks                                                                                                                                                                       |
-| Full and inline preview boundaries     | Shell owns built-in interface language; the host supplies its resolved request and scoped finish copy; protocol-authored strings/data stay literal           | Earlier independent preview and portal proofs remain applicable; final shared runtime integration precedes final broad gates                                                                                                                                                                      |
-| Home, editors, codebook and resources  | Complete chrome, guidance, errors, counts and locale-aware alphabetical controls                                                                             | Current review fixes cover Codebook counts plus related option positions, conflict counts, threshold labels and queued duplicate-row feedback                                                                                                                                                     |
-| Printed summaries and codebook         | Locale collation for printed attribute lists/tables; linked list parts retain literal names, exact targets and language grammar; stage numbers are formatted | Actual production protocol uses schema-valid underscore/hyphen/dot names; Spanish “e Isabel” changes live to English “and Isabel”; authored data stays exact                                                                                                                                      |
-| Catalogs and production locales        | 1,825 complete EN/ES descriptors and 37 sparse en-GB overrides                                                                                               | Lead independently reviewed ten changed EN/ES pairs and ten current GB overrides; two unused example descriptors and their dead GB override are removed                                                                                                                                           |
-| Development pseudo-locale              | Development-only registry option; never persisted as a production preference                                                                                 | Existing scope preserved                                                                                                                                                                                                                                                                          |
-| Static and catalog checks              | App+E2E types, app lint, full repository Knip, extraction/parity, 938-file formatting and changeset guard pass                                               | Round-two source is ready for the lead’s frozen diff review                                                                                                                                                                                                                                       |
-| Focused source verification            | 52/52 units across 11 suites and 6/6 real production language workflows                                                                                      | Five in-memory source/catalog mutations each cause the intended failure; control tests pass and all production bytes remain unchanged                                                                                                                                                             |
-| Broad app and shared integration gates | Earlier source checkpoint: 2,504 unit/script passes plus three existing todos, 169 native passes, cold Storybook 15/15                                       | Re-run final integrated gates after the next normal runtime merge; earlier evidence is not a final-head verdict                                                                                                                                                                                   |
-| Canonical images                       | Prior checkpoint adopted 17 independently reviewed, twice-identical CI PNGs; 11 other PNGs and 19 JSONs unchanged                                            | New printed conjunction/sort changes need fresh CI-only generation, repeated capture, lead review and final no-write verification                                                                                                                                                                 |
-| PR, CI and review                      | Existing ready PR #1705 currently stacks on runtime #1719; pushed app head 72e6123 received four actionable inline findings                                  | Corrections are implemented locally; threads remain open until the reviewed patch is pushed. The prior manual CI Storybook timeout remains an interim failed gate; a later runtime checkpoint supplies the measured Interviewer fix. Final current-head clean Codex and normal CI remain required |
+| Surface / acceptance area              | Implementation and evidence                                                                                                                                  | Current status                                                                                                                                                                   |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Device preference and language setting | Immediate en/es/en-GB selection, Automatic, persistence, rejected-storage feedback and cross-tab updates                                                     | Final main-integrated native suite passes all six production language workflows; additional keyboard and persistence audit passes                                                |
+| Full and inline preview boundaries     | Shell owns built-in interface language; the host supplies its resolved request and scoped finish copy; protocol-authored strings/data stay literal           | Final full-preview menu, queued-dialog and independent-language workflows pass; actual inline field, response and parent dialog survive ES–GB–ES                                 |
+| Home, editors, codebook and resources  | Complete chrome, guidance, errors, counts and locale-aware alphabetical controls                                                                             | Current review fixes cover Codebook counts plus related option positions, conflict counts, threshold labels and queued duplicate-row feedback                                    |
+| Printed summaries and codebook         | Locale collation for printed attribute lists/tables; linked list parts retain literal names, exact targets and language grammar; stage numbers are formatted | Actual production protocol uses schema-valid underscore/hyphen/dot names; Spanish “e Isabel” changes live to English “and Isabel”; authored data stays exact                     |
+| Catalogs and production locales        | 1,825 complete EN/ES descriptors and 37 sparse en-GB overrides                                                                                               | Lead independently reviewed ten changed EN/ES pairs and ten current GB overrides; two unused example descriptors and their dead GB override are removed                          |
+| Development pseudo-locale              | Development-only registry option; never persisted as a production preference                                                                                 | Existing scope preserved                                                                                                                                                         |
+| Static and catalog checks              | App+E2E types, type-aware lint, full repository Knip, byte-identical extraction/parity, formatting and changeset guard pass                                  | Final main-integrated source verified; all 20 reviewed correction source/test/catalog hashes preserved                                                                           |
+| Focused source verification            | 52/52 units across 11 suites and 6/6 real production language workflows                                                                                      | Five in-memory source/catalog mutations each cause the intended failure; control tests pass and all production bytes remain unchanged                                            |
+| Broad app and shared integration gates | Final main-integrated source: 2,513 unit/script passes plus three existing todos; 171 native passes; cold Storybook 15/15                                    | All final local gates pass. Earlier removal-animation failure is fixed by the already-landed main implementation, verified in disposable and actual integration trees            |
+| Canonical images                       | Fresh CI runs 34057696010 and 34057709075 pass 2/2 each; all 28 outputs repeat byte-identically                                                              | Lead approved six intended printed conjunction/cell-width changes; only those six adopted, 22 PNGs and all 19 JSONs preserved. Final normal no-write pixel CI remains required   |
+| PR, CI and review                      | Runtime #1719 merged; Architect normally integrates main 4ea9fe095 via f35e12bcd, including the reviewed removal-focus conflict resolution                   | All four latest findings fixed, replied to and resolved. Final artifact head requires an explicit clean Codex verdict and fresh automatic main/native/pixel CI before lead merge |
 
 ## Deliberate scope boundaries
 
@@ -1218,3 +1218,77 @@ the reviewed canonical runtime images, finite accessibility announcements and
 the measured Interviewer Storybook optimizer/readiness fixes; its final extra
 change only reduces input-event work in a two-Shell integration test. The final
 app broad tests and image/review gates apply to this integrated source.
+
+### Final main integration and canonical adoption (2026-09-06)
+
+Runtime PR #1719 merged at
+`4ea9fe0951fb267e60bc938196202b4057c52ea0`. The ordinary Architect merge
+`f35e12bcda32a17a9004d79f8062bde1076e39ce` has that freshly fetched main
+commit as its second parent and preserves all 20 frozen round-two app source,
+test and catalog hashes. Both author and committer remain Joshua Melville.
+
+The final pre-main full run exposed the already-landed #1714 removal-animation
+bug: 2,511 tests passed, one focus assertion found two Remove controls while the
+removed row was still exiting, and three existing todos remained. No new test
+synchronization or production workaround was added. A disposable ordinary main
+integration passed all 29 actual DialogArrayField tests, including main’s
+deterministic long-exit regression. The lead inspected the sole conflict patch,
+SHA256 `cfb473a2df8236646152bef255e0458ea66ff46a36c844e606ebb79ff2056105`,
+and approved preserving both the locale-independent `[data-array-row-remove]`
+selector and main’s exclusion of controls beneath `aria-hidden="true"`.
+The actual merge and hooks preserve those exact reviewed bytes. Its final
+full run passes 2,513 tests plus the same three todos; the earlier failure is
+retained in `/private/tmp/nc-architect-final-integrated-units.log`.
+
+| Final source gate            | Exact evidence                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Full app units/scripts       | 2,513 passed, three existing todos, all 292 files; 70.51 seconds. `/private/tmp/nc-architect-final-main-units.log`.                                                                                                                                                                                                                                                                                                                                       |
+| Types, lint, full Knip       | All pass on the actual main-integrated source; existing lint warnings only. `/private/tmp/nc-architect-final-main-{types,lint,knip}.log`.                                                                                                                                                                                                                                                                                                                 |
+| Catalogs and changesets      | Extraction preserves EN SHA256 `240dae8dd5c4422b9fe33f2418c7b75839271c6bb8a55f7e5a2ccdc93146478c`; all catalog suites are in the full unit run; 1,825 EN/ES entries and 37 GB overrides. `/private/tmp/nc-architect-final-main-{extraction,changesets}.log`.                                                                                                                                                                                              |
+| Production build             | PWA integrity passes with 24 JavaScript chunks, 69 stage-preview assets and 101 precache entries. `/private/tmp/nc-architect-final-main-build.log`.                                                                                                                                                                                                                                                                                                       |
+| Full native E2E              | 171/171 pass, no skips, failures or retries; 1.4 minutes. `/private/tmp/nc-architect-final-main-native.log` and `-native-results.json`. Includes all six actual production language workflows.                                                                                                                                                                                                                                                            |
+| Expanded production UI audit | 5/5 pass: all 19 Spanish editors at 390px and 768px, exact protocol preservation, DOM language/direction, actual keyboard typeahead/save announcement/focus return/persistence, British map/report labels, and actual inline response/parent-dialog preservation across ES–GB–ES. `/private/tmp/nc-architect-final-main-production-ui.log`; 38 editor ARIA records plus metrics and dialog evidence under `/private/tmp/nc-architect-final-ui-evidence/`. |
+| Cold Storybook               | 15/15, all three files, after deleting only the verified Architect optimizer cache; no late dependency discovery/reload. `/private/tmp/nc-architect-final-main-cold-storybook.log`.                                                                                                                                                                                                                                                                       |
+| Review corrections           | 52 focused passes across 11 suites and five intended no-write mutation failures with passing controls remain recorded above. All four review threads have code fixes and replies, and are resolved.                                                                                                                                                                                                                                                       |
+
+Canonical generation ran only in GitHub Actions using the pinned Playwright
+1.62.1 Noble image. Runs
+[34057696010](https://github.com/complexdatacollective/network-canvas-monorepo/actions/runs/34057696010)
+and [34057709075](https://github.com/complexdatacollective/network-canvas-monorepo/actions/runs/34057709075)
+each passed both capture cases on pushed source
+`8a870f3f87ae04801fcacf3ae4e538d001400d11`. All 28 forced outputs are
+byte-identical across runs. The lead independently inspected every changed
+native-resolution band and approved exactly these six first-run files:
+
+- `summary-stage-alter-form-1.png`
+- `summary-stage-family-pedigree-1.png`
+- `summary-stage-name-generator-roster-1.png`
+- `summary-stage-narrative-1.png`
+- `summary-stage-network-composer-1.png`
+- `summary-stage-sociogram-1.png`
+
+Each change is the intended whole English attribute-list conjunction and its
+resulting table-cell width. Dimensions are unchanged; there are zero changed
+pixels outside the six reviewed bands. Literal variable names remain unchanged.
+The other 22 PNGs and all 19 JSON stage baselines retain their prior bytes.
+The later main integration changes removal-exit accessibility and focus; those
+states are absent from the static printed capture surfaces. Final automatic
+main CI must still run the normal no-write pixel comparison against this merge.
+
+Inventory and hashes:
+`/private/tmp/nc-architect-round2-visual-review/inventory.json` (SHA256
+`cf647c8a84d9f848f471e4f9509409a2307426ae97f6ba7d61baae640857fdb7`);
+all six before/after bands are in adjacent `contact-1.png`; zero-outside-band
+proof is in `outside-bands-proof.json`; adoption pre/post hashes are in
+`/private/tmp/nc-architect-round2-adoption-evidence.json`. No baseline PNG was
+generated locally. The baseline commit contains only those six approved PNGs
+and this app-owned audit.
+
+The stacked manual run 34057907717 runs package checks with
+`force_run=true` and `release_app=none`; it intentionally selects zero E2E.
+Its Storybook job succeeds, establishing the prior timeout’s diagnosed fix.
+The lead is retargeting #1705 to main before the final push so fresh automatic
+main-merge-tree checks select the normal policy without another manual dispatch.
+Final current-head Codex review and automatic required/native/pixel checks remain
+external gates; earlier clean reviews and generation success do not establish
+them. The lead retains merge sequencing and final ancestry verification.
