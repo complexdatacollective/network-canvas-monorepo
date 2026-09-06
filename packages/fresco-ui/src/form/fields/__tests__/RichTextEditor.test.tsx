@@ -123,6 +123,48 @@ describe('RichTextEditorField', () => {
    * toolbar whose FIELD nobody can edit leaves the tab order, because there is
    * nothing in it left to go and read.
    */
+  it('closes an open link popover when the field stops being editable', async () => {
+    // The trigger is disabled with the rest of the toolbar, but the popover it
+    // opened is a portal of its own: its URL box and its Apply and Remove
+    // buttons went on running editor commands against a field the host had
+    // just made read-only, and the change was reported back as if a
+    // researcher had made it.
+    const onChange = vi.fn();
+    const user = userEvent.setup();
+    const field = (readOnly: boolean) => (
+      <RichTextEditorField
+        id="bio"
+        name="bio"
+        aria-describedby="bio-hint"
+        aria-label="Biography"
+        changeMode="input"
+        toolbarOptions={{ links: true }}
+        value={documentWithText}
+        onChange={onChange}
+        readOnly={readOnly}
+      />
+    );
+    const { rerender } = render(field(false));
+    await screen.findByRole('textbox', { name: 'Biography' });
+
+    await user.click(screen.getByRole('button', { name: 'Add link' }));
+    const url = await screen.findByLabelText('Link URL');
+    await user.type(url, 'https://example.com');
+
+    rerender(field(true));
+
+    // Gone, rather than merely dimmed: the panel is what could still reach the
+    // editor, and with Apply on screen a click on it inserted the link and
+    // reported the document back as an edit.
+    await waitFor(() => {
+      expect(screen.queryByLabelText('Link URL')).not.toBeInTheDocument();
+    });
+    expect(
+      screen.queryByRole('button', { name: 'Apply link' }),
+    ).not.toBeInTheDocument();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   it('keeps a button the editor state disables reachable', async () => {
     render(
       <RichTextEditorField

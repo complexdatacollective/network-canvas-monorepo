@@ -759,6 +759,11 @@ export default function RichTextEditorField({
   onChangeRef.current = onChange;
   changeModeRef.current = changeMode;
 
+  // Whether the FIELD is unavailable — read-only, or disabled while its form
+  // submits. Read by a hook below, so it is worked out before the early
+  // return rather than beside the toolbar that shows it.
+  const isDisabled = Boolean(disabled) || Boolean(readOnly);
+
   const inputState = getInputState({
     disabled,
     readOnly,
@@ -978,11 +983,22 @@ export default function RichTextEditorField({
     }
   }, [editor, editorAttributes]);
 
+  // A popover outlives the button that opened it. Disabling the trigger says
+  // nothing about the panel already on screen: its URL box and its Apply and
+  // Remove buttons are in a portal of their own, and they went on running
+  // editor commands against a field the host had just made read-only —
+  // reporting the result back as a change a researcher had made. So the
+  // popover is closed when the field stops being one anybody can edit.
+  useEffect(() => {
+    if (!isDisabled) return;
+
+    setIsLinkPopoverOpen(false);
+    setLinkValidationMessage('');
+  }, [isDisabled]);
+
   if (!editor) {
     return null;
   }
-
-  const isDisabled = Boolean(disabled) || Boolean(readOnly);
 
   const getActiveFormattingValues = () => {
     const values: string[] = [];
@@ -1168,7 +1184,10 @@ export default function RichTextEditorField({
                 toggle, so it does not belong inside their group element. */}
             {options.links && (
               <Popover
-                open={isLinkPopoverOpen}
+                // Closed by the render that makes the field unavailable, not
+                // by the effect that follows it: an effect leaves one commit
+                // in which the panel is on screen with its controls live.
+                open={isLinkPopoverOpen && !isDisabled}
                 onOpenChange={setLinkPopoverOpen}
               >
                 {/*
