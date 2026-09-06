@@ -345,9 +345,11 @@ export type MultiSelectProps = Omit<
 /**
  * A sortable list of always-editing rows, each a fixed set of selects/inputs.
  *
- * Rendered as `<ProtocolArrayField component={MultiSelect} … />`, so the whole
- * list arrives as ONE `value`/`onChange` pair; no row is ever registered as a
- * form field. Row controls therefore run their own validation locally (see
+ * Rendered as `<ProtocolArrayField component={…} … />`, so the whole list
+ * arrives as ONE `value`/`onChange` pair; no row is ever registered as a form
+ * field. Every section reaches it through `OptionalList`, which is where the
+ * decision an EMPTY list records lives: this component renders whatever it is
+ * handed and has no opinion about what emptying one means. Row controls therefore run their own validation locally (see
  * RowField) while keeping the `name[i].property` `data-field-name` paths E2E
  * specs target — which is why every owner also passes
  * `validation={{ completeRows: completeRows(properties) }}`, the only rule
