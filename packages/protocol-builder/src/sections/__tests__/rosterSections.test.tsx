@@ -29,6 +29,39 @@ const optionsOf = (name: RegExp | string) =>
     .getAllByRole('option')
     .map((option) => (option as HTMLOptionElement).value);
 
+/**
+ * The one attribute picker inside a named list, for the two sections that show
+ * more than one list and label every picker "Attribute".
+ */
+const attributeCellIn = (listLabel: RegExp) =>
+  within(screen.getByRole('list', { name: listLabel })).getByRole('combobox', {
+    name: /Attribute/,
+  }) as HTMLSelectElement;
+
+const optionIn = (listLabel: RegExp, value: string) =>
+  [...attributeCellIn(listLabel).options].find(
+    (option) => option.value === value,
+  );
+
+/**
+ * A roster whose lists name `nickname`, which the fixture's data file does not
+ * carry — the state a stage reaches when the file behind it is replaced with
+ * one shaped differently, or when the protocol was authored against another
+ * file entirely. `dataSource` never changes, so `BuilderSection`'s `resetOn`
+ * does not fire and the rows stand.
+ */
+const rosterNamingALostColumn = () =>
+  rosterWith({
+    dataSource: 'roster_data',
+    cardOptions: {
+      additionalProperties: [{ variable: 'nickname', label: 'Nickname' }],
+    },
+    sortOptions: {
+      sortOrder: [{ property: 'nickname', direction: 'asc' }],
+      sortableProperties: [{ variable: 'nickname', label: 'Nickname' }],
+    },
+  });
+
 describe("a roster stage's data file", () => {
   it('shows what the chosen file holds', async () => {
     renderStageEditor({
@@ -158,6 +191,95 @@ describe("what a roster's cards show", () => {
     ).toBeInTheDocument();
   });
 
+  /**
+   * The column is not half-missing: the row holds a name, and the name is
+   * exactly the problem. Left to the options alone the cell renders BLANK —
+   * nothing in the list carries the id — so the researcher sees an empty
+   * required cell, cannot find out what it points at, and saves the dangling
+   * reference straight back. `cardOptions.additionalProperties` accepts it,
+   * and the interview renders a card detail with nothing under it.
+   */
+  it('says which column a card detail points at when the file lacks it', async () => {
+    renderStageEditor({
+      stage: rosterNamingALostColumn(),
+      sections: <CardDisplaySection />,
+    });
+
+    const cell = await waitFor(() => {
+      const found = attributeCellIn(/Attributes shown on a card/);
+      expect(found.value).toBe('nickname');
+      return found;
+    });
+
+    // Readable as the current choice rather than blank...
+    expect(
+      within(cell).getByRole('option', {
+        name: 'nickname — this attribute is not in the data file',
+      }),
+    ).toBeInTheDocument();
+    // ...and never choosable afresh.
+    expect(optionIn(/Attributes shown on a card/, 'nickname')?.disabled).toBe(
+      true,
+    );
+  });
+
+  it('refuses to save a card detail naming a column the file does not have', async () => {
+    const harness = renderStageEditor({
+      stage: rosterNamingALostColumn(),
+      sections: <CardDisplaySection />,
+    });
+
+    await waitFor(() =>
+      expect(attributeCellIn(/Attributes shown on a card/).value).toBe(
+        'nickname',
+      ),
+    );
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      screen.getByText(
+        'This row points at an attribute that is not in the data file. Choose another or delete the row.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * The refusal has to be one the researcher can act on, so the way out is
+   * part of the behaviour. Choosing an attribute clears the label beside it —
+   * a label describes the column it sits next to, and this row now names a
+   * different one — so the way out is both halves of the row, and the save
+   * goes through once they are both answered.
+   */
+  it('saves once the card detail is pointed at a column the file has', async () => {
+    const harness = renderStageEditor({
+      stage: rosterNamingALostColumn(),
+      sections: <CardDisplaySection />,
+    });
+
+    await waitFor(() =>
+      expect(attributeCellIn(/Attributes shown on a card/).value).toBe(
+        'nickname',
+      ),
+    );
+    expect(await harness.submit()).toBeNull();
+
+    await harness.user.selectOptions(
+      attributeCellIn(/Attributes shown on a card/),
+      'age',
+    );
+    await harness.user.type(
+      screen.getByRole('textbox', { name: /Label/ }),
+      'Age',
+    );
+
+    const request = await harness.submit();
+    expect(request?.stageDocument.cardOptions).toEqual({
+      additionalProperties: [{ variable: 'age', label: 'Age' }],
+    });
+    // Pointed elsewhere, so the id it used to hold stops being offered at all.
+    expect(optionIn(/Attributes shown on a card/, 'nickname')).toBeUndefined();
+  });
+
   it('records the card detail the researcher added', async () => {
     const harness = renderStageEditor({
       stage: rosterWith({ dataSource: 'roster_data' }),
@@ -250,6 +372,49 @@ describe('how a roster is ordered', () => {
     expect(await harness.submit()).toBeNull();
     expect(
       screen.getByText('Every row needs a value in each column.'),
+    ).toBeInTheDocument();
+  });
+
+  it('refuses a starting order naming a column the file does not have', async () => {
+    const harness = renderStageEditor({
+      stage: rosterNamingALostColumn(),
+      sections: <SortOptionsSection />,
+    });
+
+    await waitFor(() =>
+      expect(attributeCellIn(/Starting order/).value).toBe('nickname'),
+    );
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      screen.getAllByText(
+        'This row points at an attribute that is not in the data file. Choose another or delete the row.',
+      ).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it('refuses a sortable attribute naming a column the file does not have', async () => {
+    const harness = renderStageEditor({
+      stage: rosterWith({
+        dataSource: 'roster_data',
+        sortOptions: {
+          sortableProperties: [{ variable: 'nickname', label: 'Nickname' }],
+        },
+      }),
+      sections: <SortOptionsSection />,
+    });
+
+    await waitFor(() =>
+      expect(
+        attributeCellIn(/Attributes the participant may sort by/).value,
+      ).toBe('nickname'),
+    );
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      screen.getByText(
+        'This row points at an attribute that is not in the data file. Choose another or delete the row.',
+      ),
     ).toBeInTheDocument();
   });
 

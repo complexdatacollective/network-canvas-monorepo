@@ -1,7 +1,14 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
-import type { OptionGetter } from '../form/arrayFields/MultiSelect.tsx';
-import { useStageValue } from '../form/stageFormHooks.ts';
+import {
+  orphanedSortProperties,
+  type SortableProperty,
+} from '../fields/sortOrderOptions.ts';
+import type {
+  DanglingCells,
+  OptionGetter,
+} from '../form/arrayFields/MultiSelect.tsx';
+import { useStageHasAnyValue, useStageValue } from '../form/stageFormHooks.ts';
 import { useResourceInspection } from '../resources/components/useResourceInspection.ts';
 
 /** Where a roster stage records the data file it draws its people from. */
@@ -63,20 +70,176 @@ export function useRosterColumns(): RosterColumns {
  * Shared by every roster section that picks columns — card details and
  * sortable properties are the same question asked twice — so a column reads
  * the same way wherever the researcher meets it.
+ *
+ * `orphans` are appended rather than mixed in: they are not columns of this
+ * file, they are ids the rows still hold (see `useOrphanedColumns`), and they
+ * arrive already disabled so nothing here can make one choosable.
  */
-export function useColumnOptionGetter(names: readonly string[]): OptionGetter {
+export function useColumnOptionGetter(
+  names: readonly string[],
+  orphans: readonly SortableProperty[] = NO_ORPHANS,
+): OptionGetter {
   return useMemo<OptionGetter>(
     () => (fieldName, _rowValues, allValues) => {
       if (fieldName !== 'variable') return [];
       const used = chosenColumns(allValues);
-      return names.map((name) => ({
-        value: name,
-        label: name,
-        ...(used.includes(name) ? { disabled: true } : {}),
-      }));
+      return [
+        ...names.map((name) => ({
+          value: name,
+          label: name,
+          ...(used.includes(name) ? { disabled: true } : {}),
+        })),
+        ...orphans.map(({ value, label }) => ({
+          value,
+          label,
+          disabled: true,
+        })),
+      ];
     },
-    [names],
+    [names, orphans],
   );
+}
+
+/**
+ * How a roster list names a column its data file does not carry, worded the
+ * way the codebook's own missing-attribute options are worded.
+ *
+ * "Not in" rather than "no longer in": nobody deleted anything here. A roster
+ * column goes missing because the file itself was replaced with one shaped
+ * differently, or because the protocol was authored against another file
+ * entirely — so the researcher is told what is true of the file in front of
+ * them, not a history that may never have happened.
+ */
+const missingColumnLabel = (column: string): string =>
+  `${column} — this attribute is not in the data file`;
+
+/**
+ * What a researcher is told about a row left pointing at a lost column.
+ *
+ * The row is not half-filled — it holds a name, and the name is exactly the
+ * problem — so "every row needs a value in each column" would be both wrong
+ * and unhelpful. This one names the situation and both ways out.
+ */
+const MISSING_COLUMN_MESSAGE =
+  'This row points at an attribute that is not in the data file. Choose another or delete the row.';
+
+const NO_ORPHANS: readonly SortableProperty[] = Object.freeze([]);
+const NO_COLUMNS: readonly string[] = Object.freeze([]);
+
+/**
+ * Columns a roster list's rows name that the chosen data file does not carry,
+ * as the two things a `MultiSelect` owner needs to hand them back.
+ *
+ * A roster's lists have the same hole a codebook sort rule has, for the same
+ * reason: the value is the id itself, the cell renders from the option list,
+ * so an id no option carries leaves the control BLANK while the value behind
+ * it is untouched — the researcher sees an empty required cell, cannot find
+ * out what it points at, and saves the dangling reference straight back. Only
+ * the file changes here rather than the codebook, which changes the words and
+ * nothing else.
+ *
+ * `BuilderSection`'s `resetOn` does not cover this. It clears these lists when
+ * the researcher swaps the file, which is a different event: a stage arriving
+ * already holding a lost column never changes its `dataSource` at all, so
+ * nothing fires and the rows stand.
+ *
+ * Read live from the stage's own value rather than from a committed copy,
+ * because these lists are registered on the stage form itself: the moment a
+ * row is pointed somewhere real the orphan stops being offered, and an orphan
+ * must never become choosable again.
+ */
+export function useOrphanedColumns(
+  fieldName: string,
+  path: string,
+  names: readonly string[],
+): Readonly<{
+  /** Offered back so the cell shows what it holds. Never choosable. */
+  options: readonly SortableProperty[];
+  /** The array-level rule that refuses a save while a row holds one. */
+  dangling: readonly DanglingCells[];
+}> {
+  const held = useStageValue(path);
+  /**
+   * Whether this list still holds anything at all.
+   *
+   * Asked separately because the two hooks answer differently about a list a
+   * section has just CLEARED — swapping the data file clears every list that
+   * named a column of the old one. `useStageValue` falls through to the
+   * committed draft whenever the form holds nothing at the path, so it hands
+   * back the rows the stage was opened with and the old file's columns come
+   * straight back as orphans. `useStageHasAnyValue` stops at the tombstone the
+   * clear parked, which is the question actually being asked here.
+   */
+  const configured = useStageHasAnyValue([path]);
+  const rows = configured ? held : undefined;
+
+  const values = useMemo(() => {
+    // The sort-rule finder, asked the same question about a different column:
+    // naming each row's cell `property` reuses its dedupe, its "the caller
+    // does not know the columns yet" guard, and its skipping of the
+    // source-order sentinel, none of which differ here.
+    const found = orphanedSortProperties(
+      Array.isArray(rows)
+        ? rows.map((row) => ({
+            property:
+              typeof row === 'object' && row !== null
+                ? Reflect.get(row, fieldName)
+                : undefined,
+          }))
+        : rows,
+      names.map((name) => ({ value: name, label: name })),
+    ).map(({ value }) => value);
+    return found.length === 0 ? NO_COLUMNS : found;
+  }, [fieldName, names, rows]);
+
+  /**
+   * The values the registered rule reads, rather than the ones it closed over.
+   *
+   * A field's validation function is registered once and memoized on a JSON
+   * snapshot of its validation props — and a rule is a FUNCTION, which does
+   * not survive `JSON.stringify`, so every rule this field will ever run is
+   * the one built on its first render. The columns are read from the data file
+   * through the gateway and arrive after that render, so a rule built from
+   * them would be registered already knowing nothing and would never be asked
+   * again.
+   *
+   * So the rule keeps one identity and reads what is current, which is how
+   * fresco-ui keeps a registered rule's MESSAGES current across a language
+   * change (`useField`'s `intlRef`) and for the same reason: re-registering a
+   * field deletes the errors it is storing, and an error deleted mid-submit is
+   * a refusal the researcher never sees.
+   */
+  const valuesRef = useRef(values);
+  useEffect(() => {
+    valuesRef.current = values;
+  }, [values]);
+
+  const dangling = useMemo<readonly DanglingCells[]>(
+    () => [
+      {
+        fieldName,
+        get values() {
+          return valuesRef.current;
+        },
+        message: MISSING_COLUMN_MESSAGE,
+      },
+    ],
+    [fieldName],
+  );
+
+  const options = useMemo(
+    () =>
+      values.length === 0
+        ? NO_ORPHANS
+        : values.map((value) => ({
+            value,
+            label: missingColumnLabel(value),
+            disabled: true,
+          })),
+    [values],
+  );
+
+  return useMemo(() => ({ options, dangling }), [dangling, options]);
 }
 
 /** The column each row of a list field currently names. */

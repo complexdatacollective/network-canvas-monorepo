@@ -7,7 +7,11 @@ import MultiSelect, {
 } from '../form/arrayFields/MultiSelect.tsx';
 import ProtocolArrayField from '../form/ProtocolArrayField.tsx';
 import BuilderSection, { type SectionCapability } from './BuilderSection.tsx';
-import { useColumnOptionGetter, useRosterColumns } from './useRosterColumns.ts';
+import {
+  useColumnOptionGetter,
+  useOrphanedColumns,
+  useRosterColumns,
+} from './useRosterColumns.ts';
 
 /** Where a roster stage records how its people are ordered. */
 const SORT_ORDER = 'sortOptions.sortOrder';
@@ -27,9 +31,6 @@ const SORTABLE_COLUMNS: PropertyField[] = [
     placeholder: 'Age',
   },
 ];
-
-const SORT_ORDER_VALIDATION = makeMultiSelectValidation(SORT_ORDER_COLUMNS);
-const SORTABLE_VALIDATION = makeMultiSelectValidation(SORTABLE_COLUMNS);
 
 const SORT_CAPABILITY: SectionCapability = {
   fields: [SORT_ORDER, SORTABLE_PROPERTIES],
@@ -93,13 +94,40 @@ export default function SortOptionsSection({
 }: SortOptionsSectionProps = {}) {
   const words = { ...DEFAULT_COPY, ...copy };
   const columns = useRosterColumns();
-  const sortableOptions = useColumnOptionGetter(columns.names);
+
+  // Two lists, two columns holding column names, so the same lost column can
+  // strand a row in either — each is asked about its own.
+  const orderOrphans = useOrphanedColumns(
+    'property',
+    SORT_ORDER,
+    columns.names,
+  );
+  const sortableOrphans = useOrphanedColumns(
+    'variable',
+    SORTABLE_PROPERTIES,
+    columns.names,
+  );
+
+  const sortableOptions = useColumnOptionGetter(
+    columns.names,
+    sortableOrphans.options,
+  );
   const orderOptions = useMemo(
     () =>
-      getSortOrderOptionGetter(
-        columns.names.map((name) => ({ value: name, label: name })),
-      ),
-    [columns.names],
+      getSortOrderOptionGetter([
+        ...columns.names.map((name) => ({ value: name, label: name })),
+        ...orderOrphans.options,
+      ]),
+    [columns.names, orderOrphans.options],
+  );
+
+  const orderValidation = useMemo(
+    () => makeMultiSelectValidation(SORT_ORDER_COLUMNS, orderOrphans.dangling),
+    [orderOrphans.dangling],
+  );
+  const sortableValidation = useMemo(
+    () => makeMultiSelectValidation(SORTABLE_COLUMNS, sortableOrphans.dangling),
+    [sortableOrphans.dangling],
   );
 
   return (
@@ -125,7 +153,7 @@ export default function SortOptionsSection({
         options={orderOptions}
         maxItems={1}
         emptyStateMessage="People appear in the order the data file lists them."
-        {...SORT_ORDER_VALIDATION}
+        {...orderValidation}
       />
       <ProtocolArrayField<typeof MultiSelect>
         name={SORTABLE_PROPERTIES}
@@ -135,9 +163,11 @@ export default function SortOptionsSection({
         addButtonLabel={words.sortableAddButtonLabel}
         properties={SORTABLE_COLUMNS}
         options={sortableOptions}
-        maxItems={columns.names.length}
+        // An orphan counts: the row holding it is one of the rows this limit
+        // is counting, and it has to stay removable.
+        maxItems={columns.names.length + sortableOrphans.options.length}
         emptyStateMessage="The participant cannot reorder the roster."
-        {...SORTABLE_VALIDATION}
+        {...sortableValidation}
       />
     </BuilderSection>
   );

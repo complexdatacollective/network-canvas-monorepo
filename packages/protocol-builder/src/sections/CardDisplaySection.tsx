@@ -1,3 +1,5 @@
+import { useMemo } from 'react';
+
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 
 import MultiSelect, {
@@ -6,7 +8,11 @@ import MultiSelect, {
 } from '../form/arrayFields/MultiSelect.tsx';
 import ProtocolArrayField from '../form/ProtocolArrayField.tsx';
 import BuilderSection, { type SectionCapability } from './BuilderSection.tsx';
-import { useColumnOptionGetter, useRosterColumns } from './useRosterColumns.ts';
+import {
+  useColumnOptionGetter,
+  useOrphanedColumns,
+  useRosterColumns,
+} from './useRosterColumns.ts';
 
 /** Where a roster stage records the extra facts its cards show. */
 const CARD_PROPERTIES = 'cardOptions.additionalProperties';
@@ -20,10 +26,6 @@ const CARD_PROPERTY_COLUMNS: PropertyField[] = [
     placeholder: 'Age',
   },
 ];
-
-const CARD_PROPERTIES_VALIDATION = makeMultiSelectValidation(
-  CARD_PROPERTY_COLUMNS,
-);
 
 const CARD_CAPABILITY: SectionCapability = {
   fields: [CARD_PROPERTIES],
@@ -79,7 +81,16 @@ export default function CardDisplaySection({
 }: CardDisplaySectionProps = {}) {
   const words = { ...DEFAULT_COPY, ...copy };
   const columns = useRosterColumns();
-  const options = useColumnOptionGetter(columns.names);
+  const orphans = useOrphanedColumns(
+    'variable',
+    CARD_PROPERTIES,
+    columns.names,
+  );
+  const options = useColumnOptionGetter(columns.names, orphans.options);
+  const validation = useMemo(
+    () => makeMultiSelectValidation(CARD_PROPERTY_COLUMNS, orphans.dangling),
+    [orphans.dangling],
+  );
 
   return (
     <BuilderSection
@@ -115,9 +126,11 @@ export default function CardDisplaySection({
         addButtonLabel={words.addButtonLabel}
         properties={CARD_PROPERTY_COLUMNS}
         options={options}
-        maxItems={columns.names.length}
+        // An orphan counts: the row holding it is one of the rows this limit
+        // is counting, and it has to stay removable.
+        maxItems={columns.names.length + orphans.options.length}
         emptyStateMessage="No extra attributes are shown on a card."
-        {...CARD_PROPERTIES_VALIDATION}
+        {...validation}
       />
     </BuilderSection>
   );

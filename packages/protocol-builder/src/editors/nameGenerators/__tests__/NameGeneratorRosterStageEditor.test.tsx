@@ -178,6 +178,73 @@ describe('the roster name generator editor', () => {
   });
 
   /**
+   * Switching a cleared section back on brings its old rows back.
+   *
+   * A field's starting value is read from the committed draft
+   * (`ProtocolField` → `useResolvedFieldIdentity`), which the clear above
+   * cannot reach — it parks a tombstone in the FORM, and re-opening the
+   * section mounts a field that never consults it. So the card list re-opens
+   * holding the old file's row, and before these lists could see a dangling
+   * reference that row saved straight back: a stage naming `age` against a
+   * file that has only `city` and `name`, rendered by the interview as a card
+   * detail with nothing under it.
+   *
+   * That resurrection is a defect in its own right and is NOT what this test
+   * accepts. What it holds is the guarantee that stops it reaching a saved
+   * protocol: the row is readable rather than blank, and the save is refused
+   * until the researcher deals with it.
+   */
+  it('refuses to save the old file’s row that survived the swap', async () => {
+    const harness = mountFixture();
+    await screen.findByText(FIXTURE_COLUMNS);
+
+    await importAnotherRoster(harness);
+    await screen.findByText(STAGED_COLUMNS);
+    // The reset has to have run before the section can be switched back on:
+    // switching it on first would be undone by the clear that follows.
+    await waitFor(() =>
+      expect(
+        screen.getByRole('switch', { name: 'Card details' }),
+      ).not.toBeChecked(),
+    );
+
+    // Switched back on, and one detail added against the NEW file. That is
+    // what brings the old file's row back beside it, complete — an attribute
+    // and a label — so nothing about it looks unfinished.
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Card details' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Add new card detail' }),
+    );
+    const cards = () =>
+      within(screen.getByRole('region', { name: 'Card details' }));
+    await harness.user.selectOptions(
+      cards()
+        .getAllByRole('combobox', { name: 'Attribute' })
+        .at(-1) as HTMLSelectElement,
+      'city',
+    );
+    await harness.user.type(
+      cards().getAllByRole('textbox', { name: /Label/ }).at(-1) as HTMLElement,
+      'City',
+    );
+
+    // Named for what it is rather than left blank, and never choosable again.
+    const orphans = await screen.findAllByRole('option', {
+      name: 'age — this attribute is not in the data file',
+    });
+    for (const orphan of orphans) expect(orphan).toBeDisabled();
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      screen.getByText(
+        'This row points at an attribute that is not in the data file. Choose another or delete the row.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /**
    * What a researcher must do to a brand-new stage before a host will store
    * it: name it, say who it lists, choose the file they come from, and ask
    * something. The card, ordering and search sections are all genuinely
@@ -361,6 +428,12 @@ const sortableOptions = () => columnOptions('Roster order', 1);
  * Scoped to the section rather than to the page: three of them offer the data
  * file's columns under the same "Attribute" label, and an unscoped search
  * cannot say which list it read.
+ *
+ * Only the columns the FILE carries. A list also shows the id a row already
+ * holds when the file no longer carries it, permanently disabled so the
+ * researcher can read what the blank cell points at — see
+ * `useOrphanedColumns`. Counting one here would say the file has a column it
+ * does not.
  */
 function columnOptions(sectionName: string, rowIndex = 0): string[] {
   const region = within(screen.getByRole('region', { name: sectionName }));
@@ -370,6 +443,12 @@ function columnOptions(sectionName: string, rowIndex = 0): string[] {
   }
   return within(row)
     .getAllByRole('option')
-    .map((option) => (option as HTMLOptionElement).value)
-    .filter((value) => value !== '');
+    .filter((option) => {
+      const { value, label } = option as HTMLOptionElement;
+      // A column of the file is offered under its own name. An orphan says in
+      // its label that it is not one, which is how it is told apart from a
+      // column merely disabled because another row has taken it.
+      return value !== '' && label === value;
+    })
+    .map((option) => (option as HTMLOptionElement).value);
 }
