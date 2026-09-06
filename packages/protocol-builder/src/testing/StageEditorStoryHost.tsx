@@ -101,13 +101,23 @@ export function StageEditorStoryHost({
             : `Saved “${stageLabel(saved)}”.`}
         </Paragraph>
         {saved !== null && (
-          // Labelled by a region rather than a heading, so a document whose
-          // real headings are the editor's own sections keeps its outline.
-          <section aria-label="What the host was asked to commit">
-            <pre className="overflow-x-auto text-xs">
-              {JSON.stringify(saved.stageDocument, null, 2)}
-            </pre>
-          </section>
+          // A named region rather than a heading, so a document whose real
+          // headings are the editor's own sections keeps its outline — and the
+          // region is the box itself rather than a `<section>` around it,
+          // because the box is what scrolls. A stage holding a long line makes
+          // it scroll sideways, and the end of that line is then reachable
+          // only by scrolling: a reader who cannot use a pointer needs to be
+          // able to put focus here and use the arrow keys. The name belongs on
+          // whatever takes that focus, and one element carrying both is one
+          // stop in the tab order rather than two.
+          <pre
+            tabIndex={0}
+            role="region"
+            aria-label="What the host was asked to commit"
+            className="focusable overflow-x-auto text-xs"
+          >
+            {JSON.stringify(saved.stageDocument, null, 2)}
+          </pre>
         )}
         {renderEditor({ controller, actions: hostChrome })}
       </main>
