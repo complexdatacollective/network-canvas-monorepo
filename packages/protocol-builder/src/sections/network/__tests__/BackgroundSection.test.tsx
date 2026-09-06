@@ -251,9 +251,11 @@ describe('the batch a background switch makes', () => {
     await chooseBackground(harness, /Concentric circles/);
 
     expect(draftOf(harness)).not.toHaveProperty('background');
-    // And no second batch for the way back. The image branch was never filled
-    // in, so returning throws nothing away — a discard that finds nothing to
-    // discard is not a discard, and spends no step of the session's history.
+    // And no second batch for the way back. This section's reset carries no
+    // cause — the two backgrounds are told apart by their own keys, so the
+    // unsets ARE the switch — and the image branch was never filled in, so the
+    // return has nothing whatever to say and spends no step of the session's
+    // history. A reset that has a cause sends it either way.
     expect(commandsOf(harness)).toEqual([{ op: 'unset', key: 'background' }]);
     expect(await circlesBox()).toHaveDisplayValue('');
   });

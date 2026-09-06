@@ -41,8 +41,10 @@ const FORM_FIELD = 'nodeConfig.form';
  * in `resetOn` — that is how its switch goes off with the prompts it lost —
  * and the two do not collide. This reset runs first (it belongs to the earlier
  * section, and passive effects run in tree order), so the prompts section
- * finds nothing left at its path and a discard that finds nothing to discard
- * writes nothing. Taking it out of this list instead splits the change into
+ * finds nothing left at its path AND finds the draft already holding the type
+ * it would name as its cause, which is what leaves it nothing to write: a
+ * reset still sends a cause the draft has not got, discards or no discards.
+ * Taking `nominationPrompts` out of this list instead splits the change into
  * TWO batches, and one undo then restores only half of it: measured, and the
  * reason it stays.
  */

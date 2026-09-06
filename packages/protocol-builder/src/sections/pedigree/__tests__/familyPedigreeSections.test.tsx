@@ -1100,9 +1100,12 @@ describe('a pedigree whose node type changes', () => {
    * prompts section names the same type in its own `resetOn` so that its
    * switch goes off with them. The node configuration's reset runs first — it
    * is the earlier section, and passive effects run in tree order — so by the
-   * time the prompts section looks, the draft holds nothing at its path and a
-   * discard that finds nothing to discard writes nothing. The two compose
-   * instead of costing the researcher two steps of undo.
+   * time the prompts section looks there is nothing left for it to say: the
+   * prompts are already gone from the draft, and the type it would name as its
+   * cause is the type the draft already holds. A reset with nothing to discard
+   * still sends its cause; a reset whose cause the draft already agrees with
+   * has no cause to send. The two compose instead of costing the researcher
+   * two steps of undo.
    */
   it('carries the chosen type and everything it invalidated in one batch', async () => {
     const harness = renderStageEditor(openWithNominationPrompts());

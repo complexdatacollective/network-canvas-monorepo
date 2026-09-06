@@ -542,19 +542,22 @@ describe('the batch a source change makes', () => {
   });
 
   /**
-   * Undo is the researcher's way back from a source they did not mean, and it
-   * has to bring back both halves at once: the pedigree they left AND the
-   * diseases that described it. One batch is what makes that a single step.
+   * The same rule where the stage had no diseases to lose: the chosen pedigree
+   * still travels, alone, in a batch of its own.
+   *
+   * Holding it back is the tempting reading — nothing was thrown away, so
+   * nothing needs explaining — but it costs the researcher the choice itself.
+   * The source is an ordinary field, so a batch that skips it is a batch that
+   * never touches `sourceStageId` at all, and the choice sits in the form until
+   * the submit. Undo restores a whole draft and is applied as the difference
+   * from the live one, so a change written outside a step is not left
+   * un-undoable: it is undone by whatever step comes NEXT, and the researcher
+   * loses the pedigree they picked to an unrelated edit they wanted back.
+   *
+   * It reaches a live host at once because nothing here is staged: the hold
+   * exists for a file this session has not saved, and there is none.
    */
-  /**
-   * And the other side of the rule: a reset that finds nothing to throw away
-   * is not a reset, so it writes nothing at all — not even the source that
-   * would have caused it, which goes on waiting for the submit like the
-   * ordinary field it is. The cause travels because a discard does; a batch
-   * carrying it alone would spend a step of the session's history on a change
-   * nothing was lost for.
-   */
-  it('writes nothing when the stage held no diseases to lose', async () => {
+  it('sends the chosen pedigree alone when there were no diseases to lose', async () => {
     const seeded = loadFixtureStage('narrative-pedigree-1');
     const { diseases: _diseases, ...withoutDiseases } = seeded.fields;
     const harness = renderStageEditor({
@@ -574,10 +577,22 @@ describe('the batch a source change makes', () => {
     expect(
       screen.getByRole('combobox', { name: 'Source stage' }),
     ).toHaveTextContent('Family Pedigree');
-    expect(harness.pendingCommands()).toEqual([]);
-    expect(harness.liveCommands()).toEqual([]);
+    await waitFor(() => expect(harness.pendingCommands()).toHaveLength(1));
+    expect(
+      harness.pendingCommands().flatMap((batch) => [...batch.commands]),
+    ).toEqual([
+      { op: 'set', key: 'sourceStageId', value: 'family-pedigree-1' },
+    ]);
+    expect(harness.liveCommands()).toEqual([
+      { op: 'set', key: 'sourceStageId', value: 'family-pedigree-1' },
+    ]);
   });
 
+  /**
+   * Undo is the researcher's way back from a source they did not mean, and it
+   * has to bring back both halves at once: the pedigree they left AND the
+   * diseases that described it. One batch is what makes that a single step.
+   */
   it('comes back whole, source included, when the session undoes it', async () => {
     const harness = renderStageEditor(withMissingSource());
     await chooseOption(harness, 'Source stage', 'Family Pedigree');
