@@ -1723,6 +1723,42 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       ...folded.flatMap((batch) => [...batch.commands]),
       ...stageCommands,
     ]);
+    // Nothing left for the host to do about this stage: the researcher's own
+    // batches have already carried out what the request asks for, and the host
+    // is holding every one of them. That is not a request to send — a section
+    // update carrying no commands is refused outright, and sending one took
+    // the rest of the compound down with it, so a Section deleting its own row
+    // and the codebook type behind it lost the type over a row that was
+    // already gone.
+    //
+    // The stage edit is left out instead, which makes this a request that says
+    // nothing about the stage — so the answer is reconciled the way every
+    // other one that says nothing about it is: the host answers with the
+    // batches it has applied, and they are acknowledged by content rather than
+    // replayed.
+    if (commands.length === 0) {
+      const remaining = request.edits.filter((edit) => edit !== stageEdit);
+      // Only reachable by hand: `withStageSectionEdit` adds a stage half to a
+      // request that already edits a codebook section, so a stage edit never
+      // travels alone. Refused rather than sent as an empty request.
+      if (remaining.length === 0) {
+        return Object.freeze({
+          status: 'refused',
+          failure: compoundFailure(
+            'invalid-request',
+            'the stage changes this compound edit asks for have already been made',
+            stageSectionId,
+          ),
+        });
+      }
+      return Object.freeze({
+        status: 'send',
+        edits: remaining,
+        throughBatchId: -1,
+        deliveredThroughBatchId,
+        stageEdited: false,
+      });
+    }
     return Object.freeze({
       status: 'send',
       edits: request.edits.map((edit) =>

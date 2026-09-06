@@ -1042,6 +1042,51 @@ describe('a codebook-only compound against each kind of host', () => {
     expect(session.getSnapshot().pendingCommands).toEqual([]);
   });
 
+  /**
+   * The fold and the request asking for the SAME thing.
+   *
+   * A live host is already holding the researcher's removal of a row, and the
+   * caller then asks for a compound edit that removes that same row alongside
+   * a codebook create — a Section that deletes its own row and the type behind
+   * it does exactly this. Rebasing the stage half onto the document the host
+   * will apply it to leaves nothing, because the row it names has already
+   * gone: the removal is not lost, it is done.
+   *
+   * A section update carrying no commands is a request the host refuses
+   * outright, so sending one took the codebook half down with it — a create
+   * refused for a stage edit that had already succeeded. The satisfied edit is
+   * left out of the request instead.
+   */
+  it('leaves out a stage edit the batch the host holds has already made', async () => {
+    const { host, onCompoundEdit, session } = createSession({
+      applyLive: true,
+      items: [block('a'), block('b')],
+    });
+    // The researcher removes the second block, and the live host applies it.
+    session.dispatch([{ op: 'removeItem', key: 'items', index: 1 }]);
+    expect(host.getSnapshot().protocolSections[stageSection]).toMatchObject({
+      items: [block('a')],
+    });
+
+    // The caller asks for that same removal — the row is still there in the
+    // authoritative stage this session hands out — plus a codebook create.
+    await expect(
+      session.requestCompoundEdit(removeBlockAndCreatePlace(session, 1)),
+    ).resolves.toMatchObject({ status: 'applied' });
+
+    // The codebook half landed, and the stage says what both of them asked
+    // for.
+    expect(host.getSnapshot().protocolSections[placeSection]).toMatchObject({
+      name: 'Place',
+    });
+    expect(stageItems(session)).toEqual([block('a')]);
+    expect(session.getSnapshot().pendingCommands).toEqual([]);
+    // The request the host saw said nothing about the stage at all.
+    expect(
+      onCompoundEdit.mock.calls.at(-1)?.[0].edits.map((edit) => edit.sectionId),
+    ).toEqual([placeSection]);
+  });
+
   it('rebases a stage edit over the batches it folds in front of it', async () => {
     const { host, session } = createSession({
       items: [block('a'), block('b')],
