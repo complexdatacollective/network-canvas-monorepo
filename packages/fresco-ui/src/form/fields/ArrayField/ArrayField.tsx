@@ -959,7 +959,9 @@ export default function ArrayField<T extends Record<string, unknown>>({
     maxItems !== undefined && confirmedItemCount >= Math.max(0, maxItems);
   const effectiveSortable = sortable && !isInteractionDisabled;
 
-  // Extract conflicting event handlers and ref before spreading to motion component
+  // Extract conflicting event handlers and ref before spreading to motion
+  // component. `aria-readonly` and `aria-required` are dropped separately, at
+  // the element they would land on — see `omitWidgetOnlyAria` below.
   const {
     onAnimationStart,
     onAnimationEnd,
