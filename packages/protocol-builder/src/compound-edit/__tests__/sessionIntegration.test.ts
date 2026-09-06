@@ -56,11 +56,17 @@ function createSession(
     /** Opens the session with a gateway, so a batch can be withheld. */
     resources?: boolean;
     /**
-     * Applies every batch to the host as it is made, rather than buffering
-     * them until finish — the host model that shows collaborators an edit while
-     * it is being made. The acknowledgement it owes back is deferred, which is
-     * where a real transport puts it: by the time it arrives, something else
-     * may have moved the authoritative revision on.
+     * Hands every batch to the host as it is made, and applies it there —
+     * which is what an `onCommands` means: the host model that shows
+     * collaborators an edit while it is being made. The acknowledgement it
+     * owes back is deferred, which is where a real transport puts it: by the
+     * time it arrives, something else may have moved the authoritative
+     * revision on.
+     *
+     * Left out, the session is opened with no `onCommands` at all — the host
+     * that is handed nothing until finish. A host cannot be given a batch and
+     * decline to apply it, because nothing this session could ask it
+     * afterwards would say which of the two it had done.
      */
     applyLive?: boolean;
     /**
@@ -87,7 +93,6 @@ function createSession(
   const owedAcknowledgements: (() => void)[] = [];
   let liveApplies = 0;
   const onCommands = vi.fn((batch: PendingCommandBatch) => {
-    if (options.applyLive !== true) return;
     const sections = host.getSnapshot().protocolSections;
     const result = host.submit({
       id: `live-${++liveApplies}`,
@@ -146,7 +151,7 @@ function createSession(
         [stageSection]: stageDocument,
         ...(creating ? { [stageOrderSection]: { stages: ['stage-1'] } } : {}),
       }),
-    onCommands,
+    ...(options.applyLive === true ? { onCommands } : {}),
     onCompoundEdit,
     // The same host, applying the stage's own batches: a finish is what
     // eventually makes the researcher's unsaved work authoritative.
@@ -694,14 +699,14 @@ describe('the stage document a session hands out after an acknowledgement', () =
 });
 
 /**
- * Which of this session's batches the host already holds is not something the
- * session may assume, because the two host models disagree about it. A host
- * that buffers `onCommands` until finish holds none of them; a host that
- * applies each batch as it is made holds every one it has been given. Both
- * answer a codebook-only request with a full protocol snapshot, and the stage
- * in it is the only evidence of which host this is — so it is read rather than
- * guessed. Replaying batches a live host already applied adds every inserted
- * row a second time; leaving them pending sends them again at finish.
+ * Which of this session's batches the host already holds turns on what it has
+ * been GIVEN — a host handed a batch applies it, and one handed nothing until
+ * finish holds none — but a codebook-only request is answered with the stage
+ * as it stood when the host got to it, which delivery alone cannot say: a
+ * batch made while the request was in flight may or may not be in it. So the
+ * answer is read rather than assumed. Replaying batches the host already
+ * applied adds every inserted row a second time; leaving them pending sends
+ * them again at finish.
  */
 describe('a codebook-only compound against each kind of host', () => {
   it('acknowledges by content what a live-applying host already holds', async () => {
@@ -762,7 +767,7 @@ describe('a codebook-only compound against each kind of host', () => {
     expect(stageItems(session)).toEqual([]);
   });
 
-  it('leaves the same batch pending for a host that buffers it', async () => {
+  it('leaves the same batch pending for a host it has not been sent to', async () => {
     const { host, onCommands, session } = createSession();
     session.dispatch(insertBlock('one', 0));
 
@@ -770,7 +775,7 @@ describe('a codebook-only compound against each kind of host', () => {
       session.requestCompoundEdit(createPlaceOnly),
     ).resolves.toMatchObject({ status: 'applied' });
 
-    expect(onCommands).toHaveBeenCalledOnce();
+    expect(onCommands).not.toHaveBeenCalled();
     expect(session.getSnapshot().pendingCommands).toHaveLength(1);
     expect(stageItems(session)).toEqual([block('one')]);
     expect(host.getSnapshot().protocolSections[stageSection]).toEqual(
@@ -856,6 +861,64 @@ describe('a codebook-only compound against each kind of host', () => {
     await session.finish();
     expect(host.getSnapshot().protocolSections[stageSection]).toMatchObject({
       items: [block('one')],
+    });
+  });
+
+  /**
+   * The same fold, in the ordinary acknowledgement window.
+   *
+   * A live-applying host answers each batch, but not before it has taken it,
+   * and the only authoritative stage a caller can hash is the one this session
+   * has been told about — so during that window the request names the document
+   * the host held BEFORE the researcher's batch. Reading that hash as evidence
+   * of what the host is holding folded the batch it already had into a request
+   * it then refused as stale, and the researcher's compound edit failed for a
+   * reason nothing on screen could explain.
+   */
+  it('folds onto the stage a live host holds while an acknowledgement is outstanding', async () => {
+    const { host, session, settleAcknowledgements } = createSession({
+      applyLive: true,
+    });
+    session.dispatch(insertBlock('one', 0));
+
+    // Exactly what `withStageSectionEdit` reads, and all it can read.
+    const authoritative =
+      session.getSnapshot().protocolSections[stageSection] ?? {};
+    expect(authoritative).toEqual(initialStage);
+
+    await expect(
+      session.requestCompoundEdit({
+        id: 'rename-and-create-place',
+        description: 'Rename the stage and create a place',
+        edits: [
+          {
+            kind: 'update',
+            sectionId: stageSection,
+            expectedContentHash: contentHash(authoritative),
+            commands: [{ op: 'set', key: 'label', value: 'Places' }],
+          },
+          request.edits[1]!,
+        ],
+      }),
+    ).resolves.toMatchObject({ status: 'applied' });
+
+    // The row the host applied live is there once, not twice, and the
+    // request's own decision is beside it.
+    expect(host.getSnapshot().protocolSections[stageSection]).toMatchObject({
+      items: [block('one')],
+      label: 'Places',
+    });
+    expect(stageItems(session)).toEqual([block('one')]);
+    expect(session.getSnapshot().pendingCommands).toEqual([]);
+
+    // The acknowledgement the host still owed arrives against a revision this
+    // apply has superseded and is dropped, which strands nothing.
+    settleAcknowledgements();
+    expect(stageItems(session)).toEqual([block('one')]);
+    await session.finish();
+    expect(host.getSnapshot().protocolSections[stageSection]).toMatchObject({
+      items: [block('one')],
+      label: 'Places',
     });
   });
 

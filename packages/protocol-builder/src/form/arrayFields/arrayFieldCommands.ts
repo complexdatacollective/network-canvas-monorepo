@@ -182,7 +182,7 @@ export function resolveRowIndex<T extends ArrayRow>(
 }
 
 /**
- * Where every row of `rendered` ended up in `current`, as a ONE-TO-ONE map.
+ * Where every row of `before` ended up in `list`, as a ONE-TO-ONE map.
  *
  * `-1` for a row that is not there any more; otherwise a position, and no
  * position twice. That last part is the whole reason this is a single pass

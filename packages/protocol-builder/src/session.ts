@@ -314,6 +314,18 @@ export type ProtocolBuilderSessionOptions = Readonly<{
    * Each local batch, as it is made, for a host that applies edits live rather
    * than only at finish.
    *
+   * **A batch handed over here is the host's.** Supplying this says the host
+   * applies what it is given, in the order it is given it, and before it
+   * answers anything else this session asks of it; a host that would rather
+   * take the whole stage at finish does not supply it and receives the pending
+   * batches there instead. Nothing else can tell the two apart in time to
+   * matter: the acknowledgement a live-applying host owes arrives a round trip
+   * later, and a compound edit made inside that window has to say which
+   * document the host will apply it to — see {@link deliveredPrefixLength} and
+   * `planPendingCommands`. Guessing that from the stage the session had last
+   * been told about folded batches the host was already holding into a request
+   * it then refused as stale.
+   *
    * A batch that puts a resource this session has staged into the draft is
    * withheld: its bytes are not in the protocol until finish promotes them, so
    * a host applying it live would commit a reference to a resource the
@@ -322,8 +334,7 @@ export type ProtocolBuilderSessionOptions = Readonly<{
    * looks saved that is not — and reach the host in the finish apply, in
    * order, alongside the manifest commands from the same promotion. A cancel
    * drops them with the staging that made them unsendable. Batches naming only
-   * committed resources are unaffected, as is a host that buffers instead of
-   * applying live: it reads the same pending batches at finish either way.
+   * committed resources are unaffected.
    */
   onCommands?(batch: PendingCommandBatch): void;
   onCompoundEdit?(
@@ -826,18 +837,53 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
         // answers with is the new base and anything still pending was made
         // after it — during the round trip — and has to be replayed onto it.
         rebased = true;
-      } else if (planned.stageEdited || pendingCommands.length === 0) {
-        // The request itself decided what this stage becomes, or there is no
-        // unsaved work at stake. Either way the authoritative stage is simply
-        // adopted, and the history is fenced only if it actually moved.
+      } else if (planned.stageEdited) {
+        // The request itself decided what this stage becomes, and carried none
+        // of the researcher's batches: the host already had every one it has
+        // been given. So the stage it answers with is this session's base plus
+        // however many of those it had applied by the time it answered, plus
+        // the request's own commands — and the ones that reading accounts for
+        // are the host's now, acknowledged by content exactly as the
+        // codebook-only path below acknowledges them. Rebasing them onto an
+        // answer that already holds them would apply an `insertItem` twice.
+        const canonicalStage = canonicalize(fields);
+        const stageCommands = planned.stageCommands ?? [];
+        const accounted = this.deliveredPrefixLength(
+          pendingCommands,
+          (candidate) => {
+            try {
+              return (
+                canonicalize(applyCommands(candidate, [...stageCommands])) ===
+                canonicalStage
+              );
+            } catch {
+              // The request's own commands do not apply to that document, so
+              // it is not the one the host applied them to.
+              return false;
+            }
+          },
+        );
+        // `null` is a stage a collaborator also moved. Everything stays
+        // pending and is rebased onto it, which errs where every other path
+        // here errs: towards sending a batch the host may hold twice rather
+        // than losing the researcher's unsaved work outright.
+        if (accounted !== null)
+          pendingCommands = pendingCommands.slice(accounted);
+        // The draft has to pick up the request's own decision either way, so
+        // the history is fenced only if the stage actually moved.
+        rebased = canonicalize(fields) !== canonicalize(this.baseFields);
+      } else if (pendingCommands.length === 0) {
+        // No unsaved work at stake: the authoritative stage is simply adopted,
+        // and the history is fenced only if it actually moved.
         rebased = canonicalize(fields) !== canonicalize(this.baseFields);
       } else {
         // A codebook-only request asked the host to leave this stage alone, so
         // the stage it answers with is this session's own base plus however
         // many of the delivered batches the host has already applied to it:
-        // none for a host that buffers them until finish, all of them for a
-        // host that applies `onCommands` live, and a leading run of them for
-        // one given a batch while this request was in flight. That prefix is
+        // none for a session that hands the host nothing until finish, all of
+        // them for one that hands over every batch as it is made, and a
+        // leading run when a batch was made while this request was in flight —
+        // which is the one thing delivery alone cannot say. That prefix is
         // the host's now — acknowledged by content, because the deferred
         // acknowledgement naming it will arrive against a revision this apply
         // has already superseded — and the rest stay pending. The draft on
@@ -1452,17 +1498,29 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
    *   contains some of those pending batches. Which of them is read off the
    *   answer rather than assumed: see `deliveredPrefixLength`.
    * - **It does** — then it has decided what the stage document becomes, and
-   *   the researcher's unsaved commands have to go somewhere. They are folded
-   *   in front of the request's own commands in that one section update, so
-   *   both land in a single host apply against the document they were built
-   *   from, and the request's own decision wins wherever the two touch the same
-   *   key. Only the batches that document does NOT already contain are folded:
-   *   the request names it by content hash, which is the same evidence
-   *   `deliveredPrefixLength` reads on the other path, and folding a batch a
-   *   live-applying host has already applied would apply it twice. A stage
-   *   neither this session's base nor that base plus a run of its batches is
-   *   refused with `stale-base`, which leaves every pending batch untouched for
-   *   the researcher to try again.
+   *   the researcher's unsaved commands have to go somewhere. The ones the
+   *   host has not been given are folded in front of the request's own
+   *   commands in that one section update, so both land in a single host apply
+   *   and the request's own decision wins wherever the two touch the same key.
+   *
+   * Which batches those are is DELIVERY, not evidence: a batch handed to
+   * `onCommands` is the host's (see the option), so a session with one folds
+   * nothing and a session without one folds everything. The stage edit is then
+   * addressed at the document that leaves the host holding — this session's
+   * base plus the batches it has delivered — because the caller cannot name
+   * it: the only authoritative stage a caller can read is the one this session
+   * has been TOLD about, and a live-applying host's acknowledgement of the
+   * batch it is already holding arrives a round trip later. Reading the
+   * caller's hash as evidence of the host's stage instead matched the
+   * zero-length prefix throughout that window, folding in a batch the host had
+   * and naming a document it no longer held: refused as stale, for a reason
+   * nothing on the researcher's screen could explain.
+   *
+   * The caller's hash is still the staleness check it always was, asked before
+   * the host is: a stage that is neither this session's base nor that base
+   * plus a run of its own batches is a stage a collaborator has moved, and the
+   * request is refused with `stale-base` — every pending batch untouched — for
+   * the researcher to try again.
    *
    * One case still refuses outright: a pending batch withheld from a
    * live-applying host because it references a resource this session has
@@ -1475,8 +1533,10 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
         status: 'send';
         edits: readonly CompoundSectionEdit[];
         /**
-         * Batches up to and including this id are the host's once it applies.
-         * `-1` precedes every batch id, and means nothing is acknowledged.
+         * Batches up to and including this id are FOLDED into this request,
+         * and are the host's once it applies. `-1` precedes every batch id,
+         * and means the request carries none of them — which is every request
+         * to a host that has been given them already.
          */
         throughBatchId: number;
         /**
@@ -1487,6 +1547,12 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
          * believes the host holds.
          */
         stageEdited: boolean;
+        /**
+         * The commands the stage edit carries, which is what the host applied
+         * to whatever stage it was holding. `undefined` when the request says
+         * nothing about this stage.
+         */
+        stageCommands?: readonly Command[];
       }>
     | Readonly<{
         status: 'refused';
@@ -1508,6 +1574,9 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
         edits: request.edits,
         throughBatchId: -1,
         stageEdited,
+        ...(stageEdit === undefined
+          ? {}
+          : { stageCommands: stageEdit.commands }),
       });
     }
 
@@ -1530,19 +1599,17 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       });
     }
 
-    // Only the batches the host is not already holding. It names the document
-    // it will apply this update to by content hash, so which of them it has
-    // is read off the request rather than assumed: folding one a live-applying
-    // host has already applied would apply it twice, and an `insertItem`
-    // applied twice adds the row twice.
+    // The staleness check, before the host is asked: the document the request
+    // was built from has to be one this session can account for.
     const identity = this.snapshot.editedSection.identity;
-    const accounted = this.deliveredPrefixLength(
-      pending,
-      (candidate) =>
-        contentHash(stageDocument(identity, candidate)) ===
-        stageEdit.expectedContentHash,
-    );
-    if (accounted === null) {
+    if (
+      this.deliveredPrefixLength(
+        pending,
+        (candidate) =>
+          contentHash(stageDocument(identity, candidate)) ===
+          stageEdit.expectedContentHash,
+      ) === null
+    ) {
       // The stage the request was built from is neither this session's base nor
       // that base with any run of its batches applied. Refused with the base,
       // the batches, the draft and the history exactly as they were.
@@ -1555,34 +1622,98 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
         ),
       });
     }
+
+    // What the host is holding, and so what this update is addressed at: the
+    // base plus every batch already handed over. Only the rest is folded.
+    const delivered = this.deliveredBatchCount(pending);
+    const held = this.stageWithBatches(pending.slice(0, delivered));
+    if (held === null) {
+      return Object.freeze({
+        status: 'refused',
+        failure: compoundFailure(
+          'stale-base',
+          'the stage changes already sent no longer apply to this session’s base, so nothing local was altered',
+          stageSectionId,
+        ),
+      });
+    }
+    const folded = pending.slice(delivered);
     const commands = Object.freeze([
-      ...pending.slice(accounted).flatMap((batch) => [...batch.commands]),
+      ...folded.flatMap((batch) => [...batch.commands]),
       ...stageEdit.commands,
     ]);
     return Object.freeze({
       status: 'send',
       edits: request.edits.map((edit) =>
-        edit === stageEdit ? Object.freeze({ ...stageEdit, commands }) : edit,
+        edit === stageEdit
+          ? Object.freeze({
+              ...stageEdit,
+              expectedContentHash: contentHash(stageDocument(identity, held)),
+              commands,
+            })
+          : edit,
       ),
-      throughBatchId: pending[pending.length - 1]?.id ?? -1,
+      throughBatchId: folded[folded.length - 1]?.id ?? -1,
       stageEdited,
+      stageCommands: stageEdit.commands,
     });
+  }
+
+  /**
+   * How many of these pending batches the host has been given.
+   *
+   * Delivery is what `onCommands` means — see the option — so a session with
+   * one has handed over everything it has not withheld, and a session without
+   * one has handed over nothing. A withheld batch never reached the host, and
+   * neither did any after it.
+   */
+  private deliveredBatchCount(pending: readonly PendingCommandBatch[]): number {
+    if (this.options.onCommands === undefined) return 0;
+    const withheldFrom = this.withheldFromBatchId;
+    if (withheldFrom === undefined) return pending.length;
+    const held = pending.findIndex((batch) => batch.id >= withheldFrom);
+    return held === -1 ? pending.length : held;
+  }
+
+  /**
+   * This session's base with these batches applied, or `null` when one of them
+   * no longer applies to it.
+   */
+  private stageWithBatches(
+    batches: readonly PendingCommandBatch[],
+  ): SectionDoc | null {
+    try {
+      return batches.reduce<SectionDoc>(
+        (document, batch) => applyCommands(document, [...batch.commands]),
+        cloneDoc(this.baseFields),
+      );
+    } catch {
+      return null;
+    }
   }
 
   /**
    * How many of these pending batches a host's stage already contains.
    *
-   * A live-applying host receives the batches in order and applies them in
-   * order, so any stage it holds is this session's base plus a PREFIX of them:
-   * none if it buffers until finish, all of them if it applied every one it was
-   * given, a leading run if one was made while a request was in flight. `null`
-   * means the stage is none of those — it moved for a reason this session
-   * cannot account for.
+   * A host receives the batches in order and applies them in order, so any
+   * stage it holds is this session's base plus a PREFIX of them: none for a
+   * session that hands it nothing until finish, all of them for one that hands
+   * over every batch as it is made, and a leading run when a batch was made
+   * while the request being answered was in flight. `null` means the stage is
+   * none of those — it moved for a reason this session cannot account for.
+   *
+   * This is the reading of a stage that HAS COME BACK, where the evidence is.
+   * What a request is addressed at on the way out is not a reading at all: a
+   * batch handed to `onCommands` is the host's, and `deliveredBatchCount` says
+   * how many that is. The one thing asked of this before a request is sent is
+   * whether the document the caller built it from is one this session can
+   * account for at all.
    *
    * Which stage is being asked about differs by path, so the caller says how to
    * recognise it: the codebook-only path compares the stage the host ANSWERED
-   * with, and the fold compares the content hash the request was BUILT from —
-   * the document the host is about to apply the folded commands to.
+   * with, a request carrying a stage edit compares that answer with its own
+   * commands applied, and the pre-flight check compares the content hash the
+   * request was BUILT from.
    */
   /**
    * The outstanding batches, re-expressed against a base that has moved.
