@@ -1,13 +1,16 @@
 import { act, screen, waitFor } from '@testing-library/react';
-import { useState } from 'react';
+import { type ComponentType, useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import { Button } from '@codaco/fresco-ui/Button';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 
+import SubjectSelectField from '../../fields/SubjectSelectField.tsx';
 import MultiSelect from '../../form/arrayFields/MultiSelect.tsx';
 import ProtocolArrayField from '../../form/ProtocolArrayField.tsx';
 import ProtocolField from '../../form/ProtocolField.tsx';
+import { useStageValue } from '../../form/stageFormHooks.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import BuilderSection, { type SectionCapability } from '../BuilderSection.tsx';
 
@@ -20,22 +23,42 @@ const SEARCH: SectionCapability = {
   },
 };
 
+const RadioGroup = RadioGroupField as ComponentType<Record<string, unknown>>;
+
+/**
+ * The section that OWNS the data file, rendering it as the ordinary stage
+ * field it is: its value waits for the submit that flushes it, which is
+ * exactly what makes a section resetting on it interesting.
+ */
+function RosterSource() {
+  return (
+    <BuilderSection title="Roster source">
+      <ProtocolField<typeof RadioGroup>
+        name="dataSource"
+        label="Roster data file"
+        component={RadioGroup}
+        options={[
+          { value: 'roster_data', label: 'Roster' },
+          { value: 'another_roster', label: 'Another roster' },
+        ]}
+      />
+    </BuilderSection>
+  );
+}
+
 /**
  * A capability whose values only mean anything against something chosen
  * elsewhere — a roster's columns, named by a data file the researcher picks in
  * another section. That is the whole shape `resetOn` exists for.
  */
 function SearchOptions() {
-  const [dataSource, setDataSource] = useState('roster_data');
   return (
     <>
-      <Button type="button" onClick={() => setDataSource('another_roster')}>
-        Choose another roster
-      </Button>
+      <RosterSource />
       <BuilderSection
         title="Search options"
         capability={SEARCH}
-        resetOn={dataSource}
+        resetOn="dataSource"
       >
         <ProtocolField
           name="searchOptions.fuzziness"
@@ -48,26 +71,29 @@ function SearchOptions() {
 }
 
 /**
- * The same capability, resetting on a value with structure — which is what a
- * section actually resets on: a subject, a chosen resource, a pair of ids. A
- * caller that builds one inline hands a new object on every render, so it is
- * the value that has to be compared rather than the object holding it.
+ * The same capability, resetting on a path whose value has STRUCTURE — a
+ * stage's subject is `{entity, type}`, which is what one control writes there
+ * whole. The value is read from the path rather than assembled by the caller,
+ * so a keystroke anywhere else in the stage cannot look like a change to it.
  */
-function SearchOptionsAgainstAResource() {
-  const [dataSource, setDataSource] = useState('roster_data');
-  const [unrelated, setUnrelated] = useState(0);
+function SearchOptionsAgainstASubject() {
   return (
     <>
-      <Button type="button" onClick={() => setUnrelated(unrelated + 1)}>
-        Type in another section
-      </Button>
-      <Button type="button" onClick={() => setDataSource('another_roster')}>
-        Choose another roster
-      </Button>
+      <BuilderSection title="Node type">
+        <ProtocolField<typeof SubjectSelectField>
+          name="subject"
+          label="Node type"
+          component={SubjectSelectField}
+          entityType="node"
+        />
+      </BuilderSection>
+      <BuilderSection title="Stage name">
+        <ProtocolField name="label" label="Stage name" component={InputField} />
+      </BuilderSection>
       <BuilderSection
         title="Search options"
         capability={SEARCH}
-        resetOn={{ entity: 'node', resource: dataSource }}
+        resetOn="subject"
       >
         <ProtocolField
           name="searchOptions.fuzziness"
@@ -125,18 +151,16 @@ const FILE_COLUMNS: Record<string, { value: string; label: string }[]> = {
  * be true of, it has to be true of here.
  */
 function CardDetails() {
-  const [dataSource, setDataSource] = useState('roster_data');
+  const dataSource = useStageValue('dataSource');
   const [showAttributes, setShowAttributes] = useState(false);
 
   return (
     <>
-      <Button type="button" onClick={() => setDataSource('another_roster')}>
-        Choose another roster
-      </Button>
+      <RosterSource />
       <BuilderSection
         title="Card details"
         capability={CARDS}
-        resetOn={dataSource}
+        resetOn="dataSource"
       >
         {showAttributes ? (
           <ProtocolArrayField<typeof MultiSelect>
@@ -145,7 +169,10 @@ function CardDetails() {
             component={MultiSelect}
             addButtonLabel="Add new card detail"
             properties={CARD_COLUMNS}
-            options={() => FILE_COLUMNS[dataSource] ?? []}
+            options={() =>
+              FILE_COLUMNS[typeof dataSource === 'string' ? dataSource : ''] ??
+              []
+            }
             emptyStateMessage="No extra attributes are shown on a card."
           />
         ) : (
@@ -158,20 +185,47 @@ function CardDetails() {
   );
 }
 
+/**
+ * The other roster, as a resource the protocol really holds.
+ *
+ * A data file the manifest does not list is a dangling reference, and a save
+ * that carries one is refused for that rather than for whatever a test is
+ * actually asking about.
+ */
+const ANOTHER_ROSTER = {
+  another_roster: {
+    type: 'network',
+    id: 'another_roster',
+    name: 'Another roster',
+    source: 'another-roster.json',
+  },
+};
+
 const openSection = () => ({
   stageId: 'name-generator-roster-1',
   sections: <SearchOptions />,
+  assets: ANOTHER_ROSTER,
 });
 
 const openListSection = () => ({
   stageId: 'name-generator-roster-1',
   sections: <CardDetails />,
+  assets: ANOTHER_ROSTER,
 });
 
-const openSectionAgainstAResource = () => ({
+const openSectionAgainstASubject = () => ({
   stageId: 'name-generator-roster-1',
-  sections: <SearchOptionsAgainstAResource />,
+  sections: <SearchOptionsAgainstASubject />,
 });
+
+/** Swaps the stage's data file, which is what every reset below fires on. */
+const chooseAnotherRoster = async (
+  harness: ReturnType<typeof renderStageEditor>,
+) => {
+  await harness.user.click(
+    await screen.findByRole('radio', { name: 'Another roster' }),
+  );
+};
 
 describe('a capability that only means anything against something else', () => {
   it('opens on what the stage was saved with, rather than resetting itself', async () => {
@@ -188,9 +242,7 @@ describe('a capability that only means anything against something else', () => {
     const harness = renderStageEditor(openSection());
     await screen.findByRole('textbox', { name: 'Fuzziness' });
 
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Choose another roster' }),
-    );
+    await chooseAnotherRoster(harness);
 
     // Without asking: the values did not become wrong through anything the
     // researcher did to THIS section, so there is no decision to put to them.
@@ -212,9 +264,7 @@ describe('a capability that only means anything against something else', () => {
     const harness = renderStageEditor(openSection());
     await screen.findByRole('textbox', { name: 'Fuzziness' });
 
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Choose another roster' }),
-    );
+    await chooseAnotherRoster(harness);
     await waitFor(() =>
       expect(
         screen.getByRole('switch', { name: 'Search options' }),
@@ -250,9 +300,7 @@ describe('a capability that only means anything against something else', () => {
       await screen.findByRole('switch', { name: 'Card details' }),
     ).toBeChecked();
 
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Choose another roster' }),
-    );
+    await chooseAnotherRoster(harness);
     await waitFor(() =>
       expect(
         screen.getByRole('switch', { name: 'Card details' }),
@@ -302,9 +350,7 @@ describe('a capability that only means anything against something else', () => {
       await screen.findByRole('switch', { name: 'Card details' }),
     ).toBeChecked();
 
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Choose another roster' }),
-    );
+    await chooseAnotherRoster(harness);
     await waitFor(() =>
       expect(
         screen.getByRole('switch', { name: 'Card details' }),
@@ -340,9 +386,7 @@ describe('a capability that only means anything against something else', () => {
       await screen.findByRole('switch', { name: 'Card details' }),
     ).toBeChecked();
 
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Choose another roster' }),
-    );
+    await chooseAnotherRoster(harness);
     await waitFor(() =>
       expect(
         screen.getByRole('switch', { name: 'Card details' }),
@@ -353,11 +397,17 @@ describe('a capability that only means anything against something else', () => {
     // applied it answers with. The collaborator's row was written onto a stage
     // that already had the capability switched off.
     const cleared = harness.pendingCommands().at(-1);
-    expect(cleared?.commands).toEqual([{ op: 'unset', key: 'cardOptions' }]);
+    // The file the researcher chose travels WITH the clear it caused, so what
+    // the host applied is the whole change rather than half of it.
+    expect(cleared?.commands).toEqual([
+      { op: 'set', key: 'dataSource', value: 'another_roster' },
+      { op: 'unset', key: 'cardOptions' },
+    ]);
     act(() => {
       harness.session.acknowledge({
         fields: {
           ...harness.seeded.fields,
+          dataSource: 'another_roster',
           cardOptions: {
             additionalProperties: [{ variable: 'city', label: 'City' }],
           },
@@ -399,9 +449,7 @@ describe('a capability that only means anything against something else', () => {
       await screen.findByRole('switch', { name: 'Card details' }),
     ).toBeChecked();
 
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Choose another roster' }),
-    );
+    await chooseAnotherRoster(harness);
     await waitFor(() =>
       expect(
         screen.getByRole('switch', { name: 'Card details' }),
@@ -532,20 +580,21 @@ describe('a capability the researcher switches off', () => {
 });
 
 /**
- * What a capability's values mean anything against is rarely a string. A
- * roster's columns are named by a resource chosen in another section, a card's
- * details by the subject the stage works with — objects a caller assembles
- * where it renders the section. Compared by reference, every one of those is a
- * different object on every render, and the researcher's settings would be
- * thrown away by anything at all happening elsewhere in the editor.
+ * What a capability's values mean anything against is rarely a bare string: a
+ * subject, a pair of limits, a whole settings container. The store assembles
+ * such a value out of the fields registered inside it, so what is compared has
+ * to be the value rather than the object carrying it — and what it is
+ * compared against has to be the path's own content, so that a keystroke
+ * somewhere else in the stage does not throw the researcher's settings away.
  */
 describe('a capability that resets on a value with structure', () => {
   it('survives a re-render that changed nothing it depends on', async () => {
-    const harness = renderStageEditor(openSectionAgainstAResource());
+    const harness = renderStageEditor(openSectionAgainstASubject());
     await screen.findByRole('textbox', { name: 'Fuzziness' });
 
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Type in another section' }),
+    await harness.user.type(
+      screen.getByRole('textbox', { name: 'Stage name' }),
+      '!',
     );
 
     expect(
@@ -561,11 +610,11 @@ describe('a capability that resets on a value with structure', () => {
   });
 
   it('still clears when the value itself changes', async () => {
-    const harness = renderStageEditor(openSectionAgainstAResource());
+    const harness = renderStageEditor(openSectionAgainstASubject());
     await screen.findByRole('textbox', { name: 'Fuzziness' });
 
     await harness.user.click(
-      screen.getByRole('button', { name: 'Choose another roster' }),
+      await screen.findByRole('radio', { name: 'family member' }),
     );
 
     await waitFor(() =>

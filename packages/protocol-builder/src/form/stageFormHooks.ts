@@ -13,6 +13,11 @@ import {
   omitValue,
 } from '@codaco/fresco-ui/form/utils/objectPath';
 import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
+import {
+  canonicalize,
+  type Command,
+  commandTarget,
+} from '@codaco/studio-sync/apply';
 
 import { commandsFromDraftChange, type StageFormDraft } from '../session.ts';
 import { withoutValueAt } from './absentValues.ts';
@@ -61,13 +66,50 @@ export function useResolvedFieldIdentity(
 }
 
 /**
- * Throws everything at these paths away, for good.
+ * The value that caused a discard, and where it lives in the stage draft.
+ *
+ * A capability is sometimes emptied by a change somewhere ELSE — a roster's
+ * card details name columns of a data file, so choosing a different file makes
+ * every one of them a reference to something that may not be there. That
+ * change is the discard's cause, and it has to be in the same batch as the
+ * discard itself; see {@link useDiscardStageValues}.
+ *
+ * The value is what the FORM holds at `path` now, not a decision this caller
+ * is making: the researcher already chose it, and the batch is where it stops
+ * being form-local.
+ */
+export type DiscardCause = Readonly<{ path: string; value: unknown }>;
+
+/**
+ * Throws everything at these paths away, for good — with, when something else
+ * caused it, the change that did.
  *
  * What switching a capability off means, and the one place that decides it.
  * The session is told first, in ONE batch, and the form is emptied afterwards
  * so the controls on screen do not wait for a re-seed that is never coming —
  * the session write is the form's own, so nothing is written back over the
  * researcher.
+ *
+ * **A discard travels with its cause.** An ordinary field waits for the submit
+ * that flushes it, so a discard caused by one — a roster's card details
+ * emptied because the data file changed — would otherwise reach the session,
+ * and a live-applying host, entirely alone: the host would hold a stage
+ * describing the OLD file with the details of it gone, which is a stage nobody
+ * authored. Carrying the cause in the same batch is what stops that, and it is
+ * the rule `useResetStageOnSubjectChange` already follows for the same reason
+ * (its batch writes the new subject beside the values it resets, so an undo
+ * cannot restore a configuration without the type it describes).
+ *
+ * The session decides what a live-applying host may be given, and it decides
+ * from the draft — so the cause has to be IN the draft, in the batch being
+ * judged. A cause naming a resource this session has staged makes that whole
+ * batch unsendable (`withholdsFromHost`), and the session's hold is a suffix:
+ * every later edit made against the staged file waits with it, reaches the
+ * host in the finish apply that promotes the file, and is dropped by a cancel.
+ * Without the cause the clears travel and the file does not.
+ *
+ * Nothing is written for a cause the draft already holds, so the second and
+ * third sections resetting on the same file add no command of their own.
  *
  * The session rather than the form alone, because the form is not where the
  * stage lives. A bound list resolves every insertion, removal and reorder
@@ -95,12 +137,15 @@ export function useResolvedFieldIdentity(
  * Nothing is dispatched when the draft held nothing at any of them, so a reset
  * that finds an empty capability makes no batch at all.
  */
-export function useDiscardStageValues(): (paths: readonly string[]) => void {
+export function useDiscardStageValues(): (
+  paths: readonly string[],
+  cause?: DiscardCause,
+) => void {
   const { applyOwnCommands } = useStageEditorForm();
   const clearStageValue = useClearStageValue();
 
   return useCallback(
-    (paths: readonly string[]) => {
+    (paths: readonly string[], cause?: DiscardCause) => {
       // `applyOwnCommands([])` is how anything here reads the draft the session
       // holds NOW, rather than the snapshot this callback was built against.
       // An empty batch writes nothing, so it can never be refused.
@@ -111,12 +156,45 @@ export function useDiscardStageValues(): (paths: readonly string[]) => void {
         if (target === null || target.length === 0) continue;
         next = withoutValueAt(next, target);
       }
-      applyOwnCommands(commandsFromDraftChange(current, next));
+      // The cause first, so the batch reads as what happened: this changed, and
+      // therefore these were thrown away.
+      applyOwnCommands([
+        ...causeCommands(current, cause),
+        ...commandsFromDraftChange(current, next),
+      ]);
 
+      // The FORM only, and only the discarded paths: the cause is already on
+      // screen — the researcher chose it — and it is the draft that was behind.
       for (const path of paths) clearStageValue(path);
     },
     [applyOwnCommands, clearStageValue],
   );
+}
+
+/**
+ * The command that puts a discard's cause into the draft, or nothing at all.
+ *
+ * Nothing when the draft already agrees, which is the ordinary case for every
+ * section after the first: they all read the same file, and the first one to
+ * reset writes it. Nothing either for a path a command cannot address — a
+ * command's segments are keys rather than indices — because a capability
+ * resetting on a row of a list is a section describing itself wrongly, and
+ * writing at the wrong address would be worse than not writing.
+ */
+function causeCommands(
+  current: StageFormDraft,
+  cause: DiscardCause | undefined,
+): readonly Command[] {
+  if (cause === undefined) return [];
+  const target = safePath(cause.path);
+  if (target === null || target.length === 0) return [];
+  if (target.some((segment) => typeof segment !== 'string')) return [];
+  const key = commandTarget(target.map(String));
+  const held = getValue(current, target);
+  if (canonicalize(held) === canonicalize(cause.value)) return [];
+  return cause.value === undefined
+    ? [{ op: 'unset', key }]
+    : [{ op: 'set', key, value: cause.value }];
 }
 
 /**
@@ -225,8 +303,12 @@ export function useClearStageValue(): (path: string) => void {
  * space is read as one name rather than as a route through the document. Reads
  * the stage form specifically, so it keeps working inside a dialog that has
  * mounted a form store of its own.
+ *
+ * No path is an answer in its own right — `undefined`, "there is no such
+ * value" — so a caller whose path is itself optional can still ask
+ * unconditionally, which a hook has to be able to do.
  */
-export function useStageValue(path: string): unknown {
+export function useStageValue(path: string | undefined): unknown {
   const { storeApi, committedFields } = useStageEditorForm();
 
   const subscribe = useCallback(
@@ -235,6 +317,7 @@ export function useStageValue(path: string): unknown {
   );
 
   const getSnapshot = useCallback((): unknown => {
+    if (path === undefined) return undefined;
     const target = safePath(path);
     if (target === null) return undefined;
 

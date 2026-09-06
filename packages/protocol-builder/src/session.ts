@@ -1386,16 +1386,6 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
   }
 
   /**
-   * Whether a batch has to wait for finish: it puts a resource this session
-   * has staged into one of the fields it touches, and that resource's manifest
-   * entry does not exist until the finish promotion writes it.
-   *
-   * The fields are read for references the way validation reads them — from
-   * the schema's own `assetReference` tags — so a stage type that gains a
-   * resource field is covered as soon as its schema is tagged, and nothing
-   * here has to know which field of which stage holds an asset id.
-   */
-  /**
    * The edits a compound request should actually carry, and how much of this
    * session's unsaved work the host will own once it applies them.
    *
@@ -1650,6 +1640,25 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     return null;
   }
 
+  /**
+   * Whether a batch has to wait for finish: it puts a resource this session
+   * has staged into one of the fields it touches, and that resource's manifest
+   * entry does not exist until the finish promotion writes it.
+   *
+   * The fields are read for references the way validation reads them — from
+   * the schema's own `assetReference` tags — so a stage type that gains a
+   * resource field is covered as soon as its schema is tagged, and nothing
+   * here has to know which field of which stage holds an asset id.
+   *
+   * A batch is judged on what it TOUCHES, which is why the editor's own rule
+   * matters here: an edit made BECAUSE a staged resource was chosen has to
+   * carry that choice, or the session sees only the consequence — a capability
+   * cleared because the data file changed, naming no resource at all — and
+   * lets it go while the file that explains it stays behind
+   * (`useDiscardStageValues`). Everything after such a batch is covered
+   * already, because the hold below is a suffix rather than a judgement of
+   * each batch in turn.
+   */
   private withholdsFromHost(
     batch: PendingCommandBatch,
     fields: StageFormDraft,
