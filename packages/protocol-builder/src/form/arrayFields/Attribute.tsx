@@ -310,8 +310,11 @@ export default function Attribute({
     [crossClassValidate],
   );
 
+  // Answered rather than fired and forgotten: the picker keeps the name the
+  // researcher typed until it hears the attribute exists, because a refusal is
+  // about that name.
   const handleCreateOption = onCreateVariable
-    ? (variableName: string) => {
+    ? async (variableName: string): Promise<boolean> => {
         // The row this creation was started FROM, as it stands right now.
         // Creating a codebook variable is a round trip through the host, and
         // the list carries on moving while it runs — a collaborator's
@@ -328,45 +331,48 @@ export default function Attribute({
         // researcher cannot tell apart are two rows this control described
         // identically.
         const createdFrom = stripManagedProperties(rowRef.current);
-        void (async () => {
-          const created = await onCreateVariable(variableName);
-          if (created === undefined) return;
-          // Both of these are read when the creation COMPLETES: which row this
-          // control now names, and whether the list will still take a write to
-          // it. Either can have changed inside the round trip, and neither is
-          // something the assignment itself would report.
-          const assign = onUpdateRef.current;
-          const stillTheSameRow = isEqual(
-            stripManagedProperties(rowRef.current),
-            createdFrom,
-          );
-          const unassigned = async (description: string) => {
-            await openDialog({
-              type: 'acknowledge',
-              intent: 'warning',
-              title: `“${variableName}” was created but not assigned`,
-              description,
-              actions: { primary: { label: 'Continue', value: true } },
-            });
-          };
+        // Answered rather than fired and forgotten: the picker keeps the name
+        // the researcher typed until it hears the attribute exists, because a
+        // refusal is about that name.
+        const created = await onCreateVariable(variableName);
+        if (created === undefined) return false;
+        // Both of these are read when the creation COMPLETES: which row this
+        // control now names, and whether the list will still take a write to
+        // it. Either can have changed inside the round trip, and neither is
+        // something the assignment itself would report.
+        const assign = onUpdateRef.current;
+        const stillTheSameRow = isEqual(
+          stripManagedProperties(rowRef.current),
+          createdFrom,
+        );
+        const unassigned = async (description: string) => {
+          await openDialog({
+            type: 'acknowledge',
+            intent: 'warning',
+            title: `“${variableName}” was created but not assigned`,
+            description,
+            actions: { primary: { label: 'Continue', value: true } },
+          });
+        };
 
-          if (!stillTheSameRow || assign === undefined) {
-            await unassigned(
-              stillTheSameRow
-                ? listClosedMessage(variableName)
-                : rowReplacedMessage(variableName),
-            );
-            return;
-          }
-          // The last thing the two guards above cannot see: a row that has
-          // left the list while this control was still rendering it, or was
-          // rendering nothing at all. Neither refreshes the values those
-          // guards read, so the write itself is what has to answer — see
-          // `onUpdate` in fresco-ui's `ArrayFieldItemProps`.
-          if (assign({ variable: created }) === false) {
-            await unassigned(rowGoneMessage(variableName));
-          }
-        })();
+        if (!stillTheSameRow || assign === undefined) {
+          await unassigned(
+            stillTheSameRow
+              ? listClosedMessage(variableName)
+              : rowReplacedMessage(variableName),
+          );
+          return false;
+        }
+        // The last thing the two guards above cannot see: a row that has
+        // left the list while this control was still rendering it, or was
+        // rendering nothing at all. Neither refreshes the values those
+        // guards read, so the write itself is what has to answer — see
+        // `onUpdate` in fresco-ui's `ArrayFieldItemProps`.
+        if (assign({ variable: created }) === false) {
+          await unassigned(rowGoneMessage(variableName));
+          return false;
+        }
+        return true;
       }
     : undefined;
 
