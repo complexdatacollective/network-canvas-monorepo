@@ -834,6 +834,40 @@ describe('a list the form has cleared', () => {
     ]);
   });
 
+  it('removes every duplicate the clear covered, and only those', () => {
+    // Rows with no id of their own, two of them identical — an options list
+    // holds exactly this while the researcher is still filling it in. Neither
+    // can be told from the other, and neither needs to be: the clear covered
+    // both, so two of them go, and the one that arrived beside them stays.
+    const blank: Row = { text: 'x' };
+    const session = createSession({ prompts: [blank, blank] });
+    const commands = renderCommands(session, [], 'prompts', vi.fn());
+    act(() => {
+      session.acknowledge({
+        fields: { prompts: [blank, blank, { text: 'y' }] },
+        throughBatchId: 0,
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+    });
+
+    act(() => {
+      commands.onOperation?.(addFirstRow);
+    });
+
+    expect(session.getSnapshot().editedSection.fields.prompts).toEqual([
+      { text: 'y' },
+      { id: 'n' },
+    ]);
+    expect(
+      session.getSnapshot().pendingCommands.map((batch) => batch.commands),
+    ).toEqual([
+      [
+        { op: 'set', key: 'prompts', value: [{ text: 'y' }] },
+        { op: 'insertItem', key: 'prompts', index: 1, item: { id: 'n' } },
+      ],
+    ]);
+  });
+
   it('repairs nothing when the document is as empty as the list drawn', () => {
     const session = createSession({ prompts: [] });
     const commands = renderCommands(session, [], 'prompts', vi.fn());

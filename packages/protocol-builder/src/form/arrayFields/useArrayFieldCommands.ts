@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useRef } from 'react';
 
 import type { ArrayFieldOperation } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
-import type { Command } from '@codaco/studio-sync/apply';
+import { canonicalize, type Command } from '@codaco/studio-sync/apply';
 
 import { useStageEditorForm } from '../stageEditorContext.ts';
 import {
@@ -113,14 +113,18 @@ type BoundArray = Readonly<{
  * that arrived a moment ago, while a save that had already begun was still on
  * its way — and a mismatch read against it would call every such row cleared
  * and `set` it away. So the batch first `set`s the key to the session's list
- * with the cleared rows taken out of it, each found the way every other
- * operation finds its row (`resolveRowIndex`: by id, else by position while
- * the lists agree, else by unique content), and a row the clear did not cover
- * stays where it is. The same rule as for a foreign value, for the same
- * reason, and with the same undo — one batch, one history entry, so undoing
- * the add puts the cleared rows back too. A hole is not a row, so a document
- * holding only holes is never mistaken for one the form cleared, and a hole
- * beside the cleared rows is left in place as it is everywhere else.
+ * with the cleared rows taken out of it, and a row the clear did not cover
+ * stays where it is. A cleared row is found by its id when it has one, and
+ * otherwise by content — as a MULTISET, each cleared row claiming the first
+ * entry not already claimed, because an options list legitimately holds two
+ * identical id-less rows and both of them were cleared: asking which of the
+ * two each one is (the question `resolveRowIndex` rightly refuses to guess
+ * at) would take neither out. The same rule as for a foreign value, for the
+ * same reason, and with the same undo — one batch, one history entry, so
+ * undoing the add puts the cleared rows back too. A hole is not a row, so a
+ * document holding only holes is never mistaken for one the form cleared,
+ * and a hole beside the cleared rows is left in place as it is everywhere
+ * else.
  */
 const readArray = <T extends ArrayRow>(
   key: string,
@@ -135,12 +139,14 @@ const readArray = <T extends ArrayRow>(
     // shape — every other write to a bound list reaches the session first and
     // is read back from it.
     const cleared = showsNoRows(rendered) ? renderableRows<T>(agreed) : NO_ROWS;
-    const removed = new Set(
-      cleared.flatMap((_, index) => {
-        const at = resolveRowIndex(value, cleared, index, getId);
-        return at === undefined ? [] : [at];
-      }),
-    );
+    const removed = new Set<number>();
+    for (const [index, row] of cleared.entries()) {
+      const at =
+        getId?.(row) === undefined
+          ? firstUnclaimedMatch(value, canonicalize(row), removed)
+          : resolveRowIndex(value, cleared, index, getId);
+      if (at !== undefined) removed.add(at);
+    }
     if (removed.size === 0) return { current: [...value], repair: [] };
     const remaining = value.filter((_, index) => !removed.has(index));
     return {
@@ -150,6 +156,18 @@ const readArray = <T extends ArrayRow>(
   }
   if (value === undefined || value === null) return { current: [], repair: [] };
   return { current: [], repair: [{ op: 'set', key, value: [] }] };
+};
+
+/** The first entry with this canonical `content` that no earlier cleared row has claimed. */
+const firstUnclaimedMatch = (
+  entries: readonly unknown[],
+  content: string,
+  claimed: ReadonlySet<number>,
+): number | undefined => {
+  const at = entries.findIndex(
+    (entry, index) => !claimed.has(index) && canonicalize(entry) === content,
+  );
+  return at === -1 ? undefined : at;
 };
 
 /** Whether a list field is showing nothing: no list at all, or an empty one. */
