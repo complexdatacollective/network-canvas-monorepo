@@ -15,7 +15,32 @@ import type {
   ResourceDescriptor,
   ResourceGatewayFailure,
   ResourceResult,
+  ResourceSecretStorage,
 } from './gateway.ts';
+
+/**
+ * What the host behind this adapter can do, for the rows that only mean
+ * something to a host that can do it.
+ *
+ * The port cannot say all of this by itself. `secretStorage` says where a
+ * promoted key comes to rest, because that is what the editor tells a
+ * researcher pasting one — and a host with nowhere to put a key never reaches
+ * that question, so there is no value of it meaning "nowhere". Declared here
+ * instead, and the contract holds such an adapter to the one thing it must do:
+ * refuse.
+ *
+ * This is not a way to opt out of a row that is inconvenient. Everything a
+ * capability turns off is replaced by what the absence itself requires, and
+ * every row that merely used the capability in passing still runs.
+ */
+export type ResourceGatewayContractCapabilities = Readonly<{
+  /**
+   * Where a promoted secret comes to rest, or `'unsupported'` for a host with
+   * nowhere to keep one. Omitted, the adapter's own `secretStorage` decides
+   * and every secret row runs.
+   */
+  secrets?: ResourceSecretStorage | 'unsupported';
+}>;
 
 /**
  * What an adapter must expose for the contract to observe host state it cannot
@@ -84,7 +109,12 @@ export function describeResourceGatewayContract(
   createHarness: () =>
     | ResourceGatewayContractHarness
     | Promise<ResourceGatewayContractHarness>,
+  capabilities: ResourceGatewayContractCapabilities = {},
 ): void {
+  // Read here rather than off the harness: which rows exist is decided while
+  // the suite is being registered, and no harness has been made yet.
+  const keepsSecrets = capabilities.secrets !== 'unsupported';
+
   describe(`resource gateway contract: ${name}`, () => {
     let current: ResourceGatewayContractHarness | undefined;
 
@@ -165,6 +195,16 @@ export function describeResourceGatewayContract(
         }),
       );
 
+    /**
+     * The staged secret, or nothing when this host has nowhere to keep one.
+     * For the rows that use a secret to ask about something else, so they hold
+     * an adapter without a secret store to everything they are actually about.
+     */
+    const stageSecretIfKept = async (
+      requestId?: string,
+    ): Promise<Awaited<ReturnType<typeof stageSecret>> | undefined> =>
+      keepsSecrets ? stageSecret(requestId) : undefined;
+
     it('lists the committed manifest and nothing staged', async () => {
       const listed = expectOk(await gateway().list());
 
@@ -178,7 +218,7 @@ export function describeResourceGatewayContract(
     it('lists only the kinds it was asked for, committed and staged alike', async () => {
       const image = await stageImage();
       const roster = await stageRoster();
-      const secret = await stageSecret();
+      const secret = await stageSecretIfKept();
 
       const listed = async (
         options: Parameters<ProtocolBuilderResourceGateway['list']>[0],
@@ -196,9 +236,9 @@ export function describeResourceGatewayContract(
         [RESOURCE_GATEWAY_CONTRACT_SEED.committedImage.id, image.id].toSorted(),
       );
       expect(await listed({ kinds: ['network'] })).toEqual([roster.id]);
-      expect(await listed({ kinds: ['apikey'] })).toEqual([
-        secret.descriptor.id,
-      ]);
+      expect(await listed({ kinds: ['apikey'] })).toEqual(
+        secret === undefined ? [] : [secret.descriptor.id],
+      );
       expect(await listed({ kinds: ['audio', 'video', 'geojson'] })).toEqual(
         [],
       );
@@ -247,108 +287,147 @@ export function describeResourceGatewayContract(
       );
     });
 
-    it('keeps an upload and a secret that share a request id apart', async () => {
-      // A request id is unique to the picker that made it, not across pickers:
-      // two of them can hand the host the same id for entirely different work.
-      const upload = await stageImage('request-shared');
-      const secret = await stageSecret('request-shared');
+    // Everything a host with nowhere to keep secret material cannot be asked,
+    // and — below — the one thing it must do instead.
+    describe.runIf(keepsSecrets)('secret material', () => {
+      it('keeps an upload and a secret that share a request id apart', async () => {
+        // A request id is unique to the picker that made it, not across pickers:
+        // two of them can hand the host the same id for entirely different work.
+        const upload = await stageImage('request-shared');
+        const secret = await stageSecret('request-shared');
 
-      expect(secret.descriptor.id).not.toBe(upload.id);
+        expect(secret.descriptor.id).not.toBe(upload.id);
 
-      const retriedUpload = await stageImage('request-shared');
-      const retriedSecret = await stageSecret('request-shared');
+        const retriedUpload = await stageImage('request-shared');
+        const retriedSecret = await stageSecret('request-shared');
 
-      // Each retry is its own operation's retry: an upload that came back as
-      // the secret's descriptor would put a key where a file belongs.
-      expect(retriedUpload.id).toBe(upload.id);
-      expect(retriedUpload.kind).toBe('image');
-      expect(retriedSecret.descriptor.id).toBe(secret.descriptor.id);
-      expect(String(retriedSecret.handle)).toBe(String(secret.handle));
-      expect(
-        expectOk(await gateway().list({ status: 'staged' }))
-          .map((descriptor) => descriptor.id)
-          .toSorted(),
-      ).toEqual([upload.id, secret.descriptor.id].toSorted());
+        // Each retry is its own operation's retry: an upload that came back as
+        // the secret's descriptor would put a key where a file belongs.
+        expect(retriedUpload.id).toBe(upload.id);
+        expect(retriedUpload.kind).toBe('image');
+        expect(retriedSecret.descriptor.id).toBe(secret.descriptor.id);
+        expect(String(retriedSecret.handle)).toBe(String(secret.handle));
+        expect(
+          expectOk(await gateway().list({ status: 'staged' }))
+            .map((descriptor) => descriptor.id)
+            .toSorted(),
+        ).toEqual([upload.id, secret.descriptor.id].toSorted());
 
-      // Discarding one must not take the other's retry identity with it.
-      expectOk(await gateway().discardStaged(upload.id));
+        // Discarding one must not take the other's retry identity with it.
+        expectOk(await gateway().discardStaged(upload.id));
 
-      expect((await stageSecret('request-shared')).descriptor.id).toBe(
-        secret.descriptor.id,
-      );
+        expect((await stageSecret('request-shared')).descriptor.id).toBe(
+          secret.descriptor.id,
+        );
+      });
+
+      it('stages a secret as an opaque handle and keeps the value off every surface', async () => {
+        const secret = await stageSecret();
+
+        expect(secret.descriptor.kind).toBe('apikey');
+        expect(secret.descriptor.status).toBe('staged');
+        expect(String(secret.handle)).not.toContain(SECRET_VALUE);
+        expect(SECRET_VALUE).not.toContain(String(secret.handle));
+
+        const listed = expectOk(await gateway().list());
+        const inspected = expectOk(
+          await gateway().inspect(secret.descriptor.id),
+        );
+        const previewFailure = expectFailure(
+          await gateway().resolvePreview(secret.descriptor.id),
+        );
+        const downloadFailure = expectFailure(
+          await gateway().download(secret.descriptor.id),
+        );
+        // What a stage draft would actually hold: the asset id, never the value.
+        const draftSnapshot = {
+          editedSection: { fields: { token: secret.descriptor.id } },
+          resources: listed,
+          inspected,
+          failures: [previewFailure, downloadFailure],
+          handle: secret.handle,
+          descriptor: secret.descriptor,
+        };
+
+        expect(JSON.stringify(draftSnapshot)).not.toContain(SECRET_VALUE);
+        expect(JSON.stringify(harness().stagingResidue())).not.toContain(
+          SECRET_VALUE,
+        );
+      });
+
+      it('promotes a secret the way it says it stores one', async () => {
+        const secret = await stageSecret();
+        // A harness that declared where its keys go is held to that too, so the
+        // declaration and the manifest cannot drift apart in silence.
+        if (capabilities.secrets !== undefined) {
+          expect(gateway().secretStorage).toBe(capabilities.secrets);
+        }
+
+        expectOk(
+          await gateway().promote({
+            id: 'promotion-secret-storage',
+            resourceIds: [secret.descriptor.id],
+            secretHandles: [secret.handle],
+            applyManifest: () => ({ status: 'applied' }),
+          }),
+        );
+
+        // The editor tells the researcher where the key they are pasting will
+        // end up, and it can only repeat what the adapter says. An adapter whose
+        // answer and whose manifest disagree makes that a lie in one direction
+        // or the other — a credential written into a shareable protocol file
+        // while the researcher was told it stays on the server, or a warning
+        // about distributing a key that never leaves the host.
+        const entry = JSON.stringify(
+          harness().committedManifest()[secret.descriptor.id],
+        );
+        if (gateway().secretStorage === 'plaintext') {
+          expect(entry).toContain(SECRET_VALUE);
+        } else {
+          expect(entry).not.toContain(SECRET_VALUE);
+        }
+      });
+
+      it('refuses to preview or download secret material', async () => {
+        const secret = await stageSecret();
+
+        expect(
+          expectFailure(await gateway().resolvePreview(secret.descriptor.id))
+            .reason,
+        ).toBe('unsupported-kind');
+        expect(
+          expectFailure(await gateway().download(secret.descriptor.id)).reason,
+        ).toBe('unsupported-kind');
+      });
     });
 
-    it('stages a secret as an opaque handle and keeps the value off every surface', async () => {
-      const secret = await stageSecret();
+    it.runIf(!keepsSecrets)(
+      'refuses to stage a secret it has nowhere to keep, and keeps nothing',
+      async () => {
+        const refusal = expectFailure(
+          await gateway().stageSecret({
+            requestId: 'request-unsupported-secret',
+            name: 'Map token',
+            value: SECRET_VALUE,
+          }),
+        );
 
-      expect(secret.descriptor.kind).toBe('apikey');
-      expect(secret.descriptor.status).toBe('staged');
-      expect(String(secret.handle)).not.toContain(SECRET_VALUE);
-      expect(SECRET_VALUE).not.toContain(String(secret.handle));
-
-      const listed = expectOk(await gateway().list());
-      const inspected = expectOk(await gateway().inspect(secret.descriptor.id));
-      const previewFailure = expectFailure(
-        await gateway().resolvePreview(secret.descriptor.id),
-      );
-      const downloadFailure = expectFailure(
-        await gateway().download(secret.descriptor.id),
-      );
-      // What a stage draft would actually hold: the asset id, never the value.
-      const draftSnapshot = {
-        editedSection: { fields: { token: secret.descriptor.id } },
-        resources: listed,
-        inspected,
-        failures: [previewFailure, downloadFailure],
-        handle: secret.handle,
-        descriptor: secret.descriptor,
-      };
-
-      expect(JSON.stringify(draftSnapshot)).not.toContain(SECRET_VALUE);
-      expect(JSON.stringify(harness().stagingResidue())).not.toContain(
-        SECRET_VALUE,
-      );
-    });
-
-    it('promotes a secret the way it says it stores one', async () => {
-      const secret = await stageSecret();
-
-      expectOk(
-        await gateway().promote({
-          id: 'promotion-secret-storage',
-          resourceIds: [secret.descriptor.id],
-          secretHandles: [secret.handle],
-          applyManifest: () => ({ status: 'applied' }),
-        }),
-      );
-
-      // The editor tells the researcher where the key they are pasting will
-      // end up, and it can only repeat what the adapter says. An adapter whose
-      // answer and whose manifest disagree makes that a lie in one direction
-      // or the other — a credential written into a shareable protocol file
-      // while the researcher was told it stays on the server, or a warning
-      // about distributing a key that never leaves the host.
-      const entry = JSON.stringify(
-        harness().committedManifest()[secret.descriptor.id],
-      );
-      if (gateway().secretStorage === 'plaintext') {
-        expect(entry).toContain(SECRET_VALUE);
-      } else {
-        expect(entry).not.toContain(SECRET_VALUE);
-      }
-    });
-
-    it('refuses to preview or download secret material', async () => {
-      const secret = await stageSecret();
-
-      expect(
-        expectFailure(await gateway().resolvePreview(secret.descriptor.id))
-          .reason,
-      ).toBe('unsupported-kind');
-      expect(
-        expectFailure(await gateway().download(secret.descriptor.id)).reason,
-      ).toBe('unsupported-kind');
-    });
+        // The one answer a host without a secret store may give. Anything else
+        // — an `unavailable` a picker would offer to retry, or an ok over a
+        // value kept somewhere unintended — puts a credential the researcher
+        // was told about somewhere nobody decided on.
+        expect(refusal.reason).toBe('unsupported-kind');
+        expect(refusal.retryable).toBe(false);
+        expect(refusal.message).not.toBe('');
+        expect(JSON.stringify(refusal)).not.toContain(SECRET_VALUE);
+        expect(expectOk(await gateway().list({ status: 'staged' }))).toEqual(
+          [],
+        );
+        expect(JSON.stringify(harness().stagingResidue())).not.toContain(
+          SECRET_VALUE,
+        );
+      },
+    );
 
     it('resolves previews for committed and staged content', async () => {
       const staged = await stageImage();
@@ -624,7 +703,7 @@ export function describeResourceGatewayContract(
 
     it('discards all staging with no residue and no change to the committed manifest', async () => {
       const image = await stageImage();
-      const secret = await stageSecret();
+      const secret = await stageSecretIfKept();
       const preview = expectOk(await gateway().resolvePreview(image.id));
       expect(preview.url).not.toBe('');
 
@@ -635,24 +714,47 @@ export function describeResourceGatewayContract(
       expect(expectFailure(await gateway().inspect(image.id)).reason).toBe(
         'not-found',
       );
-      expect(
-        expectFailure(await gateway().inspect(secret.descriptor.id)).reason,
-      ).toBe('not-found');
+      if (secret !== undefined) {
+        expect(
+          expectFailure(await gateway().inspect(secret.descriptor.id)).reason,
+        ).toBe('not-found');
+      }
       expect(Object.keys(harness().committedManifest())).toEqual([
         RESOURCE_GATEWAY_CONTRACT_SEED.committedImage.id,
       ]);
     });
 
+    it('discards all staging in a session that staged nothing', async () => {
+      // The cancel path calls this unconditionally, and a session is cancelled
+      // far more often with nothing staged than with something: a researcher
+      // who opens a stage, changes a prompt and backs out never imported
+      // anything. An adapter that answers "nothing to discard" as a failure
+      // turns that into a stage the editor refuses to close.
+      expectOk(await gateway().discardAllStaged());
+
+      expect(harness().stagingResidue()).toEqual([]);
+      expect(Object.keys(harness().committedManifest())).toEqual([
+        RESOURCE_GATEWAY_CONTRACT_SEED.committedImage.id,
+      ]);
+      // And again, because a cancel can follow a cancel that already emptied
+      // the session — a retry of one whose answer was lost, for instance.
+      expectOk(await gateway().discardAllStaged());
+    });
+
     it('promotes every staged resource and its manifest entry together', async () => {
       const image = await stageImage();
-      const secret = await stageSecret();
+      const secret = await stageSecretIfKept();
+      const roster = secret === undefined ? await stageRoster() : undefined;
+      // Two resources of whatever kinds this host can hold, because what the
+      // row is about is that they travel with their manifest entries as one.
+      const second = secret?.descriptor ?? roster;
       const applied: ManifestApplyRequest[] = [];
 
       const promotion = expectOk(
         await gateway().promote({
           id: 'promotion-1',
-          resourceIds: [image.id, secret.descriptor.id],
-          secretHandles: [secret.handle],
+          resourceIds: [image.id, second?.id ?? ''],
+          ...(secret === undefined ? {} : { secretHandles: [secret.handle] }),
           applyManifest: (request) => {
             applied.push(request);
             return { status: 'applied' };
@@ -665,7 +767,7 @@ export function describeResourceGatewayContract(
       expect(request?.sectionId).toBe(ASSETS_SECTION);
       expect(request?.commands.map((command) => command.key)).toEqual([
         image.id,
-        secret.descriptor.id,
+        second?.id,
       ]);
       for (const command of request?.commands ?? []) {
         expect(command.op).toBe('set');
@@ -683,7 +785,7 @@ export function describeResourceGatewayContract(
         [
           RESOURCE_GATEWAY_CONTRACT_SEED.committedImage.id,
           image.id,
-          secret.descriptor.id,
+          second?.id ?? '',
         ].toSorted(),
       );
       expect(harness().stagingResidue()).toEqual([]);
@@ -825,7 +927,7 @@ export function describeResourceGatewayContract(
     });
 
     it('refuses to promote an unknown resource or a secret without its handle', async () => {
-      const secret = await stageSecret();
+      const secret = await stageSecretIfKept();
       const applyManifest = vi.fn((): ManifestApplyOutcome => ({
         status: 'applied',
       }));
@@ -837,17 +939,19 @@ export function describeResourceGatewayContract(
           applyManifest,
         }),
       );
-      const withoutHandle = expectFailure(
-        await gateway().promote({
-          id: 'promotion-handleless',
-          resourceIds: [secret.descriptor.id],
-          applyManifest,
-        }),
-      );
 
       expect(unknown.reason).toBe('not-found');
-      expect(withoutHandle.reason).toBe('invalid-request');
-      expect(withoutHandle.retryable).toBe(false);
+      if (secret !== undefined) {
+        const withoutHandle = expectFailure(
+          await gateway().promote({
+            id: 'promotion-handleless',
+            resourceIds: [secret.descriptor.id],
+            applyManifest,
+          }),
+        );
+        expect(withoutHandle.reason).toBe('invalid-request');
+        expect(withoutHandle.retryable).toBe(false);
+      }
       expect(applyManifest).not.toHaveBeenCalled();
       expect(Object.keys(harness().committedManifest())).toEqual([
         RESOURCE_GATEWAY_CONTRACT_SEED.committedImage.id,

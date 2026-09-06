@@ -43,7 +43,12 @@ import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
  *   value, so a Studio adapter cannot yet resolve a handle at promotion the
  *   way Architect does by writing an `apiKey` asset. Until it has one, a
  *   Studio adapter should fail `stageSecret` with `unsupported-kind` rather
- *   than keep secret material somewhere unintended.
+ *   than keep secret material somewhere unintended — and say so to the shared
+ *   contract, which then holds it to that refusal instead of to the rows about
+ *   keeping a key: run `describeResourceGatewayContract` with
+ *   `{ secrets: 'unsupported' }`. `secretStorage` still has to say something,
+ *   because the port has no value for "nowhere": say where keys will go once
+ *   there is somewhere to put them.
  * - **Studio's delivery serves some kinds as attachments.** `svg`, `mov`,
  *   `m4a`, and `aiff` are served with a download disposition, so a
  *   `resolvePreview` URL for them will not render in an `img`, `video`, or
@@ -91,7 +96,12 @@ export type ProtocolBuilderResourceGateway = {
   download(resourceId: string): Promise<ResourceResult<ResourceContent>>;
   /** Drops one staged resource and everything the host holds for it. */
   discardStaged(resourceId: string): Promise<ResourceResult<undefined>>;
-  /** Drops every staged resource — the cancel/discard path — leaving no residue. */
+  /**
+   * Drops every staged resource — the cancel/discard path — leaving no
+   * residue. A session with nothing staged answers ok: cancel calls this
+   * unconditionally, and a researcher who opened a stage, changed a prompt and
+   * backed out staged nothing at all.
+   */
   discardAllStaged(): Promise<ResourceResult<undefined>>;
   /**
    * Promotes staged resources and their manifest entries as one operation.
@@ -120,6 +130,12 @@ export type ProtocolBuilderResourceGateway = {
  * The two are materially different promises to a researcher, which is why the
  * port makes an adapter state which one it is keeping rather than letting an
  * editor assume.
+ *
+ * There is deliberately no value for "nowhere". This is asked so the editor
+ * can tell a researcher pasting a key where it will end up, and a host that
+ * refuses to stage one never reaches that question; such an adapter says so to
+ * the shared contract instead, and says here where keys would go if it could
+ * take them.
  */
 export type ResourceSecretStorage = 'plaintext' | 'vault';
 

@@ -2,7 +2,13 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import Button from '@codaco/fresco-ui/Button';
+
 import ProtocolField from '../../../form/ProtocolField.tsx';
+import {
+  createStageIdentity,
+  ProtocolBuilderSessionStore,
+} from '../../../session.ts';
 import { ResourceGatewayProvider } from '../../context.tsx';
 import {
   resourceFailure,
@@ -45,6 +51,39 @@ async function submitKey(
   await user.type(await screen.findByLabelText('Name'), name);
   await user.type(screen.getByLabelText('Key'), value);
   await user.click(screen.getByRole('button', { name: 'Add API key' }));
+}
+
+function keyField() {
+  return (
+    <ProtocolField
+      component={ResourcePickerControl}
+      name="apiKey"
+      label="Map provider API key"
+      kind="apikey"
+    />
+  );
+}
+
+/** A session whose finish a test can watch, for the submit that must not happen. */
+function sessionWithFinish(
+  gateway: ProtocolBuilderResourceGateway,
+  onFinish: () => void,
+): ProtocolBuilderSessionStore {
+  return new ProtocolBuilderSessionStore({
+    identity: createStageIdentity('Information', () => 'stage-1'),
+    fields: { label: 'Welcome', title: 'Welcome', items: [] },
+    protocolSections: {},
+    manifestRevision: { sequence: 1n, hash: 'revision-1' },
+    access: { mode: 'editable', leaseOwner: 'tab-1', leaseEpoch: 1n },
+    resourceGateway: gateway,
+    buildCandidate: ({ stageDocument }) => ({
+      name: 'Secret picker test',
+      schemaVersion: 8,
+      codebook: {},
+      stages: [stageDocument],
+    }),
+    onFinish,
+  });
 }
 
 describe('the secret resource picker', () => {
@@ -96,6 +135,64 @@ describe('the secret resource picker', () => {
         status: 'staged',
       },
     ]);
+  });
+
+  it('adds a key without saving the stage around it', async () => {
+    const user = userEvent.setup();
+    const gateway = new InMemoryResourceGateway();
+    const onFinish = vi.fn();
+    const { session } = renderResourceEditor({
+      session: sessionWithFinish(gateway, onFinish),
+      actions: ({ formId }) => (
+        <Button type="submit" form={formId}>
+          Save this stage
+        </Button>
+      ),
+      children: keyField(),
+    });
+
+    await addKey(user, 'Mapbox key');
+
+    // The key is added …
+    await screen.findByText('Mapbox key');
+    // … and the stage around it never reached its own submit. The key form is
+    // nested in the stage form, so its own submit would otherwise save a stage
+    // the researcher was in the middle of editing.
+    expect(onFinish).not.toHaveBeenCalled();
+    expect(session.getSnapshot().pendingCommands).toEqual([]);
+
+    // The positive control: the stage's own save does write, so the silence
+    // above is about the key form's submit being stopped rather than about a
+    // form that never worked.
+    await user.click(screen.getByRole('button', { name: 'Save this stage' }));
+
+    await waitFor(() =>
+      expect(session.getSnapshot().pendingCommands.length).toBeGreaterThan(0),
+    );
+  });
+
+  it('does not save the stage when Enter is pressed in the key name', async () => {
+    const user = userEvent.setup();
+    const gateway = new InMemoryResourceGateway();
+    const onFinish = vi.fn();
+    renderResourceEditor({
+      session: sessionWithFinish(gateway, onFinish),
+      actions: ({ formId }) => (
+        <Button type="submit" form={formId}>
+          Save this stage
+        </Button>
+      ),
+      children: keyField(),
+    });
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Select an API key' }),
+    );
+    // Enter in a single-line field submits the form it is in, and the form it
+    // is in is inside the stage's.
+    await user.type(await screen.findByLabelText('Name'), 'Mapbox key{Enter}');
+
+    expect(onFinish).not.toHaveBeenCalled();
   });
 
   it('shows the key by the name it was given, and offers no download', async () => {
