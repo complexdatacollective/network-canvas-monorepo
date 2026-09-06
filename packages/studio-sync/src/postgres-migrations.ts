@@ -11,6 +11,7 @@ export type PostgresMigrationConfig = {
   readonly runtimeRoles: readonly string[];
   /** Validate this role when present; its own migration provisions it. */
   readonly backupRole?: string;
+  /** Dedicated history schema; must differ from the application schema. */
   readonly historySchema: string;
   readonly schemaName: string;
   readonly fingerprintTable: string;
@@ -41,8 +42,7 @@ export function createPostgresMigrator(input: PostgresMigrationConfig) {
     !/^[A-Za-z][A-Za-z0-9 ]{0,63}$/.test(input.applicationName) ||
     !/^[A-Z][A-Z0-9_]{0,63}$/.test(input.allowedLoginsSetting) ||
     !Number.isSafeInteger(input.lockKey) ||
-    (input.historySchema === input.schemaName &&
-      input.fingerprintTable === 'history')
+    input.historySchema === input.schemaName
   ) {
     throw new Error('Supply valid PostgreSQL migration configuration.');
   }

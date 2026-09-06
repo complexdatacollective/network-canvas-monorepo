@@ -50,6 +50,7 @@ describe('PostgreSQL migration configuration', () => {
     { lockKey: Number.MAX_SAFE_INTEGER + 1 },
     { lockKey: 1.5 },
     { lockKey: Number.NaN },
+    { historySchema: 'public' },
     { historySchema: 'public', fingerprintTable: 'history' },
   ] satisfies Partial<PostgresMigrationConfig>[])(
     'refuses invalid configuration before a database can be supplied: %j',
