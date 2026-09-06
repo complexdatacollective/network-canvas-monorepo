@@ -98,12 +98,24 @@ const NO_ROWS: readonly never[] = [];
  * the indices the operation was resolved against, which is exactly what that
  * rule forbids. The hole stays where it is, and the edit is expressed against
  * the document as it stands.
+ *
+ * Written as a type predicate rather than as a check followed by an assertion,
+ * because this source is compiled by every consumer's own TS program and they
+ * do not narrow it alike: `@total-typescript/ts-reset`, which the Studio client
+ * loads, makes `Array.isArray` narrow `unknown` to `unknown[]` rather than
+ * `any[]`, and the entry check then narrows that to `object[]` — which is not
+ * comparable to `T`, so the assertion the check exists to justify is the thing
+ * that fails to compile. A predicate states the conclusion once, the way
+ * fresco-ui's own `isItemList` does.
  */
+const isRowList = <T extends ArrayRow>(
+  rendered: unknown,
+): rendered is readonly T[] =>
+  Array.isArray(rendered) &&
+  rendered.every((row) => typeof row === 'object' && row !== null);
+
 function renderedRows<T extends ArrayRow>(rendered: unknown): readonly T[] {
-  if (!Array.isArray(rendered)) return NO_ROWS;
-  return rendered.every((row) => typeof row === 'object' && row !== null)
-    ? (rendered as readonly T[])
-    : NO_ROWS;
+  return isRowList<T>(rendered) ? rendered : NO_ROWS;
 }
 
 /**
