@@ -5,6 +5,7 @@ import {
   sectionOutlineStatus,
   type OutlineSection,
   type SectionFieldReader,
+  type SectionValidationIssue,
 } from '../outlineStore.ts';
 
 afterEach(() => {
@@ -73,8 +74,15 @@ const CONTENTED_FORM: SectionFieldReader = {
   getFieldErrors: () => null,
 };
 
+/** A form where every field is empty, so a required one reads as unanswered. */
+const EMPTY_FORM: SectionFieldReader = {
+  getFieldState: () => undefined,
+  getFieldErrors: () => null,
+};
+
 function storeWith(
   fields: Readonly<Record<string, readonly string[]>>,
+  required = false,
 ): SectionOutlineStore {
   const store = new SectionOutlineStore();
   for (const [sectionId, names] of Object.entries(fields)) {
@@ -82,11 +90,30 @@ function storeWith(
     store.registerSection({ id: sectionId, title: sectionId });
     store.setSectionElement(sectionId, element);
     for (const name of names) {
-      store.registerField(sectionId, { name, label: name, required: false });
+      store.registerField(sectionId, { name, label: name, required });
     }
   }
   return store;
 }
+
+/**
+ * An issue the outline passes through in the words it was given.
+ *
+ * `custom` is the code every cross-reference rule in the protocol schema
+ * raises, and its messages are written about the protocol rather than about a
+ * shape, so they are the outline's own words already. The attribution tests
+ * below are about WHICH section hears an issue, so they use the one code whose
+ * message survives being reported.
+ */
+const said = (
+  path: readonly (string | number)[],
+  message: string,
+): SectionValidationIssue => ({
+  path,
+  code: 'custom',
+  message,
+  absent: false,
+});
 
 const sectionNamed = (
   store: SectionOutlineStore,
@@ -110,9 +137,9 @@ describe('session issues in the outline', () => {
     const store = storeWith({ search: ['searchOptions.fuzziness'] });
 
     store.setValidationIssues([
-      { path: ['searchOptions', 'fuzziness'], message: 'at the field' },
-      { path: ['searchOptions', 'fuzziness', 0], message: 'inside it' },
-      { path: ['searchOptions'], message: 'the container around it' },
+      said(['searchOptions', 'fuzziness'], 'at the field'),
+      said(['searchOptions', 'fuzziness', 0], 'inside it'),
+      said(['searchOptions'], 'the container around it'),
     ]);
 
     expect(sectionNamed(store, 'search').issues).toEqual([
@@ -131,7 +158,7 @@ describe('session issues in the outline', () => {
     // Same container, different value. Nothing mounted here edits it, so
     // there is nothing for a researcher sent to this section to do.
     store.setValidationIssues([
-      { path: ['searchOptions', 'matchProperties', 0], message: 'a sibling' },
+      said(['searchOptions', 'matchProperties', 0], 'a sibling'),
     ]);
 
     expect(sectionNamed(store, 'search').issues).toEqual([]);
@@ -147,10 +174,10 @@ describe('session issues in the outline', () => {
     });
 
     store.setValidationIssues([
-      {
-        path: ['cardOptions', 'additionalProperties', 0, 'variable'],
-        message: 'a column that is not there',
-      },
+      said(
+        ['cardOptions', 'additionalProperties', 0, 'variable'],
+        'a column that is not there',
+      ),
     ]);
 
     // Both sections reach it — one owns the whole container — and the deeper
@@ -165,7 +192,7 @@ describe('session issues in the outline', () => {
     const store = storeWith({ first: ['behaviours'], second: ['behaviours'] });
 
     store.setValidationIssues([
-      { path: ['behaviours', 'minNodes'], message: 'a limit that cannot hold' },
+      said(['behaviours', 'minNodes'], 'a limit that cannot hold'),
     ]);
 
     // Two sections reach the value equally well, so the researcher is sent to
@@ -178,9 +205,7 @@ describe('session issues in the outline', () => {
 
   it('stops reporting an issue that is no longer in the set', () => {
     const store = storeWith({ search: ['searchOptions.fuzziness'] });
-    store.setValidationIssues([
-      { path: ['searchOptions'], message: 'a problem' },
-    ]);
+    store.setValidationIssues([said(['searchOptions'], 'a problem')]);
     expect(sectionNamed(store, 'search').issues).toEqual(['a problem']);
 
     store.setValidationIssues([]);
@@ -191,9 +216,98 @@ describe('session issues in the outline', () => {
     ).toBe('complete');
   });
 
+  it('says a refusal in the editor’s own words, never the validator’s', () => {
+    const store = storeWith({ zoom: ['mapOptions.initialZoom'] });
+
+    store.setValidationIssues([
+      {
+        path: ['mapOptions', 'initialZoom'],
+        code: 'too_big',
+        message: 'Too big: expected number to be <=22',
+        absent: false,
+      },
+    ]);
+
+    expect(sectionNamed(store, 'zoom').issues).toEqual([
+      'mapOptions.initialZoom holds more than this stage allows.',
+    ]);
+    expect(
+      sectionOutlineStatus(sectionNamed(store, 'zoom'), CONTENTED_FORM),
+    ).toBe('error');
+  });
+
+  it('says one sentence about a control however many refusals reach it', () => {
+    const store = storeWith({ map: ['mapOptions'] });
+
+    // A compound control owning a sub-document claims every refusal inside it.
+    // Four repetitions of one sentence is not four things to fix.
+    store.setValidationIssues(
+      ['style', 'center', 'initialZoom', 'targetFeatureProperty'].map(
+        (key) => ({
+          path: ['mapOptions', key],
+          code: 'invalid_type',
+          message: 'Invalid input: expected string, received number',
+          absent: false,
+        }),
+      ),
+    );
+
+    expect(sectionNamed(store, 'map').issues).toEqual([
+      'mapOptions holds the wrong kind of value.',
+    ]);
+  });
+
+  /**
+   * The schema and a required field are saying the same thing about an empty
+   * value, and the field says it in the words the researcher is already
+   * reading everywhere else.
+   */
+  it('leaves a missing value to the required field that owns it', () => {
+    const store = storeWith({ config: ['nodeConfig.egoVariable'] }, true);
+
+    store.setValidationIssues([
+      {
+        path: ['nodeConfig', 'egoVariable'],
+        code: 'invalid_type',
+        message: 'Invalid input: expected string, received undefined',
+        absent: true,
+      },
+    ]);
+
+    expect(sectionNamed(store, 'config').issues).toEqual([]);
+    expect(
+      sectionOutlineStatus(sectionNamed(store, 'config'), EMPTY_FORM),
+    ).toBe('incomplete');
+  });
+
+  /**
+   * The other half of that rule. Nothing on the page says a value is needed
+   * unless a field says it is required, so a section that stayed quiet here
+   * would read "Finished" over a stage the protocol refuses to save.
+   */
+  it('keeps a missing value no required field speaks for', () => {
+    const store = storeWith({ config: ['nodeConfig.egoVariable'] });
+
+    store.setValidationIssues([
+      {
+        path: ['nodeConfig', 'egoVariable'],
+        code: 'invalid_type',
+        message: 'Invalid input: expected string, received undefined',
+        absent: true,
+      },
+    ]);
+
+    expect(sectionNamed(store, 'config').issues).toEqual([
+      'nodeConfig.egoVariable has no value, and this stage needs one.',
+    ]);
+    expect(
+      sectionOutlineStatus(sectionNamed(store, 'config'), EMPTY_FORM),
+    ).toBe('error');
+  });
+
   it('hands back the same snapshot when the issues have not changed', () => {
     const store = storeWith({ search: ['searchOptions.fuzziness'] });
-    const issues = [{ path: ['searchOptions'], message: 'a problem' }];
+    const issues = [said(['searchOptions'], 'a problem')];
     store.setValidationIssues(issues);
     const snapshot = store.getSnapshot();
 

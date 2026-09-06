@@ -134,8 +134,21 @@ export type DiscardCause = Readonly<{ path: string; value: unknown }>;
  *
  * The container the removal empties goes too — `withoutValueAt`'s rule — so
  * the paths this unsets are the paths the save would have had to unset anyway.
- * Nothing is dispatched when the draft held nothing at any of them, so a reset
- * that finds an empty capability makes no batch at all.
+ *
+ * **A discard that finds nothing to discard is not a discard.** The draft held
+ * nothing at any of these paths, so there is no clear to strand and therefore
+ * no reason for the cause to travel early: it goes on waiting for the submit
+ * that flushes it, like the ordinary field it is. Without this the reset a
+ * researcher makes on an empty capability writes its cause alone — a batch
+ * spending a step of the session's history on a change nothing was thrown away
+ * for. What is "nothing" is the draft's own answer and no second notion of it:
+ * whatever `withoutValueAt` would remove. A capability holding an empty list is
+ * holding something, and its removal is the edit the save would have made
+ * anyway.
+ *
+ * The FORM is emptied either way. A value typed into a capability and not yet
+ * flushed is on screen and in no draft, so a reset that left it there would
+ * write it back on the next save under a cause it no longer describes.
  */
 export function useDiscardStageValues(): (
   paths: readonly string[],
@@ -156,12 +169,13 @@ export function useDiscardStageValues(): (
         if (target === null || target.length === 0) continue;
         next = withoutValueAt(next, target);
       }
+      const discards = commandsFromDraftChange(current, next);
       // The cause first, so the batch reads as what happened: this changed, and
-      // therefore these were thrown away.
-      applyOwnCommands([
-        ...causeCommands(current, cause),
-        ...commandsFromDraftChange(current, next),
-      ]);
+      // therefore these were thrown away. No discards, no batch at all — see
+      // above.
+      if (discards.length > 0) {
+        applyOwnCommands([...causeCommands(current, cause), ...discards]);
+      }
 
       // The FORM only, and only the discarded paths: the cause is already on
       // screen — the researcher chose it — and it is the draft that was behind.

@@ -21,6 +21,8 @@ import type {
   FormSubmitHandler,
 } from '@codaco/fresco-ui/form/store/types';
 import { focusFirstError } from '@codaco/fresco-ui/form/utils/focusFirstError';
+import { getValue } from '@codaco/fresco-ui/form/utils/objectPath';
+import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import { canonicalize, type Command } from '@codaco/studio-sync/apply';
 
@@ -373,9 +375,18 @@ function StageEditorFormBody({
    */
   useEffect(() => {
     outline.setValidationIssues(
-      stageIssuesOf(snapshot.validation, snapshot.editedSection.sectionId),
+      stageIssuesOf(
+        snapshot.validation,
+        snapshot.editedSection.sectionId,
+        snapshot.editedSection.fields,
+      ),
     );
-  }, [outline, snapshot.editedSection.sectionId, snapshot.validation]);
+  }, [
+    outline,
+    snapshot.editedSection.fields,
+    snapshot.editedSection.sectionId,
+    snapshot.validation,
+  ]);
 
   // The outline lists the sections in the order they appear on the page, and
   // nothing tells it when that order changes: a component reordering sections
@@ -462,10 +473,20 @@ function StageEditorFormBody({
  * addressed from the whole protocol (`stages`, then the stage's position in
  * the interview), and the outline knows only the stage document, so those two
  * segments are dropped.
+ *
+ * Each one is also asked the question the validator's own answer cannot
+ * settle: is this a value that is wrong, or a value that is not there? Zod
+ * finalises an issue without keeping what it was given, and the code is the
+ * same either way — a missing key and a number where a string belongs are both
+ * `invalid_type` — so the draft it judged is what says which. Read with the
+ * same predicate a required field is judged by, so "empty" means one thing in
+ * this editor: `required` owns emptiness, and a schema refusing an empty value
+ * is saying what the field already says about itself.
  */
 function stageIssuesOf(
   validation: ProtocolBuilderSnapshot['validation'],
   stageSectionId: ProtocolBuilderSnapshot['editedSection']['sectionId'],
+  fields: StageFormDraft,
 ): SectionValidationIssue[] {
   if (validation.status !== 'invalid') return [];
   return validation.issues.flatMap((issue) => {
@@ -473,7 +494,14 @@ function stageIssuesOf(
     const [root, position, ...inside] = issue.path;
     if (root !== 'stages' || typeof position !== 'number') return [];
     if (inside.length === 0) return [];
-    return [{ path: inside, message: issue.message }];
+    return [
+      {
+        path: inside,
+        code: issue.code,
+        message: issue.message,
+        absent: isUnanswered(getValue(fields, inside)),
+      },
+    ];
   });
 }
 
