@@ -3,13 +3,20 @@
 import { Toggle } from '@base-ui/react/toggle';
 import { ToggleGroup } from '@base-ui/react/toggle-group';
 import { Toolbar } from '@base-ui/react/toolbar';
-import type { AnyExtension } from '@tiptap/core';
+import { type AnyExtension, Extension, Node as TiptapNode } from '@tiptap/core';
 import { BulletList } from '@tiptap/extension-bullet-list';
 import { Heading } from '@tiptap/extension-heading';
 import { OrderedList } from '@tiptap/extension-ordered-list';
 import { Paragraph } from '@tiptap/extension-paragraph';
 import { Placeholder } from '@tiptap/extension-placeholder';
-import type { DOMOutputSpec } from '@tiptap/pm/model';
+import {
+  type DOMOutputSpec,
+  Fragment,
+  type Node as ProseMirrorNode,
+  type Schema,
+  Slice,
+} from '@tiptap/pm/model';
+import { Plugin, PluginKey } from '@tiptap/pm/state';
 import {
   EditorContent,
   type JSONContent,
@@ -173,12 +180,115 @@ const h2Classes = headingVariants({ level: 'h2' });
 const h3Classes = headingVariants({ level: 'h3' });
 const h4Classes = headingVariants({ level: 'h4' });
 
+/**
+ * A document that is one paragraph and cannot become two.
+ *
+ * `singleLine` is a promise about the VALUE — one line of text — and the
+ * schema is the only place that promise can be kept. Enforcing it on the way
+ * out instead leaves the editor free to hold a document the single-line form
+ * cannot express, and whatever serialises it then has to invent a join for the
+ * paragraphs it was never meant to see. Architect's markdown adapter joined
+ * them with a space, so a field whose emptied first paragraph the caret had
+ * just left saved "Never met" as " Never met".
+ */
+const SingleLineDocument = TiptapNode.create({
+  name: 'doc',
+  topNode: true,
+  content: 'paragraph',
+});
+
+/**
+ * Every inline node of a pasted slice, with each break between them spelled as
+ * a space: block boundaries, and inline nodes that are not text (a hard break,
+ * or an atom this field has no room for).
+ *
+ * Text nodes are carried over rather than re-made, so pasting a formatted
+ * phrase into a single-line field keeps its bold and italic runs — the line
+ * loses its line breaks, not its formatting.
+ */
+const inlineNodesOf = (
+  fragment: Fragment,
+  schema: Schema,
+  collected: ProseMirrorNode[] = [],
+): ProseMirrorNode[] => {
+  fragment.forEach((node) => {
+    if (node.isText) {
+      collected.push(node);
+      return;
+    }
+
+    if (node.isInline) {
+      collected.push(schema.text(' '));
+      return;
+    }
+
+    if (collected.length > 0) {
+      collected.push(schema.text(' '));
+    }
+
+    inlineNodesOf(node.content, schema, collected);
+  });
+
+  return collected;
+};
+
+const swallowKeystroke = () => true;
+
+/**
+ * The two ways a second line reaches a document the schema alone cannot
+ * refuse.
+ *
+ * Enter is swallowed rather than left to fail: `splitBlock` cannot make a
+ * second paragraph in `SingleLineDocument`, but ProseMirror then falls through
+ * to inserting a hard break instead, which puts the line break back inside the
+ * one paragraph. A keystroke that does nothing at all is what "one line"
+ * means.
+ *
+ * Pasted content is flattened rather than clipped. ProseMirror fits what it
+ * can of a slice the schema will not hold, which silently drops everything
+ * after the first block; a researcher pasting two lines of a question meant
+ * both, so the lines are joined with spaces.
+ */
+const SingleLineInput = Extension.create({
+  name: 'singleLineInput',
+
+  addKeyboardShortcuts() {
+    return {
+      'Enter': swallowKeystroke,
+      'Shift-Enter': swallowKeystroke,
+      'Mod-Enter': swallowKeystroke,
+    };
+  },
+
+  addProseMirrorPlugins() {
+    const { schema } = this.editor;
+
+    return [
+      new Plugin({
+        key: new PluginKey('singleLineInput'),
+        props: {
+          // The last step of every paste, whichever flavour the clipboard
+          // offered: plain text is parsed into paragraphs first, so
+          // transforming the text as well would only do this twice.
+          transformPasted: (slice: Slice) => {
+            const nodes = inlineNodesOf(slice.content, schema);
+            return nodes.length === 0
+              ? Slice.empty
+              : new Slice(Fragment.fromArray(nodes), 0, 0);
+          },
+        },
+      }),
+    ];
+  },
+});
+
 type ExtensionOptions = {
   headingLevels: (1 | 2 | 3 | 4)[];
   enableBulletList: boolean;
   enableOrderedList: boolean;
   enableLinks: boolean;
   enableThematicBreak: boolean;
+  singleLine: boolean;
   placeholder?: string;
 };
 
@@ -189,6 +299,7 @@ function createCustomExtensions({
   enableOrderedList,
   enableLinks,
   enableThematicBreak,
+  singleLine,
   placeholder,
 }: ExtensionOptions): AnyExtension[] {
   const CustomParagraph = Paragraph.extend({
@@ -237,6 +348,9 @@ function createCustomExtensions({
   const extensions: AnyExtension[] = [
     StarterKit.configure({
       blockquote: false,
+      // Replaced below, so the schema's top node holds one paragraph rather
+      // than any run of blocks.
+      ...(singleLine ? { document: false as const } : {}),
       paragraph: false,
       heading: false,
       bulletList: false,
@@ -262,6 +376,10 @@ function createCustomExtensions({
     }),
     CustomParagraph,
   ];
+
+  if (singleLine) {
+    extensions.push(SingleLineDocument, SingleLineInput);
+  }
 
   if (headingLevels.length > 0) {
     extensions.push(
@@ -367,14 +485,24 @@ type RichTextEditorFieldProps = CreateFormFieldProps<
     'changeMode'?: ChangeMode;
     'autoFocus'?: boolean;
     'placeholder'?: string;
+    /**
+     * Holds the value to one line: the document is a single paragraph, Enter
+     * and Shift-Enter do nothing, and pasted lines arrive joined by spaces.
+     * The block controls go with it — a heading, a list or a rule cannot be
+     * made in this schema, so the toolbar does not offer one.
+     */
+    'singleLine'?: boolean;
     'id': string;
     'name': string;
     'aria-describedby': string;
   }
 >;
 
+const NO_HEADINGS = { h1: false, h2: false, h3: false, h4: false };
+const NO_LISTS = { bullet: false, ordered: false };
+
 // Helper to normalize toolbar options into a flat structure
-function normalizeToolbarOptions(options?: ToolbarOptions) {
+function normalizeToolbarOptions(options?: ToolbarOptions, singleLine = false) {
   const merged = { ...defaultToolbarOptions, ...options };
 
   const headings =
@@ -395,10 +523,12 @@ function normalizeToolbarOptions(options?: ToolbarOptions) {
   return {
     bold: merged.bold ?? true,
     italic: merged.italic ?? true,
-    headings,
-    lists,
+    // A single-line document has no room for a block. The schema refuses one,
+    // so a heading or list button there is a control that does nothing.
+    headings: singleLine ? NO_HEADINGS : headings,
+    lists: singleLine ? NO_LISTS : lists,
     links: merged.links ?? false,
-    thematicBreak: merged.thematicBreak ?? false,
+    thematicBreak: singleLine ? false : (merged.thematicBreak ?? false),
     history: merged.history ?? true,
   };
 }
@@ -414,6 +544,7 @@ export default function RichTextEditorField({
   changeMode = 'blur',
   autoFocus = false,
   placeholder,
+  singleLine = false,
   className,
   onFocus,
   onBlur,
@@ -429,7 +560,7 @@ export default function RichTextEditorField({
   const [isEditingExistingLink, setIsEditingExistingLink] = useState(false);
   const [isLinkPopoverOpen, setIsLinkPopoverOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
-  const options = normalizeToolbarOptions(toolbarOptions);
+  const options = normalizeToolbarOptions(toolbarOptions, singleLine);
   const editorId = id ?? name ?? 'rich-text-editor';
   const editorName = name ?? editorId;
   const linkInputId = `${editorId}-link-url`;
@@ -451,7 +582,9 @@ export default function RichTextEditorField({
   const editorAttributes = useMemo<Record<string, string>>(() => {
     const attributes: Record<string, string> = {
       'role': 'textbox',
-      'aria-multiline': 'true',
+      // Enter does not open a line in a single-line document, and a screen
+      // reader tells its user which of the two this box is before they try.
+      'aria-multiline': singleLine ? 'false' : 'true',
       'name': editorName,
       'id': editorId,
     };
@@ -500,6 +633,7 @@ export default function RichTextEditorField({
     inputState,
     placeholder,
     readOnly,
+    singleLine,
   ]);
 
   // Compute which heading levels are enabled
@@ -528,6 +662,7 @@ export default function RichTextEditorField({
         enableOrderedList: options.lists.ordered,
         enableLinks: options.links,
         enableThematicBreak: options.thematicBreak,
+        singleLine,
         placeholder,
       }),
     [
@@ -536,6 +671,7 @@ export default function RichTextEditorField({
       options.lists.ordered,
       options.links,
       options.thematicBreak,
+      singleLine,
       placeholder,
     ],
   );

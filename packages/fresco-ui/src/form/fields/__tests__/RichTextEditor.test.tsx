@@ -1,5 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { JSONContent } from '@tiptap/react';
+import type { ComponentProps } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import Field from '../../Field/Field';
@@ -328,5 +330,177 @@ describe('RichTextEditorField', () => {
     for (const group of groups) {
       expect(group.querySelector('[role="group"]')).toBeNull();
     }
+  });
+});
+
+/**
+ * `singleLine` is a promise about the VALUE — one line of text — so it is kept
+ * in the schema rather than by whatever serialises the document afterwards. A
+ * serialiser handed two paragraphs has to invent a join for them, and the join
+ * shows up in what the researcher saved: Architect's markdown adapter turned a
+ * label whose first paragraph had just been emptied into " Never met".
+ */
+const TWO_PARAGRAPHS = {
+  'text/html': '<p>Never <strong>met</strong></p><p>in person</p>',
+};
+
+/**
+ * A clipboard payload the editor's paste handler can read. jsdom implements no
+ * `DataTransfer`, and the handler only ever asks one for the flavours it was
+ * given.
+ */
+const clipboardOf = (data: Readonly<Record<string, string>>) =>
+  ({
+    getData: (type: string) => data[type] ?? '',
+    types: Object.keys(data),
+    files: [],
+    items: [],
+  }) as unknown as DataTransfer;
+
+describe('a single-line RichTextEditorField', () => {
+  const renderSingleLine = (
+    props?: Pick<ComponentProps<typeof RichTextEditorField>, 'toolbarOptions'>,
+  ) => {
+    const user = userEvent.setup();
+
+    render(
+      <RichTextEditorField
+        id="label"
+        name="label"
+        aria-describedby="label-hint"
+        aria-label="Answer"
+        singleLine
+        changeMode="input"
+        value={emptyDocument}
+        onChange={() => undefined}
+        {...props}
+      />,
+    );
+
+    return {
+      user,
+      editor: () => screen.findByRole('textbox', { name: 'Answer' }),
+    };
+  };
+
+  it('says it is not a multi-line box', async () => {
+    const field = renderSingleLine();
+
+    expect(await field.editor()).toHaveAttribute('aria-multiline', 'false');
+  });
+
+  it('keeps the document to one paragraph when Enter is pressed', async () => {
+    const field = renderSingleLine();
+    const editor = await field.editor();
+
+    await field.user.click(editor);
+    await field.user.type(editor, 'Never met');
+    await field.user.keyboard('{Enter}');
+    await field.user.type(editor, ' in person');
+
+    // One paragraph and no hard break inside it. Both matter: the schema
+    // refuses the split, and pressing Enter against a schema that refuses it
+    // otherwise falls through to inserting a line break instead.
+    expect(editor.querySelectorAll('p')).toHaveLength(1);
+    expect(editor.querySelector('br:not(.ProseMirror-trailingBreak)')).toBe(
+      null,
+    );
+    expect(editor).toHaveTextContent('Never met in person');
+  });
+
+  it('collapses the newlines of pasted plain text', async () => {
+    const field = renderSingleLine();
+    const editor = await field.editor();
+
+    fireEvent.focus(editor);
+    fireEvent.paste(editor, {
+      clipboardData: clipboardOf({ 'text/plain': 'Never met\nin person' }),
+    });
+
+    expect(editor.querySelectorAll('p')).toHaveLength(1);
+    expect(editor).toHaveTextContent('Never met in person');
+  });
+
+  it('joins the paragraphs of a pasted passage with spaces', async () => {
+    const field = renderSingleLine();
+    const editor = await field.editor();
+
+    fireEvent.focus(editor);
+    fireEvent.paste(editor, { clipboardData: clipboardOf(TWO_PARAGRAPHS) });
+
+    // Joined rather than clipped: fitting a slice the schema will not hold
+    // drops everything after the first block, and a researcher pasting two
+    // lines of a question meant both. The line loses its breaks, not its
+    // formatting.
+    expect(editor.querySelectorAll('p')).toHaveLength(1);
+    expect(editor).toHaveTextContent('Never met in person');
+    expect(editor.querySelector('strong')).toHaveTextContent('met');
+  });
+
+  it('offers no control that would need a block it cannot hold', async () => {
+    // Asked for explicitly, and still withheld: a heading, a list or a rule
+    // cannot exist in this document, so the button would do nothing.
+    const field = renderSingleLine({
+      toolbarOptions: { headings: true, lists: true, thematicBreak: true },
+    });
+    await field.editor();
+
+    expect(
+      screen.queryByRole('button', { name: 'Heading 1' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Bullet list' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Thematic break' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Bold' })).toBeInTheDocument();
+  });
+});
+
+/** The restriction belongs to the single-line field, and to nothing else. */
+describe('a multi-line RichTextEditorField', () => {
+  it('keeps the paragraphs of a pasted passage apart', async () => {
+    render(
+      <RichTextEditorField
+        id="bio"
+        name="bio"
+        aria-describedby="bio-hint"
+        aria-label="Biography"
+        changeMode="input"
+        value={emptyDocument}
+        onChange={() => undefined}
+      />,
+    );
+
+    const editor = await screen.findByRole('textbox', { name: 'Biography' });
+    fireEvent.focus(editor);
+    fireEvent.paste(editor, { clipboardData: clipboardOf(TWO_PARAGRAPHS) });
+
+    expect(editor.querySelectorAll('p')).toHaveLength(2);
+  });
+
+  it('starts a second paragraph when Enter is pressed', async () => {
+    const user = userEvent.setup();
+    render(
+      <RichTextEditorField
+        id="bio"
+        name="bio"
+        aria-describedby="bio-hint"
+        aria-label="Biography"
+        changeMode="input"
+        value={emptyDocument}
+        onChange={() => undefined}
+      />,
+    );
+
+    const editor = await screen.findByRole('textbox', { name: 'Biography' });
+    await user.click(editor);
+    await user.type(editor, 'Who do you trust?');
+    await user.keyboard('{Enter}');
+    await user.type(editor, 'Name up to five people.');
+
+    expect(editor).toHaveAttribute('aria-multiline', 'true');
+    expect(editor.querySelectorAll('p')).toHaveLength(2);
   });
 });
