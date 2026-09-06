@@ -494,8 +494,14 @@ const isContentEditable = (element: Element): boolean => {
 /**
  * Whether a test has already selected something inside `element`.
  *
- * A RANGE, not a caret: a click collapses a range and loses it, and leaves a
- * caret where it found it (measured — see `withSafeTypingIntoRichText`).
+ * A RANGE, not a caret. Both are measured, and they are not the same case: a
+ * click over a range collapses it to the END of the text, which is why a test
+ * that selected one has to be typed into without a click of the harness's own;
+ * a click anywhere else puts a collapsed caret at the START of the text,
+ * whatever was there before. So a range is the only selection a test can
+ * express that survives being typed into, and a caret is not a position this
+ * harness can honour at all — see `withSafeTypingIntoRichText`.
+ *
  * ProseMirror's own select-all puts both ends on the editable element itself
  * rather than in the text, so the ends are tested with `contains`, which
  * counts the element as containing itself.
@@ -547,6 +553,22 @@ const hasSelectedRangeInside = (element: Element): boolean => {
  * the DOM selection too, but ProseMirror never sees it before the keystrokes
  * and replaces the selection it still holds — which is what a researcher
  * typing over selected text gets.
+ *
+ * What the click does NOT do is leave a caret where a test put one. Measured:
+ * a click into a field holding text puts a collapsed caret at offset 0 of the
+ * first text node — from a caret at 0, at 4, at the end, and from no selection
+ * at all — so every `type` into a populated rich text field inserts at the
+ * START of the answer. `skipClick` is no way round it either: without a turn of
+ * the event loop ProseMirror never learns of the test's selection and puts its
+ * own back, so nothing is typed anywhere. A test that wants a position has to
+ * select a RANGE, which means in practice selecting the answer and typing it
+ * out whole.
+ *
+ * Only `type` is wrapped, because only `type` clicks. `clear` selects and
+ * deletes, and `paste` and `keyboard` write at the selection they are given —
+ * and each is a top-level call, so ProseMirror gets its turn between them
+ * anyway. Measured: `clear` then `paste`, and a select-all then `paste`, both
+ * save the whole text.
  *
  * Nothing about the CONTROL is at fault either way — a researcher cannot put a
  * caret between blocks, and a browser's own click never does — so this is the

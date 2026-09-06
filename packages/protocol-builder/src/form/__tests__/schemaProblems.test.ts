@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
+import { getValue } from '@codaco/fresco-ui/form/utils/objectPath';
+import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
+import { CurrentProtocolSchema } from '@codaco/protocol-validation';
+import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
+
 import {
   resourceProblemClause,
   schemaProblemSentence,
@@ -82,10 +87,89 @@ describe('the words a schema refusal is put in', () => {
    */
   it('says a missing value is missing, whatever the code', () => {
     for (const code of EVERY_CODE) {
+      // `custom` is not a validator reaching for a code — see below.
+      if (code === 'custom') continue;
       expect(
         schemaProblemSentence({ code, message: RAW, absent: true }, FIELD),
       ).toBe('Node type has no value, and this stage needs one.');
     }
+  });
+
+  /**
+   * And the exception, which is what the rule above is for.
+   *
+   * Several of the schema's cross-reference rules report AT a key that is not
+   * there, because the absence is the fault: an ego rule with no attribute is
+   * refused at `[…, 'options', 'attribute']`. The message explains that; "has
+   * no value" replaces it with a claim about an empty control, which the rule
+   * set the researcher is looking at plainly is not.
+   */
+  it('keeps those words even where the value they are about is missing', () => {
+    expect(
+      schemaProblemSentence(
+        {
+          code: 'custom',
+          message:
+            'An ego rule must reference an attribute; a type-level ego rule (no attribute) is not valid.',
+          absent: true,
+        },
+        'Rules',
+      ),
+    ).toBe(
+      'An ego rule must reference an attribute; a type-level ego rule (no attribute) is not valid.',
+    );
+  });
+});
+
+/**
+ * The evidence that the exception above is a real case rather than a shape the
+ * types happen to allow: the protocol schema is asked to judge a stage the rule
+ * refuses, and its issue is read exactly as the editor reads one.
+ */
+describe('a cross-reference rule reported where nothing is', () => {
+  it('is what the schema does with a type-level ego rule', async () => {
+    const protocol = structuredClone(allInterfaces) as Record<string, unknown>;
+    const stages = protocol.stages as Record<string, unknown>[];
+    const stageIndex = stages.findIndex(
+      (stage) => stage.id === 'name-generator-roster-1',
+    );
+    const stage = stages[stageIndex] as Record<string, unknown>;
+    stage.skipLogic = {
+      action: 'SKIP',
+      filter: {
+        join: 'OR',
+        rules: [
+          // No `attribute`, which is the fault the rule reports.
+          { id: 'probe-rule-1', type: 'ego', options: { operator: 'EXISTS' } },
+        ],
+      },
+    };
+    const { id: _id, type: _type, ...stageFields } = stage;
+
+    const result = await CurrentProtocolSchema.safeParseAsync(protocol);
+    expect(result.success).toBe(false);
+    const issue = (result.error?.issues ?? []).find(
+      (candidate) =>
+        candidate.path[0] === 'stages' &&
+        candidate.path[1] === stageIndex &&
+        candidate.path.includes('skipLogic'),
+    );
+    if (issue === undefined) throw new Error('the schema refused nothing');
+
+    // What `stageIssuesOf` computes for one of these, read the same way.
+    const inside = issue.path.slice(2) as (string | number)[];
+    const absent = isUnanswered(getValue(stageFields, inside));
+    expect(issue.code).toBe('custom');
+    expect(absent).toBe(true);
+
+    // So the researcher is told what the rule says, and not that a rule set
+    // holding a rule is empty.
+    expect(
+      schemaProblemSentence(
+        { code: issue.code, message: issue.message, absent },
+        'Rules',
+      ),
+    ).toBe(issue.message);
   });
 });
 

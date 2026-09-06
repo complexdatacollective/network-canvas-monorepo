@@ -309,8 +309,23 @@ export class SectionOutlineStore {
    * collaborator unsets a key, otherwise meets the validator's own account of
    * a missing string, once per key, in a list beside a section title.
    *
+   * That stands only where the issue is AT the field's own path. A required
+   * control saying "this needs a value" answers for its own emptiness and for
+   * nothing inside it: a rule set holding a rule is not empty, whatever is
+   * missing from the rule, and dropping an issue raised deep inside it would
+   * leave the researcher with a stage the save refuses and an outline that
+   * mentions nothing at all.
+   *
    * A missing value NO required field claims stays a problem, because nothing
    * else on the page would say anything about it and the save is still refused.
+   *
+   * Repeats are dropped per claiming FIELD rather than per section, because
+   * that is what the repetition is: one compound control owning a sub-document
+   * claims every refusal inside it, and its one sentence said again is not more
+   * information. Two different controls that happen to be described by the same
+   * sentence — which a `custom` message, naming a thing rather than a control,
+   * easily is — are two problems, and a section reporting one of them would
+   * send the researcher to fix half of what is wrong.
    */
   private attributeIssues(
     ordered: readonly SectionRecord[],
@@ -327,6 +342,7 @@ export class SectionOutlineStore {
       ),
     );
 
+    const saidByField = new Set<string>();
     for (const issue of this.validationIssues) {
       let owner: (typeof registered)[number] | undefined;
       let depth = 0;
@@ -342,14 +358,26 @@ export class SectionOutlineStore {
         owner = field;
       }
       if (owner === undefined) continue;
-      if (issue.absent && owner.field.required) continue;
+      if (
+        issue.absent &&
+        owner.field.required &&
+        owner.path.length === issue.path.length
+      ) {
+        continue;
+      }
       const sentence = schemaProblemSentence(issue, owner.field.label);
+      // Serialised rather than joined: a section id or a field name may
+      // legally contain whatever separator a join would pick.
+      const said = JSON.stringify([
+        owner.sectionId,
+        owner.field.name,
+        sentence,
+      ]);
+      if (saidByField.has(said)) continue;
+      saidByField.add(said);
       const claimed = bySection.get(owner.sectionId);
       if (claimed === undefined) bySection.set(owner.sectionId, [sentence]);
-      // Said once however many issues arrived at it. A compound control owning
-      // a sub-document claims every refusal inside it, and one sentence about
-      // that control repeated is not more information.
-      else if (!claimed.includes(sentence)) claimed.push(sentence);
+      else claimed.push(sentence);
     }
     return bySection;
   }

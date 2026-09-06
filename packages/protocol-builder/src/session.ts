@@ -557,6 +557,19 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
    * cannot drop a batch it never received.
    */
   private withheldFromBatchId: number | undefined;
+  /**
+   * Whether a finish or a cancel is deciding the staged resources right now.
+   *
+   * Both of them empty the staged set as part of what they do — a finish
+   * promotes what the draft still names and discards the rest, a cancel
+   * discards everything — and neither is the researcher changing their mind
+   * about a file. The hold is theirs to settle: a finish moves it past what its
+   * apply carried, a cancel forgets the batches it covered. So
+   * {@link reconsiderWithheldCommands} stands aside while one is running, or it
+   * would hand a live host the very batches the finish is carrying, or the ones
+   * the cancel is about to throw away.
+   */
+  private settlingResources = false;
 
   constructor(options: ProtocolBuilderSessionOptions) {
     assertNoIdentityFields(options.fields);
@@ -577,7 +590,17 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
                 validation: pendingValidation(),
                 validatedProtocol: null,
               });
-              void this.runValidation();
+              try {
+                // The staged set is what the hold is a function of, so a
+                // discard has to be given the chance to release it. Before
+                // validation for the same reason `applyLocalCommands` sends
+                // before it validates: the host's own copy is part of what is
+                // being brought level, and a host that throws must not leave
+                // the session saying "validating" for ever.
+                this.reconsiderWithheldCommands();
+              } finally {
+                void this.runValidation();
+              }
             },
           });
     this.snapshot = this.makeSnapshot({
@@ -938,6 +961,13 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     // carried, which is what the host holds if it answers out of its promotion
     // cache instead of applying anything here.
     let promotedThroughBatchId = 0;
+    // This finish is what decides the staged set from here: it promotes what
+    // the draft still names and discards the rest, and both empty the set.
+    // Neither is the researcher changing their mind about a file, and the hold
+    // is settled by `releaseWithheldThrough` from what the apply actually
+    // carried — so the release that answers a shrinking staged set stands aside
+    // rather than sending the same batches a second time.
+    this.settlingResources = true;
     try {
       // Decided after the hold, because the hold is what fixes the staged set
       // this finish promotes: content read before it could still change.
@@ -971,6 +1001,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       // may discard is fenced by that promotion's own outcome, inside the
       // tracker, rather than by how long this finish holds the session.
       hold.data.settle();
+      this.settlingResources = false;
     }
 
     if (outcome.status === 'unreadable-resources') {
@@ -1141,9 +1172,19 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
         data: Object.freeze({ keptUnreconciled: Object.freeze([]) }),
       });
     }
-    const result = await resources.cancel();
-    if (result.status === 'ok') this.dropWithheldCommands();
-    return result;
+    // The cancel is what decides these resources, and the batches they hold
+    // back go with them — see `dropWithheldCommands`. Without this the discard
+    // below would empty the staged set first, and the release that answers a
+    // staged set shrinking would hand a live host the very batches this cancel
+    // exists to take away.
+    this.settlingResources = true;
+    try {
+      const result = await resources.cancel();
+      if (result.status === 'ok') this.dropWithheldCommands();
+      return result;
+    } finally {
+      this.settlingResources = false;
+    }
   }
 
   getResourceGateway(): SessionResourceGateway | undefined {
@@ -1669,19 +1710,83 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     if (this.withheldFromBatchId !== undefined) return true;
     const staged = this.resources?.staged() ?? NO_STAGED_RESOURCES;
     if (staged.length === 0) return false;
-    const stagedIds = new Set(staged.map((descriptor) => descriptor.id));
-    // The top-level key each command reaches into, which is the depth a
-    // resource reference is addressed at.
-    const touched = new Set(
-      batch.commands.map((command) => targetRoot(command.key)),
-    );
-    return collectStageResourceReferences(
+    return batchNamesAStagedResource(
+      batch,
       stageDocument(this.snapshot.editedSection.identity, fields),
-    ).some(
-      (reference) =>
-        touched.has(String(reference.path[0])) &&
-        stagedIds.has(reference.resourceId),
+      new Set(staged.map((descriptor) => descriptor.id)),
     );
+  }
+
+  /**
+   * Re-decides the hold against the staged set as it is NOW.
+   *
+   * The hold exists because a batch names bytes only a finish can commit. Once
+   * the researcher discards the file, that is no longer true of any batch: the
+   * resource is gone from the session, no finish will ever promote it, and
+   * going on holding everything back would leave a live-applying host with
+   * nothing for the rest of the session — and every compound edit refused with
+   * `pending-commands`, because a hold is what that refusal reads.
+   *
+   * So the withheld run is walked in the order it was made and each batch is
+   * asked the question it was first asked, against the current staged set. A
+   * batch that names none of what is still staged is given to the host; the
+   * first that does takes the hold, and everything behind it keeps waiting —
+   * the hold stays a suffix, so a host still only ever holds a prefix of this
+   * session's batches.
+   *
+   * The batch that chose the discarded file is released with the rest, still
+   * naming it. It is superseded rather than corrected: emptying the picker is a
+   * researcher change on the same path, so the reset that follows it writes the
+   * `unset` into the very next batch (`useDiscardStageValues`), and the host is
+   * given the researcher's own two edits in the order they made them. Rewriting
+   * a batch the researcher made is not this session's to do, and holding it for
+   * ever is the defect being fixed.
+   *
+   * The hold is moved before each send and cleared after it, so a host that
+   * throws leaves the session holding exactly what it did not receive.
+   */
+  private reconsiderWithheldCommands(): void {
+    const withheldFrom = this.withheldFromBatchId;
+    if (withheldFrom === undefined || this.settlingResources) return;
+    const stagedIds = new Set(
+      (this.resources?.staged() ?? NO_STAGED_RESOURCES).map(
+        (descriptor) => descriptor.id,
+      ),
+    );
+
+    const identity = this.snapshot.editedSection.identity;
+    let document = cloneDoc(this.baseFields);
+    const releasing: PendingCommandBatch[] = [];
+    let heldFrom: number | undefined;
+    for (const batch of this.snapshot.pendingCommands) {
+      try {
+        document = applyCommands(document, [...batch.commands]);
+      } catch {
+        // A batch that no longer applies to the base it was made on says
+        // nothing about what the ones after it name, so nothing more is
+        // released and the hold stays where it is.
+        return;
+      }
+      if (batch.id < withheldFrom) continue;
+      if (
+        batchNamesAStagedResource(
+          batch,
+          stageDocument(identity, document),
+          stagedIds,
+        )
+      ) {
+        heldFrom = batch.id;
+        break;
+      }
+      releasing.push(batch);
+    }
+    if (releasing.length === 0) return;
+
+    for (const batch of releasing) {
+      this.withheldFromBatchId = batch.id;
+      this.options.onCommands?.(batch);
+    }
+    this.withheldFromBatchId = heldFrom;
   }
 
   /**
@@ -1951,6 +2056,34 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
 }
 
 const NO_STAGED_RESOURCES: readonly ResourceDescriptor[] = Object.freeze([]);
+
+/**
+ * Whether this batch puts a resource from `stagedIds` into the stage.
+ *
+ * A batch is judged on what it TOUCHES against the document it produced: the
+ * references are read the way validation reads them — from the schema's own
+ * `assetReference` tags — and a reference counts only where a command of this
+ * batch reached the top-level key holding it, which is the depth a resource
+ * reference is addressed at.
+ *
+ * The same question the hold is taken and released by, so a batch cannot be
+ * held for one reason and let go for another.
+ */
+function batchNamesAStagedResource(
+  batch: PendingCommandBatch,
+  document: SectionDoc,
+  stagedIds: ReadonlySet<string>,
+): boolean {
+  if (stagedIds.size === 0) return false;
+  const touched = new Set(
+    batch.commands.map((command) => targetRoot(command.key)),
+  );
+  return collectStageResourceReferences(document).some(
+    (reference) =>
+      touched.has(String(reference.path[0])) &&
+      stagedIds.has(reference.resourceId),
+  );
+}
 
 type ManifestRevisionOrder = 'older' | 'same' | 'newer' | 'conflicting';
 

@@ -10,10 +10,9 @@ import MultiSelect, { type MultiSelectProps } from './MultiSelect.tsx';
  * schema has one way of saying it. An empty array is not that way: it
  * round-trips as a configured-but-empty list, so the section reopens standing
  * over a list with no rows in it, and an export reader is left to guess what a
- * list of nothing was supposed to mean. `MISSING_COLUMN_MESSAGE` and
- * `MISSING_SORT_PROPERTY_MESSAGE` both offer deleting the row as one of the two
- * ways out of a dangling reference, so that route has to end somewhere the
- * schema recognises.
+ * list of nothing was supposed to mean. `MISSING_SORT_PROPERTY_MESSAGE` offers
+ * deleting the rule as one of the two ways out of a dangling reference, so that
+ * route has to end somewhere the schema recognises.
  *
  * Held here rather than in `MultiSelect`, which is the general always-editing
  * list and has no opinion about what an empty one means — a list of a prompt's
