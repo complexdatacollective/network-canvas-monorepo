@@ -140,13 +140,25 @@ const sortRuleControls = (group: string): readonly Control[] => [
   { role: 'combobox', name: 'Direction', within: group },
 ];
 
+/**
+ * Replaces a rich text field's contents the way a researcher does: into the
+ * field, select what is there, type over it.
+ *
+ * Not `clear` then `type`. `clear` empties the editor by deleting a selection
+ * it made itself, and the caret it leaves behind is outside the empty
+ * paragraph, so the first character typed lands in a paragraph of its own —
+ * the field then holds two paragraphs and saves as a leading space plus the
+ * text. Selecting through the editor's own select-all keeps the caret the
+ * editor's to place, which is what a keyboard does.
+ */
 const retype = async (
   harness: StageEditorHarness,
   label: string,
   text: string,
 ) => {
   const field = screen.getByRole('textbox', { name: label });
-  await harness.user.clear(field);
+  await harness.user.click(field);
+  await harness.user.keyboard('{Control>}a{/Control}');
   await harness.user.type(field, text);
 };
 
