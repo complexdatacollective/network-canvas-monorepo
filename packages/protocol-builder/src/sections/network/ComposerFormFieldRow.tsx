@@ -8,6 +8,7 @@ import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 
 import { VariablePickerControl } from '../../fields/VariablePicker.tsx';
+import AttributeCodebookControls from '../AttributeCodebookControls.tsx';
 import type { RowEditorProps, RowPreviewProps } from '../rowRenderers.tsx';
 import { useSubjectVariables, useVariableOptions } from './codebookOptions.ts';
 import {
@@ -52,12 +53,21 @@ const codebookControl = (variable: unknown): unknown =>
  * The control lives on the STAGE rather than on the codebook attribute, which
  * is the whole point of it: one attribute can be asked for with a slider here
  * and a number box somewhere else. What the attribute means, and how its
- * answers are validated, still belong to the codebook.
+ * answers are validated, still belong to the codebook — and are reached from
+ * here through the shared `AttributeCodebookControls`, because a researcher
+ * who has just bound a field to a list of answers is already looking at the
+ * place to author the list.
  *
- * Everything else a saved field may carry — an input control's own parameters,
- * and whether its validation rules are spelled out to the participant — is
- * carried through untouched: those are the shared form-fields family's
- * business, and this editor is composer-shaped until that editor lands.
+ * The one affordance that surface offers and this row does NOT take is the
+ * settings the chosen control accepts. Everywhere else those belong to the
+ * codebook attribute, keyed to the `component` the codebook records for it;
+ * here `component` and `parameters` are the composer FIELD's
+ * (`ComposerFormFieldSchema`), so a date attribute may be a plain picker on
+ * one form and a relative one on another. Written to the codebook they would
+ * be authored against a control the codebook does not have, and the variable
+ * schemas — split on `component` — refuse that pairing outright. So this row
+ * carries its `parameters` through untouched, and the surface that authors
+ * them stage-side is still to be written.
  */
 export function ComposerFormFieldEditor({ item }: RowEditorProps) {
   const subject = useComposerFormSubject();
@@ -125,6 +135,16 @@ export function ComposerFormFieldEditor({ item }: RowEditorProps) {
         options={controls}
         disabled={controls.length === 0}
         required="Choose how the participant answers this field."
+      />
+      {/* No `inventingType`: this row's picker offers only attributes that
+          already exist, so there is never one being created here to author the
+          values of. `offerParameters` is off because this field keeps its own
+          control and its own settings on the stage — see above. */}
+      <AttributeCodebookControls
+        subject={subject}
+        committedVariable={item.variable}
+        componentField={COMPONENT_FIELD}
+        offerParameters={false}
       />
       <Field
         name={LABEL_FIELD}

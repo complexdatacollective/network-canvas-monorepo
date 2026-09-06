@@ -2,9 +2,13 @@ import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
+import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
-import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import {
+  renderStageEditor,
+  type StageEditorHarness,
+} from '../../../testing/renderStageEditor.tsx';
 import BackgroundSection from '../BackgroundSection.tsx';
 import ComposerEdgeConfigurationSection from '../ComposerEdgeConfigurationSection.tsx';
 import ComposerNodeConfigurationSection from '../ComposerNodeConfigurationSection.tsx';
@@ -396,5 +400,154 @@ describe('what a network composer lets the participant build', () => {
 
     expect(harness.pendingCommands()).toEqual([]);
     expect(harness.session.getSnapshot().stagedResources).toEqual([]);
+  });
+});
+
+const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: 'person' });
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/** The attributes the host currently files under the composer's node type. */
+const personVariables = (
+  harness: StageEditorHarness,
+): Record<string, unknown> => {
+  const definition =
+    harness.host.getSnapshot().protocolSections[PERSON_SECTION];
+  const variables = isRecord(definition) ? definition.variables : undefined;
+  return isRecord(variables) ? variables : {};
+};
+
+/**
+ * One more attribute on the type this composer builds, put there from outside
+ * the editor.
+ *
+ * The whole section is replaced rather than the one key, because an entity
+ * definition is parsed WHOLE: a document carrying only `variables` is a person
+ * type with no name, which the protocol context drops altogether — and the
+ * picker then offers nothing at all, which would satisfy an "is not offered"
+ * claim for entirely the wrong reason.
+ */
+const addPersonVariable = (
+  harness: StageEditorHarness,
+  variableId: string,
+  variable: Readonly<Record<string, unknown>>,
+): void => {
+  const section =
+    harness.session.getSnapshot().protocolSections[PERSON_SECTION];
+  if (section === undefined) throw new Error('the fixture has no person type');
+  const variables = isRecord(section.variables) ? section.variables : {};
+  if (Object.hasOwn(variables, variableId)) {
+    throw new Error(
+      `"person" already has a "${variableId}" attribute, so adding one proves nothing.`,
+    );
+  }
+  harness.receiveCodebookUpdate({
+    node: {
+      person: {
+        ...section,
+        variables: { ...variables, [variableId]: variable },
+      },
+    },
+  });
+};
+
+/**
+ * What a composer field's ATTRIBUTE holds, reached from the field that records
+ * it.
+ *
+ * The same surface every other form field offers, because the question is the
+ * same one: a researcher who has just bound a field to a list of answers is
+ * already looking at the place to author the list. Which is exactly what
+ * Architect's own composer editor offers ("Choice values"), and what this
+ * editor had no answer to at all.
+ *
+ * What it does NOT offer is the settings the chosen control takes. Everywhere
+ * else those belong to the codebook attribute, keyed to the `component` the
+ * codebook records; a composer field carries its own `component` and its own
+ * `parameters` on the STAGE, so the same attribute may be a plain date picker
+ * here and a relative one on the next form. Written to the codebook they would
+ * be authored against a control the codebook does not have.
+ */
+describe('what a composer field’s attribute holds', () => {
+  it('authors the values an attribute offers, from the field that records it', async () => {
+    const harness = renderStageEditor(openWithConfiguredForms());
+
+    // The second node field records `contactFreq`, which IS a list of answers.
+    await harness.user.click(
+      (
+        await screen.findAllByRole('button', {
+          name: 'Edit node attribute field',
+        })
+      )[1]!,
+    );
+    const field = within(await screen.findByRole('dialog'));
+    await harness.user.click(
+      await field.findByRole('button', {
+        name: 'Change this attribute’s values',
+      }),
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Add option' }),
+    );
+    await harness.user.type(
+      screen.getByRole('textbox', { name: 'Option 4 label' }),
+      'Never',
+    );
+    await harness.user.type(
+      screen.getByRole('textbox', { name: 'Option 4 value' }),
+      'never',
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save attribute' }),
+    );
+
+    // On the codebook attribute, which is where a list of answers lives — the
+    // field records the answer, it does not own what may be answered.
+    await waitFor(() => {
+      const contactFreq = personVariables(harness).contactFreq;
+      expect(isRecord(contactFreq) ? contactFreq.options : undefined).toEqual([
+        { label: 'Weekly', value: 3 },
+        { label: 'Monthly', value: 2 },
+        { label: 'Rarely', value: 1 },
+        { label: 'Never', value: 'never' },
+      ]);
+    });
+  });
+
+  it('leaves what the control accepts to the field, and says so by offering nothing', async () => {
+    const harness = renderStageEditor(openEditor());
+    // A kind of attribute whose control DOES take settings, which the fixture
+    // person type has none of — so without this the claim below would hold for
+    // the boring reason that no control here takes any.
+    addPersonVariable(harness, 'met_on', { name: 'met_on', type: 'datetime' });
+
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Node attributes' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', {
+        name: 'Create new node attribute field',
+      }),
+    );
+    const field = within(await screen.findByRole('dialog'));
+    await harness.user.selectOptions(
+      field.getByRole('combobox', { name: 'Attribute' }),
+      'met_on',
+    );
+    await harness.user.selectOptions(
+      field.getByRole('combobox', { name: 'Input control' }),
+      'DatePicker',
+    );
+
+    // The rules an answer must satisfy are the codebook's here as anywhere.
+    expect(
+      await field.findByRole('button', { name: 'Set rules for this answer' }),
+    ).toBeInTheDocument();
+    // The settings that control takes are not: they are this field's, and this
+    // editor has yet to grow the surface that authors them stage-side.
+    expect(
+      field.queryByRole('button', { name: 'Set what this field accepts' }),
+    ).not.toBeInTheDocument();
   });
 });
