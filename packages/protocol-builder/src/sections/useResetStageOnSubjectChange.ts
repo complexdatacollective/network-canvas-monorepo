@@ -1,12 +1,12 @@
-import { get, isEqual } from 'es-toolkit/compat';
-import { useEffect, useRef } from 'react';
+import { get } from 'es-toolkit/compat';
 
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import type { Command } from '@codaco/studio-sync/apply';
 
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
-import { useClearStageValue, useStageValue } from '../form/stageFormHooks.ts';
+import { useClearStageValue } from '../form/stageFormHooks.ts';
 import { getInterfaceTemplate } from '../interfaces/templates.ts';
+import { useOnResearcherChange } from './researcherChange.ts';
 import { subjectDependentResets } from './subjectReset.ts';
 
 /**
@@ -43,23 +43,11 @@ function asFieldValue(value: unknown): FieldValue {
  * Throws away everything that described the previous subject when the stage's
  * subject changes.
  *
- * An observer effect rather than an `onChange` handler, because a caller's
- * `onChange` on a Fresco field REPLACES the store's own write rather than
- * running beside it — a side effect has to watch the value instead.
- *
  * The hard part is telling the researcher picking a different type apart from
  * the draft being replaced beneath the form, which also moves the subject: an
  * undo, a redo, a collaborator's change, or the atomic edit that creates a
- * type and selects it. Those arrive carrying the configuration that belongs to
- * the subject they bring with them, and resetting there would wipe the half of
- * the change the researcher was reaching for.
- *
- * They are told apart by watching the AGREED draft as well as the form. When
- * the agreed subject moves, the form's controls are about to be re-seeded with
- * it, and the form's own subject arriving at that value is that re-seed rather
- * than a choice. Deliberately not "did both move in the same render": the
- * re-seed happens in the shell's effect, which runs after this one, so the two
- * are a render apart and in an order neither section controls.
+ * type and selects it. That is `useOnResearcherChange`, which is the one place
+ * the distinction is made and the one place it can drift from.
  *
  * The reset reaches the SESSION as well as the form, as one batch. Ordinary
  * typing waits for the submit that flushes it, but a bound list does not: it
@@ -79,43 +67,9 @@ function asFieldValue(value: unknown): FieldValue {
 export function useResetStageOnSubjectChange(): void {
   const { storeApi, committedFields, identity, applyOwnCommands } =
     useStageEditorForm();
-  const subject = useStageValue('subject');
   const clearStageValue = useClearStageValue();
 
-  const seenSubject = useRef(subject);
-  const seenCommittedSubject = useRef(committedFields.subject);
-  /**
-   * The subject the form is expected to be re-seeded with, once the agreed
-   * draft has moved to one the controls have not caught up with.
-   *
-   * Cleared by whichever subject change arrives next, including a change to
-   * something else entirely — a foreign arrival landing in the middle of a
-   * researcher's own pick is genuinely ambiguous, and a stage reset to its
-   * template is the recoverable side of it.
-   */
-  const awaitingReseedTo = useRef<{ value: unknown } | null>(null);
-
-  useEffect(() => {
-    const previousSubject = seenSubject.current;
-    seenSubject.current = subject;
-    const previousCommittedSubject = seenCommittedSubject.current;
-    const committedSubject = committedFields.subject;
-    seenCommittedSubject.current = committedSubject;
-
-    if (!isEqual(previousCommittedSubject, committedSubject)) {
-      awaitingReseedTo.current = { value: committedSubject };
-    }
-
-    // The first subject a stage is given has nothing to reset: there was no
-    // previous type for its configuration to belong to.
-    if (previousSubject === undefined || isEqual(previousSubject, subject)) {
-      return;
-    }
-
-    const expected = awaitingReseedTo.current;
-    awaitingReseedTo.current = null;
-    if (expected !== null && isEqual(expected.value, subject)) return;
-
+  useOnResearcherChange('subject', (subject) => {
     const template = getInterfaceTemplate(identity.type);
     const resets = subjectDependentResets(
       [
@@ -172,12 +126,5 @@ export function useResetStageOnSubjectChange(): void {
           .setFieldValue(name, asFieldValue(get(template, name)));
       }
     }
-  }, [
-    applyOwnCommands,
-    clearStageValue,
-    committedFields,
-    identity.type,
-    storeApi,
-    subject,
-  ]);
+  });
 }
