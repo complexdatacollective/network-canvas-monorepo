@@ -1,5 +1,5 @@
 import { createAppIntl, defineMessages } from '@codaco/app-i18n/messages';
-import type { IntlShape } from '@codaco/app-i18n/messages';
+import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import {
   type Codebook,
   type ColorReference,
@@ -500,7 +500,7 @@ export const isOperandValidForAttributeType = (
  */
 export type OperandOptionProblem =
   | Readonly<{ kind: 'unknownOption'; value: string | number }>
-  | Readonly<{ kind: 'unusableValue'; describedAs: string }>;
+  | Readonly<{ kind: 'unusableValue'; describedAs: MessageDescriptor }>;
 
 /**
  * What a value that cannot be an option is, in words a researcher can read.
@@ -541,20 +541,21 @@ const unusableValueMessages = defineMessages({
   },
 });
 
-const describeUnusableValue = (value: unknown, intl: IntlShape): string => {
-  if (value === null || value === undefined) {
-    return intl.formatMessage(unusableValueMessages.empty);
-  }
-  if (Array.isArray(value)) {
-    return intl.formatMessage(unusableValueMessages.list);
-  }
-  if (typeof value === 'boolean') {
-    return intl.formatMessage(unusableValueMessages.boolean);
-  }
-  if (typeof value === 'object') {
-    return intl.formatMessage(unusableValueMessages.object);
-  }
-  return intl.formatMessage(unusableValueMessages.other);
+/**
+ * The DESCRIPTOR rather than a formatted phrase, because the two callers need
+ * it at different moments. `describeRule` formats it straight away with the
+ * formatter it was handed; the editor's refusal encodes it as a reference
+ * inside a message error that `FieldErrors` resolves when it renders. Handing
+ * back a string would force this module to pick a language before either
+ * caller knows which one is wanted, and the one that reads the refusal would
+ * be stuck with an English phrase inside a Spanish sentence.
+ */
+const describeUnusableValue = (value: unknown): MessageDescriptor => {
+  if (value === null || value === undefined) return unusableValueMessages.empty;
+  if (Array.isArray(value)) return unusableValueMessages.list;
+  if (typeof value === 'boolean') return unusableValueMessages.boolean;
+  if (typeof value === 'object') return unusableValueMessages.object;
+  return unusableValueMessages.other;
 };
 
 /** Whether this operand is one the rule has simply not been given yet. */
@@ -595,7 +596,6 @@ export const operandOptionProblems = (
   variableId: string | undefined,
   operator: string,
   value: unknown,
-  intl: IntlShape = englishIntl,
 ): OperandOptionProblem[] => {
   const variableType = ruleVariableType(variables, variableId);
   if (!operandDrawsOnOptions(variableType, operator)) return [];
@@ -612,7 +612,7 @@ export const operandOptionProblems = (
       return [
         {
           kind: 'unusableValue',
-          describedAs: describeUnusableValue(item, intl),
+          describedAs: describeUnusableValue(item),
         },
       ];
     }

@@ -719,12 +719,21 @@ const describeStaleOption = (value: string | number): string =>
  * The offending values are carried as a LIST rather than joined here: how
  * several of them read together is `Intl.ListFormat`'s answer, and it differs
  * by language.
+ *
+ * Each unusable value's noun phrase goes in as a message REFERENCE, not as a
+ * phrase this function formatted. The list is interpolated into a sentence
+ * that `FieldErrors` resolves when it renders, so a phrase chosen here would
+ * be frozen in whatever language this ran in and read as English inside an
+ * otherwise Spanish refusal. Same reason the date resolution below is carried
+ * as a reference.
  */
 const staleOptionsMessage = (
   problems: readonly OperandOptionProblem[],
 ): string => {
   const unusable = problems.flatMap((problem) =>
-    problem.kind === 'unusableValue' ? [problem.describedAs] : [],
+    problem.kind === 'unusableValue'
+      ? [{ messageError: createMessageError(problem.describedAs) }]
+      : [],
   );
   if (unusable.length > 0) {
     return createMessageError(messages.staleUnusableOptions, {

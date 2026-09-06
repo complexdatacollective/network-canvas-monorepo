@@ -798,13 +798,7 @@ export function describeRule({
   // option that never existed.
   const optionProblems =
     attribute !== undefined && !attribute.missing && operatorId !== undefined
-      ? operandOptionProblems(
-          variables,
-          attributeId,
-          operatorId,
-          options.value,
-          intl,
-        )
+      ? operandOptionProblems(variables, attributeId, operatorId, options.value)
       : [];
   if (optionProblems.some((problem) => problem.kind === 'unknownOption')) {
     problems.push({
@@ -819,7 +813,7 @@ export function describeRule({
     problems.push({
       code: 'unusableOption',
       message: say(problemMessages.unusableOption, {
-        describedAs: unusable.describedAs,
+        describedAs: intl.formatMessage(unusable.describedAs),
       }),
     });
   }

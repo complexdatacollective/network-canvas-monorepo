@@ -1,5 +1,13 @@
 import { Pencil, Trash2 } from 'lucide-react';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -213,9 +221,20 @@ type RuleEditorSession = Readonly<{
   open: boolean;
 }>;
 
+/**
+ * The offered rule targets, reaching the editor without being closed over.
+ *
+ * Their labels are formatted copy, so the array is rebuilt whenever the active
+ * language changes. Binding it into the editor component below would make that
+ * a NEW component type, and React unmounts the old one — taking the open
+ * dialog's field store, and the rule the researcher was part-way through
+ * writing, with it. Read through a context, the labels still follow the
+ * language while the component that renders them keeps one identity.
+ */
+const RuleTypesContext = createContext<readonly RuleTypeOption[]>([]);
+
 type RuleListEditorProps = ArrayFieldEditorProps<RuleDraft> &
   Readonly<{
-    ruleTypes: readonly RuleTypeOption[];
     allowedTargets: readonly RuleTargetType[];
     duplicateIds: ReadonlySet<string>;
   }>;
@@ -226,10 +245,10 @@ function RuleListEditor({
   onSave,
   onCancel,
   getEditorTrigger,
-  ruleTypes,
   allowedTargets,
   duplicateIds,
 }: RuleListEditorProps) {
+  const ruleTypes = useContext(RuleTypesContext);
   const [session, setSession] = useState<RuleEditorSession | null>(null);
 
   // The list keeps one editor component mounted across sessions. Every newly
@@ -400,38 +419,42 @@ export default function RuleList({
     [allowedTargets, codebook, duplicateIds],
   );
 
+  // Deliberately not memoised on `ruleTypes`: see `RuleTypesContext`. Its
+  // labels change with the active language, and a new component type here
+  // would unmount the open editor and discard the researcher's unsaved rule.
   const editorComponent = useMemo(
     () =>
       function BoundRuleListEditor(props: ArrayFieldEditorProps<RuleDraft>) {
         return (
           <RuleListEditor
             {...props}
-            ruleTypes={ruleTypes}
             allowedTargets={allowedTargets}
             duplicateIds={duplicateIds}
           />
         );
       },
-    [allowedTargets, duplicateIds, ruleTypes],
+    [allowedTargets, duplicateIds],
   );
 
   const getId = useMemo(() => ruleRowId(duplicateIds), [duplicateIds]);
 
   return (
-    <ArrayField<RuleDraft>
-      value={[...rules]}
-      onChange={(nextRules) => onChange(nextRules ?? [])}
-      getId={getId}
-      itemTemplate={createEmptyRule}
-      itemComponent={itemComponent}
-      editorComponent={editorComponent}
-      addButtonLabel={addButtonLabel}
-      emptyStateMessage={intl.formatMessage(messages.emptyState)}
-      itemClasses="elevation-low"
-      sortable
-      disabled={disabled}
-      readOnly={readOnly}
-      aria-invalid={hasError}
-    />
+    <RuleTypesContext value={ruleTypes}>
+      <ArrayField<RuleDraft>
+        value={[...rules]}
+        onChange={(nextRules) => onChange(nextRules ?? [])}
+        getId={getId}
+        itemTemplate={createEmptyRule}
+        itemComponent={itemComponent}
+        editorComponent={editorComponent}
+        addButtonLabel={addButtonLabel}
+        emptyStateMessage={intl.formatMessage(messages.emptyState)}
+        itemClasses="elevation-low"
+        sortable
+        disabled={disabled}
+        readOnly={readOnly}
+        aria-invalid={hasError}
+      />
+    </RuleTypesContext>
   );
 }
