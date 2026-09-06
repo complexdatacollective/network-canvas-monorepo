@@ -605,7 +605,8 @@ export const operandNumberRange = (
 };
 
 /**
- * Whether any answer inside the range satisfies this comparison.
+ * Whether any answer inside the range satisfies this comparison, for one
+ * operator.
  *
  * Asked of the range rather than of a sample of answers, because the interview
  * compares a number against a number and the answer is anywhere in between:
@@ -613,36 +614,48 @@ export const operandNumberRange = (
  * operand, `less than` when it reaches below it, and equality when the operand
  * is inside it.
  *
- * Everything else answers `true`, and deliberately. The remaining operators
- * are satisfied by an answer that does NOT equal the operand, so an operand
- * outside the range makes them match every answer rather than none — `not` and
- * `does not have exactly` beside an impossible number are useless rules, not
- * unmatchable ones, and reporting them would tell a researcher a rule that
- * fires for every participant can never fire at all.
+ * `ALWAYS` is a decision, not a gap. Those operators are satisfied by an
+ * answer that does NOT equal the operand, or compare no number at all, so an
+ * operand outside the range makes them match every answer rather than none:
+ * `not` and `does not have exactly` beside an impossible number are useless
+ * rules, not unmatchable ones, and reporting them would tell a researcher a
+ * rule that fires for every participant can never fire at all.
+ *
+ * A total mapping over the schema's own operator set rather than a switch with
+ * a default, in the way `OPERATOR_LABELS` above is one: an operator added to
+ * `AllOperators` arrives here as a typecheck failure asking which of the two
+ * answers it gives, instead of falling into the catch-all and quietly never
+ * being reported.
  */
+type RangeComparison = (range: OperandNumberRange, value: number) => boolean;
+
+const ALWAYS: RangeComparison = () => true;
+
+const RANGE_COMPARISONS: Readonly<Record<FilterOperator, RangeComparison>> =
+  Object.freeze({
+    GREATER_THAN: (range, value) => range.max > value,
+    OPTIONS_GREATER_THAN: (range, value) => range.max > value,
+    GREATER_THAN_OR_EQUAL: (range, value) => range.max >= value,
+    LESS_THAN: (range, value) => range.min < value,
+    OPTIONS_LESS_THAN: (range, value) => range.min < value,
+    LESS_THAN_OR_EQUAL: (range, value) => range.min <= value,
+    EXACTLY: (range, value) => value >= range.min && value <= range.max,
+    OPTIONS_EQUALS: (range, value) => value >= range.min && value <= range.max,
+    NOT: ALWAYS,
+    OPTIONS_NOT_EQUALS: ALWAYS,
+    INCLUDES: ALWAYS,
+    EXCLUDES: ALWAYS,
+    CONTAINS: ALWAYS,
+    DOES_NOT_CONTAIN: ALWAYS,
+    EXISTS: ALWAYS,
+    NOT_EXISTS: ALWAYS,
+  });
+
 export const rangeSatisfiesComparison = (
   operator: FilterOperator,
   range: OperandNumberRange,
   value: number,
-): boolean => {
-  switch (operator) {
-    case 'GREATER_THAN':
-    case 'OPTIONS_GREATER_THAN':
-      return range.max > value;
-    case 'GREATER_THAN_OR_EQUAL':
-      return range.max >= value;
-    case 'LESS_THAN':
-    case 'OPTIONS_LESS_THAN':
-      return range.min < value;
-    case 'LESS_THAN_OR_EQUAL':
-      return range.min <= value;
-    case 'EXACTLY':
-    case 'OPTIONS_EQUALS':
-      return value >= range.min && value <= range.max;
-    default:
-      return true;
-  }
-};
+): boolean => RANGE_COMPARISONS[operator](range, value);
 
 /**
  * The operators the editor OFFERS for an attribute of each type.
