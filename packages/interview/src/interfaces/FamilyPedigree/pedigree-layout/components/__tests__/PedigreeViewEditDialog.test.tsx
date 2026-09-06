@@ -16,7 +16,7 @@
  * DialogProvider, then the pedigree store — and renders the real fields.
  */
 import { configureStore } from '@reduxjs/toolkit';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { MouseEventHandler, ReactNode } from 'react';
 import { Provider } from 'react-redux';
@@ -26,6 +26,7 @@ import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { NcNode } from '@codaco/shared-consts';
 
+import { InterviewI18nProvider } from '../../../../../i18n/InterviewI18nProvider';
 import { FamilyPedigreeContext } from '../../../FamilyPedigreeContext';
 import { createFamilyPedigreeStore, type VariableConfig } from '../../../store';
 
@@ -274,19 +275,25 @@ function renderPedigree() {
     'gamete',
   );
 
-  render(
+  const view = (locale: string) => (
     // The nesting under test: DialogProvider OUTSIDE the pedigree store, the
     // way Shell.tsx mounts them.
     <Provider store={reduxStore}>
-      <DialogProvider>
-        <FamilyPedigreeContext.Provider value={pedigreeStore}>
-          <PedigreeView />
-        </FamilyPedigreeContext.Provider>
-      </DialogProvider>
-    </Provider>,
+      <InterviewI18nProvider requestedLocale={locale}>
+        <DialogProvider>
+          <FamilyPedigreeContext.Provider value={pedigreeStore}>
+            <PedigreeView />
+          </FamilyPedigreeContext.Provider>
+        </DialogProvider>
+      </InterviewI18nProvider>
+    </Provider>
   );
+  const { rerender } = render(view('en'));
 
-  return { pedigreeStore };
+  return {
+    pedigreeStore,
+    changeLocale: (locale: string) => rerender(view(locale)),
+  };
 }
 
 async function openEditDialog(user: ReturnType<typeof userEvent.setup>) {
@@ -348,6 +355,57 @@ describe('PedigreeView — person editor dialog', () => {
 
     expect(await screen.findByRole('status')).toHaveTextContent(
       'Details updated for Edited Person.',
+    );
+  });
+
+  it('announces each successful edit once, in the current language, without replay on a locale change', async () => {
+    const user = userEvent.setup();
+    const { pedigreeStore, changeLocale } = renderPedigree();
+    const status = screen.getByRole('status');
+
+    await openEditDialog(user);
+    const nameField = await screen.findByRole('textbox', { name: 'Name' });
+    await user.clear(nameField);
+    await user.type(nameField, 'Ana');
+    await user.click(screen.getByTestId('dialog-submit'));
+
+    await waitFor(() => {
+      expect(status).toHaveTextContent('Details updated for Ana.');
+      expect(
+        pedigreeStore.getState().network.nodes.get('person')?.attributes.label,
+      ).toBe('Ana');
+    });
+    // The actual live-region hook clears after it has exposed the result. A
+    // locale-only render must not put a consumed success event back into it.
+    await waitFor(() => expect(status).toBeEmptyDOMElement(), {
+      timeout: 2000,
+    });
+    changeLocale('es');
+    expect(screen.getByRole('status')).toBe(status);
+    expect(status).toHaveAttribute('lang', 'es');
+    expect(status).toBeEmptyDOMElement();
+
+    // Saving the same person and name is a new successful submission, even
+    // though its payload is identical to the event that has been consumed.
+    await openEditDialog(user);
+    expect(await screen.findByRole('textbox', { name: 'Nombre' })).toHaveValue(
+      'Ana',
+    );
+    await user.click(screen.getByTestId('dialog-submit'));
+    await waitFor(() =>
+      expect(status).toHaveTextContent('Datos de Ana actualizados.'),
+    );
+    await waitFor(() => expect(status).toBeEmptyDOMElement(), {
+      timeout: 2000,
+    });
+
+    changeLocale('en-GB');
+    expect(status).toHaveAttribute('lang', 'en-GB');
+    expect(status).toBeEmptyDOMElement();
+    await openEditDialog(user);
+    await user.click(screen.getByTestId('dialog-submit'));
+    await waitFor(() =>
+      expect(status).toHaveTextContent('Details updated for Ana.'),
     );
   });
 });

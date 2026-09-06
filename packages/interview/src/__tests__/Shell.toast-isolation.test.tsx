@@ -377,7 +377,7 @@ describe('Shell toast ownership', () => {
     expect(
       screen.getAllByRole('region', { name: 'Interview notifications' }),
     ).toHaveLength(1);
-    act(() =>
+    await act(() =>
       fireEvent.click(
         screen.getByRole('button', { name: 'Close standalone notification' }),
       ),

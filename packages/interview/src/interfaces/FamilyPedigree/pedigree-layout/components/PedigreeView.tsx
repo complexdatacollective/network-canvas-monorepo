@@ -136,14 +136,17 @@ export default function PedigreeView({
     null,
   );
   useEffect(() => {
-    if (updatedPerson)
-      announce(
-        updatedPerson.name
-          ? intl.formatMessage(messages.detailsUpdatedFor, {
-              name: updatedPerson.name,
-            })
-          : intl.formatMessage(messages.detailsUpdated),
-      );
+    if (!updatedPerson) return;
+    // Consume this submission, not its name: another successful save of the
+    // same person still needs feedback, while a locale-only render does not.
+    setUpdatedPerson(null);
+    announce(
+      updatedPerson.name
+        ? intl.formatMessage(messages.detailsUpdatedFor, {
+            name: updatedPerson.name,
+          })
+        : intl.formatMessage(messages.detailsUpdated),
+    );
   }, [updatedPerson, intl, announce]);
 
   const { nodeWidth, nodeHeight, measurementContainer } = useNodeMeasurement({

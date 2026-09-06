@@ -5,6 +5,7 @@ import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { commonMessages } from '@codaco/app-i18n/common';
 import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
+import { useAccessibilityAnnouncements } from '@codaco/fresco-ui/dnd/useAccessibilityAnnouncements';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { NcEdge, NcNode, VariableValue } from '@codaco/shared-consts';
@@ -222,10 +223,7 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
   // relative was added or removed, or that the pedigree can now be finalized.
   // The count is included so consecutive additions re-announce (identical text
   // is not re-read by assistive technology).
-  const [buildAnnouncement, setBuildAnnouncement] = useState<{
-    kind: 'complete' | 'added' | 'removed';
-    count: number;
-  } | null>(null);
+  const { announce } = useAccessibilityAnnouncements();
   const prevNonEgoCountRef = useRef(nonEgoNodeCount);
   const prevChecklistCompleteRef = useRef(checklistComplete);
   useEffect(() => {
@@ -235,15 +233,21 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
       return;
     }
     if (checklistComplete && !prevChecklistCompleteRef.current) {
-      setBuildAnnouncement({ kind: 'complete', count: nonEgoNodeCount });
+      announce(intl.formatMessage(messages.buildComplete));
     } else if (nonEgoNodeCount > prevNonEgoCountRef.current) {
-      setBuildAnnouncement({ kind: 'added', count: nonEgoNodeCount });
+      announce(
+        intl.formatMessage(messages.memberAdded, { count: nonEgoNodeCount }),
+      );
     } else if (nonEgoNodeCount < prevNonEgoCountRef.current) {
-      setBuildAnnouncement({ kind: 'removed', count: nonEgoNodeCount });
+      announce(
+        intl.formatMessage(messages.memberRemoved, { count: nonEgoNodeCount }),
+      );
     }
+    // Consume each count/checklist transition. The live-region hook clears the
+    // spoken result; changing locale cannot translate and replay an old event.
     prevNonEgoCountRef.current = nonEgoNodeCount;
     prevChecklistCompleteRef.current = checklistComplete;
-  }, [buildingPhase, nonEgoNodeCount, checklistComplete]);
+  }, [buildingPhase, nonEgoNodeCount, checklistComplete, intl, announce]);
 
   const updateNominationVariable = (stepIndex: number) => {
     const prompt = allPrompts[stepIndex];
@@ -432,23 +436,6 @@ const FamilyPedigree = (props: StageProps<'FamilyPedigree'>) => {
   return (
     <>
       <div className="interface p-0">
-        {/* Visually-hidden live region announcing build-phase changes (adding or
-            removing a relative, and when the pedigree can be finalized) to
-            screen readers, which get no feedback from the context-menu wizards. */}
-        <div aria-live="polite" aria-atomic="true" className="sr-only">
-          {buildAnnouncement && (
-            <AppMessage
-              message={
-                buildAnnouncement.kind === 'complete'
-                  ? messages.buildComplete
-                  : buildAnnouncement.kind === 'added'
-                    ? messages.memberAdded
-                    : messages.memberRemoved
-              }
-              values={{ count: buildAnnouncement.count }}
-            />
-          )}
-        </div>
         <Prompts
           prompts={allPrompts}
           currentPromptId={allPrompts[currentStepIndex]?.id}
