@@ -101,8 +101,15 @@ const NO_FIELDS: readonly string[] = Object.freeze([]);
  *
  * The switch records a decision the researcher made, and nothing about the
  * form's own editing should disturb it — emptying the last field inside an
- * open capability is not switching it off. An authoritative arrival is the one
- * exception: a replacement, an undo, a rollback after a lost lease can take
+ * open capability is not switching it off. That is a rule about the SWITCH, and
+ * it is not in tension with what emptying a list SAVES. A researcher who has
+ * just deleted their last card detail is mid-decision: closing the section
+ * under them would take away the Add button they are reaching for, so the
+ * switch stays where they left it. The save is the other moment, and there an
+ * emptied list means exactly what the empty state on screen says — `OptionalList`
+ * reports it as absent, the key leaves the stage, and the switch reads off the
+ * next time the stage is opened, which is by then the truth about it. An
+ * authoritative arrival is the one exception: a replacement, an undo, a rollback after a lost lease can take
  * every value a capability owns away, or bring a whole capability in, and a
  * decision made about the draft that is gone no longer describes anything. The
  * section's own panel is already reset from the same signal (Fresco's
