@@ -182,6 +182,7 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     createRpcRouter(authCaps, {
       auth,
       deployment,
+      bootstrapToken: env.bootstrapToken,
       invitationDeliveryAvailable: Boolean(
         deps.invitationDeliveryAvailable && authCaps.magicLink,
       ),

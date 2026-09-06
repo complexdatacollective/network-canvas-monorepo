@@ -23,6 +23,26 @@ export const TeamInvitationIdSchema = z
   .max(255)
   .regex(/^[A-Za-z0-9_-]+$/);
 
+/** Canonical base64url encoding of 32 cryptographically random bytes. */
+export const BootstrapTokenSchema = z
+  .string()
+  .regex(/^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/);
+export const CompleteSetupInputSchema = z.strictObject({
+  token: BootstrapTokenSchema,
+  instanceName: z.string().min(1).max(120).regex(/\S/),
+  ownerName: z.string().min(1).max(120).regex(/\S/),
+  ownerEmail: z.email().max(254),
+  ownerPassword: z.string().min(12).max(128),
+});
+export type CompleteSetupInput = z.infer<typeof CompleteSetupInputSchema>;
+export const SetupStatusSchema = z.strictObject({
+  state: z.enum(['ready', 'complete', 'unavailable']),
+});
+export type SetupStatus = z.infer<typeof SetupStatusSchema>;
+export const CompleteSetupResultSchema = z.strictObject({
+  state: z.literal('complete'),
+});
+
 // Read through `StatusSchema`; the server's `DeploymentStatus` and the
 // client's view of it are both inferred from that one output type.
 const DeploymentSchema = z.object({

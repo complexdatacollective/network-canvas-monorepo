@@ -2104,6 +2104,20 @@ REVOKE SELECT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON credential_audit
 GRANT INSERT ON credential_audit_events TO studio_app, studio_maintenance;
 
 
+REVOKE UPDATE, DELETE, TRUNCATE ON studio_instance FROM studio_app, studio_maintenance;
+CREATE OR REPLACE FUNCTION studio_instance_preserve_completion() RETURNS trigger
+LANGUAGE plpgsql AS $$ BEGIN
+  IF EXISTS (SELECT 1 FROM studio_instance) THEN
+    RAISE EXCEPTION 'First-run completion cannot be removed.' USING ERRCODE = '42501';
+  END IF;
+  RETURN NULL;
+END $$;
+DROP TRIGGER IF EXISTS studio_instance_preserve_completion ON studio_instance;
+CREATE TRIGGER studio_instance_preserve_completion
+  BEFORE DELETE OR TRUNCATE ON studio_instance
+  FOR EACH STATEMENT EXECUTE FUNCTION studio_instance_preserve_completion();
+
+
 CREATE OR REPLACE FUNCTION audit_events_are_immutable() RETURNS trigger AS $$
 BEGIN
   RAISE EXCEPTION 'audit events are immutable';
@@ -2201,4 +2215,3 @@ GRANT UPDATE (handle_consumed_at) ON audit_export_jobs TO studio_app;
 
 REVOKE UPDATE, DELETE, TRUNCATE ON audit_events
   FROM studio_app, studio_maintenance;
-

@@ -276,6 +276,14 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
       'Unset ⇒ `common` (any organizational or personal Microsoft account, matching a multitenant registration). Refused without the other two `MICROSOFT_*` variables.',
     example: 'contoso.onmicrosoft.com',
   },
+  STUDIO_BOOTSTRAP_TOKEN: {
+    group: 'Authentication',
+    summary:
+      'Single-use authorization for first-run self-hosted instance and owner creation.',
+    deployment:
+      'Set a cryptographically random 32-byte token encoded as unpadded base64url (43 characters), then enter it at `/setup`. Unset disables first-run setup; completed instances remain completed after token removal or replacement. Managed deployments do not expose setup. See `SETUP.md`.',
+    example: 'replace-with-a-random-32-byte-base64url-token',
+  },
   STUDIO_SEED_ADMIN_PASSWORD: {
     group: 'Authentication',
     summary:

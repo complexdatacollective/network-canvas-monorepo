@@ -89,6 +89,14 @@ vi.mock('../../lib/auth.ts', () => ({
 
 vi.mock('../../lib/api.ts', () => ({
   orpc: {
+    setup: {
+      status: {
+        queryOptions: () => ({
+          queryKey: ['setup'],
+          queryFn: () => ({ state: 'complete' }),
+        }),
+      },
+    },
     me: {
       queryOptions: () => ({
         queryKey: ['me'],

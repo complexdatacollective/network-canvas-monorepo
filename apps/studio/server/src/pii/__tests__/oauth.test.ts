@@ -260,7 +260,7 @@ describe('Better Auth encrypted credential persistence', () => {
           'UPDATE account SET "accessToken" = $2 WHERE id = $1',
           [account.id, 'synthetic-plaintext'],
         ),
-      ).rejects.toThrow('plaintext OAuth token writes are forbidden');
+      ).rejects.toMatchObject({ code: '42501' });
     });
   });
 

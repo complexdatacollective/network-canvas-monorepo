@@ -182,8 +182,49 @@ For an existing deployment:
    schema administration. Keep credentials
    in the restricted environment file instead of putting them in shell history.
 
-4. Start the application containers only after migration succeeds. Retain the
-   backup and the old image reference until you have verified the upgrade.
+4. Keep all application containers stopped. Run the new image's bounded legacy
+   OAuth converter with a separate restricted environment file containing the
+   operator `DATABASE_URL`, `STUDIO_ENCRYPTION_KEYSET`, and every referenced root:
+
+   ```sh
+   docker run --rm --network YOUR_DEPLOYMENT_NETWORK \
+     --env-file /secure/path/studio-encryption-operator.env \
+     YOUR_STUDIO_IMAGE encryption migrate-legacy --limit 100
+   ```
+
+   Save the returned JSON. If `passComplete` is false, copy its non-null `afterId`
+   unchanged into the next invocation's `--after-id` argument:
+
+   ```sh
+   docker run --rm --network YOUR_DEPLOYMENT_NETWORK \
+     --env-file /secure/path/studio-encryption-operator.env \
+     YOUR_STUDIO_IMAGE encryption migrate-legacy --limit 100 \
+     --after-id 'COPIED_AFTER_ID'
+   ```
+
+   Repeat with each newly returned cursor until `passComplete` is true and
+   `afterId` is null. A batch reporting `processed: 0` is not necessarily done;
+   it may have visited accounts that need no conversion. A full final batch
+   requires another invocation to observe exhaustion. If a command fails, leave
+   services stopped and replay the last successful cursor after resolving the
+   failure. Do not clear retained columns or edit key evidence manually.
+
+5. Run full verification with the same image, operator environment and complete
+   historical keyset before admitting traffic:
+
+   ```sh
+   docker run --rm --network YOUR_DEPLOYMENT_NETWORK \
+     --env-file /secure/path/studio-encryption-operator.env \
+     YOUR_STUDIO_IMAGE encryption verify
+   ```
+
+   Require exit status zero and `{"operation":"verify","verified":true}`.
+   Traversal completion does not replace this verification and does not authorize
+   key retirement. Any retained plaintext token still refuses startup.
+
+6. Start the application containers with their runtime credentials only after
+   migration, conversion and verification succeed. Retain the backup and the old
+   image reference until you have verified the upgrade.
 
 The same command provisions a fresh empty database before its first start.
 Repeated runs verify and leave applied migrations alone, while rechecking role

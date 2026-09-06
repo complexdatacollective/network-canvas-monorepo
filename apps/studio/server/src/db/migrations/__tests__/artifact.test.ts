@@ -24,7 +24,7 @@ describe('shipped migration artifacts', () => {
     expect(latest.snapshot.ddl).toEqual(currentSnapshot.ddl);
     expect(latest.snapshot.version).toBe(currentSnapshot.version);
     expect(latest.manifest.fingerprint).toBe(await computeSchemaFingerprint());
-    expect(latest.sidecars).toBe(SIDECARS.join('\n') + '\n');
+    expect(latest.sidecars).toBe(SIDECARS.join('\n').trimEnd() + '\n');
     expect(
       latest.sidecars.lastIndexOf('REVOKE UPDATE, DELETE, TRUNCATE'),
     ).toBeGreaterThan(

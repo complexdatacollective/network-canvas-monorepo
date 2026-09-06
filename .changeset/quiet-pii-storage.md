@@ -5,3 +5,7 @@
 Encrypt participant contact fields and OAuth/webhook credentials with versioned keys, require immutable audits for protected reads, and verify durable key evidence before server startup. Add bounded operator commands for key verification, resumable rotation, and legacy credential conversion, with real PostgreSQL backup/restore coverage.
 
 Protect retained upgrade plaintext from both runtime roles, require separate operator credentials for offline conversion, audit credential deletions atomically across unlink and user cascades, and keep resumed maintenance pages bounded without repeated corpus scans.
+
+Restrict runtime account writes to the same nonlegacy column projection as reads, including NULL/default clearing and insert/upsert paths, and require bounded conversion plus full verification before restarting an upgraded deployment.
+
+Contain authentication provider and database failures before framework error logging or response bodies can expose private diagnostics.
