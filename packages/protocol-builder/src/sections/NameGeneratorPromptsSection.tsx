@@ -1,5 +1,7 @@
 import { type ComponentType, useCallback, useMemo, useState } from 'react';
 
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
@@ -56,6 +58,80 @@ const VariablePicker = CreatableVariablePickerControl as ComponentType<
 const STAMP_TYPE = 'boolean';
 const STAMP_COMPONENT = 'Toggle';
 
+const messages = defineMessages({
+  promptGroupTitle: {
+    id: 'protocolBuilder.nameGeneratorPrompts.promptGroupTitle',
+    defaultMessage: 'Participant prompt',
+    description:
+      'Heading of the first half of the dialog for one name-generator prompt, holding the question the participant reads. A prompt is one question a participant is asked.',
+  },
+  promptGroupDescription: {
+    id: 'protocolBuilder.nameGeneratorPrompts.promptGroupDescription',
+    defaultMessage: 'Write the question this prompt asks the participant.',
+    description:
+      'Description of the first half of the dialog for one name-generator prompt.',
+  },
+  textLabel: {
+    id: 'protocolBuilder.nameGeneratorPrompts.textLabel',
+    defaultMessage: 'Prompt text',
+    description:
+      'Label of the box holding the question one name-generator prompt asks the participant.',
+  },
+  textHint: {
+    id: 'protocolBuilder.nameGeneratorPrompts.textHint',
+    defaultMessage:
+      'Shown to the participant while they name people. Supports markdown formatting.',
+    description:
+      'Guidance under the prompt-text box. Markdown is the name of a text formatting syntax and is not translated.',
+  },
+  textPlaceholder: {
+    id: 'protocolBuilder.nameGeneratorPrompts.textPlaceholder',
+    defaultMessage: 'Who are the people you know?',
+    description:
+      'Example shown in the empty prompt-text box. Written as a participant would read it, because that is who reads the prompt.',
+  },
+  textRequired: {
+    id: 'protocolBuilder.nameGeneratorPrompts.textRequired',
+    defaultMessage: 'Write the question this prompt asks.',
+    description:
+      'Refusal shown when a researcher saves a name-generator prompt with no question in it.',
+  },
+  attributesGroupTitle: {
+    id: 'protocolBuilder.nameGeneratorPrompts.attributesGroupTitle',
+    defaultMessage: 'Additional attributes',
+    description:
+      'Heading of the second half of the dialog for one name-generator prompt, holding the fixed values given to everyone named under it.',
+  },
+  attributesGroupDescription: {
+    id: 'protocolBuilder.nameGeneratorPrompts.attributesGroupDescription',
+    defaultMessage:
+      'Give every person named on this prompt a fixed value, so later stages can ask about them.',
+    description:
+      'Description of the additional-attributes half of the name-generator prompt dialog. A stage is one step of an interview.',
+  },
+  assignmentsLabel: {
+    id: 'protocolBuilder.nameGeneratorPrompts.assignmentsLabel',
+    defaultMessage: 'Attribute assignments',
+    description:
+      'Label of the list pairing an attribute with the fixed value everyone named on this prompt is given.',
+  },
+  assignmentsHint: {
+    id: 'protocolBuilder.nameGeneratorPrompts.assignmentsHint',
+    defaultMessage: 'Use these values in skip logic or in a stage’s filter.',
+    description:
+      'Guidance under the attribute-assignments list, naming the two places a later stage can read the assigned values. Skip logic decides whether a stage runs at all; a filter decides what reaches it.',
+  },
+  stampSummary: {
+    id: 'protocolBuilder.nameGeneratorPrompts.stampSummary',
+    defaultMessage:
+      '{count, plural, one {Assigns # additional attribute.} other {Assigns # additional attributes.}}',
+    description:
+      'One line summarising a name-generator prompt in the list beneath its question, saying how many fixed values it gives everyone named on it. Shown only when there is at least one.',
+  },
+});
+
+const WRITE_THE_QUESTION = createMessageError(messages.textRequired);
+
 const asString = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : undefined;
 
@@ -85,21 +161,23 @@ const asAttributes = (value: unknown): AttributeValue[] =>
  * the dialog saves, and no cell of it is ever registered on the stage.
  */
 function NameGeneratorPromptEditor({ item }: RowEditorProps) {
+  const intl = useAppIntl();
+
   return (
     <>
       <Section
-        title="Participant prompt"
-        description="Write the question this prompt asks the participant."
+        title={intl.formatMessage(messages.promptGroupTitle)}
+        description={intl.formatMessage(messages.promptGroupDescription)}
       >
         <Field<typeof RichTextField>
           name="text"
           component={RichTextField}
-          label="Prompt text"
-          hint="Shown to the participant while they name people. Supports markdown formatting."
-          placeholder="Who are the people you know?"
+          label={intl.formatMessage(messages.textLabel)}
+          hint={intl.formatMessage(messages.textHint)}
+          placeholder={intl.formatMessage(messages.textPlaceholder)}
           singleLine
           initialValue={asString(item.text)}
-          required="Write the question this prompt asks."
+          required={WRITE_THE_QUESTION}
         />
       </Section>
       <AdditionalAttributes item={item} />
@@ -119,6 +197,7 @@ function NameGeneratorPromptEditor({ item }: RowEditorProps) {
 function AdditionalAttributes({
   item,
 }: Readonly<{ item: RowEditorProps['item'] }>) {
+  const intl = useAppIntl();
   const { protocolContext, identity } = useStageEditorForm();
   const subject = useStageSubject('node');
   const committed = useMemo(
@@ -245,8 +324,8 @@ function AdditionalAttributes({
 
   return (
     <Section
-      title="Additional attributes"
-      description="Give every person named on this prompt a fixed value, so later stages can ask about them."
+      title={intl.formatMessage(messages.attributesGroupTitle)}
+      description={intl.formatMessage(messages.attributesGroupDescription)}
     >
       {/*
         A `ProtocolArrayField` rather than a plain one, even inside a dialog:
@@ -259,8 +338,8 @@ function AdditionalAttributes({
       <ProtocolArrayField<typeof AssignAttributes>
         name="additionalAttributes"
         component={AssignAttributes}
-        label="Attribute assignments"
-        hint="Use these values in skip logic or in a stage's filter."
+        label={intl.formatMessage(messages.assignmentsLabel)}
+        hint={intl.formatMessage(messages.assignmentsHint)}
         initialValue={committed}
         subject={subject}
         variableOptions={variableOptions}
@@ -284,6 +363,7 @@ function AdditionalAttributes({
 
 /** How one prompt reads in the list when its dialog is closed. */
 function NameGeneratorPromptPreview({ item }: RowPreviewProps) {
+  const intl = useAppIntl();
   const text = asString(item.text);
   const stamps = asAttributes(item.additionalAttributes).length;
 
@@ -292,9 +372,7 @@ function NameGeneratorPromptPreview({ item }: RowPreviewProps) {
       <RenderMarkdown render={<div />}>{text ?? ''}</RenderMarkdown>
       {stamps > 0 && (
         <p className="text-sm text-current/70">
-          {stamps === 1
-            ? 'Assigns 1 additional attribute.'
-            : `Assigns ${stamps} additional attributes.`}
+          {intl.formatMessage(messages.stampSummary, { count: stamps })}
         </p>
       )}
     </div>

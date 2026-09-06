@@ -1,5 +1,8 @@
 import { type ComponentType, useMemo } from 'react';
 
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import type { IntlShape } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
 import LikertScaleField from '@codaco/fresco-ui/form/fields/LikertScale';
@@ -10,7 +13,6 @@ import {
 
 import ProtocolField from '../form/ProtocolField.tsx';
 import BuilderSection, { type SectionCapability } from './BuilderSection.tsx';
-import { sectionMessages } from './sectionMessages.ts';
 import {
   DATA_SOURCE,
   useOrphanedColumnChoices,
@@ -21,12 +23,122 @@ import {
 const MATCH_PROPERTIES = 'searchOptions.matchProperties';
 const FUZZINESS = 'searchOptions.fuzziness';
 
+const messages = defineMessages({
+  title: {
+    id: 'protocolBuilder.searchOptions.title',
+    defaultMessage: 'Roster search',
+    description:
+      'Heading of the section letting a participant find someone in a roster by typing. A roster is a list of people imported from a data file.',
+  },
+  description: {
+    id: 'protocolBuilder.searchOptions.description',
+    defaultMessage:
+      'Let the participant find someone by typing, and choose what their typing is matched against.',
+    description: 'Description of the roster-search section.',
+  },
+  waitingDescription: {
+    id: 'protocolBuilder.searchOptions.waitingDescription',
+    defaultMessage: 'Choose a roster data file before setting up its search.',
+    description:
+      'Shown in place of the roster-search section’s description while no data file has been chosen, so there are no columns for a search to match against.',
+  },
+  matchLabel: {
+    id: 'protocolBuilder.searchOptions.matchLabel',
+    defaultMessage: 'Attributes a search matches',
+    description:
+      'Label of the checkboxes choosing which attributes of the data file a participant’s typing is compared against.',
+  },
+  matchHint: {
+    id: 'protocolBuilder.searchOptions.matchHint',
+    defaultMessage:
+      'What the participant types is compared against these. Choose the ones they would actually search for.',
+    description:
+      'Guidance under the checkboxes choosing what a participant’s search is matched against.',
+  },
+  toleranceLabel: {
+    id: 'protocolBuilder.searchOptions.toleranceLabel',
+    defaultMessage: 'How closely a search must match',
+    description:
+      'Label of the scale choosing how much difference between what a participant types and what the data file holds still counts as a match.',
+  },
+  toleranceHint: {
+    id: 'protocolBuilder.searchOptions.toleranceHint',
+    defaultMessage:
+      'A stricter setting narrows a roster of similar people; a looser one forgives typos.',
+    description:
+      'Guidance under the scale choosing how closely a participant’s search must match.',
+  },
+  keystrokeNotice: {
+    id: 'protocolBuilder.searchOptions.keystrokeNotice',
+    defaultMessage:
+      'Every attribute you choose is searched on each keystroke, so a long roster searches faster with fewer of them.',
+    description:
+      'Notice above the checkboxes, saying why choosing fewer attributes makes a long roster feel faster to the participant.',
+  },
+  toleranceExact: {
+    id: 'protocolBuilder.searchOptions.toleranceExact',
+    defaultMessage: 'Exact',
+    description:
+      'The strictest of four search tolerances: only what the participant typed, exactly, is a match.',
+  },
+  toleranceClose: {
+    id: 'protocolBuilder.searchOptions.toleranceClose',
+    defaultMessage: 'Close matches only',
+    description:
+      'The second of four search tolerances, between "Exact" and "Allow small differences".',
+  },
+  toleranceSmallDifferences: {
+    id: 'protocolBuilder.searchOptions.toleranceSmallDifferences',
+    defaultMessage: 'Allow small differences',
+    description:
+      'The third of four search tolerances, between "Close matches only" and "Allow typos and misspellings".',
+  },
+  toleranceTypos: {
+    id: 'protocolBuilder.searchOptions.toleranceTypos',
+    defaultMessage: 'Allow typos and misspellings',
+    description:
+      'The loosest of four search tolerances: a word the participant spelled wrongly still finds the person.',
+  },
+  matchRequired: {
+    id: 'protocolBuilder.searchOptions.matchRequired',
+    defaultMessage:
+      'Choose at least one attribute for a search to match against.',
+    description:
+      'Refusal shown against the checkboxes when roster search is switched on and nothing is checked, which would find nobody whatever the participant types.',
+  },
+  toleranceRequired: {
+    id: 'protocolBuilder.searchOptions.toleranceRequired',
+    defaultMessage: 'Choose how closely a search must match.',
+    description:
+      'Refusal shown against the tolerance scale when roster search is switched on and no tolerance has been chosen.',
+  },
+  clearTitle: {
+    id: 'protocolBuilder.searchOptions.clearTitle',
+    defaultMessage: 'This will turn off roster search',
+    description:
+      'Title of the dialog asking a researcher to confirm switching off the section that lets a participant search a roster.',
+  },
+  clearDescription: {
+    id: 'protocolBuilder.searchOptions.clearDescription',
+    defaultMessage:
+      'This will remove the attributes a participant’s search is matched against, and the tolerance you set. Do you want to continue?',
+    description:
+      'Body of the dialog confirming that switching roster search off discards the searchable attributes and the fuzziness setting. A roster is a list of people imported from a data file.',
+  },
+  clearConfirm: {
+    id: 'protocolBuilder.searchOptions.clearConfirm',
+    defaultMessage: 'Turn off search',
+    description:
+      'Action that confirms switching roster search off and discarding how it was configured.',
+  },
+});
+
 const SEARCH_CAPABILITY: SectionCapability = {
   fields: [MATCH_PROPERTIES, FUZZINESS],
   confirmClear: {
-    title: sectionMessages.searchOptionsClearTitle,
-    description: sectionMessages.searchOptionsClearDescription,
-    confirmLabel: sectionMessages.searchOptionsClearConfirm,
+    title: messages.clearTitle,
+    description: messages.clearDescription,
+    confirmLabel: messages.clearConfirm,
   },
 };
 
@@ -35,11 +147,14 @@ const SEARCH_CAPABILITY: SectionCapability = {
  * allows, and a researcher choosing "Exact" is not choosing 0, they are saying
  * what they want the search to do.
  */
-const TOLERANCE_OPTIONS = [
-  { value: 0, label: 'Exact' },
-  { value: 0.25, label: 'Close matches only' },
-  { value: 0.5, label: 'Allow small differences' },
-  { value: 0.75, label: 'Allow typos and misspellings' },
+const toleranceOptions = (intl: IntlShape) => [
+  { value: 0, label: intl.formatMessage(messages.toleranceExact) },
+  { value: 0.25, label: intl.formatMessage(messages.toleranceClose) },
+  {
+    value: 0.5,
+    label: intl.formatMessage(messages.toleranceSmallDifferences),
+  },
+  { value: 0.75, label: intl.formatMessage(messages.toleranceTypos) },
 ];
 
 const CheckboxGroup = CheckboxGroupField as ComponentType<
@@ -62,11 +177,15 @@ const LikertScale = LikertScaleField as ComponentType<Record<string, unknown>>;
  * an empty half is what let the commonest case through: switching search on
  * and saving straight away leaves both empty, and two rules that excuse each
  * other say nothing about a pair that is entirely missing.
+ *
+ * Both refusals are encoded rather than formatted: a `MessageRule` hands the
+ * form a plain string, and `FieldErrors` decodes it in the reader's own
+ * language where it is shown.
  */
 const matchIsAnswered: MessageRule = (value) =>
   Array.isArray(value) && value.length > 0
     ? undefined
-    : 'Choose at least one attribute for a search to match against.';
+    : createMessageError(messages.matchRequired);
 
 const toleranceValidation = messageRuleValidation([
   // `0` is an answer — the strictest setting — so the test is on the TYPE, not
@@ -74,31 +193,8 @@ const toleranceValidation = messageRuleValidation([
   (value) =>
     typeof value === 'number'
       ? undefined
-      : 'Choose how closely a search must match.',
+      : createMessageError(messages.toleranceRequired),
 ]);
-
-/**
- * The words this section says, in English until it is localised — at which
- * point each comment below becomes the `description` a translator reads.
- *
- * Nothing overrides them: a `copy` prop is a string a host hands in, which
- * extraction never sees and a translator therefore never gets
- * (`__tests__/hostCopyOverrides.test.ts`).
- */
-const words = {
-  /** Names the section in the outline and to assistive technology. */
-  sectionTitle: 'Roster search',
-  description:
-    'Let the participant find someone by typing, and choose what their typing is matched against.',
-  /** Said instead of `description` while the section is waiting on a roster. */
-  waitingDescription: 'Choose a roster data file before setting up its search.',
-  matchLabel: 'Attributes a search matches',
-  matchHint:
-    'What the participant types is compared against these. Choose the ones they would actually search for.',
-  toleranceLabel: 'How closely a search must match',
-  toleranceHint:
-    'A stricter setting narrows a roster of similar people; a looser one forgives typos.',
-};
 
 /**
  * How a participant finds someone in a long roster.
@@ -110,6 +206,7 @@ const words = {
  * path.
  */
 export default function SearchOptionsSection() {
+  const intl = useAppIntl();
   const columns = useRosterColumns();
 
   // A checked column the file does not carry, so the researcher can see what
@@ -130,6 +227,8 @@ export default function SearchOptionsSection() {
     [columns.names, orphans.options],
   );
 
+  const tolerances = useMemo(() => toleranceOptions(intl), [intl]);
+
   /**
    * Built here rather than as a module constant, because one of its rules has
    * to read what the data file turned out to hold. It keeps ONE identity all
@@ -148,10 +247,10 @@ export default function SearchOptionsSection() {
 
   return (
     <BuilderSection
-      title={words.sectionTitle}
-      description={
-        columns.waiting ? words.waitingDescription : words.description
-      }
+      title={intl.formatMessage(messages.title)}
+      description={intl.formatMessage(
+        columns.waiting ? messages.waitingDescription : messages.description,
+      )}
       disabled={columns.waiting}
       // Everything below names a column of the data file, so a different file
       // makes every one of these a reference to something that may not be
@@ -165,24 +264,23 @@ export default function SearchOptionsSection() {
     >
       <Alert variant="info" className="my-7">
         <AlertDescription>
-          Every attribute you choose is searched on each keystroke, so a long
-          roster searches faster with fewer of them.
+          {intl.formatMessage(messages.keystrokeNotice)}
         </AlertDescription>
       </Alert>
       <ProtocolField<typeof CheckboxGroup>
         name={MATCH_PROPERTIES}
         component={CheckboxGroup}
-        label={words.matchLabel}
-        hint={words.matchHint}
+        label={intl.formatMessage(messages.matchLabel)}
+        hint={intl.formatMessage(messages.matchHint)}
         options={options}
         custom={matchValidation}
       />
       <ProtocolField<typeof LikertScale>
         name={FUZZINESS}
         component={LikertScale}
-        label={words.toleranceLabel}
-        hint={words.toleranceHint}
-        options={TOLERANCE_OPTIONS}
+        label={intl.formatMessage(messages.toleranceLabel)}
+        hint={intl.formatMessage(messages.toleranceHint)}
+        options={tolerances}
         custom={toleranceValidation}
       />
     </BuilderSection>

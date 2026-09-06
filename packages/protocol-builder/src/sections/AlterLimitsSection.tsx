@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
 
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
@@ -12,18 +14,126 @@ import ProtocolField from '../form/ProtocolField.tsx';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useStageValue } from '../form/stageFormHooks.ts';
 import BuilderSection, { type SectionCapability } from './BuilderSection.tsx';
-import { sectionMessages } from './sectionMessages.ts';
 
 /** Where every name generator holds its stage-wide nomination window. */
 const MIN_FIELD = 'behaviours.minNodes';
 const MAX_FIELD = 'behaviours.maxNodes';
 
+const messages = defineMessages({
+  title: {
+    id: 'protocolBuilder.alterLimits.title',
+    defaultMessage: 'Nomination limits',
+    description:
+      'Heading of the section capping how many people one step of an interview may name.',
+  },
+  description: {
+    id: 'protocolBuilder.alterLimits.description',
+    defaultMessage:
+      'Limit how many people this stage may name, counted across the whole stage.',
+    description:
+      'Description of the nomination-limits section. A stage is one step of an interview, and it may ask several questions; the cap covers all of them together.',
+  },
+  minLabel: {
+    id: 'protocolBuilder.alterLimits.minLabel',
+    defaultMessage: 'Fewest people',
+    description:
+      'Label of the box holding the smallest number of people this step of the interview may name.',
+  },
+  minHint: {
+    id: 'protocolBuilder.alterLimits.minHint',
+    defaultMessage: 'Leave empty for no minimum.',
+    description:
+      'Guidance under the box holding the smallest number of people this step of the interview may name.',
+  },
+  maxLabel: {
+    id: 'protocolBuilder.alterLimits.maxLabel',
+    defaultMessage: 'Most people',
+    description:
+      'Label of the box holding the largest number of people this step of the interview may name.',
+  },
+  maxHint: {
+    id: 'protocolBuilder.alterLimits.maxHint',
+    defaultMessage: 'Leave empty for no maximum.',
+    description:
+      'Guidance under the box holding the largest number of people this step of the interview may name.',
+  },
+  maxPlaceholder: {
+    id: 'protocolBuilder.alterLimits.maxPlaceholder',
+    defaultMessage: 'No limit',
+    description:
+      'Placeholder shown in the empty maximum box, saying what an unanswered maximum means: the stage may name as many people as the participant wants to.',
+  },
+  wholeStageTitle: {
+    id: 'protocolBuilder.alterLimits.wholeStageTitle',
+    defaultMessage: 'These limits cover the whole stage',
+    description:
+      'Warning heading shown when the stage asks several questions, because the cap is counted across all of them rather than per question. A stage is one step of an interview.',
+  },
+  wholeStageDescription: {
+    id: 'protocolBuilder.alterLimits.wholeStageDescription',
+    defaultMessage:
+      'This stage asks several questions, and the limits apply to all of them together rather than to each one. Consider splitting the questions across stages, or say in the questions themselves how many people you are asking for.',
+    description:
+      'Warning body shown when the stage asks several questions, naming the two ways a researcher can ask for a number per question instead. A stage is one step of an interview.',
+  },
+  noEndAnswered: {
+    id: 'protocolBuilder.alterLimits.noEndAnswered',
+    defaultMessage:
+      'Set the fewest people, the most people, or both. Switch these limits off if this stage has no limit.',
+    description:
+      'Refusal shown against the minimum box when the researcher switched the nomination limits on and left both ends empty. Names the switch, because an unlimited stage is said by switching the section off rather than by leaving the boxes blank.',
+  },
+  minBelowZero: {
+    id: 'protocolBuilder.alterLimits.minBelowZero',
+    defaultMessage: 'The smallest a minimum can be is 0.',
+    description:
+      'Refusal shown against the minimum box when the researcher entered a negative number of people.',
+  },
+  minAboveMax: {
+    id: 'protocolBuilder.alterLimits.minAboveMax',
+    defaultMessage: 'The minimum cannot be more than the maximum.',
+    description:
+      'Refusal shown against the minimum box when it holds more people than the maximum beside it, which no stage could satisfy.',
+  },
+  maxIsZero: {
+    id: 'protocolBuilder.alterLimits.maxIsZero',
+    defaultMessage: 'A maximum of 0 would let the stage name nobody.',
+    description:
+      'Refusal shown against the maximum box when the researcher capped the stage at zero people, which leaves the stage nothing to do. A stage is one step of an interview.',
+  },
+  maxBelowMin: {
+    id: 'protocolBuilder.alterLimits.maxBelowMin',
+    defaultMessage: 'The maximum cannot be less than the minimum.',
+    description:
+      'Refusal shown against the maximum box when it holds fewer people than the minimum beside it, which no stage could satisfy.',
+  },
+  clearTitle: {
+    id: 'protocolBuilder.alterLimits.clearTitle',
+    defaultMessage: 'This will clear your nomination limits',
+    description:
+      'Title of the dialog asking a researcher to confirm switching off the section that caps how many people one stage of an interview may name.',
+  },
+  clearDescription: {
+    id: 'protocolBuilder.alterLimits.clearDescription',
+    defaultMessage:
+      'This will clear the minimum and maximum number of people this stage may name. Do you want to continue?',
+    description:
+      'Body of the dialog confirming that switching off the nomination limits discards both ends of the range. A stage is one step of an interview.',
+  },
+  clearConfirm: {
+    id: 'protocolBuilder.alterLimits.clearConfirm',
+    defaultMessage: 'Clear limits',
+    description:
+      'Action that confirms switching the nomination limits off and discarding them.',
+  },
+});
+
 const LIMITS_CAPABILITY: SectionCapability = {
   fields: [MIN_FIELD, MAX_FIELD],
   confirmClear: {
-    title: sectionMessages.alterLimitsClearTitle,
-    description: sectionMessages.alterLimitsClearDescription,
-    confirmLabel: sectionMessages.alterLimitsClearConfirm,
+    title: messages.clearTitle,
+    description: messages.clearDescription,
+    confirmLabel: messages.clearConfirm,
   },
 };
 
@@ -74,8 +184,7 @@ const hasEitherEnd = (values: Record<string, FieldValue>): boolean => {
  * take the researcher to. The minimum is the first control in the section, so
  * that is where the refusal lands.
  */
-const NO_END_ANSWERED =
-  'Set the fewest people, the most people, or both. Switch these limits off if this stage has no limit.';
+const NO_END_ANSWERED = createMessageError(messages.noEndAnswered);
 
 /**
  * The window has to be satisfiable, and the schema says so too — but it says
@@ -91,6 +200,11 @@ const NO_END_ANSWERED =
  * `wholeNumberRule` comes first in both, because a control holding text it
  * could not read as a count holds no count for anything below to compare — and
  * because it is the only thing standing between that text and a save.
+ *
+ * Every refusal here is encoded rather than formatted: a `MessageRule` hands
+ * the form a plain string, and `FieldErrors` decodes it in the reader's own
+ * language where it is shown. A module-level formatter reached for instead
+ * would make these the only refusals in the section that stayed English.
  */
 const minValidation = messageRuleValidation([
   wholeNumberRule,
@@ -98,11 +212,11 @@ const minValidation = messageRuleValidation([
   (value, values) => {
     const min = asCount(value);
     if (Number.isNaN(min)) return undefined;
-    if (min < 0) return 'The smallest a minimum can be is 0.';
+    if (min < 0) return createMessageError(messages.minBelowZero);
     const max = countAt(values, 'maxNodes');
     return Number.isNaN(max) || min <= max
       ? undefined
-      : 'The minimum cannot be more than the maximum.';
+      : createMessageError(messages.minAboveMax);
   },
 ]);
 
@@ -111,32 +225,13 @@ const maxValidation = messageRuleValidation([
   (value, values) => {
     const max = asCount(value);
     if (Number.isNaN(max)) return undefined;
-    if (max < 1) return 'A maximum of 0 would let the stage name nobody.';
+    if (max < 1) return createMessageError(messages.maxIsZero);
     const min = countAt(values, 'minNodes');
     return Number.isNaN(min) || max >= min
       ? undefined
-      : 'The maximum cannot be less than the minimum.';
+      : createMessageError(messages.maxBelowMin);
   },
 ]);
-
-/**
- * The words this section says, in English until it is localised — at which
- * point each comment below becomes the `description` a translator reads.
- *
- * Nothing overrides them: a `copy` prop is a string a host hands in, which
- * extraction never sees and a translator therefore never gets
- * (`__tests__/hostCopyOverrides.test.ts`).
- */
-const words = {
-  /** Names the section in the outline and to assistive technology. */
-  sectionTitle: 'Nomination limits',
-  description:
-    'Limit how many people this stage may name, counted across the whole stage.',
-  minLabel: 'Fewest people',
-  minHint: 'Leave empty for no minimum.',
-  maxLabel: 'Most people',
-  maxHint: 'Leave empty for no maximum.',
-};
 
 /**
  * How many people a name generator may name.
@@ -149,6 +244,7 @@ const words = {
  * could satisfy.
  */
 export default function AlterLimitsSection() {
+  const intl = useAppIntl();
   const { storeApi } = useStageEditorForm();
   const min = useStageValue(MIN_FIELD);
   const max = useStageValue(MAX_FIELD);
@@ -171,26 +267,27 @@ export default function AlterLimitsSection() {
 
   return (
     <BuilderSection
-      title={words.sectionTitle}
-      description={words.description}
+      title={intl.formatMessage(messages.title)}
+      description={intl.formatMessage(messages.description)}
       capability={LIMITS_CAPABILITY}
     >
       {hasSeveralPrompts && (
         <Alert variant="warning" className="my-7">
-          <AlertTitle>These limits cover the whole stage</AlertTitle>
+          <AlertTitle>
+            {intl.formatMessage(messages.wholeStageTitle)}
+          </AlertTitle>
           <AlertDescription>
-            This stage asks several questions, and the limits apply to all of
-            them together rather than to each one. Consider splitting the
-            questions across stages, or say in the questions themselves how many
-            people you are asking for.
+            {intl.formatMessage(messages.wholeStageDescription)}
           </AlertDescription>
         </Alert>
       )}
       <ProtocolField<typeof IntegerFieldControl>
         name={MIN_FIELD}
         component={IntegerFieldControl}
-        label={words.minLabel}
-        hint={words.minHint}
+        label={intl.formatMessage(messages.minLabel)}
+        hint={intl.formatMessage(messages.minHint)}
+        // A digit rather than a message: it is the number this box would hold,
+        // and it reads the same in every language this package ships.
         placeholder="0"
         custom={minValidation}
         validateOnChange
@@ -199,9 +296,9 @@ export default function AlterLimitsSection() {
       <ProtocolField<typeof IntegerFieldControl>
         name={MAX_FIELD}
         component={IntegerFieldControl}
-        label={words.maxLabel}
-        hint={words.maxHint}
-        placeholder="No limit"
+        label={intl.formatMessage(messages.maxLabel)}
+        hint={intl.formatMessage(messages.maxHint)}
+        placeholder={intl.formatMessage(messages.maxPlaceholder)}
         custom={maxValidation}
         validateOnChange
         validateOnChangeDelay={REFUSAL_DELAY}

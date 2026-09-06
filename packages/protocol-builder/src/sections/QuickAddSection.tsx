@@ -7,6 +7,7 @@ import {
 } from 'react';
 import { v4 as uuid } from 'uuid';
 
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
@@ -56,14 +57,131 @@ const QUICK_ADD_VALIDATION = { required: true };
 
 const NO_OPTIONS: VariablePickerOption[] = [];
 
-const MISSING_TYPE =
-  'This type is no longer in the codebook, so its attributes cannot be changed.';
+const messages = defineMessages({
+  title: {
+    id: 'protocolBuilder.quickAdd.title',
+    defaultMessage: 'Quick add',
+    description:
+      'Heading of the section choosing which attribute a participant fills in when they add someone with a single box. An attribute is one field the protocol records about a person.',
+  },
+  description: {
+    id: 'protocolBuilder.quickAdd.description',
+    defaultMessage:
+      'Choose the attribute the participant fills in when they add someone with a single box.',
+    description: 'Description of the quick-add section.',
+  },
+  waitingDescription: {
+    id: 'protocolBuilder.quickAdd.waitingDescription',
+    defaultMessage:
+      'Choose what this stage works with before setting up quick add.',
+    description:
+      'Shown in place of the quick-add section’s description while the researcher has not yet chosen which node type the stage is about, so there are no attributes to choose from.',
+  },
+  fieldLabel: {
+    id: 'protocolBuilder.quickAdd.fieldLabel',
+    defaultMessage: 'Attribute filled in',
+    description:
+      'Label of the control choosing which attribute receives what the participant types into the quick-add box.',
+  },
+  fieldHint: {
+    id: 'protocolBuilder.quickAdd.fieldHint',
+    defaultMessage:
+      'What the participant types goes here. Use the attribute holding a person’s name unless you have a reason not to — the interview labels people by it.',
+    description: 'Guidance under the quick-add attribute control.',
+  },
+  fieldRequired: {
+    id: 'protocolBuilder.quickAdd.fieldRequired',
+    defaultMessage: 'Choose the attribute quick add fills in.',
+    description:
+      'Refusal shown when a researcher saves a quick-add stage without saying which attribute receives what the participant types, which would create people with no name at all.',
+  },
+  noTextAttribute: {
+    id: 'protocolBuilder.quickAdd.noTextAttribute',
+    defaultMessage:
+      'This type has no text attribute quick add could fill in. Create one below.',
+    description:
+      'Shown in place of the quick-add attribute list when the chosen node type has no attribute holding typed text. Points at the control beneath, which invents one.',
+  },
+  canBeEmptyTitle: {
+    id: 'protocolBuilder.quickAdd.canBeEmptyTitle',
+    defaultMessage: 'This attribute can be left empty',
+    description:
+      'Warning heading shown when the attribute quick add fills in does not have to be answered, so a person could be created with no name.',
+  },
+  canBeEmptyDescription: {
+    id: 'protocolBuilder.quickAdd.canBeEmptyDescription',
+    defaultMessage:
+      'What the participant types here is the only thing they gave, so a person added without it has no name. Requiring an answer changes the attribute everywhere the protocol uses it.',
+    description:
+      'Warning body offering to make the quick-add attribute one that has to be answered, and saying that the change reaches every other stage using the same attribute.',
+  },
+  requireAnswer: {
+    id: 'protocolBuilder.quickAdd.requireAnswer',
+    defaultMessage: 'Require an answer',
+    description:
+      'Action that adds "must be answered" to the rules of the attribute quick add fills in.',
+  },
+  nowRequired: {
+    id: 'protocolBuilder.quickAdd.nowRequired',
+    defaultMessage:
+      'This attribute now has to be answered, everywhere the protocol uses it.',
+    description:
+      'Confirmation shown to the researcher who just asked for the quick-add attribute to be required, because focus has moved to a control that says nothing about what changed.',
+  },
+  missingType: {
+    id: 'protocolBuilder.quickAdd.missingType',
+    defaultMessage:
+      'This type is no longer in the codebook, so its attributes cannot be changed.',
+    description:
+      'Refusal shown when the node type the stage works with has been deleted from the codebook — the protocol’s definition of what an interview records — while the researcher was editing.',
+  },
+  refusedUnchanged: {
+    id: 'protocolBuilder.quickAdd.refusedUnchanged',
+    defaultMessage:
+      'This attribute could not be changed, so nothing was changed. Try again.',
+    description:
+      'Refusal shown when requiring an answer for the quick-add attribute failed for a reason with no explanation of its own.',
+  },
+  requireAnswerDescription: {
+    id: 'protocolBuilder.quickAdd.requireAnswerDescription',
+    defaultMessage: 'Require an answer for the quick-add attribute',
+    description:
+      'What the change is called in the record a host keeps of protocol edits, and in any undo history it offers.',
+  },
+  newAttributeLabel: {
+    id: 'protocolBuilder.quickAdd.newAttributeLabel',
+    defaultMessage: 'Create a new attribute',
+    description:
+      'Label of the box naming an attribute to add to the codebook for quick add to fill in.',
+  },
+  newAttributeHint: {
+    id: 'protocolBuilder.quickAdd.newAttributeHint',
+    defaultMessage:
+      'Adds a text attribute to this type’s codebook and fills it in here.',
+    description:
+      'Guidance under the box naming a new quick-add attribute, saying that inventing one also selects it above.',
+  },
+  newAttributePlaceholder: {
+    id: 'protocolBuilder.quickAdd.newAttributePlaceholder',
+    defaultMessage: 'name',
+    description:
+      'Example shown in the empty box naming a new quick-add attribute. The attribute most studies want here is the one holding a person’s name, so the example is that word, lower case as an attribute name is written.',
+  },
+  createAttribute: {
+    id: 'protocolBuilder.quickAdd.createAttribute',
+    defaultMessage: 'Create the attribute',
+    description:
+      'Action that adds the named text attribute to the codebook and selects it for quick add.',
+  },
+  nameTheAttribute: {
+    id: 'protocolBuilder.quickAdd.nameTheAttribute',
+    defaultMessage: 'Name the attribute quick add should fill in.',
+    description:
+      'Refusal shown when a researcher asks to create a quick-add attribute without typing a name for it.',
+  },
+});
 
-const REFUSED_UNCHANGED =
-  'This attribute could not be changed, so nothing was changed. Try again.';
-
-const NOW_REQUIRED =
-  'This attribute now has to be answered, everywhere the protocol uses it.';
+const CHOOSE_AN_ATTRIBUTE = createMessageError(messages.fieldRequired);
 
 /** Nothing left to ask for, or nothing was written — either way, carry on. */
 type RequireAnswerOutcome =
@@ -99,27 +217,6 @@ const VariablePicker = VariablePickerControl as ComponentType<
 >;
 
 /**
- * The words this section says, in English until it is localised — at which
- * point each comment below becomes the `description` a translator reads.
- *
- * Nothing overrides them: a `copy` prop is a string a host hands in, which
- * extraction never sees and a translator therefore never gets
- * (`__tests__/hostCopyOverrides.test.ts`).
- */
-const words = {
-  /** Names the section in the outline and to assistive technology. */
-  sectionTitle: 'Quick add',
-  description:
-    'Choose the attribute the participant fills in when they add someone with a single box.',
-  /** Said instead of `description` while the section is waiting on a subject. */
-  waitingDescription:
-    'Choose what this stage works with before setting up quick add.',
-  fieldLabel: 'Attribute filled in',
-  fieldHint:
-    'What the participant types goes here. Use the attribute holding a person’s name unless you have a reason not to — the interview labels people by it.',
-};
-
-/**
  * What a quick-add name generator records.
  *
  * The participant types one thing and a person exists, so exactly one
@@ -132,6 +229,7 @@ const words = {
  * answer with a value some other stage stamped.
  */
 export default function QuickAddSection() {
+  const intl = useAppIntl();
   const { protocolContext, identity } = useStageEditorForm();
   const subject = useStageSubject('node');
   const waiting = subject === undefined;
@@ -157,18 +255,20 @@ export default function QuickAddSection() {
 
   return (
     <BuilderSection
-      title={words.sectionTitle}
-      description={waiting ? words.waitingDescription : words.description}
+      title={intl.formatMessage(messages.title)}
+      description={intl.formatMessage(
+        waiting ? messages.waitingDescription : messages.description,
+      )}
       disabled={waiting}
     >
       <ProtocolField<typeof VariablePicker>
         name={QUICK_ADD}
         component={VariablePicker}
-        label={words.fieldLabel}
-        hint={words.fieldHint}
+        label={intl.formatMessage(messages.fieldLabel)}
+        hint={intl.formatMessage(messages.fieldHint)}
         options={options}
-        emptyMessage="This type has no text attribute quick add could fill in. Create one below."
-        required="Choose the attribute quick add fills in."
+        emptyMessage={intl.formatMessage(messages.noTextAttribute)}
+        required={CHOOSE_AN_ATTRIBUTE}
       />
       <QuickAddAnswerRequirement variableId={currentValue} />
       <NewQuickAddAttribute />
@@ -199,6 +299,7 @@ export default function QuickAddSection() {
 function QuickAddAnswerRequirement({
   variableId,
 }: Readonly<{ variableId: string | undefined }>) {
+  const intl = useAppIntl();
   const subject = useStageSubject('node');
   const { protocolContext } = useStageEditorForm();
   const requireAnswer = useRequireCodebookAnswer(subject);
@@ -241,7 +342,9 @@ function QuickAddAnswerRequirement({
     // "status"`, which is how it reaches a screen reader without interrupting.
     return requiredHere === variableId ? (
       <Alert variant="success" className="my-7">
-        <AlertDescription>{NOW_REQUIRED}</AlertDescription>
+        <AlertDescription>
+          {intl.formatMessage(messages.nowRequired)}
+        </AlertDescription>
       </Alert>
     ) : null;
   }
@@ -260,12 +363,10 @@ function QuickAddAnswerRequirement({
 
   return (
     <Alert variant="warning" className="my-7">
-      <AlertTitle>This attribute can be left empty</AlertTitle>
+      <AlertTitle>{intl.formatMessage(messages.canBeEmptyTitle)}</AlertTitle>
       <AlertDescription>
         <p className="m-0">
-          What the participant types here is the only thing they gave, so a
-          person added without it has no name. Requiring an answer changes the
-          attribute everywhere the protocol uses it.
+          {intl.formatMessage(messages.canBeEmptyDescription)}
         </p>
         <Button
           // Never a submit: this control sits inside the stage's own form.
@@ -274,7 +375,7 @@ function QuickAddAnswerRequirement({
           disabled={busy}
           onClick={() => void accept()}
         >
-          Require an answer
+          {intl.formatMessage(messages.requireAnswer)}
         </Button>
         {problem !== undefined && <p className="mt-4 mb-0">{problem}</p>}
       </AlertDescription>
@@ -302,13 +403,16 @@ function useRequireCodebookAnswer(subject: CodebookSubject | undefined) {
           ? undefined
           : codebookDocumentFor(protocolContext, subject);
       if (subject === undefined || definition === undefined) {
-        return { status: 'refused', message: MISSING_TYPE };
+        return {
+          status: 'refused',
+          message: intl.formatMessage(messages.missingType),
+        };
       }
       let request;
       try {
         request = buildUpdateVariableRequest({
           requestId: uuid(),
-          description: 'Require an answer for the quick-add attribute',
+          description: intl.formatMessage(messages.requireAnswerDescription),
           subject,
           authoritativeDocument: { ...definition },
           variableId,
@@ -330,7 +434,7 @@ function useRequireCodebookAnswer(subject: CodebookSubject | undefined) {
           message:
             error instanceof Error && error.message !== ''
               ? error.message
-              : REFUSED_UNCHANGED,
+              : intl.formatMessage(messages.refusedUnchanged),
         };
       }
 
@@ -356,6 +460,7 @@ function useRequireCodebookAnswer(subject: CodebookSubject | undefined) {
  * has just said what they want it called should not then have to find it.
  */
 function NewQuickAddAttribute() {
+  const intl = useAppIntl();
   const { storeApi } = useStageEditorForm();
   const subject = useStageSubject('node');
   const createVariable = useCreateCodebookVariable(subject);
@@ -366,7 +471,7 @@ function NewQuickAddAttribute() {
   const create = useCallback(async () => {
     const trimmed = name.trim();
     if (trimmed === '') {
-      setProblem('Name the attribute quick add should fill in.');
+      setProblem(intl.formatMessage(messages.nameTheAttribute));
       return;
     }
     setBusy(true);
@@ -387,7 +492,7 @@ function NewQuickAddAttribute() {
     // above is a registered field, and a command that went round it would be
     // overwritten by whatever the control still held when the stage saved.
     storeApi.getState().setFieldValue(QUICK_ADD, outcome.variableId);
-  }, [createVariable, name, storeApi]);
+  }, [createVariable, intl, name, storeApi]);
 
   if (subject === undefined) return null;
 
@@ -402,16 +507,16 @@ function NewQuickAddAttribute() {
       <UnconnectedField<typeof InputField>
         name="newQuickAddAttribute"
         component={InputField}
-        label="Create a new attribute"
-        hint="Adds a text attribute to this type’s codebook and fills it in here."
-        placeholder="name"
+        label={intl.formatMessage(messages.newAttributeLabel)}
+        hint={intl.formatMessage(messages.newAttributeHint)}
+        placeholder={intl.formatMessage(messages.newAttributePlaceholder)}
         value={name}
         onChange={(next: unknown) =>
           setName(typeof next === 'string' ? next : '')
         }
       />
       <Button type="button" onClick={() => void create()} disabled={busy}>
-        Create the attribute
+        {intl.formatMessage(messages.createAttribute)}
       </Button>
       {problem !== undefined && (
         <Alert variant="destructive" className="my-7">
