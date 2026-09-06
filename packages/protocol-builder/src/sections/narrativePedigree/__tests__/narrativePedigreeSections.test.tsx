@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
@@ -154,11 +154,15 @@ describe('the pedigree a narrative pedigree draws', () => {
     await harness.user.click(
       screen.getByRole('button', { name: 'Edit disease' }),
     );
-    const label = await screen.findByRole('textbox', { name: 'Disease name' });
+    // Scoped to the dialog: `screen` would compute an accessible name for
+    // every control in the editor behind it to answer a question about one
+    // inside it.
+    const disease = within(await screen.findByRole('dialog'));
+    const label = disease.getByRole('textbox', { name: 'Disease name' });
     await harness.user.clear(label);
-    await harness.user.type(label, 'Huntington’s disease');
+    await harness.user.type(label, 'Huntington’s');
     await chooseOption(harness, 'Inheritance pattern', 'X-linked recessive');
-    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    await harness.user.click(disease.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
@@ -168,7 +172,7 @@ describe('the pedigree a narrative pedigree draws', () => {
     expect(request?.stageDocument.diseases).toEqual([
       {
         id: 'disease-1',
-        label: 'Huntington’s disease',
+        label: 'Huntington’s',
         color: 'node-color-seq-1',
         variable: 'hasConditionX',
         inheritancePattern: 'xLinkedRecessive',
@@ -238,20 +242,21 @@ describe('the diseases a narrative pedigree defines', () => {
     await harness.user.click(
       screen.getByRole('button', { name: 'Create new disease' }),
     );
+    const disease = within(await screen.findByRole('dialog'));
     await harness.user.type(
-      await screen.findByRole('textbox', { name: 'Disease name' }),
+      disease.getByRole('textbox', { name: 'Disease name' }),
       'condition x ',
     );
     await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Colour' }),
+      disease.getByRole('combobox', { name: 'Colour' }),
       'node-color-seq-2',
     );
     await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Affected-status attribute' }),
+      disease.getByRole('combobox', { name: 'Affected-status attribute' }),
       'hasConditionY',
     );
     await chooseOption(harness, 'Inheritance pattern', 'Autosomal recessive');
-    await harness.user.click(screen.getByRole('button', { name: 'Add' }));
+    await harness.user.click(disease.getByRole('button', { name: 'Add' }));
 
     // Compared by the schema's own key — trimmed and case-folded — so a name
     // this editor accepts is one the saved protocol is still valid under.

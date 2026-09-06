@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { sociogramStage } from '@codaco/protocol-validation';
@@ -219,32 +219,59 @@ describe('the sociogram stage editor', () => {
   });
 
   /**
+   * What a new stage opens on, before the researcher has decided anything.
+   *
+   * A sociogram's template is empty — the interface has no authored default to
+   * give — so every one of these is still the researcher's to supply. Split
+   * from the save below so neither claim can hide the other: a stage that
+   * opened already holding a prompt would still save, and a save that worked
+   * would say nothing about what the researcher was first shown.
+   */
+  it('opens a new stage with nothing chosen for the researcher', () => {
+    openNewStage();
+
+    expect(screen.getByRole('textbox', { name: 'Stage name' })).toHaveValue('');
+    expect(
+      screen.queryByRole('button', { name: 'Edit prompt' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'person' })).not.toBeChecked();
+  });
+
+  /**
    * A sociogram's own minimum: a name, the type it arranges, one task for the
    * participant to do, and something behind the nodes while they do it.
+   *
+   * Every string typed here is as short as it can be while still being the
+   * thing asserted: each character is a keystroke through a controlled field,
+   * and a prompt's wording is the prompts section's business rather than this
+   * editor's.
    */
   it('saves a new stage once it has been given the minimum it needs', async () => {
     const harness = openNewStage();
 
     await harness.user.type(
       screen.getByRole('textbox', { name: 'Stage name' }),
-      'Placing people',
+      'Places',
     );
     await harness.user.click(screen.getByRole('radio', { name: 'person' }));
     await harness.user.click(
       await screen.findByRole('button', { name: 'Create new prompt' }),
     );
+    const prompt = within(await screen.findByRole('dialog'));
     await harness.user.type(
-      await screen.findByRole('textbox', { name: 'Prompt text' }),
-      'Place the people you see most often nearest to you',
+      prompt.getByRole('textbox', { name: 'Prompt text' }),
+      'Who?',
     );
     await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Position attribute' }),
+      prompt.getByRole('combobox', { name: 'Position attribute' }),
       'layout',
     );
-    await harness.user.click(screen.getByRole('button', { name: 'Add' }));
+    await harness.user.click(prompt.getByRole('button', { name: 'Add' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
+    // The nodes need something to be placed against, and a sociogram with no
+    // background does not save.
     await harness.user.type(
       screen.getByRole('spinbutton', {
         name: 'Number of concentric circles',
@@ -254,7 +281,7 @@ describe('the sociogram stage editor', () => {
 
     const request = await harness.submit();
     expect(request?.stageDocument).toMatchObject({
-      label: 'Placing people',
+      label: 'Places',
       subject: { entity: 'node', type: 'person' },
       background: { concentricCircles: 3 },
     });

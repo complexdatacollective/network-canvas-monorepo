@@ -101,6 +101,23 @@ describe('the network composer stage editor', () => {
   });
 
   /**
+   * A new stage arrives holding what the interface's template gives it, and
+   * nothing else — here, the automatic layout the composer was designed
+   * around. Split from the save below so neither claim can hide the other: a
+   * template that arrived empty would still let a filled-in stage save.
+   */
+  it('opens a new stage on the layout mode its template ships', () => {
+    openNewStage();
+
+    expect(screen.getByRole('textbox', { name: 'Stage name' })).toHaveValue('');
+    expect(
+      screen.getByRole('switch', {
+        name: 'Start with automatic layout switched on',
+      }),
+    ).toBeChecked();
+  });
+
+  /**
    * A composer's own minimum: a name, the type the participant builds with,
    * somewhere to put what they type when they add one, somewhere to remember
    * where they put it, and something behind the canvas.
@@ -110,7 +127,7 @@ describe('the network composer stage editor', () => {
 
     await harness.user.type(
       screen.getByRole('textbox', { name: 'Stage name' }),
-      'Building the network',
+      'Build',
     );
     await harness.user.click(screen.getByRole('radio', { name: 'person' }));
     await harness.user.selectOptions(
@@ -132,7 +149,7 @@ describe('the network composer stage editor', () => {
 
     const request = await harness.submit();
     expect(request?.stageDocument).toMatchObject({
-      label: 'Building the network',
+      label: 'Build',
       subject: { entity: 'node', type: 'person' },
       quickAdd: 'composerName',
       layoutVariable: 'layout',

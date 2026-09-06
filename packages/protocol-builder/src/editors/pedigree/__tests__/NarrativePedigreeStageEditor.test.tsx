@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
@@ -209,11 +209,32 @@ describe('the narrative pedigree stage editor', () => {
   });
 
   /**
-   * A stage being created starts from the interface's template, so the minimum
-   * edits are its name, the pedigree it reads, and one disease to draw on it.
-   * Seeded from `getInterfaceTemplate` rather than from a hand-written object,
-   * so a template that gains a default is exercised here rather than diverging
-   * from what a host actually creates.
+   * What the interface's template puts on screen before the researcher has
+   * decided anything: no source pedigree, no diseases, and at-risk statuses
+   * off. Split from the save below so neither claim can hide the other — a
+   * template that arrived with a source already chosen would still let a
+   * filled-in stage save. Seeded from `getInterfaceTemplate` rather than from a
+   * hand-written object, so a template that gains a default is exercised here
+   * rather than diverging from what a host actually creates.
+   */
+  it('opens a new stage on the template its interface ships', () => {
+    openNewStage();
+
+    expect(screen.getByRole('textbox', { name: 'Stage name' })).toHaveValue('');
+    expect(
+      screen.getByRole('switch', { name: 'Show possible (at-risk) statuses' }),
+    ).not.toBeChecked();
+    expect(
+      screen.queryByRole('button', { name: 'Edit disease' }),
+    ).not.toBeInTheDocument();
+  });
+
+  /**
+   * The minimum edits a created stage still needs: its name, the pedigree it
+   * reads, and one disease to draw on it.
+   *
+   * The typed strings are as short as their assertions allow: every character
+   * is a keystroke through a controlled field.
    */
   it('saves a new stage once it reads a pedigree and marks something', async () => {
     const harness = openNewStage();
@@ -224,38 +245,42 @@ describe('the narrative pedigree stage editor', () => {
     await chooseSourceStage(harness, 'Family Pedigree');
     await harness.user.type(
       screen.getByRole('textbox', { name: 'Stage name' }),
-      'Who is affected',
+      'Affected',
     );
 
     await harness.user.click(
       screen.getByRole('button', { name: 'Create new disease' }),
     );
+    // Scoped to the dialog: `screen` would compute an accessible name for
+    // every control in the editor behind it to answer a question about one
+    // inside it.
+    const disease = within(await screen.findByRole('dialog'));
     await harness.user.type(
-      await screen.findByRole('textbox', { name: 'Disease name' }),
-      'Condition Z',
+      disease.getByRole('textbox', { name: 'Disease name' }),
+      'Z',
     );
     await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Colour' }),
+      disease.getByRole('combobox', { name: 'Colour' }),
       'node-color-seq-2',
     );
     await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Affected-status attribute' }),
+      disease.getByRole('combobox', { name: 'Affected-status attribute' }),
       'hasConditionX',
     );
     await chooseOption(harness, 'Inheritance pattern', 'Autosomal recessive');
-    await harness.user.click(screen.getByRole('button', { name: 'Add' }));
+    await harness.user.click(disease.getByRole('button', { name: 'Add' }));
 
     const request = await harness.submit();
     expect(request?.stageDocument).toMatchObject({
       id: 'narrative-pedigree-new',
       type: 'NarrativePedigree',
-      label: 'Who is affected',
+      label: 'Affected',
       sourceStageId: SOURCE_STAGE_ID,
       showAtRiskStatuses: false,
     });
     expect(request?.stageDocument.diseases).toMatchObject([
       {
-        label: 'Condition Z',
+        label: 'Z',
         color: 'node-color-seq-2',
         variable: 'hasConditionX',
         inheritancePattern: 'autosomalRecessive',

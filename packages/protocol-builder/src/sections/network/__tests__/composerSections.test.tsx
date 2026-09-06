@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
@@ -216,15 +216,19 @@ describe('what a network composer lets the participant build', () => {
         name: 'Create new node attribute field',
       }),
     );
+    // Queries are scoped to the dialog: `screen` would search the whole
+    // editor, computing an accessible name for every control behind the
+    // dialog to answer a question about one inside it.
+    const field = within(await screen.findByRole('dialog'));
     await harness.user.selectOptions(
-      await screen.findByRole('combobox', { name: 'Attribute' }),
+      field.getByRole('combobox', { name: 'Attribute' }),
       'age',
     );
     await harness.user.type(
-      screen.getByRole('textbox', { name: 'Question' }),
-      'How old are they?',
+      field.getByRole('textbox', { name: 'Question' }),
+      'Age?',
     );
-    await harness.user.click(screen.getByRole('button', { name: 'Add' }));
+    await harness.user.click(field.getByRole('button', { name: 'Add' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
@@ -236,7 +240,7 @@ describe('what a network composer lets the participant build', () => {
           id: expect.any(String) as unknown as string,
           variable: 'age',
           component: 'Number',
-          label: 'How old are they?',
+          label: 'Age?',
         },
       ],
     });
@@ -258,11 +262,12 @@ describe('what a network composer lets the participant build', () => {
         name: 'Create new attribute field for "knows" connections',
       }),
     );
+    const field = within(await screen.findByRole('dialog'));
     await harness.user.selectOptions(
-      await screen.findByRole('combobox', { name: 'Attribute' }),
+      field.getByRole('combobox', { name: 'Attribute' }),
       'edgeNotes',
     );
-    await harness.user.click(screen.getByRole('button', { name: 'Add' }));
+    await harness.user.click(field.getByRole('button', { name: 'Add' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
@@ -356,12 +361,13 @@ describe('what a network composer lets the participant build', () => {
         name: 'Create a new position attribute',
       }),
     );
+    const creator = within(await screen.findByRole('dialog'));
     await harness.user.type(
-      await screen.findByRole('textbox', { name: 'Attribute name' }),
-      'seating',
+      creator.getByRole('textbox', { name: 'Attribute name' }),
+      'seats',
     );
     await harness.user.click(
-      screen.getByRole('button', { name: 'Create attribute' }),
+      creator.getByRole('button', { name: 'Create attribute' }),
     );
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
@@ -371,9 +377,7 @@ describe('what a network composer lets the participant build', () => {
       name: 'Position attribute',
     });
     await waitFor(() =>
-      expect(
-        screen.getByRole('option', { name: 'seating' }),
-      ).toBeInTheDocument(),
+      expect(screen.getByRole('option', { name: 'seats' })).toBeInTheDocument(),
     );
     const chosen = (picker as HTMLSelectElement).value;
     expect(chosen).not.toBe('layout');

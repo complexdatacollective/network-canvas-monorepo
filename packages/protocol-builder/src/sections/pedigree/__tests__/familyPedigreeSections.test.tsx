@@ -14,7 +14,10 @@ import FramingConfigSection from '../FramingConfigSection.tsx';
 import NominationPromptsSection from '../NominationPromptsSection.tsx';
 import PedigreeEdgeConfigurationSection from '../PedigreeEdgeConfigurationSection.tsx';
 import PedigreeNodeConfigurationSection from '../PedigreeNodeConfigurationSection.tsx';
-import { familyPedigreeStageWith } from './pedigreeFixtures.tsx';
+import {
+  addFamilyMemberVariable,
+  familyPedigreeStageWith,
+} from './pedigreeFixtures.tsx';
 
 const pedigreeSections = (
   <>
@@ -116,29 +119,42 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /**
- * Invents an attribute from a slot's own create control, and binds it there.
+ * Adds a family member form field that invents the attribute it collects.
  *
- * The codebook write lands as the dialog closes, so the new attribute reaches
- * every OTHER picker on the screen while the slot claiming it is still this
- * session's unsaved draft — the one window in which a picker reading only the
- * saved protocol can be wrong about what is free.
+ * The one sequence in this file that goes through the field dialog by hand,
+ * because every boolean the node type already has is written unvalidated
+ * somewhere and the shared picker refuses all of them — so a test that needs a
+ * form field collecting a boolean has to make the attribute here. The prompt
+ * text is as short as a question can be: every character is a keystroke
+ * through a controlled field, and what these tests are about is which
+ * attribute the field took, never what it asks.
  */
-async function createFromSlot(
+async function addFormFieldInventing(
   harness: StageEditorHarness,
-  createLabel: string,
-  attributeName = 'kinship',
+  attributeName: string,
+  kindOfAnswer: string,
 ): Promise<void> {
-  await harness.user.click(screen.getByRole('button', { name: createLabel }));
-  const creator = within(
-    await screen.findByRole('dialog', { name: createLabel }),
+  await harness.user.click(
+    await screen.findByRole('button', { name: 'Create new form field' }),
+  );
+  const field = within(await screen.findByRole('dialog'));
+  await harness.user.selectOptions(
+    field.getByRole('combobox', { name: 'Attribute' }),
+    '__create_new_attribute__',
   );
   await harness.user.type(
-    creator.getByRole('textbox', { name: /name/i }),
+    await field.findByRole('textbox', { name: 'Attribute name' }),
     attributeName,
   );
-  await harness.user.click(
-    creator.getByRole('button', { name: /^(Save|Create)/ }),
+  await harness.user.selectOptions(
+    field.getByRole('combobox', { name: 'Kind of answer' }),
+    kindOfAnswer,
   );
+  await harness.user.type(
+    field.getByRole('textbox', { name: 'Question text' }),
+    'Q?',
+  );
+  await harness.user.click(field.getByRole('button', { name: 'Add' }));
   await waitFor(() =>
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
   );
@@ -339,34 +355,10 @@ describe('the attributes a pedigree may bind', () => {
     await harness.user.click(
       screen.getByRole('switch', { name: 'Family member form' }),
     );
-    await harness.user.click(
-      await screen.findByRole('button', { name: 'Create new form field' }),
-    );
-    const field = within(await screen.findByRole('dialog'));
-    await harness.user.selectOptions(
-      field.getByRole('combobox', { name: 'Attribute' }),
-      '__create_new_attribute__',
-    );
-    await harness.user.type(
-      await field.findByRole('textbox', { name: 'Attribute name' }),
-      'unwell',
-    );
-    await harness.user.selectOptions(
-      field.getByRole('combobox', { name: 'Kind of answer' }),
-      'boolean',
-    );
-    await harness.user.type(
-      field.getByRole('textbox', { name: 'Question text' }),
-      'Have they been unwell?',
-    );
-    await harness.user.click(field.getByRole('button', { name: 'Add' }));
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
-    );
+    await addFormFieldInventing(harness, 'unwell', 'boolean');
 
     const unwell = variableIdByName(harness, 'unwell');
     expect(unwell).toBeDefined();
-    if (unwell === undefined) throw new Error('the attribute was not created');
 
     // The two booleans this node type had before the field was added, and not
     // the one it now collects.
@@ -413,12 +405,10 @@ describe('the attributes a pedigree may bind', () => {
    * this session knows about it.
    *
    * The form picker's exclusions are built from the SAVED protocol, so an
-   * attribute a structural slot was bound to in this session would be
-   * invisible to it — and creating one from the slot itself writes the
-   * attribute to the codebook at once, so it appears in the form picker while
-   * the slot that claims it is still unsaved. The pedigree writes it from the
-   * tree the participant draws, without validation; collecting it through a
-   * form field as well is the mix the whole rule exists to stop.
+   * attribute a structural slot was bound to in this session is invisible to
+   * it. The pedigree writes that attribute from the tree the participant
+   * draws, without validation; collecting it through a form field as well is
+   * the mix the whole rule exists to stop.
    *
    * The pedigree closes the window by handing the shared section its three
    * unvalidated slots' live values as `draftUnvalidatedVariables`, which is
@@ -426,12 +416,16 @@ describe('the attributes a pedigree may bind', () => {
    */
   it('never offers the family member form an attribute a slot took this session', async () => {
     const harness = renderStageEditor(openFixture());
-
-    // Created FROM the slot, so the attribute reaches the codebook — and
-    // therefore the form's picker — while the slot binding it is still the
-    // researcher's unsaved draft. That is the only window in which a picker
-    // reading the saved protocol can be wrong.
-    await createFromSlot(harness, 'Create a new relationship attribute');
+    addFamilyMemberVariable(harness, 'kinship', {
+      name: 'kinship',
+      type: 'text',
+    });
+    await harness.user.selectOptions(
+      await screen.findByRole('combobox', {
+        name: 'Relationship to participant',
+      }),
+      'kinship',
+    );
 
     await harness.user.click(
       screen.getByRole('switch', { name: 'Family member form' }),
@@ -440,15 +434,16 @@ describe('the attributes a pedigree may bind', () => {
       await screen.findByRole('button', { name: 'Create new form field' }),
     );
     const field = within(await screen.findByRole('dialog'));
-    // By name rather than by id: the attribute was invented a moment ago and
-    // its id is a fresh uuid.
     const offered = [
       ...field
         .getByRole('combobox', { name: 'Attribute' })
         .querySelectorAll('option'),
-    ].map((option) => option.textContent);
+    ].map((option) => option.value);
 
     expect(offered).not.toContain('kinship');
+    // Not an empty picker: the display label's own attribute is collected
+    // through a form field, so it is still on offer.
+    expect(offered).toContain('fm_name');
   });
 
   /**
@@ -459,13 +454,21 @@ describe('the attributes a pedigree may bind', () => {
    */
   it('never offers the display label an attribute a slot took this session', async () => {
     const harness = renderStageEditor(openFixture());
+    addFamilyMemberVariable(harness, 'kinship', {
+      name: 'kinship',
+      type: 'text',
+    });
+    // On offer while nothing has claimed it, so the exclusion below is a
+    // change rather than a list that was always this short.
+    await waitFor(() =>
+      expect(optionsOf('Display label')).toEqual(['fm_name', 'kinship']),
+    );
 
-    await createFromSlot(harness, 'Create a new relationship attribute');
-    const kinship = variableIdByName(harness, 'kinship');
-    if (kinship === undefined) throw new Error('the attribute was not created');
+    await harness.user.selectOptions(
+      screen.getByRole('combobox', { name: 'Relationship to participant' }),
+      'kinship',
+    );
 
-    // The label keeps its own committed pick, and gains nothing the
-    // relationship slot has just taken.
     await waitFor(() =>
       expect(optionsOf('Display label')).toEqual(['fm_name']),
     );
@@ -484,22 +487,22 @@ describe('the attributes a pedigree may bind', () => {
    */
   it('refuses a display label another slot in this stage has since taken', async () => {
     const harness = renderStageEditor(openFixture());
+    addFamilyMemberVariable(harness, 'preferred_name', {
+      name: 'preferred_name',
+      type: 'text',
+    });
 
-    await createFromSlot(
-      harness,
-      'Create a new display label attribute',
+    // The label takes it first, so it escapes its own picker's exclusion as
+    // the pick the control is already holding.
+    await harness.user.selectOptions(
+      await screen.findByRole('combobox', { name: 'Display label' }),
       'preferred_name',
     );
-    const preferred = variableIdByName(harness, 'preferred_name');
-    if (preferred === undefined) {
-      throw new Error('the attribute was not created');
-    }
-
     // The relationship slot's own picker reads the saved protocol and this
     // stage's form; neither knows the display label just took this attribute.
     await harness.user.selectOptions(
       screen.getByRole('combobox', { name: 'Relationship to participant' }),
-      preferred,
+      'preferred_name',
     );
 
     expect(await harness.submit()).toBeNull();
@@ -537,27 +540,7 @@ describe('the way a family member form reaches the document', () => {
     // Added. Every boolean this node type already has is written unvalidated
     // somewhere — this pedigree's own slots, and the narrative pedigree's
     // disease — so the field invents its attribute rather than picking one.
-    await harness.user.click(
-      await screen.findByRole('button', { name: 'Create new form field' }),
-    );
-    const field = within(await screen.findByRole('dialog'));
-    await harness.user.selectOptions(
-      field.getByRole('combobox', { name: 'Attribute' }),
-      '__create_new_attribute__',
-    );
-    await harness.user.type(
-      await field.findByRole('textbox', { name: 'Attribute name' }),
-      'unwell',
-    );
-    await harness.user.selectOptions(
-      field.getByRole('combobox', { name: 'Kind of answer' }),
-      'boolean',
-    );
-    await harness.user.type(
-      field.getByRole('textbox', { name: 'Question text' }),
-      'Have they been unwell?',
-    );
-    await harness.user.click(field.getByRole('button', { name: 'Add' }));
+    await addFormFieldInventing(harness, 'unwell', 'boolean');
     await waitFor(() => expect(formRows(harness)).toHaveLength(2));
 
     const unwell = variableIdByName(harness, 'unwell');
@@ -567,7 +550,7 @@ describe('the way a family member form reaches the document', () => {
     const added = {
       id: expect.any(String) as unknown as string,
       variable: unwell,
-      prompt: 'Have they been unwell?',
+      prompt: 'Q?',
     };
 
     // Moved, through the keyboard half of the drag handle — the same operation
@@ -629,22 +612,23 @@ describe('the pedigree’s nomination prompts', () => {
     await harness.user.click(
       screen.getByRole('button', { name: 'Edit nomination prompt' }),
     );
-    const text = await screen.findByRole('textbox', { name: 'Prompt text' });
+    const prompt = within(await screen.findByRole('dialog'));
+    const text = prompt.getByRole('textbox', { name: 'Prompt text' });
     await harness.user.clear(text);
-    await harness.user.type(text, 'Who has had this condition?');
-    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    await harness.user.type(text, 'Who else?');
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
 
     // The rendered markdown nests, so the question matches the paragraph and
     // the row around it.
-    await screen.findAllByText('Who has had this condition?');
+    await screen.findAllByText('Who else?');
     const request = await harness.submit();
     expect(request?.stageDocument.nominationPrompts).toEqual([
       {
         id: 'nomination-1',
-        text: 'Who has had this condition?',
+        text: 'Who else?',
         variable: 'hasConditionX',
       },
     ]);
@@ -759,13 +743,17 @@ describe('creating an attribute a slot needs without leaving the stage', () => {
         name: 'Create a new display label attribute',
       }),
     );
+    // Scoped to the dialog: `screen` would compute an accessible name for
+    // every control in the editor behind it to answer a question about one
+    // inside it.
+    const creator = within(await screen.findByRole('dialog'));
     await harness.user.type(
-      await screen.findByRole('textbox', { name: 'Attribute name' }),
-      'preferred_name',
+      creator.getByRole('textbox', { name: 'Attribute name' }),
+      'nickname',
     );
     const submissions = vi.spyOn(harness.host, 'submit');
     await harness.user.click(
-      screen.getByRole('button', { name: 'Create attribute' }),
+      creator.getByRole('button', { name: 'Create attribute' }),
     );
 
     await waitFor(() =>
@@ -780,7 +768,7 @@ describe('creating an attribute a slot needs without leaving the stage', () => {
       submissions.mock.calls[0]?.[0].edits.map((edit) => edit.sectionId),
     ).toEqual([FAMILY_MEMBER_SECTION]);
     // And the slot now points at the attribute the codebook now holds.
-    const created = variableIdByName(harness, 'preferred_name');
+    const created = variableIdByName(harness, 'nickname');
     expect(created).toEqual(expect.any(String));
     expect(screen.getByRole('combobox', { name: 'Display label' })).toHaveValue(
       created,

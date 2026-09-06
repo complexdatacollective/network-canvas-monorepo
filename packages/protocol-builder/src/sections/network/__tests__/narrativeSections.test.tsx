@@ -76,10 +76,14 @@ describe('the ways of looking at the network a narrative stage offers', () => {
     await harness.user.click(
       screen.getByRole('button', { name: 'Edit preset' }),
     );
-    const name = await screen.findByRole('textbox', { name: 'Preset name' });
+    // Scoped to the dialog: `screen` would compute an accessible name for
+    // every control in the editor behind it to answer a question about one
+    // inside it.
+    const preset = within(await screen.findByRole('dialog'));
+    const name = preset.getByRole('textbox', { name: 'Preset name' });
     await harness.user.clear(name);
-    await harness.user.type(name, 'Close ties');
-    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    await harness.user.type(name, 'Ties');
+    await harness.user.click(preset.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
@@ -88,7 +92,7 @@ describe('the ways of looking at the network a narrative stage offers', () => {
     expect(presets(request?.stageDocument ?? {})).toEqual([
       {
         id: 'narrative-preset-1',
-        label: 'Close ties',
+        label: 'Ties',
         layoutVariable: 'layout',
         groupVariable: 'contactType',
         edges: { display: ['knows'] },
@@ -103,15 +107,16 @@ describe('the ways of looking at the network a narrative stage offers', () => {
     await harness.user.click(
       screen.getByRole('button', { name: 'Create new preset' }),
     );
+    const preset = within(await screen.findByRole('dialog'));
     await harness.user.type(
-      await screen.findByRole('textbox', { name: 'Preset name' }),
-      'Everyone',
+      preset.getByRole('textbox', { name: 'Preset name' }),
+      'All',
     );
     await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Position attribute' }),
+      preset.getByRole('combobox', { name: 'Position attribute' }),
       'layout',
     );
-    await harness.user.click(screen.getByRole('button', { name: 'Add' }));
+    await harness.user.click(preset.getByRole('button', { name: 'Add' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
@@ -121,7 +126,7 @@ describe('the ways of looking at the network a narrative stage offers', () => {
     expect(rows).toHaveLength(2);
     expect(rows[1]).toEqual({
       id: expect.any(String) as unknown as string,
-      label: 'Everyone',
+      label: 'All',
       layoutVariable: 'layout',
     });
     expect(rows[1]?.id).not.toBe('narrative-preset-1');

@@ -146,25 +146,25 @@ describe('the anonymisation stage editor', () => {
 
     await harness.user.type(
       screen.getByRole('textbox', { name: 'Stage name' }),
-      'Protect their answers',
+      'Protect',
     );
     await harness.user.type(
       screen.getByRole('textbox', { name: 'Explanation heading' }),
-      'This interview protects some answers',
+      'Why',
     );
     await harness.user.type(
       screen.getByRole('textbox', { name: 'Explanation' }),
-      'Choose a passphrase you will remember.',
+      'Pick one.',
     );
 
     const request = await harness.submit();
     expect(request?.stageDocument).toMatchObject({
       id: 'anonymisation-new',
       type: 'Anonymisation',
-      label: 'Protect their answers',
+      label: 'Protect',
       explanationText: {
-        title: 'This interview protects some answers',
-        body: 'Choose a passphrase you will remember.',
+        title: 'Why',
+        body: 'Pick one.',
       },
     });
   });
@@ -191,7 +191,7 @@ describe('the anonymisation stage editor', () => {
     );
     await harness.user.type(
       screen.getByRole('textbox', { name: 'Explanation heading' }),
-      'A heading nobody saved',
+      'Unsaved',
     );
     await harness.cancel();
 

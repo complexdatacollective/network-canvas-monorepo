@@ -395,11 +395,14 @@ describe('the places a geospatial stage asks about', () => {
     await harness.user.click(
       screen.getByRole('button', { name: 'Create new prompt' }),
     );
+    // Scoped to the dialog: `screen` would compute an accessible name for
+    // every control in the editor behind it to answer a question about one
+    // inside it.
+    const dialog = within(await screen.findByRole('dialog'));
     await harness.user.type(
-      await screen.findByRole('textbox', { name: 'Prompt text' }),
-      'Where do you work?',
+      dialog.getByRole('textbox', { name: 'Prompt text' }),
+      'Work?',
     );
-    const dialog = within(screen.getByRole('dialog'));
     await harness.user.selectOptions(
       dialog.getByRole('combobox', { name: 'Location attribute' }),
       'location',
@@ -413,7 +416,7 @@ describe('the places a geospatial stage asks about', () => {
     const prompts = request?.stageDocument.prompts;
     expect(Array.isArray(prompts) ? prompts : []).toHaveLength(2);
     expect((Array.isArray(prompts) ? prompts : [])[1]).toMatchObject({
-      text: 'Where do you work?',
+      text: 'Work?',
       variable: 'location',
     });
   });
@@ -430,12 +433,13 @@ describe('the places a geospatial stage asks about', () => {
     await harness.user.click(
       screen.getByRole('button', { name: 'Create new prompt' }),
     );
+    const dialog = within(await screen.findByRole('dialog'));
     await harness.user.type(
-      await screen.findByRole('textbox', { name: 'Prompt text' }),
-      'Where were you born?',
+      dialog.getByRole('textbox', { name: 'Prompt text' }),
+      'Born?',
     );
     await harness.user.click(
-      screen.getByRole('button', { name: 'Create a new location attribute' }),
+      dialog.getByRole('button', { name: 'Create a new location attribute' }),
     );
     const creator = within(
       await screen.findByRole('dialog', {
@@ -444,7 +448,7 @@ describe('the places a geospatial stage asks about', () => {
     );
     await harness.user.type(
       creator.getByRole('textbox', { name: /name/i }),
-      'birthplace',
+      'born',
     );
     await harness.user.click(
       creator.getByRole('button', { name: /^(Save|Create)/ }),
@@ -458,8 +462,7 @@ describe('the places a geospatial stage asks about', () => {
     const variables = (person?.variables ?? {}) as Record<string, SectionDoc>;
     expect(
       Object.values(variables).some(
-        (variable) =>
-          variable.name === 'birthplace' && variable.type === 'location',
+        (variable) => variable.name === 'born' && variable.type === 'location',
       ),
     ).toBe(true);
   });

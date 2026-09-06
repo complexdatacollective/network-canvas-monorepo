@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
@@ -164,13 +164,37 @@ describe('the family pedigree stage editor', () => {
   });
 
   /**
-   * A stage being created starts from the interface's template, which supplies
-   * the framing, the boundaries and an introduction screen — so the minimum
-   * edits are the two entity types, the attributes the interface writes the
-   * family into, the question asked while it is built, and the stage's name.
-   * Seeded from `getInterfaceTemplate` rather than from a hand-written object,
-   * so a template that gains a default is exercised here rather than diverging
-   * from what a host actually creates.
+   * What the interface's own template puts on screen before the researcher has
+   * decided anything: the framing, the boundaries and an introduction screen.
+   *
+   * Split from the save below so neither claim can hide the other — a template
+   * that lost its framing would still let a fully filled-in stage save, and a
+   * save that refused would say nothing about what the researcher was first
+   * shown. Seeded from `getInterfaceTemplate` rather than from a hand-written
+   * object, so a template that gains a default is exercised here rather than
+   * diverging from what a host actually creates.
+   */
+  it('opens a new stage on the framing and boundaries its template ships', () => {
+    openNewStage();
+
+    expect(screen.getByRole('radio', { name: 'Fixed framing' })).toBeChecked();
+    expect(
+      screen.getByRole('combobox', { name: 'Fixed framing terminology' }),
+    ).toHaveValue('gamete');
+    expect(
+      screen.getByRole('combobox', { name: 'Grandparent requirement' }),
+    ).toHaveValue('off');
+    expect(screen.getByRole('textbox', { name: 'Stage name' })).toHaveValue('');
+  });
+
+  /**
+   * The minimum edits a created stage still needs: the two entity types, the
+   * attributes the interface writes the family into, the question asked while
+   * it is built, and the stage's name.
+   *
+   * The two typed strings are as short as their assertions allow — every
+   * character is a keystroke through a controlled field, and the wording of a
+   * census prompt is the prompt section's business.
    */
   it('saves a new stage once its types, attributes and prompt are set', async () => {
     const harness = openNewStage();
@@ -217,19 +241,19 @@ describe('the family pedigree stage editor', () => {
 
     await harness.user.type(
       screen.getByRole('textbox', { name: 'Census prompt' }),
-      'Who is in your family?',
+      'Who?',
     );
     await harness.user.type(
       screen.getByRole('textbox', { name: 'Stage name' }),
-      'Your family',
+      'Family',
     );
 
     const request = await harness.submit();
     expect(request?.stageDocument).toMatchObject({
       id: 'family-pedigree-new',
       type: 'FamilyPedigree',
-      label: 'Your family',
-      censusPrompt: 'Who is in your family?',
+      label: 'Family',
+      censusPrompt: 'Who?',
       framing: { mode: 'fixed', value: 'gamete' },
       nodeConfig: {
         type: 'family_member',
@@ -306,14 +330,18 @@ describe('the introduction screen a pedigree opens with', () => {
     await harness.user.click(
       screen.getByRole('button', { name: 'Edit introduction block' }),
     );
-    const blockText = await screen.findByRole('textbox', { name: 'Content' });
+    // Scoped to the dialog: `screen` would compute an accessible name for
+    // every control in the editor behind it to answer a question about one
+    // inside it.
+    const block = within(await screen.findByRole('dialog'));
+    const blockText = block.getByRole('textbox', { name: 'Content' });
     await harness.user.clear(blockText);
-    await harness.user.type(blockText, 'First, your parents.');
-    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    await harness.user.type(blockText, 'Parents.');
+    await harness.user.click(block.getByRole('button', { name: 'Save' }));
 
     const request = await harness.submit();
     expect(request?.stageDocument.introScreen).toEqual({
-      items: [{ id: 'intro-1', type: 'text', content: 'First, your parents.' }],
+      items: [{ id: 'intro-1', type: 'text', content: 'Parents.' }],
     });
   });
 
@@ -429,13 +457,14 @@ describe('creating an attribute a slot needs without leaving the stage', () => {
         name: 'Create a new display label attribute',
       }),
     );
+    const creator = within(await screen.findByRole('dialog'));
     await harness.user.type(
-      await screen.findByRole('textbox', { name: 'Attribute name' }),
-      'preferred_name',
+      creator.getByRole('textbox', { name: 'Attribute name' }),
+      'nickname',
     );
     const submitted = vi.spyOn(harness.host, 'submit');
     await harness.user.click(
-      screen.getByRole('button', { name: 'Create attribute' }),
+      creator.getByRole('button', { name: 'Create attribute' }),
     );
 
     await waitFor(() =>
@@ -448,7 +477,7 @@ describe('creating an attribute a slot needs without leaving the stage', () => {
       submitted.mock.calls[0]?.[0].edits.map((edit) => edit.sectionId),
     ).toEqual([FAMILY_MEMBER_SECTION]);
 
-    const created = variableIdByName(harness, 'preferred_name');
+    const created = variableIdByName(harness, 'nickname');
     expect(created).toEqual(expect.any(String));
     const request = await harness.submit();
     expect(request?.stageDocument.nodeConfig).toMatchObject({

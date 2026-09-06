@@ -94,12 +94,9 @@ describe('the tasks a sociogram sets', () => {
   it('stops creating connections when tapping is asked to do nothing', async () => {
     const harness = renderStageEditor(openEditor());
 
-    const [first] = screen.getAllByRole('button', { name: 'Edit prompt' });
-    await harness.user.click(first as HTMLElement);
-    await harness.user.click(
-      await screen.findByRole('option', { name: /Nothing/ }),
-    );
-    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    const prompt = await openPrompt(harness);
+    await harness.user.click(prompt.getByRole('option', { name: /Nothing/ }));
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
@@ -117,16 +114,15 @@ describe('the tasks a sociogram sets', () => {
   it('marks nodes with the attribute the researcher chose', async () => {
     const harness = renderStageEditor(openEditor());
 
-    const [first] = screen.getAllByRole('button', { name: 'Edit prompt' });
-    await harness.user.click(first as HTMLElement);
+    const prompt = await openPrompt(harness);
     await harness.user.click(
-      await screen.findByRole('option', { name: /Mark the node/ }),
+      prompt.getByRole('option', { name: /Mark the node/ }),
     );
     await harness.user.selectOptions(
-      await screen.findByRole('combobox', { name: 'Attribute marked' }),
+      await prompt.findByRole('combobox', { name: 'Attribute marked' }),
       'highlighted',
     );
-    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
@@ -147,15 +143,14 @@ describe('the tasks a sociogram sets', () => {
   it('shows the kind of connection it lets the participant draw', async () => {
     const harness = renderStageEditor(openEditor());
 
-    const editButtons = screen.getAllByRole('button', { name: 'Edit prompt' });
-    await harness.user.click(editButtons[1] as HTMLElement);
+    const prompt = await openPrompt(harness, 1);
     await harness.user.click(
-      await screen.findByRole('option', { name: /Create a connection/ }),
+      prompt.getByRole('option', { name: /Create a connection/ }),
     );
     await harness.user.click(
-      await screen.findByRole('radio', { name: /family_edge/ }),
+      await prompt.findByRole('radio', { name: /family_edge/ }),
     );
-    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
@@ -261,10 +256,23 @@ const openWithOrphanedSortRule = () =>
     sortOrder: [{ property: ORPHANED_PROPERTY, direction: 'asc' }],
   });
 
-const openPrompt = async (harness: StageEditorHarness): Promise<void> => {
-  const [first] = screen.getAllByRole('button', { name: 'Edit prompt' });
-  await harness.user.click(first as HTMLElement);
-  await screen.findByRole('dialog');
+/**
+ * Opens one prompt's dialog and answers with the dialog itself.
+ *
+ * Every query inside a prompt editor is made through this, so a wait covers
+ * ONE thing: the dialog arriving. A `findByRole('combobox')` at document level
+ * would be waiting for the editor to boot AND the dialog to open AND that
+ * control's own data, and a failure could not say which of the three did not
+ * happen — nor could it tell a control inside the dialog from one of the same
+ * name on the stage behind it.
+ */
+const openPrompt = async (
+  harness: StageEditorHarness,
+  index = 0,
+): Promise<ReturnType<typeof within>> => {
+  const editButtons = screen.getAllByRole('button', { name: 'Edit prompt' });
+  await harness.user.click(editButtons[index] as HTMLElement);
+  return within(await screen.findByRole('dialog'));
 };
 
 /**
@@ -273,9 +281,9 @@ const openPrompt = async (harness: StageEditorHarness): Promise<void> => {
  * The placeholder is dropped: it is the cell's "nothing chosen yet" rather
  * than a property on offer, and counting it would let an empty list pass.
  */
-const sortPropertyOptions = (): string[] =>
+const sortPropertyOptions = (prompt: ReturnType<typeof within>): string[] =>
   [
-    ...screen
+    ...prompt
       .getByRole('combobox', { name: 'Property' })
       .querySelectorAll('option'),
   ]
@@ -304,17 +312,15 @@ describe('the order a sociogram hands unplaced nodes over in', () => {
   it('opens a prompt’s sort order switched on, holding the rule it was saved with', async () => {
     const harness = renderStageEditor(openWithSortOrder());
 
-    await openPrompt(harness);
+    const prompt = await openPrompt(harness);
 
-    await waitFor(() =>
-      expect(
-        screen.getByRole('switch', { name: 'Sort unplaced nodes' }),
-      ).toBeChecked(),
-    );
-    expect(screen.getByRole('combobox', { name: 'Property' })).toHaveValue(
+    expect(
+      prompt.getByRole('switch', { name: 'Sort unplaced nodes' }),
+    ).toBeChecked();
+    expect(prompt.getByRole('combobox', { name: 'Property' })).toHaveValue(
       'name',
     );
-    expect(screen.getByRole('combobox', { name: 'Direction' })).toHaveValue(
+    expect(prompt.getByRole('combobox', { name: 'Direction' })).toHaveValue(
       'asc',
     );
   });
@@ -334,13 +340,13 @@ describe('the order a sociogram hands unplaced nodes over in', () => {
   it('offers every attribute of the type it collects as a sort key, except the one holding positions', async () => {
     const harness = renderStageEditor(openWithSortOrder());
 
-    await openPrompt(harness);
+    const prompt = await openPrompt(harness);
 
     const sortable = personVariables(harness)
       .filter(([, variable]) => variable.type !== 'layout')
       .map(([id]) => id);
     expect(sortable).toContain('name');
-    expect(sortPropertyOptions()).toEqual(['*', ...sortable]);
+    expect(sortPropertyOptions(prompt)).toEqual(['*', ...sortable]);
   });
 
   /**
@@ -355,9 +361,9 @@ describe('the order a sociogram hands unplaced nodes over in', () => {
   it('shows a sort rule the attribute has been deleted out from under', async () => {
     const harness = renderStageEditor(openWithOrphanedSortRule());
 
-    await openPrompt(harness);
+    const prompt = await openPrompt(harness);
 
-    const property = screen.getByRole('combobox', { name: 'Property' });
+    const property = prompt.getByRole('combobox', { name: 'Property' });
     expect(property).toHaveValue(ORPHANED_PROPERTY);
     expect(
       within(property).getByRole('option', {
@@ -369,24 +375,24 @@ describe('the order a sociogram hands unplaced nodes over in', () => {
   it('saves a rule the researcher added to a prompt that had none', async () => {
     const harness = renderStageEditor(openEditor());
 
-    await openPrompt(harness);
+    const prompt = await openPrompt(harness);
     await harness.user.click(
-      screen.getByRole('switch', { name: 'Sort unplaced nodes' }),
+      prompt.getByRole('switch', { name: 'Sort unplaced nodes' }),
     );
     await harness.user.click(
-      await screen.findByRole('button', {
+      await prompt.findByRole('button', {
         name: 'Add a rule for the order unplaced nodes are handed over in',
       }),
     );
     await harness.user.selectOptions(
-      await screen.findByRole('combobox', { name: 'Property' }),
+      await prompt.findByRole('combobox', { name: 'Property' }),
       'age',
     );
     await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Direction' }),
+      prompt.getByRole('combobox', { name: 'Direction' }),
       'desc',
     );
-    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
@@ -412,8 +418,8 @@ describe('the order a sociogram hands unplaced nodes over in', () => {
   it('saves a prompt it opened and left alone exactly as it arrived', async () => {
     const harness = renderStageEditor(openWithSortOrder());
 
-    await openPrompt(harness);
-    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    const prompt = await openPrompt(harness);
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
@@ -430,11 +436,11 @@ describe('the order a sociogram hands unplaced nodes over in', () => {
   it('drops the sort order when the researcher switches it off', async () => {
     const harness = renderStageEditor(openWithSortOrder());
 
-    await openPrompt(harness);
+    const prompt = await openPrompt(harness);
     await harness.user.click(
-      await screen.findByRole('switch', { name: 'Sort unplaced nodes' }),
+      prompt.getByRole('switch', { name: 'Sort unplaced nodes' }),
     );
-    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );

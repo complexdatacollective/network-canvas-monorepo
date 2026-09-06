@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { getInterfaceTemplate } from '../../../interfaces/templates.ts';
@@ -99,30 +99,56 @@ describe('the narrative stage editor', () => {
   });
 
   /**
-   * A new stage arrives holding only what the interface's template gives it.
-   * What it still needs is the interface's own minimum: a name, the type it
-   * draws, one way of looking at the network, and something behind the nodes.
+   * A new stage arrives holding what the interface's template gives it, and
+   * nothing else. The two canvas behaviours are the Narrative's own authored
+   * defaults; a researcher who never opens that section gets the stage the
+   * interface was designed around.
+   *
+   * Split from the save below so neither claim can hide the other: a template
+   * that arrived empty would still let a filled-in stage save.
+   */
+  it('opens a new stage on the behaviours its template ships', () => {
+    openNewStage();
+
+    expect(screen.getByRole('textbox', { name: 'Stage name' })).toHaveValue('');
+    expect(
+      screen.getByRole('switch', { name: 'Allow moving nodes' }),
+    ).toBeChecked();
+    expect(
+      screen.getByRole('switch', { name: 'Allow drawing on the canvas' }),
+    ).not.toBeChecked();
+  });
+
+  /**
+   * What a new stage still needs is the interface's own minimum: a name, the
+   * type it draws, one way of looking at the network, and something behind the
+   * nodes.
+   *
+   * The typed strings are as short as the assertions allow: every character is
+   * a keystroke through a controlled field, and neither a stage's name nor a
+   * preset's is what this test is about.
    */
   it('saves a new stage once it has been given the minimum it needs', async () => {
     const harness = openNewStage();
 
     await harness.user.type(
       screen.getByRole('textbox', { name: 'Stage name' }),
-      'Telling the story',
+      'Story',
     );
     await harness.user.click(screen.getByRole('radio', { name: 'person' }));
     await harness.user.click(
       await screen.findByRole('button', { name: 'Create new preset' }),
     );
+    const preset = within(await screen.findByRole('dialog'));
     await harness.user.type(
-      await screen.findByRole('textbox', { name: 'Preset name' }),
-      'Everyone',
+      preset.getByRole('textbox', { name: 'Preset name' }),
+      'All',
     );
     await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Position attribute' }),
+      preset.getByRole('combobox', { name: 'Position attribute' }),
       'layout',
     );
-    await harness.user.click(screen.getByRole('button', { name: 'Add' }));
+    await harness.user.click(preset.getByRole('button', { name: 'Add' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
@@ -135,7 +161,7 @@ describe('the narrative stage editor', () => {
 
     const request = await harness.submit();
     expect(request?.stageDocument).toMatchObject({
-      label: 'Telling the story',
+      label: 'Story',
       subject: { entity: 'node', type: 'person' },
       background: { concentricCircles: 4 },
       // The template's own defaults survive the first save. Each control here
