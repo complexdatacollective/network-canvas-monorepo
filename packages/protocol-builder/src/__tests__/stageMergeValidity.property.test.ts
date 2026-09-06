@@ -388,34 +388,6 @@ function isConflict(
   return false;
 }
 
-/**
- * The one shape this sweep still finds and this round does not close.
- *
- * A sociogram prompt's `edges` says which edges to draw and which to let the
- * participant create, and the schema requires at least one of the two: an
- * empty `edges` has no effect, so it is refused rather than ignored. Its two
- * members constrain each other, then — but they are NOT rivals, and the merge
- * being able to keep both people's work on them is the reason it goes leaf by
- * leaf in the first place (see `reseatEditedRow`). So the answer that closes
- * the exclusive-variant containers cannot be used here: writing `edges` whole
- * would throw away exactly the collaboration it was written to keep.
- *
- * The repro is one leaf removed on each side: the researcher clears
- * `edges.create` while a collaborator empties `edges.display`, and neither of
- * them held `{ display: [] }`. Closing it needs the merge to be able to ASK
- * whether the container it just assembled is one the schema accepts, and to
- * fall back to one side's whole container when it is not — which is schema
- * knowledge the merge does not have today, at a depth where it does not know
- * the stage type either.
- *
- * Pinned as an exact list rather than skipped: a refusal of any OTHER kind
- * fails, and so does this one going away, which is how the fix announces
- * itself.
- */
-const KNOWN_UNCLOSED: readonly string[] = [
-  'edges must set create and/or a non-empty display; an empty edges object has no effect.',
-];
-
 const describeTrial = (trial: Trial, extra: string) =>
   [
     `seed ${String(trial.seed)} (${trial.stage.type})`,
@@ -450,7 +422,6 @@ describe('what the merge produces from two valid stages', () => {
     const failures: string[] = [];
     let contested = 0;
     let conflicts = 0;
-    const unclosed = new Set<string>();
 
     for (let seed = 1; seed <= TRIALS; seed += 1) {
       const { trial, outcome } = runTrial(seed);
@@ -487,20 +458,13 @@ describe('what the merge produces from two valid stages', () => {
         conflicts += 1;
         continue;
       }
-      for (const issue of invented) {
-        if (KNOWN_UNCLOSED.includes(issue.message)) unclosed.add(issue.message);
-      }
-      const inventions = invented.filter(
-        (issue) => !KNOWN_UNCLOSED.includes(issue.message),
-      );
-      if (inventions.length === 0) continue;
       if (failures.length < 3) {
         failures.push(
           describeTrial(
             trial,
             [
               `merged   ${JSON.stringify(outcome.merged)}`,
-              `refused  ${inventions
+              `refused  ${invented
                 .map((issue) => `${issue.path.join('.')}: ${issue.message}`)
                 .join(' | ')}`,
             ].join('\n'),
@@ -510,7 +474,6 @@ describe('what the merge produces from two valid stages', () => {
     }
 
     expect(failures).toEqual([]);
-    expect([...unclosed].toSorted()).toEqual(KNOWN_UNCLOSED);
     expect(contested).toBeGreaterThan(CONTESTED_TRIALS);
     // The conflicts are counted rather than ignored: see `CONFLICT_TRIALS`.
     expect(conflicts).toBeGreaterThan(CONFLICT_TRIALS);

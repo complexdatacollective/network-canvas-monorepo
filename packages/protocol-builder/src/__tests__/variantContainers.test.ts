@@ -308,3 +308,149 @@ describe('a variant container inside a list row', () => {
     ]);
   });
 });
+
+/**
+ * The other kind of container, and the rule that is NOT the one above.
+ *
+ * A sociogram prompt's `edges` says which edges to draw and which the
+ * participant may create. Its two members constrain each other — an `edges`
+ * setting neither has no effect, so the schema refuses it — but they are not
+ * rivals: two researchers configuring the two of them are doing different
+ * work, and keeping both is the reason a row is merged leaf by leaf at all.
+ * Writing `edges` whole the way a variant travels would throw away exactly
+ * that.
+ *
+ * So the leaf merge runs as it always did, and the container it produced is
+ * put to the schema. A container the schema refuses, assembled out of two
+ * edits each side was entitled to make, is one NEITHER of them held — and the
+ * researcher's own container is what stands, the way a contested leaf already
+ * does. See `reseatRecord` in `arrayFieldCommands.ts`.
+ */
+describe('a container whose members constrain one another', () => {
+  const prompt = (edges: SectionDoc): SectionDoc => ({
+    id: 'p1',
+    text: 'Who do you spend time with?',
+    layout: { layoutVariable: 'position' },
+    edges,
+  });
+
+  const promptsOf = (session: ProtocolBuilderSessionStore): unknown =>
+    session.getSnapshot().editedSection.fields.prompts;
+
+  /** What the schema says about the prompt the merge produced. */
+  const mergedPromptIsValid = (session: ProtocolBuilderSessionStore) => {
+    const prompts = promptsOf(session);
+    return sociogramPromptSchema.safeParse(
+      Array.isArray(prompts) ? prompts[0] : prompts,
+    ).success;
+  };
+
+  const openWithBothEdges = () =>
+    openSession({
+      label: 'Who',
+      prompts: [prompt({ display: ['knows'], create: 'knows' })],
+    });
+
+  it('keeps the researcher’s whole container when the leaf merge refuses', () => {
+    const session = openWithBothEdges();
+
+    // The researcher stops offering edge creation. Every other leaf of the
+    // row is left exactly as they found it.
+    edit(session, {
+      label: 'Who',
+      prompts: [prompt({ display: ['knows'] })],
+    });
+
+    // Meanwhile a collaborator stops drawing the edges. Neither edit is wrong
+    // on its own; leaf by leaf they make `{ display: [] }`, which is a prompt
+    // neither of them held and the schema refuses.
+    arrives(session, {
+      label: 'Who',
+      prompts: [prompt({ display: [], create: 'knows' })],
+    });
+
+    expect(promptsOf(session)).toEqual([prompt({ display: ['knows'] })]);
+    expect(mergedPromptIsValid(session)).toBe(true);
+  });
+
+  it('does the same when the two edits are the other way round', () => {
+    const session = openWithBothEdges();
+
+    // The mirror: this session is the one that stops drawing the edges.
+    edit(session, {
+      label: 'Who',
+      prompts: [prompt({ display: [], create: 'knows' })],
+    });
+
+    arrives(session, {
+      label: 'Who',
+      prompts: [prompt({ display: ['knows'] })],
+    });
+
+    expect(promptsOf(session)).toEqual([
+      prompt({ display: [], create: 'knows' }),
+    ]);
+    expect(mergedPromptIsValid(session)).toBe(true);
+  });
+
+  /**
+   * The half that keeps this a rule about a REFUSED container rather than the
+   * researcher winning the row: two edits inside the same container that
+   * assemble into something the schema accepts are both kept, which is the
+   * whole point of merging a row leaf by leaf.
+   */
+  it('leaves a container the schema accepts merged leaf by leaf', () => {
+    const session = openWithBothEdges();
+
+    // The researcher points edge creation at another edge type.
+    edit(session, {
+      label: 'Who',
+      prompts: [prompt({ display: ['knows'], create: 'friends' })],
+    });
+
+    // The collaborator adds an edge type to draw — the sibling member, which
+    // the researcher said nothing about.
+    arrives(session, {
+      label: 'Who',
+      prompts: [prompt({ display: ['knows', 'friends'], create: 'knows' })],
+    });
+
+    expect(promptsOf(session)).toEqual([
+      prompt({ display: ['knows', 'friends'], create: 'friends' }),
+    ]);
+    expect(mergedPromptIsValid(session)).toBe(true);
+  });
+
+  /**
+   * And the case the rule refuses to answer: a container the researcher's own
+   * side does not validate either. Its refusal is not something the merge
+   * invented, so writing it over the collaborator's work would throw that work
+   * away to keep a draft that is refused regardless — the draft's own
+   * validation is what puts it in front of them.
+   */
+  it('keeps the leaf merge when the researcher’s own container is refused', () => {
+    const session = openSession({
+      label: 'Who',
+      prompts: [prompt({ display: ['knows'], create: 'knows' })],
+    });
+
+    // The researcher empties the container outright, which is already a
+    // prompt the schema refuses before anything is merged with it.
+    edit(session, {
+      label: 'Who',
+      prompts: [prompt({})],
+    });
+    expect(sociogramPromptSchema.safeParse(prompt({})).success).toBe(false);
+
+    // The collaborator edited another property of the same row, which the leaf
+    // merge keeps.
+    arrives(session, {
+      label: 'Who',
+      prompts: [
+        { ...prompt({ display: ['knows'], create: 'knows' }), text: 'Who?' },
+      ],
+    });
+
+    expect(promptsOf(session)).toEqual([{ ...prompt({}), text: 'Who?' }]);
+  });
+});

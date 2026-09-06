@@ -3,6 +3,7 @@ import { isEqual } from 'es-toolkit/compat';
 import type { ArrayFieldOperation } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import {
   isExclusiveVariantContainer,
+  schemaRefusesContainer,
   VARIANT_ROW_SEGMENT,
 } from '@codaco/protocol-validation';
 import {
@@ -519,11 +520,17 @@ export function resolveMove<T extends ArrayRow>(
  * wins it entire. It is the rule the draft diff already follows at an object
  * path, said for the rows a diff cannot reach into.
  *
+ * A container whose members merely CONSTRAIN one another is not a variant and
+ * is not written whole. It is assembled leaf by leaf like any other and then
+ * put to the schema, which is the only thing that knows the rule; see
+ * `reseatRecord`.
+ *
  * `rowPath` is where this row lives in the stage document, with
  * `VARIANT_ROW_SEGMENT` for the list itself — `['prompts', '*']`. `undefined`
  * is for a row with no such path at all: a list nested inside another row is
  * part of the row around it and has no key of its own, and the row it is part
- * of is what gets committed.
+ * of is what gets committed. Nothing can be asked of the schema for such a
+ * row either, so the leaf merge is the whole of the answer there.
  */
 export function reseatEditedRow(
   base: unknown,
@@ -545,7 +552,49 @@ export function reseatEditedRow(
   return reseatRecord(base, edited, latest, rowPath);
 }
 
+/**
+ * The leaf merge, and then the one question it cannot answer on its own.
+ *
+ * Leaf by leaf is right wherever the members of a container are independent —
+ * which is nearly everywhere, and is what lets two people configure different
+ * parts of one capability and both keep their work. It is not right where the
+ * schema says something about the members TOGETHER. A sociogram prompt's
+ * `edges` says which edges to draw and which the participant may create, and
+ * an `edges` holding neither has no effect, so the schema refuses it: the
+ * researcher clears `create` while a collaborator empties `display`, each of
+ * those is a leaf the other never contests, and the merge answers with
+ * `{ display: [] }` — a prompt NEITHER of them held.
+ *
+ * The exclusive-variant answer does not fit: `create` and `display` are not
+ * rival shapes, and keeping both people's work on them is the whole reason
+ * this goes leaf by leaf. So the container is assembled exactly as before and
+ * then put TO the schema, and only a refusal changes the answer — to the
+ * researcher's own container, whole, which is the rule a contested leaf
+ * already follows said one container up.
+ *
+ * A container the researcher's own side does not validate either is left as
+ * the leaf merge made it. Its refusal is not something the merge invented, and
+ * writing the researcher's invalid container over a collaborator's work would
+ * throw that work away to keep a draft that is refused regardless. The draft's
+ * own validation is what puts it in front of them.
+ *
+ * `schemaRefusesContainer` answers `false` for every path whose members do not
+ * constrain one another, so all of this costs a map lookup anywhere else.
+ */
 function reseatRecord(
+  base: ArrayRow,
+  edited: ArrayRow,
+  latest: ArrayRow,
+  path: readonly string[] | undefined,
+): ArrayRow {
+  const merged = mergedRecord(base, edited, latest, path);
+  if (path === undefined || !schemaRefusesContainer(path, merged)) {
+    return merged;
+  }
+  return schemaRefusesContainer(path, edited) ? merged : edited;
+}
+
+function mergedRecord(
   base: ArrayRow,
   edited: ArrayRow,
   latest: ArrayRow,
