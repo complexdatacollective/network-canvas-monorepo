@@ -9,6 +9,7 @@ import {
 import {
   applyCommands,
   canonicalize,
+  commandTarget,
   contentHash,
   type Command,
   type SectionDoc,
@@ -20,6 +21,11 @@ import {
   sectionId,
 } from '@codaco/studio-sync/taxonomy';
 
+import {
+  commandForListChange,
+  isDictionary,
+  MAX_COMMAND_PATH_SEGMENTS,
+} from './listCommands.ts';
 import {
   protocolContextFromSections,
   type ProtocolBuilderProtocolContext,
@@ -390,6 +396,27 @@ export function stageDocument(
   return { id: identity.id, type: identity.type, ...cloneDoc(fields) };
 }
 
+/**
+ * The commands that turn one draft into another.
+ *
+ * Addressed at the deepest place the difference actually is, rather than at the
+ * top-level key above it. Two things follow from that, and both are the whole
+ * reason a command may address a nested path at all:
+ *
+ * - a difference that IS a list — one row inserted, removed or moved, wherever
+ *   the stage keeps that list — is said as the row operation it is, so undo,
+ *   redo and every other route through this diff stays as mergeable as the
+ *   list editor's own commit was. A change the vocabulary cannot express falls
+ *   back to a `set` at the list's own path;
+ * - a change to one member of a nested object is a `set` at that member, so a
+ *   sibling nobody touched is not rewritten. Writing `nodeConfig` whole to
+ *   record a new `nodeConfig.type` is exactly the merge-blind write nested
+ *   addressing exists to avoid.
+ *
+ * A one-segment path is still spelled as the bare key it always was
+ * (`commandTarget`), so everything a top-level field emits is unchanged on the
+ * wire and in the command log.
+ */
 export function commandsFromDraftChange(
   previous: StageFormDraft,
   next: StageFormDraft,
@@ -397,26 +424,52 @@ export function commandsFromDraftChange(
   assertNoIdentityFields(previous);
   assertNoIdentityFields(next);
   const commands: Command[] = [];
+  collectDraftCommands([], previous, next, commands);
+  return commands;
+}
+
+function collectDraftCommands(
+  path: readonly string[],
+  previous: SectionDoc,
+  next: SectionDoc,
+  commands: Command[],
+): void {
   const keys = new Set([...Object.keys(previous), ...Object.keys(next)]);
 
   for (const key of [...keys].toSorted()) {
+    const here = [...path, key];
     const before = previous[key];
     const after = next[key];
     if (after === undefined) {
       if (Object.hasOwn(previous, key) && before !== undefined) {
-        commands.push({ op: 'unset', key });
+        commands.push({ op: 'unset', key: commandTarget(here) });
       }
       continue;
     }
     if (
-      !Object.hasOwn(previous, key) ||
-      canonicalize(before) !== canonicalize(after)
+      Object.hasOwn(previous, key) &&
+      canonicalize(before) === canonicalize(after)
     ) {
-      commands.push({ op: 'set', key, value: cloneValue(after) });
+      continue;
     }
+    if (
+      isDictionary(before) &&
+      isDictionary(after) &&
+      here.length < MAX_COMMAND_PATH_SEGMENTS
+    ) {
+      collectDraftCommands(here, before, after, commands);
+      continue;
+    }
+    if (Array.isArray(before) && Array.isArray(after)) {
+      commands.push(commandForListChange(commandTarget(here), before, after));
+      continue;
+    }
+    commands.push({
+      op: 'set',
+      key: commandTarget(here),
+      value: cloneValue(after),
+    });
   }
-
-  return commands;
 }
 
 export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {

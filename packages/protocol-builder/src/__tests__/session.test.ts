@@ -34,6 +34,20 @@ const initialFields: SectionDoc = {
   items: [],
 };
 
+/** A stage that keeps a list somewhere other than its top level. */
+const nestedNodeConfig: SectionDoc = {
+  type: 'family_member',
+  form: [{ id: 'row-a', prompt: 'Their name?' }],
+};
+
+const nestedFields: SectionDoc = {
+  label: 'Pedigree',
+  nodeConfig: nestedNodeConfig,
+};
+
+const lastBatchCommands = (session: ProtocolBuilderSessionStore) =>
+  session.getSnapshot().pendingCommands.at(-1)?.commands;
+
 function candidate(stage: SectionDoc) {
   return {
     name: 'Protocol builder test',
@@ -139,6 +153,61 @@ describe('ProtocolBuilderSessionStore', () => {
     ).toEqual([
       { op: 'set', key: 'label', value: 'New' },
       { op: 'unset', key: 'optional' },
+    ]);
+  });
+
+  /**
+   * A stage keeps lists and objects below its top level — a Family Pedigree's
+   * family-member form at `nodeConfig.form` — and the diff is the route undo,
+   * redo and every whole-draft change take. Writing the key ABOVE the
+   * difference is the merge-blind write nested addressing exists to avoid.
+   */
+  it('addresses a nested change at the path the change is at', () => {
+    expect(
+      commandsFromDraftChange(nestedFields, {
+        ...nestedFields,
+        nodeConfig: { ...nestedNodeConfig, type: 'person' },
+      }),
+    ).toEqual([{ op: 'set', key: ['nodeConfig', 'type'], value: 'person' }]);
+  });
+
+  it('keeps a top-level list addressed at its bare key', () => {
+    const commands = commandsFromDraftChange(
+      { prompts: [{ id: 'p1' }] },
+      { prompts: [{ id: 'p1' }, { id: 'p2' }] },
+    );
+    expect(commands).toEqual([
+      { op: 'insertItem', key: 'prompts', index: 1, item: { id: 'p2' } },
+    ]);
+    // The bare string, never a one-segment path: every command a top-level
+    // field emits stays what it was on the wire and in the command log.
+    expect(commands[0]?.key).toBe('prompts');
+  });
+
+  it('undoes and redoes a nested insert as the row operations that reverse it', () => {
+    const { session } = createSession({ fields: nestedFields });
+    session.dispatch([
+      {
+        op: 'insertItem',
+        key: ['nodeConfig', 'form'],
+        index: 1,
+        item: { id: 'row-b' },
+      },
+    ]);
+
+    session.undo();
+    expect(lastBatchCommands(session)).toEqual([
+      { op: 'removeItem', key: ['nodeConfig', 'form'], index: 1 },
+    ]);
+
+    session.redo();
+    expect(lastBatchCommands(session)).toEqual([
+      {
+        op: 'insertItem',
+        key: ['nodeConfig', 'form'],
+        index: 1,
+        item: { id: 'row-b' },
+      },
     ]);
   });
 
