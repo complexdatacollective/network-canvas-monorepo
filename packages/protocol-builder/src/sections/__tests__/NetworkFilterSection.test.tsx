@@ -140,8 +140,41 @@ function renderEditor(
   );
 }
 
-const switchFilter = async (user: ReturnType<typeof userEvent.setup>) =>
-  user.click(screen.getByRole('switch', { name: 'Stage filter' }));
+const filterSwitch = () => screen.getByRole('switch', { name: 'Stage filter' });
+
+/**
+ * Switch the section on, and wait for the panel that opens.
+ *
+ * Opening is asynchronous from end to end: `BuilderSection` answers Fresco's
+ * `Section` with a promise, and the section sets its own open state only once
+ * that promise has settled. So the click resolving is not the panel being on
+ * screen — one macrotask anywhere in that chain, which is what a loaded CI
+ * runner supplies, puts the whole panel after it. Waited for here rather than
+ * at each call site, because a caller cannot read a control out of a panel
+ * this has not returned from.
+ */
+const switchFilterOn = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(filterSwitch());
+  await screen.findByRole('group', { name: /Filter rules/ });
+};
+
+/**
+ * Switch the section off, and wait for the click to have been answered.
+ *
+ * Either answer will do, because which one arrives is what the test around
+ * this asserts: a filter holding rules asks before it clears them, and one
+ * holding nothing simply closes.
+ */
+const switchFilterOff = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(filterSwitch());
+  await waitFor(() => {
+    const asked =
+      screen.queryByRole('button', { name: 'Clear filter' }) !== null;
+    const closed =
+      screen.queryByRole('group', { name: /Filter rules/ }) === null;
+    expect(asked || closed).toBe(true);
+  });
+};
 
 const outlineItems = () =>
   screen
@@ -213,7 +246,7 @@ describe('switching the filter off', () => {
       }),
     );
 
-    await switchFilter(user);
+    await switchFilterOff(user);
     await user.click(screen.getByRole('button', { name: 'Clear filter' }));
     await user.click(screen.getByRole('button', { name: 'Finished editing' }));
 
@@ -230,7 +263,7 @@ describe('switching the filter off', () => {
       createSession({ fields: { ...alterFormFields, filter: nodeFilter } }),
     );
 
-    await switchFilter(user);
+    await switchFilterOff(user);
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
 
     await waitFor(() =>
@@ -245,13 +278,13 @@ describe('switching the filter off', () => {
       createSession({ fields: { ...alterFormFields, filter: nodeFilter } }),
     );
 
-    await switchFilter(user);
+    await switchFilterOff(user);
     await user.click(screen.getByRole('button', { name: 'Clear filter' }));
     await waitFor(() =>
       expect(screen.queryByRole('group', { name: /Filter rules/ })).toBeNull(),
     );
 
-    await switchFilter(user);
+    await switchFilterOn(user);
 
     expect(
       await screen.findByRole('group', { name: /Filter rules/ }),
@@ -627,7 +660,7 @@ describe('a filter the researcher cannot save', () => {
     const onFinish = vi.fn();
     renderEditor(createSession({ onFinish }));
 
-    await switchFilter(user);
+    await switchFilterOn(user);
     await user.click(screen.getByRole('button', { name: 'Finished editing' }));
 
     // Switching the capability on writes nothing on its own, so an editor that
@@ -647,7 +680,7 @@ describe('a filter the researcher cannot save', () => {
     await waitFor(() => expect(outlineItems().length).toBeGreaterThan(0));
     expect(outlineText()).toContain('Stage filterSwitched off');
 
-    await switchFilter(user);
+    await switchFilterOn(user);
 
     await waitFor(() =>
       expect(outlineText()).toContain('Stage filterNot finished'),
@@ -659,12 +692,9 @@ describe('a filter the researcher cannot save', () => {
     const onFinish = vi.fn();
     renderEditor(createSession({ onFinish }));
 
-    await switchFilter(user);
-    await waitFor(() =>
-      expect(screen.getByRole('group', { name: /Filter rules/ })).toBeVisible(),
-    );
+    await switchFilterOn(user);
     // Nothing was entered, so there is nothing to lose and nothing to confirm.
-    await switchFilter(user);
+    await switchFilterOff(user);
     await waitFor(() =>
       expect(screen.queryByRole('group', { name: /Filter rules/ })).toBeNull(),
     );

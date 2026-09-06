@@ -272,8 +272,42 @@ const outlineText = () => [...outlineItems()].map((item) => item.textContent);
  */
 const setupUser = () => userEvent.setup({ delay: null });
 
-const switchOn = async (user: ReturnType<typeof userEvent.setup>) =>
-  user.click(screen.getByRole('switch', { name: 'Skip logic' }));
+const skipLogicSwitch = () =>
+  screen.getByRole('switch', { name: 'Skip logic' });
+
+/**
+ * Switch the section on, and wait for the panel that opens.
+ *
+ * Opening is asynchronous from end to end: `BuilderSection` answers Fresco's
+ * `Section` with a promise, and the section sets its own open state only once
+ * that promise has settled. So the click resolving is not the panel being on
+ * screen — one macrotask anywhere in that chain, which is what a loaded CI
+ * runner supplies, puts the whole panel after it. Waited for here rather than
+ * at each call site, because a caller cannot read a control out of a panel
+ * this has not returned from.
+ */
+const switchOn = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(skipLogicSwitch());
+  await screen.findByRole('radio', { name: 'Skip this stage' });
+};
+
+/**
+ * Switch the section off, and wait for the click to have been answered.
+ *
+ * Either answer will do, because which one arrives is what the test around
+ * this asserts: a section holding something asks before it clears it, and one
+ * holding nothing simply closes.
+ */
+const switchOff = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(skipLogicSwitch());
+  await waitFor(() => {
+    const asked =
+      screen.queryByRole('button', { name: 'Clear skip logic' }) !== null;
+    const closed =
+      screen.queryByRole('radio', { name: 'Skip this stage' }) === null;
+    expect(asked || closed).toBe(true);
+  });
+};
 
 const configuredFields = (
   destination?: Record<string, unknown>,
@@ -1392,7 +1426,7 @@ describe('switching skip logic off', () => {
       }),
     );
 
-    await switchOn(user);
+    await switchOff(user);
     await user.click(screen.getByRole('button', { name: 'Clear skip logic' }));
     await user.click(screen.getByRole('button', { name: 'Finished editing' }));
 
@@ -1413,7 +1447,7 @@ describe('switching skip logic off', () => {
     );
     await waitFor(() => expect(outlineItems()).toHaveLength(4));
 
-    await switchOn(user);
+    await switchOff(user);
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
 
     await waitFor(() =>
@@ -1439,7 +1473,7 @@ describe('switching skip logic off', () => {
       screen.getByRole('combobox', { name: 'When this stage is skipped' }),
       'route:finish',
     );
-    await switchOn(user);
+    await switchOff(user);
 
     // Where the interview continues is part of the skip logic, so switching
     // off destroys it too — the rules are not the only thing there is to lose.
@@ -1456,7 +1490,7 @@ describe('switching skip logic off', () => {
       }),
     );
 
-    await switchOn(user);
+    await switchOff(user);
     await user.click(screen.getByRole('button', { name: 'Clear skip logic' }));
     await waitFor(() =>
       expect(screen.queryByRole('group', { name: /Rules/ })).toBeNull(),
