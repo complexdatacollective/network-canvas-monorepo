@@ -1,8 +1,8 @@
 # Interview interface localization audit
 
-Status: source conversion, simultaneous-Shell corrections and focused
-verification complete; prerequisite integration, final browser/visual checks and
-current-head review gates remain in progress. This extends the
+Status: production implementation, canonical image review and integrated CI
+complete at `3c0fd5014`; a bounded test-efficiency follow-up and final merge-queue
+checks remain in progress. This extends the
 [app localization execution plan](2026-09-05-app-i18n-adoption.md) following the
 user's September 6 clarification.
 
@@ -298,3 +298,33 @@ reference helper and a string guard for its literal label; that test-only
 correction passes the full typecheck and the restored 15-case regression run.
 Scoped type-aware lint and formatting pass, with existing repository warnings
 and the deliberate event-consumption effect's additional-render warning retained.
+
+### Completed production CI and test-efficiency follow-up
+
+[CI run 34055801970](https://github.com/complexdatacollective/network-canvas-monorepo/actions/runs/34055801970)
+passed all required checks on `3c0fd5014da5e01af9ce46369afb78492b917f2c`,
+including all six Architect/Interview/Interviewer native and pixel jobs,
+Storybook, workspace units, lint and quality support. The explicit
+[Codex verdict](https://github.com/complexdatacollective/network-canvas-monorepo/pull/1719#issuecomment-5561738773)
+is clean on that exact head, with zero unresolved threads.
+
+A slower independent Fresco dispatch exposed one 20-second timeout in the new
+two-Shell isolation test; all 1,709 other runtime tests and all 672 Fresco tests
+passed. The same first test passed in 14.793 seconds in one earlier dispatch and
+8.915 seconds in the latest Interviewer dispatch; the respective whole runtime
+suites took 913, 686 and 455 seconds. This supports load-sensitive test timing,
+not an observed production failure. The current runtime CI passed independently.
+
+The bounded follow-up changes only two long input sequences in that test to
+real focused clipboard input, with Enter still separately submitting the real
+form. Every assertion, mock and timeout is unchanged, including both store
+identity/ownership checks, unchanged draft/data checks, and positive exact-value
+write/sync control. Three paired local probes consistently measured one input
+event instead of sixteen per sequence; median input-phase times fell from
+76.5 to 18.4 ms and 96.3 to 70.5 ms. The initial uninstrumented whole-test pair
+was 512 versus 511 ms, so these measurements establish less input work without
+claiming an overall timing guarantee. All four uninstrumented tests pass;
+deliberate shared-manager and locale-write mutations each still fail the
+intended assertion while the three other tests remain passing controls. Full
+package types and scoped lint/format pass. No production source, catalog,
+canonical image, timeout or substantive assertion changes in this follow-up.
