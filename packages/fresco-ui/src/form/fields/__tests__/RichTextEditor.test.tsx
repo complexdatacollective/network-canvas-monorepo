@@ -477,6 +477,42 @@ describe('a single-line RichTextEditorField', () => {
     expect(editor.querySelector('strong')).toHaveTextContent('met');
   });
 
+  it('spells one boundary per pasted line however deeply it is nested', async () => {
+    const field = renderSingleLine();
+    const editor = await field.editor();
+
+    fireEvent.focus(editor);
+    fireEvent.paste(editor, {
+      clipboardData: clipboardOf({
+        'text/html': '<ul><li>Never met</li><li>in person</li></ul>',
+      }),
+    });
+
+    // A list item wraps a paragraph, so counting every block as a boundary
+    // spelled this one twice and saved "Never met  in person". Read through
+    // `textContent`: `toHaveTextContent` collapses runs of whitespace, and so
+    // cannot see the difference at all.
+    expect(editor.querySelectorAll('p')).toHaveLength(1);
+    expect(editor.textContent).toBe('Never met in person');
+  });
+
+  it('drops a pasted paragraph that says nothing rather than spelling it', async () => {
+    const field = renderSingleLine();
+    const editor = await field.editor();
+
+    fireEvent.focus(editor);
+    fireEvent.paste(editor, {
+      clipboardData: clipboardOf({
+        'text/html': '<p>Never met</p><p></p><p>in person</p><p></p>',
+      }),
+    });
+
+    // Nothing sits on the other side of an empty paragraph, so there is
+    // nothing to separate from: the one in the middle used to double the
+    // space, and the one at the end used to leave the line ending in one.
+    expect(editor.textContent).toBe('Never met in person');
+  });
+
   it('offers no control that would need a block it cannot hold', async () => {
     // Asked for explicitly, and still withheld: a heading, a list or a rule
     // cannot exist in this document, so the button would do nothing.

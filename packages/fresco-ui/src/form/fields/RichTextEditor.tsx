@@ -230,19 +230,30 @@ const SingleLineDocument = TiptapNode.create({
 });
 
 /**
- * Every inline node of a pasted slice, with each break between them spelled as
- * a space: block boundaries, and inline nodes that are not text (a hard break,
+ * Every inline node of a fragment, with each break between them spelled as a
+ * space: block boundaries, and inline nodes that are not text (a hard break,
  * or an atom this field has no room for).
  *
  * Text nodes are carried over rather than re-made, so pasting a formatted
  * phrase into a single-line field keeps its bold and italic runs — the line
  * loses its line breaks, not its formatting.
+ *
+ * The space goes between blocks that SAID something, and once per boundary.
+ * Counting every block as a predecessor spelled a boundary twice wherever
+ * blocks nest — a pasted list put one space after the item and another after
+ * the paragraph inside it, so two bullets arrived as "One  Two" — and put a
+ * space beside a block with nothing on the other side of it, so an empty
+ * paragraph between two others did the same, and a trailing one left the line
+ * ending in a space. Each of those was then saved as part of the
+ * researcher's question. Architect's markdown adapter reduces its own blocks
+ * by this same rule.
  */
 const inlineNodesOf = (
   fragment: Fragment,
   schema: Schema,
-  collected: ProseMirrorNode[] = [],
 ): ProseMirrorNode[] => {
+  const collected: ProseMirrorNode[] = [];
+
   fragment.forEach((node) => {
     if (node.isText) {
       collected.push(node);
@@ -254,11 +265,20 @@ const inlineNodesOf = (
       return;
     }
 
+    // One boundary, however deeply the block that follows it is nested: the
+    // separator belongs to the run of inline content a block contributes, not
+    // to each level of wrapping it arrives inside.
+    const contributed = inlineNodesOf(node.content, schema);
+
+    if (contributed.length === 0) {
+      return;
+    }
+
     if (collected.length > 0) {
       collected.push(schema.text(' '));
     }
 
-    inlineNodesOf(node.content, schema, collected);
+    collected.push(...contributed);
   });
 
   return collected;
