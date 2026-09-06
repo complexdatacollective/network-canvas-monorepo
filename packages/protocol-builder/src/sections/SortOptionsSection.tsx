@@ -1,10 +1,11 @@
 import { useMemo } from 'react';
 
 import { getSortOrderOptionGetter } from '../fields/sortOrderOptions.ts';
-import MultiSelect, {
+import {
   makeMultiSelectValidation,
   type PropertyField,
 } from '../form/arrayFields/MultiSelect.tsx';
+import OptionalList from '../form/arrayFields/OptionalList.tsx';
 import ProtocolArrayField from '../form/ProtocolArrayField.tsx';
 import BuilderSection, { type SectionCapability } from './BuilderSection.tsx';
 import {
@@ -148,11 +149,20 @@ export default function SortOptionsSection({
       resetOn={DATA_SOURCE}
       capability={SORT_CAPABILITY}
     >
-      <ProtocolArrayField<typeof MultiSelect>
+      {/*
+        Both lists are `OptionalList`s, so deleting the last row of either
+        writes what the empty state on screen already says: a roster in the data
+        file's own order, and a participant who cannot reorder it. An emptied
+        `sortOrder` beside sortable attributes still keeps `sortOptions` — the
+        researcher chose what participants may sort by, and only the starting
+        order went — while emptying both leaves the capability absent, which is
+        what the switch then reads on reopening.
+      */}
+      <ProtocolArrayField<typeof OptionalList>
         name={SORT_ORDER}
         label={words.orderLabel}
         hint={words.orderHint}
-        component={MultiSelect}
+        component={OptionalList}
         addButtonLabel={words.orderAddButtonLabel}
         properties={SORT_ORDER_COLUMNS}
         options={orderOptions}
@@ -160,11 +170,11 @@ export default function SortOptionsSection({
         emptyStateMessage="People appear in the order the data file lists them."
         {...orderValidation}
       />
-      <ProtocolArrayField<typeof MultiSelect>
+      <ProtocolArrayField<typeof OptionalList>
         name={SORTABLE_PROPERTIES}
         label={words.sortableLabel}
         hint={words.sortableHint}
-        component={MultiSelect}
+        component={OptionalList}
         addButtonLabel={words.sortableAddButtonLabel}
         properties={SORTABLE_COLUMNS}
         options={sortableOptions}

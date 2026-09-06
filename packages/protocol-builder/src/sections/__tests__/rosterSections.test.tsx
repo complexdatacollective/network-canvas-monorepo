@@ -1,4 +1,5 @@
 import { screen, waitFor, within } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
@@ -42,6 +43,52 @@ const optionIn = (listLabel: RegExp, value: string) =>
   [...attributeCellIn(listLabel).options].find(
     (option) => option.value === value,
   );
+
+/**
+ * Deletes the only row of a named list, through the row's own remove control
+ * and the confirmation it opens. Both controls are named "Remove item", so the
+ * confirm's is reached through the dialog rather than by name.
+ */
+const removeTheOnlyRow = async (
+  harness: Readonly<{ user: { click(element: Element): Promise<void> } }>,
+  listLabel: RegExp,
+) => {
+  const list = await screen.findByRole('list', { name: listLabel });
+  await harness.user.click(
+    within(list).getByRole('button', { name: 'Remove item' }),
+  );
+  await harness.user.click(
+    within(await screen.findByRole('dialog')).getByRole('button', {
+      name: 'Remove item',
+    }),
+  );
+};
+
+/**
+ * The saved stage, opened again the way a host opens one.
+ *
+ * What a switch reads on REOPENING is a different question from what it reads
+ * while the researcher is still editing, and only a fresh render over the saved
+ * document can ask it: the switch keeps the researcher's decision for as long
+ * as the section is on screen (see `BuilderSection`), so asking the same mount
+ * would report that decision back rather than what the stage now holds. The
+ * first render is unmounted first, or both would answer at once.
+ *
+ * `id` and `type` are taken back off: they are the stage's identity, which the
+ * session owns and refuses to be handed as fields.
+ */
+const reopenSaved = (
+  harness: Readonly<{ unmount(): void }>,
+  saved: SectionDoc,
+  sections: ReactNode,
+) => {
+  harness.unmount();
+  const { id: _id, type: _type, ...fields } = saved;
+  return renderStageEditor({
+    stage: { id: 'roster-under-test', type: 'NameGeneratorRoster', fields },
+    sections,
+  });
+};
 
 /**
  * A roster whose lists name `nickname`, which the fixture's data file does not
@@ -383,6 +430,49 @@ describe("what a roster's cards show", () => {
    * collaborator adding a sort rule while this researcher adds a card detail
    * would lose one of the two edits.
    */
+  /**
+   * Deleting the last card detail is a decision — this roster's cards show a
+   * name and nothing else — and the section already says so on screen. The save
+   * has to say the same thing, and the schema has one way of saying it: no
+   * `cardOptions` at all. An empty list saved instead reopens the stage with a
+   * section standing over a list of nothing, and leaves an export reader to
+   * guess what a card of no extra attributes was supposed to mean.
+   */
+  it('writes no card details once the last one is deleted', async () => {
+    const harness = renderStageEditor({
+      stage: rosterWith({
+        dataSource: 'roster_data',
+        cardOptions: {
+          additionalProperties: [{ variable: 'age', label: 'Age' }],
+        },
+      }),
+      sections: <CardDisplaySection />,
+    });
+
+    await removeTheOnlyRow(harness, /Attributes shown on a card/);
+    await screen.findByText('No extra attributes are shown on a card.');
+
+    // The switch is untouched by the deletion. The researcher is mid-decision,
+    // and closing the section under them would take away the Add button they
+    // are reaching for — see `useSwitchFollowsTheDraft`.
+    expect(screen.getByRole('switch', { name: 'Card details' })).toBeChecked();
+
+    const request = await harness.submit();
+    expect(request).not.toBeNull();
+    // `hasOwn` rather than a comparison against undefined: a key left standing
+    // over an empty container is exactly the failure this is about, and
+    // `toBeUndefined` passes for a `cardOptions` holding `{}`.
+    expect(Object.hasOwn(request?.stageDocument ?? {}, 'cardOptions')).toBe(
+      false,
+    );
+
+    // And the switch now reads off, which is by then the truth about the stage.
+    reopenSaved(harness, request!.stageDocument, <CardDisplaySection />);
+    expect(
+      await screen.findByRole('switch', { name: 'Card details' }),
+    ).not.toBeChecked();
+  });
+
   it('adds the row with a command addressed to the nested list', async () => {
     const harness = renderStageEditor({
       stage: rosterWith({ dataSource: 'roster_data' }),
@@ -482,6 +572,79 @@ describe('how a roster is ordered', () => {
         'This row points at an attribute that is not in the data file. Choose another or delete the row.',
       ),
     ).toBeInTheDocument();
+  });
+
+  /**
+   * The starting order and the sortable attributes are two decisions, and
+   * emptying one is not emptying the other: a researcher who deletes the
+   * starting rule still chose what participants may sort by, so `sortOptions`
+   * stays and only `sortOrder` leaves it. Saved as an empty array it would
+   * reopen as a configured-but-empty order, contradicting the empty state the
+   * section shows in its place.
+   */
+  it('keeps the sortable attributes when only the starting order is emptied', async () => {
+    const harness = renderStageEditor({
+      stage: rosterWith({
+        dataSource: 'roster_data',
+        sortOptions: {
+          sortOrder: [{ property: 'age', direction: 'asc' }],
+          sortableProperties: [{ variable: 'age', label: 'Age' }],
+        },
+      }),
+      sections: <SortOptionsSection />,
+    });
+
+    await removeTheOnlyRow(harness, /Starting order/);
+    await screen.findByText(
+      'People appear in the order the data file lists them.',
+    );
+
+    const request = await harness.submit();
+    expect(request?.stageDocument.sortOptions).toEqual({
+      sortableProperties: [{ variable: 'age', label: 'Age' }],
+    });
+
+    // The capability still holds a decision, so it is still switched on.
+    reopenSaved(harness, request!.stageDocument, <SortOptionsSection />);
+    expect(
+      await screen.findByRole('switch', { name: 'Roster order' }),
+    ).toBeChecked();
+  });
+
+  /**
+   * The other end of the same rule: with both lists emptied the capability
+   * holds nothing, so it leaves the stage entirely rather than staying behind
+   * as a `sortOptions` of two empty arrays.
+   */
+  it('writes no sorting at all once both lists are emptied', async () => {
+    const harness = renderStageEditor({
+      stage: rosterWith({
+        dataSource: 'roster_data',
+        sortOptions: {
+          sortOrder: [{ property: 'age', direction: 'asc' }],
+          sortableProperties: [{ variable: 'age', label: 'Age' }],
+        },
+      }),
+      sections: <SortOptionsSection />,
+    });
+
+    await removeTheOnlyRow(harness, /Starting order/);
+    await removeTheOnlyRow(harness, /Attributes the participant may sort by/);
+    await screen.findByText('The participant cannot reorder the roster.');
+
+    // Still on, because the researcher has not said otherwise.
+    expect(screen.getByRole('switch', { name: 'Roster order' })).toBeChecked();
+
+    const request = await harness.submit();
+    expect(request).not.toBeNull();
+    expect(Object.hasOwn(request?.stageDocument ?? {}, 'sortOptions')).toBe(
+      false,
+    );
+
+    reopenSaved(harness, request!.stageDocument, <SortOptionsSection />);
+    expect(
+      await screen.findByRole('switch', { name: 'Roster order' }),
+    ).not.toBeChecked();
   });
 
   it('writes nothing for a roster kept in the file’s own order', async () => {

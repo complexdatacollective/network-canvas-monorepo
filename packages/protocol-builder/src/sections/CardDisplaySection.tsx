@@ -2,10 +2,11 @@ import { useMemo } from 'react';
 
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 
-import MultiSelect, {
+import {
   makeMultiSelectValidation,
   type PropertyField,
 } from '../form/arrayFields/MultiSelect.tsx';
+import OptionalList from '../form/arrayFields/OptionalList.tsx';
 import ProtocolArrayField from '../form/ProtocolArrayField.tsx';
 import BuilderSection, { type SectionCapability } from './BuilderSection.tsx';
 import {
@@ -123,11 +124,19 @@ export default function CardDisplaySection({
         silently; `maxItems` of 0 hides the add control, which is all the empty
         case needs.
       */}
-      <ProtocolArrayField<typeof MultiSelect>
+      {/*
+        An `OptionalList`, so deleting the last row writes what the empty state
+        beneath it already says: a card titled with the person's name and
+        nothing else. This capability owns one list, so emptying it leaves
+        `cardOptions` absent altogether, and the switch reads off when the stage
+        is reopened — which is then the truth about the saved stage rather than
+        a section standing open over a list of nothing.
+      */}
+      <ProtocolArrayField<typeof OptionalList>
         name={CARD_PROPERTIES}
         label={words.fieldLabel}
         hint={words.fieldHint}
-        component={MultiSelect}
+        component={OptionalList}
         addButtonLabel={words.addButtonLabel}
         properties={CARD_PROPERTY_COLUMNS}
         options={options}
