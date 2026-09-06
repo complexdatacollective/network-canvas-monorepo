@@ -1336,4 +1336,180 @@ describe.skipIf(!database)('migration security invariants', () => {
       });
     },
   );
+
+  it('refuses backup base-table writes when migration evidence does not exist yet', async () => {
+    await withDeployment(async ({ administrator, owner, logins }) => {
+      await administrator.query(
+        `BEGIN; ${runtimeRolesSql([BACKUP_ROLE])} COMMIT`,
+      );
+      // Same-name tables in another schema are not migration evidence. Both
+      // real evidence OIDs are NULL before this first migration.
+      await administrator.query(`CREATE SCHEMA backup_relations;
+        CREATE TABLE backup_relations.history (id integer, sibling boolean);
+        INSERT INTO backup_relations.history VALUES (1, false);
+        GRANT USAGE ON SCHEMA backup_relations TO ${BACKUP_ROLE};
+        GRANT SELECT, UPDATE ON backup_relations.history TO ${BACKUP_ROLE}`);
+      expect(
+        (
+          await administrator.query(
+            `SELECT to_regclass('studio_migrations.history') AS history, to_regclass('public."schemaFingerprint"') AS fingerprint`,
+          )
+        ).rows,
+      ).toEqual([{ history: null, fingerprint: null }]);
+      // A postflight check can mask a NULL bug once migration has created the
+      // evidence tables. The real preflight must refuse before any SQL runs.
+      const preflight = await owner.connect();
+      try {
+        await preflight.query('BEGIN');
+        await expect(
+          enforceMigrationSecurity(preflight, logins),
+        ).rejects.toThrow('access outside their reviewed Studio roles');
+      } finally {
+        await preflight.query('ROLLBACK');
+        preflight.release();
+      }
+      await expect(
+        migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+      ).rejects.toThrow('access outside their reviewed Studio roles');
+      expect(
+        (await administrator.query('SELECT * FROM backup_relations.history'))
+          .rows,
+      ).toEqual([{ id: 1, sibling: false }]);
+      await administrator.query(
+        `REVOKE UPDATE ON backup_relations.history FROM ${BACKUP_ROLE}`,
+      );
+      expect(
+        await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+      ).toEqual(shipped.map((migration) => migration.manifest.id));
+    });
+  });
+
+  it('refuses backup base-table, sibling-column, partitioned-table and sequence writes while preserving reads', async () => {
+    await withDeployment(async ({ administrator, owner, logins }) => {
+      await administrator.query(
+        `BEGIN; ${runtimeRolesSql([BACKUP_ROLE])} COMMIT`,
+      );
+      await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+      await administrator.query(`INSERT INTO public."user" (id, name, email, "emailVerified") VALUES ('backup-proof', 'Backup proof', 'backup-proof@example.test', false);
+        CREATE SCHEMA backup_relations;
+        CREATE TABLE backup_relations.history (id integer, sibling boolean);
+        INSERT INTO backup_relations.history VALUES (1, false);
+        CREATE TABLE backup_relations."schemaFingerprint" (id integer, sibling boolean) PARTITION BY LIST (id);
+        CREATE TABLE backup_relations.partition_one PARTITION OF backup_relations."schemaFingerprint" FOR VALUES IN (1);
+        INSERT INTO backup_relations."schemaFingerprint" VALUES (1, false);
+        CREATE SEQUENCE backup_relations.counter;
+        GRANT USAGE ON SCHEMA public, backup_relations TO ${BACKUP_ROLE};
+        GRANT SELECT ON public."user", backup_relations.history, backup_relations."schemaFingerprint" TO ${BACKUP_ROLE};
+        GRANT SELECT ON SEQUENCE backup_relations.counter TO ${BACKUP_ROLE}`);
+      const history = (
+        await administrator.query('SELECT * FROM studio_migrations.history')
+      ).rows;
+      const stamp = (
+        await administrator.query('SELECT * FROM public."schemaFingerprint"')
+      ).rows;
+      expect(history).toHaveLength(shipped.length);
+      expect(stamp).toHaveLength(1);
+      const cases: { grant: string; proveUserWrite?: boolean }[] = [
+        { grant: 'UPDATE ON public."user"', proveUserWrite: true },
+        {
+          grant: 'UPDATE ("emailVerified") ON public."user"',
+          proveUserWrite: true,
+        },
+        ...[
+          'INSERT',
+          'UPDATE',
+          'DELETE',
+          'TRUNCATE',
+          'REFERENCES',
+          'TRIGGER',
+          'MAINTAIN',
+        ].map((privilege) => ({
+          grant: `${privilege} ON backup_relations.history`,
+        })),
+        ...['INSERT', 'UPDATE', 'REFERENCES'].map((privilege) => ({
+          grant: `${privilege} (sibling) ON backup_relations.history`,
+        })),
+        { grant: 'UPDATE ON backup_relations."schemaFingerprint"' },
+        { grant: 'UPDATE (sibling) ON backup_relations."schemaFingerprint"' },
+        { grant: 'USAGE ON SEQUENCE backup_relations.counter' },
+        { grant: 'UPDATE ON SEQUENCE backup_relations.counter' },
+      ];
+      expect(cases).toHaveLength(16);
+      for (const fixture of cases) {
+        await administrator.query(`GRANT ${fixture.grant} TO ${BACKUP_ROLE}`);
+        if (fixture.proveUserWrite) {
+          const client = await administrator.connect();
+          try {
+            await client.query('BEGIN');
+            await client.query(`SET LOCAL ROLE ${BACKUP_ROLE}`);
+            expect(
+              (await client.query('SELECT current_user AS role')).rows,
+            ).toEqual([{ role: BACKUP_ROLE }]);
+            expect(
+              (
+                await client.query(
+                  'UPDATE public."user" SET "emailVerified" = true',
+                )
+              ).rowCount,
+            ).toBe(1);
+            expect(
+              (await client.query('SELECT "emailVerified" FROM public."user"'))
+                .rows,
+            ).toEqual([{ emailVerified: true }]);
+          } finally {
+            await client.query('ROLLBACK');
+            client.release();
+          }
+        }
+        await expect(
+          migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+          fixture.grant,
+        ).rejects.toThrow('access outside their reviewed Studio roles');
+        expect(
+          (await administrator.query('SELECT * FROM studio_migrations.history'))
+            .rows,
+        ).toEqual(history);
+        expect(
+          (
+            await administrator.query(
+              'SELECT * FROM public."schemaFingerprint"',
+            )
+          ).rows,
+        ).toEqual(stamp);
+        await administrator.query(
+          `REVOKE ${fixture.grant} FROM ${BACKUP_ROLE}`,
+        );
+        expect(
+          await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+        ).toEqual([]);
+      }
+      const client = await administrator.connect();
+      try {
+        await client.query('BEGIN');
+        await client.query(`SET LOCAL ROLE ${BACKUP_ROLE}`);
+        expect(
+          (await client.query('SELECT "emailVerified" FROM public."user"'))
+            .rows,
+        ).toEqual([{ emailVerified: false }]);
+        for (const table of [
+          'backup_relations.history',
+          'backup_relations."schemaFingerprint"',
+        ]) {
+          expect((await client.query(`SELECT * FROM ${table}`)).rows).toEqual([
+            { id: 1, sibling: false },
+          ]);
+        }
+        expect(
+          (
+            await client.query(
+              'SELECT last_value::int AS last_value FROM backup_relations.counter',
+            )
+          ).rows,
+        ).toEqual([{ last_value: 1 }]);
+      } finally {
+        await client.query('ROLLBACK');
+        client.release();
+      }
+    });
+  });
 });

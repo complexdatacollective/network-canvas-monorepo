@@ -146,6 +146,17 @@ export async function enforceMigrationSecurity(
               ))
             ) ELSE false END
         )
+        OR (login.rolname = $3 AND EXISTS (
+          SELECT 1 FROM pg_class object WHERE object.relnamespace IN (SELECT oid FROM namespaces)
+            AND CASE WHEN object.relkind IN ('r', 'p')
+              AND object.oid IS DISTINCT FROM to_regclass($4)
+              AND object.oid IS DISTINCT FROM to_regclass($5) THEN (
+                has_table_privilege(login.oid, object.oid, 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,MAINTAIN')
+                OR has_any_column_privilege(login.oid, object.oid, 'INSERT,UPDATE,REFERENCES')
+              ) WHEN object.relkind = 'S'
+                THEN has_sequence_privilege(login.oid, object.oid, 'USAGE,UPDATE')
+              ELSE false END
+        ))
     ) AND NOT EXISTS (
       SELECT 1 FROM logins login WHERE EXISTS (
           SELECT 1 FROM pg_class object WHERE object.relnamespace IN (SELECT oid FROM namespaces)
@@ -165,11 +176,13 @@ export async function enforceMigrationSecurity(
       restrictedLogins,
       [...Object.values(TENANT_ROLES), BACKUP_ROLE],
       BACKUP_ROLE,
+      'studio_migrations.history',
+      'public."schemaFingerprint"',
     ],
   );
   if (loginAccess.rows[0]?.safe !== true) {
     throw new Error(
-      'Runtime and backup identities must own no database objects and hold no access outside their reviewed Studio roles: remove direct or PUBLIC login data grants, CREATE, CONNECT grant options, executable SECURITY DEFINER routines, and view, materialized view, or foreign table access beyond read-only backup grants.',
+      'Runtime and backup identities must own no database objects and hold no access outside their reviewed Studio roles: remove direct or PUBLIC login data grants, CREATE, CONNECT grant options, executable SECURITY DEFINER routines, view, materialized view, or foreign table access beyond read-only backup grants, and backup table or sequence writes.',
     );
   }
   // CONNECT is checked only at connection admission. Enrollment must already
