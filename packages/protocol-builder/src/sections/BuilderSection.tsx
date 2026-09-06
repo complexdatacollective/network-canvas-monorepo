@@ -15,7 +15,7 @@ import {
   useStageEditorForm,
 } from '../form/stageEditorContext.ts';
 import {
-  useClearStageValue,
+  useDiscardStageValues,
   useStageHasAnyValue,
 } from '../form/stageFormHooks.ts';
 import { useOutlineSection } from '../form/useOutlineSection.ts';
@@ -26,7 +26,9 @@ import { useOutlineSection } from '../form/useOutlineSection.ts';
  * Switching it off throws its values away — that is what "this stage does not
  * do this" means to the protocol schema, which has no way to say "configured
  * but disabled". Because the loss is real, it is confirmed first, in the
- * capability's own words.
+ * capability's own words; and because it is a decision rather than a way of
+ * hiding something, it reaches the draft as an edit that travels with the
+ * session's other batches and comes back with its undo.
  */
 export type SectionCapability = Readonly<{
   /**
@@ -64,9 +66,10 @@ export type BuilderSectionProps = Readonly<{
    * protocol, which the schema accepts and the interview renders as an empty
    * card.
    *
-   * Switching the capability OFF rather than only clearing it is what keeps
-   * the fields from submitting an empty container in place of the absent one
-   * the schema requires.
+   * Switching the capability OFF as well as clearing it is what stops the
+   * section standing open over a capability that now holds nothing: the switch
+   * and the outline would both say it is configured, and the researcher would
+   * have to close it themselves to find out it is not.
    */
   resetOn?: unknown;
   children: ReactNode;
@@ -96,7 +99,7 @@ export default function BuilderSection({
 }: BuilderSectionProps) {
   const { readOnly } = useStageEditorForm();
   const { confirm } = useDialog();
-  const clearStageValue = useClearStageValue();
+  const discardStageValues = useDiscardStageValues();
   const configured = useStageHasAnyValue(capability?.fields ?? NO_FIELDS);
   const [switchedOn, setSwitchedOn] = useState(configured);
   // Holding a value is itself proof the capability is on, so an undo that
@@ -146,18 +149,20 @@ export default function BuilderSection({
         if (confirmed !== true) return false;
       }
 
-      // Every path the capability owns is cleared here rather than left to the
-      // panel's unmount. A field already parked by a collapsed group of
+      // Every path the capability owns is thrown away here rather than left to
+      // the panel's unmount. A field already parked by a collapsed group of
       // advanced options does not unmount again when the capability closes
       // around it, so its value would survive — and go on making the
       // capability look configured, and be written back on save.
-      for (const path of capability?.fields ?? NO_FIELDS) {
-        clearStageValue(path);
-      }
+      //
+      // One call for all of them, so the whole capability leaves the draft as a
+      // single edit: one entry in the session's history, so an undo brings the
+      // capability back whole rather than a path at a time.
+      discardStageValues(capability?.fields ?? NO_FIELDS);
       setSwitchedOn(false);
       return true;
     },
-    [capability, clearStageValue, configured, confirm],
+    [capability, configured, confirm, discardStageValues],
   );
 
   // Only on a CHANGE, and a change of VALUE. The first render is a stage being
@@ -169,21 +174,19 @@ export default function BuilderSection({
   // at all.
   //
   // The panel is remounted rather than closed, because its open state is its
-  // own — a caller can seed it but cannot close it — and a section left open
-  // over cleared fields keeps them registered, which submits the empty
-  // container the schema refuses in place of the absent one it wants. By the
-  // time the new key renders, the clear above has already made `defaultOpen`
-  // false.
+  // own: a caller can seed it through `defaultOpen` but has no way to close it.
+  // By the time the new key renders, the clear above has already made
+  // `defaultOpen` false.
   const [resetGeneration, setResetGeneration] = useState(0);
   const previousResetOn = useRef(resetOn);
   useEffect(() => {
     const before = previousResetOn.current;
     previousResetOn.current = resetOn;
     if (isEqual(before, resetOn)) return;
-    for (const path of capability?.fields ?? NO_FIELDS) clearStageValue(path);
+    discardStageValues(capability?.fields ?? NO_FIELDS);
     setSwitchedOn(false);
     setResetGeneration((generation) => generation + 1);
-  }, [capability, clearStageValue, resetOn]);
+  }, [capability, discardStageValues, resetOn]);
 
   const body = (
     <SectionScopeContext value={sectionId}>{children}</SectionScopeContext>

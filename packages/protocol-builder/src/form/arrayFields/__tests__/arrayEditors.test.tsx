@@ -283,6 +283,59 @@ describe('Options', () => {
     expect(Object.hasOwn(request.stageDocument, 'options')).toBe(false);
     expect(session.getSnapshot().editedSection.fields.options).toBeUndefined();
   });
+
+  /**
+   * The first row added after the capability comes back on.
+   *
+   * A list resolves every insertion against the draft the SESSION holds, never
+   * against the rows it happens to be rendering, so "the list is empty now" has
+   * to be true there rather than only on screen. A switch-off that stopped at
+   * the form left the old rows in the draft, and the researcher's next Add was
+   * placed after them: the row they added arrived beside a row they had just
+   * confirmed the deletion of, looking every bit as authored.
+   */
+  it('adds the first row after a switch-off to an empty list', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      label: 'Welcome',
+      title: 'Welcome',
+      items: [],
+      options: [{ label: 'Yes', value: 'yes' }],
+    });
+    renderOptionalOptions(session);
+
+    await user.click(screen.getByRole('switch', { name: 'Answer options' }));
+    await user.click(screen.getByRole('button', { name: 'Clear options' }));
+    await user.click(screen.getByRole('switch', { name: 'Answer options' }));
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Create new option' }),
+    );
+
+    await user.type(
+      await screen.findByRole('textbox', { name: 'Label' }),
+      'No',
+    );
+    await user.type(screen.getByRole('textbox', { name: 'Value' }), 'no');
+
+    // One row, and it is the researcher's. The list they are typing into and
+    // the list the next save will write are the same list.
+    await waitFor(() =>
+      expect(session.getSnapshot().editedSection.fields.options).toEqual([
+        { label: 'No', value: 'no' },
+      ]),
+    );
+    expect(screen.getAllByRole('textbox', { name: 'Label' })).toHaveLength(1);
+    // Said as an insert at the end of the list the session holds, which is
+    // where the researcher put it. At index 1 it would have followed a row
+    // they had just confirmed the deletion of.
+    expect(
+      commandsOf(session).filter((command) => command.op === 'insertItem'),
+    ).toEqual([{ op: 'insertItem', key: 'options', index: 0, item: {} }]);
+    // And the switch-off is in the same log, as the unset it is: the decision
+    // travels with the batches rather than sitting in the form.
+    expect(commandsOf(session)[0]).toEqual({ op: 'unset', key: 'options' });
+  });
 });
 
 describe('MultiSelect', () => {

@@ -14,7 +14,8 @@ import {
 } from '@codaco/fresco-ui/form/utils/objectPath';
 import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 
-import type { StageFormDraft } from '../session.ts';
+import { commandsFromDraftChange, type StageFormDraft } from '../session.ts';
+import { withoutValueAt } from './absentValues.ts';
 import {
   type StageFormStoreApi,
   useStageEditorForm,
@@ -33,19 +34,12 @@ type FormStoreState = ReturnType<StageFormStoreApi['getState']>;
  * store about and the path the committed value is read from are the ones the
  * field is really registered under.
  *
- * A path the form has CLEARED reads as holding nothing, whatever the draft
- * still remembers. Switching a capability off empties the form and leaves the
- * committed draft alone — it is the researcher's pending decision, not a save —
- * so a field arriving under a cleared path afterwards would otherwise start
- * from the values that decision threw away, and they look every bit as authored
- * as the ones written next to them. `useClearStageValue` covers whatever was
- * registered or parked at the time; this covers whatever arrives after.
- *
- * The store is read here rather than subscribed to, because the question is
- * what a field starts from, asked once as it mounts: a value that moved with
- * the store would re-seed a control the researcher is typing into. It is
- * re-asked whenever the committed draft moves, which is exactly when a clear
- * can have been superseded — see `clearedPath`.
+ * The committed draft is the only account of what a path holds, and it is
+ * enough because everything that throws a value away tells the SESSION. A
+ * capability the researcher switches off is unset there before the form is
+ * emptied (`useDiscardStageValues`), so a control arriving under that path
+ * afterwards — a list behind a collapsed group, say — reads the same absence
+ * every other reader does, without a second record of the decision to consult.
  *
  * The value is memoised because `initialValue` is a dependency of the effect
  * that registers a field: an unstable one re-registers it on every render.
@@ -54,60 +48,84 @@ export function useResolvedFieldIdentity(
   name: string,
   nameMode: FieldNameMode = 'legacy',
 ): Readonly<{ registeredName: string; committedValue: unknown }> {
-  const { storeApi, committedFields } = useStageEditorForm();
+  const { committedFields } = useStageEditorForm();
   const namespace = useFieldNamespacePath();
 
   return useMemo(() => {
     const path = resolveFieldPath(namespace, name, nameMode);
     return {
       registeredName: formatObjectPath(path),
-      committedValue: clearedPath(storeApi.getState(), path)
-        ? undefined
-        : getValue(committedFields, path),
+      committedValue: getValue(committedFields, path),
     };
-  }, [committedFields, name, nameMode, namespace, storeApi]);
+  }, [committedFields, name, nameMode, namespace]);
 }
 
 /**
- * Whether the form has emptied this path, or anything containing it.
+ * Throws everything at these paths away, for good.
  *
- * A clear is recorded as a field record — registered or parked — holding
- * nothing at all: `clearValue` writes `undefined` at the path it is given and
- * at every descendant that existed then, and `useClearStageValue` writes it
- * again over any ancestor the removal emptied. Read here as what the record
- * says, "the form holds nothing here", which is what everything else that
- * produces one means too: a field registering on a path the draft is empty at,
- * and a field whose value is discarded rather than parked when it unmounts.
- * None of them can suppress a value that was never thrown away, because a path
- * the draft holds nothing at holds nothing beneath it either.
+ * What switching a capability off means, and the one place that decides it.
+ * The session is told first, in ONE batch, and the form is emptied afterwards
+ * so the controls on screen do not wait for a re-seed that is never coming —
+ * the session write is the form's own, so nothing is written back over the
+ * researcher.
  *
- * Ancestors count, and are the point. A capability owns a container —
- * `cardOptions`, not the list inside it, because absence is how the schema
- * spells "this stage does not do this" — so the clear lands on the container,
- * and a control beneath it that was not on screen at the time has no record of
- * its own to be told by.
+ * The session rather than the form alone, because the form is not where the
+ * stage lives. A bound list resolves every insertion, removal and reorder
+ * against the draft the session holds right now, `useResolvedFieldIdentity`
+ * seeds every field that mounts from it, and validation judges it — so a
+ * decision recorded only in the form is a decision three of its readers never
+ * hear, and the next row a researcher adds to a cleared list is resolved
+ * against the rows the switch-off was supposed to have thrown away. Teaching
+ * each of them to read the form's records instead cannot close that: a record
+ * only exists where a field once was, and a capability's controls need not
+ * have been on screen at all. One notion of what a path holds, and it is the
+ * session's.
  *
- * A later authoritative write SUPERSEDES the clear, and needs nothing here to
- * do it: `reseedStageForm` writes an arrival's value into every record it knows
- * about, so a record the clear emptied stops holding `undefined` the moment the
- * arrival puts something back at its path. That is deliberate, and it is not
- * the ordering a SENT clear gets — `rebaseCommand` keeps an `unset` as it
- * stands wherever it lands, because the researcher has decided and the decision
- * travels with the batch. A clear still sitting in the form is a decision in
- * progress, about content a collaborator has since replaced; keeping the blank
- * would hide their work behind a judgement that was never passed on it, and
- * leave the researcher nothing on screen to switch off.
+ * So a switched-off capability is an edit like any other: it travels with the
+ * batches, it is undone by the session's own undo — which brings the values
+ * back, and with them the switch — and `rebaseCommand` keeps its `unset` as it
+ * stands wherever it lands, because the researcher has decided. A collaborator
+ * writing under the path AFTER that decision reaches the protocol is
+ * authoritative and shows up as any other arrival does; one whose write is
+ * still being reconciled against a clear the host has not applied yet loses it
+ * to the clear, exactly as any other pending local edit would win over it.
+ *
+ * The container the removal empties goes too — `withoutValueAt`'s rule — so
+ * the paths this unsets are the paths the save would have had to unset anyway.
+ * Nothing is dispatched when the draft held nothing at any of them, so a reset
+ * that finds an empty capability makes no batch at all.
  */
-function clearedPath(state: FormStoreState, target: ObjectPath): boolean {
-  return formRecords(state).some(
-    (record) =>
-      record.value === undefined &&
-      (samePath(record.path, target) || isAbove(record.path, target)),
+export function useDiscardStageValues(): (paths: readonly string[]) => void {
+  const { applyOwnCommands } = useStageEditorForm();
+  const clearStageValue = useClearStageValue();
+
+  return useCallback(
+    (paths: readonly string[]) => {
+      // `applyOwnCommands([])` is how anything here reads the draft the session
+      // holds NOW, rather than the snapshot this callback was built against.
+      const current = applyOwnCommands([]);
+      let next = current;
+      for (const path of paths) {
+        const target = safePath(path);
+        if (target === null || target.length === 0) continue;
+        next = withoutValueAt(next, target);
+      }
+      applyOwnCommands(commandsFromDraftChange(current, next));
+
+      for (const path of paths) clearStageValue(path);
+    },
+    [applyOwnCommands, clearStageValue],
   );
 }
 
 /**
  * Empties a path in the stage form, and everything that reaches it.
+ *
+ * The FORM only. Its caller has already told the session what it decided —
+ * `useDiscardStageValues` with an unset, `useResetStageOnSubjectChange` with a
+ * batch that also carries the template defaults it is resetting to — and this
+ * brings the controls on screen level with that, immediately, rather than
+ * leaving them showing values the draft no longer has.
  *
  * Confirming a deletion has to leave nothing holding the value anywhere, or
  * some later reader finds it again and the deletion undoes itself. Three
@@ -156,7 +174,7 @@ export function useClearStageValue(): (path: string) => void {
           continue;
         }
         const relative = target.slice(ancestor.length);
-        const cleared = clearInside(field.value, relative);
+        const cleared = withoutValueAt(field.value, relative);
         // Identity is `omitValue` reporting that it held nothing there.
         if (cleared === field.value) continue;
         // An ancestor the clear emptied goes too, rather than being parked as
@@ -315,16 +333,16 @@ function hasAnswer(value: unknown): boolean {
  *    tombstone at its own path, and content entered afterwards reaches this
  *    path from the other two directions, where that tombstone has no standing
  *    to speak for it.
- * 2. A tombstone with nothing beneath it means empty, and stops there:
- *    switching a capability off parks that record ON PURPOSE, and falling
- *    through would report the capability configured again from the draft it
- *    was opened with. A capability owning a container whose controls are all
- *    hidden behind a collapsed group has no field at the container and nothing
- *    in the assembled values, and its content would otherwise be invisible
- *    here — so switching it off would skip the confirmation, skip the clear,
- *    and leave the capability quietly active in the saved stage.
+ * 2. A record at the path holding nothing, with nothing beneath it, means
+ *    empty and stops there. A field the researcher emptied by hand holds `''`,
+ *    which is not an answer, while the draft it was opened with still holds
+ *    the sentence they deleted — and falling through would report the
+ *    capability configured from a value nothing on screen has any more.
  * 3. Whatever the committed draft holds, minus every sub-path the form has
- *    since emptied.
+ *    since emptied. Without this a capability could never open on entry, and
+ *    one whose controls all sit behind a collapsed group would read as empty
+ *    while the stage was configured — so switching it off would skip the
+ *    confirmation and leave the capability quietly active in the saved stage.
  */
 function pathHasAnswer(
   state: FormStoreState,
@@ -357,8 +375,9 @@ function pathHasAnswer(
 
   // A record at exactly this path holding nothing, with nothing above or below
   // it holding anything either. That is the form saying the path is empty, and
-  // it outranks whatever the draft was opened with — otherwise clearing a
-  // capability would be undone by the draft's memory of it.
+  // it outranks whatever the draft was opened with — otherwise a field the
+  // researcher emptied by hand would be answered from the sentence they
+  // deleted, which the draft still remembers until the next save.
   if (exact) return false;
 
   // Every remaining known path is one the form knows is empty, so the draft's
@@ -375,29 +394,6 @@ function readInside(value: unknown, relative: ObjectPath): unknown {
   // Every node reachable inside a container field's value is itself a value.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return getValue(value as Record<string, unknown>, relative);
-}
-
-/**
- * A copy of `value` with `relative` removed, and with any container that
- * removal emptied removed as well.
- *
- * The same rule the submit merge applies to the stage draft, applied here to
- * one field's value: an emptied object is not a value the schema accepts,
- * while an emptied ROW stays, because removing an array index leaves a hole
- * rather than closing the gap.
- */
-function clearInside(value: unknown, relative: ObjectPath): unknown {
-  const removed = omitValue(value, relative);
-  if (removed === value) return value;
-
-  let next = removed;
-  for (let depth = relative.length - 1; depth >= 1; depth -= 1) {
-    const ancestorPath = relative.slice(0, depth);
-    if (!isEmptyDictionary(readInside(next, ancestorPath))) break;
-    if (typeof ancestorPath.at(-1) === 'number') break;
-    next = omitValue(next, ancestorPath);
-  }
-  return next;
 }
 
 function isEmptyDictionary(value: unknown): boolean {
