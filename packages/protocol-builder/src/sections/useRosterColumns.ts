@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import type { IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import type { MessageRule } from '@codaco/fresco-ui/form/validation/helpers';
 
@@ -16,6 +18,29 @@ import { useResourceInspection } from '../resources/components/useResourceInspec
 
 /** Where a roster stage records the data file it draws its people from. */
 export const DATA_SOURCE = 'dataSource';
+
+const messages = defineMessages({
+  missingColumn: {
+    id: 'protocolBuilder.rosterColumns.missingColumn',
+    defaultMessage: '{column} — this attribute is not in the data file',
+    description:
+      'Label of the only choice left standing for a roster list that names a column the chosen data file does not carry. column is the heading the stage still holds, which is the researcher’s own word and is never translated. Rendered inside a plain dropdown option, which can carry no styling, so the explanation is part of the label.',
+  },
+  missingColumnRefusal: {
+    id: 'protocolBuilder.rosterColumns.missingColumnRefusal',
+    defaultMessage:
+      'This row points at an attribute that is not in the data file. Choose another or delete the row.',
+    description:
+      'Shown above a roster list when one of its rows names a column the chosen data file does not carry. Names both ways out, because the row looks complete and is not.',
+  },
+  missingSearchColumnRefusal: {
+    id: 'protocolBuilder.rosterColumns.missingSearchColumnRefusal',
+    defaultMessage:
+      'This search matches an attribute that is not in the data file. Uncheck it and choose another.',
+    description:
+      'Shown above the roster-search checkboxes when a checked column is not in the chosen data file. Names the one way out — unchecking — because a checkbox has no row to delete and no cell to repoint.',
+  },
+});
 
 export type RosterColumns = Readonly<{
   /**
@@ -128,9 +153,14 @@ export function useColumnOptionGetter(
  * differently, or because the protocol was authored against another file
  * entirely — so the researcher is told what is true of the file in front of
  * them, not a history that may never have happened.
+ *
+ * Takes the reader's own formatter rather than reaching for one, exactly as
+ * `missingSortPropertyLabel` does: this is a label the caller renders, and a
+ * module-level English formatter here would make the one option a dangling row
+ * can still show the one option nobody can read in their own language.
  */
-const missingColumnLabel = (column: string): string =>
-  `${column} — this attribute is not in the data file`;
+const missingColumnLabel = (column: string, intl: IntlShape): string =>
+  intl.formatMessage(messages.missingColumn, { column });
 
 /**
  * What a researcher is told about a row left pointing at a lost column.
@@ -138,9 +168,14 @@ const missingColumnLabel = (column: string): string =>
  * The row is not half-filled — it holds a name, and the name is exactly the
  * problem — so "every row needs a value in each column" would be both wrong
  * and unhelpful. This one names the situation and both ways out.
+ *
+ * Encoded rather than formatted: it travels on `DanglingCells.message`, which
+ * a `messageRuleValidation` rule hands to the form as a plain string, and
+ * `FormErrors` decodes it where it is read.
  */
-const MISSING_COLUMN_MESSAGE =
-  'This row points at an attribute that is not in the data file. Choose another or delete the row.';
+const MISSING_COLUMN_MESSAGE = createMessageError(
+  messages.missingColumnRefusal,
+);
 
 /**
  * The same thing said about a CHECKED column rather than about a row.
@@ -150,8 +185,9 @@ const MISSING_COLUMN_MESSAGE =
  * telling the researcher to do either would send them looking for controls that
  * are not there. Unchecking is the whole of it, and the sentence says so.
  */
-const MISSING_SEARCH_COLUMN_MESSAGE =
-  'This search matches an attribute that is not in the data file. Uncheck it and choose another.';
+const MISSING_SEARCH_COLUMN_MESSAGE = createMessageError(
+  messages.missingSearchColumnRefusal,
+);
 
 const NO_ORPHANS: readonly SortableProperty[] = Object.freeze([]);
 const NO_COLUMNS: readonly string[] = Object.freeze([]);
@@ -260,6 +296,7 @@ export function useOrphanedColumns(
   /** The array-level rule that refuses a save while a row holds one. */
   dangling: readonly DanglingCells[];
 }> {
+  const intl = useAppIntl();
   const rows = useStageValue(path);
   const named = useMemo(
     () =>
@@ -294,10 +331,10 @@ export function useOrphanedColumns(
         ? NO_ORPHANS
         : values.map((value) => ({
             value,
-            label: missingColumnLabel(value),
+            label: missingColumnLabel(value, intl),
             disabled: true,
           })),
-    [values],
+    [intl, values],
   );
 
   return useMemo(() => ({ options, dangling }), [dangling, options]);
@@ -341,6 +378,7 @@ export function useOrphanedColumnChoices(
   /** Refuses the save while one is still checked. One stable identity. */
   refusal: MessageRule;
 }> {
+  const intl = useAppIntl();
   const held = useStageValue(path);
   const named = useMemo(() => (Array.isArray(held) ? held : undefined), [held]);
   const values = useOrphanedColumnNames(named, names);
@@ -362,8 +400,11 @@ export function useOrphanedColumnChoices(
     () =>
       values.length === 0
         ? NO_ORPHANS
-        : values.map((value) => ({ value, label: missingColumnLabel(value) })),
-    [values],
+        : values.map((value) => ({
+            value,
+            label: missingColumnLabel(value, intl),
+          })),
+    [intl, values],
   );
 
   return useMemo(() => ({ options, refusal }), [options, refusal]);

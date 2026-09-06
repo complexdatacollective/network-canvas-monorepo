@@ -1,8 +1,18 @@
 import { type FocusEvent, useState } from 'react';
 
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import type { MessageRule } from '@codaco/fresco-ui/form/validation/helpers';
+
+const messages = defineMessages({
+  notAWholeNumber: {
+    id: 'protocolBuilder.integerField.notAWholeNumber',
+    defaultMessage: 'This has to be a whole number of people.',
+    description:
+      'Refusal shown against a box that counts people when the researcher has typed something that is not a whole number — a decimal on its way to being one, or a stray character. Every control this rule guards counts people, which is why the sentence names them rather than saying "a whole number".',
+  },
+});
 
 /**
  * `size` is dropped: the native `<input>`'s `size` attribute (a character
@@ -17,8 +27,6 @@ export type IntegerFieldProps = Omit<
   CreateFormFieldProps<number | string, 'input'>,
   'size'
 >;
-
-const NOT_A_WHOLE_NUMBER = 'This has to be a whole number of people.';
 
 /**
  * The whole number the text stands for, or the text itself when it stands for
@@ -42,9 +50,17 @@ const readCount = (text: string | undefined): number | string | undefined => {
  * done by the control because only the field's own validation reaches the
  * form's validity: a control can mark itself invalid and say why, and neither
  * of those stops a submit.
+ *
+ * Encoded rather than formatted: a `MessageRule` hands the form a plain
+ * string, and `FieldErrors` decodes it in the reader's own language where the
+ * refusal is shown. A formatter reached for here would be a module-level
+ * English one, which would make this the one refusal in the section that
+ * stayed English.
  */
 export const wholeNumberRule: MessageRule = (value) =>
-  typeof value === 'string' ? NOT_A_WHOLE_NUMBER : undefined;
+  typeof value === 'string'
+    ? createMessageError(messages.notAWholeNumber)
+    : undefined;
 
 /** The text the researcher has entered, and what it was read as. */
 type IntegerDraft = Readonly<{

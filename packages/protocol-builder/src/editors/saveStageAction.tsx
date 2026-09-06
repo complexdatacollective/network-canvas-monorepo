@@ -1,6 +1,17 @@
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 
 import type { StageEditorActionContext } from '../stage-editor-contract.ts';
+
+const messages = defineMessages({
+  saveStage: {
+    id: 'protocolBuilder.shell.saveStage',
+    defaultMessage: 'Save stage',
+    description:
+      'Action that saves the step of the interview a researcher is editing. Names the stage rather than saying only "Save", because a host may show its own controls beside this one.',
+  },
+});
 
 /**
  * The control that saves the stage, when the host supplied none of its own.
@@ -26,9 +37,22 @@ import type { StageEditorActionContext } from '../stage-editor-contract.ts';
  * refusal is the guarantee either way.
  */
 export function saveStageAction({ formId }: StageEditorActionContext) {
+  return <SaveStageAction formId={formId} />;
+}
+
+/**
+ * A component rather than the markup inline, because the words are formatted
+ * through the reader's own provider and `saveStageAction` is called as a plain
+ * function by the shell's action slot rather than rendered as an element.
+ */
+function SaveStageAction({ formId }: Readonly<{ formId: string }>) {
+  const intl = useAppIntl();
+
   return (
     <div className="flex justify-end">
-      <SubmitButton form={formId}>Save stage</SubmitButton>
+      <SubmitButton form={formId}>
+        {intl.formatMessage(messages.saveStage)}
+      </SubmitButton>
     </div>
   );
 }
