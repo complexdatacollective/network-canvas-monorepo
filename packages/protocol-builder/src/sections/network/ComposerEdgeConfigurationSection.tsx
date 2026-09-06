@@ -1,10 +1,14 @@
-import { useId, useMemo, useRef, useState } from 'react';
+import { createElement, useId, useMemo, useRef, useState } from 'react';
 import { v4 as uuid } from 'uuid';
 
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
+import {
+  headingTagBelow,
+  useEnclosingHeadingLevel,
+} from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
@@ -312,6 +316,16 @@ function EdgeTypeForm({
   onChange: (fields: Record<string, unknown>[] | undefined) => void;
 }>) {
   const headingId = useId();
+  // One connection type inside the section that lists them all, so this
+  // heading counts from that section's own rather than from the page. Written
+  // out as an `h4` it was a PEER of the section containing it — which reads,
+  // to anyone moving through the outline, as though the section had ended and
+  // each connection type were another part of the stage.
+  const enclosingHeadingLevel = useEnclosingHeadingLevel();
+  const headingTag =
+    enclosingHeadingLevel === null
+      ? 'h4'
+      : headingTagBelow(enclosingHeadingLevel);
   const form = entry.form;
   const fields =
     typeof form === 'object' && form !== null
@@ -324,7 +338,13 @@ function EdgeTypeForm({
       aria-labelledby={headingId}
       className="flex flex-col gap-4"
     >
-      <Heading level="h4" id={headingId} margin="none">
+      <Heading
+        level="h4"
+        id={headingId}
+        margin="none"
+        // The element only — `level` still carries the type treatment.
+        {...(headingTag === 'h4' ? {} : { render: createElement(headingTag) })}
+      >
         {`Attributes for "${typeName}" connections`}
       </Heading>
       <Paragraph margin="none" emphasis="muted">

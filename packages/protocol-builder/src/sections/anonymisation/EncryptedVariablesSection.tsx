@@ -1,8 +1,12 @@
-import { useMemo, useState } from 'react';
+import { createElement, useMemo, useState } from 'react';
 import { v4 as uuid } from 'uuid';
 
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
+import {
+  headingTagBelow,
+  useEnclosingHeadingLevel,
+} from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { VariableTypes } from '@codaco/protocol-validation';
@@ -56,6 +60,60 @@ type NodeTypeView = Readonly<{
   options: readonly Readonly<{ value: string; label: string }>[];
   encrypted: readonly string[];
 }>;
+
+/**
+ * One type's text attributes, under a heading naming the type.
+ *
+ * A component of its own rather than the map body it was, because the level
+ * this heading takes is a fact about where it renders: the section around it
+ * states what it encloses, and only something rendered INSIDE the section can
+ * read that. Written from the section component itself the answer is the
+ * heading above the section, which is one rung too high.
+ */
+function NodeTypeAttributes({
+  view,
+  noTextAttributes,
+  disabled,
+  onChange,
+}: Readonly<{
+  view: NodeTypeView;
+  noTextAttributes: string;
+  disabled: boolean;
+  onChange: (next: readonly unknown[]) => void;
+}>) {
+  const enclosingHeadingLevel = useEnclosingHeadingLevel();
+  const headingTag =
+    enclosingHeadingLevel === null
+      ? 'h4'
+      : headingTagBelow(enclosingHeadingLevel);
+
+  return (
+    <div className="flex flex-col gap-2">
+      <Heading
+        level="h4"
+        margin="none"
+        // The element only — `level` still carries the type treatment.
+        {...(headingTag === 'h4' ? {} : { render: createElement(headingTag) })}
+      >
+        {view.name}
+      </Heading>
+      {view.options.length === 0 ? (
+        <Paragraph margin="none" emphasis="muted">
+          {noTextAttributes}
+        </Paragraph>
+      ) : (
+        <CheckboxGroupField
+          name={`encrypted-attributes-${view.typeId}`}
+          aria-label={`Encrypted attributes for ${view.name}`}
+          options={[...view.options]}
+          value={[...view.encrypted]}
+          disabled={disabled}
+          onChange={(next) => onChange(next ?? [])}
+        />
+      )}
+    </div>
+  );
+}
 
 const editFailureMessage = (
   result:
@@ -198,25 +256,13 @@ export default function EncryptedVariablesSection({
       )}
 
       {nodeTypes.map((view) => (
-        <div key={view.typeId} className="flex flex-col gap-2">
-          <Heading level="h4" margin="none">
-            {view.name}
-          </Heading>
-          {view.options.length === 0 ? (
-            <Paragraph margin="none" emphasis="muted">
-              {words.noTextAttributes}
-            </Paragraph>
-          ) : (
-            <CheckboxGroupField
-              name={`encrypted-attributes-${view.typeId}`}
-              aria-label={`Encrypted attributes for ${view.name}`}
-              options={[...view.options]}
-              value={[...view.encrypted]}
-              disabled={readOnly || busy}
-              onChange={(next) => handleChange(view, next ?? [])}
-            />
-          )}
-        </div>
+        <NodeTypeAttributes
+          key={view.typeId}
+          view={view}
+          noTextAttributes={words.noTextAttributes}
+          disabled={readOnly || busy}
+          onChange={(next) => handleChange(view, next)}
+        />
       ))}
 
       {/* Mounted with the section rather than with the message, so the first
