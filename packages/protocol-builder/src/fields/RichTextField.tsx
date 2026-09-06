@@ -25,6 +25,11 @@ type RichTextFieldProps = CreateFormFieldProps<
      * Restricts the editor to a single paragraph of markdown (no headings,
      * lists, links or rules). Named for the markdown mode rather than `inline`,
      * which fresco-ui's `Field` reserves for its label/control layout.
+     *
+     * The editor is told too, not just the markdown conversion: the restriction
+     * is a promise about the value, and a document the editor was free to split
+     * left the serializer joining two paragraphs into one line by inventing a
+     * separator — "Never met" saved as " Never met".
      */
     'singleLine'?: boolean;
     /** Toolbar features to withhold, e.g. `['bold', 'lists']`. */
@@ -110,6 +115,7 @@ const RichTextField = ({
   return (
     <RichTextEditorField
       {...props}
+      singleLine={singleLine}
       changeMode="input"
       toolbarOptions={toolbarOptions}
       value={content}

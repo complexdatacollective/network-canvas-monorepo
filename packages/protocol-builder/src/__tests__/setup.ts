@@ -17,6 +17,32 @@ import '@testing-library/jest-dom/vitest';
 Element.prototype.scrollTo ??= () => undefined;
 Element.prototype.scrollIntoView ??= () => undefined;
 
+/**
+ * Where a range is on screen, which jsdom does not answer for a `Range` at
+ * all.
+ *
+ * The rich-text editor asks after every document change, to keep the caret in
+ * view. Without an answer the question throws out of the editor's own
+ * transaction, so a test that types a prompt watches the keystrokes land in
+ * the DOM and the field's value never change — a failure that looks like the
+ * field being broken rather than like a missing shim.
+ *
+ * Answered by borrowing the element measurement jsdom does implement, which
+ * reports zeros because jsdom lays nothing out. Nothing here reads the
+ * numbers; what matters is that asking succeeds.
+ */
+Range.prototype.getClientRects ??= () => document.body.getClientRects();
+Range.prototype.getBoundingClientRect ??= () =>
+  document.body.getBoundingClientRect();
+
+/**
+ * What is under a point, which jsdom cannot know for the same reason. The
+ * editor asks while deciding whether a pointer gesture landed inside it;
+ * nothing is, and saying so is a truthful answer in a document with no
+ * layout.
+ */
+document.elementFromPoint ??= () => null;
+
 class ResizeObserverStub implements ResizeObserver {
   observe() {
     // Nothing in this package reacts to a measured size, so reporting one
