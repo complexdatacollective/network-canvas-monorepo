@@ -1303,6 +1303,9 @@ importers:
       '@base-ui/react':
         specifier: 'catalog:'
         version: 1.7.0(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@codaco/app-i18n':
+        specifier: workspace:^
+        version: link:../../packages/app-i18n
       '@codaco/art':
         specifier: workspace:^
         version: link:../../packages/art
