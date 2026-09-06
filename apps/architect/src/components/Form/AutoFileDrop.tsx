@@ -75,8 +75,9 @@ const messages = defineMessages({
   theFileContainsDuplicateDuplicate: {
     id: 'architect.form.autoFileDrop.theFileContainsDuplicateDuplicate',
     defaultMessage:
-      'The file contains {value1} duplicate {value2, plural, one {row} other {rows}}. Duplicate rows will be removed when this roster is used in Fresco.',
-    description: 'Visible text in components / Form / AutoFileDrop.',
+      'The file contains {count, plural, one {# duplicate row} other {# duplicate rows}}. Duplicate rows will be removed when this roster is used in Fresco.',
+    description:
+      'Queued warning after importing a network resource. count is the number of duplicate rows detected; Fresco removes these rows when using the roster, not during this Architect import.',
   },
   considerRemovingDuplicatesFromYourCSV: {
     id: 'architect.form.autoFileDrop.considerRemovingDuplicatesFromYourCSV',
@@ -272,8 +273,7 @@ const AutoFileDrop = ({
                     {createElement(AppMessage, {
                       message: messages.theFileContainsDuplicateDuplicate,
                       values: {
-                        value1: result.duplicateCount,
-                        value2: result.duplicateCount,
+                        count: result.duplicateCount,
                       },
                     })}
                   </Paragraph>

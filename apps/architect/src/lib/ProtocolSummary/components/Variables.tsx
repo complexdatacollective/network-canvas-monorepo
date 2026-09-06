@@ -1,4 +1,4 @@
-import { find, get, isEmpty, sortBy, toPairs } from 'es-toolkit/compat';
+import { find, get, isEmpty, toPairs } from 'es-toolkit/compat';
 import type { ReactNode } from 'react';
 import React, { useContext } from 'react';
 
@@ -79,9 +79,9 @@ const Variables = ({ variables }: VariablesProps) => {
 
   const getUsedIn = makeGetUsedIn(protocol as ProtocolType);
 
-  const sortedVariables = sortBy(toPairs(variables), [
-    (variable) => (variable[1] as Variable).name.toLowerCase(),
-  ]);
+  const sortedVariables = toPairs(variables).toSorted((a, b) =>
+    (a[1] as Variable).name.localeCompare((b[1] as Variable).name, intl.locale),
+  );
 
   return (
     <div className="[&_a]:text-neon-coral">

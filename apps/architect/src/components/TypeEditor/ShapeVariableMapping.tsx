@@ -48,21 +48,21 @@ const additionalMessages = defineMessages({
 const messages = defineMessages({
   thresholdValue: {
     id: 'architect.typeEditor.shapeVariableMapping.thresholdValue',
-    defaultMessage: 'Threshold {value1} value',
+    defaultMessage: 'Threshold {value1, number} value',
     description:
-      'The aria-label text in components / TypeEditor / ShapeVariableMapping.',
+      'Accessible name of a numeric shape-mapping threshold input. value1 is the one-based threshold position, not the numeric breakpoint value.',
   },
   shapeAtThreshold: {
     id: 'architect.typeEditor.shapeVariableMapping.shapeAtThreshold',
     defaultMessage: 'Shape at threshold {value}',
     description:
-      'The aria-label text in components / TypeEditor / ShapeVariableMapping.',
+      'Accessible label for the shape chosen at a numeric breakpoint. value is the complete locale-formatted threshold number; its precision must be preserved.',
   },
   removeThreshold: {
     id: 'architect.typeEditor.shapeVariableMapping.removeThreshold',
-    defaultMessage: 'Remove threshold {value1}',
+    defaultMessage: 'Remove threshold {value1, number}',
     description:
-      'The aria-label text in components / TypeEditor / ShapeVariableMapping.',
+      'Accessible remove-button label for a shape-mapping threshold. value1 is its one-based position in the threshold list.',
   },
   true: {
     id: 'architect.typeEditor.shapeVariableMapping.true',
@@ -272,7 +272,7 @@ const ThresholdItem = ({
         small
         nodeColor={nodeColor}
         aria-label={intl.formatMessage(messages.shapeAtThreshold, {
-          value: value,
+          value: intl.formatNumber(value, { maximumSignificantDigits: 21 }),
         })}
         value={shape}
         onChange={(nextShape) =>

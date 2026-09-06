@@ -13,10 +13,61 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createAppIntl } from '@codaco/app-i18n/messages';
 import { sortByLabel } from '~/components/Codebook/helpers';
 import Variables from '~/components/Codebook/Variables';
+import NativeSelect from '~/components/Form/Fields/NativeSelect';
 import { toSelectOptions } from '~/components/sections/Form/helpers';
 
 import { ArchitectI18nProvider } from '../ArchitectI18nProvider';
 import { ARCHITECT_LOCALE_KEY } from '../preference';
+
+it('reorders alphabetical native selects live while preserving authored option order when sorting is disabled', () => {
+  const options = [
+    { label: 'Zulu', value: 'z' },
+    { label: 'ño', value: 'enye' },
+    { label: 'nz', value: 'nz', disabled: true },
+    { label: 'Árbol', value: 'tree' },
+  ];
+  const original = structuredClone(options);
+  const onChange = vi.fn();
+  render(
+    <ArchitectI18nProvider>
+      <label htmlFor="sorted">Sorted</label>
+      <NativeSelect
+        id="sorted"
+        options={options}
+        value="enye"
+        onChange={onChange}
+      />
+      <label htmlFor="authored">Authored</label>
+      <NativeSelect
+        id="authored"
+        options={options}
+        value="z"
+        sortOptionsByLabel={false}
+      />
+    </ArchitectI18nProvider>,
+  );
+  const sorted = screen.getByRole('combobox', { name: 'Sorted' });
+  const authored = screen.getByRole('combobox', { name: 'Authored' });
+  const values = (select: HTMLElement) =>
+    within(select)
+      .getAllByRole('option')
+      .slice(1)
+      .map((option) => option.getAttribute('value'));
+  expect(values(sorted)).toEqual(['tree', 'enye', 'nz', 'z']);
+  act(() => {
+    localStorage.setItem(ARCHITECT_LOCALE_KEY, 'es');
+    window.dispatchEvent(
+      new StorageEvent('storage', { key: ARCHITECT_LOCALE_KEY }),
+    );
+  });
+  expect(values(sorted)).toEqual(['tree', 'nz', 'enye', 'z']);
+  expect(values(authored)).toEqual(['z', 'enye', 'nz', 'tree']);
+  expect(sorted).toHaveValue('enye');
+  expect(within(sorted).getByRole('option', { name: 'nz' })).toBeDisabled();
+  fireEvent.change(sorted, { target: { value: 'tree' } });
+  expect(onChange).toHaveBeenCalledWith('tree');
+  expect(options).toEqual(original);
+});
 
 const labels = vi.hoisted(() => ({
   first: 'ñandú2',

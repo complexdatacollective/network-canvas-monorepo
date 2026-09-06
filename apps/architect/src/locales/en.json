@@ -768,8 +768,8 @@
     "description": "Visible text in components / Codebook / Codebook."
   },
   "architect.codebook.codebook.edgeTypes": {
-    "defaultMessage": "Edge Types ({value1})",
-    "description": "Visible text in components / Codebook / Codebook."
+    "defaultMessage": "Edge Types ({value1, number})",
+    "description": "Codebook section heading. value1 is the total number of edge types in the protocol."
   },
   "architect.codebook.codebook.ego": {
     "defaultMessage": "Ego",
@@ -780,8 +780,8 @@
     "description": "The title text in components / Codebook / Codebook."
   },
   "architect.codebook.codebook.networkAssets": {
-    "defaultMessage": "Network Assets ({value1})",
-    "description": "Visible text in components / Codebook / Codebook."
+    "defaultMessage": "Network Assets ({value1, number})",
+    "description": "Codebook section heading. value1 is the total number of network resources in the protocol."
   },
   "architect.codebook.codebook.noEdgeTypesYet": {
     "defaultMessage": "No edge types yet.",
@@ -792,8 +792,8 @@
     "description": "Visible text in components / Codebook / Codebook."
   },
   "architect.codebook.codebook.nodeTypes": {
-    "defaultMessage": "Node Types ({value1})",
-    "description": "Visible text in components / Codebook / Codebook."
+    "defaultMessage": "Node Types ({value1, number})",
+    "description": "Codebook section heading. value1 is the total number of node types in the protocol."
   },
   "architect.codebook.codebook.reviewTheAttributesCollectedAboutThe": {
     "defaultMessage": "Review the attributes collected about the participant.",
@@ -1623,16 +1623,8 @@
     "defaultMessage": "Untitled stage",
     "description": "Researcher-facing Architect control or feedback."
   },
-  "architect.final.components.TypeEditor.TypeEditor.edgeExamples": {
-    "defaultMessage": "Some examples might be \"Friends\" or \"Works With\".",
-    "description": "Researcher-facing Architect control or feedback."
-  },
   "architect.final.components.TypeEditor.TypeEditor.edgeName": {
     "defaultMessage": "edge type name",
-    "description": "Researcher-facing Architect control or feedback."
-  },
-  "architect.final.components.TypeEditor.TypeEditor.nodeExamples": {
-    "defaultMessage": "Some examples might be \"Person\", \"Place\", or \"Organization\".",
     "description": "Researcher-facing Architect control or feedback."
   },
   "architect.final.components.TypeEditor.TypeEditor.nodeName": {
@@ -1744,8 +1736,8 @@
     "description": "The description text in components / Form / arrayFields / Option."
   },
   "architect.form.arrayFields.option.editOption": {
-    "defaultMessage": "Edit option {value1}",
-    "description": "The aria-label text in components / Form / arrayFields / Option."
+    "defaultMessage": "Edit option {value1, number}",
+    "description": "Accessible edit-button label for an authored response option. value1 is its one-based position in the option list, not its stored response value."
   },
   "architect.form.arrayFields.option.enterALabel": {
     "defaultMessage": "Enter a label...",
@@ -1776,8 +1768,8 @@
     "description": "The title text in components / Form / arrayFields / Option."
   },
   "architect.form.arrayFields.option.removeOption45a9b": {
-    "defaultMessage": "Remove option {value1}",
-    "description": "The aria-label text in components / Form / arrayFields / Option."
+    "defaultMessage": "Remove option {value1, number}",
+    "description": "Accessible remove-button label for an authored response option. value1 is its one-based position in the option list, not its stored response value."
   },
   "architect.form.arrayFields.option.reorderOptionOf": {
     "defaultMessage": "Reorder option {value1, number} of {itemCount, number}",
@@ -1824,8 +1816,8 @@
     "description": "The title text in components / Form / AutoFileDrop."
   },
   "architect.form.autoFileDrop.theFileContainsDuplicateDuplicate": {
-    "defaultMessage": "The file contains {value1} duplicate {value2, plural, one {row} other {rows}}. Duplicate rows will be removed when this roster is used in Fresco.",
-    "description": "Visible text in components / Form / AutoFileDrop."
+    "defaultMessage": "The file contains {count, plural, one {# duplicate row} other {# duplicate rows}}. Duplicate rows will be removed when this roster is used in Fresco.",
+    "description": "Queued warning after importing a network resource. count is the number of duplicate rows detected; Fresco removes these rows when using the roster, not during this Architect import."
   },
   "architect.form.autoFileDrop.warningContainsDuplicateRows": {
     "defaultMessage": "Warning: {value1} contains duplicate rows",
@@ -2596,8 +2588,8 @@
     "description": "Researcher-facing Architect control or feedback."
   },
   "architect.newProtocolDialog.useAShortRecognizableNameOf": {
-    "defaultMessage": "Use a short, recognizable name of up to {PROTOCOL_NAME_MAX_LENGTH} characters. Include a version number or date when it helps distinguish drafts, but avoid long project notes.",
-    "description": "The hint text in components / NewProtocolDialog."
+    "defaultMessage": "Use a short, recognizable name of up to {PROTOCOL_NAME_MAX_LENGTH, number} characters. Include a version number or date when it helps distinguish drafts, but avoid long project notes.",
+    "description": "Hint for the new protocol name. PROTOCOL_NAME_MAX_LENGTH is the maximum number of user-perceived characters allowed in that name."
   },
   "architect.newVariableWindow.newVariableWindow.allowedValues": {
     "defaultMessage": "Allowed values",
@@ -6784,12 +6776,12 @@
     "description": "Visible text in components / TypeEditor / ShapeVariableMapping."
   },
   "architect.typeEditor.shapeVariableMapping.removeThreshold": {
-    "defaultMessage": "Remove threshold {value1}",
-    "description": "The aria-label text in components / TypeEditor / ShapeVariableMapping."
+    "defaultMessage": "Remove threshold {value1, number}",
+    "description": "Accessible remove-button label for a shape-mapping threshold. value1 is its one-based position in the threshold list."
   },
   "architect.typeEditor.shapeVariableMapping.shapeAtThreshold": {
     "defaultMessage": "Shape at threshold {value}",
-    "description": "The aria-label text in components / TypeEditor / ShapeVariableMapping."
+    "description": "Accessible label for the shape chosen at a numeric breakpoint. value is the complete locale-formatted threshold number; its precision must be preserved."
   },
   "architect.typeEditor.shapeVariableMapping.shapeFor": {
     "defaultMessage": "Shape for {value1}",
@@ -6808,8 +6800,8 @@
     "description": "Visible text in components / TypeEditor / ShapeVariableMapping."
   },
   "architect.typeEditor.shapeVariableMapping.thresholdValue": {
-    "defaultMessage": "Threshold {value1} value",
-    "description": "The aria-label text in components / TypeEditor / ShapeVariableMapping."
+    "defaultMessage": "Threshold {value1, number} value",
+    "description": "Accessible name of a numeric shape-mapping threshold input. value1 is the one-based threshold position, not the numeric breakpoint value."
   },
   "architect.typeEditor.shapeVariableMapping.thresholds": {
     "defaultMessage": "Thresholds",
@@ -6869,7 +6861,7 @@
   },
   "architect.typeEditor.typeEditor.thisNameIdentifiesTheTypeIn": {
     "defaultMessage": "{entity, select, node {This name identifies the node type in the codebook and in your data exports. Some examples might be \"Person\", \"Place\", or \"Organization\".} other {This name identifies the edge type in the codebook and in your data exports. Some examples might be \"Friends\" or \"Works With\".}}",
-    "description": "Visible text in components / TypeEditor / TypeEditor."
+    "description": "Hint below the entity type name field. The entity selector chooses a complete explanation and suggested names for a node type or an edge type; example names are interface guidance, not authored data."
   },
   "architect.typeEditor.typeEditor.typeColor": {
     "defaultMessage": "Type color",
@@ -7268,8 +7260,8 @@
     "description": "Visible text in components / VariableRoleConflictsAlert."
   },
   "architect.variableRoleConflictsAlert.attributesAreWrittenBothWith": {
-    "defaultMessage": "{value1} attributes are written both with and without validation",
-    "description": "Visible text in components / VariableRoleConflictsAlert."
+    "defaultMessage": "{value1, number} attributes are written both with and without validation",
+    "description": "Timeline warning title used for more than one conflicting attribute. value1 is the count of attributes written by both validated and unvalidated stages."
   },
   "architect.variableRoleConflictsAlert.collectedByAForm": {
     "defaultMessage": "<strong>{value1}</strong> — collected by a form in {value3}; written without validation in {value4}",

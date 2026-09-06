@@ -73,15 +73,15 @@ const messages = defineMessages({
   },
   editOption: {
     id: 'architect.form.arrayFields.option.editOption',
-    defaultMessage: 'Edit option {value1}',
+    defaultMessage: 'Edit option {value1, number}',
     description:
-      'The aria-label text in components / Form / arrayFields / Option.',
+      'Accessible edit-button label for an authored response option. value1 is its one-based position in the option list, not its stored response value.',
   },
   removeOption45a9b: {
     id: 'architect.form.arrayFields.option.removeOption45a9b',
-    defaultMessage: 'Remove option {value1}',
+    defaultMessage: 'Remove option {value1, number}',
     description:
-      'The aria-label text in components / Form / arrayFields / Option.',
+      'Accessible remove-button label for an authored response option. value1 is its one-based position in the option list, not its stored response value.',
   },
   finishEditingOption: {
     id: 'architect.form.arrayFields.option.finishEditingOption',

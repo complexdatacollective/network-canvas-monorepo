@@ -1,4 +1,3 @@
-import { sortBy } from 'es-toolkit/compat';
 import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useMemo, useState } from 'react';
 
@@ -261,8 +260,13 @@ const NativeSelect = ({
   };
 
   const sortedOptions = useMemo(
-    () => (sortOptionsByLabel ? sortBy(options, 'label') : options),
-    [options, sortOptionsByLabel],
+    () =>
+      sortOptionsByLabel
+        ? options.toSorted((a, b) =>
+            a.label.localeCompare(b.label, intl.locale),
+          )
+        : options,
+    [options, sortOptionsByLabel, intl.locale],
   );
 
   const selectOptions = useMemo<Option[]>(

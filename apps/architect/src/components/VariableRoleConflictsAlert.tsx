@@ -20,8 +20,9 @@ const messages = defineMessages({
   attributesAreWrittenBothWith: {
     id: 'architect.variableRoleConflictsAlert.attributesAreWrittenBothWith',
     defaultMessage:
-      '{value1} attributes are written both with and without validation',
-    description: 'Visible text in components / VariableRoleConflictsAlert.',
+      '{value1, number} attributes are written both with and without validation',
+    description:
+      'Timeline warning title used for more than one conflicting attribute. value1 is the count of attributes written by both validated and unvalidated stages.',
   },
   valuesWrittenOutsideAFormBypass: {
     id: 'architect.variableRoleConflictsAlert.valuesWrittenOutsideAFormBypass',

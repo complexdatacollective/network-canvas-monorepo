@@ -1,7 +1,10 @@
 import type { Page } from '@playwright/test';
 
+import { CurrentProtocolSchema } from '@codaco/protocol-validation';
+
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
 import { emptyProtocol } from '../fixtures/seed.js';
+import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
 import { readProtocolJson, readStageJson } from '../helpers/read-store.js';
 import { StagePreview } from '../pageobjects/preview.js';
 import { StageEditor } from '../pageobjects/stage-editor.js';
@@ -281,4 +284,155 @@ test('updates an open protocol-info table when another tab changes the device la
     info.getByRole('heading', { name: 'Metadata_Study_Á1' }),
   ).toBeVisible();
   await settings.close();
+});
+
+test('formats printed attribute order and updates linked-list grammar live while preserving protocol data', async ({
+  architectPage: page,
+  seed,
+  context,
+}) => {
+  // These authored names satisfy the protocol's ASCII NMTOKEN contract.
+  // Underscore/hyphen/dot distinguish locale collation from codepoint order.
+  const names = ['alpha_name', 'alpha.name', 'alpha-name', 'Isabel'];
+  const protocol = CurrentProtocolSchema.parse({
+    ...emptyProtocol(),
+    codebook: {
+      ego: {
+        variables: Object.fromEntries(
+          names.map((name, index) => [
+            `attribute-${index}`,
+            { name, type: 'text', component: 'Text' },
+          ]),
+        ),
+      },
+    },
+    stages: [
+      {
+        id: 'sort',
+        type: 'EgoForm',
+        label: 'Authored_sort',
+        introductionPanel: {
+          title: 'Authored introduction',
+          text: 'Authored content',
+        },
+        form: {
+          fields: names.map((_, index) => ({
+            variable: `attribute-${index}`,
+            prompt: `Authored_prompt_${index}`,
+          })),
+        },
+      },
+      {
+        id: 'conjunction',
+        type: 'EgoForm',
+        label: 'Authored_conjunction',
+        introductionPanel: {
+          title: 'Authored introduction',
+          text: 'Authored content',
+        },
+        form: {
+          fields: [0, 3].map((index) => ({
+            variable: `attribute-${index}`,
+            prompt: `Authored_prompt_${index}`,
+          })),
+        },
+      },
+    ],
+  });
+  await seed(protocol);
+  await page.goto('/protocol/summary');
+  const before = await readProtocolJson(page);
+  const attributeRow = (stageId: string) =>
+    page
+      .locator(`#stage-${stageId}`)
+      .getByRole('row')
+      .filter({
+        has: page.getByRole('cell', {
+          name: /^(Atributos|Attributes)$/,
+          exact: true,
+        }),
+      });
+  await expect(attributeRow('sort')).toHaveCount(1);
+  const links = attributeRow('sort').getByRole('link');
+  const rows = page.locator('tr[id^="variable-attribute-"]');
+  await expect(links).toHaveText([
+    'alpha_name',
+    'alpha-name',
+    'alpha.name',
+    'Isabel',
+  ]);
+  await expect(rows).toHaveCount(4);
+  expect(
+    await rows.evaluateAll((elements) => elements.map((element) => element.id)),
+  ).toEqual([
+    'variable-attribute-0',
+    'variable-attribute-2',
+    'variable-attribute-1',
+    'variable-attribute-3',
+  ]);
+  await expect(attributeRow('conjunction')).toHaveCount(1);
+  const conjunction = attributeRow('conjunction')
+    .getByRole('cell')
+    .filter({ has: page.getByRole('link', { name: 'Isabel', exact: true }) });
+  await expect(conjunction).toHaveText('alpha_name e Isabel');
+  const settings = await context.newPage();
+  await settings.goto('/');
+  await selectLanguage(settings, 'en');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  await expect(links).toHaveText([
+    'alpha_name',
+    'alpha-name',
+    'alpha.name',
+    'Isabel',
+  ]);
+  expect(
+    await links.evaluateAll((elements) =>
+      elements.map((element) => element.getAttribute('href')),
+    ),
+  ).toEqual([
+    '#variable-attribute-0',
+    '#variable-attribute-2',
+    '#variable-attribute-1',
+    '#variable-attribute-3',
+  ]);
+  expect(
+    await rows.evaluateAll((elements) => elements.map((element) => element.id)),
+  ).toEqual([
+    'variable-attribute-0',
+    'variable-attribute-2',
+    'variable-attribute-1',
+    'variable-attribute-3',
+  ]);
+  await expect(conjunction).toHaveText('alpha_name and Isabel');
+  expect(await readProtocolJson(page)).toEqual(before);
+  await settings.close();
+});
+
+test('renders British spelling in the actual type dialog and both behavior editors', async ({
+  architectPage: page,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { assets });
+  await page.goto('/protocol/codebook');
+  const before = await readProtocolJson(page);
+  await selectLanguage(page, 'en-GB');
+  await page
+    .getByRole('button', { name: 'Create node type', exact: true })
+    .click();
+  const dialog = page.getByRole('dialog', { name: 'Create Node Type' });
+  const name = dialog.getByRole('textbox', { name: 'Node type name' });
+  await expect(name).toHaveAccessibleDescription(/"Organisation"/);
+  await name.fill('Organization_authored');
+  await expect(name).toHaveValue('Organization_authored');
+  await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page.goto('/protocol/stage/narrative-1');
+  await expect(
+    page.getByRole('heading', { name: 'Narrative behaviours' }),
+  ).toBeVisible();
+  await page.goto('/protocol/stage/one-to-many-dyad-census-1');
+  await expect(
+    page.getByText('Removal behaviour', { exact: true }),
+  ).toBeVisible();
+  expect(await readProtocolJson(page)).toEqual(before);
 });

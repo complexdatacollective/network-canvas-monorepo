@@ -68,8 +68,9 @@ const messages = defineMessages({
   optionUseAShortRecognizableNameOf: {
     id: 'architect.newProtocolDialog.useAShortRecognizableNameOf',
     defaultMessage:
-      'Use a short, recognizable name of up to {PROTOCOL_NAME_MAX_LENGTH} characters. Include a version number or date when it helps distinguish drafts, but avoid long project notes.',
-    description: 'The hint text in components / NewProtocolDialog.',
+      'Use a short, recognizable name of up to {PROTOCOL_NAME_MAX_LENGTH, number} characters. Include a version number or date when it helps distinguish drafts, but avoid long project notes.',
+    description:
+      'Hint for the new protocol name. PROTOCOL_NAME_MAX_LENGTH is the maximum number of user-perceived characters allowed in that name.',
   },
   enterANameForYourProtocol: {
     id: 'architect.newProtocolDialog.enterANameForYourProtocol',

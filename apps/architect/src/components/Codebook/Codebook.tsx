@@ -59,8 +59,9 @@ const messages = defineMessages({
   },
   nodeTypes: {
     id: 'architect.codebook.codebook.nodeTypes',
-    defaultMessage: 'Node Types ({value1})',
-    description: 'Visible text in components / Codebook / Codebook.',
+    defaultMessage: 'Node Types ({value1, number})',
+    description:
+      'Codebook section heading. value1 is the total number of node types in the protocol.',
   },
   createNodeType: {
     id: 'architect.codebook.codebook.createNodeType',
@@ -74,8 +75,9 @@ const messages = defineMessages({
   },
   edgeTypes: {
     id: 'architect.codebook.codebook.edgeTypes',
-    defaultMessage: 'Edge Types ({value1})',
-    description: 'Visible text in components / Codebook / Codebook.',
+    defaultMessage: 'Edge Types ({value1, number})',
+    description:
+      'Codebook section heading. value1 is the total number of edge types in the protocol.',
   },
   createEdgeType: {
     id: 'architect.codebook.codebook.createEdgeType',
@@ -89,8 +91,9 @@ const messages = defineMessages({
   },
   networkAssets: {
     id: 'architect.codebook.codebook.networkAssets',
-    defaultMessage: 'Network Assets ({value1})',
-    description: 'Visible text in components / Codebook / Codebook.',
+    defaultMessage: 'Network Assets ({value1, number})',
+    description:
+      'Codebook section heading. value1 is the total number of network resources in the protocol.',
   },
 });
 

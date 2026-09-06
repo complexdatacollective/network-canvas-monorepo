@@ -41,7 +41,8 @@ const messages = defineMessages({
     id: 'architect.typeEditor.typeEditor.thisNameIdentifiesTheTypeIn',
     defaultMessage:
       '{entity, select, node {This name identifies the node type in the codebook and in your data exports. Some examples might be "Person", "Place", or "Organization".} other {This name identifies the edge type in the codebook and in your data exports. Some examples might be "Friends" or "Works With".}}',
-    description: 'Visible text in components / TypeEditor / TypeEditor.',
+    description:
+      'Hint below the entity type name field. The entity selector chooses a complete explanation and suggested names for a node type or an edge type; example names are interface guidance, not authored data.',
   },
   enterANameForThisType: {
     id: 'architect.typeEditor.typeEditor.enterANameForThisType',
@@ -114,17 +115,6 @@ const finalMessages = defineMessages({
   edgeName: {
     id: 'architect.final.components.TypeEditor.TypeEditor.edgeName',
     defaultMessage: 'edge type name',
-    description: 'Researcher-facing Architect control or feedback.',
-  },
-  nodeExamples: {
-    id: 'architect.final.components.TypeEditor.TypeEditor.nodeExamples',
-    defaultMessage:
-      'Some examples might be "Person", "Place", or "Organization".',
-    description: 'Researcher-facing Architect control or feedback.',
-  },
-  edgeExamples: {
-    id: 'architect.final.components.TypeEditor.TypeEditor.edgeExamples',
-    defaultMessage: 'Some examples might be "Friends" or "Works With".',
     description: 'Researcher-facing Architect control or feedback.',
   },
 });
