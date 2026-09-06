@@ -12,13 +12,13 @@ Authorized: implementation, tests, user-attributed commits, normal feature pushe
 
 ## Ownership and delivery boundaries
 
-| Workstream                                 | Owner                                                   | Branch / worktree                                               | PR base and scope                                                                                                     | Next executable action                                                                    |
-| ------------------------------------------ | ------------------------------------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| Shared prerequisites                       | Lead                                                    | `feat/app-i18n-spanish-prerequisites`; original worktree        | `main`; ecosystem/shared Spanish catalogs, Studio subset protection, shared HTTP parser, necessary Next build support | Complete affected consumer builds/E2E and open prerequisite PR                            |
-| Architect #1616                            | Architect agent                                         | `feat/architect-app-i18n`; `/private/tmp/nc-i18n-architect`     | Shared prerequisite branch; Architect implementation and app changeset                                                | Finish source/copy audit, adapt affected unit expectations, and run full app verification |
-| Interviewer #1617                          | Interviewer agent                                       | `feat/interviewer-app-i18n`; `/private/tmp/nc-i18n-interviewer` | Shared prerequisite branch; Interviewer implementation and app changeset                                              | Merge error checkpoint, complete final native/PWA/visual checks and prepare PR            |
-| Fresco #1618                               | Fresco agent                                            | `feat/fresco-app-i18n`; `/private/tmp/nc-i18n-fresco`           | Shared prerequisite branch; Fresco implementation, additive user migration, app changeset                             | Merge error checkpoint, rerun real researcher workflows and complete final verification   |
-| Independent Spanish and integration review | Separate reviewer after capacity frees; lead integrates | Inspect each app worktree and shared branch                     | Review evidence recorded here and in per-app inventories                                                              | Review Architect final 698-entry delta and inspect final app diffs/workflow evidence      |
+| Workstream                                 | Owner                                                   | Branch / worktree                                               | PR base and scope                                                                                                     | Next executable action                                                                         |
+| ------------------------------------------ | ------------------------------------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Shared prerequisites                       | Lead                                                    | `feat/app-i18n-spanish-prerequisites`; original worktree        | `main`; ecosystem/shared Spanish catalogs, Studio subset protection, shared HTTP parser, necessary Next build support | Finish the SyntheticInterview review correction, push, and request a current-head Codex review |
+| Architect #1616                            | Architect agent                                         | `feat/architect-app-i18n`; `/private/tmp/nc-i18n-architect`     | Shared prerequisite branch; Architect implementation and app changeset                                                | Finish canonical visual checks, reactive migration notes, then prepare the app PR              |
+| Interviewer #1617                          | Interviewer agent                                       | `feat/interviewer-app-i18n`; `/private/tmp/nc-i18n-interviewer` | Shared prerequisite branch; Interviewer implementation and app changeset                                              | PR #1703 review running; fix independent findings while shared integration awaits permission   |
+| Fresco #1618                               | Fresco agent                                            | `feat/fresco-app-i18n`; `/private/tmp/nc-i18n-fresco`           | Shared prerequisite branch; Fresco implementation, additive user migration, app changeset                             | Finish final API/import browser checks and prepare the verified app commit and PR              |
+| Independent Spanish and integration review | Separate reviewer after capacity frees; lead integrates | Inspect each app worktree and shared branch                     | Review evidence recorded here and in per-app inventories                                                              | Review final app catalog deltas and outside-JSX census; inspect app workflow evidence          |
 
 The lead exclusively owns shared catalogs, shared packages, Studio compatibility edits, and root dependency configuration. After merging shared checkpoints, each app owner may update only its isolated app importer in the lockfile; the lead reviews the additive diff before integration. Agents own their app manifests, source, generated English catalog, Spanish/GB catalogs, app plan, and app changeset. Shared changes land once and merge normally into each dependent branch. No cherry-picked duplicates. Intended merge order: shared prerequisite, then the three independently reviewable app PRs. If CI remains base-filtered to `main`, select an evidence-backed supported run or clearly record that external gate; do not treat missing CI as passing.
 
@@ -26,37 +26,37 @@ The lead exclusively owns shared catalogs, shared packages, Studio compatibility
 
 Every row is outstanding until linked implementation and passing verification evidence are recorded. Per-app plans enumerate individual files and legitimate exceptions; catalog coverage alone cannot detect unextracted strings.
 
-| Requirement                                                                                  | Owner / surfaces                                                                                                                         | Required evidence                                                                                                                  | Current status                                                                                             |
-| -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Existing APIs, namespaced explicit descriptors, English defaults and translator descriptions | All; app-owned `architect.*`, `interviewer.*`, `fresco.*`                                                                                | Source inventory; imports/call-site audit; duplicate/description/extraction guards                                                 | Shared guards pass; app source inventories and final deltas under review                                   |
-| Universal and component-owned copy translated once                                           | Shared and all app catalog manifests                                                                                                     | Common/shared/app catalog layering; no direct react-intl import in apps; review                                                    | Shared owning catalogs implemented and independently reviewed; app layering implemented                    |
-| Canonical `en`, `en-GB`, `es`; complete nonblank Spanish; sparse GB                          | All registries/catalogs                                                                                                                  | Full/subset checks, ICU syntax, token/rich-text/argument-kind parity                                                               | Shared guards pass; all app catalogs complete at current snapshots; final deltas pending                   |
-| Shared ecosystem completeness                                                                | app-i18n/common, fresco-ui; any other governed package                                                                                   | Every ecosystem consumer enumerated; all catalogs complete                                                                         | 355 shared entries reviewed across six owning catalogs; completeness guards pass                           |
-| Studio remains its declared supported subset                                                 | Studio client registry and RPC/server contract                                                                                           | Client/server registry equality plus ecosystem subset tests                                                                        | Implemented; 8 subset tests and actual Studio build pass                                                   |
-| Whole ICU sentences, plurals/select/rich text and locale-aware formatting                    | Every app; outside-JSX labels, validation, errors, dates/counts                                                                          | Literal and formatting audit; representative translated outputs                                                                    | Shared review fixes verified; Architect final plural/fragment corrections in progress                      |
-| English fallback and provider-optional shared components                                     | Shared runtime and existing unlocalized consumers                                                                                        | Existing regressions; Spanish/provider-optional tests; builds                                                                      | Shared unit/Storybook and three canonical English visual suites pass; latest form fix rerun running        |
-| Pure shared Accept-Language helper                                                           | protocol-validation root export, Fresco request adapter                                                                                  | q ordering/ties/duplicates/invalids/wildcards/zero quality/canonicalization; Node tests                                            | Implemented root export; 25 tests pass, ordering mutation fails 17 assertions                              |
-| Browser best-fit, fallback, malformed/unsupported persisted preference                       | Architect and Interviewer providers                                                                                                      | Unit + browser tests with regional Spanish/GB preferences                                                                          | App implementations and focused tests pass; lead final evidence audit pending                              |
-| Immediate choice, reload persistence and automatic mode                                      | Architect and Interviewer language settings                                                                                              | LocaleSelect keyboard workflow; storage/reload/languagechange tests                                                                | App focused tests and Interviewer production offline workflow pass; final integrated runs pending          |
-| Correct root document language and direction                                                 | All app providers, initial Fresco document                                                                                               | First render and live transitions, RTL harness, no hydration warnings                                                              | App provider/boundary tests pass; final browser evidence review pending                                    |
-| Protocol-authored content and stable research identifiers preserved                          | Architect authoring/preview, Interviewer and Fresco interview routes                                                                     | Boundary tests; compare protocol/session data across admin locale changes                                                          | Boundary tests implemented; Interviewer participant layout correction under final visual review            |
-| Architect complete chrome                                                                    | Library/timeline, menus/settings, every editor/form/dialog, validation/resources, preview host, import/export, loading/errors/a11y names | App surface inventory + real representative workflows in all three locales                                                         | 1793-ID snapshot; final source audit, copy corrections and existing-unit adaptation ongoing                |
-| Interviewer complete administration                                                          | Protocol deck, onboarding/security/settings, sessions, imports/exports, install/update/offline/error states                              | App surface inventory + real workflows in all three locales                                                                        | Complete inventory and independent catalog review; latest submitted-error integration pending              |
-| Interviewer installed/offline locale availability                                            | Bundled catalogs and service worker                                                                                                      | Actual production PWA offline navigation and switch/reload in Spanish                                                              | Actual production offline Spanish switch/reload/import passed; final-head rerun pending                    |
-| Fresco complete researcher server/client surfaces                                            | Setup/auth, dashboard/protocols/interviews, exports, settings/security, actions/validation/errors/loading                                | App surface inventory; request formatter/cached-content audit; live all-locale workflows                                           | 831-ID review complete; activity details and live submission failures corrected; rerun pending             |
-| Fresco user persistence and migration                                                        | Existing Prisma user/auth model, nullable preference, authenticated write, settings UI                                                   | Additive migration and old-user behavior; strict valid tags/null; auth preservation                                                | Additive user/event migrations exercised on populated disposable PostgreSQL; lead audit pending            |
-| Fresco preference precedence and initialization                                              | Account > device mirror > Accept-Language > default                                                                                      | Server/client agreement, malformed values, automatic semantics, serializable initialization                                        | Server/browser matrix passed; final combined build and lead audit pending                                  |
-| Fresco stale writes, caching and cross-user isolation                                        | Request formatter, auth transitions, preference mutations                                                                                | Two users/requests, race/reload tests; no shared mutable intl; no stale mirror override                                            | Two-user/eight-request and null mirror tests passed; lead audit pending                                    |
-| Shared compilation supports Vite and Next source/npm dist                                    | app-i18n compiler and host builds                                                                                                        | Actual production builds, compiled ICU/Spanish behavior, parser exclusion if required                                              | Actual library/Vite/Next builds pass; packed exports checked, final execution probe pending                |
-| Catalog freshness and untranslated-copy safeguards                                           | All extraction scripts and guards, literal inventories                                                                                   | Fresh extraction, deliberately broken missing/blank/token/duplicate/literal guards fail then pass                                  | Shared guards pass; app extraction and deliberate mutation guards implemented                              |
-| Accessibility, expansion and directionality                                                  | LocaleSelect and all changed layouts                                                                                                     | Keyboard/screen-reader names, required/disabled/errors, long Spanish and RTL, inspected visuals                                    | Live fixes for narrow settings, error liveness and pagination naming; final app audit pending              |
-| Verification per PR                                                                          | Root/package scripts inspected before running                                                                                            | Formatting, lint, typecheck, Knip, relevant unit/Storybook/E2E, actual builds; no weakened assertions                              | Shared broad checks pass at checkpoint 3; latest error seam rerun running; app final checks pending        |
-| Meaningful regression tests                                                                  | Changed behavior                                                                                                                         | Deliberate production mutation produces expected failure, restore produces pass                                                    | Locale freezing, refusal erasure, plural wording and HTTP ordering mutations fail as intended              |
-| Visual baselines                                                                             | All affected suites                                                                                                                      | Pinned workflow generation, image review and required approval, only explained changes                                             | Shared Docker: Interview165+6skips, Interviewer5, Architect2 pass with no PNG changes; app runs pending    |
-| Spanish independent review                                                                   | All common/shared/app entries                                                                                                            | Separate reviewer provenance, findings and corrections; distinguish AI review from human translation review                        | All shared355, Interviewer444, Fresco831 reviewed; Architect initial1417 reviewed, 698-entry delta pending |
-| Correct release lanes and complete PR docs                                                   | Prerequisite and each issue                                                                                                              | Changeset policy, clear issue links/scope/dependencies/evidence                                                                    | Shared existing/new lane-correct changesets authored; PR creation pending                                  |
-| Codex PR review loop                                                                         | Every latest PR head                                                                                                                     | Explicit request, completed head-attributable clean verdict, submissions/inline/top-level audit; replies/resolved outdated threads | Pending PR creation; no external review completion claimed                                                 |
-| Final integration and clean delivery                                                         | Combined shared/apps tree and separate branches                                                                                          | Current head checks, lead diff audit, no uncommitted changes, URLs/SHAs/merge order                                                | Shared main merge complete; latest checkpoint and final app integration pending                            |
+| Requirement                                                                                  | Owner / surfaces                                                                                                                         | Required evidence                                                                                                                  | Current status                                                                                                              |
+| -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Existing APIs, namespaced explicit descriptors, English defaults and translator descriptions | All; app-owned `architect.*`, `interviewer.*`, `fresco.*`                                                                                | Source inventory; imports/call-site audit; duplicate/description/extraction guards                                                 | Shared guards pass; app source inventories and final deltas under review                                                    |
+| Universal and component-owned copy translated once                                           | Shared and all app catalog manifests                                                                                                     | Common/shared/app catalog layering; no direct react-intl import in apps; review                                                    | Shared owning catalogs implemented and independently reviewed; app layering implemented                                     |
+| Canonical `en`, `en-GB`, `es`; complete nonblank Spanish; sparse GB                          | All registries/catalogs                                                                                                                  | Full/subset checks, ICU syntax, token/rich-text/argument-kind parity                                                               | Shared guards pass; all app catalogs complete at current snapshots; final deltas pending                                    |
+| Shared ecosystem completeness                                                                | app-i18n/common, fresco-ui; any other governed package                                                                                   | Every ecosystem consumer enumerated; all catalogs complete                                                                         | 405 shared entries independently reviewed across six owning catalogs; completeness guards pass                              |
+| Studio remains its declared supported subset                                                 | Studio client registry and RPC/server contract                                                                                           | Client/server registry equality plus ecosystem subset tests                                                                        | Implemented; 8 subset tests and actual Studio build pass                                                                    |
+| Whole ICU sentences, plurals/select/rich text and locale-aware formatting                    | Every app; outside-JSX labels, validation, errors, dates/counts                                                                          | Literal and formatting audit; representative translated outputs                                                                    | Shared review fixes verified; Architect final plural/fragment corrections in progress                                       |
+| English fallback and provider-optional shared components                                     | Shared runtime and existing unlocalized consumers                                                                                        | Existing regressions; Spanish/provider-optional tests; builds                                                                      | Shared unit/Storybook and all three canonical/native CI suites pass on e20934d8e2                                           |
+| Pure shared Accept-Language helper                                                           | protocol-validation root export, Fresco request adapter                                                                                  | q ordering/ties/duplicates/invalids/wildcards/zero quality/canonicalization; Node tests                                            | Implemented root export; 25 tests pass, ordering mutation fails 17 assertions                                               |
+| Browser best-fit, fallback, malformed/unsupported persisted preference                       | Architect and Interviewer providers                                                                                                      | Unit + browser tests with regional Spanish/GB preferences                                                                          | App implementations and focused tests pass; lead final evidence audit pending                                               |
+| Immediate choice, reload persistence and automatic mode                                      | Architect and Interviewer language settings                                                                                              | LocaleSelect keyboard workflow; storage/reload/languagechange tests                                                                | App focused tests and Interviewer production offline workflow pass; final integrated runs pending                           |
+| Correct root document language and direction                                                 | All app providers, initial Fresco document                                                                                               | First render and live transitions, RTL harness, no hydration warnings                                                              | App provider/boundary tests pass; final browser evidence review pending                                                     |
+| Protocol-authored content and stable research identifiers preserved                          | Architect authoring/preview, Interviewer and Fresco interview routes                                                                     | Boundary tests; compare protocol/session data across admin locale changes                                                          | Boundary tests implemented; Interviewer participant layout correction under final visual review                             |
+| Architect complete chrome                                                                    | Library/timeline, menus/settings, every editor/form/dialog, validation/resources, preview host, import/export, loading/errors/a11y names | App surface inventory + real representative workflows in all three locales                                                         | 1827-ID independently reviewed snapshot; queued-row-noun correction and final regressions ongoing                           |
+| Interviewer complete administration                                                          | Protocol deck, onboarding/security/settings, sessions, imports/exports, install/update/offline/error states                              | App surface inventory + real workflows in all three locales                                                                        | Complete inventory and independent catalog review; latest submitted-error integration pending                               |
+| Interviewer installed/offline locale availability                                            | Bundled catalogs and service worker                                                                                                      | Actual production PWA offline navigation and switch/reload in Spanish                                                              | Actual production offline Spanish switch/reload/import passed; final-head rerun pending                                     |
+| Fresco complete researcher server/client surfaces                                            | Setup/auth, dashboard/protocols/interviews, exports, settings/security, actions/validation/errors/loading                                | App surface inventory; request formatter/cached-content audit; live all-locale workflows                                           | 840-ID review complete; failure paths, live passkey fallbacks and mobile controls verified                                  |
+| Fresco user persistence and migration                                                        | Existing Prisma user/auth model, nullable preference, authenticated write, settings UI                                                   | Additive migration and old-user behavior; strict valid tags/null; auth preservation                                                | Additive user/event migrations exercised on populated disposable PostgreSQL; lead schema/auth audit complete                |
+| Fresco preference precedence and initialization                                              | Account > device mirror > Accept-Language > default                                                                                      | Server/client agreement, malformed values, automatic semantics, serializable initialization                                        | Server/browser matrix and lead resolution/provider audit pass; final corrected build pending                                |
+| Fresco stale writes, caching and cross-user isolation                                        | Request formatter, auth transitions, preference mutations                                                                                | Two users/requests, race/reload tests; no shared mutable intl; no stale mirror override                                            | Two-user/eight-request and null mirror tests passed; lead cache/account-transition audit complete                           |
+| Shared compilation supports Vite and Next source/npm dist                                    | app-i18n compiler and host builds                                                                                                        | Actual production builds, compiled ICU/Spanish behavior, parser exclusion if required                                              | Actual library/Vite/Next builds and packed runtime execution pass, including react-server and byte-exact migration Markdown |
+| Catalog freshness and untranslated-copy safeguards                                           | All extraction scripts and guards, literal inventories                                                                                   | Fresh extraction, deliberately broken missing/blank/token/duplicate/literal guards fail then pass                                  | Shared guards pass; app extraction and deliberate mutation guards implemented                                               |
+| Accessibility, expansion and directionality                                                  | LocaleSelect and all changed layouts                                                                                                     | Keyboard/screen-reader names, required/disabled/errors, long Spanish and RTL, inspected visuals                                    | Live fixes for narrow settings, error liveness and pagination naming; final app audit pending                               |
+| Verification per PR                                                                          | Root/package scripts inspected before running                                                                                            | Formatting, lint, typecheck, Knip, relevant unit/Storybook/E2E, actual builds; no weakened assertions                              | Shared round 2: 25 workspace types, 2063 UI units, 1318 UI stories, 290 native cases, lint/format/Knip pass                 |
+| Meaningful regression tests                                                                  | Changed behavior                                                                                                                         | Deliberate production mutation produces expected failure, restore produces pass                                                    | Locale freezing, refusal erasure, plural wording and HTTP ordering mutations fail as intended                               |
+| Visual baselines                                                                             | All affected suites                                                                                                                      | Pinned workflow generation, image review and required approval, only explained changes                                             | Shared Docker: Interview165+6skips, Interviewer5, Architect2 pass with no PNG changes; app runs pending                     |
+| Spanish independent review                                                                   | All common/shared/app entries                                                                                                            | Separate reviewer provenance, findings and corrections; distinguish AI review from human translation review                        | Shared405, Interviewer445, Fresco840 and Architect1827 reviewed; shared guidance revisions also reviewed                    |
+| Correct release lanes and complete PR docs                                                   | Prerequisite and each issue                                                                                                              | Changeset policy, clear issue links/scope/dependencies/evidence                                                                    | Shared #1702 and Interviewer draft #1703 open with correct lanes; other app PR preparation ongoing                          |
+| Codex PR review loop                                                                         | Every latest PR head                                                                                                                     | Explicit request, completed head-attributable clean verdict, submissions/inline/top-level audit; replies/resolved outdated threads | PR #1702 e209 review found one valid builder reason-code gap; #1703 first Codex round running                               |
+| Final integration and clean delivery                                                         | Combined shared/apps tree and separate branches                                                                                          | Current head checks, lead diff audit, no uncommitted changes, URLs/SHAs/merge order                                                | Shared main merge complete; latest checkpoint and final app integration pending                                             |
 
 ## Findings and decisions
 
@@ -231,3 +231,237 @@ asked for explicit permission for local prerequisite integrations; that operatio
 remains pending. Architect and Fresco's local integrations were accepted. All
 unaffected work continues, including translation of the four shared migration
 approval-note documents, which are in-scope researcher guidance.
+
+## Shared checkpoint 6: migration guidance and packed runtime
+
+Migration approval guidance is now exposed through the optional validation
+message entry as `formatMigrationNotes(version, notes, intl)`. All 50 complete
+bullets across schema versions 5–8 have Spanish translations, authored by the
+Interviewer AI agent and independently reviewed against every English bullet by
+the lead. Code identifiers and actual English defaults written into protocol
+data remain literal. The `geojson` asset is described as GeoJSON geometry, in
+agreement with the asset schema. This remains AI translation review, not human
+translator certification. Shared catalogs now contain 405 Spanish entries,
+including 93 in protocol-validation.
+
+The initial whole-document design passed source tests but failed execution from
+the packed Vite build: FormatJS normalized its whitespace and flattened the
+Markdown list. Each descriptor now owns one complete bullet; structural list
+separators preserve the exact original English document. Source regressions
+cover every current note-bearing version, Spanish bullet counts, literal code
+and generated-data defaults, and unknown-version fallback. A mutation returning
+raw notes failed five Spanish assertions before restoration. The full validation
+suite passes 1547 tests with two existing skips; the actual package build passes.
+
+The packed-runtime probe installs the five changed published package tarballs
+into a fresh temporary project, resolving those packages through their actual
+dist export maps. External dependencies reuse the installed runtime. It verifies
+Vite AST defaults/catalogs, React server rendering of encoded form errors,
+Accept-Language parsing, migration notes, Next source/catalog compilation, and
+server formatting under Node's `react-server` condition. The restored probe
+passes; its original failure is retained as evidence rather than hidden.
+Logs: `/private/tmp/nc-shared-packed-runtime.log`,
+`/private/tmp/nc-shared-packed-runtime-3.log`,
+`/private/tmp/nc-migration-bullets-tests.log`, and
+`/private/tmp/nc-migration-bullets-build.log`.
+
+The date-resolution workflow also established that `disjointBounds` repair
+guidance must include input controls alongside ranges and comparisons. The
+updated whole English/Spanish sentence has received independent AI review.
+Latest shared verification passes all 25 workspace typecheck tasks, workspace
+lint/format, and full Knip. Evidence: `/private/tmp/nc-shared-pr-types.log`,
+`/private/tmp/nc-shared-pr-lint.log`, and `/private/tmp/nc-shared-pr-knip.log`.
+Fresh `origin/main` remains `2928a402e`; no further integration is needed.
+
+The final visual classifier still conservatively selects all three suites.
+Checkpoint 4's canonical runs cover the shared build, dependency and rendering
+changes, with no PNG changes. Subsequent edits preserve their captured English
+output: a page-size accessible name, submitted-error/language-change lifecycle,
+and optional migration guidance whose compiled English is byte-for-byte equal
+to the original. No baseline adoption or unexplained pixel changes are claimed.
+Current-head CI will verify the complete prerequisite branch again.
+
+The lead reviewed all 97 new/changed pairs in Architect's 1799-entry catalog
+delta; six grammar, count and bin/prompt meaning corrections are assigned to
+its owner. Interviewer's common-message consolidation and Fresco's final TOTP
+fallback have independent review. Fresco's real URL workflow found direct React
+nodes were being passed to the shared toast-promise string-or-options API;
+its three callers now use description objects, and the other app owners are
+auditing the same seam. Root review of the two changed Interviewer settings
+baseline composites found the requested language-navigation additions explained;
+final-head canonical stability and the remaining phone capture are still due.
+
+Next actions: commit and open the shared prerequisite PR, request explicit
+current-head Codex review, and track CI while app owners finish their real
+workflows and final source audits. Architect must consume the migration presenter
+and complete its full regression suite. Fresco must finish its rebuilt real CSV
+and URL workflows and send final evidence for lead review. Interviewer's local
+prerequisite integration remains pending the explicit permission already
+requested after automatic approval review rejected it; unrelated verification
+and test help continue. No app PR or clean external review has been claimed.
+
+## Shared checkpoint 7: external review and CI corrective round
+
+The shared prerequisite is [PR #1702](https://github.com/complexdatacollective/network-canvas-monorepo/pull/1702),
+base `main`, reviewed head `9f84828869fcb3f3e85ff68fb27181a046b98f02`.
+An explicit `@codex review` request completed cleanly on that head: the Codex
+code and security runs completed, the clean verdict names `9f84828869`, and
+inspection found zero inline review threads. This is a completed external
+round, not an acknowledgement reaction. The following corrective changes require
+another review on their eventual head.
+
+CI run `33983175887` passed unit tests, quality support, lint, all three
+canonical pixel jobs, Architect and Interviewer native E2E, and the preview
+checks. No production jobs ran. Two failures were investigated from their
+actual logs:
+
+- Interview's cold Storybook optimizer discovered `react-intl/server` only
+  after tests began, reloaded Vite, and aborted all 60 story files before
+  running assertions. A local cold run reproduced the same failure. The
+  existing full-owner-chain dependency includes in Interview, Architect, and
+  Interviewer now also include that server entry. Fresh-cache full suites
+  pass: Interview 244 tests (one configured file skip), Architect 15, and
+  Interviewer 97. Logs: `nc-shared-interview-storybook-cold-red.log`,
+  `nc-shared-interview-storybook-cold-green.log`,
+  `nc-shared-architect-storybook-cold-green.log`, and
+  `nc-shared-interviewer-storybook-cold-green.log` under `/private/tmp`.
+- Interview's anonymisation maximum-length scenario still expected the old
+  exclusive phrase "fewer than 20". The existing validator and its boundary
+  unit test accept exactly 20; the localized message correctly says "at most
+  20". The functional assertion now checks that guidance and the successful
+  submission uses exactly 20 characters. No snapshot or failure assertion was
+  removed. The complete rebuilt native matrix passes all 290 cases. The first
+  boundary fixture accidentally contained 21 characters; constructing exactly
+  20 fixes that fixture. A separate production mutation changes the maximum
+  comparison from > to >= while leaving the displayed limit intact: the new
+  boundary case fails at the success assertion, then passes after restoration
+  and rebuilding. Logs: `nc-shared-round2-interview-native-2.log`,
+  `nc-shared-boundary-mutation-red.log`, and
+  `nc-shared-boundary-restored-green.log` under `/private/tmp`.
+
+The independent shared audit also reproduced an existing-error locale race
+across whole-form asynchronous validation. The field effect acknowledged the
+new locale while the store refused field validation because the form owned the
+snapshot; the old English result then remained visible. It now waits for
+whole-form validation to settle before acknowledging and revalidating. The real
+Form/Field regression is red with that guard removed and green restored, while
+preserving the input value, invalid state, and refused submission. All six
+field/form locale regressions pass, and the full UI unit suite passes 2,063
+checks. Evidence: `/private/tmp/nc-shared-whole-form-final-red.log`,
+`/private/tmp/nc-shared-whole-form-final-green.log`, and
+`/private/tmp/nc-shared-round2-fui-unit.log`.
+
+A repeated full-suite EverythingBar story failure was a separate assertion
+race: the dialog is mounted before Base UI's microtask transfers initial focus.
+Its semantics assertion now waits for actual focus, as its close-focus assertion
+already did. Setting the real popup's `initialFocus` to false makes the assertion
+fail in both browsers; restored code passes the full cold UI Storybook suite:
+1,318 tests across 176 files. No production focus behavior or timeout changed.
+Logs: `/private/tmp/nc-shared-everythingbar-focus-red.log` and
+`/private/tmp/nc-shared-round2-fui-storybook-cold-2.log`.
+
+The README's parser-free import now names `no-parser.js`, the actual installed
+export (the extensionless documented path raises `ERR_PACKAGE_PATH_NOT_EXPORTED`).
+Production compiler configuration already used the correct path. All 25
+workspace typecheck tasks and the actual UI library build pass on these
+corrections. Final workspace lint/format, full Knip, changeset lanes, and
+`git diff --check` pass. Evidence: `/private/tmp/nc-shared-round2-lint.log`,
+`/private/tmp/nc-shared-round2-knip.log`, and
+`/private/tmp/nc-shared-round2-workspace-types.log`. Refreshed `origin/main`
+remains `2928a402ecf8d0c328b1f20e82a267a2501ae8a0`.
+
+The lead reviewed all twelve final Architect pairs at the 1,803-ID checkpoint.
+The expanded census then found string-valued object properties the original
+scan skipped; the owner is converting row nouns, required/duplicate errors,
+resource metadata, library statistics, and demo subtitles. All app literal
+rules now guard custom label/placeholder/title/itemLabel props, with deliberate
+literal mutations proving the rules fail. The lead independently accepted
+Interviewer's 444th translation and unreadable-file retry correction. Fresco's
+operational import errors and synthetic constraint/refusal details were corrected
+after lead review, with original-code red tests and independent review of all ten
+new Spanish entries. A further independent Fresco census identified generated
+English passkey fallbacks; the owner will use existing device metadata to render
+new unknown-device labels reactively while preserving existing names as data.
+The independent reviewer accepted all 32 final Architect pairs at 1,827 IDs;
+a live queued-row-noun capture and adjacent Spanish removal grammar correction
+are assigned to its owner. Fresco's independent census inspected 270 production
+modules and 516 literal/property candidates, finding only the passkey fallback
+flow. Its two proposed generic labels also passed independent AI review.
+Interviewer's native export file-picker description is being localized with
+its synchronous user-gesture contract preserved.
+
+Local app integration remains pending the user's answer to the permission
+question raised after automatic approval review rejected Interviewer's local
+fast-forward. No alternate integration mechanism has been used. Unaffected
+source audits, app-only corrections, tests, and PR preparation continue. Final
+app builds, combined integration, and latest-head external reviews remain
+required; no app is declared ready to merge.
+
+## Shared checkpoint 8: public builder guidance and app PR preparation
+
+All checks on shared head `e20934d8e2609bea8c18b2a813d3753f3487c6ac`
+passed: 41 successful and 40 intentionally skipped checks, including the quality
+gate, unit/Storybook suites, all six native/pixel E2E jobs and preview builds.
+CI run `33985645659` records that evidence. A fresh-cache Fresco Storybook run
+also passed all 20 tests locally, completing all five cold Storybook hosts.
+
+Codex review `5122653162` explicitly reviewed that head and raised one valid
+P2 finding in thread `PRRT_kwDOKqiw4s6fmGeJ`: `SyntheticInterview.conflict`
+omitted the new `reasonCode` metadata. The builder's unsupported ego uniqueness
+therefore displayed generic no-solution guidance. The lead inspected all five
+internal call sites and supplied explicit codes for composer-control conflicts,
+duplicate fixed values, contradictory fixed values, unsupported ego uniqueness,
+and undrawable values. The internal helper now requires a code, while the public
+conflict type keeps its legacy optional field. Technical diagnostics and data
+remain unchanged. Three existing messages were generalized to also describe
+caller-assigned values and input controls. A separate AI reviewer accepted all
+three revised English/Spanish pairs without corrections; this is not claimed
+as human translation review.
+
+The new public-builder regressions exercise each refusal in `en`, `en-GB`, and
+`es`, check the specific explanation and unchanged variable names/diagnostics,
+and fail all 15 cases before the correction. The corrected full package suite
+passes 1,101 tests across 30 files; package types and actual Vite build pass.
+Evidence: `/private/tmp/nc-shared-synthetic-builder-red.log` and
+`/private/tmp/nc-shared-round3-protocol-utilities-{unit,types,build}.log`.
+The independent code review also found all five mappings and their public-producer
+regressions sound. All 25 current-round workspace typechecks, workspace lint/format,
+full Knip, and the changeset lane guard pass. The actual built core executes with
+optional app-i18n imports forbidden while preserving the new reason metadata; see
+`/private/tmp/nc-shared-round3-builder-dist-probe.log`. The corrective push and
+subsequent exact-head clean Codex review remain required before completion.
+
+Interviewer is committed as the user and opened as draft
+[PR #1703](https://github.com/complexdatacollective/network-canvas-monorepo/pull/1703),
+head `7a909de4013eeb14e3b564a641fb6f684b8378db`, based on the shared feature branch.
+Its 445 catalog entries have separate AI review. The native export picker keeps
+its synchronous user-gesture contract while translating the ZIP description;
+40 targeted tests pass. Scoped lint, Knip, extraction, E2E types, formatting,
+and changeset checks pass. Final app types report six missing-export diagnostics
+because this isolated branch cannot yet integrate the shared prerequisite.
+An explicit current-head Codex review is running; no clean verdict is inferred.
+
+Fresco's latest complete app checkpoint passes 630 unit tests, typecheck, lint,
+Knip and an actual 22-page Next build. Real WebAuthn registration/removal dialogs
+exposed a clipped action at 390px; the app-owned row now wraps its name, badge
+and dates with a separate mobile action row. The lead inspected before/after
+screenshots and accepted the change. Actual unforced action clicks, locale
+changes in queued removal prompts, persisted names, passkey reauthentication,
+and restoration of the disposable account's original password mode pass.
+The final combined API/import workflow and app PR preparation continue.
+
+Architect passes 169 native workflows and its 15 Storybook cases. Canonical
+screenshot inspection found insufficient language-control contrast and a 4px
+navigation-height change; the owner corrected both using existing IconButton
+options before baseline adoption. Stability and baseline-provenance checks
+continue, followed by the reactive migration-note caller and its regression.
+Five existing unit expectations require pending shared input-control wording;
+that dependency is recorded rather than hidden with compatibility copies.
+
+The prior automatic approval rejection of local Interviewer integration remains
+pending the explicit permission question. Interviewer now has its own commit,
+so any later authorized integration requires an ordinary local merge, not a
+fast-forward. No alternate integration mechanism has been used. All unaffected
+app source work, tests, user-attributed commits, PRs and review corrections
+continue. No GitHub PR has been merged and no production release or deployment
+has been performed.
