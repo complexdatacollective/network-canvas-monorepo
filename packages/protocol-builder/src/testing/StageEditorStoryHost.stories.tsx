@@ -4,6 +4,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 
 import StageEditorShell from '../form/StageEditorShell.tsx';
+import { interfaceDocumentationUrl } from '../interfaces/documentation.ts';
 import ContentBlockEditor from '../sections/contentBlocks/ContentBlockEditor.tsx';
 import ContentBlockPreview from '../sections/contentBlocks/ContentBlockPreview.tsx';
 import {
@@ -11,7 +12,8 @@ import {
   expandContentBlock,
 } from '../sections/contentBlocks/contentBlockTypes.ts';
 import PageContentSection from '../sections/PageContentSection.tsx';
-import StageNameSection from '../sections/StageNameSection.tsx';
+import StageHeading from '../sections/StageHeading.tsx';
+import { fixtureStageIds } from './protocolFixture.ts';
 import { StageEditorStoryHost } from './StageEditorStoryHost.tsx';
 
 const meta = {
@@ -21,7 +23,9 @@ const meta = {
     stageId: 'information-1',
     renderEditor: ({ controller, actions }) => (
       <StageEditorShell controller={controller} actions={actions}>
-        <StageNameSection />
+        <StageHeading
+          documentationUrl={interfaceDocumentationUrl('information')}
+        />
         <PageContentSection
           ItemEditor={ContentBlockEditor}
           ItemPreview={ContentBlockPreview}
@@ -52,9 +56,20 @@ type Story = StoryObj<typeof meta>;
  * the whole reason this host exists rather than a bare session.
  */
 export const Editing: Story = {
-  play: async ({ canvasElement }) => {
+  play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
+
+    // The heading states where the stage sits in the interview, read from the
+    // protocol the host opened — so the line is derived from that same stage
+    // order, and from the stage this story actually opened, rather than
+    // written out here.
+    const order = fixtureStageIds();
+    await expect(
+      canvas.getByText(
+        `Stage ${order.indexOf(args.stageId) + 1} of ${order.length}`,
+      ),
+    ).toBeInTheDocument();
 
     const name = canvas.getByRole('textbox', { name: 'Stage name' });
     await userEvent.clear(name);

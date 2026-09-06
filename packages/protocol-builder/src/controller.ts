@@ -1,6 +1,10 @@
 import { useId, useMemo, useRef, useSyncExternalStore } from 'react';
 
-import { canonicalize, type Command } from '@codaco/studio-sync/apply';
+import {
+  canonicalize,
+  type Command,
+  type CommandTarget,
+} from '@codaco/studio-sync/apply';
 
 import type {
   ProtocolBuilderResourceGateway,
@@ -37,11 +41,11 @@ export type StageEditorController = Readonly<{
    */
   resourceGateway: ProtocolBuilderResourceGateway | undefined;
   changeFields(next: StageFormDraftChange): void;
-  setField(key: string, value: unknown): void;
-  unsetField(key: string): void;
-  insertItem(key: string, index: number, item: unknown): void;
-  removeItem(key: string, index: number): void;
-  moveItem(key: string, from: number, to: number): void;
+  setField(key: CommandTarget, value: unknown): void;
+  unsetField(key: CommandTarget): void;
+  insertItem(key: CommandTarget, index: number, item: unknown): void;
+  removeItem(key: CommandTarget, index: number): void;
+  moveItem(key: CommandTarget, from: number, to: number): void;
   /**
    * Issues commands a list editor has already decided on, and answers with the
    * draft they produced.
@@ -141,23 +145,23 @@ export function useStageEditorController(
           session.dispatch(commandsFromDraftChange(current, update(current)));
         });
       },
-      setField(key: string, value: unknown) {
+      setField(key: CommandTarget, value: unknown) {
         const command: Command =
           value === undefined
             ? { op: 'unset', key }
             : { op: 'set', key, value };
         own(() => session.dispatch([command]));
       },
-      unsetField(key: string) {
+      unsetField(key: CommandTarget) {
         own(() => session.dispatch([{ op: 'unset', key }]));
       },
-      insertItem(key: string, index: number, item: unknown) {
+      insertItem(key: CommandTarget, index: number, item: unknown) {
         own(() => session.dispatch([{ op: 'insertItem', key, index, item }]));
       },
-      removeItem(key: string, index: number) {
+      removeItem(key: CommandTarget, index: number) {
         own(() => session.dispatch([{ op: 'removeItem', key, index }]));
       },
-      moveItem(key: string, from: number, to: number) {
+      moveItem(key: CommandTarget, from: number, to: number) {
         own(() => session.dispatch([{ op: 'moveItem', key, from, to }]));
       },
       applyCommands(commands: readonly Command[]) {

@@ -253,9 +253,9 @@ const mergeEditedRow = (
  * This is an authoring tool, so it says what happened and what to do next
  * rather than reporting a failure.
  */
-/** What every list inside a row dialog is: part of one row, not a key. */
+/** What every list inside a row dialog is: part of one row, not a place. */
 const NESTED_IN_A_ROW: ArrayFieldBinding = Object.freeze({
-  documentKey: undefined,
+  documentPath: undefined,
 });
 
 const rowRemovedMessage = (itemLabel: string) =>

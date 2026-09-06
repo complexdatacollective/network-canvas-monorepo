@@ -1,5 +1,9 @@
 import type { ArrayFieldOperation } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
-import { type Command, canonicalize } from '@codaco/studio-sync/apply';
+import {
+  type Command,
+  type CommandTarget,
+  canonicalize,
+} from '@codaco/studio-sync/apply';
 
 export type ArrayRow = Record<string, unknown>;
 
@@ -143,15 +147,15 @@ export function resolveMove<T extends ArrayRow>(
 /**
  * One committed list mutation, as commands against the stage document.
  *
- * A replace is a whole-key `set` rather than a remove-then-insert pair,
- * because the command vocabulary addresses a document KEY and cannot reach
- * inside a row: two commands would be two history entries for one edit, and a
- * list that briefly did not contain the row being edited. The replacement
+ * A replace is a whole-list `set` rather than a remove-then-insert pair,
+ * because the command vocabulary addresses a place in the document and cannot
+ * reach INSIDE a row: two commands would be two history entries for one edit,
+ * and a list that briefly did not contain the row being edited. The replacement
  * array is rebuilt from what the session holds now, so a row that arrived from
  * elsewhere survives the write.
  */
 export function commandsForOperation<T extends ArrayRow>(
-  key: string,
+  key: CommandTarget,
   current: readonly unknown[],
   rendered: readonly T[],
   operation: ArrayFieldOperation<T>,
@@ -196,7 +200,7 @@ export function commandsForOperation<T extends ArrayRow>(
  * array to begin with.
  */
 export function commandsForDetachedRow<T extends ArrayRow>(
-  key: string,
+  key: CommandTarget,
   current: readonly unknown[],
   row: T,
   id: string | undefined,
