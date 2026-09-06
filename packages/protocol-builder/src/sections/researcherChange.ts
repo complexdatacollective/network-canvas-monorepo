@@ -35,7 +35,12 @@ import { useStageValue } from '../form/stageFormHooks.ts';
  * The first value a path is given is not a change. There was no previous one
  * for anything to have been configured against, so a stage that has just been
  * handed its subject has nothing to reset — and a section resetting there
- * would empty something the researcher has not touched.
+ * would empty something the researcher has not touched. That is about a path
+ * that has never held anything, not about the value being missing right now: a
+ * researcher who empties the control and then chooses again has replaced what
+ * was there, and the section resetting on it has to hear about it — the choice
+ * is the cause its batch carries, and without the batch a data file staged in
+ * this session never reaches the draft at all.
  *
  * `path` is optional so a caller whose reset is itself optional can still ask
  * unconditionally, which a hook has to be able to do. A path nobody named
@@ -62,6 +67,18 @@ export function useOnResearcherChange(
   latestOnChange.current = onChange;
 
   const seen = useRef(value);
+  /**
+   * Whether anything has ever been at this path while this section has been on
+   * screen.
+   *
+   * What tells the two kinds of `undefined` apart. A path that has never held
+   * anything is one nothing was configured against, and the first value it is
+   * given is not a change — a stage handed its subject for the first time has
+   * nothing to reset. A path the RESEARCHER emptied is a different thing
+   * entirely: they discarded the data file, and what they choose next replaces
+   * it, cause and all.
+   */
+  const everHeldAValue = useRef(value !== undefined);
   const seenCommitted = useRef(committed);
   /**
    * The value the form is expected to be re-seeded with, once the agreed draft
@@ -77,6 +94,8 @@ export function useOnResearcherChange(
   useEffect(() => {
     const previous = seen.current;
     seen.current = value;
+    const everHeld = everHeldAValue.current;
+    everHeldAValue.current = everHeld || value !== undefined;
     const previousCommitted = seenCommitted.current;
     seenCommitted.current = committed;
 
@@ -84,7 +103,9 @@ export function useOnResearcherChange(
       awaitingReseedTo.current = { value: committed };
     }
 
-    if (previous === undefined || isEqual(previous, value)) return;
+    if ((previous === undefined && !everHeld) || isEqual(previous, value)) {
+      return;
+    }
 
     const expected = awaitingReseedTo.current;
     awaitingReseedTo.current = null;

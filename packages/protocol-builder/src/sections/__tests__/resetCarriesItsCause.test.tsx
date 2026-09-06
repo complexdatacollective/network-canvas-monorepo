@@ -4,7 +4,10 @@ import { describe, expect, it } from 'vitest';
 
 import { Button } from '@codaco/fresco-ui/Button';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import type { SectionDoc } from '@codaco/studio-sync/apply';
+import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { buildUpdateVariableRequest } from '../../codebook/editing.ts';
 import MultiSelect from '../../form/arrayFields/MultiSelect.tsx';
 import ProtocolArrayField from '../../form/ProtocolArrayField.tsx';
 import ProtocolField from '../../form/ProtocolField.tsx';
@@ -249,14 +252,30 @@ const openUnconfiguredRoster = () =>
 const importAnotherRoster = async (
   harness: ReturnType<typeof renderStageEditor>,
 ) => {
+  // Either way into the browser: the picker offers a change while it holds a
+  // file, and a choice once the researcher has discarded it.
   await harness.user.click(
-    await screen.findByRole('button', { name: 'Change the data file' }),
+    await screen.findByRole('button', {
+      name: /^(Change the|Select a) data file$/,
+    }),
   );
   await harness.user.upload(
     await screen.findByLabelText('Choose a file from your computer'),
     new File([STAGED_ROSTER], 'community.csv', { type: 'text/csv' }),
   );
   await screen.findByText(STAGED_COLUMNS);
+};
+
+/** The `person` type as the SESSION holds it — what an editor builds an edit from. */
+const personDocument = (
+  harness: ReturnType<typeof renderStageEditor>,
+): SectionDoc => {
+  const person =
+    harness.session.getSnapshot().protocolSections[
+      sectionId({ kind: 'codebookNode', typeId: 'person' })
+    ];
+  if (person === undefined) throw new Error('the fixture has no "person" type');
+  return person;
 };
 
 /** The id the gateway gave the file this session staged. */
@@ -574,6 +593,112 @@ describe('a staged data file the researcher discards again', () => {
         .validation.issues.map((issue) => issue.message);
       expect(issues.join(' ')).not.toContain(staged);
     });
+  });
+
+  /**
+   * And it releases the hold the import took.
+   *
+   * The hold is a suffix over the batches a live host may not be given, and it
+   * was taken because one of them named bytes only a finish could commit. Once
+   * the file is discarded that is true of nothing: no finish will ever promote
+   * it. Left standing, the hold would keep every later edit off the host and
+   * refuse every compound edit for the rest of the session.
+   */
+  it('gives a live host the edits that were waiting for it', async () => {
+    const harness = openRoster();
+    await screen.findByText(FIXTURE_COLUMNS);
+    await importAnotherRoster(harness);
+    const staged = stagedRosterId(harness);
+    expect(harness.liveCommands()).toEqual([]);
+
+    await discardTheImportedFile(harness);
+
+    // The researcher's own two edits, in the order they made them: the swap
+    // they asked for, and the emptying that superseded it.
+    await waitFor(() =>
+      expect(harness.liveCommands()).toEqual([
+        { op: 'set', key: 'dataSource', value: staged },
+        { op: 'unset', key: 'cardOptions' },
+        { op: 'unset', key: 'sortOptions' },
+        { op: 'unset', key: 'searchOptions' },
+        { op: 'unset', key: 'dataSource' },
+      ]),
+    );
+  });
+
+  it('lets an ordinary edit made afterwards reach that host', async () => {
+    const harness = openRoster();
+    await screen.findByText(FIXTURE_COLUMNS);
+    await importAnotherRoster(harness);
+    await discardTheImportedFile(harness);
+    await waitFor(() =>
+      expect(harness.liveCommands().length).toBeGreaterThan(0),
+    );
+    const released = harness.liveCommands().length;
+
+    // A capability switched off by hand, describing nothing that was ever
+    // staged. It is an ordinary edit and the host gets it at once.
+    await harness.user.click(
+      await screen.findByRole('switch', { name: 'Nomination limits' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Clear the limits' }),
+    );
+
+    await waitFor(() =>
+      expect(harness.liveCommands().slice(released)).toEqual([
+        { op: 'unset', key: 'behaviours' },
+      ]),
+    );
+  });
+
+  it('lets a related section be edited again', async () => {
+    const harness = openRoster();
+    await screen.findByText(FIXTURE_COLUMNS);
+    await importAnotherRoster(harness);
+
+    // While the file is staged the request is refused, because a batch the
+    // host has not got cannot be folded into one.
+    const rename = (name: string) =>
+      buildUpdateVariableRequest({
+        requestId: `rename-age-to-${name}`,
+        description: 'Rename an attribute',
+        subject: { entity: 'node', type: 'person' },
+        authoritativeDocument: personDocument(harness),
+        variableId: 'age',
+        draft: { name },
+      });
+    await expect(
+      harness.session.requestCompoundEdit(rename('years')),
+    ).resolves.toMatchObject({ status: 'failed', reason: 'pending-commands' });
+
+    await discardTheImportedFile(harness);
+    await waitFor(() =>
+      expect(harness.liveCommands().length).toBeGreaterThan(0),
+    );
+
+    await expect(
+      harness.session.requestCompoundEdit(rename('years_old')),
+    ).resolves.toMatchObject({ status: 'applied' });
+  });
+
+  it('starts the hold again at the next file imported', async () => {
+    const harness = openRoster();
+    await screen.findByText(FIXTURE_COLUMNS);
+    await importAnotherRoster(harness);
+    await discardTheImportedFile(harness);
+    await waitFor(() =>
+      expect(harness.liveCommands().length).toBeGreaterThan(0),
+    );
+    const released = harness.liveCommands().length;
+
+    await importAnotherRoster(harness);
+
+    // The new file is staged too, so what names it waits exactly as before.
+    expect(harness.session.getSnapshot().editedSection.fields).toMatchObject({
+      dataSource: stagedRosterId(harness),
+    });
+    expect(harness.liveCommands()).toHaveLength(released);
   });
 });
 
