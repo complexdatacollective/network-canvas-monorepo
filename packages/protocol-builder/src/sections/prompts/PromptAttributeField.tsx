@@ -119,6 +119,21 @@ export type PromptAttributeFieldProps = Readonly<{
  *
  * Replaces Architect's `NewVariableWindow` and the inline option list its bin
  * prompts carried, both of which wrote the codebook through a Redux thunk.
+ *
+ * Creating opens the codebook's own `VariableEditor` rather than reusing
+ * `CreatableVariablePicker`, which asks only for a name. What these prompts
+ * create is mostly categorical or ordinal — the attribute's values ARE the
+ * bins, or the points of the scale — and `categoricalOptionsSchema` requires
+ * at least two of them, so an attribute created from a name alone would be
+ * refused by the schema every time, and the researcher would be sent to the
+ * codebook and back to finish what they had just started. The editor also
+ * carries the two things a name box has nowhere to put: the values themselves,
+ * and the rules the follow-up pickers edit beside them.
+ *
+ * The one attribute here that a name alone WOULD be enough for is the
+ * categorical bin's follow-up, which is text. It goes through the same control
+ * anyway: one way to invent an attribute across a family of dialogs is worth
+ * more than a shorter path through one of them.
  */
 export default function PromptAttributeField({
   name,
