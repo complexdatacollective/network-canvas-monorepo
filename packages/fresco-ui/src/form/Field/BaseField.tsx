@@ -39,7 +39,7 @@ type ExcludeMotionConflicts<T> = Omit<
 type BaseFieldProps = {
   id: string;
   name?: string;
-  label: string;
+  label: ReactNode;
   hint?: ReactNode;
   validationSummary?: ReactNode;
   required?: boolean;

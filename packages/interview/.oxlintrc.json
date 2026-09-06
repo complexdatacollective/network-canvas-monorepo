@@ -1,12 +1,17 @@
 {
   "extends": ["../../.oxlintrc.json", "../../tooling/oxlint/react.json"],
-  "jsPlugins": ["oxlint-tailwindcss"],
+  "jsPlugins": ["eslint-plugin-formatjs", "oxlint-tailwindcss"],
   "settings": {
     "tailwindcss": {
       "entryPoint": "tooling/tailwind/fresco/fresco.css"
     }
   },
   "rules": {
+    "formatjs/enforce-description": "error",
+    "formatjs/enforce-default-message": "error",
+    "formatjs/no-invalid-icu": "error",
+    "formatjs/enforce-placeholders": "error",
+    "formatjs/no-multiple-whitespaces": "error",
     "react/exhaustive-deps": "warn",
     "tailwindcss/no-unknown-classes": "warn",
     "tailwindcss/no-duplicate-classes": "error",
@@ -15,6 +20,33 @@
     "tailwindcss/enforce-canonical": "warn"
   },
   "overrides": [
+    {
+      "files": ["src/**"],
+      "rules": {
+        "formatjs/no-literal-string-in-jsx": [
+          "error",
+          {
+            "props": {
+              "include": [
+                [
+                  "*",
+                  "{label,placeholder,title,itemLabel,aria-label,aria-description,alt}"
+                ]
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "**/*.test.*",
+        "**/*.stories.*",
+        "**/__tests__/**",
+        "src/storybook-support/**"
+      ],
+      "rules": { "formatjs/no-literal-string-in-jsx": "off" }
+    },
     {
       "files": ["**/*.stories.ts", "**/*.stories.tsx", ".storybook/**"],
       "rules": { "no-console": "off" }
