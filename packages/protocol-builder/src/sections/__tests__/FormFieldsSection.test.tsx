@@ -1775,3 +1775,118 @@ describe('the codebook an attribute a form field collects lives in', () => {
    * ever be dead.
    */
 });
+
+/**
+ * Switching the input control an attribute is collected with, from the row.
+ *
+ * Datetime is the case that makes it more than a name change: the protocol
+ * splits it into two variable schemas keyed on `component`, each a
+ * `strictObject`, so what a `DatePicker` was configured with is not a key a
+ * `RelativeDatePicker` may hold. The row's save has to move the settings block
+ * with the control, exactly as the codebook editor's own save does.
+ */
+describe('switching the input control on a configured attribute', () => {
+  /** A date field on a fresh attribute, collected with the plain date picker. */
+  const createDateField = async (
+    harness: ReturnType<typeof renderStageEditor>,
+  ) => {
+    const creating = await openField(harness, 'Create new form field');
+    await harness.user.selectOptions(
+      creating.getByRole('combobox', { name: 'Attribute' }),
+      '__create_new_attribute__',
+    );
+    await harness.user.selectOptions(
+      await creating.findByRole('combobox', { name: 'Kind of answer' }),
+      'datetime',
+    );
+    await harness.user.type(
+      await creating.findByRole('textbox', { name: 'Attribute name' }),
+      'met_on',
+    );
+    await harness.user.type(
+      creating.getByRole('textbox', { name: 'Question text' }),
+      'When did you first meet?',
+    );
+    await harness.user.click(creating.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+    const created = savedAttribute(harness, 'met_on');
+    if (created === undefined) throw new Error('the attribute was not created');
+    return created[0];
+  };
+
+  /** Authors settings for the date picker, so the attribute carries a block. */
+  const giveItAResolution = async (
+    harness: ReturnType<typeof renderStageEditor>,
+  ) => {
+    const editing = await openField(harness, 'Edit field', 2);
+    await harness.user.click(
+      await editing.findByRole('button', {
+        name: 'Set what this field accepts',
+      }),
+    );
+    await screen.findByRole('button', { name: 'Save attribute' });
+    await harness.user.selectOptions(
+      screen.getByRole('combobox', { name: 'Date resolution' }),
+      'year',
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save attribute' }),
+    );
+    await waitFor(() =>
+      expect(
+        asRecord(savedAttribute(harness, 'met_on')?.[1]).parameters,
+      ).toEqual({ type: 'year' }),
+    );
+    await harness.user.click(editing.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+  };
+
+  const switchToRelative = async (
+    harness: ReturnType<typeof renderStageEditor>,
+  ) => {
+    const editing = await openField(harness, 'Edit field', 2);
+    await harness.user.selectOptions(
+      await editing.findByRole('combobox', { name: 'Input control' }),
+      'RelativeDatePicker',
+    );
+    await harness.user.click(editing.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+  };
+
+  it('control: switches while the attribute has no settings', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+    const variableId = await createDateField(harness);
+
+    await switchToRelative(harness);
+
+    expect(asRecord(personVariables(harness)[variableId]).component).toBe(
+      'RelativeDatePicker',
+    );
+  });
+
+  it('takes the old control’s settings with it', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+    const variableId = await createDateField(harness);
+    await giveItAResolution(harness);
+
+    await switchToRelative(harness);
+
+    const saved = asRecord(personVariables(harness)[variableId]);
+    expect(saved.component).toBe('RelativeDatePicker');
+    // The resolution belonged to the date picker: a relative picker's schema
+    // is a `strictObject` of `anchor`/`before`/`after` and would refuse it.
+    expect(Object.hasOwn(saved, 'parameters')).toBe(false);
+  });
+});

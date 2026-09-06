@@ -19,6 +19,7 @@ import {
   InvalidCodebookDraftError,
 } from './editing.ts';
 import { optionsShapeFor } from './variableOptions.ts';
+import { parametersForShape, parameterShapeFor } from './variableParameters.ts';
 
 /**
  * What a stage section knows about an attribute it is inventing.
@@ -250,6 +251,37 @@ export function useSetVariableComponent(
         return { status: 'unchanged' };
       }
 
+      // What a control shows, and what it is configured WITH, both go with it
+      // when it is replaced by one that cannot carry them. Two blocks, one
+      // rule, and both are the codebook refusing the variable rather than a
+      // stale setting left lying about — so a write that left either behind
+      // would be refused with it.
+      //
+      // `options`: `Boolean` names the two answers a participant chooses
+      // between, while `Toggle` is a switch whose variable schema has no
+      // `options` key at all.
+      //
+      // `parameters`: datetime is split into two variable schemas keyed on
+      // `component`, and each is a `strictObject` — a `DatePicker`'s
+      // `{type: 'year'}` is not a key a `RelativeDatePicker` may hold. So the
+      // block is re-shaped to what the NEW control takes, and dropped when
+      // nothing it takes was authored. `VariableEditor` does the same on its
+      // own save, through the same `parametersForShape`; the row's save did
+      // not, and switching a configured date picker to a relative one was
+      // refused outright.
+      //
+      // Architect clears the same properties from the same fact, in
+      // `clearInapplicableCodebookProperties`.
+      const type = Reflect.get(current, 'type');
+      const nextShape = parameterShapeFor(type, component);
+      const parametersMoved =
+        nextShape !==
+        parameterShapeFor(type, Reflect.get(current, 'component'));
+      const parameters =
+        nextShape === null
+          ? undefined
+          : parametersForShape(nextShape, Reflect.get(current, 'parameters'));
+
       let request;
       try {
         request = buildUpdateVariableRequest({
@@ -258,19 +290,16 @@ export function useSetVariableComponent(
           subject,
           authoritativeDocument: document,
           variableId,
-          draft: { component },
-          // The answers a control shows go with it when it is replaced by one
-          // that cannot show them. A boolean is the case: `Boolean` names the
-          // two answers a participant chooses between, while `Toggle` is a
-          // switch whose variable schema has no `options` key at all — so a
-          // pair left behind is not a stale setting but a variable the
-          // codebook refuses, and this write would be refused with it.
-          // Architect clears the same properties from the same fact, in
-          // `clearInapplicableCodebookProperties`.
-          replaceProperties:
-            optionsShapeFor(Reflect.get(current, 'type'), component) === null
-              ? ['options']
-              : [],
+          draft: {
+            component,
+            ...(parametersMoved && parameters !== undefined
+              ? { parameters }
+              : {}),
+          },
+          replaceProperties: [
+            ...(optionsShapeFor(type, component) === null ? ['options'] : []),
+            ...(parametersMoved ? ['parameters'] : []),
+          ],
         });
       } catch (error: unknown) {
         return {
