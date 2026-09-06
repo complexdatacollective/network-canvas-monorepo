@@ -286,6 +286,46 @@ describe('a capability that only means anything against something else', () => {
   });
 
   /**
+   * And nothing of the container it sat in either.
+   *
+   * A capability owns a CONTAINER, so switching it back on mounts controls
+   * inside one that holds nothing yet. Writing each of those into the draft
+   * where it lives assembles the container around them, and the save carries
+   * `cardOptions: {}` — a key the researcher did not write. The schema happens
+   * to tolerate an empty one here and refuses it elsewhere (a `skipLogic` of
+   * nothing is a skip logic missing its required members), which is the same
+   * reason absence is how a switched-off capability is spelled at all.
+   */
+  it('saves no container at all for a capability switched back on empty', async () => {
+    const harness = renderStageEditor(openListSection());
+    expect(
+      await screen.findByRole('switch', { name: 'Card details' }),
+    ).toBeChecked();
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Choose another roster' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole('switch', { name: 'Card details' }),
+      ).not.toBeChecked(),
+    );
+
+    // Back on, and the list asked for — so a control IS mounted under
+    // `cardOptions`, holding nothing. Nothing is entered into it.
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Card details' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Choose the attributes' }),
+    );
+
+    const saved = await harness.submit();
+    expect(saved).not.toBeNull();
+    expect(saved?.stageDocument).not.toHaveProperty('cardOptions');
+  });
+
+  /**
    * The other direction, which the same rule has to leave alone.
    *
    * A clear is this session's pending decision about content that is still in

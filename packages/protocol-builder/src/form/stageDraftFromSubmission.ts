@@ -3,12 +3,12 @@ import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import {
   getValue,
   type ObjectPath,
-  omitValue,
   setValue,
 } from '@codaco/fresco-ui/form/utils/objectPath';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import type { StageFormDraft } from '../session.ts';
+import { withoutValueAt } from './absentValues.ts';
 
 /**
  * A field the form no longer has mounted.
@@ -60,9 +60,12 @@ export type StageDraftSubmission = Readonly<{
  *    it happens to share a key with.
  * 3. A hidden field's value is written back where it belongs. Hiding a field
  *    is not a decision about its value.
- * 4. A discarded field is REMOVED rather than set to anything. Absence is how
+ * 4. A field holding nothing is REMOVED rather than set to anything, whether
+ *    it was discarded or is simply on screen holding nothing. Absence is how
  *    the protocol schema spells "this capability is off"; `null` is not a
- *    value it accepts anywhere.
+ *    value it accepts anywhere, and neither is the `{}` that writing an
+ *    absence INTO a container would leave standing where the container ought
+ *    not to be at all.
  */
 export function stageDraftFromSubmission(
   submission: StageDraftSubmission,
@@ -72,10 +75,9 @@ export function stageDraftFromSubmission(
   // Shallowest first, for the reason the dormant writes below are: a field
   // registered at a container path must not overwrite the edit made to a field
   // registered inside it. Fresco's own assembly of the submitted values
-  // resolves that overlap in the same order.
-  //
-  // `setValue` copies every container it traverses, so this cannot write
-  // through into the session's own frozen snapshot.
+  // resolves that overlap in the same order — and it is why a container a
+  // removal below prunes can be put back by a deeper field that does hold
+  // something.
   for (const path of submission.mountedPaths.toSorted(
     (a, b) => a.length - b.length,
   )) {
@@ -85,7 +87,21 @@ export function stageDraftFromSubmission(
     // assembled, and writing `undefined` there would delete a value on the
     // strength of a reading that never happened. A field holding `undefined`
     // is the opposite — the researcher emptied it — and that IS carried.
-    if (submitted.present) setValue(draft, path, submitted.value);
+    if (!submitted.present) continue;
+    if (submitted.value === undefined) {
+      // Removed rather than written, which is rule 4 arriving one loop early
+      // and for the same reason. `setValue` would put the key there holding
+      // `undefined`, and every container on the way to it — so a capability
+      // switched back on and left empty saves `cardOptions: {}`, a key the
+      // researcher did not write, in a schema where other containers refuse an
+      // empty object outright. What the form holds nothing at, the stage holds
+      // nothing at.
+      draft = withoutValueAt(draft, path);
+      continue;
+    }
+    // `setValue` copies every container it traverses, so this cannot write
+    // through into the session's own frozen snapshot.
+    setValue(draft, path, submitted.value);
   }
 
   const { writes, removals } = partitionDormant(submission.dormantFields);
@@ -150,7 +166,7 @@ export function stageDraftFromSubmission(
     ) {
       continue;
     }
-    draft = removePath(draft, removal.path);
+    draft = withoutValueAt(draft, removal.path);
   }
 
   return draft;
@@ -236,46 +252,4 @@ function safeFieldPath(name: string): ObjectPath | null {
     // draft, so there is nothing for it to write or remove.
     return null;
   }
-}
-
-/**
- * Remove `path`, then remove any object it left empty.
- *
- * Removing the three parts of `skipLogic` has to remove `skipLogic` itself: a
- * `{}` left behind is not "no skip logic" to the schema, it is a skip logic
- * missing its required members. Only containers this removal emptied are
- * dropped — an object that was already empty is left exactly as the author
- * left it.
- */
-function removePath(draft: SectionDoc, path: ObjectPath): SectionDoc {
-  const removed = omitValue(draft, path);
-  if (removed === draft) return draft;
-
-  let next = removed as SectionDoc;
-  for (let depth = path.length - 1; depth >= 1; depth -= 1) {
-    const ancestorPath = path.slice(0, depth);
-    if (!isEmptyDictionary(getValue(next, ancestorPath))) break;
-    // An emptied ROW is left in place. `omitValue` turns an omitted array
-    // index into an `undefined` hole rather than renumbering the entries
-    // around it, so pruning here would punch a gap in a list of prompts or
-    // items. Removing a row is a deliberate array operation, not a
-    // consequence of clearing one of its settings.
-    if (typeof ancestorPath.at(-1) === 'number') break;
-    next = omitValue(next, ancestorPath) as SectionDoc;
-  }
-  return next;
-}
-
-/**
- * Arrays are excluded on purpose: `omitValue` leaves a hole rather than
- * renumbering an array's surviving entries, so an emptied array is not
- * evidence that the array itself should go.
- */
-function isEmptyDictionary(value: unknown): boolean {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    !Array.isArray(value) &&
-    Object.keys(value).length === 0
-  );
 }
