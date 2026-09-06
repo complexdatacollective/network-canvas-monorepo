@@ -1,7 +1,9 @@
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 
 import ProtocolField from '../../form/ProtocolField.tsx';
 import BuilderSection, { type SectionCapability } from '../BuilderSection.tsx';
+import { anonymisationMessages } from './anonymisationMessages.ts';
 import PassphraseRulesControl, {
   passphraseRulesIssue,
 } from './PassphraseRulesControl.tsx';
@@ -18,9 +20,14 @@ export type AnonymisationValidationCopy = Readonly<{
   description: string;
   fieldLabel: string;
   fieldHint: string;
-  confirmClearTitle: string;
-  confirmClearDescription: string;
-  confirmClearLabel: string;
+  /**
+   * Descriptors, because `BuilderSection` renders them: the warning a
+   * researcher reads before losing the rules must be translated like every
+   * other sentence on the stage.
+   */
+  confirmClearTitle: MessageDescriptor;
+  confirmClearDescription: MessageDescriptor;
+  confirmClearLabel: MessageDescriptor;
 }>;
 
 const DEFAULT_COPY: AnonymisationValidationCopy = {
@@ -30,10 +37,10 @@ const DEFAULT_COPY: AnonymisationValidationCopy = {
   fieldLabel: 'Passphrase rules',
   fieldHint:
     'A longer passphrase is harder to guess and harder to remember. A participant who forgets it cannot recover the answers it protects.',
-  confirmClearTitle: 'Remove the passphrase rules?',
+  confirmClearTitle: anonymisationMessages.passphraseRulesClearTitle,
   confirmClearDescription:
-    'The lengths you set will be discarded, and participants will be able to choose any passphrase.',
-  confirmClearLabel: 'Remove the rules',
+    anonymisationMessages.passphraseRulesClearDescription,
+  confirmClearLabel: anonymisationMessages.passphraseRulesClearConfirm,
 };
 
 export type AnonymisationValidationSectionProps = Readonly<{

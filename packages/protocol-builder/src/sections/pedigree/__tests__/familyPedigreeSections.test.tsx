@@ -1315,11 +1315,16 @@ describe('the batch a framing change makes', () => {
     await chooseMode(harness, 'Let the participant choose');
 
     await waitFor(() => expect(harness.pendingCommands()).toHaveLength(1));
-    // The mode first, so the batch reads as what happened: this was chosen,
-    // and therefore this was thrown away.
+    // ONE command, not the mode-then-clear pair this used to be. `framing` is
+    // a discriminated union, so it is an exclusive-variant container and the
+    // whole of it travels at once (`commandsFromDraftChange`): the chosen mode
+    // and the terminology it cost are the same write, and there is no moment
+    // between them at which the stage claims a fixed framing with nothing to
+    // fix it to. That is a stronger guarantee than the pair gave, not a weaker
+    // one — the pair only held because nothing ever replayed the two commands
+    // apart.
     expect(commandsOf(harness)).toEqual([
-      { op: 'set', key: ['framing', 'mode'], value: 'participantChoice' },
-      { op: 'unset', key: ['framing', 'value'] },
+      { op: 'set', key: 'framing', value: { mode: 'participantChoice' } },
     ]);
   });
 

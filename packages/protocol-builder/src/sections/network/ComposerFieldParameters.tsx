@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { useField } from '@codaco/fresco-ui/form/hooks/useField';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import type { Variables } from '@codaco/protocol-validation';
@@ -78,6 +79,7 @@ export type ComposerFieldParametersProps = Readonly<{
 export default function ComposerFieldParameters({
   item,
 }: ComposerFieldParametersProps) {
+  const intl = useAppIntl();
   const { readOnly } = useStageEditorForm();
   const subject = useComposerFormSubject();
   const variables = useSubjectVariables(subject);
@@ -153,7 +155,7 @@ export default function ComposerFieldParameters({
   if (shape === null) return null;
 
   const issues =
-    refused || refusedNow ? validateParameters(shape, held) : NO_ISSUES;
+    refused || refusedNow ? validateParameters(shape, held, intl) : NO_ISSUES;
   const blockMessages = issues[PARAMETERS_BLOCK] ?? [];
 
   return (

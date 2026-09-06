@@ -15,6 +15,7 @@ import type { CodebookSubject } from '../../protocol-context.ts';
 import BuilderSection from '../BuilderSection.tsx';
 import FormFieldsSection from '../FormFieldsSection.tsx';
 import { useResetOnEntityTypeChange } from './entityTypeReset.ts';
+import { pedigreeMessages } from './pedigreeMessages.ts';
 import SlotVariableField from './SlotVariableField.tsx';
 import {
   draftFormFieldVariables,
@@ -66,14 +67,6 @@ export type PedigreeNodeConfigurationCopy = Readonly<{
   description: string;
   typeLabel: string;
   typeHint: string;
-  /** Names the nested form-fields section in the outline. */
-  formSectionTitle: string;
-  formSectionDescription: string;
-  formFieldsLabel: string;
-  formFieldsHint: string;
-  /** Visible text and accessible name of the add button. */
-  addFormFieldLabel: string;
-  formFieldsEmptyMessage: string;
 }>;
 
 const DEFAULT_COPY: PedigreeNodeConfigurationCopy = {
@@ -83,15 +76,6 @@ const DEFAULT_COPY: PedigreeNodeConfigurationCopy = {
   typeLabel: 'Node type',
   typeHint:
     'Every family member the participant adds will be a node of this type.',
-  formSectionTitle: 'Family member form',
-  formSectionDescription:
-    'Optionally ask the participant more about each family member as they add them.',
-  formFieldsLabel: 'Form fields',
-  formFieldsHint:
-    'The participant answers these when they add or edit a family member. Drag to reorder them.',
-  addFormFieldLabel: 'Create new form field',
-  formFieldsEmptyMessage:
-    'No form fields yet. Create one to ask something about each family member.',
 };
 
 export type PedigreeNodeConfigurationSectionProps = Readonly<{
@@ -108,10 +92,9 @@ export type PedigreeNodeConfigurationSectionProps = Readonly<{
 const FORM_CAPABILITY = Object.freeze({
   fields: [FORM_FIELD],
   confirmClear: {
-    title: 'This will delete the family member form',
-    description:
-      'Every field you have added to it will be removed, and participants will no longer be asked anything when they add a family member.',
-    confirmLabel: 'Delete the form',
+    title: pedigreeMessages.memberFormClearTitle,
+    description: pedigreeMessages.memberFormClearDescription,
+    confirmLabel: pedigreeMessages.memberFormClearConfirm,
   },
 });
 
@@ -303,14 +286,19 @@ export default function PedigreeNodeConfigurationSection({
             optional
             capability={FORM_CAPABILITY}
             draftUnvalidatedVariables={draftStructuralVariables}
-            copy={{
-              sectionTitle: words.formSectionTitle,
-              description: words.formSectionDescription,
-              fieldLabel: words.formFieldsLabel,
-              fieldHint: words.formFieldsHint,
-              addButtonLabel: words.addFormFieldLabel,
-              emptyStateMessage: words.formFieldsEmptyMessage,
-            }}
+            /*
+              The shared section is worded for a form that stands on its own.
+              This one is hung off the node configuration of a stage the
+              participant adds RELATIVES to, so what it collects is a person in
+              a family — which the pedigree is the only thing that knows.
+              Descriptors rather than strings, so a translator sees them.
+            */
+            title={pedigreeMessages.memberFormTitle}
+            description={pedigreeMessages.memberFormDescription}
+            fieldLabel={pedigreeMessages.memberFormFieldLabel}
+            fieldHint={pedigreeMessages.memberFormFieldHint}
+            addLabel={pedigreeMessages.memberFormAddLabel}
+            emptyState={pedigreeMessages.memberFormEmptyState}
           />
         </>
       )}

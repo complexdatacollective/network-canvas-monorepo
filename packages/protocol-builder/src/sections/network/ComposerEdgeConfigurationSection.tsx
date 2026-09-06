@@ -1,6 +1,7 @@
 import { createElement, useId, useMemo, useRef, useState } from 'react';
 import { v4 as uuid } from 'uuid';
 
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
@@ -21,6 +22,7 @@ import { NEW_ENTITY_DRAFT } from '../SubjectSection.tsx';
 import { type EdgeTypeOption, useEdgeTypeOptions } from './codebookOptions.ts';
 import ComposerFormFieldsList from './ComposerFormFieldsList.tsx';
 import { useSetStageFieldValue } from './CreateVariableAction.tsx';
+import { networkCanvasMessages } from './networkCanvasMessages.ts';
 import { checkboxOptions } from './rowValues.ts';
 
 const EDGES_FIELD = 'edges';
@@ -165,7 +167,13 @@ export type ComposerEdgeConfigurationCopy = Readonly<{
   formsTitle: string;
   formsDescription: string;
   formFieldsHint: string;
-  formFieldItemLabel: string;
+  /**
+   * Noun used in row affordances ("Edit field", "Remove field"), as a
+   * descriptor: `DialogArrayField` formats it where it is read, or encodes it
+   * for a reader further on, so a caller that resolved it to English first
+   * would put an English noun in a Spanish sentence.
+   */
+  formFieldItemLabel: MessageDescriptor;
   formFieldsEmptyMessage: string;
 }>;
 
@@ -186,7 +194,7 @@ const DEFAULT_COPY: ComposerEdgeConfigurationCopy = {
     'Optionally ask the participant more about each connection they draw. Each connection type is asked about separately, because each records its own attributes.',
   formFieldsHint:
     'The participant answers these in the panel that opens when they select a connection of this kind. Drag to reorder them.',
-  formFieldItemLabel: 'connection attribute field',
+  formFieldItemLabel: networkCanvasMessages.edgeFormFieldNoun,
   formFieldsEmptyMessage:
     'No attributes yet for this connection type. Create one to ask the participant something about each connection they draw.',
 };

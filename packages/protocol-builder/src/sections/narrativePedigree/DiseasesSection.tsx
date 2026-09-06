@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react';
 
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 import { diseaseLabelKey } from '@codaco/protocol-validation';
 
@@ -13,6 +14,7 @@ import { useStageValue } from '../../form/stageFormHooks.ts';
 import BuilderSection from '../BuilderSection.tsx';
 import { useRowRenderers } from '../rowRenderers.tsx';
 import { DiseaseEditor, DiseasePreview } from './DiseaseRow.tsx';
+import { narrativePedigreeMessages } from './narrativePedigreeMessages.ts';
 import { sourceStageNodeType } from './sourceStage.ts';
 
 const DISEASES_FIELD = 'diseases';
@@ -44,8 +46,13 @@ export type DiseasesCopy = Readonly<{
   addButtonLabel: string;
   addTitle: string;
   editorTitle: string;
-  /** Noun used in row affordances ("Edit disease", "Remove disease"). */
-  itemLabel: string;
+  /**
+   * Noun used in row affordances ("Edit disease", "Remove disease"), as a
+   * descriptor: `DialogArrayField` formats it where it is read, or encodes it
+   * for a reader further on, so a caller that resolved it to English first
+   * would put an English noun in a Spanish sentence.
+   */
+  itemLabel: MessageDescriptor;
   emptyStateMessage: string;
 }>;
 
@@ -61,7 +68,7 @@ const DEFAULT_COPY: DiseasesCopy = {
   addButtonLabel: 'Create new disease',
   addTitle: 'Create disease',
   editorTitle: 'Edit disease',
-  itemLabel: 'disease',
+  itemLabel: narrativePedigreeMessages.diseaseNoun,
   emptyStateMessage:
     'No diseases yet. Create one to mark who in the family is affected.',
 };

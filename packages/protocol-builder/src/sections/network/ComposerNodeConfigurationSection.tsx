@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 
 import {
@@ -30,6 +31,7 @@ import ComposerFormFieldsList from './ComposerFormFieldsList.tsx';
 import CreateVariableAction, {
   useSetStageFieldValue,
 } from './CreateVariableAction.tsx';
+import { networkCanvasMessages } from './networkCanvasMessages.ts';
 import { asText } from './rowValues.ts';
 
 const QUICK_ADD_FIELD = 'quickAdd';
@@ -80,8 +82,13 @@ export type ComposerNodeConfigurationCopy = Readonly<{
   addFormFieldLabel: string;
   addFormFieldTitle: string;
   editFormFieldTitle: string;
-  /** Noun used in row affordances ("Edit field", "Remove field"). */
-  formFieldItemLabel: string;
+  /**
+   * Noun used in row affordances ("Edit field", "Remove field"), as a
+   * descriptor: `DialogArrayField` formats it where it is read, or encodes it
+   * for a reader further on, so a caller that resolved it to English first
+   * would put an English noun in a Spanish sentence.
+   */
+  formFieldItemLabel: MessageDescriptor;
   formFieldsEmptyMessage: string;
 }>;
 
@@ -115,7 +122,7 @@ const DEFAULT_COPY: ComposerNodeConfigurationCopy = {
   addFormFieldLabel: 'Create new node attribute field',
   addFormFieldTitle: 'Create node attribute field',
   editFormFieldTitle: 'Edit node attribute field',
-  formFieldItemLabel: 'node attribute field',
+  formFieldItemLabel: networkCanvasMessages.nodeFormFieldNoun,
   formFieldsEmptyMessage:
     'No node attributes yet. Create one to ask the participant something about each node.',
 };
@@ -296,10 +303,9 @@ export default function ComposerNodeConfigurationSection({
         capability={{
           fields: [NODE_FORM_FIELD],
           confirmClear: {
-            title: 'This will delete the node form',
-            description:
-              'Every field you have added to it will be removed, and the panel that opens when a participant selects a node will have nothing to ask.',
-            confirmLabel: 'Delete the form',
+            title: networkCanvasMessages.nodeFormClearTitle,
+            description: networkCanvasMessages.nodeFormClearDescription,
+            confirmLabel: networkCanvasMessages.nodeFormClearConfirm,
           },
         }}
       >

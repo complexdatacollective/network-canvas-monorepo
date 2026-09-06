@@ -1,4 +1,16 @@
 {
+  "protocolBuilder.anonymisation.passphraseRulesClearConfirm": {
+    "defaultMessage": "Remove the rules",
+    "description": "Button that confirms switching off the passphrase rules and discarding them."
+  },
+  "protocolBuilder.anonymisation.passphraseRulesClearDescription": {
+    "defaultMessage": "The lengths you set will be discarded, and participants will be able to choose any passphrase.",
+    "description": "Body of the confirmation shown before the passphrase rules are switched off, saying what is lost. The passphrase protects the answers the participant gives on this stage."
+  },
+  "protocolBuilder.anonymisation.passphraseRulesClearTitle": {
+    "defaultMessage": "Remove the passphrase rules?",
+    "description": "Title of the confirmation shown before a researcher switches off the requirements a participant’s passphrase has to meet. Switching them off discards them, which is why it is confirmed."
+  },
   "protocolBuilder.arrayField.addRowTitle": {
     "defaultMessage": "Add {itemLabel}",
     "description": "Title of the dialog a researcher fills in to add a row to a list, where the list has offered no title of its own. itemLabel is the list’s own noun for one of its rows, already in the reader’s language."
@@ -535,6 +547,22 @@
     "defaultMessage": "Choose what this stage works with before writing its form.",
     "description": "Shown in place of the form-fields section’s description while the researcher has not yet chosen which node or edge type the stage is about."
   },
+  "protocolBuilder.geospatial.promptsDescription": {
+    "defaultMessage": "Write the questions this stage asks about places, and drag them into the order the participant answers them.",
+    "description": "Description of the prompts section on a geospatial stage, whose prompts ask about locations on a map. Replaces the generic prompts description."
+  },
+  "protocolBuilder.geospatial.promptsEmptyState": {
+    "defaultMessage": "No prompts yet. Create one to ask the participant where something is.",
+    "description": "Shown in place of the geospatial prompt list while the stage asks nothing yet."
+  },
+  "protocolBuilder.geospatial.promptsFieldHint": {
+    "defaultMessage": "Each prompt asks for one place and records it in one location attribute. Add at least one.",
+    "description": "Guidance under the geospatial prompt list. A location attribute is the codebook variable the chosen place is stored in."
+  },
+  "protocolBuilder.geospatial.promptsWaitingDescription": {
+    "defaultMessage": "Choose the type this stage works with before writing its prompts.",
+    "description": "Shown in place of the geospatial prompts description while the researcher has not yet chosen which node or edge type the stage is about, so there is nothing for a prompt to be written against."
+  },
   "protocolBuilder.interface.alterEdgeForm": {
     "defaultMessage": "Per Alter Edge Form",
     "description": "Researcher-facing interface name. Form for reporting relationships for each network member. Not a protocol-authored stage label."
@@ -690,6 +718,50 @@
   "protocolBuilder.multiSelect.reorderItem": {
     "defaultMessage": "Reorder item {position} of {count, number}",
     "description": "Accessible name of the handle that drags one row of a list into a different position. position is the row’s own place in the list, counting from one; count is how many rows the list holds."
+  },
+  "protocolBuilder.narrativePedigree.diseaseNoun": {
+    "defaultMessage": "disease",
+    "description": "What one row of the disease list is called inside things said ABOUT it — \"Edit disease\", \"Remove this disease?\" — so it is lower case and singular. A disease here is a condition the stage draws on the family tree."
+  },
+  "protocolBuilder.networkCanvas.edgeFormFieldNoun": {
+    "defaultMessage": "connection attribute field",
+    "description": "What one row of a connection form’s list is called inside things said ABOUT it, so it is lower case and singular. A connection is an edge — a relationship drawn between two people in the network."
+  },
+  "protocolBuilder.networkCanvas.nodeFormClearConfirm": {
+    "defaultMessage": "Delete the form",
+    "description": "Button that confirms switching off the node form and discarding it."
+  },
+  "protocolBuilder.networkCanvas.nodeFormClearDescription": {
+    "defaultMessage": "Every field you have added to it will be removed, and the panel that opens when a participant selects a node will have nothing to ask.",
+    "description": "Body of the confirmation shown before the node form is switched off, saying what is lost. A field is one question the form asks; a node is one person or thing in the participant’s network."
+  },
+  "protocolBuilder.networkCanvas.nodeFormClearTitle": {
+    "defaultMessage": "This will delete the node form",
+    "description": "Title of the confirmation shown before a researcher switches off the form a Network Composer stage asks about each node. Switching it off discards the form, which is why it is confirmed."
+  },
+  "protocolBuilder.networkCanvas.nodeFormFieldNoun": {
+    "defaultMessage": "node attribute field",
+    "description": "What one row of the node form’s list is called inside things said ABOUT it — \"Edit node attribute field\", \"Remove this node attribute field?\" — so it is lower case and singular. Qualified by \"node\" because the same stage editor shows a connection list beside it."
+  },
+  "protocolBuilder.networkCanvas.presetNoun": {
+    "defaultMessage": "preset",
+    "description": "What one row of the visualisation preset list is called inside things said ABOUT it — \"Edit preset\", \"Remove this preset?\" — so it is lower case and singular. A preset is one saved way of looking at the network."
+  },
+  "protocolBuilder.networkCanvas.sociogramPromptsDescription": {
+    "defaultMessage": "Write the tasks the participant works through on the canvas, and drag them into the order they do them.",
+    "description": "Description of the prompts section on a sociogram stage, which sets tasks performed on a canvas rather than asking questions to be answered in words. Replaces the generic prompts description."
+  },
+  "protocolBuilder.networkCanvas.sociogramPromptsEmptyState": {
+    "defaultMessage": "No prompts yet. Create one to say what the participant does on the canvas.",
+    "description": "Shown in place of the sociogram prompt list while the stage sets no tasks yet."
+  },
+  "protocolBuilder.networkCanvas.sociogramPromptsFieldHint": {
+    "defaultMessage": "The participant works through these one at a time, in this order. Each one decides what the canvas shows and what tapping a node does.",
+    "description": "Guidance under the sociogram prompt list. The canvas is the drawing surface the participant arranges nodes on."
+  },
+  "protocolBuilder.networkCanvas.sociogramPromptsWaitingDescription": {
+    "defaultMessage": "Choose what this stage works with before writing its prompts.",
+    "description": "Shown in place of the sociogram prompts description while the researcher has not yet chosen which node or edge type the stage is about, so there is nothing for a prompt to be written against."
   },
   "protocolBuilder.networkFilter.clearConfirm": {
     "defaultMessage": "Clear filter",
@@ -942,6 +1014,58 @@
   "protocolBuilder.pageContent.pageTitle": {
     "defaultMessage": "Page content",
     "description": "Heading of the section where a researcher builds a page of text and media that a participant reads instead of doing a task."
+  },
+  "protocolBuilder.pedigree.memberFormAddLabel": {
+    "defaultMessage": "Create new form field",
+    "description": "Button that opens the dialog for adding one more question to the family member form. Whole rather than a generic \"Add\", because a stage editor shows several lists at once and they would otherwise be indistinguishable to anyone navigating by a list of buttons."
+  },
+  "protocolBuilder.pedigree.memberFormClearConfirm": {
+    "defaultMessage": "Delete the form",
+    "description": "Button that confirms switching off the family member form and discarding it."
+  },
+  "protocolBuilder.pedigree.memberFormClearDescription": {
+    "defaultMessage": "Every field you have added to it will be removed, and participants will no longer be asked anything when they add a family member.",
+    "description": "Body of the confirmation shown before the family member form is switched off, saying what is lost. A field is one question the form asks."
+  },
+  "protocolBuilder.pedigree.memberFormClearTitle": {
+    "defaultMessage": "This will delete the family member form",
+    "description": "Title of the confirmation shown before a researcher switches off the form a Family Pedigree asks about each family member. Switching it off discards the form, which is why it is confirmed."
+  },
+  "protocolBuilder.pedigree.memberFormDescription": {
+    "defaultMessage": "Optionally ask the participant more about each family member as they add them.",
+    "description": "Description of the family member form section. Optional because a pedigree may ask nothing at all about each person."
+  },
+  "protocolBuilder.pedigree.memberFormEmptyState": {
+    "defaultMessage": "No form fields yet. Create one to ask something about each family member.",
+    "description": "Shown in place of the family member form’s field list while it asks nothing yet."
+  },
+  "protocolBuilder.pedigree.memberFormFieldHint": {
+    "defaultMessage": "The participant answers these when they add or edit a family member. Drag to reorder them.",
+    "description": "Guidance under the list of family member form fields."
+  },
+  "protocolBuilder.pedigree.memberFormFieldLabel": {
+    "defaultMessage": "Form fields",
+    "description": "Label of the ordered list of questions the family member form asks."
+  },
+  "protocolBuilder.pedigree.memberFormTitle": {
+    "defaultMessage": "Family member form",
+    "description": "Heading of the section holding what a Family Pedigree asks about each person the participant adds. Replaces the shared form section’s generic heading, because this form describes a relative rather than standing on its own."
+  },
+  "protocolBuilder.pedigree.nominationPromptNoun": {
+    "defaultMessage": "nomination prompt",
+    "description": "What one row of the nomination prompt list is called inside things said ABOUT it — \"Edit nomination prompt\", \"Remove this nomination prompt?\" — so it is lower case and singular. Qualified rather than plain \"prompt\" because a pedigree editor shows a census prompt beside it."
+  },
+  "protocolBuilder.pedigree.nominationPromptsClearConfirm": {
+    "defaultMessage": "Delete the prompts",
+    "description": "Button that confirms switching off the nomination prompts and discarding them."
+  },
+  "protocolBuilder.pedigree.nominationPromptsClearDescription": {
+    "defaultMessage": "Every prompt you have written here will be removed, and participants will no longer be asked to mark family members.",
+    "description": "Body of the confirmation shown before the nomination prompts are switched off, saying what is lost. A nomination prompt asks the participant to mark which family members share a condition or trait."
+  },
+  "protocolBuilder.pedigree.nominationPromptsClearTitle": {
+    "defaultMessage": "This will delete your nomination prompts",
+    "description": "Title of the confirmation shown before a researcher switches off a Family Pedigree’s nomination prompts. Switching them off discards them, which is why it is confirmed."
   },
   "protocolBuilder.promptsSection.addLabel": {
     "defaultMessage": "Create new prompt",

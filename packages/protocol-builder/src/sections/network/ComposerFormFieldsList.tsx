@@ -1,5 +1,7 @@
 import { useCallback } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import {
   hasParameterIssues,
   validateParameters,
@@ -66,6 +68,7 @@ export default function ComposerFormFieldsList({
   value,
   ...listProps
 }: ComposerFormFieldsListProps) {
+  const intl = useAppIntl();
   const { editorFieldsComponent, previewComponent } = useRowRenderers(
     ComposerFormFieldEditor,
     ComposerFormFieldPreview,
@@ -103,14 +106,18 @@ export default function ComposerFormFieldsList({
         values.component,
       );
       if (shape !== null) {
-        const issues = validateParameters(shape, values[PARAMETERS_FIELD]);
+        const issues = validateParameters(
+          shape,
+          values[PARAMETERS_FIELD],
+          intl,
+        );
         if (hasParameterIssues(issues)) {
           return { [PARAMETERS_FIELD]: Object.values(issues).flat() };
         }
       }
       return {};
     },
-    [value, variables],
+    [intl, value, variables],
   );
 
   return (

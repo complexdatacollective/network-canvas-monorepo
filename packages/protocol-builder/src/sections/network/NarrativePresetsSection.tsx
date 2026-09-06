@@ -1,3 +1,4 @@
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 
 import { withoutAbsentValues } from '../../form/absentValues.ts';
@@ -10,6 +11,7 @@ import {
   NarrativePresetFields,
   NarrativePresetPreview,
 } from './NarrativePresetFields.tsx';
+import { networkCanvasMessages } from './networkCanvasMessages.ts';
 
 const PRESETS_FIELD = 'presets';
 
@@ -45,8 +47,13 @@ export type NarrativePresetsCopy = Readonly<{
   addButtonLabel: string;
   addTitle: string;
   editorTitle: string;
-  /** Noun used in row affordances ("Edit preset", "Remove preset"). */
-  itemLabel: string;
+  /**
+   * Noun used in row affordances ("Edit preset", "Remove preset"), as a
+   * descriptor: `DialogArrayField` formats it where it is read, or encodes it
+   * for a reader further on, so a caller that resolved it to English first
+   * would put an English noun in a Spanish sentence.
+   */
+  itemLabel: MessageDescriptor;
   emptyStateMessage: string;
 }>;
 
@@ -62,7 +69,7 @@ const DEFAULT_COPY: NarrativePresetsCopy = {
   addButtonLabel: 'Create new preset',
   addTitle: 'Create preset',
   editorTitle: 'Edit preset',
-  itemLabel: 'preset',
+  itemLabel: networkCanvasMessages.presetNoun,
   emptyStateMessage:
     'No presets yet. Create one to say how the network should look.',
 };

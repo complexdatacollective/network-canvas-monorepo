@@ -1,21 +1,7 @@
-import PromptsSection, { type PromptsCopy } from '../PromptsSection.tsx';
+import PromptsSection from '../PromptsSection.tsx';
+import { geospatialMessages } from './geospatialMessages.ts';
 import GeospatialPromptEditor from './GeospatialPromptEditor.tsx';
 import GeospatialPromptPreview from './GeospatialPromptPreview.tsx';
-
-const DEFAULT_COPY: Partial<PromptsCopy> = {
-  description:
-    'Write the questions this stage asks about places, and drag them into the order the participant answers them.',
-  waitingDescription:
-    'Choose the type this stage works with before writing its prompts.',
-  fieldHint:
-    'Each prompt asks for one place and records it in one location attribute. Add at least one.',
-  emptyStateMessage:
-    'No prompts yet. Create one to ask the participant where something is.',
-};
-
-export type GeospatialPromptsSectionProps = Readonly<{
-  copy?: Partial<PromptsCopy>;
-}>;
 
 /**
  * The places a geospatial stage asks about.
@@ -25,15 +11,20 @@ export type GeospatialPromptsSectionProps = Readonly<{
  * common with every other one — its ordering, its identity per row, its rule
  * that a stage must ask something — belongs to `PromptsSection` and is not
  * repeated here.
+ *
+ * The four sentences handed down are descriptors, not strings: a prompt here
+ * asks WHERE something is and records the answer in one location attribute,
+ * which the shared wording does not say.
  */
-export default function GeospatialPromptsSection({
-  copy,
-}: GeospatialPromptsSectionProps) {
+export default function GeospatialPromptsSection() {
   return (
     <PromptsSection
       PromptEditor={GeospatialPromptEditor}
       PromptPreview={GeospatialPromptPreview}
-      copy={{ ...DEFAULT_COPY, ...copy }}
+      description={geospatialMessages.promptsDescription}
+      waitingDescription={geospatialMessages.promptsWaitingDescription}
+      fieldHint={geospatialMessages.promptsFieldHint}
+      emptyState={geospatialMessages.promptsEmptyState}
     />
   );
 }

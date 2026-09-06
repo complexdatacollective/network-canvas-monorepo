@@ -555,12 +555,17 @@ describe('the batch a source change makes', () => {
    * loses the pedigree they picked to an unrelated edit they wanted back.
    *
    * It reaches a live host at once because nothing here is staged: the hold
-   * exists for a file this session has not saved, and there is none.
+   * exists for a file this session has not saved, and there is none. That
+   * last claim is the reason for `applyLive` — the harness buffers by default,
+   * and `liveCommands()` over a buffering host is empty whether the session
+   * released the batch or held it back, which would pass this assertion
+   * either way.
    */
   it('sends the chosen pedigree alone when there were no diseases to lose', async () => {
     const seeded = loadFixtureStage('narrative-pedigree-1');
     const { diseases: _diseases, ...withoutDiseases } = seeded.fields;
     const harness = renderStageEditor({
+      applyLive: true,
       stage: {
         id: seeded.id,
         type: 'NarrativePedigree',

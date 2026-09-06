@@ -1,6 +1,7 @@
 import { get } from 'es-toolkit/compat';
 import { useCallback, useMemo } from 'react';
 
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 
 import {
@@ -25,6 +26,7 @@ import {
   NominationPromptEditor,
   NominationPromptPreview,
 } from './NominationPromptRow.tsx';
+import { pedigreeMessages } from './pedigreeMessages.ts';
 
 const PROMPTS_FIELD = 'nominationPrompts';
 const NODE_TYPE_FIELD = 'nodeConfig.type';
@@ -50,8 +52,13 @@ export type NominationPromptsCopy = Readonly<{
   addButtonLabel: string;
   addTitle: string;
   editorTitle: string;
-  /** Noun used in row affordances ("Edit nomination prompt"). */
-  itemLabel: string;
+  /**
+   * Noun used in row affordances ("Edit nomination prompt"), as a descriptor:
+   * `DialogArrayField` formats it where it is read, or encodes it for a reader
+   * further on, so a caller that resolved it to English first would put an
+   * English noun in a Spanish sentence.
+   */
+  itemLabel: MessageDescriptor;
   emptyStateMessage: string;
 }>;
 
@@ -67,7 +74,7 @@ const DEFAULT_COPY: NominationPromptsCopy = {
   addButtonLabel: 'Create new nomination prompt',
   addTitle: 'Create nomination prompt',
   editorTitle: 'Edit nomination prompt',
-  itemLabel: 'nomination prompt',
+  itemLabel: pedigreeMessages.nominationPromptNoun,
   emptyStateMessage:
     'No nomination prompts yet. Create one to ask the participant to mark family members.',
 };
@@ -197,10 +204,9 @@ export default function NominationPromptsSection({
       capability={{
         fields: [PROMPTS_FIELD],
         confirmClear: {
-          title: 'This will delete your nomination prompts',
-          description:
-            'Every prompt you have written here will be removed, and participants will no longer be asked to mark family members.',
-          confirmLabel: 'Delete the prompts',
+          title: pedigreeMessages.nominationPromptsClearTitle,
+          description: pedigreeMessages.nominationPromptsClearDescription,
+          confirmLabel: pedigreeMessages.nominationPromptsClearConfirm,
         },
       }}
     >

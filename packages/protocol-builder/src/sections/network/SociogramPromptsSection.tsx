@@ -1,23 +1,9 @@
-import PromptsSection, { type PromptsCopy } from '../PromptsSection.tsx';
+import PromptsSection from '../PromptsSection.tsx';
+import { networkCanvasMessages } from './networkCanvasMessages.ts';
 import {
   SociogramPromptFields,
   SociogramPromptPreview,
 } from './SociogramPromptFields.tsx';
-
-const SOCIOGRAM_COPY: Partial<PromptsCopy> = {
-  description:
-    'Write the tasks the participant works through on the canvas, and drag them into the order they do them.',
-  waitingDescription:
-    'Choose what this stage works with before writing its prompts.',
-  fieldHint:
-    'The participant works through these one at a time, in this order. Each one decides what the canvas shows and what tapping a node does.',
-  emptyStateMessage:
-    'No prompts yet. Create one to say what the participant does on the canvas.',
-};
-
-export type SociogramPromptsSectionProps = Readonly<{
-  copy?: Partial<PromptsCopy>;
-}>;
 
 /**
  * The tasks this sociogram sets, in order.
@@ -26,15 +12,23 @@ export type SociogramPromptsSectionProps = Readonly<{
  * something are the package's shared prompt section; everything this interface
  * adds is inside the row dialog — where the nodes are remembered, which
  * connections are drawn, and what tapping a node does.
+ *
+ * The four sentences handed down are descriptors, not strings: the shared
+ * section is worded for a question the participant answers, and a sociogram's
+ * prompts set TASKS performed on a canvas — a difference a translator has to
+ * be shown rather than left to infer from a section they never see.
  */
-export default function SociogramPromptsSection({
-  copy,
-}: SociogramPromptsSectionProps) {
+export default function SociogramPromptsSection() {
   return (
     <PromptsSection
       PromptEditor={SociogramPromptFields}
       PromptPreview={SociogramPromptPreview}
-      copy={{ ...SOCIOGRAM_COPY, ...copy }}
+      description={networkCanvasMessages.sociogramPromptsDescription}
+      waitingDescription={
+        networkCanvasMessages.sociogramPromptsWaitingDescription
+      }
+      fieldHint={networkCanvasMessages.sociogramPromptsFieldHint}
+      emptyState={networkCanvasMessages.sociogramPromptsEmptyState}
     />
   );
 }

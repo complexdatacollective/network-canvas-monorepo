@@ -1,4 +1,5 @@
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 
@@ -170,6 +171,31 @@ export type PromptsSectionProps = Readonly<{
    * than an empty one.
    */
   normalizeRow?: (row: unknown) => unknown;
+  /**
+   * Sentences this interface's prompts need instead of the generic ones.
+   *
+   * DESCRIPTORS, and named one at a time rather than bundled behind a `copy`
+   * object — see `src/__tests__/hostCopyOverrides.test.ts`. A string handed
+   * across a seam like this is invisible to extraction, absent from the
+   * catalogs and covered by no guard, so the words an interface cared enough
+   * to write for itself would be the only words that stayed English. A
+   * descriptor declared in the interface's own messages file is extracted,
+   * translated and guarded exactly like this section's own.
+   *
+   * Whole sentences per interface rather than a noun swapped into a shared
+   * frame: a sociogram's prompts set TASKS performed on a canvas and a
+   * geospatial stage's ask WHERE something is, and neither reads as the
+   * generic "question the participant answers" with one word changed.
+   *
+   * Deliberately only these four. The section's own heading, its field label
+   * and everything about the dialog stay shared, so a researcher moving
+   * between two interfaces is not learning two vocabularies for one control.
+   */
+  description?: MessageDescriptor;
+  /** Said instead of `description` while the section waits on a subject. */
+  waitingDescription?: MessageDescriptor;
+  fieldHint?: MessageDescriptor;
+  emptyState?: MessageDescriptor;
 }>;
 
 /**
@@ -192,6 +218,10 @@ export default function PromptsSection({
   editorValidate,
   itemTemplate,
   normalizeRow = withoutAbsentValues,
+  description = messages.description,
+  waitingDescription = messages.waitingDescription,
+  fieldHint = messages.fieldHint,
+  emptyState = messages.emptyState,
 }: PromptsSectionProps) {
   const intl = useAppIntl();
   const subject = useStageValue('subject');
@@ -209,20 +239,20 @@ export default function PromptsSection({
     <BuilderSection
       title={intl.formatMessage(messages.title)}
       description={intl.formatMessage(
-        waiting ? messages.waitingDescription : messages.description,
+        waiting ? waitingDescription : description,
       )}
       disabled={waiting}
     >
       <ProtocolArrayField<typeof DialogArrayField>
         name={PROMPTS_FIELD}
         label={intl.formatMessage(messages.fieldLabel)}
-        hint={intl.formatMessage(messages.fieldHint)}
+        hint={intl.formatMessage(fieldHint)}
         component={DialogArrayField}
         addButtonLabel={intl.formatMessage(messages.addLabel)}
         addTitle={intl.formatMessage(messages.addTitle)}
         editorTitle={intl.formatMessage(messages.editTitle)}
         itemLabel={messages.itemNoun}
-        emptyStateMessage={intl.formatMessage(messages.emptyState)}
+        emptyStateMessage={intl.formatMessage(emptyState)}
         editorFieldsComponent={editorFieldsComponent}
         previewComponent={previewComponent}
         editorDialogSize="editor"

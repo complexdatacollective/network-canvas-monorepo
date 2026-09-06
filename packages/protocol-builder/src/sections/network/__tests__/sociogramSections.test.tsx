@@ -8,6 +8,7 @@ import {
   missingSortPropertyLabel,
 } from '../../../fields/sortOrderOptions.ts';
 import type { ManifestRevision } from '../../../session.ts';
+import { enIntl, readMessage } from '../../../testing/i18n.ts';
 import type { StageEditorHarness } from '../../../testing/renderStageEditor.tsx';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import AutomaticLayoutSection from '../AutomaticLayoutSection.tsx';
@@ -405,14 +406,18 @@ describe('the order a sociogram hands unplaced nodes over in', () => {
     expect(property).toHaveValue(ORPHANED_PROPERTY);
     expect(
       within(property).getByRole('option', {
-        name: missingSortPropertyLabel(ORPHANED_PROPERTY),
+        name: missingSortPropertyLabel(ORPHANED_PROPERTY, enIntl),
       }),
     ).toBeDisabled();
 
     await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
     // Not "every row needs a value in each column": the row HAS a value in
     // each column, and the id it holds is the whole problem.
-    await prompt.findByText(MISSING_SORT_PROPERTY_MESSAGE);
+    // Read back through the same decode the render site uses: the refusal
+    // travels as an ENCODED descriptor on a plain-string contract, so the
+    // words in the DOM are the formatted ones and searching for the encoding
+    // would find nothing.
+    await prompt.findByText(readMessage(MISSING_SORT_PROPERTY_MESSAGE));
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 
@@ -461,7 +466,7 @@ describe('the order a sociogram hands unplaced nodes over in', () => {
     expect(sortPropertyOptions(prompt)).toEqual(['*']);
     expect(
       prompt.queryByRole('option', {
-        name: missingSortPropertyLabel('nickname'),
+        name: missingSortPropertyLabel('nickname', enIntl),
       }),
     ).not.toBeInTheDocument();
 
