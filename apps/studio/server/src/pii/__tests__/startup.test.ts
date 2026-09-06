@@ -3,26 +3,24 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it, vi } from 'vitest';
 
+import { enrollMigrationTestDatabase } from '../../__tests__/support/migrations.ts';
 import {
   createScratchDatabase,
-  provisionScratchSchema,
   reachableDb,
 } from '../../__tests__/support/postgres.ts';
+import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
+import { readMigrations } from '../../db/migrations/artifact.ts';
+import { migrateDatabase } from '../../db/migrations/migrate.ts';
 import { createMaintenancePool } from '../../db/pool.ts';
 import type { DbEnv } from '../../env.ts';
 import { runEncryptionCommand } from '../operator.ts';
-import { configuration, rootOne } from './fixtures.ts';
+import { configuration, encryptionEnvironment, rootOne } from './fixtures.ts';
 
 const database = await reachableDb();
 const entry = fileURLToPath(new URL('../../index.ts', import.meta.url));
 const operator = fileURLToPath(new URL('../../encryption.ts', import.meta.url));
 
 function environment(db: DbEnv) {
-  const config = configuration();
-  config.roots = config.roots.map((root) => ({
-    ...root,
-    reference: `STUDIO_ENCRYPTION_ROOT_${root.reference}`,
-  }));
   return {
     NODE_ENV: 'production',
     HOST: '127.0.0.1',
@@ -30,9 +28,7 @@ function environment(db: DbEnv) {
     DATABASE_URL: db.url,
     BETTER_AUTH_SECRET: 'synthetic-studio-entrypoint-secret-for-tests',
     PUBLIC_URL: 'https://studio.example.org',
-    STUDIO_ENCRYPTION_KEYSET: JSON.stringify(config),
-    STUDIO_ENCRYPTION_ROOT_TEST_ROOT_ONE: rootOne.toString('base64'),
-    STUDIO_ENCRYPTION_ROOT_TEST_ROOT_TWO: rootOne.toString('base64'),
+    ...encryptionEnvironment(),
   };
 }
 
@@ -44,7 +40,19 @@ async function withDatabase(
   if (!database) throw new Error('A local database is required.');
   const scratch = await createScratchDatabase(database);
   try {
-    await provisionScratchSchema(scratch.pool);
+    const allowedLogins = await enrollMigrationTestDatabase(
+      scratch.pool,
+      database,
+    );
+    const migrations = await readMigrations(
+      fileURLToPath(new URL('../../../migrations', import.meta.url)),
+    );
+    await migrateDatabase(
+      scratch.pool,
+      migrations,
+      SCHEMA_FINGERPRINT,
+      allowedLogins,
+    );
     await work(scratch);
   } finally {
     await scratch.dispose();
@@ -58,6 +66,10 @@ function runNode(file: string, args: string[], env: Record<string, string>) {
     timeout: 10_000,
   });
   expect(child.error).toBeUndefined();
+  expect(
+    child.signal,
+    'operator must finish before the test deadline',
+  ).toBeNull();
   expect(child.stderr).toBe('');
   return {
     status: child.status,
@@ -93,6 +105,10 @@ async function runServer(env: Record<string, string>) {
       child.once('error', reject);
       child.once('close', resolve);
     });
+    expect(
+      child.signalCode,
+      'server must finish startup and shutdown before the test deadline',
+    ).toBeNull();
     expect(errors.join('')).toBe('');
     return {
       status,

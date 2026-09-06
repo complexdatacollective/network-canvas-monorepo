@@ -381,11 +381,50 @@ async function withScratch(
 // Each case runs in its own Postgres schema, because half of them corrupt the
 // fingerprint on purpose.
 describe.skipIf(!db)('schema verification', () => {
+  it('requires versioned history by default for a current development fingerprint', async () => {
+    await withScratch(createScratchDatabase, async (pool) => {
+      await provisionScratchSchema(pool);
+      expect(await checkSchema(pool)).toMatchObject({
+        kind: 'stale',
+        reason: 'unversioned',
+        found: SCHEMA_FINGERPRINT,
+      });
+      expect(await checkSchema(pool, { allowUnversioned: true })).toEqual({
+        kind: 'current',
+      });
+    });
+  });
+
+  it('does not accept a view as versioned history', async () => {
+    await withScratch(createScratchDatabase, async (pool) => {
+      await provisionScratchSchema(pool);
+      await pool.query(
+        'CREATE SCHEMA studio_migrations; CREATE VIEW studio_migrations.history AS SELECT 1 AS position',
+      );
+      expect(
+        (
+          await pool.query(
+            "SELECT relkind FROM pg_class relation JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace WHERE namespace.nspname = 'studio_migrations' AND relation.relname = 'history'",
+          )
+        ).rows,
+      ).toEqual([{ relkind: 'v' }]);
+      expect(await checkSchema(pool)).toMatchObject({
+        kind: 'stale',
+        reason: 'unversioned',
+      });
+      expect(await checkSchema(pool, { allowUnversioned: true })).toEqual({
+        kind: 'current',
+      });
+    });
+  });
+
   it('reads current on a provisioned schema carrying every table', async () => {
     await withScratch(createScratchSchema, async (pool) => {
       await provisionScratchSchema(pool);
 
-      expect(await checkSchema(pool)).toEqual({ kind: 'current' });
+      expect(await checkSchema(pool, { allowUnversioned: true })).toEqual({
+        kind: 'current',
+      });
 
       const tables = await pool.query<{ table_name: string }>(
         `select table_name from information_schema.tables
@@ -634,7 +673,9 @@ describe.skipIf(!db)('schema application', () => {
            VALUES ('dup', 'sub-google', 'google', 'https://accounts.google.com', 'u1', now())`,
         ),
       ).rejects.toMatchObject({ constraint: 'account_issuer_accountId_idx' });
-      expect(await checkSchema(pool)).toEqual({ kind: 'current' });
+      expect(await checkSchema(pool, { allowUnversioned: true })).toEqual({
+        kind: 'current',
+      });
     });
   });
 
@@ -642,7 +683,9 @@ describe.skipIf(!db)('schema application', () => {
     await withScratch(createScratchDatabase, async (pool) => {
       const outcome = await applySchema(pool);
       expect(outcome.statements.length).toBeGreaterThan(0);
-      expect(await checkSchema(pool)).toEqual({ kind: 'current' });
+      expect(await checkSchema(pool, { allowUnversioned: true })).toEqual({
+        kind: 'current',
+      });
     });
   });
 
@@ -651,7 +694,9 @@ describe.skipIf(!db)('schema application', () => {
       await applySchema(pool);
       const again = await applySchema(pool);
       expect(again.statements).toEqual([]);
-      expect(await checkSchema(pool)).toEqual({ kind: 'current' });
+      expect(await checkSchema(pool, { allowUnversioned: true })).toEqual({
+        kind: 'current',
+      });
     });
   });
 
@@ -668,7 +713,9 @@ describe.skipIf(!db)('schema application', () => {
          where table_schema = 'public' and table_name = 'protocols'`,
       );
       expect(columns.rows.map((r) => r.column_name)).toContain('name');
-      expect(await checkSchema(pool)).toEqual({ kind: 'current' });
+      expect(await checkSchema(pool, { allowUnversioned: true })).toEqual({
+        kind: 'current',
+      });
     });
   });
 
@@ -676,7 +723,9 @@ describe.skipIf(!db)('schema application', () => {
     await withScratch(createScratchDatabase, async (pool) => {
       await Promise.all([applySchema(pool), applySchema(pool)]);
 
-      expect(await checkSchema(pool)).toEqual({ kind: 'current' });
+      expect(await checkSchema(pool, { allowUnversioned: true })).toEqual({
+        kind: 'current',
+      });
       const recorded = await pool.query('select * from "schemaFingerprint"');
       expect(recorded.rowCount).toBe(1);
     });
@@ -711,6 +760,14 @@ describe('schema problem message', () => {
     expect(message).toContain(
       'Only for a disposable local development database',
     );
+    expect(message).not.toContain('docker compose run --rm studio migrate');
+  });
+
+  it('directs an unversioned fingerprint to recovery without treating it as a migration', () => {
+    const message = schemaProblemMessage({ ...stale, reason: 'unversioned' });
+    expect(message).toContain('no versioned migration history');
+    expect(message).toContain('Preserve the original database');
+    expect(message).toContain('new empty database');
     expect(message).not.toContain('docker compose run --rm studio migrate');
   });
 

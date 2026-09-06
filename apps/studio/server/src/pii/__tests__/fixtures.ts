@@ -44,3 +44,17 @@ export function loadTestKeys(config = configuration()) {
     throw new Error('Unexpected test root reference');
   });
 }
+
+/** Explicit synthetic roots for actual production-mode entrypoint tests. */
+export function encryptionEnvironment() {
+  const config = configuration();
+  config.roots = config.roots.map((root) => ({
+    ...root,
+    reference: `STUDIO_ENCRYPTION_ROOT_${root.reference}`,
+  }));
+  return {
+    STUDIO_ENCRYPTION_KEYSET: JSON.stringify(config),
+    STUDIO_ENCRYPTION_ROOT_TEST_ROOT_ONE: rootOne.toString('base64'),
+    STUDIO_ENCRYPTION_ROOT_TEST_ROOT_TWO: rootOne.toString('base64'),
+  };
+}
