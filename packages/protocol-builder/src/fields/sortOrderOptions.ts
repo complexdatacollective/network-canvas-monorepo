@@ -107,17 +107,24 @@ const ruleProperty = (rule: unknown): string | undefined => {
  * permanently `disabled` — readable as the current choice, never choosable
  * afresh, and never choosable again once the rule has been pointed elsewhere.
  *
- * An EMPTY `sortableProperties` is read as "the caller does not know yet"
- * rather than as a subject with nothing to sort by, and reports nothing. That
- * is the state every caller passes through: a prompt whose stage has not been
+ * `undefined` is "the caller does not know yet" and reports nothing. That is
+ * the state every caller passes through: a prompt whose stage has not been
  * told what it collects has no codebook to be missing from, and judging its
  * rules there would report every one of them as dangling.
+ *
+ * An EMPTY list is not that state. A subject with nothing to sort by is a real
+ * answer — a node type whose every attribute has been deleted, an external
+ * data file with one column — and reading it as "not known yet" took the
+ * orphan option, the refusal and the label away all at once, exactly where a
+ * rule is most certainly dangling: the control went blank and the researcher
+ * saved the dangling rule straight back. So a caller that does not know says
+ * so with `undefined`, and nothing else means it.
  */
 export const orphanedSortProperties = (
   rules: unknown,
-  sortableProperties: readonly SortableProperty[],
+  sortableProperties: readonly SortableProperty[] | undefined,
 ): SortableProperty[] => {
-  if (!Array.isArray(rules) || sortableProperties.length === 0) return [];
+  if (!Array.isArray(rules) || sortableProperties === undefined) return [];
   const known = new Set(sortableProperties.map(({ value }) => value));
   const orphans = new Map<string, SortableProperty>();
   for (const rule of rules) {

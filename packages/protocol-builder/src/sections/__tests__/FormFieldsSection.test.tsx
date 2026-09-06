@@ -71,8 +71,9 @@ const offeredAttributes = (dialog: ReturnType<typeof within>) =>
  * submits the row. The dialog is answered with, because whether it closes is
  * the whole question when the codebook write it depends on can be refused.
  */
-const addInventedNickname = async (
+const addInventedAttribute = async (
   harness: ReturnType<typeof renderStageEditor>,
+  attributeName: string,
 ) => {
   const dialog = await openField(harness, 'Create new form field');
   await harness.user.selectOptions(
@@ -81,7 +82,7 @@ const addInventedNickname = async (
   );
   await harness.user.type(
     await dialog.findByRole('textbox', { name: 'Attribute name' }),
-    'nickname',
+    attributeName,
   );
   await harness.user.selectOptions(
     dialog.getByRole('combobox', { name: 'Kind of answer' }),
@@ -94,6 +95,9 @@ const addInventedNickname = async (
   await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
   return dialog;
 };
+
+const addInventedNickname = (harness: ReturnType<typeof renderStageEditor>) =>
+  addInventedAttribute(harness, 'nickname');
 
 /** The same invention, where the codebook write is expected to be accepted. */
 const inventNickname = async (
@@ -623,6 +627,56 @@ describe('a codebook write a field needs, refused', () => {
         'Someone else changed this while you were editing it, so nothing was saved. Close and reopen this editor to load their version, then make your change again.',
       ),
     ).toBeInTheDocument();
+  });
+
+  /**
+   * A refusal the codebook SCHEMA raised, rather than one the host answered
+   * with.
+   *
+   * `InvalidCodebookDraftError`'s own message is the module-internal "the
+   * variable draft is invalid" and its `issues` are the schema's own, written
+   * for whoever reads a log. Neither belongs on the Attribute control: what the
+   * researcher needs to be told is the one thing this refusal is actually
+   * about, in the words every other surface uses for the same rule.
+   */
+  it('says what is wrong with a name the codebook cannot store', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    await addInventedAttribute(harness, 'first name');
+
+    // Nothing was written, and the dialog stays open over the draft.
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(1),
+    );
+    expect(inventedNickname(harness)).toBeUndefined();
+
+    expect(
+      await screen.findByText(
+        'Not a valid attribute name. Only letters, numbers and the symbols ._-: are supported',
+      ),
+    ).toBeVisible();
+    expect(screen.queryByText('the variable draft is invalid')).toBeNull();
+  });
+
+  it('control: a name made of the symbols the rule allows is created', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    await addInventedAttribute(harness, 'first_name');
+
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+    expect(
+      Object.values(personVariables(harness)).some(
+        (variable) => Reflect.get(asRecord(variable), 'name') === 'first_name',
+      ),
+    ).toBe(true);
   });
 
   /**
@@ -1720,4 +1774,119 @@ describe('the codebook an attribute a form field collects lives in', () => {
    * offers no attributes at all. A refusal written for that case could only
    * ever be dead.
    */
+});
+
+/**
+ * Switching the input control an attribute is collected with, from the row.
+ *
+ * Datetime is the case that makes it more than a name change: the protocol
+ * splits it into two variable schemas keyed on `component`, each a
+ * `strictObject`, so what a `DatePicker` was configured with is not a key a
+ * `RelativeDatePicker` may hold. The row's save has to move the settings block
+ * with the control, exactly as the codebook editor's own save does.
+ */
+describe('switching the input control on a configured attribute', () => {
+  /** A date field on a fresh attribute, collected with the plain date picker. */
+  const createDateField = async (
+    harness: ReturnType<typeof renderStageEditor>,
+  ) => {
+    const creating = await openField(harness, 'Create new form field');
+    await harness.user.selectOptions(
+      creating.getByRole('combobox', { name: 'Attribute' }),
+      '__create_new_attribute__',
+    );
+    await harness.user.selectOptions(
+      await creating.findByRole('combobox', { name: 'Kind of answer' }),
+      'datetime',
+    );
+    await harness.user.type(
+      await creating.findByRole('textbox', { name: 'Attribute name' }),
+      'met_on',
+    );
+    await harness.user.type(
+      creating.getByRole('textbox', { name: 'Question text' }),
+      'When did you first meet?',
+    );
+    await harness.user.click(creating.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+    const created = savedAttribute(harness, 'met_on');
+    if (created === undefined) throw new Error('the attribute was not created');
+    return created[0];
+  };
+
+  /** Authors settings for the date picker, so the attribute carries a block. */
+  const giveItAResolution = async (
+    harness: ReturnType<typeof renderStageEditor>,
+  ) => {
+    const editing = await openField(harness, 'Edit field', 2);
+    await harness.user.click(
+      await editing.findByRole('button', {
+        name: 'Set what this field accepts',
+      }),
+    );
+    await screen.findByRole('button', { name: 'Save attribute' });
+    await harness.user.selectOptions(
+      screen.getByRole('combobox', { name: 'Date resolution' }),
+      'year',
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save attribute' }),
+    );
+    await waitFor(() =>
+      expect(
+        asRecord(savedAttribute(harness, 'met_on')?.[1]).parameters,
+      ).toEqual({ type: 'year' }),
+    );
+    await harness.user.click(editing.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+  };
+
+  const switchToRelative = async (
+    harness: ReturnType<typeof renderStageEditor>,
+  ) => {
+    const editing = await openField(harness, 'Edit field', 2);
+    await harness.user.selectOptions(
+      await editing.findByRole('combobox', { name: 'Input control' }),
+      'RelativeDatePicker',
+    );
+    await harness.user.click(editing.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+  };
+
+  it('control: switches while the attribute has no settings', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+    const variableId = await createDateField(harness);
+
+    await switchToRelative(harness);
+
+    expect(asRecord(personVariables(harness)[variableId]).component).toBe(
+      'RelativeDatePicker',
+    );
+  });
+
+  it('takes the old control’s settings with it', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+    const variableId = await createDateField(harness);
+    await giveItAResolution(harness);
+
+    await switchToRelative(harness);
+
+    const saved = asRecord(personVariables(harness)[variableId]);
+    expect(saved.component).toBe('RelativeDatePicker');
+    // The resolution belonged to the date picker: a relative picker's schema
+    // is a `strictObject` of `anchor`/`before`/`after` and would refuse it.
+    expect(Object.hasOwn(saved, 'parameters')).toBe(false);
+  });
 });

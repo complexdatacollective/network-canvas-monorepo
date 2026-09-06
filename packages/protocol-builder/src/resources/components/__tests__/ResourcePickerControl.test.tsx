@@ -1560,9 +1560,11 @@ describe('the validation state a picker exposes', () => {
     const group = await screen.findByRole('group', {
       name: 'Background image',
     });
-    // The group IS the field, so the field's own validation state has to be on
-    // it: a picker that never says it is required announces as an optional one.
-    expect(group).toHaveAttribute('aria-required', 'true');
+    // Announced as required through the field's own hidden marker, not through
+    // `aria-required`, which `group` does not take: a picker that never says it
+    // is required announces as an optional one.
+    expect(group).not.toHaveAttribute('aria-required');
+    expect(group).toHaveAccessibleDescription(/Required/);
     // Nothing has been refused yet. Asserted as "not invalid" rather than as
     // the literal `false`, so that a group which says nothing at all fails on
     // the refusal below — where the announcement is actually lost — rather

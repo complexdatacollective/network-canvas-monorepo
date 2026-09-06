@@ -86,7 +86,7 @@ function renderCommands(
   return held.commands!;
 }
 
-describe('a list bound to a document key', () => {
+describe('a list bound to a document path', () => {
   it('takes the list operations, so each row edit commits as what it was', () => {
     const session = createSession({ prompts: [A, B] });
     const commands = renderCommands(session, [A, B], ['prompts'], vi.fn());
@@ -145,12 +145,12 @@ describe('a list bound to a document key', () => {
 
 /**
  * The value a bound list is pointed at is whatever the stage document holds at
- * that key, and an import, a migration or a legacy protocol can leave it as
+ * that path, and an import, a migration or a legacy protocol can leave it as
  * something that is not a list at all. Every reader in the editor shows that
  * as an empty list with a working Add button, so the write behind that button
  * has to make the document hold the list it has been showing.
  */
-describe('a list bound to a key the document does not hold as a list', () => {
+describe('a list bound to a path the document does not hold as a list', () => {
   const legacyShape = () => ({ prompts: { text: 'a legacy object' } });
 
   it('replaces the foreign value in the same batch, so the added row lands in a list', () => {
@@ -503,7 +503,7 @@ describe('a list drawn without the hole its document still holds', () => {
   });
 });
 
-describe('a list with no document key of its own', () => {
+describe('a list with no document path of its own', () => {
   it('withholds the list operations, so it commits as an ordinary value', () => {
     const session = createSession({ prompts: [A, B] });
     const commands = renderCommands(session, [A, B], undefined, vi.fn());
@@ -680,7 +680,7 @@ describe('what a list write answers', () => {
     const session = createSession({ prompts: [A, B] });
     const commands = renderCommands(session, [A, B], undefined, vi.fn());
 
-    // An unbound list has no document key to address: its rows commit through
+    // An unbound list has no document path to address: its rows commit through
     // the form value the handler was handed, so the dispatch itself IS the
     // write and there is nothing here to have gone missing.
     let outcome: ArrayWriteOutcome | undefined;
