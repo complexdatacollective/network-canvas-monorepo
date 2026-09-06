@@ -36,9 +36,14 @@ export const canaries = {
 export function rpc(
   origin: string,
   cookie = '',
+  requestOrigin = origin,
 ): ContractRouterClient<typeof contract> {
   return createORPCClient(
-    new RPCLink({ origin, url: '/rpc', headers: { origin, cookie } }),
+    new RPCLink({
+      origin,
+      url: '/rpc',
+      headers: { origin: requestOrigin, cookie },
+    }),
   );
 }
 

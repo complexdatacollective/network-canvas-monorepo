@@ -95,8 +95,9 @@ export async function localDeployment(label: string) {
   await mkdir(directory, { mode: 0o700 });
   const log = join(root, 'commands.log');
   const ports = { web: await port(), db: await port(), s3: await port() };
+  const dockerEnvironment = await localDockerEnvironment(root);
   const environment = {
-    ...(await localDockerEnvironment(root)),
+    ...dockerEnvironment,
     STUDIO_IMAGE: image,
     MINIO_IMAGE: minioImage,
     STUDIO_PROXY_SUBNET: '172.30.240.0/24',
@@ -314,6 +315,7 @@ networks:
     root,
     directory,
     log,
+    dockerEnvironment,
     ports,
     origin,
     images: { studio: image, minio: minioImage },

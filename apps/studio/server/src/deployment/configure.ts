@@ -16,6 +16,8 @@ import {
   runtimeRolesSql,
 } from '@codaco/studio-sync/role-bootstrap';
 
+import configurationFiles from '../../../deployment/installer/configuration-files.json' with { type: 'json' };
+
 const image = z
   .string()
   .regex(
@@ -35,23 +37,6 @@ const optionsSchema = z.object({
   output: z.string().min(1),
 });
 
-const TEMPLATE_FILES = [
-  'docker-compose.yml',
-  'SELF_HOSTING.md',
-  'MIGRATIONS.md',
-  'BACKUPS.md',
-  'deployment/traefik.yml',
-  'deployment/migrate.yml',
-  'deployment/postgres-init.sql',
-  'deployment/postgres-privileges.sql',
-  'deployment/minio-init.sh',
-  'deployment/minio-policy.json',
-  'deployment/backup.sh',
-  'deployment/restore.sh',
-  'deployment/checksum.sh',
-  'deployment/quarantine.yml',
-] as const;
-
 const databaseRoles = ['studio_app', 'studio_maintenance', 'studio_backup'];
 const databaseLogins = [
   'studio_migrator',
@@ -67,7 +52,7 @@ export async function configureDeployment(
   const options = optionsSchema.parse(input);
   // Validate inputs and read the complete shipped bundle before writing anything.
   const templates = await Promise.all(
-    TEMPLATE_FILES.map(async (name) => {
+    configurationFiles.map(async (name) => {
       let bytes = await readFile(join(templateRoot, name));
       if (name.startsWith('deployment/postgres-')) {
         let sql = bytes.toString();

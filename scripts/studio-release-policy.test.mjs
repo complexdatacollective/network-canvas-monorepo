@@ -478,6 +478,10 @@ for (const [path, value] of [
     'apps/studio/Dockerfile.dockerignore',
     '.git\n**/node_modules\n**/local-only\n',
   ],
+  [
+    'apps/studio/deployment/installer/configuration-files.json',
+    '["docker-compose.yml","deployment/backup.sh"]\n',
+  ],
 ])
   test(`Studio image runtime input ${path} changes select the backend and composite image`, async (t) => {
     const f = fixture(t);

@@ -107,6 +107,8 @@ const IMAGE_RUNTIME_PATHS = {
     'apps/studio/Dockerfile',
     'apps/studio/Dockerfile.dockerignore',
     'apps/studio/docker-entrypoint.sh',
+    // The configure entrypoint bundles this shared template inventory.
+    'apps/studio/deployment/installer/configuration-files.json',
     'scripts/verify-deployed-lock.mjs',
   ],
   registry: [

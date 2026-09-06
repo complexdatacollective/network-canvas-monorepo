@@ -1,0 +1,16 @@
+[
+  "docker-compose.yml",
+  "SELF_HOSTING.md",
+  "MIGRATIONS.md",
+  "BACKUPS.md",
+  "deployment/traefik.yml",
+  "deployment/migrate.yml",
+  "deployment/postgres-init.sql",
+  "deployment/postgres-privileges.sql",
+  "deployment/minio-init.sh",
+  "deployment/minio-policy.json",
+  "deployment/backup.sh",
+  "deployment/restore.sh",
+  "deployment/checksum.sh",
+  "deployment/quarantine.yml"
+]

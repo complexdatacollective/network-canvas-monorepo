@@ -33,6 +33,7 @@ ENV HUSKY=0
 COPY --from=pruner /repo/out/json/ .
 RUN pnpm install --frozen-lockfile
 COPY --from=pruner /repo/out/full/ .
+COPY apps/studio/deployment/installer/configuration-files.json ./apps/studio/deployment/installer/configuration-files.json
 RUN pnpm --filter @codaco/studio-client build && pnpm --filter @codaco/studio-server build
 # pnpm's legacy deployment re-resolves peer labels even after a frozen build.
 RUN pnpm --filter @codaco/studio-server deploy --prod --legacy /deploy
