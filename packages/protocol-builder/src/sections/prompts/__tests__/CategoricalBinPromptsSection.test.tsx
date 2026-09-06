@@ -596,19 +596,18 @@ const openDialogs = () => screen.queryAllByRole('dialog').length;
 
 /**
  * A codebook dialog opened from inside a prompt is a form INSIDE the prompt's
- * form, so saving it submits the prompt around it: the row closes, and closes
- * carrying whatever the researcher had half-written in it.
+ * form, so saving it would submit the prompt around it: the row would close,
+ * and close carrying whatever the researcher had half-written in it.
  *
- * Skipped rather than removed, because the fix is not this family's to make.
- * It is a `stopPropagation` on the submit each nested codebook editor issues,
- * in `VariableEditor`, `CodebookVariableValidationEditor` and
- * `CodebookEntityEditor` — all of them shared components landing on
- * `feat/protocol-builder-editor-sections`. These four cases fail today and are
- * the ones that say the fix arrived, so they un-skip on the next merge from
- * that branch rather than being written again afterwards.
+ * What stops that is not this family's doing. It is the `stopPropagation` each
+ * nested codebook editor puts on its own submit — `VariableEditor`,
+ * `CodebookVariableValidationEditor` and `CodebookEntityEditor` — so these
+ * cases are the ones that say that fix is still in place. Three of them, plus
+ * a fourth in `TieStrengthCensusPromptsSection.test.tsx`, are what would fail
+ * again if a nested editor ever let its submit escape.
  */
 describe('a codebook dialog saved from inside a prompt', () => {
-  it.skip('leaves the prompt open when the attribute’s values are saved', async () => {
+  it('leaves the prompt open when the attribute’s values are saved', async () => {
     const harness = renderStageEditor(openWithFollowUpBin());
 
     await openFollowUpBin(harness);
@@ -635,7 +634,7 @@ describe('a codebook dialog saved from inside a prompt', () => {
     expect(openDialogs()).toBe(1);
   });
 
-  it.skip('leaves the prompt open when the attribute’s rules are saved', async () => {
+  it('leaves the prompt open when the attribute’s rules are saved', async () => {
     const harness = renderStageEditor(openWithFollowUpBin());
 
     await openFollowUpBin(harness);
@@ -665,10 +664,18 @@ describe('a codebook dialog saved from inside a prompt', () => {
   });
 
   /**
-   * And the row is not merely closed — it is COMMITTED, with whatever the
-   * researcher had half-typed in it, by a submit they never asked for.
+   * And the row would not merely be closed — it would be COMMITTED, with
+   * whatever the researcher had half-typed in it, by a submit they never asked
+   * for.
+   *
+   * Read from the stage the host is asked to save rather than from the list
+   * behind the dialog: an open row dialog holds the row it is editing, so
+   * there is nothing in that list to read while the question is being asked.
+   * The half-written prompt is abandoned the way a researcher abandons one —
+   * the dialog's own Cancel — and a save that had already swallowed it would
+   * carry it through anyway.
    */
-  it.skip('leaves a half-written prompt uncommitted', async () => {
+  it('leaves a half-written prompt uncommitted', async () => {
     const harness = renderStageEditor(openWithFollowUpBin());
 
     await openFollowUpBin(harness);
@@ -694,8 +701,20 @@ describe('a codebook dialog saved from inside a prompt', () => {
       ).not.toBeInTheDocument(),
     );
 
-    // A committed row draws its text in the list behind the dialog.
-    expect(screen.queryAllByText('Half finished')).toHaveLength(0);
+    // The prompt is still open, and still holds the half-written change — it
+    // asks before throwing one away.
+    await harness.user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Discard changes' }),
+    );
+    await waitFor(() => expect(openDialogs()).toBe(0));
+
+    const request = await harness.submit();
+    expect(prompts(request?.stageDocument ?? {})).toHaveLength(1);
+    expect(prompts(request?.stageDocument ?? {})[0]).toMatchObject({
+      id: 'prompt-a',
+      text: 'What kind of contact?',
+    });
   });
 });
 

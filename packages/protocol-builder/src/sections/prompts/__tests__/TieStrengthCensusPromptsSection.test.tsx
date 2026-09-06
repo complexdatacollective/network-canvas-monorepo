@@ -295,19 +295,17 @@ describe('creating a scale from inside a tie-strength prompt', () => {
 /**
  * The same nesting the categorical bin has, reached here through the scale
  * that hangs off the connection: a codebook dialog opened from inside a prompt
- * is a form INSIDE the prompt's form, so saving it submits the prompt around
- * it and the row closes.
+ * is a form INSIDE the prompt's form, so saving it would submit the prompt
+ * around it and the row would close.
  *
- * Skipped rather than removed, because the fix is not this family's to make.
- * It is a `stopPropagation` on the submit each nested codebook editor issues,
- * in `VariableEditor`, `CodebookVariableValidationEditor` and
- * `CodebookEntityEditor` — shared components landing on
- * `feat/protocol-builder-editor-sections`. This case fails today and is the
- * one that says the fix arrived, so it un-skips on the next merge from that
- * branch. Its three siblings are in `CategoricalBinPromptsSection.test.tsx`.
+ * What stops that is the `stopPropagation` each nested codebook editor puts on
+ * its own submit — `VariableEditor`, `CodebookVariableValidationEditor` and
+ * `CodebookEntityEditor` — so this case is one of the ones that says that fix
+ * is still in place. Its three siblings are in
+ * `CategoricalBinPromptsSection.test.tsx`.
  */
 describe('a codebook dialog saved from inside a tie-strength prompt', () => {
-  it.skip('leaves the prompt open when the scale is saved', async () => {
+  it('leaves the prompt open when the scale is saved', async () => {
     const harness = renderStageEditor(openEditor());
 
     await harness.user.click(
