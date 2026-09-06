@@ -64,53 +64,6 @@ describe('the Ordinal Bin stage editor', () => {
     ]);
   });
 
-  it('saves a stage created from the interface template once it says what it asks', async () => {
-    const harness = renderStageEditor({
-      stage: {
-        type: 'OrdinalBin',
-        fields: getInterfaceTemplate('OrdinalBin'),
-      },
-      editor,
-    });
-
-    await harness.user.type(
-      screen.getByRole('textbox', { name: 'Stage name' }),
-      'How often you see people',
-    );
-    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Create new prompt' }),
-    );
-    await harness.user.type(
-      await screen.findByRole('textbox', { name: 'Prompt text' }),
-      'How often do you see this person?',
-    );
-    await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Attribute' }),
-      'contactFreq',
-    );
-    await harness.user.click(screen.getByRole('radio', { name: 'Sea Green' }));
-    await harness.user.click(screen.getByRole('button', { name: 'Add' }));
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
-    );
-
-    const request = await harness.submit();
-    expect(request?.stageDocument).toMatchObject({
-      type: 'OrdinalBin',
-      label: 'How often you see people',
-      subject: { entity: 'node', type: 'person' },
-    });
-    expect(prompts(request?.stageDocument ?? {})).toEqual([
-      {
-        id: expect.any(String) as unknown as string,
-        text: 'How often do you see this person?',
-        variable: 'contactFreq',
-        color: 'ord-color-seq-1',
-      },
-    ]);
-  });
-
   it('refuses a stage with no name, and says which section is missing one', async () => {
     const harness = renderStageEditor({
       stage: {
@@ -199,6 +152,56 @@ describe('creating an Ordinal Bin stage', () => {
     await switchSkipLogicOn(harness);
     expect(destinationOptions()).toEqual(destinationsAfterInsertion());
   });
+
+  /**
+   * The other half of the same journey: the researcher writes the one thing
+   * the template does not carry, and the new stage saves.
+   *
+   * Separate from the assertion above because the two fail for different
+   * reasons and writing a prompt is most of what this journey costs. The name
+   * is the one the editor PROPOSED, never typed, and it follows the type the
+   * researcher picks on the way; the gradient is the one the prompt seeded,
+   * which nobody chose either.
+   */
+  it('saves the new stage once its prompt is written', async () => {
+    const harness = renderStageEditor({
+      create: { type: 'OrdinalBin', position: CREATE_POSITION },
+      editor,
+    });
+
+    await waitFor(() => expect(stageNameInput()).toHaveValue('Ordinal Bin #2'));
+    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create new prompt' }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Prompt text' }),
+      'How often?',
+    );
+    await harness.user.selectOptions(
+      screen.getByRole('combobox', { name: 'Attribute' }),
+      'contactFreq',
+    );
+    await harness.user.click(screen.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    expect(request?.stageDocument).toMatchObject({
+      type: 'OrdinalBin',
+      label: 'Person Ordinal Bin',
+      subject: { entity: 'node', type: 'person' },
+    });
+    expect(prompts(request?.stageDocument ?? {})).toEqual([
+      {
+        id: expect.any(String) as unknown as string,
+        text: 'How often?',
+        variable: 'contactFreq',
+        color: 'ord-color-seq-1',
+      },
+    ]);
+  });
 });
 
 /**
@@ -264,13 +267,17 @@ describe('a codebook that changes while the Ordinal Bin editor is open', () => {
 
 /**
  * The scale is an attribute's ordered values, so creating one from inside a
- * prompt is a compound edit against the codebook — it lands whole or not at
- * all — after which the prompt naming it is saved with the stage.
+ * prompt is a compound edit against the codebook, after which the prompt
+ * naming it is saved with the stage.
+ *
+ * Only the second half is asked here. That the host is asked ONCE, against the
+ * codebook section alone, is asked of the same section by the prompt-section
+ * tests; what is left for the named editor is that the pick reaches the stage
+ * save.
  */
 describe('creating a scale from inside the Ordinal Bin editor', () => {
-  it('asks the host once, then saves the stage that names what it created', async () => {
+  it('saves the stage that names what it created', async () => {
     const harness = renderStageEditor(openFixture());
-    const submit = vi.spyOn(harness.host, 'submit');
 
     await harness.user.click(
       screen.getByRole('button', { name: 'Edit prompt' }),
@@ -282,7 +289,7 @@ describe('creating a scale from inside the Ordinal Bin editor', () => {
       await screen.findByRole('textbox', { name: 'Attribute name' }),
       'closeness',
     );
-    await addOption(harness, 1, 'Rarely', 1);
+    await addOption(harness, 1, 'Rare', 1);
     await addOption(harness, 2, 'Often', 2);
     await harness.user.click(
       screen.getByRole('button', { name: 'Create attribute' }),
@@ -293,11 +300,6 @@ describe('creating a scale from inside the Ordinal Bin editor', () => {
       expect(
         within(picker).getByRole('option', { name: 'closeness' }),
       ).toBeInTheDocument(),
-    );
-    expect(submit).toHaveBeenCalledTimes(1);
-    expect(submit.mock.calls[0]?.[0].edits).toHaveLength(1);
-    expect(submit.mock.calls[0]?.[0].edits[0]?.sectionId).toBe(
-      'codebook:node:person',
     );
 
     await harness.user.click(screen.getByRole('button', { name: 'Save' }));
@@ -333,7 +335,12 @@ function personVariables(harness: SessionReader): Record<string, unknown> {
   return { ...variables };
 }
 
-/** Adds one option to the attribute editor that is open. */
+/**
+ * Adds one option to the attribute editor that is open.
+ *
+ * The value is typed rather than cleared first: a new option's value starts
+ * empty, and the attribute is refused without one.
+ */
 async function addOption(
   harness: StageEditorHarness,
   position: number,
@@ -345,9 +352,8 @@ async function addOption(
     await screen.findByRole('textbox', { name: `Option ${position} label` }),
     label,
   );
-  const valueField = screen.getByRole('textbox', {
-    name: `Option ${position} value`,
-  });
-  await harness.user.clear(valueField);
-  await harness.user.type(valueField, String(value));
+  await harness.user.type(
+    screen.getByRole('textbox', { name: `Option ${position} value` }),
+    String(value),
+  );
 }

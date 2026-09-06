@@ -69,12 +69,24 @@ describe('the One-to-Many Dyad Census stage editor', () => {
    * The one interface in this family whose template carries a value. It is an
    * authored default rather than a schema one, so it has to survive from the
    * new stage into the saved document without anybody touching the control.
+   *
+   * Everything the stage needs BESIDES that behaviour is seeded on top of the
+   * template, so the only thing this can be answering for is the template's
+   * own value: it is on screen unasked for, and it is in the saved document
+   * with nothing in between having written it.
    */
   it('saves the behaviour its template seeded, without the researcher setting it', async () => {
     const harness = renderStageEditor({
       stage: {
         type: 'OneToManyDyadCensus',
-        fields: getInterfaceTemplate('OneToManyDyadCensus'),
+        fields: {
+          ...getInterfaceTemplate('OneToManyDyadCensus'),
+          label: 'Who each person knows',
+          subject: { entity: 'node', type: 'person' },
+          prompts: [
+            { id: 'prompt-a', text: 'Who do they know?', createEdge: 'knows' },
+          ],
+        },
       },
       editor,
     });
@@ -83,38 +95,11 @@ describe('the One-to-Many Dyad Census stage editor', () => {
       screen.getByRole('radio', { name: 'Remove them from the list' }),
     ).toBeChecked();
 
-    await harness.user.type(
-      screen.getByRole('textbox', { name: 'Stage name' }),
-      'Who each person knows',
-    );
-    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Create new prompt' }),
-    );
-    await harness.user.type(
-      await screen.findByRole('textbox', { name: 'Prompt text' }),
-      'Which of these people does this person know?',
-    );
-    await harness.user.click(screen.getByRole('radio', { name: 'knows' }));
-    await harness.user.click(screen.getByRole('button', { name: 'Add' }));
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
-    );
-
     const request = await harness.submit();
     expect(request?.stageDocument).toMatchObject({
       type: 'OneToManyDyadCensus',
-      label: 'Who each person knows',
-      subject: { entity: 'node', type: 'person' },
       behaviours: { removeAfterConsideration: true },
     });
-    expect(prompts(request?.stageDocument ?? {})).toEqual([
-      {
-        id: expect.any(String) as unknown as string,
-        text: 'Which of these people does this person know?',
-        createEdge: 'knows',
-      },
-    ]);
   });
 
   it('refuses a stage that does not say what becomes of a person', async () => {
@@ -202,6 +187,54 @@ describe('creating a One-to-Many Dyad Census stage', () => {
     await switchSkipLogicOn(harness);
     expect(destinationOptions()).toEqual(destinationsAfterInsertion());
   });
+
+  /**
+   * The other half of the same journey: the researcher writes the one thing
+   * the template does not carry, and the new stage saves.
+   *
+   * Separate from the assertion above because the two fail for different
+   * reasons and writing a prompt is most of what this journey costs. The name
+   * is the one the editor PROPOSED, never typed, and it follows the type the
+   * researcher picks on the way.
+   */
+  it('saves the new stage once its prompt is written', async () => {
+    const harness = renderStageEditor({
+      create: { type: 'OneToManyDyadCensus', position: CREATE_POSITION },
+      editor,
+    });
+
+    await waitFor(() =>
+      expect(stageNameInput()).toHaveValue('One to Many Dyad Census #2'),
+    );
+    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create new prompt' }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Prompt text' }),
+      'Who do they know?',
+    );
+    await harness.user.click(screen.getByRole('radio', { name: 'knows' }));
+    await harness.user.click(screen.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    expect(request?.stageDocument).toMatchObject({
+      type: 'OneToManyDyadCensus',
+      label: 'Person One to Many Dyad Census',
+      subject: { entity: 'node', type: 'person' },
+      behaviours: { removeAfterConsideration: true },
+    });
+    expect(prompts(request?.stageDocument ?? {})).toEqual([
+      {
+        id: expect.any(String) as unknown as string,
+        text: 'Who do they know?',
+        createEdge: 'knows',
+      },
+    ]);
+  });
 });
 
 /**
@@ -252,13 +285,16 @@ describe('a codebook that changes while the One-to-Many editor is open', () => {
 /**
  * The connection an affirmative answer creates lives in the codebook rather
  * than in the stage, so creating one from inside a prompt is a compound edit
- * against the codebook — it lands whole or not at all — after which the prompt
- * naming it is saved with the stage.
+ * against the codebook, after which the prompt naming it is saved with the
+ * stage.
+ *
+ * Only the second half is asked here. That the host is asked ONCE, and with
+ * what, is asked of the same section by the prompt-section tests; what is left
+ * for the named editor is that the pick reaches the stage save.
  */
 describe('creating a connection type from inside the One-to-Many editor', () => {
-  it('asks the host once, then saves the stage that names what it created', async () => {
+  it('saves the stage that names what it created', async () => {
     const harness = renderStageEditor(openFixture());
-    const submit = vi.spyOn(harness.host, 'submit');
 
     await harness.user.click(
       screen.getByRole('button', { name: 'Edit prompt' }),
@@ -279,9 +315,6 @@ describe('creating a connection type from inside the One-to-Many editor', () => 
     expect(
       await screen.findByRole('radio', { name: 'worksWith' }),
     ).toBeChecked();
-    expect(submit).toHaveBeenCalledTimes(1);
-    expect(submit.mock.calls[0]?.[0].edits).toHaveLength(1);
-    expect(submit.mock.calls[0]?.[0].edits[0]?.kind).toBe('create');
 
     await harness.user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() =>

@@ -113,7 +113,7 @@ describe('the questions a categorical bin asks', () => {
     );
     await harness.user.type(
       await screen.findByRole('textbox', { name: 'Prompt text' }),
-      'Who do you see most?',
+      'Who most?',
     );
     await harness.user.click(screen.getByRole('button', { name: 'Add' }));
 
@@ -133,7 +133,7 @@ describe('the questions a categorical bin asks', () => {
     );
     await harness.user.type(
       await screen.findByRole('textbox', { name: 'Prompt text' }),
-      'Who do you see most?',
+      'Who most?',
     );
     await harness.user.selectOptions(
       screen.getByRole('combobox', { name: 'Attribute' }),
@@ -148,7 +148,7 @@ describe('the questions a categorical bin asks', () => {
     const added = prompts(request?.stageDocument ?? {}).at(-1);
     expect(added).toEqual({
       id: expect.any(String) as unknown as string,
-      text: 'Who do you see most?',
+      text: 'Who most?',
       variable: 'contactType',
     });
     for (const key of [
@@ -272,21 +272,24 @@ describe('the questions a categorical bin asks', () => {
 
 /**
  * The attribute lives in a different section of the protocol from the stage,
- * so creating one is a compound edit against the codebook — landing whole or
- * not at all — after which the prompt points at it as an ordinary unsaved
- * change.
+ * so writing one from inside a prompt is a compound edit against the codebook
+ * — landing whole or not at all — after which the prompt points at it as an
+ * ordinary unsaved change.
  */
-describe('creating a bin attribute from inside a prompt', () => {
+describe('writing the codebook from inside a bin prompt', () => {
+  /**
+   * This is the codebook half of the journey and stops where the codebook
+   * does. That the prompt naming the new attribute then reaches the STAGE save
+   * is `CategoricalBinStageEditor.test.tsx`'s, over the whole editor, which is
+   * where a save belongs; running it here too paid for a second commit and a
+   * second save to answer the same question.
+   */
   it('asks the host once, and points the prompt at what it created', async () => {
     const harness = renderStageEditor(openEditor());
     const submit = vi.spyOn(harness.host, 'submit');
 
     await harness.user.click(
       screen.getByRole('button', { name: 'Create new prompt' }),
-    );
-    await harness.user.type(
-      await screen.findByRole('textbox', { name: 'Prompt text' }),
-      'How do you know this person?',
     );
     await harness.user.click(
       screen.getByRole('button', { name: 'Create a new attribute' }),
@@ -295,8 +298,8 @@ describe('creating a bin attribute from inside a prompt', () => {
       await screen.findByRole('textbox', { name: 'Attribute name' }),
       'howKnown',
     );
-    await addOption(harness, 1, 'Through work', 'work');
-    await addOption(harness, 2, 'Through family', 'family');
+    await addOption(harness, 1, 'Work', 'work');
+    await addOption(harness, 2, 'Home', 'home');
     await harness.user.click(
       screen.getByRole('button', { name: 'Create attribute' }),
     );
@@ -334,20 +337,21 @@ describe('creating a bin attribute from inside a prompt', () => {
         ),
     ).toBeDefined();
 
-    await harness.user.click(screen.getByRole('button', { name: 'Add' }));
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
-    );
-
-    const request = await harness.submit();
-    const added = prompts(request?.stageDocument ?? {}).at(-1);
-    expect(added?.variable).toBe(
-      picker.getAttribute('value') ?? added?.variable,
-    );
-    expect(typeof added?.variable).toBe('string');
-    expect(added?.text).toBe('How do you know this person?');
+    // And the prompt is pointing at it, rather than at whatever it held
+    // before — the researcher does not have to find it in the list.
+    expect(picker).not.toHaveValue('');
+    expect(
+      within(picker).getByRole('option', { selected: true }),
+    ).toHaveTextContent('howKnown');
+    expect(harness.pendingCommands()).toEqual([]);
   });
 
+  /**
+   * The refusal is asked of the values editor rather than of a whole new
+   * attribute: both send the same kind of compound edit, and the values editor
+   * opens on an attribute the fixture already has, so the change that gets
+   * refused is a removed option rather than a name and two values typed in.
+   */
   it('leaves the codebook alone when the host refuses', async () => {
     const harness = renderStageEditor(openEditor());
     const before = personVariables(harness);
@@ -361,21 +365,20 @@ describe('creating a bin attribute from inside a prompt', () => {
       screen.getByRole('button', { name: 'Edit prompt' }),
     );
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Create a new attribute' }),
+      await screen.findByRole('button', {
+        name: "Change this attribute's values",
+      }),
     );
-    await harness.user.type(
-      await screen.findByRole('textbox', { name: 'Attribute name' }),
-      'howKnown',
-    );
-    await addOption(harness, 1, 'Through work', 'work');
-    await addOption(harness, 2, 'Through family', 'family');
     await harness.user.click(
-      screen.getByRole('button', { name: 'Create attribute' }),
+      await screen.findByRole('button', { name: 'Remove option 3' }),
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save attribute' }),
     );
 
     // The package's own words about the refusal, never the host's: the
     // sentence a host sends is about a path in a protocol document, and the
-    // researcher was creating an attribute.
+    // researcher was editing an attribute.
     const report = await screen.findByRole('alert');
     expect(report).toHaveTextContent(REFUSED_INVALID_REQUEST);
     expect(report).not.toHaveTextContent(HOST_WORDS);
@@ -855,7 +858,12 @@ function personVariables(harness: {
   return { ...variables };
 }
 
-/** Adds one option to the attribute editor that is open. */
+/**
+ * Adds one option to the attribute editor that is open.
+ *
+ * The value is typed rather than cleared first: a new option's value starts
+ * empty, and the attribute is refused without one.
+ */
 async function addOption(
   harness: StageEditorHarness,
   position: number,
@@ -867,9 +875,8 @@ async function addOption(
     await screen.findByRole('textbox', { name: `Option ${position} label` }),
     label,
   );
-  const valueField = screen.getByRole('textbox', {
-    name: `Option ${position} value`,
-  });
-  await harness.user.clear(valueField);
-  await harness.user.type(valueField, value);
+  await harness.user.type(
+    screen.getByRole('textbox', { name: `Option ${position} value` }),
+    value,
+  );
 }

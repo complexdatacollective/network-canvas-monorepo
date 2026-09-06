@@ -49,7 +49,7 @@ describe('the questions a dyad census asks about a pair', () => {
     );
     await harness.user.type(
       await screen.findByRole('textbox', { name: 'Prompt text' }),
-      'Have these two ever worked together?',
+      'Worked together?',
     );
     await harness.user.click(screen.getByRole('button', { name: 'Add' }));
 
@@ -61,7 +61,7 @@ describe('the questions a dyad census asks about a pair', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 
-  it('adds a prompt with an identity of its own, and removes only the one chosen', async () => {
+  it('adds a prompt with an identity of its own', async () => {
     const harness = renderStageEditor(openEditor());
 
     await harness.user.click(
@@ -69,19 +69,48 @@ describe('the questions a dyad census asks about a pair', () => {
     );
     await harness.user.type(
       await screen.findByRole('textbox', { name: 'Prompt text' }),
-      'Have these two ever worked together?',
+      'Worked together?',
     );
     await harness.user.click(
       screen.getByRole('radio', { name: 'family_edge' }),
     );
     await harness.user.click(screen.getByRole('button', { name: 'Add' }));
-    await screen.findByText('Have these two ever worked together?');
+    await screen.findByText('Worked together?');
 
-    const added = await harness.submit();
-    const ids = prompts(added?.stageDocument ?? {}).map((row) => row.id);
-    expect(ids[0]).toBe('dyad-census-prompt-1');
-    expect(ids[1]).toEqual(expect.any(String));
-    expect(ids[1]).not.toBe(ids[0]);
+    const request = await harness.submit();
+    const rows = prompts(request?.stageDocument ?? {});
+    expect(rows[0]?.id).toBe('dyad-census-prompt-1');
+    expect(rows[1]?.id).toEqual(expect.any(String));
+    expect(rows[1]?.id).not.toBe(rows[0]?.id);
+    expect(rows[1]?.createEdge).toBe('family_edge');
+  });
+
+  /**
+   * Removal is asked of a stage that already holds two prompts, rather than of
+   * one this test wrote itself: what it is about is which row goes, and the
+   * writing above is the expensive half of the journey that answers nothing
+   * here.
+   */
+  it('removes only the prompt the researcher chose', async () => {
+    const harness = renderStageEditor({
+      stage: {
+        type: 'DyadCensus',
+        fields: {
+          label: 'Dyad Census',
+          subject: { entity: 'node', type: 'person' },
+          introductionPanel: { title: 'Pairs', text: 'Two at a time.' },
+          prompts: [
+            { id: 'prompt-a', text: 'Know each other?', createEdge: 'knows' },
+            {
+              id: 'prompt-b',
+              text: 'Worked together?',
+              createEdge: 'family_edge',
+            },
+          ],
+        },
+      },
+      sections: <DyadCensusPromptsSection />,
+    });
 
     const [firstRemove] = screen.getAllByRole('button', {
       name: 'Remove prompt',
@@ -91,15 +120,13 @@ describe('the questions a dyad census asks about a pair', () => {
       await screen.findByRole('button', { name: 'Remove prompt' }),
     );
     await waitFor(() =>
-      expect(
-        screen.queryByText('Do these two people know each other?'),
-      ).not.toBeInTheDocument(),
+      expect(screen.queryByText('Know each other?')).not.toBeInTheDocument(),
     );
 
     const request = await harness.submit();
     const remaining = prompts(request?.stageDocument ?? {});
     expect(remaining).toHaveLength(1);
-    expect(remaining[0]?.id).toBe(ids[1]);
+    expect(remaining[0]?.id).toBe('prompt-b');
     expect(remaining[0]?.createEdge).toBe('family_edge');
   });
 });
@@ -110,6 +137,11 @@ describe('the questions a dyad census asks about a pair', () => {
  * at all — after which the prompt points at it as an unsaved change.
  */
 describe('creating a connection type from inside a prompt', () => {
+  /**
+   * This is the codebook half of the journey and stops where the codebook
+   * does. That the prompt naming the new connection type then reaches the
+   * STAGE save is `DyadCensusStageEditor.test.tsx`'s, over the whole editor.
+   */
   it('asks the host once, and points the prompt at what it created', async () => {
     const harness = renderStageEditor(openEditor());
     const submit = vi.spyOn(harness.host, 'submit');
@@ -139,15 +171,10 @@ describe('creating a connection type from inside a prompt', () => {
     expect(submission?.edits[0]?.kind).toBe('create');
     expect(submit.mock.results[0]?.value).toMatchObject({ status: 'applied' });
 
-    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
-    );
-
-    const request = await harness.submit();
-    const saved = prompts(request?.stageDocument ?? {})[0];
-    expect(saved?.createEdge).toEqual(expect.any(String));
-    expect(saved?.createEdge).not.toBe('knows');
+    // The prompt is pointing at it rather than at the one it opened on, as an
+    // unsaved change: nothing has been staged against the stage.
+    expect(screen.getByRole('radio', { name: 'knows' })).not.toBeChecked();
+    expect(harness.pendingCommands()).toEqual([]);
   });
 });
 

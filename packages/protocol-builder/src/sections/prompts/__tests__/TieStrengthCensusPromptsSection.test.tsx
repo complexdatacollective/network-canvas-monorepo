@@ -157,7 +157,7 @@ describe('the questions a tie-strength census asks about a pair', () => {
     );
     await harness.user.type(
       await screen.findByRole('textbox', { name: 'Prompt text' }),
-      'How much do these two trust each other?',
+      'How much trust?',
     );
     await harness.user.click(screen.getByRole('radio', { name: 'knows' }));
     await harness.user.selectOptions(
@@ -182,7 +182,7 @@ describe('the questions a tie-strength census asks about a pair', () => {
     );
     await harness.user.type(
       await screen.findByRole('textbox', { name: 'Prompt text' }),
-      'How much do these two trust each other?',
+      'How much trust?',
     );
     await harness.user.click(screen.getByRole('radio', { name: 'knows' }));
     await harness.user.selectOptions(
@@ -204,7 +204,7 @@ describe('the questions a tie-strength census asks about a pair', () => {
     expect(rows[0]?.id).toBe('tie-strength-census-prompt-1');
     expect(rows[1]).toEqual({
       id: expect.any(String) as unknown as string,
-      text: 'How much do these two trust each other?',
+      text: 'How much trust?',
       createEdge: 'knows',
       edgeVariable: 'closeness',
       negativeLabel: 'Not at all',
@@ -241,6 +241,11 @@ describe('the questions a tie-strength census asks about a pair', () => {
  * codebook alone: the connection type, and then the scale that belongs to it.
  */
 describe('creating a scale from inside a tie-strength prompt', () => {
+  /**
+   * This is the codebook half of the journey and stops where the codebook
+   * does. That the prompt naming the new scale then reaches the STAGE save is
+   * `TieStrengthCensusStageEditor.test.tsx`'s, over the whole editor.
+   */
   it('asks the host once, and points the prompt at what it created', async () => {
     const harness = renderStageEditor(openEditor());
     const submit = vi.spyOn(harness.host, 'submit');
@@ -255,8 +260,8 @@ describe('creating a scale from inside a tie-strength prompt', () => {
       await screen.findByRole('textbox', { name: 'Attribute name' }),
       'trust',
     );
-    await addOption(harness, 1, 'A little', 1);
-    await addOption(harness, 2, 'A lot', 2);
+    await addOption(harness, 1, 'Some', 1);
+    await addOption(harness, 2, 'Lots', 2);
     await harness.user.click(
       screen.getByRole('button', { name: 'Create attribute' }),
     );
@@ -278,16 +283,12 @@ describe('creating a scale from inside a tie-strength prompt', () => {
     expect(edit?.sectionId).toBe('codebook:edge:knows');
     expect(submit.mock.results[0]?.value).toMatchObject({ status: 'applied' });
 
-    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
-    );
-
-    const request = await harness.submit();
-    const saved = prompts(request?.stageDocument ?? {})[0];
-    expect(saved?.edgeVariable).toEqual(expect.any(String));
-    expect(saved?.edgeVariable).not.toBe('closeness');
-    expect(saved?.createEdge).toBe('knows');
+    // And the prompt is pointing at it rather than at the scale it opened on,
+    // as an unsaved change: nothing has been staged against the stage.
+    expect(
+      within(picker).getByRole('option', { selected: true }),
+    ).toHaveTextContent('trust');
+    expect(harness.pendingCommands()).toEqual([]);
   });
 });
 
@@ -361,7 +362,12 @@ describe('a codebook that changes while a tie-strength prompt is open', () => {
   });
 });
 
-/** Adds one option to the attribute editor that is open. */
+/**
+ * Adds one option to the attribute editor that is open.
+ *
+ * The value is typed rather than cleared first: a new option's value starts
+ * empty, and the attribute is refused without one.
+ */
 async function addOption(
   harness: StageEditorHarness,
   position: number,
@@ -373,9 +379,8 @@ async function addOption(
     await screen.findByRole('textbox', { name: `Option ${position} label` }),
     label,
   );
-  const valueField = screen.getByRole('textbox', {
-    name: `Option ${position} value`,
-  });
-  await harness.user.clear(valueField);
-  await harness.user.type(valueField, String(value));
+  await harness.user.type(
+    screen.getByRole('textbox', { name: `Option ${position} value` }),
+    String(value),
+  );
 }

@@ -65,76 +65,6 @@ describe('the Tie-Strength Census stage editor', () => {
     ]);
   });
 
-  it('saves a stage created from the interface template once it says what it asks', async () => {
-    const harness = renderStageEditor({
-      stage: {
-        type: 'TieStrengthCensus',
-        fields: getInterfaceTemplate('TieStrengthCensus'),
-      },
-      editor,
-    });
-
-    await harness.user.type(
-      screen.getByRole('textbox', { name: 'Stage name' }),
-      'How close each pair is',
-    );
-    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
-    await harness.user.type(
-      screen.getByRole('textbox', { name: 'Introduction heading' }),
-      'About to compare pairs',
-    );
-    await harness.user.type(
-      screen.getByRole('textbox', { name: 'Introduction text' }),
-      'You will see two people at a time.',
-    );
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Create new prompt' }),
-    );
-    await harness.user.type(
-      await screen.findByRole('textbox', { name: 'Prompt text' }),
-      'How close are these two people?',
-    );
-
-    // The scale belongs to the connection, so there is nothing to choose from
-    // until the connection type is known.
-    expect(
-      screen.queryByRole('combobox', { name: 'Attribute' }),
-    ).not.toBeInTheDocument();
-    await harness.user.click(screen.getByRole('radio', { name: 'knows' }));
-    await harness.user.selectOptions(
-      await screen.findByRole('combobox', { name: 'Attribute' }),
-      'closeness',
-    );
-    await harness.user.type(
-      screen.getByRole('textbox', { name: 'Decline answer' }),
-      'They do not know each other',
-    );
-    await harness.user.click(screen.getByRole('button', { name: 'Add' }));
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
-    );
-
-    const request = await harness.submit();
-    expect(request?.stageDocument).toMatchObject({
-      type: 'TieStrengthCensus',
-      label: 'How close each pair is',
-      subject: { entity: 'node', type: 'person' },
-      introductionPanel: {
-        title: 'About to compare pairs',
-        text: 'You will see two people at a time.',
-      },
-    });
-    expect(prompts(request?.stageDocument ?? {})).toEqual([
-      {
-        id: expect.any(String) as unknown as string,
-        text: 'How close are these two people?',
-        createEdge: 'knows',
-        edgeVariable: 'closeness',
-        negativeLabel: 'They do not know each other',
-      },
-    ]);
-  });
-
   it('refuses a stage whose introduction has no heading, and says which section', async () => {
     const harness = renderStageEditor({
       stage: {
@@ -228,6 +158,78 @@ describe('creating a Tie-Strength Census stage', () => {
     await switchSkipLogicOn(harness);
     expect(destinationOptions()).toEqual(destinationsAfterInsertion());
   });
+
+  /**
+   * The other half of the same journey: the researcher writes what the
+   * template does not carry, and the new stage saves.
+   *
+   * Separate from the assertion above because the two fail for different
+   * reasons and writing an introduction and a prompt is most of what this
+   * journey costs. The name is the one the editor PROPOSED, never typed, and
+   * it follows the type the researcher picks on the way.
+   */
+  it('saves the new stage once its introduction and prompt are written', async () => {
+    const harness = renderStageEditor({
+      create: { type: 'TieStrengthCensus', position: CREATE_POSITION },
+      editor,
+    });
+
+    await waitFor(() =>
+      expect(stageNameInput()).toHaveValue('Tie-Strength Census #2'),
+    );
+    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
+    await harness.user.type(
+      screen.getByRole('textbox', { name: 'Introduction heading' }),
+      'Pairs',
+    );
+    await harness.user.type(
+      screen.getByRole('textbox', { name: 'Introduction text' }),
+      'Two at a time.',
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create new prompt' }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Prompt text' }),
+      'How close?',
+    );
+
+    // The scale belongs to the connection, so there is nothing to choose from
+    // until the connection type is known.
+    expect(
+      screen.queryByRole('combobox', { name: 'Attribute' }),
+    ).not.toBeInTheDocument();
+    await harness.user.click(screen.getByRole('radio', { name: 'knows' }));
+    await harness.user.selectOptions(
+      await screen.findByRole('combobox', { name: 'Attribute' }),
+      'closeness',
+    );
+    await harness.user.type(
+      screen.getByRole('textbox', { name: 'Decline answer' }),
+      'Not close',
+    );
+    await harness.user.click(screen.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    expect(request?.stageDocument).toMatchObject({
+      type: 'TieStrengthCensus',
+      label: 'Person Tie-Strength Census',
+      subject: { entity: 'node', type: 'person' },
+      introductionPanel: { title: 'Pairs', text: 'Two at a time.' },
+    });
+    expect(prompts(request?.stageDocument ?? {})).toEqual([
+      {
+        id: expect.any(String) as unknown as string,
+        text: 'How close?',
+        createEdge: 'knows',
+        edgeVariable: 'closeness',
+        negativeLabel: 'Not close',
+      },
+    ]);
+  });
 });
 
 /**
@@ -294,13 +296,17 @@ describe('a codebook that changes while the Tie-Strength editor is open', () => 
 /**
  * The scale hangs off the connection the prompt creates, so creating one from
  * inside a prompt is a compound edit against that connection type's own
- * codebook section — landing whole or not at all — after which the prompt
- * naming it is saved with the stage.
+ * codebook section, after which the prompt naming it is saved with the stage.
+ *
+ * Only the second half is asked here. That the host is asked ONCE, and against
+ * the EDGE's section rather than the person's, is
+ * `TieStrengthCensusPromptsSection.test.tsx`'s — it mounts the same section
+ * and asks it in more detail. What is left for the named editor is that the
+ * pick reaches the stage save.
  */
 describe('creating a scale from inside the Tie-Strength editor', () => {
-  it('asks the host once, then saves the stage that names what it created', async () => {
+  it('saves the stage that names what it created', async () => {
     const harness = renderStageEditor(openFixture());
-    const submit = vi.spyOn(harness.host, 'submit');
 
     await harness.user.click(
       screen.getByRole('button', { name: 'Edit prompt' }),
@@ -312,8 +318,8 @@ describe('creating a scale from inside the Tie-Strength editor', () => {
       await screen.findByRole('textbox', { name: 'Attribute name' }),
       'trust',
     );
-    await addOption(harness, 1, 'A little', 1);
-    await addOption(harness, 2, 'A lot', 2);
+    await addOption(harness, 1, 'Some', 1);
+    await addOption(harness, 2, 'Lots', 2);
     await harness.user.click(
       screen.getByRole('button', { name: 'Create attribute' }),
     );
@@ -323,11 +329,6 @@ describe('creating a scale from inside the Tie-Strength editor', () => {
       expect(
         within(picker).getByRole('option', { name: 'trust' }),
       ).toBeInTheDocument(),
-    );
-    expect(submit).toHaveBeenCalledTimes(1);
-    expect(submit.mock.calls[0]?.[0].edits).toHaveLength(1);
-    expect(submit.mock.calls[0]?.[0].edits[0]?.sectionId).toBe(
-      'codebook:edge:knows',
     );
 
     await harness.user.click(screen.getByRole('button', { name: 'Save' }));
@@ -364,7 +365,12 @@ function knowsVariables(harness: SessionReader): Record<string, unknown> {
   return { ...variables };
 }
 
-/** Adds one option to the attribute editor that is open. */
+/**
+ * Adds one option to the attribute editor that is open.
+ *
+ * The value is typed rather than cleared first: a new option's value starts
+ * empty, and the attribute is refused without one.
+ */
 async function addOption(
   harness: StageEditorHarness,
   position: number,
@@ -376,9 +382,8 @@ async function addOption(
     await screen.findByRole('textbox', { name: `Option ${position} label` }),
     label,
   );
-  const valueField = screen.getByRole('textbox', {
-    name: `Option ${position} value`,
-  });
-  await harness.user.clear(valueField);
-  await harness.user.type(valueField, String(value));
+  await harness.user.type(
+    screen.getByRole('textbox', { name: `Option ${position} value` }),
+    String(value),
+  );
 }

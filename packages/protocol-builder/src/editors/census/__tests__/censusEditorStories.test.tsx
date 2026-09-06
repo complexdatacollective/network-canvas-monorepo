@@ -94,13 +94,13 @@ describe('the census and bin editor stories', () => {
 
       const name = screen.getByRole('textbox', { name: 'Stage name' });
       await user.clear(name);
-      await user.type(name, 'Renamed by the researcher');
+      await user.type(name, 'Renamed');
       await user.click(screen.getByRole('button', { name: 'Save stage' }));
 
       await waitFor(() =>
         expect(
           screen.getByRole('status', { name: 'Save status' }),
-        ).toHaveTextContent('Saved “Renamed by the researcher”.'),
+        ).toHaveTextContent('Saved “Renamed”.'),
       );
       // The status alone cannot tell a save that committed the rename from one
       // that committed the stage as it was found.
@@ -108,7 +108,7 @@ describe('the census and bin editor stories', () => {
         screen.getByRole('region', {
           name: 'What the host was asked to commit',
         }),
-      ).toHaveTextContent('"label": "Renamed by the researcher"');
+      ).toHaveTextContent('"label": "Renamed"');
     },
   );
 

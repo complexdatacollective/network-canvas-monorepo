@@ -170,8 +170,8 @@ const CASES: readonly Case[] = [
     },
     rewrite: {
       key: 'otherOptionLabel',
-      value: 'Anything else',
-      write: (harness) => retype(harness, 'Bin label', 'Anything else'),
+      value: 'Else',
+      write: (harness) => retype(harness, 'Bin label', 'Else'),
     },
     open: () =>
       renderStageEditor({
@@ -300,9 +300,8 @@ const CASES: readonly Case[] = [
     },
     rewrite: {
       key: 'negativeLabel',
-      value: 'They have never met',
-      write: (harness) =>
-        retype(harness, 'Decline answer', 'They have never met'),
+      value: 'Never met',
+      write: (harness) => retype(harness, 'Decline answer', 'Never met'),
     },
     open: () =>
       renderStageEditor({

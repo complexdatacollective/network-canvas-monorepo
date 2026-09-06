@@ -67,7 +67,7 @@ describe('the questions an ordinal bin asks', () => {
     );
     await harness.user.type(
       await screen.findByRole('textbox', { name: 'Prompt text' }),
-      'How often do you talk?',
+      'How often?',
     );
     await harness.user.selectOptions(
       screen.getByRole('combobox', { name: 'Attribute' }),

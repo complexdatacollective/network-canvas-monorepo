@@ -62,60 +62,6 @@ describe('the Dyad Census stage editor', () => {
     ]);
   });
 
-  it('saves a stage created from the interface template once it says what it asks', async () => {
-    const harness = renderStageEditor({
-      stage: {
-        type: 'DyadCensus',
-        fields: getInterfaceTemplate('DyadCensus'),
-      },
-      editor,
-    });
-
-    await harness.user.type(
-      screen.getByRole('textbox', { name: 'Stage name' }),
-      'Who knows whom',
-    );
-    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
-    await harness.user.type(
-      screen.getByRole('textbox', { name: 'Introduction heading' }),
-      'About to compare pairs',
-    );
-    await harness.user.type(
-      screen.getByRole('textbox', { name: 'Introduction text' }),
-      'You will see two people at a time.',
-    );
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Create new prompt' }),
-    );
-    await harness.user.type(
-      await screen.findByRole('textbox', { name: 'Prompt text' }),
-      'Do these two people know each other?',
-    );
-    await harness.user.click(screen.getByRole('radio', { name: 'knows' }));
-    await harness.user.click(screen.getByRole('button', { name: 'Add' }));
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
-    );
-
-    const request = await harness.submit();
-    expect(request?.stageDocument).toMatchObject({
-      type: 'DyadCensus',
-      label: 'Who knows whom',
-      subject: { entity: 'node', type: 'person' },
-      introductionPanel: {
-        title: 'About to compare pairs',
-        text: 'You will see two people at a time.',
-      },
-    });
-    expect(prompts(request?.stageDocument ?? {})).toEqual([
-      {
-        id: expect.any(String) as unknown as string,
-        text: 'Do these two people know each other?',
-        createEdge: 'knows',
-      },
-    ]);
-  });
-
   it('refuses a stage whose introduction has no heading, and says which section', async () => {
     const harness = renderStageEditor({
       stage: {
@@ -200,6 +146,89 @@ describe('creating a Dyad Census stage', () => {
     await switchSkipLogicOn(harness);
     expect(destinationOptions()).toEqual(destinationsAfterInsertion());
   });
+
+  /**
+   * The other half of the same journey: the researcher writes what the
+   * template does not carry, and the new stage saves.
+   *
+   * Separate from the assertion above because the two fail for different
+   * reasons and writing an introduction and a prompt is most of what this
+   * journey costs. The name is the one the editor PROPOSED, never typed, and
+   * it follows the type the researcher picks on the way.
+   */
+  it('saves the new stage once its introduction and prompt are written', async () => {
+    const harness = renderStageEditor({
+      create: { type: 'DyadCensus', position: CREATE_POSITION },
+      editor,
+    });
+
+    await waitFor(() => expect(stageNameInput()).toHaveValue('Dyad Census #2'));
+    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
+    await harness.user.type(
+      screen.getByRole('textbox', { name: 'Introduction heading' }),
+      'Pairs',
+    );
+    await harness.user.type(
+      screen.getByRole('textbox', { name: 'Introduction text' }),
+      'Two at a time.',
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create new prompt' }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Prompt text' }),
+      'Do they know?',
+    );
+    await harness.user.click(screen.getByRole('radio', { name: 'knows' }));
+    await harness.user.click(screen.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    expect(request?.stageDocument).toMatchObject({
+      type: 'DyadCensus',
+      label: 'Person Dyad Census',
+      subject: { entity: 'node', type: 'person' },
+      introductionPanel: { title: 'Pairs', text: 'Two at a time.' },
+    });
+    expect(prompts(request?.stageDocument ?? {})).toEqual([
+      {
+        id: expect.any(String) as unknown as string,
+        text: 'Do they know?',
+        createEdge: 'knows',
+      },
+    ]);
+  });
+
+  /**
+   * And it refuses one that is otherwise complete, because the template does
+   * not carry the task introduction this interface's schema requires — so a
+   * researcher who wrote everything else would otherwise be sending a stage a
+   * host rejects. The sibling above refuses an introduction whose heading was
+   * emptied; this is the introduction that was never there at all.
+   */
+  it('refuses a new stage that has no task introduction', async () => {
+    const harness = renderStageEditor({
+      create: {
+        type: 'DyadCensus',
+        position: CREATE_POSITION,
+        fields: {
+          label: 'Who knows who',
+          subject: { entity: 'node', type: 'person' },
+          prompts: [
+            { id: 'prompt-a', text: 'Do they know?', createEdge: 'knows' },
+          ],
+        },
+      },
+      editor,
+    });
+
+    expect(
+      getInterfaceTemplate('DyadCensus').introductionPanel,
+    ).toBeUndefined();
+    expect(await harness.submit()).toBeNull();
+  });
 });
 
 /**
@@ -252,13 +281,17 @@ describe('a codebook that changes while the Dyad Census editor is open', () => {
 /**
  * The connection an affirmative answer creates lives in the codebook rather
  * than in the stage, so creating one from inside a prompt is a compound edit
- * against the codebook — it lands whole or not at all — after which the prompt
- * naming it is saved with the stage.
+ * against the codebook, after which the prompt naming it is saved with the
+ * stage.
+ *
+ * Only the second half is asked here. That the host is asked ONCE, and with
+ * what, is `DyadCensusPromptsSection.test.tsx`'s — it mounts the same section
+ * and asks it in more detail. What is left for the named editor is that the
+ * pick reaches the stage save.
  */
 describe('creating a connection type from inside the Dyad Census editor', () => {
-  it('asks the host once, then saves the stage that names what it created', async () => {
+  it('saves the stage that names what it created', async () => {
     const harness = renderStageEditor(openFixture());
-    const submit = vi.spyOn(harness.host, 'submit');
 
     await harness.user.click(
       screen.getByRole('button', { name: 'Edit prompt' }),
@@ -279,9 +312,6 @@ describe('creating a connection type from inside the Dyad Census editor', () => 
     expect(
       await screen.findByRole('radio', { name: 'worksWith' }),
     ).toBeChecked();
-    expect(submit).toHaveBeenCalledTimes(1);
-    expect(submit.mock.calls[0]?.[0].edits).toHaveLength(1);
-    expect(submit.mock.calls[0]?.[0].edits[0]?.kind).toBe('create');
 
     await harness.user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() =>

@@ -72,45 +72,6 @@ describe('the Categorical Bin stage editor', () => {
     ]);
   });
 
-  it('saves a stage created from the interface template once it says what it asks', async () => {
-    const harness = renderStageEditor({
-      stage: {
-        type: 'CategoricalBin',
-        fields: getInterfaceTemplate('CategoricalBin'),
-      },
-      editor,
-    });
-
-    await harness.user.type(
-      screen.getByRole('textbox', { name: 'Stage name' }),
-      'Kinds of contact',
-    );
-    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Create new prompt' }),
-    );
-    await harness.user.type(
-      await screen.findByRole('textbox', { name: 'Prompt text' }),
-      'What kind of contact do you have?',
-    );
-    await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Attribute' }),
-      'contactType',
-    );
-    await harness.user.click(screen.getByRole('button', { name: 'Add' }));
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
-    );
-
-    const request = await harness.submit();
-    expect(request?.stageDocument).toMatchObject({
-      type: 'CategoricalBin',
-      label: 'Kinds of contact',
-      subject: { entity: 'node', type: 'person' },
-    });
-    expect(prompts(request?.stageDocument ?? {})).toHaveLength(1);
-  });
-
   it('refuses a stage with no name, and says which section is missing one', async () => {
     const harness = renderStageEditor({
       stage: {
@@ -198,6 +159,60 @@ describe('creating a Categorical Bin stage', () => {
     await switchSkipLogicOn(harness);
     expect(destinationOptions()).toEqual(destinationsAfterInsertion());
   });
+
+  /**
+   * The other half of the same journey: the researcher writes the one thing
+   * the template does not carry, and the new stage saves.
+   *
+   * Separate from the assertion above because the two fail for different
+   * reasons and writing a prompt is most of what this journey costs — a test
+   * that did both spent that cost proving the proposed name as well.
+   *
+   * The name is the one the editor PROPOSED, never typed, and it follows the
+   * type the researcher picks on the way — so this is also where a proposal
+   * nobody accepted is shown to reach the saved document. A name the
+   * researcher writes over is saved by the story tests beside this.
+   */
+  it('saves the new stage once its prompt is written', async () => {
+    const harness = renderStageEditor({
+      create: { type: 'CategoricalBin', position: CREATE_POSITION },
+      editor,
+    });
+
+    await waitFor(() =>
+      expect(stageNameInput()).toHaveValue('Categorical Bin #2'),
+    );
+    await harness.user.click(screen.getByRole('radio', { name: 'person' }));
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create new prompt' }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Prompt text' }),
+      'What contact?',
+    );
+    await harness.user.selectOptions(
+      screen.getByRole('combobox', { name: 'Attribute' }),
+      'contactType',
+    );
+    await harness.user.click(screen.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    expect(request?.stageDocument).toMatchObject({
+      type: 'CategoricalBin',
+      label: 'Person Categorical Bin',
+      subject: { entity: 'node', type: 'person' },
+    });
+    expect(prompts(request?.stageDocument ?? {})).toEqual([
+      {
+        id: expect.any(String) as unknown as string,
+        text: 'What contact?',
+        variable: 'contactType',
+      },
+    ]);
+  });
 });
 
 /**
@@ -264,30 +279,32 @@ describe('a codebook that changes while the Categorical Bin editor is open', () 
 
 /**
  * The bins are an attribute's values, so creating one from inside a prompt is
- * a compound edit against the codebook — it lands whole or not at all — after
- * which the prompt naming it is saved with the stage.
+ * a compound edit against the codebook, after which the prompt naming it is
+ * saved with the stage.
+ *
+ * Only the second half is asked here. That the host is asked ONCE, against the
+ * codebook section alone, with the hash of what the request was built from, is
+ * `CategoricalBinPromptsSection.test.tsx`'s — it mounts the same section and
+ * asks it in more detail than this ever did. What is left for the named editor
+ * is that the pick reaches the stage save, which is the half a section mounted
+ * on its own cannot answer.
  */
 describe('creating a bin attribute from inside the Categorical Bin editor', () => {
-  it('asks the host once, then saves the stage that names what it created', async () => {
+  it('saves the stage that names what it created', async () => {
     const harness = renderStageEditor(openFixture());
-    const submit = vi.spyOn(harness.host, 'submit');
 
     await harness.user.click(
-      screen.getByRole('button', { name: 'Create new prompt' }),
-    );
-    await harness.user.type(
-      await screen.findByRole('textbox', { name: 'Prompt text' }),
-      'How do you know this person?',
+      screen.getByRole('button', { name: 'Edit prompt' }),
     );
     await harness.user.click(
-      screen.getByRole('button', { name: 'Create a new attribute' }),
+      await screen.findByRole('button', { name: 'Create a new attribute' }),
     );
     await harness.user.type(
       await screen.findByRole('textbox', { name: 'Attribute name' }),
       'howKnown',
     );
-    await addOption(harness, 1, 'Through work', 'work');
-    await addOption(harness, 2, 'Through family', 'family');
+    await addOption(harness, 1, 'Work', 'work');
+    await addOption(harness, 2, 'Home', 'home');
     await harness.user.click(
       screen.getByRole('button', { name: 'Create attribute' }),
     );
@@ -298,21 +315,16 @@ describe('creating a bin attribute from inside the Categorical Bin editor', () =
         within(picker).getByRole('option', { name: 'howKnown' }),
       ).toBeInTheDocument(),
     );
-    expect(submit).toHaveBeenCalledTimes(1);
-    expect(submit.mock.calls[0]?.[0].edits).toHaveLength(1);
-    expect(submit.mock.calls[0]?.[0].edits[0]?.sectionId).toBe(
-      'codebook:node:person',
-    );
 
-    await harness.user.click(screen.getByRole('button', { name: 'Add' }));
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
 
     const request = await harness.submit();
-    const added = prompts(request?.stageDocument ?? {}).at(-1);
-    expect(added?.text).toBe('How do you know this person?');
-    expect(typeof added?.variable).toBe('string');
+    const saved = prompts(request?.stageDocument ?? {})[0];
+    expect(saved?.variable).toEqual(expect.any(String));
+    expect(saved?.variable).not.toBe('contactType');
   });
 });
 
@@ -337,7 +349,12 @@ function personVariables(harness: SessionReader): Record<string, unknown> {
   return { ...variables };
 }
 
-/** Adds one option to the attribute editor that is open. */
+/**
+ * Adds one option to the attribute editor that is open.
+ *
+ * The value is typed rather than cleared first: a new option's value starts
+ * empty, and the attribute is refused without one.
+ */
 async function addOption(
   harness: StageEditorHarness,
   position: number,
@@ -349,9 +366,8 @@ async function addOption(
     await screen.findByRole('textbox', { name: `Option ${position} label` }),
     label,
   );
-  const valueField = screen.getByRole('textbox', {
-    name: `Option ${position} value`,
-  });
-  await harness.user.clear(valueField);
-  await harness.user.type(valueField, value);
+  await harness.user.type(
+    screen.getByRole('textbox', { name: `Option ${position} value` }),
+    value,
+  );
 }
