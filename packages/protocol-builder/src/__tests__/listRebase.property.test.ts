@@ -110,6 +110,13 @@ function randomEdit(
   }
 }
 
+/** Adds one row at a random position, which is all an `inserts` arrival does. */
+function randomInsert(rng: Rng, list: readonly Row[], mint: () => Row): Row[] {
+  const next = list.map((row) => ({ ...row }));
+  next.splice(int(rng, next.length + 1), 0, mint());
+  return next;
+}
+
 /** What the reference model calls a row: its id, or its whole content. */
 const keyOf = (row: Row): string => row.id ?? canonicalize(row);
 
@@ -217,6 +224,16 @@ type Trial = Readonly<{
   appendedLast: Row | null;
 }>;
 
+/**
+ * What the collaborator did while the researcher was editing.
+ *
+ * `anything` is the general sweep. `inserts` is the arrival that says nothing
+ * about where the rows already there belong — it only adds — which is what
+ * makes the researcher's own order for them the one answer a merge can give,
+ * and so the only arrival an order can be asserted against at all.
+ */
+type Arrival = 'anything' | 'inserts';
+
 type Outcome =
   | { kind: 'threw'; error: unknown }
   | { kind: 'ok'; result: Row[]; rebased: Command[][] };
@@ -224,6 +241,7 @@ type Outcome =
 function runTrial(
   seed: number,
   mode: Mode,
+  arrival: Arrival = 'anything',
 ): Readonly<{
   trial: Trial;
   outcome: Outcome;
@@ -277,7 +295,10 @@ function runTrial(
   let remote: Row[] = base.map((row) => ({ ...row }));
   const remoteSteps = 1 + int(rng, 3);
   for (let step = 0; step < remoteSteps; step += 1) {
-    remote = randomEdit(rng, mode, remote, mintRemote);
+    remote =
+      arrival === 'inserts'
+        ? randomInsert(rng, remote, mintRemote)
+        : randomEdit(rng, mode, remote, mintRemote);
   }
 
   const trial: Trial = {
@@ -326,6 +347,25 @@ const describeTrial = (trial: Trial, extra: string) =>
 
 const TRIALS = 400;
 
+/**
+ * The order sweep runs wider than the rest, because the case it is about has to
+ * be GENERATED to be asked: a submit that reorders rows the merge can tell
+ * apart, and that no single row operation explains. Id-less rows are drawn from
+ * an alphabet smaller than the list, so most of them are copies of one another
+ * and there is no fact about the order of two of those — which makes the case
+ * rare enough in that mode to need the wider run.
+ */
+const ORDER_TRIALS = 2000;
+
+/**
+ * How many trials of each mode must actually produce that submit. Without this
+ * the sweep would pass by never asking the question.
+ */
+const REORDERING_TRIALS: Readonly<Record<Mode, number>> = {
+  identified: 100,
+  idless: 5,
+};
+
 function sweep(
   mode: Mode,
   check: (trial: Trial, outcome: Outcome) => string | null,
@@ -371,6 +411,75 @@ function mergesLikeTheModel(trial: Trial, outcome: Outcome): string | null {
   ].join('\n');
 }
 
+/**
+ * The rows a trial can say anything about the ORDER of: those the base, the
+ * researcher's list and the answer each hold exactly once. A list may hold the
+ * same id-less row twice, and where it does there is no fact about which copy
+ * is which, so the copies are left out rather than guessed at.
+ */
+const orderableKeys = (
+  trial: Trial,
+  result: readonly Row[],
+): ((key: string) => boolean) => {
+  const inBase = copies(trial.base);
+  const inLocal = copies(trial.local);
+  const inResult = copies(result);
+  return (key) =>
+    inBase.get(key) === 1 && inLocal.get(key) === 1 && inResult.get(key) === 1;
+};
+
+/** How many commands a trial made, and how many the rebase kept. */
+const commandCount = (batches: readonly (readonly Command[])[]): number =>
+  batches.reduce((total, batch) => total + batch.length, 0);
+
+/**
+ * An arrival that only ADDED rows says nothing about where the rows already
+ * there belong, so the order the researcher left them in is the answer — every
+ * one of their steps is in it, whether the diff could say it structurally or
+ * had to fall back to a whole-list `set`.
+ *
+ * Asked only of a rebase that kept every command, because a REFUSED one is a
+ * step of the researcher's the merge never saw. `resolveMove` refuses a move
+ * whose anchor row it cannot tell from another — an id-less list holding the
+ * same row twice, where the row a moved one will follow names two places — and
+ * that refusal is this file's deliberate answer to a guess that would write
+ * onto the wrong row, not something the order of a merge decides. See
+ * `resolveMove` in `form/arrayFields/arrayFieldCommands.ts`.
+ */
+function keepsTheLocalOrder(trial: Trial, outcome: Outcome): string | null {
+  if (outcome.kind !== 'ok') return null;
+  if (commandCount(outcome.rebased) !== commandCount(trial.batches))
+    return null;
+  const orderable = orderableKeys(trial, outcome.result);
+  const ordering = (list: readonly Row[]) => list.map(keyOf).filter(orderable);
+  const local = ordering(trial.local);
+  const got = ordering(outcome.result);
+  if (canonicalize(local) === canonicalize(got)) return null;
+  return [
+    `got      ${JSON.stringify(outcome.result)}`,
+    `the researcher left ${JSON.stringify(local)}, and the merge gave ${JSON.stringify(got)}`,
+  ].join('\n');
+}
+
+/** Whether the researcher's steps gave the rows they kept a NEW order. */
+function localReordered(trial: Trial): boolean {
+  const inBase = copies(trial.base);
+  const inLocal = copies(trial.local);
+  const kept = (key: string) => inBase.get(key) === 1 && inLocal.get(key) === 1;
+  const ordering = (list: readonly Row[]) => list.map(keyOf).filter(kept);
+  return (
+    canonicalize(ordering(trial.base)) !== canonicalize(ordering(trial.local))
+  );
+}
+
+/** Whether a trial's diff fell back to writing a whole list out. */
+const carriesAWholeListSet = (trial: Trial): boolean =>
+  trial.batches.some((batch) =>
+    batch.some(
+      (command) => command.op === 'set' && Array.isArray(command.value),
+    ),
+  );
+
 describe('rebasing a list edit onto a collaborator’s arrival', () => {
   for (const mode of ['identified', 'idless'] as const) {
     describe(`rows ${mode}`, () => {
@@ -393,6 +502,33 @@ describe('rebasing a list edit onto a collaborator’s arrival', () => {
             return `the last local edit appended ${JSON.stringify(appended)}, which is not last in ${JSON.stringify(outcome.result)}`;
           }),
         ).toEqual([]);
+      });
+
+      /**
+       * The order dimension, which the reference merge above deliberately says
+       * nothing about: against an arrival that reordered rows itself there are
+       * two defensible answers, so the sweep asks the question of an arrival
+       * that only ADDED rows, where there is one.
+       *
+       * A submit that moves a row and adds another is a whole-list `set`, and
+       * such a `set` used to be merged in the arrival's order for every
+       * surviving row — which discarded the move. The count below is what keeps
+       * this from passing vacuously: it is the number of trials that actually
+       * produced that submit.
+       */
+      it('keeps the researcher’s order when the arrival only added rows', () => {
+        const failures: string[] = [];
+        let reordering = 0;
+        for (let seed = 1; seed <= ORDER_TRIALS; seed += 1) {
+          const { trial, outcome } = runTrial(seed, mode, 'inserts');
+          if (localReordered(trial) && carriesAWholeListSet(trial))
+            reordering += 1;
+          const problem = keepsTheLocalOrder(trial, outcome);
+          if (problem !== null && failures.length < 3)
+            failures.push(describeTrial(trial, problem));
+        }
+        expect(failures).toEqual([]);
+        expect(reordering).toBeGreaterThan(REORDERING_TRIALS[mode]);
       });
     });
   }

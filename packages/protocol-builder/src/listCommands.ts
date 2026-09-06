@@ -324,9 +324,20 @@ function matchRows(
  * - a row the edit added is put back where the edit put it, after whichever
  *   row it followed there.
  *
- * The arrival's order stands, because the edit that produced a `set` is about
- * a row's contents rather than about where the rows are — a reorder is a
- * `moveItem`, which is rebased rather than merged.
+ * The arrival's order stands wherever the researcher's submit left the rows
+ * where it found them: an edit about a row's CONTENTS says nothing about where
+ * the rows are, so a collaborator's reorder of them survives it. A submit that
+ * moved a row is the case a `set` hides. A reorder reaches the wire as a
+ * `moveItem` only while it is the whole of one submit, and one that moves a row
+ * and adds another — "put this question first, and ask this one too" — is a
+ * `set` like any other; taking the arrival's order for it discarded the move
+ * outright the moment a collaborator inserted a row before the batch was
+ * acknowledged, with every row carrying an id. So when the researcher's list
+ * holds the rows both sides kept in an order the ancestor did not, those rows
+ * are dealt back into their own positions in the researcher's order, which
+ * leaves every row the arrival added exactly where the arrival put it. Where
+ * both sides reordered, the researcher's order wins, as their rewrite of a row
+ * does.
  *
  * A row with no `id` of its own is answered by `matchRows` like any other,
  * which means its CONTENT is its identity: rewriting such a row reads as
@@ -352,6 +363,13 @@ function mergeListArrival(
   const remoteOf = matchRows(before, arrival);
 
   const merged: unknown[] = [];
+  // An ancestor row both sides kept: where it came from, and the place in
+  // `merged` the arrival's order gave it.
+  const survivors: Readonly<{
+    ancestor: number;
+    local: number;
+    slot: number;
+  }>[] = [];
   arrival.forEach((row, index) => {
     const ancestor = remoteOf.indexOf(index);
     if (ancestor === -1) {
@@ -361,12 +379,30 @@ function mergeListArrival(
     const local = localOf[ancestor];
     if (local === undefined || local === -1) return;
     const localRow = next[local];
+    survivors.push({ ancestor, local, slot: merged.length });
     merged.push(
       canonicalize(localRow) === canonicalize(before[ancestor])
         ? row
         : localRow,
     );
   });
+
+  // The researcher's own order for those rows, when their submit gave them one
+  // the ancestor did not. Only the survivors move, and only among the places
+  // they already occupy, so a row the arrival added keeps its own.
+  const byLocal = survivors.toSorted((one, other) => one.local - other.local);
+  const reordered = survivors
+    .toSorted((one, other) => one.ancestor - other.ancestor)
+    .some((survivor, at) => byLocal[at] !== survivor);
+  if (reordered) {
+    const rowOf = new Map(
+      survivors.map((survivor) => [survivor, merged[survivor.slot]] as const),
+    );
+    survivors.forEach((survivor, at) => {
+      const wanted = byLocal[at];
+      if (wanted !== undefined) merged[survivor.slot] = rowOf.get(wanted);
+    });
+  }
 
   next.forEach((row, index) => {
     if (localOf.includes(index)) return;
