@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { z } from 'zod/mini';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import type { CustomFieldValidation } from '@codaco/fresco-ui/form/store/types';
 
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
@@ -39,6 +40,7 @@ export function useRuleSetValidation(
   variant: RuleSetVariant,
 ): CustomFieldValidation {
   const { protocolContext, storeApi } = useStageEditorForm();
+  const intl = useAppIntl();
   const codebook = protocolContext.codebook;
   const value = useStageValue(name);
   const targets = ruleSetTargets(variant);
@@ -56,6 +58,12 @@ export function useRuleSetValidation(
   // when the field registered.
   const targetsRef = useRef(targets);
   targetsRef.current = targets;
+  // And the reader's own formatter, for the same reason: the one registered
+  // validation has to state its verdict in the language the researcher is
+  // reading right now, not the one they were reading when the field
+  // registered.
+  const intlRef = useRef(intl);
+  intlRef.current = intl;
   const validation = useRef<CustomFieldValidation | undefined>(undefined);
   validation.current ??= {
     // The rules are not a shape that can be summarised as an up-front
@@ -68,6 +76,7 @@ export function useRuleSetValidation(
             fieldValue,
             codebookRef.current,
             targetsRef.current,
+            intlRef.current,
           );
           if (message === undefined) return;
           ctx.addIssue({
@@ -80,7 +89,7 @@ export function useRuleSetValidation(
       ),
   };
 
-  const message = ruleSetValidationMessage(value, codebook, targets);
+  const message = ruleSetValidationMessage(value, codebook, targets, intl);
 
   // Field validation runs when the researcher touches a field, and on submit.
   // Neither covers the two ways a rule set goes wrong on its own: an edit made

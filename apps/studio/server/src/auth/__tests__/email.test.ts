@@ -17,6 +17,14 @@ it.each([
   expect(() =>
     createMailer({ kind: 'smtp', url: 'smtp://127.0.0.1:1', from }),
   ).toThrow('EMAIL_DELIVERY_PERMANENT');
+  expect(() =>
+    createMailer({
+      kind: 'postmark',
+      serverToken: 'fixture-server-token',
+      messageStream: 'outbound',
+      from,
+    }),
+  ).toThrow('EMAIL_DELIVERY_PERMANENT');
 });
 
 it('delivers an existing team snapshot containing line breaks as one safe subject', async () => {
@@ -43,4 +51,39 @@ it('delivers an existing team snapshot containing line breaks as one safe subjec
   expect(
     peer.commands.filter((command) => command.startsWith('RCPT TO:')),
   ).toEqual(['RCPT TO:<recipient@example.test>']);
+});
+
+it.each(['A'.repeat(240), '\\'.repeat(120)])(
+  'refuses an oversized formatted Postmark sender at construction',
+  (name) => {
+    const from = `"${name.replace(/["\\]/g, '\\$&')}" <from@example.test>`;
+    expect(from.length).toBeGreaterThan(255);
+    // Both are syntactically valid senders; only the Postmark wire bound fails.
+    const smtp = createMailer({
+      kind: 'smtp',
+      url: 'smtp://127.0.0.1:1',
+      from,
+    });
+    smtp.close();
+    expect(() =>
+      createMailer({
+        kind: 'postmark',
+        serverToken: 'fixture-server-token',
+        messageStream: 'outbound',
+        from,
+      }),
+    ).toThrow('EMAIL_DELIVERY_PERMANENT');
+  },
+);
+
+it('accepts an exactly255-character formatted Postmark sender at construction', () => {
+  const from = `"${'A'.repeat(233)}" <from@example.test>`;
+  expect(from.length).toBe(255);
+  const mailer = createMailer({
+    kind: 'postmark',
+    serverToken: 'fixture-server-token',
+    messageStream: 'outbound',
+    from,
+  });
+  mailer.close();
 });

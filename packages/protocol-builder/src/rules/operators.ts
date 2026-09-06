@@ -1,3 +1,5 @@
+import { createAppIntl, defineMessages } from '@codaco/app-i18n/messages';
+import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import {
   AllOperators,
   type FilterOperandKind,
@@ -21,27 +23,117 @@ import {
  * ones this editor happens to know: an operator added to `AllOperators` and
  * not named here used to disappear from the list the researcher is offered
  * with nothing to say so, because a list can be short and still typecheck.
+ * Keyed on the schema's own token, which is what keeps that check available
+ * now the phrases are message descriptors.
  */
-const OPERATOR_LABELS: Readonly<Record<FilterOperator, string>> = Object.freeze(
-  {
-    EXACTLY: 'is exactly',
-    EXISTS: 'exists',
-    NOT_EXISTS: 'does not exist',
-    NOT: 'is not',
-    GREATER_THAN: 'is greater than',
-    GREATER_THAN_OR_EQUAL: 'is greater than or exactly',
-    LESS_THAN: 'is less than',
-    LESS_THAN_OR_EQUAL: 'is less than or exactly',
-    CONTAINS: 'contains',
-    DOES_NOT_CONTAIN: 'does not contain',
-    INCLUDES: 'includes',
-    EXCLUDES: 'excludes',
-    OPTIONS_GREATER_THAN: 'number of selected options is greater than',
-    OPTIONS_LESS_THAN: 'number of selected options is less than',
-    OPTIONS_EQUALS: 'number of selected options is exactly',
-    OPTIONS_NOT_EQUALS: 'number of selected options is not',
+const OPERATOR_LABELS = defineMessages({
+  EXACTLY: {
+    id: 'protocolBuilder.operators.exactly',
+    defaultMessage: 'is exactly',
+    description:
+      'Researcher-facing name for the rule operator that matches an attribute answered with exactly this value. Read as a whole phrase before the value being compared against.',
   },
-);
+  EXISTS: {
+    id: 'protocolBuilder.operators.exists',
+    defaultMessage: 'exists',
+    description:
+      'Researcher-facing name for the rule operator that matches when the thing being asked about is present in the interview network at all. Compares no value.',
+  },
+  NOT_EXISTS: {
+    id: 'protocolBuilder.operators.notExists',
+    defaultMessage: 'does not exist',
+    description:
+      'Researcher-facing name for the rule operator that matches when the thing being asked about is absent from the interview network. Compares no value.',
+  },
+  NOT: {
+    id: 'protocolBuilder.operators.not',
+    defaultMessage: 'is not',
+    description:
+      'Researcher-facing name for the rule operator that matches an attribute answered with anything other than this value. Read as a whole phrase before the value being compared against.',
+  },
+  GREATER_THAN: {
+    id: 'protocolBuilder.operators.greaterThan',
+    defaultMessage: 'is greater than',
+    description:
+      'Researcher-facing name for the rule operator that matches an attribute answered with a number above this value. Read as a whole phrase before the value being compared against.',
+  },
+  GREATER_THAN_OR_EQUAL: {
+    id: 'protocolBuilder.operators.greaterThanOrEqual',
+    defaultMessage: 'is greater than or exactly',
+    description:
+      'Researcher-facing name for the rule operator that matches an attribute answered with a number above this value or equal to it. Read as a whole phrase before the value being compared against.',
+  },
+  LESS_THAN: {
+    id: 'protocolBuilder.operators.lessThan',
+    defaultMessage: 'is less than',
+    description:
+      'Researcher-facing name for the rule operator that matches an attribute answered with a number below this value. Read as a whole phrase before the value being compared against.',
+  },
+  LESS_THAN_OR_EQUAL: {
+    id: 'protocolBuilder.operators.lessThanOrEqual',
+    defaultMessage: 'is less than or exactly',
+    description:
+      'Researcher-facing name for the rule operator that matches an attribute answered with a number below this value or equal to it. Read as a whole phrase before the value being compared against.',
+  },
+  CONTAINS: {
+    id: 'protocolBuilder.operators.contains',
+    defaultMessage: 'contains',
+    description:
+      'Researcher-facing name for the rule operator that matches an attribute whose text answer matches a regular expression. Read as a whole phrase before the pattern being compared against.',
+  },
+  DOES_NOT_CONTAIN: {
+    id: 'protocolBuilder.operators.doesNotContain',
+    defaultMessage: 'does not contain',
+    description:
+      'Researcher-facing name for the rule operator that matches an attribute whose text answer does not match a regular expression. Read as a whole phrase before the pattern being compared against.',
+  },
+  INCLUDES: {
+    id: 'protocolBuilder.operators.includes',
+    defaultMessage: 'includes',
+    description:
+      'Researcher-facing name for the rule operator that matches an attribute answered with one of a chosen set of options. Read as a whole phrase before the options being compared against.',
+  },
+  EXCLUDES: {
+    id: 'protocolBuilder.operators.excludes',
+    defaultMessage: 'excludes',
+    description:
+      'Researcher-facing name for the rule operator that matches an attribute answered with none of a chosen set of options. Read as a whole phrase before the options being compared against.',
+  },
+  OPTIONS_GREATER_THAN: {
+    id: 'protocolBuilder.operators.optionsGreaterThan',
+    defaultMessage: 'number of selected options is greater than',
+    description:
+      'Researcher-facing name for the rule operator that counts how many options a multiple-choice attribute was answered with and matches a count above this number. Read as a whole phrase before the number being compared against.',
+  },
+  OPTIONS_LESS_THAN: {
+    id: 'protocolBuilder.operators.optionsLessThan',
+    defaultMessage: 'number of selected options is less than',
+    description:
+      'Researcher-facing name for the rule operator that counts how many options a multiple-choice attribute was answered with and matches a count below this number. Read as a whole phrase before the number being compared against.',
+  },
+  OPTIONS_EQUALS: {
+    id: 'protocolBuilder.operators.optionsEquals',
+    defaultMessage: 'number of selected options is exactly',
+    description:
+      'Researcher-facing name for the rule operator that counts how many options a multiple-choice attribute was answered with and matches exactly this number. Read as a whole phrase before the number being compared against.',
+  },
+  OPTIONS_NOT_EQUALS: {
+    id: 'protocolBuilder.operators.optionsNotEquals',
+    defaultMessage: 'number of selected options is not',
+    description:
+      'Researcher-facing name for the rule operator that counts how many options a multiple-choice attribute was answered with and matches any count other than this number. Read as a whole phrase before the number being compared against.',
+  },
+}) satisfies Record<FilterOperator, MessageDescriptor>;
+
+/**
+ * The formatter used when a caller has none of its own.
+ *
+ * Every display surface threads the reader's own `intl` in. This is the
+ * fallback for the pure readers a host reaches without an editing session —
+ * the printable protocol summary and this package's own module tests — which
+ * have a rule and a codebook and nothing else.
+ */
+const englishIntl = createAppIntl({ locale: 'en' });
 
 export type RuleOperatorOption = Readonly<{
   value: FilterOperator;
@@ -57,9 +149,11 @@ export type RuleOperatorOption = Readonly<{
  * so the list is exactly as long as the schema's and cannot be shortened by an
  * editing slip here.
  */
-export const operatorsAsOptions: readonly RuleOperatorOption[] =
+export const operatorsAsOptions = (
+  intl: IntlShape = englishIntl,
+): readonly RuleOperatorOption[] =>
   AllOperators.options.map((value) =>
-    Object.freeze({ value, label: OPERATOR_LABELS[value] }),
+    Object.freeze({ value, label: intl.formatMessage(OPERATOR_LABELS[value]) }),
   );
 
 /**
@@ -69,8 +163,10 @@ export const operatorsAsOptions: readonly RuleOperatorOption[] =
  * shown to the researcher in the words the rest of the editor uses rather than
  * as the token the protocol files it under.
  */
-export const operatorLabel = (operator: FilterOperator): string =>
-  OPERATOR_LABELS[operator];
+export const operatorLabel = (
+  operator: FilterOperator,
+  intl: IntlShape = englishIntl,
+): string => intl.formatMessage(OPERATOR_LABELS[operator]);
 
 const OPERATOR_NAMES: ReadonlySet<string> = new Set(AllOperators.options);
 

@@ -4,6 +4,12 @@ import { defineConfig } from 'vite';
 
 import { appI18n } from '@codaco/app-i18n/vite';
 
+import {
+  studioSourceMaps,
+  studioClientPrivacy,
+} from '../scripts/telemetry-plugins.ts';
+import { version } from './package.json';
+
 // The server the dev proxy targets — @codaco/studio-server's default port,
 // overridable so a second checkout can run its own pair. Both halves have to
 // agree: give the server the same port through `PORT`.
@@ -17,7 +23,7 @@ const SERVER_ORIGIN =
 //
 //   pnpm --filter @codaco/studio-server dev
 //   pnpm --filter @codaco/studio-client dev
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [
     // Pre-parses every message at build time — defineMessages defaults via
     // the oxc-based formatjs transform, imported locale catalogs likewise —
@@ -25,6 +31,8 @@ export default defineConfig({
     ...appI18n(),
     react(),
     tailwindcss(),
+    studioClientPrivacy(),
+    ...studioSourceMaps(mode, import.meta.dirname, version),
   ],
   resolve: {
     // pnpm can hand prebundled deps a different React copy than the host app
@@ -57,4 +65,4 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
   },
-});
+}));

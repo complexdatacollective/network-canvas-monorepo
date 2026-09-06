@@ -425,9 +425,17 @@ const DialogItem = ({
       finalFocus: () => {
         if (list?.isConnected) {
           // Focus follows row identity, independent of a language change while the dialog is open.
-          const remaining = list.querySelectorAll<HTMLElement>(
-            '[data-array-row-remove]',
-          );
+          const remaining = Array.from(
+            list.querySelectorAll<HTMLElement>('[data-array-row-remove]'),
+          )
+            // This runs while the confirmed row — and any row removed just
+            // before it — is still mounted playing its exit animation. Those
+            // rows are already out of the field's value and out of the
+            // accessibility tree, and their controls go with them when the
+            // animation ends, so counting them hands focus to a node with
+            // nothing behind it: with two rows and the first removed, index 0
+            // is the dying row's own Remove button.
+            .filter((control) => !control.closest('[aria-hidden="true"]'));
           // The row that has taken this one's place, or the last one if this
           // was the last row.
           const neighbour = remaining[Math.min(index, remaining.length - 1)];

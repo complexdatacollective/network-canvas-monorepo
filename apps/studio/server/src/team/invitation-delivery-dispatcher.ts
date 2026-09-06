@@ -69,8 +69,8 @@ class InvitationDeliveryAdapter implements OutboxAdapter<ClaimedInvitationDelive
   readonly queue = INVITATION_DELIVERY_QUEUE;
 
   failureDisposition(error: unknown): 'retryable' | 'permanent' | 'uncertain' {
-    // Existing custom mailer failures retain their retry semantics. The SMTP
-    // adapter supplies proof of rejection or of potentially accepted delivery.
+    // Existing custom mailer failures retain their retry semantics. Shared
+    // email adapters distinguish rejection from potentially accepted delivery.
     return error instanceof EmailDeliveryError
       ? error.disposition
       : 'retryable';
@@ -380,6 +380,7 @@ export class InvitationDeliveryDispatcher {
 
 export type InvitationDeliveryWorkerOptions =
   InvitationDeliveryDispatcherOptions & {
+    reportError?: (error: unknown) => void;
     mailer: InvitationMailer & Pick<EmailSender, 'close'>;
     pollIntervalMs?: number;
     drainLimit?: number;
@@ -395,7 +396,10 @@ export function startInvitationDeliveryWorker(
     ...options,
     queue: INVITATION_DELIVERY_QUEUE,
     runOnce: () => dispatcher.runOnce(),
-    onError: () => logOperational('STUDIO_INVITATION_WORKER_ERROR'),
+    onError: (error) => {
+      logOperational('STUDIO_INVITATION_WORKER_ERROR');
+      options.reportError?.(error);
+    },
   });
   return {
     stop() {
