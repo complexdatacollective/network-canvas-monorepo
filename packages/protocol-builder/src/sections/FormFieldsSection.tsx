@@ -36,6 +36,7 @@ import {
   useSetVariableComponent,
 } from '../codebook/useCodebookVariableEdits.ts';
 import CodebookVariableValidationEditor from '../codebook/validation/CodebookVariableValidationEditor.tsx';
+import { optionsShapeFor } from '../codebook/variableOptions.ts';
 import { parameterShapeFor } from '../codebook/variableParameters.ts';
 import {
   buildVariableRoleMap,
@@ -130,6 +131,15 @@ const isOptionType = (type: string): boolean => OPTION_TYPES.includes(type);
 
 const CREATE_WITH_VALUES = 'Create this attribute and its values';
 const EDIT_VALUES = 'Change this attribute’s values';
+/**
+ * The same surface for a boolean, whose list is two answers rather than a list
+ * the researcher adds to.
+ *
+ * Named for what is actually being changed: a boolean's two values are true
+ * and false whatever the researcher does, and what they author is the words on
+ * them — so "values" would name the one part of it they cannot touch.
+ */
+const EDIT_ANSWER_LABELS = 'Change this attribute’s answer labels';
 /**
  * The same surface, for an attribute whose answer is not chosen from a list.
  *
@@ -935,19 +945,36 @@ function AttributeCodebookControls({
   // for the render before the control has registered.
   const pickedComponent =
     asString(liveComponent) ?? asString(asRecord(picked).component) ?? '';
-  const canEditValues = picked !== undefined && isOptionType(pickedType);
+  // Which list of answers the attribute holds — a list the researcher adds to,
+  // or the two a boolean choice names — asked of the control the ROW is
+  // showing, for the reason the settings are: a boolean moved to a toggle
+  // holds no list at all.
+  const optionsShape =
+    picked === undefined ? null : optionsShapeFor(pickedType, pickedComponent);
+  const canEditValues = optionsShape === 'choice';
+  const canEditAnswers = optionsShape === 'boolean';
   const canEditParameters =
     picked !== undefined &&
     parameterShapeFor(pickedType, pickedComponent) !== null;
   const canEditRules = picked !== undefined;
   const canCreate =
     inventingType !== undefined && isCollectableType(inventingType);
-  const definesLabel = canEditValues ? EDIT_VALUES : EDIT_PARAMETERS;
+  const definesLabel = canEditValues
+    ? EDIT_VALUES
+    : canEditAnswers
+      ? EDIT_ANSWER_LABELS
+      : EDIT_PARAMETERS;
 
   if (readOnly || subject === undefined || codebookDocument === null) {
     return null;
   }
-  if (!canCreate && !canEditValues && !canEditParameters && !canEditRules) {
+  if (
+    !canCreate &&
+    !canEditValues &&
+    !canEditAnswers &&
+    !canEditParameters &&
+    !canEditRules
+  ) {
     return null;
   }
 
@@ -984,7 +1011,7 @@ function AttributeCodebookControls({
             {CREATE_WITH_VALUES}
           </Button>
         )}
-        {(canEditValues || canEditParameters) && (
+        {(canEditValues || canEditAnswers || canEditParameters) && (
           <Button
             ref={definesTrigger}
             type="button"

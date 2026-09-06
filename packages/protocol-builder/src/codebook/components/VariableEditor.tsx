@@ -42,6 +42,16 @@ import {
   type CodebookVariableDraft,
 } from '../editing.ts';
 import {
+  type BooleanAnswer,
+  type BooleanAnswerIssues,
+  hasBooleanAnswerIssues,
+  optionsForShape,
+  optionsShapeFor,
+  type OptionsShape,
+  readBooleanAnswers,
+  validateBooleanAnswers,
+} from '../variableOptions.ts';
+import {
   DEFAULT_DATE_RESOLUTION,
   hasParameterIssues,
   parametersForShape,
@@ -52,6 +62,7 @@ import {
   validateParameters,
   type ParameterShape,
 } from '../variableParameters.ts';
+import VariableBooleanAnswerFields from './VariableBooleanAnswerFields.tsx';
 import VariableParameterFields from './VariableParameterFields.tsx';
 
 const VARIABLE_TYPE_OPTIONS = [
@@ -69,12 +80,21 @@ const VARIABLE_TYPE_OPTIONS = [
   value: VariableType;
 }>[];
 
-const OPTION_TYPES = new Set<VariableType>([
-  VariableTypes.ordinal,
-  VariableTypes.categorical,
-]);
+const VARIABLE_EDITOR_PROPERTIES = ['name', 'type'] as const;
 
-const VARIABLE_EDITOR_PROPERTIES = ['name', 'type', 'options'] as const;
+/**
+ * What the answers surface REPLACES, which is `options` whatever it renders.
+ *
+ * Listed the way `parameters` is, and for the same reason: the request builder
+ * lays the draft OVER the prior variable, so a key the draft no longer carries
+ * would survive being taken away. Unconditional, though, where the parameters
+ * block is not — "this attribute offers no list at all" is one of the answers
+ * `optionsShapeFor` gives, and it is the answer for the control that cannot
+ * show one. A boolean collected with a `Toggle` is the case that matters: its
+ * variable schema has no `options` key, so a pair left behind by the control
+ * that showed them is a variable the codebook refuses outright.
+ */
+const OPTIONS_OWNED_PROPERTIES = ['options'] as const;
 
 /**
  * Properties a type change invalidates, which are therefore replaced whole
@@ -173,11 +193,12 @@ type VariableEditorInstanceProps = VariableEditorProps extends infer TProps
  * surface; any unrendered draft properties are preserved and validated by the
  * request builder rather than silently normalised here.
  *
- * Which of the two optional blocks appears is decided by the attribute rather
- * than by the host: a list of values for an attribute whose answer is chosen
- * from one, and control settings for a control that takes any. They are never
- * both true at once — a categorical attribute's control takes no settings, and
- * a date or a scale is not chosen from a list.
+ * Which of the optional blocks appears is decided by the attribute rather than
+ * by the host: a list of values for an attribute whose answer is chosen from
+ * one, the two named answers for a boolean the participant chooses between,
+ * and control settings for a control that takes any. Never more than one of
+ * them at a time — a categorical attribute's control takes no settings, and a
+ * date or a scale is not chosen from a list.
  */
 export default function VariableEditor(props: VariableEditorProps) {
   const { openId, ...instanceProps } = props;
@@ -262,20 +283,27 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
     snapshot.draft.type,
     snapshot.draft.component,
   );
+  // Which list of answers this attribute holds, on the same terms.
+  const optionsShape = optionsShapeFor(
+    snapshot.draft.type,
+    snapshot.draft.component,
+  );
   const replaceProperties = variableEditorReplaceProperties(
     typeChanged,
     parameterShape,
   );
   const submittedDraft =
     props.mode === 'create'
-      ? draftWithOwnedParameters(snapshot.draft, parameterShape)
+      ? draftWithOwnedBlocks(snapshot.draft, parameterShape, optionsShape)
       : draftOwnedByVariableEditor(
           snapshot.draft,
           lockedOptions !== null,
           typeChanged,
           parameterShape,
+          optionsShape,
         );
-  const hasOptions = selectedType !== null && OPTION_TYPES.has(selectedType);
+  const hasOptions = optionsShape === 'choice';
+  const booleanAnswers = readBooleanAnswers(snapshot.draft.options);
   const optionsLocked =
     lockedOptions !== null || snapshot.draft.readOnly === true;
   const interactionDisabled = readOnly || snapshot.status !== 'editing';
@@ -372,6 +400,15 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
     [replaceProperty],
   );
 
+  const replaceAnswer = (index: number, answer: BooleanAnswer) => {
+    replaceProperty(
+      'options',
+      booleanAnswers.map((held, heldIndex) =>
+        heldIndex === index ? answer : held,
+      ),
+    );
+  };
+
   const replaceParameter = (key: string, value: unknown) => {
     if (parameterShape === null) return;
     replaceProperty(
@@ -407,6 +444,24 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
       return;
     }
     if (unchangedUpdate) return;
+    // Judged here for the reason the parameters are, and one of its own: the
+    // schema takes any string as a label, so nothing downstream refuses an
+    // answer with no words on it.
+    if (optionsShape === 'boolean') {
+      const answerIssues = validateBooleanAnswers(snapshot.draft.options);
+      if (hasBooleanAnswerIssues(answerIssues)) {
+        activeRequestId.current = null;
+        setIssues(
+          Object.entries(answerIssues).flatMap(([index, messages]) =>
+            messages.map((message) => ({
+              path: ['options', Number(index)],
+              message,
+            })),
+          ),
+        );
+        return;
+      }
+    }
     // Judged here rather than left to the request builder: the builder parses
     // the whole variable and answers against a path, which cannot say WHICH of
     // two dates is the one the schema will not take. The same schemas run
@@ -485,6 +540,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
   const nameErrors = messagesAt(issues, 'name');
   const typeErrors = messagesAt(issues, 'type');
   const optionErrors = messagesAt(issues, 'options');
+  const answerIssues = booleanAnswerMessages(issues);
   const parameterIssues = parameterMessages(issues);
   const contradictions = contradictionMessages(issues);
   const failurePresentation = failureFrom(snapshot.lastFailure, contradictions);
@@ -690,6 +746,25 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
           </fieldset>
         )}
 
+        {optionsShape === 'boolean' && (
+          <fieldset className="mb-8 min-w-0">
+            <legend className="font-heading mb-2 font-bold">
+              The two answers
+            </legend>
+            <p className="text-muted mb-4 text-sm">
+              Write what the participant chooses between. Left empty, they are
+              offered Yes and No. A negative answer is shown in red when it is
+              selected.
+            </p>
+            <VariableBooleanAnswerFields
+              answers={booleanAnswers}
+              onChange={replaceAnswer}
+              issues={answerIssues}
+              readOnly={interactionDisabled || optionsLocked}
+            />
+          </fieldset>
+        )}
+
         {parameterShape !== null && (
           <fieldset
             className="mb-8 min-w-0"
@@ -756,6 +831,7 @@ function draftOwnedByVariableEditor(
   persistLockedOptions: boolean,
   includeTypeMetadata: boolean,
   parameterShape: ParameterShape | null,
+  optionsShape: OptionsShape | null,
 ): CodebookVariableDraft {
   const owned: Record<string, unknown> = Object.create(null);
   const properties = includeTypeMetadata
@@ -763,6 +839,16 @@ function draftOwnedByVariableEditor(
     : VARIABLE_EDITOR_PROPERTIES;
   for (const property of properties) {
     if (Object.hasOwn(draft, property)) owned[property] = draft[property];
+  }
+  const options = optionsForShape(optionsShape, draft.options);
+  if (options === undefined) delete owned.options;
+  else owned.options = options;
+  // Written with them, for the reason the parameters block writes it: the pair
+  // and the control that shows them cannot be committed out of step, and a
+  // host opens this editor on the control the researcher has just chosen
+  // rather than the one the codebook still records.
+  if (optionsShape === 'boolean' && Object.hasOwn(draft, 'component')) {
+    owned.component = draft.component;
   }
   if (parameterShape !== null) {
     if (Object.hasOwn(draft, 'component')) owned.component = draft.component;
@@ -775,23 +861,32 @@ function draftOwnedByVariableEditor(
 }
 
 /**
- * A created variable's draft, with its parameters narrowed to the shape the
- * chosen control actually takes.
+ * A created variable's draft, with its parameters and its answers narrowed to
+ * the shapes the attribute and its chosen control actually take.
  *
- * Create mode submits the draft whole, so a block still holding a key the
+ * Create mode submits the draft whole, so a block still holding what the
  * control before it needed would be sent as authored and refused by the
  * schema — the same pruning the update path gets from
  * `draftOwnedByVariableEditor`.
  */
-function draftWithOwnedParameters(
+function draftWithOwnedBlocks(
   draft: CodebookVariableDraft,
   parameterShape: ParameterShape | null,
+  optionsShape: OptionsShape | null,
 ): CodebookVariableDraft {
-  if (parameterShape === null) return draft;
-  const parameters = parametersForShape(parameterShape, draft.parameters);
   const next: Record<string, unknown> = { ...draft };
-  if (parameters === undefined) delete next.parameters;
-  else next.parameters = parameters;
+  if (parameterShape !== null) {
+    const parameters = parametersForShape(parameterShape, draft.parameters);
+    if (parameters === undefined) delete next.parameters;
+    else next.parameters = parameters;
+  }
+  // A choice list is passed through as authored, so an unauthored one still
+  // reaches the request builder to be refused there — see `optionsForShape`.
+  if (optionsShape === 'boolean') {
+    const options = optionsForShape(optionsShape, draft.options);
+    if (options === undefined) delete next.options;
+    else next.options = options;
+  }
   return next;
 }
 
@@ -826,6 +921,7 @@ function variableEditorReplaceProperties(
   return [
     ...new Set([
       ...VARIABLE_EDITOR_PROPERTIES,
+      ...OPTIONS_OWNED_PROPERTIES,
       ...(includeTypeMetadata ? TYPE_OWNED_PROPERTIES : []),
       ...(parameterShape === null ? [] : PARAMETER_OWNED_PROPERTIES),
     ]),
@@ -882,9 +978,12 @@ function draftForType(
   // Encryption round-trips strings and is valid only for node text values.
   if (nextType !== VariableTypes.text) delete next.encrypted;
 
-  if (OPTION_TYPES.has(nextType)) {
-    const previousType = variableTypeFrom(draft.type);
-    if (previousType === null || !OPTION_TYPES.has(previousType)) {
+  // Asked of the type with no control beside it, because the control has just
+  // been deleted above — which is also why a boolean lands here holding no
+  // list: the pair belongs to the control that shows it, and the type change
+  // has left the new type with none.
+  if (optionsShapeFor(nextType, undefined) === 'choice') {
+    if (optionsShapeFor(draft.type, draft.component) !== 'choice') {
       next.options = [];
     }
   } else {
@@ -938,6 +1037,27 @@ function messagesAt(
   return issues
     .filter((issue) => issue.path[0] === property)
     .map((issue) => issue.message);
+}
+
+/**
+ * The refusals about one of a boolean's two answers, filed under the answer
+ * they belong to.
+ *
+ * Anchored at the position rather than at the value it records, because that
+ * is where the control the researcher has to fix in is: the pair is rendered
+ * in the order the protocol stores it.
+ */
+function booleanAnswerMessages(
+  issues: readonly CodebookDraftIssue[],
+): BooleanAnswerIssues {
+  const messages: Record<number, string[]> = {};
+  for (const issue of issues) {
+    if (issue.path[0] !== 'options') continue;
+    const index = issue.path[1];
+    if (typeof index !== 'number') continue;
+    (messages[index] ??= []).push(issue.message);
+  }
+  return messages;
 }
 
 /**
