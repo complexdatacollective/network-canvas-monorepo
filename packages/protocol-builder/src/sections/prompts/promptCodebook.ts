@@ -5,9 +5,7 @@ import type {
   VariableType,
   Variables,
 } from '@codaco/protocol-validation';
-import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import { sectionIdForCodebookSubject } from '../../codebook/editing.ts';
 import {
   buildExclusiveVariableSlotMap,
   buildInterfaceOwnedOptionMap,
@@ -217,26 +215,6 @@ export function useLockedOptions(
       ],
     );
   }, [protocolContext, subject, variableId]);
-}
-
-/**
- * The codebook section a variable editor writes into, exactly as the
- * authoritative protocol holds it.
- *
- * The section DOCUMENT rather than the parsed definition: a compound edit
- * carries the content hash of what it was built from, so anything read for one
- * has to be the authoritative document itself.
- */
-export function useCodebookSectionDocument(
-  subject: CodebookSubject | null,
-): Readonly<SectionDoc> | null {
-  const { controller } = useStageEditorForm();
-  const { protocolSections } = controller.snapshot;
-
-  return useMemo(() => {
-    if (subject === null) return null;
-    return protocolSections[sectionIdForCodebookSubject(subject)] ?? null;
-  }, [protocolSections, subject]);
 }
 
 export type PromptPickGateInput = Readonly<{

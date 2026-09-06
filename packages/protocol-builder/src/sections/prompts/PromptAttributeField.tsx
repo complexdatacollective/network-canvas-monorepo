@@ -10,17 +10,14 @@ import type { VariableType } from '@codaco/protocol-validation';
 
 import VariableEditor from '../../codebook/components/VariableEditor.tsx';
 import type { CodebookVariableDraft } from '../../codebook/editing.ts';
+import { useCodebookSectionDocument } from '../../codebook/useCodebookVariableEdits.ts';
 import CodebookVariableValidationEditor from '../../codebook/validation/CodebookVariableValidationEditor.tsx';
 import type { WriterClass } from '../../codebook/variableRoles.ts';
 import { VariablePickerControl } from '../../fields/VariablePicker.tsx';
 import { DialogFormField } from '../../form/DialogForm.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
-import {
-  useCodebookSectionDocument,
-  useLockedOptions,
-  usePromptVariablePool,
-} from './promptCodebook.ts';
+import { useLockedOptions, usePromptVariablePool } from './promptCodebook.ts';
 
 const OPTION_TYPES: readonly VariableType[] = Object.freeze([
   'categorical',
@@ -175,7 +172,9 @@ export default function PromptAttributeField({
     writerClass,
     currentValue: picked,
   });
-  const codebookDocument = useCodebookSectionDocument(subject);
+  // `undefined` rather than `null`: the shared hook takes the codebook's own
+  // absent-subject value, and this family's is the picker's.
+  const codebookDocument = useCodebookSectionDocument(subject ?? undefined);
   const lockedOptions = useLockedOptions(subject, picked);
   const [editing, setEditing] = useState<{
     key: string;
