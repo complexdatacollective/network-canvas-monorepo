@@ -181,7 +181,9 @@
         "src/netlify.ts!",
         // Explicit image commands are bundle input strings, not imports.
         "src/configure.ts!",
-        "src/diagnostics.ts!"
+        "src/diagnostics.ts!",
+        "src/client-cache.ts!",
+        "src/client-cache-operation.ts!"
       ],
       "project": ["src/**/*.ts", "scripts/**/*.ts", "qualification/**/*.ts"]
     },

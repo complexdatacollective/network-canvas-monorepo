@@ -7,11 +7,15 @@ import {
   serveStatic,
   type ServeStaticOptions,
 } from '@hono/node-server/serve-static';
-import type { Context, Hono, MiddlewareHandler } from 'hono';
+import type { Hono, MiddlewareHandler } from 'hono';
 
 import { gatedSurfacePaths } from '@codaco/studio-rpc/surfaces';
 
 import type { PrincipalVariables } from './auth/principal.ts';
+import {
+  isHashedClientAssetPath,
+  type VerifiedClientAssetCache,
+} from './deployment/client-asset-cache.ts';
 import type { StudioEnv } from './env.ts';
 import { logOperational } from './observability/logger.ts';
 
@@ -66,11 +70,11 @@ function normaliseForGate(path: string): string {
 
 // Hashed build assets are immutable by construction; the app shell must
 // revalidate every load so deploys take effect (and open tabs keep resolving
-// old hashed chunks from the CDN, not from here).
-function setCacheHeader(path: string, c: Context) {
-  c.header(
+// old hashed chunks from the CDN or the verified self-host retained volume).
+function setCacheHeader(path: string, response: Response) {
+  response.headers.set(
     'Cache-Control',
-    path.endsWith('index.html')
+    response.headers.get('Content-Type')?.startsWith('text/html')
       ? 'no-store'
       : path.includes('/assets/')
         ? 'public, max-age=31536000, immutable'
@@ -100,6 +104,7 @@ export function mountClient(
   app: Hono<PrincipalVariables>,
   env: StudioEnv,
   setupComplete?: () => Promise<boolean>,
+  retainedAssets?: VerifiedClientAssetCache,
 ): void {
   // Default matches the Docker image layout: dist/index.js next to a client/
   // directory. `pnpm start` overrides via CLIENT_DIST for the local layout.
@@ -113,12 +118,20 @@ export function mountClient(
     options: ServeStaticOptions<PrincipalVariables>,
   ): MiddlewareHandler<PrincipalVariables> => {
     let serve: MiddlewareHandler<PrincipalVariables> | undefined;
-    return (c, next) => {
+    return async (c, next) => {
       // The adapter otherwise prints the configured path at construction.
       // Defer construction until a development build appears, retaining the
       // existing ability to serve a client built after the server starts.
-      if (!serve && existsSync(clientRoot)) serve = serveStatic(options);
-      return serve ? serve(c, next) : next();
+      if (!serve && existsSync(options.root ?? clientRoot))
+        serve = serveStatic(options);
+      if (!serve) return next();
+      const response = await serve(c, next);
+      // The adapter calls onFound after c.body creates its Response; context
+      // headers changed by that callback do not reach the returned response.
+      // Hono's dispatcher can return its finalized Context from next() even
+      // though the middleware type describes that branch as void.
+      if (response instanceof Response) setCacheHeader(c.req.path, response);
+      return response;
     };
   };
 
@@ -153,7 +166,20 @@ export function mountClient(
     return shell === undefined ? c.body(null, 404) : c.html(shell, 404);
   });
 
-  app.use('*', serveWhenPresent({ root: clientRoot, onFound: setCacheHeader }));
+  if (retainedAssets) {
+    const serveRetained = serveWhenPresent({
+      root: retainedAssets.root,
+    });
+    app.use('/assets/*', async (c, next) =>
+      isHashedClientAssetPath(c.req.path.slice('/assets/'.length))
+        ? serveRetained(c, next)
+        : c.notFound(),
+    );
+    // A missing module must never become the HTML SPA fallback. Only hashed
+    // files are served here; the current image always owns index.html.
+    app.get('/assets/*', (c) => c.notFound());
+  }
+  app.use('*', serveWhenPresent({ root: clientRoot }));
   // SPA fallback: unmatched GET paths serve the app shell so client-side
   // routes deep-link correctly.
   app.get(
@@ -161,7 +187,6 @@ export function mountClient(
     serveWhenPresent({
       root: clientRoot,
       path: 'index.html',
-      onFound: setCacheHeader,
     }),
   );
 }

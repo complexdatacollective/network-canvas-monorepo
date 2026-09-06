@@ -146,6 +146,26 @@ before closing pools. Failed drain/flush exits nonzero. Docker's fifteen-second
 grace exceeds Studio's ten-second hard limit. An unfinished durable lease can
 be retried after expiry; do not assume external delivery is exactly-once.
 
+The `client-assets` initialization service copies only the selected image's
+hashed browser files into the durable `client-assets` volume. It runs without
+network access, authentication, database credentials or encryption roots. The
+web process mounts that volume read-only and verifies its complete manifest,
+file sizes, hashes and current-image membership before opening any listener or
+starting workers. `index.html` always comes from the selected image and uses
+`Cache-Control: no-store`; retained hashed URLs use immutable cache headers.
+`CLIENT_DIST` cannot override the client while this cache is configured.
+
+Updates preserve every previously retained hashed URL, so an open editor can
+load its older lazy modules after a deployment or recovery. A reused URL with
+different bytes, an incomplete generation or corruption refuses admission.
+Writers and archives hold a kernel lock; a completed generation and its pointer
+are published atomically. Failed staging leaves the previous generation intact.
+Do not remove generations or edit their files manually. There is currently no
+automatic expiry: reserve storage for retained assets across every update.
+The image's `client-assets <retain|verify|archive> --directory /absolute/cache`
+command is also available for operators. `archive` emits only a binary tar;
+the other commands print generation identity and file count, never secrets.
+
 ## Upgrade and rollback
 
 Keep the previous release's complete manifest, images and matching backup.
@@ -193,7 +213,8 @@ or destroyed automatically.
 ## Back up and restore
 
 A complete recovery set has two separately held parts. The data archive contains
-the database, object-store data, exact release manifest/images, `.env` and public
+the database, object-store data, retained hashed browser assets, exact release
+manifest/images, `.env` and public
 deployment configuration. The separate `encryption.env` custody file contains
 every historical PII, integration and stable blind-index root and the keyset.
 The data archive contains only this file's SHA-256 binding, never its contents.
@@ -231,12 +252,18 @@ sh deployment/backup.sh "$BACKUP_DIR" "$KEY_CUSTODY"
 
 The command first copies the complete encryption file to the new independent
 custody path and verifies that exact key snapshot. It then takes a database
-archive, stops MinIO and captures its volume, copies configuration while
+archive, stops MinIO and captures its volume, locks and verifies the retained
+client generation into `client-assets.tar`, copies configuration while
 excluding all roots, records data counts, and verifies its
 checksum list before writing `COMPLETE`. Preserve the signed release manifest
 and all matching image digests with it. A directory without `COMPLETE` is not
 a successful backup. Referenced object bytes are captured after in-flight
 uploads drain; a database-only snapshot is insufficient.
+The retained-client archive includes only its verified complete generation and
+pointer. It excludes interrupted staging directories and historical shell files.
+Restore requires this archive and refuses a populated or misrouted cache volume
+before changing the target. It verifies the restored generation against the
+retained image before admission.
 
 To resume the source after a successful backup, re-enable the two logins with
 the administrator command shown above, start MinIO, run `encryption verify`,
@@ -244,7 +271,7 @@ and start Studio privately. Check diagnostics and an authenticated smoke
 before starting the proxy and any separated workers. An unsuccessful capture
 requires correcting the reported condition under quarantine first.
 
-Restore into a new Compose project with empty named volumes. Copy the backed-up
+Restore into a new Compose project with unused named volumes. Copy the backed-up
 configuration and matching digests, preserving credentials. Retrieve the
 matching historical keyset from its independent custody location. The restore
 project's proxy subnet must be unique if both
@@ -270,8 +297,21 @@ credentials. Keep it in `COMPOSE_FILE` for every recovery command. Docker's
 restores images and tags; recovery does not rely on registry digest names
 surviving a change of Docker storage backend.
 
-Restore refuses populated volumes or retained database
-sessions, and restores the archive in one transaction. The quarantine overlay
+Before loading images or replacing local configuration or keys, restore resolves
+the effective Compose project and every named volume and network. It refuses any existing
+project container, network or volume, including stopped containers and orphaned
+resources, and any existing custom or external volume or network named by the
+configuration. Reusing a network could resolve another deployment's database or
+object-store aliases even when the new project's volumes are empty. Recovery
+networks must use the default bridge driver without driver options; existing
+external networks cannot be reused.
+Inspection errors and bind-mounted or anonymous database/object data volumes
+also refuse recovery. Named volumes must use the default local driver without
+driver options, so a new name cannot alias an existing host directory or remote
+store. Choose an independent project and new volume names; do not
+run concurrent operations against that target. The later empty-volume and
+database-session checks remain in place, and the database archive restores in
+one transaction. The quarantine overlay
 runs only the web role on the private data network, with mail and optional
 telemetry disabled. The process has no external network route. Do not start
 the production proxy or workers until validation finishes.

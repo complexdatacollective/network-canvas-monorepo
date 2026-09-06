@@ -1,4 +1,5 @@
 import { setTimeout as delay } from 'node:timers/promises';
+import { fileURLToPath } from 'node:url';
 
 import { serve } from '@hono/node-server';
 import { WebSocketServer } from 'ws';
@@ -14,6 +15,10 @@ import {
   isMissingRoleError,
 } from './db/pool.ts';
 import { checkSchema, type SchemaState } from './db/schema.ts';
+import {
+  verifyClientAssetCache,
+  type VerifiedClientAssetCache,
+} from './deployment/client-asset-cache.ts';
 import { readEncryptionEnv, readEnv } from './env.ts';
 import { getSetupStatus } from './instance/bootstrap.ts';
 import { logOperational } from './observability/logger.ts';
@@ -53,6 +58,18 @@ const env = (() => {
   }
 })();
 const servesWeb = env.role !== 'worker';
+let retainedClientAssets: VerifiedClientAssetCache | undefined;
+if (servesWeb && env.clientAssetCache) {
+  try {
+    retainedClientAssets = await verifyClientAssetCache(
+      env.clientAssetCache,
+      fileURLToPath(new URL('../client/assets', import.meta.url)),
+    );
+  } catch {
+    logOperational('STUDIO_CLIENT_ASSETS_INVALID');
+    process.exit(1);
+  }
+}
 const pool = env.db && servesWeb ? createPool(env.db) : undefined;
 const maintenancePool = env.db ? createMaintenancePool(env.db) : undefined;
 const schemaPool = pool ?? maintenancePool;
@@ -168,6 +185,7 @@ if (servesWeb)
     env,
     async () =>
       (await getSetupStatus(pool, env.bootstrapToken)).state === 'complete',
+    retainedClientAssets,
   );
 
 const wsServer = servesWeb

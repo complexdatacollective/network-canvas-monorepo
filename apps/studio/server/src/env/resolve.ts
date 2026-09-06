@@ -1,3 +1,5 @@
+import { isAbsolute, resolve as resolvePath } from 'node:path';
+
 import type { DeploymentMode } from '@codaco/studio-rpc/surfaces';
 
 import type { RawEnv } from './variables.ts';
@@ -42,6 +44,7 @@ export type StudioEnv = {
   trustedProxies: string[];
   host: string;
   clientDist: string | undefined;
+  clientAssetCache?: string;
   s3: S3Env | undefined;
   db: DbEnv | undefined;
   auth: AuthEnv | undefined;
@@ -215,6 +218,18 @@ function resolveAuth(
 
 export function resolve(raw: RawEnv): StudioEnv {
   const devDefaults = raw.STUDIO_DEV_DEFAULTS === true;
+  const clientAssetCache = raw.STUDIO_CLIENT_ASSET_CACHE;
+  if (
+    clientAssetCache !== undefined &&
+    (!isAbsolute(clientAssetCache) ||
+      clientAssetCache !== resolvePath(clientAssetCache) ||
+      clientAssetCache === '/' ||
+      clientAssetCache.length > 4096 ||
+      raw.CLIENT_DIST)
+  )
+    throw new Error(
+      'STUDIO_CLIENT_ASSET_CACHE requires an absolute cache directory and the image-owned client.',
+    );
 
   // Checked against an explicit development or test NODE_ENV rather than
   // merely "not production", because the two mistakes travel together: an
@@ -253,6 +268,7 @@ export function resolve(raw: RawEnv): StudioEnv {
     trustedProxies: raw.TRUSTED_PROXIES ?? [],
     host: raw.HOST ?? DEFAULT_HOST,
     clientDist: raw.CLIENT_DIST,
+    clientAssetCache,
     s3: resolveS3(raw),
     db,
     auth: resolveAuth(raw, db, devDefaults),

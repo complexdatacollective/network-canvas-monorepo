@@ -34,6 +34,7 @@ export const serverSchemas = {
     .regex(/^[!-~]+$/)
     .optional(),
   CLIENT_DIST: z.string().min(1).optional(),
+  STUDIO_CLIENT_ASSET_CACHE: z.string().min(1).optional(),
 
   /**
    * Which of the two topologies this process is serving. Read at runtime by

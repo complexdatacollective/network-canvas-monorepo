@@ -114,6 +114,14 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
       'Unset ⇒ `../client` relative to the server bundle, the Docker image layout. Irrelevant where a CDN serves the client.',
     example: '../client/dist',
   },
+  STUDIO_CLIENT_ASSET_CACHE: {
+    group: 'Process',
+    summary:
+      'Absolute directory of verified immutable hashed client assets retained across self-host updates.',
+    deployment:
+      'Unset ⇒ serve only the selected image’s assets. Compose mounts the client-assets volume read-only at /retained-assets and verifies its complete generation before web admission. Populate it using the selected image’s client-assets retain command. Cannot be combined with CLIENT_DIST; the shell and new asset bytes must belong to the image. Worker and managed CDN lanes do not need this directory.',
+    example: '/retained-assets',
+  },
   STUDIO_DEPLOYMENT_MODE: {
     group: 'Process',
     summary:
