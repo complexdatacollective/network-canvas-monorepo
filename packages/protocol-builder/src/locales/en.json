@@ -91,6 +91,34 @@
     "defaultMessage": "Change this attribute’s values",
     "description": "Button that opens the codebook editor for the list of answers a participant chooses between. Also the title of the dialog it opens."
   },
+  "protocolBuilder.censusPrompts.binDescription": {
+    "defaultMessage": "Write the questions this stage asks about each person, and drag them into the order the participant answers them.",
+    "description": "Description of the prompts section in a stage where the participant answers each question about one network member at a time by dragging them into a bin. A stage is one step of an interview; a prompt is one question the participant is asked."
+  },
+  "protocolBuilder.censusPrompts.categoricalBinFieldHint": {
+    "defaultMessage": "The participant sorts everyone into bins for one question at a time, in this order.",
+    "description": "Guidance under the list of prompts in a Categorical Bin stage, where a bin is one named answer the participant drags a network member into, and the bins have no order among them."
+  },
+  "protocolBuilder.censusPrompts.oneToManyDescription": {
+    "defaultMessage": "Write the questions this stage asks about one person and the group around them, and drag them into the order the participant answers them.",
+    "description": "Description of the prompts section in a stage that shows the participant one network member alongside all the others and asks which of the others the question applies to. A stage is one step of an interview; a prompt is one question the participant is asked."
+  },
+  "protocolBuilder.censusPrompts.oneToManyFieldHint": {
+    "defaultMessage": "The participant is shown one person at a time and chooses who among the others the question applies to.",
+    "description": "Guidance under the list of prompts in a One-to-Many Dyad Census stage, where the participant selects any number of the remaining network members for the person in front of them."
+  },
+  "protocolBuilder.censusPrompts.ordinalBinFieldHint": {
+    "defaultMessage": "The participant sorts everyone into ordered bins for one question at a time, in this order.",
+    "description": "Guidance under the list of prompts in an Ordinal Bin stage, where the bins are a scale running from least to most and their order is what the answer means."
+  },
+  "protocolBuilder.censusPrompts.pairDescription": {
+    "defaultMessage": "Write the questions this stage asks about each pair, and drag them into the order the participant answers them.",
+    "description": "Description of the prompts section in a stage that shows the participant two network members side by side and asks about the two of them together. A stage is one step of an interview; a prompt is one question the participant is asked."
+  },
+  "protocolBuilder.censusPrompts.pairFieldHint": {
+    "defaultMessage": "The participant is shown one pair of people at a time and answers these questions about them, in this order.",
+    "description": "Guidance under the list of prompts in a stage that shows the participant two network members side by side and asks about the two of them together."
+  },
   "protocolBuilder.codebookEditing.createDescription": {
     "defaultMessage": "Create the attribute \"{name}\"",
     "description": "What the change is called in the record a host keeps of protocol edits, and in any undo history it offers. name is the attribute name the researcher typed."

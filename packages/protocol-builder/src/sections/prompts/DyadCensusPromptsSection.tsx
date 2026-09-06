@@ -1,15 +1,15 @@
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 
-import PromptsSection, { type PromptsCopy } from '../PromptsSection.tsx';
+import PromptsSection, { type PromptsSectionCopy } from '../PromptsSection.tsx';
+import { censusPromptsMessages } from './censusPromptsMessages.ts';
 import CreateEdgeField from './CreateEdgeField.tsx';
 import { PromptTextField, PromptTextPreview } from './promptText.tsx';
 
-const PROMPTS_COPY: Partial<PromptsCopy> = {
-  description:
-    'Write the questions this stage asks about each pair, and drag them into the order the participant answers them.',
-  fieldHint:
-    'The participant is shown one pair of people at a time and answers these questions about them, in this order.',
-};
+/** What this stage shows the participant, said in the section's own words. */
+const WORDS: PromptsSectionCopy = Object.freeze({
+  description: censusPromptsMessages.pairDescription,
+  fieldHint: censusPromptsMessages.pairFieldHint,
+});
 
 /**
  * What the participant is looking at while they answer, said before the
@@ -52,10 +52,6 @@ function DyadCensusPromptEditor() {
   );
 }
 
-export type DyadCensusPromptsSectionProps = Readonly<{
-  copy?: Partial<PromptsCopy>;
-}>;
-
 /**
  * The questions a Dyad Census asks about every pair of people.
  *
@@ -63,14 +59,12 @@ export type DyadCensusPromptsSectionProps = Readonly<{
  * its ordering, its rule that a stage must ask something — is the shared
  * prompts section; only what one prompt SAYS is here.
  */
-export default function DyadCensusPromptsSection({
-  copy,
-}: DyadCensusPromptsSectionProps) {
+export default function DyadCensusPromptsSection() {
   return (
     <PromptsSection
       PromptEditor={DyadCensusPromptEditor}
       PromptPreview={PromptTextPreview}
-      copy={{ ...PROMPTS_COPY, ...copy }}
+      words={WORDS}
     />
   );
 }

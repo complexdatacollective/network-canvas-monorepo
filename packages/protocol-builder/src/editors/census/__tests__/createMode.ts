@@ -1,4 +1,5 @@
-import { screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
+import { expect } from 'vitest';
 
 import {
   fixtureStageIds,
@@ -19,10 +20,22 @@ export const CREATE_POSITION = fixtureStageIds().indexOf('network-composer-1');
 export const stageNameInput = (): HTMLInputElement =>
   screen.getByRole('textbox', { name: 'Stage name' });
 
+/**
+ * Switches skip logic on, and proves it went on.
+ *
+ * The switch's own state is asserted rather than assumed, because everything
+ * a caller does next reads the fields that mount WITH it: a click that did not
+ * take reports itself as "the destination list is not in the document", which
+ * names the wrong thing and sends the reader looking at the destinations. Seen
+ * once under a loaded full-suite run, where the switch was still
+ * `aria-checked="false"` by the time the destinations were read.
+ */
 export const switchSkipLogicOn = async (
   harness: StageEditorHarness,
 ): Promise<void> => {
-  await harness.user.click(screen.getByRole('switch', { name: 'Skip logic' }));
+  const control = screen.getByRole('switch', { name: 'Skip logic' });
+  await harness.user.click(control);
+  await waitFor(() => expect(control).toBeChecked());
 };
 
 export const destinationOptions = (): string[] => {

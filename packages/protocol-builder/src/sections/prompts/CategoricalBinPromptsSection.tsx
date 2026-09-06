@@ -6,8 +6,9 @@ import type { VariableType } from '@codaco/protocol-validation';
 import type { CrossClassPick } from '../../codebook/variableValidation.ts';
 import RichTextField from '../../fields/RichTextField.tsx';
 import { DialogFormField } from '../../form/DialogForm.tsx';
-import PromptsSection, { type PromptsCopy } from '../PromptsSection.tsx';
+import PromptsSection, { type PromptsSectionCopy } from '../PromptsSection.tsx';
 import type { RowEditorProps } from '../rowRenderers.tsx';
+import { censusPromptsMessages } from './censusPromptsMessages.ts';
 import PromptAttributeField from './PromptAttributeField.tsx';
 import {
   usePromptPickGate,
@@ -41,12 +42,11 @@ const PICKS: readonly CrossClassPick[] = Object.freeze([
 /** What this interface can show at once before the bins stop being readable. */
 const BIN_LIMIT = 8;
 
-const PROMPTS_COPY: Partial<PromptsCopy> = {
-  description:
-    'Write the questions this stage asks about each person, and drag them into the order the participant answers them.',
-  fieldHint:
-    'The participant sorts everyone into bins for one question at a time, in this order.',
-};
+/** What this stage shows the participant, said in the section's own words. */
+const WORDS: PromptsSectionCopy = Object.freeze({
+  description: censusPromptsMessages.binDescription,
+  fieldHint: censusPromptsMessages.categoricalBinFieldHint,
+});
 
 /**
  * What the participant is doing while they answer, said before the researcher
@@ -193,10 +193,6 @@ function CategoricalBinPromptEditor({ item }: RowEditorProps) {
   );
 }
 
-export type CategoricalBinPromptsSectionProps = Readonly<{
-  copy?: Partial<PromptsCopy>;
-}>;
-
 /**
  * The questions a Categorical Bin asks, each with the bins it is answered by.
  *
@@ -207,9 +203,7 @@ export type CategoricalBinPromptsSectionProps = Readonly<{
  * attributes comes from the editing session rather than from a Redux
  * selector, so a collaborator's codebook change reaches an open prompt.
  */
-export default function CategoricalBinPromptsSection({
-  copy,
-}: CategoricalBinPromptsSectionProps) {
+export default function CategoricalBinPromptsSection() {
   const subject = useStageSubject();
   const pickGate = usePromptPickGate({
     picks: PICKS,
@@ -221,7 +215,7 @@ export default function CategoricalBinPromptsSection({
       PromptEditor={CategoricalBinPromptEditor}
       PromptPreview={PromptTextPreview}
       editorValidate={pickGate}
-      copy={{ ...PROMPTS_COPY, ...copy }}
+      words={WORDS}
     />
   );
 }

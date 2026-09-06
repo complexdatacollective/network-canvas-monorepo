@@ -6,8 +6,9 @@ import type { VariableType } from '@codaco/protocol-validation';
 import type { CrossClassPick } from '../../codebook/variableValidation.ts';
 import { OrdinalColorControl } from '../../fields/OrdinalColorField.tsx';
 import { DialogFormField } from '../../form/DialogForm.tsx';
-import PromptsSection, { type PromptsCopy } from '../PromptsSection.tsx';
+import PromptsSection, { type PromptsSectionCopy } from '../PromptsSection.tsx';
 import type { RowEditorProps } from '../rowRenderers.tsx';
+import { censusPromptsMessages } from './censusPromptsMessages.ts';
 import PromptAttributeField from './PromptAttributeField.tsx';
 import {
   usePromptPickGate,
@@ -31,12 +32,11 @@ const PICKS: readonly CrossClassPick[] = Object.freeze([
 /** What this interface can show at once before the bins stop being readable. */
 const BIN_LIMIT = 5;
 
-const PROMPTS_COPY: Partial<PromptsCopy> = {
-  description:
-    'Write the questions this stage asks about each person, and drag them into the order the participant answers them.',
-  fieldHint:
-    'The participant sorts everyone into ordered bins for one question at a time, in this order.',
-};
+/** What this stage shows the participant, said in the section's own words. */
+const WORDS: PromptsSectionCopy = Object.freeze({
+  description: censusPromptsMessages.binDescription,
+  fieldHint: censusPromptsMessages.ordinalBinFieldHint,
+});
 
 function OrdinalBinGuidance() {
   return (
@@ -131,10 +131,6 @@ function OrdinalBinPromptEditor({ item }: RowEditorProps) {
   );
 }
 
-export type OrdinalBinPromptsSectionProps = Readonly<{
-  copy?: Partial<PromptsCopy>;
-}>;
-
 /**
  * The questions an Ordinal Bin asks, each with the scale it is answered on.
  *
@@ -144,9 +140,7 @@ export type OrdinalBinPromptsSectionProps = Readonly<{
  * the pool of attributes comes from the editing session rather than a Redux
  * selector.
  */
-export default function OrdinalBinPromptsSection({
-  copy,
-}: OrdinalBinPromptsSectionProps) {
+export default function OrdinalBinPromptsSection() {
   const subject = useStageSubject();
   const pickGate = usePromptPickGate({
     picks: PICKS,
@@ -176,7 +170,7 @@ export default function OrdinalBinPromptsSection({
         it had one.
       */
       itemTemplate={() => ({ color: 'ord-color-seq-1' })}
-      copy={{ ...PROMPTS_COPY, ...copy }}
+      words={WORDS}
     />
   );
 }

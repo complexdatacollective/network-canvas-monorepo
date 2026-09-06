@@ -118,6 +118,7 @@ name not here adds it here first, in the same pull request.
 | `pageContent`               | `sections/PageContentSection.tsx`                                                                                                                                                | sections  |
 | `contentBlock`              | `sections/contentBlocks/contentBlockTypes.ts`, `ContentBlockEditor.tsx`, `ContentBlockPreview.tsx`                                                                               | sections  |
 | `promptsSection`            | `sections/PromptsSection.tsx`                                                                                                                                                    | sections  |
+| `censusPrompts`             | `sections/prompts/censusPromptsMessages.ts` only — the rest of `sections/prompts/` is still English literals and converts with the family                                        | family E  |
 
 The `*Messages.ts` files are the homes for copy more than one module renders —
 `extractMessages` throws when the same id is declared twice, so a shared string
@@ -138,6 +139,11 @@ has to have exactly one:
   be the single home of each id.
 - `form/arrayFields/arrayMessages.ts` — the generic row noun every array-field
   sentence is built around.
+- `sections/prompts/censusPromptsMessages.ts` — what a census or bin family's
+  prompts are about, where `PromptsSection`'s own sentence would be wrong about
+  what the participant is looking at. A Dyad Census and a Tie Strength Census
+  both show one pair at a time, so they share the sentence rather than
+  declaring a twin of it.
 
 Two areas own the same sentence in two modules, and the sentence is declared
 once: `form/arrayFields/crossClassPick.ts` re-exports the cross-class refusals
@@ -160,7 +166,6 @@ Named here so a later split takes the name rather than inventing a synonym.
 | `nameGeneratorPrompts`     | `sections/NameGeneratorPromptsSection`       | family D    |
 | `cardDisplay`              | `sections/CardDisplaySection`                | family D    |
 | `externalDataSource`       | `sections/ExternalDataSourceSection`         | family D    |
-| `censusPrompts`            | `sections/prompts/`                          | family E    |
 | `removeAfterConsideration` | `sections/RemoveAfterConsiderationSection`   | family E    |
 | `ordinalColor`             | `fields/OrdinalColorField`                   | family E    |
 | `networkCanvas`            | `sections/network/`                          | family F    |

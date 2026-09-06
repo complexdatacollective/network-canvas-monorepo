@@ -1,4 +1,5 @@
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 
@@ -111,6 +112,27 @@ const promptsValidation = {
   ]),
 };
 
+/**
+ * The two sentences a family may say in its own words.
+ *
+ * `MessageDescriptor`s, never resolved words: a string handed in here would be
+ * invisible to `extractMessages`, absent from the catalogs and covered by no
+ * guard, so the one part of this section a family cared enough to write would
+ * be the one part that stayed English. `src/__tests__/hostCopyOverrides.test.ts`
+ * is what holds that line for every bundle like this one.
+ *
+ * Only these two. Everything else the section says is about the list rather
+ * than about the interface — what a row is called, what the add button does,
+ * that a stage must ask something — and reads the same whatever the stage
+ * shows the participant.
+ */
+export type PromptsSectionCopy = Readonly<{
+  /** Said in place of the section's own description, once a subject exists. */
+  description: MessageDescriptor;
+  /** Said in place of the guidance under the list. */
+  fieldHint: MessageDescriptor;
+}>;
+
 export type PromptsSectionProps = Readonly<{
   /**
    * The family's own prompt fields, rendered inside the row dialog.
@@ -170,6 +192,19 @@ export type PromptsSectionProps = Readonly<{
    * than an empty one.
    */
   normalizeRow?: (row: unknown) => unknown;
+  /**
+   * What this family's prompts are about, where the generic sentence would be
+   * wrong about what the participant is looking at.
+   *
+   * A Dyad Census asks about a PAIR of people and a bin stage is answered by
+   * dragging, neither of which "the questions this stage asks" describes. Left
+   * out by a family the ordinary sentence already fits.
+   *
+   * The section still owns the words the researcher reads while it is waiting
+   * on a subject: nothing has been chosen yet, so a sentence about pairs or
+   * bins would be describing a stage that does not exist.
+   */
+  words?: PromptsSectionCopy;
 }>;
 
 /**
@@ -192,6 +227,7 @@ export default function PromptsSection({
   editorValidate,
   itemTemplate,
   normalizeRow = withoutAbsentValues,
+  words,
 }: PromptsSectionProps) {
   const intl = useAppIntl();
   const subject = useStageValue('subject');
@@ -209,14 +245,16 @@ export default function PromptsSection({
     <BuilderSection
       title={intl.formatMessage(messages.title)}
       description={intl.formatMessage(
-        waiting ? messages.waitingDescription : messages.description,
+        waiting
+          ? messages.waitingDescription
+          : (words?.description ?? messages.description),
       )}
       disabled={waiting}
     >
       <ProtocolArrayField<typeof DialogArrayField>
         name={PROMPTS_FIELD}
         label={intl.formatMessage(messages.fieldLabel)}
-        hint={intl.formatMessage(messages.fieldHint)}
+        hint={intl.formatMessage(words?.fieldHint ?? messages.fieldHint)}
         component={DialogArrayField}
         addButtonLabel={intl.formatMessage(messages.addLabel)}
         addTitle={intl.formatMessage(messages.addTitle)}

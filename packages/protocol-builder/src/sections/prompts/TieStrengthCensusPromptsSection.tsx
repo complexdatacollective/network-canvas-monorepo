@@ -9,8 +9,9 @@ import type { VariableType } from '@codaco/protocol-validation';
 import type { CrossClassPick } from '../../codebook/variableValidation.ts';
 import RichTextField from '../../fields/RichTextField.tsx';
 import { DialogFormField } from '../../form/DialogForm.tsx';
-import PromptsSection, { type PromptsCopy } from '../PromptsSection.tsx';
+import PromptsSection, { type PromptsSectionCopy } from '../PromptsSection.tsx';
 import type { RowEditorProps } from '../rowRenderers.tsx';
+import { censusPromptsMessages } from './censusPromptsMessages.ts';
 import CreateEdgeField from './CreateEdgeField.tsx';
 import PromptAttributeField from './PromptAttributeField.tsx';
 import { edgeSubjectOf, usePromptPickGate } from './promptCodebook.ts';
@@ -39,12 +40,11 @@ const PICKS: readonly CrossClassPick[] = Object.freeze([
  */
 const SCALE_LIMIT = 5;
 
-const PROMPTS_COPY: Partial<PromptsCopy> = {
-  description:
-    'Write the questions this stage asks about each pair, and drag them into the order the participant answers them.',
-  fieldHint:
-    'The participant is shown one pair of people at a time and answers these questions about them, in this order.',
-};
+/** What this stage shows the participant, said in the section's own words. */
+const WORDS: PromptsSectionCopy = Object.freeze({
+  description: censusPromptsMessages.pairDescription,
+  fieldHint: censusPromptsMessages.pairFieldHint,
+});
 
 function TieStrengthGuidance() {
   return (
@@ -173,10 +173,6 @@ function TieStrengthCensusPromptEditor({ item }: RowEditorProps) {
   );
 }
 
-export type TieStrengthCensusPromptsSectionProps = Readonly<{
-  copy?: Partial<PromptsCopy>;
-}>;
-
 /**
  * The questions a Tie-Strength Census asks about every pair of people.
  *
@@ -186,9 +182,7 @@ export type TieStrengthCensusPromptsSectionProps = Readonly<{
  * whole or not at all and the prompt then points at it as an ordinary unsaved
  * change.
  */
-export default function TieStrengthCensusPromptsSection({
-  copy,
-}: TieStrengthCensusPromptsSectionProps) {
+export default function TieStrengthCensusPromptsSection() {
   // The stage's own subject decides which people are paired up, but every one
   // of this prompt's picks describes the connection it creates — so the gate
   // is asked about the row's own edge type rather than about the stage.
@@ -202,7 +196,7 @@ export default function TieStrengthCensusPromptsSection({
       PromptEditor={TieStrengthCensusPromptEditor}
       PromptPreview={PromptTextPreview}
       editorValidate={pickGate}
-      copy={{ ...PROMPTS_COPY, ...copy }}
+      words={WORDS}
     />
   );
 }

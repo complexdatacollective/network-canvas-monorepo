@@ -1,19 +1,19 @@
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 
-import PromptsSection, { type PromptsCopy } from '../PromptsSection.tsx';
+import PromptsSection, { type PromptsSectionCopy } from '../PromptsSection.tsx';
 import type { RowEditorProps } from '../rowRenderers.tsx';
+import { censusPromptsMessages } from './censusPromptsMessages.ts';
 import CreateEdgeField from './CreateEdgeField.tsx';
 import { useSortVariablePool, useStageSubject } from './promptCodebook.ts';
 import { PromptTextField, PromptTextPreview } from './promptText.tsx';
 import SortOrderRows from './SortOrderRows.tsx';
 
-const PROMPTS_COPY: Partial<PromptsCopy> = {
-  description:
-    'Write the questions this stage asks about one person and the group around them, and drag them into the order the participant answers them.',
-  fieldHint:
-    'The participant is shown one person at a time and chooses who among the others the question applies to.',
-};
+/** What this stage shows the participant, said in the section's own words. */
+const WORDS: PromptsSectionCopy = Object.freeze({
+  description: censusPromptsMessages.oneToManyDescription,
+  fieldHint: censusPromptsMessages.oneToManyFieldHint,
+});
 
 function OneToManyGuidance() {
   return (
@@ -81,10 +81,6 @@ function OneToManyDyadCensusPromptEditor({ item }: RowEditorProps) {
   );
 }
 
-export type OneToManyDyadCensusPromptsSectionProps = Readonly<{
-  copy?: Partial<PromptsCopy>;
-}>;
-
 /**
  * The questions a One-to-Many Dyad Census asks about one person and the group.
  *
@@ -92,14 +88,12 @@ export type OneToManyDyadCensusPromptsSectionProps = Readonly<{
  * that the two orderings cannot be set before the connection type is chosen:
  * until then the prompt does not yet describe a task to order anything within.
  */
-export default function OneToManyDyadCensusPromptsSection({
-  copy,
-}: OneToManyDyadCensusPromptsSectionProps) {
+export default function OneToManyDyadCensusPromptsSection() {
   return (
     <PromptsSection
       PromptEditor={OneToManyDyadCensusPromptEditor}
       PromptPreview={PromptTextPreview}
-      copy={{ ...PROMPTS_COPY, ...copy }}
+      words={WORDS}
     />
   );
 }
