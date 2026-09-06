@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { sectionId } from '@codaco/studio-sync/taxonomy';
@@ -229,7 +229,7 @@ const SORTED_PROMPT = {
   sortOrder: [{ property: 'name', direction: 'asc' }],
 };
 
-const openWithSortOrder = () => ({
+const sociogramHolding = (prompt: Record<string, unknown>) => ({
   stage: {
     type: 'Sociogram' as const,
     fields: {
@@ -237,11 +237,29 @@ const openWithSortOrder = () => ({
       subject: { entity: 'node', type: 'person' },
       background: { concentricCircles: 4, skewedTowardCenter: true },
       behaviours: { automaticLayout: true },
-      prompts: [SORTED_PROMPT],
+      prompts: [prompt],
     },
   },
   sections,
 });
+
+const openWithSortOrder = () => sociogramHolding(SORTED_PROMPT);
+
+/**
+ * A sort rule left pointing at an attribute a collaborator has since deleted.
+ *
+ * `SortRuleSchema.property` is `existence: 'unchecked'`, so the protocol keeps
+ * this stage rather than refusing it — which is right, because deleting an
+ * attribute must not make somebody else's stage unopenable. The editor is
+ * what has to say the reference is dangling.
+ */
+const ORPHANED_PROPERTY = 'nickname';
+
+const openWithOrphanedSortRule = () =>
+  sociogramHolding({
+    ...SORTED_PROMPT,
+    sortOrder: [{ property: ORPHANED_PROPERTY, direction: 'asc' }],
+  });
 
 const openPrompt = async (harness: StageEditorHarness): Promise<void> => {
   const [first] = screen.getAllByRole('button', { name: 'Edit prompt' });
@@ -323,6 +341,29 @@ describe('the order a sociogram hands unplaced nodes over in', () => {
       .map(([id]) => id);
     expect(sortable).toContain('name');
     expect(sortPropertyOptions()).toEqual(['*', ...sortable]);
+  });
+
+  /**
+   * A rule whose attribute has been deleted still has to be readable.
+   *
+   * The cell renders from the option list, so an id no option carries leaves
+   * the control blank — while the value behind it is still there and still
+   * saved. The researcher then sees an empty required cell with no way to
+   * find out what it points at, and the dangling reference outlives every
+   * attempt to fix it.
+   */
+  it('shows a sort rule the attribute has been deleted out from under', async () => {
+    const harness = renderStageEditor(openWithOrphanedSortRule());
+
+    await openPrompt(harness);
+
+    const property = screen.getByRole('combobox', { name: 'Property' });
+    expect(property).toHaveValue(ORPHANED_PROPERTY);
+    expect(
+      within(property).getByRole('option', {
+        name: `${ORPHANED_PROPERTY} — this attribute is no longer in the codebook`,
+      }),
+    ).toBeDisabled();
   });
 
   it('saves a rule the researcher added to a prompt that had none', async () => {
