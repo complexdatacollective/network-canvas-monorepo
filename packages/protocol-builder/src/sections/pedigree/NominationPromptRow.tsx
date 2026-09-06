@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
@@ -15,6 +16,7 @@ import { variablesForSubject } from '../../protocol-context.ts';
 import type { RowEditorProps, RowPreviewProps } from '../rowRenderers.tsx';
 import CreateVariableButton from './CreateVariableButton.tsx';
 import { usePedigreeVariableIndexes } from './entityTypeReset.ts';
+import { pedigreeMessages } from './pedigreeMessages.ts';
 import { slotPickerOptions, subjectVariableOptions } from './slotWiring.ts';
 
 const TEXT_FIELD = 'text';
@@ -51,6 +53,7 @@ const asString = (value: unknown): string | undefined =>
  * participant answered.
  */
 export function NominationPromptEditor({ item }: RowEditorProps) {
+  const intl = useAppIntl();
   const { protocolContext } = useStageEditorForm();
   const { roleMap, slotMap } = usePedigreeVariableIndexes();
   const subject = useNominationSubject();
@@ -81,27 +84,35 @@ export function NominationPromptEditor({ item }: RowEditorProps) {
         name={TEXT_FIELD}
         component={RichTextField}
         singleLine
-        label="Prompt text"
-        hint="The question the participant answers for each family member."
-        placeholder="Enter your prompt..."
+        label={intl.formatMessage(pedigreeMessages.nominationTextLabel)}
+        hint={intl.formatMessage(pedigreeMessages.nominationTextHint)}
+        placeholder={intl.formatMessage(
+          pedigreeMessages.nominationTextPlaceholder,
+        )}
         initialValue={asString(item.text)}
-        required="Enter the question this prompt asks."
+        required={intl.formatMessage(pedigreeMessages.nominationTextRequired)}
       />
       <Field
         name={VARIABLE_FIELD}
         component={VariablePickerControl}
-        label="Attribute"
-        hint="The boolean attribute each answer is recorded in."
+        label={intl.formatMessage(pedigreeMessages.nominationVariableLabel)}
+        hint={intl.formatMessage(pedigreeMessages.nominationVariableHint)}
         initialValue={asString(item.variable)}
         options={options}
-        emptyMessage="No boolean attributes of this node type can be nominated yet. Create one to continue."
-        required="Choose the attribute this prompt records."
+        emptyMessage={intl.formatMessage(
+          pedigreeMessages.nominationVariableEmpty,
+        )}
+        required={intl.formatMessage(
+          pedigreeMessages.nominationVariableRequired,
+        )}
       />
       <CreateVariableButton
         subject={subject}
         variableType="boolean"
-        label="Create a new nomination attribute"
-        description="Create a boolean attribute for this nomination prompt"
+        label={intl.formatMessage(pedigreeMessages.nominationCreateLabel)}
+        description={intl.formatMessage(
+          pedigreeMessages.nominationCreateDescription,
+        )}
         onCreated={(variableId) => setFieldValue(VARIABLE_FIELD, variableId)}
       />
     </>
@@ -110,6 +121,7 @@ export function NominationPromptEditor({ item }: RowEditorProps) {
 
 /** How one nomination prompt reads in the list when its dialog is closed. */
 export function NominationPromptPreview({ item }: RowPreviewProps) {
+  const intl = useAppIntl();
   const { protocolContext } = useStageEditorForm();
   const subject = useNominationSubject();
   const variableId = asString(item.variable);
@@ -120,13 +132,20 @@ export function NominationPromptPreview({ item }: RowPreviewProps) {
 
   return (
     <div className="flex flex-col gap-2.5">
-      <RenderMarkdown>{asString(item.text) ?? 'Empty prompt'}</RenderMarkdown>
+      <RenderMarkdown>
+        {asString(item.text) ??
+          intl.formatMessage(pedigreeMessages.nominationPreviewEmptyText)}
+      </RenderMarkdown>
       {attribute !== undefined && (
         <div>
           {/* One whole sentence rather than assembled fragments: what reads
               naturally around an attribute's name is not the same in every
               language. */}
-          <Badge>{`Records the boolean attribute "${attribute.name}"`}</Badge>
+          <Badge>
+            {intl.formatMessage(pedigreeMessages.nominationPreviewRecords, {
+              attributeName: attribute.name,
+            })}
+          </Badge>
         </div>
       )}
     </div>

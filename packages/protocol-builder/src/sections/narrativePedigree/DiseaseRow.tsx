@@ -1,5 +1,7 @@
 import { useMemo } from 'react';
 
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
@@ -23,6 +25,7 @@ import { variablesForSubject } from '../../protocol-context.ts';
 import { protocolColor } from '../../protocolColor.ts';
 import CreateVariableButton from '../pedigree/CreateVariableButton.tsx';
 import type { RowEditorProps, RowPreviewProps } from '../rowRenderers.tsx';
+import { narrativePedigreeMessages } from './narrativePedigreeMessages.ts';
 import { sourceStageNodeType } from './sourceStage.ts';
 
 const LABEL_FIELD = 'label';
@@ -34,28 +37,22 @@ const INHERITANCE_FIELD = 'inheritancePattern';
  * Author-facing names for each inheritance pattern. The pattern ids are schema
  * contract; these are editor copy, written out whole rather than derived from
  * the id, so a translator moves a phrase rather than reassembling one.
+ *
+ * Keyed on the schema's own token, so a pattern added to the protocol is one
+ * this record does not compile without.
  */
-const INHERITANCE_LABELS: Readonly<Record<InheritancePattern, string>> =
-  Object.freeze({
-    autosomalDominant: 'Autosomal dominant',
-    autosomalRecessive: 'Autosomal recessive',
-    xLinkedDominant: 'X-linked dominant',
-    xLinkedRecessive: 'X-linked recessive',
-    yLinked: 'Y-linked',
-    mitochondrial: 'Mitochondrial',
-    multifactorial: 'Multifactorial',
-    unknown: 'Unknown',
-  });
-
-const INHERITANCE_OPTIONS = INHERITANCE_PATTERNS.map((value) => ({
-  value,
-  label: INHERITANCE_LABELS[value],
-}));
-
-const COLOR_OPTIONS = NodeColorSequence.map((value, index) => ({
-  value,
-  label: `Colour ${index + 1}`,
-}));
+const INHERITANCE_LABELS: Readonly<
+  Record<InheritancePattern, MessageDescriptor>
+> = Object.freeze({
+  autosomalDominant: narrativePedigreeMessages.inheritanceAutosomalDominant,
+  autosomalRecessive: narrativePedigreeMessages.inheritanceAutosomalRecessive,
+  xLinkedDominant: narrativePedigreeMessages.inheritanceXLinkedDominant,
+  xLinkedRecessive: narrativePedigreeMessages.inheritanceXLinkedRecessive,
+  yLinked: narrativePedigreeMessages.inheritanceYLinked,
+  mitochondrial: narrativePedigreeMessages.inheritanceMitochondrial,
+  multifactorial: narrativePedigreeMessages.inheritanceMultifactorial,
+  unknown: narrativePedigreeMessages.inheritanceUnknown,
+});
 
 const asString = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : undefined;
@@ -114,11 +111,35 @@ function useDiseaseSubject(): CodebookSubject | null {
  * compound-edit path.
  */
 export function DiseaseEditor({ item, editIndex }: RowEditorProps) {
+  const intl = useAppIntl();
   const { protocolContext } = useStageEditorForm();
   const subject = useDiseaseSubject();
   const rows = useStageValue('diseases');
   const setFieldValue = useFormStore((state) => state.setFieldValue);
   const currentVariable = asString(item.variable);
+
+  // Both lists are the same every render, and both are a control's `options`:
+  // a fresh array each time re-registers the control on every keystroke.
+  const inheritanceOptions = useMemo(
+    () =>
+      INHERITANCE_PATTERNS.map((value) => ({
+        value,
+        label: intl.formatMessage(INHERITANCE_LABELS[value]),
+      })),
+    [intl],
+  );
+
+  const colorOptions = useMemo(
+    () =>
+      NodeColorSequence.map((value, index) => ({
+        value,
+        label: intl.formatMessage(
+          narrativePedigreeMessages.diseaseColorOption,
+          { position: index + 1 },
+        ),
+      })),
+    [intl],
+  );
 
   const options = useMemo(() => {
     if (subject === null) return [];
@@ -148,48 +169,74 @@ export function DiseaseEditor({ item, editIndex }: RowEditorProps) {
       <Field
         name={LABEL_FIELD}
         component={InputField}
-        label="Disease name"
-        hint="Shown to the participant in the pedigree's key, so it should be a name they recognise."
-        placeholder="Enter a name for this disease..."
+        label={intl.formatMessage(narrativePedigreeMessages.diseaseNameLabel)}
+        hint={intl.formatMessage(narrativePedigreeMessages.diseaseNameHint)}
+        placeholder={intl.formatMessage(
+          narrativePedigreeMessages.diseaseNamePlaceholder,
+        )}
         initialValue={asString(item.label)}
-        required="Give this disease a name."
+        required={intl.formatMessage(
+          narrativePedigreeMessages.diseaseNameRequired,
+        )}
       />
       <Field
         name={COLOR_FIELD}
         component={NativeSelectField}
-        label="Colour"
-        hint="The colour this disease is drawn in on the pedigree."
-        options={COLOR_OPTIONS}
-        placeholder="Select a colour..."
+        label={intl.formatMessage(narrativePedigreeMessages.diseaseColorLabel)}
+        hint={intl.formatMessage(narrativePedigreeMessages.diseaseColorHint)}
+        options={colorOptions}
+        placeholder={intl.formatMessage(
+          narrativePedigreeMessages.diseaseColorPlaceholder,
+        )}
         initialValue={asString(item.color)}
-        required="Choose a colour for this disease."
+        required={intl.formatMessage(
+          narrativePedigreeMessages.diseaseColorRequired,
+        )}
       />
       <Field
         name={VARIABLE_FIELD}
         component={VariablePickerControl}
-        label="Affected-status attribute"
-        hint="The boolean attribute of the source pedigree that records who is affected."
+        label={intl.formatMessage(
+          narrativePedigreeMessages.diseaseVariableLabel,
+        )}
+        hint={intl.formatMessage(narrativePedigreeMessages.diseaseVariableHint)}
         options={options}
-        emptyMessage="The source pedigree has no boolean attributes a disease can be mapped to."
+        emptyMessage={intl.formatMessage(
+          narrativePedigreeMessages.diseaseVariableEmpty,
+        )}
         initialValue={currentVariable}
-        required="Choose the attribute that records who is affected."
+        required={intl.formatMessage(
+          narrativePedigreeMessages.diseaseVariableRequired,
+        )}
       />
       <CreateVariableButton
         subject={subject}
         variableType="boolean"
-        label="Create a new affected-status attribute"
-        description="Create a boolean attribute recording who is affected by this disease"
+        label={intl.formatMessage(
+          narrativePedigreeMessages.diseaseCreateVariableLabel,
+        )}
+        description={intl.formatMessage(
+          narrativePedigreeMessages.diseaseCreateVariableDescription,
+        )}
         onCreated={(variableId) => setFieldValue(VARIABLE_FIELD, variableId)}
       />
       <Field
         name={INHERITANCE_FIELD}
         component={StyledSelectField}
-        label="Inheritance pattern"
-        hint="How the disease is passed on. Mendelian patterns let the pedigree infer carrier and at-risk statuses from biological relationships and recorded sex; multifactorial and unknown show affected status only."
-        options={INHERITANCE_OPTIONS}
-        placeholder="Select an inheritance pattern..."
+        label={intl.formatMessage(
+          narrativePedigreeMessages.diseaseInheritanceLabel,
+        )}
+        hint={intl.formatMessage(
+          narrativePedigreeMessages.diseaseInheritanceHint,
+        )}
+        options={inheritanceOptions}
+        placeholder={intl.formatMessage(
+          narrativePedigreeMessages.diseaseInheritancePlaceholder,
+        )}
         initialValue={asString(item.inheritancePattern)}
-        required="Choose how this disease is inherited."
+        required={intl.formatMessage(
+          narrativePedigreeMessages.diseaseInheritanceRequired,
+        )}
       />
     </>
   );
@@ -197,6 +244,7 @@ export function DiseaseEditor({ item, editIndex }: RowEditorProps) {
 
 /** How one disease reads in the list when its dialog is closed. */
 export function DiseasePreview({ item }: RowPreviewProps) {
+  const intl = useAppIntl();
   // Narrowed against the palette rather than cast: a stored colour the theme
   // no longer defines loses its swatch, and the row still reads.
   const color = NodeColorSequence.find((candidate) => candidate === item.color);
@@ -209,7 +257,10 @@ export function DiseasePreview({ item }: RowPreviewProps) {
           aria-hidden="true"
         />
       )}
-      <span>{asString(item.label) ?? 'Unnamed disease'}</span>
+      <span>
+        {asString(item.label) ??
+          intl.formatMessage(narrativePedigreeMessages.diseaseUnnamed)}
+      </span>
     </div>
   );
 }

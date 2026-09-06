@@ -7,6 +7,7 @@ import type {
   VariableRoleMap,
 } from '../../../codebook/variableRoles.ts';
 import type { CodebookSubject } from '../../../protocol-context.ts';
+import { readMessage } from '../../../testing/i18n.ts';
 import {
   slotCrossClassIssue,
   slotPickerOptions,
@@ -71,7 +72,26 @@ const ask = (
       draftConflicting: input.draftConflicting,
       allVariables: VARIABLES,
     });
-  return { offered: offered.map((option) => option.value), refusalFor };
+  /**
+   * The refusal as the researcher reads it.
+   *
+   * The gate has no formatter of its own, so it hands its sentence across the
+   * field's string-only error contract as an encoded descriptor — which is
+   * what `FieldErrors` receives and decodes. This is the same
+   * `formatMessageError(text, intl) ?? text` that render site uses, so an
+   * assertion below is on the words a researcher sees and still fails when
+   * those words change. `undefined` stays `undefined`: a pick that earned no
+   * refusal must not read as an empty sentence.
+   */
+  const refusalTextFor = (variableId: string): string | undefined => {
+    const refusal = refusalFor(variableId);
+    return refusal === undefined ? undefined : readMessage(refusal);
+  };
+  return {
+    offered: offered.map((option) => option.value),
+    refusalFor,
+    refusalTextFor,
+  };
 };
 
 describe('the attributes one pedigree slot may bind', () => {
@@ -138,14 +158,14 @@ describe('the attributes one pedigree slot may bind', () => {
  */
 describe('what a refused pedigree pick is told', () => {
   it('tells a structural slot the form on this screen is collecting it', () => {
-    const { refusalFor } = ask({
+    const { refusalTextFor } = ask({
       options: BOOLEAN_POOL,
       writerClass: 'unvalidated',
       committedValue: 'is_ego',
       draftConflicting: ['unwell'],
     });
 
-    expect(refusalFor('unwell')).toBe(
+    expect(refusalTextFor('unwell')).toBe(
       '"unwell" is collected by this stage’s own form, so it cannot also be written by this slot (values written here would bypass its validation)',
     );
   });
@@ -156,14 +176,14 @@ describe('what a refused pedigree pick is told', () => {
    * field", a researcher looks for a form field they never added.
    */
   it('tells the display label another slot on this screen is deriving it', () => {
-    const { refusalFor } = ask({
+    const { refusalTextFor } = ask({
       options: TEXT_POOL,
       writerClass: 'validated',
       committedValue: 'fm_name',
       draftConflicting: ['kinship'],
     });
 
-    const refusal = refusalFor('kinship');
+    const refusal = refusalTextFor('kinship');
     expect(refusal).toBe(
       '"kinship" is written without validation by another slot in this stage, so it cannot also be collected here (the values that slot writes bypass this attribute’s validation)',
     );

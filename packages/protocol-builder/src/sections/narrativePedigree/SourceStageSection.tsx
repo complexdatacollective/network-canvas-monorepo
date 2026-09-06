@@ -1,6 +1,8 @@
 import { isEqual } from 'es-toolkit/compat';
 import { useEffect, useMemo, useRef } from 'react';
 
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import StyledSelectField from '@codaco/fresco-ui/form/fields/Select/Styled';
 
@@ -11,6 +13,7 @@ import {
   useStageValue,
 } from '../../form/stageFormHooks.ts';
 import BuilderSection from '../BuilderSection.tsx';
+import { narrativePedigreeMessages } from './narrativePedigreeMessages.ts';
 import { resolveSourceStages, type SourceStageProblem } from './sourceStage.ts';
 
 const SOURCE_FIELD = 'sourceStageId';
@@ -21,43 +24,17 @@ const DISEASES_FIELD = 'diseases';
  *
  * Whole sentences per case rather than one assembled from clauses: what has
  * gone wrong differs, and so does what the researcher has to do about it.
+ *
+ * Keyed on the resolver's own problem token, so a case added there is a case
+ * this record does not compile without.
  */
-const PROBLEM_MESSAGES: Readonly<Record<SourceStageProblem, string>> =
-  Object.freeze({
-    missing:
-      'The Family Pedigree stage this one reads is no longer part of the interview. Choose another one, or restore it, before this stage can be saved.',
-    notAPedigree:
-      'The stage this one reads is no longer a Family Pedigree, so there is no family for it to visualise. Choose a Family Pedigree stage instead.',
-    afterThisStage:
-      'The Family Pedigree stage this one reads now runs after it, so the family would still be empty. Move it earlier in the interview, or choose a pedigree that runs before this stage.',
-  });
-
-export type SourceStageCopy = Readonly<{
-  /** Names the section in the outline and to assistive technology. */
-  sectionTitle: string;
-  description: string;
-  fieldLabel: string;
-  fieldHint: string;
-  placeholder: string;
-  /** Said in place of the list when there is no pedigree to choose. */
-  emptyMessage: string;
-}>;
-
-const DEFAULT_COPY: SourceStageCopy = {
-  sectionTitle: 'Pedigree source',
-  description:
-    'Choose the Family Pedigree stage whose family this stage visualises.',
-  fieldLabel: 'Source stage',
-  fieldHint:
-    'Only Family Pedigree stages that run before this one are listed: the family has to be drawn before it can be shown.',
-  placeholder: 'Select a Family Pedigree stage...',
-  emptyMessage:
-    'This interview has no Family Pedigree stage before this one. Add one, or move this stage later, before configuring it.',
-};
-
-export type SourceStageSectionProps = Readonly<{
-  copy?: Partial<SourceStageCopy>;
-}>;
+const PROBLEM_MESSAGES: Readonly<
+  Record<SourceStageProblem, MessageDescriptor>
+> = Object.freeze({
+  missing: narrativePedigreeMessages.sourceMissing,
+  notAPedigree: narrativePedigreeMessages.sourceNotAPedigree,
+  afterThisStage: narrativePedigreeMessages.sourceAfterThisStage,
+});
 
 /**
  * The family this stage draws, and the stage that collected it.
@@ -79,8 +56,8 @@ export type SourceStageSectionProps = Readonly<{
  * disease list resolves its next row against that draft, so rows cleared only
  * on screen come back with the next one added.
  */
-export default function SourceStageSection({ copy }: SourceStageSectionProps) {
-  const words = { ...DEFAULT_COPY, ...copy };
+export default function SourceStageSection() {
+  const intl = useAppIntl();
   const { committedFields, identity, protocolContext } = useStageEditorForm();
   const sourceStageId = useStageValue(SOURCE_FIELD);
   const discardStageValues = useDiscardStageValues();
@@ -102,10 +79,13 @@ export default function SourceStageSection({ copy }: SourceStageSectionProps) {
             ...options.map((option) => ({ ...option })),
             {
               value: sourceStageId,
-              label: `${sourceStageId} — this stage can no longer be used`,
+              label: intl.formatMessage(
+                narrativePedigreeMessages.sourceUnusableOption,
+                { stageId: sourceStageId },
+              ),
             },
           ],
-    [options, problem, sourceStageId],
+    [intl, options, problem, sourceStageId],
   );
 
   const committedSource: unknown = committedFields[SOURCE_FIELD];
@@ -142,25 +122,40 @@ export default function SourceStageSection({ copy }: SourceStageSectionProps) {
   }, [committedSource, discardStageValues, sourceStageId]);
 
   return (
-    <BuilderSection title={words.sectionTitle} description={words.description}>
+    <BuilderSection
+      title={intl.formatMessage(narrativePedigreeMessages.sourceTitle)}
+      description={intl.formatMessage(
+        narrativePedigreeMessages.sourceDescription,
+      )}
+    >
       {problem !== null && (
         <Alert variant="destructive">
-          <AlertTitle>This stage has no family to show</AlertTitle>
-          <AlertDescription>{PROBLEM_MESSAGES[problem]}</AlertDescription>
+          <AlertTitle>
+            {intl.formatMessage(narrativePedigreeMessages.sourceProblemTitle)}
+          </AlertTitle>
+          <AlertDescription>
+            {intl.formatMessage(PROBLEM_MESSAGES[problem])}
+          </AlertDescription>
         </Alert>
       )}
       {selectOptions.length === 0 ? (
         <Alert variant="warning">
-          <AlertTitle>No pedigree to read</AlertTitle>
-          <AlertDescription>{words.emptyMessage}</AlertDescription>
+          <AlertTitle>
+            {intl.formatMessage(narrativePedigreeMessages.sourceEmptyTitle)}
+          </AlertTitle>
+          <AlertDescription>
+            {intl.formatMessage(narrativePedigreeMessages.sourceEmptyMessage)}
+          </AlertDescription>
         </Alert>
       ) : (
         <ProtocolField<typeof StyledSelectField>
           name={SOURCE_FIELD}
           component={StyledSelectField}
-          label={words.fieldLabel}
-          hint={words.fieldHint}
-          placeholder={words.placeholder}
+          label={intl.formatMessage(narrativePedigreeMessages.sourceLabel)}
+          hint={intl.formatMessage(narrativePedigreeMessages.sourceHint)}
+          placeholder={intl.formatMessage(
+            narrativePedigreeMessages.sourcePlaceholder,
+          )}
           options={selectOptions}
           required
         />

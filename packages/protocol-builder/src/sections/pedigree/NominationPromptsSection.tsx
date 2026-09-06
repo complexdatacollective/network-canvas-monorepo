@@ -1,7 +1,8 @@
 import { get } from 'es-toolkit/compat';
 import { useCallback, useMemo } from 'react';
 
-import type { MessageDescriptor } from '@codaco/app-i18n/messages';
+import { createMessageError } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 
 import {
@@ -31,57 +32,21 @@ import { pedigreeMessages } from './pedigreeMessages.ts';
 const PROMPTS_FIELD = 'nominationPrompts';
 const NODE_TYPE_FIELD = 'nodeConfig.type';
 
-const AT_LEAST_ONE_PROMPT =
-  'Add at least one nomination prompt, or switch this section off.';
+/**
+ * The refusal a switched-on but empty list earns.
+ *
+ * Encoded rather than formatted: it crosses the field's string-only error
+ * contract on its way to the form's error region, and `FieldErrors` decodes it
+ * where it is rendered — which also puts a standing refusal into the reader's
+ * new language when they change it, without the researcher having to submit
+ * again.
+ */
+const AT_LEAST_ONE_PROMPT = createMessageError(
+  pedigreeMessages.nominationAtLeastOne,
+);
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
-
-export type NominationPromptsCopy = Readonly<{
-  /** Names the section in the outline and to assistive technology. */
-  sectionTitle: string;
-  description: string;
-  /**
-   * Said instead of `description` while the section is waiting on a node type,
-   * so the outline's "not available yet" has an explanation beside it.
-   */
-  waitingDescription: string;
-  fieldLabel: string;
-  fieldHint: string;
-  /** Visible text and accessible name of the add button. */
-  addButtonLabel: string;
-  addTitle: string;
-  editorTitle: string;
-  /**
-   * Noun used in row affordances ("Edit nomination prompt"), as a descriptor:
-   * `DialogArrayField` formats it where it is read, or encodes it for a reader
-   * further on, so a caller that resolved it to English first would put an
-   * English noun in a Spanish sentence.
-   */
-  itemLabel: MessageDescriptor;
-  emptyStateMessage: string;
-}>;
-
-const DEFAULT_COPY: NominationPromptsCopy = {
-  sectionTitle: 'Nomination prompts',
-  description:
-    'Optionally ask the participant to mark family members who share a condition or trait.',
-  waitingDescription:
-    'Choose a node type before writing this pedigree’s nomination prompts.',
-  fieldLabel: 'Nomination prompts',
-  fieldHint:
-    'The participant answers each of these across the whole family, in this order. Drag to reorder them.',
-  addButtonLabel: 'Create new nomination prompt',
-  addTitle: 'Create nomination prompt',
-  editorTitle: 'Edit nomination prompt',
-  itemLabel: pedigreeMessages.nominationPromptNoun,
-  emptyStateMessage:
-    'No nomination prompts yet. Create one to ask the participant to mark family members.',
-};
-
-export type NominationPromptsSectionProps = Readonly<{
-  copy?: Partial<NominationPromptsCopy>;
-}>;
 
 /**
  * The optional questions the pedigree asks about every family member at once.
@@ -117,10 +82,8 @@ export type NominationPromptsSectionProps = Readonly<{
  * and only the committed anchor keeps an attribute the protocol ALREADY binds
  * here saveable.
  */
-export default function NominationPromptsSection({
-  copy,
-}: NominationPromptsSectionProps) {
-  const words = { ...DEFAULT_COPY, ...copy };
+export default function NominationPromptsSection() {
+  const intl = useAppIntl();
   const { committedFields, protocolContext } = useStageEditorForm();
   const { roleMap, slotMap } = usePedigreeVariableIndexes();
   const nodeType = useStageValue(NODE_TYPE_FIELD);
@@ -197,8 +160,12 @@ export default function NominationPromptsSection({
 
   return (
     <BuilderSection
-      title={words.sectionTitle}
-      description={waiting ? words.waitingDescription : words.description}
+      title={intl.formatMessage(pedigreeMessages.nominationTitle)}
+      description={intl.formatMessage(
+        waiting
+          ? pedigreeMessages.nominationWaitingDescription
+          : pedigreeMessages.nominationDescription,
+      )}
       disabled={waiting}
       resetOn={NODE_TYPE_FIELD}
       capability={{
@@ -212,14 +179,20 @@ export default function NominationPromptsSection({
     >
       <ProtocolArrayField<typeof DialogArrayField>
         name={PROMPTS_FIELD}
-        label={words.fieldLabel}
-        hint={words.fieldHint}
+        label={intl.formatMessage(pedigreeMessages.nominationFieldLabel)}
+        hint={intl.formatMessage(pedigreeMessages.nominationFieldHint)}
         component={DialogArrayField}
-        addButtonLabel={words.addButtonLabel}
-        addTitle={words.addTitle}
-        editorTitle={words.editorTitle}
-        itemLabel={words.itemLabel}
-        emptyStateMessage={words.emptyStateMessage}
+        addButtonLabel={intl.formatMessage(pedigreeMessages.nominationAddLabel)}
+        addTitle={intl.formatMessage(pedigreeMessages.nominationAddTitle)}
+        editorTitle={intl.formatMessage(pedigreeMessages.nominationEditTitle)}
+        // A DESCRIPTOR rather than a word: `DialogArrayField` formats the row
+        // noun where the sentence around it is read, or encodes it for a
+        // reader further on, so resolving it here would put an English noun
+        // into a Spanish sentence.
+        itemLabel={pedigreeMessages.nominationPromptNoun}
+        emptyStateMessage={intl.formatMessage(
+          pedigreeMessages.nominationEmptyState,
+        )}
         editorFieldsComponent={editorFieldsComponent}
         previewComponent={previewComponent}
         editorDialogSize="editor"

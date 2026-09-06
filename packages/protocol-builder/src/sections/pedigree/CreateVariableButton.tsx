@@ -27,7 +27,16 @@ export type CreateVariableButtonProps = Readonly<{
    * to one of these slots whose options differ.
    */
   lockedOptions?: readonly VariableOption[];
-  /** Visible text and accessible name of the control. */
+  /**
+   * Visible text and accessible name of the control, already formatted.
+   *
+   * Every caller names its own attribute — "a new participant identifier
+   * attribute", "a new disease attribute" — from a descriptor declared in its
+   * own family's messages file, and formats it there. A string arrives here
+   * rather than a descriptor because this control renders it immediately and
+   * hands nothing on: there is no later reader for a descriptor to be resolved
+   * for, and the extraction guard sees the caller's declaration either way.
+   */
   label: string;
   /** Says what the created attribute is for, inside the dialog. */
   description: string;

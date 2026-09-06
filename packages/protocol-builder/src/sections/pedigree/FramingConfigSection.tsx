@@ -1,6 +1,8 @@
 import { get } from 'es-toolkit/compat';
-import { useEffect, useRef } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef } from 'react';
 
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -13,6 +15,7 @@ import {
   useStageValue,
 } from '../../form/stageFormHooks.ts';
 import BuilderSection from '../BuilderSection.tsx';
+import { pedigreeMessages } from './pedigreeMessages.ts';
 
 const MODE_FIELD = 'framing.mode';
 const VALUE_FIELD = 'framing.value';
@@ -20,10 +23,19 @@ const VALUE_FIELD = 'framing.value';
 /** The framing a stage falls back to, and the schema's own canonical one. */
 const DEFAULT_FRAMING: FramingId = 'gamete';
 
-const FRAMING_MODE_OPTIONS = [
-  { value: 'fixed', label: 'Fixed framing' },
-  { value: 'participantChoice', label: 'Let the participant choose' },
-];
+/**
+ * The two modes, keyed by the schema value each option writes.
+ *
+ * Descriptors rather than words, so the pair a researcher reads is resolved
+ * beside the control instead of at module load — a label resolved here would
+ * be whatever language happened to be current when this file was first
+ * imported, for the rest of the session.
+ */
+const FRAMING_MODE_LABELS: Readonly<Record<string, MessageDescriptor>> =
+  Object.freeze({
+    fixed: pedigreeMessages.framingModeFixed,
+    participantChoice: pedigreeMessages.framingModeParticipantChoice,
+  });
 
 /**
  * Author-facing names for each framing. The framing ids are schema contract;
@@ -31,36 +43,14 @@ const FRAMING_MODE_OPTIONS = [
  * The participant-facing terminology each framing selects lives in the
  * interview runtime.
  */
-const FRAMING_AUTHOR_LABELS: Readonly<Record<FramingId, string>> =
+const FRAMING_AUTHOR_LABELS: Readonly<Record<FramingId, MessageDescriptor>> =
   Object.freeze({
-    gamete: 'Gamete-based',
-    gendered: 'Gendered',
+    gamete: pedigreeMessages.framingGamete,
+    gendered: pedigreeMessages.framingGendered,
   });
 
-const FRAMING_VALUE_OPTIONS = FRAMING_IDS.map((value) => ({
-  value,
-  label: FRAMING_AUTHOR_LABELS[value],
-}));
-
-export type FramingConfigCopy = Readonly<{
-  /** Names the section in the outline and to assistive technology. */
-  sectionTitle: string;
-  description: string;
-  modeLabel: string;
-  valueLabel: string;
-}>;
-
-const DEFAULT_COPY: FramingConfigCopy = {
-  sectionTitle: 'Pedigree framing',
-  description:
-    'Choose fixed terminology or let each participant select their preferred framing.',
-  modeLabel: 'Framing mode',
-  valueLabel: 'Fixed framing terminology',
-};
-
-export type FramingConfigSectionProps = Readonly<{
-  copy?: Partial<FramingConfigCopy>;
-}>;
+/** The framing name inside an explanation, drawn as the emphasis it is. */
+const boldTerm = (chunks: ReactNode) => <strong>{chunks}</strong>;
 
 /**
  * The language the pedigree uses when it talks about biological parents.
@@ -82,10 +72,8 @@ export type FramingConfigSectionProps = Readonly<{
  * framing with no terminology to fix it to, which is a stage nobody authored
  * and one the union refuses.
  */
-export default function FramingConfigSection({
-  copy,
-}: FramingConfigSectionProps) {
-  const words = { ...DEFAULT_COPY, ...copy };
+export default function FramingConfigSection() {
+  const intl = useAppIntl();
   const { committedFields } = useStageEditorForm();
   const chosenMode = useStageValue(MODE_FIELD);
   const mode = chosenMode ?? 'fixed';
@@ -114,46 +102,64 @@ export default function FramingConfigSection({
     });
   }, [chosenMode, discardStageValues, isFixed]);
 
+  const modeOptions = useMemo(
+    () =>
+      Object.entries(FRAMING_MODE_LABELS).map(([value, label]) => ({
+        value,
+        label: intl.formatMessage(label),
+      })),
+    [intl],
+  );
+  const framingOptions = useMemo(
+    () =>
+      FRAMING_IDS.map((value) => ({
+        value,
+        label: intl.formatMessage(FRAMING_AUTHOR_LABELS[value]),
+      })),
+    [intl],
+  );
+
   return (
-    <BuilderSection title={words.sectionTitle} description={words.description}>
-      <Paragraph>
-        The framing determines the language the interface uses when talking
-        about biological parents:
-      </Paragraph>
+    <BuilderSection
+      title={intl.formatMessage(pedigreeMessages.framingTitle)}
+      description={intl.formatMessage(pedigreeMessages.framingDescription)}
+    >
+      <Paragraph>{intl.formatMessage(pedigreeMessages.framingIntro)}</Paragraph>
       <ul className="mb-5 list-disc pl-7 [&_li]:mb-1">
+        {/*
+          Each bullet is ONE message with the framing's name marked inside it,
+          rather than a bold fragment glued to a sentence: a translator moves
+          the emphasis to wherever their language puts the term.
+        */}
         <li>
-          <strong>Gamete-based</strong> — describes each parent by their
-          reproductive contribution, using terms such as &ldquo;egg
-          parent&rdquo; and &ldquo;sperm parent&rdquo; and questions such as
-          &ldquo;Who provided the egg?&rdquo;. This framing works for all family
-          structures, including donor conception, surrogacy, and same-sex
-          parents.
+          {intl.formatMessage(pedigreeMessages.framingGameteExplanation, {
+            term: boldTerm,
+          })}
         </li>
         <li>
-          <strong>Gendered</strong> — uses gendered kinship terms such as
-          &ldquo;mother&rdquo; and &ldquo;father&rdquo; and questions such as
-          &ldquo;Who is the biological mother?&rdquo;. This framing assumes that
-          each child has a mother and a father.
+          {intl.formatMessage(pedigreeMessages.framingGenderedExplanation, {
+            term: boldTerm,
+          })}
         </li>
       </ul>
       <Paragraph className="mb-5">
-        Both framings use the same wording for gestational carriers and donors.
+        {intl.formatMessage(pedigreeMessages.framingSharedWording)}
       </Paragraph>
       <ProtocolField<typeof RadioGroupField>
         name={MODE_FIELD}
         component={RadioGroupField}
-        label={words.modeLabel}
+        label={intl.formatMessage(pedigreeMessages.framingModeLabel)}
         initialValue={
           typeof committedMode === 'string' ? committedMode : 'fixed'
         }
-        options={FRAMING_MODE_OPTIONS}
+        options={modeOptions}
         required
       />
       {isFixed && (
         <ProtocolField<typeof NativeSelectField>
           name={VALUE_FIELD}
           component={NativeSelectField}
-          label={words.valueLabel}
+          label={intl.formatMessage(pedigreeMessages.framingValueLabel)}
           // Falls back to the canonical framing so switching back from a
           // participant choice always registers a value the union accepts.
           initialValue={
@@ -161,7 +167,7 @@ export default function FramingConfigSection({
               ? committedValue
               : DEFAULT_FRAMING
           }
-          options={FRAMING_VALUE_OPTIONS}
+          options={framingOptions}
           required
         />
       )}

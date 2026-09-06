@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react';
 
-import type { MessageDescriptor } from '@codaco/app-i18n/messages';
+import { createMessageError } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 import { diseaseLabelKey } from '@codaco/protocol-validation';
 
@@ -19,63 +20,19 @@ import { sourceStageNodeType } from './sourceStage.ts';
 
 const DISEASES_FIELD = 'diseases';
 
-const AT_LEAST_ONE_DISEASE =
-  'Add at least one disease. A narrative pedigree with none shows the participant an unmarked family.';
-
-const DUPLICATE_VARIABLE =
-  'This attribute is already mapped by another disease. Choose a different one, or edit the existing disease instead.';
-
-const DUPLICATE_LABEL =
-  'Another disease already uses this name. Give this one a name participants can tell apart.';
+/**
+ * The refusal about the LIST, encoded rather than formatted.
+ *
+ * It is stated by a rule the field registers, which runs outside React and can
+ * see no formatter; the form's own error region decodes it (see
+ * `formatMessageError`), so the researcher reads it in their own language.
+ */
+const AT_LEAST_ONE_DISEASE = createMessageError(
+  narrativePedigreeMessages.diseasesAtLeastOne,
+);
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
-
-export type DiseasesCopy = Readonly<{
-  /** Names the section in the outline and to assistive technology. */
-  sectionTitle: string;
-  description: string;
-  /**
-   * Said instead of `description` while the section is waiting on a source
-   * stage, so the outline's "not available yet" has an explanation beside it.
-   */
-  waitingDescription: string;
-  fieldLabel: string;
-  fieldHint: string;
-  /** Visible text and accessible name of the add button. */
-  addButtonLabel: string;
-  addTitle: string;
-  editorTitle: string;
-  /**
-   * Noun used in row affordances ("Edit disease", "Remove disease"), as a
-   * descriptor: `DialogArrayField` formats it where it is read, or encodes it
-   * for a reader further on, so a caller that resolved it to English first
-   * would put an English noun in a Spanish sentence.
-   */
-  itemLabel: MessageDescriptor;
-  emptyStateMessage: string;
-}>;
-
-const DEFAULT_COPY: DiseasesCopy = {
-  sectionTitle: 'Diseases',
-  description:
-    'Define the conditions this stage draws on the family, and how each is inherited.',
-  waitingDescription:
-    'Choose the Family Pedigree stage this one reads before defining its diseases.',
-  fieldLabel: 'Diseases',
-  fieldHint:
-    "Each disease maps one boolean attribute of the source pedigree's family members. Drag to reorder them in the key.",
-  addButtonLabel: 'Create new disease',
-  addTitle: 'Create disease',
-  editorTitle: 'Edit disease',
-  itemLabel: narrativePedigreeMessages.diseaseNoun,
-  emptyStateMessage:
-    'No diseases yet. Create one to mark who in the family is affected.',
-};
-
-export type DiseasesSectionProps = Readonly<{
-  copy?: Partial<DiseasesCopy>;
-}>;
 
 /**
  * The conditions this stage draws on the family it reads.
@@ -93,8 +50,8 @@ export type DiseasesSectionProps = Readonly<{
  * Names are compared by the schema's own key, so a name this editor accepts is
  * one the saved protocol is still valid under on every device it is opened on.
  */
-export default function DiseasesSection({ copy }: DiseasesSectionProps) {
-  const words = { ...DEFAULT_COPY, ...copy };
+export default function DiseasesSection() {
+  const intl = useAppIntl();
   const { protocolContext } = useStageEditorForm();
   const sourceStageId = useStageValue('sourceStageId');
   const rows = useStageValue(DISEASES_FIELD);
@@ -114,7 +71,11 @@ export default function DiseasesSection({ copy }: DiseasesSectionProps) {
             index !== editIndex && isRecord(row) && row.variable === variable,
         )
       ) {
-        return { variable: DUPLICATE_VARIABLE };
+        return {
+          variable: intl.formatMessage(
+            narrativePedigreeMessages.diseasesDuplicateVariable,
+          ),
+        };
       }
 
       const label = typeof values.label === 'string' ? values.label : '';
@@ -129,11 +90,15 @@ export default function DiseasesSection({ copy }: DiseasesSectionProps) {
             diseaseLabelKey(row.label) === key,
         )
       ) {
-        return { label: DUPLICATE_LABEL };
+        return {
+          label: intl.formatMessage(
+            narrativePedigreeMessages.diseasesDuplicateLabel,
+          ),
+        };
       }
       return {};
     },
-    [rows],
+    [intl, rows],
   );
 
   const diseasesValidation = useMemo(
@@ -155,20 +120,32 @@ export default function DiseasesSection({ copy }: DiseasesSectionProps) {
 
   return (
     <BuilderSection
-      title={words.sectionTitle}
-      description={waiting ? words.waitingDescription : words.description}
+      title={intl.formatMessage(narrativePedigreeMessages.diseasesTitle)}
+      description={intl.formatMessage(
+        waiting
+          ? narrativePedigreeMessages.diseasesWaitingDescription
+          : narrativePedigreeMessages.diseasesDescription,
+      )}
       disabled={waiting}
     >
       <ProtocolArrayField<typeof DialogArrayField>
         name={DISEASES_FIELD}
-        label={words.fieldLabel}
-        hint={words.fieldHint}
+        label={intl.formatMessage(narrativePedigreeMessages.diseasesFieldLabel)}
+        hint={intl.formatMessage(narrativePedigreeMessages.diseasesFieldHint)}
         component={DialogArrayField}
-        addButtonLabel={words.addButtonLabel}
-        addTitle={words.addTitle}
-        editorTitle={words.editorTitle}
-        itemLabel={words.itemLabel}
-        emptyStateMessage={words.emptyStateMessage}
+        addButtonLabel={intl.formatMessage(
+          narrativePedigreeMessages.diseasesAddLabel,
+        )}
+        addTitle={intl.formatMessage(
+          narrativePedigreeMessages.diseasesAddTitle,
+        )}
+        editorTitle={intl.formatMessage(
+          narrativePedigreeMessages.diseasesEditTitle,
+        )}
+        itemLabel={narrativePedigreeMessages.diseaseNoun}
+        emptyStateMessage={intl.formatMessage(
+          narrativePedigreeMessages.diseasesEmptyState,
+        )}
         editorFieldsComponent={editorFieldsComponent}
         previewComponent={previewComponent}
         editorValidate={editorValidate}

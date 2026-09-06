@@ -1,3 +1,4 @@
+import { createMessageError } from '@codaco/app-i18n/messages';
 import type {
   Variable,
   VariableOption,
@@ -25,6 +26,7 @@ import type {
   ProtocolBuilderProtocolContext,
 } from '../../protocol-context.ts';
 import { variablesForSubject } from '../../protocol-context.ts';
+import { pedigreeMessages } from './pedigreeMessages.ts';
 
 /**
  * The refusal a VALIDATED writer earns when an unvalidated one already claims
@@ -42,9 +44,18 @@ import { variablesForSubject } from '../../protocol-context.ts';
  * attribute each family member is shown by — and a researcher told there that
  * an attribute "cannot be used as a form field" goes looking for a form field
  * they never added.
+ *
+ * ENCODED rather than formatted, because this module has no reader: the
+ * sentence is handed to the field as a plain string and rendered much later,
+ * and `FieldErrors` decodes it in whatever language the researcher is reading
+ * by then. Formatting it here would need a formatter this module has no
+ * business holding, and would freeze the refusal in the language that was
+ * current when the pick was judged.
  */
 const unvalidatedElsewhereMessage = (variableName: string): string =>
-  `"${variableName}" is written without validation by another stage, so it cannot also be collected here (the values that stage writes bypass this attribute’s validation)`;
+  createMessageError(pedigreeMessages.slotUnvalidatedElsewhereRefusal, {
+    attributeName: variableName,
+  });
 
 /** The refusal a picker earns, keyed by the picker's OWN writer class. */
 const crossClassMessage: Readonly<
@@ -67,9 +78,13 @@ const draftCrossClassMessage: Readonly<
   Record<WriterClass, (variableName: string) => string>
 > = Object.freeze({
   unvalidated: (variableName: string): string =>
-    `"${variableName}" is collected by this stage’s own form, so it cannot also be written by this slot (values written here would bypass its validation)`,
+    createMessageError(pedigreeMessages.slotDraftFormCollectsRefusal, {
+      attributeName: variableName,
+    }),
   validated: (variableName: string): string =>
-    `"${variableName}" is written without validation by another slot in this stage, so it cannot also be collected here (the values that slot writes bypass this attribute’s validation)`,
+    createMessageError(pedigreeMessages.slotDraftSlotDerivesRefusal, {
+      attributeName: variableName,
+    }),
 });
 
 /** A codebook attribute as a picker option, carrying what a filter needs. */

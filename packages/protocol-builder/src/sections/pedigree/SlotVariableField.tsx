@@ -1,6 +1,8 @@
 import { get } from 'es-toolkit/compat';
-import { type ReactNode, useMemo, useRef } from 'react';
+import { useMemo, useRef } from 'react';
 
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 import type {
   VariableOption,
@@ -28,8 +30,17 @@ const NO_VARIABLES: Readonly<Variables> = Object.freeze({});
 export type SlotVariableFieldProps = Readonly<{
   /** The slot's path in the stage document, e.g. `nodeConfig.egoVariable`. */
   name: string;
-  label: string;
-  hint: ReactNode;
+  /**
+   * What this slot is called, and what it is for.
+   *
+   * DESCRIPTORS throughout, because the words belong to the section that
+   * mounts this rather than to the control: a string handed across this seam
+   * is invisible to extraction, absent from the catalogs and covered by no
+   * guard, so every word this component renders would be the words that stayed
+   * English.
+   */
+  label: MessageDescriptor;
+  hint: MessageDescriptor;
   /** The type whose attributes this slot binds. `null` while none is chosen. */
   subject: CodebookSubject | null;
   /** The pool, already narrowed to what this slot can bind. */
@@ -47,10 +58,10 @@ export type SlotVariableFieldProps = Readonly<{
   /** The canonical value set the interface owns, seeded and locked. */
   lockedOptions?: readonly VariableOption[];
   /** Visible text and accessible name of the create control. */
-  createLabel: string;
-  createDescription: string;
+  createLabel: MessageDescriptor;
+  createDescription: MessageDescriptor;
   /** Said in place of the list when the codebook offers nothing usable. */
-  emptyMessage: string;
+  emptyMessage: MessageDescriptor;
 }>;
 
 /**
@@ -77,6 +88,7 @@ export default function SlotVariableField({
   createDescription,
   emptyMessage,
 }: SlotVariableFieldProps) {
+  const intl = useAppIntl();
   const { committedFields, protocolContext, storeApi } = useStageEditorForm();
   const { roleMap, slotMap } = usePedigreeVariableIndexes();
   const draftValue = useStageValue(name);
@@ -170,19 +182,19 @@ export default function SlotVariableField({
       <ProtocolField<typeof VariablePickerControl>
         name={name}
         component={VariablePickerControl}
-        label={label}
-        hint={hint}
+        label={intl.formatMessage(label)}
+        hint={intl.formatMessage(hint)}
         required
         options={pickerOptions}
-        emptyMessage={emptyMessage}
+        emptyMessage={intl.formatMessage(emptyMessage)}
         custom={crossClassValidation}
       />
       <CreateVariableButton
         subject={subject}
         variableType={variableType}
         {...(lockedOptions === undefined ? {} : { lockedOptions })}
-        label={createLabel}
-        description={createDescription}
+        label={intl.formatMessage(createLabel)}
+        description={intl.formatMessage(createDescription)}
         onCreated={(variableId) =>
           storeApi.getState().setFieldValue(name, variableId)
         }

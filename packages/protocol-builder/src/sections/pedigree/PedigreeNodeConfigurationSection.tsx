@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import {
   FAMILY_PEDIGREE_SLOTS,
@@ -58,30 +59,6 @@ const NODE_TYPE_DEPENDENT_FIELDS: readonly string[] = Object.freeze([
   'nominationPrompts',
 ]);
 
-const NO_ATTRIBUTES_MESSAGE =
-  'No attributes of this type can be used here yet. Create one to continue.';
-
-export type PedigreeNodeConfigurationCopy = Readonly<{
-  /** Names the section in the outline and to assistive technology. */
-  sectionTitle: string;
-  description: string;
-  typeLabel: string;
-  typeHint: string;
-}>;
-
-const DEFAULT_COPY: PedigreeNodeConfigurationCopy = {
-  sectionTitle: 'Family member data',
-  description:
-    'Choose the node type and map the attributes used to represent family members.',
-  typeLabel: 'Node type',
-  typeHint:
-    'Every family member the participant adds will be a node of this type.',
-};
-
-export type PedigreeNodeConfigurationSectionProps = Readonly<{
-  copy?: Partial<PedigreeNodeConfigurationCopy>;
-}>;
-
 /**
  * What switching the family member form off means, in the pedigree's words.
  *
@@ -108,10 +85,8 @@ const FORM_CAPABILITY = Object.freeze({
  * the codebook or created on the spot, and each is gated so a pedigree cannot
  * quietly take over an attribute another part of the protocol already writes.
  */
-export default function PedigreeNodeConfigurationSection({
-  copy,
-}: PedigreeNodeConfigurationSectionProps) {
-  const words = { ...DEFAULT_COPY, ...copy };
+export default function PedigreeNodeConfigurationSection() {
+  const intl = useAppIntl();
   const { identity, protocolContext } = useStageEditorForm();
   const nodeType = useStageValue(TYPE_FIELD);
   const formRows = useStageValue(FORM_FIELD);
@@ -185,16 +160,29 @@ export default function PedigreeNodeConfigurationSection({
   );
 
   return (
-    <BuilderSection title={words.sectionTitle} description={words.description}>
+    <BuilderSection
+      title={intl.formatMessage(pedigreeMessages.nodeTitle)}
+      description={intl.formatMessage(pedigreeMessages.nodeDescription)}
+    >
       {dependentNarrativeStages.length > 0 && (
         <Alert variant="warning">
-          <AlertTitle>Other stages read this pedigree</AlertTitle>
+          <AlertTitle>
+            {intl.formatMessage(pedigreeMessages.dependentStagesTitle)}
+          </AlertTitle>
           <AlertDescription>
-            {`These stages visualise this pedigree's network and map their own attributes onto its node type: ${dependentNarrativeStages
-              .map((stage) => `"${stage.label}"`)
-              .join(
-                ', ',
-              )}. Changing the node type here will leave them pointing at attributes the new type does not have.`}
+            {/*
+              The stage names reach the sentence as ONE value, joined by the
+              reader's own list formatter rather than by a comma this file
+              chose: which separator a list of names takes, and whether the
+              last one is introduced by a word at all, is a fact about the
+              reader's language.
+            */}
+            {intl.formatMessage(pedigreeMessages.dependentStagesDescription, {
+              stageNames: intl.formatList(
+                dependentNarrativeStages.map((stage) => `"${stage.label}"`),
+                { type: 'conjunction' },
+              ),
+            })}
           </AlertDescription>
         </Alert>
       )}
@@ -202,8 +190,8 @@ export default function PedigreeNodeConfigurationSection({
         name={TYPE_FIELD}
         component={EntitySelectControl}
         entityType="node"
-        label={words.typeLabel}
-        hint={words.typeHint}
+        label={intl.formatMessage(pedigreeMessages.nodeTypeLabel)}
+        hint={intl.formatMessage(pedigreeMessages.nodeTypeHint)}
         required
       />
 
@@ -211,58 +199,62 @@ export default function PedigreeNodeConfigurationSection({
         <>
           <SlotVariableField
             name={LABEL_FIELD}
-            label="Display label"
-            hint="A text attribute holding the name shown on each family member other than the participant, who is drawn without one."
+            label={pedigreeMessages.nodeLabelLabel}
+            hint={pedigreeMessages.nodeLabelHint}
             subject={subject}
             options={textVariables}
             writerClass="validated"
             draftConflicting={draftStructuralVariables}
             variableType="text"
-            createLabel="Create a new display label attribute"
-            createDescription="Create a text attribute for family member names"
-            emptyMessage={NO_ATTRIBUTES_MESSAGE}
+            createLabel={pedigreeMessages.nodeLabelCreateLabel}
+            createDescription={pedigreeMessages.nodeLabelCreateDescription}
+            emptyMessage={pedigreeMessages.slotEmptyState}
           />
           <SlotVariableField
             name={EGO_FIELD}
-            label="Participant identifier"
-            hint="A boolean attribute marking which node is the participant. Every completeness check keys off it, so nothing else may write it."
+            label={pedigreeMessages.nodeEgoLabel}
+            hint={pedigreeMessages.nodeEgoHint}
             subject={subject}
             options={booleanVariables}
             writerClass="unvalidated"
             ownSlot={FAMILY_PEDIGREE_SLOTS.egoVariable}
             draftConflicting={draftFormVariables}
             variableType="boolean"
-            createLabel="Create a new participant identifier attribute"
-            createDescription="Create a boolean attribute marking the participant"
-            emptyMessage={NO_ATTRIBUTES_MESSAGE}
+            createLabel={pedigreeMessages.nodeEgoCreateLabel}
+            createDescription={pedigreeMessages.nodeEgoCreateDescription}
+            emptyMessage={pedigreeMessages.slotEmptyState}
           />
           <SlotVariableField
             name={RELATIONSHIP_FIELD}
-            label="Relationship to participant"
-            hint="A text attribute holding each person's relationship to the participant, such as mother, uncle, or daughter. The pedigree works this out from the family tree."
+            label={pedigreeMessages.nodeRelationshipLabel}
+            hint={pedigreeMessages.nodeRelationshipHint}
             subject={subject}
             options={textVariables}
             writerClass="unvalidated"
             ownSlot={FAMILY_PEDIGREE_SLOTS.relationshipVariable}
             draftConflicting={draftFormVariables}
             variableType="text"
-            createLabel="Create a new relationship attribute"
-            createDescription="Create a text attribute for each relationship to the participant"
-            emptyMessage={NO_ATTRIBUTES_MESSAGE}
+            createLabel={pedigreeMessages.nodeRelationshipCreateLabel}
+            createDescription={
+              pedigreeMessages.nodeRelationshipCreateDescription
+            }
+            emptyMessage={pedigreeMessages.slotEmptyState}
           />
           <SlotVariableField
             name={BIOLOGICAL_SEX_FIELD}
-            label="Biological sex"
-            hint="A categorical attribute holding each family member's sex recorded at birth, which the pedigree traces sex-linked inheritance through. Its values are fixed by the interface."
+            label={pedigreeMessages.nodeBiologicalSexLabel}
+            hint={pedigreeMessages.nodeBiologicalSexHint}
             subject={subject}
             options={biologicalSexVariables}
             writerClass="unvalidated"
             draftConflicting={draftFormVariables}
             variableType="categorical"
             lockedOptions={INTERFACE_OWNED_OPTION_SETS.biologicalSex.options}
-            createLabel="Create a new biological sex attribute"
-            createDescription="Create the categorical attribute the pedigree records sex in"
-            emptyMessage={NO_ATTRIBUTES_MESSAGE}
+            createLabel={pedigreeMessages.nodeBiologicalSexCreateLabel}
+            createDescription={
+              pedigreeMessages.nodeBiologicalSexCreateDescription
+            }
+            emptyMessage={pedigreeMessages.slotEmptyState}
           />
 
           {/*
