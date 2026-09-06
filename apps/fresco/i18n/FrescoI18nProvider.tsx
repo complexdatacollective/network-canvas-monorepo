@@ -24,6 +24,9 @@ import type { FrescoI18nInitialization } from '~/i18n/resolve';
 import { frescoCatalogs } from '~/src/locales/catalogs';
 
 type LocaleState = {
+  // A host component can pass the resolved request through a nested content
+  // provider without inheriting that content provider's formatter or registry.
+  locale: string;
   preference: string | null;
   saving: boolean;
   failed: boolean;
@@ -149,7 +152,13 @@ function LocaleSession({
 
   return (
     <LocaleContext.Provider
-      value={{ preference: state.preference, saving, failed, setLocale }}
+      value={{
+        locale: state.locale,
+        preference: state.preference,
+        saving,
+        failed,
+        setLocale,
+      }}
     >
       <AppI18nProvider
         locale={state.locale}

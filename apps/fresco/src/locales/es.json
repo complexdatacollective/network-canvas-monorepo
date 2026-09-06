@@ -543,7 +543,7 @@
   "fresco.interviews.page.interviews": "Entrevistas",
   "fresco.interviews.page.viewAndManageYourInterviewData": "Consulta y administra los datos de tus entrevistas.",
   "fresco.language.automatic": "Automático (idioma del navegador)",
-  "fresco.language.description": "Elige el idioma de Fresco. Esto no cambia los idiomas de las entrevistas ni los datos de investigación.",
+  "fresco.language.description": "Elige el idioma de Fresco y de los controles integrados de las entrevistas. Esto no traduce el texto escrito en los protocolos ni cambia los datos de investigación.",
   "fresco.language.failed": "No se pudo guardar la preferencia de idioma. Vuelve a intentarlo.",
   "fresco.language.label": "Idioma",
   "fresco.language.saving": "Guardando preferencia de idioma…",

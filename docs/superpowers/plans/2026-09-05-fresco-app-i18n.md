@@ -5,11 +5,14 @@
 Fresco implementation: `feat/fresco-app-i18n`, isolated worktree
 `/private/tmp/nc-i18n-fresco`. Initial main: `4c4789f59`. Shared prerequisites
 are owned by the orchestrator on `feat/app-i18n-spanish-prerequisites`; the
-latest integrated checkpoint is `375b2ea73ccbcda586fef175bafc2ee009d3311b`.
+latest integrated checkpoint is `f3b4dc7b88441d0349d33af52203f6e30bc76c17`.
 The prerequisite PR is [#1702](https://github.com/complexdatacollective/network-canvas-monorepo/pull/1702),
-currently at `f3b4dc7b88441d0349d33af52203f6e30bc76c17`. The later shared
-integration remains pending the orchestrator's user permission question; all
-Fresco evidence below identifies the verified `375b2ea73` base.
+at that reviewed shared head. On 2026-09-06 the user explicitly authorized
+local shared integration. Normal merge `51fa024386634bb350d913a8f68410f3d3bf89be`
+has parents `f11a037e464a46f64465a5a4f42e81d7c9b3e97c` and the shared head;
+both ancestry and Joshua Melville's attribution were verified. Earlier Fresco
+evidence below identifies the historical `375b2ea73` shared base; the final
+integration section records repeated checks on the merged source.
 Local integration preserves normal ancestry. Fresco owns `apps/fresco/**`, its
 three-line lockfile importer addition, this plan, and the normal-lane minor
 changeset `fresco-researcher-localization.md`.
@@ -21,32 +24,35 @@ and the user's production Spanish amendment. Related PRs #1648 and #1651,
 Studio's adoption, shared package APIs, and root/app instructions were inspected.
 
 The shared prerequisite PR must land before the separately reviewable Fresco
-issue PR. Parent orchestration owns PR creation, current-head CI, explicit
-`@codex review` rounds, findings, and dependency-base updates. The user has not
-authorized merging PRs, force-pushing, production deployments, or releases.
+issue PR. The Fresco owner now maintains current-head CI and explicit
+`@codex review` rounds for [#1704](https://github.com/complexdatacollective/network-canvas-monorepo/pull/1704),
+with the orchestrator retaining shared-package ownership. The user subsequently
+authorized merging ready PRs; the lead owns merge sequencing and post-merge
+ancestry. The app owner does not merge independently. Force-pushing, production
+deployments and releases remain outside this authorization.
 
 ## Acceptance and complete surface inventory
 
-| Acceptance requirement / surface                                        | Implementation and verification                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Explicit `en`, `en-GB`, `es`; owning-package catalogs; English fallback | `i18n/locales.ts` and `src/locales/catalogs.ts` layer common, Fresco UI, network-exporter, protocol-utilities, protocol-validation and Fresco catalogs. Registry-subset, namespace, coverage, token, description and extraction guards pass. English defaults retain provider-optional behavior.                                                                                                                                                    |
-| Whole ICU messages, rich text, counts, lists, dates and numbers         | Source descriptors contain full messages. Counts use ICU plurals; current `intl` formats dates, relative times, progress, numbers and lists. Research identifiers and protocol content remain unchanged. Spanish singular/plural regression cases pass.                                                                                                                                                                                             |
-| Account > mirror > browser > English; malformed/regional preferences    | `resolveFrescoLocale` uses shared negotiation. Authenticated `null` means Automatic and ignores a previous user's mirror; unsupported account values fall through. Resolution tests cover malformed, unsupported, regional best fit and fallback.                                                                                                                                                                                                   |
-| Per-user persistence and migration                                      | Nullable `User.locale`, additive SQL migration, existing session/user guard, authenticated action with expected-user identity, exact supported canonical tags and `null`. Action and SQL upgrade tests preserve users, password hashes and sessions.                                                                                                                                                                                                |
-| Server initialization and request isolation                             | Request-scoped React cache reads the account, cookie and shared root-exported `parseAcceptLanguage`; `createAppIntl` uses the same catalogs and UTC timezone serialized to the provider. No shared Next locale cache. Actual raw SSR, hydration and eight concurrent requests from two users pass.                                                                                                                                                  |
-| Immediate changes, persistence and document ownership                   | Shared LocaleSelect with Automatic, optimistic updates, serialized writes, superseded-write guards, rollback to last acknowledged preference, refresh of server fragments, `lang`/`dir`, and browser-language events. Unit and standalone keyboard, reload, null/mirror and identity tests pass.                                                                                                                                                    |
-| Sign-in, sign-up, onboarding and expiry                                 | All headings, actions, alternate authentication, recovery, passkey/TOTP, setup steps, storage selection, S3/UploadThing forms, sandbox guidance, documentation, loading and error copy converted. Actual Spanish setup imported a protocol and reached the dashboard. Correction verification creates four fresh password/passkey accounts: explicit Spanish persists; Automatic remains null, with authenticated browser SSR and reload agreement. |
-| Dashboard shell and summary                                             | Desktop/mobile navigation, user actions, summary statistics, activity filters/table/export, empty states and loading copy converted. All five researcher routes inspected in all three locales; mobile focus and named-dialog regressions pass.                                                                                                                                                                                                     |
-| Protocol administration                                                 | Import dropzone/popover, progress, size/archive/schema/migration validation, duplicate handling, metadata, sorting/filtering, download, anonymous recruitment URLs and deletion copy converted. Actual setup import, duplicate refusal, byte-identical original download, cancel and disposable-protocol deletion pass.                                                                                                                             |
-| Participants                                                            | Add/edit and required/duplicate/server errors, CSV import/export and collisions, table counts/filtering/selection, generated URLs and deletion copy converted. Actual Spanish add/edit, duplicate error, stable CSV export, invalid/collision CSV import and cancellation pass. Generated URL, first activation, translated copy notification and single-record deletion/cancel checks pass.                                                        |
-| Interviews                                                              | Progress, network summaries, dates/statuses, table filters/selection, incomplete URLs, CSV/GraphML export, batched progress/cancel/completion and deletion copy converted. Actual synthetic generation, two completed records, 12-file export ZIP and persisted export timestamps pass. Bulk deletion warns about unexported interviews; cancel preserves all records and confirmation persists the empty table.                                    |
-| Settings and security                                                   | Language, app/version/installation, users/password/passkeys/TOTP, storage/S3/UploadThing, interview controls, privacy, API tokens, synthetic data and reset copy converted. All controls expose localized accessible names; environment-owned and current-user controls retain disabled states. Actual account creation and TOTP invalid-code, verification, recovery step and disabling workflows pass.                                            |
-| Current action/field errors survive a language change                   | Shared `createMessageError` transports descriptors and raw primitive/list values through existing string contracts. Shared form renderers and app `AppErrorMessage` format at render time. Real SignInForm field and form refusal tests pass without resubmission or field clearing; actual standalone credential-error switch passes.                                                                                                              |
-| Long-running and queued UI stays reactive                               | AppMessage nodes for stored toast/wizard content; exporter stage identity uses owning-package descriptors; all three toast.promise callers use options objects containing reactive descriptions. Active export and participant URL notification tests pass without restarting their operations.                                                                                                                                                     |
-| Researcher activity details                                             | All 33 production addEvent/addEvents sites and the direct Interview Opened writer emit stable kinds and named values while retaining original prose and analytics. Additive nullable `Events.localization`; 30 strict templates; unknown selectors and historical metadata preserve prose. Translated search and Type ordering precede pagination, use explicit cache locale, and preserve legacy raw-text search.                                  |
-| Participant boundary                                                    | Actual `(interview)` layout nests English provider, `manageDocument=false`, explicit English lang/dir, and participant interview creation intentionally uses English. Real-layout unit proof and actual generated-link runtime pass: the Spanish host preserves English participant language, direction and portal ownership.                                                                                                                       |
-| Accessibility, layout, required/disabled/error semantics                | Localized labels, tooltips, selectors, switches, dialogs and mobile menu; stable route keys retain focused navigation nodes. Empty required fields and rejected edits retain field ownership and current-language errors. Desktop and 390px Spanish screenshots inspected; no horizontal overflow.                                                                                                                                                  |
-| Verification, release notes and review                                  | Current correction format, lint, direct TypeScript, Knip, 670 app units and actual Next build pass locally. Normal-lane Fresco minor changeset authored. Independent Spanish AI review completed; external Codex PR review remains parent-owned.                                                                                                                                                                                                    |
+| Acceptance requirement / surface                                        | Implementation and verification                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Explicit `en`, `en-GB`, `es`; owning-package catalogs; English fallback | `i18n/locales.ts` and `src/locales/catalogs.ts` layer common, Fresco UI, network-exporter, protocol-utilities, protocol-validation and Fresco catalogs. Registry-subset, namespace, coverage, token, description and extraction guards pass. English defaults retain provider-optional behavior.                                                                                                                                                                                                                     |
+| Whole ICU messages, rich text, counts, lists, dates and numbers         | Source descriptors contain full messages. Counts use ICU plurals; current `intl` formats dates, relative times, progress, numbers and lists. Research identifiers and protocol content remain unchanged. Spanish singular/plural regression cases pass.                                                                                                                                                                                                                                                              |
+| Account > mirror > browser > English; malformed/regional preferences    | `resolveFrescoLocale` uses shared negotiation. Authenticated `null` means Automatic and ignores a previous user's mirror; unsupported account values fall through. Resolution tests cover malformed, unsupported, regional best fit and fallback.                                                                                                                                                                                                                                                                    |
+| Per-user persistence and migration                                      | Nullable `User.locale`, additive SQL migration, existing session/user guard, authenticated action with expected-user identity, exact supported canonical tags and `null`. Action and SQL upgrade tests preserve users, password hashes and sessions.                                                                                                                                                                                                                                                                 |
+| Server initialization and request isolation                             | Request-scoped React cache reads the account, cookie and shared root-exported `parseAcceptLanguage`; `createAppIntl` uses the same catalogs and UTC timezone serialized to the provider. No shared Next locale cache. Actual raw SSR, hydration and eight concurrent requests from two users pass.                                                                                                                                                                                                                   |
+| Immediate changes, persistence and document ownership                   | Shared LocaleSelect with Automatic, optimistic updates, serialized writes, superseded-write guards, rollback to last acknowledged preference, refresh of server fragments, `lang`/`dir`, and browser-language events. Unit and standalone keyboard, reload, null/mirror and identity tests pass.                                                                                                                                                                                                                     |
+| Sign-in, sign-up, onboarding and expiry                                 | All headings, actions, alternate authentication, recovery, passkey/TOTP, setup steps, storage selection, S3/UploadThing forms, sandbox guidance, documentation, loading and error copy converted. Actual Spanish setup imported a protocol and reached the dashboard. Correction verification creates four fresh password/passkey accounts: explicit Spanish persists; Automatic remains null, with authenticated browser SSR and reload agreement.                                                                  |
+| Dashboard shell and summary                                             | Desktop/mobile navigation, user actions, summary statistics, activity filters/table/export, empty states and loading copy converted. All five researcher routes inspected in all three locales; mobile focus and named-dialog regressions pass.                                                                                                                                                                                                                                                                      |
+| Protocol administration                                                 | Import dropzone/popover, progress, size/archive/schema/migration validation, duplicate handling, metadata, sorting/filtering, download, anonymous recruitment URLs and deletion copy converted. Actual setup import, duplicate refusal, byte-identical original download, cancel and disposable-protocol deletion pass.                                                                                                                                                                                              |
+| Participants                                                            | Add/edit and required/duplicate/server errors, CSV import/export and collisions, table counts/filtering/selection, generated URLs and deletion copy converted. Actual Spanish add/edit, duplicate error, stable CSV export, invalid/collision CSV import and cancellation pass. Generated URL, first activation, translated copy notification and single-record deletion/cancel checks pass.                                                                                                                         |
+| Interviews                                                              | Progress, network summaries, dates/statuses, table filters/selection, incomplete URLs, CSV/GraphML export, batched progress/cancel/completion and deletion copy converted. Actual synthetic generation, two completed records, 12-file export ZIP and persisted export timestamps pass. Bulk deletion warns about unexported interviews; cancel preserves all records and confirmation persists the empty table.                                                                                                     |
+| Settings and security                                                   | Language, app/version/installation, users/password/passkeys/TOTP, storage/S3/UploadThing, interview controls, privacy, API tokens, synthetic data and reset copy converted. All controls expose localized accessible names; environment-owned and current-user controls retain disabled states. Actual account creation and TOTP invalid-code, verification, recovery step and disabling workflows pass.                                                                                                             |
+| Current action/field errors survive a language change                   | Shared `createMessageError` transports descriptors and raw primitive/list values through existing string contracts. Shared form renderers and app `AppErrorMessage` format at render time. Real SignInForm field and form refusal tests pass without resubmission or field clearing; actual standalone credential-error switch passes.                                                                                                                                                                               |
+| Long-running and queued UI stays reactive                               | AppMessage nodes for stored toast/wizard content; exporter stage identity uses owning-package descriptors; all three toast.promise callers use options objects containing reactive descriptions. Active export and participant URL notification tests pass without restarting their operations.                                                                                                                                                                                                                      |
+| Researcher activity details                                             | All 33 production addEvent/addEvents sites and the direct Interview Opened writer emit stable kinds and named values while retaining original prose and analytics. Additive nullable `Events.localization`; 30 strict templates; unknown selectors and historical metadata preserve prose. Translated search and Type ordering precede pagination, use explicit cache locale, and preserve legacy raw-text search.                                                                                                   |
+| Participant and built-in interface boundary                             | The `(interview)` layout retains its independent English provider for Fresco participant route copy. Per the user's September 6 clarification, the shared Shell will receive Fresco's resolved locale through the independent Fresco context and negotiate its own built-in controls/catalogs. Protocol-authored copy and collected data remain literal. The earlier English runtime evidence below is historical; integrated menu, Automatic, SSR and data-preservation proof is pending the new shared checkpoint. |
+| Accessibility, layout, required/disabled/error semantics                | Localized labels, tooltips, selectors, switches, dialogs and mobile menu; stable route keys retain focused navigation nodes. Empty required fields and rejected edits retain field ownership and current-language errors. Desktop and 390px Spanish screenshots inspected; no horizontal overflow.                                                                                                                                                                                                                   |
+| Verification, release notes and review                                  | Current correction format, lint, direct TypeScript, Knip, 670 app units and actual Next build pass locally. Normal-lane Fresco minor changeset authored. Independent Spanish AI review completed; external Codex PR review remains parent-owned.                                                                                                                                                                                                                                                                     |
 
 ## Catalog and copy audit
 
@@ -365,21 +371,211 @@ These are exact local production/browser checks. A feature-branch dispatch with
 force_run checks packages but does not implicitly select remote E2E suites;
 no all-suite remote E2E success is claimed. No screenshot baseline is changed.
 
-## Delivery status and next executable action
+## Final shared integration verification
 
-The current correction is verified on integrated shared checkpoint `375b2ea73`.
+The earlier correction was verified on shared checkpoint `375b2ea73`.
 The frozen `/private/tmp/fresco-final-inventory.json` records 198 owned paths,
 21 new test files, one helper, eight adapted pre-existing tests and exactly
 three added lockfile importer lines. The minor changeset remains appropriate.
-The updated draft description is `/private/tmp/fresco-pr-body.md`.
+The f11 correction was pushed and received a completed clean Codex verdict
+([5554691724](https://github.com/complexdatacollective/network-canvas-monorepo/pull/1704#issuecomment-5554691724));
+all six initial findings were resolved. Its CI run
+[33990731860](https://github.com/complexdatacollective/network-canvas-monorepo/actions/runs/33990731860)
+passed tests, lint and quality-support, but failed Interview Storybook when a
+late `react-intl/server` optimization reloaded the runner. That exact include
+is present in the now-authorized shared merge. The earlier verdict and CI are
+historical evidence, not a verdict on the merged head.
 
-1. Commit the coherent correction as the configured user and normally push
-   `feat/fresco-app-i18n`. Verify hooks preserve the tested source, or repeat
-   affected gates if they change it.
-2. Orchestrator: inspect the correction evidence/head, reply to and resolve the
-   six review threads, then request and complete explicit Codex review on the
-   new exact head. A prior-head review is not a completed new-head verdict.
-3. Keep later shared integration pending the existing permission question.
-   Once authorized, preserve normal ancestry and rerun affected checks on the
-   integrated current shared head before declaring this PR ready to merge.
-   The user has not authorized merging, force-pushing, deployment or release.
+The authorized normal runtime integration is merge commit
+`fd89c92210e80db0dd7da746877af16fb7230c7e`, with parents
+`51fa024386634bb350d913a8f68410f3d3bf89be` and
+`3ffccd752d119f9b63103d07f5284a6ddc8d605a`. The latter contains the shared
+runtime source and the normal integration of resolved prerequisite #1702/main.
+The six-path host patch is applied on top. No shared source was copied or
+independently changed during app integration.
+The subsequently accepted story-only correction was integrated normally as
+`8a327ef0b40be437569c2565f6a88f4e4646dcad`, whose other parent is
+`fec5715f8d59f37448d19d016330d16a57f6344b`. That checkpoint changes only the
+Navigation keyboard story and the shared audit document; production source
+remains byte-identical to the built runtime.
+
+Final verification uses `/private/tmp/nc-i18n-fresco-integrated-proof`, a
+separate detached checkout with its own dependencies, cold caches and Next
+build output. One historical cold run on f11 reproduced the exact
+`react-intl/server` optimization and page reload, followed by 60 unloaded story
+files in 8.14 seconds. The proof tree then advanced normally to the merged
+source and received the same six-path host patch. Evidence:
+`/private/tmp/fresco-integrated-storybook-historical-cold.log`. The running user-review
+development server on port 3106 and its `fresco_i18n_user_review` database,
+bucket and user-created state are preserved. Production browser verification
+uses only the separately owned QA databases and port 3108.
+
+### September 6 built-in interview language clarification
+
+The user clarified that the reusable interview package's built-in controls,
+validation and accessibility copy must support the selected interface language;
+protocol-authored content belongs to the separate protocol localization work.
+The orchestrator owns the shared Shell provider, package registry/catalogs and
+full runtime checks. The Fresco host change is now integrated in both the app
+and isolated proof checkout. Current local application gates and the actual
+runtime, account, passkey, import, activity and four isolated setup workflows pass.
+
+`useFrescoLocale()` exposes the already-resolved host locale independently of
+the nested participant formatter. `InterviewClient` passes only
+`requestedLocale` to Shell. It does not supply `localePreference` or
+`onLocaleChange`: the interview menu owns a temporary override, and Automatic
+returns to the host request. A participant selection must not persist into a
+researcher's account. The package owns its registry and portal language while
+Fresco participant route messages retain their existing boundary.
+
+The language-setting hint now explains the built-in controls/authored text
+distinction. Its whole English/Spanish pair received a separate clean AI review
+from the lead agent on September 6; no British override is needed. The prepared
+host regression checks the actual provider/layout/client seam, serialized
+Spanish hydration despite a British browser, account changes and unchanged
+payloads. On the isolated f11-based preparation checkout, both focused tests
+pass; a test-time Vite transform that reads the nested English formatter instead
+of the independent host context makes both fail with `en` where `es` is required.
+Evidence: `/private/tmp/fresco-interview-host-boundary-{red,green}.log`. This
+test deliberately mocks Shell; its preparation result alone did not establish
+package menu behavior or compile the new prop against the then-forthcoming API.
+The integrated TypeScript/build checks and production workflow now separately
+prove actual menu choices in English, British English and Spanish, Automatic
+returning to the host request, unchanged account preferences and protocol/session
+values, and reachable controls/long Spanish at 390px. No source mutation is permitted
+while another owner verifies shared source; failure probes use test-time
+transforms in the isolated proof checkout.
+
+The additional shared finish-error audit found that a host's raw English failure
+could reach the newly localized confirmation dialog. The lead delegated the
+bounded correction to the Fresco owner: the existing `describeError` callback
+now returns a reactive owning-package AppMessage. Real dialog tests reproduce
+both pending-answer-save and host-finish refusals before the fix, then pass for
+live English/Spanish/British English guidance, unchanged flush-before-finish
+ordering, successful retry and AbortSignal cancellation (3/3). The shared source
+and focused E2E expectation are frozen for the orchestrator's aggregate checks;
+catalog ownership and commit remain with the orchestrator. Evidence and exact
+three-file hashes: `/private/tmp/nc-interview-finish-localization-inventory.json`.
+The app production script now passes actual failed finish responses in all
+three locales and a successful retry. It uses normal cancel/menu/reopen actions
+between production refusals because the open modal correctly blocks its
+background menu. The shared real-dialog regression is the separate proof that
+an already-open error reacts to a locale change without resubmission.
+
+### Integrated acceptance evidence
+
+All commands use Node **24.18.0** and
+`pnpm --config.verifyDepsBeforeRun=false` in the isolated proof checkout.
+
+- Prisma/Next code generation, English extraction and catalog guards pass:
+  `/private/tmp/fresco-integrated-codegen.log`,
+  `/private/tmp/fresco-integrated-extraction.log` and the full unit suite.
+- TypeScript and **83 files / 672 units** pass:
+  `/private/tmp/fresco-integrated-typecheck.log` and
+  `/private/tmp/fresco-integrated-units.log`. The two host-boundary tests also
+  fail under the test-time-only nested-English-formatter mutation:
+  `/private/tmp/fresco-integrated-host-boundary-red.log`.
+- Root workspace Knip, app lint, app formatting, changeset policy and the
+  actual Next production build pass:
+  `/private/tmp/fresco-integrated-{knip,lint,format,changesets,build}.log`.
+  The build compiles the shared source/catalogs and generates all 22 pages.
+  The first standalone Knip invocation was an incorrect monorepo command;
+  the root invocation then required the newly merged Studio workspace links.
+  Frozen offline dependency installation resolved that setup issue without a
+  source change. Both exploratory command logs are retained separately.
+- Fresco cold Storybook passes **20 tests**; the complete Interview cold suite
+  passes **244 tests** after the reviewed keyboard-story correction:
+  `/private/tmp/fresco-integrated-storybook-app-cold.log` and
+  `/private/tmp/fresco-integrated-storybook-interview-cold.log`.
+  The intermediate 243-pass/one-focus-expectation failure is retained as
+  `/private/tmp/fresco-integrated-storybook-interview-keyboard-old.log`.
+- `/private/tmp/fresco-integrated-runtime-browser.log` proves actual account
+  Spanish SSR despite a British browser, live required-field translation,
+  all menu locales and Automatic, unchanged dirty literal answers without an
+  input remount, normal navigation saving the exact answer to PostgreSQL,
+  reload and independent British/Spanish authenticated/anonymous requests.
+  Real finish refusals display whole localized guidance in all three locales;
+  retry finishes the same interview with the exact saved answer. There are no
+  browser errors, both account preferences remain unchanged, and exact
+  temporary protocol/participant/interview/event cleanup counts are all zero.
+- `/private/tmp/fresco-integrated-account-browser.log` repeats account over
+  mirror/browser precedence, Automatic null persistence, keyboard focus,
+  authentication failures, two users and eight concurrent SSR requests.
+  `/private/tmp/fresco-integrated-failures-browser.log` passes real WebAuthn
+  mode-switch/additional registration/removal and password-mode restoration,
+  a synthetic API refusal whose queued toast changes language without a new
+  request, and valid-archive operational import failure/retry/fixture deletion.
+- `/private/tmp/fresco-integrated-activity-browser.log` repeats the actual
+  PostgreSQL >1,000-row query/page/count/cache isolation proof, original and
+  historical text search and both directions of visible translated Type sort.
+  All 1,007 query fixtures are removed.
+- `/private/tmp/fresco-integrated-setup-databases.log` applies the additive
+  migrations and normal installation initialization to exactly the four owned
+  disposable setup databases. `/private/tmp/fresco-integrated-setup-browser.log`
+  passes real password and virtual-passkey registration, each with explicit
+  Spanish or Automatic null. Every new User.locale, authenticated setup step 2,
+  raw browser-navigation SSR language and reload selection agrees; no page
+  errors occur. These are owned test databases, separate from the preserved
+  user-review database and bucket.
+- `/private/tmp/fresco-integrated-preservation-browser.log` confirms the
+  retained accented participant identifier/label, intended prior deletions,
+  byte-identical original protocol download and restored password-only account
+  with no temporary passkeys. `/private/tmp/fresco-integrated-fixture-cleanup.log`
+  records zero current runtime/query/import fixture counts and the exact
+  original Spanish/Automatic preferences of the two QA accounts.
+
+The runtime browser harness was corrected to follow actual EgoForm navigation
+submission rather than assuming blur saves, send Accept-Language explicitly
+for Playwright's raw API requests, and query the single accessible main region
+while React streaming can temporarily retain hidden DOM. These were harness
+assumptions, not application regressions; their failed logs remain distinct
+from the meaningful source-mutation red proof.
+
+The settings hint, focused interface-language menu and actionable Spanish finish
+refusal were captured at 390px and independently inspected and accepted by the
+lead. Files:
+`/private/tmp/fresco-integrated-language-hint-es-390.png`,
+`/private/tmp/fresco-integrated-interview-menu-es-390.png` and
+`/private/tmp/fresco-integrated-finish-error-es-390.png`.
+The researcher enables the existing small-screen override through the actual
+QA settings UI for this check; its exact previous database setting is restored
+afterward. Fresco's existing host participant screen-size message remains in
+the explicitly retained participant boundary outside the shared Shell.
+
+The visual classifier conservatively selects all three suites because this
+branch contains shared runtime/UI changes. Canonical PNG generation belongs to
+the lead's shared runtime PR #1719 and its GitHub Actions workflow; this app work
+does not generate or adopt local PNG baselines. The feature-branch package CI
+dispatch selects zero E2E suites, so the production browser results above remain
+explicit local evidence. The six app source/test/catalog files are frozen and
+byte-identical in the actual and proof trees:
+`/private/tmp/fresco-integrated-source-inventory.json`.
+
+Next executable actions: commit the frozen verified app change as the configured
+user. The lead has lifted the
+push hold after #1702 merged. Normally push the verified head, stack PR #1704 on
+the runtime branch for #1719, request a new explicit full-head Codex review and dispatch
+package CI. Keep resolving valid current-head findings until the verdict and
+threads are clear. The lead owns the authorized PR merge sequence and post-merge
+ancestry; no independent app merge, force-push, deployment or release is planned.
+
+Read-only main preflight compared the app's `51fa024386634bb350d913a8f68410f3d3bf89be`
+with snapshot `eae76922d4cd340b0ebb8765c288fd6e91462b53`, using common ancestor
+`2928a402ecf8d0c328b1f20e82a267a2501ae8a0`. Main changes no Fresco files, Prisma
+schema/migrations, Next/Vitest configuration or direct dependency manifests.
+The complete six-path prepared host patch passed `git apply --check` and was
+subsequently applied after the authorized runtime merge. Shared `useField`,
+Interview Storybook and protocol validation export overlaps remain lead-owned.
+Main also changes shared date
+bounds, heading/ARIA behavior and validation, so final app type/build/form checks
+still run after integration. The lead resolved prerequisite PR #1702 and
+preserved the new runtime on `feat/interview-interface-i18n`; checkpoint 3ff
+contains both lines of work. Prerequisite #1702 has since merged at
+`39f59598be90c8413a49710364db477c7a3c2711`. Final runtime checkpoint
+`5128f4942c67dee5e8690fd43852887b23a24593` additionally integrates unrelated
+Studio SMTP changes from main; its diff after fec contains no Fresco, Fresco UI,
+app-i18n or interview production source. It is integrated normally in
+`72f6a944f27f53948cfe33ea761d57a573786abf`, with the same six verified host
+source/test/catalog files unchanged. GitHub delivery and merge sequencing
+remain lead-owned. After #1719 lands, the lead retargets #1704 to main and
+requires fresh automatic current-head CI before merge.

@@ -17,8 +17,9 @@ const messages = defineMessages({
   description: {
     id: 'fresco.language.description',
     defaultMessage:
-      'Choose the language for Fresco. This does not change interview languages or research data.',
-    description: 'Explains the scope of the application language preference.',
+      'Choose the language for Fresco and built-in interview controls. This does not translate text written in protocols or change research data.',
+    description:
+      'Explains that the researcher language preference also initializes built-in interview controls, while text authored in a protocol and collected research data are preserved.',
   },
   automatic: {
     id: 'fresco.language.automatic',
