@@ -113,7 +113,7 @@ export async function assertSafePostgresCatalogPrivileges(
       `WITH identities AS MATERIALIZED (
         SELECT oid FROM pg_catalog.pg_roles WHERE rolname = ANY($1::pg_catalog.text[])
       ), namespaces AS MATERIALIZED (
-        SELECT oid, nspname FROM pg_catalog.pg_namespace
+        SELECT oid, nspname, nspowner FROM pg_catalog.pg_namespace
         WHERE nspname ~ '^pg_' OR nspname = 'information_schema'
       ), extension_objects AS MATERIALIZED (
         SELECT dependency.classid, dependency.objid, extension.extname
@@ -202,6 +202,12 @@ export async function assertSafePostgresCatalogPrivileges(
         WHERE relation.relkind <> 'S'
       ) SELECT pg_catalog.current_setting('server_version_num')::pg_catalog.int4 / 10000 = 18
         AND (SELECT count(*) FROM identities) = pg_catalog.cardinality($1::pg_catalog.text[])
+        AND NOT EXISTS (
+          SELECT 1 FROM identities identity CROSS JOIN namespaces namespace
+          WHERE namespace.nspowner = identity.oid
+            OR pg_catalog.has_schema_privilege(identity.oid, namespace.oid,
+              'CREATE,USAGE WITH GRANT OPTION')
+        )
         AND NOT EXISTS (SELECT 1 FROM routine_reads routine WHERE routine.prosecdef)
         AND NOT EXISTS (
           SELECT 1 FROM identities identity CROSS JOIN routine_reads routine
