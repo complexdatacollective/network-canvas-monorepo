@@ -41,6 +41,18 @@ import {
   type CodebookSubject,
   type CodebookVariableDraft,
 } from '../editing.ts';
+import {
+  DEFAULT_DATE_RESOLUTION,
+  hasParameterIssues,
+  parametersForShape,
+  parameterShapeFor,
+  parametersWith,
+  PARAMETERS_BLOCK,
+  readParameters,
+  validateParameters,
+  type ParameterShape,
+} from '../variableParameters.ts';
+import VariableParameterFields from './VariableParameterFields.tsx';
 
 const VARIABLE_TYPE_OPTIONS = [
   { label: 'Text', value: VariableTypes.text },
@@ -63,12 +75,39 @@ const OPTION_TYPES = new Set<VariableType>([
 ]);
 
 const VARIABLE_EDITOR_PROPERTIES = ['name', 'type', 'options'] as const;
+
+/**
+ * Properties a type change invalidates, which are therefore replaced whole
+ * rather than carried over. Only rendered when something else brings them into
+ * this editor's hands: `parameters` are rendered whenever the chosen control
+ * takes any (see `PARAMETER_OWNED_PROPERTIES`), and validation rules belong to
+ * the separate variable-validation surface.
+ */
 const TYPE_OWNED_PROPERTIES = [
   'component',
   'parameters',
   'validation',
   'encrypted',
 ] as const;
+
+/**
+ * What the parameters surface REPLACES when it is rendered.
+ *
+ * Only `parameters`, and only because a block can be emptied: every setting
+ * cleared is an attribute that carries no `parameters` key at all, and the
+ * request builder lays the draft OVER the prior variable — so a key the draft
+ * no longer has would otherwise survive being deleted.
+ *
+ * `component` is not listed because it does not need to be: the surface
+ * renders only for a control that takes settings, so the draft always names
+ * one and always writes it. It is written, though — see
+ * `draftOwnedByVariableEditor`. A host opens this editor on the control the
+ * researcher has just chosen, which may not be the one the codebook still
+ * records, and settings authored for the new control written beside the old
+ * control's name are a variable the schema refuses outright (the two datetime
+ * schemas are strict, and each admits only its own keys).
+ */
+const PARAMETER_OWNED_PROPERTIES = ['parameters'] as const;
 
 type EditableOption = Readonly<{
   label: string;
@@ -127,10 +166,18 @@ type VariableEditorInstanceProps = VariableEditorProps extends infer TProps
   : never;
 
 /**
- * Host-neutral editor for a codebook variable's identity, type and options.
+ * Host-neutral editor for a codebook variable's identity, type, options and
+ * the settings its input control takes.
+ *
  * Validation rules deliberately belong to the separate variable-validation
  * surface; any unrendered draft properties are preserved and validated by the
  * request builder rather than silently normalised here.
+ *
+ * Which of the two optional blocks appears is decided by the attribute rather
+ * than by the host: a list of values for an attribute whose answer is chosen
+ * from one, and control settings for a control that takes any. They are never
+ * both true at once — a categorical attribute's control takes no settings, and
+ * a date or a scale is not chosen from a list.
  */
 export default function VariableEditor(props: VariableEditorProps) {
   const { openId, ...instanceProps } = props;
@@ -156,7 +203,9 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
   // This component is remounted by openId. Changing seeds within one open
   // must not overwrite edits already in progress.
   const [seededDraft] = useState(() =>
-    draftWithLockedOptions(initialDraft, lockedOptions),
+    draftWithSeededResolution(
+      draftWithLockedOptions(initialDraft, lockedOptions),
+    ),
   );
   const [initialAuthoritativeType] = useState(() =>
     props.mode === 'update'
@@ -207,14 +256,24 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
     props.mode === 'update' && authoritativeType !== initialAuthoritativeType;
   const typeChanged =
     props.mode === 'update' && selectedType !== authoritativeType;
-  const replaceProperties = variableEditorReplaceProperties(typeChanged);
+  // Which settings the chosen control takes — the whole of what decides
+  // whether this editor renders and writes a `parameters` block at all.
+  const parameterShape = parameterShapeFor(
+    snapshot.draft.type,
+    snapshot.draft.component,
+  );
+  const replaceProperties = variableEditorReplaceProperties(
+    typeChanged,
+    parameterShape,
+  );
   const submittedDraft =
     props.mode === 'create'
-      ? snapshot.draft
+      ? draftWithOwnedParameters(snapshot.draft, parameterShape)
       : draftOwnedByVariableEditor(
           snapshot.draft,
           lockedOptions !== null,
           typeChanged,
+          parameterShape,
         );
   const hasOptions = selectedType !== null && OPTION_TYPES.has(selectedType);
   const optionsLocked =
@@ -313,6 +372,14 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
     [replaceProperty],
   );
 
+  const replaceParameter = (key: string, value: unknown) => {
+    if (parameterShape === null) return;
+    replaceProperty(
+      'parameters',
+      parametersWith(parameterShape, snapshot.draft.parameters, key, value),
+    );
+  };
+
   const handleTypeChange = (value: string | number | undefined) => {
     const nextType = variableTypeFrom(value);
     if (nextType === null) return;
@@ -340,6 +407,29 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
       return;
     }
     if (unchangedUpdate) return;
+    // Judged here rather than left to the request builder: the builder parses
+    // the whole variable and answers against a path, which cannot say WHICH of
+    // two dates is the one the schema will not take. The same schemas run
+    // either way — this one just knows which control asked.
+    if (parameterShape !== null) {
+      const parameterIssues = validateParameters(
+        parameterShape,
+        snapshot.draft.parameters,
+      );
+      if (hasParameterIssues(parameterIssues)) {
+        activeRequestId.current = null;
+        setIssues(
+          Object.entries(parameterIssues).flatMap(([key, messages]) =>
+            messages.map((message) => ({
+              path:
+                key === PARAMETERS_BLOCK ? ['parameters'] : ['parameters', key],
+              message,
+            })),
+          ),
+        );
+        return;
+      }
+    }
     setIssues([]);
     const requestId = activeRequestId.current ?? createRequestId();
     activeRequestId.current = requestId;
@@ -395,6 +485,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
   const nameErrors = messagesAt(issues, 'name');
   const typeErrors = messagesAt(issues, 'type');
   const optionErrors = messagesAt(issues, 'options');
+  const parameterIssues = parameterMessages(issues);
   const contradictions = contradictionMessages(issues);
   const failurePresentation = failureFrom(snapshot.lastFailure, contradictions);
 
@@ -412,7 +503,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
         {title}
       </Heading>
       <Paragraph emphasis="muted" className="mt-2">
-        Define the attribute name, data type, and any available values.
+        Define the attribute name and the kind of answer it holds.
       </Paragraph>
 
       {failurePresentation !== null && (
@@ -599,6 +690,40 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
           </fieldset>
         )}
 
+        {parameterShape !== null && (
+          <fieldset
+            className="mb-8 min-w-0"
+            aria-invalid={
+              (parameterIssues[PARAMETERS_BLOCK]?.length ?? 0) > 0 || undefined
+            }
+          >
+            <legend className="font-heading mb-2 font-bold">
+              What this control accepts
+            </legend>
+            <p className="text-muted mb-4 text-sm">
+              These settings belong to the input control this attribute is
+              collected with, so they apply wherever it is asked for.
+            </p>
+            {(parameterIssues[PARAMETERS_BLOCK]?.length ?? 0) > 0 && (
+              <ul
+                id={`${statusId}-parameter-errors`}
+                className="text-destructive mb-3 list-disc pl-5"
+              >
+                {parameterIssues[PARAMETERS_BLOCK]?.map((message) => (
+                  <li key={message}>{message}</li>
+                ))}
+              </ul>
+            )}
+            <VariableParameterFields
+              shape={parameterShape}
+              parameters={snapshot.draft.parameters}
+              onChange={replaceParameter}
+              issues={parameterIssues}
+              readOnly={interactionDisabled}
+            />
+          </fieldset>
+        )}
+
         <div className="flex justify-end">
           <Button
             type="submit"
@@ -630,6 +755,7 @@ function draftOwnedByVariableEditor(
   draft: Readonly<SectionDoc>,
   persistLockedOptions: boolean,
   includeTypeMetadata: boolean,
+  parameterShape: ParameterShape | null,
 ): CodebookVariableDraft {
   const owned: Record<string, unknown> = Object.create(null);
   const properties = includeTypeMetadata
@@ -638,16 +764,72 @@ function draftOwnedByVariableEditor(
   for (const property of properties) {
     if (Object.hasOwn(draft, property)) owned[property] = draft[property];
   }
+  if (parameterShape !== null) {
+    if (Object.hasOwn(draft, 'component')) owned.component = draft.component;
+    const parameters = parametersForShape(parameterShape, draft.parameters);
+    if (parameters === undefined) delete owned.parameters;
+    else owned.parameters = parameters;
+  }
   if (persistLockedOptions) owned.readOnly = true;
   return owned;
 }
 
+/**
+ * A created variable's draft, with its parameters narrowed to the shape the
+ * chosen control actually takes.
+ *
+ * Create mode submits the draft whole, so a block still holding a key the
+ * control before it needed would be sent as authored and refused by the
+ * schema — the same pruning the update path gets from
+ * `draftOwnedByVariableEditor`.
+ */
+function draftWithOwnedParameters(
+  draft: CodebookVariableDraft,
+  parameterShape: ParameterShape | null,
+): CodebookVariableDraft {
+  if (parameterShape === null) return draft;
+  const parameters = parametersForShape(parameterShape, draft.parameters);
+  const next: Record<string, unknown> = { ...draft };
+  if (parameters === undefined) delete next.parameters;
+  else next.parameters = parameters;
+  return next;
+}
+
+/**
+ * A date picker records the resolution its dates are stored at, even when the
+ * researcher never opens the control that chooses it.
+ *
+ * The interview assumes a full date when the protocol declares none, so an
+ * absent resolution is not an open question — it is an unstated answer, and
+ * one every bound the researcher goes on to author is judged against. Seeding
+ * it here means the control opens showing what the runtime will do rather than
+ * showing nothing, and a save from this editor records it.
+ */
+function draftWithSeededResolution(
+  draft: CodebookVariableDraft,
+): CodebookVariableDraft {
+  if (parameterShapeFor(draft.type, draft.component) !== 'datePicker') {
+    return draft;
+  }
+  const parameters = readParameters(draft.parameters);
+  if (typeof parameters.type === 'string') return draft;
+  return {
+    ...draft,
+    parameters: { ...parameters, type: DEFAULT_DATE_RESOLUTION },
+  };
+}
+
 function variableEditorReplaceProperties(
   includeTypeMetadata: boolean,
+  parameterShape: ParameterShape | null,
 ): readonly string[] {
-  return includeTypeMetadata
-    ? [...VARIABLE_EDITOR_PROPERTIES, ...TYPE_OWNED_PROPERTIES]
-    : VARIABLE_EDITOR_PROPERTIES;
+  return [
+    ...new Set([
+      ...VARIABLE_EDITOR_PROPERTIES,
+      ...(includeTypeMetadata ? TYPE_OWNED_PROPERTIES : []),
+      ...(parameterShape === null ? [] : PARAMETER_OWNED_PROPERTIES),
+    ]),
+  ];
 }
 
 function updateLeavesVariableUnchanged(
@@ -756,6 +938,26 @@ function messagesAt(
   return issues
     .filter((issue) => issue.path[0] === property)
     .map((issue) => issue.message);
+}
+
+/**
+ * The parameter refusals, filed under the control each one belongs to.
+ *
+ * `['parameters']` with nothing after it belongs to the block as a whole and
+ * is filed under `PARAMETERS_BLOCK`, so a complaint about no one setting still
+ * has somewhere to be read.
+ */
+function parameterMessages(
+  issues: readonly CodebookDraftIssue[],
+): Record<string, string[]> {
+  const messages: Record<string, string[]> = {};
+  for (const issue of issues) {
+    if (issue.path[0] !== 'parameters') continue;
+    const key = issue.path[1];
+    const bucket = typeof key === 'string' ? key : PARAMETERS_BLOCK;
+    (messages[bucket] ??= []).push(issue.message);
+  }
+  return messages;
 }
 
 /**
