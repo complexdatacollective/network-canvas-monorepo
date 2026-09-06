@@ -23,6 +23,7 @@
     "./postgres-migrations": "./src/postgres-migrations.ts",
     "./postgres-migration-artifacts": "./src/postgres-migration-artifacts.ts",
     "./postgres-pool": "./src/postgres-pool.ts",
+    "./postgres-catalog-privileges": "./src/postgres-catalog-privileges.ts",
     "./section-validation": "./src/section-validation.ts",
     "./template-metadata": "./src/template-metadata.ts",
     "./template-exchange": "./src/template-exchange.ts"
