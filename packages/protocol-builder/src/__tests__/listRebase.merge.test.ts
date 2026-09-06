@@ -339,3 +339,76 @@ describe('an id-less list rebased onto a collaborator’s arrival', () => {
     ]);
   });
 });
+
+/**
+ * A list holding one id twice — a roster imported a second time, a row
+ * copy-pasted — where the two copies carry DIFFERENT content.
+ *
+ * An id is authoritative about which row is which, so two rows carrying one id
+ * are two rows the correspondence has to pair off the way it pairs off two
+ * copies of an id-less row: in order, one apiece. Order alone is not enough
+ * when the copies differ, though. Both sides deleting a different copy leaves
+ * each side holding one row that LOOKS like the ancestor's other one, and
+ * pairing purely by occurrence reads the survivor as the copy the researcher
+ * kept — so their deletion is refused as already applied, and the row they
+ * deleted is the one that stays.
+ *
+ * Content decides first, then: a copy that neither side touched is paired with
+ * itself, and occurrence answers only for the copies left over. That is the
+ * rule the id-less rows already follow, said for a row whose id cannot tell it
+ * from its twin either.
+ */
+describe('a list holding one id twice', () => {
+  const first = { id: 'dup', variable: 'a', prompt: 'Their age?' };
+  const second = { id: 'dup', variable: 'b', prompt: 'Their job?' };
+
+  it('keeps both deletions when the two of them delete a copy each', () => {
+    const session = openSession([first, second]);
+    session.dispatch(
+      commandsFromDraftChange(
+        session.getSnapshot().editedSection.fields,
+        stageWith([first]),
+      ),
+    );
+    expect(session.getSnapshot().pendingCommands[0]?.commands).toEqual([
+      { op: 'removeItem', key: ['form', 'fields'], index: 1 },
+    ]);
+
+    // The collaborator deleted the OTHER copy, so what arrives is one row that
+    // looks exactly like the one the researcher deleted.
+    session.acknowledge({
+      fields: stageWith([second]),
+      throughBatchId: 0,
+      manifestRevision: revision(2n),
+    });
+
+    // Each of them deleted one row, and each deletion stands.
+    expect(readFields(session.getSnapshot().editedSection.fields)).toEqual([]);
+  });
+
+  /**
+   * The control: the copy the researcher kept is the one the collaborator
+   * rewrote, so occurrence and content agree and the deletion lands on the
+   * copy it named.
+   */
+  it('keeps the deletion on the named copy when the other one was rewritten', () => {
+    const session = openSession([first, second]);
+    session.dispatch(
+      commandsFromDraftChange(
+        session.getSnapshot().editedSection.fields,
+        stageWith([first]),
+      ),
+    );
+
+    const rewritten = { ...first, prompt: 'How old are they?' };
+    session.acknowledge({
+      fields: stageWith([rewritten, second]),
+      throughBatchId: 0,
+      manifestRevision: revision(2n),
+    });
+
+    expect(readFields(session.getSnapshot().editedSection.fields)).toEqual([
+      rewritten,
+    ]);
+  });
+});

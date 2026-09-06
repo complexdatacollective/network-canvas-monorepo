@@ -201,6 +201,18 @@ export function resolveRowIndex<T extends ArrayRow>(
  *   earlier row has claimed, so the copies are paired off in ORDER: the first
  *   copy on one side with the first on the other, and so on.
  *
+ * A list may hold one id TWICE — a roster imported a second time, a row
+ * copy-pasted — and two rows carrying one id are two rows the id cannot tell
+ * apart, so they are paired off in order like any other copies. Order alone is
+ * not enough once the copies differ in content: each side deleting a different
+ * copy leaves each holding one row that looks like the ancestor's OTHER one,
+ * and in-order pairing reads the survivor as the copy the researcher kept —
+ * which refuses their deletion as already applied and keeps the row they
+ * deleted. So a copy whose content NEITHER side touched is paired with itself
+ * first, and occurrence answers only for the copies left over. Content deciding
+ * before position is what the id-less rows already do; this says it for a row
+ * whose id cannot tell it from its twin either.
+ *
  * In order, and never by absolute position, because this correspondence is
  * drawn against lists that have moved relative to one another, and both
  * drawings of it have to agree by construction. It is what tells apart the two
@@ -225,17 +237,37 @@ export function matchRows(
   const contents = list.map((row) => canonicalize(row));
 
   const idless: number[] = [];
+  const identified: number[] = [];
   before.forEach((row, ancestor) => {
-    const id = getId(row);
-    if (id === undefined) {
-      idless.push(ancestor);
-      return;
-    }
+    if (getId(row) === undefined) idless.push(ancestor);
+    else identified.push(ancestor);
+  });
+
+  // The copies neither side touched, taken first: a row that is still exactly
+  // itself over there is that row, whatever position its twin has moved to.
+  // What is left over is every row whose content one side or the other
+  // changed, and those are paired off by occurrence below.
+  const changed = identified.filter((ancestor) => {
+    const id = getId(before[ancestor]);
+    const content = canonicalize(before[ancestor]);
+    const candidate = identities.findIndex(
+      (candidateId, index) =>
+        candidateId === id &&
+        contents[index] === content &&
+        !claimed.has(index),
+    );
+    if (candidate === -1) return true;
+    claim(ancestor, candidate);
+    return false;
+  });
+
+  for (const ancestor of changed) {
+    const id = getId(before[ancestor]);
     const candidate = identities.findIndex(
       (candidateId, index) => candidateId === id && !claimed.has(index),
     );
     if (candidate !== -1) claim(ancestor, candidate);
-  });
+  }
 
   for (const ancestor of idless) {
     const content = canonicalize(before[ancestor]);
