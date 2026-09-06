@@ -35,9 +35,16 @@ import { variablesForSubject } from '../../protocol-context.ts';
  * already own. This one has no shared home yet because the pedigree's display
  * label is the package's first validated slot picker; the two are paired
  * through `crossClassMessage` below so neither can be used without the other.
+ *
+ * It is worded for a SLOT rather than for a form field, which is what the
+ * shared form-field version of this refusal says. The only validated slot in
+ * the package is the pedigree's display label — a control that names the
+ * attribute each family member is shown by — and a researcher told there that
+ * an attribute "cannot be used as a form field" goes looking for a form field
+ * they never added.
  */
 const unvalidatedElsewhereMessage = (variableName: string): string =>
-  `"${variableName}" is written without validation by another stage, so it cannot be used as a form field`;
+  `"${variableName}" is written without validation by another stage, so it cannot also be collected here (the values that stage writes bypass this attribute’s validation)`;
 
 /** The refusal a picker earns, keyed by the picker's OWN writer class. */
 const crossClassMessage: Readonly<
@@ -62,7 +69,7 @@ const draftCrossClassMessage: Readonly<
   unvalidated: (variableName: string): string =>
     `"${variableName}" is collected by this stage’s own form, so it cannot also be written by this slot (values written here would bypass its validation)`,
   validated: (variableName: string): string =>
-    `"${variableName}" is written without validation by another slot in this stage, so it cannot be used as a form field`,
+    `"${variableName}" is written without validation by another slot in this stage, so it cannot also be collected here (the values that slot writes bypass this attribute’s validation)`,
 });
 
 /** A codebook attribute as a picker option, carrying what a filter needs. */
@@ -119,29 +126,40 @@ export type SlotPickerOptionsInput<T extends SlotVariableOption> = Readonly<{
   /** The interface slot this picker itself fills, if any. */
   ownSlot?: string;
   writerClass: WriterClass;
+  /**
+   * Attributes this stage's own UNSAVED draft already claims in the opposite
+   * writer class — the same list `slotCrossClassIssue` judges a pick against.
+   */
+  draftConflicting?: readonly string[];
 }>;
 
 /**
  * The attributes a pedigree picker may offer.
  *
- * Two exclusions, always together:
+ * Three exclusions, always together:
  *
- * - the cross-class one, in whichever direction `writerClass` demands; and
+ * - the cross-class one against the SAVED protocol, in whichever direction
+ *   `writerClass` demands;
+ * - the same one against this stage's own unsaved draft (`draftConflicting`),
+ *   because both writer classes live on one stage form and a field added in
+ *   this session is not in the saved protocol yet; and
  * - the interface-owned one, which drops an attribute ANOTHER interface slot
  *   claims. `ownSlot` keeps an attribute a second Family Pedigree binds in the
  *   SAME slot on offer — sharing structural attributes between two pedigrees
  *   over one node type is legitimate authoring, and the protocol rule is
  *   slot-aware for exactly that reason.
  *
- * Both keep `currentValue` offered, so an imported protocol's existing pick
- * never vanishes from its own picker; the save-time gate is what explains such
- * a pick to the researcher.
+ * All three keep `currentValue` offered, so an imported protocol's existing
+ * pick never vanishes from its own picker; the save-time gate is what explains
+ * such a pick to the researcher.
  *
  * A structural slot writes its attribute from the tree the participant draws,
  * with no validation of its own (`unvalidated`); the display label is
  * collected through a validated form field (`validated`). Pass the SAME
- * `writerClass` here and to `slotCrossClassIssue` and the picker and the gate
- * cannot disagree about which picks are legal.
+ * `writerClass` and `draftConflicting` here and to `slotCrossClassIssue` and
+ * the picker and the gate cannot disagree about which picks are legal — which
+ * is the one thing this pair is for. A picker offering what the gate then
+ * refuses reads as the editor changing its mind between the pick and the save.
  */
 export function slotPickerOptions<T extends SlotVariableOption>({
   roleMap,
@@ -151,16 +169,25 @@ export function slotPickerOptions<T extends SlotVariableOption>({
   currentValue,
   ownSlot,
   writerClass,
+  draftConflicting,
 }: SlotPickerOptionsInput<T>): T[] {
   if (subject === null) return [];
   const crossClassFiltered =
     writerClass === 'validated'
       ? excludeUnvalidatedUses(roleMap, subject, options, currentValue)
       : excludeValidatedUses(roleMap, subject, options, currentValue);
+  const draftFiltered =
+    draftConflicting === undefined
+      ? crossClassFiltered
+      : crossClassFiltered.filter(
+          (option) =>
+            option.value === currentValue ||
+            !draftConflicting.includes(option.value),
+        );
   return excludeInterfaceOwned(
     slotMap,
     subject,
-    crossClassFiltered,
+    draftFiltered,
     currentValue,
     ownSlot,
   );

@@ -115,6 +115,35 @@ Document.prototype.elementFromPoint ??= () => null;
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+/**
+ * Invents an attribute from a slot's own create control, and binds it there.
+ *
+ * The codebook write lands as the dialog closes, so the new attribute reaches
+ * every OTHER picker on the screen while the slot claiming it is still this
+ * session's unsaved draft — the one window in which a picker reading only the
+ * saved protocol can be wrong about what is free.
+ */
+async function createFromSlot(
+  harness: StageEditorHarness,
+  createLabel: string,
+  attributeName = 'kinship',
+): Promise<void> {
+  await harness.user.click(screen.getByRole('button', { name: createLabel }));
+  const creator = within(
+    await screen.findByRole('dialog', { name: createLabel }),
+  );
+  await harness.user.type(
+    creator.getByRole('textbox', { name: /name/i }),
+    attributeName,
+  );
+  await harness.user.click(
+    creator.getByRole('button', { name: /^(Save|Create)/ }),
+  );
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+  );
+}
+
 /** The id the codebook now files an attribute of this name under. */
 function variableIdByName(
   harness: StageEditorHarness,
@@ -285,21 +314,24 @@ describe('the attributes a pedigree may bind', () => {
   });
 
   /**
-   * The structural pickers' exclusions are built from the SAVED protocol, so a
-   * form field added in this unsaved session is invisible to them — and the
-   * attribute it collects stays on offer to them. That is precisely the case
-   * the save-time gate exists for, and the only one a researcher can reach
-   * without an imported protocol.
+   * A structural picker's exclusions are built from the saved protocol AND
+   * from this stage's own unsaved draft, so a form field added in this session
+   * takes its attribute off the structural pickers at once — before the
+   * researcher can pick something the save would then refuse.
    *
    * The field invents its attribute rather than picking one, because every
    * boolean already on the node type is written unvalidated somewhere — this
    * pedigree's own participant marker, and the narrative pedigree's disease —
-   * and the shared form-fields picker refuses all of those before the gate is
-   * reached. The codebook write lands as the row is committed, so the new
-   * attribute reaches the structural picker while the field that collects it
-   * is still unsaved: exactly the window under test.
+   * and the shared form-fields picker refuses all of those. The codebook write
+   * lands as the row is committed, so the new attribute reaches the structural
+   * picker while the field that collects it is still unsaved: exactly the
+   * window under test.
+   *
+   * The whole list is asserted rather than the absence alone: an exclusion
+   * written against the wrong list would empty the picker, and an
+   * absence-only claim would call that a pass.
    */
-  it('refuses a structural slot pointing at an attribute this stage collects', async () => {
+  it('never offers a structural slot an attribute this stage’s own form collects', async () => {
     const harness = renderStageEditor(openFixture());
 
     // The fixture pedigree asks nothing about each family member, so the form
@@ -336,22 +368,14 @@ describe('the attributes a pedigree may bind', () => {
     expect(unwell).toBeDefined();
     if (unwell === undefined) throw new Error('the attribute was not created');
 
-    // Still on offer — the picker cannot know about a field that is not saved.
-    expect(optionsOf('Participant identifier')).toContain(unwell);
-    await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Participant identifier' }),
-      unwell,
+    // The two booleans this node type had before the field was added, and not
+    // the one it now collects.
+    await waitFor(() =>
+      expect(optionsOf('Participant identifier')).toEqual([
+        'is_ego',
+        'hasConditionX',
+      ]),
     );
-
-    expect(await harness.submit()).toBeNull();
-    // Said as what it is: the form doing the collecting is on this screen, one
-    // section further down. "Elsewhere in this protocol" would send the
-    // researcher looking through their other stages for it.
-    expect(
-      await screen.findByText(
-        '"unwell" is collected by this stage’s own form, so it cannot also be written by this slot (values written here would bypass its validation)',
-      ),
-    ).toBeInTheDocument();
   });
 
   /**
@@ -407,26 +431,7 @@ describe('the attributes a pedigree may bind', () => {
     // therefore the form's picker — while the slot binding it is still the
     // researcher's unsaved draft. That is the only window in which a picker
     // reading the saved protocol can be wrong.
-    await harness.user.click(
-      screen.getByRole('button', {
-        name: 'Create a new relationship attribute',
-      }),
-    );
-    const creator = within(
-      await screen.findByRole('dialog', {
-        name: 'Create a new relationship attribute',
-      }),
-    );
-    await harness.user.type(
-      creator.getByRole('textbox', { name: /name/i }),
-      'kinship',
-    );
-    await harness.user.click(
-      creator.getByRole('button', { name: /^(Save|Create)/ }),
-    );
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
-    );
+    await createFromSlot(harness, 'Create a new relationship attribute');
 
     await harness.user.click(
       screen.getByRole('switch', { name: 'Family member form' }),
@@ -444,6 +449,65 @@ describe('the attributes a pedigree may bind', () => {
     ].map((option) => option.textContent);
 
     expect(offered).not.toContain('kinship');
+  });
+
+  /**
+   * The same window, seen from the display label — the pedigree's one
+   * VALIDATED slot. It may not take an attribute a structural slot claimed in
+   * this session either, and its picker has to say so by not offering it
+   * rather than by letting the save refuse the pick afterwards.
+   */
+  it('never offers the display label an attribute a slot took this session', async () => {
+    const harness = renderStageEditor(openFixture());
+
+    await createFromSlot(harness, 'Create a new relationship attribute');
+    const kinship = variableIdByName(harness, 'kinship');
+    if (kinship === undefined) throw new Error('the attribute was not created');
+
+    // The label keeps its own committed pick, and gains nothing the
+    // relationship slot has just taken.
+    await waitFor(() =>
+      expect(optionsOf('Display label')).toEqual(['fm_name']),
+    );
+  });
+
+  /**
+   * What is left for the gate once the picker offers nothing it refuses: a
+   * slot already holding an attribute when the conflicting writer appears.
+   * The display label is bound to a new attribute, and the relationship slot —
+   * whose own picker cannot see the label's unsaved pick — then takes it too.
+   *
+   * The words matter as much as the refusal. The display label names the
+   * attribute each family member is SHOWN by; told that it "cannot be used as
+   * a form field", a researcher goes looking for a form field they never
+   * added.
+   */
+  it('refuses a display label another slot in this stage has since taken', async () => {
+    const harness = renderStageEditor(openFixture());
+
+    await createFromSlot(
+      harness,
+      'Create a new display label attribute',
+      'preferred_name',
+    );
+    const preferred = variableIdByName(harness, 'preferred_name');
+    if (preferred === undefined) {
+      throw new Error('the attribute was not created');
+    }
+
+    // The relationship slot's own picker reads the saved protocol and this
+    // stage's form; neither knows the display label just took this attribute.
+    await harness.user.selectOptions(
+      screen.getByRole('combobox', { name: 'Relationship to participant' }),
+      preferred,
+    );
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      await screen.findByText(
+        '"preferred_name" is written without validation by another slot in this stage, so it cannot also be collected here (the values that slot writes bypass this attribute’s validation)',
+      ),
+    ).toBeInTheDocument();
   });
 });
 

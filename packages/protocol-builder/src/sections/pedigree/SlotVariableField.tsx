@@ -91,6 +91,11 @@ export default function SlotVariableField({
     [protocolContext, subject],
   );
 
+  // The picker is asked the SAME question as the gate below, `draftConflicting`
+  // included: an attribute this stage's own draft already claims in the other
+  // writer class is not on offer here, so the only pick that can reach the gate
+  // is one this picker never made — a value that arrived with the protocol, or
+  // one a slot was already holding when the conflicting field appeared.
   const pickerOptions = useMemo(
     () =>
       slotPickerOptions({
@@ -101,8 +106,18 @@ export default function SlotVariableField({
         ...(currentValue === undefined ? {} : { currentValue }),
         ...(ownSlot === undefined ? {} : { ownSlot }),
         writerClass,
+        ...(draftConflicting === undefined ? {} : { draftConflicting }),
       }),
-    [currentValue, options, ownSlot, roleMap, slotMap, subject, writerClass],
+    [
+      currentValue,
+      draftConflicting,
+      options,
+      ownSlot,
+      roleMap,
+      slotMap,
+      subject,
+      writerClass,
+    ],
   );
 
   /**
