@@ -6,6 +6,7 @@ import { RouterProvider } from '@tanstack/react-router';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
+import { version } from '../package.json';
 import { statusQueryOptions } from './lib/deployment.ts';
 import { queryClient } from './lib/queryClient.ts';
 import { clientTelemetry } from './lib/telemetry.ts';
@@ -18,7 +19,7 @@ void queryClient
     clientTelemetry.start(status.telemetry, {
       mode: status.deployment.mode,
       runtime: 'client',
-      version: status.version,
+      version,
     }),
   )
   .catch(() => undefined);
@@ -35,7 +36,13 @@ if (!container) {
 createRoot(container, {
   // Retain React's default browser reporting for uncaught render failures.
   // The owned error listener captures that report when telemetry is enabled.
-  onCaughtError: (error) => clientTelemetry.capture('client_render', error),
+  onCaughtError: (error) => {
+    // React's production default logs caught errors locally. Keep that
+    // diagnostic even when optional telemetry is disabled or still starting.
+    // oxlint-disable-next-line no-console -- preserve React's local failure diagnostic
+    console.error(error);
+    clientTelemetry.capture('client_render', error);
+  },
 }).render(
   <StrictMode>
     {/* The same client the router carries in its context (§6.1): a guard's

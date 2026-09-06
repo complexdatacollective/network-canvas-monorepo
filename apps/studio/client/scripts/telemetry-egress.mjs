@@ -14,11 +14,18 @@ import { setTimeout as delay } from 'node:timers/promises';
 
 import { chromium } from '@playwright/test';
 
+import { POSTHOG_APP_PROPS } from '@codaco/shared-consts';
+
 const root = resolve(import.meta.dirname, '..');
 const serverRoot = resolve(root, '../server');
 const CANARY = 'BrowserPerson@example.test-PrivateProtocol-SecretBrowserToken';
 const relay = 'ph-relay.networkcanvas.com';
 const results = [];
+const statusVersion = '99.98.97';
+const { version: clientVersion } = JSON.parse(
+  await readFile(join(root, 'package.json'), 'utf8'),
+);
+assert.notEqual(clientVersion, statusVersion);
 
 async function port() {
   const server = createServer();
@@ -89,6 +96,14 @@ try {
         const request = route.request();
         const url = new URL(request.url());
         if (url.origin === origin) {
+          if (url.pathname === '/rpc/status') {
+            const response = await route.fetch();
+            const body = await response.json();
+            // Independent release lanes can deploy different client/server
+            // versions. Keep all real status fields except this deliberate skew.
+            body.json.version = statusVersion;
+            return route.fulfill({ response, json: body });
+          }
           if (url.pathname.includes('module.slim.no-external'))
             sdkChunks.push(url.pathname);
           return route.continue();
@@ -149,6 +164,7 @@ try {
         const runtimeStatus = await statusResponse.json();
         assert.equal(runtimeStatus.json.telemetry, enabled);
         assert.equal(runtimeStatus.json.deployment.mode, mode);
+        assert.equal(runtimeStatus.json.version, statusVersion);
         await page.locator('main').first().waitFor({ state: 'visible' });
         if (enabled)
           await page.waitForFunction(() =>
@@ -329,6 +345,11 @@ try {
               'Each request must contain only its explicit exception',
             );
             const event = batch[0];
+            assert.equal(
+              event.properties?.[POSTHOG_APP_PROPS.APP_VERSION],
+              clientVersion,
+              'Client SDK wire must identify the client build despite server version skew',
+            );
             const exceptions = event.properties?.$exception_list;
             assert.equal(
               exceptions?.length,

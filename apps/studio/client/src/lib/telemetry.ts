@@ -24,11 +24,11 @@ export function createClientTelemetry() {
   const seen = new WeakSet<object>();
 
   function capture(diagnostic: TelemetryDiagnostic, error: unknown) {
-    if (!client || !context || stopped || !admit()) return;
-    if (typeof error === 'object' && error !== null) {
-      if (seen.has(error)) return;
-      seen.add(error);
-    }
+    if (!client || !context || stopped) return;
+    const objectError = typeof error === 'object' && error !== null;
+    if (objectError && seen.has(error)) return;
+    if (!admit()) return;
+    if (objectError) seen.add(error);
     const report = buildTelemetryReport(context, diagnostic, error);
     try {
       if (report) client.capture('$exception', report);

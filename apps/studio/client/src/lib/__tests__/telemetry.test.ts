@@ -187,4 +187,22 @@ describe('client telemetry ownership', () => {
       await telemetry.close();
     }
   });
+
+  it('spends one admission slot per distinct error across duplicate reporting paths', async () => {
+    const telemetry = createClientTelemetry();
+    await telemetry.start(true, context);
+    try {
+      const errors = Array.from({ length: 11 }, () => new Error(CANARY));
+      for (const error of errors.slice(0, 10)) {
+        telemetry.capture('client_render', error);
+        telemetry.capture('client_error', error);
+        telemetry.capture('client_render', error);
+      }
+      expect(sdk.capture).toHaveBeenCalledTimes(10);
+      telemetry.capture('client_error', errors[10]);
+      expect(sdk.capture).toHaveBeenCalledTimes(10);
+    } finally {
+      await telemetry.close();
+    }
+  });
 });
