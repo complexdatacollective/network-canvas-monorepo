@@ -272,6 +272,7 @@ describe('audit mutation policy', () => {
   it('classifies every internal RPC mutation and only mutations', () => {
     const reads = new Set([
       'status',
+      'setup.status',
       'me',
       'protocols.draft',
       'protocols.list',

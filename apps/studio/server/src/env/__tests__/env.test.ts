@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { parseEnv } from 'node:util';
 
@@ -17,6 +18,37 @@ import { DEV, DEV_DATABASE_URL, DEV_S3_ENDPOINT } from '../catalogue.ts';
 
 afterEach(() => {
   vi.unstubAllEnvs();
+});
+
+describe('bootstrap configuration', () => {
+  it('keeps setup disabled until a canonical random token is configured', () => {
+    vi.stubEnv('STUDIO_BOOTSTRAP_TOKEN', '');
+    expect(readEnv().bootstrapToken).toBeUndefined();
+    const token = randomBytes(32).toString('base64url');
+    vi.stubEnv('STUDIO_BOOTSTRAP_TOKEN', token);
+    expect(readEnv().bootstrapToken).toBe(token);
+  });
+
+  it.each([
+    'short',
+    'a'.repeat(43),
+    'A'.repeat(43) + '=',
+    'A'.repeat(42),
+    'A'.repeat(44),
+  ])(
+    'refuses truncated, padded, or noncanonical bootstrap credentials',
+    (token) => {
+      vi.stubEnv('STUDIO_BOOTSTRAP_TOKEN', token);
+      expect(() => readEnv()).toThrow('Invalid environment variables');
+    },
+  );
+
+  it('withholds the credential from the lane without auth or a database', () => {
+    vi.stubEnv('STUDIO_BOOTSTRAP_TOKEN', 'malformed-and-unused');
+    expect(
+      readEnv({ withoutDatabaseOrAuth: true }).bootstrapToken,
+    ).toBeUndefined();
+  });
 });
 
 describe('operational configuration', () => {

@@ -473,6 +473,7 @@ describe.skipIf(!db)('schema verification', () => {
         'session_snapshots',
         'session_stats',
         'studies',
+        'studio_instance',
         'study_role_grants',
         'study_schedules',
         'study_stage_rollups',
