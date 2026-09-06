@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import { expect } from 'vitest';
 
 import type { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { writeInto } from '../../__tests__/writeInto.ts';
 
 /**
  * Says what a stage being created works with.
@@ -37,7 +38,8 @@ export async function addInterviewNetworkPanel(
     await screen.findByRole('button', { name: 'Create new panel' }),
   );
   const dialog = within(await screen.findByRole('dialog'));
-  await harness.user.type(
+  await writeInto(
+    harness,
     dialog.getByRole('textbox', { name: 'Panel title' }),
     title,
   );

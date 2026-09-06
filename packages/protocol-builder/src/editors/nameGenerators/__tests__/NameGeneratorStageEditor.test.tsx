@@ -5,6 +5,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { writeInto } from '../../__tests__/writeInto.ts';
 import { nameGeneratorStageEditors } from '../../nameGeneratorStageEditors.ts';
 import { addInterviewNetworkPanel, chooseNodeType } from './addSidePanel.ts';
 
@@ -51,6 +52,11 @@ const mountFixture = () =>
 
 /** Where a host would insert a new one: over the stage the fixture holds. */
 const NAME_GENERATOR_INDEX = fixtureStageIds().indexOf('name-generator-1');
+
+const createFixture = () => ({
+  create: { type: 'NameGenerator' as const, position: NAME_GENERATOR_INDEX },
+  registry: nameGeneratorStageEditors,
+});
 
 /**
  * The stage's name control, as the input it is.
@@ -104,25 +110,28 @@ describe('the name generator editor', () => {
    * it: name it, say who it nominates, say what is recorded about them, and
    * ask something.
    */
-  it('saves a new stage once it has been given the minimum a name generator needs', async () => {
-    const harness = renderStageEditor({
-      create: { type: 'NameGenerator', position: NAME_GENERATOR_INDEX },
-      registry: nameGeneratorStageEditors,
-    });
+  it('opens a new stage on the interface template', async () => {
+    renderStageEditor(createFixture());
 
     // A stage the session is CREATING opens with a name proposed for it —
-    // nothing else about this interface has an authored default, so the
-    // rest of what a host will store is written below.
+    // nothing else about this interface has an authored default, so
+    // everything a host will store is the researcher's to write.
     await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
     expect(stageNameInput().value).toMatch(/^Form Name Generator/);
+    expect(screen.getByRole('radio', { name: 'person' })).not.toBeChecked();
+  });
 
-    await harness.user.clear(stageNameInput());
-    await harness.user.type(stageNameInput(), 'Close friends');
+  it('saves a new stage once it has been given the minimum a name generator needs', async () => {
+    const harness = renderStageEditor(createFixture());
+    await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
+
+    await writeInto(harness, stageNameInput(), 'Close friends');
     // The type first: everything below describes it, and choosing a different
     // one throws all of that away.
     await harness.user.click(screen.getByRole('radio', { name: 'person' }));
 
-    await harness.user.type(
+    await writeInto(
+      harness,
       await screen.findByRole('textbox', { name: 'Form title' }),
       'Add a person',
     );
@@ -131,7 +140,8 @@ describe('the name generator editor', () => {
       field.getByRole('combobox', { name: 'Attribute' }),
       'name',
     );
-    await harness.user.type(
+    await writeInto(
+      harness,
       field.getByRole('textbox', { name: 'Question text' }),
       'What is their name?',
     );
@@ -141,7 +151,8 @@ describe('the name generator editor', () => {
     );
 
     const prompt = await openDialog(harness, 'Create new prompt');
-    await harness.user.type(
+    await writeInto(
+      harness,
       prompt.getByRole('textbox', { name: 'Prompt text' }),
       'Who are the people you are closest to?',
     );
@@ -177,10 +188,7 @@ describe('the name generator editor', () => {
    * the interview's own network into "with Network Panels".
    */
   it('qualifies the proposed name of a new stage with the panels beside it', async () => {
-    const harness = renderStageEditor({
-      create: { type: 'NameGenerator', position: NAME_GENERATOR_INDEX },
-      registry: nameGeneratorStageEditors,
-    });
+    const harness = renderStageEditor(createFixture());
 
     await waitFor(() =>
       expect(stageNameInput()).toHaveValue('Form Name Generator'),
@@ -203,10 +211,7 @@ describe('the name generator editor', () => {
    * with them: the proposal describes the stage as it now is, not as it was.
    */
   it('takes the panel qualifier back out when the panels are switched off', async () => {
-    const harness = renderStageEditor({
-      create: { type: 'NameGenerator', position: NAME_GENERATOR_INDEX },
-      registry: nameGeneratorStageEditors,
-    });
+    const harness = renderStageEditor(createFixture());
 
     await waitFor(() =>
       expect(stageNameInput()).toHaveValue('Form Name Generator'),
@@ -242,10 +247,7 @@ describe('the name generator editor', () => {
    * would only be a second thing to keep in step with it.
    */
   it('takes the panel qualifier back out when the last panel is deleted', async () => {
-    const harness = renderStageEditor({
-      create: { type: 'NameGenerator', position: NAME_GENERATOR_INDEX },
-      registry: nameGeneratorStageEditors,
-    });
+    const harness = renderStageEditor(createFixture());
 
     await waitFor(() =>
       expect(stageNameInput()).toHaveValue('Form Name Generator'),
@@ -272,10 +274,7 @@ describe('the name generator editor', () => {
 
   /** A name the researcher typed is theirs; a later panel does not take it. */
   it('leaves a name the researcher typed alone when a panel is added', async () => {
-    const harness = renderStageEditor({
-      create: { type: 'NameGenerator', position: NAME_GENERATOR_INDEX },
-      registry: nameGeneratorStageEditors,
-    });
+    const harness = renderStageEditor(createFixture());
 
     await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
     await harness.user.clear(stageNameInput());
@@ -466,27 +465,23 @@ describe('a form field and a prompt stamp reaching for the same attribute', () =
       .getAllByRole('option')
       .map((option) => (option as HTMLOptionElement).value);
 
-  const closeDialog = async (
-    harness: ReturnType<typeof renderStageEditor>,
-    dialog: ReturnType<typeof within>,
-  ) => {
-    await harness.user.click(dialog.getByRole('button', { name: 'Cancel' }));
-    await waitFor(() =>
-      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
-    );
-  };
+  it('offers the form an attribute nothing writes yet', async () => {
+    const harness = mountFixture();
+    await screen.findByRole('textbox', { name: 'Form title' });
+    addFreeAttribute(harness);
+
+    const dialog = await openDialog(harness, 'Create new form field');
+    expect(offeredAttributes(dialog)).toContain(FREE_ATTRIBUTE);
+  });
 
   it('withdraws it from the form the moment a prompt stamps it', async () => {
     const harness = mountFixture();
     await screen.findByRole('textbox', { name: 'Form title' });
     addFreeAttribute(harness);
 
-    // Nothing writes it unvalidated yet, so the form may collect it.
-    const before = await openDialog(harness, 'Create new form field');
-    expect(offeredAttributes(before)).toContain(FREE_ATTRIBUTE);
-    await closeDialog(harness, before);
-
-    // The researcher stamps it on everyone this prompt names instead.
+    // The researcher stamps it on everyone this prompt names, rather than
+    // asking about it in the form — where the case above has just shown the
+    // form would have taken it.
     const prompt = await openDialog(harness, 'Edit prompt');
     await harness.user.click(
       prompt.getByRole('button', { name: 'Add new attribute to assign' }),

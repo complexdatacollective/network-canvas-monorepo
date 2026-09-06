@@ -5,6 +5,7 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { writeInto } from '../../__tests__/writeInto.ts';
 import { InformationStageEditor } from '../InformationStageEditor.tsx';
 import { mountedAs, stageNameInput } from './formEditorHarness.tsx';
 
@@ -44,6 +45,11 @@ const openFixture = () => ({
 
 /** Where a host would insert a new page: over the one the fixture holds. */
 const INFORMATION_INDEX = fixtureStageIds().indexOf('information-1');
+
+const createFixture = () => ({
+  create: { type: 'Information' as const, position: INFORMATION_INDEX },
+  editor: mountedAs(InformationStageEditor),
+});
 
 const itemsOf = (document: SectionDoc): Record<string, unknown>[] => {
   const items = document.items;
@@ -89,11 +95,8 @@ describe('the editor for a page of content', () => {
     await harness.roundTrip({ unowned: [] });
   });
 
-  it('starts a new stage from the interface template', async () => {
-    const harness = renderStageEditor({
-      create: { type: 'Information', position: INFORMATION_INDEX },
-      editor: mountedAs(InformationStageEditor),
-    });
+  it('opens a new stage on the interface template', async () => {
+    renderStageEditor(createFixture());
 
     // An Information stage has no authored defaults, so a new one arrives
     // empty — and the editor has to be able to say so rather than showing a
@@ -104,10 +107,15 @@ describe('the editor for a page of content', () => {
     expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
       '',
     );
+  });
 
-    await harness.user.clear(stageNameInput());
-    await harness.user.type(stageNameInput(), 'Welcome screen');
-    await harness.user.type(
+  it('saves a new stage once the researcher has written it', async () => {
+    const harness = renderStageEditor(createFixture());
+    await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
+
+    await writeInto(harness, stageNameInput(), 'Welcome screen');
+    await writeInto(
+      harness,
       screen.getByRole('textbox', { name: 'Page heading' }),
       'Welcome',
     );
@@ -117,7 +125,8 @@ describe('the editor for a page of content', () => {
     await harness.user.click(
       await screen.findByRole('radio', { name: 'Text' }),
     );
-    await harness.user.type(
+    await writeInto(
+      harness,
       await screen.findByRole('textbox', { name: 'Content' }),
       'Thank you for taking part.',
     );

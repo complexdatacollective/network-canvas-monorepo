@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { writeInto } from '../../__tests__/writeInto.ts';
 import { AlterEdgeFormStageEditor } from '../AlterEdgeFormStageEditor.tsx';
 import {
   fieldsOf,
@@ -42,6 +43,11 @@ const openFixture = () => ({
 
 /** Where a host would insert a new one: over the form the fixture holds. */
 const ALTER_EDGE_FORM_INDEX = fixtureStageIds().indexOf('alter-edge-form-1');
+
+const createFixture = () => ({
+  create: { type: 'AlterEdgeForm' as const, position: ALTER_EDGE_FORM_INDEX },
+  editor: mountedAs(AlterEdgeFormStageEditor),
+});
 
 describe('the editor for a form about each relationship', () => {
   it('composes the stage in the order the plan sets out', async () => {
@@ -93,11 +99,8 @@ describe('the editor for a form about each relationship', () => {
     await harness.roundTrip({ unowned: [] });
   });
 
-  it('starts a new stage from the interface template', async () => {
-    const harness = renderStageEditor({
-      create: { type: 'AlterEdgeForm', position: ALTER_EDGE_FORM_INDEX },
-      editor: mountedAs(AlterEdgeFormStageEditor),
-    });
+  it('opens a new stage on the interface template', async () => {
+    const harness = renderStageEditor(createFixture());
 
     // A per-alter-edge form has no authored defaults, so a new one has no type
     // chosen, and its form waits on one. Only the name arrives filled in,
@@ -111,15 +114,21 @@ describe('the editor for a form about each relationship', () => {
           ?.state,
       ).toBe('Not available yet'),
     );
+  });
 
-    await harness.user.clear(stageNameInput());
-    await harness.user.type(stageNameInput(), 'About each relationship');
+  it('saves a new stage once the researcher has written it', async () => {
+    const harness = renderStageEditor(createFixture());
+    await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
+
+    await writeInto(harness, stageNameInput(), 'About each relationship');
     await harness.user.click(screen.getByRole('radio', { name: 'knows' }));
-    await harness.user.type(
+    await writeInto(
+      harness,
       screen.getByRole('textbox', { name: 'Introduction heading' }),
       'About each relationship',
     );
-    await harness.user.type(
+    await writeInto(
+      harness,
       screen.getByRole('textbox', { name: 'Introduction text' }),
       'A few questions about each relationship.',
     );
@@ -129,7 +138,8 @@ describe('the editor for a form about each relationship', () => {
       dialog.getByRole('combobox', { name: 'Attribute' }),
       'edgeNotes',
     );
-    await harness.user.type(
+    await writeInto(
+      harness,
       dialog.getByRole('textbox', { name: 'Question text' }),
       'What do you want to record about this?',
     );
@@ -139,9 +149,14 @@ describe('the editor for a form about each relationship', () => {
     );
 
     const request = await harness.submit();
+    expect(request?.stageDocument.label).toBe('About each relationship');
     expect(request?.stageDocument.subject).toEqual({
       entity: 'edge',
       type: 'knows',
+    });
+    expect(request?.stageDocument.introductionPanel).toEqual({
+      title: 'About each relationship',
+      text: 'A few questions about each relationship.',
     });
     expect(fieldsOf(request?.stageDocument ?? {})).toEqual([
       {

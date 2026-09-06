@@ -6,6 +6,7 @@ import {
   loadFixtureStage,
 } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { writeInto } from '../../__tests__/writeInto.ts';
 import { AlterFormStageEditor } from '../AlterFormStageEditor.tsx';
 import {
   fieldsOf,
@@ -45,6 +46,11 @@ const openFixture = () => ({
 
 /** Where a host would insert a new one: over the form the fixture holds. */
 const ALTER_FORM_INDEX = fixtureStageIds().indexOf('alter-form-1');
+
+const createFixture = () => ({
+  create: { type: 'AlterForm' as const, position: ALTER_FORM_INDEX },
+  editor: mountedAs(AlterFormStageEditor),
+});
 
 describe('the editor for a form about each person', () => {
   it('composes the stage in the order the plan sets out', async () => {
@@ -127,11 +133,8 @@ describe('the editor for a form about each person', () => {
     await harness.roundTrip({ unowned: [] });
   });
 
-  it('starts a new stage from the interface template', async () => {
-    const harness = renderStageEditor({
-      create: { type: 'AlterForm', position: ALTER_FORM_INDEX },
-      editor: mountedAs(AlterFormStageEditor),
-    });
+  it('opens a new stage on the interface template', async () => {
+    const harness = renderStageEditor(createFixture());
 
     // A per-alter form has no authored defaults, so a new one has no type
     // chosen — and its form cannot be written until one is, because there is
@@ -146,15 +149,21 @@ describe('the editor for a form about each person', () => {
           ?.state,
       ).toBe('Not available yet'),
     );
+  });
 
-    await harness.user.clear(stageNameInput());
-    await harness.user.type(stageNameInput(), 'About each person');
+  it('saves a new stage once the researcher has written it', async () => {
+    const harness = renderStageEditor(createFixture());
+    await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
+
+    await writeInto(harness, stageNameInput(), 'About each person');
     await harness.user.click(screen.getByRole('radio', { name: 'person' }));
-    await harness.user.type(
+    await writeInto(
+      harness,
       screen.getByRole('textbox', { name: 'Introduction heading' }),
       'About each person',
     );
-    await harness.user.type(
+    await writeInto(
+      harness,
       screen.getByRole('textbox', { name: 'Introduction text' }),
       'A few more questions about each person.',
     );
@@ -164,7 +173,8 @@ describe('the editor for a form about each person', () => {
       dialog.getByRole('combobox', { name: 'Attribute' }),
       'relationship_to_ego',
     );
-    await harness.user.type(
+    await writeInto(
+      harness,
       dialog.getByRole('textbox', { name: 'Question text' }),
       'How do you know this person?',
     );
@@ -174,9 +184,14 @@ describe('the editor for a form about each person', () => {
     );
 
     const request = await harness.submit();
+    expect(request?.stageDocument.label).toBe('About each person');
     expect(request?.stageDocument.subject).toEqual({
       entity: 'node',
       type: 'person',
+    });
+    expect(request?.stageDocument.introductionPanel).toEqual({
+      title: 'About each person',
+      text: 'A few more questions about each person.',
     });
     expect(fieldsOf(request?.stageDocument ?? {})).toEqual([
       {

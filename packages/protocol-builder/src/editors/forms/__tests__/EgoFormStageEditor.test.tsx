@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { writeInto } from '../../__tests__/writeInto.ts';
 import { EgoFormStageEditor } from '../EgoFormStageEditor.tsx';
 import {
   fieldsOf,
@@ -41,6 +42,11 @@ const openFixture = () => ({
 
 /** Where a host would insert a new ego form: over the one the fixture holds. */
 const EGO_FORM_INDEX = fixtureStageIds().indexOf('ego-form-1');
+
+const createFixture = () => ({
+  create: { type: 'EgoForm' as const, position: EGO_FORM_INDEX },
+  editor: mountedAs(EgoFormStageEditor),
+});
 
 describe('the editor for a form about the participant', () => {
   it('composes the stage in the order the plan sets out', async () => {
@@ -82,11 +88,8 @@ describe('the editor for a form about the participant', () => {
     await harness.roundTrip({ unowned: [] });
   });
 
-  it('starts a new stage from the interface template', async () => {
-    const harness = renderStageEditor({
-      create: { type: 'EgoForm', position: EGO_FORM_INDEX },
-      editor: mountedAs(EgoFormStageEditor),
-    });
+  it('opens a new stage on the interface template', async () => {
+    renderStageEditor(createFixture());
 
     // An ego form has no authored defaults, so a new one arrives empty and
     // every required part of it is the researcher's to write — except the
@@ -96,14 +99,20 @@ describe('the editor for a form about the participant', () => {
     expect(
       screen.getByRole('textbox', { name: 'Introduction heading' }),
     ).toHaveValue('');
+  });
 
-    await harness.user.clear(stageNameInput());
-    await harness.user.type(stageNameInput(), 'About you');
-    await harness.user.type(
+  it('saves a new stage once the researcher has written it', async () => {
+    const harness = renderStageEditor(createFixture());
+    await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
+
+    await writeInto(harness, stageNameInput(), 'About you');
+    await writeInto(
+      harness,
       screen.getByRole('textbox', { name: 'Introduction heading' }),
       'About you',
     );
-    await harness.user.type(
+    await writeInto(
+      harness,
       screen.getByRole('textbox', { name: 'Introduction text' }),
       'A few questions about you before we begin.',
     );
@@ -113,7 +122,8 @@ describe('the editor for a form about the participant', () => {
       dialog.getByRole('combobox', { name: 'Attribute' }),
       'ego_name',
     );
-    await harness.user.type(
+    await writeInto(
+      harness,
       dialog.getByRole('textbox', { name: 'Question text' }),
       'What is your name?',
     );

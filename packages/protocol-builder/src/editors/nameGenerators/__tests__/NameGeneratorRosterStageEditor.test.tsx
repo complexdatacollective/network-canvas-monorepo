@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { writeInto } from '../../__tests__/writeInto.ts';
 import { nameGeneratorStageEditors } from '../../nameGeneratorStageEditors.ts';
 
 /**
@@ -54,6 +55,11 @@ const mountFixture = () =>
 
 /** Where a host would insert a new one: over the stage the fixture holds. */
 const ROSTER_INDEX = fixtureStageIds().indexOf('name-generator-roster-1');
+
+const createFixture = () => ({
+  create: { type: 'NameGeneratorRoster' as const, position: ROSTER_INDEX },
+  registry: nameGeneratorStageEditors,
+});
 
 /**
  * The stage's name control, as the input it is.
@@ -117,13 +123,23 @@ describe('the roster name generator editor', () => {
    * attribute at all. Changing the file therefore changes every one of those
    * lists, and takes the choices made against the old file with it.
    */
-  it('offers the chosen file’s columns, and follows a file the researcher swaps in', async () => {
-    const harness = mountFixture();
+  it('offers the chosen file’s columns to every section that names one', async () => {
+    mountFixture();
     await screen.findByText(FIXTURE_COLUMNS);
 
     expect(screen.getByRole('checkbox', { name: 'age' })).toBeChecked();
     expect(cardDetailOptions()).toEqual(['age', 'name']);
     expect(sortableOptions()).toEqual(['age', 'name']);
+  });
+
+  /**
+   * And a file the researcher swaps in takes the old file's columns with it:
+   * every choice on this stage named one of them, and a reference to a column
+   * the new file does not have is a card the interview renders empty.
+   */
+  it('follows a file the researcher swaps in', async () => {
+    const harness = mountFixture();
+    await screen.findByText(FIXTURE_COLUMNS);
 
     await importAnotherRoster(harness);
 
@@ -167,20 +183,22 @@ describe('the roster name generator editor', () => {
    * something. The card, ordering and search sections are all genuinely
    * optional — a short roster of distinct names needs none of them.
    */
-  it('saves a new stage once it has been given the minimum a roster needs', async () => {
-    const harness = renderStageEditor({
-      create: { type: 'NameGeneratorRoster', position: ROSTER_INDEX },
-      registry: nameGeneratorStageEditors,
-    });
+  it('opens a new stage on the interface template', async () => {
+    renderStageEditor(createFixture());
 
     // A stage the session is CREATING opens with a name proposed for it —
-    // nothing else about this interface has an authored default, so the
-    // rest of what a host will store is written below.
+    // nothing else about this interface has an authored default, so
+    // everything a host will store is the researcher's to write.
     await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
     expect(stageNameInput().value).toMatch(/^Roster Name Generator/);
+    expect(screen.getByRole('radio', { name: 'person' })).not.toBeChecked();
+  });
 
-    await harness.user.clear(stageNameInput());
-    await harness.user.type(stageNameInput(), 'People from the register');
+  it('saves a new stage once it has been given the minimum a roster needs', async () => {
+    const harness = renderStageEditor(createFixture());
+    await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
+
+    await writeInto(harness, stageNameInput(), 'People from the register');
     // The type first: everything below describes it, and choosing a different
     // one throws all of that away.
     await harness.user.click(screen.getByRole('radio', { name: 'person' }));
@@ -197,7 +215,8 @@ describe('the roster name generator editor', () => {
       screen.getByRole('button', { name: 'Create new prompt' }),
     );
     const prompt = within(await screen.findByRole('dialog'));
-    await harness.user.type(
+    await writeInto(
+      harness,
       prompt.getByRole('textbox', { name: 'Prompt text' }),
       'Which of these people do you know?',
     );
@@ -250,9 +269,10 @@ describe('the roster name generator editor', () => {
     const harness = mountFixture();
     await screen.findByText(FIXTURE_COLUMNS);
 
-    await harness.user.type(
+    await writeInto(
+      harness,
       screen.getByRole('textbox', { name: 'Stage name' }),
-      ' (revised)',
+      'Roster (revised)',
     );
     await importAnotherRoster(harness);
     await screen.findByText(STAGED_COLUMNS);

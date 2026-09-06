@@ -6,6 +6,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { writeInto } from '../../__tests__/writeInto.ts';
 import { nameGeneratorStageEditors } from '../../nameGeneratorStageEditors.ts';
 import { addInterviewNetworkPanel, chooseNodeType } from './addSidePanel.ts';
 
@@ -55,6 +56,14 @@ const mountFixture = () =>
 /** Where a host would insert a new one: over the stage the fixture holds. */
 const QUICK_ADD_INDEX = fixtureStageIds().indexOf('name-generator-quick-add-1');
 
+const createFixture = () => ({
+  create: {
+    type: 'NameGeneratorQuickAdd' as const,
+    position: QUICK_ADD_INDEX,
+  },
+  registry: nameGeneratorStageEditors,
+});
+
 /**
  * The stage's name control, as the input it is.
  *
@@ -103,20 +112,22 @@ describe('the quick-add name generator editor', () => {
    * it: name it, say who it nominates, say what the single box fills in, and
    * ask something.
    */
-  it('saves a new stage once it has been given the minimum quick add needs', async () => {
-    const harness = renderStageEditor({
-      create: { type: 'NameGeneratorQuickAdd', position: QUICK_ADD_INDEX },
-      registry: nameGeneratorStageEditors,
-    });
+  it('opens a new stage on the interface template', async () => {
+    renderStageEditor(createFixture());
 
     // A stage the session is CREATING opens with a name proposed for it —
-    // nothing else about this interface has an authored default, so the
-    // rest of what a host will store is written below.
+    // nothing else about this interface has an authored default, so
+    // everything a host will store is the researcher's to write.
     await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
     expect(stageNameInput().value).toMatch(/^Quick Add Name Generator/);
+    expect(screen.getByRole('radio', { name: 'person' })).not.toBeChecked();
+  });
 
-    await harness.user.clear(stageNameInput());
-    await harness.user.type(stageNameInput(), 'People you see often');
+  it('saves a new stage once it has been given the minimum quick add needs', async () => {
+    const harness = renderStageEditor(createFixture());
+    await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
+
+    await writeInto(harness, stageNameInput(), 'People you see often');
     // The type first: everything below describes it, and choosing a different
     // one throws all of that away.
     await harness.user.click(screen.getByRole('radio', { name: 'person' }));
@@ -130,7 +141,8 @@ describe('the quick-add name generator editor', () => {
       screen.getByRole('button', { name: 'Create new prompt' }),
     );
     const prompt = within(await screen.findByRole('dialog'));
-    await harness.user.type(
+    await writeInto(
+      harness,
       prompt.getByRole('textbox', { name: 'Prompt text' }),
       'Who do you see most weeks?',
     );
@@ -163,10 +175,7 @@ describe('the quick-add name generator editor', () => {
    * the interview's own network into "with Network Panels".
    */
   it('qualifies the proposed name of a new stage with the panels beside it', async () => {
-    const harness = renderStageEditor({
-      create: { type: 'NameGeneratorQuickAdd', position: QUICK_ADD_INDEX },
-      registry: nameGeneratorStageEditors,
-    });
+    const harness = renderStageEditor(createFixture());
 
     await waitFor(() =>
       expect(stageNameInput()).toHaveValue('Quick Add Name Generator'),
@@ -184,10 +193,7 @@ describe('the quick-add name generator editor', () => {
 
   /** A name the researcher typed is theirs; a later panel does not take it. */
   it('leaves a name the researcher typed alone when a panel is added', async () => {
-    const harness = renderStageEditor({
-      create: { type: 'NameGeneratorQuickAdd', position: QUICK_ADD_INDEX },
-      registry: nameGeneratorStageEditors,
-    });
+    const harness = renderStageEditor(createFixture());
 
     await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
     await harness.user.clear(stageNameInput());
