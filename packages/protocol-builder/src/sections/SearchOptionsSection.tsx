@@ -3,11 +3,18 @@ import { type ComponentType, useMemo } from 'react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
 import LikertScaleField from '@codaco/fresco-ui/form/fields/LikertScale';
-import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
+import {
+  type MessageRule,
+  messageRuleValidation,
+} from '@codaco/fresco-ui/form/validation/helpers';
 
 import ProtocolField from '../form/ProtocolField.tsx';
 import BuilderSection, { type SectionCapability } from './BuilderSection.tsx';
-import { DATA_SOURCE, useRosterColumns } from './useRosterColumns.ts';
+import {
+  DATA_SOURCE,
+  useOrphanedColumnChoices,
+  useRosterColumns,
+} from './useRosterColumns.ts';
 
 /** Where a roster stage records how a participant's search is matched. */
 const MATCH_PROPERTIES = 'searchOptions.matchProperties';
@@ -56,12 +63,10 @@ const LikertScale = LikertScaleField as ComponentType<Record<string, unknown>>;
  * and saving straight away leaves both empty, and two rules that excuse each
  * other say nothing about a pair that is entirely missing.
  */
-const matchValidation = messageRuleValidation([
-  (value) =>
-    Array.isArray(value) && value.length > 0
-      ? undefined
-      : 'Choose at least one attribute for a search to match against.',
-]);
+const matchIsAnswered: MessageRule = (value) =>
+  Array.isArray(value) && value.length > 0
+    ? undefined
+    : 'Choose at least one attribute for a search to match against.';
 
 const toleranceValidation = messageRuleValidation([
   // `0` is an answer — the strictest setting — so the test is on the TYPE, not
@@ -116,14 +121,38 @@ export default function SearchOptionsSection({
   const words = { ...DEFAULT_COPY, ...copy };
   const columns = useRosterColumns();
 
+  // A checked column the file does not carry, so the researcher can see what
+  // their search is actually matching against. The list holds column names
+  // rather than rows, which is the only thing that differs from the card and
+  // sort lists — the judgement, the label and the refusal are the same ones.
+  const orphans = useOrphanedColumnChoices(MATCH_PROPERTIES, columns.names);
+
   // Columns nobody has read yet and a file that carries none are both nothing
-  // to offer, so this section reads them the same way. It is the only roster
-  // section with no rows to judge — the other two hold lists whose cells name
-  // a column, and there the difference decides whether a row is reported as
-  // dangling (`useOrphanedColumns`).
+  // to offer, so this section reads them the same way. Orphans are appended
+  // rather than mixed in: they are not columns of this file, they are names the
+  // stage still holds, and each is offered only while it is still checked.
   const options = useMemo(
-    () => (columns.names ?? []).map((name) => ({ value: name, label: name })),
-    [columns.names],
+    () => [
+      ...(columns.names ?? []).map((name) => ({ value: name, label: name })),
+      ...orphans.options,
+    ],
+    [columns.names, orphans.options],
+  );
+
+  /**
+   * Built here rather than as a module constant, because one of its rules has
+   * to read what the data file turned out to hold. It keeps ONE identity all
+   * the same: `orphans.refusal` reads the current orphans through a ref, so a
+   * rule registered before the gateway answered is still the rule that runs.
+   * See `useOrphanedColumnChoices`.
+   *
+   * Unanswered first, dangling second — the order `messageRuleValidation`
+   * documents, and the one that tells a researcher what is missing before it
+   * tells them what they kept is stale.
+   */
+  const matchValidation = useMemo(
+    () => messageRuleValidation([matchIsAnswered, orphans.refusal]),
+    [orphans.refusal],
   );
 
   return (

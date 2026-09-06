@@ -752,6 +752,143 @@ describe('how a participant searches a roster', () => {
   });
 
   /**
+   * A checked column the data file does not carry, which is the hole the card
+   * and sort lists already answer for their own rows. A checkbox group is the
+   * worst place for it: a row at least shows an empty cell, whereas a checked
+   * attribute the option list does not carry is simply not rendered — so the
+   * researcher sees a search that looks fully configured, and saves a search
+   * matching against a column that is not there without ever being told.
+   *
+   * The stage arrives holding it rather than reaching it by a swap, because a
+   * swap clears this whole capability (`resetOn`) and there would be nothing
+   * left to misjudge.
+   */
+  it('names a checked attribute the data file does not have', async () => {
+    renderStageEditor({
+      stage: rosterWith({
+        dataSource: 'roster_data',
+        searchOptions: { fuzziness: 0.4, matchProperties: ['nickname'] },
+      }),
+      sections: <SearchOptionsSection />,
+    });
+
+    const orphan = await screen.findByRole('checkbox', {
+      name: 'nickname — this attribute is not in the data file',
+    });
+    // On screen and checked, so what the search matches is readable...
+    expect(orphan).toBeChecked();
+    // ...and the columns the file does carry are still offered beside it.
+    expect(screen.getByRole('checkbox', { name: 'name' })).toBeInTheDocument();
+  });
+
+  it('refuses to save a search matching an attribute the file does not have', async () => {
+    const harness = renderStageEditor({
+      stage: rosterWith({
+        dataSource: 'roster_data',
+        searchOptions: { fuzziness: 0.4, matchProperties: ['nickname'] },
+      }),
+      sections: <SearchOptionsSection />,
+    });
+
+    await screen.findByRole('checkbox', {
+      name: 'nickname — this attribute is not in the data file',
+    });
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      screen.getByText(
+        'This search matches an attribute that is not in the data file. Uncheck it and choose another.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * The refusal has to be one the researcher can act on, and unchecking is the
+   * only way out a checkbox has — which is why the orphan is offered enabled
+   * where a row's is permanently disabled. What the disabling exists for is
+   * kept all the same: the orphan is offered only while it is still checked, so
+   * letting go of it takes it off the list for good.
+   */
+  it('saves once the lost attribute is unchecked and another chosen', async () => {
+    const harness = renderStageEditor({
+      stage: rosterWith({
+        dataSource: 'roster_data',
+        searchOptions: { fuzziness: 0.4, matchProperties: ['nickname'] },
+      }),
+      sections: <SearchOptionsSection />,
+    });
+
+    await harness.user.click(
+      await screen.findByRole('checkbox', {
+        name: 'nickname — this attribute is not in the data file',
+      }),
+    );
+    await harness.user.click(screen.getByRole('checkbox', { name: 'name' }));
+
+    const request = await harness.submit();
+    expect(request?.stageDocument.searchOptions).toEqual({
+      fuzziness: 0.4,
+      matchProperties: ['name'],
+    });
+    // Let go of, so it is not offered again.
+    expect(
+      screen.queryByRole('checkbox', {
+        name: 'nickname — this attribute is not in the data file',
+      }),
+    ).toBeNull();
+  });
+
+  /**
+   * The state the orphan report must never be raised in.
+   *
+   * Swapping the data file clears this whole capability, and the clear parks a
+   * tombstone rather than writing an empty value — so a report reading the
+   * stage's committed copy would find the OLD file's checked columns still
+   * there, name every one of them as lost, and refuse a save the researcher has
+   * no way to fix: the controls that would let them uncheck it are gone with
+   * the capability.
+   */
+  it('says nothing about a checked attribute the file swap already cleared', async () => {
+    const harness = renderStageEditor({
+      stage: rosterWith({
+        dataSource: 'roster_data',
+        searchOptions: { fuzziness: 0.4, matchProperties: ['nickname'] },
+      }),
+      sections: (
+        <>
+          <ExternalDataSourceSection />
+          <SearchOptionsSection />
+        </>
+      ),
+    });
+
+    await screen.findByRole('checkbox', {
+      name: 'nickname — this attribute is not in the data file',
+    });
+
+    // The way a researcher swaps rosters: take the old file off the stage, then
+    // choose one.
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Remove this resource' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Select a data file' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Roster' }),
+    );
+
+    const request = await harness.submit();
+    expect(request?.stageDocument.dataSource).toBe('roster_data');
+    expect(request?.stageDocument.searchOptions).toBeUndefined();
+    expect(
+      screen.queryByText(
+        'This search matches an attribute that is not in the data file. Uncheck it and choose another.',
+      ),
+    ).toBeNull();
+  });
+
+  /**
    * The other half of the same hole. A stage arriving with attributes and no
    * tolerance is refused by the schema as `searchOptions.fuzziness`, and used
    * to pass here because the empty tolerance excused itself whenever it was
