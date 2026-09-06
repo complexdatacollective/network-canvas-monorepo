@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import type { MessageRule } from '@codaco/fresco-ui/form/validation/helpers';
 
 import {
@@ -185,6 +186,12 @@ function useOrphanedColumnNames(
   named: readonly unknown[] | undefined,
   names: readonly string[] | undefined,
 ): readonly string[] {
+  // Only the orphans' NAMES are wanted here, but the finder builds a label for
+  // each as it goes and needs a formatter to write it in. Taken from the
+  // provider rather than made here: a module-level English one would be the
+  // formatter every caller shared, and the labels it writes are read by the
+  // controls these names reach.
+  const intl = useAppIntl();
   return useMemo(() => {
     // The sort-rule finder, asked the same question about a different column:
     // naming each entry's column `property` reuses its dedupe, its "the caller
@@ -194,9 +201,10 @@ function useOrphanedColumnNames(
     const found = orphanedSortProperties(
       named?.map((column) => ({ property: column })),
       names?.map((name) => ({ value: name, label: name })),
+      intl,
     ).map(({ value }) => value);
     return found.length === 0 ? NO_COLUMNS : found;
-  }, [named, names]);
+  }, [intl, named, names]);
 }
 
 /**

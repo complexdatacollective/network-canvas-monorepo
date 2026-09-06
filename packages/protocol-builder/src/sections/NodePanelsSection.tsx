@@ -33,6 +33,7 @@ import {
   type RowPreviewProps,
   useRowRenderers,
 } from './rowRenderers.tsx';
+import { sectionMessages } from './sectionMessages.ts';
 import { useStageSubject } from './useStageSubject.ts';
 
 /** Where every name generator that offers side panels keeps them. */
@@ -55,10 +56,9 @@ const MAX_PANELS = 2;
 const PANELS_CAPABILITY: SectionCapability = {
   fields: [PANELS],
   confirmClear: {
-    title: 'This will delete your side panels',
-    description:
-      'This will remove every side panel on this stage, and delete any filter rules you have created for them. Do you want to continue?',
-    confirmLabel: 'Remove panels',
+    title: sectionMessages.nodePanelsClearTitle,
+    description: sectionMessages.nodePanelsClearDescription,
+    confirmLabel: sectionMessages.nodePanelsClearConfirm,
   },
 };
 
@@ -134,22 +134,20 @@ const panelsValidation = {
   ]),
 };
 
-export type NodePanelsCopy = Readonly<{
+/**
+ * The words this section says, in English until it is localised — at which
+ * point each comment below becomes the `description` a translator reads.
+ *
+ * Nothing overrides them: a `copy` prop is a string a host hands in, which
+ * extraction never sees and a translator therefore never gets
+ * (`__tests__/hostCopyOverrides.test.ts`).
+ */
+const words = {
   /** Names the section in the outline and to assistive technology. */
-  sectionTitle: string;
-  description: string;
-  /** Said instead of `description` while the section is waiting on a subject. */
-  waitingDescription: string;
-  fieldLabel: string;
-  fieldHint: string;
-  addButtonLabel: string;
-  emptyStateMessage: string;
-}>;
-
-const DEFAULT_COPY: NodePanelsCopy = {
   sectionTitle: 'Side panels',
   description:
     'Show a list of people beside this stage, so the participant can nominate someone without typing their name again.',
+  /** Said instead of `description` while the section is waiting on a subject. */
   waitingDescription:
     'Choose what this stage works with before adding side panels.',
   fieldLabel: 'Panels',
@@ -159,10 +157,6 @@ const DEFAULT_COPY: NodePanelsCopy = {
   emptyStateMessage:
     'No panels yet. Create one to offer people the participant has already named.',
 };
-
-export type NodePanelsSectionProps = Readonly<{
-  copy?: Partial<NodePanelsCopy>;
-}>;
 
 /**
  * The lists of people shown beside a name generator.
@@ -176,10 +170,7 @@ export type NodePanelsSectionProps = Readonly<{
  * to name people from memory, which is the norm. Switching the capability off
  * destroys the panels and their rules, which is why the switch asks first.
  */
-export default function NodePanelsSection({
-  copy,
-}: NodePanelsSectionProps = {}) {
-  const words = { ...DEFAULT_COPY, ...copy };
+export default function NodePanelsSection() {
   const subject = useStageSubject('node');
   // A panel's filter asks about a node type, and its rules are chosen from
   // that type's attributes — so until the stage says what it works with there
@@ -206,7 +197,7 @@ export default function NodePanelsSection({
         addButtonLabel={words.addButtonLabel}
         addTitle="Create panel"
         editorTitle="Edit panel"
-        itemLabel="panel"
+        itemLabel={sectionMessages.nodePanelsItemNoun}
         emptyStateMessage={words.emptyStateMessage}
         editorFieldsComponent={editorFieldsComponent}
         previewComponent={previewComponent}

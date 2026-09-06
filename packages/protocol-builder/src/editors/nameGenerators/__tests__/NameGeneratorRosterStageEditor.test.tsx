@@ -50,10 +50,15 @@ const STAGED_COLUMNS = 'The people in it carry these attributes: city, name.';
  * The harness's `editor` slot takes an editor for ANY stage type, which a
  * named editor deliberately is not.
  */
-const mountFixture = () =>
+const mountFixture = ({ applyLive = false }: { applyLive?: boolean } = {}) =>
   renderStageEditor({
     stageId: 'name-generator-roster-1',
     registry: nameGeneratorStageEditors,
+    // Off unless a test asks: an editor draws work in progress, and a host
+    // handed every batch as it is made would refuse the next one. The two
+    // tests below turn it on because what they ask is which batches LEFT the
+    // session — a question only a host that was really handed them can answer.
+    applyLive,
   });
 
 /** Where a host would insert a new one: over the stage the fixture holds. */
@@ -373,7 +378,7 @@ describe('the roster name generator editor', () => {
    * (`pendingCommands`).
    */
   it('leaves nothing behind when the editor is closed without saving', async () => {
-    const harness = mountFixture();
+    const harness = mountFixture({ applyLive: true });
     await screen.findByText(FIXTURE_COLUMNS);
 
     await writeInto(
@@ -421,7 +426,7 @@ describe('the roster name generator editor', () => {
    * researcher then chose nor anything they wrote against it.
    */
   it('keeps a removal the researcher made before importing, and nothing of the import', async () => {
-    const harness = mountFixture();
+    const harness = mountFixture({ applyLive: true });
     await screen.findByText(FIXTURE_COLUMNS);
 
     await removeThenImportAnotherRoster(harness);

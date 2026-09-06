@@ -10,6 +10,7 @@ import {
 
 import ProtocolField from '../form/ProtocolField.tsx';
 import BuilderSection, { type SectionCapability } from './BuilderSection.tsx';
+import { sectionMessages } from './sectionMessages.ts';
 import {
   DATA_SOURCE,
   useOrphanedColumnChoices,
@@ -23,10 +24,9 @@ const FUZZINESS = 'searchOptions.fuzziness';
 const SEARCH_CAPABILITY: SectionCapability = {
   fields: [MATCH_PROPERTIES, FUZZINESS],
   confirmClear: {
-    title: 'This will turn off roster search',
-    description:
-      'This will remove the attributes a participant’s search is matched against, and the tolerance you set. Do you want to continue?',
-    confirmLabel: 'Turn off search',
+    title: sectionMessages.searchOptionsClearTitle,
+    description: sectionMessages.searchOptionsClearDescription,
+    confirmLabel: sectionMessages.searchOptionsClearConfirm,
   },
 };
 
@@ -77,22 +77,20 @@ const toleranceValidation = messageRuleValidation([
       : 'Choose how closely a search must match.',
 ]);
 
-export type SearchOptionsCopy = Readonly<{
+/**
+ * The words this section says, in English until it is localised — at which
+ * point each comment below becomes the `description` a translator reads.
+ *
+ * Nothing overrides them: a `copy` prop is a string a host hands in, which
+ * extraction never sees and a translator therefore never gets
+ * (`__tests__/hostCopyOverrides.test.ts`).
+ */
+const words = {
   /** Names the section in the outline and to assistive technology. */
-  sectionTitle: string;
-  description: string;
-  /** Said instead of `description` while the section is waiting on a roster. */
-  waitingDescription: string;
-  matchLabel: string;
-  matchHint: string;
-  toleranceLabel: string;
-  toleranceHint: string;
-}>;
-
-const DEFAULT_COPY: SearchOptionsCopy = {
   sectionTitle: 'Roster search',
   description:
     'Let the participant find someone by typing, and choose what their typing is matched against.',
+  /** Said instead of `description` while the section is waiting on a roster. */
   waitingDescription: 'Choose a roster data file before setting up its search.',
   matchLabel: 'Attributes a search matches',
   matchHint:
@@ -101,10 +99,6 @@ const DEFAULT_COPY: SearchOptionsCopy = {
   toleranceHint:
     'A stricter setting narrows a roster of similar people; a looser one forgives typos.',
 };
-
-export type SearchOptionsSectionProps = Readonly<{
-  copy?: Partial<SearchOptionsCopy>;
-}>;
 
 /**
  * How a participant finds someone in a long roster.
@@ -115,10 +109,7 @@ export type SearchOptionsSectionProps = Readonly<{
  * says so on its own control rather than waiting for the schema to refuse a
  * path.
  */
-export default function SearchOptionsSection({
-  copy,
-}: SearchOptionsSectionProps = {}) {
-  const words = { ...DEFAULT_COPY, ...copy };
+export default function SearchOptionsSection() {
   const columns = useRosterColumns();
 
   // A checked column the file does not carry, so the researcher can see what

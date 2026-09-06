@@ -1,4 +1,16 @@
 {
+  "protocolBuilder.alterLimits.clearConfirm": {
+    "defaultMessage": "Clear limits",
+    "description": "Action that confirms switching the nomination limits off and discarding them."
+  },
+  "protocolBuilder.alterLimits.clearDescription": {
+    "defaultMessage": "This will clear the minimum and maximum number of people this stage may name. Do you want to continue?",
+    "description": "Body of the dialog confirming that switching off the nomination limits discards both ends of the range. A stage is one step of an interview."
+  },
+  "protocolBuilder.alterLimits.clearTitle": {
+    "defaultMessage": "This will clear your nomination limits",
+    "description": "Title of the dialog asking a researcher to confirm switching off the section that caps how many people one stage of an interview may name."
+  },
   "protocolBuilder.arrayField.addRowTitle": {
     "defaultMessage": "Add {itemLabel}",
     "description": "Title of the dialog a researcher fills in to add a row to a list, where the list has offered no title of its own. itemLabel is the list’s own noun for one of its rows, already in the reader’s language."
@@ -90,6 +102,18 @@
   "protocolBuilder.attributeCodebookControls.editValues": {
     "defaultMessage": "Change this attribute’s values",
     "description": "Button that opens the codebook editor for the list of answers a participant chooses between. Also the title of the dialog it opens."
+  },
+  "protocolBuilder.cardDisplay.clearConfirm": {
+    "defaultMessage": "Clear card details",
+    "description": "Action that confirms switching the roster card details off and discarding them."
+  },
+  "protocolBuilder.cardDisplay.clearDescription": {
+    "defaultMessage": "This will remove every extra attribute your roster cards show, along with the labels you gave them. Do you want to continue?",
+    "description": "Body of the dialog confirming that switching off the card details discards the chosen attributes and their labels. A roster is a list of people imported from a data file; an attribute is one field the protocol records about a person."
+  },
+  "protocolBuilder.cardDisplay.clearTitle": {
+    "defaultMessage": "This will clear the card details",
+    "description": "Title of the dialog asking a researcher to confirm switching off the section that chooses what the cards in a roster show about each person."
   },
   "protocolBuilder.codebookEditing.createDescription": {
     "defaultMessage": "Create the attribute \"{name}\"",
@@ -734,6 +758,22 @@
   "protocolBuilder.networkFilter.title": {
     "defaultMessage": "Stage filter",
     "description": "Heading of the section where a researcher narrows which parts of the interview network one stage works on. A stage is one step of an interview."
+  },
+  "protocolBuilder.nodePanels.clearConfirm": {
+    "defaultMessage": "Remove panels",
+    "description": "Action that confirms switching the side panels off and deleting them."
+  },
+  "protocolBuilder.nodePanels.clearDescription": {
+    "defaultMessage": "This will remove every side panel on this stage, and delete any filter rules you have created for them. Do you want to continue?",
+    "description": "Body of the dialog confirming that switching off the side panels discards the panels and the filter rules written for them. A stage is one step of an interview."
+  },
+  "protocolBuilder.nodePanels.clearTitle": {
+    "defaultMessage": "This will delete your side panels",
+    "description": "Title of the dialog asking a researcher to confirm switching off the section that adds panels of people beside a name generator for the participant to nominate from."
+  },
+  "protocolBuilder.nodePanels.itemNoun": {
+    "defaultMessage": "panel",
+    "description": "What one row of the side-panel list is called inside things said ABOUT it — \"Edit panel\", \"Remove this panel?\" — so it is lower case and singular. A side panel lists people beside a name generator for the participant to nominate from."
   },
   "protocolBuilder.operators.contains": {
     "defaultMessage": "contains",
@@ -1739,6 +1779,18 @@
     "defaultMessage": "{fieldLabel} holds settings this stage does not have.",
     "description": "Shown beside one section of a stage editor when the saved stage carries settings this kind of stage knows nothing about — usually a stage imported from an older or newer protocol. fieldLabel is the control’s own name and starts the sentence."
   },
+  "protocolBuilder.searchOptions.clearConfirm": {
+    "defaultMessage": "Turn off search",
+    "description": "Action that confirms switching roster search off and discarding how it was configured."
+  },
+  "protocolBuilder.searchOptions.clearDescription": {
+    "defaultMessage": "This will remove the attributes a participant’s search is matched against, and the tolerance you set. Do you want to continue?",
+    "description": "Body of the dialog confirming that switching roster search off discards the searchable attributes and the fuzziness setting. A roster is a list of people imported from a data file."
+  },
+  "protocolBuilder.searchOptions.clearTitle": {
+    "defaultMessage": "This will turn off roster search",
+    "description": "Title of the dialog asking a researcher to confirm switching off the section that lets a participant search a roster."
+  },
   "protocolBuilder.shell.formUnavailableRefusal": {
     "defaultMessage": "This stage could not be saved because its form is no longer available. Reopen the stage and try again.",
     "description": "Shown above a stage editor’s fields when a save arrives after the editor’s own form has been taken down, so there are no values left to save."
@@ -1802,6 +1854,18 @@
   "protocolBuilder.skipLogic.title": {
     "defaultMessage": "Skip logic",
     "description": "Heading of the section where a researcher decides whether one step of an interview runs at all."
+  },
+  "protocolBuilder.sortOptions.clearConfirm": {
+    "defaultMessage": "Clear sorting",
+    "description": "Action that confirms switching roster sorting off and discarding it."
+  },
+  "protocolBuilder.sortOptions.clearDescription": {
+    "defaultMessage": "This will remove the roster’s starting order and every attribute the participant could sort by. Do you want to continue?",
+    "description": "Body of the dialog confirming that switching roster sorting off discards both the starting order and the attributes offered to the participant. A roster is a list of people imported from a data file."
+  },
+  "protocolBuilder.sortOptions.clearTitle": {
+    "defaultMessage": "This will clear your sorting",
+    "description": "Title of the dialog asking a researcher to confirm switching off the section that decides the order a roster is shown in and what a participant may reorder it by."
   },
   "protocolBuilder.sortOrder.ascending": {
     "defaultMessage": "Ascending",

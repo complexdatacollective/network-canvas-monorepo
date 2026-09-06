@@ -1,5 +1,7 @@
 import { useMemo } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import { getSortOrderOptionGetter } from '../fields/sortOrderOptions.ts';
 import {
   makeMultiSelectValidation,
@@ -8,6 +10,7 @@ import {
 import OptionalList from '../form/arrayFields/OptionalList.tsx';
 import ProtocolArrayField from '../form/ProtocolArrayField.tsx';
 import BuilderSection, { type SectionCapability } from './BuilderSection.tsx';
+import { sectionMessages } from './sectionMessages.ts';
 import {
   DATA_SOURCE,
   useColumnOptionGetter,
@@ -37,31 +40,26 @@ const SORTABLE_COLUMNS: PropertyField[] = [
 const SORT_CAPABILITY: SectionCapability = {
   fields: [SORT_ORDER, SORTABLE_PROPERTIES],
   confirmClear: {
-    title: 'This will clear your sorting',
-    description:
-      'This will remove the roster’s starting order and every attribute the participant could sort by. Do you want to continue?',
-    confirmLabel: 'Clear sorting',
+    title: sectionMessages.sortOptionsClearTitle,
+    description: sectionMessages.sortOptionsClearDescription,
+    confirmLabel: sectionMessages.sortOptionsClearConfirm,
   },
 };
 
-export type SortOptionsCopy = Readonly<{
+/**
+ * The words this section says, in English until it is localised — at which
+ * point each comment below becomes the `description` a translator reads.
+ *
+ * Nothing overrides them: a `copy` prop is a string a host hands in, which
+ * extraction never sees and a translator therefore never gets
+ * (`__tests__/hostCopyOverrides.test.ts`).
+ */
+const words = {
   /** Names the section in the outline and to assistive technology. */
-  sectionTitle: string;
-  description: string;
-  /** Said instead of `description` while the section is waiting on a roster. */
-  waitingDescription: string;
-  orderLabel: string;
-  orderHint: string;
-  orderAddButtonLabel: string;
-  sortableLabel: string;
-  sortableHint: string;
-  sortableAddButtonLabel: string;
-}>;
-
-const DEFAULT_COPY: SortOptionsCopy = {
   sectionTitle: 'Roster order',
   description:
     'Decide the order people appear in, and which attributes the participant may reorder them by.',
+  /** Said instead of `description` while the section is waiting on a roster. */
   waitingDescription:
     'Choose a roster data file before deciding how its people are ordered.',
   orderLabel: 'Starting order',
@@ -73,10 +71,6 @@ const DEFAULT_COPY: SortOptionsCopy = {
     'Each becomes a control above the roster, under the label you give it here.',
   sortableAddButtonLabel: 'Add new sortable attribute',
 };
-
-export type SortOptionsSectionProps = Readonly<{
-  copy?: Partial<SortOptionsCopy>;
-}>;
 
 /**
  * How a roster's people are ordered.
@@ -91,10 +85,8 @@ export type SortOptionsSectionProps = Readonly<{
  * second rule could only ever break ties inside the first, which is not a
  * thing a participant scanning a list can perceive.
  */
-export default function SortOptionsSection({
-  copy,
-}: SortOptionsSectionProps = {}) {
-  const words = { ...DEFAULT_COPY, ...copy };
+export default function SortOptionsSection() {
+  const intl = useAppIntl();
   const columns = useRosterColumns();
 
   // Two lists, two columns holding column names, so the same lost column can
@@ -116,11 +108,17 @@ export default function SortOptionsSection({
   );
   const orderOptions = useMemo(
     () =>
-      getSortOrderOptionGetter([
-        ...(columns.names ?? []).map((name) => ({ value: name, label: name })),
-        ...orderOrphans.options,
-      ]),
-    [columns.names, orderOrphans.options],
+      getSortOrderOptionGetter(
+        [
+          ...(columns.names ?? []).map((name) => ({
+            value: name,
+            label: name,
+          })),
+          ...orderOrphans.options,
+        ],
+        intl,
+      ),
+    [columns.names, intl, orderOrphans.options],
   );
 
   const orderValidation = useMemo(

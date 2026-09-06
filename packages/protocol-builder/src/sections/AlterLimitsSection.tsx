@@ -12,6 +12,7 @@ import ProtocolField from '../form/ProtocolField.tsx';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useStageValue } from '../form/stageFormHooks.ts';
 import BuilderSection, { type SectionCapability } from './BuilderSection.tsx';
+import { sectionMessages } from './sectionMessages.ts';
 
 /** Where every name generator holds its stage-wide nomination window. */
 const MIN_FIELD = 'behaviours.minNodes';
@@ -20,10 +21,9 @@ const MAX_FIELD = 'behaviours.maxNodes';
 const LIMITS_CAPABILITY: SectionCapability = {
   fields: [MIN_FIELD, MAX_FIELD],
   confirmClear: {
-    title: 'This will clear your nomination limits',
-    description:
-      'This will clear the minimum and maximum number of people this stage may name. Do you want to continue?',
-    confirmLabel: 'Clear limits',
+    title: sectionMessages.alterLimitsClearTitle,
+    description: sectionMessages.alterLimitsClearDescription,
+    confirmLabel: sectionMessages.alterLimitsClearConfirm,
   },
 };
 
@@ -119,17 +119,16 @@ const maxValidation = messageRuleValidation([
   },
 ]);
 
-export type AlterLimitsCopy = Readonly<{
+/**
+ * The words this section says, in English until it is localised — at which
+ * point each comment below becomes the `description` a translator reads.
+ *
+ * Nothing overrides them: a `copy` prop is a string a host hands in, which
+ * extraction never sees and a translator therefore never gets
+ * (`__tests__/hostCopyOverrides.test.ts`).
+ */
+const words = {
   /** Names the section in the outline and to assistive technology. */
-  sectionTitle: string;
-  description: string;
-  minLabel: string;
-  minHint: string;
-  maxLabel: string;
-  maxHint: string;
-}>;
-
-const DEFAULT_COPY: AlterLimitsCopy = {
   sectionTitle: 'Nomination limits',
   description:
     'Limit how many people this stage may name, counted across the whole stage.',
@@ -138,10 +137,6 @@ const DEFAULT_COPY: AlterLimitsCopy = {
   maxLabel: 'Most people',
   maxHint: 'Leave empty for no maximum.',
 };
-
-export type AlterLimitsSectionProps = Readonly<{
-  copy?: Partial<AlterLimitsCopy>;
-}>;
 
 /**
  * How many people a name generator may name.
@@ -153,10 +148,7 @@ export type AlterLimitsSectionProps = Readonly<{
  * judges itself against the other and the section refuses a window nothing
  * could satisfy.
  */
-export default function AlterLimitsSection({
-  copy,
-}: AlterLimitsSectionProps = {}) {
-  const words = { ...DEFAULT_COPY, ...copy };
+export default function AlterLimitsSection() {
   const { storeApi } = useStageEditorForm();
   const min = useStageValue(MIN_FIELD);
   const max = useStageValue(MAX_FIELD);

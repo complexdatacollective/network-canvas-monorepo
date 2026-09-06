@@ -7,6 +7,7 @@ import {
 } from 'react';
 import { v4 as uuid } from 'uuid';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
@@ -97,30 +98,26 @@ const VariablePicker = VariablePickerControl as ComponentType<
   Record<string, unknown>
 >;
 
-export type QuickAddCopy = Readonly<{
+/**
+ * The words this section says, in English until it is localised — at which
+ * point each comment below becomes the `description` a translator reads.
+ *
+ * Nothing overrides them: a `copy` prop is a string a host hands in, which
+ * extraction never sees and a translator therefore never gets
+ * (`__tests__/hostCopyOverrides.test.ts`).
+ */
+const words = {
   /** Names the section in the outline and to assistive technology. */
-  sectionTitle: string;
-  description: string;
-  /** Said instead of `description` while the section is waiting on a subject. */
-  waitingDescription: string;
-  fieldLabel: string;
-  fieldHint: string;
-}>;
-
-const DEFAULT_COPY: QuickAddCopy = {
   sectionTitle: 'Quick add',
   description:
     'Choose the attribute the participant fills in when they add someone with a single box.',
+  /** Said instead of `description` while the section is waiting on a subject. */
   waitingDescription:
     'Choose what this stage works with before setting up quick add.',
   fieldLabel: 'Attribute filled in',
   fieldHint:
     'What the participant types goes here. Use the attribute holding a person’s name unless you have a reason not to — the interview labels people by it.',
 };
-
-export type QuickAddSectionProps = Readonly<{
-  copy?: Partial<QuickAddCopy>;
-}>;
 
 /**
  * What a quick-add name generator records.
@@ -134,8 +131,7 @@ export type QuickAddSectionProps = Readonly<{
  * unvalidated elsewhere in the protocol: an export must not mix a checked
  * answer with a value some other stage stamped.
  */
-export default function QuickAddSection({ copy }: QuickAddSectionProps = {}) {
-  const words = { ...DEFAULT_COPY, ...copy };
+export default function QuickAddSection() {
   const { protocolContext, identity } = useStageEditorForm();
   const subject = useStageSubject('node');
   const waiting = subject === undefined;
@@ -297,6 +293,7 @@ function QuickAddAnswerRequirement({
  */
 function useRequireCodebookAnswer(subject: CodebookSubject | undefined) {
   const { controller, protocolContext } = useStageEditorForm();
+  const intl = useAppIntl();
 
   return useCallback(
     async (variableId: string): Promise<RequireAnswerOutcome> => {
@@ -342,10 +339,10 @@ function useRequireCodebookAnswer(subject: CodebookSubject | undefined) {
         ? { status: 'required' }
         : {
             status: 'refused',
-            message: compoundFailureMessage({ kind: 'result', result }),
+            message: compoundFailureMessage({ kind: 'result', result }, intl),
           };
     },
-    [controller, protocolContext, subject],
+    [controller, intl, protocolContext, subject],
   );
 }
 

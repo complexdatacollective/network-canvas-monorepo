@@ -27,7 +27,7 @@ import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useStageValue } from '../form/stageFormHooks.ts';
 import { variablesForSubject } from '../protocol-context.ts';
 import { CreatableVariablePickerControl } from './CreatableVariablePicker.tsx';
-import PromptsSection, { type PromptsCopy } from './PromptsSection.tsx';
+import PromptsSection from './PromptsSection.tsx';
 import type { RowEditorProps, RowPreviewProps } from './rowRenderers.tsx';
 import { useStageSubject } from './useStageSubject.ts';
 
@@ -322,10 +322,6 @@ const normalizeNameGeneratorPrompt = (row: unknown): unknown => {
   return rest;
 };
 
-export type NameGeneratorPromptsSectionProps = Readonly<{
-  copy?: Partial<PromptsCopy>;
-}>;
-
 /**
  * The questions a name generator asks.
  *
@@ -336,15 +332,12 @@ export type NameGeneratorPromptsSectionProps = Readonly<{
  * NameGeneratorQuickAdd and NameGeneratorRoster, whose prompts are the same
  * shape in the schema.
  */
-export default function NameGeneratorPromptsSection({
-  copy,
-}: NameGeneratorPromptsSectionProps = {}) {
+export default function NameGeneratorPromptsSection() {
   return (
     <PromptsSection
       PromptEditor={NameGeneratorPromptEditor}
       PromptPreview={NameGeneratorPromptPreview}
       normalizeRow={normalizeNameGeneratorPrompt}
-      {...(copy === undefined ? {} : { copy })}
     />
   );
 }

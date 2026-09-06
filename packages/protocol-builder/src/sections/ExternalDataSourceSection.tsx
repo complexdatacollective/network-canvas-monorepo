@@ -11,15 +11,16 @@ const ResourcePicker = ResourcePickerControl as ComponentType<
   Record<string, unknown>
 >;
 
-export type ExternalDataSourceCopy = Readonly<{
+/**
+ * The words this section says, in English until it is localised — at which
+ * point each comment below becomes the `description` a translator reads.
+ *
+ * Nothing overrides them: a `copy` prop is a string a host hands in, which
+ * extraction never sees and a translator therefore never gets
+ * (`__tests__/hostCopyOverrides.test.ts`).
+ */
+const words = {
   /** Names the section in the outline and to assistive technology. */
-  sectionTitle: string;
-  description: string;
-  fieldLabel: string;
-  fieldHint: string;
-}>;
-
-const DEFAULT_COPY: ExternalDataSourceCopy = {
   sectionTitle: 'Roster source',
   description:
     'Choose the data file listing the people this stage offers the participant.',
@@ -27,10 +28,6 @@ const DEFAULT_COPY: ExternalDataSourceCopy = {
   fieldHint:
     'A CSV or JSON file of people. Everything else on this stage is chosen from its columns.',
 };
-
-export type ExternalDataSourceSectionProps = Readonly<{
-  copy?: Partial<ExternalDataSourceCopy>;
-}>;
 
 /**
  * Where a roster stage's people come from.
@@ -43,10 +40,7 @@ export type ExternalDataSourceSectionProps = Readonly<{
  * here, so a researcher comparing two similarly named rosters can tell which
  * one they have chosen without opening it.
  */
-export default function ExternalDataSourceSection({
-  copy,
-}: ExternalDataSourceSectionProps = {}) {
-  const words = { ...DEFAULT_COPY, ...copy };
+export default function ExternalDataSourceSection() {
   const columns = useRosterColumns();
 
   return (

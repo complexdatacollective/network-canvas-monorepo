@@ -9,6 +9,7 @@ import {
 import OptionalList from '../form/arrayFields/OptionalList.tsx';
 import ProtocolArrayField from '../form/ProtocolArrayField.tsx';
 import BuilderSection, { type SectionCapability } from './BuilderSection.tsx';
+import { sectionMessages } from './sectionMessages.ts';
 import {
   DATA_SOURCE,
   useColumnOptionGetter,
@@ -32,28 +33,26 @@ const CARD_PROPERTY_COLUMNS: PropertyField[] = [
 const CARD_CAPABILITY: SectionCapability = {
   fields: [CARD_PROPERTIES],
   confirmClear: {
-    title: 'This will clear the card details',
-    description:
-      'This will remove every extra attribute your roster cards show, along with the labels you gave them. Do you want to continue?',
-    confirmLabel: 'Clear card details',
+    title: sectionMessages.cardDisplayClearTitle,
+    description: sectionMessages.cardDisplayClearDescription,
+    confirmLabel: sectionMessages.cardDisplayClearConfirm,
   },
 };
 
-export type CardDisplayCopy = Readonly<{
+/**
+ * The words this section says, in English until it is localised — at which
+ * point each comment below becomes the `description` a translator reads.
+ *
+ * Nothing overrides them: a `copy` prop is a string a host hands in, which
+ * extraction never sees and a translator therefore never gets
+ * (`__tests__/hostCopyOverrides.test.ts`).
+ */
+const words = {
   /** Names the section in the outline and to assistive technology. */
-  sectionTitle: string;
-  description: string;
-  /** Said instead of `description` while the section is waiting on a roster. */
-  waitingDescription: string;
-  fieldLabel: string;
-  fieldHint: string;
-  addButtonLabel: string;
-}>;
-
-const DEFAULT_COPY: CardDisplayCopy = {
   sectionTitle: 'Card details',
   description:
     'Show extra attributes on each roster card, so the participant can tell two similar people apart.',
+  /** Said instead of `description` while the section is waiting on a roster. */
   waitingDescription:
     'Choose a roster data file before deciding what its cards show.',
   fieldLabel: 'Attributes shown on a card',
@@ -61,10 +60,6 @@ const DEFAULT_COPY: CardDisplayCopy = {
     'Each attribute appears beneath the name, under the label you give it here.',
   addButtonLabel: 'Add new card detail',
 };
-
-export type CardDisplaySectionProps = Readonly<{
-  copy?: Partial<CardDisplayCopy>;
-}>;
 
 /**
  * What a roster card shows besides a name.
@@ -78,10 +73,7 @@ export type CardDisplaySectionProps = Readonly<{
  * roster is external data, and a column in it need not be a codebook attribute
  * at all.
  */
-export default function CardDisplaySection({
-  copy,
-}: CardDisplaySectionProps = {}) {
-  const words = { ...DEFAULT_COPY, ...copy };
+export default function CardDisplaySection() {
   const columns = useRosterColumns();
   const orphans = useOrphanedColumns(
     'variable',

@@ -138,6 +138,13 @@ has to have exactly one:
   be the single home of each id.
 - `form/arrayFields/arrayMessages.ts` — the generic row noun every array-field
   sentence is built around.
+- `sections/sectionMessages.ts` — the few words family D's sections have to say
+  as descriptors before the rest of their copy is converted: what each
+  capability's `confirmClear` warns before throwing values away, and the side
+  panel list's row noun. Those two seams take a `MessageDescriptor` and nothing
+  else, so the ids exist ahead of the areas that will own them. It declares ids
+  in five areas, which is allowed for the same reason `codebookMessages.ts`
+  declares two.
 
 Two areas own the same sentence in two modules, and the sentence is declared
 once: `form/arrayFields/crossClassPick.ts` re-exports the cross-class refusals
@@ -149,25 +156,32 @@ editor report the same conflict, so a translator answers once.
 
 Named here so a later split takes the name rather than inventing a synonym.
 
-| `<area>`                   | Will own the copy in                         | Expected in |
-| -------------------------- | -------------------------------------------- | ----------- |
-| `subjectSelect`            | `fields/SubjectSelectField.tsx`              | splits 3–6  |
-| `nodePanels`               | `sections/NodePanelsSection`                 | family D    |
-| `searchOptions`            | `sections/SearchOptionsSection`              | family D    |
-| `alterLimits`              | `sections/AlterLimitsSection`                | family D    |
-| `quickAdd`                 | `sections/QuickAddSection`                   | family D    |
-| `sortOptions`              | `sections/SortOptionsSection`                | family D    |
-| `nameGeneratorPrompts`     | `sections/NameGeneratorPromptsSection`       | family D    |
-| `cardDisplay`              | `sections/CardDisplaySection`                | family D    |
-| `externalDataSource`       | `sections/ExternalDataSourceSection`         | family D    |
-| `censusPrompts`            | `sections/prompts/`                          | family E    |
-| `removeAfterConsideration` | `sections/RemoveAfterConsiderationSection`   | family E    |
-| `ordinalColor`             | `fields/OrdinalColorField`                   | family E    |
-| `networkCanvas`            | `sections/network/`                          | family F    |
-| `pedigree`                 | `sections/pedigree/`                         | family F    |
-| `narrativePedigree`        | `sections/narrativePedigree/`                | family F    |
-| `geospatial`               | `sections/geospatial/`, geospatial `fields/` | family F    |
-| `anonymisation`            | `sections/anonymisation/`                    | family F    |
+Five of family D's areas are PARTLY converted: `sections/sectionMessages.ts`
+already declares their `clearTitle`/`clearDescription`/`clearConfirm` — and
+`nodePanels.itemNoun` — because the shared seams those reach take a
+`MessageDescriptor` and nothing else. The conversion that finishes each section
+adds the rest of its area and moves these beside them; the ids do not change,
+because a renamed id is a translation silently orphaned.
+
+| `<area>`                   | Will own the copy in                         | Expected in | Partly converted |
+| -------------------------- | -------------------------------------------- | ----------- | ---------------- |
+| `subjectSelect`            | `fields/SubjectSelectField.tsx`              | splits 3–6  |                  |
+| `nodePanels`               | `sections/NodePanelsSection`                 | family D    | yes              |
+| `searchOptions`            | `sections/SearchOptionsSection`              | family D    | yes              |
+| `alterLimits`              | `sections/AlterLimitsSection`                | family D    | yes              |
+| `quickAdd`                 | `sections/QuickAddSection`                   | family D    |                  |
+| `sortOptions`              | `sections/SortOptionsSection`                | family D    | yes              |
+| `nameGeneratorPrompts`     | `sections/NameGeneratorPromptsSection`       | family D    |                  |
+| `cardDisplay`              | `sections/CardDisplaySection`                | family D    | yes              |
+| `externalDataSource`       | `sections/ExternalDataSourceSection`         | family D    |                  |
+| `censusPrompts`            | `sections/prompts/`                          | family E    |                  |
+| `removeAfterConsideration` | `sections/RemoveAfterConsiderationSection`   | family E    |                  |
+| `ordinalColor`             | `fields/OrdinalColorField`                   | family E    |                  |
+| `networkCanvas`            | `sections/network/`                          | family F    |                  |
+| `pedigree`                 | `sections/pedigree/`                         | family F    |                  |
+| `narrativePedigree`        | `sections/narrativePedigree/`                | family F    |                  |
+| `geospatial`               | `sections/geospatial/`, geospatial `fields/` | family F    |                  |
+| `anonymisation`            | `sections/anonymisation/`                    | family F    |                  |
 
 Three reserved areas turned out to need no ids at all, and two name files that
 do not exist yet. Recorded rather than dropped, so nobody re-reserves a name
