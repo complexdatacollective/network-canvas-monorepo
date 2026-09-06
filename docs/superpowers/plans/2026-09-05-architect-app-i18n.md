@@ -1199,3 +1199,22 @@ reviewed source must be pushed before two fresh canonical CI captures, complete
 lead inspection, and any adoption. The next normal shared-runtime merge and
 final current-head review/CI remain delivery gates; neither the previous clean
 review nor the earlier accepted images satisfy them.
+
+### Reviewed source commit and final runtime integration
+
+The lead approved the complete 21-file correction patch, SHA256
+`6a4c4148c10103835b177275ab98dad5782153de95947ad78461f669cd82c747`,
+including every production change, new test, catalog delta and unused-ID proof.
+The ordinary user-attributed commit is
+`9c18eab06be65e1497fd0e2a88fc3b32a5f73360`. All 21 frozen hashes survived the
+standard lint-staged hooks, with dependency verification explicitly disabled for
+that hook invocation so no verification dependencies were installed.
+
+Normal merge `aeeffb615634d60211b0c06a96f6807aea26150c` has that corrective
+commit as its first parent and final runtime
+`185eec160663c2efa6b7b4c43d27da572b050937` as its second. The merge was clean
+and every frozen app hash remained unchanged. That shared checkpoint supplies
+the reviewed canonical runtime images, finite accessibility announcements and
+the measured Interviewer Storybook optimizer/readiness fixes; its final extra
+change only reduces input-event work in a two-Shell integration test. The final
+app broad tests and image/review gates apply to this integrated source.
