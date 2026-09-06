@@ -1858,6 +1858,77 @@ describe('the two answers a boolean offers', () => {
   });
 
   /**
+   * Both answers named the same words is the same failure by the other route,
+   * and the schema accepts it for the same reason: `booleanOptionsSchema.label`
+   * is a bare `z.string()` and nothing downstream compares the two. Two buttons
+   * a participant cannot tell apart is not an answerable question.
+   */
+  it('refuses a pair whose two answers say the same thing', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const committed = {
+      name: 'agrees',
+      type: 'boolean',
+      component: 'Boolean',
+      options: [
+        { label: 'Yes', value: true },
+        { label: 'No', value: false },
+      ],
+    };
+    render(<VariableEditor {...booleanProps(committed, onSubmitRequest)} />);
+
+    const negative = screen.getByRole('textbox', { name: 'Label for “false”' });
+    await user.clear(negative);
+    // Trailing space and all: what is on the button is what was typed minus
+    // the whitespace either side of it, so this IS the same button twice.
+    await user.type(negative, 'Yes ');
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    expect(
+      await screen.findByText(
+        'Give this answer different words: two buttons saying the same thing cannot be told apart.',
+      ),
+    ).toBeVisible();
+    expect(onSubmitRequest).not.toHaveBeenCalled();
+  });
+
+  /**
+   * The control, and the reason the comparison is case-sensitive where a
+   * categorical option's is not: these two labels are rendered exactly as they
+   * were typed, so a participant CAN tell them apart. A categorical option's
+   * value becomes a key, which is why that rule folds case.
+   */
+  it('takes two answers that differ only in case', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const committed = {
+      name: 'agrees',
+      type: 'boolean',
+      component: 'Boolean',
+      options: [
+        { label: 'YES', value: true },
+        { label: 'No', value: false },
+      ],
+    };
+    render(<VariableEditor {...booleanProps(committed, onSubmitRequest)} />);
+
+    const negative = screen.getByRole('textbox', { name: 'Label for “false”' });
+    await user.clear(negative);
+    await user.type(negative, 'yes');
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitRequest).options).toEqual([
+      { label: 'YES', value: true },
+      { label: 'yes', value: false },
+    ]);
+  });
+
+  /**
    * Clearing both answers is an answer of its own: the interview offers Yes
    * and No when the protocol names no options at all, and offers nothing at
    * all when it names an empty list — which is why the key goes rather than
