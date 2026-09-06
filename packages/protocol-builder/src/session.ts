@@ -1520,6 +1520,9 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
    *   host has not been given are folded in front of the request's own
    *   commands in that one section update, so both land in a single host apply
    *   and the request's own decision wins wherever the two touch the same key.
+   *   The request's commands are rebased over that fold first, because a row
+   *   command in them is a position in the list the CALLER was looking at, and
+   *   the fold moves the rows under it.
    *
    * Which batches those are is DELIVERY, not evidence: a batch handed to
    * `onCommands` is the host's (see the option), so a session with one folds
@@ -1576,8 +1579,9 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
          */
         stageEdited: boolean;
         /**
-         * The commands the stage edit carries, which is what the host applied
-         * to whatever stage it was holding. `undefined` when the request says
+         * The commands the stage edit carries AS SENT — rebased onto the
+         * document the host will apply them to, which is what it applied to
+         * whatever stage it was holding. `undefined` when the request says
          * nothing about this stage.
          */
         stageCommands?: readonly Command[];
@@ -1634,16 +1638,16 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     }
 
     // The staleness check, before the host is asked: the document the request
-    // was built from has to be one this session can account for.
+    // was built from has to be one this session can account for — and WHICH
+    // one it is, because the commands it carries are positions in that list.
     const identity = this.snapshot.editedSection.identity;
-    if (
-      this.deliveredPrefixLength(
-        pending,
-        (candidate) =>
-          contentHash(stageDocument(identity, candidate)) ===
-          stageEdit.expectedContentHash,
-      ) === null
-    ) {
+    const built = this.deliveredPrefixLength(
+      pending,
+      (candidate) =>
+        contentHash(stageDocument(identity, candidate)) ===
+        stageEdit.expectedContentHash,
+    );
+    if (built === null) {
       // The stage the request was built from is neither this session's base nor
       // that base with any run of its batches applied. Refused with the base,
       // the batches, the draft and the history exactly as they were.
@@ -1658,9 +1662,14 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     }
 
     // What this update is addressed at, then: the stage the host is holding.
-    // Only the batches it has not been given are folded in.
+    // Only the batches it has not been given are folded in — and the request's
+    // own commands land on the far side of that fold, so the document they
+    // will be applied to is this session's base with every pending batch on
+    // it, whichever of them the host already had.
     const held = this.stageWithBatches(pending.slice(0, delivered));
-    if (held === null) {
+    const authored = this.stageWithBatches(pending.slice(0, built));
+    const applied = this.stageWithBatches(pending);
+    if (held === null || authored === null || applied === null) {
       return Object.freeze({
         status: 'refused',
         failure: compoundFailure(
@@ -1671,9 +1680,22 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       });
     }
     const folded = pending.slice(delivered);
+    // A caller writes a row command against the list it was looking at, which
+    // is the last authoritative stage this session handed out: a batch behind
+    // the host for a live one, every pending batch behind the fold for a
+    // buffering one. Moving the address to `held` without moving the commands
+    // landed each of them on whatever row had taken that position — a caller
+    // removing the second of `[a, b]` removed the first, once a delivered
+    // `insertItem` had made the list `[x, a, b]`. So they are rebased onto the
+    // document they will be applied to, exactly as a pending batch is rebased
+    // onto an arrival, and the request's own decision still wins wherever the
+    // two touch the same key. A stage edit written against that document
+    // already keeps its own command objects: `rebaseCommands` answers with
+    // them when nothing it addresses has moved.
+    const stageCommands = rebaseCommands(authored, applied, stageEdit.commands);
     const commands = Object.freeze([
       ...folded.flatMap((batch) => [...batch.commands]),
-      ...stageEdit.commands,
+      ...stageCommands,
     ]);
     return Object.freeze({
       status: 'send',
@@ -1689,7 +1711,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       throughBatchId: folded[folded.length - 1]?.id ?? -1,
       deliveredThroughBatchId,
       stageEdited,
-      stageCommands: stageEdit.commands,
+      stageCommands,
     });
   }
 

@@ -80,9 +80,24 @@ function createSession(
      * where it is about to live. See `StageCreation`.
      */
     creating?: boolean;
+    /**
+     * The blocks the stage's page already holds when the session opens, on the
+     * host and in this session's base alike — an authoritative list for a
+     * caller's own row commands to be positions IN. The default is the empty
+     * page.
+     */
+    items?: readonly SectionDoc[];
   }> = {},
 ) {
   const creating = options.creating === true;
+  const openingStage: SectionDoc =
+    options.items === undefined
+      ? initialStage
+      : { ...initialStage, items: [...options.items] };
+  const openingSections: Record<string, SectionDoc> = {
+    ...initialSections,
+    [stageSection]: openingStage,
+  };
   const host = new InMemoryCompoundHost({
     protocolSections: creating
       ? {
@@ -90,7 +105,7 @@ function createSession(
           [stageOrderSection]: { stages: [] },
           [assetsSection]: {},
         }
-      : initialSections,
+      : openingSections,
     manifestRevision: { sequence: 7n, hash: 'revision-7' },
     leases: [primaryLease, ...(options.additionalLeases ?? [])],
   });
@@ -137,7 +152,7 @@ function createSession(
   );
   const session = new ProtocolBuilderSessionStore({
     identity: createStageIdentity('Information', () => 'stage-1'),
-    fields: { label: 'Welcome', title: 'Welcome', items: [] },
+    fields: stageDraftFromDocument(openingStage).fields,
     protocolSections: host.getSnapshot().protocolSections,
     manifestRevision: host.getSnapshot().manifestRevision,
     access: {
@@ -286,6 +301,34 @@ const renameAndCreatePlace = (host: InMemoryCompoundHost) => ({
         host.getSnapshot().protocolSections[stageSection] ?? {},
       ),
       commands: [{ op: 'set' as const, key: 'label', value: 'Places' }],
+    },
+    request.edits[1]!,
+  ],
+});
+
+/**
+ * A create-a-place request that also removes one block of the stage's page,
+ * built from the authoritative stage THIS SESSION hands out — which is what
+ * `withStageSectionEdit` reads, and all a caller can read.
+ *
+ * The index is a position in that list and in no other, which is the whole
+ * point: a row command names a row, and the row it names is the one the caller
+ * was looking at.
+ */
+const removeBlockAndCreatePlace = (
+  session: ProtocolBuilderSessionStore,
+  index: number,
+) => ({
+  id: 'remove-block-and-create-place',
+  description: 'Remove a block and create a place',
+  edits: [
+    {
+      kind: 'update' as const,
+      sectionId: stageSection,
+      expectedContentHash: contentHash(
+        session.getSnapshot().protocolSections[stageSection] ?? {},
+      ),
+      commands: [{ op: 'removeItem' as const, key: 'items', index }],
     },
     request.edits[1]!,
   ],
@@ -956,6 +999,64 @@ describe('a codebook-only compound against each kind of host', () => {
       items: [block('one')],
       label: 'Places',
     });
+  });
+
+  /**
+   * The fold's other half. The request is re-addressed at the stage the host
+   * is holding, and its own commands were written against the document the
+   * CALLER could read — this session's last authoritative stage, which is a
+   * batch behind it for a live host and every pending batch behind it for a
+   * buffering one. Moving the address without moving the commands landed a
+   * `removeItem` on whichever row had taken that position: a caller removing
+   * the second of `[a, b]` removed the first once the fold put a row in front
+   * of it.
+   *
+   * So the stage edit is rebased from the document its hash matched onto the
+   * one the host will apply it to, exactly as a pending batch is rebased onto
+   * an arrival.
+   */
+  it('rebases a stage edit written before the batch a live host is holding', async () => {
+    const { host, session } = createSession({
+      applyLive: true,
+      items: [block('a'), block('b')],
+    });
+    session.dispatch(insertBlock('x', 0));
+    // Handed over and applied, but not yet acknowledged — so the authoritative
+    // stage this session hands a caller is still the one it opened on.
+    expect(host.getSnapshot().protocolSections[stageSection]).toMatchObject({
+      items: [block('x'), block('a'), block('b')],
+    });
+    expect(session.getSnapshot().protocolSections[stageSection]).toMatchObject({
+      items: [block('a'), block('b')],
+    });
+
+    await expect(
+      session.requestCompoundEdit(removeBlockAndCreatePlace(session, 1)),
+    ).resolves.toMatchObject({ status: 'applied' });
+
+    // The block the caller named, and not the row that had taken its place.
+    expect(host.getSnapshot().protocolSections[stageSection]).toMatchObject({
+      items: [block('x'), block('a')],
+    });
+    expect(stageItems(session)).toEqual([block('x'), block('a')]);
+    expect(session.getSnapshot().pendingCommands).toEqual([]);
+  });
+
+  it('rebases a stage edit over the batches it folds in front of it', async () => {
+    const { host, session } = createSession({
+      items: [block('a'), block('b')],
+    });
+    session.dispatch(insertBlock('x', 0));
+
+    await expect(
+      session.requestCompoundEdit(removeBlockAndCreatePlace(session, 1)),
+    ).resolves.toMatchObject({ status: 'applied' });
+
+    expect(host.getSnapshot().protocolSections[stageSection]).toMatchObject({
+      items: [block('x'), block('a')],
+    });
+    expect(stageItems(session)).toEqual([block('x'), block('a')]);
+    expect(session.getSnapshot().pendingCommands).toEqual([]);
   });
 
   it('folds every batch for a host that is holding none of them', async () => {
