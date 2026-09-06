@@ -13,10 +13,17 @@ const DOCUMENTATION = interfaceDocumentationUrl('one-to-many-dyad-census');
 /**
  * The editor for a One-to-Many Dyad Census stage.
  *
- * What becomes of a person once they have been considered comes after the
- * prompts rather than before them: it is behaviour of the task the prompts
- * describe, and it reads as an answer to a question the prompts have already
- * raised.
+ * What becomes of a person once they have been considered comes AFTER the
+ * prompts. Architect puts it before them — `Interfaces.tsx` lists
+ * `FilteredNodeType, RemoveAfterConsideration, OneToManyDyadCensusPrompts,
+ * SkipLogic, InterviewScript` — and this is a deliberate departure, not an
+ * oversight in the port: the setting is behaviour of the task the prompts
+ * describe, so before them it is an answer to a question the researcher has
+ * not been asked yet, and after them it reads as one they have. Everything
+ * else about the composition follows Architect's list.
+ *
+ * The order is pinned by this editor's outline test, so changing it back is a
+ * decision rather than a drift.
  */
 export function OneToManyDyadCensusStageEditor({
   controller,

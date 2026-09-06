@@ -39,7 +39,10 @@ export type RemoveAfterConsiderationSectionProps = Readonly<{
  * not say is a stage the schema refuses. Both answers are therefore offered
  * as choices rather than one being a switch with an implied default.
  *
- * Ported from Architect's `RemoveAfterConsideration`.
+ * Ported from Architect's `RemoveAfterConsideration`. Where it sits in the
+ * editor is the one thing that differs, and the editor that mounts it says
+ * why: Architect lists this section before the prompts, and
+ * `OneToManyDyadCensusStageEditor` deliberately puts it after them.
  */
 export default function RemoveAfterConsiderationSection({
   copy,
