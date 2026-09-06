@@ -6,6 +6,7 @@ import { z } from 'zod';
 import {
   EmailDeliveryError,
   type EmailAddress,
+  type EmailFailureDisposition,
   type EmailReceipt,
   type EmailSender,
   normalizeEmailMessage,
@@ -33,6 +34,13 @@ const acceptance = z.object({
 });
 const providerError = z.object({ ErrorCode: z.number().int().positive() });
 const RESPONSE_LIMIT = 16 * 1024;
+
+function rejectedHttpDisposition(
+  status = 0,
+): EmailFailureDisposition | undefined {
+  if (status >= 400 && status < 500 && status !== 408)
+    return status === 429 ? 'retryable' : 'permanent';
+}
 
 function formatAddress(value: EmailAddress): string {
   return value.name
@@ -86,9 +94,8 @@ function receipt(
     throw new EmailDeliveryError('uncertain');
   }
   const status = response.statusCode ?? 0;
-  if (status >= 400 && status < 500 && status !== 408) {
-    throw new EmailDeliveryError(status === 429 ? 'retryable' : 'permanent');
-  }
+  const rejectedStatus = rejectedHttpDisposition(status);
+  if (rejectedStatus) throw new EmailDeliveryError(rejectedStatus);
   const rejected = providerError.safeParse(data);
   if (status === 503 && rejected.success && rejected.data.ErrorCode === 100) {
     // Postmark documents code 100 as explicitly offline for maintenance.
@@ -132,10 +139,13 @@ export function createPostmarkEmailSender(options: {
       let outgoing: ClientRequest | undefined;
       let incoming: IncomingMessage | undefined;
       let connected = false;
+      // A received 4xx rejection remains definitive even if its body is lost.
+      // Without that evidence, TLS completion determines whether a send is ambiguous.
+      const interruptedDisposition = (): EmailFailureDisposition =>
+        rejectedHttpDisposition(incoming?.statusCode) ??
+        (connected ? 'uncertain' : 'retryable');
       const cancel = () => {
-        result.reject(
-          new EmailDeliveryError(connected ? 'uncertain' : 'retryable'),
-        );
+        result.reject(new EmailDeliveryError(interruptedDisposition()));
         incoming?.destroy();
         outgoing?.destroy();
       };
@@ -208,7 +218,7 @@ export function createPostmarkEmailSender(options: {
       } catch (error) {
         throw error instanceof EmailDeliveryError
           ? error
-          : new EmailDeliveryError(connected ? 'uncertain' : 'retryable');
+          : new EmailDeliveryError(interruptedDisposition());
       } finally {
         clearTimeout(connecting);
         clearTimeout(deadline);

@@ -12,7 +12,11 @@ import {
 import { createPostmarkEmailSender } from '../postmark-email-sender.ts';
 import { postmarkFixture, type PostmarkReply } from './postmark-fixture.ts';
 
-const routing = vi.hoisted(() => ({ url: '', nativeTLS: false }));
+const routing = vi.hoisted(() => ({
+  url: '',
+  nativeTLS: false,
+  response: Promise.withResolvers<void>(),
+}));
 vi.mock('node:https', async (importOriginal) => {
   const http = await import('node:http');
   const https = await importOriginal<typeof import('node:https')>();
@@ -24,9 +28,13 @@ vi.mock('node:https', async (importOriginal) => {
         callback: (response: IncomingMessage) => void,
       ) => {
         if (!routing.url) throw new Error('No local Postmark test receiver');
+        const received = (response: IncomingMessage) => {
+          callback(response);
+          routing.response.resolve();
+        };
         if (routing.nativeTLS)
-          return https.request(routing.url, options, callback);
-        const outgoing = http.request(routing.url, options, callback);
+          return https.request(routing.url, options, received);
+        const outgoing = http.request(routing.url, options, received);
         // The local plaintext receiver stands in for an already established
         // TLS channel. Native TLS failure is exercised separately below.
         outgoing.once('socket', (socket) => {
@@ -68,6 +76,7 @@ describe('bounded Postmark EmailSender through actual HTTP sockets', () => {
     vi.clearAllMocks();
     routing.url = '';
     routing.nativeTLS = false;
+    routing.response = Promise.withResolvers<void>();
   });
 
   it('delivers exact content once with disabled tracking and the caller RFC Message-ID', async () => {
@@ -259,6 +268,52 @@ describe('bounded Postmark EmailSender through actual HTTP sockets', () => {
     await peer.disconnected;
     expect(peer.messages).toHaveLength(1);
   });
+
+  it.each([
+    [429, 'retryable'],
+    [401, 'permanent'],
+    [422, 'permanent'],
+    [408, 'uncertain'],
+    [200, 'uncertain'],
+    [503, 'uncertain'],
+  ] as const)(
+    'preserves HTTP %i disposition when a received response is canceled',
+    async (status, disposition) => {
+      for (const interruption of [
+        'deadline',
+        'shutdown',
+        'disconnect',
+        'oversized',
+      ] as const) {
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        routing.response = Promise.withResolvers<void>();
+        const { sender, peer } = await setup({
+          status,
+          behavior: interruption === 'oversized' ? 'oversized' : 'stall-body',
+        });
+        let outcome: unknown;
+        const pending = sender.send(message).catch((error: unknown) => {
+          outcome = error;
+        });
+        // The real client has received headers before interruption; observing
+        // only server-side receipt would race the disposition under test.
+        await routing.response.promise;
+        if (interruption !== 'oversized') expect(outcome).toBeUndefined();
+        if (interruption === 'deadline') {
+          await vi.advanceTimersByTimeAsync(29_999);
+          expect(outcome).toBeUndefined();
+          await vi.advanceTimersByTimeAsync(2);
+        } else if (interruption === 'shutdown') sender.close();
+        else if (interruption === 'disconnect') peer.disconnect();
+        await pending;
+        expect(outcome, interruption).toMatchObject({ disposition });
+        await peer.disconnected;
+        expect(peer.messages).toHaveLength(1);
+        expect(vi.getTimerCount()).toBe(0);
+        vi.useRealTimers();
+      }
+    },
+  );
 
   it('refuses an oversized but otherwise valid provider acceptance', async () => {
     const { peer, sender } = await setup({

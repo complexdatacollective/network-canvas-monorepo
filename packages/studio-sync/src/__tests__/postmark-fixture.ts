@@ -7,7 +7,13 @@ export type PostmarkReply = {
   rawBody?: string;
   contentType?: string;
   headers?: Record<string, string>;
-  behavior?: 'disconnect' | 'silent' | 'partial' | 'oversized' | 'redirect';
+  behavior?:
+    | 'disconnect'
+    | 'silent'
+    | 'stall-body'
+    | 'partial'
+    | 'oversized'
+    | 'redirect';
 };
 
 /** Synthetic receiver only. Tests reroute node:https.request at the import boundary. */
@@ -51,6 +57,10 @@ export async function postmarkFixture(reply: PostmarkReply = {}) {
         'Content-Type': reply.contentType ?? 'application/json; charset=utf-8',
         ...reply.headers,
       });
+      if (reply.behavior === 'stall-body') {
+        response.flushHeaders();
+        return;
+      }
       if (reply.behavior === 'partial') {
         response.write('{"ErrorCode":0,');
         response.destroy();
@@ -96,6 +106,9 @@ export async function postmarkFixture(reply: PostmarkReply = {}) {
       return new Promise<void>((resolve) => waiting.push({ count, resolve }));
     },
     disconnected: disconnected.promise,
+    disconnect() {
+      for (const socket of sockets) socket.destroy();
+    },
     async close() {
       for (const socket of sockets) socket.destroy();
       await new Promise<void>((resolve, reject) => {
