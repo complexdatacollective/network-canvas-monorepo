@@ -37,6 +37,19 @@ const countAt = (values: Record<string, FieldValue>, key: string): number => {
 const asCount = (value: unknown): number =>
   typeof value === 'number' ? value : Number.NaN;
 
+/**
+ * How long after the last keystroke the window's rules speak.
+ *
+ * These two controls say what they think as the researcher types rather than
+ * waiting for a blur, because the commonest refusal here is about the text in
+ * the box — `2.5` is not a count of people — and hearing that on the keystroke
+ * that caused it is the only way it reads as being about that keystroke. Long
+ * enough not to interrupt a number being typed, short enough to be part of
+ * typing it. Nothing else says so: `Field` owns both the invalid state and the
+ * message, and delivers them together into a region `aria-describedby` names.
+ */
+const REFUSAL_DELAY = 250;
+
 /** Whether either end of the window is holding anything at all. */
 const hasEitherEnd = (values: Record<string, FieldValue>): boolean => {
   const behaviours = values.behaviours;
@@ -188,6 +201,8 @@ export default function AlterLimitsSection({
         hint={words.minHint}
         placeholder="0"
         custom={minValidation}
+        validateOnChange
+        validateOnChangeDelay={REFUSAL_DELAY}
       />
       <ProtocolField<typeof IntegerFieldControl>
         name={MAX_FIELD}
@@ -196,6 +211,8 @@ export default function AlterLimitsSection({
         hint={words.maxHint}
         placeholder="No limit"
         custom={maxValidation}
+        validateOnChange
+        validateOnChangeDelay={REFUSAL_DELAY}
       />
     </BuilderSection>
   );

@@ -76,6 +76,14 @@ type IntegerDraft = Readonly<{
  * anywhere else replaces it — and leaving the field drops it, so the control
  * settles on what it stored. The pattern is `RuleValueField`'s
  * `useNumericDraft`, narrowed to integers.
+ *
+ * Nothing here says the control is wrong. Marking itself invalid and printing
+ * its own sentence beneath the box put the reason in a paragraph nothing
+ * named — `aria-describedby` reached the hint and stopped — so the control
+ * announced as invalid with no reason attached. The field's own error region
+ * is named by `aria-describedby`, is a live region, and is where every other
+ * refusal in the builder appears; the section's `wholeNumberRule` puts this
+ * one there with them, so the invalid state and its reason arrive together.
  */
 export function IntegerFieldControl({
   value,
@@ -90,31 +98,21 @@ export function IntegerFieldControl({
       : value === undefined
         ? ''
         : String(value);
-  const unstored = typeof value === 'string';
 
   return (
-    <>
-      <InputField
-        {...rest}
-        type="number"
-        value={text}
-        // The field wrapper marks the control invalid once its rules have run,
-        // which is on blur and on submit; this says so from the keystroke that
-        // made it true.
-        {...(unstored ? { 'aria-invalid': true } : {})}
-        onChange={(next: string | undefined) => {
-          const count = readCount(next);
-          setDraft({ text: next ?? '', value: count });
-          onChange?.(count);
-        }}
-        onBlur={(event: FocusEvent) => {
-          setDraft(undefined);
-          onBlur?.(event);
-        }}
-      />
-      {unstored && (
-        <p className="text-destructive text-sm">{NOT_A_WHOLE_NUMBER}</p>
-      )}
-    </>
+    <InputField
+      {...rest}
+      type="number"
+      value={text}
+      onChange={(next: string | undefined) => {
+        const count = readCount(next);
+        setDraft({ text: next ?? '', value: count });
+        onChange?.(count);
+      }}
+      onBlur={(event: FocusEvent) => {
+        setDraft(undefined);
+        onBlur?.(event);
+      }}
+    />
   );
 }
