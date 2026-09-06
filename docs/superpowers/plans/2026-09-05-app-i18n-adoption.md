@@ -4,21 +4,74 @@ Status: implementation in progress. No PR is ready to merge yet.
 
 ## Contract and baseline
 
-Implement [#1616](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1616), [#1617](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1617), and [#1618](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1618) in full against the accepted [app localization design](../specs/2026-09-04-studio-ui-localization-design.md) and the boundaries in the [protocol localization design](../specs/2026-08-27-protocol-localization-design.md). The user extends every target app's production locales to canonical `en`, `en-GB`, and complete neutral Spanish `es`. English source descriptors remain the runtime fallback; British English is a sparse reviewed override. Protocol content, answers, persisted identifiers, and participant runtime translation remain separate.
+Implement [#1616](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1616), [#1617](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1617), and [#1618](https://github.com/complexdatacollective/network-canvas-monorepo/issues/1618) in full against the accepted [app localization design](../specs/2026-09-04-studio-ui-localization-design.md) and the boundaries in the [protocol localization design](../specs/2026-08-27-protocol-localization-design.md). The user extends every target app's production locales to canonical `en`, `en-GB`, and complete neutral Spanish `es`. English source descriptors remain the runtime fallback; British English is a sparse reviewed override. The September 6 clarification includes the interview package's built-in controls and messages. Protocol-authored content localization, answers, and persisted identifiers remain separate from interface-language selection.
+
+## September 6 clarified interview interface contract (in progress)
+
+The user explicitly distinguishes built-in interview interface copy from
+protocol-authored strings. The former is included in this delivery; the latter
+remains owned by the separate schema-localization work. The previous blanket
+English participant provider is therefore too broad. It must not prevent the
+package's navigation, validation, dialogs, empty states, accessibility copy,
+or interface-owned terminology from following the requested interface language.
+
+- `Shell.requestedLocale` accepts a preference or already negotiated host locale
+  (also an ordered preference list). The package performs best-fit matching
+  against its own declared `en`/`en-GB`/`es` registry, with English fallback.
+  It never assumes that the host and package support the same languages.
+- The Shell owns its message catalogs and a document-independent provider. Its
+  themed region and portals carry the resolved built-in UI language/direction.
+  It does not read browser/storage globals or alter protocol/session data.
+- The interview settings menu exposes the shared `LocaleSelect`; explicit
+  choices apply immediately and `onLocaleChange` lets the host persist them.
+  Automatic mode follows the host request. Language changes keep the running
+  interview, form state, navigation and pending writes mounted.
+- Interviewer passes its resolved device language to the Shell and exposes the
+  same existing preference on the home page and during setup, as well as settings.
+- Root retains sole shared integration/catalog/dependency/lock ownership.
+  Bounded source conversion is delegated to the Architect owner for interfaces
+  other than Family/Narrative Pedigree, and to the Fresco owner for those two
+  pedigree subtrees. Root owns the Shell and remaining shared runtime source.
+  Owners supply separate translation files for root integration and independent
+  review; no concurrent edits to generated catalogs are permitted.
+- Required new evidence: source census, complete Spanish/ICU parity, sparse GB
+  review, provider-less English, independent host/package registries, malformed
+  and regional requests, live chooser and host-request changes, simultaneous
+  Shell isolation, exact protocol/answer preservation, queued errors/dialogs,
+  all affected interface matrices and visual checks, and offline menu selection.
+
+The user also authorized the normal local shared integrations. Shared `f3b4dc7`
+is now an ancestor of Architect `4423f25`, Interviewer `359c986`, and Fresco
+`51fa024`. The old integration hold is historical, not an active blocker.
+The new interface work requires another shared checkpoint and fresh dependent
+verification/review before completion. No GitHub PR has been merged.
+
+The user subsequently authorized merging any PRs, explicitly including #1702,
+when ready. Delivery now includes merging the four localization PRs in dependency
+order once their current verification and Codex review gates pass, followed by
+fetching main and checking that each merged change is present in its ancestry.
+
+The [interview interface audit](2026-09-06-interview-interface-i18n-audit.md)
+records the 446-message source census, complete independently reviewed Spanish,
+negotiation/retained-state regression evidence and remaining integration gates.
+All four PRs are open and ready for review, with draft status removed as the
+user requested. Historical draft, head and integration-hold entries below do
+not describe current readiness; the final head and review matrix will replace
+them once the new runtime has been integrated and verified.
 
 Initial live baseline: `origin/main` at `4c4789f59a9ff087630e821dad2ed3f50a70d9b3`, fetched 2026-09-05. All three issue bodies and comments were read (no issue comments). Related merged implementations: [#1648](https://github.com/complexdatacollective/network-canvas-monorepo/pull/1648), [#1649](https://github.com/complexdatacollective/network-canvas-monorepo/pull/1649), [#1650](https://github.com/complexdatacollective/network-canvas-monorepo/pull/1650), [#1651](https://github.com/complexdatacollective/network-canvas-monorepo/pull/1651). Their implementation and review findings inform the work; their old verification claims do not verify these branches.
 
-Authorized: implementation, tests, user-attributed commits, normal feature pushes, PRs, explicit `@codex review` requests, replies and thread resolution. Merging, force pushes, releases, and production deployment require separate authorization.
+Authorized: implementation, tests, user-attributed commits, normal feature pushes, PRs, explicit `@codex review` requests, replies and thread resolution, and merging the PRs when ready. Force pushes, releases, and production deployment still require separate authorization.
 
 ## Ownership and delivery boundaries
 
-| Workstream                                 | Owner                                                   | Branch / worktree                                               | PR base and scope                                                                                                     | Next executable action                                                                         |
-| ------------------------------------------ | ------------------------------------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| Shared prerequisites                       | Lead                                                    | `feat/app-i18n-spanish-prerequisites`; original worktree        | `main`; ecosystem/shared Spanish catalogs, Studio subset protection, shared HTTP parser, necessary Next build support | Finish the SyntheticInterview review correction, push, and request a current-head Codex review |
-| Architect #1616                            | Architect agent                                         | `feat/architect-app-i18n`; `/private/tmp/nc-i18n-architect`     | Shared prerequisite branch; Architect implementation and app changeset                                                | Finish canonical visual checks, reactive migration notes, then prepare the app PR              |
-| Interviewer #1617                          | Interviewer agent                                       | `feat/interviewer-app-i18n`; `/private/tmp/nc-i18n-interviewer` | Shared prerequisite branch; Interviewer implementation and app changeset                                              | PR #1703 review running; fix independent findings while shared integration awaits permission   |
-| Fresco #1618                               | Fresco agent                                            | `feat/fresco-app-i18n`; `/private/tmp/nc-i18n-fresco`           | Shared prerequisite branch; Fresco implementation, additive user migration, app changeset                             | Finish final API/import browser checks and prepare the verified app commit and PR              |
-| Independent Spanish and integration review | Separate reviewer after capacity frees; lead integrates | Inspect each app worktree and shared branch                     | Review evidence recorded here and in per-app inventories                                                              | Review final app catalog deltas and outside-JSX census; inspect app workflow evidence          |
+| Workstream                                 | Owner                        | Branch / worktree                                               | PR base and scope                                                                                                           | Next executable action                                                                                                        |
+| ------------------------------------------ | ---------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Shared prerequisites                       | Lead                         | `feat/app-i18n-spanish-prerequisites`; original worktree        | #1702 on `main`; ecosystem/shared Spanish, Studio subset, shared HTTP parser and independently localized interview controls | Finish corrective regressions, checkpoint, merge current main, run final native checks and CI-generated visual baselines      |
+| Architect #1616                            | Architect agent              | `feat/architect-app-i18n`; `/private/tmp/nc-i18n-architect`     | #1705 on shared branch; Architect UI and localized preview integration                                                      | Integrate final shared checkpoint, apply prepared preview patch, run app gates and current-head review                        |
+| Interviewer #1617                          | Interviewer agent            | `feat/interviewer-app-i18n`; `/private/tmp/nc-i18n-interviewer` | #1703 on shared branch; complete administration, setup/home language selection and runtime preference handoff               | Integrate shared checkpoint, run built/installed/offline PWA and app gates, resolve proved Case ID finding after push         |
+| Fresco #1618                               | Fresco agent                 | `feat/fresco-app-i18n`; `/private/tmp/nc-i18n-fresco`           | #1704 on shared branch; researcher UI, user preference migration, SSR and runtime preference handoff                        | Integrate shared checkpoint, execute isolated production request/user and participant-boundary proof, run current-head review |
+| Independent Spanish and integration review | Separate app owners and lead | All app worktrees plus shared branch                            | Independent AI translation review, source census, browser and accessibility evidence                                        | Finish current ARIA review, review post-main deltas and combined app integration                                              |
 
 The lead exclusively owns shared catalogs, shared packages, Studio compatibility edits, and root dependency configuration. After merging shared checkpoints, each app owner may update only its isolated app importer in the lockfile; the lead reviews the additive diff before integration. Agents own their app manifests, source, generated English catalog, Spanish/GB catalogs, app plan, and app changeset. Shared changes land once and merge normally into each dependent branch. No cherry-picked duplicates. Intended merge order: shared prerequisite, then the three independently reviewable app PRs. If CI remains base-filtered to `main`, select an evidence-backed supported run or clearly record that external gate; do not treat missing CI as passing.
 
@@ -79,7 +132,7 @@ Every row is outstanding until linked implementation and passing verification ev
 
 ## Completion gate
 
-All matrix entries and per-app surface rows need implementation and verification evidence. Every PR needs its correct changesets, latest-head green required checks, completed clean Codex review round, and zero unresolved actionable discussions (including outdated threads). Combined integration and all shared dependencies must be verified. Report each issue PR URL, final head SHA, tests/builds/checks, review rounds and merge order. Final state is **ready to merge**, never **merged**, because merge authorization has not been given.
+All matrix entries and per-app surface rows need implementation and verification evidence. Every PR needs its correct changesets, latest-head green required checks, completed clean Codex review round, and zero unresolved actionable discussions (including outdated threads). Combined integration and all shared dependencies must be verified. Report each issue PR URL, final head SHA, tests/builds/checks, review rounds and merge order. With the September 6 merge authorization, final delivery also requires the dependency-ordered merges and verified ancestry on freshly fetched `origin/main`.
 
 ## Shared checkpoint 2 evidence (2026-09-05)
 

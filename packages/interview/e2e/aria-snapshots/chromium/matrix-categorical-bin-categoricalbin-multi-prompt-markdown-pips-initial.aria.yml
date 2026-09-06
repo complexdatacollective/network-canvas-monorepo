@@ -13,6 +13,7 @@
   - button "Alice"
   - button "Bob"
   - navigation:
+    - button "Settings"
     - button "Previous Step" [disabled]
     - progressbar "Progress indicator": x
     - button "Next Step"

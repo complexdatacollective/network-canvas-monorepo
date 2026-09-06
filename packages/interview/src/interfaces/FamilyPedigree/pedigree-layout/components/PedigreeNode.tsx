@@ -2,6 +2,8 @@
 
 import { type MouseEventHandler, type Ref, useMemo } from 'react';
 
+import type { IntlShape } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { useDragSource } from '@codaco/fresco-ui/dnd/dnd';
 import Node from '@codaco/fresco-ui/Node';
 import type { FramingId } from '@codaco/protocol-validation';
@@ -12,21 +14,28 @@ import {
 } from '@codaco/shared-consts';
 
 import { useStageSelector } from '../../../../hooks/useStageSelector';
+import { resolveInterviewIntl } from '../../../../i18n/resolveIntl';
 import {
   getNodeColorSelector,
   resolveNodeShape,
 } from '../../../../selectors/session';
+import { messages } from '../../messages';
 import type { VariableConfig } from '../../store';
 import { getNodeShapeDefinition } from '../../utils/nodeUtils';
 import { useClickUnlessDragged } from '../useClickUnlessDragged';
 import { computeAllDisplayLabels } from '../utils/getDisplayLabel';
 
 export function AdoptionBrackets({ children }: { children: React.ReactNode }) {
+  const intl = useAppIntl();
   const bracketStyle =
     'absolute top-1 bottom-1 w-1.5 border-white/80 border-y-2';
 
   return (
-    <div className="relative" aria-label="Adopted" role="img">
+    <div
+      className="relative"
+      aria-label={intl.formatMessage(messages.adopted)}
+      role="img"
+    >
       <span className={`${bracketStyle} -left-2.5 border-l-2`} />
       {children}
       <span className={`${bracketStyle} -right-2.5 border-r-2`} />
@@ -95,7 +104,9 @@ export function computeNodeDisplayLabels(
   variableConfig: VariableConfig,
   framing: FramingId,
   knownEgoId?: string,
+  intl?: IntlShape,
 ): Map<string, string> {
+  const formatter = resolveInterviewIntl(intl);
   let egoId: string;
   if (knownEgoId !== undefined) {
     egoId = knownEgoId;
@@ -114,9 +125,12 @@ export function computeNodeDisplayLabels(
     edges,
     variableConfig,
     framing,
+    formatter,
   );
 
-  const labels = new Map<string, string>();
+  const labels = new Map<string, string>([
+    [egoId, formatter.formatMessage(messages.you)],
+  ]);
   const roleBuckets = new Map<string, string[]>();
 
   for (const [nodeId, node] of nodes) {
@@ -130,7 +144,9 @@ export function computeNodeDisplayLabels(
       continue;
     }
 
-    const role = computedLabels.get(nodeId) ?? 'Family Member';
+    const role =
+      computedLabels.get(nodeId) ??
+      formatter.formatMessage(messages.familyMember);
     const bucket = roleBuckets.get(role) ?? [];
     bucket.push(nodeId);
     roleBuckets.set(role, bucket);
@@ -141,7 +157,13 @@ export function computeNodeDisplayLabels(
       labels.set(nodeIds[0]!, role);
     } else {
       nodeIds.forEach((id, i) => {
-        labels.set(id, `${role} #${i + 1}`);
+        labels.set(
+          id,
+          formatter.formatMessage(messages.numberedRelative, {
+            role,
+            number: i + 1,
+          }),
+        );
       });
     }
   }

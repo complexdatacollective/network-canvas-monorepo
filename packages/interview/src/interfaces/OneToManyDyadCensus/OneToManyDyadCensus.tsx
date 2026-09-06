@@ -3,6 +3,7 @@
 import { AnimatePresence } from 'motion/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { useAppIntl, AppMessage } from '@codaco/app-i18n/react';
 import type { ItemProps } from '@codaco/fresco-ui/collection/types';
 import type { SortRule } from '@codaco/protocol-validation';
 import { entityPrimaryKeyProperty, type NcNode } from '@codaco/shared-consts';
@@ -24,10 +25,12 @@ import {
 import { edgeExists, toggleEdge } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import type { StageProps } from '../../types';
+import { interfaceMessages } from '../messages';
 
 type OneToManyDyadCensusProps = StageProps<'OneToManyDyadCensus'>;
 
 function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
+  const intl = useAppIntl();
   const {
     stage: {
       behaviours: { removeAfterConsideration },
@@ -211,12 +214,12 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
           />
         ) : (
           <div key="missing" className="flex h-24 items-center justify-center">
-            No nodes available to display.
+            <AppMessage message={interfaceMessages.noNodesAvailable} />
           </div>
         )}
       </AnimatePresence>
       <Panel
-        title="Select all that apply, then click next"
+        title={intl.formatMessage(interfaceMessages.selectAllThenNext)}
         panelNumber={0}
         noCollapse
         className="w-full max-w-7xl"
@@ -228,9 +231,13 @@ function OneToManyDyadCensus(props: OneToManyDyadCensusProps) {
           selectionMode="none"
           layoutGroupId={null}
           animationKey={promptIndex}
-          aria-label="Target nodes"
-          announcedName="Target nodes"
-          emptyState={<h3>No nodes to display.</h3>}
+          aria-label={intl.formatMessage(interfaceMessages.targetNodes)}
+          announcedName={intl.formatMessage(interfaceMessages.targetNodes)}
+          emptyState={
+            <h3>
+              <AppMessage message={interfaceMessages.noNodes} />
+            </h3>
+          }
         />
       </Panel>
     </div>

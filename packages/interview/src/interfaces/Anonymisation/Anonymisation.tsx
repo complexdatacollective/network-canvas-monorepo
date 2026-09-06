@@ -4,6 +4,8 @@ import { ArrowRight } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useEffect, useRef } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { useAppIntl, AppMessage } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import PasswordField from '@codaco/fresco-ui/form/fields/PasswordField';
@@ -23,12 +25,15 @@ import EncryptionBackground from '../../components/EncryptedBackground';
 import useBeforeNext from '../../hooks/useBeforeNext';
 import { useCelebrate } from '../../hooks/useCelebrate';
 import useReadyForNextStage from '../../hooks/useReadyForNextStage';
+import { runtimeMessages } from '../../i18n/runtimeMessages';
 import type { StageProps } from '../../types';
+import { interfaceMessages } from '../messages';
 import { usePassphrase } from './usePassphrase';
 
 type AnonymisationProps = StageProps<'Anonymisation'>;
 
 function AnonymisationInner(props: AnonymisationProps) {
+  const intl = useAppIntl();
   const formRef = useRef<HTMLFormElement>(null);
   const alertRef = useRef<HTMLDivElement>(null);
   const { updateReady } = useReadyForNextStage();
@@ -121,8 +126,7 @@ function AnonymisationInner(props: AnonymisationProps) {
                 >
                   <Alert ref={alertRef} variant="success">
                     <AlertDescription>
-                      Passphrase set successfully! Click &quot;Next&quot; to
-                      continue.
+                      <AppMessage message={interfaceMessages.passphraseSet} />
                     </AlertDescription>
                   </Alert>
                 </motion.div>
@@ -141,8 +145,10 @@ function AnonymisationInner(props: AnonymisationProps) {
                       <Field
                         component={PasswordField}
                         name="passphrase"
-                        placeholder="Enter your passphrase..."
-                        label="Passphrase"
+                        placeholder={intl.formatMessage(
+                          runtimeMessages.passphrasePlaceholder,
+                        )}
+                        label={intl.formatMessage(runtimeMessages.passphrase)}
                         required
                         autoFocus
                         {...(minLength !== undefined && { minLength })}
@@ -151,8 +157,12 @@ function AnonymisationInner(props: AnonymisationProps) {
                       <Field
                         component={PasswordField}
                         name="passphrase-2"
-                        placeholder="Re-enter your passphrase..."
-                        label="Confirm Passphrase"
+                        placeholder={intl.formatMessage(
+                          interfaceMessages.reenterPassphrase,
+                        )}
+                        label={intl.formatMessage(
+                          interfaceMessages.confirmPassphrase,
+                        )}
                         required
                         sameAs="passphrase"
                         {...(minLength !== undefined && { minLength })}
@@ -160,12 +170,14 @@ function AnonymisationInner(props: AnonymisationProps) {
                       />
                       <SubmitButton
                         key="submit"
-                        aria-label="Submit"
+                        aria-label={intl.formatMessage(
+                          interfaceMessages.submit,
+                        )}
                         type="submit"
                         icon={<ArrowRight />}
                         iconPosition="right"
                       >
-                        Continue
+                        <AppMessage message={commonMessages.continue} />
                       </SubmitButton>
                     </FormWithoutProvider>
                   </Surface>

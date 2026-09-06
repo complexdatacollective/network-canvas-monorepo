@@ -2,6 +2,9 @@
 
 import { createElement, useEffect, useRef } from 'react';
 
+import { AppMessage } from '@codaco/app-i18n/react';
+
+import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 import useReadyForNextStage from './useReadyForNextStage';
 import useStageValidation from './useStageValidation';
 
@@ -26,9 +29,13 @@ function useNodeLimits({
   const minNodesMessage = createElement(
     'span',
     null,
-    'You must create at least ',
-    createElement('strong', null, minNodes),
-    ` ${minNodes > 1 ? 'items' : 'item'} before you can continue.`,
+    createElement(AppMessage, {
+      message: messages.minimumItems,
+      values: {
+        count: minNodes,
+        strong: (chunks) => createElement('strong', null, chunks),
+      },
+    }),
   );
 
   const { showToast, closeToast } = useStageValidation({
@@ -61,8 +68,9 @@ function useNodeLimits({
     // the pending timer rather than closing an already-rendered toast.
     const timeout = setTimeout(() => {
       maxToastRef.current = showToast({
-        description:
-          'You have completed this task. Click the next arrow to continue.',
+        description: createElement(AppMessage, {
+          message: messages.taskComplete,
+        }),
         variant: 'success',
         anchor: 'forward',
         timeout: 0,

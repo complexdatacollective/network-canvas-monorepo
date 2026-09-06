@@ -1,4 +1,4 @@
-import { renderHook } from '@testing-library/react';
+import { render, renderHook, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -65,13 +65,18 @@ describe('ContractProvider', () => {
   });
 
   it('provides neutral default finish confirmation copy', () => {
-    const { result } = renderHook(() => useFinishConfirmationDescription(), {
+    function Description() {
+      return <p>{useFinishConfirmationDescription()}</p>;
+    }
+    render(<Description />, {
       wrapper: wrap({ onFinish: vi.fn(), onRequestAsset: vi.fn() }),
     });
-
-    expect(result.current).toBe(
-      'Finish this interview only when you are satisfied with your responses.',
-    );
+    expect(
+      screen.getByText(
+        'Finish this interview only when you are satisfied with your responses.',
+        { exact: true },
+      ),
+    ).toBeVisible();
   });
 
   it('honours host-specific finish confirmation copy', () => {
