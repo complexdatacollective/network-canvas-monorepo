@@ -1,23 +1,16 @@
+import { composeStories } from '@storybook/react-vite';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import axe from 'axe-core';
+import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import { StageEditorStoryHost } from '../../../testing/StageEditorStoryHost.tsx';
-import categoricalBin, {
-  Spectating as categoricalBinSpectating,
-} from '../CategoricalBinStageEditor.stories.tsx';
-import dyadCensus, {
-  Spectating as dyadCensusSpectating,
-} from '../DyadCensusStageEditor.stories.tsx';
-import oneToManyDyadCensus, {
-  Spectating as oneToManyDyadCensusSpectating,
-} from '../OneToManyDyadCensusStageEditor.stories.tsx';
-import ordinalBin, {
-  Spectating as ordinalBinSpectating,
-} from '../OrdinalBinStageEditor.stories.tsx';
-import tieStrengthCensus, {
-  Spectating as tieStrengthCensusSpectating,
-} from '../TieStrengthCensusStageEditor.stories.tsx';
+import * as categoricalBin from '../CategoricalBinStageEditor.stories.tsx';
+import * as dyadCensus from '../DyadCensusStageEditor.stories.tsx';
+import * as oneToManyDyadCensus from '../OneToManyDyadCensusStageEditor.stories.tsx';
+import * as ordinalBin from '../OrdinalBinStageEditor.stories.tsx';
+import * as tieStrengthCensus from '../TieStrengthCensusStageEditor.stories.tsx';
 
 /**
  * Every story in the family, as the story files themselves declare it.
@@ -35,32 +28,27 @@ import tieStrengthCensus, {
 const STORIES = [
   {
     name: 'Categorical Bin',
-    meta: categoricalBin,
-    spectating: categoricalBinSpectating,
+    stories: categoricalBin,
     codebookControls: ['Create a new attribute'],
   },
   {
     name: 'Ordinal Bin',
-    meta: ordinalBin,
-    spectating: ordinalBinSpectating,
+    stories: ordinalBin,
     codebookControls: ['Create a new attribute'],
   },
   {
     name: 'Dyad Census',
-    meta: dyadCensus,
-    spectating: dyadCensusSpectating,
+    stories: dyadCensus,
     codebookControls: ['Create a new connection type'],
   },
   {
     name: 'One to Many Dyad Census',
-    meta: oneToManyDyadCensus,
-    spectating: oneToManyDyadCensusSpectating,
+    stories: oneToManyDyadCensus,
     codebookControls: ['Create a new connection type'],
   },
   {
     name: 'Tie-Strength Census',
-    meta: tieStrengthCensus,
-    spectating: tieStrengthCensusSpectating,
+    stories: tieStrengthCensus,
     // Both, because the scale hangs off the connection this prompt creates.
     codebookControls: [
       'Create a new connection type',
@@ -68,6 +56,54 @@ const STORIES = [
     ],
   },
 ] as const;
+
+/**
+ * Every heading under `root`, as `level: text`, in the order a reader
+ * navigating by headings meets them.
+ *
+ * The whole document by default rather than the render container: a prompt is
+ * edited in a `Dialog`, which portals its content out, so a ladder read from
+ * the container alone would be missing the half of it under test.
+ */
+const headingLadder = (root: ParentNode = document.body): string[] =>
+  Array.from(root.querySelectorAll('h1, h2, h3, h4, h5, h6')).map(
+    (heading) =>
+      `${heading.tagName.toLowerCase()}: ${heading.textContent?.trim() ?? ''}`,
+  );
+
+/**
+ * axe's own `heading-order` rule, over everything on screen.
+ *
+ * The rule exempts the first heading it meets and then refuses any jump of
+ * more than one level, which is exactly the failure a surface that writes a
+ * heading without saying what encloses it produces. Run here rather than left
+ * to the story a11y configuration because nothing in this package's test lane
+ * replays the stories.
+ *
+ * The count is asserted as well as the violations: axe reports a document with
+ * no headings in it as inapplicable, with no violations to show, so a rendered
+ * editor that quietly stopped writing headings would otherwise pass this.
+ *
+ * Modelled on the sweep in `src/__tests__/headingLadder.test.tsx`, which makes
+ * the same judgement over the codebook editors and the bare shell. Kept here
+ * rather than shared from there because that file is a test module and this
+ * one owns the census and bin family's stories.
+ */
+async function expectHeadingOrder(judgedAtLeast: number): Promise<void> {
+  const results = await axe.run(document.body, {
+    runOnly: { type: 'rule', values: ['heading-order'] },
+  });
+
+  expect(
+    results.violations.flatMap((violation) =>
+      violation.nodes.map((node) => node.html),
+    ),
+  ).toEqual([]);
+  expect(
+    [...results.passes, ...results.incomplete].flatMap((result) => result.nodes)
+      .length,
+  ).toBeGreaterThanOrEqual(judgedAtLeast);
+}
 
 describe('the census and bin editor stories', () => {
   /**
@@ -77,7 +113,9 @@ describe('the census and bin editor stories', () => {
    * researcher or a visual comparison can look at.
    */
   it('has one story per interface the family claims, over the fixture', () => {
-    expect(STORIES.map(({ meta }) => meta.args.stageId).toSorted()).toEqual([
+    expect(
+      STORIES.map(({ stories }) => stories.default.args.stageId).toSorted(),
+    ).toEqual([
       'categorical-bin-1',
       'dyad-census-1',
       'one-to-many-dyad-census-1',
@@ -88,8 +126,8 @@ describe('the census and bin editor stories', () => {
 
   it.each(STORIES)(
     'renames and saves the stage the $name story opens',
-    async ({ meta }) => {
-      render(<StageEditorStoryHost {...meta.args} />);
+    async ({ stories }) => {
+      render(<StageEditorStoryHost {...stories.default.args} />);
       const user = userEvent.setup();
 
       const name = screen.getByRole('textbox', { name: 'Stage name' });
@@ -123,8 +161,8 @@ describe('the census and bin editor stories', () => {
    */
   it.each(STORIES)(
     'reaches the codebook controls in a $name prompt as an author',
-    async ({ meta, codebookControls }) => {
-      render(<StageEditorStoryHost {...meta.args} />);
+    async ({ stories, codebookControls }) => {
+      render(<StageEditorStoryHost {...stories.default.args} />);
       const user = userEvent.setup();
 
       await user.click(screen.getByRole('button', { name: 'Edit prompt' }));
@@ -153,8 +191,13 @@ describe('the census and bin editor stories', () => {
    */
   it.each(STORIES)(
     'offers a spectator of the $name story no way into a prompt',
-    ({ meta, spectating }) => {
-      render(<StageEditorStoryHost {...meta.args} {...spectating.args} />);
+    ({ stories }) => {
+      render(
+        <StageEditorStoryHost
+          {...stories.default.args}
+          {...stories.Spectating.args}
+        />,
+      );
 
       expect(screen.getByRole('button', { name: 'Save stage' })).toBeDisabled();
       for (const name of [
@@ -164,6 +207,91 @@ describe('the census and bin editor stories', () => {
       ]) {
         expect(screen.getByRole('button', { name })).toBeDisabled();
       }
+    },
+  );
+});
+
+/**
+ * The outline every one of these stories writes.
+ *
+ * None of these editors states a heading level of its own: the stage's name is
+ * the page's heading and each section is one below it, which they get by being
+ * assembled out of `StageHeading` and Fresco's `Section` rather than by saying
+ * so. That is precisely why it is worth judging — a family that reached for a
+ * hand-written level, or a shell that stopped stating the one its sections
+ * count from, would leave a reader navigating by headings a subsection that is
+ * not there, and nothing else in this package opens these pages to notice.
+ */
+describe('the heading ladder the census and bin stories write', () => {
+  const eachStory = STORIES.flatMap(({ name, stories }) =>
+    Object.entries(composeStories(stories)).map(
+      ([storyName, Story]): [string, () => ReactNode] => [
+        `${name}/${storyName}`,
+        Story,
+      ],
+    ),
+  );
+
+  /**
+   * Named rather than counted, so a story added to a family and left out of
+   * the sweep below is a failure here rather than silence.
+   */
+  it('sweeps both stories of every editor in the family', () => {
+    expect(eachStory.map(([name]) => name)).toEqual([
+      'Categorical Bin/Editing',
+      'Categorical Bin/Spectating',
+      'Ordinal Bin/Editing',
+      'Ordinal Bin/Spectating',
+      'Dyad Census/Editing',
+      'Dyad Census/Spectating',
+      'One to Many Dyad Census/Editing',
+      'One to Many Dyad Census/Spectating',
+      'Tie-Strength Census/Editing',
+      'Tie-Strength Census/Spectating',
+    ]);
+  });
+
+  it.each(eachStory)('opens %s at the stage name', async (_name, Story) => {
+    render(<Story />);
+
+    const [stageName, ...sections] = headingLadder();
+    expect(stageName).toBe('h2: Stage name');
+    // Every section of the stage configures part of the stage that name
+    // belongs to, so each is one rung below it and none is beside it.
+    expect(sections).not.toEqual([]);
+    expect(sections.filter((heading) => !heading.startsWith('h3: '))).toEqual(
+      [],
+    );
+    await expectHeadingOrder(2);
+  });
+
+  /**
+   * A prompt is edited in a dialog, which is where the level a section counts
+   * from stops being inferable: `DialogPopup` restarts the Surface ladder for
+   * the overlay's colours, so a section that read its level from Surface depth
+   * landed an `h4` under the dialog's `h2` title. The dialog states its own
+   * title's level instead, and everything in it counts from there.
+   */
+  it.each(STORIES)(
+    'counts a $name prompt dialog from the dialog title',
+    async ({ stories }) => {
+      const { Editing } = composeStories(stories);
+      render(<Editing />);
+      const user = userEvent.setup();
+
+      await user.click(screen.getByRole('button', { name: 'Edit prompt' }));
+      const [title, ...sections] = headingLadder(
+        await screen.findByRole('dialog'),
+      );
+
+      expect(title).toBe('h2: Edit prompt');
+      expect(sections).not.toEqual([]);
+      expect(sections.filter((heading) => !heading.startsWith('h3: '))).toEqual(
+        [],
+      );
+      // Judged over the whole document, so the stage's own ladder behind the
+      // overlay is read together with the dialog's rather than in place of it.
+      await expectHeadingOrder(2);
     },
   );
 });
