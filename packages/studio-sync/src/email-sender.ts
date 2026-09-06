@@ -102,6 +102,17 @@ export function normalizeEmailMessage(value: EmailMessage) {
   }
 }
 
+/** Validate operator-configured senders before a deployment accepts work. */
+export function validateEmailAddress(
+  value: string | EmailAddress,
+): EmailAddress {
+  try {
+    return address(addressInput.parse(value));
+  } catch {
+    throw new EmailDeliveryError('permanent');
+  }
+}
+
 /** Reject transport toggles; a URL must describe only an SMTP authority. */
 function connectionOptions(value: string) {
   try {
