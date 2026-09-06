@@ -12,6 +12,7 @@ export const {
   applicationName: 'Studio',
   allowedLoginsSetting: 'STUDIO_DATABASE_ALLOWED_LOGINS',
   runtimeRoles: Object.values(TENANT_ROLES),
+  runtimeLoginRoleSets: [Object.values(TENANT_ROLES)],
   backupRole: BACKUP_ROLE,
   historySchema: 'studio_migrations',
   schemaName: 'public',

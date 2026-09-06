@@ -11,7 +11,10 @@ import {
   type Migration,
 } from '@codaco/studio-sync/postgres-migration-artifacts';
 import { BACKUP_ROLE } from '@codaco/studio-sync/rls';
-import { runtimeRolesSql } from '@codaco/studio-sync/role-bootstrap';
+import {
+  runtimeRolesSql,
+  revokeLargeObjectPrivilegesSql,
+} from '@codaco/studio-sync/role-bootstrap';
 
 import {
   createScratchDatabase,
@@ -125,6 +128,419 @@ function nextMigration(
 }
 
 describe.skipIf(!database)('migration security invariants', () => {
+  it('administrator provisioning removes direct and PUBLIC large-object capabilities without granting another identity access', async () => {
+    await withDeployment(async ({ administrator, owner, logins }) => {
+      const roles = ['studio_app', 'studio_maintenance', logins[1]];
+      // Seed this test's initial ACL independently of the helper under test.
+      await administrator.query(`REVOKE EXECUTE ON FUNCTION
+        pg_catalog.lo_create(oid), pg_catalog.lo_creat(integer),
+        pg_catalog.lo_from_bytea(oid,bytea), pg_catalog.lo_import(text),
+        pg_catalog.lo_import(text,oid), pg_catalog.lo_export(oid,text) FROM PUBLIC`);
+      const capabilities = `SELECT role.rolname, routine.signature,
+        has_function_privilege(role.oid, routine.signature, 'EXECUTE') AS executable
+        FROM pg_roles role CROSS JOIN (VALUES
+          ('pg_catalog.lo_create(oid)'), ('pg_catalog.lo_creat(integer)'),
+          ('pg_catalog.lo_from_bytea(oid,bytea)'), ('pg_catalog.lo_import(text)'),
+          ('pg_catalog.lo_import(text,oid)'), ('pg_catalog.lo_export(oid,text)')
+        ) routine(signature) WHERE role.rolname = ANY($1::text[]) ORDER BY role.rolname, routine.signature`;
+      await administrator.query(`GRANT EXECUTE ON FUNCTION pg_catalog.lo_create(oid) TO PUBLIC;
+        GRANT EXECUTE ON FUNCTION pg_catalog.lo_creat(integer) TO ${roles.map(escapeIdentifier).join(', ')};
+        GRANT EXECUTE ON FUNCTION pg_catalog.lo_from_bytea(oid,bytea), pg_catalog.lo_import(text), pg_catalog.lo_import(text,oid), pg_catalog.lo_export(oid,text) TO ${escapeIdentifier(logins[1])}`);
+      const before = (
+        await administrator.query<{ executable: boolean }>(capabilities, [
+          roles,
+        ])
+      ).rows;
+      expect(before).toHaveLength(18);
+      expect(before.filter(({ executable }) => executable)).toHaveLength(10);
+      await expect(
+        migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+      ).rejects.toThrow('large-object creation');
+      // A database owner is not implicitly the built-in function owner. Its
+      // best-effort REVOKE must not be mistaken for administrator provisioning.
+      await expect(
+        owner.query(revokeLargeObjectPrivilegesSql(roles)),
+      ).rejects.toMatchObject({ code: '42501' });
+      expect((await administrator.query(capabilities, [roles])).rows).toEqual(
+        before,
+      );
+      await administrator.query(revokeLargeObjectPrivilegesSql(roles));
+      const after = (
+        await administrator.query<{ executable: boolean }>(capabilities, [
+          [...roles, logins[0]],
+        ])
+      ).rows;
+      expect(after).toHaveLength(24);
+      expect(after.every(({ executable }) => !executable)).toBe(true);
+      expect(
+        await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+      ).toEqual(shipped.map((migration) => migration.manifest.id));
+    });
+  });
+
+  it.each(['studio_app', 'studio_maintenance'])(
+    'rejects owner-backed rewrite evidence forgery by %s',
+    async (role) => {
+      await withDeployment(async ({ administrator, owner, url, logins }) => {
+        await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+        const next = nextMigration(
+          shipped.at(-1)!,
+          'CREATE TABLE required_rule_migration (id integer PRIMARY KEY)',
+        );
+        await owner.query(`CREATE TABLE rewrite_source (id integer);
+          GRANT INSERT ON rewrite_source TO ${escapeIdentifier(role)};
+          CREATE RULE forge_evidence AS ON INSERT TO rewrite_source DO ALSO (
+            INSERT INTO studio_migrations.history (position, id, checksum, fingerprint)
+              VALUES (${shipped.length + 1}, '${next.manifest.id}', '${next.checksum}', '${next.manifest.fingerprint}');
+            UPDATE public."schemaFingerprint" SET fingerprint = '${next.manifest.fingerprint}'
+          )`);
+        expect(
+          (
+            await administrator.query(
+              `SELECT
+          has_table_privilege($1, 'studio_migrations.history', 'INSERT') AS history_write,
+          has_table_privilege($1, 'public."schemaFingerprint"', 'UPDATE') AS stamp_write`,
+              [role],
+            )
+          ).rows,
+        ).toEqual([{ history_write: false, stamp_write: false }]);
+        await connectAs(url, logins[1], `-c role=${role}`, async (runtime) => {
+          expect(
+            (await runtime.query('INSERT INTO rewrite_source VALUES (1)'))
+              .rowCount,
+          ).toBe(1);
+        });
+        const forged = (
+          await administrator.query(
+            'SELECT * FROM studio_migrations.history ORDER BY position',
+          )
+        ).rows;
+        expect(forged).toHaveLength(shipped.length + 1);
+        expect(forged.at(-1)).toMatchObject({
+          checksum: next.checksum,
+          fingerprint: next.manifest.fingerprint,
+        });
+        await expect(
+          migrateDatabase(
+            owner,
+            [...shipped, next],
+            next.manifest.fingerprint,
+            logins,
+          ),
+        ).rejects.toThrow('rewrite rules');
+        expect(
+          (
+            await administrator.query(
+              'SELECT * FROM studio_migrations.history ORDER BY position',
+            )
+          ).rows,
+        ).toEqual(forged);
+        expect(
+          (
+            await administrator.query(
+              "SELECT to_regclass('public.required_rule_migration') AS marker",
+            )
+          ).rows,
+        ).toEqual([{ marker: null }]);
+      });
+    },
+  );
+
+  it.each([
+    ['lo_compat_privileges', 'on', 'role'],
+    ['lo_compat_privileges', 'on', 'database'],
+    ['lo_compat_privileges', 'on', 'role in database'],
+    ['session_replication_role', 'replica', 'role'],
+    ['session_replication_role', 'replica', 'database'],
+    ['session_replication_role', 'replica', 'role in database'],
+  ] as const)(
+    'rejects persisted %s=%s for %s despite revoked SET',
+    async (parameter, value, scope) => {
+      await withDeployment(
+        async ({ administrator, owner, url, logins, databaseName }) => {
+          await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+          const target =
+            scope === 'database'
+              ? `DATABASE ${escapeIdentifier(databaseName)}`
+              : `ROLE ${escapeIdentifier(logins[1])}${scope === 'role in database' ? ` IN DATABASE ${escapeIdentifier(databaseName)}` : ''}`;
+          await administrator.query(
+            `ALTER ${target} SET ${parameter} = '${value}'`,
+          );
+          expect(
+            (
+              await owner.query(
+                `SELECT current_setting($1) AS value, has_parameter_privilege($2, $1, 'SET') AS can_set`,
+                [parameter, logins[1]],
+              )
+            ).rows,
+          ).toEqual([
+            {
+              value: parameter === 'lo_compat_privileges' ? 'off' : 'origin',
+              can_set: false,
+            },
+          ]);
+          await connectAs(
+            url,
+            logins[1],
+            '-c role=studio_app',
+            async (runtime) => {
+              expect(
+                (
+                  await runtime.query('SELECT current_setting($1) AS value', [
+                    parameter,
+                  ])
+                ).rows,
+              ).toEqual([{ value }]);
+            },
+          );
+          await expect(
+            migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+          ).rejects.toThrow('persisted');
+          await administrator.query(`ALTER ${target} RESET ${parameter}`);
+          expect(
+            await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+          ).toEqual([]);
+        },
+      );
+    },
+  );
+
+  it.each([
+    'studio_app',
+    'studio_maintenance',
+    BACKUP_ROLE,
+    'enrolled login',
+    'PUBLIC',
+  ])(
+    'rejects effective session_replication_role SET for %s',
+    async (identity) => {
+      await withDeployment(async ({ administrator, owner, logins }) => {
+        await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+        const client = await administrator.connect();
+        try {
+          await client.query('BEGIN');
+          await client.query(runtimeRolesSql([BACKUP_ROLE]));
+          const role =
+            identity === 'enrolled login'
+              ? logins[1]
+              : identity === 'PUBLIC'
+                ? 'studio_app'
+                : identity;
+          const grantee =
+            identity === 'PUBLIC' ? 'PUBLIC' : escapeIdentifier(role);
+          await client.query(
+            `GRANT SET ON PARAMETER session_replication_role TO ${grantee}`,
+          );
+          await client.query(`SET LOCAL ROLE ${escapeIdentifier(role)}`);
+          await client.query('SET LOCAL session_replication_role = replica');
+          expect(
+            (
+              await client.query(
+                "SELECT current_setting('session_replication_role') AS value",
+              )
+            ).rows,
+          ).toEqual([{ value: 'replica' }]);
+          await client.query('RESET ROLE');
+          await client.query('SET LOCAL session_replication_role = origin');
+          await client.query(
+            `SET LOCAL SESSION AUTHORIZATION ${escapeIdentifier(logins[0])}`,
+          );
+          await expect(
+            enforceMigrationSecurity(client, logins),
+          ).rejects.toThrow('session_replication_role');
+        } finally {
+          await client.query('ROLLBACK');
+          client.release();
+        }
+        expect(
+          await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+        ).toEqual([]);
+      });
+    },
+  );
+
+  it('rejects a migration connection with disabled domain triggers after SET is revoked', async () => {
+    await withDeployment(async ({ administrator, owner, logins }) => {
+      await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+      const client = await administrator.connect();
+      try {
+        await client.query('BEGIN');
+        await client.query(
+          `GRANT SET ON PARAMETER session_replication_role TO ${escapeIdentifier(logins[0])}`,
+        );
+        await client.query(`SET LOCAL ROLE ${escapeIdentifier(logins[0])}`);
+        await client.query('SET LOCAL session_replication_role = replica');
+        await client.query('RESET ROLE');
+        await client.query(
+          `REVOKE SET ON PARAMETER session_replication_role FROM ${escapeIdentifier(logins[0])}`,
+        );
+        await client.query(
+          `SET LOCAL SESSION AUTHORIZATION ${escapeIdentifier(logins[0])}`,
+        );
+        expect(
+          (
+            await client.query(`SELECT current_setting('session_replication_role') AS value,
+          has_parameter_privilege(current_user, 'session_replication_role', 'SET') AS can_set`)
+          ).rows,
+        ).toEqual([{ value: 'replica', can_set: false }]);
+        await expect(enforceMigrationSecurity(client, logins)).rejects.toThrow(
+          'session_replication_role',
+        );
+      } finally {
+        await client.query('ROLLBACK');
+        client.release();
+      }
+    });
+  });
+
+  it.each([
+    ['lo_create(oid)', 'lo_create(0)'],
+    ['lo_creat(integer)', 'lo_creat(-1)'],
+    [
+      'lo_from_bytea(oid,bytea)',
+      "lo_from_bytea(0, convert_to('unreviewed persistent write', 'UTF8'))",
+    ],
+  ] as const)(
+    'rejects PUBLIC %s creation with an empty large-object inventory',
+    async (signature, call) => {
+      await withDeployment(async ({ administrator, owner, url, logins }) => {
+        await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+        await administrator.query(
+          `GRANT EXECUTE ON FUNCTION pg_catalog.${signature} TO PUBLIC`,
+        );
+        await connectAs(
+          url,
+          logins[1],
+          '-c role=studio_app',
+          async (runtime) => {
+            const client = await runtime.connect();
+            try {
+              await client.query('BEGIN');
+              const object = (
+                await client.query<{ oid: number }>(
+                  `SELECT pg_catalog.${call} AS oid`,
+                )
+              ).rows[0]!;
+              expect(object.oid).toBeGreaterThan(0);
+              expect(
+                (
+                  await client.query(
+                    `SELECT has_largeobject_privilege(current_user, $1, 'UPDATE') AS writable`,
+                    [object.oid],
+                  )
+                ).rows,
+              ).toEqual([{ writable: true }]);
+            } finally {
+              await client.query('ROLLBACK');
+              client.release();
+            }
+          },
+        );
+        expect(
+          (
+            await administrator.query(
+              'SELECT count(*)::int AS count FROM pg_largeobject_metadata',
+            )
+          ).rows,
+        ).toEqual([{ count: 0 }]);
+        await expect(
+          migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+        ).rejects.toThrow('large-object creation');
+        await administrator.query(
+          `REVOKE EXECUTE ON FUNCTION pg_catalog.${signature} FROM PUBLIC`,
+        );
+        expect(
+          await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+        ).toEqual([]);
+        await connectAs(
+          url,
+          logins[1],
+          '-c role=studio_app',
+          async (runtime) => {
+            await expect(
+              runtime.query(`SELECT pg_catalog.${call}`),
+            ).rejects.toMatchObject({ code: '42501' });
+          },
+        );
+      });
+    },
+  );
+
+  it.each([
+    'studio_app',
+    'studio_maintenance',
+    'studio_app, studio_maintenance',
+  ])(
+    'requires complete runtime memberships when %s is missing',
+    async (missing) => {
+      await withDeployment(async ({ administrator, owner, url, logins }) => {
+        await administrator.query(
+          `REVOKE ${missing} FROM ${escapeIdentifier(logins[1])}`,
+        );
+        await connectAs(url, logins[1], undefined, async (runtime) => {
+          const absent = missing.split(', ')[0]!;
+          await expect(
+            runtime.query(`SET ROLE ${escapeIdentifier(absent)}`),
+          ).rejects.toMatchObject({ code: '42501' });
+        });
+        await expect(
+          migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+        ).rejects.toThrow('memberships');
+        expect(
+          (
+            await administrator.query(
+              "SELECT to_regclass('studio_migrations.history') AS history",
+            )
+          ).rows,
+        ).toEqual([{ history: null }]);
+        await administrator.query(
+          `GRANT studio_app, studio_maintenance TO ${escapeIdentifier(logins[1])} WITH INHERIT FALSE, SET TRUE`,
+        );
+        expect(
+          await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+        ).toEqual(shipped.map((migration) => migration.manifest.id));
+      });
+    },
+  );
+
+  it.each(['studio_app', 'studio_maintenance'])(
+    'rejects %s TRUNCATE that bypasses row-level security',
+    async (role) => {
+      await withDeployment(async ({ administrator, owner, url, logins }) => {
+        await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+        await owner.query(`CREATE TABLE truncate_target (id integer PRIMARY KEY);
+          INSERT INTO truncate_target VALUES (1), (2);
+          ALTER TABLE truncate_target ENABLE ROW LEVEL SECURITY;
+          ALTER TABLE truncate_target FORCE ROW LEVEL SECURITY;
+          CREATE POLICY empty_visibility ON truncate_target USING (false);
+          GRANT SELECT, TRUNCATE ON truncate_target TO ${escapeIdentifier(role)}`);
+        await connectAs(url, logins[1], `-c role=${role}`, async (runtime) => {
+          expect(
+            (await runtime.query('SELECT * FROM truncate_target')).rows,
+          ).toEqual([]);
+          await runtime.query('TRUNCATE truncate_target');
+        });
+        // The unrestricted observer proves real deletion; the runtime's empty
+        // RLS result alone would have been a vacuous truncation oracle.
+        expect(
+          (
+            await administrator.query(
+              'SELECT count(*)::int AS count FROM truncate_target',
+            )
+          ).rows,
+        ).toEqual([{ count: 0 }]);
+        await expect(
+          migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+        ).rejects.toThrow('reviewed Studio roles');
+        await owner.query(
+          `REVOKE TRUNCATE ON truncate_target FROM ${escapeIdentifier(role)}`,
+        );
+        expect(
+          await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+        ).toEqual([]);
+      });
+    },
+  );
   it.each([
     ['studio_app', 'direct'],
     ['studio_app', 'cascade'],

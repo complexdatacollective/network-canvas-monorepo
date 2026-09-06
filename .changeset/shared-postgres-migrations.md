@@ -10,3 +10,5 @@ Refuse runtime access through owner-backed relations or large objects and backup
 Require a dedicated migration history schema so its access restrictions cannot remove runtime access to application tables.
 
 Refuse SECURITY DEFINER triggers and identities able to bypass large-object permissions. Require versioned migration provenance at Studio startup and readiness while preserving explicitly enabled development databases.
+
+Require explicitly configured runtime login membership sets and administrator removal of large-object creation capabilities. Refuse owner-backed rewrite rules, unsafe persisted session settings, and ordinary relation privileges that bypass application access controls.

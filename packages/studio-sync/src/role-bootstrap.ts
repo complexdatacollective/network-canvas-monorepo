@@ -64,3 +64,22 @@ END;`;
   // Quoting the whole body also protects role names containing dollar tags.
   return `DO ${escapeLiteral(body)};`;
 }
+
+/** One reviewed list for administrator provisioning and migration verification. */
+export const RESTRICTED_LARGE_OBJECT_FUNCTIONS = [
+  'pg_catalog.lo_create(oid)',
+  'pg_catalog.lo_creat(integer)',
+  'pg_catalog.lo_from_bytea(oid,bytea)',
+  'pg_catalog.lo_import(text)',
+  'pg_catalog.lo_import(text,oid)',
+  'pg_catalog.lo_export(oid,text)',
+] as const;
+
+/** Run as the built-in function owner in each dedicated application database.
+ * This removes PUBLIC and direct grants; it never grants administrative access. */
+export function revokeLargeObjectPrivilegesSql(
+  roles: readonly string[] = [],
+): string {
+  if (roles.length) validateRoleNames(roles);
+  return `REVOKE EXECUTE ON FUNCTION ${RESTRICTED_LARGE_OBJECT_FUNCTIONS.join(', ')} FROM PUBLIC${roles.map((role) => `, ${escapeIdentifier(role)}`).join('')};`;
+}
