@@ -177,6 +177,50 @@ describe('the secret resource picker', () => {
     ).toBeVisible();
     expect(stageSecret).not.toHaveBeenCalled();
   });
+
+  /**
+   * The key is typed into a form of its own, inside the browser dialog, inside
+   * whatever the researcher was already filling in — here, the stage form.
+   * `Dialog` portals out of the DOM but stays a React descendant, and React
+   * propagates a synthetic `submit` along its own tree, so adding a key must
+   * stop at the key's form rather than saving the stage around it.
+   *
+   * The host answers a tick later, which is what a host does. Answered in the
+   * same tick, the staged id is already in the field by the time the stage
+   * form's own validation runs, and the form refuses its own spurious submit
+   * for a resource the protocol has not published yet: the stage would survive
+   * by a race rather than by anything deciding it should.
+   */
+  it('adds the key without saving the stage around it', async () => {
+    const user = userEvent.setup();
+    const gateway = new InMemoryResourceGateway();
+    const answer = gateway.stageSecret.bind(gateway);
+    vi.spyOn(gateway, 'stageSecret').mockImplementation(async (request) => {
+      await new Promise((resolve) => {
+        globalThis.setTimeout(resolve, 5);
+      });
+      return answer(request);
+    });
+    const { fieldValue, session } = renderResourceEditor({
+      gateway,
+      children: (
+        <ProtocolField
+          component={ResourcePickerControl}
+          name="apiKey"
+          label="Map provider API key"
+          kind="apikey"
+        />
+      ),
+    });
+    const finish = vi.spyOn(session, 'finish');
+
+    await addKey(user, 'Mapbox key');
+
+    // The key really was added, so the absence below is about where its submit
+    // went rather than about a button that did nothing.
+    await waitFor(() => expect(fieldValue('apiKey')).toBe('staged-resource-1'));
+    expect(finish).not.toHaveBeenCalled();
+  });
 });
 
 /**

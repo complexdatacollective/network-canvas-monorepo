@@ -15,6 +15,20 @@ export type ArrayRowIdentity<T extends ArrayRow> = (
 const isRecord = (value: unknown): value is ArrayRow =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+/**
+ * A row's own identity when nothing else has been said about it.
+ *
+ * `id` and nothing else: it is what a list editor mints when a row is added,
+ * what the protocol schema tolerates on a form field or a prompt for exactly
+ * this reason, and the only thing about a row that survives being edited,
+ * moved, and merged with somebody else's copy of the same list. A list whose
+ * rows are identified some other way says so with its own `getId`.
+ */
+export const rowIdentity = (row: unknown): string | undefined => {
+  if (!isRecord(row)) return undefined;
+  return typeof row.id === 'string' ? row.id : undefined;
+};
+
 export const readRows = (value: unknown): ArrayRow[] =>
   Array.isArray(value) ? value.filter(isRecord) : [];
 

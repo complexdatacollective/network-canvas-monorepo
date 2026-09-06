@@ -1215,3 +1215,412 @@ describe('a form the stage keeps somewhere other than `form.fields`', () => {
     ).toBe(false);
   });
 });
+
+/** The person type exactly as the host holds it right now. */
+const personDocument = (harness: ReturnType<typeof renderStageEditor>) =>
+  asRecord(
+    harness.host.getSnapshot().protocolSections[
+      sectionId({ kind: 'codebookNode', typeId: 'person' })
+    ],
+  );
+
+const personVariables = (harness: ReturnType<typeof renderStageEditor>) =>
+  asRecord(personDocument(harness).variables);
+
+/** The attribute the host holds under this researcher-facing name. */
+const savedAttribute = (
+  harness: ReturnType<typeof renderStageEditor>,
+  name: string,
+) =>
+  Object.entries(personVariables(harness)).find(
+    ([, variable]) => asRecord(variable).name === name,
+  );
+
+/**
+ * Adds one value to the attribute list the codebook editor is showing.
+ *
+ * The editor opens on the values the attribute already has, so the row a new
+ * one lands in is one past them.
+ */
+const addValue = async (
+  harness: ReturnType<typeof renderStageEditor>,
+  position: number,
+  label: string,
+  value: string,
+) => {
+  await harness.user.click(screen.getByRole('button', { name: 'Add option' }));
+  await harness.user.type(
+    screen.getByRole('textbox', { name: `Option ${position} label` }),
+    label,
+  );
+  await harness.user.type(
+    screen.getByRole('textbox', { name: `Option ${position} value` }),
+    value,
+  );
+};
+
+/**
+ * Invents the categorical attribute a field collects, with its first two
+ * values, through the control the row dialog offers for it.
+ *
+ * The fixture's own categorical and ordinal attributes are both written
+ * unvalidated by a bin stage, so a form may collect neither — which is why
+ * every journey here starts by making one.
+ */
+const createContactSetting = async (
+  harness: ReturnType<typeof renderStageEditor>,
+  dialog: ReturnType<typeof within>,
+) => {
+  await harness.user.selectOptions(
+    dialog.getByRole('combobox', { name: 'Attribute' }),
+    '__create_new_attribute__',
+  );
+  await harness.user.selectOptions(
+    await dialog.findByRole('combobox', { name: 'Kind of answer' }),
+    'categorical',
+  );
+  await harness.user.click(
+    dialog.getByRole('button', {
+      name: 'Create this attribute and its values',
+    }),
+  );
+  await harness.user.type(
+    await screen.findByRole('textbox', { name: 'Attribute name' }),
+    'contact_setting',
+  );
+  await addValue(harness, 1, 'At home', 'home');
+  await addValue(harness, 2, 'At work', 'work');
+  await harness.user.click(
+    screen.getByRole('button', { name: 'Create attribute' }),
+  );
+
+  return waitFor(() => {
+    const entry = savedAttribute(harness, 'contact_setting');
+    if (entry === undefined) throw new Error('the attribute was not created');
+    return entry;
+  });
+};
+
+/**
+ * Everything about a form field that lives on the codebook attribute rather
+ * than on the field.
+ *
+ * A field binds a question to an attribute, and what that attribute is called,
+ * what values it offers and which answers it accepts are all the codebook's.
+ * Architect authors them inline in this same dialog and writes the whole set
+ * through the field's save (`Form/fieldCommit.ts`); here they are compound
+ * edits of their own, so the dialog opens the codebook's own editors on them
+ * and the field's save writes only the field.
+ */
+describe('the codebook an attribute a form field collects lives in', () => {
+  /**
+   * A categorical attribute IS its values — `categoricalOptionsSchema`
+   * requires at least two — so an attribute invented from a name and a type
+   * alone is one the schema refuses every time, and the researcher is sent to
+   * the codebook and back to finish what they had just started.
+   */
+  it('creates a categorical attribute with the values it will offer', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await openField(harness, 'Create new form field');
+    const created = await createContactSetting(harness, dialog);
+
+    expect(created[1]).toMatchObject({
+      type: 'categorical',
+      options: [
+        { label: 'At home', value: 'home' },
+        { label: 'At work', value: 'work' },
+      ],
+    });
+
+    // The field is bound to what was just created, and finishing the row
+    // writes the input control onto the same attribute.
+    await harness.user.selectOptions(
+      await dialog.findByRole('combobox', { name: 'Input control' }),
+      'CheckboxGroup',
+    );
+    await harness.user.type(
+      dialog.getByRole('textbox', { name: 'Question text' }),
+      'Where do you usually meet?',
+    );
+    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    expect(asRecord(personVariables(harness)[created[0]])).toMatchObject({
+      component: 'CheckboxGroup',
+    });
+    expect(fieldsOf(await harness.submit()).at(-1)).toEqual({
+      id: expect.any(String) as unknown as string,
+      variable: created[0],
+      prompt: 'Where do you usually meet?',
+    });
+  });
+
+  /**
+   * The values a participant chooses between are the researcher's to change
+   * from where they are looking at them. Without this the field editor could
+   * bind a question to a list of answers and offer no way to author the list —
+   * and a value thought of a moment later would mean leaving the form, finding
+   * the attribute in the codebook, and coming back.
+   */
+  it('changes the values an attribute already offers', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await openField(harness, 'Create new form field');
+    const [variableId] = await createContactSetting(harness, dialog);
+
+    await harness.user.click(
+      await dialog.findByRole('button', {
+        name: 'Change this attribute’s values',
+      }),
+    );
+    await addValue(harness, 3, 'Somewhere else', 'elsewhere');
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save attribute' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        asRecord(personVariables(harness)[variableId]).options,
+      ).toHaveLength(3),
+    );
+    expect(asRecord(personVariables(harness)[variableId]).options).toEqual([
+      { label: 'At home', value: 'home' },
+      { label: 'At work', value: 'work' },
+      { label: 'Somewhere else', value: 'elsewhere' },
+    ]);
+  });
+
+  /**
+   * A date field accepts dates between two bounds, at a precision the study
+   * decides — and none of that is a list of values, so until now the field
+   * that collects it could choose a date picker and then say nothing about
+   * what it would accept. Architect authors the same settings inline in this
+   * same dialog and writes them through the field's save.
+   *
+   * Two steps, because the settings belong to an attribute: there is nothing
+   * to configure until the attribute exists, and it is the row's save that
+   * creates it.
+   */
+  it('sets what a date field accepts, on the attribute it collects', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const creating = await openField(harness, 'Create new form field');
+    await harness.user.selectOptions(
+      creating.getByRole('combobox', { name: 'Attribute' }),
+      '__create_new_attribute__',
+    );
+    await harness.user.selectOptions(
+      await creating.findByRole('combobox', { name: 'Kind of answer' }),
+      'datetime',
+    );
+    await harness.user.type(
+      await creating.findByRole('textbox', { name: 'Attribute name' }),
+      'met_on',
+    );
+    await harness.user.selectOptions(
+      await creating.findByRole('combobox', { name: 'Input control' }),
+      'DatePicker',
+    );
+    await harness.user.type(
+      creating.getByRole('textbox', { name: 'Question text' }),
+      'When did you first meet?',
+    );
+    await harness.user.click(creating.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+    const created = savedAttribute(harness, 'met_on');
+    if (created === undefined) throw new Error('the attribute was not created');
+
+    const editing = await openField(harness, 'Edit field', 2);
+    await harness.user.click(
+      await editing.findByRole('button', {
+        name: 'Set what this field accepts',
+      }),
+    );
+    await screen.findByRole('button', { name: 'Save attribute' });
+    await harness.user.selectOptions(
+      screen.getByRole('combobox', { name: 'Date resolution' }),
+      'year',
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save attribute' }),
+    );
+
+    await waitFor(() =>
+      expect(asRecord(personVariables(harness)[created[0]]).parameters).toEqual(
+        { type: 'year' },
+      ),
+    );
+    // Written on the attribute, beside the control they were authored for —
+    // not on the form field, which holds only its question.
+    expect(asRecord(personVariables(harness)[created[0]])).toMatchObject({
+      name: 'met_on',
+      type: 'datetime',
+      component: 'DatePicker',
+    });
+  });
+
+  /**
+   * The control the settings are authored FOR is the one the row is showing,
+   * not the one the codebook still records.
+   *
+   * The input control is chosen here and only written when the row is saved,
+   * so a researcher who switches a date field from one picker to the other and
+   * goes straight to its settings would otherwise be shown the settings of the
+   * picker they have just left — and what they authored would be written
+   * beside a control that cannot take it, which the schema refuses outright.
+   */
+  it('offers the settings of the control the row is showing, not the saved one', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const creating = await openField(harness, 'Create new form field');
+    await harness.user.selectOptions(
+      creating.getByRole('combobox', { name: 'Attribute' }),
+      '__create_new_attribute__',
+    );
+    await harness.user.selectOptions(
+      await creating.findByRole('combobox', { name: 'Kind of answer' }),
+      'datetime',
+    );
+    await harness.user.type(
+      await creating.findByRole('textbox', { name: 'Attribute name' }),
+      'met_on',
+    );
+    await harness.user.type(
+      creating.getByRole('textbox', { name: 'Question text' }),
+      'When did you first meet?',
+    );
+    await harness.user.click(creating.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+    const created = savedAttribute(harness, 'met_on');
+    if (created === undefined) throw new Error('the attribute was not created');
+    expect(asRecord(created[1]).component).toBe('DatePicker');
+
+    const editing = await openField(harness, 'Edit field', 2);
+    await harness.user.selectOptions(
+      await editing.findByRole('combobox', { name: 'Input control' }),
+      'RelativeDatePicker',
+    );
+    await harness.user.click(
+      await editing.findByRole('button', {
+        name: 'Set what this field accepts',
+      }),
+    );
+    await screen.findByRole('button', { name: 'Save attribute' });
+
+    // The picker the row now names, not the one the codebook still holds.
+    expect(
+      screen.queryByRole('combobox', { name: 'Date resolution' }),
+    ).toBeNull();
+    await harness.user.type(screen.getByLabelText('Days before'), '30');
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save attribute' }),
+    );
+
+    // The control is written with the settings that depend on it, so the two
+    // can never be committed out of step.
+    await waitFor(() =>
+      expect(asRecord(personVariables(harness)[created[0]])).toMatchObject({
+        component: 'RelativeDatePicker',
+        parameters: { before: 30 },
+      }),
+    );
+  });
+
+  /**
+   * The rules are the only thing standing between a participant typing an
+   * answer and one the study cannot use, and a form field is the writer that
+   * honours them — so the field that collects the attribute is where a
+   * researcher expects to set them.
+   */
+  it('sets the rules an answer to this field must satisfy', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await openField(harness, 'Edit field');
+    await harness.user.click(
+      dialog.getByRole('button', { name: 'Set rules for this answer' }),
+    );
+    await screen.findByRole('button', { name: 'Save validation' });
+    await harness.user.click(
+      screen.getByRole('checkbox', { name: 'Required' }),
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save validation' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        asRecord(
+          asRecord(personVariables(harness).relationship_to_ego).validation,
+        ).required,
+      ).toBe(true),
+    );
+  });
+
+  /**
+   * The create control is the only way an attribute with values comes into
+   * existence here, so a row that names one and never opened it points at
+   * nothing — and the refusal has to say what to press rather than repeating
+   * the schema's own count.
+   */
+  it('refuses a row that named a categorical attribute it never created', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await openField(harness, 'Create new form field');
+    await harness.user.selectOptions(
+      dialog.getByRole('combobox', { name: 'Attribute' }),
+      '__create_new_attribute__',
+    );
+    await harness.user.selectOptions(
+      await dialog.findByRole('combobox', { name: 'Kind of answer' }),
+      'categorical',
+    );
+    await harness.user.type(
+      dialog.getByRole('textbox', { name: 'Question text' }),
+      'Where do you usually meet?',
+    );
+    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+
+    expect(
+      await dialog.findByText(
+        'Create this attribute and the values it offers before adding the field that collects it.',
+      ),
+    ).toBeInTheDocument();
+    // Nothing was written, and the row is still open to be finished.
+    expect(savedAttribute(harness, '')).toBeUndefined();
+    expect(screen.queryAllByRole('dialog').length).toBeGreaterThan(0);
+  });
+
+  /**
+   * There is deliberately no test for a field whose attribute HAS fewer than
+   * two values, because a picker can never offer one: `NodeDefinitionSchema`
+   * is parsed whole, so a codebook holding a one-value categorical attribute
+   * drops the entity type out of the protocol context and the field editor
+   * offers no attributes at all. A refusal written for that case could only
+   * ever be dead.
+   */
+});

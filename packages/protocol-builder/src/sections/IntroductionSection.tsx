@@ -50,9 +50,11 @@ export type IntroductionSectionProps = Readonly<{
  * a stage the protocol schema refuses.
  *
  * Both fields are owned together for the same reason. They are the two halves
- * of one schema object, and a section owning part of a nested value has to
- * render every part of it or the half it does not render is written back over
- * on save.
+ * of one schema object that the researcher decides as one thing: an
+ * introduction with a title and no text, or text under no title, is a stage
+ * the protocol schema refuses. (A save writes each mounted path on its own, so
+ * leaving one half unrendered would keep it rather than blank it — this is
+ * about what the researcher can author, not about what the draft preserves.)
  */
 export default function IntroductionSection({
   copy,

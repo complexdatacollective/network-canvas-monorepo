@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { getSortOrderOptionGetter } from '../sortOrderOptions.ts';
+import {
+  getSortOrderOptionGetter,
+  missingSortPropertyLabel,
+  orphanedSortProperties,
+} from '../sortOrderOptions.ts';
 
 describe('getSortOrderOptionGetter', () => {
   describe('typed sortable properties (codebook attributes)', () => {
@@ -77,6 +81,43 @@ describe('getSortOrderOptionGetter', () => {
 
       expect(sortOrderOptionGetter('label', undefined, [])).toEqual([]);
     });
+
+    /**
+     * A property marked unselectable stays unselectable whatever the rules do.
+     *
+     * The getter disables an option a rule already names, and that disabling
+     * ends the moment the rule is pointed somewhere else — which is right for
+     * an attribute the codebook still has, and wrong for one it has lost. So
+     * `disabled` has to survive `toOption`, which until now kept only the
+     * value and the label.
+     */
+    it('keeps a property that is disabled in its own right disabled', () => {
+      const sortOrderOptionGetter = getSortOrderOptionGetter([
+        ...mockVariableOptions,
+        {
+          label: missingSortPropertyLabel('nickname'),
+          value: 'nickname',
+          disabled: true,
+        },
+      ]);
+
+      // No rule names it, so nothing about the rules can be what disables it.
+      const subject = sortOrderOptionGetter('property', undefined, [
+        { property: '1234-1234-1234-1', direction: 'asc' },
+      ]);
+
+      expect(subject).toContainEqual({
+        label: 'nickname — this attribute is no longer in the codebook',
+        value: 'nickname',
+        disabled: true,
+      });
+      // An ordinary property still renders exactly what it always did, rather
+      // than acquiring `disabled: false`.
+      expect(subject).toContainEqual({
+        label: 'Age',
+        value: '1234-1234-1234-2',
+      });
+    });
   });
 
   describe('untyped sortable properties (external-data columns)', () => {
@@ -129,5 +170,81 @@ describe('getSortOrderOptionGetter', () => {
         { label: 'Ascending', value: 'asc' },
       ]);
     });
+  });
+});
+
+/**
+ * A rule may outlive the attribute it names.
+ *
+ * `SortRuleSchema.property` is `existence: 'unchecked'` on purpose — deleting
+ * an attribute must not make a collaborator's stage unopenable — so the
+ * dangling reference is kept, and the editor is what has to say it is dangling.
+ */
+describe('orphanedSortProperties', () => {
+  const properties = [
+    { label: 'Name', type: 'text', value: 'name' },
+    { label: 'Age', type: 'number', value: 'age' },
+  ];
+
+  it('names the attributes the rules point at and the codebook has lost', () => {
+    expect(
+      orphanedSortProperties(
+        [
+          { property: 'name', direction: 'asc' },
+          { property: 'nickname', direction: 'desc' },
+        ],
+        properties,
+      ),
+    ).toEqual([
+      {
+        value: 'nickname',
+        label: 'nickname — this attribute is no longer in the codebook',
+        disabled: true,
+      },
+    ]);
+  });
+
+  it('reports one option for an attribute two rules both name', () => {
+    // Two rules naming the same missing id is a protocol nothing refuses, and
+    // two identical options in one select is a control nobody can read.
+    expect(
+      orphanedSortProperties(
+        [
+          { property: 'nickname', direction: 'asc' },
+          { property: 'nickname', direction: 'desc' },
+        ],
+        properties,
+      ),
+    ).toHaveLength(1);
+  });
+
+  it('leaves the order-they-were-added-in key alone', () => {
+    // `*` names no attribute, so it can never be missing from the codebook.
+    expect(
+      orphanedSortProperties([{ property: '*', direction: 'asc' }], properties),
+    ).toEqual([]);
+  });
+
+  /**
+   * The state every caller passes through: a prompt whose stage has not been
+   * told what it collects draws its properties from an empty codebook. Judging
+   * rules there would report every one of them as dangling, and the researcher
+   * would be told to fix a protocol that is not broken.
+   */
+  it('reports nothing while the caller has no properties to judge against', () => {
+    expect(
+      orphanedSortProperties([{ property: 'nickname', direction: 'asc' }], []),
+    ).toEqual([]);
+  });
+
+  it.each([
+    ['undefined', undefined],
+    ['null', null],
+    ['a non-array value', {}],
+    ['rows with no property yet', [{ direction: 'asc' }]],
+    ['a row that is not an object', ['nickname']],
+    ['a property cleared back to empty', [{ property: '', direction: 'asc' }]],
+  ])('reports nothing for %s', (_label, rules) => {
+    expect(orphanedSortProperties(rules, properties)).toEqual([]);
   });
 });

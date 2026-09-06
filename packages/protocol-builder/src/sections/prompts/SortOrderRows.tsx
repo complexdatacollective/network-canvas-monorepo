@@ -1,7 +1,11 @@
+import { useMemo } from 'react';
+
 import Section from '@codaco/fresco-ui/Section';
 
 import {
   getSortOrderOptionGetter,
+  MISSING_SORT_PROPERTY_MESSAGE,
+  orphanedSortProperties,
   type SortableProperty,
 } from '../../fields/sortOrderOptions.ts';
 import MultiSelect, {
@@ -15,14 +19,6 @@ const SORT_RULE_PROPERTIES: PropertyField[] = [
   { fieldName: 'property' },
   { fieldName: 'direction' },
 ];
-
-/**
- * The rule that can actually refuse the save. A row's own cells only display
- * their errors (see `RowField`), and a rule missing its direction fails the
- * protocol's `SortRuleSchema` against a path rather than against the control
- * the researcher left half-filled.
- */
-const SORT_RULE_VALIDATION = makeMultiSelectValidation(SORT_RULE_PROPERTIES);
 
 export type SortOrderRowsProps = Readonly<{
   /**
@@ -38,14 +34,21 @@ export type SortOrderRowsProps = Readonly<{
   /** Visible text and accessible name of the add button. */
   addButtonLabel: string;
   emptyStateMessage: string;
-  /** Everything the rules may sort by, unfiltered by writer class. */
+  /**
+   * Everything the rules may sort by, unfiltered by writer class.
+   *
+   * Also what "no longer exists" is judged against, so give it a stable
+   * identity — it is a dependency of the option getter and of the rule that
+   * can refuse the save, both of which are part of a field's registration.
+   */
   properties: readonly SortableProperty[];
   disabled?: boolean;
   /**
    * The rules this prompt already has, which decide whether the group starts
-   * open. Read from the row rather than from form state: these rules are
-   * rendered inside a per-row dialog with a form store of its own, which has
-   * no whole-form initial values to consult for a field that has not mounted.
+   * open and which of them point at an attribute that has been deleted. Read
+   * from the row rather than from form state: these rules are rendered inside
+   * a per-row dialog with a form store of its own, which has no whole-form
+   * initial values to consult for a field that has not mounted.
    */
   committedRules?: unknown;
 }>;
@@ -74,9 +77,54 @@ export default function SortOrderRows({
   disabled = false,
   committedRules,
 }: SortOrderRowsProps) {
-  const options = getSortOrderOptionGetter(properties);
+  /**
+   * Attributes these rules name that the codebook has lost.
+   *
+   * Handled here rather than by each family, because a rule outliving its
+   * attribute is a property of sort rules and not of any one interface: the
+   * schema keeps such a rule on purpose (deleting an attribute must not make
+   * a collaborator's stage unopenable), so every family that holds a sort
+   * order inherits the same dangling reference and the same two ways out.
+   */
+  const orphans = useMemo(
+    () => orphanedSortProperties(committedRules, properties),
+    [committedRules, properties],
+  );
+  const options = useMemo(
+    () => getSortOrderOptionGetter([...properties, ...orphans]),
+    [orphans, properties],
+  );
+  /**
+   * The rule that can actually refuse the save. A row's own cells only display
+   * their errors (see `RowField`), and a rule missing its direction fails the
+   * protocol's `SortRuleSchema` against a path rather than against the control
+   * the researcher left half-filled.
+   *
+   * A row naming an orphan is refused by the same rule, because it is the same
+   * kind of failure: the id is there, so nothing about the row LOOKS
+   * unfinished, and the cell that should display it is blank because no live
+   * option carries it. Left to the schema it would save, since
+   * `SortRuleSchema.property` is `existence: 'unchecked'`.
+   */
+  const validation = useMemo(
+    () =>
+      makeMultiSelectValidation(
+        SORT_RULE_PROPERTIES,
+        orphans.length === 0
+          ? undefined
+          : [
+              {
+                fieldName: 'property',
+                values: orphans.map(({ value }) => value),
+                message: MISSING_SORT_PROPERTY_MESSAGE,
+              },
+            ],
+      ),
+    [orphans],
+  );
   // One rule per property at most: every rule after that could only repeat a
-  // property the getter has already disabled.
+  // property the getter has already disabled. An orphan counts, because the
+  // rule naming it is one of the rows this limit is counting.
   const maxItems = options('property', undefined, []).length;
   const configured = Array.isArray(committedRules) && committedRules.length > 0;
 
@@ -98,7 +146,7 @@ export default function SortOrderRows({
         properties={SORT_RULE_PROPERTIES}
         options={options}
         maxItems={maxItems}
-        {...SORT_RULE_VALIDATION}
+        {...validation}
       />
     </Section>
   );
