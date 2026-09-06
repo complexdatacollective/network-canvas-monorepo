@@ -38,10 +38,10 @@ const CANVAS_INTERACTION_COPY = {
  *
  * Those last three are every key the Sociogram schema's `behaviours` object
  * has — `automaticLayout`, `freeDraw` and `allowRepositioning` — and all three
- * are mounted deliberately. A save replaces the whole `behaviours` key with
- * what the form is holding, so a key no section renders is not preserved: it
- * is dropped, silently, the first time a researcher saves a stage somebody
- * else authored.
+ * are mounted deliberately. A save would not lose an unrendered one; what a
+ * missing section costs is the decision itself. A stage somebody else authored
+ * would open with a behaviour switched on that nothing on screen mentions and
+ * nothing on screen can switch off.
  *
  * The prompts, the background, the layout and the permissions are all the
  * package's shared sections, given semantic props alone. Each of them reads

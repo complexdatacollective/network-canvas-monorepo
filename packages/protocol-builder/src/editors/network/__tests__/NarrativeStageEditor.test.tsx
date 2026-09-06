@@ -138,8 +138,9 @@ describe('the narrative stage editor', () => {
       label: 'Telling the story',
       subject: { entity: 'node', type: 'person' },
       background: { concentricCircles: 4 },
-      // The template's own defaults survive the first save rather than being
-      // dropped by a section that renders only part of `behaviours`.
+      // The template's own defaults survive the first save. Each control here
+      // writes at its own path inside `behaviours`, so neither one sweeps away
+      // what the other holds.
       behaviours: { allowRepositioning: true, automaticLayout: true },
     });
   });

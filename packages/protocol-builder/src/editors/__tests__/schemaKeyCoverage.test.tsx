@@ -43,13 +43,6 @@ function schemaKeysFor(stageType: StageType): string[] {
     .toSorted();
 }
 
-/** Keys the save invented, which no researcher asked for and nothing edits. */
-function addedKeys(saved: SectionDoc, seeded: SectionDoc): string[] {
-  return Object.keys(saved)
-    .filter((key) => !IDENTITY_KEYS.includes(key) && !(key in seeded))
-    .toSorted();
-}
-
 const INTERVIEW_SCRIPT = 'Read this to the participant before you begin.';
 
 /**
@@ -402,6 +395,9 @@ const FIXTURE_STAGES: readonly Readonly<{
  * The failure it catches is a section starting an unanswered field at a
  * normalised empty value — `?? []`, `?? false` — and saving that as an answer.
  * The researcher never made that decision, and the protocol now records it.
+ * `roundTrip` reports it: the harness compares the two documents in both
+ * directions and all the way down, so an invented key is named by its path
+ * whether it is top-level or nested inside one a section does own.
  */
 describe.each(FIXTURE_STAGES)(
   'the stage "$stageId" as the fixture protocol configures it',
@@ -409,11 +405,7 @@ describe.each(FIXTURE_STAGES)(
     it('is saved back without a key the researcher never authored', async () => {
       const harness = renderStageEditor({ stageId, editor });
 
-      const request = await harness.roundTrip({ unowned: [] });
-
-      expect(addedKeys(request.stageDocument, harness.seeded.fields)).toEqual(
-        [],
-      );
+      await harness.roundTrip({ unowned: [] });
     });
   },
 );

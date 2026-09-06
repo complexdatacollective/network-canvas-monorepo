@@ -11,7 +11,10 @@ import {
   stageWithImageBackground,
 } from '../../../sections/network/__tests__/canvasFixtures.ts';
 import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
-import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import {
+  renderStageEditor,
+  type StageEditorHarness,
+} from '../../../testing/renderStageEditor.tsx';
 import {
   expectOpenedAsANewStage,
   expectStatesItsPosition,
@@ -55,12 +58,10 @@ const openNewStage = () =>
 /**
  * Every behaviour the Sociogram schema allows, on one stage.
  *
- * Written out here rather than taken from the fixture because the fixture
- * carries only `automaticLayout`, and a key nothing renders survives a save
- * untouched — so a stage holding one is the only thing that can catch a
- * missing section. The list is the schema's own `canvasBehavioursSchema`; a
- * key added there and not here leaves this test passing while the editor
- * silently drops it, which is what `schemaBehaviourKeys` guards against.
+ * Written out here rather than taken from the fixture, which carries only
+ * `automaticLayout`. The list is the schema's own `canvasBehavioursSchema`; a
+ * key added there and not here would leave these tests passing about two
+ * behaviours out of three, which is what `schemaBehaviourKeys` guards against.
  */
 const ALL_BEHAVIOURS: SectionDoc = {
   behaviours: {
@@ -73,6 +74,28 @@ const ALL_BEHAVIOURS: SectionDoc = {
 /** Every behaviour key the Sociogram stage schema itself allows. */
 const schemaBehaviourKeys = (): string[] =>
   Object.keys(sociogramStage.shape.behaviours.unwrap().shape).toSorted();
+
+const BEHAVIOURS_PREFIX = 'behaviours.';
+
+/**
+ * The behaviours this editor has a control for, by key.
+ *
+ * Read from `data-field-path` — the canonical name the form store files a
+ * field under, and the same string `ProtocolField` registers with the
+ * outline — because a save can no longer answer the question. A submit writes
+ * each mounted field at its own path and leaves the keys beside it alone, so a
+ * behaviour no section renders round-trips untouched and a stage carrying one
+ * comes back intact whether or not the researcher could see it.
+ */
+const behavioursOnScreen = (harness: StageEditorHarness): string[] =>
+  [...harness.baseElement.querySelectorAll('[data-field-path]')]
+    .flatMap((field) => {
+      const path = field.getAttribute('data-field-path') ?? '';
+      return path.startsWith(BEHAVIOURS_PREFIX)
+        ? [path.slice(BEHAVIOURS_PREFIX.length)]
+        : [];
+    })
+    .toSorted();
 
 const openWithEveryBehaviour = () => {
   const { type, fields } = loadFixtureStage('sociogram-1');
@@ -103,6 +126,18 @@ describe('the sociogram stage editor', () => {
     await expectOpenedAsANewStage('Sociogram');
   });
 
+  /**
+   * And the other way round: a stage the interview already holds says where in
+   * it the researcher is. Asked here rather than only in the dispatch suite
+   * because this editor composes the shared heading itself, so dropping it
+   * would leave every other test in this file passing.
+   */
+  it('says where the stage sits in the interview', () => {
+    openFixture();
+
+    expectStatesItsPosition('sociogram-1');
+  });
+
   it('saves the stage it opened, unchanged', async () => {
     const harness = openFixture();
 
@@ -127,18 +162,6 @@ describe('the sociogram stage editor', () => {
   });
 
   /**
-   * And the other way round: a stage the interview already holds says where in
-   * it the researcher is. Asked here rather than only in the dispatch suite
-   * because this editor composes the shared heading itself, so dropping it
-   * would leave every other test in this file passing.
-   */
-  it('says where the stage sits in the interview', () => {
-    openFixture();
-
-    expectStatesItsPosition('sociogram-1');
-  });
-
-  /**
    * The list below is only as good as its agreement with the schema, so it is
    * checked against it: a behaviour added to `canvasBehavioursSchema` and not
    * here would leave the round-trip test passing while the editor silently
@@ -151,12 +174,24 @@ describe('the sociogram stage editor', () => {
   });
 
   /**
-   * A save replaces the whole `behaviours` key with what the form holds, so a
-   * behaviour no section renders is not left alone — it is deleted the first
-   * time anyone re-saves a stage that had it. Opening a stage carrying every
-   * behaviour the schema allows and saving it unchanged is what proves each
-   * one has a section.
+   * Each of them has a control the researcher can reach.
+   *
+   * Asked of the mounted fields rather than of a save, because a save cannot
+   * tell the difference: a behaviour no section renders is left alone, so a
+   * stage carrying one round-trips intact whether or not anything on screen
+   * offers it. What a missing section costs is the decision — a stage somebody
+   * else authored opening with a behaviour switched on that the researcher can
+   * neither see nor change.
    */
+  it('gives every behaviour the schema allows a control of its own', async () => {
+    const harness = openWithEveryBehaviour();
+
+    await waitFor(() =>
+      expect(behavioursOnScreen(harness)).toEqual(schemaBehaviourKeys()),
+    );
+  });
+
+  /** And a save gives every one of them back exactly as it arrived. */
   it('keeps every behaviour the schema allows when a stage carrying them is re-saved', async () => {
     const harness = openWithEveryBehaviour();
 

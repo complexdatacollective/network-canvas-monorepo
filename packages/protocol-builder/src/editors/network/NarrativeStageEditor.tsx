@@ -34,8 +34,11 @@ const DOCUMENTATION_URL = interfaceDocumentationUrl('narrative');
  * arranges nodes before the participant touches anything. It is composed here
  * — where Architect kept the same choice inside its own behaviours section —
  * so that `behaviours.automaticLayout` has an editor at all. A new narrative
- * stage is created holding it, and a submit replaces `behaviours` outright, so
- * an unrendered member of that object would be dropped by the first save.
+ * stage is created holding it, so an editor without this section would hand
+ * every researcher a decision already made for them that nothing on screen
+ * mentions and nothing on screen can change. The save would not lose it: a
+ * submit writes each mounted field at its OWN path and leaves the keys beside
+ * it alone.
  */
 export function NarrativeStageEditor({
   controller,
