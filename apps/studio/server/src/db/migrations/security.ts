@@ -112,6 +112,38 @@ export async function enforceMigrationSecurity(
       'Runtime and backup login memberships must grant only SET access to the reviewed Studio roles, without inheritance or administration; backup membership must be separate from runtime membership.',
     );
   }
+  const largeObjectCompatibility = await client.query<{ safe: boolean }>(
+    `SELECT current_setting('lo_compat_privileges') = 'off' AND NOT EXISTS (
+      SELECT 1 FROM pg_roles identity
+      WHERE (identity.rolname = ANY($1::text[]) OR identity.rolname = ANY($2::text[]))
+        AND has_parameter_privilege(identity.oid, 'lo_compat_privileges', 'SET')
+    ) AS safe`,
+    [restrictedLogins, [...Object.values(TENANT_ROLES), BACKUP_ROLE]],
+  );
+  if (largeObjectCompatibility.rows[0]?.safe !== true) {
+    throw new Error(
+      'Studio runtime and backup identities must not be able to enable lo_compat_privileges, and the migration connection must keep it off.',
+    );
+  }
+  // Studio supports invoker triggers only. A definer trigger can run without
+  // EXECUTE and can be reached through a foreign-key cascade even when the
+  // runtime has no direct access to its table. Disabled triggers are included:
+  // their presence cannot establish that the existing evidence was protected.
+  const definerTriggers = await client.query<{ present: boolean }>(
+    `SELECT EXISTS (
+      SELECT 1 FROM pg_trigger trigger
+      JOIN pg_proc routine ON routine.oid = trigger.tgfoid
+      JOIN pg_class relation ON relation.oid = trigger.tgrelid
+      JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+      WHERE routine.prosecdef AND namespace.nspname !~ '^pg_'
+        AND namespace.nspname <> 'information_schema'
+    ) AS present`,
+  );
+  if (definerTriggers.rows[0]?.present !== false) {
+    throw new Error(
+      'Studio does not support SECURITY DEFINER triggers on application database relations. Their presence makes existing migration evidence untrusted; restore a verified backup before migrating.',
+    );
+  }
   const loginAccess = await client.query<{
     safe: boolean;
     evidence_safe: boolean;

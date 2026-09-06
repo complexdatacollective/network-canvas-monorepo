@@ -109,7 +109,7 @@ export const SCHEMA_LOCK_KEY = 4021775688147129;
 export type StaleSchema = {
   kind: 'stale';
   /** `unstamped` is a database carrying the tables but no fingerprint row. */
-  reason: 'mismatch' | 'unstamped';
+  reason: 'mismatch' | 'unstamped' | 'unversioned';
   found: string | null;
   appliedAt: Date | null;
 };
@@ -130,16 +130,28 @@ export type SchemaProblem = Exclude<SchemaState, { kind: 'current' }>;
  */
 export async function checkSchema(
   pool: pg.Pool | pg.PoolClient,
+  options: { allowUnversioned?: boolean } = {},
 ): Promise<SchemaState> {
-  const probe = await pool.query<{ stamped: boolean; tables: boolean }>(
+  const probe = await pool.query<{
+    stamped: boolean;
+    tables: boolean;
+    versioned: boolean;
+  }>(
     `select to_regclass('"schemaFingerprint"') is not null as stamped,
             ${SCHEMA_TABLES.map(
               (table) => `to_regclass('"${table}"') is not null`,
-            ).join(' or ')} as tables`,
+            ).join(' or ')} as tables,
+            EXISTS (
+              SELECT 1 FROM pg_class relation
+              JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+              WHERE namespace.nspname = 'studio_migrations'
+                AND relation.relname = 'history' AND relation.relkind = 'r'
+            ) AS versioned`,
   );
-  const { stamped, tables } = probe.rows[0] ?? {
+  const { stamped, tables, versioned } = probe.rows[0] ?? {
     stamped: false,
     tables: false,
+    versioned: false,
   };
 
   if (stamped) {
@@ -153,6 +165,17 @@ export async function checkSchema(
         return {
           kind: 'stale',
           reason: 'mismatch',
+          found: row.fingerprint,
+          appliedAt: row.appliedAt,
+        };
+      }
+      // Runtime roles may inspect catalogs but have no USAGE or SELECT on
+      // migration history. A development stamp alone is not deployment
+      // provenance; only the explicitly resolved development lane accepts it.
+      if (!options.allowUnversioned && !versioned) {
+        return {
+          kind: 'stale',
+          reason: 'unversioned',
           found: row.fingerprint,
           appliedAt: row.appliedAt,
         };
@@ -191,9 +214,11 @@ export function schemaProblemMessage(state: SchemaProblem): string {
     ].join('\n');
   }
 
-  if (state.reason === 'unstamped') {
+  if (state.reason === 'unstamped' || state.reason === 'unversioned') {
     return [
-      'The database carries Studio tables but no fingerprint, so the SQL that built it is unknown.',
+      state.reason === 'unversioned'
+        ? 'The database carries a Studio schema fingerprint but no versioned migration history.'
+        : 'The database carries Studio tables but no fingerprint, so the SQL that built it is unknown.',
       'Preserve the original database and its encryption keys. The migration command cannot adopt this database.',
       'For a previously versioned installation, restore a consistent backup that includes its migration history and fingerprint.',
       'For an unversioned pre-release installation, export using its original Studio build, then set up a new empty database and import the supported exports.',
