@@ -10,6 +10,7 @@ import {
   type EmailSender,
   normalizeEmailMessage,
   normalizeMailbox,
+  validateEmailAddress,
 } from './email-sender.ts';
 
 export const postmarkConfiguration = z.strictObject({
@@ -37,6 +38,16 @@ function formatAddress(value: EmailAddress): string {
   return value.name
     ? `"${value.name.replace(/["\\]/g, '\\$&')}" <${value.address}>`
     : value.address;
+}
+
+/** Validate the provider's formatted From limit before accepting work. */
+export function validatePostmarkFrom(
+  value: string | EmailAddress,
+): EmailAddress {
+  const from = validateEmailAddress(value);
+  if (formatAddress(from).length > 255)
+    throw new EmailDeliveryError('permanent');
+  return from;
 }
 
 function receipt(
@@ -100,9 +111,9 @@ export function createPostmarkEmailSender(options: {
   return {
     async send(value) {
       const message = normalizeEmailMessage(value);
-      const from = formatAddress(message.from);
+      const from = formatAddress(validatePostmarkFrom(message.from));
       const replyTo = message.replyTo && formatAddress(message.replyTo);
-      if (from.length > 255 || !message.text) {
+      if (!message.text) {
         throw new EmailDeliveryError('permanent');
       }
       if (closed) throw new EmailDeliveryError('retryable');

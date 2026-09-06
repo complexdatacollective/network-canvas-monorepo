@@ -2,9 +2,13 @@ import type { TeamRole } from '@codaco/studio-rpc';
 import {
   createSmtpEmailSender,
   type EmailSender,
+  type EmailAddress,
   validateEmailAddress,
 } from '@codaco/studio-sync/email-sender';
-import { createPostmarkEmailSender } from '@codaco/studio-sync/postmark-email-sender';
+import {
+  createPostmarkEmailSender,
+  validatePostmarkFrom,
+} from '@codaco/studio-sync/postmark-email-sender';
 
 import type { MailerEnv } from '../env.ts';
 
@@ -46,7 +50,7 @@ export function createConsoleMailer(): StudioMailer {
 
 function createTransportMailer(
   sender: EmailSender,
-  configuredFrom: string,
+  configuredFrom: string | EmailAddress,
 ): StudioMailer {
   const from = validateEmailAddress(configuredFrom);
   return {
@@ -127,7 +131,7 @@ export function createMailer(mailer: MailerEnv): StudioMailer {
           serverToken: mailer.serverToken,
           messageStream: mailer.messageStream,
         }),
-        mailer.from,
+        validatePostmarkFrom(mailer.from),
       );
     case 'console':
       return createConsoleMailer();
