@@ -157,19 +157,13 @@ describe('the map a geospatial stage shows', () => {
   });
 
   /**
-   * TODO(S): the property a participant's answer is stored as is read from
-   * the layer itself, and the fixture gateway serves no bytes for
-   * `regions.geojson` — `FIXTURE_ASSET_CONTENT` in
-   * `src/testing/protocolFixture.ts` holds only `roster.json` — so the field
-   * reports the layer as unreadable and offers no property at all. Nothing in
-   * this suite can therefore prove the picker lists what is really in the
-   * layer, which is the one thing it exists to do. Un-skip once the fixture
-   * serves that asset; the fixture layer's features carry `name`.
+   * The one thing this field exists to do: the property a participant's answer
+   * is stored as is read from the layer itself, not typed. The fixture gateway
+   * serves the real bytes of `regions.geojson`, whose features carry `name`,
+   * so a field that offered a guess — or reported the layer as unreadable —
+   * fails here.
    */
-  it('offers the properties the chosen map layer actually carries', async (ctx) => {
-    ctx.skip(
-      'the fixture gateway serves no content for regions.geojson (S owns src/testing/protocolFixture.ts)',
-    );
+  it('offers the properties the chosen map layer actually carries', async () => {
     openEditor();
 
     const picker = await screen.findByRole('combobox', {
@@ -201,8 +195,9 @@ describe('the map a geospatial stage shows', () => {
       style: 'mapbox://styles/mapbox/dark-v11',
       showTransit: true,
       initialZoom: 14,
-      // Untouched keys of the same object survive: a section owning part of a
-      // nested value renders all of it.
+      // Untouched keys of the same object survive: each control writes at its
+      // own path inside `mapOptions`, so a setting nothing here touched is not
+      // swept away by one that changed.
       tokenAssetId: 'mapbox_token',
       dataSourceAssetId: 'geo_data',
       targetFeatureProperty: 'name',
