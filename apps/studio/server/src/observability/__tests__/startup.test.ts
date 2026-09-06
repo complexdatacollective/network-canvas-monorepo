@@ -60,26 +60,38 @@ describe('startup diagnostic privacy', () => {
     }
   });
 
-  it('exits the actual Node entrypoint with one fixed diagnostic for invalid configuration', () => {
-    const child = spawnSync(
-      process.execPath,
-      [fileURLToPath(new URL('../../index.ts', import.meta.url))],
-      {
-        env: { NODE_ENV: 'production', STUDIO_METRICS_TOKEN: 'secret\n' },
-        encoding: 'utf8',
-        timeout: 10_000,
-      },
-    );
-    expect(child.error).toBeUndefined();
-    expect(child.status).toBe(1);
-    expect(child.stderr).toBe('');
-    const lines = child.stdout.trim().split('\n');
-    expect(lines).toHaveLength(1);
-    expect(JSON.parse(lines[0]!)).toEqual({
-      level: 50,
-      time: expect.any(String),
-      event: 'operational',
-      code: 'STUDIO_CONFIGURATION_INVALID',
-    });
-  });
+  it.each([
+    { STUDIO_METRICS_TOKEN: 'secret\n' },
+    {
+      DATABASE_URL: 'postgres://localhost:1/studio',
+      BETTER_AUTH_SECRET: 'startup-only-authentication-secret-32-characters',
+      PUBLIC_URL: 'https://studio.example.test',
+      SMTP_URL: 'smtp://127.0.0.1:1',
+      EMAIL_FROM: 'Invalid <private-sender-canary>',
+    },
+  ])(
+    'exits the actual Node entrypoint with one fixed diagnostic for invalid configuration: %j',
+    (configuration) => {
+      const child = spawnSync(
+        process.execPath,
+        [fileURLToPath(new URL('../../index.ts', import.meta.url))],
+        {
+          env: { NODE_ENV: 'production', ...configuration },
+          encoding: 'utf8',
+          timeout: 10_000,
+        },
+      );
+      expect(child.error).toBeUndefined();
+      expect(child.status).toBe(1);
+      expect(child.stderr).toBe('');
+      const lines = child.stdout.trim().split('\n');
+      expect(lines).toHaveLength(1);
+      expect(JSON.parse(lines[0]!)).toEqual({
+        level: 50,
+        time: expect.any(String),
+        event: 'operational',
+        code: 'STUDIO_CONFIGURATION_INVALID',
+      });
+    },
+  );
 });
