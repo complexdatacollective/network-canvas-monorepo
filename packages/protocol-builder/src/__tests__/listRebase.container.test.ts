@@ -84,10 +84,14 @@ describe('a nested list command whose container the arrival has dropped', () => 
       });
     }).not.toThrow();
 
-    // The insert lands at the only place left for it: the researcher's own
-    // block survives the container going away, which is what an insert into
-    // nothing means.
-    expect(itemsOf(session)).toEqual([block('two')]);
+    // And the screen stays off. An insert writes every container on the way to
+    // its key, so landing it would put the introduction screen back holding
+    // one block — which is not a screen either of them asked for, and for a
+    // container whose schema gives it required members it is not one the
+    // researcher could save at all.
+    expect(
+      session.getSnapshot().editedSection.fields.introScreen,
+    ).toBeUndefined();
   });
 
   it('does not take the session down when a row was removed', () => {
@@ -193,12 +197,20 @@ describe('a whole-list set whose container the arrival has dropped', () => {
   });
 
   /**
-   * The sibling case, and the rule it leaves standing: a row the researcher
-   * ADDED is one the arrival never saw, so switching the screen off says
-   * nothing about it and it is written back — container and all, exactly as
-   * the `insertItem` above is.
+   * The sibling case, answered the same way: a row the researcher ADDED is
+   * still a row inside a screen that has been switched off, and writing it
+   * back would put the screen back around it.
+   *
+   * It was the one exception once — nothing of the researcher's lost — and it
+   * could not stand. The container comes back holding only what that one
+   * command carries, so a container the schema gives required members comes
+   * back as a fragment: a roster's search options need a fuzziness as well as
+   * the properties to match on, and a pending insert into
+   * `searchOptions.matchProperties` left search switched back on with no
+   * fuzziness. Restoring the whole container from the basis instead would undo
+   * a deletion nobody asked to undo, and silently.
    */
-  it('puts back a row the arrival never saw, container and all', () => {
+  it('takes a row the arrival never saw with it', () => {
     const session = openSession({ items: [block('one')] });
 
     // One submit that rewrites the existing block and adds another: again no
@@ -218,7 +230,9 @@ describe('a whole-list set whose container the arrival has dropped', () => {
       manifestRevision: revision(2n),
     });
 
-    expect(itemsOf(session)).toEqual([block('two')]);
+    expect(
+      session.getSnapshot().editedSection.fields.introScreen,
+    ).toBeUndefined();
   });
 });
 

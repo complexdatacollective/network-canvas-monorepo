@@ -997,6 +997,22 @@ function saysNothing(_trial: Trial, outcome: Outcome): string | null {
   ].join('\n');
 }
 
+/**
+ * For a list inside a container the arrival took away: nothing of the
+ * researcher's is written back at all, because writing any of it puts the
+ * container back holding only that.
+ */
+const leavesTheContainerGone = (
+  _trial: Trial,
+  outcome: Outcome,
+): string | null =>
+  outcome.kind !== 'ok' || outcome.result.length === 0
+    ? null
+    : [
+        `rebased  ${JSON.stringify(outcome.rebased)}`,
+        `put ${JSON.stringify(outcome.result)} back into a container the arrival dropped`,
+      ].join('\n');
+
 /** Whether a trial's diff fell back to writing a whole list out. */
 const carriesAWholeListSet = (trial: Trial): boolean =>
   trial.batches.some((batch) =>
@@ -1105,17 +1121,18 @@ describe('rebasing a list edit onto a collaborator’s arrival', () => {
        * OFF the capability the list lives inside, so the container above it is
        * gone and every ancestor row with it.
        *
-       * That leaves a whole-list `set` carrying only the rows the researcher
-       * ADDED — and where they added none, carrying nothing. Such a command
-       * has to be refused rather than emitted, because a `set` writes every
-       * container on the way to its key: comparing the merge with what the
-       * RESEARCHER wrote called it changed and put the switched-off capability
-       * back, holding an empty list.
+       * Nothing of the researcher's is written back there. A command writes
+       * every container on the way to its key, so any of them would put the
+       * switched-off capability back holding only what that one command
+       * carries — an empty list for a `set` merged to nothing, one row for an
+       * `insertItem`, and for a container the schema gives required members, a
+       * fragment the researcher cannot save. The switch is the decision, and
+       * only the switch can undo it.
        *
-       * `mergesLikeTheModel` is the half of the question that keeps this from
-       * being answered by refusing everything: a row the researcher added is
-       * one the arrival never saw, so it is written back — container and all,
-       * exactly as an `insertItem` into a dropped container is.
+       * A TOP-LEVEL list has no container above it to be switched off: the key
+       * is the value, and a `set` of it recreates nothing but itself. So the
+       * model still answers there, which is what keeps this from being
+       * satisfied by refusing everything everywhere.
        *
        * The count is what keeps the refusal itself from going unexercised: the
        * number of batches whose whole-list `set` was refused into a container
@@ -1130,7 +1147,9 @@ describe('rebasing a list edit onto a collaborator’s arrival', () => {
           const problem =
             neverRefused(trial, outcome) ??
             saysNothing(trial, outcome) ??
-            mergesLikeTheModel(trial, outcome);
+            (trial.path.length > 1
+              ? leavesTheContainerGone(trial, outcome)
+              : mergesLikeTheModel(trial, outcome));
           if (problem !== null && failures.length < 3)
             failures.push(describeTrial(trial, problem));
         }

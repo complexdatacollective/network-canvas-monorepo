@@ -106,17 +106,28 @@ function listAt(doc: SectionDoc, target: CommandTarget): unknown[] | null {
  * rule, which is a draft the researcher cannot save and neither of them asked
  * for.
  *
- * The removal wins. A write into a capability that has been switched off says
- * nothing about whether it should be on; only the switch says that, and the
- * switch has been thrown. It is the same answer the whole-list `set` gives when
- * the arrival has taken away every row it was about, and the same rule this
- * module already applies in the other direction — a container the DRAFT removed
- * goes whole, taking the leaf the arrival wrote inside it.
+ * The removal wins, for every command alike. A write into a capability that has
+ * been switched off says nothing about whether it should be on; only the switch
+ * says that, and the switch has been thrown. It is the same answer the
+ * whole-list `set` gives when the arrival has taken away every row it was
+ * about, and the same rule this module applies in the other direction — a
+ * container the DRAFT removed goes whole, taking the leaf the arrival wrote
+ * inside it.
  *
- * A container NEITHER side had is not this: the arrival cannot have removed
- * what it never held, so a write that creates one goes through as it always
- * did. Nor is an `insertItem`, which carries a row the arrival never saw and
- * puts its container back with it.
+ * A row the arrival never saw was the one exception, put back with its
+ * container so that nothing of the researcher's was lost. It cannot stand: the
+ * container comes back holding only what that one command carries, and a
+ * container the schema gives required members is then a fragment the
+ * researcher cannot save. A roster's search options need a fuzziness as well
+ * as the properties to match on, so a pending `insertItem` into
+ * `searchOptions.matchProperties`, replayed after a collaborator switched
+ * search off, left search back on with no fuzziness — a stage neither of them
+ * could have written. Restoring the whole container from the basis instead
+ * would undo a deletion nobody asked to undo, and would do it silently.
+ *
+ * A container NEITHER side had is not this case: the arrival cannot have
+ * removed what it never held, so a write that creates one goes through as it
+ * always did.
  */
 function containerRemoved(
   basis: SectionDoc,
@@ -457,16 +468,14 @@ function rebaseCommand(
   // it creates no container on its way — a removal into a container that has
   // gone is a removal with nothing to remove.
   if (command.op === 'unset') return command;
-  // A `set` of anything but a list addresses no row either, so it says what it
-  // says wherever it lands — unless the container it would write THROUGH has
-  // been taken away, which is the one thing that makes where it lands a
-  // question.
+  // Every other command WRITES the containers on the way to its key, so one
+  // whose container the arrival has taken away is refused rather than putting
+  // a piece of it back.
+  if (containerRemoved(basis, current, targetPath(command.key))) return null;
+  // A `set` of anything but a list addresses no row, so it says what it says
+  // wherever it lands.
   const written = command.op === 'set' ? command.value : undefined;
-  if (command.op === 'set' && !Array.isArray(written)) {
-    return containerRemoved(basis, current, targetPath(command.key))
-      ? null
-      : command;
-  }
+  if (command.op === 'set' && !Array.isArray(written)) return command;
 
   const before = listAt(basis, command.key);
   const arrival = listAt(current, command.key);
