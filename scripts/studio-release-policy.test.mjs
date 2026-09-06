@@ -524,6 +524,25 @@ for (const path of [
     assert.notEqual(after.artifact, before.artifact);
   });
 
+test('a shared deployment verifier change invalidates both backend images without a synthetic package version', async (t) => {
+  const f = fixture(t);
+  const before = await f.eligible();
+  f.write(
+    'scripts/verify-deployed-lock.mjs',
+    'export const newVerifier = true;\n',
+  );
+  f.commit();
+  const after = await f.eligible();
+  assert.equal(after.status, 'ready');
+  assert.deepEqual(after.versions, before.versions);
+  assert.equal(after.components.client.source, before.components.client.source);
+  for (const component of ['server', 'studio', 'registry'])
+    assert.notEqual(
+      after.components[component].source,
+      before.components[component].source,
+    );
+});
+
 test('shared Docker context filtering selects both backend images without changing client assets', async (t) => {
   const f = fixture(t);
   const before = await f.eligible();

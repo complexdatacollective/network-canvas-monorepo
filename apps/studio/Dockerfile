@@ -33,8 +33,13 @@ ENV HUSKY=0
 COPY --from=pruner /repo/out/json/ .
 RUN pnpm install --frozen-lockfile
 COPY --from=pruner /repo/out/full/ .
+COPY --from=pruner /repo/pnpm-lock.yaml /source-lock.yaml
+COPY scripts/verify-deployed-lock.mjs ./scripts/verify-deployed-lock.mjs
 RUN pnpm --filter @codaco/studio-client build && pnpm --filter @codaco/studio-server build
-RUN pnpm --filter @codaco/studio-server deploy --prod --legacy /deploy
+# pnpm's legacy deployment re-resolves peer labels even after a frozen build.
+# Refuse changed selected edges/integrities and check actual installed links.
+RUN pnpm --filter @codaco/studio-server deploy --prod --legacy /deploy && \
+  node scripts/verify-deployed-lock.mjs /source-lock.yaml /deploy apps/studio/server /deploy/runtime-dependencies.json
 
 FROM node:24.18.0-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d AS runner
 ENV NODE_ENV=production

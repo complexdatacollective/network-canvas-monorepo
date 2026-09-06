@@ -107,11 +107,13 @@ const IMAGE_RUNTIME_PATHS = {
     'apps/studio/Dockerfile',
     'apps/studio/Dockerfile.dockerignore',
     'apps/studio/docker-entrypoint.sh',
+    'scripts/verify-deployed-lock.mjs',
   ],
   registry: [
     '.dockerignore',
     'apps/template-registry/Dockerfile',
     'apps/template-registry/Dockerfile.dockerignore',
+    'scripts/verify-deployed-lock.mjs',
   ],
 };
 const RUNTIME_PATHS = new Set(Object.values(IMAGE_RUNTIME_PATHS).flat());
