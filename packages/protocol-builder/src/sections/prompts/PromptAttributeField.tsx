@@ -9,18 +9,13 @@ import Section from '@codaco/fresco-ui/Section';
 import type { VariableType } from '@codaco/protocol-validation';
 
 import VariableEditor from '../../codebook/components/VariableEditor.tsx';
-import type {
-  AuxiliaryCodebookSubmitResult,
-  CodebookVariableDraft,
-} from '../../codebook/editing.ts';
+import type { CodebookVariableDraft } from '../../codebook/editing.ts';
 import CodebookVariableValidationEditor from '../../codebook/validation/CodebookVariableValidationEditor.tsx';
 import type { WriterClass } from '../../codebook/variableRoles.ts';
-import { findDraftContradictions } from '../../codebook/variableValidation.ts';
 import { VariablePickerControl } from '../../fields/VariablePicker.tsx';
 import { DialogFormField } from '../../form/DialogForm.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
-import type { CompoundEditRequest } from '../../session.ts';
 import {
   useCodebookSectionDocument,
   useLockedOptions,
@@ -182,7 +177,6 @@ export default function PromptAttributeField({
   const createTrigger = useRef<HTMLButtonElement>(null);
   const editTrigger = useRef<HTMLButtonElement>(null);
   const validationTrigger = useRef<HTMLButtonElement>(null);
-  const latestDraft = useRef<CodebookVariableDraft | null>(null);
 
   const optionCount =
     (lockedOptions?.length ??
@@ -207,42 +201,20 @@ export default function PromptAttributeField({
       ? { label: validationLabel, variableId: picked }
       : null;
 
-  /**
-   * Refuses values the attribute's own committed validation rules could never
-   * be satisfied by — one told to require three answers cannot be left with
-   * two to choose from. The same check the codebook's field editors run, asked
-   * here because this is where the values change.
-   *
-   * Answered as a `contradiction` rather than as a refused compound edit: the
-   * whole vocabulary of `CompoundEditFailureReason` is about what went wrong
-   * between the editor and the host, and `compoundFailureMessage` rewrites all
-   * of it, because a host's words are written for whoever reads a log. This
-   * sentence names the rule and the values that cannot both hold, so it is
-   * already written for the researcher, and the status is what lets the editor
-   * show it rather than "This change could not be sent". See
-   * `AuxiliaryCodebookContradiction`.
-   */
-  const submitVariableEdit = async (
-    request: CompoundEditRequest,
-  ): Promise<AuxiliaryCodebookSubmitResult> => {
-    const draft = latestDraft.current;
-    if (draft !== null && typeof draft.type === 'string') {
-      const contradiction = findDraftContradictions({
-        allVariables: variablesIn(codebookDocument),
-        currentVariableId: editing?.variableId ?? '',
-        variableType: draft.type,
-        validation: isRecord(draft.validation) ? draft.validation : {},
-        options: draft.options,
-      })[0];
-      if (contradiction !== undefined) {
-        return { status: 'contradiction', message: contradiction.message };
-      }
-    }
-    return controller.requestCompoundEdit(request);
-  };
+  /*
+    Nothing here checks the draft for a rule it could never satisfy — an
+    attribute told to require three answers left with two to choose from. This
+    used to, and the check was dead: `AuxiliaryCodebookDraftSession.submit`
+    builds the request BEFORE it calls this hook, and
+    `buildUpdateVariableRequest` validates the whole entity document as it
+    does, so the schema's own contradiction rules throw first, every time. The
+    check could only ever run on drafts the schema had already accepted.
+
+    The refusal is the schema's, and `VariableEditor` is where its sentence is
+    turned into words for the researcher.
+  */
 
   const closeEditor = () => {
-    latestDraft.current = null;
     setEditing(null);
   };
 
@@ -264,15 +236,14 @@ export default function PromptAttributeField({
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => {
-              latestDraft.current = null;
+            onClick={() =>
               setEditing({
                 key: uuid(),
                 label: createLabel,
                 mode: 'create',
                 variableId: uuid(),
-              });
-            }}
+              })
+            }
           >
             {createLabel}
           </Button>
@@ -282,15 +253,14 @@ export default function PromptAttributeField({
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => {
-                latestDraft.current = null;
+              onClick={() =>
                 setEditing({
                   key: uuid(),
                   label: valuesEditor.label,
                   mode: 'update',
                   variableId: valuesEditor.variableId,
-                });
-              }}
+                })
+              }
             >
               {valuesEditor.label}
             </Button>
@@ -347,10 +317,9 @@ export default function PromptAttributeField({
               description={createLabel}
               title={createLabel}
               createRequestId={() => uuid()}
-              onDraftChange={(draft) => {
-                latestDraft.current = draft;
-              }}
-              onSubmitRequest={submitVariableEdit}
+              onSubmitRequest={(request) =>
+                controller.requestCompoundEdit(request)
+              }
               onComplete={(variableId) => {
                 setFieldValue(name, variableId);
                 closeEditor();
@@ -371,10 +340,9 @@ export default function PromptAttributeField({
               description={editing.label}
               title={editing.label}
               createRequestId={() => uuid()}
-              onDraftChange={(draft) => {
-                latestDraft.current = draft;
-              }}
-              onSubmitRequest={submitVariableEdit}
+              onSubmitRequest={(request) =>
+                controller.requestCompoundEdit(request)
+              }
               onComplete={closeEditor}
             />
           )}

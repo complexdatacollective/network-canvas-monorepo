@@ -344,10 +344,16 @@ describe('creating a bin attribute from inside a prompt', () => {
    * never reach the host.
    *
    * An attribute told to require three answers cannot be left with two values
-   * to choose from, and the refusal happens here rather than at the host: a
-   * host applying a compound edit is not asked to reason about validation
-   * rules, so by the time one could refuse this, it would be refusing it for
-   * the wrong reason.
+   * to choose from, and the refusal happens before anything is sent: the
+   * request is built by validating the whole entity document, so the protocol
+   * schema's own contradiction rules refuse it where it is written. A host
+   * applying a compound edit is not asked to reason about validation rules, so
+   * by the time one could refuse this it would be refusing it for the wrong
+   * reason.
+   *
+   * What the researcher is TOLD is `VariableEditor`'s business, and S is
+   * giving that refusal its own words; this only asserts that the draft is
+   * refused, kept, and never sent.
    */
   it('never asks the host to leave the values a committed rule needs', async () => {
     const harness = renderStageEditor(openEditor());
