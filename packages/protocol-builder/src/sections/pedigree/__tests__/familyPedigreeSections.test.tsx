@@ -1066,10 +1066,11 @@ describe('a pedigree whose node type changes', () => {
 
   const nodeConfigOf = (
     harness: StageEditorHarness,
-  ): Record<string, unknown> =>
-    isRecord(harness.session.getSnapshot().editedSection.fields.nodeConfig)
-      ? harness.session.getSnapshot().editedSection.fields.nodeConfig
-      : {};
+  ): Record<string, unknown> => {
+    const nodeConfig =
+      harness.session.getSnapshot().editedSection.fields.nodeConfig;
+    return isRecord(nodeConfig) ? nodeConfig : {};
+  };
 
   /**
    * The whole decision, in the order it happened: this type was chosen, and
