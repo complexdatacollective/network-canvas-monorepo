@@ -16,6 +16,12 @@ export type DbEnv = {
 
 export type MailerEnv =
   | { kind: 'smtp'; url: string; from: string }
+  | {
+      kind: 'postmark';
+      serverToken: string;
+      messageStream: string;
+      from: string;
+    }
   | { kind: 'console' }
   | { kind: 'refuse' };
 
@@ -123,6 +129,27 @@ function resolveS3(raw: RawEnv): S3Env | undefined {
 }
 
 function resolveMailer(raw: RawEnv, devDefaults: boolean): MailerEnv {
+  if (raw.SMTP_URL && raw.POSTMARK_SERVER_TOKEN) {
+    throw new Error('Configure only one of SMTP_URL or POSTMARK_SERVER_TOKEN');
+  }
+  if (raw.POSTMARK_MESSAGE_STREAM && !raw.POSTMARK_SERVER_TOKEN) {
+    throw new Error(
+      'POSTMARK_SERVER_TOKEN is required when POSTMARK_MESSAGE_STREAM is set',
+    );
+  }
+  if (raw.POSTMARK_SERVER_TOKEN) {
+    if (!raw.EMAIL_FROM) {
+      throw new Error(
+        'EMAIL_FROM is required when POSTMARK_SERVER_TOKEN is set',
+      );
+    }
+    return {
+      kind: 'postmark',
+      serverToken: raw.POSTMARK_SERVER_TOKEN,
+      messageStream: raw.POSTMARK_MESSAGE_STREAM ?? 'outbound',
+      from: raw.EMAIL_FROM,
+    };
+  }
   if (raw.SMTP_URL) {
     if (!raw.EMAIL_FROM) {
       throw new Error('EMAIL_FROM is required when SMTP_URL is set');
@@ -134,7 +161,9 @@ function resolveMailer(raw: RawEnv, devDefaults: boolean): MailerEnv {
   // EMAIL_FROM so that adding SMTP_URL alone (the Mailpit loop) completes the
   // pair, which leaves it harmlessly unpaired until then.
   if (raw.EMAIL_FROM && !devDefaults) {
-    throw new Error('SMTP_URL is required when EMAIL_FROM is set');
+    throw new Error(
+      'SMTP_URL or POSTMARK_SERVER_TOKEN is required when EMAIL_FROM is set',
+    );
   }
   // Outside development, magic links must never fall back to the console
   // mailer: a sign-in link in a log aggregator is an account takeover.
