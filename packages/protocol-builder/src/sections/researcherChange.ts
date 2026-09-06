@@ -1,8 +1,8 @@
-import { get, isEqual } from 'es-toolkit/compat';
+import { isEqual } from 'es-toolkit/compat';
 import { useEffect, useRef } from 'react';
 
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
-import { useStageValue } from '../form/stageFormHooks.ts';
+import { stageDraftValue, useStageValue } from '../form/stageFormHooks.ts';
 
 /**
  * Runs `onChange` when the RESEARCHER changes the value at `path`, and not
@@ -52,12 +52,13 @@ export function useOnResearcherChange(
 ): void {
   const { committedFields } = useStageEditorForm();
   const value = useStageValue(path);
-  // Read the way the two resets that came before this read it. The paths a
-  // section resets on are the ones a single field owns — `subject`,
-  // `dataSource`, `nodeConfig.type` — and none of them is a protocol-authored
-  // name that a dotted read could mistake for a route.
-  const committed: unknown =
-    path === undefined ? undefined : get(committedFields, path);
+  // The same resolution `useStageValue` uses, and it has to be: the only thing
+  // these two reads are for is being compared, and a path one of them reads as
+  // a route while the other reads it as a single key gives two values from two
+  // places. They would then move independently — an arrival that changed one
+  // and not the other would read as a researcher's own choice, and the section
+  // would reset on it.
+  const committed = stageDraftValue(committedFields, path);
 
   // Held in a ref rather than depended on: a caller spells its reset inline,
   // so the callback is a new function every render and depending on it would

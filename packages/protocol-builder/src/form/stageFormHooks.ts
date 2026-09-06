@@ -317,6 +317,34 @@ export function useClearStageValue(): (path: string) => void {
 }
 
 /**
+ * What an agreed stage draft holds at one path.
+ *
+ * The one way a draft is read by path outside the form store, so that two
+ * readers asking about the same path can never be asking about two different
+ * values. `useStageValue` falls back to it when the form knows nothing, and
+ * `useOnResearcherChange` reads the agreed draft through it beside that — and
+ * the whole point of THAT pair is comparing them, which is worth nothing if
+ * they resolve the path differently.
+ *
+ * Canonically parsed, like every other path in this package: `a.b` is a route
+ * through the document and `["a.b"]` is one protocol-authored key that happens
+ * to contain a dot. A general-purpose `get` decides between those two readings
+ * by whether the object it is holding happens to have such a key, which makes
+ * the meaning of a section's `resetOn` depend on the content of the stage.
+ *
+ * A path that is no path at all reports `undefined` rather than throwing: this
+ * is a read, and every caller already has to handle a path holding nothing.
+ */
+export function stageDraftValue(
+  fields: StageFormDraft,
+  path: string | undefined,
+): unknown {
+  if (path === undefined) return undefined;
+  const target = safePath(path);
+  return target === null ? undefined : getValue(fields, target);
+}
+
+/**
  * What the stage draft currently holds at one path.
  *
  * The one way anything in this package reads a draft value it does not own a
@@ -366,11 +394,11 @@ export function useStageValue(path: string | undefined): unknown {
     if (pathOperations === undefined) {
       return state.hasValue(path)
         ? state.getValue(path)
-        : getValue(committedFields, target);
+        : stageDraftValue(committedFields, path);
     }
     return pathOperations.hasValue(target)
       ? pathOperations.getValue(target)
-      : getValue(committedFields, target);
+      : stageDraftValue(committedFields, path);
   }, [committedFields, path, storeApi]);
 
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
