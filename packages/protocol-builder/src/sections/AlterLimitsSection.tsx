@@ -4,7 +4,10 @@ import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 
-import { IntegerFieldControl } from '../fields/IntegerField.tsx';
+import {
+  IntegerFieldControl,
+  wholeNumberRule,
+} from '../fields/IntegerField.tsx';
 import ProtocolField from '../form/ProtocolField.tsx';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useStageValue } from '../form/stageFormHooks.ts';
@@ -44,8 +47,13 @@ const asCount = (value: unknown): number =>
  * rather than out of a closure: a field's validation is memoised for the
  * field's lifetime, so a closed-over sibling would be pinned to whatever it
  * held on the first render.
+ *
+ * `wholeNumberRule` comes first in both, because a control holding text it
+ * could not read as a count holds no count for anything below to compare — and
+ * because it is the only thing standing between that text and a save.
  */
 const minValidation = messageRuleValidation([
+  wholeNumberRule,
   (value, values) => {
     const min = asCount(value);
     if (Number.isNaN(min)) return undefined;
@@ -58,6 +66,7 @@ const minValidation = messageRuleValidation([
 ]);
 
 const maxValidation = messageRuleValidation([
+  wholeNumberRule,
   (value, values) => {
     const max = asCount(value);
     if (Number.isNaN(max)) return undefined;
