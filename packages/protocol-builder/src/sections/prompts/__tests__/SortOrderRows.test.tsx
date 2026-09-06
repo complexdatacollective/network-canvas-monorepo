@@ -1,15 +1,42 @@
 import { screen, waitFor, within } from '@testing-library/react';
+import { useMemo } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
+import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import type { SortableProperty } from '../../../fields/sortOrderOptions.ts';
 import { DialogFormField } from '../../../form/DialogForm.tsx';
+import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
+import { variablesForSubject } from '../../../protocol-context.ts';
 import type { FinishRequest } from '../../../session.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import PromptsSection from '../../PromptsSection.tsx';
 import type { RowEditorProps, RowPreviewProps } from '../../rowRenderers.tsx';
 import SortOrderRows from '../SortOrderRows.tsx';
+
+const SUBJECT = { entity: 'node', type: 'person' } as const;
+
+/** The fixture's own person type, minus the named attributes. */
+const personWithout = (dropped: readonly string[]): SectionDoc => {
+  const person = (
+    allInterfaces as unknown as {
+      codebook: {
+        node: Record<
+          string,
+          { variables: Record<string, unknown> } & Record<string, unknown>
+        >;
+      };
+    }
+  ).codebook.node.person!;
+  return {
+    ...person,
+    variables: Object.fromEntries(
+      Object.entries(person.variables).filter(([id]) => !dropped.includes(id)),
+    ),
+  } as SectionDoc;
+};
 
 /**
  * What a person may be sorted by, as the fixture protocol's codebook defines
@@ -32,6 +59,23 @@ const PERSON_PROPERTIES: readonly SortableProperty[] = [
 const SORT_SWITCH = 'Sort unplaced nodes';
 const ADD_RULE = 'Add a rule for the order unplaced nodes are handed over in';
 
+const sortRows = (
+  properties: readonly SortableProperty[] | undefined,
+  item: RowEditorProps['item'],
+) => (
+  <SortOrderRows
+    name="sortOrder"
+    title={SORT_SWITCH}
+    description="Choose the order the nodes the participant has not placed yet are handed to them in."
+    label="Sort rules"
+    hint="Rules are applied in order. Use the asterisk to keep the order the nodes were added in."
+    addButtonLabel={ADD_RULE}
+    emptyStateMessage="No rules yet, so nodes are handed over in the order they were added."
+    properties={properties}
+    committedRules={item.sortOrder}
+  />
+);
+
 /**
  * A stand-in for one family's prompt fields, holding a single sort order.
  *
@@ -40,8 +84,46 @@ const ADD_RULE = 'Add a rule for the order unplaced nodes are handed over in';
  * bin keys are already exercised by the census and bin sections that own them.
  * Everything else about the prompt is deliberately plain: a failure here
  * should be about the sort rules and nothing else.
+ *
+ * Parameterised by where the properties come from, because that is a family's
+ * decision and the three answers it can give — a fixed list, an empty one, and
+ * the live codebook — are all exercised below.
  */
-function SortOrderPromptEditor({ item }: RowEditorProps) {
+const makeEditor =
+  (properties: readonly SortableProperty[] | undefined) =>
+  ({ item }: RowEditorProps) => (
+    <>
+      <DialogFormField
+        name="text"
+        label="Prompt text"
+        component={InputField}
+        required="Enter the question this prompt asks."
+      />
+      {sortRows(properties, item)}
+    </>
+  );
+
+const SortOrderPromptEditor = makeEditor(PERSON_PROPERTIES);
+
+/**
+ * The same editor reading its properties from the LIVE codebook, the way a
+ * real family must, so a collaborator's deletion reaches it while the row
+ * dialog is open.
+ */
+function CodebookPromptEditor({ item }: RowEditorProps) {
+  const { protocolContext } = useStageEditorForm();
+  const properties = useMemo<readonly SortableProperty[]>(
+    () =>
+      Object.entries(variablesForSubject(protocolContext, SUBJECT)).map(
+        ([id, variable]) => ({
+          value: id,
+          label: variable.name ?? id,
+          ...(typeof variable.type === 'string' ? { type: variable.type } : {}),
+        }),
+      ),
+    [protocolContext],
+  );
+
   return (
     <>
       <DialogFormField
@@ -50,17 +132,7 @@ function SortOrderPromptEditor({ item }: RowEditorProps) {
         component={InputField}
         required="Enter the question this prompt asks."
       />
-      <SortOrderRows
-        name="sortOrder"
-        title={SORT_SWITCH}
-        description="Choose the order the nodes the participant has not placed yet are handed to them in."
-        label="Sort rules"
-        hint="Rules are applied in order. Use the asterisk to keep the order the nodes were added in."
-        addButtonLabel={ADD_RULE}
-        emptyStateMessage="No rules yet, so nodes are handed over in the order they were added."
-        properties={PERSON_PROPERTIES}
-        committedRules={item.sortOrder}
-      />
+      {sortRows(properties, item)}
     </>
   );
 }
@@ -69,12 +141,16 @@ function SortOrderPromptPreview({ item }: RowPreviewProps) {
   return <span>{typeof item.text === 'string' ? item.text : 'Empty'}</span>;
 }
 
-const sections = (
+const sectionsFor = (
+  Editor: Parameters<typeof PromptsSection>[0]['PromptEditor'],
+) => (
   <PromptsSection
-    PromptEditor={SortOrderPromptEditor}
+    PromptEditor={Editor}
     PromptPreview={SortOrderPromptPreview}
   />
 );
+
+const sections = sectionsFor(SortOrderPromptEditor);
 
 const RULE = { property: 'age', direction: 'desc' };
 
@@ -87,7 +163,12 @@ const RULE = { property: 'age', direction: 'desc' };
  * is the fixture's own, so what saves here is a stage the protocol schema
  * accepts.
  */
-const seededWith = (rules: readonly Record<string, unknown>[]) => ({
+const seededWith = (
+  rules: readonly Record<string, unknown>[],
+  Editor: Parameters<
+    typeof PromptsSection
+  >[0]['PromptEditor'] = SortOrderPromptEditor,
+) => ({
   stage: {
     id: 'sociogram-1',
     type: 'Sociogram' as const,
@@ -106,7 +187,7 @@ const seededWith = (rules: readonly Record<string, unknown>[]) => ({
       ],
     },
   },
-  sections,
+  sections: sectionsFor(Editor),
 });
 
 const seededWithARule = () => seededWith([RULE]);
@@ -149,6 +230,14 @@ function savedPrompt(request: FinishRequest | null): Record<string, unknown> {
   }
   return first as Record<string, unknown>;
 }
+
+/** Opens the one prompt's row dialog and waits for it. */
+const openPrompt = async (
+  harness: Readonly<{ user: { click(element: Element): Promise<void> } }>,
+) => {
+  await harness.user.click(screen.getByRole('button', { name: 'Edit prompt' }));
+  await screen.findByRole('dialog');
+};
 
 describe('the sort order a prompt carries', () => {
   it('opens switched on, holding the rule the prompt was saved with', async () => {
@@ -255,7 +344,57 @@ describe('the sort order a prompt carries', () => {
       'Place the people who know each other close together',
     );
   });
+
+  /**
+   * The same answer by the other route. Emptying the list says exactly what
+   * switching the group off says — this prompt sorts by nothing in particular —
+   * and the two have to spell it the same way, or the second way out of a
+   * dangling rule (`MISSING_SORT_PROPERTY_MESSAGE` names both) would leave the
+   * prompt carrying the configured-but-empty order the switch-off avoids.
+   */
+  it('drops the key when the researcher deletes the last rule', async () => {
+    const harness = renderStageEditor(seededWithARule());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    await removeTheOnlyRule(harness);
+
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Save' }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const saved = savedPrompt(await harness.submit());
+    expect(Object.hasOwn(saved, 'sortOrder')).toBe(false);
+    expect(saved.text).toBe(
+      'Place the people who know each other close together',
+    );
+  });
 });
+
+/**
+ * Deleting the only rule, through the row's own remove control and its
+ * confirmation. Only the confirmation's button is reachable while it is open;
+ * the row's own is inert behind it, so both clicks name the same button.
+ */
+async function removeTheOnlyRule(
+  harness: Readonly<{ user: { click(element: Element): Promise<void> } }>,
+) {
+  await harness.user.click(
+    await screen.findByRole('button', { name: 'Remove item' }),
+  );
+  await harness.user.click(
+    await screen.findByRole('button', { name: 'Remove item' }),
+  );
+  await waitFor(() =>
+    expect(
+      document.querySelectorAll('[data-field-name^="sortOrder["]'),
+    ).toHaveLength(0),
+  );
+}
 
 /**
  * A rule whose attribute has been deleted still has to be readable, fixable,
@@ -266,15 +405,6 @@ describe('the sort order a prompt carries', () => {
  * same dangling reference.
  */
 describe('a sort rule pointing at an attribute the codebook has lost', () => {
-  const openPrompt = async (harness: {
-    user: { click(element: Element): Promise<void> };
-  }) => {
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Edit prompt' }),
-    );
-    await screen.findByRole('dialog');
-  };
-
   it('shows the rule, naming the attribute it can no longer find', async () => {
     const harness = renderStageEditor(seededWithAnOrphanedRule());
 
@@ -350,5 +480,162 @@ describe('a sort rule pointing at an attribute the codebook has lost', () => {
 
     const saved = savedPrompt(await harness.submit());
     expect(saved.sortOrder).toEqual([{ property: 'name', direction: 'asc' }]);
+  });
+});
+
+/**
+ * A subject with nothing to sort by, which is a real state rather than a state
+ * of not knowing yet: a node type whose attributes have all been deleted, or an
+ * external data file the roster reads one column out of.
+ *
+ * Reading an empty property list as "the caller does not know yet" took the
+ * orphan option, the refusal and the label away all at once, and did it exactly
+ * where every rule the prompt holds is certainly dangling.
+ */
+describe('a subject with nothing to sort by', () => {
+  const seeded = () =>
+    seededWith(
+      [{ property: ORPHANED_PROPERTY, direction: 'asc' }],
+      makeEditor([]),
+    );
+
+  it('still shows what the rule points at', async () => {
+    const harness = renderStageEditor(seeded());
+
+    await openPrompt(harness);
+    const property = await screen.findByRole('combobox', { name: 'Property' });
+    expect(property).toHaveValue(ORPHANED_PROPERTY);
+    expect(
+      within(property).getByRole('option', { name: ORPHANED_OPTION_LABEL }),
+    ).toBeDisabled();
+  });
+
+  it('still refuses the save', async () => {
+    const harness = renderStageEditor(seeded());
+
+    await openPrompt(harness);
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await screen.findByText(MISSING_ATTRIBUTE_MESSAGE);
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  /**
+   * The control on the other side of the same distinction: a family that does
+   * not know its properties yet says so with `undefined`, and there nothing is
+   * judged — a prompt whose stage has not been told what it collects would
+   * otherwise have every rule it holds reported as dangling.
+   */
+  it('judges nothing while the family does not know its properties yet', async () => {
+    const harness = renderStageEditor(
+      seededWith(
+        [{ property: ORPHANED_PROPERTY, direction: 'asc' }],
+        makeEditor(undefined),
+      ),
+    );
+
+    await openPrompt(harness);
+    await screen.findByRole('combobox', { name: 'Property' });
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    expect(screen.queryByText(MISSING_ATTRIBUTE_MESSAGE)).toBeNull();
+  });
+});
+
+/**
+ * The codebook moving while the row dialog is open.
+ *
+ * The refusal is a `custom` field rule, and `useField` memoises the REGISTERED
+ * validation on a `JSON.stringify` of the validation props — which drops a
+ * function-valued `schema` entirely, so a rule rebuilt to judge against
+ * something that has changed serialises to the key it already had. The
+ * registered function reads its props through a ref when validation RUNS for
+ * exactly this reason; without that, the display half followed the codebook
+ * (the option is relabelled and disabled) while the blocking half stayed at
+ * whatever was true when the field mounted, in both directions.
+ */
+describe('a collaborator deletes the attribute while the dialog is open', () => {
+  const seeded = () =>
+    seededWith([{ property: 'age', direction: 'desc' }], CodebookPromptEditor);
+
+  const expectDeletedOption = async () => {
+    await waitFor(() =>
+      expect(
+        within(screen.getByRole('combobox', { name: 'Property' })).getByRole(
+          'option',
+          {
+            name: 'age — this attribute is no longer in the codebook',
+          },
+        ),
+      ).toBeDisabled(),
+    );
+  };
+
+  it('refuses the save the rule has just been orphaned by', async () => {
+    const harness = renderStageEditor(seeded());
+
+    await openPrompt(harness);
+    expect(
+      await screen.findByRole('combobox', { name: 'Property' }),
+    ).toHaveValue('age');
+
+    harness.receiveCodebookUpdate({ node: { person: personWithout(['age']) } });
+    await expectDeletedOption();
+
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    await screen.findByText(MISSING_ATTRIBUTE_MESSAGE);
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  /**
+   * The same freeze from the other side, and the reason it is the REGISTERED
+   * rule rather than an unrun one: put the attribute back while the dialog is
+   * open and a frozen refusal goes on refusing a rule that is good again, with
+   * the row the researcher is told to fix looking fixed.
+   */
+  it('stops refusing once the attribute is back', async () => {
+    const harness = renderStageEditor(seeded());
+
+    harness.receiveCodebookUpdate({ node: { person: personWithout(['age']) } });
+    await openPrompt(harness);
+    // Armed: the rule is dangling and the editor says so.
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    await screen.findByText(MISSING_ATTRIBUTE_MESSAGE);
+
+    harness.receiveCodebookUpdate({ node: { person: personWithout([]) } });
+    await waitFor(() =>
+      expect(
+        within(screen.getByRole('combobox', { name: 'Property' })).getByRole(
+          'option',
+          { name: 'age' },
+        ),
+      ).toBeInTheDocument(),
+    );
+
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    expect(savedPrompt(await harness.submit()).sortOrder).toEqual([
+      { property: 'age', direction: 'desc' },
+    ]);
+  });
+
+  /**
+   * The control: the same deletion applied BEFORE the dialog opens was always
+   * refused, which is what pins the two above on the moment the rule was built
+   * rather than on the rule.
+   */
+  it('control: the same deletion before the dialog opens is refused', async () => {
+    const harness = renderStageEditor(seeded());
+
+    harness.receiveCodebookUpdate({ node: { person: personWithout(['age']) } });
+    await openPrompt(harness);
+
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    await screen.findByText(MISSING_ATTRIBUTE_MESSAGE);
   });
 });

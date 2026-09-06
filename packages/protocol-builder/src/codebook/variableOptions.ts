@@ -167,6 +167,9 @@ export type BooleanAnswerIssues = Readonly<Record<number, readonly string[]>>;
 const UNNAMED_ANSWER =
   'Write what this answer says, or clear both to offer Yes and No.';
 
+const REPEATED_ANSWER =
+  'Give this answer different words: two buttons saying the same thing cannot be told apart.';
+
 /**
  * What is wrong with these two answers, per answer.
  *
@@ -174,6 +177,21 @@ const UNNAMED_ANSWER =
  * string) and a participant cannot answer: a control with one button they can
  * read and one they cannot. Reported against the answer that is blank rather
  * than against the pair, so the researcher is told which of the two to write.
+ *
+ * Both named the same words is the same failure by the other route, and the
+ * schema accepts it for the same reason — `booleanOptionsSchema.label` is a
+ * bare `z.string()`, and nothing downstream compares the two. It is reported
+ * against the SECOND answer, which is the one repeating what the first already
+ * says, and only when the first has no complaint of its own: a blank beside a
+ * named one is not a repetition, and telling the researcher both at once about
+ * the same pair would be telling them to do two contradictory things.
+ *
+ * Judged after trimming and CASE-SENSITIVELY, unlike the uniqueness rule on a
+ * categorical attribute's options. The harm here is the participant's, not the
+ * export's: the two labels are rendered exactly as they were typed, so "Yes"
+ * and "yes" are two buttons that can be told apart, while "Yes" and "Yes " are
+ * one button written twice. A categorical option's label is compared
+ * case-insensitively because its VALUE becomes a key.
  *
  * Naming neither is not a refusal — see `booleanOptionsFrom`.
  */
@@ -186,6 +204,15 @@ export const validateBooleanAnswers = (
   written.forEach((answer, index) => {
     if (answer.label.trim() === '') issues[index] = [UNNAMED_ANSWER];
   });
+  const [first, second] = written;
+  if (
+    first !== undefined &&
+    second !== undefined &&
+    issues[1] === undefined &&
+    first.label.trim() === second.label.trim()
+  ) {
+    issues[1] = [REPEATED_ANSWER];
+  }
   return issues;
 };
 

@@ -15,6 +15,7 @@ import {
   createStageIdentity,
   type FinishRequest,
   type ManifestRevision,
+  type PendingCommandBatch,
   ProtocolBuilderSessionStore,
   type StageCreation,
 } from '../session.ts';
@@ -75,6 +76,16 @@ export type FixtureSessionOptions = Readonly<{
    * given would differ from itself in every visual comparison.
    */
   createResourceId?: () => string;
+  /**
+   * Each batch as a host that applies edits LIVE would be handed it.
+   *
+   * A host need not wait for the save, and most of what an editor does reaches
+   * one the moment it is done — so "what has already left this session" is a
+   * question about the editor that only this port can answer. The batches a
+   * session is holding back (a reference to a resource staged here, and
+   * everything after it) never arrive, which is the whole point of asking.
+   */
+  onCommands?: (batch: PendingCommandBatch) => void;
   onFinish: (request: FinishRequest) => void;
 }>;
 
@@ -201,6 +212,9 @@ export function openFixtureStageSession(
             }),
       }),
     onCompoundEdit: (submission) => host.submit(submission),
+    ...(options.onCommands === undefined
+      ? {}
+      : { onCommands: options.onCommands }),
     onFinish: options.onFinish,
   });
 

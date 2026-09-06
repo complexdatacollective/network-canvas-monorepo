@@ -1187,12 +1187,32 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       return;
     }
     assertNoIdentityFields(params.fields);
+    // Read before the base moves, for the same reason `rebasePending` is.
+    const foreign = !this.isOwnAcknowledgedStage(
+      params.fields,
+      params.throughBatchId,
+    );
     const rebase = this.rebasePending(
       cloneDoc(params.fields),
       (batch) => batch.id > params.throughBatchId,
     );
     this.baseFields = cloneDoc(params.fields);
     const { batches: pendingCommands, fields } = rebase;
+    if (foreign) {
+      // An undo entry is a whole draft, and every one of these predates the
+      // arrival: undoing to one would take the collaborator's rows back out
+      // with the researcher's own edit. So the history is fenced and rebuilt
+      // out of the rebase's own steps — the draft before each rebased batch —
+      // exactly as the compound-edit apply rebuilds it, which leaves the
+      // researcher able to undo their own outstanding batches one at a time
+      // and nothing else. The generation and the revision are what let the UI
+      // say the history was cut and why.
+      this.undoStack.length = 0;
+      this.redoStack.length = 0;
+      this.historyGeneration += 1;
+      this.fencedAtRevision = params.manifestRevision;
+      this.undoStack.push(...rebase.steps);
+    }
     this.releaseWithheldFrom(pendingCommands);
     this.replaceSnapshot({
       fields,
@@ -1204,6 +1224,42 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       validatedProtocol: null,
     });
     void this.runValidation();
+  }
+
+  /**
+   * Whether an acknowledged stage is nothing but this session's own work.
+   *
+   * The question the undo history turns on. A host that applies `onCommands`
+   * live acknowledges EVERY batch as it commits, so "the base moved" is the
+   * ordinary case and fencing on it would leave the researcher unable to undo
+   * anything they had saved. What actually invalidates the history is a stage
+   * carrying something this session did not put there — a collaborator's row —
+   * because an undo entry is a whole draft that predates it.
+   *
+   * So the base is walked through the batches the acknowledgement covers,
+   * which is the stage the host would be holding if it had applied those and
+   * nothing else, and compared with the one it answered with. A batch that no
+   * longer applies to the base it was made on says nothing reliable, and is
+   * answered the conservative way: treat the arrival as foreign, which fences
+   * the history rather than leaving a stale entry standing.
+   *
+   * Must be called BEFORE `baseFields` is replaced, exactly as
+   * {@link rebasePending} must.
+   */
+  private isOwnAcknowledgedStage(
+    fields: StageFormDraft,
+    throughBatchId: number,
+  ): boolean {
+    let document: SectionDoc = cloneDoc(this.baseFields);
+    for (const batch of this.snapshot.pendingCommands) {
+      if (batch.id > throughBatchId) break;
+      try {
+        document = applyCommands(document, [...batch.commands]);
+      } catch {
+        return false;
+      }
+    }
+    return canonicalize(document) === canonicalize(fields);
   }
 
   /**
@@ -1329,16 +1385,6 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     }
   }
 
-  /**
-   * Whether a batch has to wait for finish: it puts a resource this session
-   * has staged into one of the fields it touches, and that resource's manifest
-   * entry does not exist until the finish promotion writes it.
-   *
-   * The fields are read for references the way validation reads them — from
-   * the schema's own `assetReference` tags — so a stage type that gains a
-   * resource field is covered as soon as its schema is tagged, and nothing
-   * here has to know which field of which stage holds an asset id.
-   */
   /**
    * The edits a compound request should actually carry, and how much of this
    * session's unsaved work the host will own once it applies them.
@@ -1594,6 +1640,25 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     return null;
   }
 
+  /**
+   * Whether a batch has to wait for finish: it puts a resource this session
+   * has staged into one of the fields it touches, and that resource's manifest
+   * entry does not exist until the finish promotion writes it.
+   *
+   * The fields are read for references the way validation reads them — from
+   * the schema's own `assetReference` tags — so a stage type that gains a
+   * resource field is covered as soon as its schema is tagged, and nothing
+   * here has to know which field of which stage holds an asset id.
+   *
+   * A batch is judged on what it TOUCHES, which is why the editor's own rule
+   * matters here: an edit made BECAUSE a staged resource was chosen has to
+   * carry that choice, or the session sees only the consequence — a capability
+   * cleared because the data file changed, naming no resource at all — and
+   * lets it go while the file that explains it stays behind
+   * (`useDiscardStageValues`). Everything after such a batch is covered
+   * already, because the hold below is a suffix rather than a judgement of
+   * each batch in turn.
+   */
   private withholdsFromHost(
     batch: PendingCommandBatch,
     fields: StageFormDraft,

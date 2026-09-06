@@ -42,16 +42,33 @@ const asRows = (list: readonly unknown[]): readonly ArrayRow[] =>
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   list as readonly ArrayRow[];
 
-/** The list a command addresses, or `null` when that place holds something else. */
+/**
+ * The list a command addresses, or `null` when that place holds something else.
+ *
+ * Absent reads as empty at EVERY depth, the way the apply engine's own list
+ * operations read it: `readAt` answers `undefined` the moment a container on
+ * the way is missing, and `asList` turns that into `[]`. Inserting the first
+ * row of a list the document does not keep yet is an insert into nothing
+ * rather than a failure, and so is a NESTED list whose container the arrival
+ * has just dropped — "one researcher adds a block while another switches the
+ * introduction screen off" is exactly that, because `PageContentSection` binds
+ * its list at `introScreen.items` and gives the switch the container above it.
+ *
+ * Reading a missing container as "not a list, do not rebase" instead let the
+ * pending row command through un-rebased, to an apply that DID read the place
+ * as an empty list and refused the command's index: `ApplyError` escaping
+ * `acknowledge`, which the Studio client turns into lost edit access.
+ *
+ * A segment that is PRESENT and is not a dictionary is the other answer. The
+ * apply engine throws on it too, and there is nothing here to rebase against.
+ */
 function listAt(doc: SectionDoc, target: CommandTarget): unknown[] | null {
   let cursor: unknown = doc;
   for (const segment of targetPath(target)) {
+    if (cursor === undefined) return [];
     if (!isDictionary(cursor)) return null;
     cursor = cursor[segment];
   }
-  // Absent reads as empty, the way the apply engine's own list operations read
-  // it: inserting the first row of a list the document does not keep yet is an
-  // insert into nothing, not a failure.
   if (cursor === undefined) return [];
   return Array.isArray(cursor) ? [...cursor] : null;
 }
@@ -241,21 +258,27 @@ function findRow(
  * The arrival's order stands, because the edit that produced a `set` is about
  * a row's contents rather than about where the rows are — a reorder is a
  * `moveItem`, which is rebased rather than merged.
+ *
+ * A row with no `id` of its own is answered by `findRow` like any other, which
+ * means its CONTENT is its identity: rewriting such a row reads as removing it
+ * and adding another, because from here those two edits are the same edit and
+ * nothing in the document tells them apart. Matching an id-less row by
+ * position instead — on the strength of the local list having kept its length,
+ * as this did — was right only while the edit changed exactly one row and
+ * moved none. A submit that reorders two rows and rewrites one of them is also
+ * length-preserving, and there the mapping was wrong for every row at once: it
+ * resurrected a row the collaborator had deleted and dropped the researcher's
+ * rewrite. `FormFieldSchema.id` is optional by design — Architect started
+ * minting one and the schema must tolerate a protocol that predates that — so
+ * `form.fields` and `nodeConfig.form` really do hold such rows.
  */
 function mergeListArrival(
   before: readonly unknown[],
   arrival: readonly unknown[],
   next: readonly unknown[],
 ): unknown[] {
-  // Where each ancestor row ended up on each side. An id-less row in a list the
-  // edit did not resize is matched by POSITION: such an edit rewrote one row in
-  // place, and its rewritten content is exactly what content matching cannot
-  // find.
-  const localOf = before.map((row, index) =>
-    rowIdentity(row) === undefined && next.length === before.length
-      ? index
-      : findRow(next, row, index),
-  );
+  // Where each ancestor row ended up on each side.
+  const localOf = before.map((row, index) => findRow(next, row, index));
   const remoteOf = before.map((row, index) => findRow(arrival, row, index));
 
   const merged: unknown[] = [];

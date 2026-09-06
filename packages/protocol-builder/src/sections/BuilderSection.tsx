@@ -18,6 +18,7 @@ import {
   useDiscardStageValues,
   useFormRestoreVersion,
   useStageHasAnyValue,
+  useStageValue,
 } from '../form/stageFormHooks.ts';
 import { useOutlineSection } from '../form/useOutlineSection.ts';
 
@@ -56,23 +57,39 @@ export type BuilderSectionProps = Readonly<{
   disabled?: boolean;
   capability?: SectionCapability;
   /**
-   * Something the capability's values only mean anything against. Compared by
-   * value, so a caller may build it inline.
+   * The stage path holding the thing this capability's values only mean
+   * anything against — a roster's data file, say, at `dataSource`.
    *
-   * When it changes, the capability is switched off and everything it owns is
-   * cleared — without asking, because the values did not become wrong through
-   * anything the researcher did to this section: a roster stage's card details
-   * name columns of a data file, and a different file has different columns.
-   * Leaving them would put a stage half-describing the old file into the
-   * protocol, which the schema accepts and the interview renders as an empty
-   * card.
+   * When the value there changes, the capability is switched off and
+   * everything it owns is cleared — without asking, because the values did not
+   * become wrong through anything the researcher did to this section: a roster
+   * stage's card details name columns of a data file, and a different file has
+   * different columns. Leaving them would put a stage half-describing the old
+   * file into the protocol, which the schema accepts and the interview renders
+   * as an empty card.
    *
    * Switching the capability OFF as well as clearing it is what stops the
    * section standing open over a capability that now holds nothing: the switch
    * and the outline would both say it is configured, and the researcher would
    * have to close it themselves to find out it is not.
+   *
+   * A PATH rather than the value itself, because the clear cannot travel
+   * without it. The value at that path belongs to another section's ordinary
+   * field, which waits for the submit that flushes it — so a clear sent alone
+   * reaches a live-applying host as "these settings are gone" while the host
+   * still holds the file they described, which is a stage nobody authored. The
+   * path is what lets this section put the cause in the same batch as the
+   * clear; see `useDiscardStageValues`. Naming the path also means the value is
+   * read from the form rather than assembled by the caller, so there is no
+   * longer any way to hand this a new object on every render.
+   *
+   * The path a single FIELD owns, whatever shape its value is: a subject is
+   * `{entity, type}` and one control writes it whole. Not the container above
+   * a group of fields — the form assembles one of those out of whichever of
+   * them have registered so far, so its value moves as the section mounts and
+   * the reset would fire on a stage nobody has touched.
    */
-  resetOn?: unknown;
+  resetOn?: string;
   children: ReactNode;
 }>;
 
@@ -207,26 +224,32 @@ export default function BuilderSection({
 
   // Only on a CHANGE, and a change of VALUE. The first render is a stage being
   // opened on what it was saved with, and resetting there would empty a
-  // section the researcher has not touched. Compared structurally for the same
-  // reason: what a section resets on is usually an object — a subject, a chosen
-  // resource — and a caller that builds it inline hands a new one on every
-  // render, so comparing references would empty the section on any re-render
-  // at all.
+  // section the researcher has not touched. Compared structurally because what
+  // a section resets on is often an object — a subject, a chosen resource —
+  // and the store hands back whatever it holds there.
+  //
+  // The clear carries the value that caused it, so the session — and any host
+  // applying its batches live — never receives one without the other. See
+  // `resetOn` and `useDiscardStageValues`.
   //
   // The panel is remounted rather than closed, because its open state is its
   // own: a caller can seed it through `defaultOpen` but has no way to close it.
   // By the time the new key renders, the clear above has already made
   // `defaultOpen` false.
+  const resetValue = useStageValue(resetOn);
   const [resetGeneration, setResetGeneration] = useState(0);
-  const previousResetOn = useRef(resetOn);
+  const previousResetValue = useRef(resetValue);
   useEffect(() => {
-    const before = previousResetOn.current;
-    previousResetOn.current = resetOn;
-    if (isEqual(before, resetOn)) return;
-    discardStageValues(capability?.fields ?? NO_FIELDS);
+    const before = previousResetValue.current;
+    previousResetValue.current = resetValue;
+    if (resetOn === undefined || isEqual(before, resetValue)) return;
+    discardStageValues(capability?.fields ?? NO_FIELDS, {
+      path: resetOn,
+      value: resetValue,
+    });
     setSwitchedOn(false);
     setResetGeneration((generation) => generation + 1);
-  }, [capability, discardStageValues, resetOn]);
+  }, [capability, discardStageValues, resetOn, resetValue]);
 
   const body = (
     <SectionScopeContext value={sectionId}>{children}</SectionScopeContext>

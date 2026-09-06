@@ -143,8 +143,20 @@ const completeRows =
  *
  * A factory because the rule has to know the columns, and — where a column
  * holds references — which of those references have gone stale. Memoize the
- * result on both: it is a field prop, and a fresh identity per render is
- * churn that re-registers the rules mid-submit.
+ * result on both, so a field prop stops changing while nothing about the rules
+ * has.
+ *
+ * Not because a fresh identity would re-register the rule, which it would not:
+ * `useField` keys the registered validation on a `JSON.stringify` of the
+ * validation props, and `JSON.stringify` drops a function-valued property
+ * entirely — so a `custom` whose `schema` is a function serialises to exactly
+ * the key it had before, whatever this factory returns. What keeps the rule
+ * current is the other half of that: the registered function reads the props
+ * when validation RUNS, through a ref (see `useField`'s `validationPropsRef`).
+ * A rule rebuilt to judge against something that has changed — the orphans a
+ * `DanglingCells` names, the picks a cross-class gate escapes on — is
+ * therefore live without ever re-registering the field, which is what would
+ * delete its stored errors mid-edit.
  */
 export const makeMultiSelectValidation = (
   properties: PropertyField[],

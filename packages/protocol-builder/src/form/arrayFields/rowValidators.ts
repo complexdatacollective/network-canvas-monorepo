@@ -88,6 +88,22 @@ export const uniqueRowAttribute =
   };
 
 /**
+ * What a researcher is told about a name the NMTOKEN rule will not take.
+ *
+ * One sentence, said in one place, because the rule is enforced in several: a
+ * row cell judges it as it is typed, an entity editor judges a type's name,
+ * the request builder judges an option's value, and a stage section inventing
+ * an attribute is answering for a refusal the codebook schema raised. All four
+ * are the same rule and the same thing to do about it, so a researcher who
+ * meets it twice meets the same words.
+ *
+ * `subject` names what was being typed — 'attribute name', 'node type name',
+ * 'option value' — because that is the only part that differs.
+ */
+export const allowedNameMessage = (subject: string): string =>
+  `Not a valid ${subject}. Only letters, numbers and the symbols ._-: are supported`;
+
+/**
  * Variables and option values become XML element names and CSV column
  * headers, so they must respect NMTOKEN rules.
  */
@@ -103,7 +119,7 @@ export const allowedVariableNameRow =
         : '';
     return /^[a-zA-Z0-9._\-:]+$/.test(text)
       ? undefined
-      : `Not a valid ${subject}. Only letters, numbers and the symbols ._-: are supported`;
+      : allowedNameMessage(subject);
   };
 
 /**

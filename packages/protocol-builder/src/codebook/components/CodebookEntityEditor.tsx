@@ -28,6 +28,7 @@ import {
 } from '@codaco/shared-consts';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
+import { allowedNameMessage } from '../../form/arrayFields/rowValidators.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import type { CompoundEditRequest, CompoundEditResult } from '../../session.ts';
 import { compoundFailureMessage } from '../compoundFailureCopy.ts';
@@ -101,7 +102,7 @@ const validateFields = (
   const name = stringValue(draft.name);
   if (name.trim() === '') errors.name = 'Enter a type name.';
   else if (!VariableNameSchema.safeParse(name).success) {
-    errors.name = `Not a valid ${entityLabel(subject)} name. Only letters, numbers and the symbols ._-: are supported`;
+    errors.name = allowedNameMessage(`${entityLabel(subject)} name`);
   } else if (
     existingEntityNames.some(
       (existingName) =>
