@@ -15,6 +15,7 @@ import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import { protocolContextFromSections } from '../../protocol-context.ts';
 import { FIXTURE_SESSION_OWNER } from '../../testing/fixtureSession.ts';
+import { fixtureMessage } from '../../testing/i18n.ts';
 import { loadFixtureStage } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import type { SectionCapability } from '../BuilderSection.tsx';
@@ -1088,10 +1089,11 @@ const familyMemberForm = (
 const FAMILY_MEMBER_FORM: SectionCapability = {
   fields: ['nodeConfig.form'],
   confirmClear: {
-    title: 'Ask nothing about each family member?',
-    description:
+    title: fixtureMessage('Ask nothing about each family member?'),
+    description: fixtureMessage(
       'The questions this pedigree asks about each family member will be forgotten.',
-    confirmLabel: 'Ask nothing',
+    ),
+    confirmLabel: fixtureMessage('Ask nothing'),
   },
 };
 

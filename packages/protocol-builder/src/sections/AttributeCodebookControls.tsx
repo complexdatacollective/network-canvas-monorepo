@@ -7,6 +7,9 @@ import {
 } from 'react';
 import { v4 as uuid } from 'uuid';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
@@ -25,29 +28,45 @@ import { isCollectableType } from './collectableTypes.ts';
 /** Where every row that binds an attribute keeps the attribute it binds. */
 const VARIABLE_FIELD = 'variable';
 
-const CREATE_WITH_VALUES = 'Create this attribute and its values';
-const EDIT_VALUES = 'Change this attribute’s values';
-/**
- * The same surface for a boolean, whose list is two answers rather than a list
- * the researcher adds to.
- *
- * Named for what is actually being changed: a boolean's two values are true
- * and false whatever the researcher does, and what they author is the words on
- * them — so "values" would name the one part of it they cannot touch.
- */
-const EDIT_ANSWER_LABELS = 'Change this attribute’s answer labels';
-/**
- * The same surface, for an attribute whose answer is not chosen from a list.
- *
- * A date field accepts dates between two bounds, at one of three precisions; a
- * scale accepts a position between two ends the researcher names. Neither is a
- * list of values, and both are the same question asked of a different kind of
- * attribute — so it is one control, named for what the researcher is looking
- * at. They cannot both apply: an attribute is either a list of answers or it
- * takes settings, never both.
- */
-const EDIT_PARAMETERS = 'Set what this field accepts';
-const EDIT_RULES = 'Set rules for this answer';
+const messages = defineMessages({
+  createWithValues: {
+    id: 'protocolBuilder.attributeCodebookControls.createWithValues',
+    defaultMessage: 'Create this attribute and its values',
+    description:
+      'Button that opens the codebook editor for inventing an attribute whose answers are chosen from a list, together with that list. Also the title of the dialog it opens. An attribute is one thing an interview records about a network member.',
+  },
+  editValues: {
+    id: 'protocolBuilder.attributeCodebookControls.editValues',
+    defaultMessage: 'Change this attribute’s values',
+    description:
+      'Button that opens the codebook editor for the list of answers a participant chooses between. Also the title of the dialog it opens.',
+  },
+  editAnswerLabels: {
+    id: 'protocolBuilder.attributeCodebookControls.editAnswerLabels',
+    defaultMessage: 'Change this attribute’s answer labels',
+    description:
+      'The same button for a yes/no attribute, whose two stored values are fixed and whose WORDS are what a researcher writes — so this says labels rather than values. Also the title of the dialog it opens.',
+  },
+  editParameters: {
+    id: 'protocolBuilder.attributeCodebookControls.editParameters',
+    defaultMessage: 'Set what this field accepts',
+    description:
+      'The same button for an attribute whose answer is not chosen from a list — a date between two bounds, a position on a scale. Also the title of the dialog it opens.',
+  },
+  editRules: {
+    id: 'protocolBuilder.attributeCodebookControls.editRules',
+    defaultMessage: 'Set rules for this answer',
+    description:
+      'Button that opens the codebook editor for the rules a participant’s answer has to satisfy. Also the title of the dialog it opens.',
+  },
+  createNeedsValues: {
+    id: 'protocolBuilder.attributeCodebookControls.createNeedsValues',
+    defaultMessage:
+      'An attribute participants choose an answer from needs at least two values, so it is created together with them.',
+    description:
+      'Shown above the buttons when the researcher is inventing an attribute whose answers come from a list, explaining why they are sent to the codebook editor rather than being asked for a name here.',
+  },
+});
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -163,6 +182,7 @@ export default function AttributeCodebookControls({
   inventingType,
   offerParameters = true,
 }: AttributeCodebookControlsProps) {
+  const intl = useAppIntl();
   const { controller, protocolContext, readOnly } = useStageEditorForm();
   const codebookDocument = useCodebookSectionDocument(subject);
   // The dialog's OWN store: the picker's choice is the row's, and the created
@@ -239,10 +259,10 @@ export default function AttributeCodebookControls({
   const canCreate =
     inventingType !== undefined && isCollectableType(inventingType);
   const definesLabel = canEditValues
-    ? EDIT_VALUES
+    ? messages.editValues
     : canEditAnswers
-      ? EDIT_ANSWER_LABELS
-      : EDIT_PARAMETERS;
+      ? messages.editAnswerLabels
+      : messages.editParameters;
 
   if (readOnly || subject === undefined || codebookDocument === null) {
     return null;
@@ -260,11 +280,18 @@ export default function AttributeCodebookControls({
   const close = () => {
     setEditing(null);
   };
-  const open = (surface: 'create' | 'defines' | 'rules', label: string) => {
+  const open = (
+    surface: 'create' | 'defines' | 'rules',
+    label: MessageDescriptor,
+  ) => {
     setEditing({
       openId: uuid(),
       surface,
-      label,
+      // Resolved as the dialog opens, and kept as the words rather than the
+      // descriptor: the editor takes a title and a description as strings, and
+      // reading the same descriptor twice would say the same thing in a longer
+      // way.
+      label: intl.formatMessage(label),
       variableId: surface === 'create' ? uuid() : chosen,
       component: pickedComponent,
     });
@@ -274,8 +301,7 @@ export default function AttributeCodebookControls({
     <>
       {canCreate && (
         <p className="mb-3 text-sm text-current/70">
-          An attribute participants choose an answer from needs at least two
-          values, so it is created together with them.
+          {intl.formatMessage(messages.createNeedsValues)}
         </p>
       )}
       <div className="mb-8 flex flex-wrap gap-3">
@@ -285,9 +311,9 @@ export default function AttributeCodebookControls({
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => open('create', CREATE_WITH_VALUES)}
+            onClick={() => open('create', messages.createWithValues)}
           >
-            {CREATE_WITH_VALUES}
+            {intl.formatMessage(messages.createWithValues)}
           </Button>
         )}
         {(canEditValues || canEditAnswers || canEditParameters) && (
@@ -298,7 +324,7 @@ export default function AttributeCodebookControls({
             size="sm"
             onClick={() => open('defines', definesLabel)}
           >
-            {definesLabel}
+            {intl.formatMessage(definesLabel)}
           </Button>
         )}
         {canEditRules && (
@@ -307,9 +333,9 @@ export default function AttributeCodebookControls({
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => open('rules', EDIT_RULES)}
+            onClick={() => open('rules', messages.editRules)}
           >
-            {EDIT_RULES}
+            {intl.formatMessage(messages.editRules)}
           </Button>
         )}
       </div>

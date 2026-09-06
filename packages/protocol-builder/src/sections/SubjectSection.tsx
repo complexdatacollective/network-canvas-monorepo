@@ -1,6 +1,9 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { v4 as uuid } from 'uuid';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 
@@ -12,46 +15,120 @@ import SubjectSelectField, {
 import ProtocolField from '../form/ProtocolField.tsx';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import BuilderSection from './BuilderSection.tsx';
-import NetworkFilterSection, {
-  type NetworkFilterCopy,
-} from './NetworkFilterSection.tsx';
+import NetworkFilterSection from './NetworkFilterSection.tsx';
 import { useResetStageOnSubjectChange } from './useResetStageOnSubjectChange.ts';
 
 /** What this stage works on. Ego stages have no type to pick, so no section. */
 export type SubjectEntity = EntitySubject['entity'];
 
-export type SubjectSectionCopy = Readonly<{
-  /** Names the section in the outline and to assistive technology. */
-  sectionTitle: string;
-  description: string;
-  fieldLabel: string;
-  fieldHint: string;
-  /** Visible text and accessible name of the create control. */
-  createLabel: string;
-  createDescription: string;
+const messages = defineMessages({
+  nodeTitle: {
+    id: 'protocolBuilder.subjectSection.nodeTitle',
+    defaultMessage: 'Node type',
+    description:
+      'Heading of the section where a researcher says which kind of network member this step of the interview is about. A node is one member of the network a participant describes.',
+  },
+  nodeDescription: {
+    id: 'protocolBuilder.subjectSection.nodeDescription',
+    defaultMessage: 'Choose the type of node this stage works with.',
+    description:
+      'Description of the node-type section. A stage is one step of an interview.',
+  },
+  nodeFieldLabel: {
+    id: 'protocolBuilder.subjectSection.nodeFieldLabel',
+    defaultMessage: 'Node type',
+    description:
+      'Label of the control choosing which kind of network member this step of the interview is about. The same words as the section heading, and translated once for each: the heading names the part of the stage, and this names the control.',
+  },
+  nodeFieldHint: {
+    id: 'protocolBuilder.subjectSection.nodeFieldHint',
+    defaultMessage:
+      'Every node this stage creates or shows will be of the type you choose here.',
+    description: 'Guidance under the node-type control.',
+  },
+  nodeCreateLabel: {
+    id: 'protocolBuilder.subjectSection.nodeCreateLabel',
+    defaultMessage: 'Create a new node type',
+    description:
+      'Button that opens an editor for inventing a kind of network member without leaving the stage being configured. Also the title of the dialog it opens.',
+  },
+  nodeCreateDescription: {
+    id: 'protocolBuilder.subjectSection.nodeCreateDescription',
+    defaultMessage: 'Create a node type and use it on this stage',
+    description:
+      'Description shown inside the dialog for inventing a kind of network member, and what the change is called in the record a host keeps of protocol edits.',
+  },
+  edgeTitle: {
+    id: 'protocolBuilder.subjectSection.edgeTitle',
+    defaultMessage: 'Edge type',
+    description:
+      'Heading of the section where a researcher says which kind of relationship this step of the interview is about. An edge is a connection between two members of the network.',
+  },
+  edgeDescription: {
+    id: 'protocolBuilder.subjectSection.edgeDescription',
+    defaultMessage: 'Choose the type of edge this stage works with.',
+    description:
+      'Description of the edge-type section. A stage is one step of an interview.',
+  },
+  edgeFieldLabel: {
+    id: 'protocolBuilder.subjectSection.edgeFieldLabel',
+    defaultMessage: 'Edge type',
+    description:
+      'Label of the control choosing which kind of relationship this step of the interview is about. The same words as the section heading, and translated once for each.',
+  },
+  edgeFieldHint: {
+    id: 'protocolBuilder.subjectSection.edgeFieldHint',
+    defaultMessage:
+      'Every edge this stage creates or shows will be of the type you choose here.',
+    description: 'Guidance under the edge-type control.',
+  },
+  edgeCreateLabel: {
+    id: 'protocolBuilder.subjectSection.edgeCreateLabel',
+    defaultMessage: 'Create a new edge type',
+    description:
+      'Button that opens an editor for inventing a kind of relationship without leaving the stage being configured. Also the title of the dialog it opens.',
+  },
+  edgeCreateDescription: {
+    id: 'protocolBuilder.subjectSection.edgeCreateDescription',
+    defaultMessage: 'Create an edge type and use it on this stage',
+    description:
+      'Description shown inside the dialog for inventing a kind of relationship, and what the change is called in the record a host keeps of protocol edits.',
+  },
+});
+
+/**
+ * The words each subject uses, whole per subject rather than a noun swapped
+ * into a shared frame: "a node" and "an edge" do not differ only in the noun
+ * in every language, and this is the one place a researcher is told what the
+ * stage is about.
+ */
+type SubjectWords = Readonly<{
+  title: MessageDescriptor;
+  description: MessageDescriptor;
+  fieldLabel: MessageDescriptor;
+  fieldHint: MessageDescriptor;
+  createLabel: MessageDescriptor;
+  createDescription: MessageDescriptor;
 }>;
 
-const DEFAULT_COPY: Readonly<Record<SubjectEntity, SubjectSectionCopy>> =
-  Object.freeze({
-    node: Object.freeze({
-      sectionTitle: 'Node type',
-      description: 'Choose the type of node this stage works with.',
-      fieldLabel: 'Node type',
-      fieldHint:
-        'Every node this stage creates or shows will be of the type you choose here.',
-      createLabel: 'Create a new node type',
-      createDescription: 'Create a node type and use it on this stage',
-    }),
-    edge: Object.freeze({
-      sectionTitle: 'Edge type',
-      description: 'Choose the type of edge this stage works with.',
-      fieldLabel: 'Edge type',
-      fieldHint:
-        'Every edge this stage creates or shows will be of the type you choose here.',
-      createLabel: 'Create a new edge type',
-      createDescription: 'Create an edge type and use it on this stage',
-    }),
-  });
+const WORDS: Readonly<Record<SubjectEntity, SubjectWords>> = Object.freeze({
+  node: Object.freeze({
+    title: messages.nodeTitle,
+    description: messages.nodeDescription,
+    fieldLabel: messages.nodeFieldLabel,
+    fieldHint: messages.nodeFieldHint,
+    createLabel: messages.nodeCreateLabel,
+    createDescription: messages.nodeCreateDescription,
+  }),
+  edge: Object.freeze({
+    title: messages.edgeTitle,
+    description: messages.edgeDescription,
+    fieldLabel: messages.edgeFieldLabel,
+    fieldHint: messages.edgeFieldHint,
+    createLabel: messages.edgeCreateLabel,
+    createDescription: messages.edgeCreateDescription,
+  }),
+});
 
 /**
  * A brand-new type the researcher only has to name.
@@ -83,8 +160,6 @@ export type SubjectSectionProps = Readonly<{
    * to be able to say so about it independently of whether a type is chosen.
    */
   filter?: boolean;
-  copy?: Partial<SubjectSectionCopy>;
-  filterCopy?: Partial<NetworkFilterCopy>;
 }>;
 
 /**
@@ -103,34 +178,28 @@ export type SubjectSectionProps = Readonly<{
 export default function SubjectSection({
   entity,
   filter = false,
-  copy,
-  filterCopy,
 }: SubjectSectionProps) {
-  const words = { ...DEFAULT_COPY[entity], ...copy };
+  const intl = useAppIntl();
+  const words = WORDS[entity];
   useResetStageOnSubjectChange();
 
   return (
     <>
       <BuilderSection
-        title={words.sectionTitle}
-        description={words.description}
+        title={intl.formatMessage(words.title)}
+        description={intl.formatMessage(words.description)}
       >
         <ProtocolField<typeof SubjectSelectField>
           name="subject"
           component={SubjectSelectField}
           entityType={entity}
-          label={words.fieldLabel}
-          hint={words.fieldHint}
+          label={intl.formatMessage(words.fieldLabel)}
+          hint={intl.formatMessage(words.fieldHint)}
           required
         />
-        <CreateSubjectType entity={entity} words={words} />
+        <CreateSubjectType entity={entity} words={words} intl={intl} />
       </BuilderSection>
-      {filter && (
-        <NetworkFilterSection
-          subject={entity}
-          {...(filterCopy === undefined ? {} : { copy: filterCopy })}
-        />
-      )}
+      {filter && <NetworkFilterSection subject={entity} />}
     </>
   );
 }
@@ -152,7 +221,12 @@ export default function SubjectSection({
 function CreateSubjectType({
   entity,
   words,
-}: Readonly<{ entity: SubjectEntity; words: SubjectSectionCopy }>) {
+  intl,
+}: Readonly<{
+  entity: SubjectEntity;
+  words: SubjectWords;
+  intl: IntlShape;
+}>) {
   const { controller, readOnly, storeApi } = useStageEditorForm();
   const codebook = controller.snapshot.protocolContext.codebook;
   const [session, setSession] = useState<{
@@ -199,12 +273,12 @@ function CreateSubjectType({
         size="sm"
         onClick={() => setSession({ key: uuid(), typeId: uuid() })}
       >
-        {words.createLabel}
+        {intl.formatMessage(words.createLabel)}
       </Button>
       {session !== null && (
         <Dialog
           open
-          title={words.createLabel}
+          title={intl.formatMessage(words.createLabel)}
           size="readable"
           closeDialog={() => setSession(null)}
           finalFocus={() => triggerRef.current}
@@ -213,7 +287,7 @@ function CreateSubjectType({
             mode="create"
             sessionKey={session.key}
             createRequestId={() => uuid()}
-            description={words.createDescription}
+            description={intl.formatMessage(words.createDescription)}
             subject={
               entity === 'node'
                 ? { entity: 'node', type: session.typeId }
