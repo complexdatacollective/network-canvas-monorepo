@@ -11,6 +11,7 @@ import MultiSelect from '../../form/arrayFields/MultiSelect.tsx';
 import ProtocolArrayField from '../../form/ProtocolArrayField.tsx';
 import ProtocolField from '../../form/ProtocolField.tsx';
 import { useStageValue } from '../../form/stageFormHooks.ts';
+import { fixtureMessage } from '../../testing/i18n.ts';
 import { loadFixtureStage } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import BuilderSection, { type SectionCapability } from '../BuilderSection.tsx';
@@ -18,9 +19,11 @@ import BuilderSection, { type SectionCapability } from '../BuilderSection.tsx';
 const SEARCH: SectionCapability = {
   fields: ['searchOptions'],
   confirmClear: {
-    title: 'Remove the search settings?',
-    description: 'The columns participants can search will be forgotten.',
-    confirmLabel: 'Remove them',
+    title: fixtureMessage('Remove the search settings?'),
+    description: fixtureMessage(
+      'The columns participants can search will be forgotten.',
+    ),
+    confirmLabel: fixtureMessage('Remove them'),
   },
 };
 
@@ -118,9 +121,11 @@ function SearchOptionsAgainstASubject() {
 const CARDS: SectionCapability = {
   fields: ['cardOptions'],
   confirmClear: {
-    title: 'This will clear the card details',
-    description: 'Every extra attribute the cards show will be removed.',
-    confirmLabel: 'Clear card details',
+    title: fixtureMessage('This will clear the card details'),
+    description: fixtureMessage(
+      'Every extra attribute the cards show will be removed.',
+    ),
+    confirmLabel: fixtureMessage('Clear card details'),
   },
 };
 

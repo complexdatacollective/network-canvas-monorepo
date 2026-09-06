@@ -21,6 +21,7 @@ import {
   type FinishRequest,
   ProtocolBuilderSessionStore,
 } from '../../../session.ts';
+import { fixtureMessage } from '../../../testing/i18n.ts';
 import ProtocolArrayField from '../../ProtocolArrayField.tsx';
 import ProtocolField from '../../ProtocolField.tsx';
 import StageEditorShell from '../../StageEditorShell.tsx';
@@ -99,7 +100,7 @@ function renderPromptList(
             addButtonLabel="Create new prompt"
             editorTitle="Edit prompt"
             addTitle="Add prompt"
-            itemLabel="prompt"
+            itemLabel={fixtureMessage('prompt')}
             previewComponent={PromptPreview}
             editorFieldsComponent={PromptFields}
             {...(extra?.onBeforeSave === undefined
@@ -311,7 +312,7 @@ function renderNestedPromptList(
             addButtonLabel="Create new prompt"
             editorTitle="Edit prompt"
             addTitle="Add prompt"
-            itemLabel="prompt"
+            itemLabel={fixtureMessage('prompt')}
             previewComponent={PromptPreview}
             editorFieldsComponent={PromptFields}
             sortable
@@ -672,7 +673,7 @@ function renderPromptListWithTags(session: ProtocolBuilderSessionStore) {
             addButtonLabel="Create new prompt"
             editorTitle="Edit prompt"
             addTitle="Add prompt"
-            itemLabel="prompt"
+            itemLabel={fixtureMessage('prompt')}
             previewComponent={PromptPreview}
             editorFieldsComponent={PromptFieldsWithTags}
           />

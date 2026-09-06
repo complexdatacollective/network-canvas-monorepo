@@ -12,6 +12,7 @@ import MultiSelect from '../../form/arrayFields/MultiSelect.tsx';
 import ProtocolArrayField from '../../form/ProtocolArrayField.tsx';
 import ProtocolField from '../../form/ProtocolField.tsx';
 import ResourcePickerControl from '../../resources/components/ResourcePickerControl.tsx';
+import { fixtureMessage } from '../../testing/i18n.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import BuilderSection, { type SectionCapability } from '../BuilderSection.tsx';
 
@@ -40,27 +41,33 @@ const STAGED_COLUMNS = 'city, name';
 const CARDS: SectionCapability = {
   fields: ['cardOptions'],
   confirmClear: {
-    title: 'This will clear the card details',
-    description: 'Every extra attribute the cards show will be removed.',
-    confirmLabel: 'Clear card details',
+    title: fixtureMessage('This will clear the card details'),
+    description: fixtureMessage(
+      'Every extra attribute the cards show will be removed.',
+    ),
+    confirmLabel: fixtureMessage('Clear card details'),
   },
 };
 
 const SORTING: SectionCapability = {
   fields: ['sortOptions'],
   confirmClear: {
-    title: 'This will clear your sorting',
-    description: 'The starting order and every sortable attribute will go.',
-    confirmLabel: 'Clear sorting',
+    title: fixtureMessage('This will clear your sorting'),
+    description: fixtureMessage(
+      'The starting order and every sortable attribute will go.',
+    ),
+    confirmLabel: fixtureMessage('Clear sorting'),
   },
 };
 
 const SEARCH: SectionCapability = {
   fields: ['searchOptions'],
   confirmClear: {
-    title: 'This will turn off roster search',
-    description: 'The attributes a search is matched against will go.',
-    confirmLabel: 'Turn off search',
+    title: fixtureMessage('This will turn off roster search'),
+    description: fixtureMessage(
+      'The attributes a search is matched against will go.',
+    ),
+    confirmLabel: fixtureMessage('Turn off search'),
   },
 };
 
@@ -71,9 +78,11 @@ const SEARCH: SectionCapability = {
 const PRESENTATION: SectionCapability = {
   fields: ['presentationOptions'],
   confirmClear: {
-    title: 'This will clear the presentation',
-    description: 'Everything about how the roster is presented will go.',
-    confirmLabel: 'Clear the presentation',
+    title: fixtureMessage('This will clear the presentation'),
+    description: fixtureMessage(
+      'Everything about how the roster is presented will go.',
+    ),
+    confirmLabel: fixtureMessage('Clear the presentation'),
   },
 };
 
@@ -85,9 +94,11 @@ const PRESENTATION: SectionCapability = {
 const LIMITS: SectionCapability = {
   fields: ['behaviours'],
   confirmClear: {
-    title: 'This will clear the nomination limits',
-    description: 'The fewest and most people the participant may name go.',
-    confirmLabel: 'Clear the limits',
+    title: fixtureMessage('This will clear the nomination limits'),
+    description: fixtureMessage(
+      'The fewest and most people the participant may name go.',
+    ),
+    confirmLabel: fixtureMessage('Clear the limits'),
   },
 };
 

@@ -1,5 +1,6 @@
 import { Component, type ReactNode } from 'react';
 
+import { createMessageError, defineMessage } from '@codaco/app-i18n/messages';
 import FormErrors from '@codaco/fresco-ui/form/FormErrors';
 
 /**
@@ -9,9 +10,21 @@ import FormErrors from '@codaco/fresco-ui/form/FormErrors';
  * own code, so nothing in their protocol caused this and nothing they type
  * will fix it. Naming that is what stops them hunting for a mistake they did
  * not make.
+ *
+ * Encoded rather than formatted, because a class component has no hook to read
+ * a formatter with — and it does not need one: `FormErrors` decodes what it is
+ * handed, so the sentence is resolved in the reader's language where it is
+ * rendered.
  */
-const EDITOR_FAILED =
-  'This editor could not be shown, so there is nothing to fill in here. Close it and try again. If it keeps happening, the problem is in this interface’s editor rather than in your protocol.';
+const editorFailedMessage = defineMessage({
+  id: 'protocolBuilder.arrayField.rowEditorFailed',
+  defaultMessage:
+    'This editor could not be shown, so there is nothing to fill in here. Close it and try again. If it keeps happening, the problem is in this interface’s editor rather than in your protocol.',
+  description:
+    'Shown in place of the fields of a row-editing dialog when the interface’s own editor code threw while rendering. Says the fault is in the software rather than in anything the researcher wrote, so they do not go looking for a mistake in their protocol.',
+});
+
+const EDITOR_FAILED = createMessageError(editorFailedMessage);
 
 type RowEditorBoundaryProps = Readonly<{ children: ReactNode }>;
 
