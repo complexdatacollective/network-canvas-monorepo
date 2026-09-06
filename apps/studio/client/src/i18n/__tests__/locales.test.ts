@@ -12,11 +12,9 @@ import {
 import { SITE_LOCALE_BY_APP_LOCALE, siteLocaleFor } from '../siteLocale.ts';
 
 /**
- * Three lists have to agree about which locales Studio has, and they live in
- * three packages: the client registry the switcher offers, the contract list
- * the server validates a stored preference against, and the ecosystem set the
- * shared packages ship catalogs for. Adding a locale means editing all three
- * in one pull request — these are what fail until that has happened.
+ * Client and server agree on Studio's supported locales. The ecosystem is a
+ * superset: another app can add a locale before Studio has translated its UI.
+ * These guards keep that addition from changing Studio's supported contract.
  */
 describe('the Studio locale registry', () => {
   it('offers exactly the locales the server will store', () => {
