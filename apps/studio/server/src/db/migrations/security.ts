@@ -112,11 +112,14 @@ export async function enforceMigrationSecurity(
       'Runtime and backup login memberships must grant only SET access to the reviewed Studio roles, without inheritance or administration; backup membership must be separate from runtime membership.',
     );
   }
-  const loginAccess = await client.query<{ safe: boolean }>(
+  const loginAccess = await client.query<{
+    safe: boolean;
+    evidence_safe: boolean;
+  }>(
     `WITH logins AS (
       SELECT oid FROM pg_roles WHERE rolname = ANY($1::text[])
     ), identities AS (
-      SELECT oid FROM pg_roles WHERE rolname = ANY($1::text[]) OR rolname = ANY($2::text[])
+      SELECT oid, rolname FROM pg_roles WHERE rolname = ANY($1::text[]) OR rolname = ANY($2::text[])
     ), namespaces AS (
       SELECT oid FROM pg_namespace WHERE nspname !~ '^pg_' AND nspname <> 'information_schema'
     ) SELECT NOT EXISTS (
@@ -135,6 +138,31 @@ export async function enforceMigrationSecurity(
           SELECT 1 FROM pg_proc routine WHERE routine.pronamespace IN (SELECT oid FROM namespaces)
             AND routine.prosecdef AND has_function_privilege(login.oid, routine.oid, 'EXECUTE')
         )
+        OR EXISTS (
+          SELECT 1 FROM pg_largeobject_metadata object WHERE
+            has_largeobject_privilege(login.oid, object.oid, 'UPDATE')
+            OR (login.rolname <> $3 AND has_largeobject_privilege(login.oid, object.oid, 'SELECT'))
+        )
+        OR EXISTS (
+          SELECT 1 FROM pg_class object WHERE object.relnamespace IN (SELECT oid FROM namespaces)
+            AND CASE WHEN object.relkind IN ('v', 'm', 'f') THEN (
+              has_table_privilege(login.oid, object.oid, 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,MAINTAIN')
+              OR has_any_column_privilege(login.oid, object.oid, 'INSERT,UPDATE,REFERENCES')
+              OR (login.rolname <> $3 AND (
+                has_table_privilege(login.oid, object.oid, 'SELECT')
+                OR has_any_column_privilege(login.oid, object.oid, 'SELECT')
+              ))
+            ) ELSE false END
+        )
+        OR (login.rolname = $3 AND EXISTS (
+          SELECT 1 FROM pg_class object WHERE object.relnamespace IN (SELECT oid FROM namespaces)
+            AND CASE WHEN object.relkind IN ('r', 'p') THEN (
+                has_table_privilege(login.oid, object.oid, 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,MAINTAIN')
+                OR has_any_column_privilege(login.oid, object.oid, 'INSERT,UPDATE,REFERENCES')
+              ) WHEN object.relkind = 'S'
+                THEN has_sequence_privilege(login.oid, object.oid, 'USAGE,UPDATE')
+              ELSE false END
+        ))
     ) AND NOT EXISTS (
       SELECT 1 FROM logins login WHERE EXISTS (
           SELECT 1 FROM pg_class object WHERE object.relnamespace IN (SELECT oid FROM namespaces)
@@ -149,12 +177,30 @@ export async function enforceMigrationSecurity(
               THEN has_sequence_privilege(login.oid, object.oid, 'SELECT,USAGE,UPDATE')
               ELSE false END
         )
-    ) AS safe`,
-    [restrictedLogins, [...Object.values(TENANT_ROLES), BACKUP_ROLE]],
+    ) AS safe, NOT EXISTS (
+      SELECT 1 FROM identities login CROSS JOIN pg_class object
+      WHERE object.oid IN (to_regclass($4), to_regclass($5))
+        AND CASE WHEN object.relkind IN ('r', 'p', 'v', 'm', 'f') THEN (
+          has_table_privilege(login.oid, object.oid, 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,MAINTAIN')
+          OR has_any_column_privilege(login.oid, object.oid, 'INSERT,UPDATE,REFERENCES')
+        ) ELSE false END
+    ) AS evidence_safe`,
+    [
+      restrictedLogins,
+      [...Object.values(TENANT_ROLES), BACKUP_ROLE],
+      BACKUP_ROLE,
+      'studio_migrations.history',
+      'public."schemaFingerprint"',
+    ],
   );
-  if (loginAccess.rows[0]?.safe !== true) {
+  if (loginAccess.rows[0]?.evidence_safe !== true) {
     throw new Error(
-      'Runtime and backup identities must own no database objects and hold no access outside their reviewed Studio roles: remove direct or PUBLIC login data grants, CREATE, CONNECT grant options, and executable SECURITY DEFINER routines.',
+      'Runtime and backup identities have access outside their reviewed Studio roles: existing migration evidence is writable and cannot be trusted. Restore a verified backup before migrating.',
+    );
+  }
+  if (!loginAccess.rows[0].safe) {
+    throw new Error(
+      'Runtime and backup identities must own no database objects and hold no access outside their reviewed Studio roles: remove direct or PUBLIC login data grants, CREATE, CONNECT grant options, executable SECURITY DEFINER routines, view, materialized view, foreign table, or large object access beyond read-only backup grants, and backup table or sequence writes.',
     );
   }
   // CONNECT is checked only at connection admission. Enrollment must already
@@ -219,4 +265,16 @@ export async function protectMigrationEvidence(
     REVOKE ALL ON studio_migrations.history FROM PUBLIC, studio_app, studio_maintenance;
     REVOKE ALL ON public."schemaFingerprint" FROM PUBLIC, studio_app, studio_maintenance;
     GRANT SELECT ON public."schemaFingerprint" TO studio_app, studio_maintenance`);
+  const backup = await client.query<{ present: boolean }>(
+    'SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = $1) AS present',
+    [BACKUP_ROLE],
+  );
+  if (backup.rows[0]?.present) {
+    // Backup provisioning owns read access. Remove writes and delegation,
+    // including column grants, without granting reads before its sidecar runs.
+    await client.query(`REVOKE CREATE ON SCHEMA studio_migrations FROM ${BACKUP_ROLE};
+      REVOKE GRANT OPTION FOR USAGE ON SCHEMA studio_migrations FROM ${BACKUP_ROLE};
+      REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER, MAINTAIN ON studio_migrations.history, public."schemaFingerprint" FROM ${BACKUP_ROLE};
+      REVOKE GRANT OPTION FOR SELECT ON studio_migrations.history, public."schemaFingerprint" FROM ${BACKUP_ROLE}`);
+  }
 }

@@ -21,11 +21,10 @@ try {
     SCHEMA_FINGERPRINT,
     allowedLogins,
   );
-  process.stdout.write(
-    completed.length
-      ? `Applied Studio migrations: ${completed.join(', ')}\n`
-      : 'Studio migrations already current.\n',
-  );
+  const message = completed.length
+    ? `Applied Studio migrations: ${completed.join(', ')}`
+    : 'Studio migrations already current.';
+  process.stdout.write(`${message}\n`);
 } finally {
   await pool.end();
 }

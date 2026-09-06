@@ -694,10 +694,17 @@ describe('schema problem message', () => {
     expect(scripts).toHaveProperty('migrate');
   });
 
-  it('explains an unstamped database differently', () => {
-    expect(schemaProblemMessage({ ...stale, reason: 'unstamped' })).toContain(
-      'no fingerprint',
+  it('directs an unstamped database to recovery without a migration retry', () => {
+    const message = schemaProblemMessage({ ...stale, reason: 'unstamped' });
+    expect(message).toContain('no fingerprint');
+    expect(message).toContain('Preserve the original database');
+    expect(message).toContain('restore a consistent backup');
+    expect(message).toContain('export using its original Studio build');
+    expect(message).toContain('new empty database');
+    expect(message).toContain(
+      'Only for a disposable local development database',
     );
+    expect(message).not.toContain('docker compose run --rm studio migrate');
   });
 
   it('explains an absent schema with both remedies', () => {

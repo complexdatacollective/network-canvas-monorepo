@@ -14,8 +14,9 @@ extension objects. Install optional database extensions in their own schema.
 The migration login normally owns the database and Studio's objects. A separate
 enrolled database owner is also supported when it grants the operator the
 ownership privileges needed to administer the schema. These are administrative
-identities; use separate, unprivileged runtime and backup logins. Both need permission to assume the existing
-`studio_app` and `studio_maintenance` runtime roles. An administrator can
+identities; use separate, unprivileged runtime and backup logins. The migration
+operator and runtime login need permission to assume the existing `studio_app`
+and `studio_maintenance` roles. The backup login may assume only `studio_backup`. An administrator can
 pre-create these roles; `CREATEROLE` is needed only when the migration operator
 creates them. On a shared cluster, have the administrator provision the roles
 and memberships for each deployment before migrating.
