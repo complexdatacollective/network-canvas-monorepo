@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { v4 as uuid } from 'uuid';
 
 import type { VariableType } from '@codaco/protocol-validation';
@@ -218,6 +218,28 @@ export function useSetVariableComponent(
       };
     },
     [controller, protocolContext, subject],
+  );
+}
+
+/**
+ * The authoritative section document a subject's attributes live in, for a
+ * section that hands it to one of the codebook's own editors.
+ *
+ * Those editors reconcile a draft against the document they were given, so a
+ * fresh object on every render would have them reconcile against a change
+ * nobody made and warn that the codebook moved. Memoised on the definition the
+ * protocol context holds, so it changes exactly when the codebook does.
+ */
+export function useCodebookSectionDocument(
+  subject: CodebookSubject | undefined,
+): SectionDoc | null {
+  const { protocolContext } = useStageEditorForm();
+  return useMemo(
+    () =>
+      subject === undefined
+        ? null
+        : (codebookDocument(protocolContext, subject) ?? null),
+    [protocolContext, subject],
   );
 }
 

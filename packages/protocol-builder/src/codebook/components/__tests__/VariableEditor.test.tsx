@@ -1145,3 +1145,383 @@ describe('VariableEditor', () => {
     expect(screen.queryByRole('group', { name: /allowed values/i })).toBeNull();
   });
 });
+
+/**
+ * The settings an input control takes, which are the researcher's to author.
+ *
+ * A date field with no bounds asks the participant for any date in history; a
+ * scale with no end labels is a line with nothing at either end of it. Both
+ * belong to the codebook variable rather than to the field that renders it —
+ * one attribute is collected the same way wherever it is asked for — and until
+ * now nothing in this package could write them at all: `parameters` was
+ * preserved through every save and rendered by nothing.
+ */
+describe('the settings the chosen input control takes', () => {
+  const parameterProps = (
+    variable: Readonly<Record<string, unknown>>,
+    onSubmitRequest: VariableEditorProps['onSubmitRequest'],
+  ): Extract<VariableEditorProps, { mode: 'update' }> => ({
+    openId: 'parameters-open',
+    mode: 'update',
+    subject: SUBJECT,
+    authoritativeDocument: personDocument({ subject: variable }),
+    variableId: 'subject',
+    initialDraft: variable,
+    description: 'Update the attribute',
+    createRequestId: () => 'request-parameters',
+    onSubmitRequest,
+    onComplete: () => undefined,
+  });
+
+  const savedVariable = (
+    onSubmitRequest: ReturnType<typeof vi.fn>,
+  ): Record<string, unknown> => {
+    const request = onSubmitRequest.mock.calls[0]?.[0] as
+      | CompoundEditRequest
+      | undefined;
+    if (request === undefined) throw new Error('nothing was submitted');
+    const variable = submittedVariables(request).subject;
+    if (!isRecord(variable)) throw new Error('the attribute was not submitted');
+    return variable;
+  };
+
+  it('saves the resolution and the bounds a date attribute accepts', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const variable = { name: 'met', type: 'datetime', component: 'DatePicker' };
+    render(<VariableEditor {...parameterProps(variable, onSubmitRequest)} />);
+
+    // The resolution the interview assumes when the protocol declares none, so
+    // the control opens showing what will happen rather than showing nothing.
+    expect(
+      screen.getByRole('combobox', { name: 'Date resolution' }),
+    ).toHaveValue('full');
+    fireEvent.change(screen.getByLabelText('Earliest date'), {
+      target: { value: '2020-01-01' },
+    });
+    fireEvent.change(screen.getByLabelText('Latest date'), {
+      target: { value: '2024-12-31' },
+    });
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitRequest)).toEqual({
+      name: 'met',
+      type: 'datetime',
+      component: 'DatePicker',
+      parameters: { type: 'full', min: '2020-01-01', max: '2024-12-31' },
+    });
+  });
+
+  it('saves the window a relative date attribute offers around its anchor', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const variable = {
+      name: 'met',
+      type: 'datetime',
+      component: 'RelativeDatePicker',
+    };
+    render(<VariableEditor {...parameterProps(variable, onSubmitRequest)} />);
+
+    await user.type(screen.getByLabelText('Days before'), '30');
+    await user.type(screen.getByLabelText('Days after'), '7');
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    // Numbers, not the strings a number input reports: the schema takes
+    // integers, and `"30"` would be refused after the dialog had closed.
+    expect(savedVariable(onSubmitRequest).parameters).toEqual({
+      before: 30,
+      after: 7,
+    });
+  });
+
+  it('saves the labels a scale shows at each end', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const variable = {
+      name: 'closeness',
+      type: 'scalar',
+      component: 'VisualAnalogScale',
+    };
+    render(<VariableEditor {...parameterProps(variable, onSubmitRequest)} />);
+
+    await user.type(
+      screen.getByRole('textbox', { name: 'Minimum label' }),
+      'Not at all close',
+    );
+    await user.type(
+      screen.getByRole('textbox', { name: 'Maximum label' }),
+      'Extremely close',
+    );
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitRequest).parameters).toEqual({
+      minLabel: 'Not at all close',
+      maxLabel: 'Extremely close',
+    });
+  });
+
+  /**
+   * A label of nothing but spaces is the case the control's own `required`
+   * calls answered and a participant would not: the scale is shown with an
+   * empty end, and nothing is read out at it.
+   */
+  it('refuses a scale whose ends are named with nothing but spaces', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const variable = {
+      name: 'closeness',
+      type: 'scalar',
+      component: 'VisualAnalogScale',
+    };
+    render(<VariableEditor {...parameterProps(variable, onSubmitRequest)} />);
+
+    await user.type(
+      screen.getByRole('textbox', { name: 'Minimum label' }),
+      'Not at all close',
+    );
+    await user.type(
+      screen.getByRole('textbox', { name: 'Maximum label' }),
+      '   ',
+    );
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    expect(
+      await screen.findByText('Write what the high end of the scale means.'),
+    ).toBeVisible();
+    expect(onSubmitRequest).not.toHaveBeenCalled();
+  });
+
+  /**
+   * The schema's own refusal, reached before a request is built.
+   *
+   * The request builder catches this too, but by throwing — which the draft
+   * session records as a failed submission, so the researcher is handed a
+   * second, generic "attribute not saved" alert telling them to wait a moment
+   * and try again. Nothing about a reversed range gets better by waiting. So
+   * the same schema runs here first, and the only thing said is the thing
+   * they can act on.
+   */
+  it('refuses a date range that ends before it starts, against the date that ends it', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const variable = { name: 'met', type: 'datetime', component: 'DatePicker' };
+    render(<VariableEditor {...parameterProps(variable, onSubmitRequest)} />);
+
+    fireEvent.change(screen.getByLabelText('Earliest date'), {
+      target: { value: '2024-01-01' },
+    });
+    fireEvent.change(screen.getByLabelText('Latest date'), {
+      target: { value: '2020-01-01' },
+    });
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    expect(
+      await screen.findByText('DatePicker "min" must not be after "max"'),
+    ).toBeVisible();
+    expect(onSubmitRequest).not.toHaveBeenCalled();
+    expect(screen.queryByText('Attribute not saved')).toBeNull();
+  });
+
+  /**
+   * A control change makes the old control's settings meaningless rather than
+   * portable — the schema splits datetime into two strict variable schemas
+   * keyed on `component`, so a `min` written beside `RelativeDatePicker` is a
+   * variable it refuses outright.
+   *
+   * The host opens this editor on the control the researcher has just chosen,
+   * which is not yet the one the codebook records. So the pair has to be
+   * written together, and the settings of the control being left behind have
+   * to go.
+   */
+  it('swaps the fields and drops the old settings when the control changes', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const committed = {
+      name: 'met',
+      type: 'datetime',
+      component: 'DatePicker',
+      parameters: { type: 'full', min: '2020-01-01' },
+    };
+    render(
+      <VariableEditor
+        {...parameterProps(committed, onSubmitRequest)}
+        initialDraft={{ ...committed, component: 'RelativeDatePicker' }}
+      />,
+    );
+
+    expect(
+      screen.queryByRole('combobox', { name: 'Date resolution' }),
+    ).toBeNull();
+    expect(screen.queryByLabelText('Earliest date')).toBeNull();
+    await user.type(screen.getByLabelText('Days before'), '30');
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitRequest)).toEqual({
+      name: 'met',
+      type: 'datetime',
+      component: 'RelativeDatePicker',
+      parameters: { before: 30 },
+    });
+  });
+
+  it('clears the bounds when the resolution they were chosen under changes', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const committed = {
+      name: 'met',
+      type: 'datetime',
+      component: 'DatePicker',
+      parameters: { type: 'full', min: '2020-01-01', max: '2024-12-31' },
+    };
+    render(<VariableEditor {...parameterProps(committed, onSubmitRequest)} />);
+
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Date resolution' }),
+      'year',
+    );
+
+    // A full date is not a year, and re-deriving one would quietly widen a
+    // window the researcher chose. So they go — and are said to have gone.
+    expect(
+      await screen.findByText(
+        'The earliest and latest dates were cleared, because they were set at the previous resolution. Set them again if you still need them.',
+      ),
+    ).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitRequest).parameters).toEqual({
+      type: 'year',
+    });
+  });
+
+  /**
+   * Clearing every setting is an answer: the attribute accepts whatever its
+   * control accepts by default.
+   *
+   * The request builder lays the draft OVER the variable the codebook holds,
+   * so a `parameters` key the draft no longer carries survives unless this
+   * editor says it is replacing the block — and the researcher who emptied
+   * the field would find the old window still there.
+   */
+  it('removes the settings block when every setting is cleared', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const committed = {
+      name: 'met',
+      type: 'datetime',
+      component: 'RelativeDatePicker',
+      parameters: { before: 30 },
+    };
+    render(<VariableEditor {...parameterProps(committed, onSubmitRequest)} />);
+
+    await user.clear(screen.getByLabelText('Days before'));
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    const saved = savedVariable(onSubmitRequest);
+    expect(Object.hasOwn(saved, 'parameters')).toBe(false);
+    expect(saved).toEqual({
+      name: 'met',
+      type: 'datetime',
+      component: 'RelativeDatePicker',
+    });
+  });
+
+  it('creates an attribute together with the settings its control takes', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    render(
+      <VariableEditor
+        {...createProps({
+          variableId: 'closeness',
+          initialDraft: {
+            name: '',
+            type: 'scalar',
+            component: 'VisualAnalogScale',
+          },
+          onSubmitRequest,
+        })}
+      />,
+    );
+
+    await user.type(
+      screen.getByRole('textbox', { name: /attribute name/i }),
+      'closeness',
+    );
+    await user.type(
+      screen.getByRole('textbox', { name: 'Minimum label' }),
+      'Not at all close',
+    );
+    await user.type(
+      screen.getByRole('textbox', { name: 'Maximum label' }),
+      'Extremely close',
+    );
+    await user.click(screen.getByRole('button', { name: 'Create attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    const request = onSubmitRequest.mock.calls[0]?.[0] as CompoundEditRequest;
+    expect(submittedVariables(request).closeness).toEqual({
+      name: 'closeness',
+      type: 'scalar',
+      component: 'VisualAnalogScale',
+      parameters: {
+        minLabel: 'Not at all close',
+        maxLabel: 'Extremely close',
+      },
+    });
+  });
+
+  it('leaves an attribute whose control takes no settings alone', async () => {
+    const user = userEvent.setup();
+    const onSubmitRequest = vi.fn(
+      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
+    );
+    const variable = {
+      name: 'comment',
+      type: 'text',
+      component: 'Text',
+      validation: { required: true },
+    };
+    render(<VariableEditor {...parameterProps(variable, onSubmitRequest)} />);
+
+    expect(screen.queryByText('What this control accepts')).toBeNull();
+    const name = screen.getByRole('textbox', { name: /attribute name/i });
+    await user.clear(name);
+    await user.type(name, 'note');
+    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
+
+    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    // The control and the rules are still preserved rather than replaced: this
+    // editor writes `component` only where it writes the settings that depend
+    // on it.
+    expect(savedVariable(onSubmitRequest)).toEqual({
+      name: 'note',
+      type: 'text',
+      component: 'Text',
+      validation: { required: true },
+    });
+  });
+});

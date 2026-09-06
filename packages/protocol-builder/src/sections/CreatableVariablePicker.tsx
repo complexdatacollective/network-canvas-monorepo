@@ -19,8 +19,14 @@ export type CreatableVariablePickerProps = VariablePickerProps &
      * a decision the researcher has not been asked to make. What TYPE gets
      * created is the caller's — the row knows what it is going to do with the
      * attribute, and the researcher is only ever asked for a name.
+     *
+     * Answers with whether the attribute now exists. A codebook write can be
+     * refused — a name it cannot store, a section someone else is holding —
+     * and the refusal arrives after the researcher has let go of the button,
+     * so the control has to wait for it before deciding what to do with the
+     * name they typed.
      */
-    onCreateOption?: (variableName: string) => void;
+    onCreateOption?: (variableName: string) => Promise<boolean>;
   }>;
 
 /**
@@ -37,17 +43,30 @@ export type CreatableVariablePickerProps = VariablePickerProps &
  * something to be made. It is deliberately not a form field of anything — what
  * the researcher types here is the attribute's name, and what the surrounding
  * field stores is the id the codebook hands back.
+ *
+ * The name stays until the attribute exists. Emptying the box on the click
+ * emptied it ahead of the answer, so a refusal — which is ABOUT the name they
+ * typed — arrived with the name gone and nothing to correct. Mirrors quick
+ * add's own create (`QuickAddSection`), which is the same act on the stage.
  */
 export function CreatableVariablePickerControl({
   onCreateOption,
   ...pickerProps
 }: CreatableVariablePickerProps) {
   const [name, setName] = useState('');
+  const [busy, setBusy] = useState(false);
   const { disabled = false, readOnly = false } = pickerProps;
 
   if (onCreateOption === undefined) {
     return <VariablePickerControl {...pickerProps} />;
   }
+
+  const create = async () => {
+    setBusy(true);
+    const created = await onCreateOption(name.trim());
+    setBusy(false);
+    if (created) setName('');
+  };
 
   return (
     <div className="flex w-full flex-col gap-3">
@@ -68,11 +87,8 @@ export function CreatableVariablePickerControl({
         // Never a submit: this control lives inside a form whose submit means
         // something else entirely, on both the stage and a row dialog.
         type="button"
-        disabled={disabled || readOnly || name.trim() === ''}
-        onClick={() => {
-          onCreateOption(name.trim());
-          setName('');
-        }}
+        disabled={disabled || readOnly || busy || name.trim() === ''}
+        onClick={() => void create()}
       >
         Create the attribute
       </Button>
