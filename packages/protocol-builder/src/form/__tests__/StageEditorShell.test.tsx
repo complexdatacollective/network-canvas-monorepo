@@ -24,6 +24,7 @@ import {
   ProtocolBuilderSessionStore,
   SessionReadOnlyError,
 } from '../../session.ts';
+import { fixtureMessage } from '../../testing/i18n.ts';
 import ProtocolField from '../ProtocolField.tsx';
 import StageEditorShell from '../StageEditorShell.tsx';
 
@@ -91,9 +92,11 @@ function Editor({
         capability={{
           fields: ['interviewScript'],
           confirmClear: {
-            title: 'This will clear your interview script',
-            description: 'The text you entered will be deleted.',
-            confirmLabel: 'Clear script',
+            title: fixtureMessage('This will clear your interview script'),
+            description: fixtureMessage(
+              'The text you entered will be deleted.',
+            ),
+            confirmLabel: fixtureMessage('Clear script'),
           },
         }}
       >
@@ -165,9 +168,11 @@ function CapabilityEditor({
         capability={{
           fields: ['interviewScript', 'interviewScriptStyle'],
           confirmClear: {
-            title: 'This will clear your interview script',
-            description: 'The text you entered will be deleted.',
-            confirmLabel: 'Clear script',
+            title: fixtureMessage('This will clear your interview script'),
+            description: fixtureMessage(
+              'The text you entered will be deleted.',
+            ),
+            confirmLabel: fixtureMessage('Clear script'),
           },
         }}
       >
@@ -757,9 +762,11 @@ describe('StageEditorShell', () => {
             capability={{
               fields: ['skipLogic'],
               confirmClear: {
-                title: 'This will clear your skip logic',
-                description: 'The rules you created will be deleted.',
-                confirmLabel: 'Clear skip logic',
+                title: fixtureMessage('This will clear your skip logic'),
+                description: fixtureMessage(
+                  'The rules you created will be deleted.',
+                ),
+                confirmLabel: fixtureMessage('Clear skip logic'),
               },
             }}
           >
@@ -818,9 +825,11 @@ describe('StageEditorShell', () => {
             capability={{
               fields: ['skipLogic'],
               confirmClear: {
-                title: 'This will clear your skip logic',
-                description: 'The rules you created will be deleted.',
-                confirmLabel: 'Clear skip logic',
+                title: fixtureMessage('This will clear your skip logic'),
+                description: fixtureMessage(
+                  'The rules you created will be deleted.',
+                ),
+                confirmLabel: fixtureMessage('Clear skip logic'),
               },
             }}
           >
@@ -890,9 +899,11 @@ describe('StageEditorShell', () => {
             capability={{
               fields: ['skipLogic'],
               confirmClear: {
-                title: 'This will clear your skip logic',
-                description: 'The rules you created will be deleted.',
-                confirmLabel: 'Clear skip logic',
+                title: fixtureMessage('This will clear your skip logic'),
+                description: fixtureMessage(
+                  'The rules you created will be deleted.',
+                ),
+                confirmLabel: fixtureMessage('Clear skip logic'),
               },
             }}
           >
@@ -1019,9 +1030,11 @@ describe('StageEditorShell', () => {
             capability={{
               fields: ['skipLogic'],
               confirmClear: {
-                title: 'This will clear your skip logic',
-                description: 'The rules you created will be deleted.',
-                confirmLabel: 'Clear skip logic',
+                title: fixtureMessage('This will clear your skip logic'),
+                description: fixtureMessage(
+                  'The rules you created will be deleted.',
+                ),
+                confirmLabel: fixtureMessage('Clear skip logic'),
               },
             }}
           >
@@ -1094,9 +1107,11 @@ describe('StageEditorShell', () => {
             capability={{
               fields: ['settings.enabled'],
               confirmClear: {
-                title: 'This will clear your advanced settings',
-                description: 'The settings you chose will be deleted.',
-                confirmLabel: 'Clear settings',
+                title: fixtureMessage('This will clear your advanced settings'),
+                description: fixtureMessage(
+                  'The settings you chose will be deleted.',
+                ),
+                confirmLabel: fixtureMessage('Clear settings'),
               },
             }}
           >
@@ -1161,9 +1176,11 @@ describe('StageEditorShell', () => {
             capability={{
               fields: ['settings.enabled'],
               confirmClear: {
-                title: 'This will clear your advanced settings',
-                description: 'The settings you chose will be deleted.',
-                confirmLabel: 'Clear settings',
+                title: fixtureMessage('This will clear your advanced settings'),
+                description: fixtureMessage(
+                  'The settings you chose will be deleted.',
+                ),
+                confirmLabel: fixtureMessage('Clear settings'),
               },
             }}
           >
@@ -1229,9 +1246,11 @@ describe('StageEditorShell', () => {
               // name containing a space, not a route through anything.
               fields: ['["prompt text"]'],
               confirmClear: {
-                title: 'This will clear your prompt override',
-                description: 'The text you entered will be deleted.',
-                confirmLabel: 'Clear override',
+                title: fixtureMessage('This will clear your prompt override'),
+                description: fixtureMessage(
+                  'The text you entered will be deleted.',
+                ),
+                confirmLabel: fixtureMessage('Clear override'),
               },
             }}
           >
@@ -1346,9 +1365,11 @@ describe('StageEditorShell', () => {
             capability={{
               fields: ['settings.enabled'],
               confirmClear: {
-                title: 'This will clear your advanced settings',
-                description: 'The settings you chose will be deleted.',
-                confirmLabel: 'Clear settings',
+                title: fixtureMessage('This will clear your advanced settings'),
+                description: fixtureMessage(
+                  'The settings you chose will be deleted.',
+                ),
+                confirmLabel: fixtureMessage('Clear settings'),
               },
             }}
           >
@@ -1476,9 +1497,11 @@ describe('StageEditorShell', () => {
             capability={{
               fields: ['items[0].optionalSetting'],
               confirmClear: {
-                title: 'This will clear the setting',
-                description: 'The value you entered will be deleted.',
-                confirmLabel: 'Clear setting',
+                title: fixtureMessage('This will clear the setting'),
+                description: fixtureMessage(
+                  'The value you entered will be deleted.',
+                ),
+                confirmLabel: fixtureMessage('Clear setting'),
               },
             }}
           >
@@ -1607,9 +1630,11 @@ describe('StageEditorShell', () => {
             capability={{
               fields: ['settings.enabled'],
               confirmClear: {
-                title: 'This will clear your advanced settings',
-                description: 'The settings you chose will be deleted.',
-                confirmLabel: 'Clear settings',
+                title: fixtureMessage('This will clear your advanced settings'),
+                description: fixtureMessage(
+                  'The settings you chose will be deleted.',
+                ),
+                confirmLabel: fixtureMessage('Clear settings'),
               },
             }}
           >
@@ -1671,9 +1696,11 @@ describe('StageEditorShell', () => {
             capability={{
               fields: ['interviewScript'],
               confirmClear: {
-                title: 'This will clear your interview script',
-                description: 'The text you entered will be deleted.',
-                confirmLabel: 'Clear script',
+                title: fixtureMessage('This will clear your interview script'),
+                description: fixtureMessage(
+                  'The text you entered will be deleted.',
+                ),
+                confirmLabel: fixtureMessage('Clear script'),
               },
             }}
           >
@@ -1792,9 +1819,11 @@ describe('StageEditorShell', () => {
             capability={{
               fields: ['interviewScript'],
               confirmClear: {
-                title: 'This will clear your interview script',
-                description: 'The text you entered will be deleted.',
-                confirmLabel: 'Clear script',
+                title: fixtureMessage('This will clear your interview script'),
+                description: fixtureMessage(
+                  'The text you entered will be deleted.',
+                ),
+                confirmLabel: fixtureMessage('Clear script'),
               },
             }}
           >

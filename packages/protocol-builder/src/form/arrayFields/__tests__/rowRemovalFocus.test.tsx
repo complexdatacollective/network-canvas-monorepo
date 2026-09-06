@@ -13,6 +13,7 @@ import {
   createStageIdentity,
   ProtocolBuilderSessionStore,
 } from '../../../session.ts';
+import { fixtureMessage } from '../../../testing/i18n.ts';
 import { DialogFormField } from '../../DialogForm.tsx';
 import ProtocolArrayField from '../../ProtocolArrayField.tsx';
 import StageEditorShell from '../../StageEditorShell.tsx';
@@ -295,7 +296,7 @@ describe('a row removal confirm', () => {
         component={DialogArrayField}
         addButtonLabel="Create new prompt"
         editorTitle="Edit prompt"
-        itemLabel="prompt"
+        itemLabel={fixtureMessage('prompt')}
         previewComponent={PromptPreview}
         editorFieldsComponent={PromptFields}
       />,

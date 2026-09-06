@@ -96,6 +96,23 @@ export function formatTarget(target: CommandTarget): string {
 }
 
 /**
+ * What a document holds at one segment of a path, and nothing it merely
+ * inherits.
+ *
+ * A section document is data — the JSONB a row stores — so the only values on
+ * the way to a command's target are the ones that document HOLDS. Read off the
+ * object instead, every plain object answers for `toString`, `valueOf`,
+ * `hasOwnProperty` and their siblings with a function it inherited, and those
+ * are ordinary document keys: they name this document alone, so the path check
+ * has no reason to refuse them the way it refuses a segment naming a
+ * prototype. Reading the inherited function made the engine refuse to write a
+ * container it should have created, and read a value the document does not
+ * hold as something that is not an object.
+ */
+const heldAt = (parent: SectionDoc, segment: string): unknown =>
+  Object.hasOwn(parent, segment) ? parent[segment] : undefined;
+
+/**
  * The object a path's next segment is read from or written into.
  *
  * A missing container is created on the way to a write, because writing to
@@ -110,7 +127,7 @@ function containerAt(
   segment: string,
   target: CommandTarget,
 ): SectionDoc {
-  const existing = parent[segment];
+  const existing = heldAt(parent, segment);
   if (existing === undefined) return {};
   if (!isDocument(existing)) {
     throw new ApplyError(
@@ -124,7 +141,7 @@ function readAt(doc: SectionDoc, target: CommandTarget): unknown {
   const path = targetPath(target);
   let cursor: SectionDoc = doc;
   for (const segment of path.slice(0, -1)) {
-    const next = cursor[segment];
+    const next = heldAt(cursor, segment);
     if (next === undefined) return undefined;
     if (!isDocument(next)) {
       throw new ApplyError(
@@ -133,7 +150,7 @@ function readAt(doc: SectionDoc, target: CommandTarget): unknown {
     }
     cursor = next;
   }
-  return cursor[path.at(-1)!];
+  return heldAt(cursor, path.at(-1)!);
 }
 
 /** Pure: copies every container it passes through. */
@@ -172,7 +189,7 @@ function removeAt(doc: SectionDoc, target: CommandTarget): SectionDoc {
     }
     // Nothing to remove, and creating the containers on the way to it would
     // add keys to a document that a removal was asked for.
-    if (parent[head] === undefined) return parent;
+    if (heldAt(parent, head) === undefined) return parent;
     return {
       ...parent,
       [head]: remove(containerAt(parent, head, target), rest),

@@ -1,5 +1,7 @@
 import { type ComponentType, useState } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import DatePickerField from '@codaco/fresco-ui/form/fields/DatePicker';
@@ -11,12 +13,137 @@ import {
 } from '@codaco/shared-consts';
 
 import {
-  DATE_RESOLUTION_OPTIONS,
   dateResolutionOf,
+  dateResolutionOptions,
   type ParameterIssues,
   type ParameterShape,
   readParameters,
 } from '../variableParameters.ts';
+
+const messages = defineMessages({
+  minLabelLabel: {
+    id: 'protocolBuilder.variableParameters.minLabelLabel',
+    defaultMessage: 'Minimum label',
+    description:
+      'Label of the field naming the low end of a sliding scale the participant answers on.',
+  },
+  minLabelHint: {
+    id: 'protocolBuilder.variableParameters.minLabelHint',
+    defaultMessage:
+      'Shown at the low end of the scale, so the participant knows what the two ends mean.',
+    description:
+      'Guidance under the field naming the low end of a sliding scale.',
+  },
+  minLabelPlaceholder: {
+    id: 'protocolBuilder.variableParameters.minLabelPlaceholder',
+    defaultMessage: 'Not at all close',
+    description:
+      'Example wording shown in the empty field naming the low end of a sliding scale. An example a researcher might write about closeness between people, not a value that is stored.',
+  },
+  maxLabelLabel: {
+    id: 'protocolBuilder.variableParameters.maxLabelLabel',
+    defaultMessage: 'Maximum label',
+    description:
+      'Label of the field naming the high end of a sliding scale the participant answers on.',
+  },
+  maxLabelHint: {
+    id: 'protocolBuilder.variableParameters.maxLabelHint',
+    defaultMessage: 'Shown at the high end of the scale.',
+    description:
+      'Guidance under the field naming the high end of a sliding scale.',
+  },
+  maxLabelPlaceholder: {
+    id: 'protocolBuilder.variableParameters.maxLabelPlaceholder',
+    defaultMessage: 'Extremely close',
+    description:
+      'Example wording shown in the empty field naming the high end of a sliding scale. An example a researcher might write about closeness between people, not a value that is stored.',
+  },
+  anchorLabel: {
+    id: 'protocolBuilder.variableParameters.anchorLabel',
+    defaultMessage: 'Anchor date',
+    description:
+      'Label of the field holding the date a relative date picker measures its window from.',
+  },
+  anchorHint: {
+    id: 'protocolBuilder.variableParameters.anchorHint',
+    defaultMessage:
+      'The date the window is measured from. Leave it empty to measure from the date of the interview.',
+    description:
+      'Guidance under the anchor-date field, saying what leaving it empty means.',
+  },
+  beforeLabel: {
+    id: 'protocolBuilder.variableParameters.beforeLabel',
+    defaultMessage: 'Days before',
+    description:
+      'Label of the field holding how many days before the anchor date a participant may choose.',
+  },
+  beforeHint: {
+    id: 'protocolBuilder.variableParameters.beforeHint',
+    defaultMessage:
+      'How far back from the anchor the participant can choose. Left empty, {days, number} days.',
+    description:
+      'Guidance under the days-before field. days is the number of days the interview assumes when the researcher writes none.',
+  },
+  afterLabel: {
+    id: 'protocolBuilder.variableParameters.afterLabel',
+    defaultMessage: 'Days after',
+    description:
+      'Label of the field holding how many days after the anchor date a participant may choose.',
+  },
+  afterHint: {
+    id: 'protocolBuilder.variableParameters.afterHint',
+    defaultMessage:
+      'How far forward from the anchor the participant can choose. Left empty, {days, number} days.',
+    description:
+      'Guidance under the days-after field. days is the number of days the interview assumes when the researcher writes none.',
+  },
+  resolutionLabel: {
+    id: 'protocolBuilder.variableParameters.resolutionLabel',
+    defaultMessage: 'Date resolution',
+    description:
+      'Label of the control choosing how precise a date this field collects.',
+  },
+  resolutionHint: {
+    id: 'protocolBuilder.variableParameters.resolutionHint',
+    defaultMessage:
+      'How precise a date this field collects. Changing it clears the earliest and latest dates, because those are stored at the resolution chosen here.',
+    description:
+      'Guidance under the date-resolution control, warning that changing it throws the two bounds away.',
+  },
+  boundsCleared: {
+    id: 'protocolBuilder.variableParameters.boundsCleared',
+    defaultMessage:
+      'The earliest and latest dates were cleared, because they were set at the previous resolution. Set them again if you still need them.',
+    description:
+      'Announcement made after the researcher changes how precise a date this field collects, which throws away the earliest and latest dates because they were stored at the old precision.',
+  },
+  minLabel: {
+    id: 'protocolBuilder.variableParameters.minLabel',
+    defaultMessage: 'Earliest date',
+    description:
+      'Label of the field holding the earliest date a participant may choose.',
+  },
+  minHint: {
+    id: 'protocolBuilder.variableParameters.minHint',
+    defaultMessage:
+      'The earliest date the participant can choose. Left empty, the picker starts in 1920.',
+    description:
+      'Guidance under the earliest-date field, saying what leaving it empty means. 1920 is the year the date picker falls back to and is not a translated word.',
+  },
+  maxLabel: {
+    id: 'protocolBuilder.variableParameters.maxLabel',
+    defaultMessage: 'Latest date',
+    description:
+      'Label of the field holding the latest date a participant may choose.',
+  },
+  maxHint: {
+    id: 'protocolBuilder.variableParameters.maxHint',
+    defaultMessage:
+      'The latest date the participant can choose. Left empty, the picker ends on the date of the interview.',
+    description:
+      'Guidance under the latest-date field, saying what leaving it empty means.',
+  },
+});
 
 const DatePickerControl = DatePickerField as ComponentType<
   Record<string, unknown>
@@ -59,6 +186,7 @@ export default function VariableParameterFields({
   issues,
   readOnly,
 }: VariableParameterFieldsProps) {
+  const intl = useAppIntl();
   const held = readParameters(parameters);
   // Changing the resolution takes the two bounds away, which is right and must
   // not be silent: the hint says it will happen, and this says that it has.
@@ -78,10 +206,10 @@ export default function VariableParameterFields({
       <>
         <UnconnectedField
           name="parameter-min-label"
-          label="Minimum label"
-          hint="Shown at the low end of the scale, so the participant knows what the two ends mean."
+          label={intl.formatMessage(messages.minLabelLabel)}
+          hint={intl.formatMessage(messages.minLabelHint)}
           component={InputControl}
-          placeholder="Not at all close"
+          placeholder={intl.formatMessage(messages.minLabelPlaceholder)}
           value={asText(held.minLabel)}
           onChange={(value: unknown) => onChange('minLabel', value)}
           required
@@ -89,10 +217,10 @@ export default function VariableParameterFields({
         />
         <UnconnectedField
           name="parameter-max-label"
-          label="Maximum label"
-          hint="Shown at the high end of the scale."
+          label={intl.formatMessage(messages.maxLabelLabel)}
+          hint={intl.formatMessage(messages.maxLabelHint)}
           component={InputControl}
-          placeholder="Extremely close"
+          placeholder={intl.formatMessage(messages.maxLabelPlaceholder)}
           value={asText(held.maxLabel)}
           onChange={(value: unknown) => onChange('maxLabel', value)}
           required
@@ -107,8 +235,8 @@ export default function VariableParameterFields({
       <>
         <UnconnectedField
           name="parameter-anchor"
-          label="Anchor date"
-          hint="The date the window is measured from. Leave it empty to measure from the date of the interview."
+          label={intl.formatMessage(messages.anchorLabel)}
+          hint={intl.formatMessage(messages.anchorHint)}
           component={DatePickerControl}
           type="full"
           value={asText(held.anchor)}
@@ -119,8 +247,10 @@ export default function VariableParameterFields({
         />
         <UnconnectedField
           name="parameter-before"
-          label="Days before"
-          hint={`How far back from the anchor the participant can choose. Left empty, ${RELATIVE_DATE_PICKER_DEFAULT_BEFORE} days.`}
+          label={intl.formatMessage(messages.beforeLabel)}
+          hint={intl.formatMessage(messages.beforeHint, {
+            days: RELATIVE_DATE_PICKER_DEFAULT_BEFORE,
+          })}
           component={InputControl}
           type="number"
           min={0}
@@ -131,8 +261,10 @@ export default function VariableParameterFields({
         />
         <UnconnectedField
           name="parameter-after"
-          label="Days after"
-          hint={`How far forward from the anchor the participant can choose. Left empty, ${RELATIVE_DATE_PICKER_DEFAULT_AFTER} days.`}
+          label={intl.formatMessage(messages.afterLabel)}
+          hint={intl.formatMessage(messages.afterHint, {
+            days: RELATIVE_DATE_PICKER_DEFAULT_AFTER,
+          })}
           component={InputControl}
           type="number"
           min={0}
@@ -151,10 +283,10 @@ export default function VariableParameterFields({
     <>
       <UnconnectedField
         name="parameter-resolution"
-        label="Date resolution"
-        hint="How precise a date this field collects. Changing it clears the earliest and latest dates, because those are stored at the resolution chosen here."
+        label={intl.formatMessage(messages.resolutionLabel)}
+        hint={intl.formatMessage(messages.resolutionHint)}
         component={SelectControl}
-        options={DATE_RESOLUTION_OPTIONS}
+        options={dateResolutionOptions(intl)}
         value={resolution}
         onChange={(value: unknown) => {
           setClearedBounds(
@@ -173,16 +305,15 @@ export default function VariableParameterFields({
         {clearedBounds && (
           <Alert variant="info" className="my-7">
             <AlertDescription>
-              The earliest and latest dates were cleared, because they were set
-              at the previous resolution. Set them again if you still need them.
+              {intl.formatMessage(messages.boundsCleared)}
             </AlertDescription>
           </Alert>
         )}
       </div>
       <UnconnectedField
         name="parameter-min"
-        label="Earliest date"
-        hint="The earliest date the participant can choose. Left empty, the picker starts in 1920."
+        label={intl.formatMessage(messages.minLabel)}
+        hint={intl.formatMessage(messages.minHint)}
         component={DatePickerControl}
         type={resolution}
         value={asText(held.min)}
@@ -194,8 +325,8 @@ export default function VariableParameterFields({
       />
       <UnconnectedField
         name="parameter-max"
-        label="Latest date"
-        hint="The latest date the participant can choose. Left empty, the picker ends on the date of the interview."
+        label={intl.formatMessage(messages.maxLabel)}
+        hint={intl.formatMessage(messages.maxHint)}
         component={DatePickerControl}
         type={resolution}
         value={asText(held.max)}

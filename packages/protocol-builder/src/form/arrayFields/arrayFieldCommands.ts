@@ -2,9 +2,15 @@ import { isEqual } from 'es-toolkit/compat';
 
 import type { ArrayFieldOperation } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import {
+  isExclusiveVariantContainer,
+  schemaRefusesContainer,
+  VARIANT_ROW_SEGMENT,
+} from '@codaco/protocol-validation';
+import {
   type Command,
   type CommandTarget,
   canonicalize,
+  targetPath,
 } from '@codaco/studio-sync/apply';
 
 export type ArrayRow = Record<string, unknown>;
@@ -98,12 +104,24 @@ const NO_ROWS: readonly never[] = [];
  * the indices the operation was resolved against, which is exactly what that
  * rule forbids. The hole stays where it is, and the edit is expressed against
  * the document as it stands.
+ *
+ * Written as a type predicate rather than as a check followed by an assertion,
+ * because this source is compiled by every consumer's own TS program and they
+ * do not narrow it alike: `@total-typescript/ts-reset`, which the Studio client
+ * loads, makes `Array.isArray` narrow `unknown` to `unknown[]` rather than
+ * `any[]`, and the entry check then narrows that to `object[]` — which is not
+ * comparable to `T`, so the assertion the check exists to justify is the thing
+ * that fails to compile. A predicate states the conclusion once, the way
+ * fresco-ui's own `isItemList` does.
  */
+const isRowList = <T extends ArrayRow>(
+  rendered: unknown,
+): rendered is readonly T[] =>
+  Array.isArray(rendered) &&
+  rendered.every((row) => typeof row === 'object' && row !== null);
+
 function renderedRows<T extends ArrayRow>(rendered: unknown): readonly T[] {
-  if (!Array.isArray(rendered)) return NO_ROWS;
-  return rendered.every((row) => typeof row === 'object' && row !== null)
-    ? (rendered as readonly T[])
-    : NO_ROWS;
+  return isRowList<T>(rendered) ? rendered : NO_ROWS;
 }
 
 /**
@@ -170,6 +188,131 @@ export function resolveRowIndex<T extends ArrayRow>(
 }
 
 /**
+ * Where every row of `before` ended up in `list`, as a ONE-TO-ONE map.
+ *
+ * `-1` for a row that is not there any more; otherwise a position, and no
+ * position twice. That last part is the whole reason this is a single pass
+ * rather than `resolveRowIndex` asked once per row: a list may legitimately
+ * hold the same id-less row twice — a form asking one question twice, an
+ * options list with two blank rows — and an id-less row's identity IS its
+ * content, so two such rows are two rows nothing tells apart. Resolved
+ * independently, both would answer with the same candidate, and one copy on
+ * each side would be left over.
+ *
+ * The cascade is `resolveRowIndex`'s, spent rather than repeated:
+ *
+ * - a row with an id takes the candidate carrying that id, and answers `-1`
+ *   when there is none — an id that has left the list says the row has;
+ * - an id-less row takes the first candidate holding its content that no
+ *   earlier row has claimed, so the copies are paired off in ORDER: the first
+ *   copy on one side with the first on the other, and so on.
+ *
+ * A list may hold one id TWICE — a roster imported a second time, a row
+ * copy-pasted — and two rows carrying one id are two rows the id cannot tell
+ * apart, so they are paired off in order like any other copies. Order alone is
+ * not enough once the copies DIFFER in content: each side deleting a different
+ * copy leaves each holding one row that looks like the ancestor's OTHER one,
+ * and in-order pairing reads the survivor as the copy the researcher kept —
+ * which refuses their deletion as already applied and keeps the row they
+ * deleted. So a copy that differs from its twin and is still exactly itself
+ * over there is paired with itself first, and occurrence answers for the copies
+ * left over. Content deciding before position is what the id-less rows already
+ * do; this says it for a row whose id cannot tell it from its twin either.
+ *
+ * Content decides only among copies content can TELL APART, though. Two copies
+ * that are the same row said twice are copies content has nothing to say about,
+ * and pairing on it anyway answers with whichever of them a collaborator has
+ * not since rewritten: the search walks past the rewritten copy, the first copy
+ * here takes the untouched one there, and the second — the one the researcher
+ * deleted — is left paired with the rewrite, which their deletion then takes
+ * away. So identical copies are paired off by occurrence, k-th with k-th, and
+ * the content pass is asked only about the copies that were already distinct.
+ *
+ * In order, and never by absolute position, because this correspondence is
+ * drawn against lists that have moved relative to one another, and both
+ * drawings of it have to agree by construction. It is what tells apart the two
+ * questions this module is asked about a row: which row an edit is written
+ * INTO — where a guess writes over content nobody meant to touch, so
+ * `resolveRowIndex` refuses instead — and which OCCURRENCE of a row a position
+ * names, where the copies are interchangeable but their places are not.
+ */
+export function matchRows(
+  before: readonly unknown[],
+  list: readonly unknown[],
+  getId: (row: unknown) => string | undefined = rowIdentity,
+): number[] {
+  const matched = before.map(() => -1);
+  const claimed = new Set<number>();
+  const claim = (ancestor: number, candidate: number): void => {
+    matched[ancestor] = candidate;
+    claimed.add(candidate);
+  };
+
+  const identities = list.map((row) => getId(row));
+  const contents = list.map((row) => canonicalize(row));
+
+  const idless: number[] = [];
+  const identified: number[] = [];
+  before.forEach((row, ancestor) => {
+    if (getId(row) === undefined) idless.push(ancestor);
+    else identified.push(ancestor);
+  });
+
+  // Which ancestor rows content cannot tell from a row carrying the same id:
+  // the copies that are the same row said twice, whose only distinguishing
+  // fact is their occurrence. They are held out of the content pass below,
+  // because a search for "the row that is still exactly itself" answers for
+  // whichever copy a collaborator has not rewritten, and that is a fact about
+  // the arrival rather than about which copy is which.
+  const twin = (ancestor: number) =>
+    JSON.stringify([getId(before[ancestor]), canonicalize(before[ancestor])]);
+  const twins = identified.reduce<Map<string, number>>(
+    (counted, ancestor) =>
+      counted.set(twin(ancestor), (counted.get(twin(ancestor)) ?? 0) + 1),
+    new Map(),
+  );
+
+  // The distinct copies neither side touched, taken first: a row that is still
+  // exactly itself over there is that row, whatever position its twin has moved
+  // to. What is left over is every row whose content one side or the other
+  // changed, and every row its own twin is identical to, and those are paired
+  // off by occurrence below.
+  const changed = identified.filter((ancestor) => {
+    if ((twins.get(twin(ancestor)) ?? 0) > 1) return true;
+    const id = getId(before[ancestor]);
+    const content = canonicalize(before[ancestor]);
+    const candidate = identities.findIndex(
+      (candidateId, index) =>
+        candidateId === id &&
+        contents[index] === content &&
+        !claimed.has(index),
+    );
+    if (candidate === -1) return true;
+    claim(ancestor, candidate);
+    return false;
+  });
+
+  for (const ancestor of changed) {
+    const id = getId(before[ancestor]);
+    const candidate = identities.findIndex(
+      (candidateId, index) => candidateId === id && !claimed.has(index),
+    );
+    if (candidate !== -1) claim(ancestor, candidate);
+  }
+
+  for (const ancestor of idless) {
+    const content = canonicalize(before[ancestor]);
+    const candidate = contents.findIndex(
+      (candidateContent, index) =>
+        candidateContent === content && !claimed.has(index),
+    );
+    if (candidate !== -1) claim(ancestor, candidate);
+  }
+
+  return matched;
+}
+
+/**
  * Where the row a move PICKED UP sits among the rows the editor drew.
  *
  * A move is the one operation whose two positions are not read off the same
@@ -227,6 +370,25 @@ export const movedRowIndex = <T extends ArrayRow>(
  * exist yet, so there is no wrong row to land on — but it still has to land in
  * the right PLACE. An append (which is what every list here does) stays an
  * append; an insert before a known row stays before that row.
+ *
+ * A row the list holds twice is a place all the same. `resolveRowIndex`
+ * refuses to say which copy a position names, because the answer decides which
+ * row an edit is written INTO; here it decides only where a new row goes, so
+ * the whole question is put to `matchRows`, which pairs the copies off in
+ * order — a row written between two identical ones stays between them instead
+ * of landing in front of both. Asking `resolveRowIndex` first instead let its
+ * content search answer for a row that was NOT the one paired with: a list of
+ * three identical rows with two of them deleted has exactly one row matching
+ * that content, so a row written after the third of them was put in front of
+ * the survivor rather than after it.
+ *
+ * When the row a new one was written in front of has gone, the rows FURTHER
+ * out still say where it belongs: the nearest surviving row it preceded, else
+ * the nearest one it followed. Falling straight back to the position it was
+ * written at sent it past rows that had survived — a row written in front of
+ * the third of four, with the first and third deleted, went to the end.
+ *
+ * An index is what is left when no row the editor drew survived at all.
  */
 export function resolveInsertIndex<T extends ArrayRow>(
   current: readonly unknown[],
@@ -235,8 +397,18 @@ export function resolveInsertIndex<T extends ArrayRow>(
   getId?: ArrayRowIdentity<T>,
 ): number {
   if (index >= rendered.length) return current.length;
-  const successor = resolveRowIndex(current, rendered, index, getId);
-  return successor ?? Math.min(index, current.length);
+  const paired = matchRows(rendered, current, (row) =>
+    isRecord(row) ? getId?.(row as T) : undefined,
+  );
+  for (let later = index; later < rendered.length; later += 1) {
+    const at = paired[later];
+    if (at !== undefined && at !== -1) return at;
+  }
+  for (let earlier = index - 1; earlier >= 0; earlier -= 1) {
+    const at = paired[earlier];
+    if (at !== undefined && at !== -1) return at + 1;
+  }
+  return Math.min(index, current.length);
 }
 
 /**
@@ -244,7 +416,42 @@ export function resolveInsertIndex<T extends ArrayRow>(
  *
  * The destination is anchored on the row the moved one will FOLLOW, rather
  * than on a number, because a number means something different in a list that
- * has since gained or lost rows. `undefined` refuses the move.
+ * has since gained or lost rows — and on the nearest such row that SURVIVED,
+ * because the arrival may have deleted the one it was written beside. A move
+ * says where a row goes relative to the rows the researcher could see, and
+ * every one of those that is still here says it. `undefined` refuses the move,
+ * which is the answer when none of them is.
+ *
+ * The rows the drag actually took it PAST are more than an anchor, though, and
+ * they bound the answer: the moved row lands after every surviving row it was
+ * moved past, and before every surviving row it was moved ahead of. A nearest
+ * neighbour is the same row whichever order the arrival left the others in, so
+ * anchoring on one alone is right only while the arrival left that order alone
+ * — and two people reordering different rows of one list is ordinary. From
+ * `[a, b, c]` the researcher drags `a` to the bottom while a collaborator
+ * drags `b` there; the row `a` was dropped behind is `c`, which now sits ABOVE
+ * `b`, and landing after it gave `[c, a, b]` — `a` back in front of a row the
+ * researcher had explicitly dragged it past. `[c, b, a]` is both of their
+ * edits.
+ *
+ * Which is also the answer where the two disagree. The rows the drag did not
+ * cross say where the moved row goes among them, and the arrival may have
+ * moved one of those to the far side of a row it did cross; the rows it
+ * crossed win, because those are the ones the researcher placed it against.
+ * The rest decide only what is left — where in the window the crossed rows
+ * leave it lands, which is still its nearest surviving neighbour.
+ *
+ * The row being PICKED UP and the rows it is anchored on are read off ONE
+ * drawing of the correspondence between the two lists, so the two cannot
+ * disagree about which row is which. `resolveRowIndex` answered for the moved
+ * row on its own, and its id search takes the FIRST row carrying that id — so
+ * for a list holding one id twice (a roster imported a second time, a row
+ * copy-pasted) it answered with the wrong copy whenever the researcher dragged
+ * the later one, and then anchored the destination on a list that copy had not
+ * been taken out of. Two rows sharing an id are two rows nothing tells apart,
+ * which is what `matchRows` already says of two rows sharing content: the
+ * copies are paired off in order, one apiece, and a position names the k-th of
+ * them at both ends.
  */
 export function resolveMove<T extends ArrayRow>(
   current: readonly unknown[],
@@ -253,37 +460,94 @@ export function resolveMove<T extends ArrayRow>(
   to: number,
   getId?: ArrayRowIdentity<T>,
 ): Readonly<{ from: number; to: number }> | undefined {
-  const currentFrom = resolveRowIndex(current, rendered, from, getId);
-  if (currentFrom === undefined) return undefined;
+  if (rendered[from] === undefined) return undefined;
   if (sameList(current, rendered)) {
     return to >= 0 && to < current.length ? { from, to } : undefined;
   }
 
-  const reordered = [...rendered];
-  const [moved] = reordered.splice(from, 1);
-  if (moved === undefined) return undefined;
-  reordered.splice(to, 0, moved);
+  // Where every row the editor drew sits in the list now, one row to one
+  // position — the moved row included, which is what makes this the same
+  // question `resolveInsertIndex` puts to `matchRows` rather than a guess to
+  // refuse over: an anchor and a pick-up both decide only WHERE a row goes,
+  // never which row an edit is written into.
+  const paired = matchRows(rendered, current, (row) =>
+    isRecord(row) ? getId?.(row as T) : undefined,
+  );
+  const currentFrom = paired[from];
+  // The row the researcher was dragging is not in the list any more — either
+  // it has gone, or the arrival has taken away the copy this position named.
+  // Landing the move on whatever the id still finds would move a row they
+  // never picked up, and the merge has already decided that copy is gone.
+  if (currentFrom === undefined || currentFrom === -1) return undefined;
 
-  const remaining = [...current];
-  remaining.splice(currentFrom, 1);
-  const anchorIndex = (neighbour: T | undefined) =>
-    neighbour === undefined
-      ? undefined
-      : resolveRowIndex(remaining, [neighbour] as readonly T[], 0, getId);
+  // The rows the drag moved PAST, in the order the drop left them: the rendered
+  // list without the row being moved. A neighbour at position `at` in that
+  // order is `rendered[at]` for a place above the pick-up and `rendered[at + 1]`
+  // below it, and its place among the rows the answer is measured in — the
+  // current list without the moved row — is one lower than its own wherever it
+  // sits after the pick-up.
+  const anchorIndex = (at: number): number | undefined => {
+    const index = paired[at < from ? at : at + 1];
+    if (index === undefined || index === -1) return undefined;
+    return index > currentFrom ? index - 1 : index;
+  };
+  /** How many rows the drag could have moved past, at either end. */
+  const drawnOthers = rendered.length - 1;
+  const remainingRows = current.length - 1;
 
   // The row the moved one will FOLLOW says where it goes; when it is moving to
   // the very top of the rows the editor could see, the row it will PRECEDE
   // says instead. Anchoring on a neighbour rather than on a number is what
   // keeps "put this at the top of my list" from meaning "above a row that
   // arrived from somewhere else and that I never saw".
-  const predecessor = anchorIndex(reordered[to - 1]);
-  if (predecessor !== undefined)
-    return { from: currentFrom, to: predecessor + 1 };
+  //
+  // Its immediate neighbour is the first answer and usually the only one
+  // needed, but the arrival may have deleted that row — and the rows further
+  // out still say where this one belongs, exactly as they do for a row being
+  // inserted. Refusing the move the moment the nearest neighbour was gone
+  // threw the researcher's reorder away over a row they had not touched:
+  // `[a, b, c]` with `a` dragged to the bottom, rebased onto an arrival that
+  // deleted `c`, said nothing rather than `[b, a]`.
+  const nearestAnchor = (): number | undefined => {
+    for (let earlier = to - 1; earlier >= 0; earlier -= 1) {
+      const predecessor = anchorIndex(earlier);
+      if (predecessor !== undefined) return predecessor + 1;
+    }
+    for (let later = to; later < drawnOthers; later += 1) {
+      const successor = anchorIndex(later);
+      if (successor !== undefined) return successor;
+    }
+    // No row the editor drew survives to say where this one goes. A list
+    // holding only rows that arrived from elsewhere is not one the
+    // researcher's move says anything about, so it is refused rather than
+    // landed on a guess.
+    return remainingRows === 0 ? 0 : undefined;
+  };
+  const landed = nearestAnchor();
+  if (landed === undefined) return undefined;
 
-  const successor = anchorIndex(reordered[to + 1]);
-  if (successor !== undefined) return { from: currentFrom, to: successor };
-
-  return remaining.length === 0 ? { from: currentFrom, to: 0 } : undefined;
+  // And the rows the drag actually took it past, every one of them: those are
+  // the places in the order the researcher DECIDED, so they bound where the
+  // nearest neighbour may put it. Dragging down the list, they are the rows
+  // between the pick-up and the drop that end up above it, so the answer is at
+  // least one past the furthest of them; dragging up, the same rows end up
+  // below it, and the answer is at most the nearest of those. They are all on
+  // one side — a drag crosses a row in one direction only — so the two can
+  // never contradict each other.
+  let crossed: number | undefined;
+  for (let at = Math.min(from, to); at < Math.max(from, to); at += 1) {
+    const anchor = anchorIndex(at);
+    if (anchor === undefined) continue;
+    crossed =
+      to > from
+        ? Math.max(crossed ?? 0, anchor + 1)
+        : Math.min(crossed ?? remainingRows, anchor);
+  }
+  if (crossed === undefined) return { from: currentFrom, to: landed };
+  return {
+    from: currentFrom,
+    to: to > from ? Math.max(landed, crossed) : Math.min(landed, crossed),
+  };
 }
 
 /**
@@ -314,24 +578,96 @@ export function resolveMove<T extends ArrayRow>(
  * A list is a leaf. Its rows have no identity here, so merging two versions of
  * one index by index would combine rows that are not the same row; a list the
  * edit changed is the edit's, and one it left alone is the row's.
+ *
+ * And a container the schema allows only ONE shape of is a leaf too. Leaf by
+ * leaf is what makes a hybrid there: the researcher switches a sociogram
+ * prompt's highlighting on while a collaborator clears the attribute it names,
+ * and each of those is a leaf neither side contests, so the merge answers with
+ * highlighting on and nothing to write — a prompt the schema refuses and
+ * neither of them asked for. The variant is the unit the two sides are
+ * deciding between, so the whole of it travels and the side that touched it
+ * wins it entire. It is the rule the draft diff already follows at an object
+ * path, said for the rows a diff cannot reach into.
+ *
+ * A container whose members merely CONSTRAIN one another is not a variant and
+ * is not written whole. It is assembled leaf by leaf like any other and then
+ * put to the schema, which is the only thing that knows the rule; see
+ * `reseatRecord`.
+ *
+ * `rowPath` is where this row lives in the stage document, with
+ * `VARIANT_ROW_SEGMENT` for the list itself — `['prompts', '*']`. `undefined`
+ * is for a row with no such path at all: a list nested inside another row is
+ * part of the row around it and has no key of its own, and the row it is part
+ * of is what gets committed. Nothing can be asked of the schema for such a
+ * row either, so the leaf merge is the whole of the answer there.
  */
 export function reseatEditedRow(
   base: unknown,
   edited: unknown,
   latest: unknown,
+  rowPath: readonly string[] | undefined,
 ): unknown {
   if (!isRecord(base) || !isRecord(edited) || !isRecord(latest)) return edited;
   // Nothing reached the row while the edit was being made, so the edit already
   // describes the whole row and re-seating it could only lose information.
   if (isEqual(base, latest)) return edited;
+  // The ROW is the variant: a categorical bin prompt offering an 'other'
+  // option carries all three of the fields describing it, and one that does
+  // not carries none of them.
+  if (rowPath !== undefined && isExclusiveVariantContainer(rowPath)) {
+    return edited;
+  }
 
-  return reseatRecord(base, edited, latest);
+  return reseatRecord(base, edited, latest, rowPath);
 }
 
+/**
+ * The leaf merge, and then the one question it cannot answer on its own.
+ *
+ * Leaf by leaf is right wherever the members of a container are independent —
+ * which is nearly everywhere, and is what lets two people configure different
+ * parts of one capability and both keep their work. It is not right where the
+ * schema says something about the members TOGETHER. A sociogram prompt's
+ * `edges` says which edges to draw and which the participant may create, and
+ * an `edges` holding neither has no effect, so the schema refuses it: the
+ * researcher clears `create` while a collaborator empties `display`, each of
+ * those is a leaf the other never contests, and the merge answers with
+ * `{ display: [] }` — a prompt NEITHER of them held.
+ *
+ * The exclusive-variant answer does not fit: `create` and `display` are not
+ * rival shapes, and keeping both people's work on them is the whole reason
+ * this goes leaf by leaf. So the container is assembled exactly as before and
+ * then put TO the schema, and only a refusal changes the answer — to the
+ * researcher's own container, whole, which is the rule a contested leaf
+ * already follows said one container up.
+ *
+ * A container the researcher's own side does not validate either is left as
+ * the leaf merge made it. Its refusal is not something the merge invented, and
+ * writing the researcher's invalid container over a collaborator's work would
+ * throw that work away to keep a draft that is refused regardless. The draft's
+ * own validation is what puts it in front of them.
+ *
+ * `schemaRefusesContainer` answers `false` for every path whose members do not
+ * constrain one another, so all of this costs a map lookup anywhere else.
+ */
 function reseatRecord(
   base: ArrayRow,
   edited: ArrayRow,
   latest: ArrayRow,
+  path: readonly string[] | undefined,
+): ArrayRow {
+  const merged = mergedRecord(base, edited, latest, path);
+  if (path === undefined || !schemaRefusesContainer(path, merged)) {
+    return merged;
+  }
+  return schemaRefusesContainer(path, edited) ? merged : edited;
+}
+
+function mergedRecord(
+  base: ArrayRow,
+  edited: ArrayRow,
+  latest: ArrayRow,
+  path: readonly string[] | undefined,
 ): ArrayRow {
   const next: ArrayRow = { ...latest };
   for (const key of new Set([...Object.keys(base), ...Object.keys(edited)])) {
@@ -349,13 +685,26 @@ function reseatRecord(
     const editedValue = edited[key];
     const baseValue = base[key];
     const latestValue = next[key];
+    const here = path === undefined ? undefined : [...path, key];
     next[key] =
-      isRecord(baseValue) && isRecord(editedValue) && isRecord(latestValue)
-        ? reseatRecord(baseValue, editedValue, latestValue)
+      isRecord(baseValue) &&
+      isRecord(editedValue) &&
+      isRecord(latestValue) &&
+      !(here !== undefined && isExclusiveVariantContainer(here))
+        ? reseatRecord(baseValue, editedValue, latestValue, here)
         : editedValue;
   }
   return next;
 }
+
+/**
+ * Where the rows of the list at this key live, as a path the variant list
+ * understands.
+ */
+export const rowPathFor = (key: CommandTarget): readonly string[] => [
+  ...targetPath(key),
+  VARIANT_ROW_SEGMENT,
+];
 
 /**
  * One committed list mutation, as commands against the stage document.
@@ -411,6 +760,7 @@ export function commandsForOperation<T extends ArrayRow>(
     rendered[operation.index],
     operation.item,
     current[index],
+    rowPathFor(key),
   );
   return [{ op: 'set', key, value: next }];
 }
@@ -445,7 +795,7 @@ export function commandsForDetachedRow<T extends ArrayRow>(
         );
   if (index !== -1) {
     const next = [...current];
-    next[index] = reseatEditedRow(base, row, current[index]);
+    next[index] = reseatEditedRow(base, row, current[index], rowPathFor(key));
     return [{ op: 'set', key, value: next }];
   }
   return isNewRow

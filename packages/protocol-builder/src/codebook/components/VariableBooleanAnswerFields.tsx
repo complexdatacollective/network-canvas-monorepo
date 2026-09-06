@@ -1,5 +1,7 @@
 import type { ComponentType } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
@@ -14,6 +16,23 @@ import {
 
 const InputControl = InputField as ComponentType<Record<string, unknown>>;
 const ToggleControl = ToggleField as ComponentType<Record<string, unknown>>;
+
+const messages = defineMessages({
+  answerLabel: {
+    id: 'protocolBuilder.codebookVariable.booleanAnswerLabel',
+    defaultMessage:
+      '{records, select, true {Label for “true”} other {Label for “false”}}',
+    description:
+      'Label of the field holding the words on one of the two answers a yes/no attribute offers. records says which of the two stored values this answer records; “true” and “false” are the literal values the protocol stores and an export records, so they stay as they are.',
+  },
+  negativeLabel: {
+    id: 'protocolBuilder.codebookVariable.booleanNegativeLabel',
+    defaultMessage:
+      '{records, select, true {Style “true” as negative} other {Style “false” as negative}}',
+    description:
+      'Label of the switch that draws one of the two answers of a yes/no attribute in red when a participant selects it. records says which of the two stored values this answer records; “true” and “false” are the literal values the protocol stores and stay as they are.',
+  },
+});
 
 export type VariableBooleanAnswerFieldsProps = Readonly<{
   answers: BooleanAnswers;
@@ -44,6 +63,7 @@ export default function VariableBooleanAnswerFields({
   issues,
   readOnly,
 }: VariableBooleanAnswerFieldsProps) {
+  const intl = useAppIntl();
   return (
     <div className="flex flex-col gap-4">
       {answers.map((answer, index) => {
@@ -60,7 +80,7 @@ export default function VariableBooleanAnswerFields({
           >
             <UnconnectedField
               name={`boolean-answer-${records}-label`}
-              label={`Label for “${records}”`}
+              label={intl.formatMessage(messages.answerLabel, { records })}
               component={InputControl}
               placeholder={DEFAULT_BOOLEAN_LABELS[records]}
               value={answer.label}
@@ -76,7 +96,7 @@ export default function VariableBooleanAnswerFields({
             />
             <UnconnectedField
               name={`boolean-answer-${records}-negative`}
-              label={`Style “${records}” as negative`}
+              label={intl.formatMessage(messages.negativeLabel, { records })}
               component={ToggleControl}
               inline
               value={answer.negative === true}

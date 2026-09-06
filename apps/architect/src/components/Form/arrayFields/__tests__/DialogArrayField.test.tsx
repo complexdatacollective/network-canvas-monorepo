@@ -6,6 +6,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { MotionConfig, type Transition } from 'motion/react';
 import { useContext, useState, type ContextType, type ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
@@ -14,6 +15,7 @@ import Form from '@codaco/fresco-ui/form/Form';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
+import { withAnimationsEnabled } from '@codaco/vitest-config/modern/with-animations-enabled';
 import { renderStageForm } from '~/components/StageEditor/__tests__/stageFormTestHarness';
 
 import ArchitectArrayField from '../../ArchitectArrayField';
@@ -266,8 +268,17 @@ const arrayField = (
 
 const setup = ({
   initialItems = NO_ITEMS,
+  transition,
   ...overrides
-}: FieldOverrides & { initialItems?: Item[] } = {}) => {
+}: FieldOverrides & {
+  initialItems?: Item[];
+  /**
+   * Motion timing for the whole field. Left undefined by every case except
+   * the one that is about a row's exit window, where the default instant
+   * animation would close the window before it can be observed.
+   */
+  transition?: Transition;
+} = {}) => {
   capturedEditorProps = undefined;
   storeApi = null;
 
@@ -277,10 +288,12 @@ const setup = ({
 
   const view = render(
     <Provider store={store}>
-      <Form onSubmit={() => ({ success: true })}>
-        <CaptureStore />
-        {arrayField(initialItems, overrides)}
-      </Form>
+      <MotionConfig transition={transition}>
+        <Form onSubmit={() => ({ success: true })}>
+          <CaptureStore />
+          {arrayField(initialItems, overrides)}
+        </Form>
+      </MotionConfig>
     </Provider>,
   );
 
@@ -662,6 +675,50 @@ describe('DialogArrayField', () => {
     expect(removalFinalFocus()).toBe(
       screen.getByRole('button', { name: 'Remove item' }),
     );
+  });
+
+  /**
+   * `finalFocus` is resolved as the confirm dialog closes, which is inside the
+   * window where the removed row is still mounted playing its exit animation.
+   * Counting the Remove controls the list holds at that moment therefore
+   * counts the control that has just been confirmed away, and index 0 of two
+   * rows answers with the dying row's own button — focus lands on a node that
+   * is destroyed a fraction of a second later and falls back to `<body>`,
+   * which is exactly what naming a target is for.
+   *
+   * The same window is what made the case above fail in CI and pass locally:
+   * the exiting row was still in the document, so "the Remove button" was
+   * ambiguous. Real Motion timing and a long transition make the window
+   * deterministic rather than a matter of how loaded the machine is.
+   */
+  it('passes over the row that is still animating away', async () => {
+    await withAnimationsEnabled(async () => {
+      setup({
+        initialItems: [
+          { id: 'item-1', label: 'First' },
+          { id: 'item-2', label: 'Second' },
+        ],
+        transition: { duration: 10 },
+      });
+
+      const [firstRemove, secondRemove] = screen.getAllByRole('button', {
+        name: 'Remove item',
+      });
+      if (!firstRemove || !secondRemove) {
+        throw new Error('Expected two remove buttons');
+      }
+
+      fireEvent.click(firstRemove);
+      await waitFor(() => expect(getItems()).toHaveLength(1));
+
+      // The removed row is still in the document — the assertions below say
+      // nothing without it.
+      expect(firstRemove.isConnected).toBe(true);
+      expect(removalFinalFocus()).toBe(secondRemove);
+      expect(screen.getAllByRole('button', { name: 'Remove item' })).toEqual([
+        secondRemove,
+      ]);
+    });
   });
 
   it('sends focus to the add button when the removed row was the only one', async () => {

@@ -3,6 +3,7 @@
 import { AnimatePresence } from 'motion/react';
 import { useCallback, useEffect, useId, useMemo, useRef } from 'react';
 
+import { useAppIntl, AppMessage } from '@codaco/app-i18n/react';
 import { Collection } from '@codaco/fresco-ui/collection/components/Collection';
 import { CollectionFilterInput } from '@codaco/fresco-ui/collection/components/CollectionFilterInput';
 import { CollectionSortButton } from '@codaco/fresco-ui/collection/components/CollectionSortButton';
@@ -32,6 +33,7 @@ import { usePrompts } from '../../components/Prompts/usePrompts';
 import { useCurrentStep } from '../../contexts/CurrentStepContext';
 import useNodeLimits from '../../hooks/useNodeLimits';
 import { useStageSelector } from '../../hooks/useStageSelector';
+import { runtimeMessages } from '../../i18n/runtimeMessages';
 import { getNodeVariables } from '../../selectors/interface';
 import {
   getSearchOptions,
@@ -50,6 +52,7 @@ import { addNode, deleteNode } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import getParentKeyByNameValue from '../../utils/getParentKeyByNameValue';
 import { usePassphrase } from '../Anonymisation/usePassphrase';
+import { interfaceMessages } from '../messages';
 import { buildRosterSortConfig } from './buildRosterSortConfig';
 import DataCard from './DataCard';
 import DropOverlay from './DropOverlay';
@@ -58,8 +61,12 @@ import useItems, { type UseItemElement } from './useItems';
 
 const ErrorMessage = (_props: { error: Error }) => (
   <div className="flex flex-1 flex-col items-center justify-center">
-    <Heading level="h2">Something went wrong</Heading>
-    <Paragraph>External data could not be loaded.</Paragraph>
+    <Heading level="h2">
+      <AppMessage message={interfaceMessages.errorHeading} />
+    </Heading>
+    <Paragraph>
+      <AppMessage message={interfaceMessages.externalDataUnavailable} />
+    </Paragraph>
   </div>
 );
 
@@ -81,6 +88,7 @@ const keyExtractor = (item: UseItemElement) => item.id;
  * Name Generator (unified) Roster Interface
  */
 const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
+  const intl = useAppIntl();
   const { stage } = props;
 
   const { isLastPrompt } = usePrompts();
@@ -300,19 +308,31 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
     // renders the collection at all only in the `ready` state, so an empty
     // `items` here means the list really is empty rather than not yet read.
     if (items.length === 0) {
-      return <>There is nothing to add from this list.</>;
+      return (
+        <>
+          <AppMessage message={interfaceMessages.emptyRoster} />
+        </>
+      );
     }
     if (filteredItems.length === 0) {
-      return <>Everything from this list has already been added.</>;
+      return (
+        <>
+          <AppMessage message={interfaceMessages.rosterAlreadyAdded} />
+        </>
+      );
     }
-    return <>Nothing matched your search term.</>;
+    return (
+      <>
+        <AppMessage message={runtimeMessages.noSearchMatch} />
+      </>
+    );
   }, [items.length, filteredItems.length]);
 
   // --- DnD setup for source panel ---
   const sourceCollectionId = `source-nodes-${useId()}`;
 
   const { dragAndDropHooks } = useDragAndDrop<UseItemElement>({
-    announcedName: 'Available Roster Nodes',
+    announcedName: intl.formatMessage(interfaceMessages.availableRosterNodes),
     getItems: (keys) => [{ type: 'SOURCE_NODES', keys }],
     acceptTypes: ['ADDED_NODES'],
     onDrop: (e) => {
@@ -376,9 +396,13 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
         defaultBasis={50}
         minSizePx={SOURCE_PANEL_MIN_WIDTH}
         className="min-h-0 w-full flex-1 basis-full"
-        aria-label="Resize panel and node list areas"
+        aria-label={intl.formatMessage(interfaceMessages.resizePanels)}
       >
-        <Panel title="Available to add" panelNumber={0} noCollapse>
+        <Panel
+          title={intl.formatMessage(interfaceMessages.availableToAdd)}
+          panelNumber={0}
+          noCollapse
+        >
           {/*
             `idle` is the state of the first frame, before the effect that
             reads the roster has run. Treating it as loading is what keeps the
@@ -387,7 +411,9 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
           */}
           {itemsStatus.state === 'idle' || itemsStatus.state === 'loading' ? (
             <div className="flex flex-1 items-center justify-center">
-              <Loading message="Loading..." />
+              <Loading
+                message={intl.formatMessage(interfaceMessages.loading)}
+              />
             </div>
           ) : itemsStatus.state === 'error' ? (
             <ErrorMessage error={itemsStatus.error} />
@@ -408,7 +434,9 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
                 disabledKeys={disabledKeys}
                 virtualized
                 emptyState={emptyState}
-                aria-label="List of available items to add"
+                aria-label={intl.formatMessage(
+                  interfaceMessages.availableItems,
+                )}
                 id={sourceCollectionId}
               >
                 {(CollectionElements) => (
@@ -416,7 +444,11 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
                     <div>
                       {searchOptions && (
                         <div className="flex flex-wrap gap-2 p-2">
-                          <CollectionFilterInput placeholder="Enter a search term..." />
+                          <CollectionFilterInput
+                            placeholder={intl.formatMessage(
+                              interfaceMessages.searchTerm,
+                            )}
+                          />
                         </div>
                       )}
                       {sortableProperties && sortableProperties.length > 0 && (
@@ -447,7 +479,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
                     dropTargetId={sourceDropTargetId}
                     nodeColor={dropNodeColor}
                     nodeShape={nodeTypeDefinition?.shape.default}
-                    message="Drop here to remove"
+                    message={intl.formatMessage(runtimeMessages.dropToRemove)}
                   />
                 )}
               </AnimatePresence>
@@ -461,7 +493,7 @@ const NameGeneratorRoster = (props: NameGeneratorRosterProps) => {
           accepts={['SOURCE_NODES']}
           onDrop={handleAddNode}
           items={nodesForPrompt}
-          announcedName="Added Nodes"
+          announcedName={intl.formatMessage(interfaceMessages.addedNodes)}
         />
       </ResizableFlexPanel>
     </div>

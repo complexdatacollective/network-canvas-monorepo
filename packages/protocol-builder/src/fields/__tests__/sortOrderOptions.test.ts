@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { enIntl } from '../../testing/i18n.ts';
 import {
   getSortOrderOptionGetter,
   missingSortPropertyLabel,
@@ -15,8 +16,10 @@ describe('getSortOrderOptionGetter', () => {
     ];
 
     it('options for `property` exclude layout attributes and mark used ones disabled', () => {
-      const sortOrderOptionGetter =
-        getSortOrderOptionGetter(mockVariableOptions);
+      const sortOrderOptionGetter = getSortOrderOptionGetter(
+        mockVariableOptions,
+        enIntl,
+      );
 
       const mockAllValues = [
         { property: '1234-1234-1234-2', direction: 'asc' },
@@ -43,8 +46,10 @@ describe('getSortOrderOptionGetter', () => {
       ['a non-array value', {}],
       ['rows with no property yet', [{ direction: 'asc' }]],
     ])('disables nothing when allValues is %s', (_label, allValues) => {
-      const sortOrderOptionGetter =
-        getSortOrderOptionGetter(mockVariableOptions);
+      const sortOrderOptionGetter = getSortOrderOptionGetter(
+        mockVariableOptions,
+        enIntl,
+      );
 
       const subject = sortOrderOptionGetter('property', undefined, allValues);
 
@@ -56,8 +61,10 @@ describe('getSortOrderOptionGetter', () => {
     });
 
     it('options for `direction`', () => {
-      const sortOrderOptionGetter =
-        getSortOrderOptionGetter(mockVariableOptions);
+      const sortOrderOptionGetter = getSortOrderOptionGetter(
+        mockVariableOptions,
+        enIntl,
+      );
 
       const mockAllValues = [
         { property: '1234-1234-1234-2', direction: 'asc' },
@@ -76,8 +83,10 @@ describe('getSortOrderOptionGetter', () => {
     });
 
     it('returns nothing for an unrecognised field name', () => {
-      const sortOrderOptionGetter =
-        getSortOrderOptionGetter(mockVariableOptions);
+      const sortOrderOptionGetter = getSortOrderOptionGetter(
+        mockVariableOptions,
+        enIntl,
+      );
 
       expect(sortOrderOptionGetter('label', undefined, [])).toEqual([]);
     });
@@ -92,14 +101,17 @@ describe('getSortOrderOptionGetter', () => {
      * value and the label.
      */
     it('keeps a property that is disabled in its own right disabled', () => {
-      const sortOrderOptionGetter = getSortOrderOptionGetter([
-        ...mockVariableOptions,
-        {
-          label: missingSortPropertyLabel('nickname'),
-          value: 'nickname',
-          disabled: true,
-        },
-      ]);
+      const sortOrderOptionGetter = getSortOrderOptionGetter(
+        [
+          ...mockVariableOptions,
+          {
+            label: missingSortPropertyLabel('nickname', enIntl),
+            value: 'nickname',
+            disabled: true,
+          },
+        ],
+        enIntl,
+      );
 
       // No rule names it, so nothing about the rules can be what disables it.
       const subject = sortOrderOptionGetter('property', undefined, [
@@ -130,6 +142,7 @@ describe('getSortOrderOptionGetter', () => {
     it('options for `property` include every column, since none carry a type', () => {
       const sortOrderOptionGetter = getSortOrderOptionGetter(
         mockExternalDataPropertyOptions,
+        enIntl,
       );
 
       const mockAllValues = [
@@ -153,6 +166,7 @@ describe('getSortOrderOptionGetter', () => {
     it('options for `direction`', () => {
       const sortOrderOptionGetter = getSortOrderOptionGetter(
         mockExternalDataPropertyOptions,
+        enIntl,
       );
 
       const mockAllValues = [
@@ -194,6 +208,7 @@ describe('orphanedSortProperties', () => {
           { property: 'nickname', direction: 'desc' },
         ],
         properties,
+        enIntl,
       ),
     ).toEqual([
       {
@@ -214,6 +229,7 @@ describe('orphanedSortProperties', () => {
           { property: 'nickname', direction: 'desc' },
         ],
         properties,
+        enIntl,
       ),
     ).toHaveLength(1);
   });
@@ -221,7 +237,11 @@ describe('orphanedSortProperties', () => {
   it('leaves the order-they-were-added-in key alone', () => {
     // `*` names no attribute, so it can never be missing from the codebook.
     expect(
-      orphanedSortProperties([{ property: '*', direction: 'asc' }], properties),
+      orphanedSortProperties(
+        [{ property: '*', direction: 'asc' }],
+        properties,
+        enIntl,
+      ),
     ).toEqual([]);
   });
 
@@ -236,6 +256,7 @@ describe('orphanedSortProperties', () => {
       orphanedSortProperties(
         [{ property: 'nickname', direction: 'asc' }],
         undefined,
+        enIntl,
       ),
     ).toEqual([]);
   });
@@ -248,7 +269,11 @@ describe('orphanedSortProperties', () => {
    */
   it('judges the rules against a subject with nothing to sort by', () => {
     expect(
-      orphanedSortProperties([{ property: 'nickname', direction: 'asc' }], []),
+      orphanedSortProperties(
+        [{ property: 'nickname', direction: 'asc' }],
+        [],
+        enIntl,
+      ),
     ).toEqual([
       {
         value: 'nickname',
@@ -266,6 +291,6 @@ describe('orphanedSortProperties', () => {
     ['a row that is not an object', ['nickname']],
     ['a property cleared back to empty', [{ property: '', direction: 'asc' }]],
   ])('reports nothing for %s', (_label, rules) => {
-    expect(orphanedSortProperties(rules, properties)).toEqual([]);
+    expect(orphanedSortProperties(rules, properties, enIntl)).toEqual([]);
   });
 });

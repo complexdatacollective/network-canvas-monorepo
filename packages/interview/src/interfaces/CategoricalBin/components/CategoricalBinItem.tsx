@@ -1,8 +1,8 @@
 'use client';
-
 import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useRef } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { type DragMetadata, useDropTarget } from '@codaco/fresco-ui/dnd/dnd';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -15,6 +15,7 @@ import { usePrompts } from '../../../components/Prompts/usePrompts';
 import { useCelebrate } from '../../../hooks/useCelebrate';
 import { useStageSelector } from '../../../hooks/useStageSelector';
 import { getCurrentStageId } from '../../../selectors/session';
+import { interfaceMessages } from '../../messages';
 import BinSummary from './BinSummary';
 
 type CategoricalBinItemProps = {
@@ -74,6 +75,7 @@ export const getCatBinDropTargetId = (
 ) => `CATBIN_ITEM_${stageId}_${promptId}_${index}`;
 
 const CategoricalBinItem = (props: CategoricalBinItemProps) => {
+  const intl = useAppIntl();
   const {
     index,
     label,
@@ -111,7 +113,9 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
   } = useDropTarget({
     id: getCatBinDropTargetId(stageId, promptId, index),
     accepts: ['NODE'],
-    announcedName: `Category: ${label}`,
+    announcedName: intl.formatMessage(interfaceMessages.categoryDrop, {
+      label,
+    }),
     onDrop: handleDrop,
   });
 
@@ -161,12 +165,17 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
           className={headerClasses}
           onClick={onToggleExpand}
           aria-expanded={true}
-          aria-label={`Category ${label}, ${nodes.length} items, expanded`}
+          aria-label={intl.formatMessage(
+            interfaceMessages.categoryContentsExpanded,
+            { label, count: nodes.length },
+          )}
         >
           <Heading level="h3">
             <RenderMarkdown>{label}</RenderMarkdown>
           </Heading>
-          <span className="ml-auto text-sm opacity-60">{nodes.length}</span>
+          <span className="ml-auto text-sm opacity-60">
+            {intl.formatNumber(nodes.length)}
+          </span>
         </button>
         <div
           ref={dropRef}
@@ -178,7 +187,10 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
               id={listId}
               items={nodes}
               nodeSize="sm"
-              announcedName={`${label} category`}
+              announcedName={intl.formatMessage(
+                interfaceMessages.categoryList,
+                { label },
+              )}
             />
           </motion.div>
         </div>
@@ -217,7 +229,10 @@ const CategoricalBinItem = (props: CategoricalBinItemProps) => {
         onToggleExpand();
       }}
       aria-expanded={false}
-      aria-label={`Category ${label}, ${nodes.length} items`}
+      aria-label={intl.formatMessage(interfaceMessages.categoryContents, {
+        label,
+        count: nodes.length,
+      })}
       transition={springTransition}
       variants={binItemVariants}
     >

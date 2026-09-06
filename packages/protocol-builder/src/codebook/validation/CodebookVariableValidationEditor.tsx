@@ -7,6 +7,7 @@ import {
   type FormEvent,
 } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import Surface from '@codaco/fresco-ui/layout/Surface';
@@ -143,6 +144,7 @@ export default function CodebookVariableValidationEditor({
   onSubmitRequest,
   onComplete,
 }: CodebookVariableValidationEditorProps) {
+  const intl = useAppIntl();
   const session = useMemo(
     () =>
       new AuxiliaryCodebookDraftSession(
@@ -346,7 +348,7 @@ export default function CodebookVariableValidationEditor({
               >
                 <AlertTitle>Could not save validation</AlertTitle>
                 <AlertDescription>
-                  {compoundFailureMessage(snapshot.lastFailure)}
+                  {compoundFailureMessage(snapshot.lastFailure, intl)}
                 </AlertDescription>
               </Alert>
             )}

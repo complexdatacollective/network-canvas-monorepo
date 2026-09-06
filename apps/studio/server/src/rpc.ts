@@ -312,6 +312,7 @@ export function createRpcRouter(
   deps: {
     auth: AuthService;
     deployment: DeploymentStatus;
+    telemetry: boolean;
     invitationDeliveryAvailable: boolean;
     pool?: pg.Pool;
   },
@@ -425,7 +426,9 @@ export function createRpcRouter(
   );
 
   return {
-    status: os.status.handler(() => getInstanceStatus(caps, deployment)),
+    status: os.status.handler(() =>
+      getInstanceStatus(caps, deployment, deps.telemetry),
+    ),
     me: os.me.use(requireUser).handler(async ({ context }) => ({
       userId: context.principal.userId,
       email: context.principal.email,

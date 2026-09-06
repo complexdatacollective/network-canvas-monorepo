@@ -1,5 +1,9 @@
+import type { IntlShape } from '@codaco/app-i18n/messages';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { NcNode } from '@codaco/shared-consts';
+
+import { resolveInterviewIntl } from '../../../i18n/resolveIntl';
+import { messages } from '../messages';
 
 export type Status =
   | 'affected'
@@ -12,14 +16,19 @@ export type Status =
 // Human-readable labels for each genetic status. Single source of truth for the
 // text describing a status, shared by the (decorative) node markers and the
 // screen-reader status summary so they never drift apart.
-export const STATUS_LABELS: Record<Status, string> = {
-  affected: 'Affected',
-  obligateAffected: 'Obligate affected',
-  obligateCarrier: 'Obligate carrier',
-  atRiskAffected: 'At risk (affected)',
-  atRiskCarrier: 'At risk (carrier)',
-  unknown: 'Status unknown',
+const statusMessages = {
+  affected: messages.affected,
+  obligateAffected: messages.obligateAffected,
+  obligateCarrier: messages.obligateCarrier,
+  atRiskAffected: messages.atRiskAffected,
+  atRiskCarrier: messages.atRiskCarrier,
+  unknown: messages.statusUnknown,
 };
+
+/** Display-only labels; genetic status keys and model outputs remain unchanged. */
+export function getStatusLabel(status: Status, intl?: IntlShape): string {
+  return resolveInterviewIntl(intl).formatMessage(statusMessages[status]);
+}
 
 // Lower index = higher precedence (affected is highest, unknown is lowest).
 const STATUS_PRECEDENCE: readonly Status[] = [

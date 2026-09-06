@@ -1,8 +1,10 @@
 'use client';
 
+import { useDirection } from '@base-ui/react/direction-provider';
 import { useCallback, useEffect, useRef } from 'react';
 
 import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 
 import { resolveIntl } from '../utils/resolveIntl';
 
@@ -56,6 +58,8 @@ const messages = defineMessages({
  * Creates and manages an ARIA live region that is properly cleaned up with React's lifecycle.
  */
 export function useAccessibilityAnnouncements() {
+  const { locale } = useAppIntl();
+  const direction = useDirection();
   const liveRegionRef = useRef<HTMLElement | null>(null);
   const timeoutRef = useRef<number | null>(null);
 
@@ -94,6 +98,13 @@ export function useAccessibilityAnnouncements() {
       }
     };
   }, []);
+
+  // This region lives in document.body, outside the control's locale subtree.
+  // Preserve its identity while giving assistive technology the active UI voice.
+  useEffect(() => {
+    liveRegionRef.current?.setAttribute('lang', locale);
+    liveRegionRef.current?.setAttribute('dir', direction);
+  }, [locale, direction]);
 
   const announce = useCallback((message: string): void => {
     const region = liveRegionRef.current;

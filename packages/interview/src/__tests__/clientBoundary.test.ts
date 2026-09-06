@@ -1,7 +1,9 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
+
+import { collectSourceFiles } from '@codaco/app-i18n/catalog-guards';
 
 /**
  * Every module that runs a React hook declares the client boundary.
@@ -19,31 +21,6 @@ import { describe, expect, it } from 'vitest';
  * This mirrors `packages/fresco-ui/src/__tests__/clientBoundary.test.ts`. Keep
  * the two matchers in step: a gap in one is a gap in the other.
  */
-
-const SOURCE_FILE_PATTERN = /\.(ts|tsx)$/;
-const EXCLUDED_FILE_PATTERN =
-  /(\.d\.ts$|\.test\.|\.spec\.|\.stories\.|__tests__|__mocks__)/;
-
-/**
- * Shipped source under a directory: `.ts` and `.tsx` alike, excluding tests,
- * stories, and declarations. `.ts` matters as much as `.tsx` — a custom hook in
- * a plain module crosses the boundary exactly as a component does.
- *
- * fresco-ui's guard borrows the identical walk from
- * `@codaco/app-i18n/catalog-guards`, which it already depends on for
- * `useAppIntl`. This package depends on app-i18n neither directly nor for
- * anything else — it reaches `react-intl` only transitively through fresco-ui,
- * as `vitest.config.ts` records — so it keeps its own six-line copy rather than
- * taking a workspace edge on an i18n package to read a directory.
- */
-const collectSourceFiles = (dir: string): string[] =>
-  readdirSync(dir, { recursive: true, encoding: 'utf8' })
-    .filter(
-      (entry) =>
-        SOURCE_FILE_PATTERN.test(entry) && !EXCLUDED_FILE_PATTERN.test(entry),
-    )
-    .map((entry) => join(dir, entry))
-    .toSorted();
 
 const DIRECTIVE = /^\s*(['"])use client\1/;
 

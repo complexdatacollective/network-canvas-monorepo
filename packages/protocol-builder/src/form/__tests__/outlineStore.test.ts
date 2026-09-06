@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { readMessage } from '../../testing/i18n.ts';
 import {
   SectionOutlineStore,
   sectionOutlineStatus,
@@ -132,6 +133,16 @@ const sectionNamed = (
  * cannot be saved, and a wrongly claimed one sends the researcher to a
  * section where there is nothing to fix.
  */
+/**
+ * A problem as the outline RENDERS it.
+ *
+ * The store has no reader, so a sentence this package wrote arrives encoded
+ * and `SectionOutline` decodes it. A plain sentence — the protocol schema's
+ * own, under `custom` — passes through untouched, which is why the cases below
+ * that hand in their own words assert on them directly.
+ */
+const read = (issue: string) => readMessage(issue);
+
 describe('session issues in the outline', () => {
   it('claims an issue at a field, inside it, and at the container above it', () => {
     const store = storeWith({ search: ['searchOptions.fuzziness'] });
@@ -228,7 +239,7 @@ describe('session issues in the outline', () => {
       },
     ]);
 
-    expect(sectionNamed(store, 'zoom').issues).toEqual([
+    expect(sectionNamed(store, 'zoom').issues.map(read)).toEqual([
       'mapOptions.initialZoom holds more than this stage allows.',
     ]);
     expect(
@@ -252,7 +263,7 @@ describe('session issues in the outline', () => {
       ),
     );
 
-    expect(sectionNamed(store, 'map').issues).toEqual([
+    expect(sectionNamed(store, 'map').issues.map(read)).toEqual([
       'mapOptions holds the wrong kind of value.',
     ]);
   });
@@ -357,7 +368,7 @@ describe('session issues in the outline', () => {
       },
     ]);
 
-    expect(sectionNamed(store, 'config').issues).toEqual([
+    expect(sectionNamed(store, 'config').issues.map(read)).toEqual([
       'nodeConfig.egoVariable has no value, and this stage needs one.',
     ]);
     expect(

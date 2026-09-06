@@ -14,6 +14,10 @@ import {
 } from 'react';
 import { v4 as uuid } from 'uuid';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import type { DialogProps } from '@codaco/fresco-ui/dialogs/Dialog';
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
@@ -44,9 +48,13 @@ import {
   useStageEditorForm,
   type StageFormStoreApi,
 } from '../stageEditorContext.ts';
-import { reseatEditedRow, rowIdentity } from './arrayFieldCommands.ts';
 import {
-  DEFAULT_ITEM_LABEL,
+  reseatEditedRow,
+  rowIdentity,
+  rowPathFor,
+} from './arrayFieldCommands.ts';
+import { DEFAULT_ITEM_LABEL } from './arrayMessages.ts';
+import {
   readOnlyMessage,
   rowRemovedMessage,
   writeRefusalMessage,
@@ -148,8 +156,15 @@ export type DialogArrayFieldProps<T extends ArrayItem> = Omit<
   /** Semantic width preset for the editor dialog. */
   editorDialogSize?: DialogProps['size'];
   editorValidate?: DialogArrayEditorValidate;
-  /** Noun used in row affordances ("Edit prompt", "Remove prompt"). */
-  itemLabel?: string;
+  /**
+   * Noun used in row affordances ("Edit prompt", "Remove prompt").
+   *
+   * A descriptor rather than a word: every sentence it goes into is either
+   * formatted where it is read or encoded for a reader further on, so a caller
+   * that resolved it to English first would put an English noun in a Spanish
+   * sentence.
+   */
+  itemLabel?: MessageDescriptor;
   itemSelector?: DialogArrayItemSelector;
   itemTemplate?: () => Partial<T>;
   /** Last transform before the value reaches the array. */
@@ -305,6 +320,85 @@ const NESTED_IN_A_ROW: ArrayFieldBinding = Object.freeze({
 });
 
 /**
+ * What this list says for itself, over and above the refusals every list
+ * shares (`arrayWriteRefusal`).
+ *
+ * `itemLabel` is the list's own noun for its rows, resolved wherever the
+ * sentence is read rather than here — as a nested reference for the two that
+ * cross a string-only contract, and through the reader's own formatter for the
+ * row affordances, which are rendered by this module's markup.
+ */
+const messages = defineMessages({
+  listDisabled: {
+    id: 'protocolBuilder.arrayField.listDisabledRefusal',
+    defaultMessage:
+      'This list is not accepting changes at the moment, so this {itemLabel} was not saved. Copy anything you want to keep, then try again once the list can be edited.',
+    description:
+      'Shown above the fields of a row editor when the list itself has stopped accepting changes — because something else on the stage that it depends on is no longer chosen — so the row could not be saved. itemLabel is the list’s own noun for one of its rows: "prompt", "option", "item".',
+  },
+  saveRefused: {
+    id: 'protocolBuilder.arrayField.saveRefused',
+    defaultMessage:
+      'This {itemLabel} could not be saved. Check your changes and try again.',
+    description:
+      'Shown above the fields of a row editor when saving was refused for a reason that gave no explanation of its own. The last resort. itemLabel is the list’s own noun for one of its rows.',
+  },
+  removeRowTitle: {
+    id: 'protocolBuilder.arrayField.removeRowTitle',
+    defaultMessage: 'Remove this {itemLabel}?',
+    description:
+      'Title of the confirmation raised when a researcher deletes one row of a list. itemLabel is the list’s own noun for one of its rows, already in the reader’s language.',
+  },
+  removeRowDescription: {
+    id: 'protocolBuilder.arrayField.removeRowDescription',
+    defaultMessage: 'This {itemLabel} will be removed from the list.',
+    description:
+      'Body of the confirmation raised when a researcher deletes one row of a list. itemLabel is the list’s own noun for one of its rows, already in the reader’s language.',
+  },
+  removeRow: {
+    id: 'protocolBuilder.arrayField.removeRow',
+    defaultMessage: 'Remove {itemLabel}',
+    description:
+      'Action that deletes one row of a list — the accessible name of the button on the row, and the confirm button of the confirmation it raises. itemLabel is the list’s own noun for one of its rows, already in the reader’s language.',
+  },
+  editRow: {
+    id: 'protocolBuilder.arrayField.editRow',
+    defaultMessage: 'Edit {itemLabel}',
+    description:
+      'Accessible name of the button that opens one row of a list in its editing dialog. itemLabel is the list’s own noun for one of its rows, already in the reader’s language.',
+  },
+  reorderRow: {
+    id: 'protocolBuilder.arrayField.reorderRow',
+    defaultMessage: 'Reorder {itemLabel} {position} of {count, number}',
+    description:
+      'Accessible name of the handle that drags one row of a list into a different position. itemLabel is the list’s own noun for one of its rows, already in the reader’s language; position is the row’s own place in the list, counting from one; count is how many rows the list holds.',
+  },
+  addRowTitle: {
+    id: 'protocolBuilder.arrayField.addRowTitle',
+    defaultMessage: 'Add {itemLabel}',
+    description:
+      'Title of the dialog a researcher fills in to add a row to a list, where the list has offered no title of its own. itemLabel is the list’s own noun for one of its rows, already in the reader’s language.',
+  },
+  addSubmit: {
+    id: 'protocolBuilder.arrayField.addSubmit',
+    defaultMessage: 'Add',
+    description:
+      'Button that commits the dialog a researcher has filled in for a NEW row of a list. The same dialog says Save when it is editing a row that already exists.',
+  },
+  emptyState: {
+    id: 'protocolBuilder.arrayField.emptyState',
+    defaultMessage: 'No items have been created yet.',
+    description:
+      'Shown in place of the rows when a list has none, and the list’s caller has offered no wording of its own.',
+  },
+});
+
+/** The row noun, for a sentence that has to reach its reader as a string. */
+const itemLabelValue = (itemLabel: MessageDescriptor) => ({
+  itemLabel: { messageError: createMessageError(itemLabel) },
+});
+
+/**
  * Said when the LIST stopped accepting changes while the editor was open —
  * a section whose prerequisite is no longer chosen, a list disabled by
  * something else on the stage. `ArrayField` withdraws its own save handler
@@ -312,16 +406,16 @@ const NESTED_IN_A_ROW: ArrayFieldBinding = Object.freeze({
  * untouched: the researcher's next move is to restore whatever the list
  * depends on, not to take editing back.
  */
-const listDisabledMessage = (itemLabel: string) =>
-  `This list is not accepting changes at the moment, so this ${itemLabel} was not saved. Copy anything you want to keep, then try again once the list can be edited.`;
+const listDisabledMessage = (itemLabel: MessageDescriptor) =>
+  createMessageError(messages.listDisabled, itemLabelValue(itemLabel));
 
 /**
  * Said when `onBeforeSave` refuses without saying why. A refusal that reports
  * nothing would otherwise read as a success and close the dialog over work
  * that was never committed.
  */
-const saveRefusedMessage = (itemLabel: string) =>
-  `This ${itemLabel} could not be saved. Check your changes and try again.`;
+const saveRefusedMessage = (itemLabel: MessageDescriptor) =>
+  createMessageError(messages.saveRefused, itemLabelValue(itemLabel));
 
 /**
  * A pre-save refusal, in the shape the dialog renders: form-level messages
@@ -329,7 +423,7 @@ const saveRefusedMessage = (itemLabel: string) =>
  */
 const refusalFrom = (
   failure: Extract<FormSubmissionResult, { success: false }>,
-  itemLabel: string,
+  itemLabel: MessageDescriptor,
 ): DialogFormErrors => {
   const formErrors = failure.formErrors ?? [];
   // The flattened shape a failed submission is written in leaves every key
@@ -374,7 +468,7 @@ type DialogArrayContextValue = {
   editorTitle: string;
   editorValidate?: DialogArrayEditorValidate;
   editFormName: string;
-  itemLabel: string;
+  itemLabel: MessageDescriptor;
   itemSelector?: DialogArrayItemSelector;
   normalizeItem: (value: unknown) => unknown;
   onBeforeSave?: (value: unknown) => unknown;
@@ -418,7 +512,11 @@ function DialogItem({
   editTriggerRef,
   getAddTrigger,
 }: ArrayFieldItemProps<ArrayItem>) {
+  const intl = useAppIntl();
   const { itemLabel, previewComponent, previewProps } = useDialogArrayContext();
+  // Resolved once for the whole row: every affordance below says the same noun,
+  // and the confirmation the delete button raises says it three more times.
+  const rowNoun = intl.formatMessage(itemLabel);
   const { rowRef, confirmRemoval } = useConfirmRowRemoval({
     item,
     itemLabel,
@@ -431,10 +529,16 @@ function DialogItem({
 
   const handleDelete = () => {
     confirmRemoval({
-      title: `Remove this ${itemLabel}?`,
-      description: `This ${itemLabel} will be removed from the list.`,
-      confirmLabel: `Remove ${itemLabel}`,
-      cancelLabel: 'Cancel',
+      title: intl.formatMessage(messages.removeRowTitle, {
+        itemLabel: rowNoun,
+      }),
+      description: intl.formatMessage(messages.removeRowDescription, {
+        itemLabel: rowNoun,
+      }),
+      confirmLabel: intl.formatMessage(messages.removeRow, {
+        itemLabel: rowNoun,
+      }),
+      cancelLabel: intl.formatMessage(commonMessages.cancel),
       intent: 'destructive',
     });
   };
@@ -455,7 +559,11 @@ function DialogItem({
           itemCount={itemCount}
           onMove={onMove}
           disabled={interactionDisabled}
-          label={`Reorder ${itemLabel} ${index + 1} of ${itemCount}`}
+          label={intl.formatMessage(messages.reorderRow, {
+            itemLabel: rowNoun,
+            position: index + 1,
+            count: itemCount,
+          })}
         />
       )}
       <div className="min-w-0 flex-1">
@@ -468,7 +576,9 @@ function DialogItem({
       <IconButton
         ref={editTriggerRef}
         icon={<Pencil />}
-        aria-label={`Edit ${itemLabel}`}
+        aria-label={intl.formatMessage(messages.editRow, {
+          itemLabel: rowNoun,
+        })}
         color="dynamic"
         disabled={interactionDisabled}
         onClick={onEdit}
@@ -476,7 +586,9 @@ function DialogItem({
       <IconButton
         {...rowRemovalControlProps}
         icon={<Trash2 />}
-        aria-label={`Remove ${itemLabel}`}
+        aria-label={intl.formatMessage(messages.removeRow, {
+          itemLabel: rowNoun,
+        })}
         color="destructive"
         disabled={interactionDisabled}
         onClick={handleDelete}
@@ -513,6 +625,7 @@ function DialogEditor({
   onCancel,
   getEditorTrigger,
 }: ArrayFieldEditorProps<ArrayItem>) {
+  const intl = useAppIntl();
   const {
     addTitle,
     commitDetachedRow,
@@ -531,6 +644,20 @@ function DialogEditor({
     writeThrough,
   } = useDialogArrayContext();
   const { protocolContext, readOnly } = useStageEditorForm();
+  /**
+   * Where the rows of the list this dialog edits live in the stage document.
+   *
+   * Read from the LIST's binding, which is the one this component sits under:
+   * the editor's own fields are wrapped in `NESTED_IN_A_ROW` below, and that
+   * provider is inside this component's own JSX rather than above it.
+   * `undefined` for a list with no document path of its own — a list nested
+   * inside another row — which is a row the dialog around it commits.
+   */
+  const listBinding = useContext(ArrayFieldBindingContext);
+  const rowPath =
+    listBinding?.documentPath === undefined
+      ? undefined
+      : rowPathFor(listBinding.documentPath);
 
   // `item` is undefined between edits. The last session stays mounted so the
   // dialog can animate closed, but every session gets its own `id` — and so
@@ -794,7 +921,7 @@ function DialogEditor({
           ? itemValuesRef.current
           : baseValues;
       const rowToCommit = normalizeItem(
-        reseatEditedRow(baseValues, valueToSave, latestValues),
+        reseatEditedRow(baseValues, valueToSave, latestValues, rowPath),
       ) as ArrayItem;
 
       // The happy path: this editor is still the one editing this row, so
@@ -859,7 +986,14 @@ function DialogEditor({
       // for the edit to be committed to at all.
       return { formErrors: [rowRemovedMessage(itemLabel)] };
     },
-    [commitDetachedRow, itemLabel, normalizeItem, onBeforeSave, writeThrough],
+    [
+      commitDetachedRow,
+      itemLabel,
+      normalizeItem,
+      onBeforeSave,
+      rowPath,
+      writeThrough,
+    ],
   );
 
   const handleSave = useCallback(
@@ -975,7 +1109,9 @@ function DialogEditor({
        * question about what the researcher decided since.
        */
       initialValues={sessionBaseRef.current as Record<string, FieldValue>}
-      submitLabel={session.isNewItem ? 'Add' : 'Save'}
+      submitLabel={intl.formatMessage(
+        session.isNewItem ? messages.addSubmit : commonMessages.save,
+      )}
       onSubmit={handleSave}
       validate={validate}
       size={editorDialogSize}
@@ -1040,7 +1176,7 @@ export default function DialogArrayField<T extends ArrayItem>({
   onChange,
   name = '',
   addButtonLabel,
-  emptyStateMessage = 'No items have been created yet.',
+  emptyStateMessage,
   addTitle,
   editorTitle,
   editorFieldsComponent,
@@ -1061,6 +1197,7 @@ export default function DialogArrayField<T extends ArrayItem>({
   itemClasses,
   ...arrayFieldProps
 }: DialogArrayFieldProps<T>) {
+  const intl = useAppIntl();
   const { formId } = useStageEditorForm();
 
   const createItem = useCallback(() => {
@@ -1096,7 +1233,11 @@ export default function DialogArrayField<T extends ArrayItem>({
 
   const context = useMemo<DialogArrayContextValue>(
     () => ({
-      addTitle: addTitle ?? `Add ${itemLabel}`,
+      addTitle:
+        addTitle ??
+        intl.formatMessage(messages.addRowTitle, {
+          itemLabel: intl.formatMessage(itemLabel),
+        }),
       commitDetachedRow,
       editFormName: requestedEditFormName ?? defaultEditFormName(formId, name),
       editorFieldsComponent,
@@ -1117,6 +1258,7 @@ export default function DialogArrayField<T extends ArrayItem>({
     [
       addTitle,
       commitDetachedRow,
+      intl,
       editorFieldsComponent,
       editorDialogSize,
       editorPreviewComponent,
@@ -1146,7 +1288,9 @@ export default function DialogArrayField<T extends ArrayItem>({
         onChange={onChange}
         onOperation={onOperation}
         addButtonLabel={addButtonLabel}
-        emptyStateMessage={emptyStateMessage}
+        emptyStateMessage={
+          emptyStateMessage ?? intl.formatMessage(messages.emptyState)
+        }
         itemTemplate={createItem}
         getId={resolveItemId}
         itemClasses={itemClasses}

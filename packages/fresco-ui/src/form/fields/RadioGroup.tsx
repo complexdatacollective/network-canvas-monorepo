@@ -3,7 +3,7 @@
 import { Radio } from '@base-ui/react/radio';
 import { RadioGroup, type RadioGroupProps } from '@base-ui/react/radio-group';
 import { motion } from 'motion/react';
-import { useId } from 'react';
+import { type ReactNode, useId } from 'react';
 
 import { RenderMarkdown } from '../../RenderMarkdown';
 import {
@@ -49,7 +49,7 @@ const radioIndicatorVariants = compose(
 
 type RadioItemProps = {
   value: string | number;
-  label: string;
+  label: ReactNode;
   disabled?: boolean;
   readOnly?: boolean;
   size?: VariantProps<typeof radioIndicatorVariants>['size'];
@@ -139,7 +139,11 @@ export function RadioItem({
           labelClassName,
         )}
       >
-        <RenderMarkdown>{label}</RenderMarkdown>
+        {typeof label === 'string' ? (
+          <RenderMarkdown>{label}</RenderMarkdown>
+        ) : (
+          label
+        )}
       </span>
     </label>
   );
@@ -147,7 +151,7 @@ export function RadioItem({
 
 type RadioOption = {
   value: string | number;
-  label: string;
+  label: ReactNode;
   disabled?: boolean;
 };
 

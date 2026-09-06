@@ -10,6 +10,7 @@ import {
   type ComponentType,
 } from 'react';
 
+import { defineMessage } from '@codaco/app-i18n/messages';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import {
   ArrayFieldDragHandle,
@@ -41,6 +42,22 @@ import {
   rowRemovalControlProps,
   useConfirmRowRemoval,
 } from './useConfirmRowRemoval.ts';
+
+/**
+ * What one row of this list is called inside sentences about it.
+ *
+ * A descriptor rather than a word, because every one of those sentences is
+ * either formatted where it is read or encoded for a reader further on: a noun
+ * resolved here would be resolved in whichever language happened to be current
+ * when the row was rendered, not the one the sentence is read in. See
+ * `arrayMessages`.
+ */
+const optionNoun = defineMessage({
+  id: 'protocolBuilder.option.optionNoun',
+  defaultMessage: 'option',
+  description:
+    'Noun for one row of the list of options a categorical or ordinal attribute offers. Interpolated mid-sentence into things said ABOUT a row ("This option was replaced…"), so it is lower case and singular.',
+});
 
 export type OptionValue = VariableOptions[number];
 
@@ -126,7 +143,7 @@ export default function Option({
   const { arrayName, allValues, showArrayError } = useOptionsContext();
   const { rowRef, confirmRemoval } = useConfirmRowRemoval({
     item,
-    itemLabel: 'option',
+    itemLabel: optionNoun,
     index,
     onDelete,
     getAddTrigger,

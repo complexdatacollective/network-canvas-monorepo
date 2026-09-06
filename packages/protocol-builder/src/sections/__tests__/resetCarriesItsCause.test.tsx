@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import { type ComponentType, useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
@@ -12,6 +12,7 @@ import MultiSelect from '../../form/arrayFields/MultiSelect.tsx';
 import ProtocolArrayField from '../../form/ProtocolArrayField.tsx';
 import ProtocolField from '../../form/ProtocolField.tsx';
 import ResourcePickerControl from '../../resources/components/ResourcePickerControl.tsx';
+import { fixtureMessage } from '../../testing/i18n.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import BuilderSection, { type SectionCapability } from '../BuilderSection.tsx';
 
@@ -40,27 +41,33 @@ const STAGED_COLUMNS = 'city, name';
 const CARDS: SectionCapability = {
   fields: ['cardOptions'],
   confirmClear: {
-    title: 'This will clear the card details',
-    description: 'Every extra attribute the cards show will be removed.',
-    confirmLabel: 'Clear card details',
+    title: fixtureMessage('This will clear the card details'),
+    description: fixtureMessage(
+      'Every extra attribute the cards show will be removed.',
+    ),
+    confirmLabel: fixtureMessage('Clear card details'),
   },
 };
 
 const SORTING: SectionCapability = {
   fields: ['sortOptions'],
   confirmClear: {
-    title: 'This will clear your sorting',
-    description: 'The starting order and every sortable attribute will go.',
-    confirmLabel: 'Clear sorting',
+    title: fixtureMessage('This will clear your sorting'),
+    description: fixtureMessage(
+      'The starting order and every sortable attribute will go.',
+    ),
+    confirmLabel: fixtureMessage('Clear sorting'),
   },
 };
 
 const SEARCH: SectionCapability = {
   fields: ['searchOptions'],
   confirmClear: {
-    title: 'This will turn off roster search',
-    description: 'The attributes a search is matched against will go.',
-    confirmLabel: 'Turn off search',
+    title: fixtureMessage('This will turn off roster search'),
+    description: fixtureMessage(
+      'The attributes a search is matched against will go.',
+    ),
+    confirmLabel: fixtureMessage('Turn off search'),
   },
 };
 
@@ -71,9 +78,11 @@ const SEARCH: SectionCapability = {
 const PRESENTATION: SectionCapability = {
   fields: ['presentationOptions'],
   confirmClear: {
-    title: 'This will clear the presentation',
-    description: 'Everything about how the roster is presented will go.',
-    confirmLabel: 'Clear the presentation',
+    title: fixtureMessage('This will clear the presentation'),
+    description: fixtureMessage(
+      'Everything about how the roster is presented will go.',
+    ),
+    confirmLabel: fixtureMessage('Clear the presentation'),
   },
 };
 
@@ -85,9 +94,11 @@ const PRESENTATION: SectionCapability = {
 const LIMITS: SectionCapability = {
   fields: ['behaviours'],
   confirmClear: {
-    title: 'This will clear the nomination limits',
-    description: 'The fewest and most people the participant may name go.',
-    confirmLabel: 'Clear the limits',
+    title: fixtureMessage('This will clear the nomination limits'),
+    description: fixtureMessage(
+      'The fewest and most people the participant may name go.',
+    ),
+    confirmLabel: fixtureMessage('Clear the limits'),
   },
 };
 
@@ -240,12 +251,16 @@ const openRoster = () =>
   renderStageEditor({
     stageId: 'name-generator-roster-1',
     sections: <RosterSections />,
+    // What is asked here is which batches LEFT the session and which the hold
+    // kept back, so the host under it has to be one that is handed them.
+    applyLive: true,
   });
 
 const openUnconfiguredRoster = () =>
   renderStageEditor({
     stageId: 'name-generator-roster-1',
     sections: <UnconfiguredRosterSections />,
+    applyLive: true,
   });
 
 /** Imports a data file, which stages it with the host and selects it. */
@@ -436,6 +451,7 @@ describe('a capability reset by a data file staged in this session', () => {
     const harness = renderStageEditor({
       stageId: 'name-generator-roster-1',
       sections: <RosterSections />,
+      applyLive: true,
       assets: {
         other_roster: {
           type: 'network',
@@ -677,8 +693,24 @@ describe('a staged data file the researcher discards again', () => {
       expect(harness.liveCommands().length).toBeGreaterThan(0),
     );
 
+    // The discard took the stage's data file away with the batches it
+    // released, and this host holds what it is handed — so the protocol it is
+    // asked to validate is now one the researcher is halfway through writing.
+    // That is the host answering about the PROTOCOL, which is only something
+    // it can do once the request reaches it at all: the hold is what is being
+    // proved gone, and a hold still in place refuses here rather than there.
     await expect(
       harness.session.requestCompoundEdit(rename('years_old')),
+    ).resolves.toMatchObject({ status: 'failed', reason: 'host-error' });
+
+    // And with a file named again, the very same request applies.
+    act(() => {
+      harness.session.dispatch([
+        { op: 'set', key: 'dataSource', value: 'roster_data' },
+      ]);
+    });
+    await expect(
+      harness.session.requestCompoundEdit(rename('years_older')),
     ).resolves.toMatchObject({ status: 'applied' });
   });
 

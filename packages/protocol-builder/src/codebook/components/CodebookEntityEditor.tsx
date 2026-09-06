@@ -9,6 +9,7 @@ import {
   type FormEvent,
 } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
@@ -289,6 +290,7 @@ export default function CodebookEntityEditor({
   onCancel,
   ...modeProps
 }: CodebookEntityEditorProps) {
+  const intl = useAppIntl();
   const session = useMemo(
     () =>
       new AuxiliaryCodebookDraftSession(
@@ -461,7 +463,7 @@ export default function CodebookEntityEditor({
               >
                 <AlertTitle>Could not save this entity</AlertTitle>
                 <AlertDescription>
-                  {compoundFailureMessage(snapshot.lastFailure)}
+                  {compoundFailureMessage(snapshot.lastFailure, intl)}
                 </AlertDescription>
               </Alert>
             )}

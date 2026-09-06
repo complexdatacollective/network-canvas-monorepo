@@ -1,6 +1,12 @@
+'use client';
+
+import type { IntlShape } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { VariableValue } from '@codaco/shared-consts';
+
+import { interfaceMessages } from '../messages';
 
 type DataCardDetails = Record<string, VariableValue | undefined>;
 
@@ -14,14 +20,20 @@ type DataCardProps = Omit<
   details?: DataCardDetails;
 };
 
-const formatValue = (value: VariableValue | undefined): string => {
+const formatValue = (
+  value: VariableValue | undefined,
+  intl: IntlShape,
+): string => {
   if (value === null || value === undefined || value === '') return '—';
 
-  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+  if (typeof value === 'boolean')
+    return intl.formatMessage(
+      value ? interfaceMessages.yes : interfaceMessages.no,
+    );
 
   if (Array.isArray(value)) {
     if (value.length === 0) return '—';
-    return value.map(formatValue).join(', ');
+    return value.map((item) => formatValue(item, intl)).join(', ');
   }
 
   if (
@@ -58,6 +70,7 @@ const DataCard = ({
   className,
   ...articleProps
 }: DataCardProps) => {
+  const intl = useAppIntl();
   const hasDetails = details && Object.keys(details).length > 0;
 
   return (
@@ -91,7 +104,7 @@ const DataCard = ({
                 {detailLabel}
               </Heading>
               <dd className="text-sm leading-tight font-medium wrap-break-word">
-                {formatValue(value)}
+                {formatValue(value, intl)}
               </dd>
             </div>
           ))}

@@ -1,5 +1,8 @@
 'use client';
 
+import type { ReactNode } from 'react';
+
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import FieldGroup from '@codaco/fresco-ui/form/FieldGroup';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
@@ -7,6 +10,7 @@ import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup'
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
 import { useFamilyPedigreeStore } from '../FamilyPedigreeContext';
+import { messages } from '../messages';
 import { getNodeLabel } from '../pedigree-layout/utils/getDisplayLabel';
 import type { VariableConfig } from '../store';
 import { getEdgeRelationshipType } from '../utils/edgeUtils';
@@ -15,16 +19,9 @@ import { buildNodeOptions } from './wizards/buildNodeOptions';
 import { partnerCandidates } from './wizards/parentCandidates';
 import { addableParentTypeOptions } from './wizards/parentTypeOptions';
 
-const CURRENT_EX_OPTIONS = [
-  { value: 'current', label: 'Current' },
-  { value: 'ex', label: 'Ex' },
-];
-
-const EXISTING_OPTION = {
-  value: 'existing',
-  label: 'Yes — already in the family tree',
-};
-const NEW_OPTION = { value: 'new', label: 'No — add a new person' };
+function emphasize(chunks: ReactNode) {
+  return <strong>{chunks}</strong>;
+}
 
 type AddPersonFieldsProps = {
   anchorNodeId: string;
@@ -39,6 +36,20 @@ export default function AddPersonFields({
   edges,
   variableConfig,
 }: AddPersonFieldsProps) {
+  const intl = useAppIntl();
+  const CURRENT_EX_OPTIONS = [
+    { value: 'current', label: intl.formatMessage(messages.current) },
+    { value: 'ex', label: intl.formatMessage(messages.ex) },
+  ];
+  const EXISTING_OPTION = {
+    value: 'existing',
+    label: intl.formatMessage(messages.alreadyInTree),
+  };
+  const NEW_OPTION = {
+    value: 'new',
+    label: intl.formatMessage(messages.addNewPersonOption),
+  };
+
   const framing = useFamilyPedigreeStore((s) => s.framing);
   const children = [...edges.values()]
     .filter(
@@ -64,6 +75,7 @@ export default function AddPersonFields({
     variableConfig,
     candidateIds,
     framing ?? 'gamete',
+    intl,
   );
 
   const hasCandidates = existingPartnerOptions.length > 0;
@@ -75,7 +87,7 @@ export default function AddPersonFields({
     <>
       <Field
         name="partnerType"
-        label="Is this person already in your family tree / related to you?"
+        label={intl.formatMessage(messages.personAlreadyRelated)}
         component={RadioGroupField}
         options={partnerTypeOptions}
         initialValue="new"
@@ -87,9 +99,12 @@ export default function AddPersonFields({
       >
         <Field
           name="existingPartnerId"
-          label="Select the person"
+          label={intl.formatMessage(messages.selectPerson)}
           component={RadioGroupField}
-          options={existingPartnerOptions}
+          options={existingPartnerOptions.map(({ label, ...option }) => ({
+            ...option,
+            label: <>{label}</>,
+          }))}
           required
         />
       </FieldGroup>
@@ -110,7 +125,7 @@ export default function AddPersonFields({
       */}
       <Field
         name="current"
-        label="Are they a current or ex partner?"
+        label={intl.formatMessage(messages.currentOrExPartner)}
         component={RadioGroupField}
         options={CURRENT_EX_OPTIONS}
         initialValue="current"
@@ -124,15 +139,30 @@ export default function AddPersonFields({
           <Field
             key={`parentType-${childId}`}
             name={`parentType-${childId}`}
-            label={`Is this person also a parent of **${getNodeLabel(childId, nodes, edges, variableConfig, framing ?? 'gamete')}**?`}
+            label={
+              <AppMessage
+                message={messages.alsoParentOf}
+                values={{
+                  name: getNodeLabel(
+                    childId,
+                    nodes,
+                    edges,
+                    variableConfig,
+                    framing ?? 'gamete',
+                    intl,
+                  ),
+                  strong: emphasize,
+                }}
+              />
+            }
             component={RichSelectGroupField}
             options={[
               {
                 value: 'none',
-                label: 'Not a parent',
-                description: 'Select this if not a parent of this child',
+                label: intl.formatMessage(messages.notParent),
+                description: intl.formatMessage(messages.notParentDescription),
               },
-              ...addableParentTypeOptions(childId, edges, variableConfig),
+              ...addableParentTypeOptions(childId, edges, variableConfig, intl),
             ]}
             initialValue="none"
           />
