@@ -5,6 +5,7 @@ import {
   collectAssetReferences,
   collectEntityAttributeReferences,
   collectEntityTypeReferences,
+  collectEntityTypeReferencesFromSchema,
   type EntityAttributeReferenceHit,
   type EntityTypeReferenceHit,
 } from './utils/collectEntityAttributeReferences.ts';
@@ -99,6 +100,7 @@ export {
   collectAssetReferences,
   collectEntityAttributeReferences,
   collectEntityTypeReferences,
+  collectEntityTypeReferencesFromSchema,
   describeProtocolFileError,
   type EntityAttributeReferenceHit,
   type EntityTypeReferenceHit,

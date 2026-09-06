@@ -2,10 +2,11 @@ import { useId, useMemo, useSyncExternalStore } from 'react';
 
 import type { Command } from '@codaco/studio-sync/apply';
 
+import type { ResourceResult } from './resources/gateway.ts';
 import type {
-  ProtocolBuilderResourceGateway,
-  ResourceResult,
-} from './resources/gateway.ts';
+  SessionResourceGateway,
+  StagedResourceCancelReport,
+} from './resources/lifecycle.ts';
 import {
   commandsFromDraftChange,
   type CompoundEditRequest,
@@ -35,13 +36,26 @@ export type StageEditorController = Readonly<{
    * session without one. The shell provides it to the editor's resource
    * pickers; they reach it through `useResourceGateway`, never through this.
    */
-  resourceGateway: ProtocolBuilderResourceGateway | undefined;
+  resourceGateway: SessionResourceGateway | undefined;
   changeFields(next: StageFormDraftChange): void;
   setField(key: string, value: unknown): void;
   unsetField(key: string): void;
   insertItem(key: string, index: number, item: unknown): void;
   removeItem(key: string, index: number): void;
   moveItem(key: string, from: number, to: number): void;
+  /**
+   * Issues commands a list editor has already decided on, and answers with the
+   * draft they produced.
+   *
+   * `changeFields` diffs a whole draft, so everything it can say about a list
+   * is `set` — which loses WHICH row was inserted, removed or moved, the one
+   * thing a collaborator's client needs to replay the edit onto a list that has
+   * since changed. A list editor therefore says what it did. It is handed the
+   * resulting draft because it also owns a control bound to that list, and
+   * reading the value back out of a snapshot it was memoised on would leave the
+   * control a revision behind its own edit.
+   */
+  applyCommands(commands: readonly Command[]): StageFormDraft;
   undo(): void;
   redo(): void;
   validate(): Promise<ProtocolBuilderValidation>;
@@ -49,8 +63,11 @@ export type StageEditorController = Readonly<{
     request: CompoundEditRequest,
   ): Promise<CompoundEditResult>;
   finish(): Promise<void>;
-  /** Closes the editor without finishing: staged resources are discarded. */
-  cancel(): Promise<ResourceResult<undefined>>;
+  /**
+   * Closes the editor without finishing: staged resources are discarded,
+   * except anything a promotion left undecided, which the report names.
+   */
+  cancel(): Promise<ResourceResult<StagedResourceCancelReport>>;
 }>;
 
 export function useStageEditorController(
@@ -96,6 +113,13 @@ export function useStageEditorController(
       },
       moveItem(key: string, from: number, to: number) {
         session.dispatch([{ op: 'moveItem', key, from, to }]);
+      },
+      applyCommands(commands: readonly Command[]) {
+        if (commands.length > 0) session.dispatch(commands);
+        // Read from the session rather than from `snapshot`, for the same
+        // reason `changeFields` does: what this controller was memoised on is
+        // a revision behind anything that arrived since.
+        return session.getSnapshot().editedSection.fields;
       },
       undo: () => session.undo(),
       redo: () => session.redo(),

@@ -3,13 +3,27 @@
 import { Toggle } from '@base-ui/react/toggle';
 import { ToggleGroup } from '@base-ui/react/toggle-group';
 import { Toolbar } from '@base-ui/react/toolbar';
-import type { AnyExtension } from '@tiptap/core';
+import {
+  type AnyExtension,
+  createNodeFromContent,
+  type Editor,
+  Extension,
+  getSchema,
+  isProseMirrorFragment,
+  Node as TiptapNode,
+} from '@tiptap/core';
 import { BulletList } from '@tiptap/extension-bullet-list';
 import { Heading } from '@tiptap/extension-heading';
 import { OrderedList } from '@tiptap/extension-ordered-list';
 import { Paragraph } from '@tiptap/extension-paragraph';
 import { Placeholder } from '@tiptap/extension-placeholder';
-import type { DOMOutputSpec } from '@tiptap/pm/model';
+import {
+  type DOMOutputSpec,
+  Fragment,
+  type Schema,
+  Slice,
+} from '@tiptap/pm/model';
+import { Plugin, PluginKey } from '@tiptap/pm/state';
 import {
   EditorContent,
   type JSONContent,
@@ -17,6 +31,7 @@ import {
   useEditorState,
 } from '@tiptap/react';
 import { StarterKit } from '@tiptap/starter-kit';
+import { isEqual } from 'es-toolkit';
 import {
   Bold,
   Check,
@@ -33,7 +48,15 @@ import {
   Trash2,
   Undo,
 } from 'lucide-react';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -158,12 +181,36 @@ const messages = defineMessages({
   },
 });
 
+/**
+ * Whether the toolbar is unavailable because the FIELD is — read-only, or
+ * disabled while its form submits — rather than because of where the caret
+ * happens to be.
+ *
+ * The two are different states, and a button says them differently. A live
+ * toolbar keeps an unavailable button focusable and marked `aria-disabled`,
+ * which is what the ARIA toolbar pattern asks for: a keyboard user can arrow
+ * onto Undo and be told there is nothing to undo. A toolbar belonging to a
+ * field nobody can edit has nothing to go and read, so its buttons are
+ * unavailable the way every other control on the form is — disabled outright,
+ * and out of the tab order.
+ */
+const FieldUnavailableContext = createContext(false);
+
+function useUnavailableProps() {
+  const unavailable = useContext(FieldUnavailableContext);
+  return unavailable
+    ? ({ 'focusableWhenDisabled': false, 'aria-disabled': true } as const)
+    : {};
+}
+
 const ToolbarToggleButton = (props: Toolbar.Button.Props) => {
-  return <Toolbar.Button {...props} render={<Toggle />} />;
+  const unavailable = useUnavailableProps();
+  return <Toolbar.Button {...props} {...unavailable} render={<Toggle />} />;
 };
 
 const ToolbarButton = (props: Toolbar.Button.Props) => {
-  return <Toolbar.Button {...props} />;
+  const unavailable = useUnavailableProps();
+  return <Toolbar.Button {...props} {...unavailable} />;
 };
 
 // Get the classes from the typography components
@@ -173,12 +220,284 @@ const h2Classes = headingVariants({ level: 'h2' });
 const h3Classes = headingVariants({ level: 'h3' });
 const h4Classes = headingVariants({ level: 'h4' });
 
+/**
+ * A document that is one paragraph and cannot become two.
+ *
+ * `singleLine` is a promise about the VALUE — one line of text — and the
+ * schema is the only place that promise can be kept. Enforcing it on the way
+ * out instead leaves the editor free to hold a document the single-line form
+ * cannot express, and whatever serialises it then has to invent a join for the
+ * paragraphs it was never meant to see. Architect's markdown adapter joined
+ * them with a space, so a field whose emptied first paragraph the caret had
+ * just left saved "Never met" as " Never met".
+ */
+const SingleLineDocument = TiptapNode.create({
+  name: 'doc',
+  topNode: true,
+  content: 'paragraph',
+});
+
+/** The line being collected, and whether a break is owed before its next text. */
+type OneLineRun = {
+  collected: JSONContent[];
+  breakPending: boolean;
+};
+
+const SPACE = ' ';
+
+/**
+ * Adds text to the line, joining it to the run before it when they carry the
+ * same marks. That is what ProseMirror itself holds, so a flattened value
+ * compares equal to the document the editor makes of it.
+ */
+const pushRun = (
+  run: OneLineRun,
+  text: string,
+  marks: JSONContent['marks'],
+) => {
+  const carried = marks && marks.length > 0 ? marks : undefined;
+  const previous = run.collected.at(-1);
+
+  if (previous?.type === 'text' && isEqual(previous.marks, carried)) {
+    previous.text = `${previous.text ?? ''}${text}`;
+    return;
+  }
+
+  run.collected.push(
+    carried === undefined
+      ? { type: 'text', text }
+      : { type: 'text', marks: carried, text },
+  );
+};
+
+/**
+ * Adds a text node to the line, spelling any break owed before it as one
+ * space. The space carries no marks of its own: a bold space would serialise
+ * as part of the bold run, and markdown will not open emphasis on a space.
+ */
+const addText = (
+  run: OneLineRun,
+  text: string,
+  marks: JSONContent['marks'],
+) => {
+  if (run.breakPending && run.collected.length > 0) {
+    pushRun(run, SPACE, undefined);
+  }
+
+  run.breakPending = false;
+  pushRun(run, text, marks);
+};
+
+/** A run of newlines, however the platform that wrote them spells one. */
+const LINE_BREAKS = /(?:\r\n|[\n\r])+/;
+
+/**
+ * Adds a text node, treating the newlines INSIDE it as breaks like any other.
+ *
+ * A line break can live inside the text itself, where no schema was ever going
+ * to refuse it: markdown's own soft break parses to one text node with the
+ * newline still in it, and the editor renders with `white-space: pre-wrap`, so
+ * the field showed two lines while reporting `aria-multiline="false"` — and
+ * saved the break back into the label a participant reads.
+ */
+const addTextLines = (
+  run: OneLineRun,
+  text: string,
+  marks: JSONContent['marks'],
+) => {
+  for (const [index, line] of text.split(LINE_BREAKS).entries()) {
+    if (index > 0) {
+      run.breakPending = true;
+    }
+
+    if (line !== '') {
+      addText(run, line, marks);
+    }
+  }
+};
+
+/**
+ * The marks a text node can keep: the ones this schema has a type for.
+ *
+ * Marks are the half of a document the flattener carries through untouched,
+ * and that was only safe while every schema had the same marks. It does not:
+ * links are a toolbar option, and a field offering none has no `link` mark to
+ * read one back into. `Node.fromJSON` refuses a mark type it does not know
+ * exactly as it refuses a node type it does not know, and the reader answers
+ * that the same way — with an EMPTY document. So a linked phrase blanked the
+ * whole field, and the next edit saved the blank.
+ *
+ * The words are what a single-line field promised to keep; the link is a
+ * decoration the field was never offering to hold.
+ */
+const marksInSchema = (
+  marks: JSONContent['marks'],
+  schema: Schema,
+): JSONContent['marks'] =>
+  marks?.filter((mark) => Object.hasOwn(schema.marks, mark.type));
+
+/**
+ * Every line of a document, run together as the inline content of one.
+ *
+ * This works on the JSON rather than on a parsed document, because on the way
+ * IN there is nothing parsed yet — and for a single-line field there cannot
+ * be. Its schema has no heading, list or rule in it, `Node.fromJSON` throws on
+ * a node type it does not know, and TipTap answers that by handing back an
+ * EMPTY document. So a stored heading did not arrive flattened; it arrived as
+ * nothing at all, and the next edit saved that emptiness over the researcher's
+ * words. Reading the value first is the very thing that fails, so the shape is
+ * changed before anything reads it.
+ *
+ * Text keeps its marks, so a formatted phrase keeps its bold and italic runs:
+ * the line loses its line breaks, not its formatting.
+ *
+ * Every other node is a BREAK in the line — a block boundary, a hard break, an
+ * atom this field has no room for, a newline inside the text itself — and
+ * however many of them fall together
+ * they spell ONE space, and only between text that says something on both
+ * sides. Spelling each break separately put one in twice wherever blocks nest
+ * (a pasted list arrived as "One  Two"), put one beside an empty paragraph
+ * that has nothing on the other side of it, and left the saved line ending in
+ * one. Architect's markdown adapter reduces its own blocks by this same rule.
+ */
+const collectOneLine = (
+  content: JSONContent[] | null | undefined,
+  run: OneLineRun,
+  schema: Schema,
+) => {
+  for (const node of content ?? []) {
+    if (node.type === 'text') {
+      if (node.text) {
+        addTextLines(run, node.text, marksInSchema(node.marks, schema));
+      }
+      continue;
+    }
+
+    // Owed on both sides of whatever this node holds: the text after a block
+    // is on a new line, and so is the text after the block ends.
+    run.breakPending = true;
+    collectOneLine(node.content, run, schema);
+    run.breakPending = true;
+  }
+};
+
+/** The inline content a document's lines make when run together as one. */
+const oneLineContentOf = (
+  content: JSONContent[] | null | undefined,
+  schema: Schema,
+): JSONContent[] => {
+  const run: OneLineRun = { collected: [], breakPending: false };
+  collectOneLine(content, run, schema);
+  return run.collected;
+};
+
+/**
+ * The one-paragraph document a value makes.
+ *
+ * An empty paragraph carries no `content` at all, which is how ProseMirror
+ * writes one: the flattened value has to be comparable to the document the
+ * editor holds, key for key.
+ */
+const oneLineDocumentOf = (value: JSONContent, schema: Schema): JSONContent => {
+  const content = oneLineContentOf(value.content, schema);
+
+  return {
+    type: 'doc',
+    content: [
+      content.length > 0
+        ? { type: 'paragraph', content }
+        : { type: 'paragraph' },
+    ],
+  };
+};
+
+/**
+ * The flattened value as the editor will hold it.
+ *
+ * Only the comparison in the sync effect needs this: reading the flattened
+ * document through the schema fills in the mark attributes a stored value can
+ * leave out, so a host echoing its own value back settles instead of having
+ * the document replaced on every pass. The document is a paragraph of text by
+ * then, and the marks are the ones this schema has, so the read cannot fail
+ * on a type it does not know. `createNodeFromContent` is the reader TipTap's
+ * own `content` option uses, so both ways in agree.
+ */
+const asOneLine = (value: JSONContent, schema: Schema): JSONContent => {
+  const flattened = oneLineDocumentOf(value, schema);
+  const parsed = createNodeFromContent(flattened, schema, { slice: false });
+
+  // A fragment only comes back from that reader's own empty-content fallback.
+  return isProseMirrorFragment(parsed)
+    ? flattened
+    : (parsed.toJSON() as JSONContent);
+};
+
+const swallowKeystroke = () => true;
+
+/**
+ * The two ways a second line reaches a document the schema alone cannot
+ * refuse.
+ *
+ * Enter is swallowed rather than left to fail: `splitBlock` cannot make a
+ * second paragraph in `SingleLineDocument`, but ProseMirror then falls through
+ * to inserting a hard break instead, which puts the line break back inside the
+ * one paragraph. A keystroke that does nothing at all is what "one line"
+ * means.
+ *
+ * Pasted content is flattened rather than clipped. ProseMirror fits what it
+ * can of a slice the schema will not hold, which silently drops everything
+ * after the first block; a researcher pasting two lines of a question meant
+ * both, so the lines are joined with spaces.
+ */
+const SingleLineInput = Extension.create({
+  name: 'singleLineInput',
+
+  addKeyboardShortcuts() {
+    return {
+      'Enter': swallowKeystroke,
+      'Shift-Enter': swallowKeystroke,
+      'Mod-Enter': swallowKeystroke,
+    };
+  },
+
+  addProseMirrorPlugins() {
+    const { schema } = this.editor;
+
+    return [
+      new Plugin({
+        key: new PluginKey('singleLineInput'),
+        props: {
+          // The last step of every paste, whichever flavour the clipboard
+          // offered: plain text is parsed into paragraphs first, so
+          // transforming the text as well would only do this twice.
+          //
+          // Through the same flattening a value goes through, so however a
+          // line reaches this field a break is spelled the same way. The
+          // round trip is safe in this direction: a pasted slice was parsed
+          // with this schema, so everything in it can be read back.
+          transformPasted: (slice: Slice) => {
+            const pasted = slice.content.toJSON() as JSONContent[] | null;
+            const nodes = oneLineContentOf(pasted, schema).map((node) =>
+              schema.nodeFromJSON(node),
+            );
+
+            return nodes.length === 0
+              ? Slice.empty
+              : new Slice(Fragment.fromArray(nodes), 0, 0);
+          },
+        },
+      }),
+    ];
+  },
+});
+
 type ExtensionOptions = {
   headingLevels: (1 | 2 | 3 | 4)[];
   enableBulletList: boolean;
   enableOrderedList: boolean;
   enableLinks: boolean;
   enableThematicBreak: boolean;
+  singleLine: boolean;
   placeholder?: string;
 };
 
@@ -189,6 +508,7 @@ function createCustomExtensions({
   enableOrderedList,
   enableLinks,
   enableThematicBreak,
+  singleLine,
   placeholder,
 }: ExtensionOptions): AnyExtension[] {
   const CustomParagraph = Paragraph.extend({
@@ -237,6 +557,9 @@ function createCustomExtensions({
   const extensions: AnyExtension[] = [
     StarterKit.configure({
       blockquote: false,
+      // Replaced below, so the schema's top node holds one paragraph rather
+      // than any run of blocks.
+      ...(singleLine ? { document: false as const } : {}),
       paragraph: false,
       heading: false,
       bulletList: false,
@@ -262,6 +585,10 @@ function createCustomExtensions({
     }),
     CustomParagraph,
   ];
+
+  if (singleLine) {
+    extensions.push(SingleLineDocument, SingleLineInput);
+  }
 
   if (headingLevels.length > 0) {
     extensions.push(
@@ -367,14 +694,24 @@ type RichTextEditorFieldProps = CreateFormFieldProps<
     'changeMode'?: ChangeMode;
     'autoFocus'?: boolean;
     'placeholder'?: string;
+    /**
+     * Holds the value to one line: the document is a single paragraph, Enter
+     * and Shift-Enter do nothing, and pasted lines arrive joined by spaces.
+     * The block controls go with it — a heading, a list or a rule cannot be
+     * made in this schema, so the toolbar does not offer one.
+     */
+    'singleLine'?: boolean;
     'id': string;
     'name': string;
     'aria-describedby': string;
   }
 >;
 
+const NO_HEADINGS = { h1: false, h2: false, h3: false, h4: false };
+const NO_LISTS = { bullet: false, ordered: false };
+
 // Helper to normalize toolbar options into a flat structure
-function normalizeToolbarOptions(options?: ToolbarOptions) {
+function normalizeToolbarOptions(options?: ToolbarOptions, singleLine = false) {
   const merged = { ...defaultToolbarOptions, ...options };
 
   const headings =
@@ -395,10 +732,12 @@ function normalizeToolbarOptions(options?: ToolbarOptions) {
   return {
     bold: merged.bold ?? true,
     italic: merged.italic ?? true,
-    headings,
-    lists,
+    // A single-line document has no room for a block. The schema refuses one,
+    // so a heading or list button there is a control that does nothing.
+    headings: singleLine ? NO_HEADINGS : headings,
+    lists: singleLine ? NO_LISTS : lists,
     links: merged.links ?? false,
-    thematicBreak: merged.thematicBreak ?? false,
+    thematicBreak: singleLine ? false : (merged.thematicBreak ?? false),
     history: merged.history ?? true,
   };
 }
@@ -414,6 +753,7 @@ export default function RichTextEditorField({
   changeMode = 'blur',
   autoFocus = false,
   placeholder,
+  singleLine = false,
   className,
   onFocus,
   onBlur,
@@ -429,7 +769,7 @@ export default function RichTextEditorField({
   const [isEditingExistingLink, setIsEditingExistingLink] = useState(false);
   const [isLinkPopoverOpen, setIsLinkPopoverOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
-  const options = normalizeToolbarOptions(toolbarOptions);
+  const options = normalizeToolbarOptions(toolbarOptions, singleLine);
   const editorId = id ?? name ?? 'rich-text-editor';
   const editorName = name ?? editorId;
   const linkInputId = `${editorId}-link-url`;
@@ -443,6 +783,11 @@ export default function RichTextEditorField({
   onChangeRef.current = onChange;
   changeModeRef.current = changeMode;
 
+  // Whether the FIELD is unavailable — read-only, or disabled while its form
+  // submits. Read by a hook below, so it is worked out before the early
+  // return rather than beside the toolbar that shows it.
+  const isDisabled = Boolean(disabled) || Boolean(readOnly);
+
   const inputState = getInputState({
     disabled,
     readOnly,
@@ -451,7 +796,9 @@ export default function RichTextEditorField({
   const editorAttributes = useMemo<Record<string, string>>(() => {
     const attributes: Record<string, string> = {
       'role': 'textbox',
-      'aria-multiline': 'true',
+      // Enter does not open a line in a single-line document, and a screen
+      // reader tells its user which of the two this box is before they try.
+      'aria-multiline': singleLine ? 'false' : 'true',
       'name': editorName,
       'id': editorId,
     };
@@ -500,6 +847,7 @@ export default function RichTextEditorField({
     inputState,
     placeholder,
     readOnly,
+    singleLine,
   ]);
 
   // Compute which heading levels are enabled
@@ -528,6 +876,7 @@ export default function RichTextEditorField({
         enableOrderedList: options.lists.ordered,
         enableLinks: options.links,
         enableThematicBreak: options.thematicBreak,
+        singleLine,
         placeholder,
       }),
     [
@@ -536,9 +885,29 @@ export default function RichTextEditorField({
       options.lists.ordered,
       options.links,
       options.thematicBreak,
+      singleLine,
       placeholder,
     ],
   );
+  // The schema these extensions make, worked out before there is an editor to
+  // ask. A value has to be flattened against the marks the field will actually
+  // have, and the first value is read while the editor is being built.
+  const editorSchema = useMemo(
+    () => getSchema(editorExtensions),
+    [editorExtensions],
+  );
+
+  // What the field holds and the host has not been told about. `changeMode`
+  // decides how long that lasts: on `input` it is over as soon as the update
+  // is reported, and on `blur` it lasts until the caret leaves. For as long
+  // as it lasts, this is the only copy of the researcher's typing there is.
+  const unemittedDocumentRef = useRef<JSONContent | null>(null);
+  const syncedEditorRef = useRef<Editor | null>(null);
+  // Changing what the field offers rebuilds the editor around a new schema,
+  // and it is rebuilt from what the field holds — which on `changeMode="blur"`
+  // is a whole sentence ahead of `value` by design. Seeding the replacement
+  // from the value instead threw that sentence away mid-edit.
+  const seed = unemittedDocumentRef.current ?? value;
 
   const editor = useEditor(
     {
@@ -546,16 +915,31 @@ export default function RichTextEditorField({
         attributes: editorAttributes,
       },
       extensions: editorExtensions,
-      content: value,
+      // Flattened here rather than after the editor exists: `useEditor` reads
+      // this option itself, and reading a value with a block the single-line
+      // schema has no type for is what loses it. `onCreate` is too late twice
+      // over — it fires a tick after the field has painted, and by then the
+      // document it would flatten is already empty.
+      content:
+        singleLine && seed !== undefined
+          ? oneLineDocumentOf(seed, editorSchema)
+          : seed,
       editable: !disabled && !readOnly,
       autofocus: autoFocus ? 'end' : false,
       onUpdate: ({ editor: updateEditor }) => {
+        const updated = updateEditor.getJSON();
+
         if (changeModeRef.current === 'input') {
-          onChangeRef.current?.(updateEditor.getJSON());
+          unemittedDocumentRef.current = null;
+          onChangeRef.current?.(updated);
+          return;
         }
+
+        unemittedDocumentRef.current = updated;
       },
       onBlur: ({ editor: blurEditor }) => {
         if (changeModeRef.current === 'blur') {
+          unemittedDocumentRef.current = null;
           onChangeRef.current?.(blurEditor.getJSON());
         }
       },
@@ -582,7 +966,26 @@ export default function RichTextEditorField({
   });
 
   useEffect(() => {
-    if (!editor) return;
+    // A destroyed editor keeps its last document but nothing to change it
+    // with: `destroy` drops the schema and the command manager. Changing what
+    // the field offers — the single-line restriction included — rebuilds the
+    // editor, and this effect runs once more against the outgoing one before
+    // the new one arrives.
+    if (!editor || editor.isDestroyed) return;
+
+    const rebuilt = syncedEditorRef.current !== editor;
+    syncedEditorRef.current = editor;
+
+    // A rebuild that carried edits the host has not seen: the field now holds
+    // a document the outgoing schema could not express — the researcher's own
+    // words, flattened. Report it, and reconcile nothing this pass. `value` is
+    // what the host held a keystroke ago, and comparing against it here is
+    // what threw those words away.
+    if (rebuilt && unemittedDocumentRef.current !== null) {
+      unemittedDocumentRef.current = null;
+      onChangeRef.current?.(editor.getJSON());
+      return;
+    }
 
     if (value === undefined) {
       if (!editor.isEmpty) {
@@ -604,12 +1007,17 @@ export default function RichTextEditorField({
     // store no longer held (#1393). Keying the flag on the emitted document
     // instead is no better: it then refuses a host that legitimately sends the
     // same document back, which is exactly what undo-then-redo does.
+    // Compared as the editor will hold it, not as the host sent it: a
+    // single-line field flattens what it is given, so a host that keeps
+    // sending two paragraphs would otherwise never match and the document
+    // would be replaced again on every pass.
+    const incoming = singleLine ? asOneLine(value, editor.schema) : value;
     const currentContent = JSON.stringify(editor.getJSON());
-    const newContent = JSON.stringify(value);
+    const newContent = JSON.stringify(incoming);
     if (currentContent !== newContent) {
-      editor.commands.setContent(value, { emitUpdate: false });
+      editor.commands.setContent(incoming, { emitUpdate: false });
     }
-  }, [editor, value, isFocused]);
+  }, [editor, value, isFocused, singleLine]);
 
   // A LAYOUT effect: the editable flag lives in the DOM as `contenteditable`,
   // and a non-editable ProseMirror node carries no tabindex, so it cannot take
@@ -640,11 +1048,22 @@ export default function RichTextEditorField({
     }
   }, [editor, editorAttributes]);
 
+  // A popover outlives the button that opened it. Disabling the trigger says
+  // nothing about the panel already on screen: its URL box and its Apply and
+  // Remove buttons are in a portal of their own, and they went on running
+  // editor commands against a field the host had just made read-only —
+  // reporting the result back as a change a researcher had made. So the
+  // popover is closed when the field stops being one anybody can edit.
+  useEffect(() => {
+    if (!isDisabled) return;
+
+    setIsLinkPopoverOpen(false);
+    setLinkValidationMessage('');
+  }, [isDisabled]);
+
   if (!editor) {
     return null;
   }
-
-  const isDisabled = Boolean(disabled) || Boolean(readOnly);
 
   const getActiveFormattingValues = () => {
     const values: string[] = [];
@@ -778,352 +1197,385 @@ export default function RichTextEditorField({
     >
       <EditorContent editor={editor} className={editorContentStyles} />
       {hasToolbar && (
-        <Toolbar.Root className={toolbarStyles}>
-          {showFormattingToggles && (
-            // One element carrying both the toolbar-group and toggle-group
-            // behaviours: a ToggleGroup nested inside a Toolbar.Group wrapper
-            // renders two nested `group` roles announcing nothing new.
-            <Toolbar.Group
-              className={toolbarGroupStyles}
-              render={
-                <ToggleGroup
-                  value={getActiveFormattingValues()}
-                  onValueChange={(values: string[]) => {
-                    const shouldBeBold = values.includes('bold');
-                    const shouldBeItalic = values.includes('italic');
+        <FieldUnavailableContext.Provider value={isDisabled}>
+          <Toolbar.Root className={toolbarStyles}>
+            {showFormattingToggles && (
+              // One element carrying both the toolbar-group and toggle-group
+              // behaviours: a ToggleGroup nested inside a Toolbar.Group wrapper
+              // renders two nested `group` roles announcing nothing new.
+              <Toolbar.Group
+                className={toolbarGroupStyles}
+                render={
+                  <ToggleGroup
+                    value={getActiveFormattingValues()}
+                    onValueChange={(values: string[]) => {
+                      const shouldBeBold = values.includes('bold');
+                      const shouldBeItalic = values.includes('italic');
 
-                    if (shouldBeBold !== editorState.isBold) {
-                      editor.chain().focus().toggleBold().run();
-                    }
-                    if (shouldBeItalic !== editorState.isItalic) {
-                      editor.chain().focus().toggleItalic().run();
-                    }
-                  }}
-                  multiple
-                />
-              }
-            >
-              {options.bold && (
-                <ToolbarToggleButton
-                  className={toolbarButtonStyles}
-                  disabled={isDisabled}
-                  value="bold"
-                  aria-label={intl.formatMessage(messages.bold)}
-                >
-                  <Bold />
-                </ToolbarToggleButton>
-              )}
-              {options.italic && (
-                <ToolbarToggleButton
-                  className={toolbarButtonStyles}
-                  disabled={isDisabled}
-                  value="italic"
-                  aria-label={intl.formatMessage(messages.italic)}
-                >
-                  <Italic />
-                </ToolbarToggleButton>
-              )}
-            </Toolbar.Group>
-          )}
-          {/* A toolbar-level sibling of the formatting toggles: it is not a
-              toggle, so it does not belong inside their group element. */}
-          {options.links && (
-            <Popover open={isLinkPopoverOpen} onOpenChange={setLinkPopoverOpen}>
-              <PopoverTrigger asChild>
-                <ToolbarButton
-                  className={toolbarButtonStyles}
-                  disabled={isDisabled}
-                  aria-label={intl.formatMessage(messages.linkButton, {
-                    hasLink: String(editorState.isLink),
-                  })}
-                  // No `aria-pressed`: PopoverTrigger makes this a
-                  // disclosure, and a disclosure must not also claim to be
-                  // a toggle. Whether a link is present is already carried
-                  // by the accessible name above; `data-pressed` drives the
-                  // selected styling without asserting an ARIA state.
-                  data-pressed={editorState.isLink ? true : undefined}
-                  onMouseDown={(event) => {
-                    event.preventDefault();
-                    selectLinkForEditing();
-                  }}
-                >
-                  <Link />
-                </ToolbarButton>
-              </PopoverTrigger>
-              <PopoverContent align="start" side="bottom" className="w-80">
-                <form
-                  className="flex flex-col gap-3"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    applyLink();
-                  }}
-                >
-                  <label
-                    className="font-heading text-sm font-bold"
-                    htmlFor={linkInputId}
-                  >
-                    {intl.formatMessage(messages.linkUrlLabel)}
-                  </label>
-                  <InputField
-                    ref={linkInputRef}
-                    id={linkInputId}
-                    name={linkInputId}
-                    type="url"
-                    required
-                    value={linkHref}
-                    onChange={(nextHref) => {
-                      setLinkHref(nextHref ?? '');
-                      setLinkValidationMessage('');
+                      if (shouldBeBold !== editorState.isBold) {
+                        editor.chain().focus().toggleBold().run();
+                      }
+                      if (shouldBeItalic !== editorState.isItalic) {
+                        editor.chain().focus().toggleItalic().run();
+                      }
                     }}
-                    onInvalid={(event) => {
-                      setLinkValidationMessage(
-                        event.currentTarget.validationMessage,
-                      );
-                    }}
-                    placeholder={intl.formatMessage(
-                      messages.linkUrlPlaceholder,
-                    )}
-                    size="sm"
-                    autoFocus
-                    aria-invalid={Boolean(linkValidationMessage)}
-                    aria-describedby={
-                      linkValidationMessage ? linkErrorId : undefined
-                    }
+                    multiple
                   />
-                  <div
-                    id={linkErrorId}
-                    className="text-destructive min-h-5 text-sm leading-snug"
-                    aria-live="polite"
+                }
+              >
+                {options.bold && (
+                  <ToolbarToggleButton
+                    className={toolbarButtonStyles}
+                    disabled={isDisabled}
+                    value="bold"
+                    aria-label={intl.formatMessage(messages.bold)}
                   >
-                    {linkValidationMessage}
-                  </div>
-                  <div className="flex items-center justify-between gap-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="text"
-                      color="destructive"
-                      icon={<Trash2 />}
-                      aria-label={intl.formatMessage(messages.removeLink)}
-                      disabled={!isEditingExistingLink}
-                      onClick={removeLink}
+                    <Bold />
+                  </ToolbarToggleButton>
+                )}
+                {options.italic && (
+                  <ToolbarToggleButton
+                    className={toolbarButtonStyles}
+                    disabled={isDisabled}
+                    value="italic"
+                    aria-label={intl.formatMessage(messages.italic)}
+                  >
+                    <Italic />
+                  </ToolbarToggleButton>
+                )}
+              </Toolbar.Group>
+            )}
+            {/* A toolbar-level sibling of the formatting toggles: it is not a
+                toggle, so it does not belong inside their group element. */}
+            {options.links && (
+              <Popover
+                // Closed by the render that makes the field unavailable, not
+                // by the effect that follows it: an effect leaves one commit
+                // in which the panel is on screen with its controls live.
+                open={isLinkPopoverOpen && !isDisabled}
+                onOpenChange={setLinkPopoverOpen}
+              >
+                {/*
+                    The trigger is told as well as the button it renders. A
+                    disclosure works out its own availability, and this one
+                    used to work out that it was available while every one of
+                    its siblings was not: `aria-disabled="false"`, undimmed,
+                    and ready to open on a press.
+                */}
+                <PopoverTrigger asChild disabled={isDisabled}>
+                  <ToolbarButton
+                    className={toolbarButtonStyles}
+                    disabled={isDisabled}
+                    aria-label={intl.formatMessage(messages.linkButton, {
+                      hasLink: String(editorState.isLink),
+                    })}
+                    // No `aria-pressed`: PopoverTrigger makes this a
+                    // disclosure, and a disclosure must not also claim to be
+                    // a toggle. Whether a link is present is already carried
+                    // by the accessible name above; `data-pressed` drives the
+                    // selected styling without asserting an ARIA state.
+                    data-pressed={editorState.isLink ? true : undefined}
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      selectLinkForEditing();
+                    }}
+                  >
+                    <Link />
+                  </ToolbarButton>
+                </PopoverTrigger>
+                <PopoverContent align="start" side="bottom" className="w-80">
+                  <form
+                    className="flex flex-col gap-3"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      applyLink();
+                    }}
+                  >
+                    <label
+                      className="font-heading text-sm font-bold"
+                      htmlFor={linkInputId}
                     >
-                      {intl.formatMessage(messages.removeLinkShort)}
-                    </Button>
-                    <Button
-                      type="submit"
-                      size="sm"
-                      color="primary"
-                      icon={<Check />}
-                      aria-label={intl.formatMessage(messages.applyLink)}
-                      onClick={(event) => {
-                        event.preventDefault();
-                        applyLink();
+                      {intl.formatMessage(messages.linkUrlLabel)}
+                    </label>
+                    <InputField
+                      ref={linkInputRef}
+                      id={linkInputId}
+                      name={linkInputId}
+                      type="url"
+                      required
+                      value={linkHref}
+                      onChange={(nextHref) => {
+                        setLinkHref(nextHref ?? '');
+                        setLinkValidationMessage('');
                       }}
+                      onInvalid={(event) => {
+                        setLinkValidationMessage(
+                          event.currentTarget.validationMessage,
+                        );
+                      }}
+                      placeholder={intl.formatMessage(
+                        messages.linkUrlPlaceholder,
+                      )}
+                      size="sm"
+                      autoFocus
+                      aria-invalid={Boolean(linkValidationMessage)}
+                      aria-describedby={
+                        linkValidationMessage ? linkErrorId : undefined
+                      }
+                    />
+                    <div
+                      id={linkErrorId}
+                      className="text-destructive min-h-5 text-sm leading-snug"
+                      aria-live="polite"
                     >
-                      {intl.formatMessage(messages.applyLinkShort)}
-                    </Button>
-                  </div>
-                </form>
-              </PopoverContent>
-            </Popover>
-          )}
+                      {linkValidationMessage}
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="text"
+                        color="destructive"
+                        icon={<Trash2 />}
+                        aria-label={intl.formatMessage(messages.removeLink)}
+                        disabled={!isEditingExistingLink}
+                        onClick={removeLink}
+                      >
+                        {intl.formatMessage(messages.removeLinkShort)}
+                      </Button>
+                      <Button
+                        type="submit"
+                        size="sm"
+                        color="primary"
+                        icon={<Check />}
+                        aria-label={intl.formatMessage(messages.applyLink)}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          applyLink();
+                        }}
+                      >
+                        {intl.formatMessage(messages.applyLinkShort)}
+                      </Button>
+                    </div>
+                  </form>
+                </PopoverContent>
+              </Popover>
+            )}
 
-          {showTextFormatting && showHeadings && (
-            <Toolbar.Separator className={toolbarSeparatorStyles} />
-          )}
+            {showTextFormatting && showHeadings && (
+              <Toolbar.Separator className={toolbarSeparatorStyles} />
+            )}
 
-          {showHeadings && (
-            <Toolbar.Group
-              className={toolbarGroupStyles}
-              render={
-                <ToggleGroup
-                  value={getActiveHeadingValue()}
-                  onValueChange={(values: string[]) => {
-                    const newValue = values[0];
-                    if (newValue === 'h1') {
-                      editor.chain().focus().toggleHeading({ level: 1 }).run();
-                    } else if (newValue === 'h2') {
-                      editor.chain().focus().toggleHeading({ level: 2 }).run();
-                    } else if (newValue === 'h3') {
-                      editor.chain().focus().toggleHeading({ level: 3 }).run();
-                    } else if (newValue === 'h4') {
-                      editor.chain().focus().toggleHeading({ level: 4 }).run();
-                    } else {
-                      if (editorState.isH1) {
+            {showHeadings && (
+              <Toolbar.Group
+                className={toolbarGroupStyles}
+                render={
+                  <ToggleGroup
+                    value={getActiveHeadingValue()}
+                    onValueChange={(values: string[]) => {
+                      const newValue = values[0];
+                      if (newValue === 'h1') {
                         editor
                           .chain()
                           .focus()
                           .toggleHeading({ level: 1 })
                           .run();
-                      } else if (editorState.isH2) {
+                      } else if (newValue === 'h2') {
                         editor
                           .chain()
                           .focus()
                           .toggleHeading({ level: 2 })
                           .run();
-                      } else if (editorState.isH3) {
+                      } else if (newValue === 'h3') {
                         editor
                           .chain()
                           .focus()
                           .toggleHeading({ level: 3 })
                           .run();
-                      } else if (editorState.isH4) {
+                      } else if (newValue === 'h4') {
                         editor
                           .chain()
                           .focus()
                           .toggleHeading({ level: 4 })
                           .run();
+                      } else {
+                        if (editorState.isH1) {
+                          editor
+                            .chain()
+                            .focus()
+                            .toggleHeading({ level: 1 })
+                            .run();
+                        } else if (editorState.isH2) {
+                          editor
+                            .chain()
+                            .focus()
+                            .toggleHeading({ level: 2 })
+                            .run();
+                        } else if (editorState.isH3) {
+                          editor
+                            .chain()
+                            .focus()
+                            .toggleHeading({ level: 3 })
+                            .run();
+                        } else if (editorState.isH4) {
+                          editor
+                            .chain()
+                            .focus()
+                            .toggleHeading({ level: 4 })
+                            .run();
+                        }
                       }
-                    }
-                  }}
-                />
-              }
-            >
-              {options.headings.h1 && (
-                <ToolbarToggleButton
-                  className={toolbarButtonStyles}
-                  disabled={isDisabled}
-                  value="h1"
-                  aria-label={intl.formatMessage(messages.heading1)}
-                >
-                  <Heading1 />
-                </ToolbarToggleButton>
-              )}
-              {options.headings.h2 && (
-                <ToolbarToggleButton
-                  className={toolbarButtonStyles}
-                  disabled={isDisabled}
-                  value="h2"
-                  aria-label={intl.formatMessage(messages.heading2)}
-                >
-                  <Heading2 />
-                </ToolbarToggleButton>
-              )}
-              {options.headings.h3 && (
-                <ToolbarToggleButton
-                  className={toolbarButtonStyles}
-                  disabled={isDisabled}
-                  value="h3"
-                  aria-label={intl.formatMessage(messages.heading3)}
-                >
-                  <Heading3 />
-                </ToolbarToggleButton>
-              )}
-              {options.headings.h4 && (
-                <ToolbarToggleButton
-                  className={toolbarButtonStyles}
-                  disabled={isDisabled}
-                  value="h4"
-                  aria-label={intl.formatMessage(messages.heading4)}
-                >
-                  <Heading4 />
-                </ToolbarToggleButton>
-              )}
-            </Toolbar.Group>
-          )}
+                    }}
+                  />
+                }
+              >
+                {options.headings.h1 && (
+                  <ToolbarToggleButton
+                    className={toolbarButtonStyles}
+                    disabled={isDisabled}
+                    value="h1"
+                    aria-label={intl.formatMessage(messages.heading1)}
+                  >
+                    <Heading1 />
+                  </ToolbarToggleButton>
+                )}
+                {options.headings.h2 && (
+                  <ToolbarToggleButton
+                    className={toolbarButtonStyles}
+                    disabled={isDisabled}
+                    value="h2"
+                    aria-label={intl.formatMessage(messages.heading2)}
+                  >
+                    <Heading2 />
+                  </ToolbarToggleButton>
+                )}
+                {options.headings.h3 && (
+                  <ToolbarToggleButton
+                    className={toolbarButtonStyles}
+                    disabled={isDisabled}
+                    value="h3"
+                    aria-label={intl.formatMessage(messages.heading3)}
+                  >
+                    <Heading3 />
+                  </ToolbarToggleButton>
+                )}
+                {options.headings.h4 && (
+                  <ToolbarToggleButton
+                    className={toolbarButtonStyles}
+                    disabled={isDisabled}
+                    value="h4"
+                    aria-label={intl.formatMessage(messages.heading4)}
+                  >
+                    <Heading4 />
+                  </ToolbarToggleButton>
+                )}
+              </Toolbar.Group>
+            )}
 
-          {(showTextFormatting || showHeadings) && showLists && (
-            <Toolbar.Separator className={toolbarSeparatorStyles} />
-          )}
-
-          {showLists && (
-            <Toolbar.Group
-              className={toolbarGroupStyles}
-              render={
-                <ToggleGroup
-                  value={getActiveListValue()}
-                  onValueChange={(values: string[]) => {
-                    const newValue = values[0];
-                    if (newValue === 'bullet') {
-                      if (!editorState.isBulletList) {
-                        editor.chain().focus().toggleBulletList().run();
-                      }
-                    } else if (newValue === 'ordered') {
-                      if (!editorState.isOrderedList) {
-                        editor.chain().focus().toggleOrderedList().run();
-                      }
-                    } else {
-                      if (editorState.isBulletList) {
-                        editor.chain().focus().toggleBulletList().run();
-                      } else if (editorState.isOrderedList) {
-                        editor.chain().focus().toggleOrderedList().run();
-                      }
-                    }
-                  }}
-                />
-              }
-            >
-              {options.lists.ordered && (
-                <ToolbarToggleButton
-                  className={toolbarButtonStyles}
-                  disabled={isDisabled}
-                  value="ordered"
-                  aria-label={intl.formatMessage(messages.numberedList)}
-                >
-                  <ListOrdered />
-                </ToolbarToggleButton>
-              )}
-              {options.lists.bullet && (
-                <ToolbarToggleButton
-                  className={toolbarButtonStyles}
-                  disabled={isDisabled}
-                  value="bullet"
-                  aria-label={intl.formatMessage(messages.bulletList)}
-                >
-                  <List />
-                </ToolbarToggleButton>
-              )}
-            </Toolbar.Group>
-          )}
-
-          {(showTextFormatting || showHeadings || showLists) &&
-            showThematicBreak && (
+            {(showTextFormatting || showHeadings) && showLists && (
               <Toolbar.Separator className={toolbarSeparatorStyles} />
             )}
 
-          {showThematicBreak && (
-            <Toolbar.Group className={toolbarGroupStyles}>
-              <ToolbarButton
-                className={toolbarButtonStyles}
-                disabled={isDisabled}
-                aria-label={intl.formatMessage(messages.thematicBreak)}
-                onClick={() => editor.chain().focus().setHorizontalRule().run()}
+            {showLists && (
+              <Toolbar.Group
+                className={toolbarGroupStyles}
+                render={
+                  <ToggleGroup
+                    value={getActiveListValue()}
+                    onValueChange={(values: string[]) => {
+                      const newValue = values[0];
+                      if (newValue === 'bullet') {
+                        if (!editorState.isBulletList) {
+                          editor.chain().focus().toggleBulletList().run();
+                        }
+                      } else if (newValue === 'ordered') {
+                        if (!editorState.isOrderedList) {
+                          editor.chain().focus().toggleOrderedList().run();
+                        }
+                      } else {
+                        if (editorState.isBulletList) {
+                          editor.chain().focus().toggleBulletList().run();
+                        } else if (editorState.isOrderedList) {
+                          editor.chain().focus().toggleOrderedList().run();
+                        }
+                      }
+                    }}
+                  />
+                }
               >
-                <Minus />
-              </ToolbarButton>
-            </Toolbar.Group>
-          )}
-
-          {(showTextFormatting ||
-            showHeadings ||
-            showLists ||
-            showThematicBreak) &&
-            showHistory && (
-              <Toolbar.Separator className={toolbarSeparatorStyles} />
+                {options.lists.ordered && (
+                  <ToolbarToggleButton
+                    className={toolbarButtonStyles}
+                    disabled={isDisabled}
+                    value="ordered"
+                    aria-label={intl.formatMessage(messages.numberedList)}
+                  >
+                    <ListOrdered />
+                  </ToolbarToggleButton>
+                )}
+                {options.lists.bullet && (
+                  <ToolbarToggleButton
+                    className={toolbarButtonStyles}
+                    disabled={isDisabled}
+                    value="bullet"
+                    aria-label={intl.formatMessage(messages.bulletList)}
+                  >
+                    <List />
+                  </ToolbarToggleButton>
+                )}
+              </Toolbar.Group>
             )}
 
-          {showHistory && (
-            <Toolbar.Group className={toolbarGroupStyles}>
-              <ToolbarButton
-                className={toolbarButtonStyles}
-                disabled={isDisabled || !editorState.canUndo}
-                aria-label={intl.formatMessage(messages.undo)}
-                onClick={() => editor.chain().focus().undo().run()}
-              >
-                <Undo />
-              </ToolbarButton>
-              <ToolbarButton
-                className={toolbarButtonStyles}
-                disabled={isDisabled || !editorState.canRedo}
-                aria-label={intl.formatMessage(messages.redo)}
-                onClick={() => editor.chain().focus().redo().run()}
-              >
-                <Redo />
-              </ToolbarButton>
-            </Toolbar.Group>
-          )}
-        </Toolbar.Root>
+            {(showTextFormatting || showHeadings || showLists) &&
+              showThematicBreak && (
+                <Toolbar.Separator className={toolbarSeparatorStyles} />
+              )}
+
+            {showThematicBreak && (
+              <Toolbar.Group className={toolbarGroupStyles}>
+                <ToolbarButton
+                  className={toolbarButtonStyles}
+                  disabled={isDisabled}
+                  aria-label={intl.formatMessage(messages.thematicBreak)}
+                  onClick={() =>
+                    editor.chain().focus().setHorizontalRule().run()
+                  }
+                >
+                  <Minus />
+                </ToolbarButton>
+              </Toolbar.Group>
+            )}
+
+            {(showTextFormatting ||
+              showHeadings ||
+              showLists ||
+              showThematicBreak) &&
+              showHistory && (
+                <Toolbar.Separator className={toolbarSeparatorStyles} />
+              )}
+
+            {showHistory && (
+              <Toolbar.Group className={toolbarGroupStyles}>
+                <ToolbarButton
+                  className={toolbarButtonStyles}
+                  disabled={isDisabled || !editorState.canUndo}
+                  aria-label={intl.formatMessage(messages.undo)}
+                  onClick={() => editor.chain().focus().undo().run()}
+                >
+                  <Undo />
+                </ToolbarButton>
+                <ToolbarButton
+                  className={toolbarButtonStyles}
+                  disabled={isDisabled || !editorState.canRedo}
+                  aria-label={intl.formatMessage(messages.redo)}
+                  onClick={() => editor.chain().focus().redo().run()}
+                >
+                  <Redo />
+                </ToolbarButton>
+              </Toolbar.Group>
+            )}
+          </Toolbar.Root>
+        </FieldUnavailableContext.Provider>
       )}
     </div>
   );
