@@ -135,16 +135,26 @@ export type DiscardCause = Readonly<{ path: string; value: unknown }>;
  * The container the removal empties goes too — `withoutValueAt`'s rule — so
  * the paths this unsets are the paths the save would have had to unset anyway.
  *
- * **A discard that finds nothing to discard is not a discard.** The draft held
- * nothing at any of these paths, so there is no clear to strand and therefore
- * no reason for the cause to travel early: it goes on waiting for the submit
- * that flushes it, like the ordinary field it is. Without this the reset a
- * researcher makes on an empty capability writes its cause alone — a batch
- * spending a step of the session's history on a change nothing was thrown away
- * for. What is "nothing" is the draft's own answer and no second notion of it:
- * whatever `withoutValueAt` would remove. A capability holding an empty list is
- * holding something, and its removal is the edit the save would have made
- * anyway.
+ * **The cause travels whether or not anything was thrown away.** A capability
+ * that happened to hold nothing changes what the batch discards and nothing
+ * else: the file was still replaced, and the session still has to see that
+ * before it can judge anything written against the new one. A roster whose
+ * capabilities are not yet configured is exactly that case — no clear to
+ * strand, and so, if the cause waited for the submit like the ordinary field it
+ * is, no batch touching `dataSource` at all. The hold would never start, and
+ * every card detail chosen from the columns of the new file would go to a
+ * live-applying host at once, against the file it replaced.
+ *
+ * So the batch is built first and dispatched on ITS length, not on the
+ * discards': a lone cause travels, and a reset with nothing whatever to say —
+ * no cause, nothing discarded, or a cause the draft already agrees with —
+ * still writes nothing at all.
+ *
+ * A lone cause spends a step of the session's history like any other batch,
+ * because the alternative is not "no step". Undo restores a whole draft and is
+ * applied as the difference from the live one, so a change written outside a
+ * step is not left un-undoable: it is undone by whatever step comes next,
+ * taking the researcher's choice of file away with an unrelated edit.
  *
  * The FORM is emptied either way. A value typed into a capability and not yet
  * flushed is on screen and in no draft, so a reset that left it there would
@@ -169,13 +179,14 @@ export function useDiscardStageValues(): (
         if (target === null || target.length === 0) continue;
         next = withoutValueAt(next, target);
       }
-      const discards = commandsFromDraftChange(current, next);
       // The cause first, so the batch reads as what happened: this changed, and
-      // therefore these were thrown away. No discards, no batch at all — see
-      // above.
-      if (discards.length > 0) {
-        applyOwnCommands([...causeCommands(current, cause), ...discards]);
-      }
+      // therefore these were thrown away. Judged as a whole, so a cause with no
+      // discards behind it still travels — see above.
+      const batch = [
+        ...causeCommands(current, cause),
+        ...commandsFromDraftChange(current, next),
+      ];
+      if (batch.length > 0) applyOwnCommands(batch);
 
       // The FORM only, and only the discarded paths: the cause is already on
       // screen — the researcher chose it — and it is the draft that was behind.
@@ -190,10 +201,19 @@ export function useDiscardStageValues(): (
  *
  * Nothing when the draft already agrees, which is the ordinary case for every
  * section after the first: they all read the same file, and the first one to
- * reset writes it. Nothing either for a path a command cannot address — a
- * command's segments are keys rather than indices — because a capability
- * resetting on a row of a list is a section describing itself wrongly, and
- * writing at the wrong address would be worse than not writing.
+ * reset writes it.
+ *
+ * **A cause no command can address is refused out loud.** A `CommandTarget`
+ * names keys and never positions — `commandTarget` takes strings, and
+ * positional addressing is what it exists to rule out — so a reset path with an
+ * index in it, or one that is not a path at all, has no command that could
+ * carry it. That is a section describing itself wrongly: `resetOn` is
+ * documented as the path a single FIELD owns. Answering with no command would
+ * be the worst of the three outcomes, because the discards would then travel
+ * without the change that explains them and reach a live-applying host alone —
+ * the whole defect the cause exists to prevent. So it throws, at the first
+ * reset, where the path is a constant of the section and every test of it says
+ * so.
  */
 function causeCommands(
   current: StageFormDraft,
@@ -201,9 +221,15 @@ function causeCommands(
 ): readonly Command[] {
   if (cause === undefined) return [];
   const target = safePath(cause.path);
-  if (target === null || target.length === 0) return [];
-  if (target.some((segment) => typeof segment !== 'string')) return [];
-  const key = commandTarget(target.map(String));
+  const keys = (target ?? []).filter(
+    (segment): segment is string => typeof segment === 'string',
+  );
+  if (target === null || keys.length === 0 || keys.length !== target.length) {
+    throw new Error(
+      `A section resets on "${cause.path}", which no command can address. A reset must name the path one field owns, spelled with keys and no list positions.`,
+    );
+  }
+  const key = commandTarget(keys);
   const held = getValue(current, target);
   if (canonicalize(held) === canonicalize(cause.value)) return [];
   return cause.value === undefined

@@ -81,6 +81,12 @@ export type BuilderSectionProps = Readonly<{
    * a group of fields — the form assembles one of those out of whichever of
    * them have registered so far, so its value moves as the section mounts and
    * the reset would fire on a stage nobody has touched.
+   *
+   * Spelled with keys and no list positions, because the cause reaches the
+   * session as a command and a command addresses keys only. A path with an
+   * index in it is refused where it is read (`useDiscardStageValues`) rather
+   * than quietly dropped: a dropped cause is a clear travelling on its own,
+   * which is the outcome this prop exists to prevent.
    */
   resetOn?: string;
   children: ReactNode;
