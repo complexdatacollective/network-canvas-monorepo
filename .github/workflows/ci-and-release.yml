@@ -461,6 +461,14 @@ jobs:
             echo "PROTOCOL_ENCRYPTION_IV=$PROTOCOL_ENCRYPTION_IV"
             echo "GITHUB_TOKEN=$TEST_PROTOCOL_TOKEN"
           } > packages/protocol-validation/.env
+      # Seeded on its own first, for the reason the `test` job gives: this
+      # suite's assertions are wall-clock budgets, and turbo kills the
+      # in-flight tasks when any task in the run fails. On 2026-09-06 a
+      # protocol-builder failure here killed @codaco/studio-server#test
+      # mid-run, so main's tip seeded no cache entry for it and every PR built
+      # on that tip had to execute the suite itself.
+      - run: pnpm exec turbo run '@codaco/studio-server#test' --concurrency=1
+        continue-on-error: true
       # Fresco's `build` script is a bare `next build`, whose env.js validates
       # the full deployment env at config load; this job has no Fresco
       # deployment secrets. The variable reaches the task through
@@ -648,7 +656,32 @@ jobs:
             echo "PROTOCOL_ENCRYPTION_IV=$PROTOCOL_ENCRYPTION_IV"
             echo "GITHUB_TOKEN=$TEST_PROTOCOL_TOKEN"
           } > packages/protocol-validation/.env
+      - name: Run the Studio server suite on an uncontended runner
+        id: studio-server
+        # The only workspace suite whose assertions are wall-clock budgets
+        # rather than logic: a spawnSync of the Node entrypoint capped at 10s,
+        # a 180s seeding hook, 30s operational probes, and a 150ms delivery
+        # lease that a starved event loop cannot renew. `turbo run test` uses
+        # turbo's default concurrency of 10 and each vitest opens workers of
+        # its own, so on a 4-vCPU runner this suite shares the machine with the
+        # jsdom suites (architect, protocol-builder, interview, fresco-ui,
+        # interviewer) and those budgets lapse. Measured across #1693's runs it
+        # passes at or under 408s of suite wall time and failed at every
+        # observed time above that (509s, 519s, 527s, 583s, 847s, 851s).
+        #
+        # It is selected far more often than it is touched, because
+        # @codaco/protocol-utilities dev-depends on @codaco/fresco-ui: every
+        # fresco-ui change re-hashes it through `^topo`. Running it first, by
+        # itself, costs a cache replay on the PRs that do not affect it and
+        # hands it the whole runner on the ones that do; the `--affected` pass
+        # below then replays it from the cache this step just wrote.
+        continue-on-error: true
+        run: pnpm exec turbo run '@codaco/studio-server#test' --concurrency=1
       - name: Run tests (PRs run only affected tasks)
+        id: workspace
+        # A Studio failure must not hide the rest of the workspace's result,
+        # so both steps report and the check below decides the job.
+        continue-on-error: true
         env:
           DIFF_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
@@ -682,6 +715,25 @@ jobs:
 
           echo "Running the full test suite for $GITHUB_EVENT_NAME"
           pnpm exec turbo run test
+      - name: Verify every test task passed
+        if: always()
+        env:
+          STUDIO_SERVER_OUTCOME: ${{ steps.studio-server.outcome }}
+          WORKSPACE_OUTCOME: ${{ steps.workspace.outcome }}
+        run: |
+          failed=false
+          for result in \
+            "studio-server=$STUDIO_SERVER_OUTCOME" \
+            "workspace=$WORKSPACE_OUTCOME"; do
+            echo "$result"
+            if [[ "${result#*=}" != "success" ]]; then
+              failed=true
+            fi
+          done
+          if [[ "$failed" == "true" ]]; then
+            echo "::error::One or more test tasks failed"
+            exit 1
+          fi
 
   test-storybook:
     # Storybook's play functions and their assertions, executed in a real
