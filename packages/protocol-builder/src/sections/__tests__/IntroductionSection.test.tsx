@@ -76,9 +76,9 @@ describe('the introduction a participant reads before a task', () => {
   });
 
   /**
-   * The two fields are the halves of one schema object, and a section owning
-   * part of a nested value has to render every part of it — otherwise the half
-   * it does not render is written back over on save.
+   * The two fields are the halves of one schema object. A save writes each
+   * mounted path on its own, so editing one half must leave the other exactly
+   * as the document holds it.
    */
   it('keeps the half it is not editing when the other changes', async () => {
     const harness = renderStageEditor({
