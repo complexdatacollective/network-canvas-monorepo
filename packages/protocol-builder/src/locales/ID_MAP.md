@@ -65,60 +65,62 @@ name not here adds it here first, in the same pull request.
 
 ### Converted
 
-| `<area>`                    | Owns the copy in                                                                                                                                                                 | Landed by |
-| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| `interface`                 | `interfaces/interfaceNames.ts`                                                                                                                                                   | #1702     |
-| `stageTypeImage`            | `interfaces/StageTypeImage.tsx`                                                                                                                                                  | #1702     |
-| `stageName`                 | `sections/StageNameSection.tsx`                                                                                                                                                  | #1702     |
-| `operators`                 | `rules/operators.ts`                                                                                                                                                             | i18n-1a   |
-| `ruleEditor`                | `rules/RuleEditorDialog.tsx`, `rules/ruleMessages.ts`                                                                                                                            | i18n-1a   |
-| `ruleSet`                   | `rules/ruleSet.ts`, `rules/RuleSetField.tsx`                                                                                                                                     | i18n-1a   |
-| `ruleValue`                 | `rules/RuleValueField.tsx`                                                                                                                                                       | i18n-1a   |
-| `ruleList`                  | `rules/RuleList.tsx`                                                                                                                                                             | i18n-1a   |
-| `rulePreview`               | `rules/RulePreview.tsx`                                                                                                                                                          | i18n-1a   |
-| `ruleDescription`           | `rules/ruleDescription.ts`, `rules/ruleMessages.ts`                                                                                                                              | i18n-1a   |
-| `ruleCodebook`              | `rules/ruleCodebook.ts`                                                                                                                                                          | i18n-1a   |
-| `resourceKinds`             | `resources/components/resourceKinds.ts`                                                                                                                                          | i18n-1    |
-| `resourcePicker`            | `resources/components/ResourcePickerControl.tsx`                                                                                                                                 | i18n-1    |
-| `resourceBrowser`           | `resources/components/ResourceBrowserDialog.tsx`                                                                                                                                 | i18n-1    |
-| `resourceUpload`            | `resources/components/ResourceUploadControl.tsx`                                                                                                                                 | i18n-1    |
-| `resourceSecret`            | `resources/components/ResourceSecretControl.tsx`                                                                                                                                 | i18n-1    |
-| `resourcePreview`           | `resources/components/ResourcePreview.tsx`                                                                                                                                       | i18n-1    |
-| `resourceSummary`           | `resources/components/ResourceSummary.tsx`                                                                                                                                       | i18n-1    |
-| `resourceFailure`           | `resources/resourceMessages.ts` (declared), produced by `resources/gateway*.ts`, `lifecycle.ts`, `references.ts`, `InMemoryResourceGateway.ts`                                   | i18n-1    |
-| `session`                   | `session.ts`, `controller.ts`                                                                                                                                                    | i18n-1    |
-| `protocolContext`           | `protocol-context.ts`                                                                                                                                                            | i18n-1    |
-| `compoundEdit`              | `compound-edit/InMemoryCompoundHost.ts`, `compound-edit/compoundRequestMessages.ts`                                                                                              | i18n-1    |
-| `codebookEntity`            | `codebook/components/CodebookSurface.tsx`, `codebook/components/CodebookEntityEditor.tsx`                                                                                        | i18n-2    |
-| `codebookVariable`          | `codebook/components/VariableEditor.tsx`, `codebook/variableRoles.ts`, `codebook/variableOptions.ts`, `codebook/components/VariableBooleanAnswerFields.tsx`                      | i18n-2    |
-| `variableValidation`        | `codebook/variableValidation.ts`, `codebook/validation/VariableValidationEditor.tsx`, `codebook/validation/CodebookVariableValidationEditor.tsx`, `codebook/codebookMessages.ts` | i18n-2    |
-| `codebookEditing`           | `codebook/editing.ts`, `codebook/codebookMessages.ts`, `codebook/useCodebookVariableEdits.ts`                                                                                    | i18n-2    |
-| `shell`                     | `form/StageEditorShell.tsx`                                                                                                                                                      | i18n-2    |
-| `outline`                   | `form/SectionOutline.tsx`                                                                                                                                                        | i18n-2    |
-| `dialogForm`                | `form/DialogForm.tsx`, `form/discardDraftGuard.ts`                                                                                                                               | i18n-2    |
-| `protocolField`             | `form/ProtocolField.tsx`                                                                                                                                                         | i18n-2    |
-| `arrayField`                | `form/arrayFields/DialogArrayField.tsx`, `rowValidators.ts`, `arrayWriteRefusal.ts`, `useConfirmRowRemoval.ts`, `arrayFields/arrayMessages.ts`, `RowEditorBoundary.tsx`          | i18n-2    |
-| `assignAttributes`          | `form/arrayFields/AssignAttributes.tsx`, `form/arrayFields/Attribute.tsx`                                                                                                        | i18n-2    |
-| `multiSelect`               | `form/arrayFields/MultiSelect.tsx`                                                                                                                                               | i18n-2    |
-| `option`                    | `form/arrayFields/Option.tsx`, `form/arrayFields/Options.tsx`                                                                                                                    | i18n-2    |
-| `entitySelect`              | `fields/EntitySelectField.tsx`                                                                                                                                                   | i18n-2    |
-| `variablePicker`            | `fields/VariablePicker.tsx`, `sections/CreatableVariablePicker.tsx`                                                                                                              | i18n-2    |
-| `skipLogicDestination`      | `fields/skipLogicDestination.ts`                                                                                                                                                 | i18n-2    |
-| `networkFilter`             | `sections/NetworkFilterSection.tsx`                                                                                                                                              | i18n-2    |
-| `skipLogic`                 | `sections/SkipLogicSection.tsx`                                                                                                                                                  | i18n-2    |
-| `interviewerGuidance`       | `sections/InterviewerGuidanceSection.tsx`                                                                                                                                        | i18n-2    |
-| `schemaProblem`             | `form/schemaProblems.ts`                                                                                                                                                         | sections  |
-| `variableParameters`        | `codebook/variableParameters.ts`, `codebook/components/VariableParameterFields.tsx`                                                                                              | sections  |
-| `compoundFailure`           | `codebook/compoundFailureCopy.ts`                                                                                                                                                | sections  |
-| `sortOrder`                 | `fields/sortOrderOptions.ts`, `sections/prompts/SortOrderRows.tsx`                                                                                                               | sections  |
-| `formFields`                | `sections/FormFieldsSection.tsx`                                                                                                                                                 | sections  |
-| `attributeCodebookControls` | `sections/AttributeCodebookControls.tsx`                                                                                                                                         | sections  |
-| `subjectSection`            | `sections/SubjectSection.tsx`                                                                                                                                                    | sections  |
-| `introduction`              | `sections/IntroductionSection.tsx`                                                                                                                                               | sections  |
-| `pageContent`               | `sections/PageContentSection.tsx`                                                                                                                                                | sections  |
-| `contentBlock`              | `sections/contentBlocks/contentBlockTypes.ts`, `ContentBlockEditor.tsx`, `ContentBlockPreview.tsx`                                                                               | sections  |
-| `promptsSection`            | `sections/PromptsSection.tsx`                                                                                                                                                    | sections  |
-| `censusPrompts`             | `sections/prompts/censusPromptsMessages.ts` only — the rest of `sections/prompts/` is still English literals and converts with the family                                        | family E  |
+| `<area>`                    | Owns the copy in                                                                                                                                                                      | Landed by |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| `interface`                 | `interfaces/interfaceNames.ts`                                                                                                                                                        | #1702     |
+| `stageTypeImage`            | `interfaces/StageTypeImage.tsx`                                                                                                                                                       | #1702     |
+| `stageName`                 | `sections/StageNameSection.tsx`                                                                                                                                                       | #1702     |
+| `operators`                 | `rules/operators.ts`                                                                                                                                                                  | i18n-1a   |
+| `ruleEditor`                | `rules/RuleEditorDialog.tsx`, `rules/ruleMessages.ts`                                                                                                                                 | i18n-1a   |
+| `ruleSet`                   | `rules/ruleSet.ts`, `rules/RuleSetField.tsx`                                                                                                                                          | i18n-1a   |
+| `ruleValue`                 | `rules/RuleValueField.tsx`                                                                                                                                                            | i18n-1a   |
+| `ruleList`                  | `rules/RuleList.tsx`                                                                                                                                                                  | i18n-1a   |
+| `rulePreview`               | `rules/RulePreview.tsx`                                                                                                                                                               | i18n-1a   |
+| `ruleDescription`           | `rules/ruleDescription.ts`, `rules/ruleMessages.ts`                                                                                                                                   | i18n-1a   |
+| `ruleCodebook`              | `rules/ruleCodebook.ts`                                                                                                                                                               | i18n-1a   |
+| `resourceKinds`             | `resources/components/resourceKinds.ts`                                                                                                                                               | i18n-1    |
+| `resourcePicker`            | `resources/components/ResourcePickerControl.tsx`                                                                                                                                      | i18n-1    |
+| `resourceBrowser`           | `resources/components/ResourceBrowserDialog.tsx`                                                                                                                                      | i18n-1    |
+| `resourceUpload`            | `resources/components/ResourceUploadControl.tsx`                                                                                                                                      | i18n-1    |
+| `resourceSecret`            | `resources/components/ResourceSecretControl.tsx`                                                                                                                                      | i18n-1    |
+| `resourcePreview`           | `resources/components/ResourcePreview.tsx`                                                                                                                                            | i18n-1    |
+| `resourceSummary`           | `resources/components/ResourceSummary.tsx`                                                                                                                                            | i18n-1    |
+| `resourceFailure`           | `resources/resourceMessages.ts` (declared), produced by `resources/gateway*.ts`, `lifecycle.ts`, `references.ts`, `InMemoryResourceGateway.ts`                                        | i18n-1    |
+| `session`                   | `session.ts`, `controller.ts`                                                                                                                                                         | i18n-1    |
+| `protocolContext`           | `protocol-context.ts`                                                                                                                                                                 | i18n-1    |
+| `compoundEdit`              | `compound-edit/InMemoryCompoundHost.ts`, `compound-edit/compoundRequestMessages.ts`                                                                                                   | i18n-1    |
+| `codebookEntity`            | `codebook/components/CodebookSurface.tsx`, `codebook/components/CodebookEntityEditor.tsx`                                                                                             | i18n-2    |
+| `codebookVariable`          | `codebook/components/VariableEditor.tsx`, `codebook/variableRoles.ts`, `codebook/variableOptions.ts`, `codebook/components/VariableBooleanAnswerFields.tsx`                           | i18n-2    |
+| `variableValidation`        | `codebook/variableValidation.ts`, `codebook/validation/VariableValidationEditor.tsx`, `codebook/validation/CodebookVariableValidationEditor.tsx`, `codebook/codebookMessages.ts`      | i18n-2    |
+| `codebookEditing`           | `codebook/editing.ts`, `codebook/codebookMessages.ts`, `codebook/useCodebookVariableEdits.ts`                                                                                         | i18n-2    |
+| `shell`                     | `form/StageEditorShell.tsx`                                                                                                                                                           | i18n-2    |
+| `outline`                   | `form/SectionOutline.tsx`                                                                                                                                                             | i18n-2    |
+| `dialogForm`                | `form/DialogForm.tsx`, `form/discardDraftGuard.ts`                                                                                                                                    | i18n-2    |
+| `protocolField`             | `form/ProtocolField.tsx`                                                                                                                                                              | i18n-2    |
+| `arrayField`                | `form/arrayFields/DialogArrayField.tsx`, `rowValidators.ts`, `arrayWriteRefusal.ts`, `useConfirmRowRemoval.ts`, `arrayFields/arrayMessages.ts`, `RowEditorBoundary.tsx`               | i18n-2    |
+| `assignAttributes`          | `form/arrayFields/AssignAttributes.tsx`, `form/arrayFields/Attribute.tsx`                                                                                                             | i18n-2    |
+| `multiSelect`               | `form/arrayFields/MultiSelect.tsx`                                                                                                                                                    | i18n-2    |
+| `option`                    | `form/arrayFields/Option.tsx`, `form/arrayFields/Options.tsx`                                                                                                                         | i18n-2    |
+| `entitySelect`              | `fields/EntitySelectField.tsx`                                                                                                                                                        | i18n-2    |
+| `variablePicker`            | `fields/VariablePicker.tsx`, `sections/CreatableVariablePicker.tsx`                                                                                                                   | i18n-2    |
+| `skipLogicDestination`      | `fields/skipLogicDestination.ts`                                                                                                                                                      | i18n-2    |
+| `networkFilter`             | `sections/NetworkFilterSection.tsx`                                                                                                                                                   | i18n-2    |
+| `skipLogic`                 | `sections/SkipLogicSection.tsx`                                                                                                                                                       | i18n-2    |
+| `interviewerGuidance`       | `sections/InterviewerGuidanceSection.tsx`                                                                                                                                             | i18n-2    |
+| `schemaProblem`             | `form/schemaProblems.ts`                                                                                                                                                              | sections  |
+| `variableParameters`        | `codebook/variableParameters.ts`, `codebook/components/VariableParameterFields.tsx`                                                                                                   | sections  |
+| `compoundFailure`           | `codebook/compoundFailureCopy.ts`                                                                                                                                                     | sections  |
+| `sortOrder`                 | `fields/sortOrderOptions.ts`, `sections/prompts/SortOrderRows.tsx`                                                                                                                    | sections  |
+| `formFields`                | `sections/FormFieldsSection.tsx`                                                                                                                                                      | sections  |
+| `attributeCodebookControls` | `sections/AttributeCodebookControls.tsx`                                                                                                                                              | sections  |
+| `subjectSection`            | `sections/SubjectSection.tsx`                                                                                                                                                         | sections  |
+| `introduction`              | `sections/IntroductionSection.tsx`                                                                                                                                                    | sections  |
+| `pageContent`               | `sections/PageContentSection.tsx`                                                                                                                                                     | sections  |
+| `contentBlock`              | `sections/contentBlocks/contentBlockTypes.ts`, `ContentBlockEditor.tsx`, `ContentBlockPreview.tsx`                                                                                    | sections  |
+| `promptsSection`            | `sections/PromptsSection.tsx`                                                                                                                                                         | sections  |
+| `censusPrompts`             | `sections/prompts/censusPromptsMessages.ts` and the five census and bin sections beside it (`CategoricalBin`, `OrdinalBin`, `DyadCensus`, `OneToManyDyadCensus`, `TieStrengthCensus`) | family E  |
+| `promptText`                | `sections/prompts/promptText.tsx`                                                                                                                                                     | family E  |
+| `promptAttribute`           | `sections/prompts/PromptAttributeField.tsx`                                                                                                                                           | family E  |
 
 The `*Messages.ts` files are the homes for copy more than one module renders —
 `extractMessages` throws when the same id is declared twice, so a shared string
@@ -141,9 +143,35 @@ has to have exactly one:
   sentence is built around.
 - `sections/prompts/censusPromptsMessages.ts` — what a census or bin family's
   prompts are about, where `PromptsSection`'s own sentence would be wrong about
-  what the participant is looking at. A Dyad Census and a Tie Strength Census
-  both show one pair at a time, so they share the sentence rather than
-  declaring a twin of it.
+  what the participant is looking at, plus everything more than one of the five
+  families renders: the connection an affirmative answer creates, the attribute
+  picker the two bins and the tie-strength scale share, and the two sort orders
+  the bins hold. A Dyad Census and a Tie Strength Census both show one pair at
+  a time, so they share the sentence rather than declaring a twin of it. What
+  only one family says stays beside that family's markup, under the same
+  `censusPrompts` area.
+
+Two areas were added by family E rather than taken from the reserved list,
+because the reservation `censusPrompts` names the five interfaces and these two
+modules are not about any of them:
+
+- **`promptText`** — `sections/prompts/promptText.tsx` is the question box every
+  prompt list in the package shows, whatever the stage does with the answer. Its
+  words ("Participant prompt", "Prompt text") say nothing about a census or a
+  bin, and a family reusing the control should not find its wording filed under
+  another family's area.
+- **`promptAttribute`** — `sections/prompts/PromptAttributeField.tsx` is the
+  general way a prompt reaches one codebook attribute, and its own sentence is
+  about the codebook rather than about any one interface.
+
+Several of family E's modules hold no copy of their own, and are recorded here
+for the same reason `markdown` and `builderSection` are:
+`sections/prompts/CreateEdgeField.tsx` renders only the words the family
+mounting it hands over; `sections/prompts/promptCodebook.ts` asks the codebook
+questions and reports the answers through `codebook/`'s own refusals, so a pick
+this package refuses is refused in `codebookVariable`'s and
+`variableValidation`'s words; and the five editors in `editors/census/`, like
+`editors/censusAndBinStageEditors.ts`, only compose sections.
 
 Two areas own the same sentence in two modules, and the sentence is declared
 once: `form/arrayFields/crossClassPick.ts` re-exports the cross-class refusals

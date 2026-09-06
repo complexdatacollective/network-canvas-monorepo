@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
@@ -46,14 +48,130 @@ const WORDS: PromptsSectionCopy = Object.freeze({
   fieldHint: censusPromptsMessages.pairFieldHint,
 });
 
+/**
+ * What only this family says. The words it shares with the other two censuses,
+ * or with the bins, are declared once in `censusPromptsMessages.ts`.
+ */
+const messages = defineMessages({
+  guidance: {
+    id: 'protocolBuilder.censusPrompts.tieStrengthGuidance',
+    defaultMessage:
+      'The participant sees two people side by side and answers on a scale, so write the question about the pair in front of them — “how close are these two people?” rather than a name — and phrase it so that every point on the scale is a sensible answer.',
+    description:
+      'Guidance shown above the box where a researcher writes a Tie-Strength Census prompt, saying what the participant is looking at while they answer it. The quoted sentence is an example of a question a scale can answer.',
+  },
+  placeholder: {
+    id: 'protocolBuilder.censusPrompts.tieStrengthPlaceholder',
+    defaultMessage: 'How close are these two people?',
+    description:
+      'Example question in the empty box where a researcher writes a Tie-Strength Census prompt.',
+  },
+  edgeDescription: {
+    id: 'protocolBuilder.censusPrompts.tieStrengthEdgeDescription',
+    defaultMessage:
+      'Choose the kind of connection an answer on the scale records between the pair.',
+    description:
+      'Description of the group that says what answering on the scale records between the two people a Tie-Strength Census prompt asked about.',
+  },
+  edgeHint: {
+    id: 'protocolBuilder.censusPrompts.tieStrengthEdgeHint',
+    defaultMessage:
+      'A connection of this type is created between the two people whenever the participant answers on the scale.',
+    description:
+      'Guidance under the control that picks what answering on the scale records between the two people a Tie-Strength Census prompt asked about.',
+  },
+  edgeRequired: {
+    id: 'protocolBuilder.censusPrompts.tieStrengthEdgeRequired',
+    defaultMessage: 'Choose the type of connection this prompt creates.',
+    description:
+      'Refusal shown when a researcher saves a Tie-Strength Census prompt without saying what an answer on the scale records.',
+  },
+  scaleDescription: {
+    id: 'protocolBuilder.censusPrompts.tieStrengthScaleDescription',
+    defaultMessage:
+      'Choose the attribute whose ordered values the participant answers on.',
+    description:
+      'Description of the group that picks the attribute whose ordered values are the points of the scale. The attribute belongs to the connection this prompt creates, not to either person.',
+  },
+  scaleHint: {
+    id: 'protocolBuilder.censusPrompts.tieStrengthScaleHint',
+    defaultMessage:
+      "The participant taps one of this attribute's values, and it is recorded on the connection.",
+    description:
+      'Guidance under the attribute picker in a Tie-Strength Census prompt, saying where the participant’s answer is stored.',
+  },
+  scaleRequired: {
+    id: 'protocolBuilder.censusPrompts.tieStrengthScaleRequired',
+    defaultMessage: 'Choose the attribute the participant answers on.',
+    description:
+      'Refusal shown when a researcher saves a Tie-Strength Census prompt without saying which attribute holds the strength.',
+  },
+  scaleEmpty: {
+    id: 'protocolBuilder.censusPrompts.tieStrengthScaleEmpty',
+    defaultMessage:
+      'This connection type has no ordinal attributes yet. Create one to say what the scale is.',
+    description:
+      'Shown in place of the attribute picker’s options when the kind of connection this prompt creates has no attribute whose answers run in an order.',
+  },
+  scaleLimitTitle: {
+    id: 'protocolBuilder.censusPrompts.tieStrengthScaleLimitTitle',
+    defaultMessage: 'More answers than fit on one screen',
+    description:
+      'Heading of the warning shown when the attribute a Tie-Strength Census prompt uses offers more values than the interview screen can draw as points on its scale.',
+  },
+  scaleLimitDescription: {
+    id: 'protocolBuilder.censusPrompts.tieStrengthScaleLimitDescription',
+    defaultMessage:
+      'This interface is designed for up to five points on the scale, with the decline answer beside them. Beyond that they become hard to read and hard to tap, which costs data quality.',
+    description:
+      'Body of the warning shown when a Tie-Strength Census prompt would draw more points on its scale than its interview screen is designed for. The decline answer is the extra control the participant uses to say the two people are not connected.',
+  },
+  declineTitle: {
+    id: 'protocolBuilder.censusPrompts.tieStrengthDeclineTitle',
+    defaultMessage: 'Answering that there is no connection',
+    description:
+      'Heading of the group holding the words the participant chooses to say the two people in front of them are not connected.',
+  },
+  declineDescription: {
+    id: 'protocolBuilder.censusPrompts.tieStrengthDeclineDescription',
+    defaultMessage:
+      'Give the participant a way to say these two people are not connected at all.',
+    description:
+      'Description of the group holding the words the participant chooses to say the two people in front of them are not connected.',
+  },
+  declineLabel: {
+    id: 'protocolBuilder.censusPrompts.tieStrengthDeclineLabel',
+    defaultMessage: 'Decline answer',
+    description:
+      'Label of the box a researcher writes the words the participant chooses to say the two people are not connected.',
+  },
+  declineHint: {
+    id: 'protocolBuilder.censusPrompts.tieStrengthDeclineHint',
+    defaultMessage:
+      'Shown at the end of the scale. Choosing it records no connection between the pair.',
+    description:
+      'Guidance under the box a researcher writes the decline answer into, saying where the participant sees it and what choosing it does.',
+  },
+  declinePlaceholder: {
+    id: 'protocolBuilder.censusPrompts.tieStrengthDeclinePlaceholder',
+    defaultMessage: "They don't know each other",
+    description:
+      'Example wording in the empty box where a researcher writes the decline answer.',
+  },
+  declineRequired: {
+    id: 'protocolBuilder.censusPrompts.tieStrengthDeclineRequired',
+    defaultMessage: 'Write how the participant says there is no connection.',
+    description:
+      'Refusal shown when a researcher saves a Tie-Strength Census prompt without wording for the decline answer.',
+  },
+});
+
 function TieStrengthGuidance() {
+  const intl = useAppIntl();
   return (
     <Alert variant="info" className="mb-6">
       <AlertDescription>
-        The participant sees two people side by side and answers on a scale, so
-        write the question about the pair in front of them — &ldquo;how close
-        are these two people?&rdquo; rather than a name — and phrase it so that
-        every point on the scale is a sensible answer.
+        {intl.formatMessage(messages.guidance)}
       </AlertDescription>
     </Alert>
   );
@@ -107,6 +225,7 @@ function useClearScaleOnConnectionChange(createEdge: unknown): void {
  * none.
  */
 function TieStrengthCensusPromptEditor({ item }: RowEditorProps) {
+  const intl = useAppIntl();
   const { createEdge } = useFormValue(['createEdge'] as const);
   const edgeSubject = edgeSubjectOf(createEdge);
   const committed =
@@ -118,16 +237,18 @@ function TieStrengthCensusPromptEditor({ item }: RowEditorProps) {
     <>
       <PromptTextField
         guidance={<TieStrengthGuidance />}
-        placeholder="How close are these two people?"
+        placeholder={intl.formatMessage(messages.placeholder)}
       />
       <CreateEdgeField
-        title="Connection created"
-        description="Choose the kind of connection an answer on the scale records between the pair."
-        label="Connection created"
-        hint="A connection of this type is created between the two people whenever the participant answers on the scale."
-        requiredMessage="Choose the type of connection this prompt creates."
-        createLabel="Create a new connection type"
-        createDescription="Create a connection type and use it for this prompt"
+        title={intl.formatMessage(censusPromptsMessages.edgeLabel)}
+        description={intl.formatMessage(messages.edgeDescription)}
+        label={intl.formatMessage(censusPromptsMessages.edgeLabel)}
+        hint={intl.formatMessage(messages.edgeHint)}
+        requiredMessage={intl.formatMessage(messages.edgeRequired)}
+        createLabel={intl.formatMessage(censusPromptsMessages.edgeCreateLabel)}
+        createDescription={intl.formatMessage(
+          censusPromptsMessages.edgeCreateDescription,
+        )}
       />
       {/*
         The scale belongs to the connection, so there is nothing to choose from
@@ -137,36 +258,42 @@ function TieStrengthCensusPromptEditor({ item }: RowEditorProps) {
       {edgeSubject !== null && (
         <PromptAttributeField
           name="edgeVariable"
-          title="The scale"
-          description="Choose the attribute whose ordered values the participant answers on."
-          label="Attribute"
-          hint="The participant taps one of this attribute's values, and it is recorded on the connection."
-          requiredMessage="Choose the attribute the participant answers on."
+          title={intl.formatMessage(censusPromptsMessages.scaleTitle)}
+          description={intl.formatMessage(messages.scaleDescription)}
+          label={intl.formatMessage(censusPromptsMessages.attributeLabel)}
+          hint={intl.formatMessage(messages.scaleHint)}
+          requiredMessage={intl.formatMessage(messages.scaleRequired)}
           subject={edgeSubject}
           types={STRENGTH_TYPES}
           createType="ordinal"
           writerClass="unvalidated"
-          createLabel="Create a new attribute"
-          editLabel="Change this attribute's values"
-          emptyMessage="This connection type has no ordinal attributes yet. Create one to say what the scale is."
+          createLabel={intl.formatMessage(
+            censusPromptsMessages.attributeCreateLabel,
+          )}
+          editLabel={intl.formatMessage(
+            censusPromptsMessages.attributeEditLabel,
+          )}
+          emptyMessage={intl.formatMessage(messages.scaleEmpty)}
           {...(committed === '' ? {} : { committedValue: committed })}
           optionLimit={SCALE_LIMIT}
-          optionLimitTitle="More answers than fit on one screen"
-          optionLimitDescription="This interface is designed for up to five points on the scale, with the decline answer beside them. Beyond that they become hard to read and hard to tap, which costs data quality."
+          optionLimitTitle={intl.formatMessage(messages.scaleLimitTitle)}
+          optionLimitDescription={intl.formatMessage(
+            messages.scaleLimitDescription,
+          )}
         />
       )}
       <Section
-        title="Answering that there is no connection"
-        description="Give the participant a way to say these two people are not connected at all."
+        title={intl.formatMessage(messages.declineTitle)}
+        description={intl.formatMessage(messages.declineDescription)}
       >
         <DialogFormField<typeof RichTextField>
           name="negativeLabel"
-          label="Decline answer"
-          hint="Shown at the end of the scale. Choosing it records no connection between the pair."
+          label={intl.formatMessage(messages.declineLabel)}
+          hint={intl.formatMessage(messages.declineHint)}
           component={RichTextField}
           singleLine
-          placeholder="They don't know each other"
-          required="Write how the participant says there is no connection."
+          placeholder={intl.formatMessage(messages.declinePlaceholder)}
+          required={intl.formatMessage(messages.declineRequired)}
         />
       </Section>
     </>

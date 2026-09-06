@@ -1,3 +1,5 @@
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 
 import PromptsSection, { type PromptsSectionCopy } from '../PromptsSection.tsx';
@@ -12,17 +14,49 @@ const WORDS: PromptsSectionCopy = Object.freeze({
 });
 
 /**
+ * What only this family says. The words it shares with the other two censuses
+ * are declared once in `censusPromptsMessages.ts`.
+ */
+const messages = defineMessages({
+  guidance: {
+    id: 'protocolBuilder.censusPrompts.dyadCensusGuidance',
+    defaultMessage:
+      'The participant sees two people side by side and answers yes or no, so write the question about the pair in front of them — “these two people” rather than a name — and phrase it so that yes and no are both sensible answers.',
+    description:
+      'Guidance shown above the box where a researcher writes a Dyad Census prompt, saying what the participant is looking at while they answer it. The quoted phrase is an example of how to refer to the pair.',
+  },
+  placeholder: {
+    id: 'protocolBuilder.censusPrompts.dyadCensusPlaceholder',
+    defaultMessage: 'Do these two people know each other?',
+    description:
+      'Example question in the empty box where a researcher writes a Dyad Census prompt.',
+  },
+  edgeDescription: {
+    id: 'protocolBuilder.censusPrompts.dyadCensusEdgeDescription',
+    defaultMessage:
+      'Choose the kind of connection an affirmative answer records between the pair.',
+    description:
+      'Description of the group that says what a yes from the participant records between the two people a Dyad Census prompt asked about.',
+  },
+  edgeHint: {
+    id: 'protocolBuilder.censusPrompts.dyadCensusEdgeHint',
+    defaultMessage:
+      'A connection of this type is created between the two people whenever the participant answers yes.',
+    description:
+      'Guidance under the control that picks what a yes from the participant records between the two people a Dyad Census prompt asked about.',
+  },
+});
+
+/**
  * What the participant is looking at while they answer, said before the
  * researcher writes the question rather than after it.
  */
 function DyadCensusGuidance() {
+  const intl = useAppIntl();
   return (
     <Alert variant="info" className="mb-6">
       <AlertDescription>
-        The participant sees two people side by side and answers yes or no, so
-        write the question about the pair in front of them — &ldquo;these two
-        people&rdquo; rather than a name — and phrase it so that yes and no are
-        both sensible answers.
+        {intl.formatMessage(messages.guidance)}
       </AlertDescription>
     </Alert>
   );
@@ -33,20 +67,26 @@ function DyadCensusGuidance() {
  * answer creates between them.
  */
 function DyadCensusPromptEditor() {
+  const intl = useAppIntl();
+
   return (
     <>
       <PromptTextField
         guidance={<DyadCensusGuidance />}
-        placeholder="Do these two people know each other?"
+        placeholder={intl.formatMessage(messages.placeholder)}
       />
       <CreateEdgeField
-        title="Affirmative answer"
-        description="Choose the kind of connection an affirmative answer records between the pair."
-        label="Connection created"
-        hint="A connection of this type is created between the two people whenever the participant answers yes."
-        requiredMessage="Choose the type of connection an affirmative answer creates."
-        createLabel="Create a new connection type"
-        createDescription="Create a connection type and use it for this prompt"
+        title={intl.formatMessage(censusPromptsMessages.affirmativeTitle)}
+        description={intl.formatMessage(messages.edgeDescription)}
+        label={intl.formatMessage(censusPromptsMessages.edgeLabel)}
+        hint={intl.formatMessage(messages.edgeHint)}
+        requiredMessage={intl.formatMessage(
+          censusPromptsMessages.affirmativeRequired,
+        )}
+        createLabel={intl.formatMessage(censusPromptsMessages.edgeCreateLabel)}
+        createDescription={intl.formatMessage(
+          censusPromptsMessages.edgeCreateDescription,
+        )}
       />
     </>
   );

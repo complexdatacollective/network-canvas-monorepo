@@ -1,6 +1,8 @@
 import { type ReactNode, useRef, useState } from 'react';
 import { v4 as uuid } from 'uuid';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
@@ -24,8 +26,20 @@ const OPTION_TYPES: readonly VariableType[] = Object.freeze([
   'ordinal',
 ]);
 
-const LOCKED_OPTIONS_EXPLANATION =
-  'These values are set by the interface that uses this attribute, so they cannot be changed here.';
+/**
+ * Its own area rather than the census families': this control is the general
+ * way a prompt reaches one codebook attribute, and the sentence below is about
+ * the codebook rather than about any one interface.
+ */
+const messages = defineMessages({
+  lockedOptions: {
+    id: 'protocolBuilder.promptAttribute.lockedOptions',
+    defaultMessage:
+      'These values are set by the interface that uses this attribute, so they cannot be changed here.',
+    description:
+      'Shown under the attribute picker when the values the picked attribute offers are derived by another interface in the protocol, so the researcher cannot edit them from this prompt. An attribute is one thing an interview records about a network member.',
+  },
+});
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -153,6 +167,7 @@ export default function PromptAttributeField({
   optionLimitTitle,
   optionLimitDescription,
 }: PromptAttributeFieldProps) {
+  const intl = useAppIntl();
   const { controller, readOnly } = useStageEditorForm();
   const setFieldValue = useFormStore((state) => state.setFieldValue);
   // Read the field's own state, falling back to the row the dialog opened on:
@@ -298,7 +313,9 @@ export default function PromptAttributeField({
         </div>
       )}
       {picked !== undefined && lockedOptions !== undefined && (
-        <p className="text-muted mt-4 text-sm">{LOCKED_OPTIONS_EXPLANATION}</p>
+        <p className="text-muted mt-4 text-sm">
+          {intl.formatMessage(messages.lockedOptions)}
+        </p>
       )}
       {overLimit && (
         <Alert variant="warning" className="mt-6">
