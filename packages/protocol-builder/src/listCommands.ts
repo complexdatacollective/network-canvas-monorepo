@@ -63,19 +63,71 @@ const asRows = (list: readonly unknown[]): readonly ArrayRow[] =>
  * A segment that is PRESENT and is not a dictionary is the other answer. The
  * apply engine throws on it too, and there is nothing here to rebase against.
  */
-function listAt(doc: SectionDoc, target: CommandTarget): unknown[] | null {
+/**
+ * What a document HOLDS at a path, exactly as the apply engine reads it, and
+ * whether something on the way stopped the walk.
+ *
+ * A key a document merely inherits — `toString`, `valueOf` — is not a container
+ * it has, so it is never followed: reading the inherited function would answer
+ * for a place the apply engine reads as empty. `blocked` is the other reading a
+ * caller needs: a segment that is PRESENT and is not a dictionary is a place
+ * the apply engine throws on rather than one that is simply not there.
+ */
+function heldAt(
+  doc: SectionDoc,
+  path: readonly string[],
+): Readonly<{ value: unknown; blocked: boolean }> {
   let cursor: unknown = doc;
-  for (const segment of targetPath(target)) {
-    if (cursor === undefined) return [];
-    if (!isDictionary(cursor)) return null;
-    // What the document HOLDS, exactly as the apply engine reads it: a key a
-    // document merely inherits — `toString`, `valueOf` — is not a container it
-    // has, and reading the inherited function would answer "not a list, do not
-    // rebase" for a place the apply reads as an empty list.
+  for (const segment of path) {
+    if (cursor === undefined) return { value: undefined, blocked: false };
+    if (!isDictionary(cursor)) return { value: undefined, blocked: true };
     cursor = Object.hasOwn(cursor, segment) ? cursor[segment] : undefined;
   }
-  if (cursor === undefined) return [];
-  return Array.isArray(cursor) ? [...cursor] : null;
+  return { value: cursor, blocked: false };
+}
+
+function listAt(doc: SectionDoc, target: CommandTarget): unknown[] | null {
+  const { value, blocked } = heldAt(doc, targetPath(target));
+  if (blocked) return null;
+  if (value === undefined) return [];
+  return Array.isArray(value) ? [...value] : null;
+}
+
+/**
+ * Whether a container this command would write THROUGH has been taken away.
+ *
+ * A `set` writes the containers on the way to its key, so replaying one whose
+ * container the arrival has dropped puts that container back — holding only the
+ * leaf this command carries. For an optional container with required members
+ * that is not merely unwanted but invalid: a stage's skip logic needs both an
+ * action and the filter it applies to, so replaying a `set` of
+ * `skipLogic.action` after a collaborator switched skip logic off leaves half a
+ * rule, which is a draft the researcher cannot save and neither of them asked
+ * for.
+ *
+ * The removal wins. A write into a capability that has been switched off says
+ * nothing about whether it should be on; only the switch says that, and the
+ * switch has been thrown. It is the same answer the whole-list `set` gives when
+ * the arrival has taken away every row it was about, and the same rule this
+ * module already applies in the other direction — a container the DRAFT removed
+ * goes whole, taking the leaf the arrival wrote inside it.
+ *
+ * A container NEITHER side had is not this: the arrival cannot have removed
+ * what it never held, so a write that creates one goes through as it always
+ * did. Nor is an `insertItem`, which carries a row the arrival never saw and
+ * puts its container back with it.
+ */
+function containerRemoved(
+  basis: SectionDoc,
+  current: SectionDoc,
+  path: readonly string[],
+): boolean {
+  for (let depth = 1; depth < path.length; depth += 1) {
+    const ancestor = path.slice(0, depth);
+    if (heldAt(basis, ancestor).value === undefined) continue;
+    if (heldAt(current, ancestor).value === undefined) return true;
+  }
+  return false;
 }
 
 type ListOperation =
@@ -399,11 +451,20 @@ function rebaseCommand(
   current: SectionDoc,
   command: Command,
 ): Command | null {
-  // A `set` of anything but a list, and an `unset`, say what they say wherever
-  // they land: neither addresses a row.
+  // An `unset` says what it says wherever it lands: it addresses no row, and
+  // it creates no container on its way — a removal into a container that has
+  // gone is a removal with nothing to remove.
   if (command.op === 'unset') return command;
+  // A `set` of anything but a list addresses no row either, so it says what it
+  // says wherever it lands — unless the container it would write THROUGH has
+  // been taken away, which is the one thing that makes where it lands a
+  // question.
   const written = command.op === 'set' ? command.value : undefined;
-  if (command.op === 'set' && !Array.isArray(written)) return command;
+  if (command.op === 'set' && !Array.isArray(written)) {
+    return containerRemoved(basis, current, targetPath(command.key))
+      ? null
+      : command;
+  }
 
   const before = listAt(basis, command.key);
   const arrival = listAt(current, command.key);

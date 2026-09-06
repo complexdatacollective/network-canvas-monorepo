@@ -318,3 +318,140 @@ describe('the same arrival on a top-level list', () => {
     }).not.toThrow();
   });
 });
+
+/**
+ * A LEAF write whose container the arrival has dropped.
+ *
+ * Nothing about a list, but the same arrival and the same question. A stage's
+ * skip logic is an optional container with two required members — an action
+ * and the filter it applies to — so a `set` of `skipLogic.action` replayed
+ * after a collaborator has switched skip logic off does not merely put an
+ * unwanted container back: it puts back HALF of one. `{ action: 'SHOW' }` with
+ * no filter is a stage the schema refuses, which is a draft the researcher
+ * cannot save and neither of them asked for.
+ *
+ * The removal wins, and the leaf write is dropped. That is the rule this file
+ * already states in the other direction — a container the DRAFT dropped goes
+ * whole, taking the leaf the arrival wrote inside it — and the one the
+ * whole-list `set` follows when the arrival has taken away every row it was
+ * about. A write into a capability that has been switched off says nothing
+ * about whether it should be on; only the switch says that, and the switch has
+ * been thrown.
+ *
+ * A row the researcher ADDED is still the exception, here as above: an insert
+ * carries something the arrival never saw, so it is written back container and
+ * all.
+ */
+describe('a leaf write whose container the arrival has dropped', () => {
+  const filter = {
+    join: 'AND',
+    rules: [
+      {
+        id: 'rule-1',
+        type: 'ego',
+        options: { attribute: 'consented', operator: 'EXISTS' },
+      },
+    ],
+  };
+
+  const stageWithSkipLogic = (skipLogic: SectionDoc | undefined): SectionDoc =>
+    skipLogic === undefined
+      ? { label: 'Pedigree' }
+      : { label: 'Pedigree', skipLogic };
+
+  function openSkipLogicSession(skipLogic: SectionDoc | undefined) {
+    return new ProtocolBuilderSessionStore({
+      identity: createStageIdentity('FamilyPedigree', () => 'stage-1'),
+      fields: stageWithSkipLogic(skipLogic),
+      protocolSections: {},
+      manifestRevision: revision(1n),
+      access: { mode: 'editable', leaseOwner: 'tab-1', leaseEpoch: 1n },
+      buildCandidate: ({ stageDocument }) => ({
+        name: 'p',
+        schemaVersion: 8,
+        codebook: {},
+        stages: [stageDocument],
+      }),
+      onCommands: vi.fn(),
+    });
+  }
+
+  it('is dropped rather than putting half a container back', () => {
+    const session = openSkipLogicSession({ action: 'SKIP', filter });
+
+    // The researcher flips the action, which is one leaf of the container.
+    session.dispatch(
+      commandsFromDraftChange(
+        session.getSnapshot().editedSection.fields,
+        stageWithSkipLogic({ action: 'SHOW', filter }),
+      ),
+    );
+    expect(session.getSnapshot().pendingCommands[0]?.commands).toEqual([
+      { op: 'set', key: ['skipLogic', 'action'], value: 'SHOW' },
+    ]);
+
+    // A collaborator switches skip logic off altogether.
+    session.acknowledge({
+      fields: stageWithSkipLogic(undefined),
+      throughBatchId: 0,
+      manifestRevision: revision(2n),
+    });
+
+    expect(
+      session.getSnapshot().editedSection.fields.skipLogic,
+    ).toBeUndefined();
+  });
+
+  /**
+   * The control: the container is still there, so the leaf write is an
+   * ordinary one and the collaborator's edit to its sibling stands beside it.
+   */
+  it('goes through when the arrival kept the container', () => {
+    const session = openSkipLogicSession({ action: 'SKIP', filter });
+    session.dispatch(
+      commandsFromDraftChange(
+        session.getSnapshot().editedSection.fields,
+        stageWithSkipLogic({ action: 'SHOW', filter }),
+      ),
+    );
+
+    const destination = { type: 'finish' };
+    session.acknowledge({
+      fields: stageWithSkipLogic({ action: 'SKIP', filter, destination }),
+      throughBatchId: 0,
+      manifestRevision: revision(2n),
+    });
+
+    expect(session.getSnapshot().editedSection.fields.skipLogic).toEqual({
+      action: 'SHOW',
+      filter,
+      destination,
+    });
+  });
+
+  /**
+   * And the rule this leaves standing: a container NEITHER side had is created
+   * by the write that needs it, exactly as it always was. The arrival cannot
+   * have removed what it never held.
+   */
+  it('creates a container the arrival never had', () => {
+    const session = openSkipLogicSession(undefined);
+    session.dispatch(
+      commandsFromDraftChange(
+        session.getSnapshot().editedSection.fields,
+        stageWithSkipLogic({ action: 'SHOW', filter }),
+      ),
+    );
+
+    session.acknowledge({
+      fields: { label: 'Renamed' },
+      throughBatchId: 0,
+      manifestRevision: revision(2n),
+    });
+
+    expect(session.getSnapshot().editedSection.fields.skipLogic).toEqual({
+      action: 'SHOW',
+      filter,
+    });
+  });
+});
