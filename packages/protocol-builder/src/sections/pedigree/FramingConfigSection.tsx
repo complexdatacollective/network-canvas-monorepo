@@ -1,5 +1,5 @@
 import { get } from 'es-toolkit/compat';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
@@ -9,7 +9,7 @@ import { FRAMING_IDS, type FramingId } from '@codaco/protocol-validation';
 import ProtocolField from '../../form/ProtocolField.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import {
-  useClearStageValue,
+  useDiscardStageValues,
   useStageValue,
 } from '../../form/stageFormHooks.ts';
 import BuilderSection from '../BuilderSection.tsx';
@@ -68,27 +68,51 @@ export type FramingConfigSectionProps = Readonly<{
  * The schema holds this as a discriminated union: a fixed framing carries the
  * chosen terminology, and a participant choice carries nothing at all. The
  * terminology field is therefore rendered only while the mode is fixed, AND
- * cleared when it is not — hiding it alone would leave the value parked, and a
- * parked value is written back on save, putting a key into the stage that the
- * union's `participantChoice` branch has no room for.
+ * thrown away when it is not — hiding it alone would leave the value parked,
+ * and a parked value is written back on save, putting a key into the stage
+ * that the union's `participantChoice` branch has no room for.
+ *
+ * Thrown away out of the SESSION, and in the same batch as the mode that
+ * caused it. The draft is the single notion of what a path holds: it is what
+ * every field is seeded from as it mounts, so a clear that lived only in the
+ * form would hand the old terminology back the moment the researcher returned
+ * to a fixed framing. And the mode has to travel with it, because a mode is an
+ * ordinary field that waits for the submit that flushes it — sent alone, the
+ * clear would reach a live-applying host as a pedigree still claiming a fixed
+ * framing with no terminology to fix it to, which is a stage nobody authored
+ * and one the union refuses.
  */
 export default function FramingConfigSection({
   copy,
 }: FramingConfigSectionProps) {
   const words = { ...DEFAULT_COPY, ...copy };
   const { committedFields } = useStageEditorForm();
-  const mode = useStageValue(MODE_FIELD) ?? 'fixed';
-  const clearStageValue = useClearStageValue();
+  const chosenMode = useStageValue(MODE_FIELD);
+  const mode = chosenMode ?? 'fixed';
+  const discardStageValues = useDiscardStageValues();
   const isFixed = mode === 'fixed';
   // The AGREED framing, not the live one: an initial value that moved with the
   // control would re-register the field on every change.
   const committedMode: unknown = get(committedFields, MODE_FIELD);
   const committedValue: unknown = get(committedFields, VALUE_FIELD);
 
+  const wasFixed = useRef(isFixed);
   useEffect(() => {
-    if (isFixed) return;
-    clearStageValue(VALUE_FIELD);
-  }, [clearStageValue, isFixed]);
+    const leaving = wasFixed.current && !isFixed;
+    wasFixed.current = isFixed;
+    // Only the researcher LEAVING the fixed branch throws anything away. The
+    // first render is a stage being opened on what it was saved with, and an
+    // arrival that brings a participant choice with it — an undo, a redo, a
+    // collaborator's change — has already left the terminology behind, so
+    // there is nothing there for this to find.
+    if (!leaving) return;
+    // The mode in front of the terminology it cost, in one batch, so an undo
+    // brings back a framing the union accepts rather than half of one.
+    discardStageValues([VALUE_FIELD], {
+      path: MODE_FIELD,
+      value: chosenMode,
+    });
+  }, [chosenMode, discardStageValues, isFixed]);
 
   return (
     <BuilderSection title={words.sectionTitle} description={words.description}>

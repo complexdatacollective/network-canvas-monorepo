@@ -1179,3 +1179,101 @@ describe('a pedigree whose node type changes', () => {
     await screen.findByText('Who has been unwell?');
   });
 });
+
+/**
+ * The framing is a discriminated union, so choosing a participant choice is
+ * also the decision to lose the terminology a fixed framing carried.
+ *
+ * The two halves belong in ONE batch: the mode is an ordinary field that waits
+ * for the submit that flushes it, so a clear sent alone would reach a host
+ * applying this session's edits live as a pedigree still claiming a fixed
+ * framing with nothing to fix it to — a stage nobody authored, and one the
+ * union refuses. And the clear has to reach the session at all, or the draft
+ * goes on holding a terminology the union's chosen branch has no room for.
+ *
+ * The switch back is asked about the DRAFT rather than about the control,
+ * because the control cannot fail it: a cleared field parks its emptiness in
+ * the form store, which outlives the field and is what a re-mount is restored
+ * from. That record is only as good as the form holding it; the draft is what
+ * a re-opened editor, a live-applying host and the session's own undo read.
+ */
+describe('the batch a framing change makes', () => {
+  /** Seeded away from the schema's canonical framing, so a fallback shows. */
+  const openWithGenderedFraming = () => ({
+    stage: familyPedigreeStageWith({
+      framing: { mode: 'fixed', value: 'gendered' },
+    }),
+    sections: pedigreeSections,
+  });
+
+  const framingOf = (harness: StageEditorHarness): Record<string, unknown> => {
+    const framing = harness.session.getSnapshot().editedSection.fields.framing;
+    return isRecord(framing) ? framing : {};
+  };
+
+  const terminology = () =>
+    screen.findByRole('combobox', { name: 'Fixed framing terminology' });
+
+  const chooseMode = async (harness: StageEditorHarness, name: string) => {
+    await harness.user.click(screen.getByRole('radio', { name }));
+  };
+
+  it('carries the mode it chose and the terminology it cost in one batch', async () => {
+    const harness = renderStageEditor(openWithGenderedFraming());
+    expect(await terminology()).toHaveValue('gendered');
+
+    await chooseMode(harness, 'Let the participant choose');
+
+    await waitFor(() => expect(harness.pendingCommands()).toHaveLength(1));
+    // The mode first, so the batch reads as what happened: this was chosen,
+    // and therefore this was thrown away.
+    expect(commandsOf(harness)).toEqual([
+      { op: 'set', key: ['framing', 'mode'], value: 'participantChoice' },
+      { op: 'unset', key: ['framing', 'value'] },
+    ]);
+  });
+
+  it('leaves the terminology gone from the draft when the researcher goes back to a fixed framing', async () => {
+    const harness = renderStageEditor(openWithGenderedFraming());
+    await terminology();
+
+    await chooseMode(harness, 'Let the participant choose');
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('combobox', { name: 'Fixed framing terminology' }),
+      ).not.toBeInTheDocument(),
+    );
+    await chooseMode(harness, 'Fixed framing');
+
+    expect(framingOf(harness)).not.toHaveProperty('value');
+    expect(await terminology()).not.toHaveValue('gendered');
+  });
+
+  /**
+   * Undo is the researcher's way back from a framing they did not mean, and it
+   * has to bring back BOTH halves: a fixed framing with no terminology is not
+   * a framing the union accepts, and neither is a participant choice carrying
+   * one. One batch is what makes that a single step.
+   */
+  it('comes back whole, mode included, when the session undoes it', async () => {
+    const harness = renderStageEditor(openWithGenderedFraming());
+    await terminology();
+    await chooseMode(harness, 'Let the participant choose');
+    // What the undo below has to find. A clear that never reached the session
+    // leaves the terminology in the draft, and everything after the undo would
+    // then describe a value nothing ever took away.
+    await waitFor(() => expect(framingOf(harness)).not.toHaveProperty('value'));
+
+    act(() => {
+      harness.session.undo();
+    });
+
+    await waitFor(() =>
+      expect(framingOf(harness)).toEqual({ mode: 'fixed', value: 'gendered' }),
+    );
+    // And on screen, not only in the session: the controls are re-seeded from
+    // an arrival this form did not make.
+    expect(screen.getByRole('radio', { name: 'Fixed framing' })).toBeChecked();
+    expect(await terminology()).toHaveValue('gendered');
+  });
+});
