@@ -1,11 +1,4 @@
-import { isEqual } from 'es-toolkit/compat';
-import {
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { type ReactNode, useCallback, useRef, useState } from 'react';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Section from '@codaco/fresco-ui/Section';
@@ -18,9 +11,9 @@ import {
   useDiscardStageValues,
   useFormRestoreVersion,
   useStageHasAnyValue,
-  useStageValue,
 } from '../form/stageFormHooks.ts';
 import { useOutlineSection } from '../form/useOutlineSection.ts';
+import { useOnResearcherChange } from './researcherChange.ts';
 
 /**
  * An optional capability the researcher switches on and off.
@@ -229,11 +222,13 @@ export default function BuilderSection({
     [capability, configured, confirm, discardStageValues],
   );
 
-  // Only on a CHANGE, and a change of VALUE. The first render is a stage being
-  // opened on what it was saved with, and resetting there would empty a
-  // section the researcher has not touched. Compared structurally because what
-  // a section resets on is often an object — a subject, a chosen resource —
-  // and the store hands back whatever it holds there.
+  // Only on the RESEARCHER changing it — `useOnResearcherChange` is what tells
+  // that apart from the draft moving beneath the form. An undo, a redo or a
+  // collaborator's change moves the same value and arrives carrying the
+  // configuration that belongs to it, so resetting there would throw away the
+  // half of the change the researcher was reaching for: an undo that restored
+  // a type AND the capability describing it would lose the capability again on
+  // the spot.
   //
   // The clear carries the value that caused it, so the session — and any host
   // applying its batches live — never receives one without the other. See
@@ -243,20 +238,16 @@ export default function BuilderSection({
   // own: a caller can seed it through `defaultOpen` but has no way to close it.
   // By the time the new key renders, the clear above has already made
   // `defaultOpen` false.
-  const resetValue = useStageValue(resetOn);
   const [resetGeneration, setResetGeneration] = useState(0);
-  const previousResetValue = useRef(resetValue);
-  useEffect(() => {
-    const before = previousResetValue.current;
-    previousResetValue.current = resetValue;
-    if (resetOn === undefined || isEqual(before, resetValue)) return;
+  useOnResearcherChange(resetOn, (value) => {
+    if (resetOn === undefined) return;
     discardStageValues(capability?.fields ?? NO_FIELDS, {
       path: resetOn,
-      value: resetValue,
+      value,
     });
     setSwitchedOn(false);
     setResetGeneration((generation) => generation + 1);
-  }, [capability, discardStageValues, resetOn, resetValue]);
+  });
 
   const body = (
     <SectionScopeContext value={sectionId}>{children}</SectionScopeContext>
