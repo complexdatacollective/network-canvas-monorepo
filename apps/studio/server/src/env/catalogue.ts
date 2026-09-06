@@ -25,7 +25,7 @@ export const DEV = {
   // The Vite dev server, which proxies every server path — the single-origin
   // invariant (#1245).
   baseUrl: 'http://localhost:5173',
-  emailFrom: 'studio-dev@localhost',
+  emailFrom: 'studio-dev@localhost.test',
 } as const;
 
 export const DEV_DATABASE_URL = `postgres://${DEV.pgUser}:${DEV.pgPassword}@${DEV.pgHost}:${DEV.pgPort}/${DEV.pgDatabase}`;
@@ -172,7 +172,7 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
     summary:
       'SMTP transport sign-in and team-invitation email is sent through.',
     deployment:
-      'Unset ⇒ magic-link sends refuse and team invitations cannot be created. A sign-in or invitation link is never written to the log outside development.',
+      'Unset ⇒ magic-link sends refuse and team invitations cannot be created. Accepts smtp:// or smtps:// credentials and host/port only; query options, fragments, and paths are refused. TLS is required except for localhost, 127.0.0.1, and ::1 development relays. Connection and greeting waits are bounded to 10 seconds, socket inactivity to 20 seconds, and the full send to 40 seconds. A sign-in or invitation link is never written to the log outside development.',
     example: 'smtp://user:password@smtp.example.org:587',
   },
   EMAIL_FROM: {

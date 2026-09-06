@@ -156,6 +156,12 @@ preserved on `feat/interview-interface-i18n` for a separate follow-up PR. The
 three app PRs will consume that follow-up after the prerequisite lands. Merge
 authorization covers these PRs once their verification and review gates pass.
 
+The runtime source checkpoint is `3ffccd752d119f9b63103d07f5284a6ddc8d605a`,
+including the resolved prerequisite merge `389869b72275815405de64cfd59a3bab850fbfd2`.
+The prerequisite's isolated conflict verification passes 14 field/localization
+tests plus Fresco UI types. Its new Codex review explicitly names that head and
+reports no findings; all review threads are resolved.
+
 Refreshed main is `eae76922d4cd340b0ebb8765c288fd6e91462b53`. Its validator
 closure correction overlaps this branch's committed-configuration validator;
 retain both behaviors and run their regressions after a normal local merge.
@@ -175,3 +181,14 @@ restored, leaving 572 reviewed baseline updates. No common accessible node was
 reordered, no authored value was lost, and no unnamed control was added. The
 corpus guard passes 36 tests, including three checks that remove only the newly
 named focal-person button's name in memory and require the public audit to fail.
+
+Post-main verification now passes all 293 native browser scenarios using normal
+committed settings without updating snapshots. All 1,710 unit tests across 201
+files pass, with two existing todos. Interview types, root Knip, the production
+host build and the library/declaration build also pass. The first complete
+Storybook run passed 243 cases and exposed one stale initial-focus assertion:
+the new language chooser correctly precedes text size. The corrected test
+requires initial focus on Language, then Tab to the number field before proving
+keyboard scaling; all seven Navigation stories pass. No production behavior was
+changed to satisfy that assertion. Canonical PNGs, app integration gates and the
+runtime follow-up's current-head CI/review remain outstanding.
