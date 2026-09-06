@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -87,7 +87,7 @@ const RULE = { property: 'age', direction: 'desc' };
  * is the fixture's own, so what saves here is a stage the protocol schema
  * accepts.
  */
-const seededWithARule = () => ({
+const seededWith = (rules: readonly Record<string, unknown>[]) => ({
   stage: {
     id: 'sociogram-1',
     type: 'Sociogram' as const,
@@ -101,13 +101,34 @@ const seededWithARule = () => ({
           id: 'sociogram-prompt-1',
           text: 'Place the people who know each other close together',
           layout: { layoutVariable: 'layout' },
-          sortOrder: [RULE],
+          sortOrder: rules,
         },
       ],
     },
   },
   sections,
 });
+
+const seededWithARule = () => seededWith([RULE]);
+
+/**
+ * A sort rule left pointing at an attribute a collaborator has since deleted.
+ *
+ * `SortRuleSchema.property` is `existence: 'unchecked'`, so the protocol keeps
+ * this stage rather than refusing it — which is right, because deleting an
+ * attribute must not make somebody else's stage unopenable. The editor is what
+ * has to say the reference is dangling, and it is `SortOrderRows` that has to
+ * say it, so that every family holding a sort order says the same thing.
+ */
+const ORPHANED_PROPERTY = 'nickname';
+
+const ORPHANED_OPTION_LABEL = `${ORPHANED_PROPERTY} — this attribute is no longer in the codebook`;
+
+const MISSING_ATTRIBUTE_MESSAGE =
+  'This rule points at an attribute no longer in the codebook. Choose another or delete the rule.';
+
+const seededWithAnOrphanedRule = () =>
+  seededWith([{ property: ORPHANED_PROPERTY, direction: 'asc' }]);
 
 /**
  * The prompt a save actually committed.
@@ -233,5 +254,101 @@ describe('the sort order a prompt carries', () => {
     expect(saved.text).toBe(
       'Place the people who know each other close together',
     );
+  });
+});
+
+/**
+ * A rule whose attribute has been deleted still has to be readable, fixable,
+ * and impossible to save as it stands.
+ *
+ * Handled by `SortOrderRows` rather than by any one family: the schema keeps
+ * such a rule on purpose, so every family holding a sort order inherits the
+ * same dangling reference.
+ */
+describe('a sort rule pointing at an attribute the codebook has lost', () => {
+  const openPrompt = async (harness: {
+    user: { click(element: Element): Promise<void> };
+  }) => {
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    await screen.findByRole('dialog');
+  };
+
+  it('shows the rule, naming the attribute it can no longer find', async () => {
+    const harness = renderStageEditor(seededWithAnOrphanedRule());
+
+    await openPrompt(harness);
+
+    // The cell renders from the option list, so an id no option carries leaves
+    // the control blank while the value behind it is still there and still
+    // saved. The researcher then has an empty required cell and no way to find
+    // out what it points at.
+    const property = await screen.findByRole('combobox', { name: 'Property' });
+    expect(property).toHaveValue(ORPHANED_PROPERTY);
+    expect(
+      within(property).getByRole('option', { name: ORPHANED_OPTION_LABEL }),
+    ).toBeDisabled();
+  });
+
+  /**
+   * The half a family could not do for itself.
+   *
+   * The option getter disables an option a rule already names, and while the
+   * orphan IS named that looks like enough. It is not: point the rule at
+   * something else and the id becomes selectable, so the researcher can put
+   * the dangling reference straight back — and this time on purpose.
+   */
+  it('keeps the deleted attribute unselectable once the rule points elsewhere', async () => {
+    const harness = renderStageEditor(seededWithAnOrphanedRule());
+
+    await openPrompt(harness);
+    await harness.user.selectOptions(
+      await screen.findByRole('combobox', { name: 'Property' }),
+      'name',
+    );
+
+    expect(
+      within(screen.getByRole('combobox', { name: 'Property' })).getByRole(
+        'option',
+        { name: ORPHANED_OPTION_LABEL },
+      ),
+    ).toBeDisabled();
+  });
+
+  it('refuses the save, and says which way out there is', async () => {
+    const harness = renderStageEditor(seededWithAnOrphanedRule());
+
+    await openPrompt(harness);
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+
+    // Not "every row needs a value in each column": the row HAS a value in
+    // each column, and being told to fill in a cell that already looks filled
+    // in leaves the researcher nothing to do.
+    await screen.findByText(MISSING_ATTRIBUTE_MESSAGE);
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('saves once the rule has been pointed at an attribute that exists', async () => {
+    const harness = renderStageEditor(seededWithAnOrphanedRule());
+
+    await openPrompt(harness);
+    await harness.user.selectOptions(
+      await screen.findByRole('combobox', { name: 'Property' }),
+      'name',
+    );
+    // Choosing a property clears the direction behind it, because each column
+    // narrows the next one's options.
+    await harness.user.selectOptions(
+      screen.getByRole('combobox', { name: 'Direction' }),
+      'asc',
+    );
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const saved = savedPrompt(await harness.submit());
+    expect(saved.sortOrder).toEqual([{ property: 'name', direction: 'asc' }]);
   });
 });
