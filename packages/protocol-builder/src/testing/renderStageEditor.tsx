@@ -492,31 +492,75 @@ const isContentEditable = (element: Element): boolean => {
 };
 
 /**
+ * Whether a test has already selected something inside `element`.
+ *
+ * A RANGE, not a caret: a click collapses a range and loses it, and leaves a
+ * caret where it found it (measured — see `withSafeTypingIntoRichText`).
+ * ProseMirror's own select-all puts both ends on the editable element itself
+ * rather than in the text, so the ends are tested with `contains`, which
+ * counts the element as containing itself.
+ */
+const hasSelectedRangeInside = (element: Element): boolean => {
+  const selection = element.ownerDocument.defaultView?.getSelection();
+  if (
+    selection == null ||
+    selection.rangeCount === 0 ||
+    selection.isCollapsed ||
+    selection.anchorNode === null ||
+    selection.focusNode === null
+  ) {
+    return false;
+  }
+  return (
+    element.contains(selection.anchorNode) &&
+    element.contains(selection.focusNode)
+  );
+};
+
+/**
  * A keyboard whose `type` is safe to point at a rich text field.
  *
- * `clear` then `type` on a `singleLine` field saved "ho else?" for "Who
- * else?": one keystroke short, from the top. `type` clicks the element itself
- * before typing into it, and a `contenteditable` is where that click goes
- * wrong. jsdom lays nothing out, so user-event cannot place a caret from
- * coordinates; it walks the element for text instead, finds none in a field
- * that was just emptied, and settles the caret at the END OF THE ELEMENT —
- * outside the paragraph rather than inside it. ProseMirror puts a stray
- * selection like that back on its next turn of the event loop, and `type`,
- * which does its own click, never gives it one: the first character is
- * written into the DOM as a bare text node between blocks, and a document that
- * is one paragraph has nowhere to hold it.
+ * The rule: type into a rich text field from a click of its own, UNLESS the
+ * test has already selected something in that field — then type as user-event
+ * does, so the selection reaches the keystrokes.
  *
- * So the click is made as a call of its own, and the typing skips its own.
- * Every top-level user-event call is wrapped in `act`, which is the turn
- * ProseMirror needs. Nothing about the CONTROL is at fault — a researcher
- * cannot put a caret between blocks, and a browser's own click never does —
- * so this is the harness's to get right rather than the editor's.
+ * Both halves are one defect, which is that ProseMirror only learns of a
+ * selection on its next turn of the event loop. Every top-level user-event
+ * call is wrapped in `act`, so a call of its own is that turn, and the click
+ * `type` makes inside itself is not.
+ *
+ * Without the separate click, `clear` then `type` on a `singleLine` field
+ * saved "ho else?" for "Who else?": one keystroke short, from the top. jsdom
+ * lays nothing out, so user-event cannot place a caret from coordinates; it
+ * walks the element for text instead, finds none in a field that was just
+ * emptied, and settles the caret at the END OF THE ELEMENT — outside the
+ * paragraph rather than inside it. ProseMirror puts a stray selection like
+ * that back, but `type` never gives it the turn, and the first character is
+ * written into the DOM as a bare text node between blocks that a one-paragraph
+ * document has nowhere to hold.
+ *
+ * With the separate click made unconditionally, a test that selects the answer
+ * before typing over it appended instead: click, `{Control>}a{/Control}`,
+ * `type` saved "OtherElse" for "Else". The extra click collapses the range to
+ * the end of the text AND gives ProseMirror the turn in which to believe it,
+ * so the keystrokes insert rather than replace. `type`'s own click collapses
+ * the DOM selection too, but ProseMirror never sees it before the keystrokes
+ * and replaces the selection it still holds — which is what a researcher
+ * typing over selected text gets.
+ *
+ * Nothing about the CONTROL is at fault either way — a researcher cannot put a
+ * caret between blocks, and a browser's own click never does — so this is the
+ * harness's to get right rather than the editor's.
  */
 function withSafeTypingIntoRichText(keyboard: HarnessUser): HarnessUser {
   return {
     ...keyboard,
     type: async (element, text, options) => {
-      if (options?.skipClick === true || !isContentEditable(element)) {
+      if (
+        options?.skipClick === true ||
+        !isContentEditable(element) ||
+        hasSelectedRangeInside(element)
+      ) {
         return keyboard.type(element, text, options);
       }
       await keyboard.click(element);

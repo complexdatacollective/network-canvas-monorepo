@@ -316,6 +316,48 @@ describe('the harness keyboard', () => {
     const request = await harness.submit();
     expect(request?.stageDocument.interviewScript).toBe('Who else?');
   });
+
+  it('replaces a single-line rich text answer a test selected first', async () => {
+    const harness = renderStageEditor({
+      stage: informationAsking('Who is closest to you?'),
+      sections: <SingleLineQuestion />,
+    });
+
+    const question = await screen.findByRole('textbox', {
+      name: 'Question text',
+    });
+    // How a researcher replaces an answer, and how the editors' round-trip
+    // tests write one: into the field, select what is there, type over it.
+    await harness.user.click(question);
+    await harness.user.keyboard('{Control>}a{/Control}');
+    await harness.user.type(question, 'Who else?');
+
+    // The whole answer, not the old one with this one after it: a click of the
+    // harness's own would collapse the selection to the end of the text.
+    const request = await harness.submit();
+    expect(request?.stageDocument.interviewScript).toBe('Who else?');
+  });
+
+  it('types into an untouched rich text field at the start of its answer', async () => {
+    const harness = renderStageEditor({
+      stage: informationAsking('Who is closest to you?'),
+      sections: <SingleLineQuestion />,
+    });
+
+    const question = await screen.findByRole('textbox', {
+      name: 'Question text',
+    });
+    await harness.user.type(question, 'Also: ');
+
+    // Not at the end, which is where a browser opens a field it is clicked
+    // into and what a test written for one expects. jsdom lays nothing out, so
+    // user-event puts the caret at the start of the text instead, and a test
+    // that wants to add to an answer has to select it and type it out whole.
+    const request = await harness.submit();
+    expect(request?.stageDocument.interviewScript).toBe(
+      'Also: Who is closest to you?',
+    );
+  });
 });
 
 /**
