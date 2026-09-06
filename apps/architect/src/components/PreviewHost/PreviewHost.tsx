@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { v4 as uuid } from 'uuid';
 
 import { commonMessages } from '@codaco/app-i18n/common';
-import { defineMessages } from '@codaco/app-i18n/messages';
-import { AppI18nProvider, useAppIntl } from '@codaco/app-i18n/react';
+import { createAppIntl, defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -23,6 +23,7 @@ import {
 import { formatConstraintConflictReason } from '@codaco/protocol-utilities/messages';
 import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
 import { type StageMetadata, StageMetadataSchema } from '@codaco/shared-consts';
+import { architectCatalogs } from '~/locales/catalogs';
 import { assetKey } from '~/utils/assetDB';
 import { hydrateMemoryAsset } from '~/utils/inMemoryAssetStore';
 
@@ -30,14 +31,14 @@ import { currentProtocolToPayload } from './currentProtocolToPayload';
 import { isPreviewMessage, type PreviewPayload } from './messages';
 import { collectPreviewRosterData } from './previewRosterData';
 import { useAssetResolver } from './useAssetResolver';
-const chromeMessages = defineMessages({
-  english: {
-    id: 'architect.chrome.previewHost.previewHost.english',
-    defaultMessage: 'English',
-    description: 'The label text in components / PreviewHost / PreviewHost.',
-  },
-});
 const messages = defineMessages({
+  finishConfirmation: {
+    id: 'architect.previewHost.previewHost.finishConfirmation',
+    defaultMessage:
+      'This is a preview, so nothing is saved. Finishing ends this run of the protocol, and you can start it again afterwards.',
+    description:
+      'Preview-specific finish confirmation inside the interview Shell. Preview answers are never saved, and the researcher can restart the run after finishing.',
+  },
   conflictSubject: {
     id: 'architect.presentation.conflictSubject',
     defaultMessage: '{entityName}: {variableNames}',
@@ -142,8 +143,17 @@ const noopSync = async () => {};
 // nothing is stored, and confirming ends the run the researcher has been
 // clicking through. The dialog keeps its Cancel action, so this is the point
 // at which the researcher chooses to give up that run.
-const PREVIEW_FINISH_CONFIRMATION =
-  'This is a preview, so nothing is saved. Finishing ends this run of the protocol, and you can start it again afterwards.';
+function PreviewFinishConfirmation() {
+  // Shell owns its catalog and can select a language independently of Architect.
+  // Resolve this host-specific message against the Architect catalog explicitly
+  // while subscribing to the Shell locale, including in an already-open dialog.
+  const { locale } = useAppIntl();
+  const intl = useMemo(
+    () => createAppIntl({ locale, messages: architectCatalogs[locale] }),
+    [locale],
+  );
+  return intl.formatMessage(messages.finishConfirmation);
+}
 
 const COMPLETION_DESCRIPTION_ID = 'preview-finished-description';
 
@@ -492,38 +502,25 @@ export function PreviewHost() {
     );
   }
   return (
-    <div className="h-screen" lang="en" dir="ltr">
-      {/* Protocol/participant language is independent of Architect chrome.
-          Schema-8 previews retain their source English runtime until #1313. */}
-      <AppI18nProvider
-        locale="en"
-        locales={[
-          {
-            locale: 'en',
-            label: intl.formatMessage(chromeMessages.english),
-            direction: 'ltr',
-          },
-        ]}
-        manageDocument={false}
-      >
-        <Shell
-          payload={interviewPayload}
-          onSync={noopSync}
-          onFinish={handleFinish}
-          finishConfirmationDescription={PREVIEW_FINISH_CONFIRMATION}
-          onRequestAsset={onRequestAsset}
-          currentStep={currentStep}
-          onStepChange={setCurrentStep}
-          flags={{ isDevelopment: import.meta.env.DEV }}
-          initialStageOverrideIndex={initialStageOverrideIndex ?? undefined}
-          allowStageNavigation
-          disableAnalytics
-          analytics={{
-            installationId: 'architect-preview',
-            hostApp: 'architect-preview',
-          }}
-        />
-      </AppI18nProvider>
+    <div className="h-screen">
+      <Shell
+        requestedLocale={intl.locale}
+        payload={interviewPayload}
+        onSync={noopSync}
+        onFinish={handleFinish}
+        finishConfirmationDescription={<PreviewFinishConfirmation />}
+        onRequestAsset={onRequestAsset}
+        currentStep={currentStep}
+        onStepChange={setCurrentStep}
+        flags={{ isDevelopment: import.meta.env.DEV }}
+        initialStageOverrideIndex={initialStageOverrideIndex ?? undefined}
+        allowStageNavigation
+        disableAnalytics
+        analytics={{
+          installationId: 'architect-preview',
+          hostApp: 'architect-preview',
+        }}
+      />
     </div>
   );
 }

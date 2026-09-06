@@ -1,8 +1,8 @@
-import { useId, useMemo } from 'react';
+import { type ReactNode, useId, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 
-import { createAppIntl, defineMessages } from '@codaco/app-i18n/messages';
-import { AppI18nProvider, useAppIntl } from '@codaco/app-i18n/react';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl, useAppLocale } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import Form from '@codaco/fresco-ui/form/Form';
@@ -17,6 +17,7 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
   createInitialNetwork,
+  InterviewI18nProvider,
   ProtocolField,
   type ProtocolFieldDefinition,
 } from '@codaco/interview';
@@ -32,7 +33,6 @@ import {
   isOrdinalOrCategoricalType,
 } from '~/config/variables';
 import type { RootState } from '~/ducks/modules/root';
-import { architectProductionLocales } from '~/i18n/locales';
 import { getVariablesForSubjectSelector } from '~/selectors/codebook';
 import { getProtocol } from '~/selectors/protocol';
 
@@ -78,22 +78,15 @@ const finalMessages = defineMessages({
     id: 'architect.final.components.sections.Form.FieldEditorPreview.attribute',
     defaultMessage: 'Attribute label',
     description:
-      'Participant-preview fallback when no authored attribute label or name is available; the preview currently stays English until protocol-language support is enabled.',
+      'Built-in inline-preview fallback when no authored attribute label or name is available; authored labels are always preserved.',
   },
   question: {
     id: 'architect.final.components.sections.Form.FieldEditorPreview.question',
     defaultMessage: 'Your question will appear here.',
     description:
-      'Participant-preview fallback when no authored question is available; the preview currently stays English until protocol-language support is enabled.',
+      'Built-in inline-preview fallback when no authored question is available; authored questions are always preserved.',
   },
 });
-
-// Match the full interview preview: participant copy remains English until
-// protocol-language support is enabled. Authored labels remain untouched.
-const participantIntl = createAppIntl({ locale: 'en' });
-const participantLocales = architectProductionLocales.filter(
-  ({ locale }) => locale === 'en',
-);
 
 const PREVIEW_DRAFT_FIELDS = [
   'variable',
@@ -136,6 +129,15 @@ const asNonEmptyString = (value: unknown): string | undefined => {
 };
 
 const passPreviewValidation = () => ({ success: true as const });
+
+function PreviewLocaleRegion({ children }: { children: ReactNode }) {
+  const { locale, direction } = useAppLocale();
+  return (
+    <div lang={locale} dir={direction}>
+      {children}
+    </div>
+  );
+}
 
 /**
  * Interactive participant-facing rendering of the field currently being
@@ -198,8 +200,8 @@ const FieldEditorPreview = ({
         codebookVariable?.name ??
         asNonEmptyString(createNewVariable) ??
         variableId ??
-        participantIntl.formatMessage(finalMessages.attribute))
-      : (prompt ?? participantIntl.formatMessage(finalMessages.question));
+        intl.formatMessage(finalMessages.attribute))
+      : (prompt ?? intl.formatMessage(finalMessages.question));
 
   const stageSubject = useMemo<StageSubject | null>(() => {
     if (entity === 'ego') return { entity: 'ego' };
@@ -278,12 +280,8 @@ const FieldEditorPreview = ({
               key={`${field.type}:${field.component}`}
               onSubmit={passPreviewValidation}
             >
-              <div lang="en" dir="ltr">
-                <AppI18nProvider
-                  locale="en"
-                  locales={participantLocales}
-                  manageDocument={false}
-                >
+              <InterviewI18nProvider requestedLocale={intl.locale}>
+                <PreviewLocaleRegion>
                   <PortalContainerProvider>
                     <ProtocolField
                       field={field}
@@ -291,8 +289,8 @@ const FieldEditorPreview = ({
                       validationContext={validationContext}
                     />
                   </PortalContainerProvider>
-                </AppI18nProvider>
-              </div>
+                </PreviewLocaleRegion>
+              </InterviewI18nProvider>
               <div className="flex justify-end">
                 <Button type="submit">
                   {intl.formatMessage(messages.checkResponse)}

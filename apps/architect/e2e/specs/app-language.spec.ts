@@ -69,7 +69,7 @@ test('negotiates regional Spanish before interaction, persists a choice, and res
   ).toHaveValue('__automatic');
 });
 
-test('authors an Information stage in Spanish, preserves research data, and keeps the participant preview in English', async ({
+test('authors an Information stage in Spanish and changes built-in preview language without changing research data', async ({
   architectPage: page,
   seed,
 }) => {
@@ -132,6 +132,7 @@ test('authors an Information stage in Spanish, preserves research data, and keep
   const preview = await new StagePreview(page, {
     launch: 'Vista previa',
     settings: 'Ajustes de vista previa',
+    nextStep: 'Siguiente paso',
   }).open();
   await expect(preview).toHaveTitle('Vista previa de Architect');
   await expect(preview.locator('html')).toHaveAttribute('lang', 'es');
@@ -141,23 +142,69 @@ test('authors an Information stage in Spanish, preserves research data, and keep
   await expect(
     preview.getByText('Participant_Content_EN', { exact: true }),
   ).toBeVisible();
+  const nextStep = preview.getByTestId('next-button');
+  await expect(nextStep).toHaveAccessibleName('Siguiente paso');
+  await expect(nextStep).toBeVisible();
+  await expect(nextStep.locator('xpath=ancestor::*[@lang][1]')).toHaveAttribute(
+    'lang',
+    'es',
+  );
+
+  // The interface menu is independently scoped: a British-English preview
+  // can run inside the Spanish Architect document without rewriting authored
+  // content, resetting the protocol, or persisting a different host choice.
+  await preview
+    .getByRole('button', { name: 'Configuración', exact: true })
+    .click();
+  const interfaceLanguage = preview.getByRole('combobox', {
+    name: /^(Idioma de la interfaz|Interface language)$/,
+  });
+  await expect(interfaceLanguage).toHaveValue('__automatic');
+  await interfaceLanguage.selectOption('en-GB');
+  await expect(nextStep).toHaveAccessibleName('Next Step');
+  await expect(nextStep.locator('xpath=ancestor::*[@lang][1]')).toHaveAttribute(
+    'lang',
+    'en-GB',
+  );
+  await expect(preview.locator('html')).toHaveAttribute('lang', 'es');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'es');
   await expect(
-    preview.getByRole('button', { name: 'Next Step' }),
+    preview.getByRole('heading', { name: 'Participant_Heading_EN' }),
   ).toBeVisible();
   await expect(
-    preview
-      .getByRole('button', { name: 'Next Step' })
-      .locator('xpath=ancestor::*[@lang][1]'),
-  ).toHaveAttribute('lang', 'en');
-  await preview.getByRole('button', { name: 'Next Step' }).click();
-  await preview.getByRole('button', { name: 'Finish', exact: true }).click();
+    preview.getByText('Participant_Content_EN', { exact: true }),
+  ).toBeVisible();
+  expect(await readProtocolJson(page)).toEqual(beforeSwitch);
+  await interfaceLanguage.selectOption('__automatic');
+  await expect(nextStep).toHaveAccessibleName('Siguiente paso');
+  await expect(nextStep.locator('xpath=ancestor::*[@lang][1]')).toHaveAttribute(
+    'lang',
+    'es',
+  );
+  await preview.keyboard.press('Escape');
+  await expect(interfaceLanguage).toBeHidden();
+  await nextStep.click();
+  await preview.getByRole('button', { name: 'Finalizar', exact: true }).click();
   const finish = preview.getByRole('dialog');
-  await expect(finish).toContainText('This is a preview, so nothing is saved.');
+  await expect(finish).toContainText(
+    'Esto es una vista previa, así que no se guarda nada. Al finalizar se cierra esta prueba del protocolo, y puedes iniciarla de nuevo después.',
+  );
+  const dialogId = await finish.getAttribute('id');
+  expect(dialogId).toBeTruthy();
+
+  // The already-open runtime confirmation must subscribe to host changes too;
+  // the preview-only promise lives in Architect's catalog, outside Shell's.
+  await selectLanguage(page, 'en');
+  await expect(preview.locator('html')).toHaveAttribute('lang', 'en');
+  await expect(finish).toHaveAttribute('id', dialogId!);
+  await expect(finish).toContainText(
+    'This is a preview, so nothing is saved. Finishing ends this run of the protocol, and you can start it again afterwards.',
+  );
   await finish
     .getByRole('button', { name: 'Finish Interview', exact: true })
     .click();
   await expect(
-    preview.getByRole('heading', { name: 'Vista previa finalizada' }),
+    preview.getByRole('heading', { name: 'Preview finished' }),
   ).toBeVisible();
   expect(await readProtocolJson(page)).toEqual(beforeSwitch);
   await preview.close();

@@ -651,10 +651,6 @@
     "defaultMessage": "{value1} ({value2})",
     "description": "The label text in components / Parameters / DatePicker."
   },
-  "architect.chrome.previewHost.previewHost.english": {
-    "defaultMessage": "English",
-    "description": "The label text in components / PreviewHost / PreviewHost."
-  },
   "architect.chrome.projectNav.projectActions.returnToStages": {
     "defaultMessage": "Return to Stages",
     "description": "Researcher-facing explanatory text in components / ProjectNav / ProjectActions."
@@ -1657,11 +1653,11 @@
   },
   "architect.final.components.sections.Form.FieldEditorPreview.attribute": {
     "defaultMessage": "Attribute label",
-    "description": "Participant-preview fallback when no authored attribute label or name is available; the preview currently stays English until protocol-language support is enabled."
+    "description": "Built-in inline-preview fallback when no authored attribute label or name is available; authored labels are always preserved."
   },
   "architect.final.components.sections.Form.FieldEditorPreview.question": {
     "defaultMessage": "Your question will appear here.",
-    "description": "Participant-preview fallback when no authored question is available; the preview currently stays English until protocol-language support is enabled."
+    "description": "Built-in inline-preview fallback when no authored question is available; authored questions are always preserved."
   },
   "architect.final.components.sections.fields.SkipLogicDestinationField.untitledStage": {
     "defaultMessage": "Untitled stage",
@@ -2532,8 +2528,8 @@
     "description": "Announced when browser storage blocks persistence; the local choice still applies."
   },
   "architect.language.hint": {
-    "defaultMessage": "Choose the language for Architect on this device. Automatic follows your browser language. This does not change protocol content or the language of an interview preview.",
-    "description": "Explains device persistence, browser negotiation, and separation from protocol content."
+    "defaultMessage": "Choose the language for Architect on this device. Automatic follows your browser language. Protocol content stays unchanged. Preview controls use this language unless you select a different one in the preview menu.",
+    "description": "Device language guidance: Automatic follows browser preferences; authored protocol content is preserved; built-in preview controls inherit this choice unless the full preview menu selects an override."
   },
   "architect.language.label": {
     "defaultMessage": "Architect language",
@@ -2894,6 +2890,10 @@
   "architect.previewHost.previewHost.ego": {
     "defaultMessage": "Ego",
     "description": "Visible text in components / PreviewHost / PreviewHost."
+  },
+  "architect.previewHost.previewHost.finishConfirmation": {
+    "defaultMessage": "This is a preview, so nothing is saved. Finishing ends this run of the protocol, and you can start it again afterwards.",
+    "description": "Preview-specific finish confirmation inside the interview Shell. Preview answers are never saved, and the researcher can restart the run after finishing."
   },
   "architect.previewHost.previewHost.loadingPreview": {
     "defaultMessage": "Loading preview…",

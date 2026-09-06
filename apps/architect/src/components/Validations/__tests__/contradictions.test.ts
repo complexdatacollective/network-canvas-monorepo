@@ -566,7 +566,7 @@ describe('makeFieldEditorValidate', () => {
         validation: { sameAs: collidingName },
       });
       expect(messageText(errors.validation)).toContain(
-        'cannot be satisfied within their allowed ranges. Adjust the ranges or comparisons.',
+        'cannot be satisfied within their allowed ranges. Adjust the ranges, comparisons, or input controls.',
       );
     });
 
@@ -581,7 +581,7 @@ describe('makeFieldEditorValidate', () => {
         validation: { minValue: 10, lessThanVariable: 'limit' },
       });
       expect(messageText(errors.validation)).toContain(
-        'cannot be satisfied within their allowed ranges. Adjust the ranges or comparisons.',
+        'cannot be satisfied within their allowed ranges. Adjust the ranges, comparisons, or input controls.',
       );
     });
 
@@ -645,7 +645,7 @@ describe('makeFieldEditorValidate', () => {
       ],
     });
     expect(messageText(errors.validation)).toContain(
-      'cannot be satisfied within their allowed ranges. Adjust the ranges or comparisons.',
+      'cannot be satisfied within their allowed ranges. Adjust the ranges, comparisons, or input controls.',
     );
   });
 
@@ -679,7 +679,7 @@ describe('makeFieldEditorValidate', () => {
       parameters: { type: 'year', max: '2019' },
     });
     expect(messageText(errors.validation)).toContain(
-      'cannot be satisfied within their allowed ranges. Adjust the ranges or comparisons.',
+      'cannot be satisfied within their allowed ranges. Adjust the ranges, comparisons, or input controls.',
     );
   });
 
@@ -713,7 +713,7 @@ describe('makeFieldEditorValidate', () => {
       parameters: { type: 'year', min: '2025' },
     });
     expect(messageText(errors.validation)).toContain(
-      'cannot be satisfied within their allowed ranges. Adjust the ranges or comparisons.',
+      'cannot be satisfied within their allowed ranges. Adjust the ranges, comparisons, or input controls.',
     );
   });
 
@@ -1251,7 +1251,7 @@ describe('makeFieldEditorValidate', () => {
         validation: { required: true, sameAs: 'b', minValue: 10 },
       });
       expect(messageText(errors.validation)).toContain(
-        'cannot be satisfied within their allowed ranges. Adjust the ranges or comparisons.',
+        'cannot be satisfied within their allowed ranges. Adjust the ranges, comparisons, or input controls.',
       );
     });
 

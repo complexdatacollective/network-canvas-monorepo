@@ -33,9 +33,9 @@ const messages = defineMessages({
   hint: {
     id: 'architect.language.hint',
     defaultMessage:
-      'Choose the language for Architect on this device. Automatic follows your browser language. This does not change protocol content or the language of an interview preview.',
+      'Choose the language for Architect on this device. Automatic follows your browser language. Protocol content stays unchanged. Preview controls use this language unless you select a different one in the preview menu.',
     description:
-      'Explains device persistence, browser negotiation, and separation from protocol content.',
+      'Device language guidance: Automatic follows browser preferences; authored protocol content is preserved; built-in preview controls inherit this choice unless the full preview menu selects an override.',
   },
   saved: {
     id: 'architect.language.saved',

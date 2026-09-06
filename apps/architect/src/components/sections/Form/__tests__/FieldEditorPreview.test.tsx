@@ -131,7 +131,7 @@ describe('FieldEditorPreview', () => {
     expect(screen.getByText('Completely')).toBeVisible();
   });
 
-  it('keeps the participant field and its failed validation in English while researcher controls switch languages', async () => {
+  it('updates built-in preview labels and existing validation when researcher controls switch languages', async () => {
     const item = {
       component: 'Text',
       validation: { required: true },
@@ -172,12 +172,14 @@ describe('FieldEditorPreview', () => {
         name: 'Comprobar respuesta',
       }),
     ).toBeVisible();
-    expect(field).toHaveAccessibleName('Your question will appear here.');
+    expect(field).toHaveAccessibleName('Tu pregunta aparecerá aquí.');
     expect(
-      screen.getByText('You must answer this question before continuing.'),
+      await screen.findByText(
+        'Debes responder a esta pregunta antes de continuar.',
+      ),
     ).toBeVisible();
     expect(screen.getByText('Authored_Hint_Á1')).toBeVisible();
-    expect(field.closest('[lang]')).toHaveAttribute('lang', 'en');
+    expect(field.closest('[lang]')).toHaveAttribute('lang', 'es');
     expect(field.closest('[dir]')).toHaveAttribute('dir', 'ltr');
     expect(document.documentElement).toHaveAttribute('lang', 'es');
     fireEvent.change(field, { target: { value: 'Authored_Response_Á1' } });
@@ -225,7 +227,7 @@ describe('FieldEditorPreview', () => {
       );
       expect(
         await screen.findByText(
-          'You must answer this question before continuing.',
+          'Debes responder a esta pregunta antes de continuar.',
         ),
       ).toBeVisible();
       expectUnchangedParent();
@@ -244,7 +246,7 @@ describe('FieldEditorPreview', () => {
     },
   );
 
-  it('keeps an actual participant scale popup inside the English DOM and portal boundary', async () => {
+  it('keeps an actual participant scale popup inside the active interface locale and portal boundary', async () => {
     localStorage.setItem(ARCHITECT_LOCALE_KEY, 'es');
     const item = {
       component: 'VisualAnalogScale',
@@ -263,8 +265,8 @@ describe('FieldEditorPreview', () => {
     const slider = screen.getByRole('slider', { name: 'Research_Scale_Á1' });
     fireEvent.keyDown(slider, { key: 'Enter' });
     const popup = await screen.findByTestId('scale-value-popover');
-    expect(popup).toHaveTextContent(/^50%$/);
-    expect(popup.closest('[lang]')).toHaveAttribute('lang', 'en');
+    expect(popup.textContent).toBe('50\u00a0%');
+    expect(popup.closest('[lang]')).toHaveAttribute('lang', 'es');
     expect(popup.closest('[dir]')).toHaveAttribute('dir', 'ltr');
     expect(slider.closest('[lang]')?.contains(popup)).toBe(true);
     expect(slider).toHaveValue('0.5');

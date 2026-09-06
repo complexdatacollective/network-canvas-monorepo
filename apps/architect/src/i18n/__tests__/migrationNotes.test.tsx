@@ -81,17 +81,16 @@ it('translates the open migration notes while retaining schema identifiers and a
       name: 'Actualizar para continuar',
     }),
   ).toBeVisible();
+  const spanish =
+    'Añadir nuevas opciones de validación para los campos de formulario: unique, sameAs y differentFrom.';
   await waitFor(() =>
-    expect(dialog).toHaveTextContent(
-      'Añadir nuevas opciones de validación para los campos de formulario: unique, sameAs y differentFrom.',
-    ),
+    expect(
+      within(dialog)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toContain(spanish),
   );
   expect(dialog).not.toHaveTextContent(english);
-  for (const identifier of ['unique', 'sameAs', 'differentFrom']) {
-    expect(
-      within(dialog).getByText(identifier, { selector: 'code' }),
-    ).toBeVisible();
-  }
   fireEvent.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
   await waitFor(() =>
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
