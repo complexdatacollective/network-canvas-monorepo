@@ -15,6 +15,7 @@ import {
   mapsBuilt,
   resetMapboxMock,
 } from '../../../testing/mapboxMock.ts';
+import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
@@ -181,6 +182,52 @@ describe('the map a geospatial stage shows', () => {
       dataSourceAssetId: 'geo_data',
       targetFeatureProperty: 'name',
     });
+  });
+
+  /**
+   * Searching is the only way a participant reaches somewhere that is not
+   * already on screen, so whether it is offered is a decision about what the
+   * stage asks of them rather than a detail of the map. `allowSearch` is an
+   * optional key, and an optional key with no control of its own is one a
+   * researcher can neither read nor change — so it is asserted directly here
+   * rather than only as part of a stage that round-trips.
+   */
+  it('saves whether the participant may search the map', async () => {
+    const harness = openEditor();
+
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Allow searching the map' }),
+    );
+
+    const request = await harness.submit();
+    expect(mapOptions(request?.stageDocument ?? {}).allowSearch).toBe(true);
+  });
+
+  it('opens with searching switched on when the stage already allows it', async () => {
+    const { type, fields } = loadFixtureStage('geospatial-1');
+    const seededOptions =
+      typeof fields.mapOptions === 'object' && fields.mapOptions !== null
+        ? fields.mapOptions
+        : {};
+    renderStageEditor({
+      stage: {
+        type,
+        fields: {
+          ...fields,
+          mapOptions: { ...seededOptions, allowSearch: true },
+        },
+      },
+      sections: (
+        <>
+          <MapSourceSection />
+          <MapAppearanceSection />
+        </>
+      ),
+    });
+
+    expect(
+      screen.getByRole('switch', { name: 'Allow searching the map' }),
+    ).toBeChecked();
   });
 
   it('saves a starting centre entered as two coordinates', async () => {
