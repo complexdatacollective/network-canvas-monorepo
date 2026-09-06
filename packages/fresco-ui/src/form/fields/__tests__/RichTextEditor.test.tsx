@@ -384,6 +384,15 @@ const TWO_PARAGRAPHS = {
   'text/html': '<p>Never <strong>met</strong></p><p>in person</p>',
 };
 
+/** The same passage as a stored value, which is the other way in. */
+const TWO_PARAGRAPH_DOCUMENT = {
+  type: 'doc',
+  content: [
+    { type: 'paragraph', content: [{ type: 'text', text: 'Never met' }] },
+    { type: 'paragraph', content: [{ type: 'text', text: 'in person' }] },
+  ],
+};
+
 /**
  * A clipboard payload the editor's paste handler can read. jsdom implements no
  * `DataTransfer`, and the handler only ever asks one for the flavours it was
@@ -398,12 +407,15 @@ const clipboardOf = (data: Readonly<Record<string, string>>) =>
   }) as unknown as DataTransfer;
 
 describe('a single-line RichTextEditorField', () => {
-  const renderSingleLine = (
-    props?: Pick<ComponentProps<typeof RichTextEditorField>, 'toolbarOptions'>,
-  ) => {
+  type SingleLineProps = Pick<
+    ComponentProps<typeof RichTextEditorField>,
+    'toolbarOptions' | 'value'
+  >;
+
+  const renderSingleLine = (props?: SingleLineProps) => {
     const user = userEvent.setup();
 
-    render(
+    const singleLineField = (overrides?: SingleLineProps) => (
       <RichTextEditorField
         id="label"
         name="label"
@@ -414,12 +426,16 @@ describe('a single-line RichTextEditorField', () => {
         value={emptyDocument}
         onChange={() => undefined}
         {...props}
-      />,
+        {...overrides}
+      />
     );
+
+    const { rerender } = render(singleLineField());
 
     return {
       user,
       editor: () => screen.findByRole('textbox', { name: 'Answer' }),
+      setValue: (value: JSONContent) => rerender(singleLineField({ value })),
     };
   };
 
@@ -510,6 +526,58 @@ describe('a single-line RichTextEditorField', () => {
     // Nothing sits on the other side of an empty paragraph, so there is
     // nothing to separate from: the one in the middle used to double the
     // space, and the one at the end used to leave the line ending in one.
+    expect(editor.textContent).toBe('Never met in person');
+  });
+
+  /**
+   * The schema is not consulted on the way IN: a value is read with
+   * `Node.fromJSON`, which builds what it is told to build. Every document
+   * that arrives is therefore flattened by the rule a paste uses, so the
+   * field cannot be handed a line it has promised it cannot show.
+   */
+  it('flattens a two-paragraph value it is mounted with', async () => {
+    const field = renderSingleLine({ value: TWO_PARAGRAPH_DOCUMENT });
+    const editor = await field.editor();
+
+    expect(editor.querySelectorAll('p')).toHaveLength(1);
+    expect(editor.textContent).toBe('Never met in person');
+  });
+
+  it('flattens a two-paragraph value that arrives later', async () => {
+    const field = renderSingleLine();
+    const editor = await field.editor();
+
+    field.setValue(TWO_PARAGRAPH_DOCUMENT);
+
+    await waitFor(() => {
+      expect(editor.textContent).toBe('Never met in person');
+    });
+    expect(editor.querySelectorAll('p')).toHaveLength(1);
+  });
+
+  it('spells a hard break in an incoming value as a space', async () => {
+    // A hard break sits INSIDE the paragraph, so a document holding one is a
+    // document the single-line schema was never going to refuse.
+    const field = renderSingleLine({
+      value: {
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            content: [
+              { type: 'text', text: 'Never met' },
+              { type: 'hardBreak' },
+              { type: 'text', text: 'in person' },
+            ],
+          },
+        ],
+      },
+    });
+    const editor = await field.editor();
+
+    expect(editor.querySelector('br:not(.ProseMirror-trailingBreak)')).toBe(
+      null,
+    );
     expect(editor.textContent).toBe('Never met in person');
   });
 

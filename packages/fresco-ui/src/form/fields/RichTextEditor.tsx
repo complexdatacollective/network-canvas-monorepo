@@ -3,7 +3,14 @@
 import { Toggle } from '@base-ui/react/toggle';
 import { ToggleGroup } from '@base-ui/react/toggle-group';
 import { Toolbar } from '@base-ui/react/toolbar';
-import { type AnyExtension, Extension, Node as TiptapNode } from '@tiptap/core';
+import {
+  type AnyExtension,
+  createNodeFromContent,
+  type Editor,
+  Extension,
+  isProseMirrorFragment,
+  Node as TiptapNode,
+} from '@tiptap/core';
 import { BulletList } from '@tiptap/extension-bullet-list';
 import { Heading } from '@tiptap/extension-heading';
 import { OrderedList } from '@tiptap/extension-ordered-list';
@@ -282,6 +289,82 @@ const inlineNodesOf = (
   });
 
   return collected;
+};
+
+/**
+ * The one-paragraph document a fragment's inline content makes, or `null` in
+ * a schema with no paragraph to put it in.
+ */
+const oneLineDocumentOf = (
+  content: Fragment,
+  schema: Schema,
+): ProseMirrorNode | null => {
+  const paragraphType = schema.nodes.paragraph;
+
+  if (!paragraphType) return null;
+
+  return schema.topNodeType.create(
+    null,
+    paragraphType.create(
+      null,
+      Fragment.fromArray(inlineNodesOf(content, schema)),
+    ),
+  );
+};
+
+/**
+ * A document handed to a single-line field, flattened before the field is
+ * asked to hold it.
+ *
+ * The schema refuses a second block, but only to content the editor MAKES.
+ * A value is read with `Node.fromJSON`, which builds the node it is told to
+ * build without asking the schema whether that content fits, so a stored
+ * two-paragraph document arrived whole and the field showed two lines while
+ * promising one. A hard break came in the same way, and the schema was never
+ * going to refuse that at all: it sits inside the paragraph rather than
+ * beside it.
+ *
+ * Flattening has to happen BEFORE the document reaches the editor, because
+ * the other way a value arrives — `setContent` — replaces the document
+ * through the schema, which fits what it can and silently drops the rest. A
+ * two-paragraph value pushed through there lost its second line outright
+ * rather than joining it on.
+ *
+ * `createNodeFromContent` is the reader TipTap's own `content` option uses,
+ * so a value this schema cannot express at all — a heading, say, in a field
+ * that offers none — still degrades the way it always did instead of
+ * throwing.
+ */
+const asOneLine = (value: JSONContent, schema: Schema): JSONContent => {
+  const parsed = createNodeFromContent(value, schema);
+  const oneLine = oneLineDocumentOf(
+    isProseMirrorFragment(parsed) ? parsed : parsed.content,
+    schema,
+  );
+
+  return oneLine === null ? value : (oneLine.toJSON() as JSONContent);
+};
+
+/**
+ * Holds the document the editor was BUILT with to one line.
+ *
+ * `useEditor` reads its `content` option itself, so this is the one arrival
+ * that cannot be flattened on the way in.
+ */
+const holdToOneLine = (editor: Editor) => {
+  const { doc, schema } = editor.state;
+  const oneLine = oneLineDocumentOf(doc.content, schema);
+
+  if (oneLine === null || doc.eq(oneLine)) return;
+
+  // `preventUpdate` is what `setContent`'s own `emitUpdate: false` sets:
+  // making a document expressible is not an edit the host asked for, and it
+  // learns the flattened value the next time the field is edited or left.
+  editor.view.dispatch(
+    editor.state.tr
+      .replaceWith(0, doc.content.size, oneLine.content)
+      .setMeta('preventUpdate', true),
+  );
 };
 
 const swallowKeystroke = () => true;
@@ -737,6 +820,16 @@ export default function RichTextEditorField({
       content: value,
       editable: !disabled && !readOnly,
       autofocus: autoFocus ? 'end' : false,
+      onCreate: ({ editor: createdEditor }) => {
+        // `useEditor` reads `content` itself, so this is the one arrival the
+        // flattening cannot meet on the way in. The sync effect below would
+        // catch it a tick later, but a tick later is after the field has
+        // painted: a stored two-paragraph value would show as two lines and
+        // then collapse to one.
+        if (singleLine) {
+          holdToOneLine(createdEditor);
+        }
+      },
       onUpdate: ({ editor: updateEditor }) => {
         if (changeModeRef.current === 'input') {
           onChangeRef.current?.(updateEditor.getJSON());
@@ -792,12 +885,17 @@ export default function RichTextEditorField({
     // store no longer held (#1393). Keying the flag on the emitted document
     // instead is no better: it then refuses a host that legitimately sends the
     // same document back, which is exactly what undo-then-redo does.
+    // Compared as the editor will hold it, not as the host sent it: a
+    // single-line field flattens what it is given, so a host that keeps
+    // sending two paragraphs would otherwise never match and the document
+    // would be replaced again on every pass.
+    const incoming = singleLine ? asOneLine(value, editor.schema) : value;
     const currentContent = JSON.stringify(editor.getJSON());
-    const newContent = JSON.stringify(value);
+    const newContent = JSON.stringify(incoming);
     if (currentContent !== newContent) {
-      editor.commands.setContent(value, { emitUpdate: false });
+      editor.commands.setContent(incoming, { emitUpdate: false });
     }
-  }, [editor, value, isFocused]);
+  }, [editor, value, isFocused, singleLine]);
 
   // A LAYOUT effect: the editable flag lives in the DOM as `contenteditable`,
   // and a non-editable ProseMirror node carries no tabindex, so it cannot take
