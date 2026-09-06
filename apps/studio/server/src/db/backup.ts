@@ -10,7 +10,9 @@ import { SCHEMA_TABLES } from './schema.ts';
  * every RLS table, including tables newer than this binary's known inventory.
  * Run this with the separately held backup login immediately before dumping.
  */
-export async function assertBackupAccess(pool: pg.Pool): Promise<void> {
+export async function assertBackupAccess(
+  pool: Pick<pg.Pool, 'query'>,
+): Promise<void> {
   const identity = await pool.query<{ safe: boolean }>(
     `
     SELECT current_user = $1
@@ -33,7 +35,13 @@ export async function assertBackupAccess(pool: pg.Pool): Promise<void> {
     throw new Error('STUDIO_BACKUP_ACCESS_UNSAFE');
   const result = await pool.query<{ safe: boolean }>(
     `
-    SELECT NOT has_database_privilege(current_user, current_database(), 'CREATE')
+    -- This parameter bypasses large-object ACLs. Refuse the capability even
+    -- with no existing objects, and refuse a permissive live session after a
+    -- formerly granted SET privilege has been revoked.
+    SELECT current_setting('lo_compat_privileges') = 'off'
+      AND NOT has_parameter_privilege(current_user, 'lo_compat_privileges', 'SET')
+      AND NOT has_parameter_privilege(session_user, 'lo_compat_privileges', 'SET')
+      AND NOT has_database_privilege(current_user, current_database(), 'CREATE')
       AND NOT has_database_privilege(session_user, current_database(), 'CREATE')
       -- RESET ROLE/SET ROLE NONE must not expose login-owned objects or writes.
       AND NOT EXISTS (
@@ -61,6 +69,15 @@ export async function assertBackupAccess(pool: pg.Pool): Promise<void> {
       )
       AND NOT EXISTS (
         SELECT 1 FROM unnest($1::text[]) name WHERE to_regclass(name) IS NULL
+      )
+      AND NOT EXISTS (
+        -- Large objects have their own ACL catalog and no table/schema entry.
+        -- Require complete reads for pg_dump while refusing writes through
+        -- either the active backup role or SET ROLE NONE's login identity.
+        SELECT 1 FROM pg_largeobject_metadata object WHERE
+          NOT has_largeobject_privilege(current_user, object.oid, 'SELECT')
+          OR has_largeobject_privilege(current_user, object.oid, 'UPDATE')
+          OR has_largeobject_privilege(session_user, object.oid, 'UPDATE')
       )
       AND NOT EXISTS (
         SELECT 1 FROM pg_class object JOIN pg_namespace namespace ON namespace.oid = object.relnamespace
