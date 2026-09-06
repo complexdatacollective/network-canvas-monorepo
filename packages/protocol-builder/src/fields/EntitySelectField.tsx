@@ -12,6 +12,8 @@ import type { ColorReference } from '@codaco/protocol-validation';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { protocolColor } from '../protocolColor.ts';
 import {
+  DEFAULT_EDGE_COLOR,
+  DEFAULT_NODE_COLOR,
   type RuleEntityTarget,
   type RuleEntityTypeOption,
   ruleEntityTypeOptions,
@@ -45,6 +47,21 @@ const GROUP_LABELS: Readonly<Record<RuleEntityTarget, string>> = Object.freeze({
   node: 'Node type',
   edge: 'Edge type',
 });
+
+/**
+ * Names a type the researcher — or a collaborator — has since deleted.
+ *
+ * A stored id the codebook no longer describes is kept and shown rather than
+ * quietly left out: a group of chips with none of them selected reads as a
+ * question nobody has answered, while the rule underneath is still pointed at
+ * the deleted type and saves back that way. The same treatment
+ * `VariablePickerControl` gives a deleted attribute, for the same reason.
+ */
+const missingOptionLabel = (id: string) =>
+  `${id} — this type is no longer in the codebook`;
+
+const MISSING_TYPE_MESSAGE =
+  'This type is no longer in the codebook. Choose another one.';
 
 /** Custom properties the edge chip tints itself through. */
 type EdgeChipStyle = CSSProperties & {
@@ -184,9 +201,30 @@ export function EntitySelectControl({
   const generatedGroupName = useId();
   const groupName = name ?? generatedGroupName;
 
-  const options = useMemo(
+  const codebookOptions = useMemo(
     () => ruleEntityTypeOptions(protocolContext.codebook, entityType),
     [entityType, protocolContext.codebook],
+  );
+
+  const isMissing =
+    value !== undefined &&
+    value !== '' &&
+    !codebookOptions.some((option) => option.value === value);
+
+  const options = useMemo(
+    () =>
+      isMissing && value !== undefined
+        ? [
+            ...codebookOptions,
+            {
+              value,
+              label: missingOptionLabel(value),
+              color:
+                entityType === 'edge' ? DEFAULT_EDGE_COLOR : DEFAULT_NODE_COLOR,
+            },
+          ]
+        : codebookOptions,
+    [codebookOptions, entityType, isMissing, value],
   );
 
   return (
@@ -227,7 +265,10 @@ export function EntitySelectControl({
                 entityType={entityType}
                 groupName={groupName}
                 checked={value === option.value}
-                disabled={disabled}
+                // The dangling reference is shown as the current choice, not
+                // offered as one: it names nothing the interview could match,
+                // so it cannot be chosen again once it has been replaced.
+                disabled={disabled || (isMissing && value === option.value)}
                 readOnly={readOnly}
                 onSelect={() => onChange?.(option.value)}
               />
@@ -235,6 +276,9 @@ export function EntitySelectControl({
           </div>
         )}
       </fieldset>
+      {isMissing && (
+        <p className="text-destructive text-sm">{MISSING_TYPE_MESSAGE}</p>
+      )}
     </div>
   );
 }

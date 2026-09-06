@@ -3,6 +3,7 @@ import type pg from 'pg';
 import type { TenantDb } from '@codaco/studio-sync/tenant';
 
 import type { Principal } from '../auth/service.ts';
+import { logOperational } from '../observability/logger.ts';
 import type { AuditEventInput } from './events.ts';
 import { AuditStore, lockAuditTeam } from './store.ts';
 
@@ -57,25 +58,10 @@ async function appendRequiredAuditEvent(
   try {
     await auditStore.append(client, event);
   } catch (error) {
-    const cause =
-      error instanceof Error
-        ? { causeName: error.name, causeMessage: error.message }
-        : { causeName: typeof error, causeMessage: String(error) };
-    process.emitWarning(
-      'Required immutable audit event append failed; transaction will roll back.',
-      {
-        type: 'StudioAuditError',
-        code: 'STUDIO_AUDIT_APPEND_FAILED',
-        detail: JSON.stringify({
-          eventType: event.eventType,
-          eventVersion: event.eventVersion,
-          outcome: event.outcome,
-          teamId: event.teamId,
-          requestId: event.requestId,
-          ...cause,
-        }),
-      },
-    );
+    logOperational('STUDIO_AUDIT_APPEND_FAILED', {
+      teamId: event.teamId,
+      requestId: event.requestId ?? undefined,
+    });
     throw error;
   }
 }

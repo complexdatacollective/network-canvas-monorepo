@@ -8,10 +8,14 @@ import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import BuilderSection from '../../sections/BuilderSection.tsx';
+import { commandsFromDraftChange } from '../../session.ts';
 import type { StageEditorProps } from '../../stage-editor-contract.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import ProtocolField from '../ProtocolField.tsx';
-import { useStageEditorForm } from '../stageEditorContext.ts';
+import {
+  useStageEditorForm,
+  type StageEditorFormContextValue,
+} from '../stageEditorContext.ts';
 import StageEditorShell from '../StageEditorShell.tsx';
 import { useStageValue } from '../stageFormHooks.ts';
 
@@ -47,23 +51,23 @@ const HEADING_OPTIONS = [
  */
 function ResetOnChoice({
   reset,
-}: Readonly<{ reset: (controller: ControllerOf) => void }>) {
-  const { controller } = useStageEditorForm();
+}: Readonly<{ reset: (applyOwnCommands: ApplyOwnCommands) => void }>) {
+  const { applyOwnCommands } = useStageEditorForm();
   const heading = useStageValue('title');
   const seen = useRef(heading);
 
   useEffect(() => {
     if (seen.current === heading) return;
     seen.current = heading;
-    reset(controller);
-  }, [controller, heading, reset]);
+    reset(applyOwnCommands);
+  }, [applyOwnCommands, heading, reset]);
 
   return null;
 }
 
-type ControllerOf = ReturnType<typeof useStageEditorForm>['controller'];
+type ApplyOwnCommands = StageEditorFormContextValue['applyOwnCommands'];
 
-function pageEditor(reset: (controller: ControllerOf) => void) {
+function pageEditor(reset: (applyOwnCommands: ApplyOwnCommands) => void) {
   return function PageEditor({ controller }: StageEditorProps<'Information'>) {
     return (
       <StageEditorShell
@@ -92,20 +96,19 @@ function pageEditor(reset: (controller: ControllerOf) => void) {
 }
 
 /** Drops the blocks a heading change invalidated, as a whole-draft change. */
-const clearItemsByDraftChange = (controller: ControllerOf) => {
-  controller.changeFields((current) => {
-    const { items: _items, ...rest } = current;
-    return rest;
-  });
+const clearItemsByDraftChange = (applyOwnCommands: ApplyOwnCommands) => {
+  const { draft: current } = applyOwnCommands([]);
+  const { items: _items, ...rest } = current;
+  applyOwnCommands(commandsFromDraftChange(current, rest));
 };
 
 /** The same reset, as the single field-level command it really is. */
-const clearItemsByField = (controller: ControllerOf) => {
-  controller.unsetField('items');
+const clearItemsByField = (applyOwnCommands: ApplyOwnCommands) => {
+  applyOwnCommands([{ op: 'unset', key: 'items' }]);
 };
 
 async function chooseADifferentHeading(
-  reset: (controller: ControllerOf) => void,
+  reset: (applyOwnCommands: ApplyOwnCommands) => void,
 ) {
   const harness = renderStageEditor({
     stage: { type: 'Information', fields: PAGE },
@@ -129,7 +132,7 @@ async function chooseADifferentHeading(
   return { harness, name };
 }
 
-describe('a write the form makes through the controller', () => {
+describe('a write the form makes on its own behalf', () => {
   it('leaves the choice that caused it, and everything half-typed beside it', async () => {
     const { name } = await chooseADifferentHeading(clearItemsByDraftChange);
 

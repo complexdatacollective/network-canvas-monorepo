@@ -271,9 +271,27 @@ export function useField(config: UseFieldConfig): UseFieldResult {
   // the function the store holds ever changing identity.
   const intlRef = useRef(intl);
 
+  // The rules themselves are read the same way, and for a reason of their own:
+  // the key above is a JSON serialisation, and `JSON.stringify` drops a
+  // function-valued property entirely. A `custom` validation whose `schema` is
+  // a function — one rebuilt each render to judge against something that has
+  // changed, such as the rows a value must stay unique against — therefore
+  // serialises to exactly the key it had before, and a memo keyed on that
+  // hands back the closure built from the props that are gone. Making the key
+  // account for the function's identity instead would rebuild the registered
+  // function on every render, and unregistering deletes the field's stored
+  // errors along with the blurred flag that lets them show. Reading the props
+  // when validation RUNS keeps both: one stable registered function, always
+  // judging by the rules the field currently holds.
+  const validationPropsRef = useRef(propsWithContext);
+  validationPropsRef.current = propsWithContext;
+
   const validation = useMemo(
     () => (formValues: Record<string, FieldValue>) =>
-      makeValidationFunction(propsWithContext, intlRef.current)(formValues),
+      makeValidationFunction(
+        validationPropsRef.current,
+        intlRef.current,
+      )(formValues),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [validationPropsJson, resolvedValidationContext],
   );

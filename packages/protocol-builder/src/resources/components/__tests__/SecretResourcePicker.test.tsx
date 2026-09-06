@@ -1,11 +1,23 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import Button from '@codaco/fresco-ui/Button';
+
 import ProtocolField from '../../../form/ProtocolField.tsx';
+import {
+  createStageIdentity,
+  ProtocolBuilderSessionStore,
+} from '../../../session.ts';
 import { ResourceGatewayProvider } from '../../context.tsx';
-import type { ResourceDescriptor } from '../../gateway.ts';
+import {
+  resourceFailure,
+  type ProtocolBuilderResourceGateway,
+  type ResourceDescriptor,
+  type StagedSecret,
+} from '../../gateway.ts';
 import { InMemoryResourceGateway } from '../../InMemoryResourceGateway.ts';
+import { overrideGateway } from '../../overrideGateway.ts';
 import ResourcePickerControl from '../ResourcePickerControl.tsx';
 import ResourceSecretControl from '../ResourceSecretControl.tsx';
 import { renderResourceEditor } from './renderResourceEditor.tsx';
@@ -36,9 +48,42 @@ async function submitKey(
   name: string,
   value: string,
 ) {
-  await user.type(screen.getByLabelText('Name'), name);
+  await user.type(await screen.findByLabelText('Name'), name);
   await user.type(screen.getByLabelText('Key'), value);
   await user.click(screen.getByRole('button', { name: 'Add API key' }));
+}
+
+function keyField() {
+  return (
+    <ProtocolField
+      component={ResourcePickerControl}
+      name="apiKey"
+      label="Map provider API key"
+      kind="apikey"
+    />
+  );
+}
+
+/** A session whose finish a test can watch, for the submit that must not happen. */
+function sessionWithFinish(
+  gateway: ProtocolBuilderResourceGateway,
+  onFinish: () => void,
+): ProtocolBuilderSessionStore {
+  return new ProtocolBuilderSessionStore({
+    identity: createStageIdentity('Information', () => 'stage-1'),
+    fields: { label: 'Welcome', title: 'Welcome', items: [] },
+    protocolSections: {},
+    manifestRevision: { sequence: 1n, hash: 'revision-1' },
+    access: { mode: 'editable', leaseOwner: 'tab-1', leaseEpoch: 1n },
+    resourceGateway: gateway,
+    buildCandidate: ({ stageDocument }) => ({
+      name: 'Secret picker test',
+      schemaVersion: 8,
+      codebook: {},
+      stages: [stageDocument],
+    }),
+    onFinish,
+  });
 }
 
 describe('the secret resource picker', () => {
@@ -90,6 +135,64 @@ describe('the secret resource picker', () => {
         status: 'staged',
       },
     ]);
+  });
+
+  it('adds a key without saving the stage around it', async () => {
+    const user = userEvent.setup();
+    const gateway = new InMemoryResourceGateway();
+    const onFinish = vi.fn();
+    const { session } = renderResourceEditor({
+      session: sessionWithFinish(gateway, onFinish),
+      actions: ({ formId }) => (
+        <Button type="submit" form={formId}>
+          Save this stage
+        </Button>
+      ),
+      children: keyField(),
+    });
+
+    await addKey(user, 'Mapbox key');
+
+    // The key is added …
+    await screen.findByText('Mapbox key');
+    // … and the stage around it never reached its own submit. The key form is
+    // nested in the stage form, so its own submit would otherwise save a stage
+    // the researcher was in the middle of editing.
+    expect(onFinish).not.toHaveBeenCalled();
+    expect(session.getSnapshot().pendingCommands).toEqual([]);
+
+    // The positive control: the stage's own save does write, so the silence
+    // above is about the key form's submit being stopped rather than about a
+    // form that never worked.
+    await user.click(screen.getByRole('button', { name: 'Save this stage' }));
+
+    await waitFor(() =>
+      expect(session.getSnapshot().pendingCommands.length).toBeGreaterThan(0),
+    );
+  });
+
+  it('does not save the stage when Enter is pressed in the key name', async () => {
+    const user = userEvent.setup();
+    const gateway = new InMemoryResourceGateway();
+    const onFinish = vi.fn();
+    renderResourceEditor({
+      session: sessionWithFinish(gateway, onFinish),
+      actions: ({ formId }) => (
+        <Button type="submit" form={formId}>
+          Save this stage
+        </Button>
+      ),
+      children: keyField(),
+    });
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Select an API key' }),
+    );
+    // Enter in a single-line field submits the form it is in, and the form it
+    // is in is inside the stage's.
+    await user.type(await screen.findByLabelText('Name'), 'Mapbox key{Enter}');
+
+    expect(onFinish).not.toHaveBeenCalled();
   });
 
   it('shows the key by the name it was given, and offers no download', async () => {
@@ -178,30 +281,10 @@ describe('the secret resource picker', () => {
     expect(stageSecret).not.toHaveBeenCalled();
   });
 
-  /**
-   * The key is typed into a form of its own, inside the browser dialog, inside
-   * whatever the researcher was already filling in — here, the stage form.
-   * `Dialog` portals out of the DOM but stays a React descendant, and React
-   * propagates a synthetic `submit` along its own tree, so adding a key must
-   * stop at the key's form rather than saving the stage around it.
-   *
-   * The host answers a tick later, which is what a host does. Answered in the
-   * same tick, the staged id is already in the field by the time the stage
-   * form's own validation runs, and the form refuses its own spurious submit
-   * for a resource the protocol has not published yet: the stage would survive
-   * by a race rather than by anything deciding it should.
-   */
-  it('adds the key without saving the stage around it', async () => {
+  it('asks before an accidental dismissal throws away a half-typed key', async () => {
     const user = userEvent.setup();
     const gateway = new InMemoryResourceGateway();
-    const answer = gateway.stageSecret.bind(gateway);
-    vi.spyOn(gateway, 'stageSecret').mockImplementation(async (request) => {
-      await new Promise((resolve) => {
-        globalThis.setTimeout(resolve, 5);
-      });
-      return answer(request);
-    });
-    const { fieldValue, session } = renderResourceEditor({
+    renderResourceEditor({
       gateway,
       children: (
         <ProtocolField
@@ -212,14 +295,283 @@ describe('the secret resource picker', () => {
         />
       ),
     });
-    const finish = vi.spyOn(session, 'finish');
 
-    await addKey(user, 'Mapbox key');
+    await user.click(
+      await screen.findByRole('button', { name: 'Select an API key' }),
+    );
+    await user.type(await screen.findByLabelText('Name'), 'Mapbox key');
+    await user.type(screen.getByLabelText('Key'), SECRET);
+    // Escape is the reflex, and it is the one dismissal a researcher reaches
+    // for without deciding anything: nothing here has been handed to the host,
+    // so the key would simply be gone.
+    await user.keyboard('{Escape}');
 
-    // The key really was added, so the absence below is about where its submit
-    // went rather than about a button that did nothing.
+    expect(
+      await screen.findByText(
+        'This editor holds changes that have not been saved. Closing it now discards them.',
+      ),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Keep editing' }));
+
+    expect(await screen.findByLabelText('Name')).toHaveValue('Mapbox key');
+    expect(screen.getByLabelText('Key')).toHaveValue(SECRET);
+  });
+
+  it('dismisses the browser without asking when nothing has been typed', async () => {
+    const user = userEvent.setup();
+    const gateway = new InMemoryResourceGateway();
+    renderResourceEditor({
+      gateway,
+      children: (
+        <ProtocolField
+          component={ResourcePickerControl}
+          name="apiKey"
+          label="Map provider API key"
+          kind="apikey"
+        />
+      ),
+    });
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Select an API key' }),
+    );
+    await screen.findByLabelText('Name');
+    await user.keyboard('{Escape}');
+
+    // Asking about work that does not exist is a question the researcher has
+    // to dismiss every time they open the browser to look.
+    await waitFor(() =>
+      expect(screen.queryByLabelText('Name')).not.toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByRole('button', { name: 'Keep editing' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('refuses a name the protocol already has a key under', async () => {
+    const user = userEvent.setup();
+    const gateway = new InMemoryResourceGateway({
+      committed: [
+        {
+          id: 'committed-key',
+          kind: 'apikey',
+          name: 'Mapbox',
+          value: SECOND_SECRET,
+        },
+      ],
+    });
+    const stageSecret = vi.spyOn(gateway, 'stageSecret');
+    renderResourceEditor({
+      gateway,
+      children: (
+        <ProtocolField
+          component={ResourcePickerControl}
+          name="apiKey"
+          label="Map provider API key"
+          kind="apikey"
+        />
+      ),
+    });
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Select an API key' }),
+    );
+    // Case and accent folding both, which is the question every uniqueness
+    // check in this codebase asks: two spellings of one name leave the
+    // researcher two buttons they cannot tell apart when they come to pick one.
+    await submitKey(user, ' mapbox ', SECRET);
+
+    expect(stageSecret).not.toHaveBeenCalled();
+    // The browser is still open, holding what was typed, with the reason on
+    // the field the researcher has to change.
+    expect(screen.getByLabelText('Name')).toHaveAccessibleDescription(
+      /You already have a key called that/,
+    );
+  });
+
+  it('will not add a key until the keys already in the protocol have been read', async () => {
+    const user = userEvent.setup();
+    const inner = new InMemoryResourceGateway({
+      committed: [
+        {
+          id: 'committed-key',
+          kind: 'apikey',
+          name: 'Mapbox',
+          value: SECOND_SECRET,
+        },
+      ],
+    });
+    let release = (): void => undefined;
+    const listed = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const gateway = overrideGateway(inner, {
+      list: async (options) => {
+        await listed;
+        return inner.list(options);
+      },
+    });
+    const stageSecret = vi.spyOn(inner, 'stageSecret');
+    renderResourceEditor({
+      gateway,
+      children: (
+        <ProtocolField
+          component={ResourcePickerControl}
+          name="apiKey"
+          label="Map provider API key"
+          kind="apikey"
+        />
+      ),
+    });
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Select an API key' }),
+    );
+    await user.type(await screen.findByLabelText('Name'), 'Mapbox');
+    await user.type(screen.getByLabelText('Key'), SECRET);
+
+    // The list is what a name is checked against, and it is not here yet. A
+    // form that looks ready in this window is one a researcher submits in it,
+    // and the check that would have refused this name has nothing to read.
+    const add = screen.getByRole('button', { name: 'Add API key' });
+    expect(add).toBeDisabled();
+    expect(add).toHaveAccessibleDescription(
+      /Waiting for the keys this protocol already has/,
+    );
+    await user.click(add);
+    expect(stageSecret).not.toHaveBeenCalled();
+
+    release();
+
+    // And it is only the wait: once the keys are there, so is the form.
+    await waitFor(() => expect(add).toBeEnabled());
+  });
+
+  it('refuses a name a key staged since the browser opened already has', async () => {
+    const user = userEvent.setup();
+    const gateway = new InMemoryResourceGateway();
+    const { session } = renderResourceEditor({
+      gateway,
+      children: (
+        <ProtocolField
+          component={ResourcePickerControl}
+          name="apiKey"
+          label="Map provider API key"
+          kind="apikey"
+        />
+      ),
+    });
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Select an API key' }),
+    );
+    await screen.findByLabelText('Name');
+
+    // This browser read its list when it opened and nothing refreshes it, so
+    // a key another field's picker adds while it is open is one it cannot
+    // see. The researcher can, everywhere else in the protocol.
+    const resources = session.getResourceGateway();
+    if (resources === undefined) {
+      throw new Error('the session was opened without a resource gateway');
+    }
+    await act(async () => {
+      await resources.stageSecret({
+        requestId: 'another-field',
+        name: 'Mapbox',
+        value: SECOND_SECRET,
+      });
+    });
+    const stageSecret = vi.spyOn(gateway, 'stageSecret');
+
+    await submitKey(user, 'Mapbox', SECRET);
+
+    await waitFor(() =>
+      expect(screen.getByLabelText('Name')).toHaveAccessibleDescription(
+        /You already have a key called that/,
+      ),
+    );
+    expect(stageSecret).not.toHaveBeenCalled();
+  });
+
+  it('reports a key whose name it could not check, and adds it on the retry', async () => {
+    const user = userEvent.setup();
+    const gateway = new InMemoryResourceGateway();
+    const stageSecret = vi.spyOn(gateway, 'stageSecret');
+    const { fieldValue } = renderResourceEditor({
+      gateway,
+      children: (
+        <ProtocolField
+          component={ResourcePickerControl}
+          name="apiKey"
+          label="Map provider API key"
+          kind="apikey"
+        />
+      ),
+    });
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Select an API key' }),
+    );
+    await screen.findByLabelText('Name');
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Add API key' })).toBeEnabled(),
+    );
+    // The submission's own read of the keys, not the one this browser made
+    // when it opened.
+    gateway.failNext('list');
+
+    await submitKey(user, 'Mapbox', SECRET);
+
+    expect(
+      await screen.findByText('the resource host is temporarily unavailable'),
+    ).toBeVisible();
+    // Nothing is added behind a check that never happened: a second key with
+    // the same name is the one outcome the check exists to prevent, and the
+    // researcher would have no way to tell the two apart afterwards.
+    expect(stageSecret).not.toHaveBeenCalled();
+
+    await user.click(
+      screen.getByRole('button', { name: 'Try adding the key again' }),
+    );
+
+    // Trying again repeats the check as well as the staging, so the key is
+    // added under a name that has been checked against the current list.
     await waitFor(() => expect(fieldValue('apiKey')).toBe('staged-resource-1'));
-    expect(finish).not.toHaveBeenCalled();
+  });
+
+  it('refuses a name another key staged in this session already has', async () => {
+    const user = userEvent.setup();
+    const gateway = new InMemoryResourceGateway();
+    renderResourceEditor({
+      gateway,
+      children: (
+        <ProtocolField
+          component={ResourcePickerControl}
+          name="apiKey"
+          label="Map provider API key"
+          kind="apikey"
+        />
+      ),
+    });
+
+    await addKey(user, 'Mapbox');
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Change the API key' }),
+      ).toBeVisible(),
+    );
+    const stageSecret = vi.spyOn(gateway, 'stageSecret');
+
+    await user.click(
+      screen.getByRole('button', { name: 'Change the API key' }),
+    );
+    await submitKey(user, 'Mapbox', SECOND_SECRET);
+
+    expect(stageSecret).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('Name')).toHaveAccessibleDescription(
+      /You already have a key called that/,
+    );
   });
 });
 
@@ -231,7 +583,7 @@ describe('the secret resource picker', () => {
  * before anything can read them.
  */
 describe('the control a key is typed into', () => {
-  function renderControl(gateway: InMemoryResourceGateway) {
+  function renderControl(gateway: ProtocolBuilderResourceGateway) {
     const staged = vi.fn<(descriptor: ResourceDescriptor) => void>();
     render(
       <ResourceGatewayProvider gateway={gateway}>
@@ -240,6 +592,39 @@ describe('the control a key is typed into', () => {
     );
     return staged;
   }
+
+  /**
+   * Pasting a credential is a decision about who ends up holding it, and the
+   * host is the only thing that knows: the editor is handed an opaque handle
+   * and never learns what promotion does with the value. So the two answers
+   * are two different things to say, and the field itself has to say them —
+   * a warning the researcher has to go and find is one they paste without.
+   */
+  it('warns that a key it will write into the protocol is readable by anyone with the file', async () => {
+    const gateway = new InMemoryResourceGateway();
+    renderControl(gateway);
+
+    // The description, not the text: a hint no assistive technology ties to
+    // the input is one a researcher filling the field never hears.
+    expect(await screen.findByLabelText('Key')).toHaveAccessibleDescription(
+      /saved inside your protocol as plain text, so anyone you give the protocol file to can read it/,
+    );
+  });
+
+  it('does not warn of plain text for a host that keeps the key itself', async () => {
+    const gateway = overrideGateway(new InMemoryResourceGateway(), {
+      secretStorage: 'vault',
+    });
+    renderControl(gateway);
+
+    const key = await screen.findByLabelText('Key');
+    expect(key).toHaveAccessibleDescription(
+      /kept by the host rather than saved inside your protocol/,
+    );
+    // Saying it anyway would be telling the researcher their key is going
+    // somewhere it is not, which is its own kind of wrong.
+    expect(key).not.toHaveAccessibleDescription(/plain text/);
+  });
 
   it('is left empty the moment the host has the key', async () => {
     const user = userEvent.setup();
@@ -296,5 +681,121 @@ describe('the control a key is typed into', () => {
       'secret:staged-secret-1',
       'secret:staged-secret-2',
     ]);
+  });
+});
+
+/**
+ * A request id makes a repeat safe by making it the SAME request. That is only
+ * true while the request is the same: an edited key sent under the id of the
+ * one before it is answered with the one before it.
+ */
+describe('a key edited after an uncertain failure', () => {
+  /**
+   * A host that staged the key and lost only its answer — the one failure
+   * mode a stable request id exists for, and the only one in which the client
+   * and the host disagree about what is staged.
+   */
+  function lossyStageSecret(inner: InMemoryResourceGateway) {
+    let calls = 0;
+    return overrideGateway(inner, {
+      stageSecret: async (request) => {
+        calls += 1;
+        const staged = await inner.stageSecret(request);
+        return calls === 1
+          ? resourceFailure<StagedSecret>(
+              'unavailable',
+              'the key could not be added just now',
+            )
+          : staged;
+      },
+    });
+  }
+
+  it('settles the id it is abandoning, so the host is left holding nothing', async () => {
+    const user = userEvent.setup();
+    const inner = new InMemoryResourceGateway();
+    const gateway = lossyStageSecret(inner);
+    const staged = vi.fn<(descriptor: ResourceDescriptor) => void>();
+    render(
+      <ResourceGatewayProvider gateway={gateway}>
+        <ResourceSecretControl onStaged={staged} />
+      </ResourceGatewayProvider>,
+    );
+
+    await submitKey(user, 'Mapbox key', SECRET);
+    expect(
+      await screen.findByText('the key could not be added just now'),
+    ).toBeVisible();
+
+    // Correcting the key retires that request id. Nothing else in the session
+    // can name what it may have staged: a descriptor the client never received
+    // was never registered, so no finish and no cancel would ever reach it.
+    // Repeating the identical call under that same id is what names it.
+    await user.clear(screen.getByLabelText('Key'));
+    await user.type(screen.getByLabelText('Key'), 'pk.corrected');
+
+    await waitFor(() => expect(inner.getStagingResidue()).toEqual([]));
+  });
+
+  it('is added as the key the researcher entered, not the one they replaced', async () => {
+    const user = userEvent.setup();
+    const inner = new InMemoryResourceGateway();
+    const gateway = lossyStageSecret(inner);
+    const stageSecret = vi.spyOn(gateway, 'stageSecret');
+    const staged = vi.fn<(descriptor: ResourceDescriptor) => void>();
+    render(
+      <ResourceGatewayProvider gateway={gateway}>
+        <ResourceSecretControl onStaged={staged} />
+      </ResourceGatewayProvider>,
+    );
+
+    await submitKey(user, 'Mapbox key', SECRET);
+    expect(
+      await screen.findByText('the key could not be added just now'),
+    ).toBeVisible();
+
+    // The researcher decides the key was wrong and corrects it.
+    await user.clear(screen.getByLabelText('Name'));
+    await user.type(screen.getByLabelText('Name'), 'Mapbox production key');
+    await user.clear(screen.getByLabelText('Key'));
+    await user.type(screen.getByLabelText('Key'), SECOND_SECRET);
+
+    // Repeating the previous call is no longer what "try again" would mean.
+    expect(
+      screen.queryByRole('button', { name: 'Try adding the key again' }),
+    ).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: 'Add API key' }));
+    await waitFor(() => expect(staged).toHaveBeenCalledTimes(1));
+
+    const requestIds = stageSecret.mock.calls.map(([call]) => call.requestId);
+    expect(new Set(requestIds).size).toBe(2);
+    expect(staged.mock.calls[0]?.[0]).toMatchObject({
+      name: 'Mapbox production key',
+    });
+  });
+
+  it('repeats the identical call when nothing was edited', async () => {
+    const user = userEvent.setup();
+    const gateway = new InMemoryResourceGateway();
+    const stageSecret = vi.spyOn(gateway, 'stageSecret');
+    const staged = vi.fn<(descriptor: ResourceDescriptor) => void>();
+    gateway.failNext('stageSecret', { reason: 'unavailable', retryable: true });
+    render(
+      <ResourceGatewayProvider gateway={gateway}>
+        <ResourceSecretControl onStaged={staged} />
+      </ResourceGatewayProvider>,
+    );
+
+    await submitKey(user, 'Mapbox key', SECRET);
+    await user.click(
+      await screen.findByRole('button', { name: 'Try adding the key again' }),
+    );
+    await waitFor(() => expect(staged).toHaveBeenCalledTimes(1));
+
+    // Still one intent, so a host that already staged it answers with what it
+    // staged rather than staging a second copy of the same key.
+    const requestIds = stageSecret.mock.calls.map(([call]) => call.requestId);
+    expect(new Set(requestIds).size).toBe(1);
   });
 });

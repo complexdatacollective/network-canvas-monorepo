@@ -9,7 +9,10 @@ import BuilderSection from '../../sections/BuilderSection.tsx';
 import type { StageEditorProps } from '../../stage-editor-contract.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import ProtocolField from '../ProtocolField.tsx';
-import { useStageEditorForm } from '../stageEditorContext.ts';
+import {
+  useStageEditorForm,
+  type StageEditorFormContextValue,
+} from '../stageEditorContext.ts';
 import StageEditorShell from '../StageEditorShell.tsx';
 
 const PAGE: SectionDoc = {
@@ -20,13 +23,13 @@ const PAGE: SectionDoc = {
   ],
 };
 
-type ControllerOf = ReturnType<typeof useStageEditorForm>['controller'];
+type ApplyOwnCommands = StageEditorFormContextValue['applyOwnCommands'];
 
-let captured: ControllerOf | undefined;
+let captured: ApplyOwnCommands | undefined;
 
-function CaptureController() {
-  const { controller } = useStageEditorForm();
-  captured = controller;
+function CaptureOwnWrites() {
+  const { applyOwnCommands } = useStageEditorForm();
+  captured = applyOwnCommands;
   return null;
 }
 
@@ -44,23 +47,24 @@ function PageEditor({ controller }: StageEditorProps<'Information'>) {
           label="Stage name"
           component={InputField}
         />
-        <CaptureController />
+        <CaptureOwnWrites />
       </BuilderSection>
     </StageEditorShell>
   );
 }
 
 /**
- * An own-write record that outlives the transition it was meant to explain.
+ * An own-write marker that outlives the transition it was meant to explain.
  *
- * `own()` records the draft a write produced, and the shell spends that record
- * on the next content it sees. When something else moves the draft back within
- * the same commit — a write and the undo of it, a submit and the rollback that
- * followed — the shell sees no transition at all, so the record is never spent.
- * Left standing it is spent on the next arrival at that content, which is the
- * redo: the controls keep the undone values and write them back over it.
+ * A structural write marks the draft it produced, and the shell spends that
+ * marker on the next transition it sees. When something else moves the draft
+ * back within the same commit — a write and the undo of it, a submit and the
+ * rollback that followed — the shell sees no transition at all, so the marker
+ * is never spent. Left standing it is spent on the next arrival at that
+ * content, which is the redo: the controls keep the undone values and write
+ * them back over it.
  */
-describe('a stranded own-write record', () => {
+describe('a stranded own-write marker', () => {
   it('re-seeds the controls when a redo restores what an own write wrote', async () => {
     const harness = renderStageEditor({
       stage: { type: 'Information', fields: PAGE },
@@ -70,17 +74,21 @@ describe('a stranded own-write record', () => {
     const name = await screen.findByRole('textbox', { name: 'Stage name' });
     expect(name).toHaveValue('Information');
 
-    const controller = captured;
-    if (controller === undefined) throw new Error('no controller');
+    const applyOwnCommands = captured;
+    if (applyOwnCommands === undefined) {
+      throw new Error('no applyOwnCommands');
+    }
 
     // One commit: the form writes, and something else takes the write back.
     act(() => {
-      controller.setField('label', 'Renamed by the form');
+      applyOwnCommands([
+        { op: 'set', key: 'label', value: 'Renamed by the form' },
+      ]);
       harness.session.undo();
     });
     expect(name).toHaveValue('Information');
 
-    // The redo puts the session back on the content the record still names.
+    // The redo puts the session back on the content the marker still names.
     act(() => {
       harness.session.redo();
     });

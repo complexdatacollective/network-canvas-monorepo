@@ -1,13 +1,20 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { type Codebook, VariableTypesKeys } from '@codaco/protocol-validation';
-
-import { operatorsByType, ruleVariableTypes } from '../operators.ts';
 import {
+  type Codebook,
+  type Variables,
+  VariableTypesKeys,
+} from '@codaco/protocol-validation';
+
+import { operatorsForSubject, ruleVariableTypes } from '../operators.ts';
+import {
+  operandDateProblems,
+  operandOptionProblems,
   ruleEntityTypeExists,
   ruleEntityTypeOptions,
   ruleOperatorOptions,
   ruleVariableChoices,
+  ruleVariableDateParameters,
   ruleVariableOptions,
   ruleVariables,
   ruleVariableType,
@@ -17,16 +24,23 @@ import { testCodebook } from './fixtures.ts';
 const codebook = testCodebook;
 
 describe('the rule variable-type catalogue', () => {
-  it('is the schema’s own catalogue, not a host display configuration', () => {
+  it('is the schema’s own catalogue, less the types no operand can be entered for', () => {
+    // Read from the schema rather than from a host display configuration, and
+    // narrowed by one thing only: whether the protocol can hold a value to
+    // compare an attribute of that type against. A layout attribute is
+    // answered with a point, and `filterValueSchema` holds numbers, strings,
+    // booleans and lists — so no rule can be built against one, and offering
+    // it would put an attribute in the picker with an empty operator list.
     expect([...ruleVariableTypes].toSorted()).toEqual(
-      [...VariableTypesKeys].toSorted(),
+      [...VariableTypesKeys].filter((type) => type !== 'layout').toSorted(),
     );
   });
 
-  it('offers operators for every type the schema has', () => {
-    for (const type of VariableTypesKeys) {
+  it('offers operators for every type it offers at all', () => {
+    for (const type of ruleVariableTypes) {
       expect(ruleOperatorOptions(type).length).toBeGreaterThan(0);
     }
+    expect(ruleOperatorOptions('layout')).toEqual([]);
   });
 
   it('offers only the existence operators before an attribute is chosen', () => {
@@ -34,7 +48,10 @@ describe('the rule variable-type catalogue', () => {
       'EXISTS',
       'NOT_EXISTS',
     ]);
-    expect([...operatorsByType.exists]).toEqual(['EXISTS', 'NOT_EXISTS']);
+    expect([...operatorsForSubject('exists')]).toEqual([
+      'EXISTS',
+      'NOT_EXISTS',
+    ]);
   });
 
   it('offers text attributes their four comparisons', () => {
@@ -67,6 +84,340 @@ describe('the rule variable-type catalogue', () => {
       'INCLUDES',
       'EXCLUDES',
     ]);
+  });
+});
+
+/**
+ * The list is narrower than the schema on purpose, and a native select shows
+ * its placeholder for a value that matches no option — so an operator left out
+ * of the list is one the researcher cannot see, cannot correct, and saves back
+ * unchanged.
+ */
+describe('an operator a stored rule holds that the list leaves out', () => {
+  it('adds a presence operator the schema still accepts, selectable', () => {
+    const options = ruleOperatorOptions('number', 'EXISTS');
+
+    expect(options.at(-1)).toEqual({
+      value: 'EXISTS',
+      label: 'exists (no longer offered)',
+    });
+    // The schema accepts it, so the researcher is being shown their own rule
+    // rather than sent to fix something that is not wrong.
+    expect(options.at(-1)?.disabled).toBeUndefined();
+  });
+
+  it('adds an operator the attribute’s type does not allow, disabled', () => {
+    expect(ruleOperatorOptions('text', 'GREATER_THAN').at(-1)).toEqual({
+      value: 'GREATER_THAN',
+      label: 'is greater than (not valid for this attribute)',
+      disabled: true,
+    });
+  });
+
+  it('adds nothing for an operator the list already holds, or for a non-operator', () => {
+    const offered = ruleOperatorOptions('number');
+    expect(ruleOperatorOptions('number', 'GREATER_THAN')).toEqual(offered);
+    expect(ruleOperatorOptions('number', undefined)).toEqual(offered);
+    expect(ruleOperatorOptions('number', 'NOT_AN_OPERATOR')).toEqual(offered);
+  });
+});
+
+/**
+ * A rule's operand is compared against the stored answer verbatim, so the date
+ * control has to be the same control the attribute is answered with — bounds
+ * included. Reading only the resolution left a rule able to name a date the
+ * attribute's own picker could never record.
+ */
+describe('the date picker a rule’s operand inherits', () => {
+  const variables: Readonly<Variables> = Object.freeze({
+    born: {
+      name: 'Born',
+      type: 'datetime',
+      component: 'DatePicker',
+      parameters: { type: 'year', min: '1800', max: '1810' },
+    },
+    seen: {
+      name: 'Seen',
+      type: 'datetime',
+      component: 'DatePicker',
+    },
+    met: {
+      name: 'Met',
+      type: 'datetime',
+      component: 'RelativeDatePicker',
+      parameters: { anchor: '2020-01-01', before: 30, after: 30 },
+    },
+    // The same picker with nothing authored on it, which is where the window
+    // is derived from the clock rather than from the codebook.
+    called: {
+      name: 'Called',
+      type: 'datetime',
+      component: 'RelativeDatePicker',
+      parameters: { before: 30 },
+    },
+    // A month-resolution picker, so a month outside 01-12 has somewhere to be
+    // asked about — and with no bounds authored, so the window it offers is
+    // the one the control synthesises.
+    joined: {
+      name: 'Joined',
+      type: 'datetime',
+      component: 'DatePicker',
+      parameters: { type: 'month' },
+    },
+    // The same, one resolution coarser: a bare year dropdown.
+    graduated: {
+      name: 'Graduated',
+      type: 'datetime',
+      component: 'DatePicker',
+      parameters: { type: 'year' },
+    },
+    age: { name: 'Age', type: 'number' },
+  });
+
+  it('carries every bound the attribute’s own picker honours', () => {
+    // Stated as the two dates the picker resolves the authored bounds TO,
+    // which is how it holds them internally and what its dropdowns are built
+    // from: a coarse bound's absent month and day both read as 1, exactly as
+    // `parseYmd` reads them. `compareDateStrings` truncates to the shorter of
+    // the two before comparing, so a `"1800"` operand still sits on the floor
+    // rather than below it.
+    expect(ruleVariableDateParameters(variables, 'born')).toEqual({
+      type: 'year',
+      min: '1800-01-01',
+      max: '1810-01-01',
+    });
+    expect(operandDateProblems(variables, 'born', 'EXACTLY', '1800')).toEqual(
+      [],
+    );
+    expect(operandDateProblems(variables, 'born', 'EXACTLY', '1799')).toEqual([
+      { kind: 'outOfRange', value: '1799' },
+    ]);
+  });
+
+  /**
+   * A month or year DatePicker is not an input anyone types into: it is a pair
+   * of closed dropdowns built from a window the control SYNTHESISES when the
+   * codebook authors none — `DATE_PICKER_DEFAULT_MIN` through today. A stored
+   * operand outside that window names a year the dropdown does not contain, so
+   * no participant answer can ever equal it, and the operand control the rule
+   * editor itself renders cannot select it either.
+   *
+   * `@codaco/interview`'s `buildDatePickerBoundProps` states the same
+   * asymmetry from the submission side: it synthesises nothing for a
+   * DatePicker precisely because "month/year resolutions render closed
+   * dropdown lists that can't accept an out-of-window typed value in the first
+   * place".
+   */
+  it('derives the window a coarse picker offers when the codebook authors none', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime('2026-07-27T12:00:00.000Z');
+    try {
+      expect(ruleVariableDateParameters(variables, 'joined')).toEqual({
+        type: 'month',
+        min: '1920-01-01',
+        max: '2026-07-27',
+      });
+      expect(ruleVariableDateParameters(variables, 'graduated')).toEqual({
+        type: 'year',
+        min: '1920-01-01',
+        max: '2026-07-27',
+      });
+
+      expect(
+        operandDateProblems(variables, 'graduated', 'EXACTLY', '1800'),
+      ).toEqual([{ kind: 'outOfRange', value: '1800' }]);
+      expect(
+        operandDateProblems(variables, 'joined', 'EXACTLY', '1919-12'),
+      ).toEqual([{ kind: 'outOfRange', value: '1919-12' }]);
+      expect(
+        operandDateProblems(variables, 'joined', 'EXACTLY', '2027-01'),
+      ).toEqual([{ kind: 'outOfRange', value: '2027-01' }]);
+
+      // And every date the dropdowns DO offer is left alone.
+      expect(
+        operandDateProblems(variables, 'graduated', 'EXACTLY', '1920'),
+      ).toEqual([]);
+      expect(
+        operandDateProblems(variables, 'joined', 'EXACTLY', '1950-06'),
+      ).toEqual([]);
+      expect(
+        operandDateProblems(variables, 'joined', 'EXACTLY', '2026-07'),
+      ).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('invents no bound the codebook does not hold', () => {
+    expect(ruleVariableDateParameters(variables, 'seen')).toEqual({
+      type: 'full',
+    });
+  });
+
+  /**
+   * A relative date picker names no `min`/`max` of its own — it names a window
+   * — and the interview turns that window into the hard bounds a submitted
+   * answer is validated against (`buildDatePickerBoundProps`). Reading the
+   * parameters verbatim found no bound and left the rule editor free to
+   * compare against a date no participant can ever give.
+   */
+  it('derives the window a relative date picker actually offers', () => {
+    expect(ruleVariableDateParameters(variables, 'met')).toEqual({
+      type: 'full',
+      min: '2019-12-02',
+      max: '2020-01-31',
+    });
+  });
+
+  it('anchors an unanchored relative date picker on today, as the picker does', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime('2026-07-27T12:00:00.000Z');
+    try {
+      expect(ruleVariableDateParameters(variables, 'called')).toEqual({
+        type: 'full',
+        min: '2026-06-27',
+        max: '2026-07-27',
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('gives anything that is not a date attribute the default picker', () => {
+    expect(ruleVariableDateParameters(variables, 'age')).toEqual({
+      type: 'full',
+    });
+    expect(ruleVariableDateParameters(variables, undefined)).toEqual({
+      type: 'full',
+    });
+  });
+
+  /**
+   * The same picker read from the other side: a date a rule ALREADY holds,
+   * against the picker the attribute has now.
+   *
+   * The resolution and the bounds are ordinary edits to the variable, made
+   * long after the rule was written and by someone who cannot see it — and
+   * nothing else can catch the result. The operand table asks only that a
+   * date operand be text, the protocol schema asks the same, and the
+   * interview compares the operand against the stored answer verbatim.
+   */
+  describe('a date the rule already holds', () => {
+    it('reports one recorded at a resolution the attribute no longer uses', () => {
+      expect(
+        operandDateProblems(variables, 'born', 'EXACTLY', '2020-05'),
+      ).toEqual([
+        { kind: 'wrongResolution', value: '2020-05', resolution: 'year' },
+      ]);
+      // The other direction of the same retype: an attribute answered with a
+      // full date, holding a rule written when it recorded years.
+      expect(operandDateProblems(variables, 'seen', 'EXACTLY', '2020')).toEqual(
+        [{ kind: 'wrongResolution', value: '2020', resolution: 'full' }],
+      );
+    });
+
+    it('reports one outside the dates the attribute can record', () => {
+      expect(operandDateProblems(variables, 'born', 'EXACTLY', '1799')).toEqual(
+        [{ kind: 'outOfRange', value: '1799' }],
+      );
+      expect(operandDateProblems(variables, 'born', 'EXACTLY', '1811')).toEqual(
+        [{ kind: 'outOfRange', value: '1811' }],
+      );
+    });
+
+    it('says nothing about a date the attribute can still record', () => {
+      // Including both bounds themselves, which are dates the picker offers.
+      for (const value of ['1800', '1805', '1810']) {
+        expect(
+          operandDateProblems(variables, 'born', 'EXACTLY', value),
+        ).toEqual([]);
+      }
+      expect(
+        operandDateProblems(variables, 'seen', 'EXACTLY', '2020-05-14'),
+      ).toEqual([]);
+    });
+
+    it('reports one outside a relative picker’s window', () => {
+      expect(
+        operandDateProblems(variables, 'met', 'EXACTLY', '2019-12-01'),
+      ).toEqual([{ kind: 'outOfRange', value: '2019-12-01' }]);
+      expect(
+        operandDateProblems(variables, 'met', 'EXACTLY', '2020-02-01'),
+      ).toEqual([{ kind: 'outOfRange', value: '2020-02-01' }]);
+      // Both ends of the window are dates the picker offers.
+      for (const value of ['2019-12-02', '2020-01-01', '2020-01-31']) {
+        expect(operandDateProblems(variables, 'met', 'EXACTLY', value)).toEqual(
+          [],
+        );
+      }
+    });
+
+    /**
+     * A rule names the anchor its picker had when it was written; an
+     * UNANCHORED relative picker re-derives its window from the clock on every
+     * answer, so the same operand slides out of range as time passes. The
+     * editor reports against the window as of today — which is the window the
+     * interview will apply to the next answer — rather than against the one
+     * that was current when the rule was authored.
+     */
+    it('judges an unanchored window as of today, not as of the day the rule was written', () => {
+      vi.useFakeTimers();
+      try {
+        vi.setSystemTime('2026-07-27T12:00:00.000Z');
+        expect(
+          operandDateProblems(variables, 'called', 'EXACTLY', '2026-07-01'),
+        ).toEqual([]);
+
+        vi.setSystemTime('2026-09-01T12:00:00.000Z');
+        expect(
+          operandDateProblems(variables, 'called', 'EXACTLY', '2026-07-01'),
+        ).toEqual([{ kind: 'outOfRange', value: '2026-07-01' }]);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    /**
+     * A date of the right shape that the calendar does not have. The native
+     * date and month controls sanitise these away rather than committing
+     * them, so no participant answer can ever equal one — but the protocol
+     * schema holds a rule operand as `unknown`, so an imported or hand-edited
+     * protocol reaches here with one.
+     */
+    it('reports one the calendar does not have', () => {
+      expect(
+        operandDateProblems(variables, 'seen', 'EXACTLY', '2020-02-31'),
+      ).toEqual([{ kind: 'impossibleDate', value: '2020-02-31' }]);
+      expect(
+        operandDateProblems(variables, 'seen', 'EXACTLY', '2020-13-01'),
+      ).toEqual([{ kind: 'impossibleDate', value: '2020-13-01' }]);
+      expect(
+        operandDateProblems(variables, 'joined', 'EXACTLY', '2020-13'),
+      ).toEqual([{ kind: 'impossibleDate', value: '2020-13' }]);
+      // A leap day IS on the calendar, in a leap year and not otherwise.
+      expect(
+        operandDateProblems(variables, 'seen', 'EXACTLY', '2020-02-29'),
+      ).toEqual([]);
+      expect(
+        operandDateProblems(variables, 'seen', 'EXACTLY', '2021-02-29'),
+      ).toEqual([{ kind: 'impossibleDate', value: '2021-02-29' }]);
+    });
+
+    it('says nothing about an operand that is not a date at all', () => {
+      // A pattern comparison's operand is a regular expression, which is text
+      // at any resolution — `.*` is not a date the picker has to be able to
+      // record, and reporting it would refuse a rule that works.
+      expect(operandDateProblems(variables, 'born', 'CONTAINS', '18')).toEqual(
+        [],
+      );
+      // A rule against an attribute that is not a date, and one whose operand
+      // has not been entered yet: unfinished, and reported as unfinished.
+      expect(operandDateProblems(variables, 'age', 'EXACTLY', 5)).toEqual([]);
+      expect(
+        operandDateProblems(variables, 'born', 'EXACTLY', undefined),
+      ).toEqual([]);
+      expect(operandDateProblems(variables, 'born', 'EXACTLY', '')).toEqual([]);
+    });
   });
 });
 
@@ -119,7 +470,12 @@ describe('codebook entries that are legal but sparse', () => {
     );
     expect(
       ruleVariableOptions(ruleVariables(sparseCodebook, 'node', 'blank')),
-    ).toContainEqual({ value: 'unnamed', label: 'unnamed', type: 'text' });
+    ).toContainEqual({
+      value: 'unnamed',
+      label: 'unnamed',
+      type: 'text',
+      usable: true,
+    });
   });
 
   it('does not offer a boolean control’s own labels as rule operands', () => {
@@ -144,19 +500,28 @@ describe('reading the codebook for a rule', () => {
   });
 
   it('offers the variables of the entity type a rule names', () => {
+    // Every attribute the entity type has, with the ones no rule can be built
+    // against MARKED rather than left out. Dropping them made "not offered"
+    // and "not in the codebook" the same thing to a picker reading this list,
+    // and a stored layout attribute — still in the codebook, still on screen
+    // in the codebook editor — was reported as one the researcher had deleted.
     expect(
       ruleVariableOptions(ruleVariables(codebook, 'node', 'person')),
     ).toEqual([
-      { value: 'age', label: 'Age', type: 'number' },
-      { value: 'mood', label: 'Mood', type: 'categorical' },
-      { value: 'note', label: 'Note', type: 'text' },
+      { value: 'age', label: 'Age', type: 'number', usable: true },
+      { value: 'mood', label: 'Mood', type: 'categorical', usable: true },
+      { value: 'note', label: 'Note', type: 'text', usable: true },
+      { value: 'born', label: 'Born', type: 'datetime', usable: true },
+      { value: 'home', label: 'Home', type: 'layout', usable: false },
     ]);
   });
 
   it('reads an ego rule against the ego codebook', () => {
     expect(
       ruleVariableOptions(ruleVariables(codebook, 'ego', undefined)),
-    ).toEqual([{ value: 'egoName', label: 'EgoName', type: 'text' }]);
+    ).toEqual([
+      { value: 'egoName', label: 'EgoName', type: 'text', usable: true },
+    ]);
   });
 
   it('offers nothing for an entity type the codebook no longer has', () => {
@@ -197,6 +562,163 @@ describe('reading the codebook for a rule', () => {
     ]);
     expect(ruleEntityTypeOptions(codebook, 'edge')).toEqual([
       { value: 'friend', label: 'Friend', color: 'edge-color-seq-3' },
+    ]);
+  });
+});
+
+/**
+ * A rule can be left naming an option that is no longer there — a collaborator
+ * renames "Retired" to "Not working", or deletes it — and nothing else notices:
+ * the attribute still exists, the operator is still legal for its type, and the
+ * operand is still the shape an option value has.
+ */
+describe('an operand naming an option the attribute no longer offers', () => {
+  const variables = ruleVariables(codebook, 'node', 'person');
+
+  it('names the option that went missing', () => {
+    expect(
+      operandOptionProblems(variables, 'mood', 'EXACTLY', 'retired'),
+    ).toEqual([{ kind: 'unknownOption', value: 'retired' }]);
+  });
+
+  it('says nothing about an option the attribute still authors', () => {
+    expect(
+      operandOptionProblems(variables, 'mood', 'EXACTLY', 'happy'),
+    ).toEqual([]);
+  });
+
+  it('checks every member of a list operand', () => {
+    expect(
+      operandOptionProblems(variables, 'mood', 'INCLUDES', [
+        'happy',
+        'retired',
+        'lapsed',
+      ]),
+    ).toEqual([
+      { kind: 'unknownOption', value: 'retired' },
+      { kind: 'unknownOption', value: 'lapsed' },
+    ]);
+  });
+
+  it('holds the option to the type the codebook authored it with', () => {
+    // The interview compares the operand against the stored answer by
+    // identity, so the string "1" is not the option whose value is 1.
+    const numericOptions: Readonly<Codebook> = {
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
+          variables: {
+            strength: {
+              name: 'Strength',
+              type: 'ordinal',
+              options: [
+                { label: 'Weak', value: 1 },
+                { label: 'Strong', value: 2 },
+              ],
+            },
+          },
+        },
+      },
+    };
+    const ordinal = ruleVariables(numericOptions, 'node', 'person');
+
+    expect(operandOptionProblems(ordinal, 'strength', 'EXACTLY', 1)).toEqual(
+      [],
+    );
+    expect(operandOptionProblems(ordinal, 'strength', 'EXACTLY', '1')).toEqual([
+      { kind: 'unknownOption', value: '1' },
+    ]);
+    // The widening that let a number attribute take a fraction has no business
+    // here: an ordinal answers with one of its own options.
+    expect(operandOptionProblems(ordinal, 'strength', 'EXACTLY', 0.5)).toEqual([
+      { kind: 'unknownOption', value: 0.5 },
+    ]);
+  });
+
+  it('says nothing about a comparison whose operand is not an option', () => {
+    // A number attribute's operand is typed out, not picked, so there is no
+    // option list to hold it to; a presence rule compares nothing at all.
+    expect(operandOptionProblems(variables, 'age', 'EXACTLY', 41)).toEqual([]);
+    expect(
+      operandOptionProblems(variables, 'mood', 'EXISTS', 'retired'),
+    ).toEqual([]);
+  });
+
+  it('says nothing about an operand that has not been entered yet', () => {
+    expect(
+      operandOptionProblems(variables, 'mood', 'EXACTLY', undefined),
+    ).toEqual([]);
+    expect(operandOptionProblems(variables, 'mood', 'INCLUDES', [])).toEqual(
+      [],
+    );
+    // The three other spellings of "nothing has been entered": a null the
+    // schema tolerates, and the empty values the two option controls hold
+    // before anything is picked.
+    expect(operandOptionProblems(variables, 'mood', 'EXACTLY', null)).toEqual(
+      [],
+    );
+    expect(operandOptionProblems(variables, 'mood', 'EXACTLY', '')).toEqual([]);
+  });
+
+  it('says nothing about an attribute the codebook has lost', () => {
+    expect(
+      operandOptionProblems(variables, 'favouriteColour', 'EXACTLY', 'blue'),
+    ).toEqual([]);
+  });
+});
+
+/**
+ * The v7→v8 migration coerces a boolean OPTION DEFINITION to its string form
+ * (`true` becomes `"true"`) and leaves the rule operands that name it alone,
+ * so a migrated protocol can hold `[true]` beside the option `"true"`. The
+ * interview compares by identity, and `true !== "true"`: the rule reads
+ * perfectly and can never match.
+ *
+ * Excluding such a value from the membership test — which a type guard in the
+ * filter did — reported nothing at all about the one operand guaranteed never
+ * to match.
+ */
+describe('an operand that is not the shape an option can have', () => {
+  const variables = ruleVariables(codebook, 'node', 'person');
+
+  it('reports a boolean left behind by the migration', () => {
+    expect(
+      operandOptionProblems(variables, 'mood', 'INCLUDES', [true]),
+    ).toEqual([{ kind: 'unusableValue', describedAs: 'a true/false value' }]);
+  });
+
+  it('reports a null member rather than skipping it', () => {
+    expect(
+      operandOptionProblems(variables, 'mood', 'INCLUDES', [null]),
+    ).toEqual([{ kind: 'unusableValue', describedAs: 'an empty value' }]);
+  });
+
+  it('reports an object member', () => {
+    expect(operandOptionProblems(variables, 'mood', 'INCLUDES', [{}])).toEqual([
+      { kind: 'unusableValue', describedAs: 'an object' },
+    ]);
+  });
+
+  it('reports a bare value that is not a list at all', () => {
+    expect(operandOptionProblems(variables, 'mood', 'INCLUDES', true)).toEqual([
+      { kind: 'unusableValue', describedAs: 'a true/false value' },
+    ]);
+  });
+
+  it('reports every member of a mixed operand, in its own voice', () => {
+    expect(
+      operandOptionProblems(variables, 'mood', 'INCLUDES', [
+        'happy',
+        true,
+        'retired',
+        [1],
+      ]),
+    ).toEqual([
+      { kind: 'unusableValue', describedAs: 'a true/false value' },
+      { kind: 'unknownOption', value: 'retired' },
+      { kind: 'unusableValue', describedAs: 'a list' },
     ]);
   });
 });

@@ -16,6 +16,7 @@ import {
 import { compose, cva, cx, type VariantProps } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
+import { omitWidgetOnlyAria } from '../utils/omitWidgetOnlyAria';
 import Checkbox from './Checkbox';
 
 // Compose fieldset wrapper variants
@@ -87,7 +88,12 @@ export default function CheckboxGroupField(props: CheckboxGroupProps) {
     <div className="@container w-full">
       <fieldset
         id={id}
-        {...fieldsetProps}
+        // A `<fieldset>` is `role="group"`, which allows neither
+        // `aria-readonly` nor `aria-required`. Each checkbox below carries the
+        // read-only state; the group's required-ness stays with the label's
+        // marker and the "Required" element named in `aria-describedby`,
+        // because it is the answer that is required, not any one checkbox.
+        {...omitWidgetOnlyAria(fieldsetProps)}
         className={checkboxGroupComposedVariants({
           size,
           orientation,

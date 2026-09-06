@@ -1259,6 +1259,40 @@ const addValue = async (
   );
 };
 
+/** What the row offers for the two answers of a boolean it collects. */
+const EDIT_ANSWER_LABELS = 'Change this attribute’s answer labels';
+
+/**
+ * Writes both answers of the boolean the open row collects, through the
+ * codebook editor the row opens on them.
+ *
+ * The row itself is left open and unsaved: the attribute is a compound edit of
+ * its own, and whether the row behind it survives one is the point.
+ */
+const nameBothAnswers = async (
+  harness: ReturnType<typeof renderStageEditor>,
+  dialog: ReturnType<typeof within>,
+) => {
+  await harness.user.click(
+    await dialog.findByRole('button', { name: EDIT_ANSWER_LABELS }),
+  );
+  await screen.findByRole('button', { name: 'Save attribute' });
+  await harness.user.type(
+    screen.getByRole('textbox', { name: 'Label for “true”' }),
+    'Yes, definitely',
+  );
+  await harness.user.type(
+    screen.getByRole('textbox', { name: 'Label for “false”' }),
+    'No, not at all',
+  );
+  await harness.user.click(
+    screen.getByRole('button', { name: 'Save attribute' }),
+  );
+  await waitFor(() =>
+    expect(asRecord(personVariables(harness).flagged).options).toHaveLength(2),
+  );
+};
+
 /**
  * Invents the categorical attribute a field collects, with its first two
  * values, through the control the row dialog offers for it.
@@ -1576,6 +1610,69 @@ describe('the codebook an attribute a form field collects lives in', () => {
         ).required,
       ).toBe(true),
     );
+  });
+
+  /**
+   * A boolean field asks a yes-or-no question, and the words on those two
+   * answers are the researcher's — the schema holds them under the same
+   * `options` key a categorical attribute uses, in a shape of its own. So the
+   * field that collects a boolean reaches the same surface its neighbours do,
+   * named for what is actually being changed.
+   */
+  it('changes what the two answers of a boolean field say', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const editing = await openField(harness, 'Edit field', 1);
+    await nameBothAnswers(harness, editing);
+
+    expect(asRecord(personVariables(harness).flagged)).toEqual({
+      name: 'flagged',
+      type: 'boolean',
+      component: 'Boolean',
+      options: [
+        { label: 'Yes, definitely', value: true },
+        { label: 'No, not at all', value: false },
+      ],
+    });
+  });
+
+  /**
+   * A toggle is a switch that is on or off, and its variable schema has no
+   * `options` key at all — so the answers the choice control showed are not
+   * settings that stop applying, they are a variable the codebook refuses.
+   * The row is where the control is chosen, so the row's save is what has to
+   * take them away; Architect does the same through
+   * `clearInapplicableCodebookProperties`.
+   */
+  it('drops the answers a toggle cannot show when the field changes control', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const editing = await openField(harness, 'Edit field', 1);
+    await nameBothAnswers(harness, editing);
+
+    await harness.user.selectOptions(
+      editing.getByRole('combobox', { name: 'Input control' }),
+      'Toggle',
+    );
+    expect(
+      editing.queryByRole('button', { name: EDIT_ANSWER_LABELS }),
+    ).toBeNull();
+    await harness.user.click(editing.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    expect(asRecord(personVariables(harness).flagged)).toEqual({
+      name: 'flagged',
+      type: 'boolean',
+      component: 'Toggle',
+    });
   });
 
   /**

@@ -71,7 +71,13 @@ const baseSections: Record<string, SectionDoc> = {
 
 function createSession(
   options: Readonly<{
-    rules?: readonly RuleDraft[];
+    /**
+     * Typed as the record a stored rule IS rather than as a `RuleDraft`,
+     * because the rules these tests are about are the ones no editor could
+     * have written: a rule missing its target, or holding something that is
+     * not a string there. A draft type cannot express either.
+     */
+    rules?: readonly Record<string, unknown>[];
     join?: string;
     sections?: Record<string, SectionDoc>;
   }> = {},
@@ -273,6 +279,80 @@ describe('the rule set field', () => {
   });
 });
 
+/**
+ * The list withdraws its save handler when it stops being editable — a lost
+ * lease, a read-only session — and the rule editor may already be open when
+ * that happens. A dialog that reports a save it could not make is worse than
+ * one that refuses: the draft is gone and the researcher has no way to know.
+ */
+describe('a rule editor that is open when the list stops being editable', () => {
+  const buildPresenceRule = async (
+    user: ReturnType<typeof userEvent.setup>,
+  ) => {
+    await user.click(
+      screen.getByRole('radio', {
+        name: 'Node - match a node type or one of its attributes.',
+      }),
+    );
+    await user.click(await screen.findByRole('radio', { name: 'Person' }));
+    await user.click(await screen.findByRole('option', { name: /Presence/ }));
+    await user.click(await screen.findByRole('radio', { name: 'exists' }));
+  };
+
+  it('refuses the save in words rather than reporting one that never happened', async () => {
+    const user = userEvent.setup();
+    const session = createSession();
+    renderEditor(session);
+
+    await openRuleEditor(user);
+    await buildPresenceRule(user);
+
+    act(() => {
+      session.setAccess({ mode: 'readOnly', reason: 'lease-lost' });
+    });
+    await user.click(screen.getByRole('button', { name: 'Finish and Close' }));
+
+    expect(
+      await screen.findByText(
+        'These rules are no longer editable, so this rule cannot be saved. Copy anything you want to keep, then close the editor.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog', { name: 'Construct a Rule' }),
+    ).toBeInTheDocument();
+    expect(probedRuleSet()).toBeNull();
+  });
+
+  it('still lets the researcher out of the editor afterwards', async () => {
+    const user = userEvent.setup();
+    const session = createSession();
+    renderEditor(session);
+
+    await openRuleEditor(user);
+    await buildPresenceRule(user);
+
+    act(() => {
+      session.setAccess({ mode: 'readOnly', reason: 'lease-lost' });
+    });
+    await user.click(screen.getByRole('button', { name: 'Finish and Close' }));
+    await screen.findByText(/These rules are no longer editable/);
+
+    // A refused save is not an outcome: the session has not ended, so
+    // dismissing it must still discard the draft and close the dialog rather
+    // than leaving the editor with no way out.
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Discard changes' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Construct a Rule' }),
+      ).toBeNull(),
+    );
+  });
+});
+
 describe('rule list identity', () => {
   it('keeps the surviving rule when one is deleted', async () => {
     const user = userEvent.setup();
@@ -411,6 +491,237 @@ describe('rules the codebook can no longer account for', () => {
       ),
     ).toBeInTheDocument();
   });
+
+  it('reports an operator a rule about presence cannot use', () => {
+    renderEditor(
+      createSession({
+        rules: [
+          {
+            id: 'rule-a',
+            type: 'node',
+            // No attribute, so the only operators the schema allows are the
+            // two that ask whether the type is there. An imported or
+            // hand-edited protocol can hold this, and nothing else marks it
+            // before the whole stage is saved.
+            options: { type: 'person', operator: 'EXACTLY', value: 3 },
+          },
+        ],
+      }),
+    );
+
+    expect(
+      screen.getByText(
+        'This rule asks whether an entity type is present, but uses an operator that cannot ask that. Edit or delete the rule.',
+      ),
+    ).toBeInTheDocument();
+    // The rule still reads, so the researcher can see which one to fix.
+    expect(ruleRowSentence()).toBe('Person exactly 3');
+  });
+
+  /**
+   * The one part of a rule no control on screen asks for. Both branches of
+   * `filterRuleSchema` require `id: z.string()`, so a rule without one is
+   * refused when the whole stage is saved — by an issue naming a position in
+   * an array, long after the row that holds it has scrolled past.
+   */
+  it('reports a rule that has no identifier', () => {
+    renderEditor(
+      createSession({
+        rules: [
+          // Every part the editor asks for is answered; the id is not there.
+          { type: 'node', options: { type: 'person', operator: 'EXISTS' } },
+        ],
+      }),
+    );
+
+    expect(
+      screen.getByText(
+        'This rule has no identifier, so this protocol cannot be saved with it. Edit the rule to give it one, or delete the rule.',
+      ),
+    ).toBeInTheDocument();
+    // And still reads, so the researcher can see which one to open.
+    expect(ruleRowSentence()).toBe('Person exists');
+  });
+});
+
+/**
+ * A rule's id is the identity the LIST is keyed by, and the protocol schema
+ * refuses a set holding the same one twice (`findDuplicateId`). Two rows
+ * sharing an id therefore have to be two rows: keying both by the duplicate
+ * collapsed them into one, so deleting either deleted both and editing the
+ * second edited and displayed the first.
+ */
+describe('two stored rules that share an identifier', () => {
+  const SHARED_ID_MESSAGE =
+    'Another rule in this set has the same identifier, so this protocol cannot be saved with both. Edit or delete the rule.';
+
+  /** Two rules that read differently, so the rows can be told apart. */
+  const sharingOneId = (): Record<string, unknown>[] => [
+    {
+      id: 'rule-a',
+      type: 'node',
+      options: { type: 'person', operator: 'EXISTS' },
+    },
+    {
+      id: 'rule-a',
+      type: 'node',
+      options: {
+        type: 'person',
+        attribute: 'age',
+        operator: 'EXACTLY',
+        value: 30,
+      },
+    },
+  ];
+
+  it('shows both rules, and marks both', () => {
+    renderEditor(createSession({ join: 'AND', rules: sharingOneId() }));
+
+    // Two rows, each reading its own rule — not one row rendered twice.
+    expect(screen.getAllByRole('button', { name: /^Edit rule:/ })).toHaveLength(
+      2,
+    );
+    expect(ruleRowSentence(0)).toBe('Person exists');
+    expect(ruleRowSentence(1)).toBe('Person where Age is exactly equal to 30');
+    expect(screen.getAllByText(SHARED_ID_MESSAGE)).toHaveLength(2);
+  });
+
+  it('deletes exactly one of them', async () => {
+    const user = userEvent.setup();
+    renderEditor(createSession({ join: 'AND', rules: sharingOneId() }));
+
+    await user.click(
+      screen.getAllByRole('button', { name: /^Delete rule:/ })[0]!,
+    );
+    await user.click(await screen.findByRole('button', { name: 'Delete' }));
+
+    await waitFor(() => expect(probedRuleSet()?.rules).toHaveLength(1));
+    // The one that survives is the one that was not deleted, and it is no
+    // longer sharing its id with anything.
+    expect(probedRuleSet()?.rules?.[0]?.options).toMatchObject({
+      attribute: 'age',
+    });
+    expect(screen.queryByText(SHARED_ID_MESSAGE)).toBeNull();
+  });
+
+  it('keeps two rules whose identifier is not a string apart as well', async () => {
+    const user = userEvent.setup();
+    renderEditor(
+      createSession({
+        join: 'AND',
+        rules: [
+          {
+            id: 3,
+            type: 'node',
+            options: { type: 'person', operator: 'EXISTS' },
+          },
+          {
+            id: 3,
+            type: 'node',
+            options: {
+              type: 'person',
+              attribute: 'age',
+              operator: 'EXACTLY',
+              value: 30,
+            },
+          },
+        ],
+      }),
+    );
+
+    // The schema requires a string, so both are reported as having no
+    // identifier at all rather than as sharing one — and neither may key a
+    // row, or they would collide exactly as two shared strings do.
+    expect(screen.getAllByText(/^This rule has no identifier/)).toHaveLength(2);
+
+    await user.click(
+      screen.getAllByRole('button', { name: /^Delete rule:/ })[0]!,
+    );
+    await user.click(await screen.findByRole('button', { name: 'Delete' }));
+
+    await waitFor(() => expect(probedRuleSet()?.rules).toHaveLength(1));
+    expect(probedRuleSet()?.rules?.[0]?.options).toMatchObject({
+      attribute: 'age',
+    });
+  });
+
+  it('gives one of them a new identifier when it is edited and saved', async () => {
+    const user = userEvent.setup();
+    renderEditor(createSession({ join: 'AND', rules: sharingOneId() }));
+
+    await user.click(
+      screen.getAllByRole('button', { name: /^Edit rule:/ })[1]!,
+    );
+    await screen.findByRole('dialog', { name: 'Construct a Rule' });
+    await user.click(screen.getByRole('button', { name: 'Finish and Close' }));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Construct a Rule' }),
+      ).toBeNull(),
+    );
+
+    // The rule the researcher opened is the rule that was saved — the second
+    // one, not the first the shared id used to resolve to — and it comes back
+    // filed under an id of its own.
+    const saved = probedRuleSet()?.rules ?? [];
+    expect(saved.map((rule) => rule.options?.attribute)).toEqual([
+      undefined,
+      'age',
+    ]);
+    expect(saved[0]?.id).toBe('rule-a');
+    expect(saved[1]?.id).toEqual(expect.any(String));
+    expect(saved[1]?.id).not.toBe('rule-a');
+    expect(screen.queryByText(SHARED_ID_MESSAGE)).toBeNull();
+  });
+});
+
+/**
+ * The part of a rule that says whether it is about a node, an edge or the ego.
+ * A protocol authored elsewhere can arrive without it, or with something that
+ * is not a string there, and `describeRule` reports both as an unreadable
+ * target — while the field tells the researcher to open rule 1. The row it
+ * names has to BE there, with the controls that open and delete it: the rule
+ * set has no other affordance that reaches a row by position, so a hidden row
+ * left the whole set unrepairable except by clearing it.
+ */
+describe('a stored rule that does not say what it is about', () => {
+  it.each([
+    {
+      what: 'no target at all',
+      rule: { id: 'rule-a', options: { type: 'person', operator: 'EXISTS' } },
+    },
+    {
+      what: 'a target that is not a string',
+      rule: {
+        id: 'rule-a',
+        type: 3,
+        options: { type: 'person', operator: 'EXISTS' },
+      },
+    },
+  ])(
+    'shows the row for a rule with $what, and its controls',
+    async ({ rule }) => {
+      const user = userEvent.setup();
+      renderEditor(createSession({ rules: [rule] }));
+
+      expect(
+        screen.getByText(
+          'This rule does not say whether it is about a node, an edge, or the ego. Edit or delete the rule.',
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /^Delete rule:/ }),
+      ).toBeInTheDocument();
+
+      // And the edit control opens the editor the field told them to open,
+      // where the target question is asked again.
+      await user.click(screen.getByRole('button', { name: /^Edit rule:/ }));
+      expect(
+        await screen.findByRole('dialog', { name: 'Construct a Rule' }),
+      ).toBeInTheDocument();
+    },
+  );
 });
 
 describe('a codebook that changes underneath the editor', () => {
@@ -464,6 +775,57 @@ describe('a codebook that changes underneath the editor', () => {
 
     expect(
       await screen.findByRole('radio', { name: 'Place' }),
+    ).toBeInTheDocument();
+  });
+
+  it('reports a rule whose attribute a collaborator has just retyped', async () => {
+    const session = createSession({
+      rules: [
+        {
+          id: 'rule-a',
+          type: 'node',
+          options: {
+            type: 'person',
+            attribute: 'age',
+            operator: 'EXACTLY',
+            value: 30,
+          },
+        },
+      ],
+    });
+    renderEditor(session);
+
+    expect(screen.queryByText(/no longer/)).toBeNull();
+
+    act(() => {
+      session.receiveAuthoritativeUpdate({
+        protocolSections: {
+          ...baseSections,
+          [personSection]: {
+            ...personDefinition,
+            variables: {
+              // `EXACTLY` survives the retype — it is legal for both types —
+              // so the operator check has nothing to say, and the operand left
+              // behind is a number where the runtime now compares a list.
+              age: {
+                name: 'Age',
+                type: 'categorical',
+                options: [
+                  { label: 'Young', value: 30 },
+                  { label: 'Old', value: 60 },
+                ],
+              },
+            },
+          },
+        },
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+    });
+
+    expect(
+      await screen.findByText(
+        'This rule compares its attribute against a value of the wrong kind for the attribute’s type. Edit or delete the rule.',
+      ),
     ).toBeInTheDocument();
   });
 

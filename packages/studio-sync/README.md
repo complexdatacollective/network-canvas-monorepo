@@ -16,13 +16,17 @@ versioned in lockstep with the `studio.sync.v1` subprotocol.
   (every transition one atomic conditional statement; epoch fencing), the
   idempotent commit path (client_seq + log unique constraint, per-draft
   serialization via the draft-head row lock), and manifest-hash resume.
+- `@codaco/studio-sync/postgres-pool` — the shared Node pool factory:
+  preserves URL connection settings, pins and verifies an optional startup
+  role, bounds connection waits to 10 seconds and pool capacity to 1–32
+  (default 10), and calls the idle-error logger without connection details.
 - `@codaco/studio-sync/client` — the client half: optimistic local echo,
   pending queue, suffix rollback on rejection, reconnect with retransmission.
 - `@codaco/studio-sync/schema` — the Postgres schema (drafts, immutable
   content-addressed sections, manifests, leases, command log).
 
-The server/schema modules depend on `pg`; client code must import only
-`./apply` and `./client`.
+The server/schema/postgres-pool modules depend on `pg`; client code must
+import only `./apply` and `./client`.
 
 ## Conformance suite
 

@@ -11,7 +11,11 @@ import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Section from '@codaco/fresco-ui/Section';
-import type { VariableType } from '@codaco/protocol-validation';
+import type {
+  Codebook,
+  DateFormat,
+  VariableType,
+} from '@codaco/protocol-validation';
 
 import { EntitySelectControl } from '../fields/EntitySelectField.tsx';
 import { VariablePickerControl } from '../fields/VariablePicker.tsx';
@@ -21,31 +25,35 @@ import DialogForm, {
 } from '../form/DialogForm.tsx';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { protocolAuthoringLinks } from '../interfaces/documentation.ts';
-import {
-  isFilterOperator,
-  operatorsWithOptionCount,
-  operatorsWithRegExp,
-  operatorsWithValue,
-  type RuleOperatorOption,
-} from './operators.ts';
+import type { RuleOperatorOption } from './operators.ts';
 import { incompleteRulePart, type RuleDraft, type RulePart } from './rule.ts';
 import {
+  assertNoSuchDateProblem,
+  assertNoSuchNumberProblem,
   isRuleTargetType,
+  type OperandDateProblem,
+  operandDateProblems,
+  type OperandNumberProblem,
+  operandNumberProblems,
+  type OperandOptionProblem,
+  operandOptionProblems,
   type RuleChoiceOption,
+  type RuleDateParameters,
   type RuleEntityTarget,
   type RuleTargetType,
   type RuleVariableOption,
   ruleOperatorOptions,
   ruleVariableChoices,
+  ruleVariableDateParameters,
   ruleVariableOptions,
   ruleVariables,
   ruleVariableType,
 } from './ruleCodebook.ts';
+import { describeRule, type RuleProblemCode } from './ruleDescription.ts';
 import {
   emptyRuleValue,
   RULE_VALUE_FIELD,
-  RuleCountField,
-  RuleValueField,
+  RuleOperandField,
 } from './RuleValueField.tsx';
 
 /** Dialog title and submit label, verbatim — host page objects name both. */
@@ -128,7 +136,46 @@ const RULE_KIND_OPTIONS: Readonly<
 export type RuleTypeOption = Readonly<{
   label: string;
   value: RuleTargetType;
+  /** Shown so a stored target is visible, but not offered as a choice. */
+  disabled?: boolean;
 }>;
+
+/**
+ * What each target is CALLED, for the one option the host does not supply.
+ *
+ * The host writes the sentences that describe what a target matches, because
+ * only it knows which rule sets it offers. A target a rule already holds that
+ * the host does not offer has no such sentence, so it is named — the entity
+ * class is a token, and these are the words for it — rather than left out.
+ */
+const RULE_TARGET_NAMES: Readonly<Record<RuleTargetType, string>> =
+  Object.freeze({ node: 'Node', edge: 'Edge', ego: 'Ego' });
+
+/**
+ * The targets on offer, plus the one this rule already has.
+ *
+ * The protocol schema accepts an ego, node or edge rule in any rule set, while
+ * a host offers only the targets its own rule set builds — so a stored rule can
+ * hold a target that is not on the list. Left out, the radio group showed
+ * nothing chosen over a rule that is pointed somewhere, and saved it back that
+ * way. Shown and disabled, the researcher can read what the rule targets and
+ * still has to choose again to change it.
+ */
+const ruleTargetOptions = (
+  offered: readonly RuleTypeOption[],
+  seeded: string,
+): readonly RuleTypeOption[] => {
+  if (!isRuleTargetType(seeded)) return offered;
+  if (offered.some((option) => option.value === seeded)) return offered;
+  return [
+    ...offered,
+    {
+      value: seeded,
+      label: `${RULE_TARGET_NAMES[seeded]} (not offered in this rule set)`,
+      disabled: true,
+    },
+  ];
+};
 
 const asString = (value: FieldValue | undefined): string | undefined =>
   typeof value === 'string' && value.length > 0 ? value : undefined;
@@ -187,6 +234,186 @@ const ruleDraftFromValues = (
   options: ruleOptionsFromValues(values.options),
 });
 
+/** One of a draft's option ids, or `undefined` when it is not answered. */
+const draftString = (
+  rule: RuleDraft,
+  key: 'type' | 'attribute' | 'operator',
+): string | undefined => {
+  const value = rule.options?.[key];
+  return typeof value === 'string' && value !== '' ? value : undefined;
+};
+
+/**
+ * The option values this draft names that its attribute does not offer.
+ *
+ * Asked of the whole draft rather than of the operand alone, because which
+ * options exist is a question about the ATTRIBUTE the draft points at — read
+ * live from the codebook, so an option a collaborator deletes while the dialog
+ * is open is refused by the next save rather than by the next reload.
+ */
+const staleRuleOptions = (
+  codebook: Readonly<Codebook>,
+  rule: RuleDraft,
+): OperandOptionProblem[] => {
+  const target = isRuleTargetType(rule.type) ? rule.type : undefined;
+  if (target === undefined) return [];
+  const variables = ruleVariables(codebook, target, draftString(rule, 'type'));
+  return operandOptionProblems(
+    variables,
+    draftString(rule, 'attribute'),
+    draftString(rule, 'operator') ?? '',
+    rule.options?.value,
+  );
+};
+
+/**
+ * The dates this draft compares against that its attribute can no longer
+ * record. Asked of the whole draft for the same reason as the options above:
+ * which dates exist is a question about the ATTRIBUTE, read live.
+ */
+const staleRuleDates = (
+  codebook: Readonly<Codebook>,
+  rule: RuleDraft,
+): OperandDateProblem[] => {
+  const target = isRuleTargetType(rule.type) ? rule.type : undefined;
+  if (target === undefined) return [];
+  const variables = ruleVariables(codebook, target, draftString(rule, 'type'));
+  return operandDateProblems(
+    variables,
+    draftString(rule, 'attribute'),
+    draftString(rule, 'operator') ?? '',
+    rule.options?.value,
+  );
+};
+
+/**
+ * The numbers this draft compares against that its attribute can never reach.
+ * Asked of the whole draft for the same reason as the options and dates above.
+ */
+const staleRuleNumbers = (
+  codebook: Readonly<Codebook>,
+  rule: RuleDraft,
+): OperandNumberProblem[] => {
+  const target = isRuleTargetType(rule.type) ? rule.type : undefined;
+  if (target === undefined) return [];
+  const variables = ruleVariables(codebook, target, draftString(rule, 'type'));
+  return operandNumberProblems(
+    variables,
+    draftString(rule, 'attribute'),
+    draftString(rule, 'operator') ?? '',
+    rule.options?.value,
+  );
+};
+
+/**
+ * An operand as it reads in the refusal. Quoted when it is text, so the reason
+ * `"1"` was refused against the option whose value is `1` is legible.
+ */
+const describeStaleOption = (value: string | number): string =>
+  typeof value === 'string' ? `"${value}"` : String(value);
+
+const asList = (described: readonly string[]): string =>
+  described.length <= 1
+    ? (described[0] ?? '')
+    : `${described.slice(0, -1).join(', ')} and ${described.at(-1) ?? ''}`;
+
+/**
+ * Why the operand is refused, in whichever of the two voices applies.
+ *
+ * A value that is not the SHAPE of an option — a boolean the v8 migration left
+ * beside the string option it became — never was one of this attribute's
+ * choices, so telling the researcher it is "no longer offered" would send them
+ * looking through the option list for something that was never in it.
+ */
+const staleOptionsMessage = (
+  problems: readonly OperandOptionProblem[],
+): string => {
+  const unusable = problems.flatMap((problem) =>
+    problem.kind === 'unusableValue' ? [problem.describedAs] : [],
+  );
+  if (unusable.length > 0) {
+    return `This rule compares against ${asList(unusable)}, which cannot be one of this attribute’s options. Choose from the options it offers.`;
+  }
+  const missing = problems.flatMap((problem) =>
+    problem.kind === 'unknownOption'
+      ? [describeStaleOption(problem.value)]
+      : [],
+  );
+  return `This rule compares against ${asList(missing)}, which this attribute no longer offers. Choose from the options it does.`;
+};
+
+/** How a date attribute records an answer, in the researcher's own words. */
+const DATE_RESOLUTION_NAMES: Readonly<Record<DateFormat, string>> =
+  Object.freeze({
+    full: 'a full date',
+    month: 'a month and a year',
+    year: 'a year',
+  });
+
+/**
+ * Why a date operand is refused, in the voice of the control holding it.
+ *
+ * One sentence per problem, because the three send the researcher to different
+ * places: the attribute records a different KIND of date now, the date is
+ * outside the range it records at all, or the date is not one the calendar
+ * has.
+ *
+ * None of them says the rule can never match, because beside a negating
+ * operator that is untrue: `not` is satisfied by every answer that fails the
+ * comparison, so a date the attribute cannot record makes such a rule match
+ * every participant rather than none. Each states the fact and what to choose
+ * instead, which is right whichever operator is above it.
+ */
+const staleDatesMessage = (problems: readonly OperandDateProblem[]): string => {
+  const [problem] = problems;
+  if (problem === undefined) return INVALID_OPERAND_MESSAGE;
+  switch (problem.kind) {
+    case 'wrongResolution':
+      return `This attribute is now answered with ${DATE_RESOLUTION_NAMES[problem.resolution]}, which “${problem.value}” is not. Choose a date it can record.`;
+    case 'impossibleDate':
+      return `“${problem.value}” is not a date on the calendar. Choose a real date.`;
+    case 'outOfRange':
+      return `“${problem.value}” is outside the dates this attribute can record. Choose a date inside them.`;
+    default:
+      return assertNoSuchDateProblem(problem);
+  }
+};
+
+/**
+ * Why a number operand is refused, in the voice of the control holding it.
+ *
+ * The two ranges are named rather than the fault: how many options there are
+ * to select, and the scale a scalar attribute is read on, are what the
+ * researcher has to choose inside.
+ */
+const unreachableNumbersMessage = (
+  problems: readonly OperandNumberProblem[],
+): string => {
+  const [problem] = problems;
+  if (problem === undefined) return INVALID_OPERAND_MESSAGE;
+  switch (problem.kind) {
+    case 'unreachableOptionCount':
+      return `This attribute offers ${problem.optionCount} ${problem.optionCount === 1 ? 'option' : 'options'}, so between 0 and ${problem.optionCount} of them can be selected. Choose a number in that range.`;
+    case 'unreachableScale':
+      return `This attribute is answered on a scale from ${problem.min} to ${problem.max}. Choose a number in that range.`;
+    default:
+      return assertNoSuchNumberProblem(problem);
+  }
+};
+
+/**
+ * What a rule set that cannot be about this target says, in whole sentences.
+ *
+ * One per target rather than a sentence built around the name of one: the
+ * entity class is an internal token, and interpolating it produces "a ego".
+ */
+const TARGET_NOT_OFFERED_MESSAGES: Readonly<Record<RuleTargetType, string>> =
+  Object.freeze({
+    ego: 'These rules cannot ask about the ego. Choose another target.',
+    node: 'These rules cannot ask about a node. Choose another target.',
+    edge: 'These rules cannot ask about an edge. Choose another target.',
+  });
+
 /** The control the researcher has to visit to supply each part of a rule. */
 const RULE_PART_FIELDS: Readonly<Record<RulePart, string>> = Object.freeze({
   target: TARGET_FIELD,
@@ -195,6 +422,167 @@ const RULE_PART_FIELDS: Readonly<Record<RulePart, string>> = Object.freeze({
   operator: OPERATOR_FIELD,
   value: RULE_VALUE_FIELD,
 });
+
+/** Where one thing wrong with a rule is reported, and in what words. */
+type RuleProblemPlacement = Readonly<{ field: string; message: string }>;
+
+/**
+ * What the DIALOG does with each thing that can be wrong with a rule.
+ *
+ * The row, the rule-set field and this dialog all read a draft through the
+ * same `describeRule`, so a rule the list would mark as broken cannot be
+ * finished from the editor that is holding it. Three hand-written checks used
+ * to stand here instead, and a stale entity type was in none of them: the
+ * dialog showed the dead reference, accepted "Finish and Close", and the row
+ * it closed onto marked the rule broken a moment later.
+ *
+ * A total mapping over `RULE_PROBLEM_CODES` rather than a list of the codes
+ * this dialog happens to know, for the same reason `RULE_PROBLEM_SUMMARIES` in
+ * `ruleSet.ts` is one: a problem added to the description arrives here as a
+ * typecheck failure rather than as a save nothing refuses.
+ *
+ * Only the placement is decided here, never whether a problem counts. The
+ * words differ from the row's for one reason: the row addresses a researcher
+ * looking at a list ("Edit or delete the rule"), and this addresses one
+ * already standing in front of the control that holds it.
+ */
+const RULE_PROBLEM_PLACEMENTS: Readonly<
+  Record<
+    RuleProblemCode,
+    (rule: RuleDraft, codebook: Readonly<Codebook>) => RuleProblemPlacement
+  >
+> = Object.freeze({
+  // Nothing on screen can say what this rule is about, so the question to
+  // answer is the first one.
+  unknownTarget: () => ({
+    field: TARGET_FIELD,
+    message: INCOMPLETE_RULE_MESSAGE,
+  }),
+  // A target this rule set is not allowed to be about. The radio group already
+  // shows it as an option that cannot be chosen; this is what stops the rule
+  // being finished while it is still selected.
+  targetNotOffered: (rule) => ({
+    field: TARGET_FIELD,
+    message: isRuleTargetType(rule.type)
+      ? TARGET_NOT_OFFERED_MESSAGES[rule.type]
+      : INCOMPLETE_RULE_MESSAGE,
+  }),
+  missingEntityType: (rule) =>
+    rule.type === 'ego'
+      ? { field: TARGET_FIELD, message: MISSING_EGO_MESSAGE }
+      : {
+          field: ENTITY_TYPE_FIELD,
+          message: missingEntityTypeMessage(draftString(rule, 'type')),
+        },
+  missingAttribute: (rule) => ({
+    field: ATTRIBUTE_FIELD,
+    message: missingAttributeMessage(draftString(rule, 'attribute')),
+  }),
+  // The presence of the `attribute` KEY is what tells the two rule shapes
+  // apart, here as everywhere else, and it decides which question the operator
+  // was answering.
+  invalidOperator: (rule) => ({
+    field: OPERATOR_FIELD,
+    message: Object.hasOwn(rule.options ?? {}, 'attribute')
+      ? INVALID_OPERATOR_MESSAGE
+      : INVALID_PRESENCE_OPERATOR_MESSAGE,
+  }),
+  invalidOperand: () => ({
+    field: RULE_VALUE_FIELD,
+    message: INVALID_OPERAND_MESSAGE,
+  }),
+  // A pattern operand the interview could not compile. It used to be checked
+  // here and nowhere else, which meant a stored rule holding one was refused
+  // only if the researcher happened to reopen that exact rule and submit it.
+  invalidPattern: () => ({
+    field: RULE_VALUE_FIELD,
+    message: INVALID_REG_EXP_MESSAGE,
+  }),
+  // Both option problems name the VALUES they are about, which is the one
+  // thing the row's summary cannot do from a list. Whether an operand is still
+  // one of its attribute's options is the editor's question to ask at all: the
+  // protocol schema checks the shape of a value and stops there on purpose,
+  // because protocols already in the field name options a collaborator has
+  // since renamed, and refusing to LOAD one would lock the researcher out of
+  // the editor that could fix it (ruling on issue #1548).
+  missingOption: (rule, codebook) => ({
+    field: RULE_VALUE_FIELD,
+    message: staleOptionsMessage(staleRuleOptions(codebook, rule)),
+  }),
+  unusableOption: (rule, codebook) => ({
+    field: RULE_VALUE_FIELD,
+    message: staleOptionsMessage(staleRuleOptions(codebook, rule)),
+  }),
+  // The same question asked of a date: which dates an attribute can record is
+  // a property of ITS picker, so the refusal names the date and says what the
+  // attribute records now.
+  unusableDate: (rule, codebook) => ({
+    field: RULE_VALUE_FIELD,
+    message: staleDatesMessage(staleRuleDates(codebook, rule)),
+  }),
+  // And of a number: how many options there are to select, and the scale a
+  // scalar attribute is read on, are both the attribute's, so the refusal
+  // names the range the researcher has to choose inside.
+  unusableNumber: (rule, codebook) => ({
+    field: RULE_VALUE_FIELD,
+    message: unreachableNumbersMessage(staleRuleNumbers(codebook, rule)),
+  }),
+  // Reported by the control that holds the gap rather than as a sentence about
+  // the rule that names no control at all.
+  incomplete: (rule) => ({
+    field: RULE_PART_FIELDS[incompleteRulePart(rule) ?? 'target'],
+    message: INCOMPLETE_RULE_MESSAGE,
+  }),
+  // No control on screen holds a rule's id, so the refusal lands on the first
+  // question the rule answers. Unreachable from this dialog by construction —
+  // it mints an id before it validates, so the draft it judges is the rule it
+  // would save — and stated anyway, because the placement table is what stops
+  // a problem being added to the description with nowhere to appear.
+  missingId: () => ({ field: TARGET_FIELD, message: MISSING_ID_MESSAGE }),
+  // Unreachable here for the same reason and by the same mechanism: this
+  // dialog is told when the rule it opened shares its id with another, and
+  // mints a fresh one before it validates — so the draft it judges is a rule
+  // no other rule's id collides with. Stated anyway, because the table is
+  // total.
+  duplicateId: () => ({ field: TARGET_FIELD, message: MISSING_ID_MESSAGE }),
+});
+
+/**
+ * Everything the editor can tell about a draft without leaving it, as the
+ * refusal it becomes.
+ *
+ * Pure, and separate from the component, because it is the whole of what
+ * "Finish and Close" decides: the dialog only hands it the values the fields
+ * currently hold, the codebook the session holds right now, and the targets
+ * the rule set it belongs to may be about.
+ *
+ * Everything it decides comes from `describeRule`, which is the whole point:
+ * the row, the rule-set field and this dialog read one description, so a rule
+ * the list marks as broken cannot be finished from the editor holding it. A
+ * pattern that will not compile used to be checked here and nowhere else, so
+ * a stored rule carrying one was refused only if the researcher happened to
+ * reopen that exact rule.
+ */
+export const ruleDraftRefusal = (
+  rule: RuleDraft,
+  codebook: Readonly<Codebook>,
+  allowedTargets: readonly RuleTargetType[],
+): DialogFormErrors | undefined => {
+  // One refusal, however many problems the rule has: the dialog focuses the
+  // first control it names, and the researcher fixes them one at a time.
+  const [problem] = describeRule({
+    rule,
+    codebook,
+    targets: allowedTargets,
+  }).problems;
+  if (problem === undefined) return undefined;
+
+  const { field, message } = RULE_PROBLEM_PLACEMENTS[problem.code](
+    rule,
+    codebook,
+  );
+  return { fieldErrors: { [field]: message } };
+};
 
 /**
  * Clears every choice below the one that changed.
@@ -231,72 +619,6 @@ const useRuleCascade = (
   }, [emptyValue, setFieldValue, values]);
 };
 
-type OperandFieldProps = Readonly<{
-  seed: RuleDraft;
-  operator: string | undefined;
-  variableType: VariableType | undefined;
-  variableChoices: readonly RuleChoiceOption[] | undefined;
-  /** Ego rules address the researcher about the ego's own attribute. */
-  regExpHint: string;
-}>;
-
-/**
- * The operand, when the chosen operator takes one. Shared by ego and alter
- * rules: the only difference between them was copy, and a fork over copy is
- * how the ego branch came to be missing the integer option-count control.
- */
-function RuleOperandField({
-  seed,
-  operator,
-  variableType,
-  variableChoices,
-  regExpHint,
-}: OperandFieldProps) {
-  const seedValue = seed.options?.value;
-  if (!isFilterOperator(operator)) return null;
-
-  if (operatorsWithOptionCount.has(operator)) {
-    return (
-      <RuleCountField
-        label="Selected option count"
-        hint="Enter the number of options that must be selected for this rule to pass."
-        placeholder="Enter a value..."
-        initialValue={seedValue}
-      />
-    );
-  }
-
-  if (operatorsWithRegExp.has(operator)) {
-    return (
-      <RuleValueField
-        label="Attribute value"
-        hint={regExpHint}
-        placeholder="Enter a regular expression..."
-        variableType={variableType}
-        options={variableChoices}
-        initialValue={seedValue}
-        required
-      />
-    );
-  }
-
-  if (operatorsWithValue.has(operator)) {
-    return (
-      <RuleValueField
-        label="Attribute value"
-        hint="Enter the value to compare against."
-        placeholder="Enter a value..."
-        variableType={variableType}
-        options={variableChoices}
-        initialValue={seedValue}
-        required
-      />
-    );
-  }
-
-  return null;
-}
-
 type BranchProps = Readonly<{
   seed: RuleDraft;
   attributeId: string | undefined;
@@ -305,6 +627,7 @@ type BranchProps = Readonly<{
   operatorOptions: readonly RuleOperatorOption[];
   variableType: VariableType | undefined;
   variableChoices: readonly RuleChoiceOption[] | undefined;
+  dateParameters: RuleDateParameters;
 }>;
 
 function EgoRuleFields({
@@ -315,6 +638,7 @@ function EgoRuleFields({
   operatorOptions,
   variableType,
   variableChoices,
+  dateParameters,
 }: BranchProps) {
   return (
     <Section title="Rule structure" description={RULE_STRUCTURE_DESCRIPTION}>
@@ -341,10 +665,11 @@ function EgoRuleFields({
         />
       )}
       <RuleOperandField
-        seed={seed}
-        operator={operator}
         variableType={variableType}
-        variableChoices={variableChoices}
+        operator={operator}
+        options={variableChoices}
+        dateParameters={dateParameters}
+        initialValue={seed.options?.value}
         regExpHint="Enter the value to compare against. You can use a regular expression to match multiple values."
       />
     </Section>
@@ -369,6 +694,7 @@ function EntityRuleFields({
   operatorOptions,
   variableType,
   variableChoices,
+  dateParameters,
 }: EntityBranchProps) {
   // `rule.type` is the entity CLASS, so it is an internal token and never
   // display copy. Interpolating it produced "node Type" and "Choose an node
@@ -437,10 +763,11 @@ function EntityRuleFields({
             />
           )}
           <RuleOperandField
-            seed={seed}
-            operator={operator}
             variableType={variableType}
-            variableChoices={variableChoices}
+            operator={operator}
+            options={variableChoices}
+            dateParameters={dateParameters}
+            initialValue={seed.options?.value}
             regExpHint="Enter a regular expression to compare against."
           />
         </Section>
@@ -480,13 +807,26 @@ function RuleEditorFields({
       variableOptions: ruleVariableOptions(variables),
       variableType,
       variableChoices: ruleVariableChoices(variables, attributeId),
-      operatorOptions: ruleOperatorOptions(variableType),
+      dateParameters: ruleVariableDateParameters(variables, attributeId),
     };
   }, [attributeId, codebook, entityTypeId, target]);
 
+  // The operator the rule HOLDS is part of the list, because a stored operator
+  // the editor no longer offers has to be visible rather than left showing the
+  // select's placeholder. Read from the field rather than from the seed, so it
+  // goes when the cascade clears it.
+  const operatorOptions = useMemo(
+    () => ruleOperatorOptions(derived.variableType, operator),
+    [derived.variableType, operator],
+  );
+
+  // The operator is part of the answer: a categorical attribute empties to an
+  // empty selection when its options are compared and to no number at all when
+  // they are counted, so a cascade that only knew the type parked a list in a
+  // numeric control.
   const emptyValue = useMemo(
-    () => emptyRuleValue(derived.variableType),
-    [derived.variableType],
+    () => emptyRuleValue(derived.variableType, operator),
+    [derived.variableType, operator],
   );
 
   useRuleCascade(values, emptyValue);
@@ -496,9 +836,10 @@ function RuleEditorFields({
     attributeId,
     operator,
     variableOptions: derived.variableOptions,
-    operatorOptions: derived.operatorOptions,
+    operatorOptions,
     variableType: derived.variableType,
     variableChoices: derived.variableChoices,
+    dateParameters: derived.dateParameters,
   };
 
   return (
@@ -514,7 +855,7 @@ function RuleEditorFields({
           label="Entity"
           hint="Select which network entity your rule should target."
           component={RadioGroupField}
-          options={[...ruleTypes]}
+          options={[...ruleTargetOptions(ruleTypes, seed.type)]}
           initialValue={seed.type === '' ? undefined : seed.type}
           required={REQUIRED_MESSAGE}
         />
@@ -553,7 +894,35 @@ export type RuleEditorDialogProps = Readonly<{
   /** The rule as this editing session opened on it. */
   seed: RuleDraft;
   ruleTypes: readonly RuleTypeOption[];
-  onSave: (rule: RuleDraft) => void;
+  /**
+   * What a rule in the set this was opened from may be ABOUT.
+   *
+   * Narrower than the schema's rule shapes and wider than `ruleTypes`: a set
+   * that does not offer to BUILD edge rules is still one the schema lets an
+   * edge rule sit in, while an ego rule inside a stage's node/edge filter is
+   * one it refuses. Only the second is a refusal, so the two lists are
+   * separate.
+   */
+  allowedTargets: readonly RuleTargetType[];
+  /**
+   * Takes the finished rule, or REFUSES it.
+   *
+   * A caller that cannot accept the rule right now — a list that has stopped
+   * being editable while this dialog was open — answers with the errors to
+   * show instead, exactly as `DialogForm` documents for a save the host cannot
+   * take. The dialog then stays open with the draft intact, and the session is
+   * not recorded as saved.
+   */
+  /**
+   * Whether another rule in the set this was opened from is already filed
+   * under this rule's id.
+   *
+   * Only the set can answer it, and it decides one thing: whether the id this
+   * session commits is the one it opened with. Passed rather than derived
+   * because this dialog is handed one rule, never the set around it.
+   */
+  idIsShared?: boolean;
+  onSave: (rule: RuleDraft) => void | DialogFormErrors;
   onCancel: () => void;
   finalFocus?: DialogFormProps['finalFocus'];
   /** Matches an existing list row to this dialog for its shared morph. */
@@ -583,6 +952,8 @@ export default function RuleEditorDialog({
   open,
   seed,
   ruleTypes,
+  allowedTargets,
+  idIsShared = false,
   onSave,
   onCancel,
   finalFocus,
@@ -601,55 +972,77 @@ export default function RuleEditorDialog({
    */
   const saved = useRef(false);
 
+  // The codebook the session holds right now, read through a ref so the check
+  // below stays live without giving the validator a new identity on every
+  // snapshot the session receives. Same reason `useRuleSetValidation` does it:
+  // a collaborator's edit has to reach a dialog that is already open.
+  const { protocolContext } = useStageEditorForm();
+  const codebookRef = useRef(protocolContext.codebook);
+  codebookRef.current = protocolContext.codebook;
+
   /**
    * Everything the editor can tell about a draft without leaving it, run after
-   * every field has validated itself. Both answers name a control, because
-   * both are about one: a rule the researcher cannot save is never a general
+   * every field has validated itself. Every answer names a control, because
+   * each is about one: a rule the researcher cannot save is never a general
    * fault with the draft, it is a specific thing that is missing or wrong.
+   *
+   * The draft is read through the same `describeRule` the rule's own row reads
+   * it through, so the two cannot disagree about whether a rule is broken —
+   * which is what let a rule pointed at a deleted entity type be saved from
+   * here and marked broken by the row a moment later.
    */
+  const targetsRef = useRef(allowedTargets);
+  targetsRef.current = allowedTargets;
+
+  /**
+   * The id this session's rule will be filed under.
+   *
+   * Decided once per editing session rather than at submit time, so the draft
+   * the dialog VALIDATES is the rule it would save. A rule arriving with no id
+   * — or with something that is not a string, which the protocol schema
+   * refuses just as flatly — is repaired here, and would otherwise be refused
+   * by the very dialog that repairs it: nothing on screen asks for an id, so
+   * there would be no control to answer.
+   *
+   * A string another rule in the same set is already filed under mints too,
+   * and for the same reason: `findDuplicateId` refuses a filter holding one id
+   * twice, so keeping it would save a rule the protocol schema goes on
+   * rejecting. That is the only case in which a rule's own string id is
+   * replaced, and it happens because the researcher opened this rule and
+   * saved it — never behind their back.
+   *
+   * Any other string the rule already has is its identity, and is kept: the
+   * schema accepts it, the row is keyed by it, and replacing one would quietly
+   * rewrite the researcher's protocol.
+   */
+  const ruleId = useRef<string | undefined>(undefined);
+  ruleId.current ??=
+    typeof seed.id === 'string' && !idIsShared ? seed.id : uuid({});
+
   const validate = useCallback(
-    (values: Record<string, FieldValue>): DialogFormErrors | undefined => {
-      const rule = ruleDraftFromValues(values);
-      const operator = rule.options?.operator;
-
-      // A `contains` operand is a regular expression, and one that does not
-      // compile matches nothing at all. Checked here rather than as a field
-      // rule because whether it applies at all depends on the OPERATOR, which
-      // is a different field; the field it belongs to is still the field that
-      // reports it.
-      if (
-        isFilterOperator(operator) &&
-        operatorsWithRegExp.has(operator) &&
-        !isValidRegExp(rule.options?.value)
-      ) {
-        return {
-          fieldErrors: { [RULE_VALUE_FIELD]: INVALID_REG_EXP_MESSAGE },
-        };
-      }
-
-      // The completeness the protocol schema expects, asserted once where the
-      // rule leaves the editor. Every control above states its own `required`,
-      // so this is the backstop for a gap none of them covers — and it is
-      // reported by the control that holds the gap rather than as a sentence
-      // about the rule that names no control at all.
-      const missing = incompleteRulePart(rule);
-      if (missing !== undefined) {
-        return {
-          fieldErrors: { [RULE_PART_FIELDS[missing]]: INCOMPLETE_RULE_MESSAGE },
-        };
-      }
-
-      return undefined;
-    },
+    (values: Record<string, FieldValue>): DialogFormErrors | undefined =>
+      ruleDraftRefusal(
+        { id: ruleId.current, ...ruleDraftFromValues(values) },
+        codebookRef.current,
+        targetsRef.current,
+      ),
     [],
   );
 
   const handleSubmit = useCallback(
-    (values: Record<string, FieldValue>): void => {
+    (values: Record<string, FieldValue>): DialogFormErrors | undefined => {
+      const refused = onSave({
+        id: ruleId.current,
+        ...ruleDraftFromValues(values),
+      });
+      // Recorded only once the rule has actually been taken. Marking a refused
+      // save as this session's outcome would leave the editor with no way out:
+      // `handleClose` swallows every dismissal that follows one.
+      if (refused !== undefined) return refused;
       saved.current = true;
-      onSave({ id: seed.id ?? uuid({}), ...ruleDraftFromValues(values) });
+      return undefined;
     },
-    [onSave, seed.id],
+    [onSave],
   );
 
   const handleClose = useCallback(() => {
@@ -701,18 +1094,38 @@ export default function RuleEditorDialog({
   );
 }
 
-function isValidRegExp(value: unknown): boolean {
-  if (typeof value !== 'string') return false;
-  try {
-    // eslint-disable-next-line no-new -- compiling it IS the check
-    new RegExp(value);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 const INVALID_REG_EXP_MESSAGE =
   'This is not a valid regular expression. Correct it, or choose a different operator.';
 const INCOMPLETE_RULE_MESSAGE =
   'This rule cannot be saved until this question is answered.';
+const MISSING_ID_MESSAGE =
+  'This rule has no identifier. Answer this question again to give it one.';
+
+/**
+ * A reference the codebook has lost, named rather than described.
+ *
+ * "a type that is no longer in the codebook" leaves the researcher comparing
+ * the rule against the codebook to work out which one; the id is what the
+ * control beside this is showing, so it is what the sentence says.
+ */
+const missingEntityTypeMessage = (typeId: string | undefined): string =>
+  typeId === undefined
+    ? 'This rule is pointed at a type that is no longer in the codebook. Choose another one.'
+    : `This rule is pointed at "${typeId}", which is no longer in the codebook. Choose another type.`;
+
+const missingAttributeMessage = (attributeId: string | undefined): string =>
+  attributeId === undefined
+    ? 'This rule is about an attribute that is no longer in the codebook. Choose another one.'
+    : `This rule is about "${attributeId}", which is no longer in the codebook. Choose another attribute.`;
+
+const MISSING_EGO_MESSAGE =
+  'This protocol no longer defines any ego attributes, so this rule cannot be about the ego. Choose another target.';
+const INVALID_OPERATOR_MESSAGE =
+  'This operator is not valid for this attribute’s type. Choose another one.';
+const INVALID_PRESENCE_OPERATOR_MESSAGE =
+  'This operator cannot ask whether an entity type is present. Choose another one.';
+// Says what the value IS rather than what the rule will do, for the reason
+// `staleDatesMessage` gives: beside a negating operator a value that can never
+// be compared makes the rule match every participant, not none of them.
+const INVALID_OPERAND_MESSAGE =
+  'This is not the kind of value this attribute is answered with. Enter one it can be compared against.';
