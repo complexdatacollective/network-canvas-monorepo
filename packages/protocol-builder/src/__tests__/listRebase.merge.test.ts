@@ -165,4 +165,80 @@ describe('an id-less list rebased onto a collaborator’s arrival', () => {
       { id: 'f-b', variable: 'b', prompt: 'What do they do?' },
     ]);
   });
+
+  /**
+   * Two rows a document really can hold twice.
+   *
+   * An id-less row's identity IS its content, so a list holding the same row
+   * twice holds two rows nothing tells apart — and each ancestor row used to be
+   * resolved on its own, by content and then by its ORIGINAL index. A
+   * collaborator inserting a row ahead of them shifts both: the first row's
+   * index no longer holds its content, so it read as gone, and the second row
+   * claimed the same local candidate the first one had. The arrival's unclaimed
+   * copy was then treated as a row nobody had ever seen, and the merge emitted
+   * BOTH of them alongside the researcher's rewrite.
+   */
+  it('matches duplicate rows one-to-one rather than duplicating them', () => {
+    // A form asking the same question twice, which an older protocol really
+    // holds: neither row carries an id, so neither is distinguishable.
+    const session = openSession([a, a]);
+    // One submit that rewrites the second copy. Content is identity here, so
+    // no single row operation says it: a whole-list `set`, the merge case.
+    const rewritten = field('a', 'How old are they?');
+    edit(session, [a, rewritten]);
+
+    // A collaborator adds a row ABOVE both copies.
+    const n = field('n', 'Their name?');
+    session.acknowledge({
+      fields: stageWith([n, a, a]),
+      throughBatchId: 0,
+      manifestRevision: revision(2n),
+    });
+
+    // Three rows: the collaborator's, the copy the researcher left alone, and
+    // the one they rewrote. Not four.
+    expect(readFields(session.getSnapshot().editedSection.fields)).toEqual([
+      n,
+      a,
+      rewritten,
+    ]);
+  });
+
+  /**
+   * The same pairing, asked of a removal rather than of a `set`.
+   *
+   * `resolveRowIndex` refuses a row it cannot tell from another, which is right
+   * where the answer decides which row an edit is written INTO. A removal only
+   * says a row goes, and removing either of two identical rows leaves the same
+   * list — so refusing there dropped the researcher's deletion outright, and
+   * the row they deleted came back the moment a collaborator touched anything
+   * else in the list.
+   */
+  it('keeps the deletion of one of two identical rows', () => {
+    const session = openSession([a, a, b]);
+    session.dispatch(
+      commandsFromDraftChange(
+        session.getSnapshot().editedSection.fields,
+        stageWith([a, b]),
+      ),
+    );
+    expect(session.getSnapshot().pendingCommands[0]?.commands).toEqual([
+      { op: 'removeItem', key: ['form', 'fields'], index: 1 },
+    ]);
+
+    // A collaborator adds a row above everything, which shifts every index the
+    // researcher's removal was measured against.
+    const n = field('n', 'Their name?');
+    session.acknowledge({
+      fields: stageWith([n, a, a, b]),
+      throughBatchId: 0,
+      manifestRevision: revision(2n),
+    });
+
+    expect(readFields(session.getSnapshot().editedSection.fields)).toEqual([
+      n,
+      a,
+      b,
+    ]);
+  });
 });

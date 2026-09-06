@@ -47,11 +47,22 @@ type Row = { id?: string; text: string };
 /** How a trial identifies a row for the reference model. */
 type Mode = 'identified' | 'idless';
 
-const rowsOf = (mode: Mode, count: number): Row[] =>
+/**
+ * The rows a trial starts from.
+ *
+ * Identified rows are all distinct, because an id is minted per row. Id-less
+ * rows are drawn from an alphabet SMALLER than the list, so the same row
+ * appears in it twice — which a real document holds (a form asking one question
+ * twice, an options list with two blank rows) and which is the whole difficulty
+ * of an identity that is content: two such rows are two rows nothing tells
+ * apart, and every correspondence this code draws has to pair them off one
+ * apiece rather than answer both with the same partner.
+ */
+const rowsOf = (rng: Rng, mode: Mode, count: number): Row[] =>
   Array.from({ length: count }, (_, i) =>
     mode === 'identified'
       ? { id: `r${String(i)}`, text: `r${String(i)}-0` }
-      : { text: `r${String(i)}` },
+      : { text: `r${String(int(rng, Math.max(1, count - 1)))}` },
   );
 
 /** Applies one random edit to a list, returning the new list. */
@@ -109,6 +120,14 @@ type Merged = Readonly<{ ids: string[]; byId: Map<string, Row> }>;
 const index = (list: readonly Row[]) =>
   new Map(list.map((row) => [keyOf(row), row] as const));
 
+/** How many copies of each row a list holds. */
+const copies = (list: readonly Row[]) =>
+  list.reduce<Map<string, number>>(
+    (counted, row) =>
+      counted.set(keyOf(row), (counted.get(keyOf(row)) ?? 0) + 1),
+    new Map(),
+  );
+
 /**
  * The three-way merge every route through this code claims to perform, stated
  * over row identity alone:
@@ -117,6 +136,17 @@ const index = (list: readonly Row[]) =>
  * - a row either side added is present;
  * - a row the local edit changed keeps the local content, otherwise the
  *   arrival's content stands.
+ *
+ * Said as a COUNT rather than as presence, because an id-less row's identity is
+ * its content and a list may hold two of them: the question is then not whether
+ * that row survives but how many copies do. The three rules become
+ *
+ *   min(base, local, remote) + max(0, local - base) + max(0, remote - base)
+ *
+ * — the ancestor copies BOTH sides kept, plus the copies each side added. For a
+ * row no list holds twice that is exactly the three rules; for one held twice
+ * it says the ancestor's copies are paired off with each side's, so two people
+ * who each delete a copy have deleted the same copy rather than two of them.
  *
  * Order is deliberately not asserted here — a refused move legitimately leaves
  * the arrival's order — so this is purely the data-loss dimension.
@@ -129,15 +159,21 @@ function referenceMerge(
   const baseById = index(base);
   const localById = index(local);
   const remoteById = index(remote);
+  const inBase = copies(base);
+  const inLocal = copies(local);
+  const inRemote = copies(remote);
   const ids: string[] = [];
   const byId = new Map<string, Row>();
   const consider = (id: string) => {
     if (byId.has(id)) return;
-    const inBase = baseById.has(id);
-    const inLocal = localById.has(id);
-    const inRemote = remoteById.has(id);
-    const present = inBase ? inLocal && inRemote : inLocal || inRemote;
-    if (!present) return;
+    const ancestral = inBase.get(id) ?? 0;
+    const locally = inLocal.get(id) ?? 0;
+    const remotely = inRemote.get(id) ?? 0;
+    const present =
+      Math.min(ancestral, locally, remotely) +
+      Math.max(0, locally - ancestral) +
+      Math.max(0, remotely - ancestral);
+    if (present === 0) return;
     const localRow = localById.get(id);
     const baseRow = baseById.get(id);
     const localChanged =
@@ -146,7 +182,7 @@ function referenceMerge(
         canonicalize(localRow) !== canonicalize(baseRow));
     const row = localChanged ? localRow : (remoteById.get(id) ?? localRow);
     if (row === undefined) return;
-    ids.push(id);
+    for (let copy = 0; copy < present; copy += 1) ids.push(id);
     byId.set(id, row);
   };
   for (const row of local) consider(keyOf(row));
@@ -194,7 +230,7 @@ function runTrial(
 }> {
   const rng = mulberry32(seed);
   const path = rng() < 0.5 ? ['prompts'] : ['nodeConfig', 'form'];
-  const base = rowsOf(mode, int(rng, 5));
+  const base = rowsOf(rng, mode, int(rng, 5));
 
   let minted = 0;
   const mintLocal = (): Row => {
@@ -312,7 +348,13 @@ function mergesLikeTheModel(trial: Trial, outcome: Outcome): string | null {
   if (outcome.kind !== 'ok') return null;
   const expected = referenceMerge(trial.base, trial.local, trial.remote);
   const actual = outcome.result.map(keyOf);
-  const duplicated = actual.length !== new Set(actual).size;
+  // A row held more times than the merge accounts for. Not "held twice": a
+  // list may legitimately hold the same id-less row twice, and the model says
+  // how many copies of it should survive.
+  const held = copies(outcome.result);
+  const duplicated = [...held].some(
+    ([id, count]) => count > expected.ids.filter((each) => each === id).length,
+  );
   const sameIds =
     canonicalize(actual.toSorted()) === canonicalize(expected.ids);
   const sameContent = outcome.result.every(
