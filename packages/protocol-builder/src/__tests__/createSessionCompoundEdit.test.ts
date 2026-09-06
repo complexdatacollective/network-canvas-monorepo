@@ -125,6 +125,36 @@ describe('a compound edit made from a stage being created', () => {
   });
 
   /**
+   * A finish brings this session's own copy of its stage level with the host —
+   * except here, where there is no copy to bring level. The interview holds no
+   * section for a stage being created, this session does not know the stage
+   * order the host inserted it into, and a stage section outside the stage
+   * order is a protocol issue rather than a stage anything can read. So the
+   * sections are left exactly as they were, as an acknowledgement leaves them.
+   */
+  it('does not put the stage it just created into the sections it reads', async () => {
+    const { session } = openCreateSession();
+    const stageSection = sectionId({
+      kind: 'stage',
+      stageId: 'stage-being-created',
+    });
+    session.dispatch([{ op: 'set', key: 'label', value: 'About you' }]);
+
+    await session.finish();
+
+    expect(
+      session.getSnapshot().protocolSections[stageSection],
+    ).toBeUndefined();
+    expect(
+      session
+        .getSnapshot()
+        .protocolContext.issues.filter(
+          (issue) => issue.sectionId === stageSection,
+        ),
+    ).toEqual([]);
+  });
+
+  /**
    * The base itself, read where the session shows it: losing editing access
    * rolls the draft back to the stage the host is holding. A compound edit
    * that adopted the DRAFT as the base would roll back to nothing.
