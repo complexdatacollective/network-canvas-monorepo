@@ -14,9 +14,11 @@ import {
 } from '@codaco/fresco-ui/form/utils/objectPath';
 import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 import {
+  applyCommands,
   canonicalize,
   type Command,
   commandTarget,
+  targetPath,
 } from '@codaco/studio-sync/apply';
 
 import { commandsFromDraftChange, type StageFormDraft } from '../session.ts';
@@ -173,18 +175,34 @@ export function useDiscardStageValues(): (
       // holds NOW, rather than the snapshot this callback was built against.
       // An empty batch writes nothing, so it can never be refused.
       const { draft: current } = applyOwnCommands([]);
-      let next = current;
+      const causeBatch = causeCommands(current, cause);
+      /**
+       * The draft the discards are read against, WITH the cause already in it.
+       *
+       * The cause is not context here, it is part of the state being described:
+       * an exclusive-variant container travels whole
+       * (`commandsFromDraftChange`), so a discard inside one is a single `set`
+       * of the container — assembled out of the draft this diff is given. Given
+       * the draft without the cause, that container is assembled around the
+       * value the researcher has just changed, and the batch puts it back: a
+       * pedigree told to let the participant choose its framing sent
+       * `set framing.mode` and then `set framing = {mode: 'fixed'}`, and the
+       * second command undid the first.
+       */
+      const withCause = applyCommands(current, [...causeBatch]);
+      let next = withCause;
       for (const path of paths) {
         const target = safePath(path);
         if (target === null || target.length === 0) continue;
         next = withoutValueAt(next, target);
       }
+      const discards = commandsFromDraftChange(withCause, next);
       // The cause first, so the batch reads as what happened: this changed, and
       // therefore these were thrown away. Judged as a whole, so a cause with no
       // discards behind it still travels — see above.
       const batch = [
-        ...causeCommands(current, cause),
-        ...commandsFromDraftChange(current, next),
+        ...causeBatch.filter((command) => !carriedBy(discards, command)),
+        ...discards,
       ];
       if (batch.length > 0) applyOwnCommands(batch);
 
@@ -195,6 +213,36 @@ export function useDiscardStageValues(): (
     [applyOwnCommands, clearStageValue],
   );
 }
+
+/**
+ * Whether a discard already writes the cause's own value on its way past.
+ *
+ * Only one shape produces this: a discard inside an exclusive-variant
+ * container is a single `set` of the whole container, and because the cause
+ * was written into the draft that `set` was diffed FROM, the container it
+ * carries already holds it. Sending the cause separately as well would be a
+ * command saying what the next one says again — and a reader of the log would
+ * have to work out that the two do not disagree.
+ *
+ * Asked of the commands rather than of the schema, so it answers for whatever
+ * reason a container comes to travel whole rather than only for the reason
+ * there is today.
+ */
+function carriedBy(discards: readonly Command[], cause: Command): boolean {
+  const causePath = targetPath(cause.key);
+  return discards.some(
+    (command) =>
+      command.op === 'set' && covers(targetPath(command.key), causePath),
+  );
+}
+
+/** Whether writing at `ancestor` writes whatever is at `path`. */
+const covers = (
+  ancestor: readonly string[],
+  path: readonly string[],
+): boolean =>
+  ancestor.length <= path.length &&
+  ancestor.every((segment, index) => segment === path[index]);
 
 /**
  * The command that puts a discard's cause into the draft, or nothing at all.
