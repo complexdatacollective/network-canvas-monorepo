@@ -385,3 +385,83 @@ describe('a field mounting over a path the form has emptied inside', () => {
     await waitFor(() => expect(probedValue('items[0]')).toEqual({}));
   });
 });
+
+/** Mounts and unmounts its children on demand — a group that can be folded away again. */
+function Collapsible({
+  label,
+  children,
+}: Readonly<{ label: string; children: ReactNode }>) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button type="button" onClick={() => setOpen((current) => !current)}>
+        {open ? `Hide ${label}` : `Show ${label}`}
+      </button>
+      {open && children}
+    </>
+  );
+}
+
+/** A control that writes one fixed value when pressed. */
+const SetBounds = (({
+  onChange,
+}: Readonly<{ onChange?: (value: unknown) => void }>) => (
+  <button type="button" onClick={() => onChange?.({ min: 'five' })}>
+    Set bounds
+  </button>
+)) as ComponentType<Record<string, unknown>>;
+
+/**
+ * Fields may overlap: one registered at a container, others at paths inside
+ * it. What a leaf mounting beneath both starts out holding has to follow the
+ * store's own precedence between them, or the leaf becomes a way for a value
+ * the form had already set aside to come back.
+ */
+describe('a field mounting beneath overlapping fields', () => {
+  it('starts from the mounted ancestor rather than a parked one beneath it', async () => {
+    const user = userEvent.setup({ delay: null });
+    renderEditor(
+      createSession({
+        label: 'Welcome',
+        title: 'Hello',
+        items: [],
+        settings: { bounds: { min: 'one' } },
+      }),
+      <BuilderSection title="Settings">
+        <ProtocolField
+          name="settings"
+          label="Settings"
+          component={ValueOutput}
+        />
+        <Collapsible label="bounds">
+          <ProtocolField
+            name="settings.bounds"
+            label="Bounds"
+            component={SetBounds}
+          />
+        </Collapsible>
+        <Disclosure label="Show minimum">
+          <ProtocolField
+            name="settings.bounds.min"
+            label="Minimum"
+            component={InputField}
+          />
+        </Disclosure>
+      </BuilderSection>,
+    );
+
+    // An edit made in the bounds control, then folded away: parked, with the
+    // settings container still mounted above it.
+    await user.click(screen.getByRole('button', { name: 'Show bounds' }));
+    await user.click(screen.getByRole('button', { name: 'Set bounds' }));
+    await user.click(screen.getByRole('button', { name: 'Hide bounds' }));
+
+    // The mounted container is what the form assembles and what the save
+    // writes; the parked bounds beneath it are dropped by both. A leaf seeded
+    // from them would put that parked edit back over the container.
+    await user.click(screen.getByRole('button', { name: 'Show minimum' }));
+    expect(await screen.findByRole('textbox', { name: 'Minimum' })).toHaveValue(
+      'one',
+    );
+  });
+});

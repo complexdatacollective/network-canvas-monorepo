@@ -384,7 +384,13 @@ function pathHasAnswer(
  *    cleared capability parked or a container the clear emptied. This is the
  *    case the store cannot see for itself: a field that had never registered
  *    when the clear ran has no record of its own, so nothing but this stands
- *    between it and the draft's memory of the value.
+ *    between it and the draft's memory of the value. A REGISTERED ancestor is
+ *    asked before a dormant one whatever their depths, because that is the
+ *    store's own precedence: the form's values are assembled from registered
+ *    fields alone, and the submit drops a parked write that a mounted field
+ *    overlaps — so a dormant ancestor's value is the form's knowledge only
+ *    where no mounted field owns the path, and a leaf seeded from it under a
+ *    mounted container would put the parked edit back over that container.
  * 3. Otherwise the draft's value, minus every sub-path a record BELOW has
  *    since emptied. A container the form emptied altogether starts absent
  *    rather than as `{}`, which is not a value the schema accepts anywhere —
@@ -398,14 +404,15 @@ function startingValue(
   target: ObjectPath,
 ): unknown {
   const committed = getValue(committedFields, target);
-  const records = formRecords(state);
+  const registered = recordsIn(state.fields);
+  const dormant = recordsIn(state.dormantValues);
+  const records = [...registered, ...dormant];
   if (records.some((record) => samePath(record.path, target))) {
     return committed;
   }
 
-  const above = records
-    .filter((record) => isAbove(record.path, target))
-    .toSorted((a, b) => b.path.length - a.path.length)[0];
+  const above =
+    nearestAbove(registered, target) ?? nearestAbove(dormant, target);
   if (above !== undefined) {
     return readInside(above.value, target.slice(above.path.length));
   }
@@ -480,21 +487,33 @@ function safePath(
   }
 }
 
+type FormRecord = Readonly<{ path: ObjectPath; value: unknown }>;
+
 /** Every field the form holds, mounted or parked, addressed structurally. */
-function formRecords(
-  state: FormStoreState,
-): { path: ObjectPath; value: unknown }[] {
-  const records: { path: ObjectPath; value: unknown }[] = [];
-  for (const source of [state.fields, state.dormantValues]) {
-    for (const [name, field] of source) {
-      // A stored path is authoritative; a name without one is a plain field
-      // whose own name is its path.
-      const path = field.path ?? safePath(name, 'legacy');
-      if (path !== null) records.push({ path, value: field.value });
-    }
+function formRecords(state: FormStoreState): FormRecord[] {
+  return [...recordsIn(state.fields), ...recordsIn(state.dormantValues)];
+}
+
+/** The fields of one of the form's two maps, addressed structurally. */
+function recordsIn(source: FormStoreState['fields']): FormRecord[] {
+  const records: FormRecord[] = [];
+  for (const [name, field] of source) {
+    // A stored path is authoritative; a name without one is a plain field
+    // whose own name is its path.
+    const path = field.path ?? safePath(name, 'legacy');
+    if (path !== null) records.push({ path, value: field.value });
   }
   return records;
 }
+
+/** The deepest of these records that sits strictly above `target`. */
+const nearestAbove = (
+  records: readonly FormRecord[],
+  target: ObjectPath,
+): FormRecord | undefined =>
+  records
+    .filter((record) => isAbove(record.path, target))
+    .toSorted((a, b) => b.path.length - a.path.length)[0];
 
 const samePath = (a: ObjectPath, b: ObjectPath) =>
   a.length === b.length && a.every((segment, index) => b[index] === segment);
