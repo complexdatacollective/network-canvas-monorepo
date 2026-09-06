@@ -3,6 +3,7 @@ import type pg from 'pg';
 import { BACKUP_ROLE, TENANT_ROLES } from '@codaco/studio-sync/rls';
 import {
   runtimeRolesSql,
+  RESTRICTED_LARGE_OBJECT_FUNCTIONS,
   validateRoleNames,
 } from '@codaco/studio-sync/role-bootstrap';
 
@@ -170,18 +171,15 @@ export async function enforceMigrationSecurity(
   // routines are privileged too; their default refusal must survive ACL drift.
   const largeObjectCreation = await client.query<{ present: boolean }>(
     `SELECT EXISTS (
-      SELECT 1 FROM pg_roles identity CROSS JOIN unnest(ARRAY[
-        'pg_catalog.lo_create(oid)'::regprocedure,
-        'pg_catalog.lo_creat(integer)'::regprocedure,
-        'pg_catalog.lo_from_bytea(oid,bytea)'::regprocedure,
-        'pg_catalog.lo_import(text)'::regprocedure,
-        'pg_catalog.lo_import(text,oid)'::regprocedure,
-        'pg_catalog.lo_export(oid,text)'::regprocedure
-      ]) routine
+      SELECT 1 FROM pg_roles identity CROSS JOIN unnest($3::regprocedure[]) routine
       WHERE (identity.rolname = ANY($1::text[]) OR identity.rolname = ANY($2::text[]))
         AND has_function_privilege(identity.oid, routine, 'EXECUTE')
     ) AS present`,
-    [restrictedLogins, [...Object.values(TENANT_ROLES), BACKUP_ROLE]],
+    [
+      restrictedLogins,
+      [...Object.values(TENANT_ROLES), BACKUP_ROLE],
+      RESTRICTED_LARGE_OBJECT_FUNCTIONS,
+    ],
   );
   if (largeObjectCreation.rows[0]?.present !== false) {
     throw new Error(

@@ -100,6 +100,12 @@ REVOKE EXECUTE ON FUNCTION
 FROM PUBLIC, studio_app, studio_maintenance, studio_runtime;
 ```
 
+Installer authors use `revokeLargeObjectPrivilegesSql` from
+`@codaco/studio-sync/role-bootstrap`, passing the existing restricted roles and
+logins. The migration verifier uses the same reviewed function inventory.
+The helper grants no administrator privileges and still requires an
+administrator connection to each target database.
+
 Include any pre-provisioned backup role and login in that revocation. Remove
 unexpected direct grants too; revoking PUBLIC does not remove a role-specific
 EXECUTE grant. If an administrator-owned restore needs to create large objects,

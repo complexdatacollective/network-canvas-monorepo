@@ -5,7 +5,10 @@ import { escapeIdentifier, Pool } from 'pg';
 import { describe, expect, it } from 'vitest';
 
 import { BACKUP_ROLE } from '@codaco/studio-sync/rls';
-import { runtimeRolesSql } from '@codaco/studio-sync/role-bootstrap';
+import {
+  runtimeRolesSql,
+  revokeLargeObjectPrivilegesSql,
+} from '@codaco/studio-sync/role-bootstrap';
 
 import {
   createScratchDatabase,
@@ -126,6 +129,56 @@ function nextMigration(
 }
 
 describe.skipIf(!database)('migration security invariants', () => {
+  it('administrator provisioning removes direct and PUBLIC large-object capabilities without granting another identity access', async () => {
+    await withDeployment(async ({ administrator, owner, logins }) => {
+      const roles = ['studio_app', 'studio_maintenance', logins[1]];
+      // Seed this test's initial ACL independently of the helper under test.
+      await administrator.query(`REVOKE EXECUTE ON FUNCTION
+        pg_catalog.lo_create(oid), pg_catalog.lo_creat(integer),
+        pg_catalog.lo_from_bytea(oid,bytea), pg_catalog.lo_import(text),
+        pg_catalog.lo_import(text,oid), pg_catalog.lo_export(oid,text) FROM PUBLIC`);
+      const capabilities = `SELECT role.rolname, routine.signature,
+        has_function_privilege(role.oid, routine.signature, 'EXECUTE') AS executable
+        FROM pg_roles role CROSS JOIN (VALUES
+          ('pg_catalog.lo_create(oid)'), ('pg_catalog.lo_creat(integer)'),
+          ('pg_catalog.lo_from_bytea(oid,bytea)'), ('pg_catalog.lo_import(text)'),
+          ('pg_catalog.lo_import(text,oid)'), ('pg_catalog.lo_export(oid,text)')
+        ) routine(signature) WHERE role.rolname = ANY($1::text[]) ORDER BY role.rolname, routine.signature`;
+      await administrator.query(`GRANT EXECUTE ON FUNCTION pg_catalog.lo_create(oid) TO PUBLIC;
+        GRANT EXECUTE ON FUNCTION pg_catalog.lo_creat(integer) TO ${roles.map(escapeIdentifier).join(', ')};
+        GRANT EXECUTE ON FUNCTION pg_catalog.lo_from_bytea(oid,bytea), pg_catalog.lo_import(text), pg_catalog.lo_import(text,oid), pg_catalog.lo_export(oid,text) TO ${escapeIdentifier(logins[1])}`);
+      const before = (
+        await administrator.query<{ executable: boolean }>(capabilities, [
+          roles,
+        ])
+      ).rows;
+      expect(before).toHaveLength(18);
+      expect(before.filter(({ executable }) => executable)).toHaveLength(10);
+      await expect(
+        migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+      ).rejects.toThrow('large-object creation');
+      // A database owner is not implicitly the built-in function owner. Its
+      // best-effort REVOKE must not be mistaken for administrator provisioning.
+      await expect(
+        owner.query(revokeLargeObjectPrivilegesSql(roles)),
+      ).rejects.toMatchObject({ code: '42501' });
+      expect((await administrator.query(capabilities, [roles])).rows).toEqual(
+        before,
+      );
+      await administrator.query(revokeLargeObjectPrivilegesSql(roles));
+      const after = (
+        await administrator.query<{ executable: boolean }>(capabilities, [
+          [...roles, logins[0]],
+        ])
+      ).rows;
+      expect(after).toHaveLength(24);
+      expect(after.every(({ executable }) => !executable)).toBe(true);
+      expect(
+        await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+      ).toEqual(shipped.map((migration) => migration.manifest.id));
+    });
+  });
+
   it.each(['studio_app', 'studio_maintenance'])(
     'rejects owner-backed rewrite evidence forgery by %s',
     async (role) => {
