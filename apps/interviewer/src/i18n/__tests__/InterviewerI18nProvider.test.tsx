@@ -9,7 +9,6 @@ import {
   useInterviewerLocale,
 } from '../InterviewerI18nProvider';
 import { LanguageSettings } from '../LanguageSettings';
-import { ParticipantLanguageBoundary } from '../ParticipantLanguageBoundary';
 import { LOCALE_PREFERENCE_KEY } from '../preference';
 
 function Probe({ id }: { id: string }) {
@@ -40,9 +39,6 @@ function Harness() {
     <InterviewerI18nProvider>
       <LanguageSettings />
       <Probe id="Administration" />
-      <ParticipantLanguageBoundary>
-        <Probe id="Participant" />
-      </ParticipantLanguageBoundary>
     </InterviewerI18nProvider>
   );
 }
@@ -129,25 +125,12 @@ describe('device administration language', () => {
     expect(adminLocale()).toHaveTextContent('es');
   });
 
-  it('keeps participant copy and language separate while preserving unrelated device data', async () => {
+  it('preserves unrelated device data and rejects unsupported preferences', async () => {
     const user = userEvent.setup();
     const vault = '{"version":5,"mode":"none"}';
     localStorage.setItem('interviewer:vault', vault);
     render(<Harness />);
     await user.selectOptions(screen.getByRole('combobox'), 'es');
-    const participant = screen.getByRole('region', { name: 'Participant' });
-    expect(within(participant).getByLabelText('Locale')).toHaveTextContent(
-      'en',
-    );
-    expect(within(participant).getByText('App language')).toBeVisible();
-    expect(screen.getByTestId('participant-language-boundary')).toHaveAttribute(
-      'lang',
-      'en',
-    );
-    expect(screen.getByTestId('participant-language-boundary')).toHaveAttribute(
-      'dir',
-      'ltr',
-    );
     expect(document.documentElement).toHaveAttribute('lang', 'es');
     expect(localStorage.getItem('interviewer:vault')).toBe(vault);
     await user.click(

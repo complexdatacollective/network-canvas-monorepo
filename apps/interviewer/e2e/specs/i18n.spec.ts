@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
 import { expect, test } from '../fixtures/test.js';
 import { clickWhenDeckSettles } from '../helpers/deck.js';
@@ -29,6 +29,38 @@ async function chooseLanguage(
   await expect(page.locator('html')).toHaveAttribute('lang', locale);
   await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
   await page.keyboard.press('Escape');
+}
+
+// Measure the entire row before focusing a digit: focus can horizontally
+// scroll a clipped container and falsely make each individual box look usable.
+async function expectCompletePinRow(page: Page, field: Locator) {
+  const inputs = field.locator('input');
+  await expect(inputs).toHaveCount(8);
+  const viewport = page.viewportSize();
+  if (!viewport) throw new Error('PIN bounds require an explicit viewport');
+  const bounds = await inputs.evaluateAll((elements) =>
+    elements.map((element) => element.getBoundingClientRect().toJSON()),
+  );
+  for (const [index, rect] of bounds.entries()) {
+    expect(rect.width, `digit ${index + 1} width`).toBeGreaterThanOrEqual(30);
+    expect(rect.x, `digit ${index + 1} left edge`).toBeGreaterThanOrEqual(0);
+    expect(rect.right, `digit ${index + 1} right edge`).toBeLessThanOrEqual(
+      viewport.width,
+    );
+  }
+  for (const input of await inputs.all()) {
+    await input.focus();
+    await expect(input).toBeFocused();
+    await expect(input).toBeInViewport();
+  }
+}
+
+async function typePin(field: Locator, code: string) {
+  const inputs = field.locator('input');
+  await expect(inputs).toHaveCount(8);
+  for (const [index, digit] of code.split('').entries()) {
+    await inputs.nth(index).fill(digit);
+  }
 }
 
 async function storedResearch(page: Page) {
@@ -63,7 +95,7 @@ async function storedResearch(page: Page) {
   );
 }
 
-test('Spanish administration preserves authored content and participant language', async ({
+test('Spanish administration and built-in interview controls preserve authored content and data', async ({
   page,
   protocol,
   interviewNav,
@@ -94,14 +126,22 @@ test('Spanish administration preserves authored content and participant language
     .getByRole('button', { name: /Reanudar la última entrevista/ })
     .click();
   await interviewNav.waitForStage();
-  await expect(
-    page.getByTestId('participant-language-boundary'),
-  ).toHaveAttribute('lang', 'en');
-  await expect(
-    page.getByTestId('participant-language-boundary'),
-  ).toHaveAttribute('dir', 'ltr');
+  await expect(page.locator('main[data-theme-interview]')).toHaveAttribute(
+    'lang',
+    'es',
+  );
+  await expect(page.locator('main[data-theme-interview]')).toHaveAttribute(
+    'dir',
+    'ltr',
+  );
   await expect(page.locator('html')).toHaveAttribute('lang', 'es');
-  await interviewNav.exitInterview();
+  await expect(
+    page.getByRole('button', { name: 'Configuración', exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText('Thanks for taking part.', { exact: true }),
+  ).toBeVisible();
+  await interviewNav.exitInterview('es');
   await page.getByRole('button', { name: 'Datos', exact: true }).click();
   await expect(
     page.getByRole('columnheader', { name: /ID del caso/ }),
@@ -119,6 +159,117 @@ test('Spanish administration preserves authored content and participant language
   await expect(deletion).toContainText('Esta acción no se puede deshacer.');
   await deletion.getByRole('button', { name: 'Cancelar', exact: true }).click();
   expect((await storedResearch(page)).sessions).toHaveLength(1);
+});
+
+test('the interview menu persists its language choice while preserving the current form and authored copy', async ({
+  page,
+  protocol,
+  interviewNav,
+}) => {
+  await protocol.import(LEAN_E2E_PROTOCOL_PATH, LEAN_E2E_PROTOCOL_NAME);
+  await interviewNav.startNewSession('Locale-menu-17');
+  await interviewNav.next();
+  await expect(page.getByText('Tell us about', { exact: false })).toBeVisible();
+  const name = page.getByRole('textbox', {
+    name: 'What is your name?',
+    exact: true,
+  });
+  await name.fill('Ángela Ñ-21');
+  await name.blur();
+  await expect
+    .poll(async () => (await storedResearch(page)).sessions)
+    .toEqual([expect.objectContaining({ currentStep: 1 })]);
+  const before = await storedResearch(page);
+  expect(before.protocols).toHaveLength(1);
+  expect(before.sessions).toHaveLength(1);
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  const picker = page.getByRole('combobox', {
+    name: 'Interface language',
+    exact: true,
+  });
+  await picker.focus();
+  await picker.selectOption('es');
+  await expect(page.locator('main[data-theme-interview]')).toHaveAttribute(
+    'lang',
+    'es',
+  );
+  await expect(page.locator('html')).toHaveAttribute('lang', 'es');
+  await expect(
+    page.getByRole('combobox', { name: 'Idioma de la interfaz', exact: true }),
+  ).toHaveValue('es');
+  await expect(
+    page.getByRole('button', { name: 'Salir de la entrevista', exact: true }),
+  ).toBeVisible();
+  await expect(name).toHaveValue('Ángela Ñ-21');
+  await expect(page.getByText('Tell us about', { exact: false })).toBeVisible();
+  expect(await storedResearch(page)).toEqual(before);
+  expect(
+    await page.evaluate(() => localStorage.getItem('interviewer.locale')),
+  ).toBe('es');
+  await page.keyboard.press('Escape');
+  // EgoForm commits on advancing. Language changes above preserved the dirty
+  // field without writing it; now submit through the actual interface before
+  // checking persistence on reload.
+  await interviewNav.next();
+  await expect
+    .poll(async () => (await storedResearch(page)).sessions)
+    .toEqual([
+      expect.objectContaining({
+        network: expect.objectContaining({
+          ego: expect.objectContaining({
+            attributes: expect.objectContaining({ ego_name: 'Ángela Ñ-21' }),
+          }),
+        }),
+      }),
+    ]);
+  await interviewNav.back();
+  await page.reload();
+  await expect(page.locator('main[data-theme-interview]')).toHaveAttribute(
+    'lang',
+    'es',
+  );
+  await expect(name).toHaveValue('Ángela Ñ-21');
+  await page
+    .getByRole('button', { name: 'Configuración', exact: true })
+    .click();
+  const restoredPicker = page.getByRole('combobox', {
+    name: 'Idioma de la interfaz',
+    exact: true,
+  });
+  // The saved explicit preference must remain represented after Shell mounts
+  // again, so Automatic can be chosen directly without selecting an interim language.
+  await expect(restoredPicker).toHaveValue('es');
+  await restoredPicker.selectOption('__automatic');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  await expect(page.locator('main[data-theme-interview]')).toHaveAttribute(
+    'lang',
+    'en',
+  );
+  expect(
+    await page.evaluate(() => localStorage.getItem('interviewer.locale')),
+  ).toBeNull();
+  await expect(name).toHaveValue('Ángela Ñ-21');
+  await page
+    .getByRole('combobox', { name: 'Interface language', exact: true })
+    .selectOption('en-GB');
+  await expect(page.locator('main[data-theme-interview]')).toHaveAttribute(
+    'lang',
+    'en-GB',
+  );
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
+  await expect(name).toHaveValue('Ángela Ñ-21');
+  await page
+    .getByRole('combobox', { name: 'Interface language', exact: true })
+    .selectOption('__automatic');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  await expect(page.locator('main[data-theme-interview]')).toHaveAttribute(
+    'lang',
+    'en',
+  );
+  expect(
+    await page.evaluate(() => localStorage.getItem('interviewer.locale')),
+  ).toBeNull();
+  await expect(name).toHaveValue('Ángela Ñ-21');
 });
 
 test.describe('automatic language and setup', () => {
@@ -222,14 +373,89 @@ test.describe('installed app catalog availability', () => {
       page.getByRole('button', { name: 'Settings', exact: true }),
     ).toBeVisible();
     await interviewNav.startNewSession('GB-offline-17');
-    await expect(
-      page.getByTestId('participant-language-boundary'),
-    ).toHaveAttribute('lang', 'en');
+    await expect(page.locator('main[data-theme-interview]')).toHaveAttribute(
+      'lang',
+      'en-GB',
+    );
     await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
     await interviewNav.exitInterview();
     expect((await storedResearch(page)).sessions).toHaveLength(1);
     expect(catalogRequests).toEqual([]);
   });
+});
+
+test('an open finish confirmation follows the device language without finishing or changing responses', async ({
+  page,
+  context,
+  protocol,
+  interviewNav,
+}) => {
+  await protocol.import(LEAN_E2E_PROTOCOL_PATH, LEAN_E2E_PROTOCOL_NAME);
+  await interviewNav.startNewSession('Finish-locale-17');
+  await interviewNav.next();
+  await interviewNav.fillEgoName('Ángela Ñ-21');
+  await interviewNav.next();
+  await interviewNav.quickAddNode('Irene');
+  await interviewNav.next();
+  await interviewNav.next();
+  await expect(
+    page.getByRole('heading', { name: 'Finish Interview', exact: true }),
+  ).toBeVisible();
+  await expect
+    .poll(async () => (await storedResearch(page)).sessions)
+    .toEqual([expect.objectContaining({ currentStep: 4, finishedAt: null })]);
+  const before = await storedResearch(page);
+  expect(before.protocols).toHaveLength(1);
+  expect(before.sessions).toHaveLength(1);
+  await page.getByRole('button', { name: 'Finish', exact: true }).click();
+  const confirmation = page.getByRole('dialog');
+  const englishDescription =
+    'Finishing ends this interview. A researcher can mark it unfinished later if changes are needed.';
+  await expect(confirmation).toContainText(englishDescription);
+
+  const otherTab = await context.newPage();
+  await otherTab.goto('/welcome');
+  await otherTab.evaluate(() =>
+    localStorage.setItem('interviewer.locale', 'es'),
+  );
+  await expect(confirmation).toHaveAccessibleName(
+    '¿Seguro que quieres finalizar la entrevista?',
+  );
+  const description = confirmation.getByText(
+    'Al finalizar, se cierra esta entrevista. Si es necesario hacer cambios, un investigador puede volver a marcarla como sin finalizar más adelante.',
+    { exact: true },
+  );
+  await expect(description).toBeVisible();
+  await expect(description).toHaveAttribute('lang', 'es');
+  await expect(description).toHaveAttribute('dir', 'ltr');
+  await expect(
+    confirmation.getByRole('button', {
+      name: 'Finalizar entrevista',
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'es');
+  expect(await storedResearch(page)).toEqual(before);
+
+  await otherTab.evaluate(() =>
+    localStorage.setItem('interviewer.locale', 'en-GB'),
+  );
+  await expect(confirmation).toHaveAccessibleName(
+    'Are you sure you want to finish the interview?',
+  );
+  await expect(
+    confirmation.getByText(englishDescription, { exact: true }),
+  ).toHaveAttribute('lang', 'en-GB');
+  await confirmation
+    .getByRole('button', { name: 'Cancel', exact: true })
+    .click();
+  await expect(confirmation).toBeHidden();
+  await expect(
+    page.getByRole('heading', { name: 'Finish Interview', exact: true }),
+  ).toBeVisible();
+  expect(await storedResearch(page)).toEqual(before);
+  await interviewNav.back();
+  await expect(page.getByRole('button', { name: /^Irene/ })).toBeVisible();
 });
 
 test('an open security wizard follows a language preference changed in another tab', async ({
@@ -274,7 +500,12 @@ test('an open security wizard follows a language preference changed in another t
     .click();
   await page.getByTestId('wizard-next').click();
   await page.getByTestId('wizard-next').click();
-  await page.getByText('No security', { exact: true }).click();
+  await page
+    .getByRole('option', {
+      name: 'No security (not recommended) Skip app security. Your data will not be protected by the app.',
+      exact: true,
+    })
+    .click();
   await expect(
     page.getByRole('dialog', { name: 'Continue without security?' }),
   ).toBeVisible();
@@ -406,15 +637,127 @@ test('narrow Spanish settings retain readable controls and keyboard tab navigati
   });
 });
 
+test('welcome and setup language selectors retain the complete PIN form on a phone', async ({
+  page,
+  vault,
+}, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/welcome');
+  await page
+    .getByRole('combobox', { name: 'App language', exact: true })
+    .selectOption('es');
+  await page.getByRole('button', { name: 'Empezar', exact: true }).click();
+  const wizard = page.getByRole('dialog');
+  await expect(wizard).toHaveAccessibleName('Configuración de tu dispositivo');
+  await wizard.getByTestId('wizard-next').click();
+  await wizard.getByTestId('wizard-next').click();
+  await wizard.getByRole('option', { name: /Código PIN/ }).click();
+  await wizard.getByTestId('wizard-next').click();
+  const pin = wizard.getByTestId('segmented-code-pin');
+  const confirmation = wizard.getByTestId('segmented-code-pin-confirm');
+  await expectCompletePinRow(page, pin);
+  await expectCompletePinRow(page, confirmation);
+  await typePin(pin, '12345678');
+  await typePin(confirmation, '12345678');
+  await wizard
+    .getByRole('checkbox', {
+      name: 'Entiendo que no hay posibilidad de recuperación',
+      exact: true,
+    })
+    .check();
+  const before = await vault.readPersistedVaultRaw();
+  await wizard
+    .getByRole('combobox', { name: 'Idioma de la aplicación', exact: true })
+    .selectOption('en-GB');
+  await expect(
+    wizard.getByRole('checkbox', {
+      name: 'I understand there is no recovery',
+      exact: true,
+    }),
+  ).toBeChecked();
+  for (const field of [pin, confirmation]) {
+    for (let index = 0; index < 8; index++)
+      await expect(field.locator('input').nth(index)).toHaveValue(
+        String(index + 1),
+      );
+  }
+  expect(await vault.readPersistedVaultRaw()).toBe(before);
+  await wizard
+    .getByRole('combobox', { name: 'App language', exact: true })
+    .selectOption('es');
+  await pin.locator('input').first().focus();
+  await expect(pin.locator('input').first()).toBeFocused();
+  await testInfo.attach('spanish-phone-complete-pin-setup', {
+    body: await page.screenshot(),
+    contentType: 'image/png',
+  });
+  const acknowledgment = wizard.getByRole('checkbox', {
+    name: 'Entiendo que no hay posibilidad de recuperación',
+    exact: true,
+  });
+  // Traverse naturally so a clipped lower section cannot pass through an
+  // unconditional focus()/scrollIntoView() call.
+  for (let step = 0; step < 20; step++) {
+    await page.keyboard.press('Tab');
+    if (
+      await acknowledgment.evaluate(
+        (element) => element === document.activeElement,
+      )
+    )
+      break;
+  }
+  await expect(acknowledgment).toBeFocused();
+  await expect(acknowledgment).toBeInViewport();
+  await expect(acknowledgment).toBeChecked();
+  await testInfo.attach('spanish-phone-pin-acknowledgment-keyboard', {
+    body: await page.screenshot(),
+    contentType: 'image/png',
+  });
+  const next = wizard.getByTestId('wizard-next');
+  for (let step = 0; step < 8; step++) {
+    await page.keyboard.press('Tab');
+    if (await next.evaluate((element) => element === document.activeElement))
+      break;
+  }
+  await expect(next).toBeFocused();
+  await expect(next).toBeInViewport();
+  await page.keyboard.press('Enter');
+  await expect(wizard).toHaveAccessibleName('Opciones de bloqueo');
+  await wizard.getByTestId('wizard-next').click();
+  await wizard.getByTestId('wizard-next').click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(
+    page.getByRole('button', { name: 'Idioma de la aplicación', exact: true }),
+  ).toBeVisible();
+  expect(await vault.readPersistedVaultRaw()).not.toBe(before);
+  await page.reload();
+  await expect(
+    page.getByRole('heading', {
+      name: 'Te damos la bienvenida de nuevo',
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expectCompletePinRow(page, page.getByTestId('segmented-code-pin'));
+  await typePin(page.getByTestId('segmented-code-pin'), '12345678');
+  await expect(
+    page.getByRole('button', { name: 'Idioma de la aplicación', exact: true }),
+  ).toBeVisible();
+});
+
 test('a submitted PIN failure follows language changes in the built app and still permits retry', async ({
   page,
   context,
   vault,
 }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 });
   await vault.enrolPin('12345678');
   const storedVault = await vault.readPersistedVaultRaw();
   expect(storedVault).not.toBeNull();
   await page.reload();
+  await expect(
+    page.getByRole('heading', { name: 'Welcome back', exact: true }),
+  ).toBeVisible();
+  await expectCompletePinRow(page, page.getByTestId('segmented-code-pin'));
   await vault.unlockPin('87654321');
   await expect(page.getByText('Incorrect PIN', { exact: true })).toBeVisible();
   const otherTab = await context.newPage();
@@ -427,13 +770,16 @@ test('a submitted PIN failure follows language changes in the built app and stil
     page.getByRole('heading', { name: 'Te damos la bienvenida de nuevo' }),
   ).toBeVisible();
   expect(await vault.readPersistedVaultRaw()).toBe(storedVault);
+  await expectCompletePinRow(page, page.getByTestId('segmented-code-pin'));
+  await page.getByTestId('segmented-code-pin').locator('input').first().focus();
   await testInfo.attach('spanish-submitted-pin-error', {
     body: await page.screenshot(),
     contentType: 'image/png',
   });
   await otherTab.evaluate(() =>
-    localStorage.setItem('interviewer.locale', 'en'),
+    localStorage.setItem('interviewer.locale', 'en-GB'),
   );
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
   await expect(page.getByText('Incorrect PIN', { exact: true })).toBeVisible();
   await vault.unlockPin('12345678');
   await expect(

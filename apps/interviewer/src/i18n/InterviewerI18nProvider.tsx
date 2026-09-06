@@ -25,6 +25,7 @@ import {
 } from './preference';
 
 type LocalePreference = Readonly<{
+  locale: string;
   preference: string | null;
   saveState: 'idle' | 'saved' | 'failed';
   setPreference: (locale: string | null) => void;
@@ -32,6 +33,7 @@ type LocalePreference = Readonly<{
 
 // Standalone component stories retain the provider-optional English behavior.
 const PreferenceContext = createContext<LocalePreference>({
+  locale: interviewerDefaultLocale,
   preference: null,
   saveState: 'idle',
   setPreference: () => {},
@@ -104,7 +106,7 @@ export function InterviewerI18nProvider({ children }: { children: ReactNode }) {
       onLocaleChange={setPreference}
     >
       <PreferenceContext.Provider
-        value={{ preference, saveState, setPreference }}
+        value={{ locale, preference, saveState, setPreference }}
       >
         <DirectionProvider
           direction={

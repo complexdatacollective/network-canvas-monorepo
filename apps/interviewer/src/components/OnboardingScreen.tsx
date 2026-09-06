@@ -7,6 +7,7 @@ import Button from '@codaco/fresco-ui/Button';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import ncMarkUrl from '~/assets/NC-Flat.png';
+import { LanguageSettings } from '~/i18n/LanguageSettings';
 
 import { useSetupWizard } from './SetupWizardDialog';
 
@@ -77,29 +78,41 @@ export function OnboardingScreenView({ onBegin }: { onBegin: () => void }) {
   return (
     <motion.div
       variants={containerVariants}
-      className="fixed inset-0 flex flex-col items-center justify-center gap-6 px-8 text-center"
+      className="fixed inset-0 overflow-auto px-8 py-6"
     >
-      <motion.img
-        variants={logoVariants}
-        src={ncMarkUrl}
-        alt=""
-        className="size-32"
-      />
-      <motion.div variants={textVariants}>
-        <Heading level="h1" margin="none" className="font-black tracking-tight">
-          {intl.formatMessage(messages.welcomeToNetworkCanvasInterviewer)}
-        </Heading>
-      </motion.div>
-      <motion.div variants={textVariants}>
-        <Paragraph margin="none">
-          {intl.formatMessage(messages.letSSetUpThisDevice)}
-        </Paragraph>
-      </motion.div>
-      <motion.div variants={buttonVariants} className="mt-2">
-        <Button type="button" color="primary" onClick={onBegin}>
-          {intl.formatMessage(messages.getStarted)}
-        </Button>
-      </motion.div>
+      <div className="m-auto flex min-h-full w-full max-w-2xl flex-col items-center justify-center gap-6 text-center">
+        <motion.img
+          variants={logoVariants}
+          src={ncMarkUrl}
+          alt=""
+          className="size-32"
+        />
+        <motion.div variants={textVariants}>
+          <Heading
+            level="h1"
+            margin="none"
+            className="font-black tracking-tight"
+          >
+            {intl.formatMessage(messages.welcomeToNetworkCanvasInterviewer)}
+          </Heading>
+        </motion.div>
+        <motion.div variants={textVariants}>
+          <Paragraph margin="none">
+            {intl.formatMessage(messages.letSSetUpThisDevice)}
+          </Paragraph>
+        </motion.div>
+        <motion.div variants={buttonVariants} className="mt-2">
+          <Button type="button" color="primary" onClick={onBegin}>
+            {intl.formatMessage(messages.getStarted)}
+          </Button>
+        </motion.div>
+        <motion.div
+          variants={textVariants}
+          className="w-full max-w-xs text-start"
+        >
+          <LanguageSettings compact />
+        </motion.div>
+      </div>
     </motion.div>
   );
 }

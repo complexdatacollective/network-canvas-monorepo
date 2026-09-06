@@ -451,6 +451,10 @@
     "defaultMessage": "Changes made while reviewing this interview will not be saved.",
     "description": "Visible copy in Interviewer Interview."
   },
+  "interviewer.interview.finishConfirmationDescription": {
+    "defaultMessage": "Finishing ends this interview. A researcher can mark it unfinished later if changes are needed.",
+    "description": "Participant confirmation explaining that finishing closes the interview now, while Interviewer allows a researcher to reopen it later."
+  },
   "interviewer.interview.interviewNotFound": {
     "defaultMessage": "Interview not found",
     "description": "Visible copy in Interviewer Interview."
@@ -496,12 +500,12 @@
     "description": "Error announced when the language applies immediately but cannot persist across reloads."
   },
   "interviewer.language.hint": {
-    "defaultMessage": "Choose the language for Interviewer administration on this device. This does not change protocol content, interview language, or collected data.",
-    "description": "Explains that the device administration preference is separate from participant language and research data."
+    "defaultMessage": "Choose the language for Interviewer and its built-in interview controls on this device. This does not change protocol content or collected data.",
+    "description": "Explains that the device language applies to app-provided controls while protocol-authored content and research data stay unchanged."
   },
   "interviewer.language.label": {
     "defaultMessage": "App language",
-    "description": "Label for the administration language selector in Interviewer settings."
+    "description": "Label for the device language selector in Interviewer home, setup, and settings."
   },
   "interviewer.language.saved": {
     "defaultMessage": "Language preference saved on this device.",

@@ -1,13 +1,15 @@
-import { createElement } from 'react';
+import { type ComponentType, createElement } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { AppMessage } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
+import type { WizardStep } from '@codaco/fresco-ui/dialogs/DialogProvider';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
+import { LanguageSettings } from '~/i18n/LanguageSettings';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
 import * as authApi from '~/lib/auth/api';
 import { useAuth } from '~/lib/auth/AuthContext';
@@ -318,152 +320,170 @@ export function useSetupWizard({
       cancelLabel: preserveExistingData
         ? createElement(AppMessage, { message: messages.exitSetup2 })
         : createElement(AppMessage, { message: messages.skipWizard }),
-      steps: [
-        {
-          title: createElement(AppMessage, {
-            message: messages.settingUpYourDevice,
-          }),
-          content: () => (
-            <div className="grid gap-6">
-              <SetupGlyph />
-              <div>
+      steps: (
+        [
+          {
+            title: createElement(AppMessage, {
+              message: messages.settingUpYourDevice,
+            }),
+            content: () => (
+              <div className="grid gap-6">
+                <SetupGlyph />
+                <div>
+                  <Paragraph intent="lead">
+                    {createElement(AppMessage, {
+                      message: messages.settingUpYourDeviceIsQuickAnd,
+                    })}
+                  </Paragraph>
+                  <Paragraph>
+                    {createElement(AppMessage, {
+                      message: messages.thereAreTwoSimpleStepsSettingUp,
+                    })}
+                  </Paragraph>
+                  <Paragraph>
+                    {createElement(AppMessage, {
+                      message: messages.ifYouNeedHelpOrHaveQuestions,
+                      values: {
+                        link: (chunks) => (
+                          <ExternalLink href="mailto:info@networkcanvas.com">
+                            {chunks}
+                          </ExternalLink>
+                        ),
+                        link1: (chunks) => (
+                          <ExternalLink href="https://community.networkcanvas.com">
+                            {chunks}
+                          </ExternalLink>
+                        ),
+                      },
+                    })}
+                  </Paragraph>
+                </div>
+              </div>
+            ),
+          },
+          {
+            title: createElement(AppMessage, {
+              message: messages.securingYourData,
+            }),
+            content: () => (
+              <>
                 <Paragraph intent="lead">
                   {createElement(AppMessage, {
-                    message: messages.settingUpYourDeviceIsQuickAnd,
+                    message:
+                      messages.securingYourResearchDataIsVitalInterviewer,
                   })}
                 </Paragraph>
+                <div className="my-6 grid gap-4">
+                  <Surface spacing="sm" shadow="sm">
+                    <div className="mb-2 flex items-center gap-3">
+                      <span className="text-primary bg-primary/15 flex size-10 shrink-0 items-center justify-center rounded-full">
+                        <SecureDataGlyph />
+                      </span>
+                      <Heading level="h4" margin="none">
+                        {createElement(AppMessage, {
+                          message: messages.secureDataStorage,
+                        })}
+                      </Heading>
+                    </div>
+                    <Paragraph
+                      margin="none"
+                      emphasis="muted"
+                      intent="smallText"
+                    >
+                      {createElement(AppMessage, {
+                        message:
+                          messages.secureDataStorageProtectsYourInterviewData,
+                      })}
+                    </Paragraph>
+                    <Alert variant="info">
+                      <AlertTitle>
+                        {createElement(AppMessage, {
+                          message: messages.goodNews,
+                        })}
+                      </AlertTitle>
+                      <AlertDescription>
+                        {createElement(AppMessage, {
+                          message: messages.ifYouSetUpAPINPassphrase,
+                        })}
+                      </AlertDescription>
+                    </Alert>
+                  </Surface>
+                  <Surface spacing="sm" shadow="sm">
+                    <div className="mb-2 flex items-center gap-3">
+                      <span className="text-accent bg-accent/15 flex size-10 shrink-0 items-center justify-center rounded-full">
+                        <AuthorisationGlyph />
+                      </span>
+                      <Heading level="h4" margin="none">
+                        {createElement(AppMessage, {
+                          message: messages.appAuthorization,
+                        })}
+                      </Heading>
+                    </div>
+                    <Paragraph
+                      margin="none"
+                      emphasis="muted"
+                      intent="smallText"
+                    >
+                      {createElement(AppMessage, {
+                        message:
+                          messages.appAuthorizationEnsuresThatOnlyAuthorizedUsers,
+                      })}
+                    </Paragraph>
+                  </Surface>
+                </div>
                 <Paragraph>
                   {createElement(AppMessage, {
-                    message: messages.thereAreTwoSimpleStepsSettingUp,
+                    message: messages.pleaseNoteThatTheseSecurityFeaturesShould,
+                    values: { em: (chunks) => <em>{chunks}</em> },
                   })}
                 </Paragraph>
-                <Paragraph>
-                  {createElement(AppMessage, {
-                    message: messages.ifYouNeedHelpOrHaveQuestions,
-                    values: {
-                      link: (chunks) => (
-                        <ExternalLink href="mailto:info@networkcanvas.com">
-                          {chunks}
-                        </ExternalLink>
-                      ),
-                      link1: (chunks) => (
-                        <ExternalLink href="https://community.networkcanvas.com">
-                          {chunks}
-                        </ExternalLink>
-                      ),
-                    },
-                  })}
-                </Paragraph>
-              </div>
-            </div>
-          ),
-        },
-        {
-          title: createElement(AppMessage, {
-            message: messages.securingYourData,
-          }),
-          content: () => (
-            <>
-              <Paragraph intent="lead">
-                {createElement(AppMessage, {
-                  message: messages.securingYourResearchDataIsVitalInterviewer,
-                })}
-              </Paragraph>
-              <div className="my-6 grid gap-4">
-                <Surface spacing="sm" shadow="sm">
-                  <div className="mb-2 flex items-center gap-3">
-                    <span className="text-primary bg-primary/15 flex size-10 shrink-0 items-center justify-center rounded-full">
-                      <SecureDataGlyph />
-                    </span>
-                    <Heading level="h4" margin="none">
-                      {createElement(AppMessage, {
-                        message: messages.secureDataStorage,
-                      })}
-                    </Heading>
-                  </div>
-                  <Paragraph margin="none" emphasis="muted" intent="smallText">
-                    {createElement(AppMessage, {
-                      message:
-                        messages.secureDataStorageProtectsYourInterviewData,
-                    })}
-                  </Paragraph>
-                  <Alert variant="info">
-                    <AlertTitle>
-                      {createElement(AppMessage, {
-                        message: messages.goodNews,
-                      })}
-                    </AlertTitle>
-                    <AlertDescription>
-                      {createElement(AppMessage, {
-                        message: messages.ifYouSetUpAPINPassphrase,
-                      })}
-                    </AlertDescription>
-                  </Alert>
-                </Surface>
-                <Surface spacing="sm" shadow="sm">
-                  <div className="mb-2 flex items-center gap-3">
-                    <span className="text-accent bg-accent/15 flex size-10 shrink-0 items-center justify-center rounded-full">
-                      <AuthorisationGlyph />
-                    </span>
-                    <Heading level="h4" margin="none">
-                      {createElement(AppMessage, {
-                        message: messages.appAuthorization,
-                      })}
-                    </Heading>
-                  </div>
-                  <Paragraph margin="none" emphasis="muted" intent="smallText">
-                    {createElement(AppMessage, {
-                      message:
-                        messages.appAuthorizationEnsuresThatOnlyAuthorizedUsers,
-                    })}
-                  </Paragraph>
-                </Surface>
-              </div>
-              <Paragraph>
-                {createElement(AppMessage, {
-                  message: messages.pleaseNoteThatTheseSecurityFeaturesShould,
-                  values: { em: (chunks) => <em>{chunks}</em> },
-                })}
-              </Paragraph>
-            </>
-          ),
-        },
-        {
-          title: createElement(AppMessage, {
-            message: messages.chooseAnAuthenticationMethod,
-          }),
-          description: createElement(AppMessage, {
-            message: messages.chooseBetweenTheOptionsBelowToDetermine,
-          }),
-          content: () => (
-            <Step2MethodPicker lockCommittedMethod={preserveExistingData} />
-          ),
-        },
-        {
-          title: createElement(AppMessage, {
-            message: messages.setUpYourMethod,
-          }),
-          content: () => <Step3Configure allowChange={!preserveExistingData} />,
-          skip: ({ data }) => data.selectedMethod === 'none',
-        },
-        {
-          title: createElement(AppMessage, { message: messages.lockBehavior }),
-          description: createElement(AppMessage, {
-            message: messages.decideWhenTheAppReLocks,
-          }),
-          content: Step4Behavior,
-          skip: ({ data }) => data.selectedMethod === 'none',
-        },
-        {
-          title: createElement(AppMessage, {
-            message: messages.helpImproveTheApp,
-          }),
-          content: () => (
-            <Step5Analytics initialEnabled={initialAnalyticsEnabled} />
-          ),
-          nextLabel: createElement(AppMessage, { message: messages.finish }),
-        },
-      ],
+              </>
+            ),
+          },
+          {
+            title: createElement(AppMessage, {
+              message: messages.chooseAnAuthenticationMethod,
+            }),
+            description: createElement(AppMessage, {
+              message: messages.chooseBetweenTheOptionsBelowToDetermine,
+            }),
+            content: () => (
+              <Step2MethodPicker lockCommittedMethod={preserveExistingData} />
+            ),
+          },
+          {
+            title: createElement(AppMessage, {
+              message: messages.setUpYourMethod,
+            }),
+            content: () => (
+              <Step3Configure allowChange={!preserveExistingData} />
+            ),
+            skip: ({ data }) => data.selectedMethod === 'none',
+          },
+          {
+            title: createElement(AppMessage, {
+              message: messages.lockBehavior,
+            }),
+            description: createElement(AppMessage, {
+              message: messages.decideWhenTheAppReLocks,
+            }),
+            content: Step4Behavior,
+            skip: ({ data }) => data.selectedMethod === 'none',
+          },
+          {
+            title: createElement(AppMessage, {
+              message: messages.helpImproveTheApp,
+            }),
+            content: () => (
+              <Step5Analytics initialEnabled={initialAnalyticsEnabled} />
+            ),
+            nextLabel: createElement(AppMessage, { message: messages.finish }),
+          },
+        ] satisfies WizardStep[]
+      ).map((step) => ({
+        ...step,
+        content: withLanguageSelection(step.content),
+      })),
     });
 
     // Enrolment + settings persistence can fail (e.g. the platform store can't
@@ -535,4 +555,19 @@ export function useSetupWizard({
   };
 
   return { openSetupWizard };
+}
+
+// Created once when the wizard is queued. A locale change re-renders this
+// stable component without replacing the active step or its form state.
+function withLanguageSelection(Content: ComponentType): ComponentType {
+  return function LocalizedSetupStep() {
+    return (
+      <>
+        <div className="mb-6 w-full max-w-sm">
+          <LanguageSettings compact />
+        </div>
+        <Content />
+      </>
+    );
+  };
 }

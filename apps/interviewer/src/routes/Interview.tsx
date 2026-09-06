@@ -2,7 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useRoute, useSearch } from 'wouter';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
-import { useAppIntl } from '@codaco/app-i18n/react';
+import {
+  AppI18nProvider,
+  AppMessage,
+  useAppIntl,
+} from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import Surface from '@codaco/fresco-ui/layout/Surface';
@@ -21,7 +25,8 @@ import {
 } from '@codaco/interview';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import { InterviewComplete } from '~/components/InterviewComplete';
-import { ParticipantLanguageBoundary } from '~/i18n/ParticipantLanguageBoundary';
+import { useInterviewerLocale } from '~/i18n/InterviewerI18nProvider';
+import { interviewerLocales } from '~/i18n/locales';
 import { useAnalytics } from '~/lib/analytics/AnalyticsProvider';
 import { POSTHOG_APP_KEY, POSTHOG_APP_NAME } from '~/lib/analytics/config';
 import { APP_VERSION } from '~/lib/appVersion';
@@ -41,8 +46,16 @@ import {
 import type { StoredSession } from '~/lib/db/types';
 import { getInstallationId } from '~/lib/installationId';
 import { useHistoryBackGuard } from '~/lib/pwa/useHistoryBackGuard';
+import { interviewerCatalogs } from '~/locales/catalogs';
 
 const messages = defineMessages({
+  finishConfirmationDescription: {
+    id: 'interviewer.interview.finishConfirmationDescription',
+    defaultMessage:
+      'Finishing ends this interview. A researcher can mark it unfinished later if changes are needed.',
+    description:
+      'Participant confirmation explaining that finishing closes the interview now, while Interviewer allows a researcher to reopen it later.',
+  },
   interviewUnavailable: {
     id: 'interviewer.interview.interviewUnavailable',
     defaultMessage: 'Interview unavailable',
@@ -133,6 +146,7 @@ const discardFinish: FinishHandler = () => Promise.resolve();
 
 export function InterviewRoute({ sessionId }: { sessionId: string }) {
   const intl = useAppIntl();
+  const { preference, setPreference } = useInterviewerLocale();
   const [state, setState] = useState<LoadState>({ kind: 'loading' });
   const [, navigate] = useLocation();
   const search = useSearch();
@@ -387,11 +401,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
   );
 
   if (finished) {
-    return (
-      <ParticipantLanguageBoundary>
-        <InterviewComplete onExit={() => void handleExit()} />
-      </ParticipantLanguageBoundary>
-    );
+    return <InterviewComplete onExit={() => void handleExit()} />;
   }
 
   if (state.kind === 'loading') {
@@ -482,29 +492,52 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
           </AlertDescription>
         </Alert>
       )}
-      <ParticipantLanguageBoundary>
-        <Shell
-          payload={state.payload}
-          currentStep={currentStep}
-          onStepChange={handleStepChange}
-          onSync={readOnly ? discardSessionChanges : handleSync}
-          onFinish={readOnly ? discardFinish : handleFinish}
-          onRequestAsset={state.resolver}
-          analytics={analytics}
-          posthogClient={posthogClient ?? undefined}
-          disableAnalytics={readOnly || !analyticsEnabled}
-          reviewMode={readOnly}
-          initialStageOverrideIndex={state.initialStageOverrideIndex}
-          finishConfirmationDescription="Finishing ends this interview. A researcher can mark it unfinished later if changes are needed."
-          onExit={() => void handleExit()}
-          allowStageNavigation={allowStageNavigation}
-          allowUserScaling
-          initialTextScale={initialTextScale}
-          onTextScaleChange={handleTextScaleChange}
-          navigationClassnames={NAVIGATION_SAFE_AREA_CLASSNAMES}
-        />
-      </ParticipantLanguageBoundary>
+      <Shell
+        requestedLocale={intl.locale}
+        localePreference={preference}
+        onLocaleChange={setPreference}
+        payload={state.payload}
+        currentStep={currentStep}
+        onStepChange={handleStepChange}
+        onSync={readOnly ? discardSessionChanges : handleSync}
+        onFinish={readOnly ? discardFinish : handleFinish}
+        onRequestAsset={state.resolver}
+        analytics={analytics}
+        posthogClient={posthogClient ?? undefined}
+        disableAnalytics={readOnly || !analyticsEnabled}
+        reviewMode={readOnly}
+        initialStageOverrideIndex={state.initialStageOverrideIndex}
+        finishConfirmationDescription={<InterviewFinishDescription />}
+        onExit={() => void handleExit()}
+        allowStageNavigation={allowStageNavigation}
+        allowUserScaling
+        initialTextScale={initialTextScale}
+        onTextScaleChange={handleTextScaleChange}
+        navigationClassnames={NAVIGATION_SAFE_AREA_CLASSNAMES}
+      />
     </div>
+  );
+}
+
+// This queued host-specific message renders beneath Shell's package-owned
+// provider. Subscribe to the host preference explicitly so an already-open
+// confirmation follows changes without importing host catalogs into Shell.
+function InterviewFinishDescription() {
+  const { locale } = useInterviewerLocale();
+  const direction =
+    interviewerLocales.find((entry) => entry.locale === locale)?.direction ??
+    'ltr';
+  return (
+    <AppI18nProvider
+      locale={locale}
+      locales={interviewerLocales}
+      messages={interviewerCatalogs[locale]}
+      manageDocument={false}
+    >
+      <span lang={locale} dir={direction}>
+        <AppMessage message={messages.finishConfirmationDescription} />
+      </span>
+    </AppI18nProvider>
   );
 }
 

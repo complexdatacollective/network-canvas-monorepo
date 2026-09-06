@@ -204,6 +204,7 @@ it('keeps a visible Case ID refusal when the administration language changes and
   expect(input).toHaveValue('');
   await user.click(screen.getByRole('button', { name: 'Iniciar entrevista' }));
   expect(submit).not.toHaveBeenCalled();
+  await waitFor(() => expect(input).toHaveFocus());
   await user.type(input, 'Caso Á-21');
   await user.click(screen.getByRole('button', { name: 'Iniciar entrevista' }));
   await waitFor(() =>

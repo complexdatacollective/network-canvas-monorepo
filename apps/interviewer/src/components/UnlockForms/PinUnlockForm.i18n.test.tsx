@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
 
@@ -9,7 +9,7 @@ import { interviewerCatalogs } from '~/locales/catalogs';
 
 import { PinUnlockForm } from './PinUnlockForm';
 
-it('reformats a submitted PIN error when the locale changes without submitting again', async () => {
+it('reformats a submitted PIN error without resubmitting and preserves focus for a successful retry', async () => {
   const verifyPin = vi.fn(async () => ({ ok: false }));
   const user = userEvent.setup();
   const form = (locale: 'en' | 'es') => (
@@ -33,4 +33,21 @@ it('reformats a submitted PIN error when the locale changes without submitting a
   );
   expect(screen.queryByText('Incorrect PIN.')).not.toBeInTheDocument();
   expect(verifyPin).toHaveBeenCalledTimes(1);
+  const segments = within(
+    screen.getByTestId('segmented-code-pin'),
+  ).getAllByLabelText(/oculto/);
+  expect(segments).toHaveLength(8);
+  for (const segment of segments) expect(segment).toHaveValue('');
+  expect(segments[0]).toHaveFocus();
+
+  verifyPin.mockResolvedValue({ ok: true });
+  await user.keyboard('12345678');
+  await waitFor(() => expect(verifyPin).toHaveBeenCalledTimes(2));
+  expect(verifyPin).toHaveBeenLastCalledWith('12345678');
+  await waitFor(() =>
+    expect(screen.queryByText('PIN incorrecto.')).not.toBeInTheDocument(),
+  );
+  for (const [index, segment] of segments.entries()) {
+    expect(segment).toHaveValue(String(index + 1));
+  }
 });
