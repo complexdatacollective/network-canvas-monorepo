@@ -10,7 +10,7 @@ import type {
   DanglingCells,
   OptionGetter,
 } from '../form/arrayFields/MultiSelect.tsx';
-import { useStageHasAnyValue, useStageValue } from '../form/stageFormHooks.ts';
+import { useStageValue } from '../form/stageFormHooks.ts';
 import { useResourceInspection } from '../resources/components/useResourceInspection.ts';
 
 /** Where a roster stage records the data file it draws its people from. */
@@ -156,30 +156,17 @@ const NO_ORPHANS: readonly SortableProperty[] = Object.freeze([]);
 const NO_COLUMNS: readonly string[] = Object.freeze([]);
 
 /**
- * What a roster list holds right now, or `undefined` when it holds nothing.
- *
- * Two hooks rather than one, because they answer differently about a list a
- * section has just CLEARED — swapping the data file clears every list that
- * named a column of the old one. `useStageValue` falls through to the committed
- * draft whenever the form holds nothing at the path, so it hands back the
- * entries the stage was opened with and the old file's columns come straight
- * back as orphans. `useStageHasAnyValue` stops at the tombstone the clear
- * parked, which is the question actually being asked.
- *
- * Read live from the stage's own value rather than from a committed copy,
- * because these lists are registered on the stage form itself: the moment the
- * researcher lets go of a lost column the orphan stops being offered, and an
- * orphan must never become choosable again.
- */
-function useHeldList(path: string): unknown {
-  const held = useStageValue(path);
-  const configured = useStageHasAnyValue([path]);
-  return configured ? held : undefined;
-}
-
-/**
  * Columns a list names that the chosen data file does not carry, deduped and in
  * the order the list names them.
+ *
+ * The list is read live from the stage's own value rather than from a committed
+ * copy, because these lists are registered on the stage form itself: the moment
+ * the researcher lets go of a lost column the orphan stops being offered, and
+ * an orphan must never become choosable again. A list a section has just
+ * CLEARED reads back as empty, because a clear is a decision the session holds
+ * — `useDiscardStageValues` unsets the paths in the draft before it empties the
+ * form — so there is no committed copy left for `useStageValue` to fall through
+ * to, and the old file's columns cannot come back as orphans.
  *
  * `named` is what each entry of the list names, in order — a cell of a row for
  * the two list editors, the entry itself for the search checkboxes — and
@@ -265,7 +252,7 @@ export function useOrphanedColumns(
   /** The array-level rule that refuses a save while a row holds one. */
   dangling: readonly DanglingCells[];
 }> {
-  const rows = useHeldList(path);
+  const rows = useStageValue(path);
   const named = useMemo(
     () =>
       Array.isArray(rows)
@@ -346,7 +333,7 @@ export function useOrphanedColumnChoices(
   /** Refuses the save while one is still checked. One stable identity. */
   refusal: MessageRule;
 }> {
-  const held = useHeldList(path);
+  const held = useStageValue(path);
   const named = useMemo(() => (Array.isArray(held) ? held : undefined), [held]);
   const values = useOrphanedColumnNames(named, names);
   const valuesRef = useLiveOrphans(values);
