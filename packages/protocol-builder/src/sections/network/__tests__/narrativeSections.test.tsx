@@ -64,7 +64,7 @@ describe('the ways of looking at the network a narrative stage offers', () => {
 
     await waitFor(() => expect(harness.outline()).toHaveLength(2));
     expect(harness.outline()).toEqual([
-      { title: 'Visualisation presets', state: 'Finished' },
+      { title: 'Visualization presets', state: 'Finished' },
       { title: 'Canvas interaction', state: 'Finished' },
     ]);
     expect(screen.getByText('Default layout')).toBeInTheDocument();

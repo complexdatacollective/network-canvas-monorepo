@@ -140,7 +140,7 @@ describe('the property a map selection is recorded as', () => {
 
     expect(
       await screen.findByText(
-        'The features in this layer carry no properties, so there is nothing to record a selection as. Choose a layer whose features are labelled.',
+        'The features in this layer carry no properties, so there is nothing to record a selection as. Choose a layer whose features are labeled.',
       ),
     ).toBeInTheDocument();
   });

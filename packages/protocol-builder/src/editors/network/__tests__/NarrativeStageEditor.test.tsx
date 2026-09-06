@@ -89,7 +89,7 @@ describe('the narrative stage editor', () => {
       'Stage name',
       'Node type',
       'Stage filter',
-      'Visualisation presets',
+      'Visualization presets',
       'Background',
       'Node layout',
       'Canvas interaction',
@@ -197,7 +197,7 @@ describe('the narrative stage editor', () => {
         .outline()
         .filter((section) => section.state === 'Has a problem')
         .map((section) => section.title),
-    ).toEqual(['Visualisation presets']);
+    ).toEqual(['Visualization presets']);
     expect(
       await screen.findByText(/Create at least one preset/),
     ).toBeInTheDocument();

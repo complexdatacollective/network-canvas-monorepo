@@ -109,7 +109,7 @@ export const geospatialMessages = defineMessages({
   propertyHint: {
     id: 'protocolBuilder.geospatial.propertyHint',
     defaultMessage:
-      'The value of this property is what gets stored when a participant selects an area, so choose one that is filled in and unique for every feature — a census tract, a postcode, or a neighbourhood name.',
+      'The value of this property is what gets stored when a participant selects an area, so choose one that is filled in and unique for every feature — a census tract, a postcode, or a neighborhood name.',
     description:
       'Guidance under the recorded-property control. The three examples are kinds of area identifier; a language may replace them with identifiers its own readers would recognise.',
   },
@@ -134,25 +134,25 @@ export const geospatialMessages = defineMessages({
   styleHint: {
     id: 'protocolBuilder.geospatial.styleHint',
     defaultMessage:
-      'The map drawn beneath the selectable areas. Check that place names on it stay readable under the highlight colour.',
+      'The map drawn beneath the selectable areas. Check that place names on it stay readable under the highlight color.',
     description:
       'Guidance under the basemap control. The highlight colour is the colour chosen just below it, which the selectable areas are drawn in.',
   },
   colorLabel: {
     id: 'protocolBuilder.geospatial.colorLabel',
-    defaultMessage: 'Highlight colour',
+    defaultMessage: 'Highlight color',
     description:
       'Label of the control that chooses the colour selectable areas are outlined and filled with.',
   },
   colorHint: {
     id: 'protocolBuilder.geospatial.colorHint',
     defaultMessage:
-      'Selectable areas are outlined in this colour, and the area a participant chooses is filled with it.',
+      'Selectable areas are outlined in this color, and the area a participant chooses is filled with it.',
     description: 'Guidance under the highlight-colour control.',
   },
   colorOptionLabel: {
     id: 'protocolBuilder.geospatial.colorOptionLabel',
-    defaultMessage: 'Highlight colour {position}',
+    defaultMessage: 'Highlight color {position}',
     description:
       'Name of one choice in the highlight-colour control. position is that colour’s place in the theme’s ordinal palette, counting from 1 — the palette has ten and the protocol stores the position rather than a colour value, so the colours have no names of their own. Named rather than only shown because a colour has to be sayable by people who are not looking at the control.',
   },
@@ -176,7 +176,7 @@ export const geospatialMessages = defineMessages({
   searchHint: {
     id: 'protocolBuilder.geospatial.searchHint',
     defaultMessage:
-      'Let participants search for an address, a neighbourhood, or a landmark instead of panning to it.',
+      'Let participants search for an address, a neighborhood, or a landmark instead of panning to it.',
     description:
       'Guidance under the map-search switch. Panning is dragging the map to move it.',
   },
@@ -190,13 +190,13 @@ export const geospatialMessages = defineMessages({
   viewDescription: {
     id: 'protocolBuilder.geospatial.viewDescription',
     defaultMessage:
-      'Where the map is centred, and how far in it is zoomed, when the stage opens.',
+      'Where the map is centered, and how far in it is zoomed, when the stage opens.',
     description:
       'Description of the starting-map-view section. A stage is one step of an interview.',
   },
   centerLabel: {
     id: 'protocolBuilder.geospatial.centerLabel',
-    defaultMessage: 'Starting centre',
+    defaultMessage: 'Starting center',
     description:
       'Label of the pair of controls holding the longitude and latitude the map is centred on when the stage opens.',
   },
@@ -352,7 +352,7 @@ export const geospatialMessages = defineMessages({
   propertyNoProperties: {
     id: 'protocolBuilder.geospatial.propertyNoProperties',
     defaultMessage:
-      'The features in this layer carry no properties, so there is nothing to record a selection as. Choose a layer whose features are labelled.',
+      'The features in this layer carry no properties, so there is nothing to record a selection as. Choose a layer whose features are labeled.',
     description:
       'Shown in place of the recorded-property control when the chosen GeoJSON layer was read but its features carry no named fields.',
   },

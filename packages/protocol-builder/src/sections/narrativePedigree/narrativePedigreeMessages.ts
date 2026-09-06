@@ -26,7 +26,7 @@ export const narrativePedigreeMessages = defineMessages({
   sourceDescription: {
     id: 'protocolBuilder.narrativePedigree.sourceDescription',
     defaultMessage:
-      'Choose the Family Pedigree stage whose family this stage visualises.',
+      'Choose the Family Pedigree stage whose family this stage visualizes.',
     description:
       'Description of the pedigree-source section. "Family Pedigree" is the name of another kind of interview step, the one in which the participant builds their family tree; a stage is one step of an interview.',
   },
@@ -84,7 +84,7 @@ export const narrativePedigreeMessages = defineMessages({
   sourceNotAPedigree: {
     id: 'protocolBuilder.narrativePedigree.sourceNotAPedigree',
     defaultMessage:
-      'The stage this one reads is no longer a Family Pedigree, so there is no family for it to visualise. Choose a Family Pedigree stage instead.',
+      'The stage this one reads is no longer a Family Pedigree, so there is no family for it to visualize. Choose a Family Pedigree stage instead.',
     description:
       'Shown when the stage this one draws its family from has been changed to a different kind of interview step, so it no longer collects a family tree.',
   },
@@ -193,7 +193,7 @@ export const narrativePedigreeMessages = defineMessages({
   diseaseNameHint: {
     id: 'protocolBuilder.narrativePedigree.diseaseNameHint',
     defaultMessage:
-      "Shown to the participant in the pedigree's key, so it should be a name they recognise.",
+      "Shown to the participant in the pedigree's key, so it should be a name they recognize.",
     description:
       'Guidance under the disease-name field. The key is the legend drawn beside the family tree, naming what each colour means.',
   },
@@ -211,31 +211,31 @@ export const narrativePedigreeMessages = defineMessages({
   },
   diseaseColorLabel: {
     id: 'protocolBuilder.narrativePedigree.diseaseColorLabel',
-    defaultMessage: 'Colour',
+    defaultMessage: 'Color',
     description:
       'Label of the control choosing which colour one condition is drawn in on the family tree.',
   },
   diseaseColorHint: {
     id: 'protocolBuilder.narrativePedigree.diseaseColorHint',
-    defaultMessage: 'The colour this disease is drawn in on the pedigree.',
+    defaultMessage: 'The color this disease is drawn in on the pedigree.',
     description:
       'Guidance under the disease-colour control. A pedigree is a family tree.',
   },
   diseaseColorPlaceholder: {
     id: 'protocolBuilder.narrativePedigree.diseaseColorPlaceholder',
-    defaultMessage: 'Select a colour...',
+    defaultMessage: 'Select a color...',
     description:
       'Placeholder shown in the disease-colour control while no colour has been chosen. The trailing dots are an ellipsis written as three full stops.',
   },
   diseaseColorRequired: {
     id: 'protocolBuilder.narrativePedigree.diseaseColorRequired',
-    defaultMessage: 'Choose a colour for this disease.',
+    defaultMessage: 'Choose a color for this disease.',
     description:
       'Refusal shown under the disease-colour control when the researcher saves the dialog without choosing one.',
   },
   diseaseColorOption: {
     id: 'protocolBuilder.narrativePedigree.diseaseColorOption',
-    defaultMessage: 'Colour {position}',
+    defaultMessage: 'Color {position}',
     description:
       'How one entry of the disease-colour list is named. The palette’s colours have no names of their own — they are the study’s own theme colours — so they are counted instead. position identifies which one, counting from 1.',
   },

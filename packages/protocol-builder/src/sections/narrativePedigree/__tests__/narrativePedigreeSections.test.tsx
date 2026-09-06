@@ -251,7 +251,7 @@ describe('the diseases a narrative pedigree defines', () => {
       'condition x ',
     );
     await harness.user.selectOptions(
-      disease.getByRole('combobox', { name: 'Colour' }),
+      disease.getByRole('combobox', { name: 'Color' }),
       'node-color-seq-2',
     );
     await harness.user.selectOptions(
@@ -517,8 +517,8 @@ describe('the batch a source change makes', () => {
       'Cystic fibrosis',
     );
     await harness.user.selectOptions(
-      disease.getByRole('combobox', { name: 'Colour' }),
-      'Colour 2',
+      disease.getByRole('combobox', { name: 'Color' }),
+      'Color 2',
     );
     await harness.user.selectOptions(
       disease.getByRole('combobox', { name: 'Affected-status attribute' }),

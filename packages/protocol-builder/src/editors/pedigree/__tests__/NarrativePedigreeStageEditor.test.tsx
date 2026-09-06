@@ -261,7 +261,7 @@ describe('the narrative pedigree stage editor', () => {
       'Z',
     );
     await harness.user.selectOptions(
-      disease.getByRole('combobox', { name: 'Colour' }),
+      disease.getByRole('combobox', { name: 'Color' }),
       'node-color-seq-2',
     );
     await harness.user.selectOptions(

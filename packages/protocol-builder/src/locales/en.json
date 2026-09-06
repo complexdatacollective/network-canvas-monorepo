@@ -680,19 +680,19 @@
     "description": "Refusal shown under the starting-centre controls when only one of the two coordinates reads as a number. A centre is one value, so half of it is not a centre."
   },
   "protocolBuilder.geospatial.centerLabel": {
-    "defaultMessage": "Starting centre",
+    "defaultMessage": "Starting center",
     "description": "Label of the pair of controls holding the longitude and latitude the map is centred on when the stage opens."
   },
   "protocolBuilder.geospatial.colorHint": {
-    "defaultMessage": "Selectable areas are outlined in this colour, and the area a participant chooses is filled with it.",
+    "defaultMessage": "Selectable areas are outlined in this color, and the area a participant chooses is filled with it.",
     "description": "Guidance under the highlight-colour control."
   },
   "protocolBuilder.geospatial.colorLabel": {
-    "defaultMessage": "Highlight colour",
+    "defaultMessage": "Highlight color",
     "description": "Label of the control that chooses the colour selectable areas are outlined and filled with."
   },
   "protocolBuilder.geospatial.colorOptionLabel": {
-    "defaultMessage": "Highlight colour {position}",
+    "defaultMessage": "Highlight color {position}",
     "description": "Name of one choice in the highlight-colour control. position is that colour’s place in the theme’s ordinal palette, counting from 1 — the palette has ten and the protocol stores the position rather than a colour value, so the colours have no names of their own. Named rather than only shown because a colour has to be sayable by people who are not looking at the control."
   },
   "protocolBuilder.geospatial.createAttributeDescription": {
@@ -832,7 +832,7 @@
     "description": "Shown in place of the geospatial prompts description while the researcher has not yet chosen which node or edge type the stage is about, so there is nothing for a prompt to be written against."
   },
   "protocolBuilder.geospatial.propertyHint": {
-    "defaultMessage": "The value of this property is what gets stored when a participant selects an area, so choose one that is filled in and unique for every feature — a census tract, a postcode, or a neighbourhood name.",
+    "defaultMessage": "The value of this property is what gets stored when a participant selects an area, so choose one that is filled in and unique for every feature — a census tract, a postcode, or a neighborhood name.",
     "description": "Guidance under the recorded-property control. The three examples are kinds of area identifier; a language may replace them with identifiers its own readers would recognise."
   },
   "protocolBuilder.geospatial.propertyLabel": {
@@ -856,7 +856,7 @@
     "description": "Shown in place of the recorded-property control while no GeoJSON layer has been chosen, so there are no properties to offer."
   },
   "protocolBuilder.geospatial.propertyNoProperties": {
-    "defaultMessage": "The features in this layer carry no properties, so there is nothing to record a selection as. Choose a layer whose features are labelled.",
+    "defaultMessage": "The features in this layer carry no properties, so there is nothing to record a selection as. Choose a layer whose features are labeled.",
     "description": "Shown in place of the recorded-property control when the chosen GeoJSON layer was read but its features carry no named fields."
   },
   "protocolBuilder.geospatial.propertyRetryLabel": {
@@ -868,7 +868,7 @@
     "description": "Shown in place of the recorded-property control when the chosen file’s bytes are not a GeoJSON document this can parse."
   },
   "protocolBuilder.geospatial.searchHint": {
-    "defaultMessage": "Let participants search for an address, a neighbourhood, or a landmark instead of panning to it.",
+    "defaultMessage": "Let participants search for an address, a neighborhood, or a landmark instead of panning to it.",
     "description": "Guidance under the map-search switch. Panning is dragging the map to move it."
   },
   "protocolBuilder.geospatial.searchLabel": {
@@ -880,7 +880,7 @@
     "description": "Name of one basemap: a dark, low-contrast map meant to sit under coloured overlays."
   },
   "protocolBuilder.geospatial.styleHint": {
-    "defaultMessage": "The map drawn beneath the selectable areas. Check that place names on it stay readable under the highlight colour.",
+    "defaultMessage": "The map drawn beneath the selectable areas. Check that place names on it stay readable under the highlight color.",
     "description": "Guidance under the basemap control. The highlight colour is the colour chosen just below it, which the selectable areas are drawn in."
   },
   "protocolBuilder.geospatial.styleLabel": {
@@ -940,7 +940,7 @@
     "description": "Label of the switch that draws transit routes and stations on the participant’s map."
   },
   "protocolBuilder.geospatial.viewDescription": {
-    "defaultMessage": "Where the map is centred, and how far in it is zoomed, when the stage opens.",
+    "defaultMessage": "Where the map is centered, and how far in it is zoomed, when the stage opens.",
     "description": "Description of the starting-map-view section. A stage is one step of an interview."
   },
   "protocolBuilder.geospatial.viewTitle": {
@@ -1160,23 +1160,23 @@
     "description": "Heading over the paragraph explaining why inferred risk is not shown unless a researcher asks for it."
   },
   "protocolBuilder.narrativePedigree.diseaseColorHint": {
-    "defaultMessage": "The colour this disease is drawn in on the pedigree.",
+    "defaultMessage": "The color this disease is drawn in on the pedigree.",
     "description": "Guidance under the disease-colour control. A pedigree is a family tree."
   },
   "protocolBuilder.narrativePedigree.diseaseColorLabel": {
-    "defaultMessage": "Colour",
+    "defaultMessage": "Color",
     "description": "Label of the control choosing which colour one condition is drawn in on the family tree."
   },
   "protocolBuilder.narrativePedigree.diseaseColorOption": {
-    "defaultMessage": "Colour {position}",
+    "defaultMessage": "Color {position}",
     "description": "How one entry of the disease-colour list is named. The palette’s colours have no names of their own — they are the study’s own theme colours — so they are counted instead. position identifies which one, counting from 1."
   },
   "protocolBuilder.narrativePedigree.diseaseColorPlaceholder": {
-    "defaultMessage": "Select a colour...",
+    "defaultMessage": "Select a color...",
     "description": "Placeholder shown in the disease-colour control while no colour has been chosen. The trailing dots are an ellipsis written as three full stops."
   },
   "protocolBuilder.narrativePedigree.diseaseColorRequired": {
-    "defaultMessage": "Choose a colour for this disease.",
+    "defaultMessage": "Choose a color for this disease.",
     "description": "Refusal shown under the disease-colour control when the researcher saves the dialog without choosing one."
   },
   "protocolBuilder.narrativePedigree.diseaseCreateVariableDescription": {
@@ -1204,7 +1204,7 @@
     "description": "Refusal shown under the inheritance-pattern control when the researcher saves the dialog without choosing one."
   },
   "protocolBuilder.narrativePedigree.diseaseNameHint": {
-    "defaultMessage": "Shown to the participant in the pedigree's key, so it should be a name they recognise.",
+    "defaultMessage": "Shown to the participant in the pedigree's key, so it should be a name they recognize.",
     "description": "Guidance under the disease-name field. The key is the legend drawn beside the family tree, naming what each colour means."
   },
   "protocolBuilder.narrativePedigree.diseaseNameLabel": {
@@ -1328,7 +1328,7 @@
     "description": "Shown when the stage this one draws its family from has been moved to run later in the interview, so the participant would not have built the family yet."
   },
   "protocolBuilder.narrativePedigree.sourceDescription": {
-    "defaultMessage": "Choose the Family Pedigree stage whose family this stage visualises.",
+    "defaultMessage": "Choose the Family Pedigree stage whose family this stage visualizes.",
     "description": "Description of the pedigree-source section. \"Family Pedigree\" is the name of another kind of interview step, the one in which the participant builds their family tree; a stage is one step of an interview."
   },
   "protocolBuilder.narrativePedigree.sourceEmptyMessage": {
@@ -1352,7 +1352,7 @@
     "description": "Shown when the stage this one draws its family from has been deleted or dropped out of the interview — usually by a collaborator, while this editor was open."
   },
   "protocolBuilder.narrativePedigree.sourceNotAPedigree": {
-    "defaultMessage": "The stage this one reads is no longer a Family Pedigree, so there is no family for it to visualise. Choose a Family Pedigree stage instead.",
+    "defaultMessage": "The stage this one reads is no longer a Family Pedigree, so there is no family for it to visualize. Choose a Family Pedigree stage instead.",
     "description": "Shown when the stage this one draws its family from has been changed to a different kind of interview step, so it no longer collects a family tree."
   },
   "protocolBuilder.narrativePedigree.sourcePlaceholder": {
@@ -1420,7 +1420,7 @@
     "description": "Label of the control choosing between the two kinds of background a canvas can have."
   },
   "protocolBuilder.networkCanvas.backgroundSkewHint": {
-    "defaultMessage": "Gives the inner rings more room than the outer ones, so nodes placed near the centre overlap less.",
+    "defaultMessage": "Gives the inner rings more room than the outer ones, so nodes placed near the center overlap less.",
     "description": "Guidance under the larger-inner-circles switch."
   },
   "protocolBuilder.networkCanvas.backgroundSkewLabel": {
@@ -1932,7 +1932,7 @@
     "description": "Label of the list of saved views inside the presets section. The same word as the section heading, and translated once for each: the heading names the part of the stage, and this names the control."
   },
   "protocolBuilder.networkCanvas.presetsTitle": {
-    "defaultMessage": "Visualisation presets",
+    "defaultMessage": "Visualization presets",
     "description": "Heading of the section holding the saved ways of looking at the network. Also names the section in the editor outline and to assistive technology."
   },
   "protocolBuilder.networkCanvas.presetsWaitingDescription": {
@@ -2124,7 +2124,7 @@
     "description": "Guidance under the allow-moving-nodes switch on a sociogram stage, where the prompt rather than a preset names the attribute the positions are stored in. Replaces repositioningHint."
   },
   "protocolBuilder.networkCanvas.tapBehaviourLabel": {
-    "defaultMessage": "Tap behaviour",
+    "defaultMessage": "Tap behavior",
     "description": "Label of the control choosing between the three things tapping a node can do."
   },
   "protocolBuilder.networkCanvas.tapCreateEdgeDescription": {
@@ -2488,7 +2488,7 @@
     "description": "Heading of the section holding the single question shown while a participant is drawing their family."
   },
   "protocolBuilder.pedigree.dependentStagesDescription": {
-    "defaultMessage": "These stages visualise this pedigree's network and map their own attributes onto its node type: {stageNames}. Changing the node type here will leave them pointing at attributes the new type does not have.",
+    "defaultMessage": "These stages visualize this pedigree's network and map their own attributes onto its node type: {stageNames}. Changing the node type here will leave them pointing at attributes the new type does not have.",
     "description": "Body of the warning about other stages that read this pedigree. stageNames is the list of those stages’ names, each in quotation marks, already joined into one phrase in the reader’s language."
   },
   "protocolBuilder.pedigree.dependentStagesTitle": {

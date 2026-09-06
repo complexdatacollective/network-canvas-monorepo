@@ -227,7 +227,7 @@ export const networkCanvasMessages = defineMessages({
   backgroundSkewHint: {
     id: 'protocolBuilder.networkCanvas.backgroundSkewHint',
     defaultMessage:
-      'Gives the inner rings more room than the outer ones, so nodes placed near the centre overlap less.',
+      'Gives the inner rings more room than the outer ones, so nodes placed near the center overlap less.',
     description: 'Guidance under the larger-inner-circles switch.',
   },
   backgroundImageLabel: {
@@ -308,7 +308,7 @@ export const networkCanvasMessages = defineMessages({
   },
   presetsTitle: {
     id: 'protocolBuilder.networkCanvas.presetsTitle',
-    defaultMessage: 'Visualisation presets',
+    defaultMessage: 'Visualization presets',
     description:
       'Heading of the section holding the saved ways of looking at the network. Also names the section in the editor outline and to assistive technology.',
   },
@@ -666,7 +666,7 @@ export const networkCanvasMessages = defineMessages({
   },
   tapBehaviourLabel: {
     id: 'protocolBuilder.networkCanvas.tapBehaviourLabel',
-    defaultMessage: 'Tap behaviour',
+    defaultMessage: 'Tap behavior',
     description:
       'Label of the control choosing between the three things tapping a node can do.',
   },

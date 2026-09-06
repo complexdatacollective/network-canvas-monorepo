@@ -345,7 +345,7 @@ export const pedigreeMessages = defineMessages({
   dependentStagesDescription: {
     id: 'protocolBuilder.pedigree.dependentStagesDescription',
     defaultMessage:
-      "These stages visualise this pedigree's network and map their own attributes onto its node type: {stageNames}. Changing the node type here will leave them pointing at attributes the new type does not have.",
+      "These stages visualize this pedigree's network and map their own attributes onto its node type: {stageNames}. Changing the node type here will leave them pointing at attributes the new type does not have.",
     description:
       'Body of the warning about other stages that read this pedigree. stageNames is the list of those stages’ names, each in quotation marks, already joined into one phrase in the reader’s language.',
   },

@@ -49,7 +49,7 @@ const CLAIMED = [
   {
     stageType: 'Narrative',
     editor: NarrativeStageEditor,
-    sections: ['Visualisation presets'],
+    sections: ['Visualization presets'],
   },
   {
     stageType: 'NarrativePedigree',
