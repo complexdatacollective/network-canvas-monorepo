@@ -527,11 +527,11 @@ describe('the attributes a pedigree may bind', () => {
  * on. `insertItem`/`moveItem`/`removeItem` at `['nodeConfig','form']` name the
  * row and the list it belongs to, which is the material a rebase would need.
  *
- * Whether the session then rebases anything is a separate question this test
- * does not answer, and today the answer is no: `session.undo()` re-emits a
- * whole-key `set nodeConfig`, and an authoritative update inserting a
- * colleague's row into `nodeConfig.form` is dropped rather than replayed onto
- * this draft. Both live in the session's own command derivation and reseed.
+ * What the session then DOES with them is a separate question this test does
+ * not answer, and one the session's own suites do: `listArrivals` and
+ * `session` cover rebasing a pending batch onto a base a collaborator has
+ * moved, and the whole-key `set` an undo or a submit used to derive from a
+ * changed draft. What is asserted here is only the commands the section emits.
  */
 describe('the way a family member form reaches the document', () => {
   it('commits an added, moved and removed field as that row’s own edit', async () => {
