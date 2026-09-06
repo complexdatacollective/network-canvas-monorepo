@@ -1,5 +1,9 @@
 import { useCallback } from 'react';
 
+import {
+  hasParameterIssues,
+  validateParameters,
+} from '../../codebook/variableParameters.ts';
 import { withoutAbsentValues } from '../../form/absentValues.ts';
 import DialogArrayField, {
   type DialogArrayEditorValidate,
@@ -7,6 +11,11 @@ import DialogArrayField, {
 } from '../../form/arrayFields/DialogArrayField.tsx';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import { useRowRenderers } from '../rowRenderers.tsx';
+import { useSubjectVariables } from './codebookOptions.ts';
+import {
+  composerParameterShape,
+  PARAMETERS_FIELD,
+} from './ComposerFieldParameters.tsx';
 import {
   ComposerFormFieldEditor,
   ComposerFormFieldPreview,
@@ -61,6 +70,7 @@ export default function ComposerFormFieldsList({
     ComposerFormFieldEditor,
     ComposerFormFieldPreview,
   );
+  const variables = useSubjectVariables(subject);
 
   const editorValidate = useCallback<DialogArrayEditorValidate>(
     (values, context) => {
@@ -77,9 +87,30 @@ export default function ComposerFormFieldsList({
       ) {
         return { variable: DUPLICATE_VARIABLE };
       }
+      /**
+       * The settings block, judged by the protocol's own parameter schemas
+       * before the row is committed.
+       *
+       * The stage save catches this too, but by then the dialog has closed
+       * over the two dates the message is about — and it answers against a
+       * path rather than against the control the researcher has to fix in.
+       * The same schemas run either way; this one just knows which field
+       * asked.
+       */
+      const shape = composerParameterShape(
+        variables,
+        values.variable,
+        values.component,
+      );
+      if (shape !== null) {
+        const issues = validateParameters(shape, values[PARAMETERS_FIELD]);
+        if (hasParameterIssues(issues)) {
+          return { [PARAMETERS_FIELD]: Object.values(issues).flat() };
+        }
+      }
       return {};
     },
-    [value],
+    [value, variables],
   );
 
   return (

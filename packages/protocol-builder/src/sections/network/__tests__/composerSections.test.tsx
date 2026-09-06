@@ -725,11 +725,10 @@ describe('what a composer field’s control accepts', () => {
       },
     ]);
     // The attribute is what a date MEANS; the window this form offers is this
-    // form's. Nothing reached the codebook.
-    expect(personVariables(harness).met_on).toEqual({
-      name: 'met_on',
-      type: 'datetime',
-    });
+    // form's. A block written to the codebook instead would arrive at the host
+    // as a compound edit over the whole person type, which is where the
+    // attribute — and the settings — would then be.
+    expect(Object.hasOwn(personVariables(harness), 'met_on')).toBe(false);
   });
 
   it('records the same for a connection’s own form', async () => {
@@ -844,6 +843,37 @@ describe('what a composer field’s control accepts', () => {
   });
 
   /**
+   * The same swap, with nothing authored for the control that replaces it.
+   *
+   * Nothing is written on the way out here, so only the swap itself can take
+   * the old settings away — and left behind they are not merely stale: the
+   * two date schemas are strict about their own keys, so the stage would be
+   * refused long after the researcher had moved on.
+   */
+  it('drops what the old control needed even when the new one is left empty', async () => {
+    const harness = renderStageEditor(openEditor());
+    const field = await openDateField(harness);
+
+    fireEvent.change(field.getByLabelText('Earliest date'), {
+      target: { value: '2020-01-01' },
+    });
+    await harness.user.selectOptions(
+      field.getByRole('combobox', { name: 'Input control' }),
+      'RelativeDatePicker',
+    );
+    await addRow(harness, field);
+
+    const request = await harness.submit();
+    expect(savedFields(request)).toEqual([
+      {
+        id: expect.any(String) as unknown as string,
+        variable: 'met_on',
+        component: 'RelativeDatePicker',
+      },
+    ]);
+  });
+
+  /**
    * The control follows the attribute, so moving the field to an attribute
    * nothing configurable can render takes the settings with it. Left behind,
    * they would be a block authored for a control the field no longer has.
@@ -892,13 +922,18 @@ describe('what a composer field’s control accepts', () => {
     });
     await harness.user.click(field.getByRole('button', { name: 'Add' }));
 
+    // Against the date that ends the window, which is the control the
+    // researcher has to change — not in a "could not be saved" alert that
+    // names neither of them.
+    const complaint = await field.findByText(
+      'DatePicker "min" must not be after "max"',
+    );
+    expect(complaint).toBeVisible();
     expect(
-      await field.findByText('DatePicker "min" must not be after "max"'),
-    ).toBeVisible();
+      field.getByLabelText('Latest date').closest('[data-field-name]'),
+    ).toContainElement(complaint);
+    // The row is still on screen, holding the draft, rather than committed.
     expect(screen.getByRole('dialog')).toBeInTheDocument();
-
-    const request = await harness.submit();
-    expect(Object.hasOwn(request?.stageDocument ?? {}, 'nodeForm')).toBe(false);
   });
 
   /**
@@ -907,38 +942,131 @@ describe('what a composer field’s control accepts', () => {
    * the resolution, which is stored at whatever precision it was chosen under
    * and can be coarser than anything this editor's date inputs would emit.
    */
-  it('saves a stage whose fields already carry settings, unchanged', async () => {
+  /**
+   * The other kind of control that takes settings, and the only one whose
+   * settings it cannot do without: a scale with no end labels is a line with
+   * nothing at either end of it, and the researcher looking at this form is
+   * the only person who can say what belongs there.
+   *
+   * It also pins what a refusal does to the settings it did NOT complain
+   * about: answering one of the two leaves the complaint about the other
+   * standing, rather than clearing the lot on the next keystroke.
+   */
+  it('asks a sliding scale what its two ends mean, and will not save without them', async () => {
+    const harness = renderStageEditor(openEditor());
+    addPersonVariable(harness, 'closeness_scale', {
+      name: 'closeness_scale',
+      type: 'scalar',
+    });
+
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Node attributes' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', {
+        name: 'Create new node attribute field',
+      }),
+    );
+    const field = within(await screen.findByRole('dialog'));
+    await harness.user.selectOptions(
+      field.getByRole('combobox', { name: 'Attribute' }),
+      'closeness_scale',
+    );
+    await harness.user.click(field.getByRole('button', { name: 'Add' }));
+
+    expect(
+      await field.findByText('Write what the low end of the scale means.'),
+    ).toBeVisible();
+    await harness.user.type(
+      field.getByRole('textbox', { name: 'Minimum label' }),
+      'Not at all close',
+    );
+    // `waitFor`, because the message animates out rather than vanishing.
+    await waitFor(() =>
+      expect(
+        field.queryByText('Write what the low end of the scale means.'),
+      ).toBeNull(),
+    );
+    expect(
+      field.getByText('Write what the high end of the scale means.'),
+    ).toBeVisible();
+
+    await harness.user.type(
+      field.getByRole('textbox', { name: 'Maximum label' }),
+      'Extremely close',
+    );
+    await addRow(harness, field);
+
+    const request = await harness.submit();
+    expect(savedFields(request)).toEqual([
+      {
+        id: expect.any(String) as unknown as string,
+        variable: 'closeness_scale',
+        component: 'VisualAnalogScale',
+        parameters: {
+          minLabel: 'Not at all close',
+          maxLabel: 'Extremely close',
+        },
+      },
+    ]);
+  });
+
+  const DATED_FIELD: SectionDoc = {
+    id: 'composer-node-field-dated',
+    variable: 'met_on',
+    component: 'DatePicker',
+    // At a resolution this editor's own date inputs cannot emit, so a block
+    // reassembled from what the controls show rather than carried through
+    // shows up here.
+    parameters: { type: 'month', min: '2020-01', max: '2024-12' },
+  };
+
+  const openWithDatedField = () => {
     const { type, fields } = loadFixtureStage('network-composer-1');
-    const harness = renderStageEditor({
+    return {
       stage: {
         id: 'network-composer-settings',
         type,
-        fields: {
-          ...fields,
-          nodeForm: {
-            fields: [
-              {
-                id: 'composer-node-field-dated',
-                variable: 'met_on',
-                component: 'DatePicker',
-                parameters: { type: 'month', min: '2020-01', max: '2024-12' },
-              },
-            ],
-          },
-        },
+        fields: { ...fields, nodeForm: { fields: [DATED_FIELD] } },
       },
       sections,
-    });
+    };
+  };
+
+  it('saves a stage whose fields already carry settings, unchanged', async () => {
+    const harness = renderStageEditor(openWithDatedField());
     addPersonVariable(harness, 'met_on', { name: 'met_on', type: 'datetime' });
 
     const request = await harness.roundTrip({ unowned: ['label', 'subject'] });
-    expect(savedFields(request)).toEqual([
-      {
-        id: 'composer-node-field-dated',
-        variable: 'met_on',
-        component: 'DatePicker',
-        parameters: { type: 'month', min: '2020-01', max: '2024-12' },
-      },
-    ]);
+    expect(savedFields(request)).toEqual([DATED_FIELD]);
+  });
+
+  /**
+   * The same block, through the editor that now renders it.
+   *
+   * A round trip that never opens the row proves only that the list carries
+   * the value; the settings are seeded, shown and written back by controls
+   * that only exist once the dialog is open, so opening it and saving nothing
+   * is the only thing that can catch a block the editor rebuilds instead of
+   * carrying.
+   */
+  it('gives a block back unchanged when its row is opened and saved untouched', async () => {
+    const harness = renderStageEditor(openWithDatedField());
+    addPersonVariable(harness, 'met_on', { name: 'met_on', type: 'datetime' });
+
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Edit node attribute field' }),
+    );
+    const field = within(await screen.findByRole('dialog'));
+    expect(
+      field.getByRole('combobox', { name: 'Date resolution' }),
+    ).toHaveValue('month');
+    await harness.user.click(field.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    expect(savedFields(request)).toEqual([DATED_FIELD]);
   });
 });

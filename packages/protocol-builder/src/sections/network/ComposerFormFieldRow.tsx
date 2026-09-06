@@ -11,6 +11,7 @@ import { VariablePickerControl } from '../../fields/VariablePicker.tsx';
 import AttributeCodebookControls from '../AttributeCodebookControls.tsx';
 import type { RowEditorProps, RowPreviewProps } from '../rowRenderers.tsx';
 import { useSubjectVariables, useVariableOptions } from './codebookOptions.ts';
+import ComposerFieldParameters from './ComposerFieldParameters.tsx';
 import {
   defaultInputControl,
   FORM_FIELD_VARIABLE_TYPES,
@@ -65,9 +66,9 @@ const codebookControl = (variable: unknown): unknown =>
  * (`ComposerFormFieldSchema`), so a date attribute may be a plain picker on
  * one form and a relative one on another. Written to the codebook they would
  * be authored against a control the codebook does not have, and the variable
- * schemas — split on `component` — refuse that pairing outright. So this row
- * carries its `parameters` through untouched, and the surface that authors
- * them stage-side is still to be written.
+ * schemas — split on `component` — refuse that pairing outright. So they are
+ * asked for here instead, by `ComposerFieldParameters`, and saved with the
+ * row.
  */
 export function ComposerFormFieldEditor({ item }: RowEditorProps) {
   const subject = useComposerFormSubject();
@@ -146,6 +147,7 @@ export function ComposerFormFieldEditor({ item }: RowEditorProps) {
         componentField={COMPONENT_FIELD}
         offerParameters={false}
       />
+      <ComposerFieldParameters item={item} />
       <Field
         name={LABEL_FIELD}
         component={InputField}
