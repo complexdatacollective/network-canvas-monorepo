@@ -397,6 +397,25 @@ export function resolveInsertIndex<T extends ArrayRow>(
  * every one of those that is still here says it. `undefined` refuses the move,
  * which is the answer when none of them is.
  *
+ * The rows the drag actually took it PAST are more than an anchor, though, and
+ * they bound the answer: the moved row lands after every surviving row it was
+ * moved past, and before every surviving row it was moved ahead of. A nearest
+ * neighbour is the same row whichever order the arrival left the others in, so
+ * anchoring on one alone is right only while the arrival left that order alone
+ * — and two people reordering different rows of one list is ordinary. From
+ * `[a, b, c]` the researcher drags `a` to the bottom while a collaborator
+ * drags `b` there; the row `a` was dropped behind is `c`, which now sits ABOVE
+ * `b`, and landing after it gave `[c, a, b]` — `a` back in front of a row the
+ * researcher had explicitly dragged it past. `[c, b, a]` is both of their
+ * edits.
+ *
+ * Which is also the answer where the two disagree. The rows the drag did not
+ * cross say where the moved row goes among them, and the arrival may have
+ * moved one of those to the far side of a row it did cross; the rows it
+ * crossed win, because those are the ones the researcher placed it against.
+ * The rest decide only what is left — where in the window the crossed rows
+ * leave it lands, which is still its nearest surviving neighbour.
+ *
  * The row being PICKED UP and the rows it is anchored on are read off ONE
  * drawing of the correspondence between the two lists, so the two cannot
  * disagree about which row is which. `resolveRowIndex` answered for the moved
@@ -464,21 +483,46 @@ export function resolveMove<T extends ArrayRow>(
   // threw the researcher's reorder away over a row they had not touched:
   // `[a, b, c]` with `a` dragged to the bottom, rebased onto an arrival that
   // deleted `c`, said nothing rather than `[b, a]`.
-  for (let earlier = to - 1; earlier >= 0; earlier -= 1) {
-    const predecessor = anchorIndex(earlier);
-    if (predecessor !== undefined)
-      return { from: currentFrom, to: predecessor + 1 };
-  }
+  const nearestAnchor = (): number | undefined => {
+    for (let earlier = to - 1; earlier >= 0; earlier -= 1) {
+      const predecessor = anchorIndex(earlier);
+      if (predecessor !== undefined) return predecessor + 1;
+    }
+    for (let later = to; later < drawnOthers; later += 1) {
+      const successor = anchorIndex(later);
+      if (successor !== undefined) return successor;
+    }
+    // No row the editor drew survives to say where this one goes. A list
+    // holding only rows that arrived from elsewhere is not one the
+    // researcher's move says anything about, so it is refused rather than
+    // landed on a guess.
+    return remainingRows === 0 ? 0 : undefined;
+  };
+  const landed = nearestAnchor();
+  if (landed === undefined) return undefined;
 
-  for (let later = to; later < drawnOthers; later += 1) {
-    const successor = anchorIndex(later);
-    if (successor !== undefined) return { from: currentFrom, to: successor };
+  // And the rows the drag actually took it past, every one of them: those are
+  // the places in the order the researcher DECIDED, so they bound where the
+  // nearest neighbour may put it. Dragging down the list, they are the rows
+  // between the pick-up and the drop that end up above it, so the answer is at
+  // least one past the furthest of them; dragging up, the same rows end up
+  // below it, and the answer is at most the nearest of those. They are all on
+  // one side — a drag crosses a row in one direction only — so the two can
+  // never contradict each other.
+  let crossed: number | undefined;
+  for (let at = Math.min(from, to); at < Math.max(from, to); at += 1) {
+    const anchor = anchorIndex(at);
+    if (anchor === undefined) continue;
+    crossed =
+      to > from
+        ? Math.max(crossed ?? 0, anchor + 1)
+        : Math.min(crossed ?? remainingRows, anchor);
   }
-
-  // No row the editor drew survives to say where this one goes. A list holding
-  // only rows that arrived from elsewhere is not one the researcher's move
-  // says anything about, so it is refused rather than landed on a guess.
-  return remainingRows === 0 ? { from: currentFrom, to: 0 } : undefined;
+  if (crossed === undefined) return { from: currentFrom, to: landed };
+  return {
+    from: currentFrom,
+    to: to > from ? Math.max(landed, crossed) : Math.min(landed, crossed),
+  };
 }
 
 /**

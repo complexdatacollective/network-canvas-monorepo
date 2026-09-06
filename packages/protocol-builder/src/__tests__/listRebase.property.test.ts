@@ -19,6 +19,7 @@ import {
   canonicalize,
   type Command,
   type SectionDoc,
+  targetPath,
 } from '@codaco/studio-sync/apply';
 
 import { rebaseCommands } from '../listCommands.ts';
@@ -290,6 +291,61 @@ function referenceMerge(
   return { ids: ids.toSorted(), byId };
 }
 
+/**
+ * The reference merge for a MOVE, which is about order rather than presence.
+ *
+ * A move says where one row goes relative to the rows the researcher could
+ * see, and the rows it says the most about are the ones the drag actually took
+ * it PAST: from `[a, b, c]`, dragging `a` to the bottom is a decision about
+ * `b` and about `c`, made against each of them. So the claim, checked on the
+ * list the rebase actually produced: the moved row sits after every one of
+ * those that survived, or before every one of them when the drag went the
+ * other way.
+ *
+ * `undefined` where there is nothing to claim — the moved row or a crossed one
+ * has gone, or the list holds either of them twice, so which occurrence is
+ * which is not a fact this model has. The count returned is how many crossed
+ * rows the claim was actually made about, which is what keeps the sweep from
+ * passing by never asking.
+ */
+const crossedRowsKept = (
+  before: readonly Row[],
+  result: readonly Row[],
+  from: number,
+  to: number,
+): Readonly<{ checked: number; problem: string | null }> => {
+  const none = { checked: 0, problem: null };
+  const movedRow = before[from];
+  if (movedRow === undefined) return none;
+  const once = (list: readonly Row[], key: string) =>
+    list.filter((row) => keyOf(row) === key).length === 1;
+  const placeOf = (list: readonly Row[], key: string) =>
+    list.findIndex((row) => keyOf(row) === key);
+  const moved = keyOf(movedRow);
+  // The moved row has gone, or the list holds a copy of it: either way there
+  // is no occurrence to measure the others against.
+  if (!once(before, moved) || !once(result, moved)) return none;
+  const movedAt = placeOf(result, moved);
+  // The rows the drag crossed, in the order the drop left them: the
+  // researcher's list without the row being moved.
+  const others = before.filter((_row, at) => at !== from);
+  let checked = 0;
+  for (let at = Math.min(from, to); at < Math.max(from, to); at += 1) {
+    const row = others[at];
+    if (row === undefined) continue;
+    const key = keyOf(row);
+    if (!once(before, key) || !once(result, key)) continue;
+    checked += 1;
+    const place = placeOf(result, key);
+    if (to > from ? place < movedAt : place > movedAt) continue;
+    return {
+      checked,
+      problem: `the drag took ${moved} ${to > from ? 'past' : 'ahead of'} ${key}, and the merge left ${JSON.stringify(result.map(keyOf))}`,
+    };
+  }
+  return { checked, problem: null };
+};
+
 const readList = (doc: SectionDoc, path: readonly string[]): Row[] => {
   let cursor: unknown = doc;
   for (const segment of path) {
@@ -465,6 +521,12 @@ type Outcome =
        * no longer there — the shape above, answered.
        */
       refusedIntoNothing: number;
+      /**
+       * Moves whose crossed rows the merge did not keep the researcher's side
+       * of, and how many crossed rows were asked about at all.
+       */
+      crossings: number;
+      crossingsBroken: string[];
       /** What the merged document holds at the exclusive-variant container. */
       background: unknown;
     };
@@ -596,9 +658,38 @@ function runTrial(
     const rebased: Command[][] = [];
     const inert: Command[] = [];
     let refusedIntoNothing = 0;
+    let crossings = 0;
+    const crossingsBroken: string[] = [];
     for (const batch of batches) {
-      const next = rebaseCommands(basis, fields, batch);
+      // Read before the batch is walked, so both of these say exactly what
+      // they said when the whole batch was rebased in one call.
       const here = readList(fields, path);
+      const heldBefore = heldTheContainer(fields, path);
+      // Command by command, which is precisely what `rebaseCommands` does with
+      // a whole batch — each command is resolved against the document its
+      // predecessors left — and which is what lets a move's own claim be
+      // checked against the list its own command produced.
+      const next: Command[] = [];
+      for (const command of batch) {
+        const one = rebaseCommands(basis, fields, [command]);
+        const applied = applyCommands(fields, [...one]);
+        if (
+          command.op === 'moveItem' &&
+          canonicalize(targetPath(command.key)) === canonicalize(path)
+        ) {
+          const claim = crossedRowsKept(
+            readList(basis, path),
+            readList(applied, path),
+            command.from,
+            command.to,
+          );
+          crossings += claim.checked;
+          if (claim.problem !== null) crossingsBroken.push(claim.problem);
+        }
+        next.push(...one);
+        fields = applied;
+        basis = applyCommands(basis, [command]);
+      }
       for (const command of next) {
         if (command.op !== 'set' || !Array.isArray(command.value)) continue;
         if (canonicalize(command.value) === canonicalize(here))
@@ -609,13 +700,11 @@ function runTrial(
         batch.some(
           (command) => command.op === 'set' && Array.isArray(command.value),
         ) &&
-        !heldTheContainer(fields, path)
+        !heldBefore
       ) {
         refusedIntoNothing += 1;
       }
-      rebased.push([...next]);
-      fields = applyCommands(fields, [...next]);
-      basis = applyCommands(basis, [...batch]);
+      rebased.push(next);
     }
     return {
       trial,
@@ -625,6 +714,8 @@ function runTrial(
         rebased,
         inert,
         refusedIntoNothing,
+        crossings,
+        crossingsBroken,
         background: fields.background,
       },
     };
@@ -692,6 +783,22 @@ const ANCHORED_MOVE_TRIALS: Readonly<Record<Mode, number>> = {
   identified: 5,
   idless: 1,
   duplicated: 1,
+};
+
+/**
+ * And how many rows a move's crossing claim is actually made about: rows the
+ * drag took the moved one past, which survived the arrival, and which the
+ * merged list holds exactly once so there is an occurrence to measure.
+ *
+ * Asked of the general sweep rather than of the two order ones, because the
+ * arrival that can put such a row on the wrong side of the drop is the one
+ * that REORDERS rows of its own — which `inserts` and `comings and goings`
+ * never do.
+ */
+const CROSSED_ROW_TRIALS: Readonly<Record<Mode, number>> = {
+  identified: 200,
+  idless: 50,
+  duplicated: 50,
 };
 
 /**
@@ -1050,6 +1157,40 @@ describe('rebasing a list edit onto a collaborator’s arrival', () => {
             return `the last local edit appended ${JSON.stringify(appended)}, which is not last in ${JSON.stringify(outcome.result)}`;
           }),
         ).toEqual([]);
+      });
+
+      /**
+       * The one thing about order an arrival that REORDERS cannot take away:
+       * where a moved row sits among the rows the drag took it past.
+       *
+       * The sweeps below ask for the researcher's whole order, and can only
+       * ask it of an arrival that left the order alone — against one that
+       * reordered rows itself there are two defensible answers for the rows
+       * neither side decided. A row the drag was explicitly dragged past is
+       * not one of those. It is a decision the researcher made against that
+       * row, and it survives whatever the collaborator did with the others.
+       *
+       * Anchoring the destination on the NEAREST surviving neighbour alone
+       * lost it the moment the arrival moved that neighbour to the other side
+       * of a row the drag had crossed: `[a, b, c]` with `a` dragged to the
+       * bottom, rebased onto a collaborator who dragged `b` there, answered
+       * `[c, a, b]` — `a` back above the row the researcher had just dragged
+       * it under.
+       */
+      it('leaves a moved row past every row the drag took it past', () => {
+        const failures: string[] = [];
+        let crossings = 0;
+        for (let seed = 1; seed <= ORDER_TRIALS; seed += 1) {
+          const { trial, outcome } = runTrial(seed, mode);
+          if (outcome.kind !== 'ok') continue;
+          crossings += outcome.crossings;
+          for (const problem of outcome.crossingsBroken) {
+            if (failures.length < 3)
+              failures.push(describeTrial(trial, problem));
+          }
+        }
+        expect(failures).toEqual([]);
+        expect(crossings).toBeGreaterThan(CROSSED_ROW_TRIALS[mode]);
       });
 
       /**

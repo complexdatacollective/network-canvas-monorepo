@@ -189,6 +189,66 @@ describe('a reordering submit rebased onto a collaborator’s arrival', () => {
 });
 
 /**
+ * A move rebased onto an arrival that reordered rows of its own.
+ *
+ * The destination is anchored on the rows the researcher could see, and until
+ * now on the NEAREST surviving one — which is the same row whichever order the
+ * arrival left them in, and so is only the right anchor while the arrival left
+ * that order alone. Two people reordering different rows of one list is
+ * ordinary: the researcher drags a question to the bottom while a collaborator
+ * drags another one there, and the nearest neighbour of the drop is then a row
+ * the arrival has since moved to the other side of the rows the drag went past.
+ *
+ * So the answer is measured against ALL of them: the moved row lands after
+ * every surviving row the drag took it past, and before every surviving row it
+ * took it ahead of.
+ */
+describe('a move rebased onto a collaborator’s own reorder', () => {
+  const age: SectionDoc = { id: 'f-1', variable: 'age', prompt: 'Their age?' };
+  const job: SectionDoc = { id: 'f-2', variable: 'job', prompt: 'Their job?' };
+  const city: SectionDoc = {
+    id: 'f-3',
+    variable: 'city',
+    prompt: 'Their city?',
+  };
+
+  it('leaves it after every row the drag took it past', () => {
+    const session = openSession([age, job, city]);
+    // The whole of the submit is a reorder: `age` dragged to the bottom, past
+    // both of the others.
+    edit(session, [job, city, age]);
+    expect(session.getSnapshot().pendingCommands[0]?.commands).toEqual([
+      { op: 'moveItem', key: ['form', 'fields'], from: 0, to: 2 },
+    ]);
+
+    // The collaborator drags `job` to the bottom, so the row `age` was dropped
+    // behind — `city` — is no longer the last of the rows it was moved past.
+    arrives(session, [age, city, job]);
+
+    expect(
+      variableNames(readFields(session.getSnapshot().editedSection.fields)),
+    ).toEqual(['city', 'job', 'age']);
+  });
+
+  it('leaves it before every row the drag took it ahead of', () => {
+    const session = openSession([age, job, city]);
+    // The other direction: `city` dragged to the top, ahead of both.
+    edit(session, [city, age, job]);
+    expect(session.getSnapshot().pendingCommands[0]?.commands).toEqual([
+      { op: 'moveItem', key: ['form', 'fields'], from: 2, to: 0 },
+    ]);
+
+    // And the collaborator drags `age` to the bottom, so the row `city` was
+    // dropped in front of is no longer the first of the rows it passed.
+    arrives(session, [job, city, age]);
+
+    expect(
+      variableNames(readFields(session.getSnapshot().editedSection.fields)),
+    ).toEqual(['city', 'job', 'age']);
+  });
+});
+
+/**
  * A move rebased onto a list that holds one id twice.
  *
  * Two rows carrying the same `id` is a shape a real document holds: a roster
