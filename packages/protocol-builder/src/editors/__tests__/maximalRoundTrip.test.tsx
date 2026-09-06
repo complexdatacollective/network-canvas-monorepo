@@ -282,21 +282,18 @@ const MAXIMAL_STAGES: MaximalStage[] = [
  * renders, or renders and then rewrites, can sit unnoticed in a corner of the
  * schema nothing in the fixture exercises. This seeds the corners.
  *
- * Two claims, and they fail differently. `unownedKeys` is about what is on
- * SCREEN: a key nothing has a field for survives the round trip untouched, by
- * design — an interface with no skip-logic section must not delete skip logic
- * someone authored — so no comparison can ever see it, and the researcher who
- * opens the stage simply cannot change something their protocol holds.
- * `diff` is about what came BACK: a key the editor renders can still be
- * dropped, rewritten, or invented by the save itself.
- *
- * Both are asserted as whole lists rather than one key at a time, so a failure
- * names every key at once instead of the alphabetically first.
+ * The claims themselves are `roundTrip`'s, not this file's: what is on SCREEN
+ * (a key nothing has a field for survives untouched by design, so no
+ * comparison can ever see it) and what came BACK (a key the editor renders can
+ * still be dropped, rewritten, or invented by the save). Asked through the
+ * shared helper so the corners are held to the same standard as the fixture
+ * stages — including its reach into nested keys, which is where a maximal
+ * stage has most of its content.
  */
 describe('a maximal stage of each interface', () => {
   it.each(MAXIMAL_STAGES)(
     '$interfaceName: is fully editable, and saves every key unchanged',
-    async ({ interfaceName, type, registry, fields, settle }) => {
+    async ({ type, registry, fields, settle }) => {
       const harness = renderStageEditor({
         stage: { type, fields },
         registry,
@@ -307,49 +304,10 @@ describe('a maximal stage of each interface', () => {
       // has not finished registering.
       await waitFor(() => expect(harness.outline().length).toBeGreaterThan(2));
 
-      // Read before the save, because it is a question about what is on screen
-      // and a refused save would otherwise hide it.
-      const owned = new Set(harness.ownedKeys());
-      const unownedKeys = Object.keys(fields).filter((key) => !owned.has(key));
-
-      const request = await harness.submit();
-      const diff: string[] = [];
-      if (request === null) {
-        diff.push(
-          `refused to save, showing: ${[
-            ...harness.baseElement.querySelectorAll('[role="alert"]'),
-          ]
-            .map((alert) => alert.textContent)
-            .join(' | ')}`,
-        );
-      } else {
-        for (const [key, value] of Object.entries(fields)) {
-          if (!Object.hasOwn(request.stageDocument, key)) {
-            diff.push(`dropped ${key}`);
-          } else if (
-            JSON.stringify(request.stageDocument[key]) !== JSON.stringify(value)
-          ) {
-            diff.push(
-              `changed ${key}: ${JSON.stringify(request.stageDocument[key])}`,
-            );
-          }
-        }
-        for (const key of Object.keys(request.stageDocument)) {
-          // `id` and `type` are the session's, not the editor's.
-          if (key === 'id' || key === 'type') continue;
-          if (!Object.hasOwn(fields, key)) {
-            diff.push(
-              `added ${key}: ${JSON.stringify(request.stageDocument[key])}`,
-            );
-          }
-        }
-      }
-
-      expect({ interfaceName, unownedKeys, diff }).toEqual({
-        interfaceName,
-        unownedKeys: [],
-        diff: [],
-      });
+      // Nothing is excused: a maximal stage is the one case where every key
+      // the interface offers must be on screen, so an empty `unowned` is the
+      // whole claim about the outline.
+      await harness.roundTrip({ unowned: [] });
     },
   );
 });
