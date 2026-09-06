@@ -107,8 +107,6 @@ export async function localDeployment(label: string) {
       join(directory, 'qualification.yml'),
     ].join(':'),
   };
-  const edgeNetwork = `${project}-reserved-edge`;
-  let edgeReserved = false;
   const origin = `http://127.0.0.1:${ports.web}`;
   async function execute(
     command: string,
@@ -216,31 +214,9 @@ export async function localDeployment(label: string) {
     return output.bootstrapToken;
   }
   async function overlay() {
-    if (!edgeReserved) {
-      // Docker owns address allocation. Atomically reserve a candidate instead
-      // of racing another qualification project or its auto-allocated /16.
-      for (let attempt = 0; attempt < 32; attempt++) {
-        const bytes = randomBytes(2);
-        const prefix = `172.${16 + (bytes[0]! % 16)}.${bytes[1]!}`;
-        const result = await execute(
-          'docker',
-          ['network', 'create', '--subnet', `${prefix}.0/24`, edgeNetwork],
-          { failure: true },
-        );
-        if (result.code === 0) {
-          environment.STUDIO_PROXY_SUBNET = `${prefix}.0/24`;
-          environment.STUDIO_PROXY_IP = `${prefix}.2`;
-          edgeReserved = true;
-          break;
-        }
-        if (!result.stderr.toString().includes('Pool overlaps'))
-          throw new Error(
-            `Cannot reserve a qualification network; evidence: ${log}`,
-          );
-      }
-      if (!edgeReserved)
-        throw new Error('No free qualification subnet was found.');
-    }
+    // Let Docker allocate fresh networks and non-overlapping subnets when
+    // Compose creates this project. A pre-existing external network would
+    // correctly fail the production restore target-isolation preflight.
     await writeFile(
       join(directory, 'probe.yml'),
       `http:
@@ -278,10 +254,11 @@ export async function localDeployment(label: string) {
     networks: [data, edge]
   traefik:
     ports: !reset []
+    networks: !override
+      edge: {}
 networks:
   edge: !override
-    external: true
-    name: ${edgeNetwork}
+    name: ${project}-edge
 `,
     );
   }
@@ -331,7 +308,6 @@ networks:
       failure: true,
       environment: { STUDIO_ENCRYPTION_FILE: '/dev/null' },
     });
-    if (edgeReserved) await execute('docker', ['network', 'rm', edgeNetwork]);
   }
   return {
     project,

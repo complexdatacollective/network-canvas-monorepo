@@ -271,9 +271,13 @@ restores images and tags; recovery does not rely on registry digest names
 surviving a change of Docker storage backend.
 
 Before loading images or replacing local configuration or keys, restore resolves
-the effective Compose project and every named volume. It refuses any existing
+the effective Compose project and every named volume and network. It refuses any existing
 project container, network or volume, including stopped containers and orphaned
-resources, and any existing custom or external volume named by the configuration.
+resources, and any existing custom or external volume or network named by the
+configuration. Reusing a network could resolve another deployment's database or
+object-store aliases even when the new project's volumes are empty. Recovery
+networks must use the default bridge driver without driver options; existing
+external networks cannot be reused.
 Inspection errors and bind-mounted or anonymous database/object data volumes
 also refuse recovery. Named volumes must use the default local driver without
 driver options, so a new name cannot alias an existing host directory or remote

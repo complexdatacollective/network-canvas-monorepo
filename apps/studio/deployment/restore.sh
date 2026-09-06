@@ -34,7 +34,7 @@ fi
 
 # Inspect the effective target before loading an image or replacing any local
 # configuration. Compose resolves project-name precedence and custom/external
-# volume names for us. Keep rendered credentials only in this host process.
+# network/volume names for us. Keep rendered credentials only in this host process.
 inspection_failed() {
   echo 'Restore refused: unable to verify a new Compose project and unused named volumes.' >&2
   exit 1
@@ -54,18 +54,24 @@ target_metadata=$(printf '%s\n' "$target_config" | jq -cer '
      any(.volumes[]; (.name | type) != "string" or
        (.name | test("^[a-zA-Z0-9][a-zA-Z0-9_.-]*$")) == false or
        (.driver // "local") != "local" or (.driver_opts // {}) != {}) or
+     (.networks | type) != "object" or (.networks | length) == 0 or
+     any(.networks[]; (.name | type) != "string" or
+       (.name | test("^[a-zA-Z0-9][a-zA-Z0-9_.-]*$")) == false or
+       (.driver // "bridge") != "bridge" or (.driver_opts // {}) != {}) or
      (named_data_volume("postgres"; "/var/lib/postgresql") | not) or
      (named_data_volume("minio"; "/data") | not)
   then error("Unsupported recovery target metadata")
-  else {project: .name, volumes: [.volumes[].name]} end
+  else {project: .name, volumes: [.volumes[].name], networks: [.networks[].name]} end
 ') || inspection_failed
 unset target_config
 target_project=$(printf '%s\n' "$target_metadata" | jq -er .project) || inspection_failed
 target_volumes=$(printf '%s\n' "$target_metadata" | jq -er '.volumes[]') || inspection_failed
+target_networks=$(printf '%s\n' "$target_metadata" | jq -er '.networks[]') || inspection_failed
 existing_containers=$(docker ps --all --quiet \
   --filter "label=com.docker.compose.project=$target_project") || inspection_failed
 existing_networks=$(docker network ls --format '{{.ID}}' \
   --filter "label=com.docker.compose.project=$target_project") || inspection_failed
+network_names=$(docker network ls --format '{{.Name}}') || inspection_failed
 project_volumes=$(docker volume ls --format '{{.Name}}' \
   --filter "label=com.docker.compose.project=$target_project") || inspection_failed
 # A failed inspect is not proof that a volume is absent. Require a successful
@@ -79,6 +85,20 @@ target_exists() {
 if [ -n "$existing_containers$existing_networks$project_volumes" ]; then
   target_exists
 fi
+# A fresh project name can still join an existing custom/external network and
+# resolve another deployment's postgres/minio aliases. Labels alone miss it.
+while IFS= read -r network; do
+  while IFS= read -r existing; do
+    if [ "$network" = "$existing" ]; then
+      echo 'Restore refused: target Compose network already exists.' >&2
+      exit 1
+    fi
+  done <<EOF
+$network_names
+EOF
+done <<EOF
+$target_networks
+EOF
 while IFS= read -r volume; do
   while IFS= read -r existing; do
     if [ "$volume" = "$existing" ]; then target_exists; fi

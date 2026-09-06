@@ -124,6 +124,8 @@ async function alternateRestoreTargets(
   const protectedState = await existingRestoreState(existing);
   for (const kind of [
     'project-name',
+    'custom-network',
+    'external-network',
     'custom-volume',
     'external-volume',
     'orphan-network',
@@ -131,11 +133,42 @@ async function alternateRestoreTargets(
     'bind-data',
     'driver-bind-data',
     'inspection-failure',
+    'network-inspection-failure',
+    'unsupported-network-driver',
   ] as const) {
     const probe = await localDeployment(kind);
     const resource = `${probe.project}-existing`;
     let volumeCreated = false;
     let networkCreated = false;
+    let networkCanary: string | undefined;
+    async function networkAliases() {
+      const response = await probe.execute('docker', [
+        'run',
+        '--rm',
+        '--network',
+        resource,
+        '--entrypoint',
+        'node',
+        probe.images.studio,
+        '-e',
+        `async function reachable(address) {
+          for (let attempt = 0; attempt < 40; attempt++) {
+            try {
+              const response = await fetch(address, {signal: AbortSignal.timeout(1000)});
+              if (response.ok) return await response.text();
+            } catch {}
+            await new Promise(resolve => setTimeout(resolve, 50));
+          }
+          throw new Error('The existing network alias did not become reachable');
+        }
+        Promise.all(['http://postgres:5432', 'http://minio:9000'].map(reachable))
+          .then(values => process.stdout.write(JSON.stringify(values)));`,
+      ]);
+      expect(JSON.parse(response.stdout.toString())).toEqual([
+        'Existing network bytes',
+        'Existing network bytes',
+      ]);
+    }
     try {
       await prepareRestoreTarget(probe, backup);
       await cp(custody, join(probe.directory, 'deployment/encryption.env'));
@@ -151,10 +184,39 @@ async function alternateRestoreTargets(
       const environment: Record<string, string> = {};
       let override = '';
       const guardedVolume = ['custom-volume', 'external-volume'].includes(kind);
+      const guardedNetwork = ['custom-network', 'external-network'].includes(
+        kind,
+      );
+      const inspectionFailure = kind.endsWith('inspection-failure');
       if (kind === 'project-name') {
         // An empty environment value lets the top-level Compose name win.
         environment.COMPOSE_PROJECT_NAME = '';
         override = `name: ${existing.project}\n`;
+      } else if (guardedNetwork) {
+        await probe.execute('docker', ['network', 'create', resource]);
+        networkCreated = true;
+        const started = await probe.execute('docker', [
+          'run',
+          '--detach',
+          '--network',
+          resource,
+          '--network-alias',
+          'postgres',
+          '--network-alias',
+          'minio',
+          '--entrypoint',
+          'node',
+          probe.images.studio,
+          '-e',
+          `const http = require('node:http');
+          for (const port of [5432, 9000])
+            http.createServer((request, response) => response.end('Existing network bytes'))
+              .listen(port, '0.0.0.0');`,
+        ]);
+        networkCanary = started.stdout.toString().trim();
+        expect(networkCanary).toMatch(/^[a-f0-9]{64}$/);
+        await networkAliases();
+        override = `networks:\n  data: !override\n    name: ${resource}\n    external: ${kind === 'external-network'}\n`;
       } else if (guardedVolume || kind === 'orphan-volume') {
         await probe.execute('docker', [
           'volume',
@@ -197,15 +259,20 @@ async function alternateRestoreTargets(
           kind === 'bind-data'
             ? `services:\n  postgres:\n    volumes: !override\n      - type: bind\n        source: ${JSON.stringify(path)}\n        target: /var/lib/postgresql\n`
             : `volumes:\n  postgres:\n    driver: local\n    driver_opts:\n      type: none\n      o: bind\n      device: ${JSON.stringify(path)}\n`;
-      } else if (kind === 'inspection-failure') {
+      } else if (kind === 'unsupported-network-driver') {
+        override =
+          'networks:\n  data:\n    driver: unsupported-qualification-driver\n';
+      } else if (inspectionFailure) {
         const bin = join(probe.root, 'failing-inspection');
         await mkdir(bin);
         await writeFile(
           join(bin, 'docker'),
-          '#!/bin/sh\nif [ "$1" = volume ] && [ "$2" = ls ]; then exit 73; fi\nexec "$STUDIO_REAL_DOCKER" "$@"\n',
+          '#!/bin/sh\nif [ "$1" = "$STUDIO_FAIL_DOCKER_SURFACE" ] && [ "$2" = ls ] && [ "$#" -eq 4 ]; then exit 73; fi\nexec "$STUDIO_REAL_DOCKER" "$@"\n',
           { mode: 0o700 },
         );
         environment.PATH = `${bin}:${process.env.PATH}`;
+        environment.STUDIO_FAIL_DOCKER_SURFACE =
+          kind === 'network-inspection-failure' ? 'network' : 'volume';
         environment.STUDIO_REAL_DOCKER = (
           await probe.execute('sh', ['-c', 'command -v docker'])
         ).stdout
@@ -220,6 +287,20 @@ async function alternateRestoreTargets(
           join(probe.directory, 'target.yml'),
         ].join(':');
       }
+      const networkId = networkCreated
+        ? (
+            await probe.execute('docker', [
+              'network',
+              'inspect',
+              '--format',
+              '{{.Id}}',
+              resource,
+            ])
+          ).stdout
+            .toString()
+            .trim()
+        : undefined;
+      if (networkCreated) expect(networkId).toMatch(/^[a-f0-9]{64}$/);
       const refused = await probe.execute(
         'sh',
         ['deployment/restore.sh', backup, custody],
@@ -231,11 +312,14 @@ async function alternateRestoreTargets(
         /Loaded image(?: ID)?:/,
       );
       expect(refused.stderr.toString(), kind).toContain(
-        kind === 'inspection-failure' ||
+        inspectionFailure ||
+          kind === 'unsupported-network-driver' ||
           kind === 'bind-data' ||
           kind === 'driver-bind-data'
           ? 'unable to verify a new Compose project'
-          : 'target Compose project or named volumes already exist',
+          : guardedNetwork
+            ? 'target Compose network already exists'
+            : 'target Compose project or named volumes already exist',
       );
       expect(await existingRestoreState(existing), kind).toEqual(
         protectedState,
@@ -276,13 +360,28 @@ async function alternateRestoreTargets(
               'network',
               'inspect',
               '--format',
-              '{{.Name}}',
+              '{{.Id}}',
               resource,
             ])
           ).stdout
             .toString()
             .trim(),
-        ).toBe(resource);
+        ).toBe(networkId);
+      if (networkCanary) {
+        expect(
+          (
+            await probe.execute('docker', [
+              'inspect',
+              '--format',
+              '{{.Id}} {{.State.Status}}',
+              networkCanary,
+            ])
+          ).stdout
+            .toString()
+            .trim(),
+        ).toBe(`${networkCanary} running`);
+        await networkAliases();
+      }
       if (kind === 'bind-data' || kind === 'driver-bind-data')
         expect(
           await readFile(join(probe.root, 'existing-data/canary'), 'utf8'),
@@ -291,6 +390,8 @@ async function alternateRestoreTargets(
       // The extra override is absent from dispose: it cannot remove a named
       // volume borrowed from another project. Only our explicit fixtures follow.
       await probe.dispose();
+      if (networkCanary)
+        await probe.execute('docker', ['rm', '--force', networkCanary]);
       if (volumeCreated)
         await probe.execute('docker', ['volume', 'rm', resource]);
       if (networkCreated)
