@@ -3,6 +3,8 @@ import type { FieldState } from '@codaco/fresco-ui/form/store/types';
 import type { ObjectPath } from '@codaco/fresco-ui/form/utils/objectPath';
 import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 
+import { type SchemaProblem, schemaProblemSentence } from './schemaProblems.ts';
+
 /**
  * What the outline says about one section.
  *
@@ -46,11 +48,11 @@ export type OutlineFieldRegistration = Readonly<{
  * one attributable — the section that registered a field at, above or below it
  * is the section the researcher has to go to.
  */
-export type SectionValidationIssue = Readonly<{
-  /** Relative to the stage document: `['prompts', 0, 'variable']`. */
-  path: readonly (string | number)[];
-  message: string;
-}>;
+export type SectionValidationIssue = SchemaProblem &
+  Readonly<{
+    /** Relative to the stage document: `['prompts', 0, 'variable']`. */
+    path: readonly (string | number)[];
+  }>;
 
 export type OutlineSection = Readonly<{
   id: string;
@@ -108,6 +110,8 @@ function sameIssues(
       return (
         other !== undefined &&
         issue.message === other.message &&
+        issue.code === other.code &&
+        issue.absent === other.absent &&
         sharedPrefixLength(issue.path, other.path) === issue.path.length &&
         issue.path.length === other.path.length
       );
@@ -294,6 +298,19 @@ export class SectionOutlineStore {
    * An issue no mounted field reaches is left unattributed rather than pinned
    * somewhere arbitrary: nothing on this page can be pointed at for it, and it
    * is still reported above the form when the save is refused.
+   *
+   * The field that claims an issue also decides whether it is a problem at all.
+   * A schema that refuses a stage because a value is MISSING is saying what a
+   * required field says when it is empty, so where the claiming field is
+   * required, that is all it is: the issue is dropped here and the field's own
+   * required state answers for it — the section reads "Not finished", and the
+   * control asks for the value in the same words it uses when the researcher
+   * empties it themselves. A researcher who resets a stage, or whose
+   * collaborator unsets a key, otherwise meets the validator's own account of
+   * a missing string, once per key, in a list beside a section title.
+   *
+   * A missing value NO required field claims stays a problem, because nothing
+   * else on the page would say anything about it and the save is still refused.
    */
   private attributeIssues(
     ordered: readonly SectionRecord[],
@@ -305,13 +322,13 @@ export class SectionOutlineStore {
       [...(this.fieldsBySection.get(record.id)?.values() ?? [])].flatMap(
         (field) => {
           const path = fieldPath(field.name);
-          return path === null ? [] : [{ sectionId: record.id, path }];
+          return path === null ? [] : [{ sectionId: record.id, path, field }];
         },
       ),
     );
 
     for (const issue of this.validationIssues) {
-      let owner: string | undefined;
+      let owner: (typeof registered)[number] | undefined;
       let depth = 0;
       for (const field of registered) {
         const shared = sharedPrefixLength(field.path, issue.path);
@@ -322,12 +339,17 @@ export class SectionOutlineStore {
         if (shared !== Math.min(field.path.length, issue.path.length)) continue;
         if (shared <= depth) continue;
         depth = shared;
-        owner = field.sectionId;
+        owner = field;
       }
       if (owner === undefined) continue;
-      const claimed = bySection.get(owner);
-      if (claimed === undefined) bySection.set(owner, [issue.message]);
-      else claimed.push(issue.message);
+      if (issue.absent && owner.field.required) continue;
+      const sentence = schemaProblemSentence(issue, owner.field.label);
+      const claimed = bySection.get(owner.sectionId);
+      if (claimed === undefined) bySection.set(owner.sectionId, [sentence]);
+      // Said once however many issues arrived at it. A compound control owning
+      // a sub-document claims every refusal inside it, and one sentence about
+      // that control repeated is not more information.
+      else if (!claimed.includes(sentence)) claimed.push(sentence);
     }
     return bySection;
   }
