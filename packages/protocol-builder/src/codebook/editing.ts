@@ -14,6 +14,7 @@ import {
   contentHash,
   type Command,
   type SectionDoc,
+  targetRoot,
 } from '@codaco/studio-sync/apply';
 import {
   parseSectionId,
@@ -427,7 +428,10 @@ export function withStageSectionEdit(
     throw new Error('the additional stage edit requires at least one command');
   }
   if (
-    commands.some((command) => command.key === 'id' || command.key === 'type')
+    commands.some((command) => {
+      const key = targetRoot(command.key);
+      return key === 'id' || key === 'type';
+    })
   ) {
     throw new Error('a compound stage edit cannot change stage identity');
   }

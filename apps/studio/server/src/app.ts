@@ -1,4 +1,5 @@
 import { upgradeWebSocket } from '@hono/node-server';
+import { COMMON_ERROR_STATUS_MAP, onError, ORPCError } from '@orpc/server';
 import { RPCHandler } from '@orpc/server/fetch';
 import { type Context, Hono } from 'hono';
 import type pg from 'pg';
@@ -34,6 +35,7 @@ import {
   createObservability,
 } from './observability/runtime.ts';
 import { createRpcRouter } from './rpc.ts';
+import type { ServerTelemetry } from './telemetry.ts';
 
 // The app WebSocket endpoint. In development the Vite dev server proxies this
 // path (with `ws: true`) alongside /api and /rpc, so the browser sees one
@@ -54,6 +56,7 @@ const BETTER_AUTH_ORGANIZATION_MUTATION_POLICIES: ReadonlyMap<
 );
 
 type CreateAppDeps = {
+  telemetry?: ServerTelemetry;
   mailer?: StudioMailer;
   auth?: AuthService;
   assetStore?: AssetStore;
@@ -70,7 +73,8 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
   // Unexpected failures on the machine surfaces (e.g. the database down
   // during a session lookup) must still leave as problem JSON, not Hono's
   // text/plain default.
-  app.onError((_error, c) => {
+  app.onError((error, c) => {
+    deps.telemetry?.capture('server_request', error);
     return c.json({ title: 'Internal Server Error', status: 500 }, 500, {
       'Content-Type': 'application/problem+json',
     });
@@ -182,11 +186,26 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     createRpcRouter(authCaps, {
       auth,
       deployment,
+      telemetry: env.telemetry,
       invitationDeliveryAvailable: Boolean(
         deps.invitationDeliveryAvailable && authCaps.magicLink,
       ),
       pool,
     }),
+    {
+      interceptors: [
+        onError((error) => {
+          if (
+            !(error instanceof ORPCError) ||
+            !Object.hasOwn(COMMON_ERROR_STATUS_MAP, error.code) ||
+            COMMON_ERROR_STATUS_MAP[
+              error.code as keyof typeof COMMON_ERROR_STATUS_MAP
+            ] >= 500
+          )
+            deps.telemetry?.capture('server_rpc', error);
+        }),
+      ],
+    },
   );
   app.use('/rpc/*', async (c, next) => {
     const { matched, response } = await rpcHandler.handle(c.req.raw, {

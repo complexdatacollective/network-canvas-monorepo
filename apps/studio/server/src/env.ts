@@ -40,6 +40,7 @@ const VARIABLES_WITHOUT_DATABASE_OR_AUTH = [
   // to say so; withholding this would make it report `self-hosted` however
   // the site is configured.
   'STUDIO_DEPLOYMENT_MODE',
+  'STUDIO_TELEMETRY',
   'S3_ENDPOINT',
   'S3_REGION',
   'S3_BUCKET',
@@ -96,7 +97,14 @@ export function readEnv(options: ReadEnvOptions = {}): StudioEnv {
     },
   });
 
-  return resolve(raw);
+  // This privacy switch is always parsed, even in tooling's validation-skip
+  // mode. A raw 'false' must never become a truthy telemetry decision.
+  return resolve({
+    ...raw,
+    STUDIO_TELEMETRY: serverSchemas.STUDIO_TELEMETRY.parse(
+      runtimeEnv.STUDIO_TELEMETRY || undefined,
+    ),
+  });
 }
 
 /** Offline schema administration needs only database credentials, never auth. */

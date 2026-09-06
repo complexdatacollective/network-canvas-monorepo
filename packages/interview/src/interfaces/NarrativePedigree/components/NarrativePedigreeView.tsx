@@ -11,6 +11,7 @@ import {
   useState,
 } from 'react';
 
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import Icon from '@codaco/fresco-ui/Icon';
 import Node from '@codaco/fresco-ui/Node';
@@ -33,6 +34,7 @@ import {
 } from '../../../selectors/session';
 import { getCodebook, getStages } from '../../../store/modules/protocol';
 import type { StageProps } from '../../../types';
+import { messages as familyMessages } from '../../FamilyPedigree/messages';
 import PedigreeLayout from '../../FamilyPedigree/pedigree-layout/components/PedigreeLayout';
 import { computeNodeDisplayLabels } from '../../FamilyPedigree/pedigree-layout/components/PedigreeNode';
 import { dimColor } from '../../FamilyPedigree/pedigree-layout/dimColor';
@@ -47,8 +49,9 @@ import { exportSnapshot } from '../export/snapshot';
 import { computeStatuses } from '../genetics/computeStatuses';
 import { buildGeneticGraph } from '../genetics/geneticGraph';
 import { resolveSex } from '../genetics/resolveSex';
-import { affectedSet, STATUS_LABELS, type Status } from '../genetics/status';
+import { affectedSet, getStatusLabel, type Status } from '../genetics/status';
 import { computeContributors } from '../highlight';
+import { messages } from '../messages';
 import ConditionPanel from './ConditionPanel';
 import { Sticker } from './Sticker';
 import ZoomableViewport from './ZoomableViewport';
@@ -144,6 +147,7 @@ type NarrativePedigreeViewProps = {
 export default function NarrativePedigreeView({
   stage,
 }: NarrativePedigreeViewProps) {
+  const intl = useAppIntl();
   // Architect stores the selected node palette entry as a typed protocol
   // reference. SVG and inline CSS need the corresponding theme variable, so
   // resolve every disease once at the view boundary before it reaches the key,
@@ -337,8 +341,9 @@ export default function NarrativePedigreeView({
       variableConfig,
       'gamete',
       egoId,
+      intl,
     );
-  }, [nodesMap, edgesMap, variableConfig, egoId]);
+  }, [nodesMap, edgesMap, variableConfig, egoId, intl]);
 
   const resolveShape = (node: NcNode): NodeShape => {
     if (!sourceConfig?.shapeDefinition) return 'square';
@@ -349,7 +354,7 @@ export default function NarrativePedigreeView({
   };
 
   const labelFor = (node: RenderableNode): string => {
-    if (node.id === egoId) return 'You';
+    if (node.id === egoId) return intl.formatMessage(familyMessages.you);
     // displayLabels already prefers the person's name (collected by the
     // FamilyPedigree) and falls back to a derived relationship label.
     return displayLabels.get(node.id) ?? '';
@@ -366,10 +371,13 @@ export default function NarrativePedigreeView({
     const parts = shownDiseases.map((disease) => {
       const status =
         displayedStatusesByDisease.get(disease.id)?.get(node.id) ?? 'unknown';
-      const statusText = STATUS_LABELS[status];
-      return `${disease.label}: ${statusText}`;
+      const statusText = getStatusLabel(status, intl);
+      return intl.formatMessage(messages.diseaseStatus, {
+        condition: disease.label,
+        status: statusText,
+      });
     });
-    return parts.join('. ');
+    return intl.formatList(parts, { type: 'conjunction' });
   };
 
   // Trigger a capture by mounting the off-screen snapshot document; the capture
@@ -429,7 +437,9 @@ export default function NarrativePedigreeView({
     const focalProps: ComponentPropsWithoutRef<'div'> = {
       'role': 'button',
       'tabIndex': 0,
-      'aria-label': `Focus on ${label || node.id}`,
+      'aria-label': intl.formatMessage(messages.focusOn, {
+        name: label || node.id,
+      }),
       'aria-describedby': statusSummaryId,
       // Disabled (but still announced, with its status) until a condition is
       // chosen — focusing only makes sense for a single shown condition.
@@ -529,21 +539,27 @@ export default function NarrativePedigreeView({
     if (focalId === null) return null;
     const node = pedigreeNodes.find((n) => n._uid === focalId);
     if (!node) return focalId;
-    if (node._uid === egoId) return 'You';
+    if (node._uid === egoId) return intl.formatMessage(familyMessages.you);
     return displayLabels.get(node._uid) || focalId;
-  }, [focalId, pedigreeNodes, displayLabels, egoId]);
+  }, [focalId, pedigreeNodes, displayLabels, egoId, intl]);
 
   // Snapshot heading: the stage label, then the shown condition, then the focal
   // person when one is set — e.g. "Inheritance Pathways: Huntington's Disease —
   // inheritance for Leo".
   const snapshotTitle = useMemo(() => {
-    const base = stage.label || 'Family pedigree';
+    const base = stage.label || intl.formatMessage(messages.familyPedigree);
     if (!selectedDiseaseLabel) return base;
-    const withDisease = `${base}: ${selectedDiseaseLabel}`;
     return focalLabel
-      ? `${withDisease} — inheritance for ${focalLabel}`
-      : withDisease;
-  }, [stage.label, selectedDiseaseLabel, focalLabel]);
+      ? intl.formatMessage(messages.snapshotInheritance, {
+          title: base,
+          condition: selectedDiseaseLabel,
+          name: focalLabel,
+        })
+      : intl.formatMessage(messages.snapshotCondition, {
+          title: base,
+          condition: selectedDiseaseLabel,
+        });
+  }, [stage.label, selectedDiseaseLabel, focalLabel, intl]);
 
   const snapshotFilename = useMemo(() => {
     const slug = snapshotTitle
@@ -587,7 +603,9 @@ export default function NarrativePedigreeView({
   if (!sourceConfig || !variableConfig) {
     return (
       <div className="interface flex items-center justify-center p-8 text-center">
-        <p>This stage references a family pedigree that could not be found.</p>
+        <p>
+          <AppMessage message={messages.sourceMissing} />
+        </p>
       </div>
     );
   }
@@ -619,14 +637,21 @@ export default function NarrativePedigreeView({
 
       {/* Visually-hidden aria-live region for announcing state changes */}
       <div aria-live="polite" aria-atomic="true" className="sr-only">
-        {selectedDiseaseId === null
-          ? 'Showing all conditions'
-          : `Showing ${selectedDiseaseLabel ?? selectedDiseaseId}`}
-        {focalId !== null
-          ? `. Focused on ${
-              focalLabel ?? focalId
-            }. Showing who contributes to their inheritance.`
-          : ''}
+        <AppMessage
+          message={
+            selectedDiseaseId === null
+              ? focalId === null
+                ? messages.showingAll
+                : messages.showingAllFocused
+              : focalId === null
+                ? messages.showingCondition
+                : messages.showingFocused
+          }
+          values={{
+            condition: selectedDiseaseLabel ?? selectedDiseaseId ?? '',
+            name: focalLabel ?? focalId ?? '',
+          }}
+        />
       </div>
 
       <ResizableFlexPanel
@@ -637,7 +662,7 @@ export default function NarrativePedigreeView({
         max={45}
         minSizePx={300}
         className="min-h-0 w-full grow"
-        aria-label="Resize the condition key panel"
+        aria-label={intl.formatMessage(messages.resizeKey)}
       >
         {/* Key panel — the resized (first) pane. In `reverse` mode it renders on
             the right edge and holds a fixed pixel minimum (minSizePx), so it
@@ -668,7 +693,7 @@ export default function NarrativePedigreeView({
             over it when one is set. */}
         <div className="relative flex min-h-0 min-w-0 grow flex-col overflow-hidden">
           <ZoomableViewport
-            toolbarLabel="Zoom controls"
+            toolbarLabel={intl.formatMessage(messages.zoomControls)}
             onBackgroundClick={() => setFocalId(null)}
             onEscape={() => setFocalId(null)}
           >
@@ -702,7 +727,7 @@ export default function NarrativePedigreeView({
                 className="pointer-events-auto"
                 onClick={() => setFocalId(null)}
               >
-                Clear focus
+                <AppMessage message={messages.clearFocus} />
               </Button>
             </div>
           )}

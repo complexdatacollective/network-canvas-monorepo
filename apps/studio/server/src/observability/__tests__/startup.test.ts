@@ -107,7 +107,14 @@ describe('startup diagnostic privacy', () => {
         `await import(${JSON.stringify(entry)}); ${failure};`,
       ],
       {
-        env: { NODE_ENV: 'production', PORT: '0', HOST: '127.0.0.1' },
+        // This suite owns log privacy; the separate telemetry subprocess suite
+        // exercises default-on reporting against a local receiver.
+        env: {
+          NODE_ENV: 'production',
+          PORT: '0',
+          HOST: '127.0.0.1',
+          STUDIO_TELEMETRY: 'false',
+        },
         encoding: 'utf8',
         timeout: 10_000,
       },

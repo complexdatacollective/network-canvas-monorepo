@@ -12,6 +12,7 @@ import {
   contentHash,
   manifestHash,
   type SectionDoc,
+  targetRoot,
 } from '@codaco/studio-sync/apply';
 import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
 import {
@@ -135,6 +136,42 @@ export class InMemoryCompoundHost {
       protocolSections: freezeSections(this.protocolSections),
       manifestRevision: freezeRevision(this.manifestRevision),
     });
+  }
+
+  /**
+   * Replaces sections the way a change made OUTSIDE every session on this host
+   * reaches it, and answers with the revision the host issued for it.
+   *
+   * `null` removes a section. Nothing here is checked, and deliberately so: an
+   * arrival is not a submission. There is no lease to hold because the change
+   * was not made through this host's editing path, no base to be stale against
+   * because the change IS the new base, and no draft to validate — whoever
+   * made it already answered for it. A fixture seeding a codebook a stage
+   * cannot satisfy (a node type deleted while a stage still names it) is
+   * exactly the state a test needs to see an editor react to, and a host that
+   * validated arrivals could not be told about it.
+   *
+   * What it must do is move the host's OWN revision, by the host's own rule.
+   * A change the host does not know about leaves every later compound edit
+   * built on top of it refused as stale, and a change the host applied under a
+   * revision number nobody else agrees with is worse: the session drops the
+   * next arrival as conflicting, silently. So the revision this answers with
+   * is the one to hand whoever is being told about the change.
+   */
+  receiveAuthoritativeSections(
+    sections: Readonly<Record<string, SectionDoc | null>>,
+  ): InMemoryCompoundHostSnapshot {
+    const working = cloneSections(this.protocolSections);
+    for (const [sectionId, document] of Object.entries(sections)) {
+      if (document === null) delete working[sectionId];
+      else defineSection(working, sectionId, document);
+    }
+    this.manifestRevision = nextManifestRevision(
+      this.manifestRevision,
+      working,
+    );
+    this.protocolSections = working;
+    return this.getSnapshot();
   }
 
   submit(submission: CompoundEditSubmission): CompoundEditResult {
@@ -547,9 +584,10 @@ function validateSubmissionShape(
     if (
       edit.kind === 'update' &&
       ref.kind === 'stage' &&
-      edit.commands.some(
-        (command) => command.key === 'id' || command.key === 'type',
-      )
+      edit.commands.some((command) => {
+        const key = targetRoot(command.key);
+        return key === 'id' || key === 'type';
+      })
     ) {
       return failed(
         'invalid-request',

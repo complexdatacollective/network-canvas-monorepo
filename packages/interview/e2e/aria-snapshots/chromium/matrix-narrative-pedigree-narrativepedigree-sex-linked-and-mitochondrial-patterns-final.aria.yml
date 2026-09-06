@@ -34,6 +34,7 @@
       - button "Reset zoom"
   - button "Clear focus"
   - navigation:
+    - button "Settings"
     - button "Previous Step"
     - progressbar "Progress indicator": x
     - button "Next Step"

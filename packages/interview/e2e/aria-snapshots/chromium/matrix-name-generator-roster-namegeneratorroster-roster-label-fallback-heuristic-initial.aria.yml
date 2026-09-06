@@ -13,7 +13,8 @@
   - slider "Resize panel and node list areas"
   - listbox "Added Nodes"
   - navigation:
-    - button "Previous Step"
+    - button "Settings"
+    - button "Previous Step" [disabled]
     - progressbar "Progress indicator": x
     - button "Next Step"
   - region "Interview notifications"

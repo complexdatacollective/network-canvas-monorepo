@@ -22,6 +22,7 @@
     "./tenant": "./src/tenant.ts",
     "./role-bootstrap": "./src/role-bootstrap.ts",
     "./email-sender": "./src/email-sender.ts",
+    "./postmark-email-sender": "./src/postmark-email-sender.ts",
     "./section-validation": "./src/section-validation.ts",
     "./template-metadata": "./src/template-metadata.ts",
     "./template-exchange": "./src/template-exchange.ts",

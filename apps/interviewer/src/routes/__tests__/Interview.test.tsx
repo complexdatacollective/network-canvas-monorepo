@@ -1,8 +1,13 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
+import { type ReactNode, useState } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { AppI18nProvider } from '@codaco/app-i18n/react';
 import type { InterviewPayload, SessionPayload } from '@codaco/interview';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
+import { InterviewerI18nProvider } from '~/i18n/InterviewerI18nProvider';
+import { interviewerProductionLocales } from '~/i18n/locales';
+import { LOCALE_PREFERENCE_KEY } from '~/i18n/preference';
 
 const navigateMock = vi.fn();
 const useSearchMock = vi.fn(() => '');
@@ -70,7 +75,10 @@ vi.mock('~/lib/installationId', () => ({
 type CapturedShellProps = {
   currentStep: number;
   disableAnalytics: boolean;
-  finishConfirmationDescription: string;
+  finishConfirmationDescription: ReactNode;
+  requestedLocale: string;
+  localePreference: string | null;
+  onLocaleChange: (locale: string | null) => void;
   initialStageOverrideIndex?: number;
   payload: InterviewPayload;
   onExit: () => void;
@@ -96,7 +104,19 @@ vi.mock('@codaco/interview', async (importOriginal) => {
     ...actual,
     Shell: (props: CapturedShellProps) => {
       shellMock(props);
-      return <div data-testid="shell-mounted" />;
+      // A queued confirmation retains its original node. Deliberately give
+      // the package a different locale so this tests the host subscription,
+      // not accidental inheritance of the host catalog through Shell.
+      const [queuedDescription] = useState(props.finishConfirmationDescription);
+      return (
+        <AppI18nProvider
+          locale="en"
+          locales={interviewerProductionLocales}
+          manageDocument={false}
+        >
+          <div data-testid="shell-mounted">{queuedDescription}</div>
+        </AppI18nProvider>
+      );
     },
   };
 });
@@ -203,6 +223,90 @@ beforeEach(() => {
 });
 
 describe('InterviewRoute enter gate', () => {
+  it('passes the negotiated device locale to Shell and persists menu choices without reloading the interview', async () => {
+    const languages = vi
+      .spyOn(navigator, 'languages', 'get')
+      .mockReturnValue(['en-GB']);
+    localStorage.removeItem(LOCALE_PREFERENCE_KEY);
+    getSettingsMock.mockResolvedValue({ requireUnlockOnEnter: false });
+    try {
+      render(
+        <InterviewerI18nProvider>
+          <InterviewRoute sessionId="s1" />
+        </InterviewerI18nProvider>,
+      );
+      const shell = await screen.findByTestId('shell-mounted');
+      expect(lastShellProps().requestedLocale).toBe('en-GB');
+      expect(lastShellProps().localePreference).toBeNull();
+      const originalPayload = lastShellProps().payload;
+      expect(shell).toHaveTextContent('Finishing ends this interview.');
+      const reads = getSessionMock.mock.calls.length;
+
+      act(() => lastShellProps().onLocaleChange('es'));
+      expect(lastShellProps().requestedLocale).toBe('es');
+      expect(lastShellProps().localePreference).toBe('es');
+      expect(shell).toHaveTextContent(
+        'Al finalizar, se cierra esta entrevista.',
+      );
+      expect(shell).toHaveTextContent(
+        'un investigador puede volver a marcarla como sin finalizar',
+      );
+      expect(document.documentElement).toHaveAttribute('lang', 'es');
+      expect(localStorage.getItem(LOCALE_PREFERENCE_KEY)).toBe('es');
+      expect(lastShellProps().payload).toBe(originalPayload);
+      expect(getSessionMock).toHaveBeenCalledTimes(reads);
+      expect(updateSessionMock).not.toHaveBeenCalled();
+      expect(requireFreshUnlockMock).not.toHaveBeenCalled();
+
+      act(() => lastShellProps().onLocaleChange(null));
+      expect(lastShellProps().requestedLocale).toBe('en-GB');
+      expect(lastShellProps().localePreference).toBeNull();
+      expect(localStorage.getItem(LOCALE_PREFERENCE_KEY)).toBeNull();
+      expect(document.documentElement).toHaveAttribute('lang', 'en-GB');
+      expect(shell).toHaveTextContent('Finishing ends this interview.');
+      expect(lastShellProps().payload).toBe(originalPayload);
+      expect(getSessionMock).toHaveBeenCalledTimes(reads);
+    } finally {
+      languages.mockRestore();
+      localStorage.removeItem(LOCALE_PREFERENCE_KEY);
+    }
+  });
+
+  it('initializes the menu with the saved explicit preference and can return directly to Automatic', async () => {
+    const languages = vi
+      .spyOn(navigator, 'languages', 'get')
+      .mockReturnValue(['en-GB']);
+    localStorage.setItem(LOCALE_PREFERENCE_KEY, 'es');
+    getSettingsMock.mockResolvedValue({ requireUnlockOnEnter: false });
+    try {
+      render(
+        <InterviewerI18nProvider>
+          <InterviewRoute sessionId="s1" />
+        </InterviewerI18nProvider>,
+      );
+      const shell = await screen.findByTestId('shell-mounted');
+      expect(lastShellProps().requestedLocale).toBe('es');
+      expect(lastShellProps().localePreference).toBe('es');
+      expect(shell).toHaveTextContent(
+        'Al finalizar, se cierra esta entrevista.',
+      );
+      const payload = lastShellProps().payload;
+      const reads = getSessionMock.mock.calls.length;
+      act(() => lastShellProps().onLocaleChange(null));
+      expect(lastShellProps().requestedLocale).toBe('en-GB');
+      expect(lastShellProps().localePreference).toBeNull();
+      expect(shell).toHaveTextContent('Finishing ends this interview.');
+      expect(localStorage.getItem(LOCALE_PREFERENCE_KEY)).toBeNull();
+      expect(lastShellProps().payload).toBe(payload);
+      expect(getSessionMock).toHaveBeenCalledTimes(reads);
+      expect(updateSessionMock).not.toHaveBeenCalled();
+      expect(requireFreshUnlockMock).not.toHaveBeenCalled();
+    } finally {
+      languages.mockRestore();
+      localStorage.removeItem(LOCALE_PREFERENCE_KEY);
+    }
+  });
+
   it('navigates home when the enter gate is cancelled', async () => {
     getSettingsMock.mockResolvedValue({
       requireUnlockOnEnter: true,
@@ -468,7 +572,7 @@ describe('InterviewRoute finish flow', () => {
     expect(lastShellProps().currentStep).toBe(3);
     expect(lastShellProps().disableAnalytics).toBe(true);
     expect(lastShellProps().reviewMode).toBe(true);
-    expect(lastShellProps().finishConfirmationDescription).toBe(
+    expect(screen.getByTestId('shell-mounted')).toHaveTextContent(
       'Finishing ends this interview. A researcher can mark it unfinished later if changes are needed.',
     );
     expect(screen.queryByText('Interview complete')).not.toBeInTheDocument();

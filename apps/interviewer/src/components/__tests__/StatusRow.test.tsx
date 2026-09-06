@@ -214,8 +214,10 @@ describe('StatusRow', () => {
       />,
     );
 
-    // Tab order: the counts link, then the encryption chip.
+    // Tab order: counts, the language picker, then the encryption chip.
     await user.tab();
+    await user.tab();
+    expect(screen.getByRole('button', { name: 'App language' })).toHaveFocus();
     await user.tab();
     expect(screen.getByTestId('encryption-status-trigger')).toHaveFocus();
     await waitFor(() =>
@@ -272,8 +274,10 @@ describe('StatusRow', () => {
       />,
     );
 
-    // Tab order: the counts link, then the encryption chip, then storage.
+    // Tab order: counts, language, encryption, then storage.
     await user.tab();
+    await user.tab();
+    expect(screen.getByRole('button', { name: 'App language' })).toHaveFocus();
     await user.tab();
     expect(screen.getByTestId('encryption-status-trigger')).toHaveFocus();
     await waitFor(() =>

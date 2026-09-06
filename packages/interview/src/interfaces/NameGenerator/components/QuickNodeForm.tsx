@@ -1,8 +1,9 @@
 'use client';
-
 import { motion, type Variants } from 'motion/react';
 import { useCallback, useState } from 'react';
 
+import { createMessageError } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Form from '@codaco/fresco-ui/form/Form';
 import type {
   FormSubmitHandler,
@@ -12,6 +13,7 @@ import type { EntityAttributesProperty, NcNode } from '@codaco/shared-consts';
 
 import { formValuesToAttributePatch } from '../../../forms/formValuesToAttributePatch';
 import { useStageSelector } from '../../../hooks/useStageSelector';
+import { runtimeMessages } from '../../../i18n/runtimeMessages';
 import {
   getValidationContext,
   selectValidationMetadataForVariable,
@@ -19,6 +21,7 @@ import {
 } from '../../../selectors/forms';
 import { getCodebookVariablesForSubjectType } from '../../../selectors/protocol';
 import { getPromptAdditionalAttributes } from '../../../selectors/session';
+import { interfaceMessages } from '../../messages';
 import QuickAddField from './QuickAddField';
 
 const containerVariants: Variants = {
@@ -51,6 +54,7 @@ const QuickNodeForm = ({
   onShowForm,
   addNode,
 }: QuickNodeFormProps) => {
+  const intl = useAppIntl();
   const newNodeAttributes = useStageSelector(getPromptAdditionalAttributes);
   const [successfulSubmissionCount, setSuccessfulSubmissionCount] = useState(0);
 
@@ -102,7 +106,7 @@ const QuickNodeForm = ({
       if (disabled) {
         return {
           success: false,
-          formErrors: ['Form is disabled'],
+          formErrors: [createMessageError(interfaceMessages.formDisabled)],
         };
       }
 
@@ -110,7 +114,7 @@ const QuickNodeForm = ({
       if (!patchResult.success) {
         return {
           success: false,
-          formErrors: ['An error occurred while submitting the form.'],
+          formErrors: [createMessageError(runtimeMessages.submissionFailed)],
         };
       }
 
@@ -142,7 +146,9 @@ const QuickNodeForm = ({
           <QuickAddField
             name={targetVariable}
             disabled={disabled}
-            placeholder="Type a label and press enter..."
+            placeholder={intl.formatMessage(
+              interfaceMessages.quickLabelPlaceholder,
+            )}
             onShowInput={onShowForm ?? undefined}
             successfulSubmissionCount={successfulSubmissionCount}
             {...validationProps}

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { fieldElementIds } from '@codaco/fresco-ui/form/Field/fieldElements';
 import type { ValidationPropsCatalogue } from '@codaco/fresco-ui/form/Field/types';
 import FieldErrors from '@codaco/fresco-ui/form/FieldErrors';
@@ -10,6 +11,8 @@ import { useField } from '@codaco/fresco-ui/form/hooks/useField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
+
+import { interfaceMessages } from '../messages';
 
 type AddNodeInputProps = {
   /** Protocol label for the entity being added, e.g. "Person". */
@@ -44,6 +47,7 @@ function AddNodeField({
   validationContext,
   ...validationProps
 }: AddNodeInputProps) {
+  const intl = useAppIntl();
   const validateForm = useFormStore((state) => state.validateForm);
   const pathOperations = useFormStore((state) => state.pathOperations);
   const resetField = useFormStore((state) => state.resetField);
@@ -128,8 +132,10 @@ function AddNodeField({
         // eslint-disable-next-line jsx-a11y/no-autofocus -- intentional: the
         // popover exists to capture a name, so focus belongs here on open.
         autoFocus
-        aria-label={`${entityLabel} name`}
-        placeholder="Type a name, then press Enter"
+        aria-label={intl.formatMessage(interfaceMessages.entityName, {
+          entityLabel,
+        })}
+        placeholder={intl.formatMessage(interfaceMessages.addNamePlaceholder)}
         id={id}
         name={targetVariable}
         {...fieldProps}

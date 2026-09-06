@@ -3,10 +3,39 @@
 import { unparse } from 'papaparse';
 import { useCallback } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppMessage } from '@codaco/app-i18n/react';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import type { ParticipantExportRow } from '~/actions/participants';
 import type { ProtocolWithInterviews } from '~/app/dashboard/_components/ProtocolsTable/ProtocolsTableClient';
 import { useDownload } from '~/hooks/useDownload';
+
+const messages = defineMessages({
+  success: {
+    id: 'fresco.participants.ExportParticipants.ExportParticipants.success',
+    defaultMessage: 'Success',
+    description:
+      'Researcher-facing participants / ExportParticipants / ExportParticipants: Success',
+  },
+  participantsExportedSuccessfully: {
+    id: 'fresco.participants.ExportParticipants.ExportParticipants.participantsExportedSuccessfully',
+    defaultMessage: 'Participants exported successfully',
+    description:
+      'Researcher-facing participants / ExportParticipants / ExportParticipants: Participants exported successfully',
+  },
+  error: {
+    id: 'fresco.participants.ExportParticipants.ExportParticipants.error',
+    defaultMessage: 'Error',
+    description:
+      'Researcher-facing participants / ExportParticipants / ExportParticipants: Error',
+  },
+  anErrorOccurredWhileExportingParticipants: {
+    id: 'fresco.participants.ExportParticipants.ExportParticipants.anErrorOccurredWhileExportingParticipants',
+    defaultMessage: 'An error occurred while exporting participants',
+    description:
+      'Researcher-facing participants / ExportParticipants / ExportParticipants: An error occurred while exporting participants',
+  },
+});
 
 export function useExportParticipants(protocols: ProtocolWithInterviews[]) {
   const download = useDownload();
@@ -42,14 +71,20 @@ export function useExportParticipants(protocols: ProtocolWithInterviews[]) {
         URL.revokeObjectURL(url);
 
         add({
-          title: 'Success',
-          description: 'Participants exported successfully',
+          title: <AppMessage message={messages.success} />,
+          description: (
+            <AppMessage message={messages.participantsExportedSuccessfully} />
+          ),
           variant: 'success',
         });
       } catch (error) {
         add({
-          title: 'Error',
-          description: 'An error occurred while exporting participants',
+          title: <AppMessage message={messages.error} />,
+          description: (
+            <AppMessage
+              message={messages.anErrorOccurredWhileExportingParticipants}
+            />
+          ),
           variant: 'destructive',
         });
       }
