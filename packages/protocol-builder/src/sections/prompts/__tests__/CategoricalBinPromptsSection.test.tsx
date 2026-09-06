@@ -719,6 +719,80 @@ describe('a codebook dialog saved from inside a prompt', () => {
 });
 
 /**
+ * An attribute a sort rule names is not the attribute the bins come from, and
+ * it can be deleted without this prompt noticing: `SortRuleSchema.property` is
+ * `existence: 'unchecked'`, so the protocol keeps such a rule rather than
+ * making a collaborator's stage unopenable.
+ *
+ * Both of this prompt's orders come from the shared `SortOrderRows`, which is
+ * where the handling lives so that every family holding a sort order says the
+ * same thing. What this case proves is that this family reaches it — the
+ * committed rules are handed over, so the orphan is found and the save refused
+ * rather than writing the dangling reference straight back.
+ */
+describe('a bin sort rule whose attribute the codebook has lost', () => {
+  /**
+   * `nickname` is an attribute the person type in the fixture protocol does
+   * not have, so a rule naming it is exactly the state a deletion leaves.
+   */
+  const MISSING_ATTRIBUTE = 'nickname';
+
+  /**
+   * How `SortOrderRows` labels it. Written out rather than imported, as the
+   * refusal below is: a test reading the same helper as the component would
+   * still pass if the label said nothing a researcher could act on.
+   */
+  const MISSING_ATTRIBUTE_OPTION = `${MISSING_ATTRIBUTE} — this attribute is no longer in the codebook`;
+
+  const MISSING_ATTRIBUTE_MESSAGE =
+    'This rule points at an attribute no longer in the codebook. Choose another or delete the rule.';
+
+  const openWithADanglingSortRule = () => ({
+    stage: {
+      type: 'CategoricalBin' as const,
+      fields: {
+        label: 'Categorical Bin',
+        subject: { entity: 'node', type: 'person' },
+        prompts: [
+          {
+            id: 'prompt-a',
+            text: 'What kind of contact?',
+            variable: 'contactType',
+            binSortOrder: [{ property: MISSING_ATTRIBUTE, direction: 'asc' }],
+          },
+        ],
+      },
+    },
+    sections: <CategoricalBinPromptsSection />,
+  });
+
+  it('shows the rule disabled, and refuses to save it', async () => {
+    const harness = renderStageEditor(openWithADanglingSortRule());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+
+    // The cell renders from the option list, so an id no option carries would
+    // leave the control blank while the value behind it stayed saved.
+    const property = await screen.findByRole('combobox', { name: 'Property' });
+    expect(property).toHaveValue(MISSING_ATTRIBUTE);
+    expect(
+      within(property).getByRole('option', { name: MISSING_ATTRIBUTE_OPTION }),
+    ).toBeDisabled();
+
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+
+    // Not "every row needs a value in each column": the row HAS a value in
+    // each column, and the researcher told to fill one in has nothing to do.
+    expect(
+      await screen.findByText(MISSING_ATTRIBUTE_MESSAGE),
+    ).toBeInTheDocument();
+    expect(openDialogs()).toBe(1);
+  });
+});
+
+/**
  * Every control in this prompt that writes the CODEBOOK, which is a different
  * protocol section from the stage and is written by a compound edit of its
  * own — so a disabled stage save says nothing about them.
