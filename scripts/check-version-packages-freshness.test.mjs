@@ -38,9 +38,46 @@ function fixture(files) {
   return cwd;
 }
 
-function run(script, cwd) {
-  return spawnSync(process.execPath, [script], { cwd, encoding: 'utf8' });
+function run(script, cwd, ...args) {
+  return spawnSync(process.execPath, [script, ...args], {
+    cwd,
+    encoding: 'utf8',
+  });
 }
+
+for (const name of [
+  '@codaco/studio-client',
+  '@codaco/studio-server',
+  '@codaco/studio-rpc',
+  '@codaco/studio-sync',
+  '@codaco/template-registry',
+])
+  test(`Studio freshness refuses a surviving ${name} changeset`, () => {
+    const cwd = fixture({
+      'studio.md': `---\n"${name}": patch\n---\nStudio change\n`,
+      'normal.md': CLEAN_ICONS,
+    });
+    const result = run(SCRIPT, cwd, '--lane', 'studio');
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /Studio release PR is stale/);
+    assert.match(result.stderr, /studio\.md/);
+    assert.doesNotMatch(result.stderr, /normal\.md/);
+  });
+
+test('Studio freshness permits pending changesets owned by other release PRs', () => {
+  const result = run(
+    SCRIPT,
+    fixture({ 'normal.md': CLEAN_ICONS, 'docs.md': DOCS }),
+    '--lane',
+    'studio',
+  );
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Studio release PR is current/);
+});
+
+test('an unknown freshness lane cannot silently receive the normal-lane verdict', () => {
+  assert.notEqual(run(SCRIPT, fixture({}), '--lane', 'studo').status, 0);
+});
 
 test('passes a merged tree that holds only ignored-lane changesets', () => {
   const cwd = fixture({

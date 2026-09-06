@@ -916,15 +916,17 @@ test('a stale Version Packages PR cannot merge', () => {
   assert.match(condition, /github\.event_name == 'merge_group'/);
   assert.match(
     condition,
-    /github\.event_name == 'pull_request'\s+&& github\.head_ref == 'changeset-release\/main'/,
+    /github\.event_name == 'pull_request'\s+&& \(github\.head_ref == 'changeset-release\/main'/,
   );
+  assert.match(condition, /github\.head_ref == 'changeset-release\/studio'/);
   // The queue batches entries, each built on the ones ahead of it, and a
   // group's ref names only its last PR — membership must come from ancestry
   // of the open release PR's head, never from the ref suffix.
   assert.match(
     freshness,
-    /pulls\?state=open&head=\$\{GITHUB_REPOSITORY_OWNER\}:changeset-release\/main"[^\n]*\n\s+--jq '\.\[0\]\.head\.sha \/\/ empty'/,
+    /pulls\?state=open&head=\$\{GITHUB_REPOSITORY_OWNER\}:changeset-release\/\$\{lane\}"[^\n]*\n\s+--jq '\.\[0\]\.head\.sha \/\/ empty'/,
   );
+  assert.match(freshness, /for lane in main studio; do/);
   assert.match(
     freshness,
     /compare\/\$\{vp_head\}\.\.\.\$\{GITHUB_SHA\}"[^\n]*\n\s+--jq \.status/,
@@ -941,7 +943,11 @@ test('a stale Version Packages PR cannot merge', () => {
   assert.doesNotMatch(resolve.run, /\|\| true|2>\/dev\/null|set \+e/);
   assert.match(
     freshness,
-    /if: steps\.head\.outputs\.release_pr == 'true'\n\s+run: node scripts\/check-version-packages-freshness\.mjs/,
+    /if: steps\.head\.outputs\.main == 'true'\n\s+run: node scripts\/check-version-packages-freshness\.mjs/,
+  );
+  assert.match(
+    freshness,
+    /if: steps\.head\.outputs\.studio == 'true'\n\s+run: node scripts\/check-version-packages-freshness\.mjs --lane studio/,
   );
 
   const quality = job('quality');

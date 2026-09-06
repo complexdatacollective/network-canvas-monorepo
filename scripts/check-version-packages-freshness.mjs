@@ -29,6 +29,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import {
+  GATED_PRODUCT_RELEASE_LANES,
   isIgnoredLaneChangeset,
   readChangesets,
 } from './changeset-app-utils.mjs';
@@ -37,12 +38,40 @@ export function unconsumedChangesets(changesets, ignored) {
   return changesets.filter((cs) => !isIgnoredLaneChangeset(cs, ignored));
 }
 
+export function unconsumedStudioChangesets(changesets) {
+  return changesets.filter((cs) =>
+    cs.releases.some(({ name }) =>
+      GATED_PRODUCT_RELEASE_LANES.studio.includes(name),
+    ),
+  );
+}
+
 function main() {
+  const args = process.argv.slice(2);
+  if (
+    args.length &&
+    (args.length !== 2 || args[0] !== '--lane' || args[1] !== 'studio')
+  )
+    throw new Error('Expected no arguments or --lane studio.');
   const changesetDir = join(process.cwd(), '.changeset');
   const config = JSON.parse(
     readFileSync(join(changesetDir, 'config.json'), 'utf8'),
   );
   const ignored = new Set(config.ignore ?? []);
+  if (args[1] === 'studio') {
+    const pending = unconsumedStudioChangesets(readChangesets(changesetDir));
+    if (pending.length) {
+      console.error(
+        'This Studio release PR is stale: pending Studio changesets survive the merged tree. Wait for the regenerated release PR.',
+      );
+      for (const cs of pending) console.error(`  .changeset/${cs.id}.md`);
+      process.exitCode = 1;
+    } else
+      console.log(
+        'Studio release PR is current: no Studio changeset survives the merge.',
+      );
+    return;
+  }
   const unconsumed = unconsumedChangesets(
     readChangesets(changesetDir),
     ignored,

@@ -833,47 +833,45 @@ jobs:
     if: >-
       github.event_name == 'merge_group'
       || (github.event_name == 'pull_request'
-      && github.head_ref == 'changeset-release/main')
+      && (github.head_ref == 'changeset-release/main'
+      || github.head_ref == 'changeset-release/studio'))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Decide whether this tree merges the Version Packages PR
+      - name: Decide whether this tree merges either release PR
         id: head
         env:
           GH_TOKEN: ${{ github.token }}
           EVENT_NAME: ${{ github.event_name }}
           PR_HEAD_REF: ${{ github.head_ref }}
         run: |
-          release_pr=false
-          if [[ "$EVENT_NAME" == 'pull_request' ]]; then
-            [[ "$PR_HEAD_REF" == 'changeset-release/main' ]] && release_pr=true
-          else
-            # The queue only ever merges the open PR's current head (a push
-            # to the branch dequeues it), so this tree merges the release PR
-            # exactly when it contains that head. An API failure fails the
-            # job: a queue entry that cannot be judged must not merge on a
-            # guess, and re-queueing retries it.
-            vp_head=$(gh api \
-              "repos/${GITHUB_REPOSITORY}/pulls?state=open&head=${GITHUB_REPOSITORY_OWNER}:changeset-release/main" \
-              --jq '.[0].head.sha // empty')
-            if [[ -z "$vp_head" ]]; then
-              echo "No open Version Packages PR — nothing to check"
+          any_release_pr=false
+          for lane in main studio; do
+            release_pr=false
+            if [[ "$EVENT_NAME" == 'pull_request' ]]; then
+              [[ "$PR_HEAD_REF" == "changeset-release/$lane" ]] && release_pr=true
             else
-              status=$(gh api \
-                "repos/${GITHUB_REPOSITORY}/compare/${vp_head}...${GITHUB_SHA}" \
-                --jq .status)
-              case "$status" in
-                ahead | identical) release_pr=true ;;
-              esac
-              echo "Open Version Packages PR head $vp_head is '$status' relative to this tree"
+              # The queue batches multiple PRs; only ancestry of each open
+              # release head establishes whether this tree includes it.
+              # API errors fail the job, so an uncertain queue entry retries.
+              vp_head=$(gh api \
+                "repos/${GITHUB_REPOSITORY}/pulls?state=open&head=${GITHUB_REPOSITORY_OWNER}:changeset-release/${lane}" \
+                --jq '.[0].head.sha // empty')
+              if [[ -n "$vp_head" ]]; then
+                comparison=$(gh api \
+                  "repos/${GITHUB_REPOSITORY}/compare/${vp_head}...${GITHUB_SHA}" \
+                  --jq .status)
+                case "$comparison" in
+                  ahead | identical) release_pr=true ;;
+                  behind | diverged) ;;
+                  *) echo '::error::Release PR ancestry is unavailable'; exit 1 ;;
+                esac
+              fi
             fi
-          fi
-          echo "release_pr=$release_pr" >> "$GITHUB_OUTPUT"
-          if [[ "$release_pr" == 'true' ]]; then
-            echo "This tree merges the Version Packages PR — checking it"
-          else
-            echo "This tree does not merge the Version Packages PR — nothing to check"
-          fi
+            echo "$lane=$release_pr" >> "$GITHUB_OUTPUT"
+            if [[ "$release_pr" == 'true' ]]; then any_release_pr=true; fi
+          done
+          echo "release_pr=$any_release_pr" >> "$GITHUB_OUTPUT"
       - if: steps.head.outputs.release_pr == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -883,8 +881,11 @@ jobs:
         with:
           node-version-file: '.nvmrc'
       - name: Refuse a release PR that leaves normal-lane changesets behind
-        if: steps.head.outputs.release_pr == 'true'
+        if: steps.head.outputs.main == 'true'
         run: node scripts/check-version-packages-freshness.mjs
+      - name: Refuse a release PR that leaves Studio changesets behind
+        if: steps.head.outputs.studio == 'true'
+        run: node scripts/check-version-packages-freshness.mjs --lane studio
 
   quality:
     needs:
