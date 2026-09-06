@@ -26,7 +26,8 @@
     "./email-sender": "./src/email-sender.ts",
     "./role-bootstrap": "./src/role-bootstrap.ts",
     "./postgres-migrations": "./src/postgres-migrations.ts",
-    "./postgres-migration-artifacts": "./src/postgres-migration-artifacts.ts"
+    "./postgres-migration-artifacts": "./src/postgres-migration-artifacts.ts",
+    "./postgres-migration-authoring": "./src/postgres-migration-authoring.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
