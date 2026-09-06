@@ -368,6 +368,7 @@ export class InvitationDeliveryDispatcher {
 
 export type InvitationDeliveryWorkerOptions =
   InvitationDeliveryDispatcherOptions & {
+    reportError?: (error: unknown) => void;
     pollIntervalMs?: number;
     drainLimit?: number;
   };
@@ -382,6 +383,9 @@ export function startInvitationDeliveryWorker(
     ...options,
     queue: INVITATION_DELIVERY_QUEUE,
     runOnce: () => dispatcher.runOnce(),
-    onError: () => logOperational('STUDIO_INVITATION_WORKER_ERROR'),
+    onError: (error) => {
+      logOperational('STUDIO_INVITATION_WORKER_ERROR');
+      options.reportError?.(error);
+    },
   });
 }

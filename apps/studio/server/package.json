@@ -51,6 +51,7 @@
     "nodemailer": "9.0.5",
     "pg": "^8.22.0",
     "pino": "^10.3.1",
+    "posthog-node": "^5.51.5",
     "ws": "^8.21.2",
     "zod": "catalog:"
   },

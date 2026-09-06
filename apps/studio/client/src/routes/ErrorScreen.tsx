@@ -1,5 +1,5 @@
 import type { ErrorComponentProps } from '@tanstack/react-router';
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -11,6 +11,7 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import { ServerUnreachableError } from '../lib/session.ts';
+import { clientTelemetry } from '../lib/telemetry.ts';
 import { useInsideAreaMain } from '../shell/AreaMain.tsx';
 
 const CENTRED = 'flex h-full items-center justify-center p-4';
@@ -73,6 +74,9 @@ const messages = defineMessages({
 // error's text is for a developer, and this screen is for whoever is holding
 // the tab.
 export default function ErrorScreen({ error }: ErrorComponentProps) {
+  useEffect(() => {
+    clientTelemetry.capture('client_render', error);
+  }, [error]);
   const intl = useAppIntl();
   const unreachable = error instanceof ServerUnreachableError;
   return (

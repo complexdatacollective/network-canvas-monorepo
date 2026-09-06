@@ -1879,6 +1879,9 @@ importers:
       '@orpc/tanstack-query':
         specifier: 2.0.0-beta.26
         version: 2.0.0-beta.26(@opentelemetry/api@1.9.1)(@tanstack/query-core@5.101.4)
+      '@playwright/test':
+        specifier: 'catalog:'
+        version: 1.62.1
       '@tailwindcss/vite':
         specifier: 'catalog:'
         version: 4.3.3(vite@8.1.4(@types/node@24.13.3)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.100.0)(sass@1.102.0)(terser@5.48.0)(tsx@4.23.5)(yaml@2.9.0))
@@ -1915,6 +1918,9 @@ importers:
       motion:
         specifier: 'catalog:'
         version: 13.1.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      posthog-js:
+        specifier: 'catalog:'
+        version: 1.413.2
       react:
         specifier: 'catalog:'
         version: 19.2.8
@@ -2008,6 +2014,9 @@ importers:
       pino:
         specifier: ^10.3.1
         version: 10.3.1
+      posthog-node:
+        specifier: ^5.51.5
+        version: 5.51.5(rxjs@7.8.2)
       ws:
         specifier: ^8.21.2
         version: 8.21.2

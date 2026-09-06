@@ -23,7 +23,8 @@ const collectSourceMaps = (directory) =>
   readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const path = join(directory, entry.name);
     if (entry.isDirectory()) return collectSourceMaps(path);
-    return entry.name.endsWith('.js.map') ? [path] : [];
+    // Node/Netlify entrypoints may emit .mjs or .cjs alongside browser .js.
+    return /\.[cm]?js\.map$/.test(entry.name) ? [path] : [];
   });
 const sourceMapPaths = collectSourceMaps(outputDirectory);
 
