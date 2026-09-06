@@ -46,6 +46,8 @@ export function createClientTelemetry() {
       started = true;
       const { PostHog: Client } =
         await import('posthog-js/dist/module.slim.no-external');
+      // close() can run while the dynamic import yields. Its decision must
+      // prevent this continuation from constructing an SDK or attaching hooks.
       if (stopped) return;
       context = nextContext;
       client = new Client();

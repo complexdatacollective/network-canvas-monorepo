@@ -96,12 +96,16 @@ describe('client telemetry ownership', () => {
   });
 
   it('a stop while the lazy import is pending cannot later start an SDK or listeners', async () => {
+    const listeners = vi.spyOn(window, 'addEventListener');
     const telemetry = createClientTelemetry();
     const pending = telemetry.start(true, context);
     await telemetry.close();
     await pending;
     expect(sdk.constructed).not.toHaveBeenCalled();
     expect(sdk.init).not.toHaveBeenCalled();
+    expect(listeners).not.toHaveBeenCalled();
+    await telemetry.start(true, context);
+    expect(sdk.constructed).not.toHaveBeenCalled();
   });
 
   it('disables all automatic channels and rebuilds actual SDK default properties at before_send', async () => {

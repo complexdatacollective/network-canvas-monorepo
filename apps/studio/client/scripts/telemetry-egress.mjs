@@ -1,6 +1,8 @@
 // Actual built app + actual browser SDK. Every external browser request is
 // intercepted, and the Node preload refuses server egress, so this diagnostic
-// can never upload test events. Run after building both Studio deployables.
+// can never upload test events. Build both Studio deployables with the local
+// PostHog upload stub first (the quality-support job shows the environment):
+// the gate deliberately refuses artifacts without processed chunk IDs.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
@@ -203,30 +205,69 @@ try {
         );
         assert.deepEqual(requests, [], 'CSP probe reached the network');
         const reported = enabled
-          ? page.waitForResponse(
-              (response) =>
-                new URL(response.url()).hostname === relay &&
-                response.request().method() === 'POST',
-              { timeout: 5_000 },
-            )
+          ? page
+              .waitForResponse(
+                (response) =>
+                  new URL(response.url()).hostname === relay &&
+                  response.request().method() === 'POST',
+                { timeout: 5_000 },
+              )
+              .then(
+                () => null,
+                (error) => error,
+              )
           : undefined;
-        await page.evaluate((canary) => {
+        const frameEvidence = await page.evaluate((canary) => {
+          // This registry comes from processing the real built app; never
+          // inject a test-owned registry that could conceal missing processing.
+          const chunks = globalThis._posthogChunkIds;
+          if (!chunks || typeof chunks !== 'object') return null;
+          const registered = Object.entries(chunks)
+            .map(([stack, id]) => ({
+              id,
+              location: /^\s*at (?:.*? \()?([^()\s]+):(\d+):(\d+)\)?$/m.exec(
+                stack,
+              ),
+            }))
+            .find(({ location }) => location?.[1]?.includes('/assets/'));
+          if (!registered?.location) return null;
+          const [, filename, line, column] = registered.location;
+          const stack = [
+            `Error: ${canary}`,
+            `    at ${canary} (${filename}:${line}:${column})`,
+            // A query-bearing lookalike is not the registered compiled file.
+            `    at ${canary} (${filename}?${canary}:5:6)`,
+          ].join('\n');
+          const privateError = () =>
+            Object.assign(new Error(canary, { cause: new Error(canary) }), {
+              stack,
+              participantId: canary,
+              protocol: { name: canary },
+            });
           window.dispatchEvent(
             new ErrorEvent('error', {
-              error: Object.assign(
-                new Error(canary, { cause: new Error(canary) }),
-                { participantId: canary, protocol: { name: canary } },
-              ),
+              error: privateError(),
             }),
           );
           window.dispatchEvent(
             new PromiseRejectionEvent('unhandledrejection', {
               promise: Promise.resolve(),
-              reason: { message: canary, token: canary },
+              reason: privateError(),
             }),
           );
+          return {
+            id: registered.id,
+            line: Number(line),
+            column: Number(column),
+            filename,
+          };
         }, CANARY);
-        await reported?.catch((error) => {
+        assert(
+          frameEvidence,
+          'Processed app must register a compiled chunk before the privacy probe',
+        );
+        const reportingError = await reported;
+        if (reportingError) {
           process.stderr.write(
             JSON.stringify({
               mode,
@@ -236,8 +277,8 @@ try {
               consoleMessages,
             }) + '\n',
           );
-          throw error;
-        });
+          throw reportingError;
+        }
         // Negative observation window after both error hooks were stimulated.
         await page.waitForTimeout(500);
         if (!enabled) {
@@ -270,6 +311,49 @@ try {
             !payload.includes(CANARY),
             'Private browser values reached the wire',
           );
+          for (const post of posts) {
+            const envelope = JSON.parse(post.body);
+            assert.deepEqual(Object.keys(envelope).sort(), [
+              'api_key',
+              'batch',
+              'sent_at',
+            ]);
+            const batch = envelope.batch;
+            assert(
+              Array.isArray(batch),
+              'The SDK must send its JSON event batch',
+            );
+            assert.equal(
+              batch.length,
+              1,
+              'Each request must contain only its explicit exception',
+            );
+            const event = batch[0];
+            const exceptions = event.properties?.$exception_list;
+            assert.equal(
+              exceptions?.length,
+              1,
+              'The actual SDK wire must contain one exception',
+            );
+            assert.deepEqual(
+              exceptions[0].stacktrace?.frames,
+              [
+                {
+                  platform: 'web:javascript',
+                  filename: 'studio.js',
+                  function: 'compiled',
+                  chunk_id: frameEvidence.id,
+                  lineno: frameEvidence.line,
+                  colno: frameEvidence.column,
+                },
+              ],
+              'A nonempty, sanitized registered frame must reach the actual SDK wire',
+            );
+          }
+          assert(
+            !payload.includes(frameEvidence.filename),
+            'Raw compiled filename reached the wire',
+          );
           assert(
             !payload.includes('$current_url') &&
               !payload.includes('$session_id') &&
@@ -283,6 +367,7 @@ try {
           sdkChunks: sdkChunks.length,
           relayRequests: requests.length,
           privateCanaryAbsent: true,
+          sanitizedFrames: enabled ? 2 : 0,
           remoteScriptBlocked,
         });
         completed = true;

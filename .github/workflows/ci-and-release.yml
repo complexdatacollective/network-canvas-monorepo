@@ -568,8 +568,9 @@ jobs:
         id: build
         continue-on-error: true
         # Background Creator has no E2E suite. The apps' PostHog source-map
-        # path is credential-gated. A local CLI stub exercises app, worker,
-        # Studio Node and preview-function maps plus deletion without upload.
+        # path is credential-gated. The local stub injects the provider's chunk
+        # IDs into app, worker, Studio Node and preview-function outputs and
+        # deletes maps without upload, so the browser gate sees processed code.
         env:
           POSTHOG_PERSONAL_API_KEY: ci-release-build-preflight
           POSTHOG_PROJECT_ID: '1'

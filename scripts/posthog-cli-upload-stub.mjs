@@ -1,7 +1,19 @@
 #!/usr/bin/env node
 
-import { existsSync, readdirSync, rmSync } from 'node:fs';
+import {
+  existsSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { join } from 'node:path';
+
+import {
+  createChunkId,
+  createChunkIdComment,
+  createChunkIdSnippet,
+} from '@posthog/plugin-utils';
 
 const args = process.argv.slice(2);
 const directoryArgument = args.indexOf('--directory');
@@ -37,6 +49,14 @@ for (const sourceMapPath of sourceMapPaths) {
   if (!existsSync(chunkPath)) {
     throw new Error(`Expected JavaScript chunk ${chunkPath} to exist.`);
   }
+  // Use the installed provider utility, whose runtime snippet is byte-for-byte
+  // compatible with the CLI. No binary download, credentials or upload occur.
+  // Appending preserves shebangs and directive prologues in worker/CJS output.
+  const chunkId = createChunkId();
+  writeFileSync(
+    chunkPath,
+    `${readFileSync(chunkPath, 'utf8')}\n${createChunkIdSnippet(chunkId)}${createChunkIdComment(chunkId)}\n`,
+  );
   rmSync(sourceMapPath);
 }
 
