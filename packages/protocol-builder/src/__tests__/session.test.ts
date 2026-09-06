@@ -533,10 +533,10 @@ describe('ProtocolBuilderSessionStore', () => {
         rowB,
         rowZ,
       ]);
-      // The row it was to be put above has gone, so where the researcher meant
-      // it to land cannot be worked out and the move is refused rather than
-      // guessed at.
-      expect(replay(move, removedAbove).form).toEqual([rowB, rowC]);
+      // The row it was to be put above has gone — and the rows further down
+      // still say where it belongs, so the move lands in front of the nearest
+      // of them that survived rather than being thrown away.
+      expect(replay(move, removedAbove).form).toEqual([rowC, rowB]);
     });
 
     it('merges a whole-list rewrite row by row', () => {

@@ -927,12 +927,13 @@ describe('an inline list whose write the document does not take', () => {
       ),
     );
 
-    // The blank row moves up one. Its own place in the document can be found,
-    // but the row it would have to sit beside cannot be told from its twin, so
-    // the move resolves to no row rather than to a guess.
+    // The FIRST rule moves down one. It cannot be told from its twin anywhere
+    // in the document, so which row the researcher took hold of resolves to no
+    // row rather than to a guess — and a guess there moves a row they never
+    // touched.
     fireEvent.keyDown(
-      screen.getByRole('button', { name: 'Reorder item 3 of 3' }),
-      { key: 'ArrowUp' },
+      screen.getByRole('button', { name: 'Reorder item 1 of 3' }),
+      { key: 'ArrowDown' },
     );
 
     expect(
@@ -952,6 +953,60 @@ describe('an inline list whose write the document does not take', () => {
           .getAllByRole('textbox', { name: 'Property' })
           .map((cell) => (cell as HTMLInputElement).value),
       ).toEqual(['name', 'name', '']),
+    );
+  });
+
+  /**
+   * The move whose destination — and not whose row — names two places.
+   *
+   * A row the list holds twice is a place all the same: the rows are paired off
+   * in order, so "after the first of them" is one position and "after the
+   * second" is another. Refusing over that told the researcher their reorder
+   * went nowhere for a list they could see perfectly well, and the same reading
+   * is what puts a NEW row back between two identical ones.
+   */
+  it('moves a rule to a place between two rules it cannot tell apart', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      title: 'Welcome',
+      sortOrder: [
+        null,
+        { property: 'name', direction: 'asc' },
+        { property: 'name', direction: 'asc' },
+      ],
+    });
+    renderSortRules(session);
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Add new sort rule' }),
+    );
+    await waitFor(() =>
+      expect(screen.getAllByRole('textbox', { name: 'Property' })).toHaveLength(
+        3,
+      ),
+    );
+
+    // The blank row moves up one, which is between the two twins — and the
+    // hole the editor never drew stays where the import left it.
+    fireEvent.keyDown(
+      screen.getByRole('button', { name: 'Reorder item 3 of 3' }),
+      { key: 'ArrowUp' },
+    );
+
+    await waitFor(() =>
+      expect(session.getSnapshot().editedSection.fields.sortOrder).toEqual([
+        null,
+        { property: 'name', direction: 'asc' },
+        {},
+        { property: 'name', direction: 'asc' },
+      ]),
+    );
+    await waitFor(() =>
+      expect(
+        screen
+          .getAllByRole('textbox', { name: 'Property' })
+          .map((cell) => (cell as HTMLInputElement).value),
+      ).toEqual(['name', '', 'name']),
     );
   });
 });

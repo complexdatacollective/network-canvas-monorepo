@@ -353,7 +353,11 @@ export function resolveInsertIndex<T extends ArrayRow>(
  *
  * The destination is anchored on the row the moved one will FOLLOW, rather
  * than on a number, because a number means something different in a list that
- * has since gained or lost rows. `undefined` refuses the move.
+ * has since gained or lost rows — and on the nearest such row that SURVIVED,
+ * because the arrival may have deleted the one it was written beside. A move
+ * says where a row goes relative to the rows the researcher could see, and
+ * every one of those that is still here says it. `undefined` refuses the move,
+ * which is the answer when none of them is.
  */
 export function resolveMove<T extends ArrayRow>(
   current: readonly unknown[],
@@ -368,30 +372,60 @@ export function resolveMove<T extends ArrayRow>(
     return to >= 0 && to < current.length ? { from, to } : undefined;
   }
 
-  const reordered = [...rendered];
-  const [moved] = reordered.splice(from, 1);
+  // The rows the drag moved PAST, in the order the drop left them: the rendered
+  // list without the row being moved, which is what `remaining` is the
+  // current-list counterpart of. A neighbour at position `at` in that order is
+  // `reordered[at]` for a place above the drop and `reordered[at + 1]` below
+  // it.
+  const others = [...rendered];
+  const [moved] = others.splice(from, 1);
   if (moved === undefined) return undefined;
-  reordered.splice(to, 0, moved);
 
   const remaining = [...current];
   remaining.splice(currentFrom, 1);
-  const anchorIndex = (neighbour: T | undefined) =>
-    neighbour === undefined
-      ? undefined
-      : resolveRowIndex(remaining, [neighbour] as readonly T[], 0, getId);
+  // Where each of those rows sits in the list now, one row to one position.
+  //
+  // `matchRows` rather than `resolveRowIndex` asked per neighbour, for the
+  // reason `resolveInsertIndex` puts the same question to it: an anchor
+  // decides only WHERE the moved row goes, never which row an edit is written
+  // into, so a list holding the same id-less row twice is two places rather
+  // than a guess to refuse over — and the copies are paired off in order, so
+  // "after the second blank row" stays after the second one.
+  const paired = matchRows(others, remaining, (row) =>
+    isRecord(row) ? getId?.(row as T) : undefined,
+  );
+  const anchorIndex = (at: number): number | undefined => {
+    const index = paired[at];
+    return index === undefined || index === -1 ? undefined : index;
+  };
 
   // The row the moved one will FOLLOW says where it goes; when it is moving to
   // the very top of the rows the editor could see, the row it will PRECEDE
   // says instead. Anchoring on a neighbour rather than on a number is what
   // keeps "put this at the top of my list" from meaning "above a row that
   // arrived from somewhere else and that I never saw".
-  const predecessor = anchorIndex(reordered[to - 1]);
-  if (predecessor !== undefined)
-    return { from: currentFrom, to: predecessor + 1 };
+  //
+  // Its immediate neighbour is the first answer and usually the only one
+  // needed, but the arrival may have deleted that row — and the rows further
+  // out still say where this one belongs, exactly as they do for a row being
+  // inserted. Refusing the move the moment the nearest neighbour was gone
+  // threw the researcher's reorder away over a row they had not touched:
+  // `[a, b, c]` with `a` dragged to the bottom, rebased onto an arrival that
+  // deleted `c`, said nothing rather than `[b, a]`.
+  for (let earlier = to - 1; earlier >= 0; earlier -= 1) {
+    const predecessor = anchorIndex(earlier);
+    if (predecessor !== undefined)
+      return { from: currentFrom, to: predecessor + 1 };
+  }
 
-  const successor = anchorIndex(reordered[to + 1]);
-  if (successor !== undefined) return { from: currentFrom, to: successor };
+  for (let later = to; later < others.length; later += 1) {
+    const successor = anchorIndex(later);
+    if (successor !== undefined) return { from: currentFrom, to: successor };
+  }
 
+  // No row the editor drew survives to say where this one goes. A list holding
+  // only rows that arrived from elsewhere is not one the researcher's move
+  // says anything about, so it is refused rather than landed on a guess.
   return remaining.length === 0 ? { from: currentFrom, to: 0 } : undefined;
 }
 

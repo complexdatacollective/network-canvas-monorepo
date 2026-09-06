@@ -523,6 +523,16 @@ const ORPHANED_TRIALS: Readonly<Record<Mode, number>> = {
 };
 
 /**
+ * And how many must move a row to a place whose immediate neighbours the
+ * arrival deleted, and have the rebase keep every command all the same — the
+ * move the rows further out are what anchor.
+ */
+const ANCHORED_MOVE_TRIALS: Readonly<Record<Mode, number>> = {
+  identified: 8,
+  idless: 1,
+};
+
+/**
  * And how many must have both sides edit one row, the arrival changing a
  * property the researcher's submit left alone.
  */
@@ -698,6 +708,40 @@ function addedRowLostItsPredecessor(trial: Trial): boolean {
   });
 }
 
+/**
+ * Whether a trial asks the anchoring question of a MOVE: the researcher put a
+ * row somewhere whose immediate neighbours — the row it lands after, and the
+ * row it lands before — the arrival then deleted, or which are not there at all
+ * because it landed at one end of the list.
+ *
+ * That is the only shape in which a move has nothing immediately beside it to
+ * be anchored on, and so the only one that reaches the rest of the rule: the
+ * rows further out, which still say where the moved row belongs.
+ */
+function movedPastADeletedNeighbour(trial: Trial): boolean {
+  const inBase = copies(trial.base);
+  const inRemote = copies(trial.remote);
+  const lost = (row: Row | undefined) =>
+    row === undefined ||
+    (inRemote.get(keyOf(row)) ?? 0) < (inBase.get(keyOf(row)) ?? 0);
+  let document = docWith(trial.path, trial.base);
+  let asked = false;
+  for (const batch of trial.batches) {
+    for (const command of batch) {
+      const before = readList(document, trial.path);
+      document = applyCommands(document, [command]);
+      if (command.op !== 'moveItem') continue;
+      const landed = [...before];
+      const [row] = landed.splice(command.from, 1);
+      if (row === undefined) continue;
+      landed.splice(command.to, 0, row);
+      if (lost(landed[command.to - 1]) && lost(landed[command.to + 1]))
+        asked = true;
+    }
+  }
+  return asked;
+}
+
 /** Whether the researcher's steps gave the rows they kept a NEW order. */
 function localReordered(trial: Trial): boolean {
   const inBase = copies(trial.base);
@@ -817,20 +861,37 @@ describe('rebasing a list edit onto a collaborator’s arrival', () => {
        * a new row past rows that had survived: `[a, b, c]` submitted as
        * `[a, x, c]` and rebased onto an arrival that deleted `a` answered
        * `[c, x]`, with `x` behind the very row it was written in front of.
+       *
+       * A MOVED row is anchored by the same rule and asks the same question,
+       * which is the second count: how many trials moved a row to a place
+       * whose immediate neighbours the arrival deleted, and had every command
+       * survive the rebase. Refusing such a move outright — which is what
+       * reading only the immediate neighbours did — leaves the researcher's
+       * reorder out of the answer, so that count is zero for the rule this
+       * replaces and every trial in it is one where a move is asserted about.
        */
       it('keeps the researcher’s order when the arrival only added and deleted rows', () => {
         const failures: string[] = [];
         let orphaned = 0;
+        let anchoredMoves = 0;
         for (let seed = 1; seed <= ORDER_TRIALS; seed += 1) {
           const { trial, outcome } = runTrial(seed, mode, 'comings and goings');
           if (!deletionsAreUnambiguous(trial)) continue;
           if (addedRowLostItsPredecessor(trial)) orphaned += 1;
+          if (
+            outcome.kind === 'ok' &&
+            commandCount(outcome.rebased) === commandCount(trial.batches) &&
+            movedPastADeletedNeighbour(trial)
+          ) {
+            anchoredMoves += 1;
+          }
           const problem = keepsTheLocalOrder(trial, outcome);
           if (problem !== null && failures.length < 3)
             failures.push(describeTrial(trial, problem));
         }
         expect(failures).toEqual([]);
         expect(orphaned).toBeGreaterThan(ORPHANED_TRIALS[mode]);
+        expect(anchoredMoves).toBeGreaterThan(ANCHORED_MOVE_TRIALS[mode]);
       });
 
       /**
