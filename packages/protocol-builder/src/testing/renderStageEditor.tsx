@@ -262,7 +262,17 @@ export function renderStageEditor<T extends StageType = StageType>(
     </DialogProvider>,
   );
 
-  const user = userEvent.setup();
+  // No wait between keystrokes. user-event's default schedules a real 0ms
+  // timer per key, and a timer is a turn of the event loop rather than
+  // nothing: a section editor's tests type whole questions and attribute
+  // names, so the suite spends real seconds waiting on nothing.
+  //
+  // `null` is not the same as `0`, which still schedules. Nothing here needs
+  // the gap: what a debounce or a delayed validation is waiting for is time,
+  // not keystrokes, and a test that needs it must await the thing itself —
+  // an assertion that only passed because the typing was slow is an assertion
+  // about the harness.
+  const user = userEvent.setup({ delay: null });
   let revision = 1n;
 
   const submit = async (): Promise<FinishRequest | null> => {

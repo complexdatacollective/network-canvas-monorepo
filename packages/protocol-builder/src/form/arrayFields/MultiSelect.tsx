@@ -73,6 +73,28 @@ const isCellEmpty = (cell: unknown) =>
   (typeof cell === 'string' && cell.trim() === '');
 
 /**
+ * A column whose cells can hold an id that no longer names anything.
+ *
+ * Emptiness is all a row can judge for itself, and it is not the whole of
+ * "unanswered": a cell holding the id of something that has since been deleted
+ * looks answered from here, renders blank (an option list that does not carry
+ * the id has nothing to show for it), and saves the dangling reference back.
+ * Only the owner knows what its ids name and which of them are gone, so the
+ * owner supplies both — the values, and the sentence a row holding one is
+ * refused with.
+ */
+export type DanglingCells = Readonly<{
+  fieldName: string;
+  /** The values in that column that no longer name anything. */
+  values: readonly string[];
+  /** What the researcher is told about a row holding one. */
+  message: string;
+}>;
+
+/** Stable identity for the common case: this is part of a field registration. */
+const NO_DANGLING_CELLS: readonly DanglingCells[] = Object.freeze([]);
+
+/**
  * The array-level rule every MultiSelect owner must put on its
  * `ProtocolArrayField` — the counterpart of the `required` the cells carry,
  * which is DISPLAY ONLY because a row is not a registered field (see
@@ -86,26 +108,46 @@ const isCellEmpty = (cell: unknown) =>
  * An absent or empty array is the unconfigured state these toggleable sections
  * legitimately sit in and passes; a wholly empty row does not, matching
  * `Options.tsx`'s `completeOptions`.
+ *
+ * A row is judged empty first and dangling second, so a row that is both is
+ * told what it is missing before it is told the id it kept is stale — the
+ * ordering `messageRuleValidation` documents, applied within the one rule that
+ * owns what "answered" means here.
  */
 const completeRows =
-  (properties: PropertyField[]) =>
-  (value: unknown): string | undefined =>
-    readRows(value).some((row) =>
-      properties.some(({ fieldName }) => isCellEmpty(row[fieldName])),
-    )
-      ? 'Every row needs a value in each column.'
-      : undefined;
+  (properties: PropertyField[], dangling: readonly DanglingCells[]) =>
+  (value: unknown): string | undefined => {
+    const rows = readRows(value);
+    if (
+      rows.some((row) =>
+        properties.some(({ fieldName }) => isCellEmpty(row[fieldName])),
+      )
+    ) {
+      return 'Every row needs a value in each column.';
+    }
+    return dangling.find(({ fieldName, values }) =>
+      rows.some((row) => {
+        const cell = row[fieldName];
+        return typeof cell === 'string' && values.includes(cell);
+      }),
+    )?.message;
+  };
 
 /**
  * Every array-level rule a MultiSelect owner needs, as one object to SPREAD
  * onto the owning `ProtocolArrayField` — the `Options.tsx` `optionsValidation`
  * idiom, so a call site cannot keep some and drop others.
  *
- * A factory because the rule has to know the columns. Memoize the result on
- * `properties`: it is a field prop, and a fresh identity per render is churn.
+ * A factory because the rule has to know the columns, and — where a column
+ * holds references — which of those references have gone stale. Memoize the
+ * result on both: it is a field prop, and a fresh identity per render is
+ * churn that re-registers the rules mid-submit.
  */
-export const makeMultiSelectValidation = (properties: PropertyField[]) => ({
-  custom: messageRuleValidation([completeRows(properties)]),
+export const makeMultiSelectValidation = (
+  properties: PropertyField[],
+  dangling: readonly DanglingCells[] = NO_DANGLING_CELLS,
+) => ({
+  custom: messageRuleValidation([completeRows(properties, dangling)]),
 });
 
 type MultiSelectContextValue = {

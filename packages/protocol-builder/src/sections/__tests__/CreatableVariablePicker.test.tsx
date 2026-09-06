@@ -1,4 +1,5 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { type ComponentType, useCallback, useMemo, useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
@@ -242,5 +243,83 @@ describe('the creatable attribute picker', () => {
     expect(
       screen.queryByRole('button', { name: 'Create the attribute' }),
     ).toBeNull();
+  });
+});
+
+/**
+ * The window between the click and the codebook's answer, which no test going
+ * through the harness's host can hold open: the compound edit is applied
+ * before the click's own act() has settled, so the busy state is over by the
+ * time anything could look at it.
+ *
+ * The control is mounted directly here for that reason, with the answer held
+ * in the test's own hand. Nothing is stubbed that the control depends on —
+ * `onCreateOption` IS the seam, and a caller answering it slowly is exactly
+ * what a real codebook round trip is.
+ */
+describe('the create control while the codebook write is in flight', () => {
+  const mountControl = () => {
+    let answer: ((created: boolean) => void) | undefined;
+    const onCreateOption = () =>
+      new Promise<boolean>((resolve) => {
+        answer = resolve;
+      });
+    render(
+      <CreatableVariablePickerControl
+        name="variable"
+        options={[]}
+        emptyMessage="Nothing to choose from yet."
+        onCreateOption={onCreateOption}
+      />,
+    );
+    return {
+      user: userEvent.setup(),
+      /** Answers the create that is waiting, as the codebook would. */
+      answerWith: (created: boolean) => {
+        if (answer === undefined) throw new Error('Nothing is waiting.');
+        answer(created);
+      },
+    };
+  };
+
+  const nameBox = () =>
+    screen.getByRole('textbox', { name: 'Create a new attribute' });
+  const createButton = () =>
+    screen.getByRole('button', { name: 'Create the attribute' });
+
+  /**
+   * Pressing it twice would ask the codebook for the same attribute twice, and
+   * the second write is the one that gets refused for a duplicate name — a
+   * refusal about something the researcher did not do.
+   */
+  it('holds the create button until the codebook has answered', async () => {
+    const { user, answerWith } = mountControl();
+
+    await user.type(nameBox(), 'nominated_early');
+    expect(createButton()).toBeEnabled();
+    await user.click(createButton());
+
+    expect(createButton()).toBeDisabled();
+    // Still the name they typed: nothing has been written yet.
+    expect(nameBox()).toHaveValue('nominated_early');
+
+    // Emptied only now — which is also why the button stays disabled after a
+    // create that landed: there is no longer a name to create.
+    answerWith(true);
+    await waitFor(() => expect(nameBox()).toHaveValue(''));
+  });
+
+  /** The refusal is about that name, so the box is what they correct. */
+  it('gives the button back with the refused name still in the box', async () => {
+    const { user, answerWith } = mountControl();
+
+    await user.type(nameBox(), 'nominated early');
+    await user.click(createButton());
+    answerWith(false);
+
+    // Enabled again, because pressing it once more is the whole point of a
+    // refusal the researcher can correct.
+    await waitFor(() => expect(createButton()).toBeEnabled());
+    expect(nameBox()).toHaveValue('nominated early');
   });
 });

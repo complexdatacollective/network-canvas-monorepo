@@ -9,6 +9,7 @@ import {
 import {
   applyCommands,
   canonicalize,
+  commandTarget,
   contentHash,
   type Command,
   type SectionDoc,
@@ -20,6 +21,12 @@ import {
   sectionId,
 } from '@codaco/studio-sync/taxonomy';
 
+import {
+  commandForListChange,
+  isDictionary,
+  MAX_COMMAND_PATH_SEGMENTS,
+  rebaseCommands,
+} from './listCommands.ts';
 import {
   protocolContextFromSections,
   type ProtocolBuilderProtocolContext,
@@ -390,6 +397,27 @@ export function stageDocument(
   return { id: identity.id, type: identity.type, ...cloneDoc(fields) };
 }
 
+/**
+ * The commands that turn one draft into another.
+ *
+ * Addressed at the deepest place the difference actually is, rather than at the
+ * top-level key above it. Two things follow from that, and both are the whole
+ * reason a command may address a nested path at all:
+ *
+ * - a difference that IS a list — one row inserted, removed or moved, wherever
+ *   the stage keeps that list — is said as the row operation it is, so undo,
+ *   redo and every other route through this diff stays as mergeable as the
+ *   list editor's own commit was. A change the vocabulary cannot express falls
+ *   back to a `set` at the list's own path;
+ * - a change to one member of a nested object is a `set` at that member, so a
+ *   sibling nobody touched is not rewritten. Writing `nodeConfig` whole to
+ *   record a new `nodeConfig.type` is exactly the merge-blind write nested
+ *   addressing exists to avoid.
+ *
+ * A one-segment path is still spelled as the bare key it always was
+ * (`commandTarget`), so everything a top-level field emits is unchanged on the
+ * wire and in the command log.
+ */
 export function commandsFromDraftChange(
   previous: StageFormDraft,
   next: StageFormDraft,
@@ -397,26 +425,52 @@ export function commandsFromDraftChange(
   assertNoIdentityFields(previous);
   assertNoIdentityFields(next);
   const commands: Command[] = [];
+  collectDraftCommands([], previous, next, commands);
+  return commands;
+}
+
+function collectDraftCommands(
+  path: readonly string[],
+  previous: SectionDoc,
+  next: SectionDoc,
+  commands: Command[],
+): void {
   const keys = new Set([...Object.keys(previous), ...Object.keys(next)]);
 
   for (const key of [...keys].toSorted()) {
+    const here = [...path, key];
     const before = previous[key];
     const after = next[key];
     if (after === undefined) {
       if (Object.hasOwn(previous, key) && before !== undefined) {
-        commands.push({ op: 'unset', key });
+        commands.push({ op: 'unset', key: commandTarget(here) });
       }
       continue;
     }
     if (
-      !Object.hasOwn(previous, key) ||
-      canonicalize(before) !== canonicalize(after)
+      Object.hasOwn(previous, key) &&
+      canonicalize(before) === canonicalize(after)
     ) {
-      commands.push({ op: 'set', key, value: cloneValue(after) });
+      continue;
     }
+    if (
+      isDictionary(before) &&
+      isDictionary(after) &&
+      here.length < MAX_COMMAND_PATH_SEGMENTS
+    ) {
+      collectDraftCommands(here, before, after, commands);
+      continue;
+    }
+    if (Array.isArray(before) && Array.isArray(after)) {
+      commands.push(commandForListChange(commandTarget(here), before, after));
+      continue;
+    }
+    commands.push({
+      op: 'set',
+      key: commandTarget(here),
+      value: cloneValue(after),
+    });
   }
-
-  return commands;
 }
 
 export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
@@ -715,21 +769,23 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
         pendingCommands = pendingCommands.slice(accounted);
         rebased = false;
       }
-      this.baseFields = cloneDoc(fields);
       let reconciledFields: StageFormDraft = this.snapshot.editedSection.fields;
       if (rebased) {
+        // Read before the base moves: what each pending batch MEANT is a fact
+        // about the document it was made on. See `rebasePending`.
+        const outstanding = new Set(pendingCommands.map((batch) => batch.id));
+        const rebase = this.rebasePending(cloneDoc(fields), (batch) =>
+          outstanding.has(batch.id),
+        );
         this.undoStack.length = 0;
         this.redoStack.length = 0;
         this.historyGeneration += 1;
         this.fencedAtRevision = result.update.manifestRevision;
-        reconciledFields = pendingCommands.reduce<SectionDoc>(
-          (draft, batch) => {
-            this.undoStack.push(cloneDoc(draft));
-            return applyCommands(draft, [...batch.commands]);
-          },
-          cloneDoc(this.baseFields),
-        );
+        this.undoStack.push(...rebase.steps);
+        pendingCommands = rebase.batches;
+        reconciledFields = rebase.fields;
       }
+      this.baseFields = cloneDoc(fields);
       this.releaseWithheldFrom(pendingCommands);
       this.replaceSnapshot({
         fields: reconciledFields,
@@ -868,14 +924,12 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       return;
     }
     assertNoIdentityFields(params.fields);
-    this.baseFields = cloneDoc(params.fields);
-    const pendingCommands = this.snapshot.pendingCommands.filter(
+    const rebase = this.rebasePending(
+      cloneDoc(params.fields),
       (batch) => batch.id > params.throughBatchId,
     );
-    const fields = pendingCommands.reduce<SectionDoc>(
-      (doc, batch) => applyCommands(doc, [...batch.commands]),
-      cloneDoc(this.baseFields),
-    );
+    this.baseFields = cloneDoc(params.fields);
+    const { batches: pendingCommands, fields } = rebase;
     this.releaseWithheldFrom(pendingCommands);
     this.replaceSnapshot({
       fields,
@@ -1167,6 +1221,78 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
    * with, and the fold compares the content hash the request was BUILT from —
    * the document the host is about to apply the folded commands to.
    */
+  /**
+   * The outstanding batches, re-expressed against a base that has moved.
+   *
+   * A batch describes an EDIT the researcher made to the document they were
+   * looking at. Replayed literally onto a base a collaborator has since changed,
+   * an index in it addresses whatever row has moved into that position and a
+   * whole-list `set` in it writes their rows back out of existence — which is
+   * the same merge-blindness nested addressing was added to avoid, arriving one
+   * step later.
+   *
+   * So each batch is rebased against the document it was made on, which this
+   * session can always reconstruct: its own previous base with every earlier
+   * batch applied. `rebaseCommands` decides what each command means against the
+   * list that is there now.
+   *
+   * The rebased commands REPLACE the pending ones, because a batch that stays
+   * pending is a batch the host has still to be given — at finish, or in the
+   * fold of a later compound edit — and it has to describe the same edit the
+   * draft on screen is showing. A batch nothing moved under keeps its own
+   * command objects, so the common case is unchanged in every respect.
+   *
+   * Must be called BEFORE `baseFields` is replaced: the previous base is the
+   * foot of the walk.
+   */
+  private rebasePending(
+    base: SectionDoc,
+    stillPending: (batch: PendingCommandBatch) => boolean,
+  ): Readonly<{
+    batches: PendingCommandBatch[];
+    /** The draft before each rebased batch, in order: a rebase's undo entries. */
+    steps: SectionDoc[];
+    fields: SectionDoc;
+  }> {
+    const basisOf = new Map<number, SectionDoc>();
+    let basis: SectionDoc | null = cloneDoc(this.baseFields);
+    for (const batch of this.snapshot.pendingCommands) {
+      if (basis === null) break;
+      basisOf.set(batch.id, basis);
+      try {
+        basis = applyCommands(basis, [...batch.commands]);
+      } catch {
+        // A batch that no longer applies to the base it was made on says
+        // nothing reliable about the ones after it, which are then replayed
+        // exactly as they were — the behaviour this rebase replaces.
+        basis = null;
+      }
+    }
+
+    const batches: PendingCommandBatch[] = [];
+    const steps: SectionDoc[] = [];
+    let fields = cloneDoc(base);
+    for (const batch of this.snapshot.pendingCommands) {
+      if (!stillPending(batch)) continue;
+      const basisDocument = basisOf.get(batch.id);
+      const commands =
+        basisDocument === undefined
+          ? batch.commands
+          : rebaseCommands(basisDocument, fields, batch.commands);
+      const rebased =
+        commands === batch.commands
+          ? batch
+          : Object.freeze({
+              id: batch.id,
+              commands: Object.freeze([...commands]),
+            });
+      batches.push(rebased);
+      steps.push(cloneDoc(fields));
+      fields = applyCommands(fields, [...rebased.commands]);
+    }
+    return { batches, steps, fields };
+  }
+
   private deliveredPrefixLength(
     pending: readonly PendingCommandBatch[],
     isHostStage: (fields: SectionDoc) => boolean,

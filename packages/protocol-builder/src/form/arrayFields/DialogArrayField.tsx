@@ -37,6 +37,7 @@ import {
   useStageEditorForm,
   type StageFormStoreApi,
 } from '../stageEditorContext.ts';
+import { rowIdentity } from './arrayFieldCommands.ts';
 import RowEditorBoundary from './RowEditorBoundary.tsx';
 import {
   ArrayFieldBindingContext,
@@ -850,13 +851,7 @@ export default function DialogArrayField<T extends ArrayItem>({
     } as Partial<T>;
   }, [itemTemplate]);
 
-  const resolveItemId = useMemo(
-    () =>
-      getId ??
-      ((candidate: T) =>
-        typeof candidate.id === 'string' ? candidate.id : undefined),
-    [getId],
-  );
+  const resolveItemId = useMemo(() => getId ?? rowIdentity, [getId]);
 
   const rows = useMemo(() => value ?? [], [value]);
   const { onOperation, commitDetachedRow: commitById } =
