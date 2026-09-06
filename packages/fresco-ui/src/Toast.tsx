@@ -8,6 +8,7 @@ import {
 import { AlertCircle, Info, type LucideIcon, PartyPopper } from 'lucide-react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
 import Button from './Button';
@@ -24,6 +25,15 @@ import { cva, cx, type VariantProps } from './utils/cva';
 // the screen — the viewport anchors every toast to the bottom and grows it
 // upward, so unbounded content is clipped by the browser window with no way
 // back, not by anything the toast itself renders.
+const messages = defineMessages({
+  notifications: {
+    id: 'frescoUi.toast.notifications',
+    defaultMessage: 'Notifications',
+    description:
+      'Accessible name of the region containing status notifications and alerts.',
+  },
+});
+
 const DESCRIPTION_MAX_HEIGHT = 'max-h-[40dvh]';
 
 export const toastVariants = cva({
@@ -55,7 +65,7 @@ export const variantIcons: Record<ToastVariant, LucideIcon | null> = {
 
 type ToastData = {
   id?: string;
-  title: string;
+  title: React.ReactNode;
   description?: string | React.ReactNode;
   variant?: ToastVariant;
   icon?: React.ReactNode;
@@ -63,7 +73,7 @@ type ToastData = {
   onCancel?: () => void;
   // Label for the action button rendered when `onCancel` is set. Defaults to
   // "Cancel".
-  cancelLabel?: string;
+  cancelLabel?: React.ReactNode;
   // When set, the toast's title + description become a clickable region (the
   // close button and action button remain separate). Use for "click the toast
   // to see more" affordances.
@@ -74,7 +84,7 @@ type ToastData = {
 type ToastCustomData = {
   variant?: ToastVariant;
   onCancel?: () => void;
-  cancelLabel?: string;
+  cancelLabel?: React.ReactNode;
   onClick?: () => void;
   icon?: React.ReactNode;
 };
@@ -236,12 +246,14 @@ export function useToast(): TypedUseToastManager {
 }
 
 export function Toaster() {
+  const intl = useAppIntl();
   const { toasts } = useToast();
   const portalContainer = usePortalContainer();
 
   return (
     <Toast.Portal container={portalContainer ?? undefined}>
       <Toast.Viewport
+        aria-label={intl.formatMessage(messages.notifications)}
         data-testid="toast-viewport"
         className={cx(
           'phone-landscape:max-w-sm fixed top-auto bottom-2 mx-auto flex w-full',

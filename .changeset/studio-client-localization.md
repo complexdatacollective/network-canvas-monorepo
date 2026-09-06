@@ -11,3 +11,7 @@ The language is chosen for you on first visit from what your browser asks
 for, and you can set it yourself at Account → Language. Signed in, that
 choice is stored on your account and follows you to any device; signed out,
 it is remembered in the browser you set it in.
+
+Studio keeps its declared English and British English subset when other
+applications add Spanish to the shared ecosystem, so it never offers an
+unsupported account preference or incomplete translation.

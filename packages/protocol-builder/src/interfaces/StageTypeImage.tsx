@@ -1,9 +1,22 @@
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import InterfacePicture, {
   type InterfacePictureProps,
 } from '@codaco/interface-images/InterfacePicture';
 import manifest, {
   type InterfaceType,
 } from '@codaco/interface-images/manifest';
+
+import { interfaceDisplayName } from './interfaceNames.ts';
+
+const messages = defineMessages({
+  preview: {
+    id: 'protocolBuilder.stageTypeImage.preview',
+    defaultMessage: 'Preview of {interfaceName}',
+    description:
+      'Alternative text for a screenshot of an interview interface. interfaceName is the localized interface name, or an unchanged identifier for an unknown future interface.',
+  },
+});
 
 /**
  * Placeholder for stage types that have no generated screenshot in
@@ -39,21 +52,21 @@ type StageTypeImageProps = Omit<InterfacePictureProps, 'type' | 'alt'> & {
  * a generated image.
  */
 const StageTypeImage = ({ type, alt, ...rest }: StageTypeImageProps) => {
+  const intl = useAppIntl();
+  const imageAlt =
+    alt ??
+    intl.formatMessage(messages.preview, {
+      interfaceName: interfaceDisplayName(type, intl) ?? type,
+    });
   if (isInterfaceType(type)) {
-    return (
-      <InterfacePicture
-        type={type}
-        alt={alt ?? `${type} interface`}
-        {...rest}
-      />
-    );
+    return <InterfacePicture type={type} alt={imageAlt} {...rest} />;
   }
   return (
     <img
       src={defaultStageImage.src}
       width={defaultStageImage.width}
       height={defaultStageImage.height}
-      alt={alt ?? `${type} interface`}
+      alt={imageAlt}
       loading={rest.loading ?? 'lazy'}
       className={rest.className}
     />

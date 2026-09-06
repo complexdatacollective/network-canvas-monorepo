@@ -2002,9 +2002,6 @@ importers:
       ipaddr.js:
         specifier: ^2.5.0
         version: 2.5.0
-      nodemailer:
-        specifier: 9.0.5
-        version: 9.0.5
       pg:
         specifier: ^8.22.0
         version: 8.22.0
@@ -2030,9 +2027,6 @@ importers:
       '@softwaretechnik/dbml-renderer':
         specifier: 1.0.31
         version: 1.0.31
-      '@types/nodemailer':
-        specifier: 8.0.1
-        version: 8.0.1
       '@types/pg':
         specifier: ^8.20.4
         version: 8.20.4
@@ -2677,6 +2671,9 @@ importers:
         specifier: 'catalog:'
         version: 4.4.3
     devDependencies:
+      '@codaco/app-i18n':
+        specifier: workspace:^
+        version: link:../app-i18n
       '@codaco/tsconfig':
         specifier: workspace:^
         version: link:../../tooling/typescript
@@ -2760,6 +2757,9 @@ importers:
         specifier: 'catalog:'
         version: 4.4.3
     devDependencies:
+      '@codaco/app-i18n':
+        specifier: workspace:^
+        version: link:../app-i18n
       '@codaco/fresco-ui':
         specifier: workspace:^
         version: link:../fresco-ui
@@ -2860,6 +2860,9 @@ importers:
         specifier: 'catalog:'
         version: 14.0.1
     devDependencies:
+      '@codaco/app-i18n':
+        specifier: workspace:^
+        version: link:../app-i18n
       '@codaco/fresco-ui':
         specifier: workspace:^
         version: link:../fresco-ui
@@ -2891,6 +2894,9 @@ importers:
         specifier: 'catalog:'
         version: 4.4.3
     devDependencies:
+      '@codaco/app-i18n':
+        specifier: workspace:^
+        version: link:../app-i18n
       '@codaco/tsconfig':
         specifier: workspace:^
         version: link:../../tooling/typescript
@@ -3065,6 +3071,9 @@ importers:
       file-type:
         specifier: ^22.0.2
         version: 22.0.2(supports-color@10.2.2)
+      nodemailer:
+        specifier: 9.0.5
+        version: 9.0.5
       pg:
         specifier: ^8.22.0
         version: 8.22.0
@@ -3078,6 +3087,9 @@ importers:
       '@codaco/tsconfig':
         specifier: workspace:^
         version: link:../../tooling/typescript
+      '@types/nodemailer':
+        specifier: 8.0.1
+        version: 8.0.1
       '@types/pg':
         specifier: ^8.20.4
         version: 8.20.4

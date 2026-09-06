@@ -1338,6 +1338,163 @@ describe.skipIf(!database)('migration security invariants', () => {
     },
   );
 
+  it.each(['studio_app', 'studio_maintenance'])(
+    'refuses runtime sequence UPDATE for %s while preserving USAGE and SELECT',
+    async (role) => {
+      await withDeployment(async ({ owner, url, logins }) => {
+        await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+        await owner.query(`CREATE SEQUENCE runtime_sequence MAXVALUE 9;
+          GRANT USAGE, SELECT ON SEQUENCE runtime_sequence TO ${escapeIdentifier(role)}`);
+        await expect(
+          migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+        ).resolves.toEqual([]);
+        await connectAs(url, logins[1], `-c role=${role}`, async (runtime) => {
+          expect(
+            (await runtime.query("SELECT nextval('runtime_sequence') AS value"))
+              .rows,
+          ).toEqual([{ value: '1' }]);
+          await expect(
+            runtime.query("SELECT setval('runtime_sequence', 9, true)"),
+          ).rejects.toMatchObject({ code: '42501' });
+          await owner.query(
+            `GRANT UPDATE ON SEQUENCE runtime_sequence TO ${escapeIdentifier(role)}`,
+          );
+          expect(
+            (
+              await runtime.query(
+                "SELECT setval('runtime_sequence', 9, true) AS value",
+              )
+            ).rows,
+          ).toEqual([{ value: '9' }]);
+          await expect(
+            runtime.query("SELECT nextval('runtime_sequence')"),
+          ).rejects.toMatchObject({ code: '2200H' });
+          await expect(
+            migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+          ).rejects.toThrow('sequence');
+        });
+      });
+    },
+  );
+
+  it.each([undefined, 'studio_app', 'studio_maintenance'])(
+    'refuses pending migrations with an enrolled runtime session using role %s',
+    async (role) => {
+      await withDeployment(async ({ owner, url, logins }) => {
+        await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+        const next = nextMigration(
+          shipped.at(-1)!,
+          'CREATE TABLE pending_runtime_guard (id integer)',
+        );
+        await connectAs(
+          url,
+          logins[1],
+          role ? `-c role=${role}` : undefined,
+          async (runtime) => {
+            await runtime.query('SELECT 1');
+            // A no-op security verification remains available with live services.
+            await expect(
+              migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+            ).resolves.toEqual([]);
+            await expect(
+              migrateDatabase(
+                owner,
+                [...shipped, next],
+                next.manifest.fingerprint,
+                logins,
+              ),
+            ).rejects.toThrow('runtime connections');
+            expect(
+              (
+                await owner.query(
+                  "SELECT to_regclass('pending_runtime_guard') AS table",
+                )
+              ).rows,
+            ).toEqual([{ table: null }]);
+            expect(
+              (
+                await owner.query(
+                  'SELECT fingerprint FROM public."schemaFingerprint"',
+                )
+              ).rows,
+            ).toEqual([{ fingerprint: SCHEMA_FINGERPRINT }]);
+          },
+        );
+        await expect(
+          migrateDatabase(
+            owner,
+            [...shipped, next],
+            next.manifest.fingerprint,
+            logins,
+          ),
+        ).resolves.toEqual([next.manifest.id]);
+      });
+    },
+  );
+
+  it('rolls back pending SQL when an enrolled runtime session arrives during migration', async () => {
+    await withDeployment(async ({ administrator, owner, url, logins }) => {
+      await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+      const gate = Number.parseInt(randomUUID().slice(0, 7), 16);
+      const blocker = await administrator.connect();
+      let pending: Promise<unknown> | undefined;
+      try {
+        await blocker.query('SELECT pg_advisory_lock($1)', [gate]);
+        const next = nextMigration(
+          shipped.at(-1)!,
+          `CREATE TABLE racing_runtime_guard (id integer); SELECT pg_advisory_xact_lock(${gate})`,
+        );
+        pending = migrateDatabase(
+          owner,
+          [...shipped, next],
+          next.manifest.fingerprint,
+          logins,
+        ).catch((error: unknown) => error);
+        await expect
+          .poll(
+            async () =>
+              (
+                await administrator.query<{ waiting: boolean }>(
+                  "SELECT EXISTS (SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND classid = 0 AND objid = $1 AND NOT granted) AS waiting",
+                  [gate],
+                )
+              ).rows[0]?.waiting,
+          )
+          .toBe(true);
+        await connectAs(
+          url,
+          logins[1],
+          '-c role=studio_app',
+          async (runtime) => {
+            await runtime.query('SELECT 1');
+            await blocker.query('SELECT pg_advisory_unlock($1)', [gate]);
+            const outcome = await pending;
+            expect(outcome).toBeInstanceOf(Error);
+            expect(String(outcome)).toContain('runtime connections');
+            expect(
+              (
+                await owner.query(
+                  "SELECT to_regclass('racing_runtime_guard') AS table",
+                )
+              ).rows,
+            ).toEqual([{ table: null }]);
+            expect(
+              (
+                await owner.query(
+                  'SELECT fingerprint FROM public."schemaFingerprint"',
+                )
+              ).rows,
+            ).toEqual([{ fingerprint: SCHEMA_FINGERPRINT }]);
+          },
+        );
+      } finally {
+        await blocker.query('SELECT pg_advisory_unlock($1)', [gate]);
+        blocker.release();
+        await pending;
+      }
+    });
+  });
+
   it('refreshes connection evidence between checks in the same transaction', async () => {
     await withDeployment(async (first) => {
       await withDeployment(async (second) => {
