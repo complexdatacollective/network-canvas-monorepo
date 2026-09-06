@@ -1,5 +1,6 @@
 import { v4 as uuid } from 'uuid';
 
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import {
   CurrentProtocolSchema,
   isExclusiveVariantContainer,
@@ -22,6 +23,7 @@ import {
   sectionId,
 } from '@codaco/studio-sync/taxonomy';
 
+import { compoundRequestMessages } from './compound-edit/compoundRequestMessages.ts';
 import {
   commandForListChange,
   isDictionary,
@@ -59,6 +61,113 @@ import {
   attributeValidationIssues,
   type AttributedProtocolValidationIssue,
 } from './validationAttribution.ts';
+
+/**
+ * Why a compound edit did not happen, in the researcher's own words.
+ *
+ * A `CompoundEditResult`'s `message` is a plain string because a HOST supplies
+ * one too — `onCompoundEdit` is the host's, and its refusals are written and
+ * translated by whoever wrote it. So the messages this package produces are
+ * encoded into that string with `createMessageError` and decoded where they
+ * are rendered (`formatMessageError(text, intl) ?? text`), which leaves a
+ * host's plain string working exactly as before.
+ */
+const messages = defineMessages({
+  compoundPendingCommands: {
+    id: 'protocolBuilder.session.compoundPendingCommands',
+    defaultMessage:
+      'save the current stage changes before editing related sections',
+    description:
+      'Why an edit that would change the codebook alongside the interview step being edited did not happen: the step has unsaved changes.',
+  },
+  compoundStaleStage: {
+    id: 'protocolBuilder.session.compoundStaleStage',
+    defaultMessage:
+      'the authoritative stage changed while this change was being made, so nothing local was altered',
+    description:
+      'Why an edit that would change the codebook alongside the interview step being edited did not happen: the shared copy of the step moved on while the researcher was working. "stage" is one step of an interview.',
+  },
+  compoundSentChangesStale: {
+    id: 'protocolBuilder.session.compoundSentChangesStale',
+    defaultMessage:
+      'the stage changes already sent no longer apply to this session’s base, so nothing local was altered',
+    description:
+      'Why an edit that would change the codebook alongside the interview step being edited did not happen: earlier changes already sent no longer fit the step this session started from. "stage" is one step of an interview.',
+  },
+  compoundStageAlreadyApplied: {
+    id: 'protocolBuilder.session.compoundStageAlreadyApplied',
+    defaultMessage:
+      'the stage changes this compound edit asks for have already been made',
+    description:
+      'Why an edit that would change the codebook alongside the interview step being edited did not happen: the step already carries everything the edit asked for. "stage" is one step of an interview.',
+  },
+  compoundUnavailable: {
+    id: 'protocolBuilder.session.compoundUnavailable',
+    defaultMessage: 'compound editing is unavailable',
+    description:
+      'Why an edit that would change the codebook alongside the interview step being edited did not happen: this host does not offer it.',
+  },
+  compoundInFlight: {
+    id: 'protocolBuilder.session.compoundInFlight',
+    defaultMessage: 'another compound edit is still in progress',
+    description:
+      'Why an edit that would change the codebook alongside the interview step being edited did not happen: one is already running.',
+  },
+  compoundHostError: {
+    id: 'protocolBuilder.session.compoundHostError',
+    defaultMessage: 'the compound edit failed',
+    description:
+      'Why an edit that would change the codebook alongside the interview step being edited did not happen, when the host gave no reason of its own.',
+  },
+  compoundLeaseLost: {
+    id: 'protocolBuilder.session.compoundLeaseLost',
+    defaultMessage:
+      'editing access was lost before the compound edit completed',
+    description:
+      'Why an edit that would change the codebook alongside the interview step being edited did not happen: this researcher stopped being the one editing it partway through.',
+  },
+  compoundStaleEpoch: {
+    id: 'protocolBuilder.session.compoundStaleEpoch',
+    defaultMessage:
+      'editing authority changed before the compound edit completed',
+    description:
+      'Why an edit that would change the codebook alongside the interview step being edited did not happen: someone else took over editing the step partway through.',
+  },
+  compoundConflictingRevision: {
+    id: 'protocolBuilder.session.compoundConflictingRevision',
+    defaultMessage:
+      'the compound result conflicts with the loaded authoritative revision',
+    description:
+      'Why an edit that would change the codebook alongside the interview step being edited did not happen: what came back cannot be reconciled with the version of the protocol on screen.',
+  },
+  compoundNewerRevision: {
+    id: 'protocolBuilder.session.compoundNewerRevision',
+    defaultMessage: 'a newer authoritative protocol revision is already loaded',
+    description:
+      'Why an edit that would change the codebook alongside the interview step being edited did not happen: a later version of the protocol is already on screen.',
+  },
+  compoundIdentityChanged: {
+    id: 'protocolBuilder.session.compoundIdentityChanged',
+    defaultMessage:
+      'the authoritative response changed the edited stage identity',
+    description:
+      'Why an edit that would change the codebook alongside the interview step being edited did not happen: the answer came back naming a different step. "stage" is one step of an interview.',
+  },
+  compoundInvalidStage: {
+    id: 'protocolBuilder.session.compoundInvalidStage',
+    defaultMessage:
+      'the authoritative response contains an invalid edited stage',
+    description:
+      'Why an edit that would change the codebook alongside the interview step being edited did not happen: the step that came back could not be read. "stage" is one step of an interview.',
+  },
+  compoundMissingStage: {
+    id: 'protocolBuilder.session.compoundMissingStage',
+    defaultMessage:
+      'the authoritative response omitted the current edited stage from its full protocol snapshot',
+    description:
+      'Why an edit that would change the codebook alongside the interview step being edited did not happen: the step being edited was missing from the answer. "stage" is one step of an interview.',
+  },
+});
 
 export type StageIdentity = Readonly<{ id: string; type: StageType }>;
 export type StageFormDraft = Readonly<SectionDoc>;
@@ -716,12 +825,15 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
     const invalidRequest = validateCompoundEditRequest(request);
     if (invalidRequest !== null) return invalidRequest;
     if (this.options.onCompoundEdit === undefined) {
-      return compoundFailure('unavailable', 'compound editing is unavailable');
+      return compoundFailure(
+        'unavailable',
+        createMessageError(messages.compoundUnavailable),
+      );
     }
     if (this.compoundEditInFlight) {
       return compoundFailure(
         'compound-in-flight',
-        'another compound edit is still in progress',
+        createMessageError(messages.compoundInFlight),
       );
     }
 
@@ -751,7 +863,9 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       } catch (error: unknown) {
         return compoundFailure(
           'host-error',
-          error instanceof Error ? error.message : 'the compound edit failed',
+          error instanceof Error
+            ? error.message
+            : createMessageError(messages.compoundHostError),
         );
       }
       if (result.status !== 'applied') return result;
@@ -760,7 +874,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       if (currentAccess.mode !== 'editable') {
         return compoundFailure(
           'lease-lost',
-          'editing access was lost before the compound edit completed',
+          createMessageError(messages.compoundLeaseLost),
         );
       }
       if (
@@ -769,7 +883,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       ) {
         return compoundFailure(
           'stale-epoch',
-          'editing authority changed before the compound edit completed',
+          createMessageError(messages.compoundStaleEpoch),
         );
       }
       const resultRevisionOrder = revisionOrder(
@@ -783,8 +897,8 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
         return compoundFailure(
           'stale-result',
           resultRevisionOrder === 'conflicting'
-            ? 'the compound result conflicts with the loaded authoritative revision'
-            : 'a newer authoritative protocol revision is already loaded',
+            ? createMessageError(messages.compoundConflictingRevision)
+            : createMessageError(messages.compoundNewerRevision),
         );
       }
 
@@ -817,7 +931,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
           ) {
             return compoundFailure(
               'invalid-response',
-              'the authoritative response changed the edited stage identity',
+              createMessageError(messages.compoundIdentityChanged),
               stageSectionId,
             );
           }
@@ -825,7 +939,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
         } catch {
           return compoundFailure(
             'invalid-response',
-            'the authoritative response contains an invalid edited stage',
+            createMessageError(messages.compoundInvalidStage),
             stageSectionId,
           );
         }
@@ -838,7 +952,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       } else {
         return compoundFailure(
           'invalid-response',
-          'the authoritative response omitted the current edited stage from its full protocol snapshot',
+          createMessageError(messages.compoundMissingStage),
           stageSectionId,
         );
       }
@@ -1644,7 +1758,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
         status: 'refused',
         failure: compoundFailure(
           'pending-commands',
-          'save the current stage changes before editing related sections',
+          createMessageError(messages.compoundPendingCommands),
         ),
       });
     }
@@ -1681,7 +1795,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
         status: 'refused',
         failure: compoundFailure(
           'stale-base',
-          'the authoritative stage changed while this change was being made, so nothing local was altered',
+          createMessageError(messages.compoundStaleStage),
           stageSectionId,
         ),
       });
@@ -1700,7 +1814,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
         status: 'refused',
         failure: compoundFailure(
           'stale-base',
-          'the stage changes already sent no longer apply to this session’s base, so nothing local was altered',
+          createMessageError(messages.compoundSentChangesStale),
           stageSectionId,
         ),
       });
@@ -1746,7 +1860,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
           status: 'refused',
           failure: compoundFailure(
             'invalid-request',
-            'the stage changes this compound edit asks for have already been made',
+            createMessageError(messages.compoundStageAlreadyApplied),
             stageSectionId,
           ),
         });
@@ -2319,19 +2433,19 @@ function validateCompoundEditRequest(
   if (request.id.trim() === '') {
     return compoundFailure(
       'invalid-request',
-      'a compound edit requires a stable request id',
+      createMessageError(compoundRequestMessages.requiresId),
     );
   }
   if (request.description.trim() === '') {
     return compoundFailure(
       'invalid-request',
-      'a compound edit requires a description',
+      createMessageError(compoundRequestMessages.requiresDescription),
     );
   }
   if (request.edits.length === 0) {
     return compoundFailure(
       'invalid-request',
-      'a compound edit must touch at least one section',
+      createMessageError(compoundRequestMessages.touchesNothing),
     );
   }
 
@@ -2340,7 +2454,7 @@ function validateCompoundEditRequest(
     if (touchedSections.has(edit.sectionId)) {
       return compoundFailure(
         'invalid-request',
-        'a compound edit may touch each section only once',
+        createMessageError(compoundRequestMessages.duplicateSection),
         edit.sectionId,
       );
     }
@@ -2352,7 +2466,7 @@ function validateCompoundEditRequest(
     } catch {
       return compoundFailure(
         'invalid-request',
-        'a compound edit contains an unknown section id',
+        createMessageError(compoundRequestMessages.unknownSection),
         edit.sectionId,
       );
     }
@@ -2364,14 +2478,14 @@ function validateCompoundEditRequest(
       ) {
         return compoundFailure(
           'invalid-request',
-          'a compound section update requires an expected content hash',
+          createMessageError(compoundRequestMessages.updateNeedsHash),
           edit.sectionId,
         );
       }
       if (edit.commands.length === 0) {
         return compoundFailure(
           'invalid-request',
-          'a compound section update requires at least one command',
+          createMessageError(compoundRequestMessages.updateNeedsCommands),
           edit.sectionId,
         );
       }
@@ -2384,7 +2498,7 @@ function validateCompoundEditRequest(
       ) {
         return compoundFailure(
           'invalid-request',
-          'stage identity fields cannot be changed by a compound edit',
+          createMessageError(compoundRequestMessages.stageIdentityLocked),
           edit.sectionId,
         );
       }
@@ -2398,7 +2512,7 @@ function validateCompoundEditRequest(
     ) {
       return compoundFailure(
         'invalid-request',
-        'a compound section removal requires an expected content hash',
+        createMessageError(compoundRequestMessages.removalNeedsHash),
         edit.sectionId,
       );
     }
@@ -2410,7 +2524,7 @@ function validateCompoundEditRequest(
     ) {
       return compoundFailure(
         'invalid-request',
-        'only codebook sections can be structurally created or removed',
+        createMessageError(compoundRequestMessages.structuralSectionLocked),
         edit.sectionId,
       );
     }

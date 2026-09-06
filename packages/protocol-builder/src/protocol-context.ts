@@ -1,3 +1,4 @@
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import {
   type Asset,
   assetSchema,
@@ -15,6 +16,76 @@ import {
 } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { parseSectionId, sectionId } from '@codaco/studio-sync/taxonomy';
+
+/**
+ * What is wrong with a protocol section this package could not read.
+ *
+ * `ProtocolContextIssue.message` is a plain string because the same field also
+ * carries the protocol schema's own wording for a section that failed
+ * validation. The messages THIS module writes are encoded into it with
+ * `createMessageError` and decoded where they are rendered
+ * (`formatMessageError(text, intl) ?? text`), so a schema message passes
+ * through unchanged.
+ */
+const messages = defineMessages({
+  stageOrderNotList: {
+    id: 'protocolBuilder.protocolContext.stageOrderNotList',
+    defaultMessage: 'Stage order must be a list of non-empty stage ids.',
+    description:
+      'Why the order of the interview steps could not be read. "stage" is one step of an interview.',
+  },
+  stageOrderDuplicate: {
+    id: 'protocolBuilder.protocolContext.stageOrderDuplicate',
+    defaultMessage: 'Stage order must not list the same stage twice.',
+    description:
+      'Why the order of the interview steps could not be read: one step appears in it more than once. "stage" is one step of an interview.',
+  },
+  variableIdReused: {
+    id: 'protocolBuilder.protocolContext.variableIdReused',
+    defaultMessage:
+      'Attribute record key "{variableId}" is reused across entity types (first declared in {firstOwnerSectionId}).',
+    description:
+      'Why part of the codebook could not be read: two entity types store an attribute under the same key. variableId is the key; firstOwnerSectionId identifies the part of the protocol that used it first.',
+  },
+  duplicateEntityName: {
+    id: 'protocolBuilder.protocolContext.duplicateEntityName',
+    defaultMessage:
+      'Duplicate entity name "{name}" (first declared in {firstOwnerSectionId}).',
+    description:
+      'Why part of the codebook could not be read: two entity types share a name. name is the researcher-authored type name; firstOwnerSectionId identifies the part of the protocol that used it first.',
+  },
+  unknownSectionId: {
+    id: 'protocolBuilder.protocolContext.unknownSectionId',
+    defaultMessage: 'Unknown protocol section id.',
+    description:
+      'Why part of the protocol could not be read: it is filed under a name this version does not recognise.',
+  },
+  stageIdMismatch: {
+    id: 'protocolBuilder.protocolContext.stageIdMismatch',
+    defaultMessage:
+      'Stage document id {documentId} does not match section id {sectionStageId}.',
+    description:
+      'Why one interview step could not be read: the identifier inside it disagrees with the one it is filed under. "stage" is one step of an interview.',
+  },
+  missingStageOrder: {
+    id: 'protocolBuilder.protocolContext.missingStageOrder',
+    defaultMessage: 'Protocol sections do not include a stage order.',
+    description:
+      'Why the interview steps could not be put in order: the protocol has nothing saying what the order is.',
+  },
+  stageOrderMissingStage: {
+    id: 'protocolBuilder.protocolContext.stageOrderMissingStage',
+    defaultMessage: 'Stage order names missing stage {stageId}.',
+    description:
+      'Why the order of the interview steps could not be used: it names a step the protocol does not have. "stage" is one step of an interview.',
+  },
+  stageMissingFromOrder: {
+    id: 'protocolBuilder.protocolContext.stageMissingFromOrder',
+    defaultMessage: 'Stage {stageId} is missing from the stage order.',
+    description:
+      'Why one interview step is not shown: the protocol has it but the order does not name it. "stage" is one step of an interview.',
+  },
+});
 
 export type CodebookSubject =
   | Readonly<{ entity: 'node'; type: string }>
@@ -80,7 +151,7 @@ const stageOrderFrom = (
     issues.push({
       sectionId: id,
       path: ['stages'],
-      message: 'Stage order must be a list of non-empty stage ids.',
+      message: createMessageError(messages.stageOrderNotList),
     });
     return null;
   }
@@ -92,7 +163,7 @@ const stageOrderFrom = (
     issues.push({
       sectionId: id,
       path: ['stages'],
-      message: 'Stage order must not list the same stage twice.',
+      message: createMessageError(messages.stageOrderDuplicate),
     });
     return null;
   }
@@ -128,7 +199,10 @@ export function protocolContextFromSections(
         issues.push({
           sectionId: ownerSectionId,
           path: ['variables', variableId],
-          message: `Attribute record key "${variableId}" is reused across entity types (first declared in ${firstOwnerSectionId}).`,
+          message: createMessageError(messages.variableIdReused, {
+            variableId,
+            firstOwnerSectionId,
+          }),
         });
         continue;
       }
@@ -142,7 +216,10 @@ export function protocolContextFromSections(
       issues.push({
         sectionId: ownerSectionId,
         path: ['name'],
-        message: `Duplicate entity name "${name}" (first declared in ${firstOwnerSectionId}).`,
+        message: createMessageError(messages.duplicateEntityName, {
+          name,
+          firstOwnerSectionId,
+        }),
       });
       return;
     }
@@ -160,7 +237,7 @@ export function protocolContextFromSections(
         message:
           error instanceof Error && error.message !== ''
             ? error.message
-            : 'Unknown protocol section id.',
+            : createMessageError(messages.unknownSectionId),
       });
       continue;
     }
@@ -180,7 +257,10 @@ export function protocolContextFromSections(
           issues.push({
             sectionId: id,
             path: ['id'],
-            message: `Stage document id ${result.data.id} does not match section id ${ref.stageId}.`,
+            message: createMessageError(messages.stageIdMismatch, {
+              documentId: result.data.id,
+              sectionStageId: ref.stageId,
+            }),
           });
           break;
         }
@@ -242,7 +322,7 @@ export function protocolContextFromSections(
     issues.push({
       sectionId: orderSectionId,
       path: [],
-      message: 'Protocol sections do not include a stage order.',
+      message: createMessageError(messages.missingStageOrder),
     });
   }
 
@@ -253,7 +333,9 @@ export function protocolContextFromSections(
       issues.push({
         sectionId: orderSectionId,
         path: ['stages'],
-        message: `Stage order names missing stage ${stageId}.`,
+        message: createMessageError(messages.stageOrderMissingStage, {
+          stageId,
+        }),
       });
       continue;
     }
@@ -264,7 +346,7 @@ export function protocolContextFromSections(
     issues.push({
       sectionId: sectionId({ kind: 'stage', stageId }),
       path: ['id'],
-      message: `Stage ${stageId} is missing from the stage order.`,
+      message: createMessageError(messages.stageMissingFromOrder, { stageId }),
     });
   }
 
