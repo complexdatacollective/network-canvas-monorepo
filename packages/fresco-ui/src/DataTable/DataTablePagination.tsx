@@ -80,6 +80,7 @@ export function DataTablePagination<TData>({
         </Paragraph>
         <SelectField
           name="pageSize"
+          aria-label={intl.formatMessage(messages.rowsPerPage)}
           size="sm"
           value={`${table.getState().pagination.pageSize}`}
           onChange={(value) => {
