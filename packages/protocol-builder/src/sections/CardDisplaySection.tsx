@@ -9,6 +9,7 @@ import MultiSelect, {
 import ProtocolArrayField from '../form/ProtocolArrayField.tsx';
 import BuilderSection, { type SectionCapability } from './BuilderSection.tsx';
 import {
+  DATA_SOURCE,
   useColumnOptionGetter,
   useOrphanedColumns,
   useRosterColumns,
@@ -101,8 +102,12 @@ export default function CardDisplaySection({
       disabled={columns.waiting}
       // Everything below names a column of the data file, so a different file
       // makes every one of these a reference to something that may not be
-      // there.
-      resetOn={columns.resourceId}
+      // there. The PATH of the file, so the choice that caused the clear
+      // travels in the same batch as the clear itself — a file this session
+      // staged is withheld from a live host, and its clears have to wait with
+      // it or the host is left describing the old file with none of the
+      // settings that described it.
+      resetOn={DATA_SOURCE}
       capability={CARD_CAPABILITY}
     >
       <Alert variant="info" className="my-7">
@@ -128,7 +133,7 @@ export default function CardDisplaySection({
         options={options}
         // An orphan counts: the row holding it is one of the rows this limit
         // is counting, and it has to stay removable.
-        maxItems={columns.names.length + orphans.options.length}
+        maxItems={(columns.names?.length ?? 0) + orphans.options.length}
         emptyStateMessage="No extra attributes are shown on a card."
         {...validation}
       />

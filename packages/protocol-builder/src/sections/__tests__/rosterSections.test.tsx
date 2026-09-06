@@ -223,6 +223,72 @@ describe("what a roster's cards show", () => {
     );
   });
 
+  /**
+   * The other side of that, and the state the refusal must never be raised in.
+   *
+   * "This file has no columns" and "nobody knows what this file has" are two
+   * answers, and only the first says anything about a row. A file that could
+   * not be read is the second: every row still names something, nothing has
+   * been found missing, and reporting them all as dangling would refuse a save
+   * over a question the editor has not been able to ask — with a message
+   * naming a data file the researcher can already see is broken.
+   *
+   * The stage arrives this way rather than reaching it by a swap, because a
+   * swap clears these lists (`resetOn`) and there would be no row left to
+   * misjudge. `not-shipped.json` is a `source` the fixture ships no bytes for,
+   * which is exactly how a host answers for a file that is gone.
+   */
+  it('says nothing about a card detail while the data file cannot be read', async () => {
+    const harness = renderStageEditor({
+      stage: rosterWith({
+        dataSource: 'unreadable_roster',
+        cardOptions: {
+          additionalProperties: [{ variable: 'nickname', label: 'Nickname' }],
+        },
+      }),
+      assets: {
+        unreadable_roster: {
+          type: 'network',
+          id: 'unreadable_roster',
+          name: 'Unreadable roster',
+          source: 'not-shipped.json',
+        },
+      },
+      sections: (
+        <>
+          <ExternalDataSourceSection />
+          <CardDisplaySection />
+        </>
+      ),
+    });
+
+    // The proof the file really is unreadable, so what follows is about that
+    // state rather than about a file that happened to load.
+    expect(
+      await screen.findByText('This data file could not be read'),
+    ).toBeInTheDocument();
+
+    // Not named as a lost column, because nothing here knows that it is one.
+    expect(
+      screen.queryByRole('option', {
+        name: 'nickname — this attribute is not in the data file',
+      }),
+    ).toBeNull();
+
+    // And the save goes through with the row exactly as the stage arrived
+    // holding it: no refusal was raised, and nothing was rewritten to suit an
+    // option list that is empty only because the file could not be read.
+    const request = await harness.submit();
+    expect(
+      screen.queryByText(
+        'This row points at an attribute that is not in the data file. Choose another or delete the row.',
+      ),
+    ).toBeNull();
+    expect(request?.stageDocument.cardOptions).toEqual({
+      additionalProperties: [{ variable: 'nickname', label: 'Nickname' }],
+    });
+  });
+
   it('refuses to save a card detail naming a column the file does not have', async () => {
     const harness = renderStageEditor({
       stage: rosterNamingALostColumn(),

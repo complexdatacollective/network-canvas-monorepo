@@ -318,8 +318,15 @@ describe("a name generator's prompts", () => {
   /**
    * A row is handed a variable id or nothing, so it cannot carry a refusal —
    * and a create that quietly did nothing leaves the researcher pressing the
-   * button again. The codebook refuses a name it cannot store (a space, here)
-   * in its own words, and those are the words that appear.
+   * button again. So the refusal is shown, and it says what the researcher has
+   * to change: the name they typed has a space in it, and the codebook stores
+   * names that become XML element names and CSV column headers.
+   *
+   * The exact sentence the row cell, the entity editor and the request builder
+   * all use for that rule (`allowedNameMessage`), rather than the schema's own
+   * words — an `InvalidCodebookDraftError` says "the variable draft is
+   * invalid", which is written for whoever reads a log and names nothing the
+   * researcher can act on.
    *
    * And the name stays in the box. The refusal is ABOUT the name they typed,
    * so it is the one thing they need in front of them to act on it.
@@ -344,7 +351,9 @@ describe("a name generator's prompts", () => {
 
     expect(
       await dialog.findByRole('alert', undefined, { timeout: 2000 }),
-    ).toHaveTextContent(/draft is invalid/);
+    ).toHaveTextContent(
+      'Not a valid attribute name. Only letters, numbers and the symbols ._-: are supported',
+    );
     expect(box).toHaveValue('nominated early');
     const picker = dialog.getByRole('combobox', {
       name: 'Create or select an attribute',

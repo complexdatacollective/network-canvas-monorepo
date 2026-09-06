@@ -15,14 +15,22 @@ import { useResourceInspection } from '../resources/components/useResourceInspec
 export const DATA_SOURCE = 'dataSource';
 
 export type RosterColumns = Readonly<{
-  /** One entry per attribute the data file's people carry. */
-  names: readonly string[];
-  /** The file is still being read, so an empty list means "not yet". */
-  busy: boolean;
+  /**
+   * One entry per attribute the data file's people carry, once the file has
+   * been read — and `undefined` until it has been.
+   *
+   * The two are different answers and every reader has to tell them apart. An
+   * EMPTY list is a real fact about a real file: its people carry nothing, so
+   * there is nothing to show on a card, sort by or search, and every row a
+   * stage already holds is certainly pointing at a column that is not there.
+   * `undefined` is the state that says nothing at all — no file chosen yet, the
+   * bytes still being read, or a file that could not be read — where judging a
+   * row would report every one of them as dangling. See
+   * `orphanedSortProperties`, which draws the same line for the same reason.
+   */
+  names: readonly string[] | undefined;
   /** No data file is chosen, so there is nothing to configure against. */
   waiting: boolean;
-  /** Which file these columns came from, for a section that resets with it. */
-  resourceId?: string;
   /** The file could not be read — its message, in the host's own words. */
   problem?: string;
 }>;
@@ -48,17 +56,20 @@ export function useRosterColumns(): RosterColumns {
     typeof dataSource === 'string' && dataSource !== ''
       ? dataSource
       : undefined;
-  const { inspection, busy, failure } = useResourceInspection(resourceId);
+  const { inspection, failure } = useResourceInspection(resourceId);
 
   return useMemo(
     () => ({
-      names: inspection?.variableNames ?? NO_NAMES,
-      busy,
+      // Exactly what the gateway answered. The inspection is dropped before a
+      // newly chosen file is asked about, so this is `undefined` in every state
+      // where the columns of the file the stage holds NOW are unknown — none
+      // chosen, still reading, or unreadable — and a list only once one has
+      // actually been read.
+      names: inspection?.variableNames,
       waiting: resourceId === undefined,
-      ...(resourceId === undefined ? {} : { resourceId }),
       ...(failure === undefined ? {} : { problem: failure.message }),
     }),
-    [busy, failure, inspection, resourceId],
+    [failure, inspection, resourceId],
   );
 }
 
@@ -74,9 +85,14 @@ export function useRosterColumns(): RosterColumns {
  * `orphans` are appended rather than mixed in: they are not columns of this
  * file, they are ids the rows still hold (see `useOrphanedColumns`), and they
  * arrive already disabled so nothing here can make one choosable.
+ *
+ * Columns that are not known yet and a file with no columns are offered the
+ * same way here — as nothing to choose — because a control cannot offer what
+ * nobody knows. The difference between them is a judgement about the rows, and
+ * it is `useOrphanedColumns` that makes it.
  */
 export function useColumnOptionGetter(
-  names: readonly string[],
+  names: readonly string[] | undefined,
   orphans: readonly SortableProperty[] = NO_ORPHANS,
 ): OptionGetter {
   return useMemo<OptionGetter>(
@@ -84,7 +100,7 @@ export function useColumnOptionGetter(
       if (fieldName !== 'variable') return [];
       const used = chosenColumns(allValues);
       return [
-        ...names.map((name) => ({
+        ...(names ?? NO_NAMES).map((name) => ({
           value: name,
           label: name,
           ...(used.includes(name) ? { disabled: true } : {}),
@@ -147,11 +163,19 @@ const NO_COLUMNS: readonly string[] = Object.freeze([]);
  * because these lists are registered on the stage form itself: the moment a
  * row is pointed somewhere real the orphan stops being offered, and an orphan
  * must never become choosable again.
+ *
+ * `names` is `undefined` while the columns are not known — no file chosen, the
+ * bytes still being read, a file that could not be read — and nothing is
+ * judged in that state: every row would be reported dangling on the strength
+ * of a question nobody has answered yet. An empty list is the opposite answer
+ * and is judged in full: a data file whose people carry no attributes is
+ * exactly where every row the stage holds IS dangling, and it is the state a
+ * blank required cell explains least.
  */
 export function useOrphanedColumns(
   fieldName: string,
   path: string,
-  names: readonly string[],
+  names: readonly string[] | undefined,
 ): Readonly<{
   /** Offered back so the cell shows what it holds. Never choosable. */
   options: readonly SortableProperty[];
@@ -177,7 +201,8 @@ export function useOrphanedColumns(
     // The sort-rule finder, asked the same question about a different column:
     // naming each row's cell `property` reuses its dedupe, its "the caller
     // does not know the columns yet" guard, and its skipping of the
-    // source-order sentinel, none of which differ here.
+    // source-order sentinel, none of which differ here. `undefined` is handed
+    // straight through, because it means the same thing on both sides.
     const found = orphanedSortProperties(
       Array.isArray(rows)
         ? rows.map((row) => ({
@@ -187,7 +212,7 @@ export function useOrphanedColumns(
                 : undefined,
           }))
         : rows,
-      names.map((name) => ({ value: name, label: name })),
+      names?.map((name) => ({ value: name, label: name })),
     ).map(({ value }) => value);
     return found.length === 0 ? NO_COLUMNS : found;
   }, [fieldName, names, rows]);

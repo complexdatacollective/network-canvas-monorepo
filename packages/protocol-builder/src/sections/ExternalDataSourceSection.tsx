@@ -65,20 +65,22 @@ export default function ExternalDataSourceSection({
           <AlertDescription>{columns.problem}</AlertDescription>
         </Alert>
       )}
-      {columns.problem === undefined &&
-        !columns.waiting &&
-        !columns.busy &&
-        columns.names.length === 0 && (
-          <Alert variant="warning" className="my-7">
-            <AlertTitle>This data file has no attributes</AlertTitle>
-            <AlertDescription>
-              The people in it carry no attributes, so there is nothing to show
-              on a card, sort by, or search. Check that the file is formatted as
-              Network Canvas expects.
-            </AlertDescription>
-          </Alert>
-        )}
-      {columns.names.length > 0 && (
+      {/*
+        Said only about a file that was actually read. `names` is `undefined`
+        until then — nothing chosen, still reading, or unreadable — and an
+        EMPTY list is the file's own answer, which is what this warns about.
+      */}
+      {columns.names?.length === 0 && (
+        <Alert variant="warning" className="my-7">
+          <AlertTitle>This data file has no attributes</AlertTitle>
+          <AlertDescription>
+            The people in it carry no attributes, so there is nothing to show on
+            a card, sort by, or search. Check that the file is formatted as
+            Network Canvas expects.
+          </AlertDescription>
+        </Alert>
+      )}
+      {columns.names !== undefined && columns.names.length > 0 && (
         <Alert variant="info" className="my-7">
           <AlertTitle>What this data file holds</AlertTitle>
           <AlertDescription>

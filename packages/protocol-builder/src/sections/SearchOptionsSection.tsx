@@ -7,7 +7,7 @@ import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers
 
 import ProtocolField from '../form/ProtocolField.tsx';
 import BuilderSection, { type SectionCapability } from './BuilderSection.tsx';
-import { useRosterColumns } from './useRosterColumns.ts';
+import { DATA_SOURCE, useRosterColumns } from './useRosterColumns.ts';
 
 /** Where a roster stage records how a participant's search is matched. */
 const MATCH_PROPERTIES = 'searchOptions.matchProperties';
@@ -116,8 +116,13 @@ export default function SearchOptionsSection({
   const words = { ...DEFAULT_COPY, ...copy };
   const columns = useRosterColumns();
 
+  // Columns nobody has read yet and a file that carries none are both nothing
+  // to offer, so this section reads them the same way. It is the only roster
+  // section with no rows to judge — the other two hold lists whose cells name
+  // a column, and there the difference decides whether a row is reported as
+  // dangling (`useOrphanedColumns`).
   const options = useMemo(
-    () => columns.names.map((name) => ({ value: name, label: name })),
+    () => (columns.names ?? []).map((name) => ({ value: name, label: name })),
     [columns.names],
   );
 
@@ -130,8 +135,12 @@ export default function SearchOptionsSection({
       disabled={columns.waiting}
       // Everything below names a column of the data file, so a different file
       // makes every one of these a reference to something that may not be
-      // there.
-      resetOn={columns.resourceId}
+      // there. The PATH of the file, so the choice that caused the clear
+      // travels in the same batch as the clear itself — a file this session
+      // staged is withheld from a live host, and its clears have to wait with
+      // it or the host is left describing the old file with none of the
+      // settings that described it.
+      resetOn={DATA_SOURCE}
       capability={SEARCH_CAPABILITY}
     >
       <Alert variant="info" className="my-7">

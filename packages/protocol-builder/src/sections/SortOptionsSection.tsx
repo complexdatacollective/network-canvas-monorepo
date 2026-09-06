@@ -8,6 +8,7 @@ import MultiSelect, {
 import ProtocolArrayField from '../form/ProtocolArrayField.tsx';
 import BuilderSection, { type SectionCapability } from './BuilderSection.tsx';
 import {
+  DATA_SOURCE,
   useColumnOptionGetter,
   useOrphanedColumns,
   useRosterColumns,
@@ -115,7 +116,7 @@ export default function SortOptionsSection({
   const orderOptions = useMemo(
     () =>
       getSortOrderOptionGetter([
-        ...columns.names.map((name) => ({ value: name, label: name })),
+        ...(columns.names ?? []).map((name) => ({ value: name, label: name })),
         ...orderOrphans.options,
       ]),
     [columns.names, orderOrphans.options],
@@ -139,8 +140,12 @@ export default function SortOptionsSection({
       disabled={columns.waiting}
       // Everything below names a column of the data file, so a different file
       // makes every one of these a reference to something that may not be
-      // there.
-      resetOn={columns.resourceId}
+      // there. The PATH of the file, so the choice that caused the clear
+      // travels in the same batch as the clear itself — a file this session
+      // staged is withheld from a live host, and its clears have to wait with
+      // it or the host is left describing the old file with none of the
+      // settings that described it.
+      resetOn={DATA_SOURCE}
       capability={SORT_CAPABILITY}
     >
       <ProtocolArrayField<typeof MultiSelect>
@@ -165,7 +170,7 @@ export default function SortOptionsSection({
         options={sortableOptions}
         // An orphan counts: the row holding it is one of the rows this limit
         // is counting, and it has to stay removable.
-        maxItems={columns.names.length + sortableOrphans.options.length}
+        maxItems={(columns.names?.length ?? 0) + sortableOrphans.options.length}
         emptyStateMessage="The participant cannot reorder the roster."
         {...sortableValidation}
       />

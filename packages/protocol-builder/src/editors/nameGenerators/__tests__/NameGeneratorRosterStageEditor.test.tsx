@@ -74,8 +74,30 @@ const createFixture = () => ({
 const stageNameInput = (): HTMLInputElement =>
   screen.getByRole('textbox', { name: 'Stage name' });
 
-/** Replaces the stage's data file with one the researcher imports. */
+/**
+ * Replaces the stage's data file with one the researcher imports, as a swap:
+ * the picker offers the exchange directly, and `dataSource` goes from the file
+ * the stage was saved with to the imported one in a single change.
+ */
 const importAnotherRoster = async (
+  harness: ReturnType<typeof renderStageEditor>,
+) => {
+  await harness.user.click(
+    await screen.findByRole('button', { name: 'Change the data file' }),
+  );
+  await harness.user.upload(
+    await screen.findByLabelText('Choose a file from your computer'),
+    new File([OTHER_ROSTER], 'community.csv', { type: 'text/csv' }),
+  );
+};
+
+/**
+ * The same import, reached by emptying the field first: the researcher lets go
+ * of the old file, then picks a replacement. Two changes to `dataSource`
+ * rather than one, and the first of them is an ordinary edit about a file the
+ * host already has.
+ */
+const removeThenImportAnotherRoster = async (
   harness: ReturnType<typeof renderStageEditor>,
 ) => {
   await harness.user.click(
@@ -335,15 +357,20 @@ describe('the roster name generator editor', () => {
    * stored: closing the editor without saving has to leave the host holding
    * neither the file's bytes nor any record of the choices made against it.
    *
-   * Which is not the same as leaving the session with nothing pending. A
-   * capability the swap switched off is an edit in its own right — the session
-   * is told, in a batch of its own, before the form is emptied
-   * (`useDiscardStageValues`) — and a batch that names none of the staged
-   * file's keys is not withheld from a live-applying host, so the host already
-   * has it and the cancel does not take it back. So the batches are named here
-   * rather than counted: what must not be among them is the name the
-   * researcher typed or the file they chose, neither of which reaches the
-   * session until the stage is saved.
+   * Including the three capabilities the swap emptied. Those clears name no
+   * resource at all, so nothing about them says they have to wait — but the
+   * section that made each one sends the CHOICE OF FILE in the same batch
+   * (`resetOn` is the data file's path, and `useDiscardStageValues` puts the
+   * cause in front of the clears). A batch naming a file this session staged is
+   * withheld from a live-applying host, and the session's hold is a suffix, so
+   * everything after it waits too. Without that the host would be left holding
+   * the OLD file with none of the card details, ordering or search that
+   * described it: a stage nobody authored, made by an edit the researcher then
+   * cancelled.
+   *
+   * So both questions are asked, because they are different questions. Nothing
+   * ever LEFT the session (`liveCommands`), and nothing is still waiting to
+   * (`pendingCommands`).
    */
   it('leaves nothing behind when the editor is closed without saving', async () => {
     const harness = mountFixture();
@@ -358,17 +385,69 @@ describe('the roster name generator editor', () => {
     await screen.findByText(STAGED_COLUMNS);
     // The proof the discard below has something to do.
     expect(harness.gateway.getStagingResidue().length).toBeGreaterThan(0);
+    // And that the swap really did empty the capabilities, so the assertions
+    // below are not about a stage nothing happened to.
+    expect(
+      harness.session.getSnapshot().editedSection.fields,
+    ).not.toHaveProperty('cardOptions');
 
+    // Closed first, because that is what a cancel IS: a host ends the session
+    // and takes the editor down with it. Left mounted, the sections would go on
+    // watching a draft the cancel has just rewound and reset themselves against
+    // a stage nobody is editing any more.
+    harness.unmount();
     await harness.cancel();
 
     expect(harness.gateway.getStagingResidue()).toHaveLength(0);
-    expect(
-      harness.pendingCommands().flatMap((batch) => [...batch.commands]),
-    ).toEqual([
+    expect(harness.liveCommands()).toEqual([]);
+    expect(harness.pendingCommands()).toEqual([]);
+    // The stage the interview holds is the one it opened with.
+    expect(harness.session.getSnapshot().editedSection.fields).toEqual(
+      harness.seeded.fields,
+    );
+  });
+
+  /**
+   * The same import reached the other way, which is not the same edit.
+   *
+   * A researcher who empties the field before choosing a replacement has made
+   * a change about the file the host ALREADY has: the stage no longer uses it,
+   * and the capabilities that described it are gone. That names nothing staged,
+   * so it reaches a live-applying host at once and a cancel does not take it
+   * back — the removal is the researcher's decision, and the interview is not
+   * left showing a roster the stage has let go of.
+   *
+   * What must never be among them is the import: neither the file the
+   * researcher then chose nor anything they wrote against it.
+   */
+  it('keeps a removal the researcher made before importing, and nothing of the import', async () => {
+    const harness = mountFixture();
+    await screen.findByText(FIXTURE_COLUMNS);
+
+    await removeThenImportAnotherRoster(harness);
+    await screen.findByText(STAGED_COLUMNS);
+    const [staged] = harness.session.getSnapshot().stagedResources;
+    expect(staged).toBeDefined();
+
+    harness.unmount();
+    await harness.cancel();
+
+    expect(harness.gateway.getStagingResidue()).toHaveLength(0);
+    // The removal travelling with the clears it caused, in one batch, ahead of
+    // them: the file went, and therefore these did.
+    const kept = [
+      { op: 'unset', key: 'dataSource' },
       { op: 'unset', key: 'cardOptions' },
       { op: 'unset', key: 'sortOptions' },
       { op: 'unset', key: 'searchOptions' },
-    ]);
+    ];
+    expect(harness.liveCommands()).toEqual(kept);
+    expect(
+      harness.pendingCommands().flatMap((batch) => [...batch.commands]),
+    ).toEqual(kept);
+    // Read as a whole rather than key by key, so a command carrying the staged
+    // id anywhere in it — a value, a nested key — is caught too.
+    expect(JSON.stringify(harness.liveCommands())).not.toContain(staged?.id);
   });
 
   /**
