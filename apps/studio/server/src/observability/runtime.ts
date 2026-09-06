@@ -13,6 +13,7 @@ export function createObservability(options: {
   monitorProcess?: boolean;
   timeoutMs?: number;
   cacheMs?: number;
+  allowUnversionedSchema?: boolean;
 }) {
   const readiness = createReadiness(options);
   const metrics = createOperationalMetrics({ ...options, readiness });

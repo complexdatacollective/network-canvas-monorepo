@@ -1,9 +1,97 @@
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
+import { escapeIdentifier } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
+import {
+  createScratchDatabase,
+  provisionScratchSchema,
+  reachableDb,
+} from '../../__tests__/support/postgres.ts';
+import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
+import { readMigrations } from '../../db/migrations/artifact.ts';
+import { migrateDatabase } from '../../db/migrations/migrate.ts';
 import { readEnv } from '../../env.ts';
+
+const database = await reachableDb();
+
+describe.skipIf(!database)('startup migration provenance', () => {
+  it('refuses an unversioned development database outside the explicit development lane', async () => {
+    if (!database)
+      throw new Error('Database required for startup provenance test.');
+    const scratch = await createScratchDatabase(database);
+    try {
+      await provisionScratchSchema(scratch.pool);
+      const entry = new URL('../../index.ts', import.meta.url).href;
+      const run = (development: boolean, databaseUrl = scratch.db.url) =>
+        spawnSync(
+          process.execPath,
+          [
+            '--input-type=module',
+            '--eval',
+            `await import(${JSON.stringify(entry)}); console.log(JSON.stringify({marker: 'startup-completed'})); process.exit(0);`,
+          ],
+          {
+            env: {
+              NODE_ENV: development ? 'development' : 'production',
+              STUDIO_DEV_DEFAULTS: String(development),
+              DATABASE_URL: databaseUrl,
+              BETTER_AUTH_SECRET:
+                'migration-provenance-local-test-secret-64-characters-long-enough',
+              PUBLIC_URL: 'http://127.0.0.1:3000',
+              PORT: '0',
+              HOST: '127.0.0.1',
+            },
+            encoding: 'utf8',
+            timeout: 10_000,
+          },
+        );
+      const development = run(true);
+      expect(development.error).toBeUndefined();
+      expect(development.status).toBe(0);
+      expect(development.stdout).toContain('"marker":"startup-completed"');
+      const deployed = run(false);
+      expect(deployed.error).toBeUndefined();
+      expect(deployed.status).toBe(1);
+      expect(deployed.stderr).toBe('');
+      expect(deployed.stdout).toContain('"code":"STUDIO_SCHEMA_STALE"');
+      expect(deployed.stdout).not.toContain('"marker":"startup-completed"');
+      const versioned = await createScratchDatabase(database);
+      try {
+        const identity = (
+          await versioned.pool.query<{ database: string; login: string }>(
+            'SELECT current_database() AS database, session_user AS login',
+          )
+        ).rows[0]!;
+        await versioned.pool
+          .query(`REVOKE CONNECT ON DATABASE ${escapeIdentifier(identity.database)} FROM PUBLIC;
+          GRANT CONNECT ON DATABASE ${escapeIdentifier(identity.database)} TO ${escapeIdentifier(identity.login)}`);
+        const migrations = await readMigrations(
+          fileURLToPath(new URL('../../../migrations', import.meta.url)),
+        );
+        expect(migrations.length).toBeGreaterThan(0);
+        expect(
+          await migrateDatabase(
+            versioned.pool,
+            migrations,
+            SCHEMA_FINGERPRINT,
+            [identity.login],
+          ),
+        ).toEqual(migrations.map(({ manifest }) => manifest.id));
+        const current = run(false, versioned.db.url);
+        expect(current.error).toBeUndefined();
+        expect(current.status).toBe(0);
+        expect(current.stdout).toContain('"marker":"startup-completed"');
+        expect(current.stdout).not.toContain('"code":"STUDIO_SCHEMA_STALE"');
+      } finally {
+        await versioned.dispose();
+      }
+    } finally {
+      await scratch.dispose();
+    }
+  });
+});
 
 describe('startup diagnostic privacy', () => {
   it.each([

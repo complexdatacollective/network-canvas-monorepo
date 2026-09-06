@@ -9,14 +9,18 @@ export function createReadiness(options: {
   assetStore?: AssetStore;
   timeoutMs?: number;
   cacheMs?: number;
+  allowUnversionedSchema?: boolean;
 }) {
-  const { pool, assetStore, timeoutMs, cacheMs } = options;
+  const { pool, assetStore, timeoutMs, cacheMs, allowUnversionedSchema } =
+    options;
   const database = new BoundedProbe<SchemaState>(
     pool
       ? (signal) =>
           withProbeClient(pool, signal, async (client) => {
             await client.query('SELECT 1');
-            return checkSchema(client);
+            return checkSchema(client, {
+              allowUnversioned: allowUnversionedSchema,
+            });
           })
       : undefined,
     timeoutMs,

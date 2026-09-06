@@ -116,7 +116,9 @@ function exitIfFatal(state: SchemaState): void {
 if (schemaPool) {
   for (;;) {
     try {
-      const state = await checkSchema(schemaPool);
+      const state = await checkSchema(schemaPool, {
+        allowUnversioned: env.devDefaults,
+      });
       if (state.kind === 'current') break;
       exitIfFatal(state);
       logOperational(
@@ -164,6 +166,7 @@ const observability = createObservability({
   maintenancePool,
   assetStore,
   monitorProcess: true,
+  allowUnversionedSchema: env.devDefaults,
 });
 startDatabaseWorkers();
 
