@@ -9,7 +9,7 @@ import { localDeployment } from './compose.ts';
 
 const templateRoot = fileURLToPath(new URL('../..', import.meta.url));
 
-it('provisions and restores administrator-only large-object restrictions with the shipped PostgreSQL image', async () => {
+it('provisions and restores administrator-only large-object and temporary-schema restrictions with the shipped PostgreSQL image', async () => {
   const deployment = await localDeployment('admin-privileges');
   try {
     await configureDeployment(
@@ -33,6 +33,7 @@ it('provisions and restores administrator-only large-object restrictions with th
       'studio_runtime',
       'studio_backup_login',
     ];
+    const restricted = roles.filter((role) => role !== 'studio_migrator');
     async function admin(sql: string) {
       return deployment.compose(
         [
@@ -65,6 +66,24 @@ it('provisions and restores administrator-only large-object restrictions with th
       const rows = result.stdout.toString().trim().split('\n');
       expect(rows).toHaveLength(36);
       expect(rows.every((row) => row.endsWith('|f'))).toBe(true);
+      const temporary = (
+        await admin(`SELECT rolname, has_database_privilege(oid, current_database(), 'TEMP')
+        FROM pg_roles WHERE rolname IN (${restricted.map((role) => `'${role}'`).join(',')}) ORDER BY rolname;`)
+      ).stdout
+        .toString()
+        .trim()
+        .split('\n');
+      expect(temporary).toHaveLength(5);
+      expect(temporary.every((row) => row.endsWith('|f'))).toBe(true);
+      expect(
+        (
+          await admin(
+            "SELECT has_database_privilege('studio_migrator', current_database(), 'TEMP');",
+          )
+        ).stdout
+          .toString()
+          .trim(),
+      ).toBe('t');
       const rejected = await deployment.compose(
         [
           'exec',
@@ -94,12 +113,88 @@ it('provisions and restores administrator-only large-object restrictions with th
       expect(rejected.stderr.toString()).toContain(
         'permission denied for function lo_create',
       );
+      for (const role of ['studio_app', 'studio_maintenance']) {
+        const createTemporary = await deployment.compose(
+          [
+            'exec',
+            '-T',
+            '-e',
+            `PGPASSWORD=${configuration.STUDIO_DATABASE_PASSWORD}`,
+            '-e',
+            `PGOPTIONS=-c role=${role}`,
+            'postgres',
+            'psql',
+            '-X',
+            '-At',
+            '-h',
+            '127.0.0.1',
+            '-U',
+            'studio_runtime',
+            '-d',
+            'studio',
+            '-v',
+            'ON_ERROR_STOP=1',
+            '-c',
+            'CREATE TEMP TABLE forbidden_runtime_write (value integer);',
+          ],
+          { failure: true },
+        );
+        expect(createTemporary.code).not.toBe(0);
+        expect(createTemporary.stderr.toString()).toContain(
+          'permission denied to create temporary tables',
+        );
+      }
     }
     await assertRestricted();
+    const ownerTemporary = await deployment.compose([
+      'exec',
+      '-T',
+      '-e',
+      `PGPASSWORD=${configuration.STUDIO_MIGRATION_PASSWORD}`,
+      'postgres',
+      'psql',
+      '-X',
+      '-At',
+      '-h',
+      '127.0.0.1',
+      '-U',
+      'studio_migrator',
+      '-d',
+      'studio',
+      '-v',
+      'ON_ERROR_STOP=1',
+      '-c',
+      'CREATE TEMP TABLE allowed_owner_write (value integer); INSERT INTO allowed_owner_write VALUES (42); SELECT value FROM allowed_owner_write;',
+    ]);
+    expect(ownerTemporary.stdout.toString()).toContain('42');
     // A restored ACL can carry PUBLIC and role-specific grants. Revoking only
     // PUBLIC is insufficient, and the ordinary database owner cannot repair it.
     await admin(`GRANT EXECUTE ON FUNCTION pg_catalog.lo_create(oid) TO PUBLIC;
-      GRANT EXECUTE ON FUNCTION pg_catalog.lo_creat(integer) TO ${roles.join(',')};`);
+      GRANT EXECUTE ON FUNCTION pg_catalog.lo_creat(integer) TO ${roles.join(',')};
+      GRANT TEMPORARY ON DATABASE studio TO PUBLIC, ${restricted.join(',')};`);
+    const driftedRuntime = await deployment.compose([
+      'exec',
+      '-T',
+      '-e',
+      `PGPASSWORD=${configuration.STUDIO_DATABASE_PASSWORD}`,
+      '-e',
+      'PGOPTIONS=-c role=studio_app',
+      'postgres',
+      'psql',
+      '-X',
+      '-At',
+      '-h',
+      '127.0.0.1',
+      '-U',
+      'studio_runtime',
+      '-d',
+      'studio',
+      '-v',
+      'ON_ERROR_STOP=1',
+      '-c',
+      'CREATE TEMP TABLE restored_acl_canary (value integer);',
+    ]);
+    expect(driftedRuntime.code).toBe(0);
     const recovery = await readFile(
       join(deployment.directory, 'deployment/postgres-privileges.sql'),
     );

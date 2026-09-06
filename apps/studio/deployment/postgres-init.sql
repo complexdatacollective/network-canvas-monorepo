@@ -14,6 +14,7 @@ GRANT studio_backup TO studio_backup_login WITH SET TRUE, INHERIT FALSE;
 CREATE DATABASE studio OWNER studio_migrator ALLOW_CONNECTIONS false;
 BEGIN;
 REVOKE ALL ON DATABASE studio FROM PUBLIC;
+REVOKE TEMPORARY ON DATABASE studio FROM PUBLIC, studio_app, studio_maintenance, studio_backup, studio_runtime, studio_backup_login;
 REVOKE CONNECT ON DATABASE studio FROM studio_app, studio_maintenance, studio_backup;
 GRANT CONNECT ON DATABASE studio TO studio_migrator, studio_runtime, studio_backup_login;
 COMMIT;

@@ -82,7 +82,9 @@ under explicit quarantine, removing outside sessions before migration. Each
 deployment needs its own login identities; never reuse one enrollment across
 isolated instances. The ordinary service
 gets the restricted runtime login, with no DDL, superuser or CREATEROLE power.
-The administrator initializer also revokes PostgreSQL's large-object creation
+The administrator initializer denies temporary-table creation to runtime and
+backup identities, while preserving the schema owner's migration privileges.
+It also revokes PostgreSQL's large-object creation
 and server-file import/export capabilities from PUBLIC and all six Studio
 roles/logins, before its temporary Unix-only server exposes TCP. The generated
 `deployment/postgres-privileges.sql` repeats that same reviewed boundary after
