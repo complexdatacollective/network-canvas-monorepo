@@ -1,3 +1,4 @@
+import { escapeIdentifier } from 'pg';
 import type pg from 'pg';
 
 import type { PostgresMigrationConfig } from './postgres-migrations.ts';
@@ -114,7 +115,7 @@ export async function enforceMigrationSecurity(
     `WITH logins AS (
       SELECT oid FROM pg_roles WHERE rolname = ANY($1::text[])
     ), identities AS (
-      SELECT oid FROM pg_roles WHERE rolname = ANY($1::text[]) OR rolname = ANY($2::text[])
+      SELECT oid, rolname FROM pg_roles WHERE rolname = ANY($1::text[]) OR rolname = ANY($2::text[])
     ), namespaces AS (
       SELECT oid FROM pg_namespace WHERE nspname !~ '^pg_' AND nspname <> 'information_schema'
     ) SELECT NOT EXISTS (
@@ -133,6 +134,28 @@ export async function enforceMigrationSecurity(
           SELECT 1 FROM pg_proc routine WHERE routine.pronamespace IN (SELECT oid FROM namespaces)
             AND routine.prosecdef AND has_function_privilege(login.oid, routine.oid, 'EXECUTE')
         )
+        OR EXISTS (
+          SELECT 1 FROM pg_class object WHERE object.relnamespace IN (SELECT oid FROM namespaces)
+            AND CASE WHEN object.relkind IN ('v', 'm', 'f') THEN (
+              has_table_privilege(login.oid, object.oid, 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,MAINTAIN')
+              OR has_any_column_privilege(login.oid, object.oid, 'INSERT,UPDATE,REFERENCES')
+              OR (login.rolname IS DISTINCT FROM $3 AND (
+                has_table_privilege(login.oid, object.oid, 'SELECT')
+                OR has_any_column_privilege(login.oid, object.oid, 'SELECT')
+              ))
+            ) ELSE false END
+        )
+        OR (login.rolname = $3 AND EXISTS (
+          SELECT 1 FROM pg_class object WHERE object.relnamespace IN (SELECT oid FROM namespaces)
+            AND CASE WHEN object.relkind IN ('r', 'p')
+              AND object.oid IS DISTINCT FROM to_regclass($4)
+              AND object.oid IS DISTINCT FROM to_regclass($5) THEN (
+                has_table_privilege(login.oid, object.oid, 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,MAINTAIN')
+                OR has_any_column_privilege(login.oid, object.oid, 'INSERT,UPDATE,REFERENCES')
+              ) WHEN object.relkind = 'S'
+                THEN has_sequence_privilege(login.oid, object.oid, 'USAGE,UPDATE')
+              ELSE false END
+        ))
     ) AND NOT EXISTS (
       SELECT 1 FROM logins login WHERE EXISTS (
           SELECT 1 FROM pg_class object WHERE object.relnamespace IN (SELECT oid FROM namespaces)
@@ -148,11 +171,17 @@ export async function enforceMigrationSecurity(
               ELSE false END
         )
     ) AS safe`,
-    [restrictedLogins, [...runtimeRoles, ...optionalRoles]],
+    [
+      restrictedLogins,
+      [...runtimeRoles, ...optionalRoles],
+      backupRole ?? null,
+      `${escapeIdentifier(config.historySchema)}.history`,
+      `${escapeIdentifier(config.schemaName)}.${escapeIdentifier(config.fingerprintTable)}`,
+    ],
   );
   if (loginAccess.rows[0]?.safe !== true) {
     throw new Error(
-      `Runtime and backup identities must own no database objects and hold no access outside their reviewed ${applicationName} roles: remove direct or PUBLIC login data grants, CREATE, CONNECT grant options, and executable SECURITY DEFINER routines.`,
+      `Runtime and backup identities must own no database objects and hold no access outside their reviewed ${applicationName} roles: remove direct or PUBLIC login data grants, CREATE, CONNECT grant options, executable SECURITY DEFINER routines, view, materialized view, or foreign table access beyond read-only backup grants, and backup table or sequence writes.`,
     );
   }
   // CONNECT is checked only at connection admission. Enrollment must already

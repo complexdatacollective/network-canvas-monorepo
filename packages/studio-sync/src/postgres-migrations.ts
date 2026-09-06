@@ -255,6 +255,21 @@ async function migrateDatabase(
       REVOKE ALL ON ${historyTable} FROM PUBLIC, ${roles};
       REVOKE ALL ON ${fingerprintTable} FROM PUBLIC, ${roles};
       GRANT SELECT ON ${fingerprintTable} TO ${roles}`);
+    if (config.backupRole !== undefined) {
+      const backup = await client.query<{ present: boolean }>(
+        'SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = $1) AS present',
+        [config.backupRole],
+      );
+      if (backup.rows[0]?.present) {
+        // Backup provisioning owns read access. Remove writes and delegation,
+        // including column grants, without granting reads before its sidecar runs.
+        const backupRole = escapeIdentifier(config.backupRole);
+        await client.query(`REVOKE CREATE ON SCHEMA ${escapeIdentifier(historySchema)} FROM ${backupRole};
+          REVOKE GRANT OPTION FOR USAGE ON SCHEMA ${escapeIdentifier(historySchema)} FROM ${backupRole};
+          REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER, MAINTAIN ON ${historyTable}, ${fingerprintTable} FROM ${backupRole};
+          REVOKE GRANT OPTION FOR SELECT ON ${historyTable}, ${fingerprintTable} FROM ${backupRole}`);
+      }
+    }
     await verifyFingerprint(client, expectedFingerprint, fingerprintTable);
     await client.query('COMMIT');
     return completed;

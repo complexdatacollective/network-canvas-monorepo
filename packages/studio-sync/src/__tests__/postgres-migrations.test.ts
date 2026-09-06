@@ -13,7 +13,7 @@ const config: PostgresMigrationConfig = {
   historySchema: 'registry_migrations',
   schemaName: 'public',
   fingerprintTable: 'registry_schema_fingerprint',
-  lockKey: 4021775688147130,
+  lockKey: 4021775688147131,
   stampFingerprint: async () => undefined,
 };
 

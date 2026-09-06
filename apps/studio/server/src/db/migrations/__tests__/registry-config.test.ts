@@ -23,9 +23,9 @@ import { SCHEMA_LOCK_KEY } from '../../schema.ts';
 
 const database = await reachableDb();
 const password = 'registry-migration-test-only';
-// Registry owns a different lock namespace from Studio, even if an operator
-// accidentally points both tools at one database. Admission still rejects it.
-const REGISTRY_SCHEMA_LOCK_KEY = 4021775688147130;
+// Distinct from Studio's schema (4021775688147129) and role bootstrap
+// (4021775688147130) locks, even if tools target one database by mistake.
+const REGISTRY_SCHEMA_LOCK_KEY = 4021775688147131;
 const fingerprint = sha256('registry migration fixture schema version 1');
 type RegistryRoles = { app: string; operator: string; backup: string };
 
@@ -287,6 +287,12 @@ describe.skipIf(!database)(
             )
           ).rows,
         ).toEqual([{ id: '0001_registry' }]);
+        await deployment.administrator.query(
+          runtimeRolesSql([roles.backup], 'Registry'),
+        );
+        await deployment.administrator
+          .query(`GRANT USAGE ON SCHEMA ${escapeIdentifier(schemaName)}, ${escapeIdentifier(historySchema)} TO ${escapeIdentifier(roles.backup)};
+          GRANT ALL ON ${escapeIdentifier(historySchema)}.history, ${table} TO ${escapeIdentifier(roles.backup)} WITH GRANT OPTION`);
         expect(
           await migrator.migrate(
             deployment.owner,
@@ -295,6 +301,21 @@ describe.skipIf(!database)(
             deployment.allowedLogins,
           ),
         ).toEqual([]);
+        for (const evidence of [
+          `${escapeIdentifier(historySchema)}.history`,
+          table,
+        ]) {
+          expect(
+            (
+              await deployment.administrator.query(
+                `SELECT has_table_privilege($1, $2, 'SELECT') AS readable,
+                  has_any_column_privilege($1, $2, 'INSERT,UPDATE,REFERENCES') AS writes,
+                  has_table_privilege($1, $2, 'SELECT WITH GRANT OPTION') AS delegate_reads`,
+                [roles.backup, evidence],
+              )
+            ).rows,
+          ).toEqual([{ readable: true, writes: false, delegate_reads: false }]);
+        }
         const app = deployment.connect(
           deployment.logins.app,
           `-c role=${roles.app}`,
@@ -607,6 +628,371 @@ describe.skipIf(!database)(
             )
           ).rows,
         ).toEqual([]);
+      });
+    });
+
+    it('refuses owner-backed view reads when no backup role is configured', async () => {
+      await withRegistryCluster(async (create, roles) => {
+        const deployment = await create();
+        const { backupRole, ...config } = deployment.config;
+        expect(backupRole).toBe(roles.backup);
+        const migrator = createPostgresMigrator(config);
+        const initial = artifact(roles);
+        await migrator.migrate(
+          deployment.owner,
+          [initial],
+          fingerprint,
+          deployment.allowedLogins,
+        );
+        const history = (
+          await deployment.administrator.query(
+            'SELECT * FROM registry_migrations.history',
+          )
+        ).rows;
+        expect(history).toHaveLength(1);
+        const cases = [
+          { login: deployment.logins.app, role: roles.app },
+          { login: deployment.logins.operator, role: roles.operator },
+        ];
+        expect(cases).toHaveLength(2);
+        for (const { login, role } of cases) {
+          // The second column catches scans that inspect only the first
+          // attribute, and the separate schema catches public-only scans.
+          await deployment.administrator.query(`CREATE SCHEMA elsewhere;
+            CREATE VIEW elsewhere.evidence AS SELECT id, fingerprint AS sibling FROM registry_schema_fingerprint;
+            GRANT USAGE ON SCHEMA elsewhere TO ${escapeIdentifier(role)};
+            GRANT SELECT (sibling) ON elsewhere.evidence TO ${escapeIdentifier(role)}`);
+          const runtime = deployment.connect(login, `-c role=${role}`);
+          expect(
+            (await runtime.query('SELECT current_user AS role')).rows,
+          ).toEqual([{ role }]);
+          expect(
+            (await runtime.query('SELECT sibling FROM elsewhere.evidence'))
+              .rows,
+          ).toEqual([{ sibling: fingerprint }]);
+          await expect(
+            migrator.migrate(
+              deployment.owner,
+              [initial],
+              fingerprint,
+              deployment.allowedLogins,
+            ),
+          ).rejects.toThrow('access outside their reviewed Registry roles');
+          expect(
+            (
+              await deployment.administrator.query(
+                'SELECT * FROM registry_migrations.history',
+              )
+            ).rows,
+          ).toEqual(history);
+          await deployment.administrator.query('DROP SCHEMA elsewhere CASCADE');
+          expect(
+            await migrator.migrate(
+              deployment.owner,
+              [initial],
+              fingerprint,
+              deployment.allowedLogins,
+            ),
+          ).toEqual([]);
+        }
+      });
+    });
+
+    it('repairs registry backup evidence writes and delegation without provisioning read access', async () => {
+      await withRegistryCluster(async (create, roles) => {
+        const deployment = await create();
+        await deployment.administrator.query(
+          runtimeRolesSql([roles.backup], 'Registry'),
+        );
+        const backupLogin = `registry_backup_login_${randomUUID().replaceAll('-', '')}`;
+        await deployment.administrator.query(
+          `CREATE ROLE ${escapeIdentifier(backupLogin)} LOGIN NOINHERIT NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB NOREPLICATION PASSWORD '${password}'`,
+        );
+        deployment.allowedLogins.push(backupLogin);
+        await deployment.administrator
+          .query(`GRANT ${escapeIdentifier(roles.backup)} TO ${escapeIdentifier(backupLogin)} WITH ADMIN FALSE, INHERIT FALSE, SET TRUE;
+          GRANT CONNECT ON DATABASE ${escapeIdentifier(deployment.databaseName)} TO ${escapeIdentifier(backupLogin)}`);
+        const migrator = createPostgresMigrator(deployment.config);
+        const initial = artifact(roles);
+        await migrator.migrate(
+          deployment.owner,
+          [initial],
+          fingerprint,
+          deployment.allowedLogins,
+        );
+        const tables = [
+          'registry_migrations.history',
+          'public.registry_schema_fingerprint',
+        ];
+        expect(tables).toHaveLength(2);
+        for (const table of tables) {
+          expect(
+            (
+              await deployment.administrator.query(
+                "SELECT has_table_privilege($1, $2, 'SELECT') AS readable",
+                [roles.backup, table],
+              )
+            ).rows,
+          ).toEqual([{ readable: false }]);
+        }
+        await deployment.administrator
+          .query(`GRANT USAGE ON SCHEMA public, registry_migrations TO ${escapeIdentifier(roles.backup)};
+          GRANT SELECT ON registry_migrations.history, public.registry_schema_fingerprint TO ${escapeIdentifier(roles.backup)}`);
+        const history = (
+          await deployment.administrator.query(
+            'SELECT * FROM registry_migrations.history',
+          )
+        ).rows;
+        const stamp = (
+          await deployment.administrator.query(
+            'SELECT * FROM registry_schema_fingerprint',
+          )
+        ).rows;
+        expect(history).toHaveLength(1);
+        expect(stamp).toHaveLength(1);
+        const backup = deployment.connect(
+          backupLogin,
+          `-c role=${roles.backup}`,
+        );
+        expect(
+          (await backup.query('SELECT current_user AS role')).rows,
+        ).toEqual([{ role: roles.backup }]);
+        await backup.query('RESET ROLE');
+        expect(
+          (await backup.query('SELECT current_user AS role')).rows,
+        ).toEqual([{ role: roles.backup }]);
+        for (const repair of [false, true]) {
+          if (repair) {
+            await deployment.administrator
+              .query(`GRANT USAGE ON SCHEMA registry_migrations TO ${escapeIdentifier(roles.backup)} WITH GRANT OPTION;
+              GRANT ALL ON registry_migrations.history, registry_schema_fingerprint TO ${escapeIdentifier(roles.backup)} WITH GRANT OPTION;
+              GRANT UPDATE (checksum), SELECT (checksum) ON registry_migrations.history TO ${escapeIdentifier(roles.backup)} WITH GRANT OPTION;
+              GRANT UPDATE (fingerprint), SELECT (fingerprint) ON registry_schema_fingerprint TO ${escapeIdentifier(roles.backup)} WITH GRANT OPTION`);
+          }
+          expect(
+            await migrator.migrate(
+              deployment.owner,
+              [initial],
+              fingerprint,
+              deployment.allowedLogins,
+            ),
+          ).toEqual([]);
+          expect(
+            (await backup.query('SELECT * FROM registry_migrations.history'))
+              .rows,
+          ).toEqual(history);
+          expect(
+            (await backup.query('SELECT * FROM registry_schema_fingerprint'))
+              .rows,
+          ).toEqual(stamp);
+          for (const table of tables) {
+            expect(
+              (
+                await backup.query(
+                  `SELECT
+              has_table_privilege(current_user, $1, 'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,MAINTAIN') AS writes,
+              has_any_column_privilege(current_user, $1, 'INSERT,UPDATE,REFERENCES') AS column_writes,
+              has_table_privilege(current_user, $1, 'SELECT WITH GRANT OPTION') AS delegate_reads,
+              has_any_column_privilege(current_user, $1, 'SELECT WITH GRANT OPTION') AS delegate_column_reads`,
+                  [table],
+                )
+              ).rows,
+            ).toEqual([
+              {
+                writes: false,
+                column_writes: false,
+                delegate_reads: false,
+                delegate_column_reads: false,
+              },
+            ]);
+          }
+          expect(
+            (
+              await backup.query(
+                "SELECT has_schema_privilege(current_user, 'registry_migrations', 'USAGE WITH GRANT OPTION') AS delegate_usage",
+              )
+            ).rows,
+          ).toEqual([{ delegate_usage: false }]);
+          for (const sql of [
+            "UPDATE registry_migrations.history SET checksum = 'forged'",
+            'DELETE FROM registry_migrations.history',
+            'TRUNCATE registry_migrations.history',
+            "INSERT INTO registry_migrations.history(position, id, checksum, fingerprint) VALUES (100, 'forged', 'forged', 'forged')",
+            "UPDATE registry_schema_fingerprint SET fingerprint = 'forged'",
+            'DELETE FROM registry_schema_fingerprint',
+            'TRUNCATE registry_schema_fingerprint',
+            "INSERT INTO registry_schema_fingerprint(fingerprint) VALUES ('forged')",
+          ])
+            await expect(backup.query(sql)).rejects.toMatchObject({
+              code: '42501',
+            });
+        }
+      });
+    });
+
+    it('refuses configured backup writes before migration evidence exists', async () => {
+      await withRegistryCluster(async (create, roles) => {
+        const deployment = await create();
+        const migrator = createPostgresMigrator(deployment.config);
+        await deployment.administrator.query(
+          runtimeRolesSql([roles.backup], 'Registry'),
+        );
+        await deployment.administrator.query(`CREATE SCHEMA elsewhere;
+          CREATE TABLE elsewhere.history (id integer PRIMARY KEY, sibling boolean);
+          INSERT INTO elsewhere.history VALUES (1, false);
+          GRANT USAGE ON SCHEMA elsewhere TO ${escapeIdentifier(roles.backup)};
+          GRANT SELECT, UPDATE ON elsewhere.history TO ${escapeIdentifier(roles.backup)}`);
+        expect(
+          (
+            await deployment.administrator.query(
+              "SELECT to_regclass('registry_migrations.history') AS history, to_regclass('public.registry_schema_fingerprint') AS fingerprint",
+            )
+          ).rows,
+        ).toEqual([{ history: null, fingerprint: null }]);
+        const preflight = await deployment.owner.connect();
+        try {
+          await preflight.query('BEGIN');
+          // Check before authored DDL creates the evidence tables: a final
+          // check alone can mask a NULL-sensitive exclusion during preflight.
+          await expect(
+            migrator.enforceSecurity(preflight, deployment.allowedLogins),
+          ).rejects.toThrow('access outside their reviewed Registry roles');
+        } finally {
+          await preflight.query('ROLLBACK');
+          preflight.release();
+        }
+        await expect(
+          migrator.migrate(
+            deployment.owner,
+            [artifact(roles)],
+            fingerprint,
+            deployment.allowedLogins,
+          ),
+        ).rejects.toThrow('access outside their reviewed Registry roles');
+        expect(
+          (
+            await deployment.administrator.query(
+              'SELECT * FROM elsewhere.history',
+            )
+          ).rows,
+        ).toEqual([{ id: 1, sibling: false }]);
+        await deployment.administrator.query(
+          `REVOKE UPDATE ON elsewhere.history FROM ${escapeIdentifier(roles.backup)}`,
+        );
+        expect(
+          await migrator.migrate(
+            deployment.owner,
+            [artifact(roles)],
+            fingerprint,
+            deployment.allowedLogins,
+          ),
+        ).toEqual(['0001_registry']);
+      });
+    });
+
+    it('refuses configured backup data and sequence writes while preserving reads', async () => {
+      await withRegistryCluster(async (create, roles) => {
+        const deployment = await create();
+        await deployment.administrator.query(
+          runtimeRolesSql([roles.backup], 'Registry'),
+        );
+        const backupLogin = `registry_backup_login_${randomUUID().replaceAll('-', '')}`;
+        await deployment.administrator.query(
+          `CREATE ROLE ${escapeIdentifier(backupLogin)} LOGIN NOINHERIT NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB NOREPLICATION PASSWORD '${password}'`,
+        );
+        deployment.allowedLogins.push(backupLogin);
+        await deployment.administrator
+          .query(`GRANT ${escapeIdentifier(roles.backup)} TO ${escapeIdentifier(backupLogin)} WITH ADMIN FALSE, INHERIT FALSE, SET TRUE;
+          GRANT CONNECT ON DATABASE ${escapeIdentifier(deployment.databaseName)} TO ${escapeIdentifier(backupLogin)}`);
+        const migrator = createPostgresMigrator(deployment.config);
+        const initial = artifact(roles);
+        await migrator.migrate(
+          deployment.owner,
+          [initial],
+          fingerprint,
+          deployment.allowedLogins,
+        );
+        await deployment.administrator
+          .query(`INSERT INTO registry_items VALUES (1, 'original');
+          CREATE SCHEMA elsewhere;
+          CREATE SEQUENCE elsewhere.counter;
+          GRANT USAGE ON SCHEMA public, elsewhere TO ${escapeIdentifier(roles.backup)};
+          GRANT SELECT ON registry_items TO ${escapeIdentifier(roles.backup)};
+          GRANT SELECT ON SEQUENCE elsewhere.counter TO ${escapeIdentifier(roles.backup)}`);
+        const history = (
+          await deployment.administrator.query(
+            'SELECT * FROM registry_migrations.history',
+          )
+        ).rows;
+        expect(history).toHaveLength(1);
+        const backup = deployment.connect(
+          backupLogin,
+          `-c role=${roles.backup}`,
+        );
+        expect(
+          (await backup.query('SELECT current_user AS role')).rows,
+        ).toEqual([{ role: roles.backup }]);
+        const cases = [
+          { grant: 'UPDATE ON registry_items', write: true },
+          { grant: 'UPDATE (value) ON registry_items', write: true },
+          { grant: 'USAGE ON SEQUENCE elsewhere.counter', write: false },
+          { grant: 'UPDATE ON SEQUENCE elsewhere.counter', write: false },
+        ];
+        expect(cases).toHaveLength(4);
+        for (const fixture of cases) {
+          await deployment.administrator.query(
+            `GRANT ${fixture.grant} TO ${escapeIdentifier(roles.backup)}`,
+          );
+          if (fixture.write) {
+            const writer = await backup.connect();
+            try {
+              await writer.query('BEGIN');
+              expect(
+                (
+                  await writer.query(
+                    "UPDATE registry_items SET value = 'changed by backup' WHERE id = 1 RETURNING value",
+                  )
+                ).rows,
+              ).toEqual([{ value: 'changed by backup' }]);
+            } finally {
+              await writer.query('ROLLBACK');
+              writer.release();
+            }
+          }
+          await expect(
+            migrator.migrate(
+              deployment.owner,
+              [initial],
+              fingerprint,
+              deployment.allowedLogins,
+            ),
+            fixture.grant,
+          ).rejects.toThrow('access outside their reviewed Registry roles');
+          expect(
+            (
+              await deployment.administrator.query(
+                'SELECT * FROM registry_migrations.history',
+              )
+            ).rows,
+          ).toEqual(history);
+          await deployment.administrator.query(
+            `REVOKE ${fixture.grant} FROM ${escapeIdentifier(roles.backup)}`,
+          );
+          expect(
+            await migrator.migrate(
+              deployment.owner,
+              [initial],
+              fingerprint,
+              deployment.allowedLogins,
+            ),
+          ).toEqual([]);
+        }
+        expect(
+          (await backup.query('SELECT * FROM registry_items')).rows,
+        ).toEqual([{ id: 1, value: 'original' }]);
+        expect(
+          (await backup.query('SELECT last_value FROM elsewhere.counter')).rows,
+        ).toEqual([{ last_value: '1' }]);
       });
     });
 
