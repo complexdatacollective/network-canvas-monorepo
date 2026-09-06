@@ -1,15 +1,23 @@
-import { useCallback, useId, useState, type DragEvent } from 'react';
+import { useCallback, useEffect, useId, useState, type DragEvent } from 'react';
 import { v4 as uuid } from 'uuid';
 
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import { useResourceGateway } from '../context.tsx';
-import type { ResourceDescriptor } from '../gateway.ts';
+import {
+  RESOURCE_UPLOAD_MAX_BYTE_LENGTH,
+  type ProtocolBuilderResourceGateway,
+  type ResourceDescriptor,
+  type ResourceResult,
+  type StageUploadRequest,
+} from '../gateway.ts';
+import { discardAbandonedStaging } from './abandonedStaging.ts';
 import ResourceFailureNotice from './ResourceFailureNotice.tsx';
 import {
   acceptedExtensions,
   contentKindForFile,
   contentTypeForFile,
+  oversizeFileMessage,
   sourceFilename,
   unsupportedFileMessage,
   type ResourcePickerKind,
@@ -19,10 +27,53 @@ import { useResourceAttempt } from './useResourceAttempt.ts';
 const UNREADABLE_MESSAGE =
   'That file could not be read. Choose it again, or try a different file.';
 
+/**
+ * Imports one file: stages the bytes, then asks the host to read back what it
+ * staged.
+ *
+ * A host that will hold any bytes is not a host that can tell a roster from a
+ * text file, and staging is where the researcher finds out — a field left
+ * pointing at content the interview cannot read is a protocol that fails when
+ * it is used, and nothing in the manifest says so. So the import is not
+ * finished until the host has read the resource: only then is there something
+ * a field may point at.
+ *
+ * Content the host cannot read is dropped again rather than left staged. The
+ * researcher is going to choose another file, and this one would otherwise sit
+ * at the host until the finish walked away from it. A host that could not
+ * answer at all keeps its staged resource, because repeating the identical
+ * request is exactly what "try again" then means.
+ */
+async function importFile(
+  gateway: ProtocolBuilderResourceGateway,
+  request: StageUploadRequest,
+): Promise<ResourceResult<ResourceDescriptor>> {
+  const staged = await gateway.stageUpload(request);
+  if (staged.status !== 'ok') return staged;
+
+  const inspected = await gateway.inspect(staged.data.id);
+  if (inspected.status === 'ok') return staged;
+  if (inspected.failure.reason === 'invalid-content') {
+    await gateway.discardStaged(staged.data.id);
+  }
+  return Object.freeze({
+    status: 'failed' as const,
+    failure: inspected.failure,
+  });
+}
+
 export type ResourceUploadControlProps = Readonly<{
   /** Which kinds this control will accept, and what it stages them as. */
   kind: Exclude<ResourcePickerKind, 'apikey'>;
   onStaged: (descriptor: ResourceDescriptor) => void;
+  /**
+   * Reports whether this control is holding work a dismissal would lose.
+   *
+   * The dialog around it decides what to do about that; nothing here changes
+   * because of it. Reported rather than inferred because the draft lives in
+   * this control's own state and nowhere the dialog can see.
+   */
+  onDraftChange?: (hasDraft: boolean) => void;
   disabled?: boolean;
 }>;
 
@@ -41,21 +92,69 @@ export type ResourceUploadControlProps = Readonly<{
 export default function ResourceUploadControl({
   kind,
   onStaged,
+  onDraftChange,
   disabled = false,
 }: ResourceUploadControlProps) {
   const gateway = useResourceGateway();
-  const { busy, failure, retry, run } = useResourceAttempt();
+  const { begin, busy, failure, retry } = useResourceAttempt();
   const inputId = useId();
   const [rejected, setRejected] = useState<string | undefined>(undefined);
   const [status, setStatus] = useState('');
   const [dragging, setDragging] = useState(false);
+  /**
+   * A file has been chosen and its bytes are being read, which is work of the
+   * researcher's that no gateway call has started yet.
+   *
+   * `busy` cannot stand for this on its own: the read happens before any call
+   * is made, so a control that reported only `busy` would report nothing for
+   * the whole of it — and reading the file a researcher picked by mistake is
+   * exactly the long part.
+   */
+  const [reading, setReading] = useState(false);
+
+  // A file the researcher has chosen, from the moment they choose it until the
+  // import settles: reading it, then staging it. It is not typed work, but it
+  // is a choice they made that nothing else records — dismissing here throws
+  // the import away and the file has to be found again.
+  useEffect(() => {
+    onDraftChange?.(reading || busy);
+    return () => onDraftChange?.(false);
+  }, [busy, onDraftChange, reading]);
 
   const stageFile = useCallback(
     async (file: File) => {
       setRejected(undefined);
+      // Claimed before anything about this file is decided, because the claim
+      // is the researcher's choice rather than its consequence. Reading a
+      // large first choice can still be under way when a second one is made,
+      // and the field must end up holding the file chosen last — including
+      // when that file is one this field cannot hold, which supersedes the
+      // earlier choice just as surely as an accepted one does. Claiming also
+      // takes away what the previous choice left on screen, so the refusal
+      // below is the only thing the researcher is being told.
+      const claim = begin();
+      // Held as a draft from the same moment and for the same reason: the
+      // checks below and the read after them all happen while a dismissal
+      // could arrive, and none of them has started a call for `busy` to show.
+      setReading(true);
+
       const contentKind = contentKindForFile(kind, file.name);
       if (contentKind === undefined) {
         setRejected(unsupportedFileMessage(kind));
+        // A refused file is not work to lose: the refusal on screen is the
+        // whole of what happened, and it survives a dismissal by being about
+        // a choice the researcher will make again.
+        setReading(false);
+        return;
+      }
+
+      // Before the file is read, not after: staging takes the bytes, so a
+      // control that waits for the host to refuse has already pulled a file
+      // of any size into memory to be told what its own `size` said all
+      // along — and the file picked by mistake is the large one.
+      if (file.size > RESOURCE_UPLOAD_MAX_BYTE_LENGTH) {
+        setRejected(oversizeFileMessage(RESOURCE_UPLOAD_MAX_BYTE_LENGTH));
+        setReading(false);
         return;
       }
 
@@ -63,18 +162,26 @@ export default function ResourceUploadControl({
       try {
         bytes = new Uint8Array(await file.arrayBuffer());
       } catch {
+        // A file the researcher has already moved off is not something to
+        // report at all: the import that replaced it is what is happening now.
+        // Its draft is that import's to hold as well, so this leaves it be —
+        // saying there is nothing to lose would be saying it about the choice
+        // that superseded this one.
+        if (!claim.current()) return;
         setRejected(UNREADABLE_MESSAGE);
+        setReading(false);
         return;
       }
+      if (!claim.current()) return;
 
       const source = sourceFilename(file.name);
       // One id for this file, kept across a retry: repeating an uncertain
       // import must not leave the protocol holding the same file twice.
       const requestId = uuid();
       setStatus('');
-      run(
+      claim.run(
         () =>
-          gateway.stageUpload({
+          importFile(gateway, {
             requestId,
             kind: contentKind,
             name: source,
@@ -86,9 +193,16 @@ export default function ResourceUploadControl({
           setStatus(`${descriptor.name} was imported.`);
           onStaged(descriptor);
         },
+        // The import landed with nothing left to hand it to: another file was
+        // chosen, or the browser was closed. No field will ever name it, so
+        // the host is told to let it go.
+        (descriptor) => discardAbandonedStaging(gateway, descriptor),
       );
+      // After the call has started, so the draft passes from this flag to
+      // `busy` without ever being reported as nothing in between.
+      setReading(false);
     },
-    [gateway, kind, onStaged, run],
+    [begin, gateway, kind, onStaged],
   );
 
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {

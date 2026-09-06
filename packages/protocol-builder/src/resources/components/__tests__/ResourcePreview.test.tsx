@@ -1,5 +1,5 @@
 import { act, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { ResourceGatewayProvider } from '../../context.tsx';
 import {
@@ -9,12 +9,12 @@ import {
   type ResourceResult,
 } from '../../gateway.ts';
 import { InMemoryResourceGateway } from '../../InMemoryResourceGateway.ts';
-import ResourcePreview from '../ResourcePreview.tsx';
-import {
-  deferred,
-  flushPendingWork,
-  overrideGateway,
-} from './overrideGateway.ts';
+import { overrideGateway } from '../../overrideGateway.ts';
+import ResourcePreview, {
+  PREVIEW_RENEWAL_LEAD_MS,
+  PREVIEW_RENEWAL_MIN_INTERVAL_MS,
+} from '../ResourcePreview.tsx';
+import { deferred, flushPendingWork } from './asyncControls.ts';
 
 const bytesOf = (text: string): Uint8Array => new TextEncoder().encode(text);
 
@@ -189,5 +189,243 @@ describe('ResourcePreview', () => {
       screen.queryByText('the first preview could not be resolved'),
     ).toBeNull();
     expect(screen.getByRole('img', { name: 'Second' })).toBeVisible();
+  });
+});
+
+/**
+ * A host that hands out leases which end, as a signed delivery URL does. Each
+ * one is distinct, so a renewal is visible in what the element is showing.
+ */
+function leasingGateway(
+  gateway: InMemoryResourceGateway,
+  livesForMs: number,
+): Readonly<{
+  gateway: ProtocolBuilderResourceGateway;
+  issued: () => number;
+  released: () => number;
+}> {
+  let issued = 0;
+  let released = 0;
+  return {
+    issued: () => issued,
+    released: () => released,
+    gateway: overrideGateway(gateway, {
+      resolvePreview: async (resourceId) => {
+        const result = await gateway.resolvePreview(resourceId);
+        if (result.status === 'failed') return result;
+        issued += 1;
+        const lease = issued;
+        return {
+          status: 'ok',
+          data: {
+            resourceId,
+            url: `${result.data.url}#lease-${lease}`,
+            expiresAt: Date.now() + livesForMs,
+            release: () => {
+              released += 1;
+              result.data.release();
+            },
+          },
+        };
+      },
+    }),
+  };
+}
+
+describe('a preview whose URL is a lease that ends', () => {
+  it('takes a new lease before the old one expires, and lets the old one go', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    try {
+      const gateway = new InMemoryResourceGateway();
+      const image = await stageImage(gateway, 'request-leased', 'leased.png');
+      // Just long enough that the renewal is scheduled rather than skipped.
+      const host = leasingGateway(gateway, PREVIEW_RENEWAL_LEAD_MS + 30);
+
+      renderPreview(host.gateway, image, 'Leased image');
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1);
+      });
+      expect(
+        screen.getByRole('img', { name: 'Leased image' }).getAttribute('src'),
+      ).toContain('#lease-1');
+
+      // A stage editor stays open far longer than a signed URL lives, so an
+      // image that silently stops loading looks like a resource the protocol
+      // lost.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(PREVIEW_RENEWAL_MIN_INTERVAL_MS);
+      });
+      expect(
+        screen.getByRole('img', { name: 'Leased image' }).getAttribute('src'),
+      ).toContain('#lease-2');
+      expect(host.released()).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('never renews faster than the minimum interval, however short the lease', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    try {
+      const gateway = new InMemoryResourceGateway();
+      const image = await stageImage(gateway, 'request-brief', 'brief.png');
+      // A lease one millisecond longer than the lead. Renewing on the lead
+      // alone would ask again in a millisecond, be answered with another such
+      // lease, and go on doing that for as long as the preview is on screen.
+      const host = leasingGateway(gateway, PREVIEW_RENEWAL_LEAD_MS + 1);
+
+      renderPreview(host.gateway, image, 'Brief lease');
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1);
+      });
+      expect(host.issued()).toBe(1);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(
+          PREVIEW_RENEWAL_MIN_INTERVAL_MS - 100,
+        );
+      });
+      expect(host.issued()).toBe(1);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(200);
+      });
+      expect(host.issued()).toBe(2);
+
+      // And the one after it is a renewal too, not a poll that happens to
+      // have started slowly.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(
+          PREVIEW_RENEWAL_MIN_INTERVAL_MS - 300,
+        );
+      });
+      expect(host.issued()).toBe(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('lets the expired lease go when the renewal that would have replaced it failed', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    try {
+      const gateway = new InMemoryResourceGateway();
+      const image = await stageImage(gateway, 'request-lapsed', 'lapsed.png');
+      const host = leasingGateway(gateway, PREVIEW_RENEWAL_LEAD_MS + 30);
+
+      renderPreview(host.gateway, image, 'Lapsing image');
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1);
+      });
+      expect(gateway.getStagingResidue()).toContain('preview:preview-1');
+
+      // The renewal is refused, so the lease on screen is the last one there
+      // will be: it goes on rendering until its own time runs out.
+      gateway.failNext('resolvePreview');
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(PREVIEW_RENEWAL_MIN_INTERVAL_MS);
+      });
+      expect(screen.getByRole('img', { name: 'Lapsing image' })).toBeVisible();
+      expect(host.released()).toBe(0);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(30);
+      });
+
+      // Nothing renders the lease any more, and nothing else ever will: the
+      // effect that would have released it is not going to run again, so a
+      // field left open would hold the host's URL for as long as the editor is.
+      expect(
+        screen.getByText('the resource host is temporarily unavailable'),
+      ).toBeVisible();
+      expect(host.released()).toBe(1);
+      expect(gateway.getStagingResidue()).not.toContain('preview:preview-1');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('releases the lapsed lease exactly once, however the preview ends', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    try {
+      const gateway = new InMemoryResourceGateway();
+      const image = await stageImage(gateway, 'request-once', 'once.png');
+      const host = leasingGateway(gateway, PREVIEW_RENEWAL_LEAD_MS + 30);
+
+      const { unmount } = renderPreview(host.gateway, image, 'Once image');
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1);
+      });
+      gateway.failNext('resolvePreview');
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(PREVIEW_RENEWAL_MIN_INTERVAL_MS + 30);
+      });
+      expect(host.released()).toBe(1);
+
+      unmount();
+
+      // A host counts what it hands out: releasing the same lease twice is a
+      // second release the next lease of the same URL would be charged with.
+      expect(host.released()).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('releases both leases when the field goes away mid-renewal', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    try {
+      const gateway = new InMemoryResourceGateway();
+      const image = await stageImage(gateway, 'request-midway', 'midway.png');
+      // The renewal is held open, so the component can be taken away while its
+      // replacement lease is still on its way back from the host.
+      const held = deferred<void>();
+      const leasing = leasingGateway(gateway, PREVIEW_RENEWAL_LEAD_MS + 30);
+      let resolutions = 0;
+      const host = overrideGateway(gateway, {
+        resolvePreview: async (resourceId) => {
+          resolutions += 1;
+          const result = await leasing.gateway.resolvePreview(resourceId);
+          if (resolutions > 1) await held.promise;
+          return result;
+        },
+      });
+
+      const { unmount } = renderPreview(host, image, 'Midway image');
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1);
+      });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(PREVIEW_RENEWAL_MIN_INTERVAL_MS);
+      });
+      expect(leasing.issued()).toBe(2);
+
+      unmount();
+      held.settle(undefined);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1);
+      });
+
+      // The one on screen went with the component; the one still on its way
+      // back has nothing to render it, so it is released as it lands.
+      expect(leasing.released()).toBe(2);
+      expect(gateway.getStagingResidue()).not.toContain('preview:preview-1');
+      expect(gateway.getStagingResidue()).not.toContain('preview:preview-2');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('leaves a lease with no end alone', async () => {
+    const gateway = new InMemoryResourceGateway();
+    const image = await stageImage(gateway, 'request-open', 'open.png');
+    const resolvePreview = vi.spyOn(gateway, 'resolvePreview');
+
+    renderPreview(gateway, image, 'Open image');
+    await screen.findByRole('img', { name: 'Open image' });
+    await act(flushPendingWork);
+
+    // Nothing said the URL stops working, so asking for another one would be
+    // traffic about nothing.
+    expect(resolvePreview).toHaveBeenCalledTimes(1);
   });
 });

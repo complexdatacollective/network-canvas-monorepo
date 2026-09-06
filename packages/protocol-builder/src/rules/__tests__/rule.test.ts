@@ -78,16 +78,26 @@ describe('the part of a rule that has not been answered', () => {
   });
 
   it('asks for no operand from an operator that takes none', () => {
-    expect(
-      incompleteRulePart(
-        alterRule({ type: 'person', attribute: 'age', operator: 'CONTAINS' }),
-      ),
-    ).toBeUndefined();
     // A presence rule is about the entity itself, so it never has an operand
     // to be missing whatever its operator says.
     expect(
       incompleteRulePart(alterRule({ type: 'person', operator: 'EXISTS' })),
     ).toBeUndefined();
+    expect(
+      incompleteRulePart(alterRule({ type: 'person', operator: 'NOT_EXISTS' })),
+    ).toBeUndefined();
+  });
+
+  it('asks for the pattern a matching operator has nothing to match without', () => {
+    // Every operator but the two presence ones compares the attribute against
+    // something. A `contains` rule with no pattern is not a rule that matches
+    // everything — the runtime builds a regular expression out of whatever is
+    // there, so an absent one becomes the literal text "undefined".
+    expect(
+      incompleteRulePart(
+        alterRule({ type: 'person', attribute: 'age', operator: 'CONTAINS' }),
+      ),
+    ).toBe('value');
   });
 
   it('counts a false and a zero operand as answers, and a blank one as not', () => {

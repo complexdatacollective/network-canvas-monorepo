@@ -22,6 +22,7 @@ import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import ResourcePickerControl from '../resources/components/ResourcePickerControl.tsx';
 import {
   ruleSetRules,
+  ruleSetTargets,
   ruleSetValidationMessage,
   type RuleSetValue,
 } from '../rules/ruleSet.ts';
@@ -435,6 +436,10 @@ function withoutEdgeRules(filter: unknown): unknown {
  * a field's validation is memoised for the field's lifetime — a rule rebuilt
  * each render would be pinned to whichever codebook the first one closed over,
  * and a type a collaborator deleted would go on being legal.
+ *
+ * The targets are the `filter` set's, because `FilterRuleSetField` is what this
+ * section mounts: an ego rule in a panel's filter either keeps every entity or
+ * none, so it is reported here rather than saved and refused by the schema.
  */
 function usePanelFilterValidation() {
   const { protocolContext } = useStageEditorForm();
@@ -447,7 +452,11 @@ function usePanelFilterValidation() {
         (value: unknown) =>
           value === undefined
             ? undefined
-            : ruleSetValidationMessage(value, codebook.current),
+            : ruleSetValidationMessage(
+                value,
+                codebook.current,
+                ruleSetTargets('filter'),
+              ),
       ]),
     }),
     [],

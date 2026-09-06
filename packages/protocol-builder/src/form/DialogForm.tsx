@@ -1,14 +1,15 @@
 import {
   createContext,
   type ReactNode,
+  type RefObject,
   useCallback,
   useContext,
+  useEffect,
   useState,
 } from 'react';
 
 import { Button } from '@codaco/fresco-ui/Button';
 import Dialog, { type DialogProps } from '@codaco/fresco-ui/dialogs/Dialog';
-import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import type {
   FieldProps,
@@ -27,6 +28,8 @@ import type {
 } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import { ResizableFlexPanel } from '@codaco/fresco-ui/ResizableFlexPanel';
+
+import { useDiscardDraftGuard } from './discardDraftGuard.ts';
 
 /**
  * What a form-level check — or a save the host could not take — reports.
@@ -57,6 +60,20 @@ export type DialogFormProps = Readonly<{
    * the researcher has nothing to lose by — or has confirmed.
    */
   onClose: () => void;
+  /**
+   * Receives this dialog's own DISMISSAL route — the one Cancel, Escape, the
+   * close button and a click outside all take, which asks before a draft the
+   * researcher would lose is discarded and refuses outright while a save is
+   * running.
+   *
+   * For an owner that has to close the dialog for a reason of its own: the row
+   * it is editing left the document, the session around it ended. Setting
+   * `open` to false from outside would take the editor down over unsaved work
+   * without a word, which is the one thing this dialog exists to prevent — so
+   * the outside route is the same route as the inside one. The dialog answers
+   * with `null` as it unmounts.
+   */
+  requestCloseRef?: RefObject<(() => void) | null>;
   title: string;
   /** Supporting prose under the title, for a dialog whose title cannot carry it. */
   description?: ReactNode;
@@ -233,6 +250,7 @@ const refusal = (errors: DialogFormErrors): FormSubmissionResult => ({
 function DialogFormBody({
   open,
   onClose,
+  requestCloseRef,
   title,
   description,
   formId,
@@ -249,7 +267,6 @@ function DialogFormBody({
   children,
 }: DialogFormProps) {
   const storeApi = useContext(FormStoreContext);
-  const { confirm } = useDialog();
   const { isSubmitting } = useFormMeta();
 
   /**
@@ -280,36 +297,23 @@ function DialogFormBody({
     [storeApi],
   );
 
-  /**
-   * Cancel, the close button, Escape and a click outside all arrive here —
-   * Fresco's `Dialog` routes every dismissal through one `closeDialog` — so a
-   * single gate covers all four.
-   *
-   * Deliberately not the route a successful submit takes: there is nothing
-   * left to lose by then, and asking would be a question about work that has
-   * just been saved.
-   */
-  const requestClose = useCallback(() => {
-    if (isSubmitting) return;
+  // Cancel, the close button, Escape and a click outside all arrive here, and
+  // a submit still in flight refuses all four: the dialog is about to show
+  // what the host made of it.
+  const requestClose = useDiscardDraftGuard({
+    hasDraft: isDirty,
+    onClose,
+    blocked: isSubmitting,
+  });
 
-    if (!isDirty()) {
-      onClose();
-      return;
-    }
-
-    void (async () => {
-      const confirmed = await confirm({
-        title: 'Discard your changes?',
-        description:
-          'This editor holds changes that have not been saved. Closing it now discards them.',
-        confirmLabel: 'Discard changes',
-        cancelLabel: 'Keep editing',
-        intent: 'warning',
-        onConfirm: () => undefined,
-      });
-      if (confirmed === true) onClose();
-    })();
-  }, [confirm, isDirty, isSubmitting, onClose]);
+  useEffect(() => {
+    const published = requestCloseRef;
+    if (published === undefined) return undefined;
+    published.current = requestClose;
+    return () => {
+      published.current = null;
+    };
+  }, [requestClose, requestCloseRef]);
 
   /**
    * Fresco runs every field's own validation before this is reached, so the

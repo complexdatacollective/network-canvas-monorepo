@@ -6,22 +6,31 @@ import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import type { RuleDraft } from './rule.ts';
+import type { RuleTargetType } from './ruleCodebook.ts';
 import type { RuleTypeOption } from './RuleEditorDialog.tsx';
 import RuleList from './RuleList.tsx';
-import { asRuleSetValue, JOIN_OPTIONS, type RuleSetValue } from './ruleSet.ts';
+import {
+  asRuleSetValue,
+  JOIN_OPTIONS,
+  type RuleSetValue,
+  type RuleSetVariant,
+  ruleSetTargets,
+} from './ruleSet.ts';
 
-const NODE_RULE: RuleTypeOption = {
-  label: 'Node - match a node type or one of its attributes.',
-  value: 'node',
-};
-const EDGE_RULE: RuleTypeOption = {
-  label: 'Edge - match an edge type or one of its attributes.',
-  value: 'edge',
-};
-const EGO_RULE: RuleTypeOption = {
-  label: 'Ego - match one of the ego attributes.',
-  value: 'ego',
-};
+/**
+ * What each target is offered as, in the sentence that says what it matches.
+ *
+ * Keyed by target and read through the set of targets this variant may hold,
+ * so which rules the editor OFFERS and which rules it ACCEPTS are the same
+ * list read twice rather than two lists that can disagree — which is how an
+ * ego rule came to be unbuildable in a filter and unreported inside one.
+ */
+const RULE_TYPE_LABELS: Readonly<Record<RuleTargetType, string>> =
+  Object.freeze({
+    node: 'Node - match a node type or one of its attributes.',
+    edge: 'Edge - match an edge type or one of its attributes.',
+    ego: 'Ego - match one of the ego attributes.',
+  });
 
 export type RuleSetFieldProps = CreateFormFieldProps<
   RuleSetValue,
@@ -30,9 +39,11 @@ export type RuleSetFieldProps = CreateFormFieldProps<
     /**
      * A network filter narrows the entities a stage works on; a query asks a
      * yes/no question about the whole network. Only a query can ask about the
-     * ego, because only a query has anything to do with the answer.
+     * ego, because only a query has anything to do with the answer — and the
+     * protocol schema says the same, so a stored ego rule in a filter is
+     * reported here rather than refused by the schema alone.
      */
-    variant?: 'filter' | 'query';
+    variant?: RuleSetVariant;
     allowEdgeRules?: boolean;
     /**
      * What this rule set's one add control is called.
@@ -91,12 +102,22 @@ function RuleSetControl({
   const rules = ruleSet?.rules ?? [];
   const join = ruleSet?.join;
 
-  const ruleTypes = useMemo(() => {
-    const types: RuleTypeOption[] = [NODE_RULE];
-    if (allowEdgeRules) types.push(EDGE_RULE);
-    if (variant === 'query') types.push(EGO_RULE);
-    return types;
-  }, [allowEdgeRules, variant]);
+  // What the rules in this set may be ABOUT: the protocol schema's own rule,
+  // and what a stored rule is held to. `allowEdgeRules` is not part of it —
+  // the schema accepts an edge rule in any rule set, so one sitting in a set
+  // that does not offer to build them is the researcher's own rule and not a
+  // problem to report.
+  const allowedTargets = ruleSetTargets(variant);
+
+  const ruleTypes = useMemo(
+    () =>
+      allowedTargets.flatMap<RuleTypeOption>((target) =>
+        target === 'edge' && !allowEdgeRules
+          ? []
+          : [{ label: RULE_TYPE_LABELS[target], value: target }],
+      ),
+    [allowEdgeRules, allowedTargets],
+  );
 
   const updateRules = useCallback(
     (nextRules: RuleDraft[]) => {
@@ -134,6 +155,7 @@ function RuleSetControl({
         rules={rules}
         codebook={codebook}
         ruleTypes={ruleTypes}
+        allowedTargets={allowedTargets}
         addButtonLabel={addRuleLabel}
         onChange={updateRules}
         hasError={ariaInvalid === true}

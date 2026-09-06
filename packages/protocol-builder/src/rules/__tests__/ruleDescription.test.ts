@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import type { Codebook } from '@codaco/protocol-validation';
+
 import { describeRule } from '../ruleDescription.ts';
 import { testCodebook } from './fixtures.ts';
 
@@ -333,6 +335,79 @@ describe('describeRule', () => {
     });
   });
 
+  describe('an operator a rule about presence cannot use', () => {
+    it('reports one the schema would reject', () => {
+      const description = describeRule({
+        rule: {
+          id: 'rule-21',
+          type: 'node',
+          // A rule with no attribute asks only whether the type is there, and
+          // the schema's type-level set is EXISTS/NOT_EXISTS. A hand-edited or
+          // imported protocol can hold this, and the row is where the
+          // researcher has to be able to see it.
+          options: { type: 'person', operator: 'EXACTLY', value: 3 },
+        },
+        codebook,
+      });
+
+      expect(description.problems).toContainEqual({
+        code: 'invalidOperator',
+        message:
+          'This rule asks whether an entity type is present, but uses an operator that cannot ask that. Edit or delete the rule.',
+      });
+    });
+
+    it('says nothing about a presence operator', () => {
+      const description = describeRule({
+        rule: {
+          id: 'rule-22',
+          type: 'node',
+          options: { type: 'person', operator: 'NOT_EXISTS' },
+        },
+        codebook,
+      });
+
+      expect(description.problems).toEqual([]);
+    });
+
+    it('leaves an attribute rule to the attribute-type check', () => {
+      const description = describeRule({
+        rule: {
+          id: 'rule-23',
+          type: 'node',
+          // The same operator, against an attribute that allows it. A presence
+          // check that reached this rule would refuse a rule that is correct.
+          options: {
+            type: 'person',
+            attribute: 'age',
+            operator: 'EXACTLY',
+            value: 3,
+          },
+        },
+        codebook,
+      });
+
+      expect(description.problems).toEqual([]);
+    });
+
+    it('says nothing more about a rule whose target it cannot read', () => {
+      const description = describeRule({
+        rule: {
+          id: 'rule-24',
+          type: 'chimera',
+          options: { type: 'person', operator: 'EXACTLY', value: 3 },
+        },
+        codebook,
+      });
+
+      // Which operators are legal depends on what the rule is about, and this
+      // rule does not say. The unreadable target is already reported.
+      expect(description.problems.map((problem) => problem.code)).not.toContain(
+        'invalidOperator',
+      );
+    });
+  });
+
   describe('references the codebook can no longer account for', () => {
     it('reports a deleted attribute rather than throwing', () => {
       const description = describeRule({
@@ -420,6 +495,278 @@ describe('describeRule', () => {
     });
   });
 
+  /**
+   * An operator can survive a retype while the operand it was entered for
+   * cannot: both `number` and `categorical` accept `EXACTLY`, but a number
+   * answers with a number and a categorical answers with a list of the options
+   * that were selected. The protocol schema accepts either shape at `value`,
+   * so nothing downstream of the builder catches this.
+   */
+  describe('an operand the attribute type can no longer be compared against', () => {
+    const OPERAND_MESSAGE =
+      'This rule compares its attribute against a value of the wrong kind for the attribute’s type. Edit or delete the rule.';
+
+    it('reports a scalar operand left behind by a retype to categorical', () => {
+      const description = describeRule({
+        rule: {
+          id: 'rule-22',
+          type: 'node',
+          options: {
+            type: 'person',
+            attribute: 'mood',
+            operator: 'EXACTLY',
+            value: 5,
+          },
+        },
+        codebook,
+      });
+
+      expect(description.problems).toContainEqual({
+        code: 'invalidOperand',
+        message: OPERAND_MESSAGE,
+      });
+    });
+
+    it('reports a list operand left behind by a retype to number', () => {
+      const description = describeRule({
+        rule: {
+          id: 'rule-23',
+          type: 'node',
+          options: {
+            type: 'person',
+            attribute: 'age',
+            operator: 'EXACTLY',
+            value: ['happy'],
+          },
+        },
+        codebook,
+      });
+
+      expect(description.problems.map((problem) => problem.code)).toContain(
+        'invalidOperand',
+      );
+    });
+
+    it('says nothing about an operand the attribute type still reads', () => {
+      const description = describeRule({
+        rule: {
+          id: 'rule-24',
+          type: 'node',
+          options: {
+            type: 'person',
+            attribute: 'mood',
+            operator: 'EXACTLY',
+            value: ['happy'],
+          },
+        },
+        codebook,
+      });
+
+      expect(description.problems).toEqual([]);
+    });
+
+    it('says nothing about an option count, which is a number whatever the attribute is', () => {
+      const description = describeRule({
+        rule: {
+          id: 'rule-25',
+          type: 'node',
+          options: {
+            type: 'person',
+            attribute: 'mood',
+            operator: 'OPTIONS_EQUALS',
+            value: 2,
+          },
+        },
+        codebook,
+      });
+
+      expect(description.problems).toEqual([]);
+    });
+
+    it('says nothing about a single option compared with includes', () => {
+      const description = describeRule({
+        rule: {
+          id: 'rule-26',
+          type: 'node',
+          options: {
+            type: 'person',
+            attribute: 'mood',
+            operator: 'INCLUDES',
+            // The runtime compares one option against the stored selection, so
+            // a rule authored before the editor emitted a list still matches.
+            value: 'happy',
+          },
+        },
+        codebook,
+      });
+
+      expect(description.problems).toEqual([]);
+    });
+
+    it('says nothing about an attribute the codebook no longer describes', () => {
+      const description = describeRule({
+        rule: {
+          id: 'rule-27',
+          type: 'node',
+          options: {
+            type: 'person',
+            attribute: 'favouriteColour',
+            operator: 'EXACTLY',
+            value: ['happy'],
+          },
+        },
+        codebook,
+      });
+
+      // Nothing is known about what a deleted attribute's operand ought to
+      // look like, and the deletion is already reported.
+      expect(description.problems.map((problem) => problem.code)).toEqual([
+        'missingAttribute',
+      ]);
+    });
+  });
+
+  /**
+   * The same drift one step finer than a retype. The attribute is still there
+   * and still answered by choosing from a list; the operand is still an option
+   * value. It is only no longer one of the options this attribute offers,
+   * because a collaborator renamed or deleted it — and a rule that reads
+   * perfectly and can never match is exactly the kind nothing else reports.
+   */
+  describe('an operand naming an option the attribute no longer offers', () => {
+    const MISSING_OPTION_MESSAGE =
+      'This rule compares its attribute against an option that is no longer one of that attribute’s choices. Edit or delete the rule.';
+
+    it('reports an option the codebook has lost', () => {
+      const description = describeRule({
+        rule: {
+          id: 'rule-28',
+          type: 'node',
+          options: {
+            type: 'person',
+            attribute: 'mood',
+            operator: 'EXACTLY',
+            value: ['retired'],
+          },
+        },
+        codebook,
+      });
+
+      expect(description.problems).toContainEqual({
+        code: 'missingOption',
+        message: MISSING_OPTION_MESSAGE,
+      });
+    });
+
+    it('reports one stale option inside a list of good ones', () => {
+      const description = describeRule({
+        rule: {
+          id: 'rule-29',
+          type: 'node',
+          options: {
+            type: 'person',
+            attribute: 'mood',
+            operator: 'INCLUDES',
+            value: ['happy', 'retired'],
+          },
+        },
+        codebook,
+      });
+
+      expect(description.problems.map((problem) => problem.code)).toEqual([
+        'missingOption',
+      ]);
+    });
+
+    it('says nothing about a rule whose options are all still authored', () => {
+      const description = describeRule({
+        rule: {
+          id: 'rule-30',
+          type: 'node',
+          options: {
+            type: 'person',
+            attribute: 'mood',
+            operator: 'INCLUDES',
+            value: ['happy', 'sad'],
+          },
+        },
+        codebook,
+      });
+
+      expect(description.problems).toEqual([]);
+    });
+
+    it('still reads the rule back as a sentence', () => {
+      // Reporting is not refusing to describe: the researcher has to be able
+      // to see the rule they are being asked to fix, and an option the
+      // codebook has lost has no label but its own value.
+      const description = describeRule({
+        rule: {
+          id: 'rule-31',
+          type: 'node',
+          options: {
+            type: 'person',
+            attribute: 'mood',
+            operator: 'EXACTLY',
+            value: ['retired'],
+          },
+        },
+        codebook,
+      });
+
+      expect(description.text).toBe(
+        'Person where Mood is exactly equal to retired',
+      );
+    });
+  });
+
+  describe('a definition the codebook holds without a name', () => {
+    /**
+     * `name` is a required string in the schema but an empty one is legal, and
+     * the editor's own type list already falls back to the id for it. A
+     * sentence that does not leaves the preview reading "exists" and the row's
+     * edit and delete controls named after nothing.
+     */
+    const sparseCodebook: Readonly<Codebook> = Object.freeze({
+      node: {
+        person: {
+          name: '',
+          color: 'node-color-seq-2',
+          shape: { default: 'square' },
+        },
+      },
+      edge: { friend: { name: '' } },
+    });
+
+    it('names a node type by its id', () => {
+      const description = describeRule({
+        rule: {
+          id: 'rule-28',
+          type: 'node',
+          options: { type: 'person', operator: 'EXISTS' },
+        },
+        codebook: sparseCodebook,
+      });
+
+      expect(description.entity?.label).toBe('person');
+      expect(description.text).toBe('person exists');
+    });
+
+    it('names an edge type by its id', () => {
+      const description = describeRule({
+        rule: {
+          id: 'rule-29',
+          type: 'edge',
+          options: { type: 'friend', operator: 'NOT_EXISTS' },
+        },
+        codebook: sparseCodebook,
+      });
+
+      expect(description.entity?.label).toBe('friend');
+      expect(description.text).toBe('friend does not exist');
+    });
+  });
+
   describe('input it cannot trust', () => {
     it.each([
       ['null', null],
@@ -457,9 +804,187 @@ describe('describeRule', () => {
         },
         codebook,
       });
-      // A non-primitive operand contributes nothing to the sentence rather
-      // than being stringified into it.
-      expect(description.operand).toBeUndefined();
+      // An operand no control could have entered is still an operand this rule
+      // holds, and is written out as it stands. Dropping it read the rule back
+      // as "Person where Age is exactly" — a sentence about a comparison the
+      // rule does not make, and the one rule the researcher most needs to see.
+      expect(description.operand?.items).toEqual(['{"nested":true}']);
+      expect(description.text).toBe(
+        'Person where Age is exactly equal to {"nested":true}',
+      );
     });
+
+    it('never reads a boolean operand as the option that shares its name', () => {
+      // The v8 migration turns a boolean OPTION into its string form and
+      // leaves the operands that name it alone, so a migrated protocol holds
+      // `[true]` beside the option `"true"`. The interview compares by
+      // identity and can never match them — printing the option's own label
+      // over the boolean claimed the opposite.
+      const description = describeRule({
+        rule: {
+          id: 'rule-13',
+          type: 'node',
+          options: {
+            type: 'person',
+            attribute: 'consent',
+            operator: 'INCLUDES',
+            value: [true],
+          },
+        },
+        codebook: {
+          node: {
+            person: {
+              name: 'Person',
+              color: 'node-color-seq-2',
+              shape: { default: 'square' },
+              variables: {
+                consent: {
+                  name: 'Consent',
+                  type: 'categorical',
+                  options: [
+                    { label: 'Consented', value: 'true' },
+                    { label: 'Declined', value: 'false' },
+                  ],
+                },
+              },
+            },
+          },
+        },
+      });
+
+      expect(description.operand?.items).toEqual(['true']);
+      expect(description.problems.map((problem) => problem.code)).toContain(
+        'unusableOption',
+      );
+      expect(description.problems.map((problem) => problem.message)).toContain(
+        'This rule compares its attribute against a true/false value, which cannot be one of that attribute’s choices. Edit or delete the rule.',
+      );
+    });
+  });
+});
+
+/**
+ * What a problem message may and may not claim.
+ *
+ * A rule the codebook has moved under is reported wherever it is found, and
+ * the message is read by a researcher deciding which rule to open. It may
+ * therefore state facts — this is the value, this is what the attribute
+ * records — and it may not state a consequence that depends on the operator
+ * above it: `not` and `does not contain` are TRUE whenever the comparison
+ * fails, so an operand no answer can equal makes such a rule match every
+ * participant rather than none of them. Saying "the rule can never match"
+ * beside one is the opposite of what happens.
+ */
+describe('a problem beside an operator that negates its comparison', () => {
+  const yearCodebook: Readonly<Codebook> = {
+    node: {
+      person: {
+        name: 'Person',
+        color: 'node-color-seq-1',
+        shape: { default: 'circle' },
+        variables: {
+          met: {
+            name: 'Met on',
+            type: 'datetime',
+            component: 'DatePicker',
+            parameters: { type: 'year' },
+          },
+        },
+      },
+    },
+  } as unknown as Codebook;
+
+  const ruleWith = (operator: string) => ({
+    id: 'rule-1',
+    type: 'node' as const,
+    options: {
+      type: 'person',
+      attribute: 'met',
+      operator,
+      value: '2020-05-14',
+    },
+  });
+
+  it('reports the date without saying the rule can never match', () => {
+    const { problems } = describeRule({
+      rule: ruleWith('NOT'),
+      codebook: yearCodebook,
+    });
+
+    expect(problems.map((problem) => problem.code)).toEqual(['unusableDate']);
+    expect(problems.map((problem) => problem.message)).toEqual([
+      'This rule compares its attribute against “2020-05-14”, but the attribute is now answered with a year. Edit or delete the rule.',
+    ]);
+  });
+
+  it('says the same thing beside the operator that does match nothing', () => {
+    // The fact is what sends the researcher to the rule, and it is the same
+    // fact either way — which is why the message does not try to say what the
+    // rule will do.
+    const { problems } = describeRule({
+      rule: ruleWith('EXACTLY'),
+      codebook: yearCodebook,
+    });
+
+    expect(problems.map((problem) => problem.message)).toEqual([
+      'This rule compares its attribute against “2020-05-14”, but the attribute is now answered with a year. Edit or delete the rule.',
+    ]);
+  });
+
+  /**
+   * All three date problems at once, against a picker that can produce each:
+   * a date at the wrong precision, one the calendar does not have, and one
+   * outside the bounds the attribute records between.
+   */
+  it('makes no never-match claim in any date message', () => {
+    const boundedCodebook: Readonly<Codebook> = {
+      node: {
+        person: {
+          name: 'Person',
+          color: 'node-color-seq-1',
+          shape: { default: 'circle' },
+          variables: {
+            met: {
+              name: 'Met on',
+              type: 'datetime',
+              component: 'DatePicker',
+              parameters: {
+                type: 'full',
+                min: '1800-01-01',
+                max: '1810-12-31',
+              },
+            },
+          },
+        },
+      },
+    } as unknown as Codebook;
+
+    const codes: string[] = [];
+    const messages: string[] = [];
+    for (const value of ['2020', '1805-02-31', '2020-05-14']) {
+      const { problems } = describeRule({
+        rule: {
+          id: 'rule-1',
+          type: 'node',
+          options: {
+            type: 'person',
+            attribute: 'met',
+            operator: 'NOT',
+            value,
+          },
+        },
+        codebook: boundedCodebook,
+      });
+      codes.push(...problems.map((problem) => problem.code));
+      messages.push(...problems.map((problem) => problem.message));
+    }
+
+    // Each value reaches a different branch of the date message, so a claim
+    // left in any one of them is caught.
+    expect(codes).toEqual(['unusableDate', 'unusableDate', 'unusableDate']);
+    expect(new Set(messages).size).toBe(3);
+    for (const message of messages) {
+      expect(message).not.toContain('can never match');
+    }
   });
 });

@@ -477,6 +477,7 @@ describe('ArrayField', () => {
       type: 'move',
       from: 1,
       to: 0,
+      item: { id: 'two', label: 'two' },
     });
   });
 

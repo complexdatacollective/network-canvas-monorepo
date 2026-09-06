@@ -21,6 +21,24 @@ export type StageFormStoreApi = NonNullable<
   ContextType<typeof FormStoreContext>
 >;
 
+/**
+ * What a structural write did.
+ *
+ * The draft alone cannot say. A write the session refuses is answered with the
+ * draft it already held, which is indistinguishable from a write that changed
+ * nothing — and a lease can be taken back between the render a handler was
+ * built in and the click that runs it, so a caller's own `readOnly` is not the
+ * answer either. A list editor committing from a click handler can live with
+ * the refusal being reported in the form's error region; a row dialog cannot,
+ * because closing over a draft the session declined discards it.
+ */
+export type OwnCommandsResult = Readonly<{
+  /** The draft the session holds after the batch; unchanged when refused. */
+  draft: StageFormDraft;
+  /** Whether the session declined the write because it is read-only. */
+  refused: boolean;
+}>;
+
 export type StageEditorFormContextValue = Readonly<{
   /** DOM id of the stage `<form>`, for a submit control rendered outside it. */
   formId: string;
@@ -50,8 +68,27 @@ export type StageEditorFormContextValue = Readonly<{
    * this exists: a draft that arrives from elsewhere is written back over the
    * controls on screen, and a write the form made itself must not be mistaken
    * for one of those — it would undo everything typed since.
+   *
+   * An empty batch is a READ of the draft the session holds now, and is never
+   * refused.
    */
-  applyOwnCommands(commands: readonly Command[]): StageFormDraft;
+  applyOwnCommands(commands: readonly Command[]): OwnCommandsResult;
+  /**
+   * Puts a refused structural write in front of the researcher, in the form's
+   * own error region.
+   *
+   * `applyOwnCommands` reports the refusals IT can name — the ones about the
+   * lease — because a caller cannot be asked to know which of the two read-only
+   * routes it met. The refusals it cannot name are the ones about the array a
+   * write was resolved against: a removed row, a row that cannot be told from
+   * its neighbours. Those reach the session as a batch that was simply never
+   * dispatched, so only the list that built it knows there was anything to say.
+   *
+   * For the writes that happen in a click handler, which has nowhere to return
+   * an answer to. A row dialog reports its own instead, above the draft it is
+   * keeping open.
+   */
+  reportRefusedWrite(message: string): void;
   /** Session-owned; never a form field. */
   identity: StageIdentity;
   /**

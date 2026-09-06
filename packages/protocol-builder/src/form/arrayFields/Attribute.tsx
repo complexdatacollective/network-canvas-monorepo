@@ -1,14 +1,20 @@
+import { isEqual } from 'es-toolkit/compat';
 import { Trash2 } from 'lucide-react';
 import {
   createContext,
   useCallback,
   useContext,
   useMemo,
+  useRef,
   type ComponentType,
 } from 'react';
 
 import { IconButton } from '@codaco/fresco-ui/Button';
-import type { ArrayFieldItemProps } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import {
+  stripManagedProperties,
+  type ArrayFieldItemProps,
+} from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import FrescoBooleanField from '@codaco/fresco-ui/form/fields/Boolean';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import type { Variables } from '@codaco/protocol-validation';
@@ -20,6 +26,7 @@ import {
 import type { CodebookSubject } from '../../protocol-context.ts';
 import { variablesForSubject } from '../../protocol-context.ts';
 import { useStageEditorForm } from '../stageEditorContext.ts';
+import { readRows } from './arrayFieldCommands.ts';
 import {
   crossClassPickIssue,
   draftValidatedElsewhereMessage,
@@ -101,6 +108,43 @@ const BOOLEAN_OPTIONS = [
 const REQUIRED_ONLY: readonly RowValidator[] = [requiredRow()];
 
 /**
+ * Said when the row a new attribute was created from is no longer that row.
+ * The attribute itself exists — creating it is the host's write, and it
+ * succeeded — so this says where it went and what to do with it, rather than
+ * reporting a failure.
+ */
+const rowReplacedMessage = (variableName: string) =>
+  `The row you created “${variableName}” from was replaced while it was being created, so nothing has been assigned to it. Select “${variableName}” in the row you want it in.`;
+
+/**
+ * Said when the list stopped accepting changes while the attribute was being
+ * created — a lost lease, a section whose prerequisite stopped being chosen.
+ * `ArrayField` withdraws the row's update handler when that happens, and it is
+ * silent about it: an optional call here assigns nothing and says nothing,
+ * which reads as an assignment that worked.
+ *
+ * Like `rowReplacedMessage` this reports where the attribute went rather than a
+ * failure — creating it is the host's write, and it succeeded.
+ */
+const listClosedMessage = (variableName: string) =>
+  `“${variableName}” was created, but this list stopped accepting changes while it was being created, so nothing has been assigned to it. Select “${variableName}” in the row you want it in once the list can be edited.`;
+
+/**
+ * Said when the assignment reached no row at all.
+ *
+ * The third thing the round trip can outlive, and the one re-checking this
+ * control cannot see: the row leaving the list altogether. Both checks above
+ * read values this control is handed on every render, and a row that has gone
+ * stops being rendered — `ArrayField` even keeps its editor mounted on frozen
+ * props while it animates out — so the row it last saw still reads as
+ * unchanged and the handler it last had still reads as live. Both pass, and
+ * the assignment lands on nothing. `onUpdate` answering for itself is what
+ * turns that into something to say.
+ */
+const rowGoneMessage = (variableName: string) =>
+  `“${variableName}” was created, but the row it was created from is no longer in this list, so nothing has been assigned to it. Select “${variableName}” in the row you want it in.`;
+
+/**
  * Every variable id an array's COMMITTED value holds.
  *
  * Rows carry no stable identity. `committedValue` is frozen when the dialog
@@ -115,13 +159,23 @@ const REQUIRED_ONLY: readonly RowValidator[] = [requiredRow()];
  * the LIVE value (it keeps field paths attached to items during drag
  * previews); reading the live value here would escape every fresh pick and the
  * gate would never fire at all.
+ *
+ * The argument is whatever the stage document holds at the array's key, not
+ * something a caller has already vetted — a host builds this from that value
+ * inside its own `useMemo`, in its own render path. An import, a migration or
+ * a mid-cascade reseed can leave a list holding an entry that is not a row at
+ * all, and destructuring one throws out of that render, taking down the
+ * editor before the render-tolerant control this whole package is built around
+ * ever draws. So it reads its rows the way every other reader here does, with
+ * `readRows` — see `renderedRows` in `arrayFieldCommands`, and fresco-ui's
+ * render-tolerance contract (#1433).
  */
 export const committedAttributeVariableIds = (
-  committedValue: readonly AttributeValue[] = [],
+  committedValue?: unknown,
 ): ReadonlySet<string> =>
   new Set(
-    committedValue
-      .map(({ variable }) => variable)
+    readRows(committedValue)
+      .map((row) => row.variable)
       .filter(
         (variable): variable is string =>
           typeof variable === 'string' && variable !== '',
@@ -201,6 +255,15 @@ export default function Attribute({
     forceShowErrors,
   } = useAssignAttributesContext();
   const { protocolContext, identity } = useStageEditorForm();
+  const { openDialog } = useDialog();
+  // Read when the creation COMPLETES, not when the row was drawn: the whole
+  // point is that the two are different moments. The handler is read the same
+  // way and for the same reason — `ArrayField` withdraws it while the list is
+  // not accepting changes, which can happen inside that window too.
+  const rowRef = useRef(item);
+  rowRef.current = item;
+  const onUpdateRef = useRef(onUpdate);
+  onUpdateRef.current = onUpdate;
   // A DISPLAY path only — the `data-field-name` seam E2E specs target. It is
   // the live position (fresco-ui's `committedIndex` holds it steady through a
   // drag preview) and is never an identity: nothing about this row's VALUE may
@@ -251,10 +314,64 @@ export default function Attribute({
   // researcher typed until it hears the attribute exists, because a refusal is
   // about that name.
   const handleCreateOption = onCreateVariable
-    ? async (variableName: string) => {
+    ? async (variableName: string): Promise<boolean> => {
+        // The row this creation was started FROM, as it stands right now.
+        // Creating a codebook variable is a round trip through the host, and
+        // the list carries on moving while it runs — a collaborator's
+        // insertion, an undo, a rollback after a lost lease. These rows carry
+        // no id of their own, so `onUpdate` is bound to an internal id
+        // `ArrayField` infers from the row's content when the value is
+        // replaced: a row that has itself been edited meanwhile — or one of
+        // two rows nothing can tell apart — leaves this handle naming a row
+        // the researcher never looked at, and the new variable is stamped onto
+        // that one's attribute.
+        //
+        // Content is the only identity such a row has, and it is enough for
+        // the same reason it is enough in `useConfirmRowRemoval`: two rows the
+        // researcher cannot tell apart are two rows this control described
+        // identically.
+        const createdFrom = stripManagedProperties(rowRef.current);
+        // Answered rather than fired and forgotten: the picker keeps the name
+        // the researcher typed until it hears the attribute exists, because a
+        // refusal is about that name.
         const created = await onCreateVariable(variableName);
         if (created === undefined) return false;
-        onUpdate?.({ variable: created });
+        // Both of these are read when the creation COMPLETES: which row this
+        // control now names, and whether the list will still take a write to
+        // it. Either can have changed inside the round trip, and neither is
+        // something the assignment itself would report.
+        const assign = onUpdateRef.current;
+        const stillTheSameRow = isEqual(
+          stripManagedProperties(rowRef.current),
+          createdFrom,
+        );
+        const unassigned = async (description: string) => {
+          await openDialog({
+            type: 'acknowledge',
+            intent: 'warning',
+            title: `“${variableName}” was created but not assigned`,
+            description,
+            actions: { primary: { label: 'Continue', value: true } },
+          });
+        };
+
+        if (!stillTheSameRow || assign === undefined) {
+          await unassigned(
+            stillTheSameRow
+              ? listClosedMessage(variableName)
+              : rowReplacedMessage(variableName),
+          );
+          return false;
+        }
+        // The last thing the two guards above cannot see: a row that has
+        // left the list while this control was still rendering it, or was
+        // rendering nothing at all. Neither refreshes the values those
+        // guards read, so the write itself is what has to answer — see
+        // `onUpdate` in fresco-ui's `ArrayFieldItemProps`.
+        if (assign({ variable: created }) === false) {
+          await unassigned(rowGoneMessage(variableName));
+          return false;
+        }
         return true;
       }
     : undefined;

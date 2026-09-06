@@ -1,7 +1,10 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
+import {
+  fixtureStageIds,
+  loadFixtureStage,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { writeInto } from '../../__tests__/writeInto.ts';
 import { nameGeneratorStageEditors } from '../../nameGeneratorStageEditors.ts';
@@ -178,62 +181,62 @@ describe('the roster name generator editor', () => {
   });
 
   /**
-   * Switching a cleared section back on brings its old rows back.
+   * A stage can ARRIVE naming a column its data file does not have: the
+   * protocol was authored against a file shaped differently, or someone
+   * replaced the file outside this editor. Nothing here fires for it — the
+   * `dataSource` never changes, so the reset a swap triggers has no event to
+   * react to — and the row stands exactly as it was written.
    *
-   * A field's starting value is read from the committed draft
-   * (`ProtocolField` → `useResolvedFieldIdentity`), which the clear above
-   * cannot reach — it parks a tombstone in the FORM, and re-opening the
-   * section mounts a field that never consults it. So the card list re-opens
-   * holding the old file's row, and before these lists could see a dangling
-   * reference that row saved straight back: a stage naming `age` against a
-   * file that has only `city` and `name`, rendered by the interview as a card
-   * detail with nothing under it.
+   * A row like that is what the card list can least afford to render as it
+   * finds it. The stored value IS the column id and the cell renders from the
+   * option list, so an id no option carries leaves the control blank: a
+   * required cell showing nothing, pointing at something the researcher cannot
+   * see, saved straight back as a card detail the interview renders empty.
    *
-   * That resurrection is a defect in its own right and is NOT what this test
-   * accepts. What it holds is the guarantee that stops it reaching a saved
-   * protocol: the row is readable rather than blank, and the save is refused
-   * until the researcher deals with it.
+   * So the guarantee is three things at once — the row says what it holds, the
+   * value it holds can never be chosen again, and the save is refused until
+   * the researcher deals with it.
    */
-  it('refuses to save the old file’s row that survived the swap', async () => {
-    const harness = mountFixture();
+  it('refuses to save a row naming a column the data file does not have', async () => {
+    const seeded = loadFixtureStage('name-generator-roster-1');
+    const harness = renderStageEditor({
+      stage: {
+        ...seeded,
+        fields: {
+          ...seeded.fields,
+          // `city` is not in `roster.json`, whose people carry `age` and
+          // `name`. The row is otherwise complete — an attribute and a label —
+          // so nothing about it looks unfinished.
+          cardOptions: {
+            additionalProperties: [
+              { label: 'Age', variable: 'age' },
+              { label: 'City', variable: 'city' },
+            ],
+          },
+        },
+      },
+      registry: nameGeneratorStageEditors,
+    });
     await screen.findByText(FIXTURE_COLUMNS);
 
-    await importAnotherRoster(harness);
-    await screen.findByText(STAGED_COLUMNS);
-    // The reset has to have run before the section can be switched back on:
-    // switching it on first would be undone by the clear that follows.
-    await waitFor(() =>
-      expect(
-        screen.getByRole('switch', { name: 'Card details' }),
-      ).not.toBeChecked(),
-    );
-
-    // Switched back on, and one detail added against the NEW file. That is
-    // what brings the old file's row back beside it, complete — an attribute
-    // and a label — so nothing about it looks unfinished.
-    await harness.user.click(
-      screen.getByRole('switch', { name: 'Card details' }),
-    );
-    await harness.user.click(
-      await screen.findByRole('button', { name: 'Add new card detail' }),
-    );
+    // Readable rather than blank: the cell still holds the id the stage
+    // arrived with, and the option it renders says what is wrong with it.
     const cards = () =>
       within(screen.getByRole('region', { name: 'Card details' }));
-    await harness.user.selectOptions(
-      cards()
-        .getAllByRole('combobox', { name: 'Attribute' })
-        .at(-1) as HTMLSelectElement,
-      'city',
-    );
-    await harness.user.type(
-      cards().getAllByRole('textbox', { name: /Label/ }).at(-1) as HTMLElement,
-      'City',
+    await waitFor(() =>
+      expect(
+        cards().getAllByRole('combobox', { name: 'Attribute' }).at(-1),
+      ).toHaveValue('city'),
     );
 
-    // Named for what it is rather than left blank, and never choosable again.
+    // Named for what it is, and never choosable again — in this row or in the
+    // one beside it.
     const orphans = await screen.findAllByRole('option', {
-      name: 'age — this attribute is not in the data file',
+      name: 'city — this attribute is not in the data file',
     });
+    expect(orphans).toHaveLength(
+      cards().getAllByRole('combobox', { name: 'Attribute' }).length,
+    );
     for (const orphan of orphans) expect(orphan).toBeDisabled();
 
     expect(await harness.submit()).toBeNull();
@@ -330,7 +333,17 @@ describe('the roster name generator editor', () => {
   /**
    * A data file imported while editing is staged with the host rather than
    * stored: closing the editor without saving has to leave the host holding
-   * neither the file nor anything the researcher typed.
+   * neither the file's bytes nor any record of the choices made against it.
+   *
+   * Which is not the same as leaving the session with nothing pending. A
+   * capability the swap switched off is an edit in its own right — the session
+   * is told, in a batch of its own, before the form is emptied
+   * (`useDiscardStageValues`) — and a batch that names none of the staged
+   * file's keys is not withheld from a live-applying host, so the host already
+   * has it and the cancel does not take it back. So the batches are named here
+   * rather than counted: what must not be among them is the name the
+   * researcher typed or the file they chose, neither of which reaches the
+   * session until the stage is saved.
    */
   it('leaves nothing behind when the editor is closed without saving', async () => {
     const harness = mountFixture();
@@ -349,7 +362,13 @@ describe('the roster name generator editor', () => {
     await harness.cancel();
 
     expect(harness.gateway.getStagingResidue()).toHaveLength(0);
-    expect(harness.pendingCommands()).toHaveLength(0);
+    expect(
+      harness.pendingCommands().flatMap((batch) => [...batch.commands]),
+    ).toEqual([
+      { op: 'unset', key: 'cardOptions' },
+      { op: 'unset', key: 'sortOptions' },
+      { op: 'unset', key: 'searchOptions' },
+    ]);
   });
 
   /**
