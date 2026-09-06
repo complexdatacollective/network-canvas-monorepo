@@ -1,5 +1,3 @@
-import { defineMessages } from 'react-intl';
-
 import type { CatalogMessages } from './locales.ts';
 // Deliberately imported WITHOUT a `with { type: 'json' }` attribute, for the
 // reason `apps/fresco/fresco.config.ts` records against the same trap:
@@ -16,6 +14,8 @@ import type { CatalogMessages } from './locales.ts';
 // which is a change to the translator-facing format and not worth making for
 // a caller that does not exist.
 import enGbOverrides from './locales/en-GB.json';
+import es from './locales/es.json';
+import { defineMessages } from './messages.ts';
 
 /**
  * Universal chrome verbs and boilerplate, translated exactly once for every
@@ -97,4 +97,5 @@ export const commonMessages = defineMessages({
  */
 export const commonCatalogs: Readonly<Record<string, CatalogMessages>> = {
   'en-GB': enGbOverrides as CatalogMessages,
+  es,
 };

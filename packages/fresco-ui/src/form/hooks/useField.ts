@@ -6,11 +6,13 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
 } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
+import { formatMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 
 import {
@@ -260,41 +262,28 @@ export function useField(config: UseFieldConfig): UseFieldResult {
     validationContext: resolvedValidationContext,
   };
 
-  // `useAppIntl` hands back a new formatter every time the active locale
-  // changes. Rebuilding the REGISTERED validation function from it would make
-  // a language switch re-register the field, and unregistering deletes the
-  // field's stored errors along with the blurred flag that lets them show —
-  // so a person switching language with a validation error on screen would
-  // watch it vanish while the form stayed invalid. The registered function
-  // reads the formatter through a ref instead: rule messages are formatted
-  // when validation runs, so the next run picks up the new language without
-  // the function the store holds ever changing identity.
+  // A formatter, custom schema or translated hint may change without the
+  // field being unmounted. The registered validator reads the last committed
+  // configuration, so those changes neither unregister the field nor erase
+  // submitted refusals, values or touched/blurred metadata. Its next run uses
+  // the current rules and language, including custom schemas with closures.
+  const validationConfigRef = useRef({ propsWithContext, intl });
+  useLayoutEffect(() => {
+    validationConfigRef.current = { propsWithContext, intl };
+  });
+
+  // Separately remember the formatter used by errors already on screen; an
+  // in-flight old-language validation still needs a corrective run when it
+  // settles after a language switch.
   const intlRef = useRef(intl);
 
-  // The rules themselves are read the same way, and for a reason of their own:
-  // the key above is a JSON serialisation, and `JSON.stringify` drops a
-  // function-valued property entirely. A `custom` validation whose `schema` is
-  // a function — one rebuilt each render to judge against something that has
-  // changed, such as the rows a value must stay unique against — therefore
-  // serialises to exactly the key it had before, and a memo keyed on that
-  // hands back the closure built from the props that are gone. Making the key
-  // account for the function's identity instead would rebuild the registered
-  // function on every render, and unregistering deletes the field's stored
-  // errors along with the blurred flag that lets them show. Reading the props
-  // when validation RUNS keeps both: one stable registered function, always
-  // judging by the rules the field currently holds.
-  const validationPropsRef = useRef(propsWithContext);
-  validationPropsRef.current = propsWithContext;
-
-  const validation = useMemo(
-    () => (formValues: Record<string, FieldValue>) =>
-      makeValidationFunction(
-        validationPropsRef.current,
-        intlRef.current,
-      )(formValues),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [validationPropsJson, resolvedValidationContext],
-  );
+  const validation = useCallback((formValues: Record<string, FieldValue>) => {
+    const current = validationConfigRef.current;
+    return makeValidationFunction(
+      current.propsWithContext,
+      current.intl,
+    )(formValues);
+  }, []);
 
   // Memoize the validation summary (only compute if showValidationHints is true)
   const validationSummary = useMemo(
@@ -312,6 +301,7 @@ export function useField(config: UseFieldConfig): UseFieldResult {
       : state.getFieldState(publicResolvedName),
   );
   const isSubmitting = useFormStore((state) => state.isSubmitting);
+  const isFormValidating = useFormStore((state) => state.isValidating);
 
   const fieldErrors = useFormStore(
     useShallow((state) =>
@@ -365,13 +355,25 @@ export function useField(config: UseFieldConfig): UseFieldResult {
   // nothing left to compare against when the old-language result committed a
   // moment later. The field kept the previous language until some unrelated
   // edit revalidated it.
+  // Whole-form validation also blocks field validation requests. Wait for it
+  // to finish before acknowledging the locale, then revalidate any errors its
+  // old-locale snapshot committed.
   useEffect(() => {
-    if (intlRef.current === intl) return;
+    if (intlRef.current === intl || isFormValidating) return;
     if (fieldErrors && fieldErrors.length > 0) {
       intlRef.current = intl;
+      // Submission errors carry their own descriptors and reformat in the
+      // renderer. Revalidating locally would erase a server refusal even
+      // though the user has not edited or resubmitted the field.
+      if (
+        fieldErrors.some(
+          (error) => formatMessageError(error, intl) !== undefined,
+        )
+      )
+        return;
       validateResolvedField();
     }
-  }, [intl, fieldErrors, validateResolvedField]);
+  }, [intl, fieldErrors, isFormValidating, validateResolvedField]);
 
   const setResolvedFieldValue = useCallback(
     (value: FieldValue) => {
