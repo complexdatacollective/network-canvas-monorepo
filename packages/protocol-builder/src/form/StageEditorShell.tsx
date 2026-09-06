@@ -10,7 +10,6 @@ import {
   useRef,
 } from 'react';
 
-import { resolveFieldPath } from '@codaco/fresco-ui/form/FieldNamespace';
 import FormErrorsList from '@codaco/fresco-ui/form/FormErrors';
 import { useForm } from '@codaco/fresco-ui/form/hooks/useForm';
 import FormStoreProvider, {
@@ -21,7 +20,6 @@ import type {
   FormSubmitHandler,
 } from '@codaco/fresco-ui/form/store/types';
 import { focusFirstError } from '@codaco/fresco-ui/form/utils/focusFirstError';
-import type { ObjectPath } from '@codaco/fresco-ui/form/utils/objectPath';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import { canonicalize } from '@codaco/studio-sync/apply';
 
@@ -36,13 +34,11 @@ import {
 import { SectionOutlineStore } from './outlineStore.ts';
 import SectionOutline from './SectionOutline.tsx';
 import {
-  type DormantField,
+  dormantFieldsOf,
+  mountedPathsOf,
   stageDraftFromSubmission,
 } from './stageDraftFromSubmission.ts';
-import {
-  StageEditorFormContext,
-  type StageFormStoreApi,
-} from './stageEditorContext.ts';
+import { StageEditorFormContext } from './stageEditorContext.ts';
 
 /**
  * What a host needs to render its own action chrome for the editor.
@@ -229,7 +225,7 @@ function StageEditorFormBody({
 
   return (
     <StageEditorFormContext value={context}>
-      <WithResourceGateway gateway={controller.resourceGateway}>
+      <ResourceGatewayProvider gateway={controller.resourceGateway}>
         <div className={cx('@container flex w-full flex-col gap-6', className)}>
           <div className="grid grid-cols-1 gap-6 @min-[60rem]:grid-cols-[16rem_minmax(0,1fr)] @min-[60rem]:gap-10">
             <SectionOutline />
@@ -250,28 +246,8 @@ function StageEditorFormBody({
           </div>
           {actions?.({ controller, formId, readOnly })}
         </div>
-      </WithResourceGateway>
+      </ResourceGatewayProvider>
     </StageEditorFormContext>
-  );
-}
-
-/**
- * Puts the session's resource gateway where the editor's resource pickers look
- * for it, and nowhere else: a session opened without one renders the same tree,
- * and a picker mounted inside it says so rather than reaching for host storage.
- */
-function WithResourceGateway({
-  gateway,
-  children,
-}: Readonly<{
-  gateway: StageEditorController['resourceGateway'];
-  children: ReactNode;
-}>) {
-  if (gateway === undefined) return children;
-  return (
-    <ResourceGatewayProvider gateway={gateway}>
-      {children}
-    </ResourceGatewayProvider>
   );
 }
 
@@ -334,31 +310,4 @@ function failureMessage(error: unknown): string {
   return error instanceof Error && error.message !== ''
     ? error.message
     : 'This stage could not be saved. Wait a moment and try again.';
-}
-
-/**
- * Every field the form is holding but not showing, as the store parked it.
- *
- * The submitted values cover only mounted fields, so without this a value
- * hidden behind a collapsed group would look identical to one that was
- * deliberately thrown away.
- */
-/**
- * Where every field the form still has mounted lives.
- *
- * The submitted values are assembled from these, so a hidden container that
- * encloses one of them must not be replayed over the top of what they hold.
- */
-function mountedPathsOf(storeApi: StageFormStoreApi): ObjectPath[] {
-  return [...storeApi.getState().fields].map(
-    ([name, field]) => field.path ?? resolveFieldPath([], name),
-  );
-}
-
-function dormantFieldsOf(storeApi: StageFormStoreApi): DormantField[] {
-  return [...storeApi.getState().dormantValues].map(([name, field]) => ({
-    name,
-    ...(field.path === undefined ? {} : { path: field.path }),
-    value: field.value,
-  }));
 }

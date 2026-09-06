@@ -2,10 +2,11 @@ import { useId, useMemo, useSyncExternalStore } from 'react';
 
 import type { Command } from '@codaco/studio-sync/apply';
 
+import type { ResourceResult } from './resources/gateway.ts';
 import type {
-  ProtocolBuilderResourceGateway,
-  ResourceResult,
-} from './resources/gateway.ts';
+  SessionResourceGateway,
+  StagedResourceCancelReport,
+} from './resources/lifecycle.ts';
 import {
   commandsFromDraftChange,
   type CompoundEditRequest,
@@ -35,7 +36,7 @@ export type StageEditorController = Readonly<{
    * session without one. The shell provides it to the editor's resource
    * pickers; they reach it through `useResourceGateway`, never through this.
    */
-  resourceGateway: ProtocolBuilderResourceGateway | undefined;
+  resourceGateway: SessionResourceGateway | undefined;
   changeFields(next: StageFormDraftChange): void;
   setField(key: string, value: unknown): void;
   unsetField(key: string): void;
@@ -49,8 +50,11 @@ export type StageEditorController = Readonly<{
     request: CompoundEditRequest,
   ): Promise<CompoundEditResult>;
   finish(): Promise<void>;
-  /** Closes the editor without finishing: staged resources are discarded. */
-  cancel(): Promise<ResourceResult<undefined>>;
+  /**
+   * Closes the editor without finishing: staged resources are discarded,
+   * except anything a promotion left undecided, which the report names.
+   */
+  cancel(): Promise<ResourceResult<StagedResourceCancelReport>>;
 }>;
 
 export function useStageEditorController(
