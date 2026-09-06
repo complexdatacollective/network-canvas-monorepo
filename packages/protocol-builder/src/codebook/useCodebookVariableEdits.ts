@@ -14,6 +14,7 @@ import {
   buildCreateVariableRequest,
   buildUpdateVariableRequest,
 } from './editing.ts';
+import { optionsShapeFor } from './variableOptions.ts';
 
 /**
  * What a stage section knows about an attribute it is inventing.
@@ -205,6 +206,18 @@ export function useSetVariableComponent(
           authoritativeDocument: document,
           variableId,
           draft: { component },
+          // The answers a control shows go with it when it is replaced by one
+          // that cannot show them. A boolean is the case: `Boolean` names the
+          // two answers a participant chooses between, while `Toggle` is a
+          // switch whose variable schema has no `options` key at all — so a
+          // pair left behind is not a stale setting but a variable the
+          // codebook refuses, and this write would be refused with it.
+          // Architect clears the same properties from the same fact, in
+          // `clearInapplicableCodebookProperties`.
+          replaceProperties:
+            optionsShapeFor(Reflect.get(current, 'type'), component) === null
+              ? ['options']
+              : [],
         });
       } catch (error: unknown) {
         return { status: 'refused', message: refusalMessage(error) };

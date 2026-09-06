@@ -16,16 +16,26 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import VariableEditor from '../codebook/components/VariableEditor.tsx';
 import { useCodebookSectionDocument } from '../codebook/useCodebookVariableEdits.ts';
 import CodebookVariableValidationEditor from '../codebook/validation/CodebookVariableValidationEditor.tsx';
+import { optionsShapeFor } from '../codebook/variableOptions.ts';
 import { parameterShapeFor } from '../codebook/variableParameters.ts';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import type { CodebookSubject } from '../protocol-context.ts';
-import { isCollectableType, isOptionType } from './collectableTypes.ts';
+import { isCollectableType } from './collectableTypes.ts';
 
 /** Where every row that binds an attribute keeps the attribute it binds. */
 const VARIABLE_FIELD = 'variable';
 
 const CREATE_WITH_VALUES = 'Create this attribute and its values';
 const EDIT_VALUES = 'Change this attribute’s values';
+/**
+ * The same surface for a boolean, whose list is two answers rather than a list
+ * the researcher adds to.
+ *
+ * Named for what is actually being changed: a boolean's two values are true
+ * and false whatever the researcher does, and what they author is the words on
+ * them — so "values" would name the one part of it they cannot touch.
+ */
+const EDIT_ANSWER_LABELS = 'Change this attribute’s answer labels';
 /**
  * The same surface, for an attribute whose answer is not chosen from a list.
  *
@@ -194,11 +204,33 @@ export default function AttributeCodebookControls({
   // which covers the sentinel a row picks while it is still inventing one.
   const picked = chosen === '' ? undefined : variables[chosen];
   const pickedType = asString(asRecord(picked).type) ?? '';
+  const codebookComponent = asString(asRecord(picked).component) ?? '';
   // The row's own choice while it is being made, falling back to the codebook
   // for the render before the control has registered.
-  const pickedComponent =
-    asString(liveComponent) ?? asString(asRecord(picked).component) ?? '';
-  const canEditValues = picked !== undefined && isOptionType(pickedType);
+  const pickedComponent = asString(liveComponent) ?? codebookComponent;
+  /**
+   * The control whose choice decides what the CODEBOOK holds.
+   *
+   * The row's, wherever the row's control is the one being written to the
+   * codebook: it was chosen a moment ago, and the editor writes it alongside
+   * whatever depends on it. But a caller that keeps its control on the stage
+   * (`offerParameters` false) never writes it, so the codebook's own control
+   * is the only one its schema is keyed on — and judging by the row's would
+   * offer a boolean's answer labels for an attribute the codebook records as a
+   * toggle, whose schema has no `options` key to put them in.
+   */
+  const decidingComponent = offerParameters
+    ? pickedComponent
+    : codebookComponent;
+  // Which list of answers the attribute holds — a list the researcher adds to,
+  // or the two a boolean choice names. Asked of a control for the reason the
+  // settings are: a boolean moved to a toggle holds no list at all.
+  const optionsShape =
+    picked === undefined
+      ? null
+      : optionsShapeFor(pickedType, decidingComponent);
+  const canEditValues = optionsShape === 'choice';
+  const canEditAnswers = optionsShape === 'boolean';
   const canEditParameters =
     offerParameters &&
     picked !== undefined &&
@@ -206,12 +238,22 @@ export default function AttributeCodebookControls({
   const canEditRules = picked !== undefined;
   const canCreate =
     inventingType !== undefined && isCollectableType(inventingType);
-  const definesLabel = canEditValues ? EDIT_VALUES : EDIT_PARAMETERS;
+  const definesLabel = canEditValues
+    ? EDIT_VALUES
+    : canEditAnswers
+      ? EDIT_ANSWER_LABELS
+      : EDIT_PARAMETERS;
 
   if (readOnly || subject === undefined || codebookDocument === null) {
     return null;
   }
-  if (!canCreate && !canEditValues && !canEditParameters && !canEditRules) {
+  if (
+    !canCreate &&
+    !canEditValues &&
+    !canEditAnswers &&
+    !canEditParameters &&
+    !canEditRules
+  ) {
     return null;
   }
 
@@ -248,7 +290,7 @@ export default function AttributeCodebookControls({
             {CREATE_WITH_VALUES}
           </Button>
         )}
-        {(canEditValues || canEditParameters) && (
+        {(canEditValues || canEditAnswers || canEditParameters) && (
           <Button
             ref={definesTrigger}
             type="button"
