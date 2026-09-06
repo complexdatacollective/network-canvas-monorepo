@@ -275,7 +275,9 @@ export default function ResourcePickerControl({
     setRefusal(undefined);
     action.clear();
     onChange?.(chosen.id);
-    setStatus(`${chosen.name} is now selected.`);
+    setStatus(
+      intl.formatMessage(messages.selectedAnnouncement, { name: chosen.name }),
+    );
   };
 
   const handleRemove = () => {

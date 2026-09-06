@@ -1,10 +1,11 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import { ecosystemLocales } from '@codaco/app-i18n/locales';
 import { AppI18nProvider } from '@codaco/app-i18n/react';
+import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 
 import { protocolBuilderCatalogs } from '../../../locales/catalogs.ts';
 import { esIntl } from '../../../testing/i18n.ts';
@@ -15,8 +16,12 @@ import {
   type ResourceInspection,
   type ResourceResult,
 } from '../../gateway.ts';
-import { InMemoryResourceGateway } from '../../InMemoryResourceGateway.ts';
+import {
+  InMemoryResourceGateway,
+  type InMemoryResourceSeed,
+} from '../../InMemoryResourceGateway.ts';
 import ResourceFailureNotice from '../ResourceFailureNotice.tsx';
+import ResourcePickerControl from '../ResourcePickerControl.tsx';
 import ResourceSummary from '../ResourceSummary.tsx';
 import ResourceUploadControl from '../ResourceUploadControl.tsx';
 
@@ -116,7 +121,66 @@ describe('resource surfaces in a reader’s own language', () => {
       )}.`,
     );
   });
+
+  it('announces a chosen resource in Spanish', async () => {
+    // The one thing a researcher who cannot see the field learns from making a
+    // choice, so it is the one sentence the picker MUST say in their language:
+    // the summary beside it is already there for everybody else.
+    const user = userEvent.setup();
+    render(
+      inSpanish(
+        <DialogProvider>
+          <ResourceGatewayProvider
+            gateway={new InMemoryResourceGateway({ committed: [IMAGE_SEED] })}
+          >
+            <ImagePicker />
+          </ResourceGatewayProvider>
+        </DialogProvider>,
+      ),
+    );
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Selecciona una imagen' }),
+    );
+    await user.click(
+      within(
+        await screen.findByRole('list', { name: 'Recursos de este protocolo' }),
+      ).getByRole('button', { name: 'Neighbourhood photo' }),
+    );
+
+    // The resource's own name is the researcher's, so it is not translated —
+    // everything the picker says around it is.
+    const announcement = await screen.findByText(
+      'Neighbourhood photo está ahora seleccionado.',
+    );
+    expect(announcement).toHaveAttribute('aria-live', 'polite');
+  });
 });
+
+const IMAGE_SEED: InMemoryResourceSeed = {
+  kind: 'image',
+  id: 'image-1',
+  name: 'Neighbourhood photo',
+  source: 'neighbourhood.png',
+  contentType: 'image/png',
+  bytes: new TextEncoder().encode('png-bytes'),
+};
+
+/**
+ * The picker as a field really holds it: the choice is written back, so the
+ * announcement is made about a selection the control went on to show.
+ */
+function ImagePicker() {
+  const [value, setValue] = useState<string | undefined>(undefined);
+  return (
+    <ResourcePickerControl
+      name="backgroundImage"
+      kind="image"
+      value={value}
+      onChange={setValue}
+    />
+  );
+}
 
 /**
  * The one place the English wording genuinely moved. The template read
