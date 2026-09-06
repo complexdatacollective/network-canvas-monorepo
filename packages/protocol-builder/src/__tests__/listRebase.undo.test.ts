@@ -34,10 +34,10 @@ const ASKED = { id: 'a', text: 'Who do you know?' };
 const ADDED = { id: 'b', text: 'Anyone else?' };
 const ARRIVED = { id: 'z', text: 'Who lives with you?' };
 
-const openSession = () =>
+const openSession = (prompts: readonly SectionDoc[] = [ASKED]) =>
   new ProtocolBuilderSessionStore({
     identity: createStageIdentity('NameGenerator', () => 'stage-1'),
-    fields: stageWith([ASKED]),
+    fields: stageWith(prompts),
     protocolSections: {},
     manifestRevision: revision(1n),
     access: { mode: 'editable', leaseOwner: 'tab-1', leaseEpoch: 1n },
@@ -119,5 +119,38 @@ describe('undo after a collaborator’s arrival', () => {
     session.undo();
 
     expect(session.getSnapshot().editedSection.fields.prompts).toEqual([ASKED]);
+  });
+
+  /**
+   * A batch the rebase emptied.
+   *
+   * `rebaseCommands` refuses a command whose row the arrival has already taken
+   * away, which for a one-command batch leaves nothing at all. Keeping the
+   * empty batch pending said there was unsaved work where there was none —
+   * `replaceAuthoritativeStage` refuses a stage while any batch is pending, so
+   * a session in that state could not adopt one — and its undo entry was a
+   * draft identical to the one on screen: Undo stayed enabled, and pressing it
+   * changed nothing, because `applyLocalCommands` returns on an empty diff.
+   */
+  it('drops a batch its rebase emptied, and the undo step with it', () => {
+    const session = openSession([ASKED, ADDED]);
+    session.dispatch([{ op: 'removeItem', key: 'prompts', index: 1 }]);
+    expect(session.getSnapshot().editedSection.fields.prompts).toEqual([ASKED]);
+
+    // The collaborator deletes the very prompt the researcher was deleting,
+    // and adds one of their own — so the arrival is foreign, and the
+    // researcher's removal has nothing left to remove.
+    session.acknowledge({
+      fields: stageWith([ASKED, ARRIVED]),
+      throughBatchId: 0,
+      manifestRevision: revision(2n),
+    });
+
+    expect(session.getSnapshot().editedSection.fields.prompts).toEqual([
+      ASKED,
+      ARRIVED,
+    ]);
+    expect(session.getSnapshot().pendingCommands).toEqual([]);
+    expect(session.getSnapshot().history.canUndo).toBe(false);
   });
 });

@@ -1560,6 +1560,16 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
    * draft on screen is showing. A batch nothing moved under keeps its own
    * command objects, so the common case is unchanged in every respect.
    *
+   * A batch the rebase EMPTIED is dropped, along with the undo entry it would
+   * have had. `rebaseCommands` refuses a command whose row the arrival has
+   * already taken away — the researcher and a collaborator deleting the same
+   * prompt — and for a batch of one that leaves nothing. Keeping the husk said
+   * there was unsaved work where there was none, which is a claim other things
+   * act on: `replaceAuthoritativeStage` refuses a stage while any batch is
+   * pending. Its undo entry was worse, being a draft identical to the one on
+   * screen: the history offered an undo that could not do anything, since
+   * `applyLocalCommands` returns on an empty diff.
+   *
    * Must be called BEFORE `baseFields` is replaced: the previous base is the
    * foot of the walk.
    */
@@ -1597,6 +1607,9 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
         basisDocument === undefined
           ? batch.commands
           : rebaseCommands(basisDocument, fields, batch.commands);
+      // Nothing of this batch survived the rebase: it edits nothing, changes
+      // no draft, and has no undo to offer.
+      if (commands.length === 0) continue;
       const rebased =
         commands === batch.commands
           ? batch
