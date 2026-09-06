@@ -6,6 +6,7 @@ import SuperJSON from 'superjson';
 
 import Spinner from '@codaco/fresco-ui/Spinner';
 import { type ActivityType } from '~/app/dashboard/_components/ActivityFeed/types';
+import type { ActivityLocalization } from '~/i18n/activityDetails';
 import { getServerSession } from '~/lib/auth/guards';
 import { safeRevalidateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
@@ -97,6 +98,14 @@ async function InterviewContent({
         data: {
           type: 'Interview Opened' satisfies ActivityType,
           message,
+          localization: {
+            kind: 'interviewOpened',
+            values: {
+              actor: session ? 'researcher' : 'participant',
+              interview: interviewId,
+              username: session?.user.username ?? '',
+            },
+          } satisfies ActivityLocalization,
         },
       });
 

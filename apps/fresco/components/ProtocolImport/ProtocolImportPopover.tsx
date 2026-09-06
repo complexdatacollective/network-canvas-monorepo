@@ -3,6 +3,8 @@
 import { FileDown } from 'lucide-react';
 import { useCallback, useState } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Button, type ButtonProps } from '@codaco/fresco-ui/Button';
 import {
   Popover,
@@ -11,6 +13,15 @@ import {
 } from '@codaco/fresco-ui/Popover';
 
 import ProtocolImportDropzone from './ProtocolImportDropzone';
+
+const messages = defineMessages({
+  importProtocols: {
+    id: 'fresco.ProtocolImport.ProtocolImportPopover.importProtocols',
+    defaultMessage: 'Import protocols',
+    description:
+      'Researcher-facing ProtocolImport / ProtocolImportPopover: Import protocols',
+  },
+});
 
 type ProtocolImportPopoverProps = {
   onFilesAccepted: (files: File[]) => void;
@@ -27,6 +38,8 @@ export default function ProtocolImportPopover({
   buttonDisabled,
   className,
 }: ProtocolImportPopoverProps) {
+  const intl = useAppIntl();
+
   const [open, setOpen] = useState(false);
 
   const handleFilesAccepted = useCallback(
@@ -47,10 +60,14 @@ export default function ProtocolImportPopover({
           className={className}
           icon={<FileDown />}
         >
-          Import protocols
+          {intl.formatMessage(messages.importProtocols)}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-full max-w-md">
+      <PopoverContent
+        aria-label={intl.formatMessage(messages.importProtocols)}
+        align="end"
+        className="w-full max-w-md"
+      >
         <ProtocolImportDropzone onFilesAccepted={handleFilesAccepted} />
       </PopoverContent>
     </Popover>
