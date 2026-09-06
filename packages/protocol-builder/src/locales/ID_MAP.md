@@ -200,10 +200,10 @@ A family that needs different words from a shared section names them one at a
 time as `MessageDescriptor` props — `PromptsSection`'s `description`,
 `FormFieldsSection`'s `title`, `SectionCapability.confirmClear` — never as
 strings and never as a `copy` bundle. `src/__tests__/hostCopyOverrides.test.ts`
-is the scan that keeps it that way. Its `NOT_CONVERTED_YET` exclusion still
-names these five directories, which is now stale: they hold no `copy?:` prop
-and no string-bearing `…Copy` type, and the five entries go the next time that
-file is edited.
+is the scan that keeps it that way, and it now covers these five directories:
+its `NOT_CONVERTED_YET` exclusion named them while the conversion was in
+flight and no longer does, so a section reintroducing a `copy?:` prop or a
+string-bearing `…Copy` type fails there. Only `resources/` is still excluded.
 
 Three reserved areas turned out to need no ids at all, and two name files that
 do not exist yet. Recorded rather than dropped, so nobody re-reserves a name

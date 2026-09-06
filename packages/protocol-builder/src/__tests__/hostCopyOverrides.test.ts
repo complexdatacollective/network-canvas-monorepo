@@ -13,25 +13,23 @@ const SOURCE_EXTENSIONS = ['.ts', '.tsx'];
 const FIXTURE = /(\.test\.|\.stories\.|__tests__|__mocks__)/;
 
 /**
- * The areas whose conversion has not landed yet.
+ * The one area whose conversion has not landed yet.
  *
  * `resources/` is the localisation branch's to convert, and until that lands
- * `resourceKinds.ts` still holds a `ResourcePickerCopy` of plain strings. The
- * five interface families under `sections/` are family F's, whose sections
- * still carry a `copy?: Partial<…Copy>` each — the ids are reserved in
- * `src/locales/ID_MAP.md` (`networkCanvas`, `pedigree`, `narrativePedigree`,
- * `geospatial`, `anonymisation`) and the copy joins them there.
+ * `resourceKinds.ts` still holds a `ResourcePickerCopy` of plain strings.
+ * Excluded by directory rather than by file, and deliberately narrow: it is
+ * the one place in the package the rule below does not yet hold, and the
+ * exclusion goes with that conversion.
  *
- * Excluded by directory rather than by file, and deliberately narrow: these
- * are the only places in the package the rule below does not yet hold. What
- * has ALREADY crossed a converted seam is not excluded by this — a family's
- * `confirmClear`, its row nouns and the sentences it hands to `PromptsSection`
- * and `FormFieldsSection` are descriptors today, declared in that family's own
- * `*Messages.ts` and covered by the catalog guards. Each entry goes when its
- * family's conversion lands.
+ * The five interface families under `sections/` — `network`, `pedigree`,
+ * `narrativePedigree`, `geospatial` and `anonymisation` — were excluded here
+ * while their sections still took a `copy?: Partial<…Copy>` each. They are
+ * converted now: every word each family says is a `MessageDescriptor`
+ * declared in that family's own `*Messages.ts` (the areas are listed in
+ * `src/locales/ID_MAP.md`), so the scan below covers them like anything else,
+ * and a section that reintroduced the seam would fail it.
  */
-const NOT_CONVERTED_YET =
-  /^(?:resources|sections\/(?:network|pedigree|narrativePedigree|geospatial|anonymisation))\//;
+const NOT_CONVERTED_YET = /^resources\//;
 
 function sourceFiles(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
