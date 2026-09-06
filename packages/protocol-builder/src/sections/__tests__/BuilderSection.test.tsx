@@ -1,10 +1,12 @@
-import { screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import { Button } from '@codaco/fresco-ui/Button';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 
+import MultiSelect from '../../form/arrayFields/MultiSelect.tsx';
+import ProtocolArrayField from '../../form/ProtocolArrayField.tsx';
 import ProtocolField from '../../form/ProtocolField.tsx';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import BuilderSection, { type SectionCapability } from '../BuilderSection.tsx';
@@ -77,9 +79,93 @@ function SearchOptionsAgainstAResource() {
   );
 }
 
+/**
+ * A capability that owns a whole CONTAINER, whose rows are what it holds.
+ *
+ * The container rather than the list inside it, because absence is how the
+ * schema spells "this stage does not do this": a capability owning only
+ * `cardOptions.additionalProperties` leaves an empty `cardOptions` behind when
+ * it is switched off. It is the shape a subject change clears too, which
+ * addresses the stage in top-level keys.
+ */
+const CARDS: SectionCapability = {
+  fields: ['cardOptions'],
+  confirmClear: {
+    title: 'This will clear the card details',
+    description: 'Every extra attribute the cards show will be removed.',
+    confirmLabel: 'Clear card details',
+  },
+};
+
+const CARD_COLUMNS = [
+  { fieldName: 'variable', label: 'Attribute' },
+  { fieldName: 'label', control: 'input' as const, label: 'Label' },
+];
+
+/** What each file turned out to hold. The two share only `name`. */
+const FILE_COLUMNS: Record<string, { value: string; label: string }[]> = {
+  roster_data: [
+    { value: 'name', label: 'name' },
+    { value: 'age', label: 'age' },
+  ],
+  another_roster: [
+    { value: 'name', label: 'name' },
+    { value: 'city', label: 'city' },
+  ],
+};
+
+/**
+ * The same capability holding ROWS, behind a group the researcher has to open.
+ *
+ * The group is the shape that matters. A capability owning a container whose
+ * controls sit inside a collapsed group has no field registered anywhere under
+ * that container until the group is opened — the case `useClearStageValue` and
+ * `pathHasAnswer` each single out — so the clear has nothing beneath the
+ * container to park a record on, and the list arrives afterwards, seeded from
+ * the draft the stage was opened with.
+ */
+function CardDetails() {
+  const [dataSource, setDataSource] = useState('roster_data');
+  const [showAttributes, setShowAttributes] = useState(false);
+
+  return (
+    <>
+      <Button type="button" onClick={() => setDataSource('another_roster')}>
+        Choose another roster
+      </Button>
+      <BuilderSection
+        title="Card details"
+        capability={CARDS}
+        resetOn={dataSource}
+      >
+        {showAttributes ? (
+          <ProtocolArrayField<typeof MultiSelect>
+            name="cardOptions.additionalProperties"
+            label="Attributes shown on a card"
+            component={MultiSelect}
+            addButtonLabel="Add new card detail"
+            properties={CARD_COLUMNS}
+            options={() => FILE_COLUMNS[dataSource] ?? []}
+            emptyStateMessage="No extra attributes are shown on a card."
+          />
+        ) : (
+          <Button type="button" onClick={() => setShowAttributes(true)}>
+            Choose the attributes
+          </Button>
+        )}
+      </BuilderSection>
+    </>
+  );
+}
+
 const openSection = () => ({
   stageId: 'name-generator-roster-1',
   sections: <SearchOptions />,
+});
+
+const openListSection = () => ({
+  stageId: 'name-generator-roster-1',
+  sections: <CardDetails />,
 });
 
 const openSectionAgainstAResource = () => ({
@@ -143,6 +229,111 @@ describe('a capability that only means anything against something else', () => {
     expect(
       await screen.findByRole('textbox', { name: 'Fuzziness' }),
     ).toHaveValue('');
+  });
+
+  /**
+   * The same guarantee for a control that was not on screen when the clear
+   * happened.
+   *
+   * A field seeds itself from the committed draft, which is the only place a
+   * value is before the researcher has touched it. The clear does not reach
+   * that draft — it is the researcher's pending decision, not a save — so a
+   * field arriving under a path that has been cleared has to be told, or it
+   * starts from the old roster's rows and they look every bit as authored as
+   * the ones the researcher writes next.
+   */
+  it('leaves no row of the old choice behind when the list arrives after the clear', async () => {
+    const harness = renderStageEditor(openListSection());
+    // The stage arrives with a card detail, which is what opens the section —
+    // and the list holding it has not been asked for yet.
+    expect(
+      await screen.findByRole('switch', { name: 'Card details' }),
+    ).toBeChecked();
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Choose another roster' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole('switch', { name: 'Card details' }),
+      ).not.toBeChecked(),
+    );
+
+    // Asked for again, against the columns the new file actually has.
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Card details' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Choose the attributes' }),
+    );
+
+    // Nothing, rather than the old file's row. That row comes back complete —
+    // an attribute and the label the researcher wrote for it — so there is
+    // nothing about it to tell them it is not theirs.
+    expect(
+      screen.queryAllByRole('combobox', { name: 'Attribute' }),
+    ).toHaveLength(0);
+    expect(
+      screen.getByText('No extra attributes are shown on a card.'),
+    ).toBeInTheDocument();
+
+    // And the save says the same thing the screen does. A row that is only
+    // hidden is a row the next save writes back into the protocol.
+    const saved = await harness.submit();
+    expect(saved?.stageDocument).not.toHaveProperty(
+      'cardOptions.additionalProperties',
+    );
+  });
+
+  /**
+   * The other direction, which the same rule has to leave alone.
+   *
+   * A clear is this session's pending decision about content that is still in
+   * the protocol, so it says nothing about content that arrives AFTER it. A
+   * collaborator writing at the cleared path is authoritative, and the editor
+   * has to show what they wrote rather than the blank this session was holding
+   * — the researcher can always switch the capability off again, and cannot
+   * act on something they cannot see.
+   */
+  it('shows what a collaborator writes under a path this session cleared', async () => {
+    const harness = renderStageEditor(openListSection());
+    expect(
+      await screen.findByRole('switch', { name: 'Card details' }),
+    ).toBeChecked();
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Choose another roster' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole('switch', { name: 'Card details' }),
+      ).not.toBeChecked(),
+    );
+
+    act(() => {
+      harness.session.acknowledge({
+        fields: {
+          ...harness.seeded.fields,
+          cardOptions: {
+            additionalProperties: [{ variable: 'city', label: 'City' }],
+          },
+        },
+        throughBatchId: 0,
+        manifestRevision: { sequence: 9n, hash: 'revision-9' },
+      });
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('switch', { name: 'Card details' }),
+      ).toBeChecked(),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Choose the attributes' }),
+    );
+    expect(
+      await screen.findByRole('combobox', { name: 'Attribute' }),
+    ).toHaveValue('city');
   });
 });
 

@@ -33,6 +33,20 @@ type FormStoreState = ReturnType<StageFormStoreApi['getState']>;
  * store about and the path the committed value is read from are the ones the
  * field is really registered under.
  *
+ * A path the form has CLEARED reads as holding nothing, whatever the draft
+ * still remembers. Switching a capability off empties the form and leaves the
+ * committed draft alone — it is the researcher's pending decision, not a save —
+ * so a field arriving under a cleared path afterwards would otherwise start
+ * from the values that decision threw away, and they look every bit as authored
+ * as the ones written next to them. `useClearStageValue` covers whatever was
+ * registered or parked at the time; this covers whatever arrives after.
+ *
+ * The store is read here rather than subscribed to, because the question is
+ * what a field starts from, asked once as it mounts: a value that moved with
+ * the store would re-seed a control the researcher is typing into. It is
+ * re-asked whenever the committed draft moves, which is exactly when a clear
+ * can have been superseded — see `clearedPath`.
+ *
  * The value is memoised because `initialValue` is a dependency of the effect
  * that registers a field: an unstable one re-registers it on every render.
  */
@@ -40,16 +54,56 @@ export function useResolvedFieldIdentity(
   name: string,
   nameMode: FieldNameMode = 'legacy',
 ): Readonly<{ registeredName: string; committedValue: unknown }> {
-  const { committedFields } = useStageEditorForm();
+  const { storeApi, committedFields } = useStageEditorForm();
   const namespace = useFieldNamespacePath();
 
   return useMemo(() => {
     const path = resolveFieldPath(namespace, name, nameMode);
     return {
       registeredName: formatObjectPath(path),
-      committedValue: getValue(committedFields, path),
+      committedValue: clearedPath(storeApi.getState(), path)
+        ? undefined
+        : getValue(committedFields, path),
     };
-  }, [committedFields, name, nameMode, namespace]);
+  }, [committedFields, name, nameMode, namespace, storeApi]);
+}
+
+/**
+ * Whether the form has emptied this path, or anything containing it.
+ *
+ * A clear is recorded as a field record — registered or parked — holding
+ * nothing at all: `clearValue` writes `undefined` at the path it is given and
+ * at every descendant that existed then, and `useClearStageValue` writes it
+ * again over any ancestor the removal emptied. Read here as what the record
+ * says, "the form holds nothing here", which is what everything else that
+ * produces one means too: a field registering on a path the draft is empty at,
+ * and a field whose value is discarded rather than parked when it unmounts.
+ * None of them can suppress a value that was never thrown away, because a path
+ * the draft holds nothing at holds nothing beneath it either.
+ *
+ * Ancestors count, and are the point. A capability owns a container —
+ * `cardOptions`, not the list inside it, because absence is how the schema
+ * spells "this stage does not do this" — so the clear lands on the container,
+ * and a control beneath it that was not on screen at the time has no record of
+ * its own to be told by.
+ *
+ * A later authoritative write SUPERSEDES the clear, and needs nothing here to
+ * do it: `reseedStageForm` writes an arrival's value into every record it knows
+ * about, so a record the clear emptied stops holding `undefined` the moment the
+ * arrival puts something back at its path. That is deliberate, and it is not
+ * the ordering a SENT clear gets — `rebaseCommand` keeps an `unset` as it
+ * stands wherever it lands, because the researcher has decided and the decision
+ * travels with the batch. A clear still sitting in the form is a decision in
+ * progress, about content a collaborator has since replaced; keeping the blank
+ * would hide their work behind a judgement that was never passed on it, and
+ * leave the researcher nothing on screen to switch off.
+ */
+function clearedPath(state: FormStoreState, target: ObjectPath): boolean {
+  return formRecords(state).some(
+    (record) =>
+      record.value === undefined &&
+      (samePath(record.path, target) || isAbove(record.path, target)),
+  );
 }
 
 /**
