@@ -874,8 +874,27 @@ async function addOption(
  * stage-shaped assertions in this file cannot see.
  */
 describe('what a family member form field’s attribute holds', () => {
+  /**
+   * The node configuration alone, which is where the form lives.
+   *
+   * Every journey below opens two nested dialogs and waits on a compound edit,
+   * and each of the pedigree's other five sections is a whole editor that
+   * re-renders on every keystroke of it. Nothing here reads or writes a key
+   * any of them own, and nothing here submits the stage — the claims are about
+   * the codebook and about the one list the fields live in.
+   */
+  const openNodeConfig = () => ({
+    stage: familyPedigreeStageWith({
+      nodeConfig: {
+        ...FIXTURE_NODE_CONFIG,
+        form: [{ variable: 'fm_name', prompt: 'What do they go by?' }],
+      },
+    }),
+    sections: <PedigreeNodeConfigurationSection />,
+  });
+
   it('creates a categorical field together with the values it offers', async () => {
-    const harness = renderStageEditor(openWithFamilyMemberForm());
+    const harness = renderStageEditor(openNodeConfig());
 
     await harness.user.click(
       await screen.findByRole('button', { name: 'Create new form field' }),
@@ -948,7 +967,7 @@ describe('what a family member form field’s attribute holds', () => {
   });
 
   it('writes a date field’s settings onto the attribute it collects', async () => {
-    const harness = renderStageEditor(openWithFamilyMemberForm());
+    const harness = renderStageEditor(openNodeConfig());
 
     await harness.user.click(
       await screen.findByRole('button', { name: 'Create new form field' }),
