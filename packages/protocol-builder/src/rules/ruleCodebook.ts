@@ -1,4 +1,3 @@
-import { todayYmd } from '@codaco/fresco-ui/form/utils/ymd';
 import {
   type Codebook,
   type ColorReference,
@@ -16,6 +15,7 @@ import {
 import {
   datePickerWindows,
   relativeDatePickerWindow,
+  todayYmd,
 } from '@codaco/shared-consts';
 
 import {

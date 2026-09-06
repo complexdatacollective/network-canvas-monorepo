@@ -27,9 +27,21 @@ now renders from this rather than from its own copy of the rules, and
 rule compares a coarse date attribute against a year its dropdown does not
 contain — a comparison no participant answer can ever satisfy.
 
-The clock is passed in rather than read, because it belongs to the caller —
-fresco-ui and `@codaco/protocol-utilities` each have their own `todayYmd`, and
-this package stays free of both. `@codaco/protocol-validation`'s contradiction
+Export `todayYmd`, the UTC day-stamp those windows default an undeclared bound
+to, which was fresco-ui's. Both functions above take the day as an argument —
+the clock belongs to the caller, so that a reader deriving several windows
+derives them all on the same day and a test can ask what the window was on a
+day of its choosing — and this is what a caller with no day in mind passes.
+It moved here because the packages that have to PREDICT what the date controls
+will accept cannot depend on a UI package to find out what day it is:
+`@codaco/protocol-builder` reads a rule through a pure export a host calls with
+no editing session, and reaching fresco-ui for a clock read pulled React into
+that graph. `@codaco/fresco-ui/form/utils/ymd` re-exports it, so nothing
+importing it from there has to change.
+
+`@codaco/protocol-utilities` keeps its own, because it is deliberately free of
+every dependency but its own; `@codaco/interview`'s `ymdParity.test.ts` holds
+the two to the same answer. `@codaco/protocol-validation`'s contradiction
 analyser deliberately keeps its own model of the same rules: protocol validity
 must not depend on when validation runs, so it substitutes a fixed horizon for
 today rather than calling this.

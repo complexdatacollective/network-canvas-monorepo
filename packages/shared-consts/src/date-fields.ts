@@ -58,6 +58,34 @@ function formatYmd(year: number, month: number, day: number): string {
 }
 
 /**
+ * Today, as the date fields name it.
+ *
+ * The clock is read in UTC so this names the same calendar day whatever the
+ * runtime timezone is. Every date-aware part of the system compares
+ * `YYYY-MM-DD` strings lexically, and several of them default an undeclared
+ * bound to today: `RelativeDatePickerField`'s anchor, the hard `min`/`max`
+ * `@codaco/interview` validates a submitted answer against, and the window
+ * `@codaco/protocol-builder` judges a stored rule operand inside. A local-time
+ * read would put one of them a day either side of the others near a DST
+ * transition or a timezone boundary.
+ *
+ * It lives here, beside the windows that default to it, for the same reason
+ * they do: fresco-ui renders those controls, and the two packages that have to
+ * PREDICT what they will accept cannot depend on a UI package to find out what
+ * day it is. `@codaco/protocol-utilities` keeps its own — it is deliberately
+ * free of every dependency but its own — and `@codaco/interview`'s
+ * `ymdParity.test.ts` holds the two to the same answer.
+ */
+export function todayYmd(): string {
+  const now = new Date();
+  return formatYmd(
+    now.getUTCFullYear(),
+    now.getUTCMonth() + 1,
+    now.getUTCDate(),
+  );
+}
+
+/**
  * Midnight UTC on a date whose year is read literally, so that arithmetic is
  * stable regardless of the runtime timezone — the fields compare these strings
  * lexically, and any drift would show up as off-by-one-day validation failures
@@ -157,8 +185,10 @@ export type RelativeDatePickerWindow = Readonly<{ min: string; max: string }>;
  * record, an absent anchor and absent offsets all leave a
  * `RelativeDatePickerField` constraining the participant exactly as an empty
  * one does. `today` is passed in rather than read, because the clock belongs
- * to the caller — fresco-ui and protocol-utilities each have their own
- * `todayYmd`, and this package must stay free of both.
+ * to the caller: a reader deriving several windows has to derive them all on
+ * the same day, and a test has to be able to ask what the window was on a day
+ * of its choosing. `todayYmd` above is what a caller with no day in mind
+ * passes.
  *
  * `RelativeDatePickerField` and `@codaco/protocol-utilities`' generator derive
  * the same window from the same clamp without going through here — the field

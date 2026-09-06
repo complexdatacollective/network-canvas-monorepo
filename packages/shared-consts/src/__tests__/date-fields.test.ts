@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   DATE_PICKER_EARLIEST_DATE,
@@ -6,7 +6,44 @@ import {
   datePickerWindows,
   dateWithinPickerRange,
   relativeDatePickerWindow,
+  todayYmd,
 } from '../date-fields.ts';
+
+/**
+ * The clock every date field defaults an undeclared bound to.
+ *
+ * Read in UTC, which is the whole point of it living here: the windows above
+ * are compared as `YYYY-MM-DD` strings, and a reader that named a different
+ * calendar day from the others would put a bound a day out near a timezone
+ * boundary — which is exactly where a local-time read differs.
+ */
+describe('todayYmd', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('reads the clock', () => {
+    expect(todayYmd()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it('names the UTC day, not the local one', () => {
+    // 23:30 UTC on the 27th is already the 28th east of Greenwich and still
+    // the 27th west of it, so a local-time read gives a different answer in
+    // most of the world.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-27T23:30:00Z'));
+    expect(todayYmd()).toBe('2026-07-27');
+
+    vi.setSystemTime(new Date('2026-07-28T00:30:00Z'));
+    expect(todayYmd()).toBe('2026-07-28');
+  });
+
+  it('zero-pads every part', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('0099-01-05T12:00:00Z'));
+    expect(todayYmd()).toBe('0099-01-05');
+  });
+});
 
 describe('dateWithinPickerRange', () => {
   it('leaves an offset that stays inside the calendar where it falls', () => {
