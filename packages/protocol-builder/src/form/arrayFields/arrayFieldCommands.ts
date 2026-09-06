@@ -210,14 +210,23 @@ export function resolveRowIndex<T extends ArrayRow>(
  * A list may hold one id TWICE — a roster imported a second time, a row
  * copy-pasted — and two rows carrying one id are two rows the id cannot tell
  * apart, so they are paired off in order like any other copies. Order alone is
- * not enough once the copies differ in content: each side deleting a different
+ * not enough once the copies DIFFER in content: each side deleting a different
  * copy leaves each holding one row that looks like the ancestor's OTHER one,
  * and in-order pairing reads the survivor as the copy the researcher kept —
  * which refuses their deletion as already applied and keeps the row they
- * deleted. So a copy whose content NEITHER side touched is paired with itself
- * first, and occurrence answers only for the copies left over. Content deciding
- * before position is what the id-less rows already do; this says it for a row
- * whose id cannot tell it from its twin either.
+ * deleted. So a copy that differs from its twin and is still exactly itself
+ * over there is paired with itself first, and occurrence answers for the copies
+ * left over. Content deciding before position is what the id-less rows already
+ * do; this says it for a row whose id cannot tell it from its twin either.
+ *
+ * Content decides only among copies content can TELL APART, though. Two copies
+ * that are the same row said twice are copies content has nothing to say about,
+ * and pairing on it anyway answers with whichever of them a collaborator has
+ * not since rewritten: the search walks past the rewritten copy, the first copy
+ * here takes the untouched one there, and the second — the one the researcher
+ * deleted — is left paired with the rewrite, which their deletion then takes
+ * away. So identical copies are paired off by occurrence, k-th with k-th, and
+ * the content pass is asked only about the copies that were already distinct.
  *
  * In order, and never by absolute position, because this correspondence is
  * drawn against lists that have moved relative to one another, and both
@@ -249,11 +258,27 @@ export function matchRows(
     else identified.push(ancestor);
   });
 
-  // The copies neither side touched, taken first: a row that is still exactly
-  // itself over there is that row, whatever position its twin has moved to.
-  // What is left over is every row whose content one side or the other
-  // changed, and those are paired off by occurrence below.
+  // Which ancestor rows content cannot tell from a row carrying the same id:
+  // the copies that are the same row said twice, whose only distinguishing
+  // fact is their occurrence. They are held out of the content pass below,
+  // because a search for "the row that is still exactly itself" answers for
+  // whichever copy a collaborator has not rewritten, and that is a fact about
+  // the arrival rather than about which copy is which.
+  const twin = (ancestor: number) =>
+    JSON.stringify([getId(before[ancestor]), canonicalize(before[ancestor])]);
+  const twins = identified.reduce<Map<string, number>>(
+    (counted, ancestor) =>
+      counted.set(twin(ancestor), (counted.get(twin(ancestor)) ?? 0) + 1),
+    new Map(),
+  );
+
+  // The distinct copies neither side touched, taken first: a row that is still
+  // exactly itself over there is that row, whatever position its twin has moved
+  // to. What is left over is every row whose content one side or the other
+  // changed, and every row its own twin is identical to, and those are paired
+  // off by occurrence below.
   const changed = identified.filter((ancestor) => {
+    if ((twins.get(twin(ancestor)) ?? 0) > 1) return true;
     const id = getId(before[ancestor]);
     const content = canonicalize(before[ancestor]);
     const candidate = identities.findIndex(

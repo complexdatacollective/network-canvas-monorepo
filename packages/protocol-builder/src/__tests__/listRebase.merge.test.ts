@@ -412,3 +412,148 @@ describe('a list holding one id twice', () => {
     ]);
   });
 });
+
+/**
+ * The same list, where the two copies carry the SAME content.
+ *
+ * Content is what tells apart two copies of one id that differ, and there is
+ * nothing for it to tell apart here: the copies are one row said twice, so the
+ * only fact either document holds about which is which is their occurrence.
+ * Pairing on content anyway reads a copy the collaborator rewrote as the copy
+ * the researcher deleted — the first copy is no longer itself over there, so
+ * the search walks past it to the untouched one, and the copy the researcher
+ * kept is paired with the row they had nothing to do with. Their deletion then
+ * lands on the collaborator's rewrite and takes it away.
+ *
+ * So content decides only among copies that DIFFER, and occurrence answers for
+ * the ones it cannot tell apart: the k-th copy here is the k-th copy there.
+ */
+describe('a list holding one id twice, the copies identical', () => {
+  const copy = { id: 'dup', variable: 'a', prompt: 'Their age?' };
+  const rewritten = { ...copy, prompt: 'How old are they?' };
+
+  it('keeps the collaborator’s rewrite when the researcher deleted a copy', () => {
+    const session = openSession([copy, copy]);
+    session.dispatch(
+      commandsFromDraftChange(
+        session.getSnapshot().editedSection.fields,
+        stageWith([copy]),
+      ),
+    );
+    expect(session.getSnapshot().pendingCommands[0]?.commands).toEqual([
+      { op: 'removeItem', key: ['form', 'fields'], index: 1 },
+    ]);
+
+    // The collaborator rewrote the OTHER copy — the one the researcher kept.
+    session.acknowledge({
+      fields: stageWith([rewritten, copy]),
+      throughBatchId: 0,
+      manifestRevision: revision(2n),
+    });
+
+    // One copy went, and the rewrite is not what went with it.
+    expect(readFields(session.getSnapshot().editedSection.fields)).toEqual([
+      rewritten,
+    ]);
+  });
+
+  /**
+   * The mirror: the researcher rewrote a copy and the collaborator deleted the
+   * other one, so the rewrite is theirs to keep this time.
+   */
+  it('keeps the researcher’s rewrite when the collaborator deleted a copy', () => {
+    const session = openSession([copy, copy]);
+    session.dispatch(
+      commandsFromDraftChange(
+        session.getSnapshot().editedSection.fields,
+        stageWith([rewritten, copy]),
+      ),
+    );
+
+    session.acknowledge({
+      fields: stageWith([copy]),
+      throughBatchId: 0,
+      manifestRevision: revision(2n),
+    });
+
+    expect(readFields(session.getSnapshot().editedSection.fields)).toEqual([
+      rewritten,
+    ]);
+  });
+});
+
+/**
+ * The same list, where the copy the researcher's deletion NAMES is the one the
+ * collaborator rewrote.
+ *
+ * Which of two identical copies the researcher deleted is not a fact — the
+ * copies were alike when they deleted one — so the deletion is owed a list one
+ * copy shorter and the collaborator is owed their rewrite, and dropping a copy
+ * nobody touched pays both. It costs the deleted copy's place among the rows
+ * around it, which is the only thing the occurrence was carrying and the
+ * cheaper of the two things on offer.
+ */
+describe('a deletion that lands on a copy the collaborator rewrote', () => {
+  const copy = { id: 'dup', variable: 'a', prompt: 'Their age?' };
+  const rewritten = { ...copy, prompt: 'How old are they?' };
+  const other = { id: 'other', variable: 'b', prompt: 'Their job?' };
+
+  it('drops the copy nobody touched instead', () => {
+    const session = openSession([copy, other, copy]);
+    session.dispatch(
+      commandsFromDraftChange(
+        session.getSnapshot().editedSection.fields,
+        stageWith([other, copy]),
+      ),
+    );
+    expect(session.getSnapshot().pendingCommands[0]?.commands).toEqual([
+      { op: 'removeItem', key: ['form', 'fields'], index: 0 },
+    ]);
+
+    session.acknowledge({
+      fields: stageWith([rewritten, other, copy]),
+      throughBatchId: 0,
+      manifestRevision: revision(2n),
+    });
+
+    // One copy went, and the rewrite is not what went with it.
+    expect(readFields(session.getSnapshot().editedSection.fields)).toEqual([
+      rewritten,
+      other,
+    ]);
+  });
+
+  /**
+   * The same rule for a submit no single row operation explains, which is
+   * merged as a whole list rather than replayed as a deletion.
+   */
+  it('keeps the rewrite when the submit is a whole list', () => {
+    const session = openSession([copy, copy]);
+    const added = { id: 'new', variable: 'c', prompt: 'Their city?' };
+    session.dispatch(
+      commandsFromDraftChange(
+        session.getSnapshot().editedSection.fields,
+        stageWith([copy, added]),
+      ),
+    );
+    expect(session.getSnapshot().pendingCommands[0]?.commands).toEqual([
+      {
+        op: 'set',
+        key: ['form', 'fields'],
+        value: [copy, added],
+      },
+    ]);
+
+    // The collaborator rewrote the copy the researcher's list no longer holds.
+    session.acknowledge({
+      fields: stageWith([copy, rewritten]),
+      throughBatchId: 0,
+      manifestRevision: revision(2n),
+    });
+
+    expect(readFields(session.getSnapshot().editedSection.fields)).toEqual([
+      rewritten,
+      added,
+    ]);
+  });
+});

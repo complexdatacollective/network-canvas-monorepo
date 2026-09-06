@@ -97,28 +97,38 @@ const rowsOf = (rng: Rng, mode: Mode, count: number): Row[] =>
     return mode === 'idless' ? { text: drawn } : { id: drawn, text: drawn };
   });
 
-/** Applies one random edit to a list, returning the new list. */
+/**
+ * Applies one random edit to a list, returning the new list.
+ *
+ * `rewrites` says whether this side may change a row IN PLACE, which is a
+ * question only a row with an id can be asked (see `Mode`) and which the two
+ * sides of a duplicated row are asked differently — hence the parameter rather
+ * than the mode alone.
+ */
 function randomEdit(
   rng: Rng,
   mode: Mode,
   list: readonly Row[],
   mint: () => Row,
+  rewrites: boolean = mode === 'identified',
 ): Row[] {
   const next = list.map((row) => ({ ...row }));
   // An idless row's identity IS its content, so rewriting one in place is
   // indistinguishable from deleting it and adding another — there is no
   // question to ask about it, and it is left out of that mode.
   //
-  // A duplicated row is left out for the mirror image of that reason: its
-  // identity is an id its copy also carries, so an edit to one copy leaves two
-  // rows that are the same row by identity and different by content — a state
-  // the model below cannot say (it keeps one content per key), and one no
-  // merge rule could answer without deciding which copy is which. The copies
-  // stay interchangeable, which is what makes them copies.
-  const kinds =
-    mode === 'identified'
-      ? (['append', 'insert', 'remove', 'move', 'edit'] as const)
-      : (['append', 'insert', 'remove', 'move'] as const);
+  // A duplicated row may be rewritten by the ARRIVAL and not by the
+  // researcher, which is the asymmetry the two sides really have. The
+  // collaborator's document is read as it stands: two copies of an id where one
+  // has been rewritten are two rows the merge has to pair the ancestor's copies
+  // with, and pairing them on content is what used to answer with the copy they
+  // rewrote. The researcher's side is a stream of COMMANDS, and a leaf write
+  // into one of two rows sharing an id is a command `resolveRowIndex` refuses
+  // to place — a different question, asked of the same list, and not this
+  // file's.
+  const kinds = rewrites
+    ? (['append', 'insert', 'remove', 'move', 'edit'] as const)
+    : (['append', 'insert', 'remove', 'move'] as const);
   const kind: 'append' | 'insert' | 'remove' | 'move' | 'edit' =
     next.length === 0 ? 'append' : pick(rng, kinds);
   switch (kind) {
@@ -186,7 +196,17 @@ const keyOf = (row: Row): string => row.id ?? canonicalize(row);
 
 // ------------------------------------------------------- reference merge
 
-type Merged = Readonly<{ ids: string[]; byId: Map<string, Row> }>;
+/**
+ * What the model says a merge leaves: how many copies of each row, and what
+ * each of those copies HOLDS.
+ *
+ * A list of rows per key rather than one row, because a key the base holds
+ * twice is a key the arrival may hold twice with the copies no longer alike —
+ * the collaborator rewrote one of them. The copies are then still one row said
+ * twice as far as identity goes, and different rows as far as content goes,
+ * which one row per key cannot say.
+ */
+type Merged = Readonly<{ ids: string[]; byId: Map<string, Row[]> }>;
 
 const index = (list: readonly Row[]) =>
   new Map(list.map((row) => [keyOf(row), row] as const));
@@ -246,6 +266,15 @@ const copies = (list: readonly Row[]) =>
  * it says the ancestor's copies are paired off with each side's, so two people
  * who each delete a copy have deleted the same copy rather than two of them.
  *
+ * And the leaf rule is said of each COPY, because the copies of a key the base
+ * holds twice need not hold the same thing on the other side: the collaborator
+ * may have rewritten one of them. Which of two copies the researcher deleted is
+ * not a fact — the copies were alike when they deleted one — so what the merge
+ * owes them is a list one copy shorter, and what it owes the collaborator is
+ * their rewrite. Both are payable at once, and the copies the arrival REWROTE
+ * are therefore the ones that survive: the merge drops the copies nobody
+ * touched first, and only then the rest.
+ *
  * Order is deliberately not asserted here — a refused move legitimately leaves
  * the arrival's order — so this is purely the data-loss dimension.
  */
@@ -255,13 +284,13 @@ function referenceMerge(
   remote: readonly Row[],
 ): Merged {
   const baseById = index(base);
-  const localById = index(local);
-  const remoteById = index(remote);
   const inBase = copies(base);
   const inLocal = copies(local);
   const inRemote = copies(remote);
+  const held = (list: readonly Row[], id: string) =>
+    list.filter((row) => keyOf(row) === id);
   const ids: string[] = [];
-  const byId = new Map<string, Row>();
+  const byId = new Map<string, Row[]>();
   const consider = (id: string) => {
     if (byId.has(id)) return;
     const ancestral = inBase.get(id) ?? 0;
@@ -272,19 +301,34 @@ function referenceMerge(
       Math.max(0, locally - ancestral) +
       Math.max(0, remotely - ancestral);
     if (present === 0) return;
-    const localRow = localById.get(id);
     const baseRow = baseById.get(id);
-    const remoteRow = remoteById.get(id);
-    const localChanged =
-      localRow !== undefined &&
-      (baseRow === undefined ||
-        canonicalize(localRow) !== canonicalize(baseRow));
-    const row = localChanged
-      ? mergedLeaves(baseRow, localRow, remoteRow)
-      : (remoteRow ?? localRow);
-    if (row === undefined) return;
-    for (let copy = 0; copy < present; copy += 1) ids.push(id);
-    byId.set(id, row);
+    const localRows = held(local, id);
+    // The arrival's copies, the ones it REWROTE first. A merge that keeps
+    // fewer copies of a key than the arrival holds is choosing which of them to
+    // drop, and a copy nobody rewrote is the one that can be dropped without
+    // losing anything: the researcher deleted a copy, and the copies were alike
+    // when they did. For a key no list holds twice this orders one row.
+    const remoteRows = held(remote, id).toSorted(
+      (one, other) =>
+        Number(canonicalize(one) === canonicalize(baseRow)) -
+        Number(canonicalize(other) === canonicalize(baseRow)),
+    );
+    const rows: Row[] = [];
+    for (let copy = 0; copy < present; copy += 1) {
+      const localRow = localRows[copy];
+      const remoteRow = remoteRows[copy];
+      const localChanged =
+        localRow !== undefined &&
+        (baseRow === undefined ||
+          canonicalize(localRow) !== canonicalize(baseRow));
+      const row = localChanged
+        ? mergedLeaves(baseRow, localRow, remoteRow)
+        : (remoteRow ?? localRow);
+      if (row === undefined) return;
+      rows.push(row);
+    }
+    ids.push(...rows.map(() => id));
+    byId.set(id, rows);
   };
   for (const row of local) consider(keyOf(row));
   for (const row of remote) consider(keyOf(row));
@@ -497,7 +541,8 @@ const arrivalStep = (
   if (arrival === 'inserts') return randomInsert(rng, list, mint);
   if (arrival === 'comings and goings')
     return randomInsertOrRemove(rng, list, mint);
-  return randomEdit(rng, mode, list, mint);
+  // The collaborator may rewrite a duplicated row; the researcher may not.
+  return randomEdit(rng, mode, list, mint, mode !== 'idless');
 };
 
 type Outcome =
@@ -808,6 +853,13 @@ const CROSSED_ROW_TRIALS: Readonly<Record<Mode, number>> = {
 const CROSS_EDIT_TRIALS = 75;
 
 /**
+ * And how many must have the collaborator rewrite ONE of two copies of a
+ * duplicated id while the researcher deleted one of them — the shape in which
+ * pairing the copies on content answers with the copy that was rewritten.
+ */
+const REWRITTEN_COPY_TRIALS = 150;
+
+/**
  * And how many whole-list `set`s the dropped-container sweep must actually
  * refuse: the command that had nothing left to write, into the container that
  * is not there to write it into.
@@ -862,16 +914,33 @@ function mergesLikeTheModel(trial: Trial, outcome: Outcome): string | null {
   );
   const sameIds =
     canonicalize(actual.toSorted()) === canonicalize(expected.ids);
-  const sameContent = outcome.result.every(
-    (row) =>
-      expected.byId.has(keyOf(row)) &&
-      canonicalize(row) === canonicalize(expected.byId.get(keyOf(row))),
-  );
+  // Content is compared per KEY and as a multiset, because a key held twice may
+  // be held twice with the copies no longer alike, and which copy sits where is
+  // the one thing about them nothing decides. What must be true is that the
+  // merge is left holding the same contents — a collaborator's rewrite of one
+  // of two copies is not something a deletion of the other may take away.
+  const contentsOf = (rows: readonly Row[]) =>
+    rows.reduce<Map<string, string[]>>(
+      (grouped, row) =>
+        grouped.set(keyOf(row), [
+          ...(grouped.get(keyOf(row)) ?? []),
+          canonicalize(row),
+        ]),
+      new Map(),
+    );
+  const sameContent = [...contentsOf(outcome.result)].every(([key, got]) => {
+    const wanted = expected.byId.get(key);
+    return (
+      wanted !== undefined &&
+      canonicalize(got.toSorted()) ===
+        canonicalize(wanted.map(canonicalize).toSorted())
+    );
+  });
   if (!duplicated && sameIds && sameContent) return null;
   return [
     `rebased  ${JSON.stringify(outcome.rebased)}`,
     `got      ${JSON.stringify(outcome.result)}`,
-    `expected ${JSON.stringify([...expected.byId.values()])}`,
+    `expected ${JSON.stringify([...expected.byId.values()].flat())}`,
     duplicated ? 'DUPLICATED ROWS' : '',
   ].join('\n');
 }
@@ -1046,6 +1115,30 @@ function sidesEditedDifferentLeaves(trial: Trial): boolean {
         (leaf) =>
           remote[leaf] !== baseRow[leaf] && local[leaf] === baseRow[leaf],
       )
+    );
+  });
+}
+
+/**
+ * Whether a trial asks what a duplicated id makes it possible to ask: the
+ * collaborator rewrote ONE of the copies and left the other as it found it,
+ * while the researcher deleted a copy.
+ *
+ * That is the shape in which content and occurrence disagree about which copy
+ * is which. Pairing on content sends the researcher's surviving copy to the row
+ * the collaborator never touched, which leaves their deletion pointed at the
+ * rewrite — and takes it away.
+ */
+function arrivalRewroteOneCopy(trial: Trial): boolean {
+  const inBase = copies(trial.base);
+  const inLocal = copies(trial.local);
+  return [...inBase].some(([key, ancestral]) => {
+    if (ancestral < 2 || (inLocal.get(key) ?? 0) >= ancestral) return false;
+    const ancestor = canonicalize(trial.base.find((row) => keyOf(row) === key));
+    const held = trial.remote.filter((row) => keyOf(row) === key);
+    return (
+      held.some((row) => canonicalize(row) !== ancestor) &&
+      held.some((row) => canonicalize(row) === ancestor)
     );
   });
 }
@@ -1354,5 +1447,31 @@ describe('rebasing a list edit onto a collaborator’s arrival', () => {
     }
     expect(failures).toEqual([]);
     expect(asked).toBeGreaterThan(CROSS_EDIT_TRIALS);
+  });
+
+  /**
+   * The same question asked of a row whose id its copy also carries, which is
+   * where content stops being evidence about which copy is which.
+   *
+   * Two copies of an id the researcher never touched are one row said twice,
+   * and only their occurrence tells them apart. Pairing them on content anyway
+   * answers with whichever of them the collaborator has not since rewritten —
+   * so the copy the researcher kept takes the untouched row, their deletion is
+   * left pointed at the rewrite, and the rewrite is what goes. The count is the
+   * trials that actually put the collaborator's rewrite and the researcher's
+   * deletion on two copies of one id.
+   */
+  it('keeps a collaborator’s rewrite of one of two copies of an id', () => {
+    const failures: string[] = [];
+    let asked = 0;
+    for (let seed = 1; seed <= LEAF_TRIALS; seed += 1) {
+      const { trial, outcome } = runTrial(seed, 'duplicated');
+      if (arrivalRewroteOneCopy(trial)) asked += 1;
+      const problem = mergesLikeTheModel(trial, outcome);
+      if (problem !== null && failures.length < 3)
+        failures.push(describeTrial(trial, problem));
+    }
+    expect(failures).toEqual([]);
+    expect(asked).toBeGreaterThan(REWRITTEN_COPY_TRIALS);
   });
 });

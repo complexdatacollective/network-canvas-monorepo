@@ -354,6 +354,49 @@ function mergeListArrival(
   const localOf = matchRows(before, next);
   const remoteOf = matchRows(before, arrival);
 
+  // Which of those copies the researcher is deemed to have kept, once the
+  // collaborator has REWRITTEN one of them.
+  //
+  // The copies were alike when the researcher deleted one, so which of them
+  // they deleted is not a fact, and keeping fewer copies than the arrival holds
+  // is a choice about which of the arrival's to drop. A copy nobody rewrote is
+  // the one that can be dropped without losing anything, so within a group of
+  // identical ancestor rows the copies the researcher kept are dealt the
+  // arrival's REWRITTEN copies first. Dealing them out in order instead threw
+  // the rewrite away whenever it landed on a copy their submit had dropped, and
+  // left the row they had never seen.
+  //
+  // The count is untouched: the copies they kept take as many of the arrival's
+  // as there are, and the ones they deleted take what is left, so the two
+  // drawings still overlap as far as they possibly can.
+  const groups = before.reduce<Map<string, number[]>>(
+    (found, row, ancestor) => {
+      const content = canonicalize(row);
+      return found.set(content, [...(found.get(content) ?? []), ancestor]);
+    },
+    new Map(),
+  );
+  for (const [content, group] of groups) {
+    const kept = group.filter((ancestor) => localOf[ancestor] !== -1);
+    if (kept.length === 0 || kept.length === group.length) continue;
+    const places = group.reduce<number[]>((found, ancestor) => {
+      const place = remoteOf[ancestor];
+      if (place !== undefined && place !== -1) found.push(place);
+      return found;
+    }, []);
+    const rewrote = (place: number) => canonicalize(arrival[place]) !== content;
+    if (!places.some(rewrote)) continue;
+    const dealt = [
+      ...places.filter(rewrote),
+      ...places.filter((place) => !rewrote(place)),
+    ];
+    [...kept, ...group.filter((ancestor) => localOf[ancestor] === -1)].forEach(
+      (ancestor, at) => {
+        remoteOf[ancestor] = dealt[at] ?? -1;
+      },
+    );
+  }
+
   // A row of the answer, carrying WHICH of the researcher's rows it is — `-1`
   // for one only the arrival has. Two copies of an id-less row are two rows
   // nothing tells apart, but they are still at two different places, and the
@@ -547,19 +590,34 @@ function rebaseCommand(
     // already dropped a copy, and this command would drop the copy the merge
     // has just decided survived. Asking it of the named copy instead would say
     // yes for every copy but the last.
+    //
+    // The one thing that unseats the named occurrence is a collaborator having
+    // REWRITTEN the copy it lands on while another copy of the same row is
+    // still there exactly as it was. Which copy the researcher deleted is not a
+    // fact — the copies were alike when they deleted one — so the removal is
+    // owed a list one copy shorter and the collaborator is owed their rewrite,
+    // and dropping an untouched copy instead pays both. Taking the named
+    // occurrence anyway discarded the rewrite outright: `[r, r]` with the first
+    // copy rewritten and the researcher deleting the first left the copy they
+    // had never seen and threw the collaborator's away.
     if (command.index >= before.length) return null;
     const content = canonicalize(before[command.index]);
-    // Explicitly `number`: `before` is `unknown[]`, whose `reduce` resolves to
-    // the overload that answers `unknown` unless the accumulator is named.
-    const last = before.reduce<number>(
-      (latest, candidate, at) =>
-        canonicalize(candidate) === content ? at : latest,
-      -1,
-    );
+    // Explicitly `number[]`: `before` is `unknown[]`, whose `reduce` resolves
+    // to the overload that answers `unknown` unless the accumulator is named.
+    const group = before.reduce<number[]>((found, candidate, at) => {
+      if (canonicalize(candidate) === content) found.push(at);
+      return found;
+    }, []);
+    const last = group.at(-1) ?? -1;
     const matched = matchRows(before, arrival);
     if (matched[last] === undefined || matched[last] === -1) return null;
-    const index = matched[command.index];
-    if (index === undefined || index === -1) return null;
+    const named = matched[command.index];
+    if (named === undefined || named === -1) return null;
+    const stillItself = (at: number | undefined) =>
+      at !== undefined && at !== -1 && canonicalize(arrival[at]) === content;
+    const index = stillItself(named)
+      ? named
+      : (group.map((at) => matched[at]).find(stillItself) ?? named);
     return index === command.index ? command : { ...command, index };
   }
 
