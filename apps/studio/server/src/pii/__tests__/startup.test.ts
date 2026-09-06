@@ -203,7 +203,7 @@ describe('actual server encryption startup and operator entrypoints', () => {
   });
 
   it('exposes bounded maintenance results without starting unrelated application services', async () => {
-    await withDatabase(async ({ db }) => {
+    await withDatabase(async ({ db, pool }) => {
       const maintenance = createMaintenancePool(db);
       const encryption = {
         configuration: configuration(),
@@ -228,6 +228,7 @@ describe('actual server encryption startup and operator entrypoints', () => {
             ['migrate-legacy', '--limit', '1'],
             maintenance,
             encryption,
+            pool,
           ),
         ).resolves.toEqual({
           operation: 'migrate-legacy',

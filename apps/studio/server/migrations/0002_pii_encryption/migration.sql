@@ -88,3 +88,4 @@ ALTER TABLE "webhook_subscriptions" DROP CONSTRAINT "webhook_subscriptions_lengt
           AND octet_length("secret_ciphertext") BETWEEN 29 AND 512
           AND char_length("created_by_user_id") BETWEEN 1 AND 255
           AND ("description" IS NULL OR char_length("description") BETWEEN 1 AND 500));
+ALTER TABLE "account" ADD COLUMN "legacy_tokens_present" boolean GENERATED ALWAYS AS ("accessToken" IS NOT NULL OR "refreshToken" IS NOT NULL OR "idToken" IS NOT NULL) STORED;

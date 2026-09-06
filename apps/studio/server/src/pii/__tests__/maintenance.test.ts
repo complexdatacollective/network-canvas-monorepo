@@ -155,10 +155,10 @@ describe('bounded encryption maintenance and retained suppression', () => {
         `INSERT INTO account (id, "userId", "accountId", "providerId", issuer, "updatedAt") VALUES ('already-current', $1, 'already-current', 'google', 'https://accounts.google.com', now())`,
         [context.principal.userId],
       );
-      const observedClient = await scratch.maintenance.connect();
+      const observedClient = await scratch.pool.connect();
       const queries = vi.spyOn(observedClient, 'query');
       observedClient.release();
-      const first = await migrateLegacyOAuthBatch(scratch.maintenance, keys, {
+      const first = await migrateLegacyOAuthBatch(scratch.pool, keys, {
         limit: 1,
       });
       expect(first).toEqual({
@@ -168,7 +168,7 @@ describe('bounded encryption maintenance and retained suppression', () => {
         passComplete: false,
       });
       expect(
-        await migrateLegacyOAuthBatch(scratch.maintenance, keys, {
+        await migrateLegacyOAuthBatch(scratch.pool, keys, {
           limit: 1,
           afterId: first.afterId,
         }),
@@ -530,7 +530,7 @@ describe('bounded encryption maintenance and retained suppression', () => {
       );
       const keys = await initializeCredentialMigration(input);
       await expect(
-        migrateLegacyOAuthBatch(scratch.maintenance, keys, { limit: 1 }),
+        migrateLegacyOAuthBatch(scratch.pool, keys, { limit: 1 }),
       ).resolves.toEqual({
         processed: 1,
         scanned: 1,
@@ -588,7 +588,7 @@ describe('bounded encryption maintenance and retained suppression', () => {
         `CREATE FUNCTION reject_legacy_test_audit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'synthetic audit unavailable'; END $$; CREATE TRIGGER reject_legacy_test_audit BEFORE INSERT ON credential_audit_events FOR EACH ROW EXECUTE FUNCTION reject_legacy_test_audit()`,
       );
       await expect(
-        migrateLegacyOAuthBatch(scratch.maintenance, keys, { limit: 1 }),
+        migrateLegacyOAuthBatch(scratch.pool, keys, { limit: 1 }),
       ).rejects.toThrow('synthetic audit unavailable');
       const row = await scratch.pool.query(
         'SELECT "accessToken", access_token_ciphertext FROM account WHERE id = $1',

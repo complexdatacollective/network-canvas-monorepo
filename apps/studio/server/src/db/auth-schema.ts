@@ -103,6 +103,13 @@ function accountColumns() {
     legacyAccessToken: text('accessToken'),
     legacyRefreshToken: text('refreshToken'),
     legacyIdToken: text('idToken'),
+    // Startup needs only presence, never retained credential contents. This
+    // stored expression cannot be forged by an ordinary runtime UPDATE.
+    legacyTokensPresent: boolean('legacy_tokens_present')
+      .generatedAlwaysAs(
+        sql`"accessToken" IS NOT NULL OR "refreshToken" IS NOT NULL OR "idToken" IS NOT NULL`,
+      )
+      .notNull(),
     accessTokenExpiresAt: timestamp('accessTokenExpiresAt', {
       withTimezone: true,
     }),
@@ -263,6 +270,7 @@ const {
   legacyAccessToken: _legacyAccessToken,
   legacyRefreshToken: _legacyRefreshToken,
   legacyIdToken: _legacyIdToken,
+  legacyTokensPresent: _legacyTokensPresent,
   ...runtimeAccountColumns
 } = accountColumns();
 export const AUTH_RUNTIME_TABLES = {

@@ -178,14 +178,29 @@ index IDs are explicitly unverified; startup refuses them rather than blessing
 an unknown historical key. Existing unversioned databases remain governed by
 the migration foundation's export/restore rule and are never silently adopted.
 
-Any legacy OAuth value refuses normal boot. `initializeCredentialMigration`
-permits only that legacy condition while retaining all key-proof checks.
+Any legacy OAuth value refuses normal boot. Startup reads only the stored
+`legacy_tokens_present` generated column; an ordinary runtime update cannot
+forge that presence flag. `initializeCredentialMigration` permits only that
+legacy condition while retaining all key-proof checks.
 `migrateLegacyOAuthBatch` converts at most 100 accounts per call. It locks the
 row, seals the old values, clears plaintext and appends the immutable audit in
-one transaction; failure preserves the original data. Runtime database grants
-refuse SELECT on each retained plaintext token column, including SELECT *; only
-the maintenance converter can read them. The adapter
-uses an explicit model projection for every read and RETURNING path. Triggers
+one transaction; failure preserves the original data. Both `studio_app` and
+`studio_maintenance` refuse SELECT on every retained plaintext token column,
+including SELECT * and predicates that inspect those columns. The ordinary
+runtime login cannot convert them by assuming either role.
+
+Offline conversion alone opens a separate, unpinned operator connection from the
+command's `DATABASE_URL`. That login must connect as itself and own the account
+table or hold its own direct SELECT grant on all three retained columns;
+inherited, PUBLIC or SET ROLE access is insufficient. A database administrator's
+superuser authority also qualifies, although ordinary non-superuser operators
+are supported and preferred. The operator must also have the existing account
+update and mandatory credential-audit insert privileges. Keep these credentials
+in the migration command's isolated environment, never the web/worker runtime.
+Verification and rotation continue to use only the pinned maintenance pool;
+the unpinned pool is lazy and is never queried by those operations.
+
+The adapter uses an explicit model projection for every read and RETURNING path. Triggers
 forbid introducing new legacy plaintext and append one immutable deletion audit
 per credential identity, including bulk deletes and user cascades. A failed
 audit insert rolls back the deleting SQL statement.
@@ -267,12 +282,18 @@ security assertions fail before those assertions are accepted.
 
 ### Unreleased migration correction (PR #1718)
 
-The credential grant and deletion-audit correction amends the unshipped `0002`
+The credential grants, generated legacy-presence flag and deletion-audit correction amend the unshipped `0002`
 artifact. It has only been exercised in disposable qualification fixtures; no
 published or deployed migration history changes. `0001` remains byte-identical.
 Downstream unshipped snapshots must be regenerated against this corrected base.
 
 | Evidence           | Original 0002                                                      | Corrected 0002                                                     |
 | ------------------ | ------------------------------------------------------------------ | ------------------------------------------------------------------ |
-| Schema fingerprint | `1da550d8f6fe27991609c86a20890993485e88c64a649498aadd975d76a4a886` | `e27a8fdf4f477da530dd10265f5c4f2833256bac9204e7ee623b35dfc3bf9a9b` |
-| History checksum   | `824011a309d2907bd6da4847150e2b44c9c1715d31562fe45f90ed82ae599669` | `5549052ccacedd9595aa50c7f6f129a3462214f3fc94fd6b0100221fbe0c5786` |
+| Schema fingerprint | `1da550d8f6fe27991609c86a20890993485e88c64a649498aadd975d76a4a886` | `e145181cea6fc46e51188e2643d47bfc13ddec8c1a8f37b149d29a7983166f2f` |
+| History checksum   | `824011a309d2907bd6da4847150e2b44c9c1715d31562fe45f90ed82ae599669` | `2fda5c8f128822cce43353881b248e3229985741d0be3f4570814191b932e00f` |
+
+The follow-up operator separation supersedes the first review correction's
+fingerprint `e27a8fdf4f477da530dd10265f5c4f2833256bac9204e7ee623b35dfc3bf9a9b`
+and checksum `5549052ccacedd9595aa50c7f6f129a3462214f3fc94fd6b0100221fbe0c5786`.
+Neither earlier `0002` artifact was published or deployed outside disposable
+qualification databases.

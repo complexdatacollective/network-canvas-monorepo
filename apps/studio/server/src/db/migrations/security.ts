@@ -3,6 +3,7 @@ import type pg from 'pg';
 import { BACKUP_ROLE, TENANT_ROLES } from '@codaco/studio-sync/rls';
 import {
   runtimeRolesSql,
+  RESTRICTED_LARGE_OBJECT_FUNCTIONS,
   validateRoleNames,
 } from '@codaco/studio-sync/role-bootstrap';
 
@@ -100,29 +101,89 @@ export async function enforceMigrationSecurity(
           WHERE sibling.member = login.oid AND sibling.roleid <> parent.oid
         ))
       )
+    ) AND NOT EXISTS (
+      SELECT 1 FROM pg_roles login WHERE login.rolname = ANY($1::text[])
+        AND NOT (
+          NOT EXISTS (
+            SELECT 1 FROM unnest($4::text[]) required_role
+            WHERE NOT EXISTS (
+              SELECT 1 FROM pg_auth_members membership JOIN pg_roles parent ON parent.oid = membership.roleid
+              WHERE membership.member = login.oid AND parent.rolname = required_role
+            )
+          ) OR EXISTS (
+            SELECT 1 FROM pg_auth_members membership JOIN pg_roles parent ON parent.oid = membership.roleid
+            WHERE membership.member = login.oid AND parent.rolname = $3
+          )
+        )
     ) AS safe`,
     [
       restrictedLogins,
       [...Object.values(TENANT_ROLES), BACKUP_ROLE],
       BACKUP_ROLE,
+      Object.values(TENANT_ROLES),
     ],
   );
   if (scopedMemberships.rows[0]?.safe !== true) {
     throw new Error(
-      'Runtime and backup login memberships must grant only SET access to the reviewed Studio roles, without inheritance or administration; backup membership must be separate from runtime membership.',
+      'Runtime and backup login memberships must grant exactly SET access to both Studio runtime roles or to the separate backup role, without inheritance or administration; backup membership must remain separate.',
     );
   }
-  const largeObjectCompatibility = await client.query<{ safe: boolean }>(
-    `SELECT current_setting('lo_compat_privileges') = 'off' AND NOT EXISTS (
+  const sessionCapabilities = await client.query<{ safe: boolean }>(
+    `SELECT current_setting('lo_compat_privileges') = 'off'
+      AND current_setting('session_replication_role') = 'origin' AND NOT EXISTS (
       SELECT 1 FROM pg_roles identity
+      CROSS JOIN unnest(ARRAY['lo_compat_privileges', 'session_replication_role']) parameter
       WHERE (identity.rolname = ANY($1::text[]) OR identity.rolname = ANY($2::text[]))
-        AND has_parameter_privilege(identity.oid, 'lo_compat_privileges', 'SET')
+        AND has_parameter_privilege(identity.oid, parameter, 'SET')
     ) AS safe`,
     [restrictedLogins, [...Object.values(TENANT_ROLES), BACKUP_ROLE]],
   );
-  if (largeObjectCompatibility.rows[0]?.safe !== true) {
+  if (sessionCapabilities.rows[0]?.safe !== true) {
     throw new Error(
-      'Studio runtime and backup identities must not be able to enable lo_compat_privileges, and the migration connection must keep it off.',
+      'Studio runtime and backup identities must not have SET on lo_compat_privileges or session_replication_role; migration requires lo_compat_privileges off and session_replication_role origin.',
+    );
+  }
+  // Revoking SET does not remove ALTER ROLE/ALTER DATABASE defaults. New
+  // sessions still apply those values before the runtime pool assumes its role.
+  // Refuse every applicable unsafe default, including one currently shadowed
+  // by another setting: removing the override must not re-enable a bypass.
+  const persistedCapabilities = await client.query<{ present: boolean }>(
+    `SELECT EXISTS (
+      SELECT 1 FROM pg_db_role_setting setting CROSS JOIN unnest(setting.setconfig) config
+      WHERE setting.setdatabase IN (0, (SELECT oid FROM pg_database WHERE datname = current_database()))
+        AND (setting.setrole = 0 OR setting.setrole IN (
+          SELECT oid FROM pg_roles WHERE rolname = ANY($1::text[]) OR rolname = ANY($2::text[])
+        ))
+        AND CASE split_part(config, '=', 1)
+          WHEN 'lo_compat_privileges' THEN split_part(config, '=', 2)::boolean
+          WHEN 'session_replication_role' THEN split_part(config, '=', 2) <> 'origin'
+          ELSE false END
+    ) AS present`,
+    [restrictedLogins, [...Object.values(TENANT_ROLES), BACKUP_ROLE]],
+  );
+  if (persistedCapabilities.rows[0]?.present !== false) {
+    throw new Error(
+      'Studio refuses persisted lo_compat_privileges or session_replication_role defaults that bypass large-object permissions or domain triggers. Reset the applicable database and role defaults before migration.',
+    );
+  }
+  // Creation functions otherwise grant ownership of new persistent objects
+  // even with no table writes and an empty object inventory. File import/export
+  // routines are privileged too; their default refusal must survive ACL drift.
+  const largeObjectCreation = await client.query<{ present: boolean }>(
+    `SELECT EXISTS (
+      SELECT 1 FROM pg_roles identity CROSS JOIN unnest($3::regprocedure[]) routine
+      WHERE (identity.rolname = ANY($1::text[]) OR identity.rolname = ANY($2::text[]))
+        AND has_function_privilege(identity.oid, routine, 'EXECUTE')
+    ) AS present`,
+    [
+      restrictedLogins,
+      [...Object.values(TENANT_ROLES), BACKUP_ROLE],
+      RESTRICTED_LARGE_OBJECT_FUNCTIONS,
+    ],
+  );
+  if (largeObjectCreation.rows[0]?.present !== false) {
+    throw new Error(
+      'Studio runtime and backup identities must not execute large-object creation or server-file import/export functions. Have the database administrator revoke their PUBLIC and restricted-role EXECUTE grants before migration.',
     );
   }
   // Studio supports invoker triggers only. A definer trigger can run without
@@ -142,6 +203,22 @@ export async function enforceMigrationSecurity(
   if (definerTriggers.rows[0]?.present !== false) {
     throw new Error(
       'Studio does not support SECURITY DEFINER triggers on application database relations. Their presence makes existing migration evidence untrusted; restore a verified backup before migrating.',
+    );
+  }
+  // Non-SELECT rewrite actions run with the relation owner's privileges,
+  // including when the caller has no direct grant on the affected evidence.
+  // Disabled rules are included for the same provenance reason as triggers.
+  const rewriteRules = await client.query<{ present: boolean }>(
+    `SELECT EXISTS (
+      SELECT 1 FROM pg_rewrite rule JOIN pg_class relation ON relation.oid = rule.ev_class
+      JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+      WHERE rule.ev_type <> '1' AND namespace.nspname !~ '^pg_'
+        AND namespace.nspname <> 'information_schema'
+    ) AS present`,
+  );
+  if (rewriteRules.rows[0]?.present !== false) {
+    throw new Error(
+      'Studio does not support owner-backed rewrite rules on application database relations. Their presence makes existing migration evidence untrusted; restore a verified backup before migrating.',
     );
   }
   const loginAccess = await client.query<{
@@ -184,6 +261,13 @@ export async function enforceMigrationSecurity(
                 has_table_privilege(login.oid, object.oid, 'SELECT')
                 OR has_any_column_privilege(login.oid, object.oid, 'SELECT')
               ))
+            ) ELSE false END
+        )
+        OR EXISTS (
+          SELECT 1 FROM pg_class object WHERE object.relnamespace IN (SELECT oid FROM namespaces)
+            AND CASE WHEN object.relkind IN ('r', 'p') THEN (
+              has_table_privilege(login.oid, object.oid, 'TRUNCATE,REFERENCES,TRIGGER,MAINTAIN')
+              OR has_any_column_privilege(login.oid, object.oid, 'REFERENCES')
             ) ELSE false END
         )
         OR (login.rolname = $3 AND EXISTS (

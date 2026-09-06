@@ -22,6 +22,7 @@ export async function runEncryptionCommand(
   args: string[],
   maintenancePool: pg.Pool,
   encryption: EncryptionEnv,
+  legacyOperatorPool?: pg.Pool,
 ) {
   const { positionals, values } = parseArgs({
     args,
@@ -57,6 +58,10 @@ export async function runEncryptionCommand(
   const afterId = parseLegacyCursor(values['after-id'] ?? null);
   if ((await checkSchema(maintenancePool)).kind !== 'current')
     throw new Error('Encryption maintenance requires the current schema.');
+  if (operation === 'migrate-legacy' && !legacyOperatorPool)
+    throw new Error(
+      'Legacy conversion requires its separate operator connection.',
+    );
   const input = { maintenancePool, ...encryption };
   const resumed =
     (operation === 'rotate' && cursor !== undefined) ||
@@ -77,7 +82,7 @@ export async function runEncryptionCommand(
     };
   return {
     operation,
-    ...(await migrateLegacyOAuthBatch(maintenancePool, keys, {
+    ...(await migrateLegacyOAuthBatch(legacyOperatorPool!, keys, {
       limit,
       afterId,
     })),

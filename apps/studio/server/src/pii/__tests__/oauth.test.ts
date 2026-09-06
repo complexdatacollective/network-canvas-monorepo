@@ -280,7 +280,7 @@ describe('Better Auth encrypted credential persistence', () => {
       ).rejects.toThrow(ProtectedDataError);
     });
   });
-  it('denies runtime reads of every retained plaintext token while the maintenance converter still works', async () => {
+  it('denies runtime reads of every retained plaintext token while the separate operator converter still works', async () => {
     await fixture(async ({ scratch, auth, userId }) => {
       const id = randomUUID();
       await scratch.pool.query(
@@ -293,32 +293,26 @@ describe('Better Auth encrypted credential persistence', () => {
         '"idToken"',
         '*',
       ]) {
-        await expect(
-          scratch.app.query(`SELECT ${column} FROM account WHERE id = $1`, [
-            id,
-          ]),
-        ).rejects.toMatchObject({ code: '42501' });
+        for (const runtime of [scratch.app, scratch.maintenance]) {
+          await expect(
+            runtime.query(`SELECT ${column} FROM account WHERE id = $1`, [id]),
+          ).rejects.toMatchObject({ code: '42501' });
+        }
       }
       expect(
         (
           await scratch.maintenance.query(
-            'SELECT "accessToken", "refreshToken", "idToken" FROM account WHERE id = $1',
+            'SELECT legacy_tokens_present FROM account WHERE id = $1',
             [id],
           )
         ).rows,
-      ).toEqual([
-        {
-          accessToken: 'legacy-access-canary',
-          refreshToken: 'legacy-refresh-canary',
-          idToken: 'legacy-id-canary',
-        },
-      ]);
+      ).toEqual([{ legacy_tokens_present: true }]);
       const keys = await initializeCredentialMigration({
         maintenancePool: scratch.maintenance,
         configuration: configuration(),
         loadRootKey: async () => rootOne,
       });
-      await migrateLegacyOAuthBatch(scratch.maintenance, keys, { limit: 100 });
+      await migrateLegacyOAuthBatch(scratch.pool, keys, { limit: 100 });
       expect(
         await (
           await auth.$context

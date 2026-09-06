@@ -88,11 +88,12 @@ export const PII_SIDECAR_SQL = `
 -- Runtime code cannot introduce another value into these legacy columns.
 -- The general auth grants run earlier, so remove both table- and column-level
 -- access before enrolling the adapter's explicit non-legacy column projection.
-REVOKE SELECT ON account FROM PUBLIC, ${TENANT_ROLES.app};
-REVOKE SELECT ("accessToken", "refreshToken", "idToken") ON account FROM PUBLIC, ${TENANT_ROLES.app};
+REVOKE SELECT ON account FROM PUBLIC, ${TENANT_ROLES.app}, ${TENANT_ROLES.maintenance};
+REVOKE SELECT ("accessToken", "refreshToken", "idToken") ON account FROM PUBLIC, ${TENANT_ROLES.app}, ${TENANT_ROLES.maintenance};
 GRANT SELECT (${Object.values(getTableColumns(AUTH_RUNTIME_TABLES.account))
   .map((column) => `"${column.name.replaceAll('"', '""')}"`)
-  .join(', ')}) ON account TO ${TENANT_ROLES.app};
+  .join(', ')}) ON account TO ${TENANT_ROLES.app}, ${TENANT_ROLES.maintenance};
+GRANT SELECT (legacy_tokens_present) ON account TO ${TENANT_ROLES.maintenance};
 
 -- SECURITY INVOKER is intentional: the deleting role must also be allowed to
 -- append the mandatory event. A failed audit aborts single/bulk/cascade deletes.

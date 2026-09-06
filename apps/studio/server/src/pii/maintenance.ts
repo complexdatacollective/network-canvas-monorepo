@@ -344,6 +344,61 @@ async function rotateOAuth(
 }
 
 /**
+ * Offline conversion uses the connecting operator itself, never a SET ROLE
+ * capability available to the web/worker login. Check direct SELECT ACLs (or
+ * ownership/superuser authority), not has_column_privilege's inherited grants.
+ */
+async function legacyOperatorTransaction<T>(
+  pool: pg.Pool,
+  work: (client: pg.PoolClient) => Promise<T>,
+): Promise<T> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const access = await client.query<{ allowed: boolean }>(`
+      SELECT current_user = session_user AND identity.rolcanlogin
+        AND identity.rolname NOT IN ('studio_app', 'studio_maintenance', 'studio_backup')
+        AND (identity.rolsuper OR account.relowner = identity.oid OR NOT EXISTS (
+          SELECT 1 FROM unnest(ARRAY['accessToken', 'refreshToken', 'idToken']) required(name)
+          WHERE NOT EXISTS (
+            SELECT 1 FROM aclexplode(account.relacl) grant_entry
+            WHERE grant_entry.grantee = identity.oid AND grant_entry.privilege_type = 'SELECT'
+          ) AND NOT EXISTS (
+            SELECT 1 FROM pg_attribute column_definition,
+              aclexplode(column_definition.attacl) grant_entry
+            WHERE column_definition.attrelid = account.oid
+              AND column_definition.attname = required.name AND NOT column_definition.attisdropped
+              AND grant_entry.grantee = identity.oid AND grant_entry.privilege_type = 'SELECT'
+          )
+        )) AS allowed
+      FROM pg_roles identity CROSS JOIN pg_class account
+      WHERE identity.rolname = session_user AND account.oid = to_regclass('account')
+        AND account.relkind = 'r' AND account.relpersistence = 'p'
+    `);
+    if (access.rows[0]?.allowed !== true) throw new ProtectedDataError();
+    const result = await work(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function readOrderedPage<Row extends pg.QueryResultRow>(
+  client: pg.PoolClient,
+  statement: string,
+  values: (string | number)[],
+): Promise<pg.QueryResult<Row>> {
+  await client.query(
+    'SET LOCAL enable_bitmapscan = off; SET LOCAL enable_seqscan = off; SET LOCAL enable_sort = off',
+  );
+  return client.query<Row>(statement, values);
+}
+
+/**
  * RLS selectivity estimates can otherwise choose an eager bitmap/heap sort of
  * the entire suffix before LIMIT. These maintenance-only, transaction-local
  * settings retain native PK ordering and never affect application sessions.
@@ -355,12 +410,7 @@ async function readMaintenancePage<Row extends pg.QueryResultRow>(
 ): Promise<pg.QueryResult<Row>> {
   return credentialTransaction(
     pool,
-    async (client) => {
-      await client.query(
-        'SET LOCAL enable_bitmapscan = off; SET LOCAL enable_seqscan = off; SET LOCAL enable_sort = off',
-      );
-      return client.query<Row>(statement, values);
-    },
+    (client) => readOrderedPage<Row>(client, statement, values),
     true,
   );
 }
@@ -479,56 +529,46 @@ export async function migrateLegacyOAuthBatch(
 }> {
   const limit = limitSchema.parse(input.limit);
   const afterId = parseLegacyCursor(input.afterId ?? null);
-  const legacyWhere =
-    '"accessToken" IS NOT NULL OR "refreshToken" IS NOT NULL OR "idToken" IS NOT NULL';
-  await credentialTransaction(pool, async () => undefined, true);
-  const ids = await readMaintenancePage<{ id: string; legacy: boolean }>(
-    pool,
-    `SELECT id, (${legacyWhere}) AS legacy FROM account ${afterId === null ? '' : 'WHERE id > $2'} ORDER BY id LIMIT $1`,
-    afterId === null ? [limit] : [limit, afterId],
+  const ids = await legacyOperatorTransaction(pool, (client) =>
+    readOrderedPage<{ id: string; legacy: boolean }>(
+      client,
+      `SELECT id, legacy_tokens_present AS legacy FROM account ${afterId === null ? '' : 'WHERE id > $2'} ORDER BY id LIMIT $1`,
+      afterId === null ? [limit] : [limit, afterId],
+    ),
   );
   let processed = 0;
   for (const { id, legacy } of ids.rows) {
     if (!legacy) continue;
-    const converted = await credentialTransaction(
-      pool,
-      async (client) => {
-        const selected = await client.query<
-          OAuthRow & {
-            legacy_access: string | null;
-            legacy_refresh: string | null;
-            legacy_id: string | null;
-          }
-        >(
-          `SELECT ${OAUTH_SELECT}, "accessToken" AS legacy_access, "refreshToken" AS legacy_refresh, "idToken" AS legacy_id FROM account WHERE id = $1 FOR UPDATE`,
-          [id],
-        );
-        const row = selected.rows[0];
-        if (
-          !row ||
-          [row.legacy_access, row.legacy_refresh, row.legacy_id].every(
-            (value) => value === null,
-          )
+    const converted = await legacyOperatorTransaction(pool, async (client) => {
+      const selected = await client.query<
+        OAuthRow & {
+          legacy_access: string | null;
+          legacy_refresh: string | null;
+          legacy_id: string | null;
+        }
+      >(
+        `SELECT ${OAUTH_SELECT}, "accessToken" AS legacy_access, "refreshToken" AS legacy_refresh, "idToken" AS legacy_id FROM account WHERE id = $1 FOR UPDATE`,
+        [id],
+      );
+      const row = selected.rows[0];
+      if (
+        !row ||
+        [row.legacy_access, row.legacy_refresh, row.legacy_id].every(
+          (value) => value === null,
         )
-          return false;
-        if (OAUTH_FIELDS.some(({ field }) => row[field] !== null))
-          throw new ProtectedDataError();
-        const sealed = sealOAuthFields(keys, row, {
-          accessToken: row.legacy_access,
-          refreshToken: row.legacy_refresh,
-          idToken: row.legacy_id,
-        });
-        await writeOAuth(client, id, sealed, true);
-        await appendCredentialAudit(
-          client,
-          row,
-          'migrate_legacy',
-          randomUUID(),
-        );
-        return true;
-      },
-      true,
-    );
+      )
+        return false;
+      if (OAUTH_FIELDS.some(({ field }) => row[field] !== null))
+        throw new ProtectedDataError();
+      const sealed = sealOAuthFields(keys, row, {
+        accessToken: row.legacy_access,
+        refreshToken: row.legacy_refresh,
+        idToken: row.legacy_id,
+      });
+      await writeOAuth(client, id, sealed, true);
+      await appendCredentialAudit(client, row, 'migrate_legacy', randomUUID());
+      return true;
+    });
     if (converted) processed += 1;
   }
   const passComplete = ids.rows.length < limit;

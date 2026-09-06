@@ -191,18 +191,14 @@ it('preserves populated legacy credentials and index bytes through migration0002
         '"idToken"',
         '*',
       ]) {
-        await expect(
-          app.query(`SELECT ${column} FROM account WHERE id = $1`, [accountId]),
-        ).rejects.toMatchObject({ code: '42501' });
+        for (const runtime of [app, maintenance]) {
+          await expect(
+            runtime.query(`SELECT ${column} FROM account WHERE id = $1`, [
+              accountId,
+            ]),
+          ).rejects.toMatchObject({ code: '42501' });
+        }
       }
-      expect(
-        (
-          await maintenance.query(
-            'SELECT "accessToken" FROM account WHERE id = $1',
-            [accountId],
-          )
-        ).rows,
-      ).toEqual([{ accessToken: 'synthetic-legacy-token' }]);
       await expect(
         initializeEncryption({
           maintenancePool: maintenance,

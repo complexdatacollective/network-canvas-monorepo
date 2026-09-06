@@ -87,7 +87,7 @@ export async function verifyEncryptionKeyTransaction(
   }
   if (!allowLegacyCredentials) {
     const legacy = await client.query<{ exists: boolean }>(
-      `SELECT EXISTS (SELECT 1 FROM account WHERE "accessToken" IS NOT NULL OR "refreshToken" IS NOT NULL OR "idToken" IS NOT NULL) AS exists`,
+      `SELECT EXISTS (SELECT 1 FROM account WHERE legacy_tokens_present) AS exists`,
     );
     if (legacy.rows[0]?.exists) throw new EncryptionStartupError();
   }

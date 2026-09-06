@@ -43,9 +43,12 @@ function forbidStorageOverrides(data: Record<string, unknown>): void {
     OAUTH_FIELDS.some(
       ({ keyId, algorithm }) => keyId in data || algorithm in data,
     ) ||
-    ['legacyAccessToken', 'legacyRefreshToken', 'legacyIdToken'].some(
-      (field) => field in data,
-    )
+    [
+      'legacyAccessToken',
+      'legacyRefreshToken',
+      'legacyIdToken',
+      'legacyTokensPresent',
+    ].some((field) => field in data)
   )
     throw new ProtectedDataError();
 }

@@ -2034,9 +2034,10 @@ REVOKE UPDATE, DELETE ON team_invitation_deliveries FROM studio_app;
 -- Runtime code cannot introduce another value into these legacy columns.
 -- The general auth grants run earlier, so remove both table- and column-level
 -- access before enrolling the adapter's explicit non-legacy column projection.
-REVOKE SELECT ON account FROM PUBLIC, studio_app;
-REVOKE SELECT ("accessToken", "refreshToken", "idToken") ON account FROM PUBLIC, studio_app;
-GRANT SELECT ("id", "accountId", "providerId", "issuer", "userId", "access_token_ciphertext", "access_token_key_id", "access_token_algorithm", "refresh_token_ciphertext", "refresh_token_key_id", "refresh_token_algorithm", "id_token_ciphertext", "id_token_key_id", "id_token_algorithm", "accessTokenExpiresAt", "refreshTokenExpiresAt", "scope", "password", "createdAt", "updatedAt") ON account TO studio_app;
+REVOKE SELECT ON account FROM PUBLIC, studio_app, studio_maintenance;
+REVOKE SELECT ("accessToken", "refreshToken", "idToken") ON account FROM PUBLIC, studio_app, studio_maintenance;
+GRANT SELECT ("id", "accountId", "providerId", "issuer", "userId", "access_token_ciphertext", "access_token_key_id", "access_token_algorithm", "refresh_token_ciphertext", "refresh_token_key_id", "refresh_token_algorithm", "id_token_ciphertext", "id_token_key_id", "id_token_algorithm", "accessTokenExpiresAt", "refreshTokenExpiresAt", "scope", "password", "createdAt", "updatedAt") ON account TO studio_app, studio_maintenance;
+GRANT SELECT (legacy_tokens_present) ON account TO studio_maintenance;
 
 -- SECURITY INVOKER is intentional: the deleting role must also be allowed to
 -- append the mandatory event. A failed audit aborts single/bulk/cascade deletes.
