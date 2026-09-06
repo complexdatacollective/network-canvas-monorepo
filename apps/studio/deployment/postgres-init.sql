@@ -20,3 +20,6 @@ COMMIT;
 ALTER DATABASE studio ALLOW_CONNECTIONS true;
 \connect studio
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+-- The official image's init server listens only on its local Unix socket.
+-- This administrator step finishes before PostgreSQL accepts runtime TCP.
+/* STUDIO_LARGE_OBJECT_PRIVILEGES */

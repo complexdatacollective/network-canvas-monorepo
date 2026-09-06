@@ -1,4 +1,5 @@
 import {
+  cp,
   mkdtemp,
   readFile,
   readdir,
@@ -110,6 +111,42 @@ describe('explicit deployment configuration', () => {
       expect(await readdir(output)).not.toContain('.configure.lock');
     });
   });
+
+  it.each([
+    ['deployment/postgres-init.sql', '/* STUDIO_RUNTIME_ROLES */'],
+    ['deployment/postgres-init.sql', '/* STUDIO_LARGE_OBJECT_PRIVILEGES */'],
+    [
+      'deployment/postgres-privileges.sql',
+      '/* STUDIO_LARGE_OBJECT_PRIVILEGES */',
+    ],
+  ])(
+    'refuses a missing or repeated provisioning marker in %s before writing credentials',
+    async (name, marker) => {
+      await fixture(async (output) => {
+        await fixture(async (templates) => {
+          await cp(templateRoot, templates, {
+            recursive: true,
+            filter: (source) =>
+              !source.includes('node_modules') &&
+              !source.includes('/.git') &&
+              !source.includes('/client') &&
+              !source.includes('/server'),
+          });
+          const original = await readFile(join(templates, name), 'utf8');
+          for (const replacement of ['', `${marker}\n${marker}`]) {
+            await writeFile(
+              join(templates, name),
+              original.replace(marker, replacement),
+            );
+            await expect(
+              configureDeployment({ ...options, output }, templates),
+            ).rejects.toThrow('Invalid database provisioning template');
+            expect(await readdir(output)).toEqual([]);
+          }
+        });
+      });
+    },
+  );
 
   it('allows exactly one concurrent initialization and preserves its returned token', async () => {
     await fixture(async (output) => {

@@ -11,7 +11,10 @@ import { dirname, join, resolve } from 'node:path';
 
 import { z } from 'zod';
 
-import { runtimeRolesSql } from '@codaco/studio-sync/role-bootstrap';
+import {
+  revokeLargeObjectPrivilegesSql,
+  runtimeRolesSql,
+} from '@codaco/studio-sync/role-bootstrap';
 
 const image = z
   .string()
@@ -40,6 +43,7 @@ const TEMPLATE_FILES = [
   'deployment/traefik.yml',
   'deployment/migrate.yml',
   'deployment/postgres-init.sql',
+  'deployment/postgres-privileges.sql',
   'deployment/minio-init.sh',
   'deployment/minio-policy.json',
   'deployment/backup.sh',
@@ -47,6 +51,13 @@ const TEMPLATE_FILES = [
   'deployment/checksum.sh',
   'deployment/quarantine.yml',
 ] as const;
+
+const databaseRoles = ['studio_app', 'studio_maintenance', 'studio_backup'];
+const databaseLogins = [
+  'studio_migrator',
+  'studio_runtime',
+  'studio_backup_login',
+];
 
 /** Offline only: no environment, listener, database or external service access. */
 export async function configureDeployment(
@@ -58,21 +69,28 @@ export async function configureDeployment(
   const templates = await Promise.all(
     TEMPLATE_FILES.map(async (name) => {
       let bytes = await readFile(join(templateRoot, name));
-      if (name === 'deployment/postgres-init.sql') {
-        const marker = '/* STUDIO_RUNTIME_ROLES */';
-        const sql = bytes.toString();
-        if (sql.split(marker).length !== 2)
-          throw new Error('Invalid database provisioning template.');
-        bytes = Buffer.from(
-          sql.replace(
-            marker,
-            runtimeRolesSql([
-              'studio_app',
-              'studio_maintenance',
-              'studio_backup',
+      if (name.startsWith('deployment/postgres-')) {
+        let sql = bytes.toString();
+        const substitutions = new Map([
+          [
+            '/* STUDIO_LARGE_OBJECT_PRIVILEGES */',
+            revokeLargeObjectPrivilegesSql([
+              ...databaseRoles,
+              ...databaseLogins,
             ]),
-          ),
-        );
+          ],
+        ]);
+        if (name === 'deployment/postgres-init.sql')
+          substitutions.set(
+            '/* STUDIO_RUNTIME_ROLES */',
+            runtimeRolesSql(databaseRoles),
+          );
+        for (const [marker, replacement] of substitutions) {
+          if (sql.split(marker).length !== 2)
+            throw new Error('Invalid database provisioning template.');
+          sql = sql.replace(marker, replacement);
+        }
+        bytes = Buffer.from(sql);
       }
       return { name, bytes };
     }),
@@ -120,11 +138,7 @@ export async function configureDeployment(
       STUDIO_IMAGE: options.image,
       MINIO_IMAGE: options.minioImage,
       STUDIO_ROLE: 'both',
-      STUDIO_DATABASE_ALLOWED_LOGINS: JSON.stringify([
-        'studio_migrator',
-        'studio_runtime',
-        'studio_backup_login',
-      ]),
+      STUDIO_DATABASE_ALLOWED_LOGINS: JSON.stringify(databaseLogins),
       POSTGRES_PASSWORD: secret(),
       STUDIO_MIGRATION_PASSWORD: secret(),
       STUDIO_DATABASE_PASSWORD: secret(),

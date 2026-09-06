@@ -154,6 +154,10 @@ compose run --rm --no-deps -T --entrypoint sh client-assets \
   -c 'test -z "$(ls -A /retained-assets)"'
 compose exec -T postgres pg_restore -U postgres -d studio \
   --exit-on-error --single-transaction < "$backup/studio.dump"
+# Reapply the reviewed administrator-only capability boundary to the restored
+# database before any operator verification or runtime connection can proceed.
+compose exec -T postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d studio \
+  < deployment/postgres-privileges.sql
 compose run --rm --no-deps -T --entrypoint tar minio -C /data -xf - \
   < "$backup/minio.tar"
 compose run --rm --no-deps -T --entrypoint tar client-assets -C /retained-assets -xf - \
