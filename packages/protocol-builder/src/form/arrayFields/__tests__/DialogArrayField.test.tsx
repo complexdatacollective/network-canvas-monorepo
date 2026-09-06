@@ -510,9 +510,9 @@ describe('a row editor open while the draft moves beneath it', () => {
 /**
  * A list a family renders INSIDE the row dialog — a prompt's sort rules, a
  * block's options — is part of one row of the list around it, and that outer
- * list is what holds the document key.
+ * list is what holds the document path.
  *
- * Left inherited, that key is what the inner list would commit its own
+ * Left inherited, that path is what the inner list would commit its own
  * insertions and reorderings against: adding a sort rule would insert a row
  * into the array of prompts. It also must not commit anything at all until the
  * dialog saves, which is the same rule `ProtocolArrayField` states for a list
@@ -527,7 +527,7 @@ describe('a list nested inside a row dialog', () => {
         Bound to:{' '}
         {binding === null
           ? 'no list at all'
-          : (binding.documentKey ?? 'no document key')}
+          : (binding.documentPath?.join('.') ?? 'no document path')}
       </p>
     );
   }
@@ -541,7 +541,7 @@ describe('a list nested inside a row dialog', () => {
     );
   }
 
-  it('is bound to no document key of its own', async () => {
+  it('is bound to no place in the document of its own', async () => {
     const user = userEvent.setup();
     const session = createSession({ prompts: [{ id: 'a', text: 'Alpha' }] });
 
@@ -575,7 +575,7 @@ describe('a list nested inside a row dialog', () => {
     await editRow(user, 0);
 
     expect(
-      await screen.findByText('Bound to: no document key'),
+      await screen.findByText('Bound to: no document path'),
     ).toBeInTheDocument();
   });
 });

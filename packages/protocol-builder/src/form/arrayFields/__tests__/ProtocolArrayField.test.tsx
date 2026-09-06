@@ -1,4 +1,10 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -272,6 +278,200 @@ describe('a list bound to a stage document key', () => {
         { id: 'a', text: 'Alpha' },
         { id: 'b', text: 'Bravo edited' },
       ]),
+    );
+  });
+});
+
+/**
+ * The same list, kept where a stage that holds a whole form keeps it.
+ *
+ * A Family Pedigree's family-member form lives at `nodeConfig.form`, beside the
+ * node type and the variable slots the tree is drawn from. Synthetic here — the
+ * rows are the prompts above, so this is the SAME editor at a different place,
+ * and the only thing under test is where its edits land.
+ */
+function renderNestedPromptList(
+  session: ProtocolBuilderSessionStore,
+  extra?: Readonly<{ onBeforeSave?: (value: unknown) => unknown }>,
+) {
+  function Host() {
+    const controller = useStageEditorController(session, 'stage-form');
+    return (
+      <StageEditorShell
+        controller={controller}
+        actions={({ formId }) => (
+          <SubmitButton form={formId}>Finished editing</SubmitButton>
+        )}
+      >
+        <BuilderSection title="Family members">
+          <ProtocolArrayField
+            name="nodeConfig.form"
+            label="Prompts"
+            component={DialogArrayField}
+            addButtonLabel="Create new prompt"
+            editorTitle="Edit prompt"
+            addTitle="Add prompt"
+            itemLabel="prompt"
+            previewComponent={PromptPreview}
+            editorFieldsComponent={PromptFields}
+            sortable
+            {...(extra?.onBeforeSave === undefined
+              ? {}
+              : { onBeforeSave: extra.onBeforeSave })}
+          />
+        </BuilderSection>
+      </StageEditorShell>
+    );
+  }
+
+  return render(
+    <DialogProvider>
+      <Host />
+    </DialogProvider>,
+  );
+}
+
+const NODE_CONFIG = {
+  type: 'family_member',
+  nodeLabelVariable: 'fm_name',
+  form: [
+    { id: 'a', text: 'Alpha' },
+    { id: 'b', text: 'Bravo' },
+  ],
+};
+
+const nodeConfigOf = (session: ProtocolBuilderSessionStore): unknown =>
+  session.getSnapshot().editedSection.fields.nodeConfig;
+
+const nestedFormOf = (session: ProtocolBuilderSessionStore): Prompt[] => {
+  const config = nodeConfigOf(session);
+  const form =
+    config !== null && typeof config === 'object' && 'form' in config
+      ? config.form
+      : undefined;
+  return Array.isArray(form) ? (form as Prompt[]) : [];
+};
+
+describe('a list the stage keeps at a nested path', () => {
+  it('commits each row operation at that path, not at the key above it', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      title: 'Welcome',
+      nodeConfig: { ...NODE_CONFIG },
+    });
+    renderNestedPromptList(session);
+
+    await screen.findByText('Bravo');
+
+    await user.click(screen.getByRole('button', { name: 'Create new prompt' }));
+    const text = await screen.findByRole('textbox', { name: 'Prompt text' });
+    await user.type(text, 'Charlie');
+    await user.click(screen.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('textbox', { name: 'Prompt text' })).toBeNull(),
+    );
+
+    // The keyboard half of the drag handle, which commits the same operation
+    // the pointer drag does.
+    const handle = await screen.findByRole('button', {
+      name: 'Reorder prompt 3 of 3',
+    });
+    handle.focus();
+    fireEvent.keyDown(handle, { key: 'ArrowUp' });
+    await waitFor(() =>
+      expect(nestedFormOf(session).map((prompt) => prompt.text)).toEqual([
+        'Alpha',
+        'Charlie',
+        'Bravo',
+      ]),
+    );
+
+    await removeRow(user, 2);
+    await waitFor(() => expect(screen.queryByText('Bravo')).toBeNull());
+
+    // Each edit says WHICH row it was, at the place the list actually lives.
+    // Addressed at `nodeConfig` instead, the only thing any of them could say
+    // is "the node configuration is now this" — which merges with nothing, and
+    // needs every other slot on screen to be able to say even that.
+    expect(commandsOf(session)).toEqual([
+      {
+        op: 'insertItem',
+        key: ['nodeConfig', 'form'],
+        index: 2,
+        item: { id: expect.any(String) as unknown as string, text: 'Charlie' },
+      },
+      { op: 'moveItem', key: ['nodeConfig', 'form'], from: 2, to: 1 },
+      { op: 'removeItem', key: ['nodeConfig', 'form'], index: 2 },
+    ]);
+
+    // And the keys beside the list are exactly as the stage held them.
+    expect(nodeConfigOf(session)).toEqual({
+      type: 'family_member',
+      nodeLabelVariable: 'fm_name',
+      form: [
+        { id: 'a', text: 'Alpha' },
+        { id: expect.any(String) as unknown as string, text: 'Charlie' },
+      ],
+    });
+  });
+
+  it('commits a save that outlived its dialog to the row it was made on', async () => {
+    const user = userEvent.setup();
+    const session = createSession({
+      title: 'Welcome',
+      nodeConfig: { ...NODE_CONFIG },
+    });
+
+    let release: () => void = () => undefined;
+    const inFlight = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    renderNestedPromptList(session, {
+      onBeforeSave: async (value) => {
+        await inFlight;
+        return value;
+      },
+    });
+
+    await screen.findByText('Bravo');
+    await user.click(
+      screen.getAllByRole('button', { name: 'Edit prompt' })[1]!,
+    );
+    const text = await screen.findByRole('textbox', { name: 'Prompt text' });
+    await user.clear(text);
+    await user.type(text, 'Bravo edited');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    // A collaborator's row arrives in the same list while the save is still in
+    // flight. Every index the dialog opened with now points one row too high —
+    // which is a thing this list can even survive only because it is addressed
+    // structurally rather than replaced whole.
+    act(() => {
+      session.dispatch([
+        {
+          op: 'insertItem',
+          key: ['nodeConfig', 'form'],
+          index: 0,
+          item: { id: 'x', text: 'Remote' },
+        },
+      ]);
+    });
+
+    await act(async () => {
+      release();
+      await inFlight;
+    });
+
+    await waitFor(() =>
+      expect(nodeConfigOf(session)).toEqual({
+        type: 'family_member',
+        nodeLabelVariable: 'fm_name',
+        form: [
+          { id: 'x', text: 'Remote' },
+          { id: 'a', text: 'Alpha' },
+          { id: 'b', text: 'Bravo edited' },
+        ],
+      }),
     );
   });
 });

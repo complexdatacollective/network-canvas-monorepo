@@ -43,14 +43,15 @@ function createSession(fields: SectionDoc) {
  * The hook as a list editor holds it, inside a real stage form.
  *
  * A row operation is what reaches it in the product, but the branches below
- * belong to the hook: whether a list is bound to a document key at all, and
- * what a save that outlived its editing session may commit. Driving them
- * through a particular list would make each of them a fact about that list.
+ * belong to the hook: whether a list is bound to a place in the document at
+ * all, and what a save that outlived its editing session may commit. Driving
+ * them through a particular list would make each of them a fact about that
+ * list.
  */
 function renderCommands(
   session: ProtocolBuilderSessionStore,
   rendered: readonly Row[],
-  documentKey: string | undefined,
+  documentPath: readonly string[] | undefined,
   onChange: (next: Row[]) => void,
 ) {
   const held: { commands?: ArrayFieldCommands<Row> } = {};
@@ -64,10 +65,10 @@ function renderCommands(
     const controller = useStageEditorController(session, 'stage-form');
     return (
       <StageEditorShell controller={controller}>
-        {documentKey === undefined ? (
+        {documentPath === undefined ? (
           <Probe />
         ) : (
-          <ArrayFieldBindingContext value={{ documentKey }}>
+          <ArrayFieldBindingContext value={{ documentPath }}>
             <Probe />
           </ArrayFieldBindingContext>
         )}
@@ -87,7 +88,7 @@ function renderCommands(
 describe('a list bound to a document key', () => {
   it('takes the list operations, so each row edit commits as what it was', () => {
     const session = createSession({ prompts: [A, B] });
-    const commands = renderCommands(session, [A, B], 'prompts', vi.fn());
+    const commands = renderCommands(session, [A, B], ['prompts'], vi.fn());
 
     // Handed to `ArrayField`, which then reports the operation rather than
     // just the new array. An unbound list has no key to address and answers
@@ -98,7 +99,7 @@ describe('a list bound to a document key', () => {
   it('commits a save that outlived its editor onto the row it was made on', () => {
     const session = createSession({ prompts: [A, B] });
     const onChange = vi.fn();
-    const commands = renderCommands(session, [A, B], 'prompts', onChange);
+    const commands = renderCommands(session, [A, B], ['prompts'], onChange);
 
     let committed = false;
     act(() => {
@@ -119,7 +120,7 @@ describe('a list bound to a document key', () => {
   it('answers no when the row it was asked to commit to has gone', () => {
     const session = createSession({ prompts: [A] });
     const onChange = vi.fn();
-    const commands = renderCommands(session, [A, B], 'prompts', onChange);
+    const commands = renderCommands(session, [A, B], ['prompts'], onChange);
 
     let committed = true;
     act(() => {

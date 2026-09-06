@@ -211,6 +211,57 @@ describe('the prompt list a stage owns', () => {
     expect(Object.hasOwn(added as object, 'negativeLabel')).toBe(false);
   });
 
+  /**
+   * What a family's prompt has to arrive holding.
+   *
+   * An ordinal bin's prompt carries the color its bins are drawn in, and the
+   * researcher never chooses it: the interface picks one so the first bin has
+   * a color at all. Nothing else in the row dialog can supply it — the fields
+   * are the family's own, and a control the researcher never sees would be an
+   * odd way to state a constant — so the list has to open the row on it.
+   */
+  it('opens a new prompt already holding what the interface seeds', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: (
+        <>
+          <StageNameSection />
+          <PromptsSection
+            PromptEditor={TestPromptEditor}
+            PromptPreview={TestPromptPreview}
+            requiresSubject={false}
+            itemTemplate={() => ({ text: 'And who else?' })}
+          />
+        </>
+      ),
+    });
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create new prompt' }),
+    );
+    expect(
+      await screen.findByRole('textbox', { name: 'Prompt text' }),
+    ).toHaveValue('And who else?');
+    // Saved without the researcher typing anything: the seed is a value the
+    // row already holds, not placeholder text the dialog draws over an empty
+    // control.
+    await harness.user.click(screen.getByRole('button', { name: 'Add' }));
+    await screen.findByText('And who else?');
+
+    const request = await harness.submit();
+    const rows = request?.stageDocument.prompts;
+    expect(rows).toHaveLength(2);
+    const added = Array.isArray(rows) ? rows.at(-1) : undefined;
+    expect(added).toEqual({
+      id: expect.any(String) as unknown as string,
+      text: 'And who else?',
+    });
+    // The seed is for a row being ADDED. The prompt the stage already holds is
+    // not rewritten by it.
+    const existing = Array.isArray(rows) ? rows[0] : undefined;
+    expect(existing).toMatchObject({ text: SEEDED_QUESTION });
+  });
+
   it('waits for a subject when the prompts describe one', async () => {
     const harness = renderStageEditor({
       stage: {

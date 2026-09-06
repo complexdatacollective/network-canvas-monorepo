@@ -1,12 +1,24 @@
 import { act, screen, waitFor, within } from '@testing-library/react';
+import { type ComponentProps, useEffect, useMemo } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { contentHash } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import {
+  buildVariableRoleMap,
+  excludeUnvalidatedUses,
+  variableRoleConflicts,
+} from '../../codebook/variableRoles.ts';
+import { draftAdditionalAttributeVariableIds } from '../../codebook/variableValidation.ts';
+import ProtocolField from '../../form/ProtocolField.tsx';
+import { useStageEditorForm } from '../../form/stageEditorContext.ts';
+import { useStageValue } from '../../form/stageFormHooks.ts';
+import { protocolContextFromSections } from '../../protocol-context.ts';
 import { FIXTURE_SESSION_OWNER } from '../../testing/fixtureSession.ts';
 import { loadFixtureStage } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
+import type { SectionCapability } from '../BuilderSection.tsx';
 import FormFieldsSection from '../FormFieldsSection.tsx';
 
 /**
@@ -143,6 +155,11 @@ const fieldsOf = (
       : [];
   return Array.isArray(fields) ? (fields as Record<string, unknown>[]) : [];
 };
+
+const asRecord = (value: unknown): Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
 
 describe('the fields a form collects', () => {
   it('shows what an alter form collects, and saves it unchanged', async () => {
@@ -645,5 +662,557 @@ describe('a codebook write a field needs, refused', () => {
         'Priya Raman is currently editing a section needed for this change.',
       ),
     ).toBeInTheDocument();
+  });
+});
+
+/**
+ * A stage whose prompt stamps an attribute onto every node it adds, and which
+ * also asks about that subject in a form.
+ *
+ * Written out rather than taken from the fixture because no fixture stage does
+ * both yet, and the two together are the whole point: `flagged` is written
+ * unvalidated HERE, in the stage the editor has open, and nowhere else in the
+ * protocol.
+ */
+const STAMPING_NAME_GENERATOR = {
+  id: 'stamps-an-attribute-it-also-asks-about',
+  type: 'NameGenerator' as const,
+  fields: {
+    label: 'Name generator',
+    subject: { entity: 'node', type: 'person' },
+    form: {
+      title: 'Add a person',
+      fields: [{ variable: 'name', prompt: "What is this person's name?" }],
+    },
+    prompts: [
+      {
+        id: 'name-generator-prompt-1',
+        text: 'Who are the people you know?',
+        additionalAttributes: [{ variable: 'flagged', value: true }],
+      },
+    ],
+  },
+};
+
+const PERSON = { entity: 'node', type: 'person' } as const;
+
+/**
+ * What the picker asks the role map, in the role map's own terms.
+ *
+ * `AttributePicker` filters its pool through exactly this call, so a pool of
+ * one attribute answers "would this attribute have been offered?" without
+ * standing anything in for the section.
+ */
+const offeredByRoleMap = (
+  sections: Readonly<Record<string, Record<string, unknown>>>,
+  variableId: string,
+  excludedStageId?: string,
+): string[] =>
+  excludeUnvalidatedUses(
+    buildVariableRoleMap(
+      protocolContextFromSections(sections),
+      excludedStageId,
+    ),
+    PERSON,
+    [{ value: variableId }],
+  ).map((option) => option.value);
+
+/**
+ * The stage being edited is part of the protocol its form is checked against.
+ *
+ * A form field is a VALIDATED writer, so a stage's own form contributes
+ * nothing the role map is read for — but a stage may write the same subject
+ * UNVALIDATED somewhere else in itself, and a name generator's prompt stamps
+ * are exactly that. The schema's role-conflict rule refuses such a pairing
+ * wherever the two writers sit, so a role map that excluded the open stage
+ * would offer the researcher a field the protocol cannot hold.
+ */
+describe('an attribute the open stage itself writes unvalidated', () => {
+  it('is not offered to a field of that stage’s own form', async () => {
+    const harness = renderStageEditor({
+      stage: STAMPING_NAME_GENERATOR,
+      sections: <FormFieldsSection subject="node" hasTitle />,
+    });
+
+    const dialog = await openField(harness, 'Create new form field');
+    const offered = offeredAttributes(dialog);
+
+    // Not the empty picker: everything else about this subject is still there.
+    expect(offered).toContain('age');
+    expect(offered).not.toContain('flagged');
+  });
+
+  it('would have been offered while the role map excluded the open stage', async () => {
+    const harness = renderStageEditor({
+      stage: STAMPING_NAME_GENERATOR,
+      sections: <FormFieldsSection subject="node" hasTitle />,
+    });
+    await screen.findByRole('button', { name: 'Create new form field' });
+
+    // The protocol the mounted section reads, exactly as the session holds it.
+    const sections = harness.session.getSnapshot().protocolSections;
+
+    expect(offeredByRoleMap(sections, 'flagged')).toEqual([]);
+    // The stamp is the only unvalidated write of `flagged` in the protocol, so
+    // excluding the stage it lives in leaves the attribute looking free — and
+    // the researcher would have authored a stage the schema refuses to save.
+    expect(offeredByRoleMap(sections, 'flagged', harness.seeded.id)).toEqual([
+      'flagged',
+    ]);
+  });
+});
+
+/** The same name generator, with nothing stamped on the nodes it adds yet. */
+const UNSTAMPED_NAME_GENERATOR = {
+  id: 'binds-a-slot-while-the-form-is-open',
+  type: 'NameGenerator' as const,
+  fields: {
+    ...STAMPING_NAME_GENERATOR.fields,
+    prompts: [
+      {
+        id: 'name-generator-prompt-1',
+        text: 'Who are the people you know?',
+      },
+    ],
+  },
+};
+
+/** What that prompt looks like once the researcher has bound the slot. */
+const STAMPED_PROMPTS = STAMPING_NAME_GENERATOR.fields.prompts;
+
+/** Lets a test bind the slot from outside, past the row dialog. */
+type SlotBinder = { bind?: () => void };
+
+/**
+ * Binds the prompt's stamp in the DRAFT, as the prompts section does.
+ *
+ * Written through `applyOwnCommands` rather than through a control, because
+ * the moment this test is about is one where a row dialog is open over the
+ * editor: the modal takes every pointer event, and a researcher's own binding
+ * of a slot before opening the dialog is the same draft write either way.
+ */
+function SlotBinder({ handle }: Readonly<{ handle: SlotBinder }>) {
+  const { applyOwnCommands } = useStageEditorForm();
+
+  useEffect(() => {
+    handle.bind = () => {
+      applyOwnCommands([{ op: 'set', key: 'prompts', value: STAMPED_PROMPTS }]);
+    };
+  }, [applyOwnCommands, handle]);
+
+  return null;
+}
+
+/**
+ * The form as an interface that owns unvalidated slots mounts it: reading its
+ * own live prompts, and telling the section what they now write.
+ *
+ * Exactly what Architect's own Form section does
+ * (`draftAdditionalAttributeVariableIds(promptDrafts)`), which is the point —
+ * the two hosts must refuse the same picks.
+ */
+function FormBesideItsSlots({ handle }: Readonly<{ handle: SlotBinder }>) {
+  const prompts = useStageValue('prompts');
+  const draftUnvalidatedVariables = useMemo(
+    () => [...draftAdditionalAttributeVariableIds(prompts)],
+    [prompts],
+  );
+
+  return (
+    <>
+      <SlotBinder handle={handle} />
+      <FormFieldsSection
+        subject="node"
+        hasTitle
+        draftUnvalidatedVariables={draftUnvalidatedVariables}
+      />
+    </>
+  );
+}
+
+/**
+ * A slot the researcher binds in THIS session, which no saved section holds.
+ *
+ * The role map is built from the authoritative protocol, so it describes the
+ * open stage as it was last saved: a prompt stamp bound a minute ago is
+ * invisible to it. Without the draft, the picker goes on offering that
+ * attribute and the row dialog goes on accepting it, and the contradiction
+ * arrives at stage submit — against the prompt, which is not what the
+ * researcher was working on.
+ */
+describe('an attribute the open stage’s DRAFT writes unvalidated', () => {
+  it('stops being offered the moment the slot is bound', async () => {
+    const handle: SlotBinder = {};
+    const harness = renderStageEditor({
+      stage: UNSTAMPED_NAME_GENERATOR,
+      sections: <FormBesideItsSlots handle={handle} />,
+    });
+
+    // Nothing writes `flagged` unvalidated yet, here or anywhere else.
+    const before = await openField(harness, 'Create new form field');
+    expect(offeredAttributes(before)).toContain('flagged');
+    await harness.user.click(before.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    act(() => handle.bind?.());
+
+    const after = await openField(harness, 'Create new form field');
+    const offered = offeredAttributes(after);
+    // Not the empty picker: everything else about this subject is still there.
+    expect(offered).toContain('age');
+    expect(offered).not.toContain('flagged');
+  });
+
+  /**
+   * The backstop, for the pick that was legal when it was made. The picker
+   * cannot offer what is already bound, so the only way to reach this refusal
+   * is to bind the slot while the dialog stands open — and the researcher has
+   * to be told which of their own two edits contradicts the other.
+   */
+  it('refuses a row that was picked before the slot was bound, and says where', async () => {
+    const handle: SlotBinder = {};
+    const harness = renderStageEditor({
+      stage: UNSTAMPED_NAME_GENERATOR,
+      sections: <FormBesideItsSlots handle={handle} />,
+    });
+
+    const dialog = await openField(harness, 'Create new form field');
+    await harness.user.selectOptions(
+      dialog.getByRole('combobox', { name: 'Attribute' }),
+      'flagged',
+    );
+    await harness.user.type(
+      dialog.getByRole('textbox', { name: 'Question text' }),
+      'Are they flagged?',
+    );
+
+    act(() => handle.bind?.());
+    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+
+    expect(
+      await dialog.findByText(
+        '"flagged" is assigned without validation by a prompt in this stage, so it cannot be used as a form field',
+      ),
+    ).toBeInTheDocument();
+    // The dialog stays open on the refusal, so the pick can be changed.
+    expect(screen.queryAllByRole('dialog')).toHaveLength(1);
+  });
+
+  /**
+   * Without the draft the section has only the saved protocol, which still
+   * says `flagged` is free — so the same journey ends with the pick accepted
+   * and the stage saved holding both writers of one attribute, which is the
+   * contradiction the picker exists to prevent.
+   */
+  it('is offered and accepted while the section reads only the saved protocol', async () => {
+    const handle: SlotBinder = {};
+    const harness = renderStageEditor({
+      stage: UNSTAMPED_NAME_GENERATOR,
+      sections: (
+        <>
+          <SlotBinder handle={handle} />
+          <FormFieldsSection subject="node" hasTitle />
+        </>
+      ),
+    });
+    await screen.findByRole('button', { name: 'Create new form field' });
+
+    act(() => handle.bind?.());
+
+    const dialog = await openField(harness, 'Create new form field');
+    expect(offeredAttributes(dialog)).toContain('flagged');
+    await harness.user.selectOptions(
+      dialog.getByRole('combobox', { name: 'Attribute' }),
+      'flagged',
+    );
+    await harness.user.type(
+      dialog.getByRole('textbox', { name: 'Question text' }),
+      'Are they flagged?',
+    );
+    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    const request = await harness.submit();
+    if (request === null) throw new Error('the stage did not save');
+    // Saved, holding both writers of `flagged` in the one stage: a form field
+    // that checks the participant's answer, and a prompt that stamps one
+    // unchecked. Nothing refuses that at save, so the picker is where it has
+    // to be caught — and what does report it names the prompt as loudly as the
+    // field, which is not what the researcher was working on.
+    const saved = protocolContextFromSections({
+      ...harness.session.getSnapshot().protocolSections,
+      [sectionId({ kind: 'stage', stageId: harness.seeded.id })]:
+        request.stageDocument,
+    });
+    const here = saved.orderedStages.findIndex(
+      (stage) => stage.id === harness.seeded.id,
+    );
+    const conflict = variableRoleConflicts(saved).find(
+      (candidate) => candidate.variableId === 'flagged',
+    );
+
+    expect(conflict?.validated.map((hit) => hit.stageIndex)).toContain(here);
+    expect(conflict?.unvalidated.map((hit) => hit.stageIndex)).toContain(here);
+  });
+});
+
+/**
+ * A Family Pedigree keeps its family-member form at `nodeConfig.form` and
+ * names the node type it collects into at `nodeConfig.type` — which the schema
+ * says in its own terms, as
+ * `withStageSubjectResolution({ from: 'stagePath', path: ['nodeConfig', 'type'] })`.
+ * The same section serves it, pointed at both.
+ */
+const pedigreeHoldingForm = (form: readonly unknown[]) => {
+  const pedigree = loadFixtureStage('family-pedigree-1');
+  return {
+    id: pedigree.id,
+    type: pedigree.type,
+    fields: {
+      ...pedigree.fields,
+      nodeConfig: { ...asRecord(pedigree.fields.nodeConfig), form },
+    },
+  };
+};
+
+const pedigreeForm = (
+  request: Awaited<ReturnType<ReturnType<typeof renderStageEditor>['submit']>>,
+): unknown => asRecord(request?.stageDocument.nodeConfig).form;
+
+/** The family-member form as the session holds it right now. */
+const formRows = (harness: ReturnType<typeof renderStageEditor>): unknown[] => {
+  const form = asRecord(
+    harness.session.getSnapshot().editedSection.fields.nodeConfig,
+  ).form;
+  return Array.isArray(form) ? form : [];
+};
+
+/** Every command this session has issued and not had acknowledged. */
+const commandsOf = (harness: ReturnType<typeof renderStageEditor>) =>
+  harness.pendingCommands().flatMap((batch) => [...batch.commands]);
+
+/**
+ * Removes the only field through its own confirmation.
+ *
+ * The confirmation's button carries the same name as the row's — it IS the
+ * row's confirmation. Waiting for the second one is what proves it opened.
+ */
+const removeField = async (harness: ReturnType<typeof renderStageEditor>) => {
+  await harness.user.click(
+    await screen.findByRole('button', { name: 'Remove field' }),
+  );
+  await harness.user.click(
+    await screen.findByRole('button', { name: 'Remove field' }),
+  );
+};
+
+/**
+ * The pedigree's family-member form, and nothing else.
+ *
+ * Deliberately alone. A section pointed at a nested path owns that path and
+ * only that path: the other five things a pedigree keeps on its node
+ * configuration are edited by sections this test does not mount, and a save
+ * from here must leave them exactly where it found them. This file used to
+ * mount a stand-in for them, because a mounted field replaced its whole
+ * top-level key.
+ */
+const familyMemberForm = (
+  props: Partial<ComponentProps<typeof FormFieldsSection>> = {},
+) => (
+  <FormFieldsSection
+    subject="node"
+    fieldsPath="nodeConfig.form"
+    subjectTypePath="nodeConfig.type"
+    {...props}
+  />
+);
+
+const FAMILY_MEMBER_FORM: SectionCapability = {
+  fields: ['nodeConfig.form'],
+  confirmClear: {
+    title: 'Ask nothing about each family member?',
+    description:
+      'The questions this pedigree asks about each family member will be forgotten.',
+    confirmLabel: 'Ask nothing',
+  },
+};
+
+describe('a form the stage keeps somewhere other than `form.fields`', () => {
+  it('reads and writes the list at `fieldsPath`', async () => {
+    const harness = renderStageEditor({
+      stage: pedigreeHoldingForm([
+        { variable: 'fm_name', prompt: 'What is their name?' },
+      ]),
+      sections: familyMemberForm(),
+    });
+
+    // The seeded field is on screen, so the list was read from `nodeConfig.form`
+    // rather than from an absent `form.fields`.
+    expect(
+      await screen.findByText('What is their name?', { exact: false }),
+    ).toBeInTheDocument();
+
+    const dialog = await openField(harness, 'Edit field');
+    const question = dialog.getByRole('textbox', { name: 'Question text' });
+    await harness.user.clear(question);
+    await harness.user.type(question, 'What do people call them?');
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    // A bare array, which is the shape `FormFieldArraySchema` describes — the
+    // rewritten field went back where the seeded one came from, and nothing was
+    // written to `form.fields`.
+    expect(pedigreeForm(await harness.submit())).toEqual([
+      { variable: 'fm_name', prompt: 'What do people call them?' },
+    ]);
+  });
+
+  it('draws its picker from the type named at `subjectTypePath`', async () => {
+    const harness = renderStageEditor({
+      stage: pedigreeHoldingForm([]),
+      sections: familyMemberForm({ optional: true }),
+    });
+
+    const dialog = await openField(harness, 'Create new form field');
+    const offered = offeredAttributes(dialog);
+
+    // A family member's attributes, not a person's: `nodeConfig.type` is the
+    // only place this interface says which codebook the form collects into,
+    // and a section that went looking for `subject` would have found nothing.
+    expect(offered).toContain('fm_name');
+    expect(offered).not.toContain('relationship_to_ego');
+    expect(offered).not.toContain('name');
+    // Derived from the tree the participant draws, in this very stage, so the
+    // whole-protocol role map refuses them here.
+    expect(offered).not.toContain('is_ego');
+    expect(offered).not.toContain('fm_relationship_to_ego');
+    expect(offered).not.toContain('biologicalSex');
+  });
+
+  it('accepts a form emptied down to nothing when it is optional', async () => {
+    const harness = renderStageEditor({
+      stage: pedigreeHoldingForm([
+        { variable: 'fm_name', prompt: 'What is their name?' },
+      ]),
+      sections: familyMemberForm({ optional: true }),
+    });
+
+    // Twice: the first click asks, and the confirmation carries the same words.
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Remove field' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Remove field' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'Edit field' }),
+      ).not.toBeInTheDocument(),
+    );
+
+    // `FormFieldArraySchema.optional()` rather than `FormSchema.fields.min(1)`:
+    // a pedigree that asks nothing about each family member is a real protocol,
+    // so "add at least one field" must not be applied to it.
+    expect(pedigreeForm(await harness.submit())).toEqual([]);
+    expect(
+      screen.queryByText(
+        'Add at least one field. A form with no fields collects nothing.',
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it('leaves the rest of the node configuration to the sections that own it', async () => {
+    const seeded = pedigreeHoldingForm([
+      { variable: 'fm_name', prompt: 'What is their name?' },
+    ]);
+    const harness = renderStageEditor({
+      stage: seeded,
+      sections: familyMemberForm(),
+    });
+
+    const dialog = await openField(harness, 'Edit field');
+    const question = dialog.getByRole('textbox', { name: 'Question text' });
+    await harness.user.clear(question);
+    await harness.user.type(question, 'What do people call them?');
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    // Nothing here edits the node type or the four variable slots, and a save
+    // that dropped them would leave the pedigree unable to draw a tree — the
+    // same loss as deleting a top-level key no section renders, one level down.
+    // Only the form moved.
+    expect(
+      asRecord((await harness.submit())?.stageDocument.nodeConfig),
+    ).toEqual({
+      ...asRecord(seeded.fields.nodeConfig),
+      form: [{ variable: 'fm_name', prompt: 'What do people call them?' }],
+    });
+  });
+
+  it('commits a removed field as that row leaving the list it lives in', async () => {
+    const harness = renderStageEditor({
+      stage: pedigreeHoldingForm([
+        { variable: 'fm_name', prompt: 'What is their name?' },
+      ]),
+      sections: familyMemberForm({ optional: true }),
+    });
+
+    await removeField(harness);
+    await waitFor(() => expect(formRows(harness)).toHaveLength(0));
+
+    // The command says WHICH row went, and where the list it went from lives.
+    // A whole-value `set` on `nodeConfig` would say only "the node config is
+    // now this" — unmergeable with any change made elsewhere in it, and it
+    // would need every sibling slot mounted to say even that much.
+    expect(commandsOf(harness)).toEqual([
+      { op: 'removeItem', key: ['nodeConfig', 'form'], index: 0 },
+    ]);
+  });
+
+  it('asks in the owning interface’s words before switching the form off', async () => {
+    const harness = renderStageEditor({
+      stage: pedigreeHoldingForm([
+        { variable: 'fm_name', prompt: 'What is their name?' },
+      ]),
+      sections: familyMemberForm({
+        optional: true,
+        capability: FAMILY_MEMBER_FORM,
+      }),
+    });
+
+    // Seeded with a form, so the capability opens switched on.
+    const toggle = await screen.findByRole('switch', { name: 'Form fields' });
+    expect(toggle).toBeChecked();
+
+    await harness.user.click(toggle);
+    expect(
+      await screen.findByText('Ask nothing about each family member?'),
+    ).toBeInTheDocument();
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Ask nothing' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        harness.outline().find((section) => section.title === 'Form fields')
+          ?.state,
+      ).toBe('Switched off'),
+    );
+
+    // Absent, which is how the schema spells "this pedigree asks nothing about
+    // each family member" — not an empty list left behind by a closed section.
+    const request = await harness.submit();
+    expect(
+      Object.hasOwn(asRecord(request?.stageDocument.nodeConfig), 'form'),
+    ).toBe(false);
   });
 });
