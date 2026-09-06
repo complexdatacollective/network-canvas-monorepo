@@ -272,6 +272,12 @@ export function renderStageEditor<T extends StageType = StageType>(
   // not keystrokes, and a test that needs it must await the thing itself —
   // an assertion that only passed because the typing was slow is an assertion
   // about the harness.
+  //
+  // What it costs is worth saying plainly: with the turn gone, nothing that
+  // waits for one runs BETWEEN two keystrokes. A passive effect, a microtask
+  // chain or a timer that a real typist's fingers would have let through
+  // arrives here only after the whole string is in — so these tests exercise
+  // one scheduling of a change, not the one a person produces.
   const user = userEvent.setup({ delay: null });
   let revision = 1n;
 
