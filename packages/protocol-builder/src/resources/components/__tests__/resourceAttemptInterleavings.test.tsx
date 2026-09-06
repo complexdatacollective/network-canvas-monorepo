@@ -94,6 +94,30 @@ async function openBrowser(
 }
 
 /**
+ * Waits until the browser is really gone.
+ *
+ * Answering the dismissal is not the same instant as the browser closing. The
+ * answer reaches the dialog through the confirmation's own promise, and the
+ * import control goes away only when React commits the state that answer sets
+ * — so between the click returning and the control unmounting there is a
+ * window in which its claim is still current.
+ *
+ * A row about what happens *after* the browser is closed therefore has to wait
+ * for that, rather than take the click's return for it: a file whose bytes
+ * arrive inside the window is imported, selected, and left staged at the host,
+ * which is the opposite of every such row's rule. Waiting for the control to
+ * be gone is what makes the state the row names the state it is asserting
+ * against.
+ */
+async function browserClosed(): Promise<void> {
+  await waitFor(() =>
+    expect(
+      screen.queryByLabelText('Choose a file from your computer'),
+    ).not.toBeInTheDocument(),
+  );
+}
+
+/**
  * A file whose bytes arrive when the test says so, which is what puts a choice
  * in the state of "chosen, still being read".
  */
@@ -370,11 +394,7 @@ const INTERLEAVINGS: readonly Interleaving[] = [
 
       // A question the researcher has to dismiss after every mis-click is one
       // they learn to dismiss without reading.
-      await waitFor(() =>
-        expect(
-          screen.queryByLabelText('Choose a file from your computer'),
-        ).not.toBeInTheDocument(),
-      );
+      await browserClosed();
       expect(
         screen.queryByRole('button', { name: 'Keep editing' }),
       ).not.toBeInTheDocument();
@@ -696,6 +716,7 @@ const INTERLEAVINGS: readonly Interleaving[] = [
       await user.click(
         await screen.findByRole('button', { name: 'Discard changes' }),
       );
+      await browserClosed();
       // The host answers an import whose surface has gone. Suppressing the
       // callback is not enough: the resource exists, the session is tracking
       // it, and no field will ever name it.
@@ -732,6 +753,7 @@ const INTERLEAVINGS: readonly Interleaving[] = [
       await user.click(
         await screen.findByRole('button', { name: 'Discard changes' }),
       );
+      await browserClosed();
       // The read finishes for a control that is no longer there. Discarding
       // afterwards leaves the same clean end state, but the bytes have been
       // sent and the host has done the work of holding them — for an import
