@@ -593,6 +593,22 @@ function rebaseCommand(
  *
  * The batch is returned unchanged — the same array, holding the same command
  * objects — when nothing it addresses has moved.
+ *
+ * A rebased command that leaves the document exactly as it found it is left
+ * out, whatever it says. Rebasing is what turns a command into one: a
+ * collaborator who makes the very edit the researcher was making leaves a
+ * `set` writing the value already there, an `unset` of a key already gone, or
+ * a move whose row is already where it was headed — `{ from: 1, to: 1 }` for
+ * "put `a` last" once somebody else has put it last — and the apply engine
+ * performs every one of those happily and changes nothing.
+ *
+ * Keeping such a command is not free. Its batch stays pending, so the session
+ * claims unsaved work where there is none and `replaceAuthoritativeStage`
+ * refuses a stage over it; and the undo entry it earns is a draft identical to
+ * the one on screen, so Undo stays enabled and pressing it does nothing at all
+ * — `applyLocalCommands` returns on an empty diff without refreshing the
+ * snapshot. Dropped instead, and `rebasePending` drops a batch these leave
+ * empty along with its undo entry, exactly as it does for a refusal.
  */
 export function rebaseCommands(
   basis: SectionDoc,
@@ -608,8 +624,13 @@ export function rebaseCommands(
     const next = rebaseCommand(basisDocument, currentDocument, command);
     if (next !== command) moved = true;
     if (next !== null) {
-      rebased.push(next);
-      currentDocument = applyCommand(currentDocument, next);
+      const applied = applyCommand(currentDocument, next);
+      if (canonicalize(applied) === canonicalize(currentDocument)) {
+        moved = true;
+      } else {
+        rebased.push(next);
+        currentDocument = applied;
+      }
     }
     // Against the ORIGINAL command, because the basis is the ground the batch
     // was written on and the next command in it was written against what this

@@ -680,9 +680,16 @@ const ORPHANED_TRIALS: Readonly<Record<Mode, number>> = {
  * And how many must move a row to a place whose immediate neighbours the
  * arrival deleted, and have the rebase keep every command all the same — the
  * move the rows further out are what anchor.
+ *
+ * Three trials of the identified sweep used to be counted here that no longer
+ * are, and they were never asking the question: the rows further out anchored
+ * the move onto the place its row was already in, so the answer was
+ * `{ from: n, to: n }` — a command the rebase now drops for changing nothing,
+ * and which exercised none of the anchoring the count is about. What is left
+ * is the moves that actually land somewhere.
  */
 const ANCHORED_MOVE_TRIALS: Readonly<Record<Mode, number>> = {
-  identified: 8,
+  identified: 5,
   idless: 1,
   duplicated: 1,
 };

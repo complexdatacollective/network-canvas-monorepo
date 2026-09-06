@@ -132,6 +132,42 @@ describe('undo after a collaborator’s arrival', () => {
    * draft identical to the one on screen: Undo stayed enabled, and pressing it
    * changed nothing, because `applyLocalCommands` returns on an empty diff.
    */
+  /**
+   * The same husk, arrived at the other way: a command the rebase kept, which
+   * the arrival has left nothing for.
+   *
+   * A collaborator who makes the very reorder the researcher was making leaves
+   * the move addressing the place its row is already in — `{ from: 1, to: 1 }`
+   * — which the apply engine performs perfectly happily and which changes
+   * nothing. Keeping it left a pending batch and an undo entry behind an edit
+   * that had already happened, and pressing Undo did nothing at all, because
+   * `applyLocalCommands` returns on an empty diff without so much as
+   * refreshing the snapshot.
+   */
+  it('drops a move the arrival has already made', () => {
+    const session = openSession([ASKED, ADDED]);
+    session.dispatch([{ op: 'moveItem', key: 'prompts', from: 0, to: 1 }]);
+    expect(session.getSnapshot().editedSection.fields.prompts).toEqual([
+      ADDED,
+      ASKED,
+    ]);
+
+    // The collaborator reorders the two prompts the same way, and the
+    // researcher's move has nothing left to move.
+    session.acknowledge({
+      fields: stageWith([ADDED, ASKED]),
+      throughBatchId: 0,
+      manifestRevision: revision(2n),
+    });
+
+    expect(session.getSnapshot().editedSection.fields.prompts).toEqual([
+      ADDED,
+      ASKED,
+    ]);
+    expect(session.getSnapshot().pendingCommands).toEqual([]);
+    expect(session.getSnapshot().history.canUndo).toBe(false);
+  });
+
   it('drops a batch its rebase emptied, and the undo step with it', () => {
     const session = openSession([ASKED, ADDED]);
     session.dispatch([{ op: 'removeItem', key: 'prompts', index: 1 }]);
