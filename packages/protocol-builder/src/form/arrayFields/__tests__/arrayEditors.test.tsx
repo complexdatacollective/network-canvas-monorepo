@@ -807,44 +807,53 @@ describe('an inline list whose write the document does not take', () => {
     ).toHaveLength(1);
   });
 
-  it('takes it back off screen when the key it would have repaired holds no list', async () => {
-    const user = userEvent.setup();
-    const legacy = { label: 'Yes', value: 'yes' };
-    const store = createSession({
-      title: 'Welcome',
-      // What an import, a migration or a legacy protocol can leave at a
-      // list's key. The editor draws the empty list for it with a working
-      // Add, and the write behind that Add carries the repair that makes the
-      // key a list — so a refusal here refuses BOTH, and the value the control
-      // is reconciled against never changes.
-      options: legacy,
-    } as SectionDoc);
-    renderOptions(withRevocableDispatch(store));
+  // What an import, a migration or a legacy protocol can leave at a list's
+  // key. The editor draws the empty list for it with a working Add, and the
+  // write behind that Add carries the repair that makes the key a list — so a
+  // refusal here refuses BOTH, and the value the control is reconciled against
+  // never changes. Every shape the package's own docs name reaches the same
+  // path, and an object is not the one that would break first.
+  it.each([
+    ['an object', { label: 'Yes', value: 'yes' }],
+    ['a string', 'a legacy string'],
+    ['a number', 7],
+  ])(
+    'takes it back off screen when the key it would have repaired holds %s',
+    async (_shape, legacy) => {
+      const user = userEvent.setup();
+      const store = createSession({
+        title: 'Welcome',
+        options: legacy,
+      } as SectionDoc);
+      renderOptions(withRevocableDispatch(store));
 
-    await user.click(
-      await screen.findByRole('button', { name: 'Create new option' }),
-    );
+      await user.click(
+        await screen.findByRole('button', { name: 'Create new option' }),
+      );
 
-    expect(
-      await screen.findByText(
-        'This stage is read-only, so this item was not saved. Take over editing and try again.',
-      ),
-    ).toBeInTheDocument();
-    // The legacy value is still there: a repair rides with a write or not at
-    // all, and putting the empty list into the form value would discard it at
-    // the next submit for an edit that never landed.
-    expect(store.getSnapshot().editedSection.fields.options).toEqual(legacy);
-    // And the row is off the screen all the same. Nothing about the value can
-    // take it back — which is why the list is TOLD the write reached nothing;
-    // left there, it could never be edited or removed either, since every
-    // operation naming it resolves against the same foreign value.
-    expect(
-      screen.queryAllByRole('button', { name: /^Remove option/ }),
-    ).toHaveLength(0);
-    expect(
-      screen.queryByRole('textbox', { name: 'Value' }),
-    ).not.toBeInTheDocument();
-  });
+      expect(
+        await screen.findByText(
+          'This stage is read-only, so this item was not saved. Take over editing and try again.',
+        ),
+      ).toBeInTheDocument();
+      // The legacy value is still there: a repair rides with a write or not at
+      // all, and putting the empty list into the form value would discard it at
+      // the next submit for an edit that never landed.
+      expect(store.getSnapshot().editedSection.fields.options).toEqual(legacy);
+      // And the row is off the screen all the same. Nothing about the value can
+      // take it back — which is why the list is TOLD the write reached nothing;
+      // left there, it could never be edited or removed either, since every
+      // operation naming it resolves against the same foreign value.
+      await waitFor(() =>
+        expect(
+          screen.queryAllByRole('button', { name: /^Remove option/ }),
+        ).toHaveLength(0),
+      );
+      expect(
+        screen.queryByRole('textbox', { name: 'Value' }),
+      ).not.toBeInTheDocument();
+    },
+  );
 
   it('keeps the row open while it puts back a keystroke the document did not take', async () => {
     const user = userEvent.setup();
