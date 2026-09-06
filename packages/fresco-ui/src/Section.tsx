@@ -3,7 +3,6 @@
 import { Collapsible } from '@base-ui/react/collapsible';
 import type { ReactNode } from 'react';
 import {
-  createContext,
   createElement,
   useCallback,
   useContext,
@@ -18,6 +17,11 @@ import { FieldUnmountPolicyProvider } from './form/FieldUnmountPolicy';
 import { FormStoreContext } from './form/store/formStoreProvider';
 import Surface, { useSurfaceDepth } from './layout/Surface';
 import Toggle from './Toggle';
+import {
+  headingTagBelow,
+  type HeadingTag,
+  useEnclosingHeadingLevel,
+} from './typography/EnclosingHeadingLevel';
 import Heading from './typography/Heading';
 import Paragraph from './typography/Paragraph';
 
@@ -52,61 +56,20 @@ export type SectionProps = SectionBaseProps & SectionToggleProps;
 
 const subscribeToNothing = () => () => {};
 
-const HEADING_TAGS = ['h2', 'h3', 'h4', 'h5', 'h6'] as const;
-
-type HeadingTag = (typeof HEADING_TAGS)[number];
-
-const EnclosingHeadingLevelContext = createContext<HeadingTag | null>(null);
-
-/**
- * States the level of the heading a subtree's sections sit under.
- *
- * A section derives its own level from Surface depth, which is the right proxy
- * on a page — a section nested inside another section is one Surface deeper —
- * and the wrong one inside an overlay: `DialogPopup` restarts the Surface
- * ladder at depth 1 so nested surfaces derive from the overlay base rather
- * than from wherever the dialog was opened, which left a first-level section
- * in a dialog an `h4` under the dialog's `h2` title. That is an axe
- * `heading-order` failure, and for anyone navigating by headings it reads as a
- * subsection that is not there.
- *
- * The overlay that owns the enclosing heading says what it is, and sections
- * inside count down from it. Only the ELEMENT changes: a section keeps the
- * type treatment its Surface depth gives it, because that is about how deeply
- * nested it looks rather than where it sits in the document's outline.
- *
- * Absent — an ordinary page — nothing changes: the Surface-depth level stands.
- */
-export const EnclosingHeadingLevel = ({
-  level,
-  children,
-}: {
-  level: HeadingTag;
-  children: ReactNode;
-}) => (
-  <EnclosingHeadingLevelContext.Provider value={level}>
-    {children}
-  </EnclosingHeadingLevelContext.Provider>
-);
-
 /**
  * The tag a section's title should carry, or `null` when its Surface-depth
  * level is already right.
  *
- * `surfaceDepth` is 1 for the outermost section inside a dialog, so a level
- * below an `h2` enclosing heading is `h3`, and one section deeper is `h4` —
- * the same ladder a page gives, started from the right rung. It stops at `h6`,
- * which is as deep as HTML's outline goes.
+ * `surfaceDepth` is 1 for the outermost section inside a dialog, so it lands
+ * one level below the enclosing heading, and one section deeper lands two.
  */
 const sectionHeadingTag = (
   enclosingLevel: HeadingTag | null,
   surfaceDepth: number,
-): HeadingTag | null => {
-  if (enclosingLevel === null) return null;
-  const level =
-    HEADING_TAGS.indexOf(enclosingLevel) + Math.max(surfaceDepth, 1);
-  return HEADING_TAGS[Math.min(level, HEADING_TAGS.length - 1)] ?? null;
-};
+): HeadingTag | null =>
+  enclosingLevel === null
+    ? null
+    : headingTagBelow(enclosingLevel, surfaceDepth);
 
 /**
  * A single-panel form section. Closing a toggleable section removes its panel
@@ -127,7 +90,7 @@ export default function Section({
   const descriptionId = useId();
   const surfaceDepth = useSurfaceDepth();
   const headingLevel = surfaceDepth === 0 ? 'h3' : 'h4';
-  const enclosingHeadingLevel = useContext(EnclosingHeadingLevelContext);
+  const enclosingHeadingLevel = useEnclosingHeadingLevel();
   const headingTag = sectionHeadingTag(enclosingHeadingLevel, surfaceDepth);
   const [open, setOpen] = useState(toggleable ? defaultOpen : true);
   const [isChangePending, setIsChangePending] = useState(false);

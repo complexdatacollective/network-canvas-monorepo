@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { Alert, AlertTitle } from './Alert';
+import Dialog from './dialogs/Dialog';
 
 describe('Alert', () => {
   it('keeps the full intent colour for the soft appearance', () => {
@@ -38,6 +39,39 @@ describe('AlertTitle', () => {
     expect(
       screen.getByRole('heading', { name: 'Something happened', level: 3 }),
     ).toBeInTheDocument();
+  });
+
+  /**
+   * Derived rather than declared. An opt-in level is a level nobody opts into:
+   * every alert in the codebase was raised without one, so the dialogs that
+   * warn before deleting a participant's interviews each put an `h4` under
+   * their own `h2` title — the failure the prop was added to fix, still there.
+   */
+  it('counts down from the dialog it is raised in', () => {
+    render(
+      <Dialog open title="Delete participants">
+        <Alert variant="destructive">
+          <AlertTitle>Warning</AlertTitle>
+        </Alert>
+      </Dialog>,
+    );
+
+    screen.getByRole('heading', { name: 'Delete participants', level: 2 });
+    const title = screen.getByRole('heading', { name: 'Warning', level: 3 });
+    // The element moved; the treatment did not.
+    expect(title).toHaveClass('text-sm');
+  });
+
+  it('lets a caller name a level the enclosing outline does not imply', () => {
+    render(
+      <Dialog open title="Delete participants">
+        <Alert variant="destructive">
+          <AlertTitle headingLevel="h4">Warning</AlertTitle>
+        </Alert>
+      </Dialog>,
+    );
+
+    screen.getByRole('heading', { name: 'Warning', level: 4 });
   });
 
   /**
