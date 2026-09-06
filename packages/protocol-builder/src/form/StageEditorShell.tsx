@@ -43,7 +43,6 @@ import {
 import {
   type OwnCommandsResult,
   StageEditorFormContext,
-  type StageFormStoreApi,
 } from './stageEditorContext.ts';
 
 /**

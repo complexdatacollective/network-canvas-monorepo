@@ -651,15 +651,11 @@ describe('StageEditorShell', () => {
     // nowhere else.
     await user.type(heading, ' edited');
 
-    // The host acknowledges the save, and someone else renames the stage.
-    const [batch] = session.getSnapshot().pendingCommands;
-    if (batch === undefined) throw new Error('the save wrote no commands');
+    // A finish retires the batch it carried, so the save leaves nothing
+    // pending to acknowledge; the host already holds it. Someone else then
+    // renames the stage.
+    expect(session.getSnapshot().pendingCommands).toEqual([]);
     act(() => {
-      session.acknowledge({
-        fields: { label: 'Welcome', title: 'Saved heading', items: [] },
-        throughBatchId: batch.id,
-        manifestRevision: { sequence: 2n, hash: 'revision-2' },
-      });
       session.replaceAuthoritativeStage({
         fields: {
           label: 'Renamed by someone else',
