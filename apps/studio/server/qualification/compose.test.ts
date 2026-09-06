@@ -2,7 +2,9 @@ import { createHash, createHmac, randomBytes, randomUUID } from 'node:crypto';
 import { once } from 'node:events';
 import { createReadStream } from 'node:fs';
 import {
+  appendFile,
   cp,
+  mkdir,
   readFile,
   readdir,
   rename,
@@ -56,6 +58,244 @@ async function counts(deployment: Deployment) {
     ).rows[0]!;
   } finally {
     await pools.close();
+  }
+}
+
+async function existingRestoreState(deployment: Deployment) {
+  const ids = (
+    await deployment.execute('docker', [
+      'ps',
+      '--all',
+      '--quiet',
+      '--filter',
+      `label=com.docker.compose.project=${deployment.project}`,
+    ])
+  ).stdout
+    .toString()
+    .trim()
+    .split('\n');
+  expect(ids.length).toBeGreaterThan(0);
+  expect(ids.every((id) => /^[a-f0-9]+$/.test(id))).toBe(true);
+  const containers = await deployment.execute('docker', [
+    'inspect',
+    '--format',
+    '{{.Id}} {{.State.Status}} {{.State.StartedAt}} {{.State.FinishedAt}}',
+    ...ids,
+  ]);
+  return {
+    files: await restoreConfigurationState(deployment),
+    containers: containers.stdout.toString(),
+  };
+}
+
+async function restoreConfigurationState(deployment: Deployment) {
+  const files: Record<string, string> = {};
+  for (const path of [
+    '.env',
+    'deployment/encryption.env',
+    'deployment/recovery-images.yml',
+  ])
+    files[path] = createHash('sha256')
+      .update(await readFile(join(deployment.directory, path)))
+      .digest('hex');
+  return files;
+}
+
+async function prepareRestoreTarget(deployment: Deployment, backup: string) {
+  for (const name of [
+    '.env',
+    'docker-compose.yml',
+    'SELF_HOSTING.md',
+    'MIGRATIONS.md',
+    'BACKUPS.md',
+    'deployment',
+  ])
+    await cp(join(backup, name), join(deployment.directory, name), {
+      recursive: true,
+    });
+  await deployment.overlay();
+}
+
+async function alternateRestoreTargets(
+  backup: string,
+  custody: string,
+  existing: Deployment,
+) {
+  const protectedState = await existingRestoreState(existing);
+  for (const kind of [
+    'project-name',
+    'custom-volume',
+    'external-volume',
+    'orphan-network',
+    'orphan-volume',
+    'bind-data',
+    'driver-bind-data',
+    'inspection-failure',
+  ] as const) {
+    const probe = await localDeployment(kind);
+    const resource = `${probe.project}-existing`;
+    let volumeCreated = false;
+    let networkCreated = false;
+    try {
+      await prepareRestoreTarget(probe, backup);
+      await cp(custody, join(probe.directory, 'deployment/encryption.env'));
+      for (const path of [
+        'deployment/encryption.env',
+        'deployment/recovery-images.yml',
+      ])
+        await appendFile(
+          join(probe.directory, path),
+          `\n# Target ${kind} canary ${randomUUID()}\n`,
+        );
+      const before = await restoreConfigurationState(probe);
+      const environment: Record<string, string> = {};
+      let override = '';
+      const guardedVolume = ['custom-volume', 'external-volume'].includes(kind);
+      if (kind === 'project-name') {
+        // An empty environment value lets the top-level Compose name win.
+        environment.COMPOSE_PROJECT_NAME = '';
+        override = `name: ${existing.project}\n`;
+      } else if (guardedVolume || kind === 'orphan-volume') {
+        await probe.execute('docker', [
+          'volume',
+          'create',
+          ...(kind === 'orphan-volume'
+            ? ['--label', `com.docker.compose.project=${probe.project}`]
+            : []),
+          resource,
+        ]);
+        volumeCreated = true;
+        await probe.execute('docker', [
+          'run',
+          '--rm',
+          '--network=none',
+          '--user=0',
+          '--entrypoint',
+          'sh',
+          '--mount',
+          `type=volume,source=${resource},target=/canary`,
+          probe.images.minio,
+          '-c',
+          'printf "Existing volume bytes\\n" > /canary/restore-target-canary',
+        ]);
+        if (guardedVolume)
+          override = `volumes:\n  postgres:\n    name: ${resource}\n    external: ${kind === 'external-volume'}\n`;
+      } else if (kind === 'orphan-network') {
+        await probe.execute('docker', [
+          'network',
+          'create',
+          '--label',
+          `com.docker.compose.project=${probe.project}`,
+          resource,
+        ]);
+        networkCreated = true;
+      } else if (kind === 'bind-data' || kind === 'driver-bind-data') {
+        const path = join(probe.root, 'existing-data');
+        await mkdir(path);
+        await writeFile(join(path, 'canary'), 'Existing bind bytes\n');
+        override =
+          kind === 'bind-data'
+            ? `services:\n  postgres:\n    volumes: !override\n      - type: bind\n        source: ${JSON.stringify(path)}\n        target: /var/lib/postgresql\n`
+            : `volumes:\n  postgres:\n    driver: local\n    driver_opts:\n      type: none\n      o: bind\n      device: ${JSON.stringify(path)}\n`;
+      } else if (kind === 'inspection-failure') {
+        const bin = join(probe.root, 'failing-inspection');
+        await mkdir(bin);
+        await writeFile(
+          join(bin, 'docker'),
+          '#!/bin/sh\nif [ "$1" = volume ] && [ "$2" = ls ]; then exit 73; fi\nexec "$STUDIO_REAL_DOCKER" "$@"\n',
+          { mode: 0o700 },
+        );
+        environment.PATH = `${bin}:${process.env.PATH}`;
+        environment.STUDIO_REAL_DOCKER = (
+          await probe.execute('sh', ['-c', 'command -v docker'])
+        ).stdout
+          .toString()
+          .trim();
+      }
+      if (override) {
+        await writeFile(join(probe.directory, 'target.yml'), override);
+        environment.COMPOSE_FILE = [
+          join(probe.directory, 'docker-compose.yml'),
+          join(probe.directory, 'qualification.yml'),
+          join(probe.directory, 'target.yml'),
+        ].join(':');
+      }
+      const refused = await probe.execute(
+        'sh',
+        ['deployment/restore.sh', backup, custody],
+        { failure: true, environment },
+      );
+      expect(refused.code, kind).not.toBe(0);
+      expect(await restoreConfigurationState(probe), kind).toEqual(before);
+      expect(refused.stdout.toString(), kind).not.toMatch(
+        /Loaded image(?: ID)?:/,
+      );
+      expect(refused.stderr.toString(), kind).toContain(
+        kind === 'inspection-failure' ||
+          kind === 'bind-data' ||
+          kind === 'driver-bind-data'
+          ? 'unable to verify a new Compose project'
+          : 'target Compose project or named volumes already exist',
+      );
+      expect(await existingRestoreState(existing), kind).toEqual(
+        protectedState,
+      );
+      expect(
+        (
+          await probe.execute('docker', [
+            'ps',
+            '--all',
+            '--quiet',
+            '--filter',
+            `label=com.docker.compose.project=${probe.project}`,
+          ])
+        ).stdout
+          .toString()
+          .trim(),
+        kind,
+      ).toBe('');
+      if (volumeCreated) {
+        const canary = await probe.execute('docker', [
+          'run',
+          '--rm',
+          '--network=none',
+          '--entrypoint',
+          'sh',
+          '--mount',
+          `type=volume,source=${resource},target=/canary,readonly`,
+          probe.images.minio,
+          '-c',
+          'cat /canary/restore-target-canary',
+        ]);
+        expect(canary.stdout.toString(), kind).toBe('Existing volume bytes\n');
+      }
+      if (networkCreated)
+        expect(
+          (
+            await probe.execute('docker', [
+              'network',
+              'inspect',
+              '--format',
+              '{{.Name}}',
+              resource,
+            ])
+          ).stdout
+            .toString()
+            .trim(),
+        ).toBe(resource);
+      if (kind === 'bind-data' || kind === 'driver-bind-data')
+        expect(
+          await readFile(join(probe.root, 'existing-data/canary'), 'utf8'),
+        ).toBe('Existing bind bytes\n');
+    } finally {
+      // The extra override is absent from dispose: it cannot remove a named
+      // volume borrowed from another project. Only our explicit fixtures follow.
+      await probe.dispose();
+      if (volumeCreated)
+        await probe.execute('docker', ['volume', 'rm', resource]);
+      if (networkCreated)
+        await probe.execute('docker', ['network', 'rm', resource]);
+    }
   }
 }
 
@@ -578,18 +818,7 @@ it('installs an immutable built image, drains a populated backup and restores al
       ).toBe(false);
     }
     // Restore the same key/configuration backup in a second, empty project.
-    for (const name of [
-      '.env',
-      'docker-compose.yml',
-      'SELF_HOSTING.md',
-      'MIGRATIONS.md',
-      'BACKUPS.md',
-      'deployment',
-    ])
-      await cp(join(backup, name), join(restored.directory, name), {
-        recursive: true,
-      });
-    await restored.overlay();
+    await prepareRestoreTarget(restored, backup);
     const missingCustody = await restored.execute(
       'sh',
       ['deployment/restore.sh', backup, join(source.root, 'missing-keys.env')],
@@ -711,17 +940,34 @@ it('installs an immutable built image, drains a populated backup and restores al
       custody,
     ]);
     expect(restoredResult.stdout.toString()).toMatch(/Loaded image(?: ID)?:/);
+    await restored.compose(['wait', 'minio-init']);
     expect(await counts(restored)).toEqual({ ...baseline, refs: 2 });
+    // Distinct, valid byte canaries prove an accidental repeat cannot replace
+    // the target's keys or image selection before refusing its populated DB.
+    for (const path of [
+      'deployment/encryption.env',
+      'deployment/recovery-images.yml',
+    ])
+      await appendFile(
+        join(restored.directory, path),
+        `\n# Existing target canary ${randomUUID()}\n`,
+      );
+    const beforeRepeat = await existingRestoreState(restored);
     const populatedRestore = await restored.execute(
       'sh',
       ['deployment/restore.sh', backup, custody],
       { failure: true },
     );
     expect(populatedRestore.code).not.toBe(0);
+    expect(await existingRestoreState(restored)).toEqual(beforeRepeat);
+    expect(populatedRestore.stdout.toString()).not.toMatch(
+      /Loaded image(?: ID)?:/,
+    );
     expect(populatedRestore.stderr.toString()).toContain(
-      'Restore requires an empty database',
+      'target Compose project or named volumes already exist',
     );
     expect(await counts(restored)).toEqual({ ...baseline, refs: 2 });
+    await alternateRestoreTargets(backup, custody, restored);
     const quarantine = [
       '-f',
       'deployment/recovery-images.yml',
@@ -734,8 +980,10 @@ it('installs an immutable built image, drains a populated backup and restores al
       '--images',
     ]);
     expect(
-      [...new Set(recoveredImages.stdout.toString().trim().split('\n'))].sort(),
-    ).toEqual([...imageIds].sort());
+      [
+        ...new Set(recoveredImages.stdout.toString().trim().split('\n')),
+      ].toSorted((left, right) => left.localeCompare(right)),
+    ).toEqual(imageIds.toSorted((left, right) => left.localeCompare(right)));
     for (const namespace of ['pii', 'integration', 'blindIndex'] as const) {
       const missing = structuredClone(historical);
       missing[namespace].keys = missing[namespace].keys.filter(

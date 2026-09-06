@@ -244,7 +244,7 @@ and start Studio privately. Check diagnostics and an authenticated smoke
 before starting the proxy and any separated workers. An unsuccessful capture
 requires correcting the reported condition under quarantine first.
 
-Restore into a new Compose project with empty named volumes. Copy the backed-up
+Restore into a new Compose project with unused named volumes. Copy the backed-up
 configuration and matching digests, preserving credentials. Retrieve the
 matching historical keyset from its independent custody location. The restore
 project's proxy subnet must be unique if both
@@ -270,8 +270,17 @@ credentials. Keep it in `COMPOSE_FILE` for every recovery command. Docker's
 restores images and tags; recovery does not rely on registry digest names
 surviving a change of Docker storage backend.
 
-Restore refuses populated volumes or retained database
-sessions, and restores the archive in one transaction. The quarantine overlay
+Before loading images or replacing local configuration or keys, restore resolves
+the effective Compose project and every named volume. It refuses any existing
+project container, network or volume, including stopped containers and orphaned
+resources, and any existing custom or external volume named by the configuration.
+Inspection errors and bind-mounted or anonymous database/object data volumes
+also refuse recovery. Named volumes must use the default local driver without
+driver options, so a new name cannot alias an existing host directory or remote
+store. Choose an independent project and new volume names; do not
+run concurrent operations against that target. The later empty-volume and
+database-session checks remain in place, and the database archive restores in
+one transaction. The quarantine overlay
 runs only the web role on the private data network, with mail and optional
 telemetry disabled. The process has no external network route. Do not start
 the production proxy or workers until validation finishes.
