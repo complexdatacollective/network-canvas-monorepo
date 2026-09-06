@@ -1,10 +1,11 @@
 // Row-level security for the team boundary (#1249). Ships in the server's
 // production bundle beside schema.ts: import nothing beyond drizzle-orm.
 //
-// Every tenant table carries one permissive policy: a row is visible, and may
+// Every tenant table carries a runtime policy: a row is visible, and may
 // be written, only when its team_id equals the transaction-local GUC that
 // TenantDb.transaction() stamps (tenant.ts) — or when the current role is the
 // maintenance role, which is how garbage collection visits every tenant.
+// A second, SELECT-only policy admits the separate operator backup identity.
 //
 // The policy alone is decorative for a table owner (owners bypass RLS unless
 // the table is FORCEd) and for a superuser (who bypasses it regardless). The
@@ -34,11 +35,24 @@ export const TEAM_GUC = 'app.team_id';
 const TEAM_ISOLATION_PREDICATE = `team_id = NULLIF(current_setting('${TEAM_GUC}', true), '') OR current_user = '${TENANT_ROLES.maintenance}'`;
 
 /** A fresh policy per table: drizzle links a policy to exactly one table. */
-export function teamIsolationPolicy() {
-  return pgPolicy('team_isolation', {
-    for: 'all',
-    using: sql.raw(TEAM_ISOLATION_PREDICATE),
-    withCheck: sql.raw(TEAM_ISOLATION_PREDICATE),
+export function teamIsolationPolicies() {
+  return [
+    pgPolicy('team_isolation', {
+      for: 'all',
+      using: sql.raw(TEAM_ISOLATION_PREDICATE),
+      withCheck: sql.raw(TEAM_ISOLATION_PREDICATE),
+    }),
+    backupReadPolicy(),
+  ];
+}
+
+/** Separate SELECT-only policy; never extends a runtime write predicate. */
+export function backupReadPolicy() {
+  return pgPolicy('backup_read', {
+    for: 'select',
+    // The role is provisioned by the sidecar after Drizzle creates policies.
+    // A current_user predicate works on a fresh database before it exists.
+    using: sql.raw(`current_user = '${BACKUP_ROLE}'`),
   });
 }
 

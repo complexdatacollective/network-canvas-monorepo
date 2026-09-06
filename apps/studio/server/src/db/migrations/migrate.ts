@@ -138,6 +138,8 @@ export async function migrateDatabase(
     const previous = applied.at(-1);
     if (previous) await verifyFingerprint(client, previous.fingerprint);
 
+    await enforceMigrationSecurity(client, allowedLogins);
+
     await client.query(`CREATE SCHEMA IF NOT EXISTS studio_migrations;
       REVOKE ALL ON SCHEMA studio_migrations FROM PUBLIC;
       CREATE TABLE IF NOT EXISTS ${HISTORY_TABLE} (

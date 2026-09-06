@@ -1,0 +1,7 @@
+# This overlay is used only for the explicit, offline migration command.
+# The long-running service receives only studio_runtime credentials.
+services:
+  studio:
+    environment:
+      DATABASE_URL: postgresql://studio_migrator:${STUDIO_MIGRATION_PASSWORD:?Missing migrator password}@postgres:5432/studio
+      STUDIO_DATABASE_ALLOWED_LOGINS: ${STUDIO_DATABASE_ALLOWED_LOGINS:?Missing explicit database login enrollment}

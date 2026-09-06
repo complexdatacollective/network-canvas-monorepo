@@ -1,7 +1,7 @@
 import type pg from 'pg';
 
 import { createPostgresPool } from '@codaco/studio-sync/postgres-pool';
-import { TENANT_ROLES } from '@codaco/studio-sync/rls';
+import { BACKUP_ROLE, TENANT_ROLES } from '@codaco/studio-sync/rls';
 
 import type { DbEnv } from '../env.ts';
 import { logOperational } from '../observability/logger.ts';
@@ -31,6 +31,11 @@ export function createPool(db: DbEnv): pg.Pool {
 /** Background jobs: every session runs as the cross-team maintenance role. */
 export function createMaintenancePool(db: DbEnv): pg.Pool {
   return connect(db, TENANT_ROLES.maintenance);
+}
+
+/** Operator-only credentials: all-tenant, SELECT-only recovery reads. */
+export function createBackupPool(db: DbEnv): pg.Pool {
+  return connect(db, BACKUP_ROLE);
 }
 
 /** The connecting login itself: schema application, reset, and seeding. */

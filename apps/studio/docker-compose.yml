@@ -1,0 +1,187 @@
+# Configure this directory once with the image's `configure` command. This
+# file consumes .env for interpolation; it does not inject that secret file.
+x-studio: &studio
+  image: ${STUDIO_IMAGE:?Run configure with the released image digest}
+  init: true
+  restart: unless-stopped
+  stop_grace_period: 15s
+  read_only: true
+  tmpfs:
+    - /tmp:size=64m,mode=1777
+  security_opt:
+    - no-new-privileges:true
+  cap_drop: [ALL]
+  # Only encryption material enters through this file. Preserve every retained
+  # root across rotation; arbitrary operator/admin variables are never loaded.
+  env_file: ['${STUDIO_ENCRYPTION_FILE:-./deployment/encryption.env}']
+  environment: &studio-environment
+    NODE_ENV: production
+    HOST: 0.0.0.0
+    PORT: 3000
+    STUDIO_DEPLOYMENT_MODE: self-hosted
+    STUDIO_ROLE: ${STUDIO_ROLE:-both}
+    PUBLIC_URL: https://${STUDIO_DOMAIN:?Run configure with the public domain}
+    DATABASE_URL: postgresql://studio_runtime:${STUDIO_DATABASE_PASSWORD:?Missing runtime password}@postgres:5432/studio
+    BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Missing authentication secret}
+    STUDIO_BOOTSTRAP_TOKEN: ${STUDIO_BOOTSTRAP_TOKEN:?Missing bootstrap token}
+    STUDIO_METRICS_TOKEN: ${STUDIO_METRICS_TOKEN:?Missing metrics token}
+    S3_ENDPOINT: http://minio:9000
+    S3_REGION: us-east-1
+    S3_BUCKET: studio
+    S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?Missing scoped object-store user}
+    S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?Missing scoped object-store password}
+    SMTP_URL: ${SMTP_URL:-}
+    EMAIL_FROM: ${EMAIL_FROM:-}
+    GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+    GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+    MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID:-}
+    MICROSOFT_CLIENT_SECRET: ${MICROSOFT_CLIENT_SECRET:-}
+    MICROSOFT_TENANT_ID: ${MICROSOFT_TENANT_ID:-}
+    STUDIO_TELEMETRY: ${STUDIO_TELEMETRY:-on}
+    TRUSTED_PROXIES: ${STUDIO_PROXY_IP:-172.30.240.2}
+  networks: [edge, data]
+  depends_on:
+    postgres:
+      condition: service_healthy
+    minio-init:
+      condition: service_completed_successfully
+
+services:
+  studio:
+    <<: *studio
+
+  worker:
+    <<: *studio
+    profiles: [worker]
+    environment:
+      <<: *studio-environment
+      STUDIO_ROLE: worker
+      TRUSTED_PROXIES: ''
+
+  backup-verify:
+    image: ${STUDIO_IMAGE:?Run configure with the released image digest}
+    profiles: [operator]
+    entrypoint: [node, dist/backup.js]
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    # No encryption env_file, authentication or runtime credentials.
+    environment:
+      DATABASE_URL: postgresql://studio_backup_login:${STUDIO_BACKUP_PASSWORD:?Missing backup password}@postgres:5432/studio
+    networks: [data]
+
+  traefik:
+    image: traefik:v3.7.1@sha256:6b9cbca6fac42ab0075f5437d8dc1685cfd188626d8d515839ea94f8b6271c42
+    restart: unless-stopped
+    command:
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.websecure.address=:443
+      - --entrypoints.websecure.transport.respondingtimeouts.readtimeout=5m
+      - --entrypoints.websecure.transport.respondingtimeouts.idletimeout=1h
+      - --providers.file.filename=/etc/traefik/dynamic.yml
+      - --providers.file.watch=true
+      - --certificatesresolvers.public.acme.email=${ACME_EMAIL:?Missing certificate contact}
+      - --certificatesresolvers.public.acme.storage=/acme/acme.json
+      - --certificatesresolvers.public.acme.httpchallenge.entrypoint=web
+      - --global.checknewversion=false
+      - --global.sendanonymoususage=false
+      - --log.level=ERROR
+    environment:
+      STUDIO_DOMAIN: ${STUDIO_DOMAIN}
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./deployment/traefik.yml:/etc/traefik/dynamic.yml:ro
+      - acme:/acme
+    networks:
+      edge:
+        ipv4_address: ${STUDIO_PROXY_IP:-172.30.240.2}
+    security_opt:
+      - no-new-privileges:true
+    # No Docker socket or dashboard is exposed.
+
+  postgres:
+    image: postgres:18.6-alpine@sha256:d3e1620b530c944afa6e887d22eb899824da68e19c52024bf98f5220c88a65b2
+    restart: unless-stopped
+    command:
+      [
+        postgres,
+        -c,
+        shared_buffers=1GB,
+        -c,
+        work_mem=256MB,
+        -c,
+        max_connections=50,
+      ]
+    shm_size: 1gb
+    environment:
+      # The initializer creates Studio closed, commits its CONNECT allowlist,
+      # then opens it. The temporary initialization server listens on Unix only.
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Missing database administrator password}
+      STUDIO_MIGRATION_PASSWORD: ${STUDIO_MIGRATION_PASSWORD:?Missing migrator password}
+      STUDIO_DATABASE_PASSWORD: ${STUDIO_DATABASE_PASSWORD}
+      STUDIO_BACKUP_PASSWORD: ${STUDIO_BACKUP_PASSWORD:?Missing backup password}
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    volumes:
+      # PostgreSQL18 puts versioned PGDATA below this parent directory.
+      - postgres:/var/lib/postgresql
+      - ./deployment/postgres-init.sql:/docker-entrypoint-initdb.d/studio.sql:ro
+    networks: [data]
+    healthcheck:
+      test:
+        [
+          CMD-SHELL,
+          'pg_isready -h 127.0.0.1 -U postgres -d postgres && psql -U postgres -d postgres -Atc "SELECT ''studio_migrator''::regrole"',
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  minio:
+    image: ${MINIO_IMAGE:?Run configure with the released MinIO image digest}
+    restart: unless-stopped
+    command: [server, /data, --console-address, ':9001']
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Missing object-store administrator}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Missing object-store administrator password}
+      MINIO_BROWSER: 'off'
+      MINIO_UPDATE: 'off'
+    volumes:
+      - minio:/data
+    networks: [data]
+    # API and console have no published ports. Only the scoped Studio identity
+    # reaches this private bucket; administrative credentials stay in init.
+
+  minio-init:
+    image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z@sha256:a7fe349ef4bd8521fb8497f55c6042871b2ae640607cf99d9bede5e9bdf11727
+    entrypoint: [/bin/sh, /deployment/minio-init.sh]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
+    volumes:
+      - ./deployment/minio-init.sh:/deployment/minio-init.sh:ro
+      - ./deployment/minio-policy.json:/deployment/minio-policy.json:ro
+    networks: [data]
+    depends_on:
+      minio:
+        condition: service_started
+
+networks:
+  edge:
+    ipam:
+      config:
+        - subnet: ${STUDIO_PROXY_SUBNET:-172.30.240.0/24}
+  data:
+    internal: true
+
+volumes:
+  postgres:
+  minio:
+  acme:

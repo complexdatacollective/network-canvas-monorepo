@@ -1063,10 +1063,6 @@
     "defaultMessage": "Templates",
     "description": "Name of the Templates screen at /templates, used as its heading."
   },
-  "studio.setup.complete": {
-    "defaultMessage": "Setup is complete. Sign in to continue.",
-    "description": "Confirmation after setup, also shown when reopening the completed setup page."
-  },
   "studio.setup.email": {
     "defaultMessage": "Email address",
     "description": "Label for the first owner email address."

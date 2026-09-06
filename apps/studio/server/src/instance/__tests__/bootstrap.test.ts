@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest';
 import type { CompleteSetupInput } from '@codaco/studio-rpc';
 
 import { stubAuthService } from '../../__tests__/support/auth.ts';
+import { enrollMigrationTestDatabase } from '../../__tests__/support/migrations.ts';
 import {
   createScratchDatabase,
   createScratchSchema,
@@ -171,16 +172,10 @@ describe.skipIf(!db)('self-hosted first-run bootstrap', () => {
       const scratch = await createScratchDatabase(db);
       const app = createPool(scratch.db);
       try {
-        const identity = (
-          await scratch.pool.query<{ database: string; login: string }>(
-            'SELECT current_database() AS database, session_user AS login',
-          )
-        ).rows[0]!;
-        await scratch.pool.query(`
-          REVOKE CONNECT ON DATABASE ${pg.escapeIdentifier(identity.database)} FROM PUBLIC;
-          GRANT CONNECT ON DATABASE ${pg.escapeIdentifier(identity.database)} TO ${pg.escapeIdentifier(identity.login)};
-        `);
-        const allowedLogins = [identity.login];
+        const allowedLogins = await enrollMigrationTestDatabase(
+          scratch.pool,
+          db,
+        );
         if (path === 'upgrade') {
           const previous = migrations.slice(0, 2);
           const fingerprint = previous.at(-1)?.manifest.fingerprint;
