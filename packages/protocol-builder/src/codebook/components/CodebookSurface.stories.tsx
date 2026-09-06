@@ -44,6 +44,7 @@ const CONTEXT: ProtocolBuilderProtocolContext = {
       },
     },
   },
+  assets: {},
   orderedStages: [],
   issues: [
     {

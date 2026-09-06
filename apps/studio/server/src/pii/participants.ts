@@ -300,6 +300,7 @@ export async function updateParticipantPii(
           throw new ProtectedDataError();
         },
       });
+      const rowKeyId = keys.currentId('pii-enc');
       const seal = (
         column: ParticipantField['column'],
         value: string | null,
@@ -309,6 +310,7 @@ export async function updateParticipantPii(
           : api.encryptParticipant(
               { ...target, teamId: context.tenantDb.teamId, column },
               Buffer.from(value),
+              rowKeyId,
             ).envelope;
       const email =
         normalized.email === null
@@ -343,7 +345,7 @@ export async function updateParticipantPii(
           email?.value ?? null,
           phone?.value ?? null,
           email?.keyId ?? phone?.keyId ?? null,
-          hasPii ? keys.currentId('pii-enc') : null,
+          hasPii ? rowKeyId : null,
           hasPii ? 'aes-256-gcm.v1' : null,
         ],
       );

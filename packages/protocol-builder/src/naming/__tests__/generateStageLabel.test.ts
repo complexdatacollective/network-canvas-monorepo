@@ -8,7 +8,7 @@ import {
   generateStageLabel,
   MAX_LABEL_LENGTH,
   STAGE_TYPE_NAMES,
-} from '../generateStageLabel';
+} from '../generateStageLabel.ts';
 
 describe('composeStageName', () => {
   it('joins subject, type, and qualifier with spaces', () => {

@@ -2,7 +2,11 @@ import { webcrypto } from 'node:crypto';
 
 import { describe, expect, it, vi } from 'vitest';
 
-import { loadEncryptionKeys, type EncryptionKeys } from '../keys.ts';
+import {
+  KeyConfigurationError,
+  loadEncryptionKeys,
+  type EncryptionKeys,
+} from '../keys.ts';
 import {
   createDataProtection,
   type IntegrationField,
@@ -28,7 +32,7 @@ const webhook: IntegrationField = {
 const oauth: IntegrationField = {
   kind: 'oauth',
   userId: 'user-1',
-  accountId: 'account-1',
+  accountRowId: 'account-1',
   column: 'accessToken',
 };
 const plaintext = Buffer.from('person@example.org');
@@ -66,7 +70,7 @@ describe('participant AES-256-GCM envelope', () => {
     async (column, bytes) => {
       const api = protection(await loadTestKeys());
       const target = { ...participant, column };
-      const value = api.encryptParticipant(target, bytes);
+      const value = api.encryptParticipant(target, bytes, 'v1');
       expect(value.algorithm).toBe('aes-256-gcm.v1');
       expect(value.keyId).toBe('v1');
       expect(value.envelope[0]).toBe(1);
@@ -82,11 +86,63 @@ describe('participant AES-256-GCM envelope', () => {
       expect(
         await api.readParticipant(
           participant,
-          api.encryptParticipant(participant, bytes),
+          api.encryptParticipant(participant, bytes, 'v1'),
         ),
       ).toEqual(bytes);
     },
   );
+
+  it.each(['studyId', 'participantId'] as const)(
+    'canonicalizes UUID case for %s before encryption and the read boundary',
+    async (axis) => {
+      const canonical = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
+      const target = { ...participant, [axis]: canonical };
+      const upper = { ...target, [axis]: canonical.toUpperCase() };
+      const audited: ParticipantField[] = [];
+      const api = protection(await loadTestKeys(), {
+        participant: async (context, read) => {
+          audited.push(context);
+          read();
+        },
+      });
+      const fromUpper = api.encryptParticipant(upper, plaintext, 'v1');
+      expect(await api.readParticipant(target, fromUpper)).toEqual(plaintext);
+      const fromCanonical = api.encryptParticipant(target, plaintext, 'v1');
+      expect(await api.readParticipant(upper, fromCanonical)).toEqual(
+        plaintext,
+      );
+      expect(audited).toEqual([target, target]);
+      await expect(
+        api.readParticipant(
+          { ...target, [axis]: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12' },
+          fromUpper,
+        ),
+      ).rejects.toThrow(ProtectedDataError);
+    },
+  );
+
+  it('preserves case-sensitive text team identifiers even when shaped like UUIDs', async () => {
+    const target = {
+      ...participant,
+      teamId: 'A0EEBC99-9C0B-4EF8-BB6D-6BB9BD380A11',
+    };
+    const audited: ParticipantField[] = [];
+    const api = protection(await loadTestKeys(), {
+      participant: async (context, read) => {
+        audited.push(context);
+        read();
+      },
+    });
+    const value = api.encryptParticipant(target, plaintext, 'v1');
+    expect(await api.readParticipant(target, value)).toEqual(plaintext);
+    expect(audited).toEqual([target]);
+    await expect(
+      api.readParticipant(
+        { ...target, teamId: target.teamId.toLowerCase() },
+        value,
+      ),
+    ).rejects.toThrow(ProtectedDataError);
+  });
 
   const participantMoves: [string, Partial<ParticipantField>][] = [
     ['team', { teamId: 'team-2' }],
@@ -108,7 +164,7 @@ describe('participant AES-256-GCM envelope', () => {
     'rejects ciphertext moved to another %s',
     async (_axis, move) => {
       const api = protection(await loadTestKeys());
-      const value = api.encryptParticipant(participant, plaintext);
+      const value = api.encryptParticipant(participant, plaintext, 'v1');
       await expect(
         api.readParticipant({ ...participant, ...move }, value),
       ).rejects.toThrow(ProtectedDataError);
@@ -119,7 +175,7 @@ describe('participant AES-256-GCM envelope', () => {
     // A WebCrypto consumer uses the original team key for every attempt.
     // Moving the team therefore tests AAD itself, not only a different key.
     const api = protection(await loadTestKeys());
-    const value = api.encryptParticipant(participant, plaintext);
+    const value = api.encryptParticipant(participant, plaintext, 'v1');
     const encoder = new TextEncoder();
     const root = await webcrypto.subtle.importKey(
       'raw',
@@ -174,7 +230,7 @@ describe('participant AES-256-GCM envelope', () => {
       studyId: 'study|one',
       participantId: 'person',
     };
-    const value = api.encryptParticipant(target, plaintext);
+    const value = api.encryptParticipant(target, plaintext, 'v1');
     await expect(
       api.readParticipant(
         { ...target, studyId: 'study', participantId: 'one|person' },
@@ -188,15 +244,15 @@ describe('participant AES-256-GCM envelope', () => {
     async (axis) => {
       const api = protection(await loadTestKeys());
       expect(() =>
-        api.encryptParticipant({ ...participant, [axis]: '' }, plaintext),
+        api.encryptParticipant({ ...participant, [axis]: '' }, plaintext, 'v1'),
       ).toThrow(ProtectedDataError);
     },
   );
 
   it('generates a fresh 96-bit nonce for every encryption', async () => {
     const api = protection(await loadTestKeys());
-    const first = api.encryptParticipant(participant, plaintext);
-    const second = api.encryptParticipant(participant, plaintext);
+    const first = api.encryptParticipant(participant, plaintext, 'v1');
+    const second = api.encryptParticipant(participant, plaintext, 'v1');
     expect(first.envelope.subarray(1, 13)).not.toEqual(
       second.envelope.subarray(1, 13),
     );
@@ -268,7 +324,7 @@ describe('participant AES-256-GCM envelope', () => {
       const error: unknown = await api
         .readParticipant(
           participant,
-          corrupt(api.encryptParticipant(participant, plaintext)),
+          corrupt(api.encryptParticipant(participant, plaintext, 'v1')),
         )
         .catch((failure: unknown) => failure);
       expect(error).toBeInstanceOf(ProtectedDataError);
@@ -284,7 +340,7 @@ describe('participant AES-256-GCM envelope', () => {
     'rejects substituted key id %s',
     async (keyId) => {
       const api = protection(await loadTestKeys());
-      const value = api.encryptParticipant(participant, plaintext);
+      const value = api.encryptParticipant(participant, plaintext, 'v1');
       await expect(
         api.readParticipant(participant, { ...value, keyId }),
       ).rejects.toThrow(ProtectedDataError);
@@ -293,7 +349,7 @@ describe('participant AES-256-GCM envelope', () => {
 
   it('rejects wrong root material even when the key id is present', async () => {
     const api = protection(await loadTestKeys());
-    const value = api.encryptParticipant(participant, plaintext);
+    const value = api.encryptParticipant(participant, plaintext, 'v1');
     const wrongKeys = await loadEncryptionKeys(configuration(), async () =>
       Buffer.alloc(32, 201),
     );
@@ -303,13 +359,67 @@ describe('participant AES-256-GCM envelope', () => {
     ).rejects.toThrow(ProtectedDataError);
   });
 
+  it('keeps a partial field update readable under the existing row key after rotation', async () => {
+    const oldKeys = await loadTestKeys();
+    const old = protection(oldKeys);
+    const rowKeyId = oldKeys.currentId('pii-enc');
+    const nameTarget = { ...participant, column: 'name_ciphertext' } as const;
+    const email = old.encryptParticipant(participant, plaintext, rowKeyId);
+    const name = old.encryptParticipant(
+      nameTarget,
+      Buffer.from('Original name'),
+      rowKeyId,
+    );
+    const row = {
+      algorithm: email.algorithm,
+      keyId: rowKeyId,
+      email: email.envelope,
+      name: name.envelope,
+    };
+    const config = configuration();
+    config.pii.current = 'v2';
+    const rotatedKeys = await loadTestKeys(config);
+    const rotated = protection(rotatedKeys);
+    expect(rotatedKeys.currentId('pii-enc')).toBe('v2');
+    const replacement = Buffer.from('Updated name');
+    const updated = rotated.encryptParticipant(
+      nameTarget,
+      replacement,
+      row.keyId,
+    );
+    // One row-wide metadata pair must still open the unchanged and changed fields.
+    row.name = updated.envelope;
+    expect(
+      await rotated.readParticipant(participant, {
+        algorithm: row.algorithm,
+        keyId: row.keyId,
+        envelope: row.email,
+      }),
+    ).toEqual(plaintext);
+    expect(
+      await rotated.readParticipant(nameTarget, {
+        algorithm: row.algorithm,
+        keyId: row.keyId,
+        envelope: row.name,
+      }),
+    ).toEqual(replacement);
+    expect(updated.keyId).toBe(row.keyId);
+  });
+
+  it('refuses a selected row key that is not present instead of falling back to current', async () => {
+    const api = protection(await loadTestKeys());
+    expect(() =>
+      api.encryptParticipant(participant, plaintext, 'retired'),
+    ).toThrow(KeyConfigurationError);
+  });
+
   it('reads retained historical rows while new encryption uses the current key', async () => {
     const old = protection(await loadTestKeys());
-    const historical = old.encryptParticipant(participant, plaintext);
+    const historical = old.encryptParticipant(participant, plaintext, 'v1');
     const config = configuration();
     config.pii.current = 'v2';
     const rotated = protection(await loadTestKeys(config));
-    const current = rotated.encryptParticipant(participant, plaintext);
+    const current = rotated.encryptParticipant(participant, plaintext, 'v2');
     expect(historical.keyId).toBe('v1');
     expect(current.keyId).toBe('v2');
     expect(await rotated.readParticipant(participant, historical)).toEqual(
@@ -330,6 +440,84 @@ describe('participant AES-256-GCM envelope', () => {
 });
 
 describe('integration credentials', () => {
+  it('canonicalizes the webhook subscription UUID before encryption and its read boundary', async () => {
+    const canonical = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
+    const target = { ...webhook, subscriptionId: canonical };
+    const upper = { ...target, subscriptionId: canonical.toUpperCase() };
+    const audited: IntegrationField[] = [];
+    const api = protection(await loadTestKeys(), {
+      integration: async (context, read) => {
+        audited.push(context);
+        read();
+      },
+    });
+    const fromUpper = api.encryptIntegration(upper, plaintext);
+    expect(await api.readIntegration(target, fromUpper)).toEqual(plaintext);
+    const fromCanonical = api.encryptIntegration(target, plaintext);
+    expect(await api.readIntegration(upper, fromCanonical)).toEqual(plaintext);
+    expect(audited).toEqual([target, target]);
+    await expect(
+      api.readIntegration(
+        {
+          ...target,
+          subscriptionId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12',
+        },
+        fromUpper,
+      ),
+    ).rejects.toThrow(ProtectedDataError);
+  });
+
+  it.each(['userId', 'accountRowId'] as const)(
+    'preserves the case-sensitive OAuth text %s even when shaped like a UUID',
+    async (axis) => {
+      const target = {
+        ...oauth,
+        [axis]: 'A0EEBC99-9C0B-4EF8-BB6D-6BB9BD380A11',
+      };
+      const audited: IntegrationField[] = [];
+      const api = protection(await loadTestKeys(), {
+        integration: async (context, read) => {
+          audited.push(context);
+          read();
+        },
+      });
+      const value = api.encryptIntegration(target, plaintext);
+      expect(await api.readIntegration(target, value)).toEqual(plaintext);
+      expect(audited).toEqual([target]);
+      await expect(
+        api.readIntegration(
+          {
+            ...target,
+            [axis]: target[axis].toLowerCase(),
+          },
+          value,
+        ),
+      ).rejects.toThrow(ProtectedDataError);
+    },
+  );
+
+  it('binds OAuth credentials to the account primary row even when providers repeat external IDs', async () => {
+    const firstAccount = {
+      id: 'account-row-one',
+      providerId: 'provider-one',
+      accountId: 'same-external-id',
+    };
+    const secondAccount = {
+      id: 'account-row-two',
+      providerId: 'provider-two',
+      accountId: 'same-external-id',
+    };
+    expect(firstAccount.accountId).toBe(secondAccount.accountId);
+    const api = protection(await loadTestKeys());
+    const first = { ...oauth, accountRowId: firstAccount.id };
+    const second = { ...oauth, accountRowId: secondAccount.id };
+    const value = api.encryptIntegration(first, plaintext);
+    expect(await api.readIntegration(first, value)).toEqual(plaintext);
+    await expect(api.readIntegration(second, value)).rejects.toThrow(
+      ProtectedDataError,
+    );
+  });
+
   it.each([
     webhook,
     oauth,
@@ -357,7 +545,7 @@ describe('integration credentials', () => {
       { ...webhook, subscriptionId: 'subscription-2' },
     ],
     ['OAuth user', oauth, { ...oauth, userId: 'user-2' }],
-    ['OAuth account', oauth, { ...oauth, accountId: 'account-2' }],
+    ['OAuth account', oauth, { ...oauth, accountRowId: 'account-2' }],
     ['OAuth column', oauth, { ...oauth, column: 'refreshToken' }],
     ['integration kind', webhook, oauth],
   ] satisfies [string, IntegrationField, IntegrationField][])(
@@ -380,14 +568,20 @@ describe('integration credentials', () => {
     expect(current.keyId).toBe('v2');
     expect(await rotated.readIntegration(oauth, historical)).toEqual(plaintext);
     expect(await rotated.readIntegration(oauth, current)).toEqual(plaintext);
-    expect(rotated.encryptParticipant(participant, plaintext).keyId).toBe('v1');
+    expect(rotated.encryptParticipant(participant, plaintext, 'v1').keyId).toBe(
+      'v1',
+    );
   });
 });
 
 describe('authorization and audit integration seam', () => {
   it('does not derive or decrypt before authorization permits the read', async () => {
     const keys = await loadTestKeys();
-    const source = protection(keys).encryptParticipant(participant, plaintext);
+    const source = protection(keys).encryptParticipant(
+      participant,
+      plaintext,
+      'v1',
+    );
     const derive = vi.spyOn(keys, 'derive');
     const denied = vi.fn(async () => {
       throw new Error('Permission denied');
@@ -418,7 +612,7 @@ describe('authorization and audit integration seam', () => {
     const result = api
       .readParticipant(
         participant,
-        api.encryptParticipant(participant, plaintext),
+        api.encryptParticipant(participant, plaintext, 'v1'),
       )
       .then((bytes) => {
         returned = true;
@@ -443,7 +637,7 @@ describe('authorization and audit integration seam', () => {
     await expect(
       api.readParticipant(
         participant,
-        api.encryptParticipant(participant, plaintext),
+        api.encryptParticipant(participant, plaintext, 'v1'),
       ),
     ).rejects.toThrow('Audit commit failed');
     expect(retained).toHaveLength(1);
@@ -473,7 +667,7 @@ describe('authorization and audit integration seam', () => {
       },
     });
     const target = { ...participant };
-    const value = api.encryptParticipant(target, plaintext);
+    const value = api.encryptParticipant(target, plaintext, 'v1');
     const result = api.readParticipant(target, value);
     target.participantId = 'mutated-participant';
     value.keyId = 'missing';
@@ -496,7 +690,7 @@ describe('authorization and audit integration seam', () => {
     expect(
       await api.readParticipant(
         participant,
-        api.encryptParticipant(participant, plaintext),
+        api.encryptParticipant(participant, plaintext, 'v1'),
       ),
     ).toEqual(plaintext);
     expect(callbacks).toHaveLength(1);
@@ -511,7 +705,7 @@ describe('authorization and audit integration seam', () => {
         callbacks.push(read);
       },
     });
-    const source = api.encryptParticipant(participant, plaintext);
+    const source = api.encryptParticipant(participant, plaintext, 'v1');
     const derive = vi.spyOn(keys, 'derive');
     await expect(api.readParticipant(participant, source)).rejects.toThrow(
       ProtectedDataError,

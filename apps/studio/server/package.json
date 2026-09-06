@@ -15,7 +15,6 @@
     "build": "vite build",
     "build:netlify": "vite build --config vite.netlify.config.ts",
     "migrate": "node --env-file-if-exists=.env src/migrate.ts",
-    "encryption": "node --env-file-if-exists=.env src/encryption.ts",
     "generate:migration": "pnpm run sync-fingerprint && node scripts/generate-migration.ts",
     "sync-fingerprint": "node scripts/sync-fingerprint.ts",
     "seed": "node --env-file-if-exists=.env scripts/seed.ts",
@@ -27,7 +26,8 @@
     "start": "NODE_ENV=production CLIENT_DIST=../client/dist node --env-file-if-exists=.env dist/index.js",
     "typecheck": "tsc --build --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "encryption": "node --env-file-if-exists=.env src/encryption.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1101.0",
@@ -52,7 +52,6 @@
     "ipaddr.js": "^2.5.0",
     "nodemailer": "9.0.5",
     "pg": "^8.22.0",
-    "pg-connection-string": "^2.14.0",
     "pino": "^10.3.1",
     "ws": "^8.21.2",
     "zod": "catalog:"

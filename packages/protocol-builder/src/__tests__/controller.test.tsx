@@ -4,12 +4,17 @@ import { describe, expect, it, vi } from 'vitest';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { useStageEditorController } from '../controller.ts';
+import type { ProtocolBuilderResourceGateway } from '../resources/gateway.ts';
+import { InMemoryResourceGateway } from '../resources/InMemoryResourceGateway.ts';
 import {
   createStageIdentity,
   ProtocolBuilderSessionStore,
 } from '../session.ts';
 
-function createSession(onCommands = vi.fn()) {
+function createSession(
+  onCommands = vi.fn(),
+  resourceGateway?: ProtocolBuilderResourceGateway,
+) {
   const session = new ProtocolBuilderSessionStore({
     identity: createStageIdentity('Information', () => 'stage-1'),
     fields: { label: 'Welcome', title: 'Welcome', items: [] },
@@ -27,6 +32,7 @@ function createSession(onCommands = vi.fn()) {
       stages: [stageDocument],
     }),
     onCommands,
+    ...(resourceGateway === undefined ? {} : { resourceGateway }),
   });
   return { onCommands, session };
 }
@@ -109,5 +115,81 @@ describe('useStageEditorController', () => {
     expect(
       onCommands.mock.calls.map(([batch]) => batch.commands[0].op),
     ).toEqual(['insertItem', 'removeItem']);
+  });
+
+  it('cancels the session, discarding what the editor staged', async () => {
+    const host = new InMemoryResourceGateway();
+    const { session } = createSession(vi.fn(), host);
+    const { result } = renderHook(() =>
+      useStageEditorController(session, 'stage-form'),
+    );
+    const pickerGateway = result.current.resourceGateway;
+    if (pickerGateway === undefined) {
+      throw new Error('the controller was given no resource gateway');
+    }
+
+    await act(async () => {
+      await pickerGateway.stageUpload({
+        requestId: 'backdrop',
+        kind: 'image',
+        name: 'Backdrop',
+        source: 'backdrop.png',
+        contentType: 'image/png',
+        bytes: Uint8Array.from([1, 2, 3, 4]),
+      });
+    });
+    expect(result.current.snapshot.stagedResources).toHaveLength(1);
+
+    // Closing the editor without saving: the staging goes with it, or the host
+    // keeps bytes for an edit that never happened.
+    let outcome: unknown;
+    await act(async () => {
+      outcome = await result.current.cancel();
+    });
+
+    expect(outcome).toMatchObject({ status: 'ok' });
+    expect(result.current.snapshot.stagedResources).toEqual([]);
+    expect(host.getStagingResidue()).toEqual([]);
+  });
+
+  it('answers an empty batch with the current draft rather than writing', async () => {
+    const { onCommands, session } = createSession();
+    const { result } = renderHook(() => useStageEditorController(session));
+
+    await act(async () => {
+      session.acknowledge({
+        fields: { label: 'Welcome', title: 'Renamed elsewhere', items: [] },
+        throughBatchId: 0,
+        manifestRevision: { sequence: 2n, hash: 'revision-2' },
+      });
+      await session.validate();
+    });
+    onCommands.mockClear();
+
+    // An empty batch is how a list editor READS the draft the session holds
+    // right now — which is the whole point of asking rather than reading the
+    // snapshot it rendered against.
+    let answered: SectionDoc = {};
+    act(() => {
+      answered = result.current.applyCommands([]);
+    });
+
+    expect(answered.title).toBe('Renamed elsewhere');
+    expect(onCommands).not.toHaveBeenCalled();
+  });
+
+  it('reads the draft of a session that has stopped accepting writes', () => {
+    const { session } = createSession();
+    act(() => {
+      session.setAccess({ mode: 'readOnly', reason: 'lease-lost' });
+    });
+    const { result } = renderHook(() => useStageEditorController(session));
+
+    // Reading is not writing, and a spectator's list editor still has to be
+    // able to ask. A session refuses a dispatch it no longer holds the lease
+    // for by throwing, so an empty batch that reached one would take the
+    // editor down rather than answering the question it was asked.
+    expect(() => result.current.applyCommands([])).not.toThrow();
+    expect(result.current.applyCommands([]).title).toBe('Welcome');
   });
 });

@@ -1,4 +1,7 @@
 import { createEnv } from '@t3-oss/env-core';
+import { z } from 'zod';
+
+import { validateRoleNames } from '@codaco/studio-sync/role-bootstrap';
 
 import { resolveEncryptionEnv, type EncryptionEnv } from './env/encryption.ts';
 import { resolve, type DbEnv, type StudioEnv } from './env/resolve.ts';
@@ -112,4 +115,21 @@ export function readEncryptionEnv(
 ): EncryptionEnv {
   /* oxlint-disable-next-line node/no-process-env -- the environment boundary */
   return resolveEncryptionEnv(process.env, development);
+}
+
+/** Read the explicit, precommitted deployment enrollment without inferring logins. */
+export function readMigrationAllowedLogins(): string[] {
+  /* oxlint-disable-next-line node/no-process-env -- the environment boundary */
+  const source = process.env.STUDIO_DATABASE_ALLOWED_LOGINS;
+  let value: unknown;
+  try {
+    value = JSON.parse(source ?? '');
+  } catch {
+    throw new Error(
+      'STUDIO_DATABASE_ALLOWED_LOGINS is required as a JSON array of this deployment’s login names.',
+    );
+  }
+  const logins = z.array(z.string()).parse(value);
+  validateRoleNames(logins);
+  return logins;
 }

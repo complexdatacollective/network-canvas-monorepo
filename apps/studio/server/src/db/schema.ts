@@ -194,14 +194,21 @@ export function schemaProblemMessage(state: SchemaProblem): string {
     ].join('\n');
   }
 
-  const detail =
-    state.reason === 'unstamped'
-      ? 'The database carries Studio tables but no fingerprint, so the SQL that built it is unknown.'
-      : `Expected ${SCHEMA_FINGERPRINT.slice(0, 12)}, found ${state.found?.slice(0, 12)} recorded ${state.appliedAt?.toISOString()}.`;
+  if (state.reason === 'unstamped') {
+    return [
+      'The database carries Studio tables but no fingerprint, so the SQL that built it is unknown.',
+      'Preserve the original database and its encryption keys. The migration command cannot adopt this database.',
+      'For a previously versioned installation, restore a consistent backup that includes its migration history and fingerprint.',
+      'For an unversioned pre-release installation, export using its original Studio build, then set up a new empty database and import the supported exports.',
+      'See apps/studio/MIGRATIONS.md for recovery and replacement procedures.',
+      'Only for a disposable local development database:',
+      '  pnpm --filter @codaco/studio-server db:reset        (deletes existing data)',
+    ].join('\n');
+  }
 
   return [
     'The database was not built from the schema in this build.',
-    detail,
+    `Expected ${SCHEMA_FINGERPRINT.slice(0, 12)}, found ${state.found?.slice(0, 12)} recorded ${state.appliedAt?.toISOString()}.`,
     'Back up the database and its encryption keys, then run the explicit migration command. Databases without migration history are not adopted automatically.',
     'Then start again:',
     '  docker compose run --rm studio migrate             (apply versioned migrations)',

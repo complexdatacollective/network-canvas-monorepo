@@ -8,6 +8,9 @@ import {
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 
+import { TENANT_ROLES } from '@codaco/studio-sync/rls';
+import { runtimeRolesSql } from '@codaco/studio-sync/role-bootstrap';
+
 import { SCHEMA_FINGERPRINT } from '../src/db/fingerprint.generated.ts';
 import {
   SCHEMA,
@@ -31,6 +34,8 @@ export function renderDrizzleSchemaStatements(): Promise<string[]> {
   return renderedDrizzleSchema;
 }
 
+// Schema history only. Provisioning also runs the repeatable runtime-role
+// preflight, whose implementation is deliberately outside this fingerprint.
 export async function renderSchemaStatements(): Promise<string[]> {
   return [...(await renderDrizzleSchemaStatements()), ...SIDECARS];
 }
@@ -79,6 +84,7 @@ export async function applySchema(pool: pg.Pool): Promise<ApplyOutcome> {
     if (stamped.rows[0]?.present) {
       await lock.query('delete from "schemaFingerprint"');
     }
+    await lock.query(runtimeRolesSql(Object.values(TENANT_ROLES)));
     const push = await pushSchema(SCHEMA, drizzle({ client: pool }));
     await push.apply();
     await lock.query(SIDECARS.join('\n'));

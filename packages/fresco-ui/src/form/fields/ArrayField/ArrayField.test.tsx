@@ -167,6 +167,41 @@ const renderField = (props: Partial<ArrayFieldProps<Item>> = {}) =>
   );
 
 describe('ArrayField', () => {
+  /**
+   * The element that holds the items is a list, and a list supports neither
+   * `aria-readonly` nor `aria-required`.
+   *
+   * Every field's props carry both — `useField` sets `aria-readonly` on all of
+   * them, even when false — and this field spreads what it is given onto the
+   * list. An attribute a role does not support is not something a screen
+   * reader ignores; it is undefined behaviour, and axe reports it as a
+   * critical `aria-allowed-attr` violation on every story that renders one.
+   *
+   * Nothing is lost by leaving them off: each item's own controls carry their
+   * readonly and required state, and `aria-disabled` — which a list does
+   * support — still says the whole field is unavailable. Checked with
+   * `required` and `readOnly` BOTH set, because `aria-required="false"` is
+   * tolerated where `aria-required="true"` is not, so the false case alone
+   * would pass with the bug still in place.
+   */
+  it('leaves attributes a list does not support off the list', () => {
+    renderField({
+      'value': [{ id: 'one', label: 'one' }],
+      'readOnly': true,
+      'aria-readonly': true,
+      'aria-required': true,
+      'aria-disabled': true,
+      'aria-label': 'Content blocks',
+    });
+
+    const list = screen.getByRole('list', { name: 'Content blocks' });
+    expect(list).not.toHaveAttribute('aria-readonly');
+    expect(list).not.toHaveAttribute('aria-required');
+    // The one that IS supported, so the omission above is a rule about which
+    // attributes a list may carry rather than the field dropping its state.
+    expect(list).toHaveAttribute('aria-disabled', 'true');
+  });
+
   it('renders each item as an accent Surface boundary', () => {
     renderField({
       value: [{ id: 'one', label: 'one' }],
@@ -442,6 +477,7 @@ describe('ArrayField', () => {
       type: 'move',
       from: 1,
       to: 0,
+      item: { id: 'two', label: 'two' },
     });
   });
 

@@ -79,6 +79,18 @@ export function createOperationalMetrics(options: {
     labelNames: ['queue'] as const,
     registers,
   });
+  const lastFailure = new Gauge({
+    name: 'studio_outbox_last_failure_timestamp_seconds',
+    help: 'Unix time of the most recent retained terminal failure; zero when no failed rows exist.',
+    labelNames: ['queue'] as const,
+    registers,
+  });
+  const lastWorkerError = new Gauge({
+    name: 'studio_outbox_last_worker_error_timestamp_seconds',
+    help: 'Unix time of the most recent worker polling error in this process.',
+    labelNames: ['queue'] as const,
+    registers,
+  });
   const attempts = new Counter({
     name: 'studio_outbox_dispatch_results_total',
     help: 'Shared dispatcher results; retryable failure and uncertain acceptance are distinct.',
@@ -132,6 +144,8 @@ export function createOperationalMetrics(options: {
       heartbeats.inc({ queue: event.queue, outcome: event.outcome });
     } else {
       dispatchErrors.inc({ queue: event.queue, kind: event.kind });
+      if (event.kind === 'worker_error')
+        lastWorkerError.set({ queue: event.queue }, Date.now() / 1000);
     }
   };
 
@@ -168,9 +182,14 @@ export function createOperationalMetrics(options: {
       // Never retain stale healthy queue data after a collection failure.
       queueCounts.reset();
       oldest.reset();
+      lastFailure.reset();
       if (queues.status === 'ok') {
         for (const row of queues.value) {
           oldest.set({ queue: row.queue }, row.oldest_ready_seconds);
+          lastFailure.set(
+            { queue: row.queue },
+            row.last_failure_timestamp_seconds,
+          );
           for (const state of [
             'pending',
             'ready',
