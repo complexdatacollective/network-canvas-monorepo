@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -18,15 +19,13 @@ import {
   inputControlOptions,
 } from './composerFormComponents.ts';
 import { useComposerFormSubject } from './composerFormSubject.ts';
+import { networkCanvasMessages } from './networkCanvasMessages.ts';
 import { asText } from './rowValues.ts';
 
 const VARIABLE_FIELD = 'variable';
 const COMPONENT_FIELD = 'component';
 const LABEL_FIELD = 'label';
 const HINT_FIELD = 'hint';
-
-const NO_ATTRIBUTES_MESSAGE =
-  'This type has no attributes a form can collect yet. Create one in the codebook to continue.';
 
 /**
  * The control the codebook itself gives this attribute, if it gives it one.
@@ -71,6 +70,7 @@ const codebookControl = (variable: unknown): unknown =>
  * row.
  */
 export function ComposerFormFieldEditor({ item }: RowEditorProps) {
+  const intl = useAppIntl();
   const subject = useComposerFormSubject();
   const variables = useSubjectVariables(subject);
   const setFieldValue = useFormStore((state) => state.setFieldValue);
@@ -89,8 +89,8 @@ export function ComposerFormFieldEditor({ item }: RowEditorProps) {
   const variableType =
     selected === undefined ? undefined : variables[selected]?.type;
   const controls = useMemo(
-    () => inputControlOptions(variableType),
-    [variableType],
+    () => inputControlOptions(variableType, intl),
+    [intl, variableType],
   );
 
   /**
@@ -119,23 +119,31 @@ export function ComposerFormFieldEditor({ item }: RowEditorProps) {
       <Field
         name={VARIABLE_FIELD}
         component={VariablePickerControl}
-        label="Attribute"
-        hint="The attribute each answer is recorded in. Only attributes a form can collect are listed: a position or a location is written by the canvas, not answered."
+        label={intl.formatMessage(networkCanvasMessages.formFieldVariableLabel)}
+        hint={intl.formatMessage(networkCanvasMessages.formFieldVariableHint)}
         initialValue={asText(item.variable)}
         options={options}
-        emptyMessage={NO_ATTRIBUTES_MESSAGE}
-        required="Choose the attribute this field records."
+        emptyMessage={intl.formatMessage(
+          networkCanvasMessages.formFieldVariableEmpty,
+        )}
+        required={intl.formatMessage(
+          networkCanvasMessages.formFieldVariableRequired,
+        )}
       />
       <Field
         name={COMPONENT_FIELD}
         component={NativeSelectField}
-        label="Input control"
-        hint="How the participant answers. Only controls that can render this attribute are listed."
-        placeholder="Select an input control..."
+        label={intl.formatMessage(networkCanvasMessages.formFieldControlLabel)}
+        hint={intl.formatMessage(networkCanvasMessages.formFieldControlHint)}
+        placeholder={intl.formatMessage(
+          networkCanvasMessages.formFieldControlPlaceholder,
+        )}
         initialValue={asText(item.component)}
         options={controls}
         disabled={controls.length === 0}
-        required="Choose how the participant answers this field."
+        required={intl.formatMessage(
+          networkCanvasMessages.formFieldControlRequired,
+        )}
       />
       {/* No `inventingType`: this row's picker offers only attributes that
           already exist, so there is never one being created here to author the
@@ -151,17 +159,21 @@ export function ComposerFormFieldEditor({ item }: RowEditorProps) {
       <Field
         name={LABEL_FIELD}
         component={InputField}
-        label="Question"
-        hint="What the participant is asked. Leave it empty to use the attribute's own name."
-        placeholder="Enter your question..."
+        label={intl.formatMessage(networkCanvasMessages.formFieldQuestionLabel)}
+        hint={intl.formatMessage(networkCanvasMessages.formFieldQuestionHint)}
+        placeholder={intl.formatMessage(
+          networkCanvasMessages.formFieldQuestionPlaceholder,
+        )}
         initialValue={asText(item.label)}
       />
       <Field
         name={HINT_FIELD}
         component={InputField}
-        label="Help text"
-        hint="Shown under the question, for anything the participant might need explained. Optional."
-        placeholder="Enter help text..."
+        label={intl.formatMessage(networkCanvasMessages.formFieldHelpLabel)}
+        hint={intl.formatMessage(networkCanvasMessages.formFieldHelpHint)}
+        placeholder={intl.formatMessage(
+          networkCanvasMessages.formFieldHelpPlaceholder,
+        )}
         initialValue={asText(item.hint)}
       />
     </>
@@ -170,25 +182,35 @@ export function ComposerFormFieldEditor({ item }: RowEditorProps) {
 
 /** How one form field reads in the list when its dialog is closed. */
 export function ComposerFormFieldPreview({ item }: RowPreviewProps) {
+  const intl = useAppIntl();
   const subject = useComposerFormSubject();
   const variables = useSubjectVariables(subject);
   const variableId = asText(item.variable);
   const attribute =
     variableId === undefined ? undefined : variables[variableId];
-  const control = inputControlOptions(attribute?.type).find(
+  const control = inputControlOptions(attribute?.type, intl).find(
     (option) => option.value === item.component,
   );
 
   return (
     <div className="flex flex-col gap-2.5">
-      <span>{asText(item.label) ?? attribute?.name ?? 'Empty field'}</span>
+      <span>
+        {asText(item.label) ??
+          attribute?.name ??
+          intl.formatMessage(networkCanvasMessages.formFieldEmptyPreview)}
+      </span>
       {(attribute !== undefined || control !== undefined) && (
         <div className="flex flex-wrap gap-2.5">
           {/* Whole sentences rather than assembled fragments: what reads
               naturally around an attribute's name is not the same in every
               language. */}
           {attribute !== undefined && (
-            <Badge>{`Records the attribute "${attribute.name}"`}</Badge>
+            <Badge>
+              {intl.formatMessage(
+                networkCanvasMessages.formFieldRecordsAttribute,
+                { attributeName: attribute.name },
+              )}
+            </Badge>
           )}
           {/* The control's own name, not a sentence built round it. */}
           {control !== undefined && <Badge>{control.label}</Badge>}

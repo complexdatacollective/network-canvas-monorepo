@@ -1,28 +1,11 @@
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import ProtocolField from '../../form/ProtocolField.tsx';
 import BuilderSection from '../BuilderSection.tsx';
 import { LayoutModeField } from './canvasFields.tsx';
+import { networkCanvasMessages } from './networkCanvasMessages.ts';
 
 const AUTOMATIC_LAYOUT_FIELD = 'behaviours.automaticLayout';
-
-export type AutomaticLayoutCopy = Readonly<{
-  /** Names the section in the outline and to assistive technology. */
-  sectionTitle: string;
-  description: string;
-  fieldLabel: string;
-  fieldHint: string;
-}>;
-
-const DEFAULT_COPY: AutomaticLayoutCopy = {
-  sectionTitle: 'Node layout',
-  description: 'Choose how nodes are arranged when this stage opens.',
-  fieldLabel: 'Layout mode',
-  fieldHint:
-    'How the stage arranges nodes before the participant moves any of them.',
-};
-
-export type AutomaticLayoutSectionProps = Readonly<{
-  copy?: Partial<AutomaticLayoutCopy>;
-}>;
 
 /**
  * How the stage arranges nodes when it opens.
@@ -33,18 +16,21 @@ export type AutomaticLayoutSectionProps = Readonly<{
  * the choice existed — and opting a protocol into a force simulation nobody
  * asked for would change what its participants see.
  */
-export default function AutomaticLayoutSection({
-  copy,
-}: AutomaticLayoutSectionProps) {
-  const words = { ...DEFAULT_COPY, ...copy };
+export default function AutomaticLayoutSection() {
+  const intl = useAppIntl();
 
   return (
-    <BuilderSection title={words.sectionTitle} description={words.description}>
+    <BuilderSection
+      title={intl.formatMessage(networkCanvasMessages.nodeLayoutTitle)}
+      description={intl.formatMessage(
+        networkCanvasMessages.nodeLayoutDescription,
+      )}
+    >
       <ProtocolField<typeof LayoutModeField>
         name={AUTOMATIC_LAYOUT_FIELD}
         component={LayoutModeField}
-        label={words.fieldLabel}
-        hint={words.fieldHint}
+        label={intl.formatMessage(networkCanvasMessages.layoutModeLabel)}
+        hint={intl.formatMessage(networkCanvasMessages.layoutModeHint)}
       />
     </BuilderSection>
   );

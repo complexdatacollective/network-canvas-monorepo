@@ -1,11 +1,14 @@
-import type { ComponentProps } from 'react';
+import { type ComponentProps, useMemo } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import RichSelectGroupField, {
   type RichSelectOption,
 } from '@codaco/fresco-ui/form/fields/RichSelectGroup';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
+
+import { networkCanvasMessages } from './networkCanvasMessages.ts';
 
 /**
  * The small bridges between what the protocol schema stores and what a control
@@ -89,21 +92,6 @@ export function OptionalCheckboxGroupField({
 const MANUAL = 'manual';
 const AUTOMATIC = 'automatic';
 
-const LAYOUT_MODE_OPTIONS: RichSelectOption[] = [
-  {
-    value: MANUAL,
-    label: 'Manual mode',
-    description:
-      'Places all nodes in a "bucket" at the bottom of the screen, from which the participant drags each one to where they want it.',
-  },
-  {
-    value: AUTOMATIC,
-    label: 'Automatic mode',
-    description:
-      'Positions nodes when the stage first opens by simulating physical forces such as attraction and repulsion. The participant can pause and resume the simulation, and reposition nodes by hand while it is paused.',
-  },
-];
-
 type LayoutModeFieldProps = Omit<
   ComponentProps<typeof RichSelectGroupField>,
   'value' | 'onChange' | 'options'
@@ -125,10 +113,36 @@ export function LayoutModeField({
   onChange,
   ...props
 }: LayoutModeFieldProps) {
+  const intl = useAppIntl();
+  // Held for as long as the reader's language does not change: a control's
+  // options are a memo dependency wherever one of these fields is composed,
+  // and a fresh array every render is a fresh registration.
+  const options = useMemo<RichSelectOption[]>(
+    () => [
+      {
+        value: MANUAL,
+        label: intl.formatMessage(networkCanvasMessages.layoutModeManualLabel),
+        description: intl.formatMessage(
+          networkCanvasMessages.layoutModeManualDescription,
+        ),
+      },
+      {
+        value: AUTOMATIC,
+        label: intl.formatMessage(
+          networkCanvasMessages.layoutModeAutomaticLabel,
+        ),
+        description: intl.formatMessage(
+          networkCanvasMessages.layoutModeAutomaticDescription,
+        ),
+      },
+    ],
+    [intl],
+  );
+
   return (
     <RichSelectGroupField
       {...props}
-      options={LAYOUT_MODE_OPTIONS}
+      options={options}
       value={value === true ? AUTOMATIC : MANUAL}
       onChange={(next) => onChange?.(next === AUTOMATIC)}
     />

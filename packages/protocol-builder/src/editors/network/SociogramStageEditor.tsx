@@ -4,6 +4,7 @@ import InterviewerGuidanceSection from '../../sections/InterviewerGuidanceSectio
 import AutomaticLayoutSection from '../../sections/network/AutomaticLayoutSection.tsx';
 import BackgroundSection from '../../sections/network/BackgroundSection.tsx';
 import NarrativeBehavioursSection from '../../sections/network/NarrativeBehavioursSection.tsx';
+import { networkCanvasMessages } from '../../sections/network/networkCanvasMessages.ts';
 import SociogramPromptsSection from '../../sections/network/SociogramPromptsSection.tsx';
 import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
 import StageHeading from '../../sections/StageHeading.tsx';
@@ -11,20 +12,6 @@ import SubjectSection from '../../sections/SubjectSection.tsx';
 import type { StageEditorProps } from '../../stage-editor-contract.ts';
 
 const DOCUMENTATION_URL = interfaceDocumentationUrl('sociogram');
-
-/**
- * A sociogram grants the same two canvas permissions a narrative does, and
- * they mean the same thing — but a sociogram stores each node's position in
- * the attribute its own PROMPT names, not in a preset's, so the sentence about
- * where a moved node ends up is written for this interface rather than
- * borrowed from the other one.
- */
-const CANVAS_INTERACTION_COPY = {
-  description:
-    'Choose what the participant may do to the canvas while they work through the prompts.',
-  repositioningHint:
-    'The participant can drag nodes to new positions. Each position is stored in the attribute the prompt they are answering names, so moving a node here changes it everywhere that attribute is used.',
-} as const;
 
 /**
  * The editor for a sociogram stage.
@@ -48,6 +35,14 @@ const CANVAS_INTERACTION_COPY = {
  * the protocol through the editor's own context, so a codebook change a
  * collaborator makes reaches the pickers inside an open prompt dialog without
  * this editor doing anything.
+ *
+ * The two sentences handed to `NarrativeBehavioursSection` are descriptors,
+ * not strings: a sociogram grants the same two canvas permissions a narrative
+ * does, and they mean the same thing — but a sociogram stores each node's
+ * position in the attribute its own PROMPT names, not in a preset's, so the
+ * sentence about where a moved node ends up is written for this interface
+ * rather than borrowed from the other one, and a translator has to be shown
+ * that difference rather than left to infer it from a section they never see.
  */
 export function SociogramStageEditor({
   controller,
@@ -63,7 +58,12 @@ export function SociogramStageEditor({
       <SociogramPromptsSection />
       <BackgroundSection allowsImage />
       <AutomaticLayoutSection />
-      <NarrativeBehavioursSection copy={CANVAS_INTERACTION_COPY} />
+      <NarrativeBehavioursSection
+        description={
+          networkCanvasMessages.sociogramCanvasInteractionDescription
+        }
+        repositioningHint={networkCanvasMessages.sociogramRepositioningHint}
+      />
       <SkipLogicSection />
       <InterviewerGuidanceSection />
     </StageEditorShell>

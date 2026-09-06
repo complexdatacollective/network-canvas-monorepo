@@ -1,7 +1,7 @@
 import { createElement, useId, useMemo, useRef, useState } from 'react';
 import { v4 as uuid } from 'uuid';
 
-import type { MessageDescriptor } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
@@ -153,56 +153,6 @@ function EdgeTypesField({
   );
 }
 
-export type ComposerEdgeConfigurationCopy = Readonly<{
-  /** Names the section in the outline and to assistive technology. */
-  sectionTitle: string;
-  description: string;
-  fieldLabel: string;
-  fieldHint: string;
-  emptyMessage: string;
-  /** Visible text and accessible name of the create control. */
-  createLabel: string;
-  createDescription: string;
-  /** Names the nested per-connection form section in the outline. */
-  formsTitle: string;
-  formsDescription: string;
-  formFieldsHint: string;
-  /**
-   * Noun used in row affordances ("Edit field", "Remove field"), as a
-   * descriptor: `DialogArrayField` formats it where it is read, or encodes it
-   * for a reader further on, so a caller that resolved it to English first
-   * would put an English noun in a Spanish sentence.
-   */
-  formFieldItemLabel: MessageDescriptor;
-  formFieldsEmptyMessage: string;
-}>;
-
-const DEFAULT_COPY: ComposerEdgeConfigurationCopy = {
-  sectionTitle: 'Connections',
-  description:
-    'Choose the kinds of connection the participant can draw between nodes on this canvas.',
-  fieldLabel: 'Connection types',
-  fieldHint:
-    'The participant can draw a connection of any kind you tick here. Leave them all unticked to build a network of nodes alone.',
-  emptyMessage:
-    'This protocol has no connection types yet. Create one to let the participant connect nodes.',
-  createLabel: 'Create a new connection type',
-  createDescription:
-    'Create a connection type, and let the participant draw it on this stage',
-  formsTitle: 'Connection attributes',
-  formsDescription:
-    'Optionally ask the participant more about each connection they draw. Each connection type is asked about separately, because each records its own attributes.',
-  formFieldsHint:
-    'The participant answers these in the panel that opens when they select a connection of this kind. Drag to reorder them.',
-  formFieldItemLabel: networkCanvasMessages.edgeFormFieldNoun,
-  formFieldsEmptyMessage:
-    'No attributes yet for this connection type. Create one to ask the participant something about each connection they draw.',
-};
-
-export type ComposerEdgeConfigurationSectionProps = Readonly<{
-  copy?: Partial<ComposerEdgeConfigurationCopy>;
-}>;
-
 /**
  * The connections this canvas lets the participant draw, and what it asks
  * about each of them.
@@ -218,24 +168,29 @@ export type ComposerEdgeConfigurationSectionProps = Readonly<{
  * records. Both write the same `edges` value — see `EdgeTypeForms` for why the
  * forms are not fields of their own.
  */
-export default function ComposerEdgeConfigurationSection({
-  copy,
-}: ComposerEdgeConfigurationSectionProps) {
-  const words = { ...DEFAULT_COPY, ...copy };
+export default function ComposerEdgeConfigurationSection() {
+  const intl = useAppIntl();
   const options = useEdgeTypeOptions();
 
   return (
-    <BuilderSection title={words.sectionTitle} description={words.description}>
+    <BuilderSection
+      title={intl.formatMessage(networkCanvasMessages.composerEdgeTitle)}
+      description={intl.formatMessage(
+        networkCanvasMessages.composerEdgeDescription,
+      )}
+    >
       <ProtocolField<typeof EdgeTypesField>
         name={EDGES_FIELD}
         component={EdgeTypesField}
-        label={words.fieldLabel}
-        hint={words.fieldHint}
+        label={intl.formatMessage(networkCanvasMessages.composerEdgeFieldLabel)}
+        hint={intl.formatMessage(networkCanvasMessages.composerEdgeFieldHint)}
         options={options}
-        emptyMessage={words.emptyMessage}
+        emptyMessage={intl.formatMessage(
+          networkCanvasMessages.composerEdgeEmpty,
+        )}
       />
-      <CreateEdgeType words={words} />
-      <EdgeTypeForms words={words} />
+      <CreateEdgeType />
+      <EdgeTypeForms />
     </BuilderSection>
   );
 }
@@ -274,9 +229,8 @@ const withEdgeForm = (
  * these lists write back through the same value the tick list does, exactly as
  * any other list nested inside a row.
  */
-function EdgeTypeForms({
-  words,
-}: Readonly<{ words: ComposerEdgeConfigurationCopy }>) {
+function EdgeTypeForms() {
+  const intl = useAppIntl();
   const entries = readEntries(useStageValue(EDGES_FIELD));
   const options = useEdgeTypeOptions();
   const setStageFieldValue = useSetStageFieldValue();
@@ -285,8 +239,10 @@ function EdgeTypeForms({
 
   return (
     <BuilderSection
-      title={words.formsTitle}
-      description={words.formsDescription}
+      title={intl.formatMessage(networkCanvasMessages.edgeFormsTitle)}
+      description={intl.formatMessage(
+        networkCanvasMessages.edgeFormsDescription,
+      )}
     >
       {entries.map((entry) => {
         const typeName =
@@ -297,7 +253,6 @@ function EdgeTypeForms({
             key={entry.id}
             entry={entry}
             typeName={typeName}
-            words={words}
             onChange={(fields) =>
               setStageFieldValue(
                 EDGES_FIELD,
@@ -315,14 +270,13 @@ function EdgeTypeForms({
 function EdgeTypeForm({
   entry,
   typeName,
-  words,
   onChange,
 }: Readonly<{
   entry: EdgeEntry;
   typeName: string;
-  words: ComposerEdgeConfigurationCopy;
   onChange: (fields: Record<string, unknown>[] | undefined) => void;
 }>) {
+  const intl = useAppIntl();
   const headingId = useId();
   // One connection type inside the section that lists them all, so this
   // heading counts from that section's own rather than from the page. Written
@@ -353,21 +307,33 @@ function EdgeTypeForm({
         // The element only — `level` still carries the type treatment.
         {...(headingTag === 'h4' ? {} : { render: createElement(headingTag) })}
       >
-        {`Attributes for "${typeName}" connections`}
+        {intl.formatMessage(networkCanvasMessages.edgeFormHeading, {
+          typeName,
+        })}
       </Heading>
       <Paragraph margin="none" emphasis="muted">
-        {words.formFieldsHint}
+        {intl.formatMessage(networkCanvasMessages.edgeFormFieldsHint)}
       </Paragraph>
       <ComposerFormFieldsList
         name={`edges-${entry.id}-form`}
         subject={entry.subject}
         value={Array.isArray(fields) ? fields.filter(isFormFieldRow) : []}
         onChange={onChange}
-        addButtonLabel={`Create new attribute field for "${typeName}" connections`}
-        addTitle={`Create attribute field for "${typeName}" connections`}
-        editorTitle={`Edit attribute field for "${typeName}" connections`}
-        itemLabel={words.formFieldItemLabel}
-        emptyStateMessage={words.formFieldsEmptyMessage}
+        addButtonLabel={intl.formatMessage(
+          networkCanvasMessages.edgeFormAddLabel,
+          { typeName },
+        )}
+        addTitle={intl.formatMessage(networkCanvasMessages.edgeFormAddTitle, {
+          typeName,
+        })}
+        editorTitle={intl.formatMessage(
+          networkCanvasMessages.edgeFormEditTitle,
+          { typeName },
+        )}
+        itemLabel={networkCanvasMessages.edgeFormFieldNoun}
+        emptyStateMessage={intl.formatMessage(
+          networkCanvasMessages.edgeFormEmptyState,
+        )}
       />
     </div>
   );
@@ -383,9 +349,8 @@ function EdgeTypeForm({
  * around it may not be finished, and a host keeping its stored protocol valid
  * would be right to refuse the pair as one edit.
  */
-function CreateEdgeType({
-  words,
-}: Readonly<{ words: ComposerEdgeConfigurationCopy }>) {
+function CreateEdgeType() {
+  const intl = useAppIntl();
   const { controller, readOnly } = useStageEditorForm();
   const setStageFieldValue = useSetStageFieldValue();
   const entries = readEntries(useStageValue(EDGES_FIELD));
@@ -414,12 +379,12 @@ function CreateEdgeType({
         size="sm"
         onClick={() => setSession({ key: uuid(), typeId: uuid() })}
       >
-        {words.createLabel}
+        {intl.formatMessage(networkCanvasMessages.createEdgeTypeLabel)}
       </Button>
       {session !== null && (
         <Dialog
           open
-          title={words.createLabel}
+          title={intl.formatMessage(networkCanvasMessages.createEdgeTypeLabel)}
           size="readable"
           closeDialog={() => setSession(null)}
           finalFocus={() => triggerRef.current}
@@ -428,7 +393,9 @@ function CreateEdgeType({
             mode="create"
             sessionKey={session.key}
             createRequestId={() => uuid()}
-            description={words.createDescription}
+            description={intl.formatMessage(
+              networkCanvasMessages.createEdgeTypeDescription,
+            )}
             subject={{ entity: 'edge', type: session.typeId }}
             initialDraft={NEW_ENTITY_DRAFT.edge}
             existingEntityNames={existingEntityNames}

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
@@ -26,6 +27,7 @@ import {
   useVariableOptions,
 } from './codebookOptions.ts';
 import CreateVariableAction from './CreateVariableAction.tsx';
+import { networkCanvasMessages } from './networkCanvasMessages.ts';
 import {
   asNestedBoolean,
   asNestedIdList,
@@ -60,27 +62,6 @@ type TapBehaviour =
   | typeof TAP_CREATE_EDGE
   | typeof TAP_HIGHLIGHT;
 
-const TAP_OPTIONS: RichSelectOption[] = [
-  {
-    value: TAP_NOTHING,
-    label: 'Nothing',
-    description:
-      'Tapping a node does nothing on this prompt. The participant only moves nodes around.',
-  },
-  {
-    value: TAP_CREATE_EDGE,
-    label: 'Create a connection',
-    description:
-      'Tapping one node and then another draws a connection between them.',
-  },
-  {
-    value: TAP_HIGHLIGHT,
-    label: 'Mark the node',
-    description:
-      'Tapping a node turns an attribute on, and tapping it again turns it off.',
-  },
-];
-
 const tapBehaviourOf = (item: Record<string, unknown>): TapBehaviour => {
   if (asNestedText(item.edges, 'create') !== undefined) return TAP_CREATE_EDGE;
   if (asNestedText(item.highlight, 'variable') !== undefined) {
@@ -101,6 +82,7 @@ const tapBehaviourOf = (item: Record<string, unknown>): TapBehaviour => {
  * dialog offers without the dialog asking for it.
  */
 export function SociogramPromptFields({ item }: RowEditorProps) {
+  const intl = useAppIntl();
   const subject = useStageSubject();
   // Writes reach THIS dialog's form, not the stage's: the prompt is the
   // researcher's unsaved row until they save it.
@@ -235,42 +217,88 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
     [createdEdge, edgeOptions],
   );
 
+  // Held for as long as the reader's language does not change: the control's
+  // options are part of what it registers with, and a fresh array every render
+  // re-registers it.
+  const tapOptions = useMemo<RichSelectOption[]>(
+    () => [
+      {
+        value: TAP_NOTHING,
+        label: intl.formatMessage(networkCanvasMessages.tapNothingLabel),
+        description: intl.formatMessage(
+          networkCanvasMessages.tapNothingDescription,
+        ),
+      },
+      {
+        value: TAP_CREATE_EDGE,
+        label: intl.formatMessage(networkCanvasMessages.tapCreateEdgeLabel),
+        description: intl.formatMessage(
+          networkCanvasMessages.tapCreateEdgeDescription,
+        ),
+      },
+      {
+        value: TAP_HIGHLIGHT,
+        label: intl.formatMessage(networkCanvasMessages.tapHighlightLabel),
+        description: intl.formatMessage(
+          networkCanvasMessages.tapHighlightDescription,
+        ),
+      },
+    ],
+    [intl],
+  );
+
   return (
     <>
       <Section
-        title="Participant prompt"
-        description="Write the question or instruction the participant sees for this task."
+        title={intl.formatMessage(networkCanvasMessages.promptTextTitle)}
+        description={intl.formatMessage(
+          networkCanvasMessages.promptTextSectionDescription,
+        )}
       >
         <Field
           name={TEXT_FIELD}
-          label="Prompt text"
+          label={intl.formatMessage(networkCanvasMessages.promptTextLabel)}
           component={RichTextField}
           singleLine
-          placeholder="Enter your prompt..."
+          placeholder={intl.formatMessage(
+            networkCanvasMessages.promptTextPlaceholder,
+          )}
           initialValue={asText(item[TEXT_FIELD]) ?? ''}
-          required="Write the question this prompt asks."
+          required={intl.formatMessage(
+            networkCanvasMessages.promptTextRequired,
+          )}
         />
       </Section>
 
       <Section
-        title="Node positions"
-        description="Where the participant's placements are remembered."
+        title={intl.formatMessage(networkCanvasMessages.promptPositionsTitle)}
+        description={intl.formatMessage(
+          networkCanvasMessages.promptPositionsDescription,
+        )}
       >
         <Field
           name={LAYOUT_VARIABLE_FIELD}
-          label="Position attribute"
-          hint="The attribute that stores each node's position. Prompts sharing an attribute carry the participant's placements between them."
+          label={intl.formatMessage(networkCanvasMessages.promptLayoutLabel)}
+          hint={intl.formatMessage(networkCanvasMessages.promptLayoutHint)}
           component={VariablePickerControl}
           options={layoutOptions}
-          emptyMessage="This type has no position attributes yet. Create one to store what the participant places."
+          emptyMessage={intl.formatMessage(
+            networkCanvasMessages.promptLayoutEmpty,
+          )}
           initialValue={committedLayout}
-          required="Choose the attribute this prompt stores positions in."
+          required={intl.formatMessage(
+            networkCanvasMessages.promptLayoutRequired,
+          )}
         />
         <CreateVariableAction
           subject={subject}
           variableType="layout"
-          label="Create a new position attribute"
-          description="Create an attribute to store node positions, and use it for this prompt"
+          label={intl.formatMessage(
+            networkCanvasMessages.promptCreateLayoutLabel,
+          )}
+          description={intl.formatMessage(
+            networkCanvasMessages.promptCreateLayoutDescription,
+          )}
           onCreated={(variableId) =>
             setRowValue(LAYOUT_VARIABLE_FIELD, variableId)
           }
@@ -294,24 +322,30 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
         */}
         <SortOrderRows
           name={SORT_ORDER_FIELD}
-          title="Sort unplaced nodes"
-          description="Choose the order the nodes the participant has not placed yet are handed to them in."
-          label="Sort rules"
-          hint="Rules are applied in order. Use the asterisk to keep the order the nodes were added in."
-          addButtonLabel="Add a rule for the order unplaced nodes are handed over in"
-          emptyStateMessage="No rules yet, so nodes are handed over in the order they were added."
+          title={intl.formatMessage(networkCanvasMessages.promptSortTitle)}
+          description={intl.formatMessage(
+            networkCanvasMessages.promptSortDescription,
+          )}
+          label={intl.formatMessage(networkCanvasMessages.promptSortLabel)}
+          hint={intl.formatMessage(networkCanvasMessages.promptSortHint)}
+          addButtonLabel={intl.formatMessage(
+            networkCanvasMessages.promptSortAddLabel,
+          )}
+          emptyStateMessage={intl.formatMessage(
+            networkCanvasMessages.promptSortEmptyState,
+          )}
           properties={sortableProperties}
           committedRules={item[SORT_ORDER_FIELD]}
         />
       </Section>
 
       <Section
-        title="Tapping a node"
-        description="What happens when the participant taps a node on this prompt."
+        title={intl.formatMessage(networkCanvasMessages.tapTitle)}
+        description={intl.formatMessage(networkCanvasMessages.tapDescription)}
       >
         <UnconnectedField
           name="tap-behaviour"
-          label="Tap behaviour"
+          label={intl.formatMessage(networkCanvasMessages.tapBehaviourLabel)}
           component={RichSelectGroupField}
           value={tapBehaviour}
           onChange={(next) =>
@@ -321,36 +355,54 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
                 : TAP_NOTHING,
             )
           }
-          options={TAP_OPTIONS}
+          options={tapOptions}
         />
         {tapBehaviour === TAP_CREATE_EDGE && (
           <Field
             name={CREATE_EDGE_FIELD}
-            label="Connection type created"
-            hint="The kind of connection tapping two nodes draws between them."
+            label={intl.formatMessage(
+              networkCanvasMessages.promptCreateEdgeLabel,
+            )}
+            hint={intl.formatMessage(
+              networkCanvasMessages.promptCreateEdgeHint,
+            )}
             component={EntitySelectControl}
             entityType="edge"
             initialValue={committedCreate}
-            required="Choose the kind of connection this prompt creates."
+            required={intl.formatMessage(
+              networkCanvasMessages.promptCreateEdgeRequired,
+            )}
           />
         )}
         {tapBehaviour === TAP_HIGHLIGHT && (
           <>
             <Field
               name={HIGHLIGHT_VARIABLE_FIELD}
-              label="Attribute marked"
-              hint="Tapping a node turns this attribute on, and tapping it again turns it off."
+              label={intl.formatMessage(
+                networkCanvasMessages.promptHighlightLabel,
+              )}
+              hint={intl.formatMessage(
+                networkCanvasMessages.promptHighlightHint,
+              )}
               component={VariablePickerControl}
               options={highlightOptions}
-              emptyMessage="This type has no true-or-false attributes available, so there is nothing to mark."
+              emptyMessage={intl.formatMessage(
+                networkCanvasMessages.promptHighlightEmpty,
+              )}
               initialValue={committedHighlight}
-              required="Choose the attribute tapping a node turns on and off."
+              required={intl.formatMessage(
+                networkCanvasMessages.promptHighlightRequired,
+              )}
             />
             <CreateVariableAction
               subject={subject}
               variableType="boolean"
-              label="Create a new true-or-false attribute"
-              description="Create a true-or-false attribute, and mark nodes with it on this prompt"
+              label={intl.formatMessage(
+                networkCanvasMessages.promptCreateHighlightLabel,
+              )}
+              description={intl.formatMessage(
+                networkCanvasMessages.promptCreateHighlightDescription,
+              )}
               onCreated={(variableId) =>
                 setRowValue(HIGHLIGHT_VARIABLE_FIELD, variableId)
               }
@@ -360,21 +412,28 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
       </Section>
 
       <Section
-        title="Connections shown"
-        description="The kinds of connection drawn between nodes on this prompt."
+        title={intl.formatMessage(networkCanvasMessages.promptEdgesTitle)}
+        description={intl.formatMessage(
+          networkCanvasMessages.promptEdgesDescription,
+        )}
       >
         {createdEdge !== undefined && (
           <Alert variant="info" className="my-7">
             <AlertDescription>
-              The kind of connection this prompt creates is always shown, so it
-              cannot be unticked.
+              {intl.formatMessage(
+                networkCanvasMessages.promptCreatedEdgeAlwaysShown,
+              )}
             </AlertDescription>
           </Alert>
         )}
         <Field
           name={DISPLAY_EDGES_FIELD}
-          label="Connection types shown"
-          hint="Leave every type unticked to draw no connections at all."
+          label={intl.formatMessage(
+            networkCanvasMessages.promptDisplayEdgesLabel,
+          )}
+          hint={intl.formatMessage(
+            networkCanvasMessages.promptDisplayEdgesHint,
+          )}
           component={OptionalCheckboxGroupField}
           options={edgeChoices}
           initialValue={committedDisplay}
@@ -386,6 +445,11 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
 
 /** How one prompt reads in the list when its editor is closed. */
 export function SociogramPromptPreview({ item }: RowPreviewProps) {
+  const intl = useAppIntl();
   const text = asText(item[TEXT_FIELD]);
-  return <span className="py-2">{text ?? 'Empty prompt'}</span>;
+  return (
+    <span className="py-2">
+      {text ?? intl.formatMessage(networkCanvasMessages.promptEmptyPreview)}
+    </span>
+  );
 }

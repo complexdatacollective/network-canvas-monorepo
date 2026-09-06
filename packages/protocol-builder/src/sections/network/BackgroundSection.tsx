@@ -1,5 +1,7 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
+import { createMessageError } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import RichSelectGroupField, {
   type RichSelectOption,
@@ -16,6 +18,7 @@ import {
 import ResourcePickerControl from '../../resources/components/ResourcePickerControl.tsx';
 import BuilderSection from '../BuilderSection.tsx';
 import { IntegerField } from './canvasFields.tsx';
+import { networkCanvasMessages } from './networkCanvasMessages.ts';
 
 const CIRCLES_FIELD = 'background.concentricCircles';
 const SKEW_FIELD = 'background.skewedTowardCenter';
@@ -28,23 +31,14 @@ const IMAGE_FIELD = 'background.image';
  */
 type BackgroundMode = 'circles' | 'image';
 
-const MODE_OPTIONS: RichSelectOption[] = [
-  {
-    value: 'circles',
-    label: 'Concentric circles',
-    description:
-      'The conventional sociogram background: rings the participant places nodes within.',
-  },
-  {
-    value: 'image',
-    label: 'Image',
-    description:
-      'A picture of your own — a map, a floor plan, a diagram — filling the canvas.',
-  },
-];
-
-const WHOLE_NUMBER_MESSAGE =
-  'Enter the number of circles as a whole number of zero or more.';
+/**
+ * Encoded rather than formatted, because this refusal is handed to the form
+ * store as a plain string and rendered by a control that never sees this
+ * module. `FieldErrors` decodes it in the reader's own language.
+ */
+const WHOLE_NUMBER_MESSAGE = createMessageError(
+  networkCanvasMessages.backgroundCirclesWholeNumber,
+);
 
 const circlesValidation = {
   custom: messageRuleValidation([
@@ -56,38 +50,6 @@ const circlesValidation = {
   ]),
 };
 
-export type BackgroundCopy = Readonly<{
-  /** Names the section in the outline and to assistive technology. */
-  sectionTitle: string;
-  description: string;
-  imageDescription: string;
-  modeLabel: string;
-  circlesLabel: string;
-  circlesHint: string;
-  skewLabel: string;
-  skewHint: string;
-  imageLabel: string;
-  imageHint: string;
-}>;
-
-const DEFAULT_COPY: BackgroundCopy = {
-  sectionTitle: 'Background',
-  description:
-    'Choose what the participant sees behind the nodes on this canvas.',
-  imageDescription:
-    'Choose what the participant sees behind the nodes on this canvas: concentric circles, or a picture of your own.',
-  modeLabel: 'Background type',
-  circlesLabel: 'Number of concentric circles',
-  circlesHint:
-    'The rings drawn behind the nodes. Participants often use them to place people closer to or further from themselves.',
-  skewLabel: 'Make the inner circles larger',
-  skewHint:
-    'Gives the inner rings more room than the outer ones, so nodes placed near the centre overlap less.',
-  imageLabel: 'Background image',
-  imageHint:
-    'Scaled to fill the canvas. A responsive SVG keeps its labels readable in both portrait and landscape.',
-};
-
 export type BackgroundSectionProps = Readonly<{
   /**
    * Whether this interface can draw an image behind its nodes.
@@ -97,7 +59,6 @@ export type BackgroundSectionProps = Readonly<{
    * choice only when there is one to make.
    */
   allowsImage?: boolean;
-  copy?: Partial<BackgroundCopy>;
 }>;
 
 /**
@@ -123,11 +84,37 @@ export type BackgroundSectionProps = Readonly<{
  */
 export default function BackgroundSection({
   allowsImage = false,
-  copy,
 }: BackgroundSectionProps) {
-  const words = { ...DEFAULT_COPY, ...copy };
+  const intl = useAppIntl();
   const { committedFields, readOnly } = useStageEditorForm();
   const discardStageValues = useDiscardStageValues();
+
+  // Held for as long as the reader's language does not change: the control's
+  // options are part of what it registers with, and a fresh array every render
+  // re-registers it.
+  const modeOptions = useMemo<RichSelectOption[]>(
+    () => [
+      {
+        value: 'circles',
+        label: intl.formatMessage(
+          networkCanvasMessages.backgroundCirclesOptionLabel,
+        ),
+        description: intl.formatMessage(
+          networkCanvasMessages.backgroundCirclesOptionDescription,
+        ),
+      },
+      {
+        value: 'image',
+        label: intl.formatMessage(
+          networkCanvasMessages.backgroundImageOptionLabel,
+        ),
+        description: intl.formatMessage(
+          networkCanvasMessages.backgroundImageOptionDescription,
+        ),
+      },
+    ],
+    [intl],
+  );
 
   /**
    * The mode the researcher has chosen this session, which outranks the shape
@@ -189,17 +176,21 @@ export default function BackgroundSection({
 
   return (
     <BuilderSection
-      title={words.sectionTitle}
-      description={allowsImage ? words.imageDescription : words.description}
+      title={intl.formatMessage(networkCanvasMessages.backgroundTitle)}
+      description={intl.formatMessage(
+        allowsImage
+          ? networkCanvasMessages.backgroundImageDescription
+          : networkCanvasMessages.backgroundDescription,
+      )}
     >
       {allowsImage && (
         <UnconnectedField
           name="background-type"
-          label={words.modeLabel}
+          label={intl.formatMessage(networkCanvasMessages.backgroundModeLabel)}
           component={RichSelectGroupField}
           value={mode}
           onChange={chooseMode}
-          options={MODE_OPTIONS}
+          options={modeOptions}
           orientation="horizontal"
           disabled={readOnly}
         />
@@ -209,16 +200,22 @@ export default function BackgroundSection({
           <ProtocolField<typeof IntegerField>
             name={CIRCLES_FIELD}
             component={IntegerField}
-            label={words.circlesLabel}
-            hint={words.circlesHint}
+            label={intl.formatMessage(
+              networkCanvasMessages.backgroundCirclesLabel,
+            )}
+            hint={intl.formatMessage(
+              networkCanvasMessages.backgroundCirclesHint,
+            )}
             required
             {...circlesValidation}
           />
           <ProtocolField<typeof ToggleField>
             name={SKEW_FIELD}
             component={ToggleField}
-            label={words.skewLabel}
-            hint={words.skewHint}
+            label={intl.formatMessage(
+              networkCanvasMessages.backgroundSkewLabel,
+            )}
+            hint={intl.formatMessage(networkCanvasMessages.backgroundSkewHint)}
             inline
           />
         </>
@@ -227,8 +224,8 @@ export default function BackgroundSection({
           name={IMAGE_FIELD}
           component={ResourcePickerControl}
           kind="image"
-          label={words.imageLabel}
-          hint={words.imageHint}
+          label={intl.formatMessage(networkCanvasMessages.backgroundImageLabel)}
+          hint={intl.formatMessage(networkCanvasMessages.backgroundImageHint)}
           required
         />
       )}

@@ -23,11 +23,9 @@ import {
   ComposerFormFieldPreview,
 } from './ComposerFormFieldRow.tsx';
 import { ComposerFormSubjectContext } from './composerFormSubject.ts';
+import { networkCanvasMessages } from './networkCanvasMessages.ts';
 
 type FormFieldRow = Record<string, unknown>;
-
-const DUPLICATE_VARIABLE =
-  'Another field on this form already records this attribute. Choose a different one, or edit the existing field instead.';
 
 const isRecord = (value: unknown): value is FormFieldRow =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -88,7 +86,11 @@ export default function ComposerFormFieldsList({
             index !== editIndex && isRecord(row) && row.variable === variable,
         )
       ) {
-        return { variable: DUPLICATE_VARIABLE };
+        return {
+          variable: intl.formatMessage(
+            networkCanvasMessages.duplicateVariableRefusal,
+          ),
+        };
       }
       /**
        * The settings block, judged by the protocol's own parameter schemas

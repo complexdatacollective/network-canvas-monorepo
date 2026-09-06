@@ -19,6 +19,7 @@ import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import type { RowValues } from '../rowRenderers.tsx';
 import { useSubjectVariables } from './codebookOptions.ts';
 import { useComposerFormSubject } from './composerFormSubject.ts';
+import { networkCanvasMessages } from './networkCanvasMessages.ts';
 import { asText } from './rowValues.ts';
 
 /** Where a composer form field keeps the settings its control takes. */
@@ -166,11 +167,10 @@ export default function ComposerFieldParameters({
       aria-invalid={blockMessages.length > 0 || undefined}
     >
       <legend className="font-heading mb-2 font-bold">
-        What this field accepts
+        {intl.formatMessage(networkCanvasMessages.fieldParametersLegend)}
       </legend>
       <p className="text-muted mb-4 text-sm">
-        These settings belong to this field rather than to the attribute, so the
-        same attribute can be asked for differently on another form.
+        {intl.formatMessage(networkCanvasMessages.fieldParametersDescription)}
       </p>
       {blockMessages.length > 0 && (
         <ul className="text-destructive mb-3 list-disc pl-5">

@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
@@ -17,6 +18,7 @@ import {
   useVariableOptions,
 } from './codebookOptions.ts';
 import CreateVariableAction from './CreateVariableAction.tsx';
+import { networkCanvasMessages } from './networkCanvasMessages.ts';
 import {
   asIdList,
   asNestedIdList,
@@ -42,6 +44,7 @@ const HIGHLIGHT_FIELD = 'highlight';
  * since deleted says so, in the picker, rather than quietly emptying itself.
  */
 export function NarrativePresetFields({ item }: RowEditorProps) {
+  const intl = useAppIntl();
   const subject = useStageSubject();
   // Writes reach THIS dialog's form, not the stage's: a preset is the
   // researcher's unsaved row until they save it.
@@ -92,39 +95,55 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
   return (
     <>
       <Section
-        title="Preset identity"
-        description="Name this way of looking at the network."
+        title={intl.formatMessage(networkCanvasMessages.presetIdentityTitle)}
+        description={intl.formatMessage(
+          networkCanvasMessages.presetIdentityDescription,
+        )}
       >
         <Field
           name={LABEL_FIELD}
-          label="Preset name"
-          hint="Shown to the participant when they switch between presets, so name it in their words."
+          label={intl.formatMessage(networkCanvasMessages.presetNameLabel)}
+          hint={intl.formatMessage(networkCanvasMessages.presetNameHint)}
           component={InputField}
-          placeholder="Enter a name for this preset..."
+          placeholder={intl.formatMessage(
+            networkCanvasMessages.presetNamePlaceholder,
+          )}
           initialValue={asText(item[LABEL_FIELD]) ?? ''}
-          required="Give this preset a name."
+          required={intl.formatMessage(
+            networkCanvasMessages.presetNameRequired,
+          )}
         />
       </Section>
 
       <Section
-        title="Node positions"
-        description="Where this preset puts each node on the canvas."
+        title={intl.formatMessage(networkCanvasMessages.presetPositionsTitle)}
+        description={intl.formatMessage(
+          networkCanvasMessages.presetPositionsDescription,
+        )}
       >
         <Field
           name={LAYOUT_VARIABLE_FIELD}
-          label="Position attribute"
-          hint="The attribute that stores each node's position. Presets sharing an attribute share their positions."
+          label={intl.formatMessage(networkCanvasMessages.presetLayoutLabel)}
+          hint={intl.formatMessage(networkCanvasMessages.presetLayoutHint)}
           component={VariablePickerControl}
           options={layoutOptions}
-          emptyMessage="This type has no position attributes yet. Create one to lay this preset out."
+          emptyMessage={intl.formatMessage(
+            networkCanvasMessages.presetLayoutEmpty,
+          )}
           initialValue={committedLayout}
-          required="Choose the attribute this preset positions nodes with."
+          required={intl.formatMessage(
+            networkCanvasMessages.presetLayoutRequired,
+          )}
         />
         <CreateVariableAction
           subject={subject}
           variableType="layout"
-          label="Create a new position attribute"
-          description="Create an attribute to store node positions, and use it for this preset"
+          label={intl.formatMessage(
+            networkCanvasMessages.presetCreateLayoutLabel,
+          )}
+          description={intl.formatMessage(
+            networkCanvasMessages.presetCreateLayoutDescription,
+          )}
           onCreated={(variableId) =>
             setRowValue(LAYOUT_VARIABLE_FIELD, variableId)
           }
@@ -132,28 +151,38 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
       </Section>
 
       <Section
-        title="Node grouping"
-        description="Draw a shaded outline around the nodes that share a value."
+        title={intl.formatMessage(networkCanvasMessages.presetGroupingTitle)}
+        description={intl.formatMessage(
+          networkCanvasMessages.presetGroupingDescription,
+        )}
       >
         <Field
           name={GROUP_VARIABLE_FIELD}
-          label="Grouping attribute"
-          hint="Nodes sharing a value of this attribute are outlined together. A node with several values appears in several overlapping outlines."
+          label={intl.formatMessage(networkCanvasMessages.presetGroupLabel)}
+          hint={intl.formatMessage(networkCanvasMessages.presetGroupHint)}
           component={VariablePickerControl}
           options={groupOptions}
-          emptyMessage="This type has no attributes with a fixed set of values, so there is nothing to group by."
+          emptyMessage={intl.formatMessage(
+            networkCanvasMessages.presetGroupEmpty,
+          )}
           initialValue={committedGroup}
         />
       </Section>
 
       <Section
-        title="Connections"
-        description="The kinds of connection this preset draws between nodes."
+        title={intl.formatMessage(networkCanvasMessages.presetConnectionsTitle)}
+        description={intl.formatMessage(
+          networkCanvasMessages.presetConnectionsDescription,
+        )}
       >
         <Field
           name={DISPLAY_EDGES_FIELD}
-          label="Connection types shown"
-          hint="Leave every type unticked to show no connections at all."
+          label={intl.formatMessage(
+            networkCanvasMessages.presetDisplayEdgesLabel,
+          )}
+          hint={intl.formatMessage(
+            networkCanvasMessages.presetDisplayEdgesHint,
+          )}
           component={OptionalCheckboxGroupField}
           options={edgeChoices}
           initialValue={committedDisplay}
@@ -161,13 +190,15 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
       </Section>
 
       <Section
-        title="Highlighted nodes"
-        description="Make some nodes stand out from the rest."
+        title={intl.formatMessage(networkCanvasMessages.presetHighlightTitle)}
+        description={intl.formatMessage(
+          networkCanvasMessages.presetHighlightDescription,
+        )}
       >
         <Field
           name={HIGHLIGHT_FIELD}
-          label="Highlight attributes"
-          hint="A node is highlighted while any of these attributes is true of it."
+          label={intl.formatMessage(networkCanvasMessages.presetHighlightLabel)}
+          hint={intl.formatMessage(networkCanvasMessages.presetHighlightHint)}
           component={OptionalCheckboxGroupField}
           options={highlightChoices}
           initialValue={committedHighlight}
@@ -179,10 +210,13 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
 
 /** How one preset reads in the list when its editor is closed. */
 export function NarrativePresetPreview({ item }: RowPreviewProps) {
+  const intl = useAppIntl();
   const label = asText(item[LABEL_FIELD]);
   return (
     <span className="py-2">
-      {label === undefined || label === '' ? 'Unnamed preset' : label}
+      {label === undefined || label === ''
+        ? intl.formatMessage(networkCanvasMessages.presetUnnamedPreview)
+        : label}
     </span>
   );
 }

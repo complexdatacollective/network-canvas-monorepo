@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 
-import type { MessageDescriptor } from '@codaco/app-i18n/messages';
+import { createMessageError } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 
 import {
@@ -52,84 +53,16 @@ const NODE_FORM_FIELD = 'nodeForm.fields';
  * The opposite direction has a message of its own in the package's shared
  * cross-class helper. This one belongs to a form-shaped picker, and says what
  * the researcher would have to change to make the pick legal.
+ *
+ * Encoded rather than formatted: `crossClassPickIssue` answers with a plain
+ * string, which reaches the form store and is rendered by a control that never
+ * sees this module. `FieldErrors` decodes it in the reader's own language.
  */
 const unvalidatedElsewhereMessage = (variableName: string): string =>
-  `"${variableName}" is already written directly by another part of this protocol, so a form here would validate values it did not collect. Choose a different attribute.`;
-
-export type ComposerNodeConfigurationCopy = Readonly<{
-  /** Names the section in the outline and to assistive technology. */
-  sectionTitle: string;
-  description: string;
-  /** Said instead of `description` while the section is waiting on a subject. */
-  waitingDescription: string;
-  quickAddLabel: string;
-  quickAddHint: string;
-  createQuickAddLabel: string;
-  layoutLabel: string;
-  layoutHint: string;
-  createLayoutLabel: string;
-  automaticLayoutLabel: string;
-  automaticLayoutHint: string;
-  hullLabel: string;
-  hullHint: string;
-  createHullLabel: string;
-  /** Names the nested form-fields section in the outline. */
-  formSectionTitle: string;
-  formSectionDescription: string;
-  formFieldsLabel: string;
-  formFieldsHint: string;
-  /** Visible text and accessible name of the add button. */
-  addFormFieldLabel: string;
-  addFormFieldTitle: string;
-  editFormFieldTitle: string;
-  /**
-   * Noun used in row affordances ("Edit field", "Remove field"), as a
-   * descriptor: `DialogArrayField` formats it where it is read, or encodes it
-   * for a reader further on, so a caller that resolved it to English first
-   * would put an English noun in a Spanish sentence.
-   */
-  formFieldItemLabel: MessageDescriptor;
-  formFieldsEmptyMessage: string;
-}>;
-
-const DEFAULT_COPY: ComposerNodeConfigurationCopy = {
-  sectionTitle: 'Adding and arranging nodes',
-  description:
-    'How the participant adds nodes to the canvas, where those nodes sit, and how they group them.',
-  waitingDescription:
-    'Choose what this stage works with before configuring how its nodes behave.',
-  quickAddLabel: 'Attribute filled in when a node is added',
-  quickAddHint:
-    'The participant types one thing to add a node — usually a name. It is stored in this attribute, and checked against the rules the codebook gives it.',
-  createQuickAddLabel: 'Create a new attribute to fill in',
-  layoutLabel: 'Position attribute',
-  layoutHint:
-    "The attribute that stores each node's position. Stages sharing an attribute carry the participant's placements between them.",
-  createLayoutLabel: 'Create a new position attribute',
-  automaticLayoutLabel: 'Start with automatic layout switched on',
-  automaticLayoutHint:
-    'Arranges the nodes by simulating attraction and repulsion. The participant can switch this off and on during the interview; this is only where it starts.',
-  hullLabel: 'Grouping attribute',
-  hullHint:
-    'Nodes sharing a value of this attribute are drawn inside a shaded outline. The participant sets those values on the canvas, so this attribute is written without the codebook checking it.',
-  createHullLabel: 'Create a new grouping attribute',
-  formSectionTitle: 'Node attributes',
-  formSectionDescription:
-    'Optionally let the participant fill in more about each node after they have added it.',
-  formFieldsLabel: 'Form fields',
-  formFieldsHint:
-    'The participant answers these in the panel that opens when they select a node. Drag to reorder them.',
-  addFormFieldLabel: 'Create new node attribute field',
-  addFormFieldTitle: 'Create node attribute field',
-  editFormFieldTitle: 'Edit node attribute field',
-  formFieldItemLabel: networkCanvasMessages.nodeFormFieldNoun,
-  formFieldsEmptyMessage:
-    'No node attributes yet. Create one to ask the participant something about each node.',
-};
-
-export type ComposerNodeConfigurationSectionProps = Readonly<{
-  copy?: Partial<ComposerNodeConfigurationCopy>;
-}>;
+  createMessageError(
+    networkCanvasMessages.quickAddUnvalidatedElsewhereRefusal,
+    { variableName },
+  );
 
 /**
  * What the participant can do with nodes on this canvas.
@@ -147,10 +80,8 @@ export type ComposerNodeConfigurationSectionProps = Readonly<{
  * the excluded attributes are not offered, and a pick that survives from a
  * stale draft is refused at save, with the reason.
  */
-export default function ComposerNodeConfigurationSection({
-  copy,
-}: ComposerNodeConfigurationSectionProps) {
-  const words = { ...DEFAULT_COPY, ...copy };
+export default function ComposerNodeConfigurationSection() {
+  const intl = useAppIntl();
   const { committedFields } = useStageEditorForm();
   const setStageFieldValue = useSetStageFieldValue();
   const subject = useStageSubject();
@@ -226,25 +157,31 @@ export default function ComposerNodeConfigurationSection({
 
   return (
     <BuilderSection
-      title={words.sectionTitle}
-      description={waiting ? words.waitingDescription : words.description}
+      title={intl.formatMessage(networkCanvasMessages.composerNodeTitle)}
+      description={intl.formatMessage(
+        waiting
+          ? networkCanvasMessages.composerNodeWaitingDescription
+          : networkCanvasMessages.composerNodeDescription,
+      )}
       disabled={waiting}
     >
       <ProtocolField<typeof VariablePickerControl>
         name={QUICK_ADD_FIELD}
         component={VariablePickerControl}
-        label={words.quickAddLabel}
-        hint={words.quickAddHint}
+        label={intl.formatMessage(networkCanvasMessages.quickAddLabel)}
+        hint={intl.formatMessage(networkCanvasMessages.quickAddHint)}
         options={quickAddOptions}
-        emptyMessage="This type has no free-text attributes available, so there is nothing for the quick-add box to fill in."
+        emptyMessage={intl.formatMessage(networkCanvasMessages.quickAddEmpty)}
         required
         {...quickAddValidation}
       />
       <CreateVariableAction
         subject={subject}
         variableType="text"
-        label={words.createQuickAddLabel}
-        description="Create a free-text attribute, and fill it in when a node is added"
+        label={intl.formatMessage(networkCanvasMessages.createQuickAddLabel)}
+        description={intl.formatMessage(
+          networkCanvasMessages.createQuickAddDescription,
+        )}
         onCreated={(variableId) =>
           setStageFieldValue(QUICK_ADD_FIELD, variableId)
         }
@@ -253,17 +190,23 @@ export default function ComposerNodeConfigurationSection({
       <ProtocolField<typeof VariablePickerControl>
         name={LAYOUT_VARIABLE_FIELD}
         component={VariablePickerControl}
-        label={words.layoutLabel}
-        hint={words.layoutHint}
+        label={intl.formatMessage(networkCanvasMessages.composerLayoutLabel)}
+        hint={intl.formatMessage(networkCanvasMessages.composerLayoutHint)}
         options={layoutOptions}
-        emptyMessage="This type has no position attributes yet. Create one to store where the participant puts each node."
+        emptyMessage={intl.formatMessage(
+          networkCanvasMessages.composerLayoutEmpty,
+        )}
         required
       />
       <CreateVariableAction
         subject={subject}
         variableType="layout"
-        label={words.createLayoutLabel}
-        description="Create an attribute to store node positions, and use it on this stage"
+        label={intl.formatMessage(
+          networkCanvasMessages.composerCreateLayoutLabel,
+        )}
+        description={intl.formatMessage(
+          networkCanvasMessages.composerCreateLayoutDescription,
+        )}
         onCreated={(variableId) =>
           setStageFieldValue(LAYOUT_VARIABLE_FIELD, variableId)
         }
@@ -272,33 +215,41 @@ export default function ComposerNodeConfigurationSection({
       <ProtocolField<typeof AutomaticLayoutDefaultField>
         name={BEHAVIOURS_FIELD}
         component={AutomaticLayoutDefaultField}
-        label={words.automaticLayoutLabel}
-        hint={words.automaticLayoutHint}
+        label={intl.formatMessage(
+          networkCanvasMessages.composerAutomaticLayoutLabel,
+        )}
+        hint={intl.formatMessage(
+          networkCanvasMessages.composerAutomaticLayoutHint,
+        )}
         inline
       />
 
       <ProtocolField<typeof VariablePickerControl>
         name={CONVEX_HULL_FIELD}
         component={VariablePickerControl}
-        label={words.hullLabel}
-        hint={words.hullHint}
+        label={intl.formatMessage(networkCanvasMessages.hullLabel)}
+        hint={intl.formatMessage(networkCanvasMessages.hullHint)}
         options={hullOptions}
-        emptyMessage="This type has no attributes with a fixed set of values, so there is nothing to group nodes by."
+        emptyMessage={intl.formatMessage(networkCanvasMessages.hullEmpty)}
         {...hullValidation}
       />
       <CreateVariableAction
         subject={subject}
         variableType="categorical"
-        label={words.createHullLabel}
-        description="Create an attribute with a fixed set of values, and group nodes by it"
+        label={intl.formatMessage(networkCanvasMessages.createHullLabel)}
+        description={intl.formatMessage(
+          networkCanvasMessages.createHullDescription,
+        )}
         onCreated={(variableId) =>
           setStageFieldValue(CONVEX_HULL_FIELD, variableId)
         }
       />
 
       <BuilderSection
-        title={words.formSectionTitle}
-        description={words.formSectionDescription}
+        title={intl.formatMessage(networkCanvasMessages.nodeFormTitle)}
+        description={intl.formatMessage(
+          networkCanvasMessages.nodeFormDescription,
+        )}
         disabled={waiting}
         capability={{
           fields: [NODE_FORM_FIELD],
@@ -313,13 +264,19 @@ export default function ComposerNodeConfigurationSection({
           name={NODE_FORM_FIELD}
           component={ComposerFormFieldsList}
           subject={subject}
-          label={words.formFieldsLabel}
-          hint={words.formFieldsHint}
-          addButtonLabel={words.addFormFieldLabel}
-          addTitle={words.addFormFieldTitle}
-          editorTitle={words.editFormFieldTitle}
-          itemLabel={words.formFieldItemLabel}
-          emptyStateMessage={words.formFieldsEmptyMessage}
+          label={intl.formatMessage(networkCanvasMessages.nodeFormFieldsLabel)}
+          hint={intl.formatMessage(networkCanvasMessages.nodeFormFieldsHint)}
+          addButtonLabel={intl.formatMessage(
+            networkCanvasMessages.nodeFormAddLabel,
+          )}
+          addTitle={intl.formatMessage(networkCanvasMessages.nodeFormAddTitle)}
+          editorTitle={intl.formatMessage(
+            networkCanvasMessages.nodeFormEditTitle,
+          )}
+          itemLabel={networkCanvasMessages.nodeFormFieldNoun}
+          emptyStateMessage={intl.formatMessage(
+            networkCanvasMessages.nodeFormEmptyState,
+          )}
         />
       </BuilderSection>
     </BuilderSection>
