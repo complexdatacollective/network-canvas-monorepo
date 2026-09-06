@@ -11,6 +11,7 @@ import MultiSelect from '../../form/arrayFields/MultiSelect.tsx';
 import ProtocolArrayField from '../../form/ProtocolArrayField.tsx';
 import ProtocolField from '../../form/ProtocolField.tsx';
 import { useStageValue } from '../../form/stageFormHooks.ts';
+import { loadFixtureStage } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import BuilderSection, { type SectionCapability } from '../BuilderSection.tsx';
 
@@ -622,5 +623,93 @@ describe('a capability that resets on a value with structure', () => {
         screen.getByRole('switch', { name: 'Search options' }),
       ).not.toBeChecked(),
     );
+  });
+});
+
+/**
+ * A path is read the same way wherever it is read.
+ *
+ * Telling a researcher's change from an arrival is a comparison of two reads of
+ * ONE path: what the form holds there, and what the agreed draft holds there.
+ * Resolve the path differently in the two and they are reads of two different
+ * values, which move independently — so an arrival that moves one of them and
+ * not the other reads as a choice the researcher made, and the section throws
+ * away the capability the arrival was bringing back.
+ *
+ * The stage below holds both readings of `presentation.theme` at once — a route
+ * through a container, and a key that happens to contain a dot — because that
+ * is what a general-purpose `get` decides between by looking at the document.
+ */
+describe('a capability resetting on a path the stage could read two ways', () => {
+  const ambiguousStage = () => {
+    const roster = loadFixtureStage('name-generator-roster-1');
+    return {
+      stage: {
+        id: roster.id,
+        type: roster.type,
+        fields: {
+          ...roster.fields,
+          'presentation': { theme: 'plain' },
+          'presentation.theme': 'a key of its own',
+        },
+      },
+      sections: (
+        <>
+          <BuilderSection title="Presentation">
+            <ProtocolField<typeof RadioGroup>
+              name="presentation.theme"
+              label="Theme"
+              component={RadioGroup}
+              options={[
+                { value: 'plain', label: 'Plain' },
+                { value: 'bold', label: 'Bold' },
+              ]}
+            />
+          </BuilderSection>
+          <BuilderSection
+            title="Search options"
+            capability={SEARCH}
+            resetOn="presentation.theme"
+          >
+            <ProtocolField
+              name="searchOptions.fuzziness"
+              label="Fuzziness"
+              component={InputField}
+            />
+          </BuilderSection>
+        </>
+      ),
+    };
+  };
+
+  it('does not reset again when the session undoes the reset', async () => {
+    const harness = renderStageEditor(ambiguousStage());
+    await screen.findByRole('textbox', { name: 'Fuzziness' });
+
+    // The researcher's own change, which does reset the capability.
+    await harness.user.click(
+      await screen.findByRole('radio', { name: 'Bold' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole('switch', { name: 'Search options' }),
+      ).not.toBeChecked(),
+    );
+
+    act(() => {
+      harness.session.undo();
+    });
+
+    // The undo is an arrival, and it brings the theme and the settings that
+    // described it back together. Resetting on it would take away the half of
+    // the change the researcher was reaching for, on the spot.
+    await waitFor(() =>
+      expect(
+        screen.getByRole('switch', { name: 'Search options' }),
+      ).toBeChecked(),
+    );
+    expect(harness.session.getSnapshot().editedSection.fields).toMatchObject({
+      searchOptions: { fuzziness: 0.4 },
+    });
   });
 });

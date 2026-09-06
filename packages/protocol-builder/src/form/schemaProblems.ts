@@ -88,6 +88,13 @@ const SCHEMA_PROBLEM_COPY: Readonly<
  * Said the same way for every code because it is the same fact each time, and
  * because the code a validator picks for an absent value is its own business:
  * a missing key is `invalid_type` today and could be anything tomorrow.
+ *
+ * Except `custom`, which is not a validator reaching for a code at all: it is a
+ * cross-reference rule the protocol schema wrote, and several of them report AT
+ * a key that is not there because the absence IS the fault — an ego rule with
+ * no attribute, a composer whose parameters contradict each other. Saying "has
+ * no value" about one of those replaces the only account of the fault with a
+ * claim about an empty control the researcher can see is not empty.
  */
 const NOTHING_THERE = 'has no value, and this stage needs one.';
 
@@ -118,17 +125,21 @@ const COPY_BY_CODE: ReadonlyMap<string, SchemaProblemCopy> = new Map(
  * `fieldLabel` is the name the control gives itself, so the sentence names the
  * place to go as well as the fault. Not used for `custom`, whose message is a
  * whole sentence of its own about a named thing.
+ *
+ * The code is asked FIRST, and emptiness only afterwards. A message written
+ * about this protocol outranks the fact that the value it was raised at is
+ * missing — for the cross-reference rules that report at an absent key by
+ * construction, that fact is the very thing the message explains.
  */
 export function schemaProblemSentence(
   problem: SchemaProblem,
   fieldLabel: string,
 ): string {
-  if (problem.absent) return `${fieldLabel} ${NOTHING_THERE}`;
   const copy = COPY_BY_CODE.get(problem.code);
+  if (copy?.kind === 'theValidatorsOwn') return problem.message;
+  if (problem.absent) return `${fieldLabel} ${NOTHING_THERE}`;
   if (copy === undefined) return `${fieldLabel} ${UNRECOGNISED}`;
-  return copy.kind === 'theValidatorsOwn'
-    ? problem.message
-    : `${fieldLabel} ${copy.sentence}`;
+  return `${fieldLabel} ${copy.sentence}`;
 }
 
 /**

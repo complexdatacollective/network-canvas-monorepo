@@ -1,8 +1,8 @@
-import { get, isEqual } from 'es-toolkit/compat';
+import { isEqual } from 'es-toolkit/compat';
 import { useEffect, useRef } from 'react';
 
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
-import { useStageValue } from '../form/stageFormHooks.ts';
+import { stageDraftValue, useStageValue } from '../form/stageFormHooks.ts';
 
 /**
  * Runs `onChange` when the RESEARCHER changes the value at `path`, and not
@@ -35,7 +35,12 @@ import { useStageValue } from '../form/stageFormHooks.ts';
  * The first value a path is given is not a change. There was no previous one
  * for anything to have been configured against, so a stage that has just been
  * handed its subject has nothing to reset — and a section resetting there
- * would empty something the researcher has not touched.
+ * would empty something the researcher has not touched. That is about a path
+ * that has never held anything, not about the value being missing right now: a
+ * researcher who empties the control and then chooses again has replaced what
+ * was there, and the section resetting on it has to hear about it — the choice
+ * is the cause its batch carries, and without the batch a data file staged in
+ * this session never reaches the draft at all.
  *
  * `path` is optional so a caller whose reset is itself optional can still ask
  * unconditionally, which a hook has to be able to do. A path nobody named
@@ -47,12 +52,13 @@ export function useOnResearcherChange(
 ): void {
   const { committedFields } = useStageEditorForm();
   const value = useStageValue(path);
-  // Read the way the two resets that came before this read it. The paths a
-  // section resets on are the ones a single field owns — `subject`,
-  // `dataSource`, `nodeConfig.type` — and none of them is a protocol-authored
-  // name that a dotted read could mistake for a route.
-  const committed: unknown =
-    path === undefined ? undefined : get(committedFields, path);
+  // The same resolution `useStageValue` uses, and it has to be: the only thing
+  // these two reads are for is being compared, and a path one of them reads as
+  // a route while the other reads it as a single key gives two values from two
+  // places. They would then move independently — an arrival that changed one
+  // and not the other would read as a researcher's own choice, and the section
+  // would reset on it.
+  const committed = stageDraftValue(committedFields, path);
 
   // Held in a ref rather than depended on: a caller spells its reset inline,
   // so the callback is a new function every render and depending on it would
@@ -62,6 +68,18 @@ export function useOnResearcherChange(
   latestOnChange.current = onChange;
 
   const seen = useRef(value);
+  /**
+   * Whether anything has ever been at this path while this section has been on
+   * screen.
+   *
+   * What tells the two kinds of `undefined` apart. A path that has never held
+   * anything is one nothing was configured against, and the first value it is
+   * given is not a change — a stage handed its subject for the first time has
+   * nothing to reset. A path the RESEARCHER emptied is a different thing
+   * entirely: they discarded the data file, and what they choose next replaces
+   * it, cause and all.
+   */
+  const everHeldAValue = useRef(value !== undefined);
   const seenCommitted = useRef(committed);
   /**
    * The value the form is expected to be re-seeded with, once the agreed draft
@@ -77,6 +95,8 @@ export function useOnResearcherChange(
   useEffect(() => {
     const previous = seen.current;
     seen.current = value;
+    const everHeld = everHeldAValue.current;
+    everHeldAValue.current = everHeld || value !== undefined;
     const previousCommitted = seenCommitted.current;
     seenCommitted.current = committed;
 
@@ -84,7 +104,9 @@ export function useOnResearcherChange(
       awaitingReseedTo.current = { value: committed };
     }
 
-    if (previous === undefined || isEqual(previous, value)) return;
+    if ((previous === undefined && !everHeld) || isEqual(previous, value)) {
+      return;
+    }
 
     const expected = awaitingReseedTo.current;
     awaitingReseedTo.current = null;
