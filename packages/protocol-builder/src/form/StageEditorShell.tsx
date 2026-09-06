@@ -23,6 +23,11 @@ import type {
 import { focusFirstError } from '@codaco/fresco-ui/form/utils/focusFirstError';
 import { getValue } from '@codaco/fresco-ui/form/utils/objectPath';
 import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
+import {
+  EnclosingHeadingLevel,
+  headingTagBelow,
+  useEnclosingHeadingLevel,
+} from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import { canonicalize, type Command } from '@codaco/studio-sync/apply';
 
@@ -400,6 +405,26 @@ function StageEditorFormBody({
     return () => observer.disconnect();
   }, [outline]);
 
+  /**
+   * The level of the stage's own name, which every editor wears as the page's
+   * heading and which everything else in the form is a subsection of.
+   *
+   * Stated rather than left to Surface depth, which is a fact about how deep
+   * the card sits rather than about the outline: a section derived its level
+   * from depth alone, so it read as a peer of the stage title on a page and
+   * ignored a host that mounted this form beneath a heading of its own. A host
+   * that says what it encloses now pushes the whole ladder down — the title
+   * one below the host's heading, each section one below the title.
+   *
+   * `StageNameSection` writes the title AT this level, because it is the
+   * heading being described; everything else counts one below it.
+   */
+  const enclosingHeadingLevel = useEnclosingHeadingLevel();
+  const stageTitleLevel =
+    enclosingHeadingLevel === null
+      ? 'h2'
+      : headingTagBelow(enclosingHeadingLevel);
+
   const layoutGroupId = useId();
   const context = useMemo(
     () =>
@@ -449,10 +474,12 @@ function StageEditorFormBody({
               className="flex min-w-0 flex-col"
             >
               <LayoutGroup id={layoutGroupId}>
-                {reportedErrors && (
-                  <FormErrorsList key="form-errors" errors={reportedErrors} />
-                )}
-                {children}
+                <EnclosingHeadingLevel level={stageTitleLevel}>
+                  {reportedErrors && (
+                    <FormErrorsList key="form-errors" errors={reportedErrors} />
+                  )}
+                  {children}
+                </EnclosingHeadingLevel>
               </LayoutGroup>
             </form>
           </div>
