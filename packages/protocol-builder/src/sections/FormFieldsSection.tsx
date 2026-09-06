@@ -7,7 +7,7 @@ import {
 } from 'react';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
-import type { IntlShape } from '@codaco/app-i18n/messages';
+import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import Field from '@codaco/fresco-ui/form/Field/Field';
@@ -587,6 +587,31 @@ export type FormFieldsSectionProps = Readonly<{
    * stable array — a fresh one each render re-registers the list's validator.
    */
   draftUnvalidatedVariables?: readonly string[];
+  /**
+   * Words this form needs instead of the shared ones, because it describes
+   * something the shared section cannot name.
+   *
+   * DESCRIPTORS, and named one at a time rather than bundled behind a `copy`
+   * object — see `src/__tests__/hostCopyOverrides.test.ts`. Same rule as
+   * `SectionCapability.confirmClear` and for the same reason: a string handed
+   * across a seam like this is extracted by nothing and translated by nobody,
+   * so an interface's own words would be the only words left in English.
+   *
+   * Only for a form hung off another section as an extra, where "Form fields"
+   * is not what the researcher is looking at: a Family Pedigree's is the
+   * FAMILY MEMBER form, and every sentence around it — what it asks about,
+   * when the participant answers it — is about a relative rather than about a
+   * form. A form that IS the stage overrides nothing.
+   *
+   * `waitingDescription` and the dialog's own titles stay shared: they are
+   * said about the CONTROL rather than about what it collects.
+   */
+  title?: MessageDescriptor;
+  description?: MessageDescriptor;
+  fieldLabel?: MessageDescriptor;
+  fieldHint?: MessageDescriptor;
+  addLabel?: MessageDescriptor;
+  emptyState?: MessageDescriptor;
 }>;
 
 /**
@@ -612,6 +637,12 @@ export default function FormFieldsSection({
   capability,
   hasTitle = false,
   draftUnvalidatedVariables = NO_DRAFT_UNVALIDATED,
+  title = messages.title,
+  description = messages.description,
+  fieldLabel = messages.fieldLabel,
+  fieldHint = messages.fieldHint,
+  addLabel = messages.addLabel,
+  emptyState = messages.emptyState,
 }: FormFieldsSectionProps) {
   const intl = useAppIntl();
   const codebookSubject = useStageSubject(subject, subjectTypePath);
@@ -638,9 +669,9 @@ export default function FormFieldsSection({
 
   return (
     <BuilderSection
-      title={intl.formatMessage(messages.title)}
+      title={intl.formatMessage(title)}
       description={intl.formatMessage(
-        waiting ? messages.waitingDescription : messages.description,
+        waiting ? messages.waitingDescription : description,
       )}
       disabled={waiting}
       {...(capability === undefined ? {} : { capability })}
@@ -658,14 +689,14 @@ export default function FormFieldsSection({
       <FormFieldsScopeContext value={scope}>
         <ProtocolArrayField<typeof DialogArrayField>
           name={fieldsPath}
-          label={intl.formatMessage(messages.fieldLabel)}
-          hint={intl.formatMessage(messages.fieldHint)}
+          label={intl.formatMessage(fieldLabel)}
+          hint={intl.formatMessage(fieldHint)}
           component={DialogArrayField}
-          addButtonLabel={intl.formatMessage(messages.addLabel)}
+          addButtonLabel={intl.formatMessage(addLabel)}
           addTitle={intl.formatMessage(messages.addTitle)}
           editorTitle={intl.formatMessage(messages.editTitle)}
           itemLabel={messages.itemNoun}
-          emptyStateMessage={intl.formatMessage(messages.emptyState)}
+          emptyStateMessage={intl.formatMessage(emptyState)}
           editorFieldsComponent={editorFieldsComponent}
           previewComponent={previewComponent}
           editorDialogSize="editor"
