@@ -181,15 +181,24 @@ export function usePromptVariablePool({
  * writer-exclusivity rule entirely: a bin may legitimately be sorted by an
  * attribute a form elsewhere collects, and filtering those out would drop a
  * sort rule an imported protocol already has.
+ *
+ * `undefined` when there is no subject to draw from, which is the answer
+ * `SortOrderRows` reads as "this family does not know its properties yet" and
+ * judges nothing against. An EMPTY list is the other answer — a subject that
+ * really has nothing to sort by, where every rule the prompt holds is
+ * certainly dangling — and this family means it whenever the subject is
+ * readable: a node type whose attributes have all been deleted is exactly that.
+ * Answering `[]` for both would report every rule of a stage that has not been
+ * told what it collects as pointing at a deleted attribute.
  */
 export function useSortVariablePool(
   subject: CodebookSubject | null,
-): readonly VariablePickerOption[] {
+): readonly VariablePickerOption[] | undefined {
   const { controller } = useStageEditorForm();
   const { protocolContext } = controller.snapshot;
 
   return useMemo(() => {
-    if (subject === null) return EMPTY_OPTIONS;
+    if (subject === null) return undefined;
     return optionsFor(variablesFor(protocolContext.codebook, subject));
   }, [protocolContext, subject]);
 }
