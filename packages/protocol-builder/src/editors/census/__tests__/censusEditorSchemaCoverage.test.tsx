@@ -24,9 +24,23 @@ import { TieStrengthCensusStageEditor } from '../TieStrengthCensusStageEditor.ts
  * carry, and say nothing about the rest of the interface — a section quietly
  * dropped, or a key an editor rewrites on the way out, survives all of them.
  *
- * The stages here carry the FULL schema instead, and `roundTrip` asks both of
- * its questions of them: every key is owned by a mounted section, and the save
- * hands back exactly what it opened on.
+ * The stages here carry the FULL schema instead, and `roundTrip` asks its two
+ * questions of them. Both are about the STAGE, and this file claims no more
+ * than that:
+ *
+ * - every TOP-LEVEL key of the stage has a field registered somewhere in the
+ *   mounted sections, so an interface whose editor is missing a whole section
+ *   fails here by name rather than round-tripping that key untouched;
+ * - the saved document equals the seeded one all the way down, in both
+ *   directions, so a key dropped, altered or invented by the save is reported
+ *   by its own path.
+ *
+ * What it cannot ask is whether a control INSIDE a prompt row exists. The
+ * prompt list is one top-level key, owned by the prompts section whichever
+ * fields the row dialog does or does not mount, and no row is opened here — so
+ * a control deleted from a prompt leaves every case below green. That question
+ * belongs to `censusEditorPromptRoundTrip.test.tsx`, which opens the row and
+ * names the control that authors each of its keys.
  */
 
 /**
@@ -220,7 +234,7 @@ const CASES: readonly Readonly<{
 
 describe('a census or bin stage that uses every key its schema allows', () => {
   it.each(CASES)(
-    'saves a whole $name unchanged, with every key owned by a section',
+    'saves a whole $name unchanged, with every top-level key owned by a section',
     async ({ open }) => {
       const harness = open();
 
