@@ -173,6 +173,29 @@ describe('a single-line rich text field', () => {
     });
   });
 
+  it('holds a stored line break to one line', async () => {
+    // Markdown's own line break. It survives the parse as a newline inside a
+    // single text node — a shape no schema was ever going to refuse — so the
+    // field showed two lines while reporting `aria-multiline="false"`, and
+    // saved the break back into the label a participant reads.
+    const field = renderField({
+      singleLine: true,
+      initialValue: 'Never met\nin person',
+    });
+    const editor = await field.editor();
+
+    expect(field.paragraphs(editor)).toHaveLength(1);
+    expect(editor.textContent).toBe('Never met in person');
+
+    // The field reports what it holds the first time it is edited, and the
+    // caret starts where the document does — so the typed character leads.
+    await field.user.type(editor, '!');
+
+    expect(await field.save()).toEqual({
+      negativeLabel: '!Never met in person',
+    });
+  });
+
   it('offers no control that would need a second block', async () => {
     const field = renderField({ singleLine: true });
     await field.editor();

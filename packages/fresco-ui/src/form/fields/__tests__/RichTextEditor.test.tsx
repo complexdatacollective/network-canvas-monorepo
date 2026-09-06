@@ -673,6 +673,27 @@ describe('a single-line RichTextEditorField', () => {
     });
   });
 
+  it('spells a newline inside an incoming text node as a space', async () => {
+    // Markdown's own line break: a paragraph holding one arrives as a single
+    // text node with the newline still in it, which no schema is going to
+    // refuse either. `white-space: pre-wrap` is what the editor renders with,
+    // so the field showed the second line under `aria-multiline="false"`.
+    const field = renderSingleLine({
+      value: {
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            content: [{ type: 'text', text: 'Never met\r\nin person' }],
+          },
+        ],
+      },
+    });
+    const editor = await field.editor();
+
+    expect(editor.textContent).toBe('Never met in person');
+  });
+
   it('offers no control that would need a block it cannot hold', async () => {
     // Asked for explicitly, and still withheld: a heading, a list or a rule
     // cannot exist in this document, so the button would do nothing.

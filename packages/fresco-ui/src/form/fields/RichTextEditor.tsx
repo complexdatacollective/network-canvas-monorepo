@@ -286,6 +286,34 @@ const addText = (
   pushRun(run, text, marks);
 };
 
+/** A run of newlines, however the platform that wrote them spells one. */
+const LINE_BREAKS = /(?:\r\n|[\n\r])+/;
+
+/**
+ * Adds a text node, treating the newlines INSIDE it as breaks like any other.
+ *
+ * A line break can live inside the text itself, where no schema was ever going
+ * to refuse it: markdown's own soft break parses to one text node with the
+ * newline still in it, and the editor renders with `white-space: pre-wrap`, so
+ * the field showed two lines while reporting `aria-multiline="false"` — and
+ * saved the break back into the label a participant reads.
+ */
+const addTextLines = (
+  run: OneLineRun,
+  text: string,
+  marks: JSONContent['marks'],
+) => {
+  for (const [index, line] of text.split(LINE_BREAKS).entries()) {
+    if (index > 0) {
+      run.breakPending = true;
+    }
+
+    if (line !== '') {
+      addText(run, line, marks);
+    }
+  }
+};
+
 /**
  * Every line of a document, run together as the inline content of one.
  *
@@ -298,11 +326,12 @@ const addText = (
  * words. Reading the value first is the very thing that fails, so the shape is
  * changed before anything reads it.
  *
- * Text is carried over whole, so a formatted phrase keeps its bold and italic
- * runs: the line loses its line breaks, not its formatting.
+ * Text keeps its marks, so a formatted phrase keeps its bold and italic runs:
+ * the line loses its line breaks, not its formatting.
  *
  * Every other node is a BREAK in the line — a block boundary, a hard break, an
- * atom this field has no room for — and however many of them fall together
+ * atom this field has no room for, a newline inside the text itself — and
+ * however many of them fall together
  * they spell ONE space, and only between text that says something on both
  * sides. Spelling each break separately put one in twice wherever blocks nest
  * (a pasted list arrived as "One  Two"), put one beside an empty paragraph
@@ -316,7 +345,7 @@ const collectOneLine = (
   for (const node of content ?? []) {
     if (node.type === 'text') {
       if (node.text) {
-        addText(run, node.text, node.marks);
+        addTextLines(run, node.text, node.marks);
       }
       continue;
     }
