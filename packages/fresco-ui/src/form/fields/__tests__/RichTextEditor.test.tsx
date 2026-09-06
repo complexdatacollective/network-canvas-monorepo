@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { JSONContent } from '@tiptap/react';
 import type { ComponentProps } from 'react';
@@ -83,6 +89,7 @@ describe('RichTextEditorField', () => {
           aria-describedby="bio-hint"
           value={documentWithText}
           onChange={() => undefined}
+          toolbarOptions={{ links: true, thematicBreak: true }}
           readOnly
         />
       </>,
@@ -91,14 +98,47 @@ describe('RichTextEditorField', () => {
     const editor = await screen.findByRole('textbox', { name: 'Biography' });
     expect(editor).toHaveAccessibleDescription('Tell us about yourself');
     expect(editor).toHaveAttribute('aria-readonly', 'true');
-    expect(screen.getByRole('button', { name: 'Bold' })).toHaveAttribute(
-      'aria-disabled',
-      'true',
+
+    // EVERY button, asked for as a set rather than one at a time: the link
+    // control is a disclosure whose trigger works out its own availability,
+    // and it went on reporting itself available — undimmed, and ready to open
+    // its popover — while all eleven of its siblings were unavailable.
+    const buttons = within(screen.getByRole('toolbar')).getAllByRole('button');
+    expect(buttons.length).toBeGreaterThan(1);
+    for (const button of buttons) {
+      expect(button).toBeDisabled();
+      expect(button).toHaveAttribute('aria-disabled', 'true');
+    }
+    expect(
+      screen.getByRole('button', { name: 'Add link' }),
+    ).toBeInTheDocument();
+
+    // Still readable: unavailable to edit is not unavailable to read.
+    expect(editor).toHaveTextContent('Existing content');
+  });
+
+  /**
+   * A button unavailable because of where the caret is says so the way the
+   * ARIA toolbar pattern asks: still focusable, marked `aria-disabled`. Only a
+   * toolbar whose FIELD nobody can edit leaves the tab order, because there is
+   * nothing in it left to go and read.
+   */
+  it('keeps a button the editor state disables reachable', async () => {
+    render(
+      <RichTextEditorField
+        id="bio"
+        name="bio"
+        aria-describedby="bio-hint"
+        aria-label="Biography"
+        value={documentWithText}
+        onChange={() => undefined}
+      />,
     );
-    expect(screen.getByRole('button', { name: 'Italic' })).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    );
+
+    await screen.findByRole('textbox', { name: 'Biography' });
+    const undo = screen.getByRole('button', { name: 'Undo' });
+    expect(undo).toHaveAttribute('aria-disabled', 'true');
+    expect(undo).toBeEnabled();
   });
 
   it('forwards container class, focus, and blur callbacks', async () => {

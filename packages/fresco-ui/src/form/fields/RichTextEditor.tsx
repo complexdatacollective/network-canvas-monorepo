@@ -40,7 +40,15 @@ import {
   Trash2,
   Undo,
 } from 'lucide-react';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -165,12 +173,36 @@ const messages = defineMessages({
   },
 });
 
+/**
+ * Whether the toolbar is unavailable because the FIELD is — read-only, or
+ * disabled while its form submits — rather than because of where the caret
+ * happens to be.
+ *
+ * The two are different states, and a button says them differently. A live
+ * toolbar keeps an unavailable button focusable and marked `aria-disabled`,
+ * which is what the ARIA toolbar pattern asks for: a keyboard user can arrow
+ * onto Undo and be told there is nothing to undo. A toolbar belonging to a
+ * field nobody can edit has nothing to go and read, so its buttons are
+ * unavailable the way every other control on the form is — disabled outright,
+ * and out of the tab order.
+ */
+const FieldUnavailableContext = createContext(false);
+
+function useUnavailableProps() {
+  const unavailable = useContext(FieldUnavailableContext);
+  return unavailable
+    ? ({ 'focusableWhenDisabled': false, 'aria-disabled': true } as const)
+    : {};
+}
+
 const ToolbarToggleButton = (props: Toolbar.Button.Props) => {
-  return <Toolbar.Button {...props} render={<Toggle />} />;
+  const unavailable = useUnavailableProps();
+  return <Toolbar.Button {...props} {...unavailable} render={<Toggle />} />;
 };
 
 const ToolbarButton = (props: Toolbar.Button.Props) => {
-  return <Toolbar.Button {...props} />;
+  const unavailable = useUnavailableProps();
+  return <Toolbar.Button {...props} {...unavailable} />;
 };
 
 // Get the classes from the typography components
@@ -914,352 +946,382 @@ export default function RichTextEditorField({
     >
       <EditorContent editor={editor} className={editorContentStyles} />
       {hasToolbar && (
-        <Toolbar.Root className={toolbarStyles}>
-          {showFormattingToggles && (
-            // One element carrying both the toolbar-group and toggle-group
-            // behaviours: a ToggleGroup nested inside a Toolbar.Group wrapper
-            // renders two nested `group` roles announcing nothing new.
-            <Toolbar.Group
-              className={toolbarGroupStyles}
-              render={
-                <ToggleGroup
-                  value={getActiveFormattingValues()}
-                  onValueChange={(values: string[]) => {
-                    const shouldBeBold = values.includes('bold');
-                    const shouldBeItalic = values.includes('italic');
+        <FieldUnavailableContext.Provider value={isDisabled}>
+          <Toolbar.Root className={toolbarStyles}>
+            {showFormattingToggles && (
+              // One element carrying both the toolbar-group and toggle-group
+              // behaviours: a ToggleGroup nested inside a Toolbar.Group wrapper
+              // renders two nested `group` roles announcing nothing new.
+              <Toolbar.Group
+                className={toolbarGroupStyles}
+                render={
+                  <ToggleGroup
+                    value={getActiveFormattingValues()}
+                    onValueChange={(values: string[]) => {
+                      const shouldBeBold = values.includes('bold');
+                      const shouldBeItalic = values.includes('italic');
 
-                    if (shouldBeBold !== editorState.isBold) {
-                      editor.chain().focus().toggleBold().run();
-                    }
-                    if (shouldBeItalic !== editorState.isItalic) {
-                      editor.chain().focus().toggleItalic().run();
-                    }
-                  }}
-                  multiple
-                />
-              }
-            >
-              {options.bold && (
-                <ToolbarToggleButton
-                  className={toolbarButtonStyles}
-                  disabled={isDisabled}
-                  value="bold"
-                  aria-label={intl.formatMessage(messages.bold)}
-                >
-                  <Bold />
-                </ToolbarToggleButton>
-              )}
-              {options.italic && (
-                <ToolbarToggleButton
-                  className={toolbarButtonStyles}
-                  disabled={isDisabled}
-                  value="italic"
-                  aria-label={intl.formatMessage(messages.italic)}
-                >
-                  <Italic />
-                </ToolbarToggleButton>
-              )}
-            </Toolbar.Group>
-          )}
-          {/* A toolbar-level sibling of the formatting toggles: it is not a
-              toggle, so it does not belong inside their group element. */}
-          {options.links && (
-            <Popover open={isLinkPopoverOpen} onOpenChange={setLinkPopoverOpen}>
-              <PopoverTrigger asChild>
-                <ToolbarButton
-                  className={toolbarButtonStyles}
-                  disabled={isDisabled}
-                  aria-label={intl.formatMessage(messages.linkButton, {
-                    hasLink: String(editorState.isLink),
-                  })}
-                  // No `aria-pressed`: PopoverTrigger makes this a
-                  // disclosure, and a disclosure must not also claim to be
-                  // a toggle. Whether a link is present is already carried
-                  // by the accessible name above; `data-pressed` drives the
-                  // selected styling without asserting an ARIA state.
-                  data-pressed={editorState.isLink ? true : undefined}
-                  onMouseDown={(event) => {
-                    event.preventDefault();
-                    selectLinkForEditing();
-                  }}
-                >
-                  <Link />
-                </ToolbarButton>
-              </PopoverTrigger>
-              <PopoverContent align="start" side="bottom" className="w-80">
-                <form
-                  className="flex flex-col gap-3"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    applyLink();
-                  }}
-                >
-                  <label
-                    className="font-heading text-sm font-bold"
-                    htmlFor={linkInputId}
-                  >
-                    {intl.formatMessage(messages.linkUrlLabel)}
-                  </label>
-                  <InputField
-                    ref={linkInputRef}
-                    id={linkInputId}
-                    name={linkInputId}
-                    type="url"
-                    required
-                    value={linkHref}
-                    onChange={(nextHref) => {
-                      setLinkHref(nextHref ?? '');
-                      setLinkValidationMessage('');
+                      if (shouldBeBold !== editorState.isBold) {
+                        editor.chain().focus().toggleBold().run();
+                      }
+                      if (shouldBeItalic !== editorState.isItalic) {
+                        editor.chain().focus().toggleItalic().run();
+                      }
                     }}
-                    onInvalid={(event) => {
-                      setLinkValidationMessage(
-                        event.currentTarget.validationMessage,
-                      );
-                    }}
-                    placeholder={intl.formatMessage(
-                      messages.linkUrlPlaceholder,
-                    )}
-                    size="sm"
-                    autoFocus
-                    aria-invalid={Boolean(linkValidationMessage)}
-                    aria-describedby={
-                      linkValidationMessage ? linkErrorId : undefined
-                    }
+                    multiple
                   />
-                  <div
-                    id={linkErrorId}
-                    className="text-destructive min-h-5 text-sm leading-snug"
-                    aria-live="polite"
+                }
+              >
+                {options.bold && (
+                  <ToolbarToggleButton
+                    className={toolbarButtonStyles}
+                    disabled={isDisabled}
+                    value="bold"
+                    aria-label={intl.formatMessage(messages.bold)}
                   >
-                    {linkValidationMessage}
-                  </div>
-                  <div className="flex items-center justify-between gap-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="text"
-                      color="destructive"
-                      icon={<Trash2 />}
-                      aria-label={intl.formatMessage(messages.removeLink)}
-                      disabled={!isEditingExistingLink}
-                      onClick={removeLink}
+                    <Bold />
+                  </ToolbarToggleButton>
+                )}
+                {options.italic && (
+                  <ToolbarToggleButton
+                    className={toolbarButtonStyles}
+                    disabled={isDisabled}
+                    value="italic"
+                    aria-label={intl.formatMessage(messages.italic)}
+                  >
+                    <Italic />
+                  </ToolbarToggleButton>
+                )}
+              </Toolbar.Group>
+            )}
+            {/* A toolbar-level sibling of the formatting toggles: it is not a
+                toggle, so it does not belong inside their group element. */}
+            {options.links && (
+              <Popover
+                open={isLinkPopoverOpen}
+                onOpenChange={setLinkPopoverOpen}
+              >
+                {/*
+                    The trigger is told as well as the button it renders. A
+                    disclosure works out its own availability, and this one
+                    used to work out that it was available while every one of
+                    its siblings was not: `aria-disabled="false"`, undimmed,
+                    and ready to open on a press.
+                */}
+                <PopoverTrigger asChild disabled={isDisabled}>
+                  <ToolbarButton
+                    className={toolbarButtonStyles}
+                    disabled={isDisabled}
+                    aria-label={intl.formatMessage(messages.linkButton, {
+                      hasLink: String(editorState.isLink),
+                    })}
+                    // No `aria-pressed`: PopoverTrigger makes this a
+                    // disclosure, and a disclosure must not also claim to be
+                    // a toggle. Whether a link is present is already carried
+                    // by the accessible name above; `data-pressed` drives the
+                    // selected styling without asserting an ARIA state.
+                    data-pressed={editorState.isLink ? true : undefined}
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      selectLinkForEditing();
+                    }}
+                  >
+                    <Link />
+                  </ToolbarButton>
+                </PopoverTrigger>
+                <PopoverContent align="start" side="bottom" className="w-80">
+                  <form
+                    className="flex flex-col gap-3"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      applyLink();
+                    }}
+                  >
+                    <label
+                      className="font-heading text-sm font-bold"
+                      htmlFor={linkInputId}
                     >
-                      {intl.formatMessage(messages.removeLinkShort)}
-                    </Button>
-                    <Button
-                      type="submit"
-                      size="sm"
-                      color="primary"
-                      icon={<Check />}
-                      aria-label={intl.formatMessage(messages.applyLink)}
-                      onClick={(event) => {
-                        event.preventDefault();
-                        applyLink();
+                      {intl.formatMessage(messages.linkUrlLabel)}
+                    </label>
+                    <InputField
+                      ref={linkInputRef}
+                      id={linkInputId}
+                      name={linkInputId}
+                      type="url"
+                      required
+                      value={linkHref}
+                      onChange={(nextHref) => {
+                        setLinkHref(nextHref ?? '');
+                        setLinkValidationMessage('');
                       }}
+                      onInvalid={(event) => {
+                        setLinkValidationMessage(
+                          event.currentTarget.validationMessage,
+                        );
+                      }}
+                      placeholder={intl.formatMessage(
+                        messages.linkUrlPlaceholder,
+                      )}
+                      size="sm"
+                      autoFocus
+                      aria-invalid={Boolean(linkValidationMessage)}
+                      aria-describedby={
+                        linkValidationMessage ? linkErrorId : undefined
+                      }
+                    />
+                    <div
+                      id={linkErrorId}
+                      className="text-destructive min-h-5 text-sm leading-snug"
+                      aria-live="polite"
                     >
-                      {intl.formatMessage(messages.applyLinkShort)}
-                    </Button>
-                  </div>
-                </form>
-              </PopoverContent>
-            </Popover>
-          )}
+                      {linkValidationMessage}
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="text"
+                        color="destructive"
+                        icon={<Trash2 />}
+                        aria-label={intl.formatMessage(messages.removeLink)}
+                        disabled={!isEditingExistingLink}
+                        onClick={removeLink}
+                      >
+                        {intl.formatMessage(messages.removeLinkShort)}
+                      </Button>
+                      <Button
+                        type="submit"
+                        size="sm"
+                        color="primary"
+                        icon={<Check />}
+                        aria-label={intl.formatMessage(messages.applyLink)}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          applyLink();
+                        }}
+                      >
+                        {intl.formatMessage(messages.applyLinkShort)}
+                      </Button>
+                    </div>
+                  </form>
+                </PopoverContent>
+              </Popover>
+            )}
 
-          {showTextFormatting && showHeadings && (
-            <Toolbar.Separator className={toolbarSeparatorStyles} />
-          )}
+            {showTextFormatting && showHeadings && (
+              <Toolbar.Separator className={toolbarSeparatorStyles} />
+            )}
 
-          {showHeadings && (
-            <Toolbar.Group
-              className={toolbarGroupStyles}
-              render={
-                <ToggleGroup
-                  value={getActiveHeadingValue()}
-                  onValueChange={(values: string[]) => {
-                    const newValue = values[0];
-                    if (newValue === 'h1') {
-                      editor.chain().focus().toggleHeading({ level: 1 }).run();
-                    } else if (newValue === 'h2') {
-                      editor.chain().focus().toggleHeading({ level: 2 }).run();
-                    } else if (newValue === 'h3') {
-                      editor.chain().focus().toggleHeading({ level: 3 }).run();
-                    } else if (newValue === 'h4') {
-                      editor.chain().focus().toggleHeading({ level: 4 }).run();
-                    } else {
-                      if (editorState.isH1) {
+            {showHeadings && (
+              <Toolbar.Group
+                className={toolbarGroupStyles}
+                render={
+                  <ToggleGroup
+                    value={getActiveHeadingValue()}
+                    onValueChange={(values: string[]) => {
+                      const newValue = values[0];
+                      if (newValue === 'h1') {
                         editor
                           .chain()
                           .focus()
                           .toggleHeading({ level: 1 })
                           .run();
-                      } else if (editorState.isH2) {
+                      } else if (newValue === 'h2') {
                         editor
                           .chain()
                           .focus()
                           .toggleHeading({ level: 2 })
                           .run();
-                      } else if (editorState.isH3) {
+                      } else if (newValue === 'h3') {
                         editor
                           .chain()
                           .focus()
                           .toggleHeading({ level: 3 })
                           .run();
-                      } else if (editorState.isH4) {
+                      } else if (newValue === 'h4') {
                         editor
                           .chain()
                           .focus()
                           .toggleHeading({ level: 4 })
                           .run();
+                      } else {
+                        if (editorState.isH1) {
+                          editor
+                            .chain()
+                            .focus()
+                            .toggleHeading({ level: 1 })
+                            .run();
+                        } else if (editorState.isH2) {
+                          editor
+                            .chain()
+                            .focus()
+                            .toggleHeading({ level: 2 })
+                            .run();
+                        } else if (editorState.isH3) {
+                          editor
+                            .chain()
+                            .focus()
+                            .toggleHeading({ level: 3 })
+                            .run();
+                        } else if (editorState.isH4) {
+                          editor
+                            .chain()
+                            .focus()
+                            .toggleHeading({ level: 4 })
+                            .run();
+                        }
                       }
-                    }
-                  }}
-                />
-              }
-            >
-              {options.headings.h1 && (
-                <ToolbarToggleButton
-                  className={toolbarButtonStyles}
-                  disabled={isDisabled}
-                  value="h1"
-                  aria-label={intl.formatMessage(messages.heading1)}
-                >
-                  <Heading1 />
-                </ToolbarToggleButton>
-              )}
-              {options.headings.h2 && (
-                <ToolbarToggleButton
-                  className={toolbarButtonStyles}
-                  disabled={isDisabled}
-                  value="h2"
-                  aria-label={intl.formatMessage(messages.heading2)}
-                >
-                  <Heading2 />
-                </ToolbarToggleButton>
-              )}
-              {options.headings.h3 && (
-                <ToolbarToggleButton
-                  className={toolbarButtonStyles}
-                  disabled={isDisabled}
-                  value="h3"
-                  aria-label={intl.formatMessage(messages.heading3)}
-                >
-                  <Heading3 />
-                </ToolbarToggleButton>
-              )}
-              {options.headings.h4 && (
-                <ToolbarToggleButton
-                  className={toolbarButtonStyles}
-                  disabled={isDisabled}
-                  value="h4"
-                  aria-label={intl.formatMessage(messages.heading4)}
-                >
-                  <Heading4 />
-                </ToolbarToggleButton>
-              )}
-            </Toolbar.Group>
-          )}
+                    }}
+                  />
+                }
+              >
+                {options.headings.h1 && (
+                  <ToolbarToggleButton
+                    className={toolbarButtonStyles}
+                    disabled={isDisabled}
+                    value="h1"
+                    aria-label={intl.formatMessage(messages.heading1)}
+                  >
+                    <Heading1 />
+                  </ToolbarToggleButton>
+                )}
+                {options.headings.h2 && (
+                  <ToolbarToggleButton
+                    className={toolbarButtonStyles}
+                    disabled={isDisabled}
+                    value="h2"
+                    aria-label={intl.formatMessage(messages.heading2)}
+                  >
+                    <Heading2 />
+                  </ToolbarToggleButton>
+                )}
+                {options.headings.h3 && (
+                  <ToolbarToggleButton
+                    className={toolbarButtonStyles}
+                    disabled={isDisabled}
+                    value="h3"
+                    aria-label={intl.formatMessage(messages.heading3)}
+                  >
+                    <Heading3 />
+                  </ToolbarToggleButton>
+                )}
+                {options.headings.h4 && (
+                  <ToolbarToggleButton
+                    className={toolbarButtonStyles}
+                    disabled={isDisabled}
+                    value="h4"
+                    aria-label={intl.formatMessage(messages.heading4)}
+                  >
+                    <Heading4 />
+                  </ToolbarToggleButton>
+                )}
+              </Toolbar.Group>
+            )}
 
-          {(showTextFormatting || showHeadings) && showLists && (
-            <Toolbar.Separator className={toolbarSeparatorStyles} />
-          )}
-
-          {showLists && (
-            <Toolbar.Group
-              className={toolbarGroupStyles}
-              render={
-                <ToggleGroup
-                  value={getActiveListValue()}
-                  onValueChange={(values: string[]) => {
-                    const newValue = values[0];
-                    if (newValue === 'bullet') {
-                      if (!editorState.isBulletList) {
-                        editor.chain().focus().toggleBulletList().run();
-                      }
-                    } else if (newValue === 'ordered') {
-                      if (!editorState.isOrderedList) {
-                        editor.chain().focus().toggleOrderedList().run();
-                      }
-                    } else {
-                      if (editorState.isBulletList) {
-                        editor.chain().focus().toggleBulletList().run();
-                      } else if (editorState.isOrderedList) {
-                        editor.chain().focus().toggleOrderedList().run();
-                      }
-                    }
-                  }}
-                />
-              }
-            >
-              {options.lists.ordered && (
-                <ToolbarToggleButton
-                  className={toolbarButtonStyles}
-                  disabled={isDisabled}
-                  value="ordered"
-                  aria-label={intl.formatMessage(messages.numberedList)}
-                >
-                  <ListOrdered />
-                </ToolbarToggleButton>
-              )}
-              {options.lists.bullet && (
-                <ToolbarToggleButton
-                  className={toolbarButtonStyles}
-                  disabled={isDisabled}
-                  value="bullet"
-                  aria-label={intl.formatMessage(messages.bulletList)}
-                >
-                  <List />
-                </ToolbarToggleButton>
-              )}
-            </Toolbar.Group>
-          )}
-
-          {(showTextFormatting || showHeadings || showLists) &&
-            showThematicBreak && (
+            {(showTextFormatting || showHeadings) && showLists && (
               <Toolbar.Separator className={toolbarSeparatorStyles} />
             )}
 
-          {showThematicBreak && (
-            <Toolbar.Group className={toolbarGroupStyles}>
-              <ToolbarButton
-                className={toolbarButtonStyles}
-                disabled={isDisabled}
-                aria-label={intl.formatMessage(messages.thematicBreak)}
-                onClick={() => editor.chain().focus().setHorizontalRule().run()}
+            {showLists && (
+              <Toolbar.Group
+                className={toolbarGroupStyles}
+                render={
+                  <ToggleGroup
+                    value={getActiveListValue()}
+                    onValueChange={(values: string[]) => {
+                      const newValue = values[0];
+                      if (newValue === 'bullet') {
+                        if (!editorState.isBulletList) {
+                          editor.chain().focus().toggleBulletList().run();
+                        }
+                      } else if (newValue === 'ordered') {
+                        if (!editorState.isOrderedList) {
+                          editor.chain().focus().toggleOrderedList().run();
+                        }
+                      } else {
+                        if (editorState.isBulletList) {
+                          editor.chain().focus().toggleBulletList().run();
+                        } else if (editorState.isOrderedList) {
+                          editor.chain().focus().toggleOrderedList().run();
+                        }
+                      }
+                    }}
+                  />
+                }
               >
-                <Minus />
-              </ToolbarButton>
-            </Toolbar.Group>
-          )}
-
-          {(showTextFormatting ||
-            showHeadings ||
-            showLists ||
-            showThematicBreak) &&
-            showHistory && (
-              <Toolbar.Separator className={toolbarSeparatorStyles} />
+                {options.lists.ordered && (
+                  <ToolbarToggleButton
+                    className={toolbarButtonStyles}
+                    disabled={isDisabled}
+                    value="ordered"
+                    aria-label={intl.formatMessage(messages.numberedList)}
+                  >
+                    <ListOrdered />
+                  </ToolbarToggleButton>
+                )}
+                {options.lists.bullet && (
+                  <ToolbarToggleButton
+                    className={toolbarButtonStyles}
+                    disabled={isDisabled}
+                    value="bullet"
+                    aria-label={intl.formatMessage(messages.bulletList)}
+                  >
+                    <List />
+                  </ToolbarToggleButton>
+                )}
+              </Toolbar.Group>
             )}
 
-          {showHistory && (
-            <Toolbar.Group className={toolbarGroupStyles}>
-              <ToolbarButton
-                className={toolbarButtonStyles}
-                disabled={isDisabled || !editorState.canUndo}
-                aria-label={intl.formatMessage(messages.undo)}
-                onClick={() => editor.chain().focus().undo().run()}
-              >
-                <Undo />
-              </ToolbarButton>
-              <ToolbarButton
-                className={toolbarButtonStyles}
-                disabled={isDisabled || !editorState.canRedo}
-                aria-label={intl.formatMessage(messages.redo)}
-                onClick={() => editor.chain().focus().redo().run()}
-              >
-                <Redo />
-              </ToolbarButton>
-            </Toolbar.Group>
-          )}
-        </Toolbar.Root>
+            {(showTextFormatting || showHeadings || showLists) &&
+              showThematicBreak && (
+                <Toolbar.Separator className={toolbarSeparatorStyles} />
+              )}
+
+            {showThematicBreak && (
+              <Toolbar.Group className={toolbarGroupStyles}>
+                <ToolbarButton
+                  className={toolbarButtonStyles}
+                  disabled={isDisabled}
+                  aria-label={intl.formatMessage(messages.thematicBreak)}
+                  onClick={() =>
+                    editor.chain().focus().setHorizontalRule().run()
+                  }
+                >
+                  <Minus />
+                </ToolbarButton>
+              </Toolbar.Group>
+            )}
+
+            {(showTextFormatting ||
+              showHeadings ||
+              showLists ||
+              showThematicBreak) &&
+              showHistory && (
+                <Toolbar.Separator className={toolbarSeparatorStyles} />
+              )}
+
+            {showHistory && (
+              <Toolbar.Group className={toolbarGroupStyles}>
+                <ToolbarButton
+                  className={toolbarButtonStyles}
+                  disabled={isDisabled || !editorState.canUndo}
+                  aria-label={intl.formatMessage(messages.undo)}
+                  onClick={() => editor.chain().focus().undo().run()}
+                >
+                  <Undo />
+                </ToolbarButton>
+                <ToolbarButton
+                  className={toolbarButtonStyles}
+                  disabled={isDisabled || !editorState.canRedo}
+                  aria-label={intl.formatMessage(messages.redo)}
+                  onClick={() => editor.chain().focus().redo().run()}
+                >
+                  <Redo />
+                </ToolbarButton>
+              </Toolbar.Group>
+            )}
+          </Toolbar.Root>
+        </FieldUnavailableContext.Provider>
       )}
     </div>
   );
