@@ -39,9 +39,17 @@ export type SortOrderRowsProps = Readonly<{
    *
    * Also what "no longer exists" is judged against, so give it a stable
    * identity — it is a dependency of the option getter and of the rule that
-   * can refuse the save, both of which are part of a field's registration.
+   * can refuse the save.
+   *
+   * `undefined` says the family does not know yet — a stage that has not been
+   * told what it collects, a roster whose data file has not been read — and
+   * nothing is judged against it. An EMPTY list is a different answer: a
+   * subject with nothing to sort by, where every rule the prompt holds is
+   * certainly dangling and has to be shown and refused as such. Written out as
+   * `| undefined` rather than optional so a family has to decide which of the
+   * two it means.
    */
-  properties: readonly SortableProperty[];
+  properties: readonly SortableProperty[] | undefined;
   disabled?: boolean;
   /**
    * The rules this prompt already has, which decide whether the group starts
@@ -91,7 +99,7 @@ export default function SortOrderRows({
     [committedRules, properties],
   );
   const options = useMemo(
-    () => getSortOrderOptionGetter([...properties, ...orphans]),
+    () => getSortOrderOptionGetter([...(properties ?? []), ...orphans]),
     [orphans, properties],
   );
   /**
