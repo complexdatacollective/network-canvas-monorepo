@@ -10,8 +10,8 @@ import {
   entityPrimaryKeyProperty,
   type NcEdge,
 } from '@codaco/shared-consts';
+import { withAnimationsEnabled } from '@codaco/vitest-config/modern/with-animations-enabled';
 
-import { withAnimationsEnabled } from '../../../__tests__/withAnimationsEnabled';
 import { CurrentStepProvider } from '../../../contexts/CurrentStepContext';
 import { StageMetadataContext } from '../../../contexts/StageMetadataContext';
 import protocol from '../../../store/modules/protocol';
