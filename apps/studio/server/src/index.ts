@@ -44,9 +44,17 @@ process.on('unhandledRejection', failProcess);
 // and development serves them from the Vite dev server, which proxies API
 // paths here so both topologies present a single origin.
 
-const env = (() => {
+const { env, mailer } = (() => {
   try {
-    return readEnv();
+    const resolvedEnv = readEnv();
+    // One owned transport serves authentication and the invitation worker.
+    // Validate it before database work or request admission.
+    return {
+      env: resolvedEnv,
+      mailer: resolvedEnv.auth
+        ? createMailer(resolvedEnv.auth.mailer)
+        : undefined,
+    };
   } catch {
     logOperational('STUDIO_CONFIGURATION_INVALID');
     return process.exit(1);
@@ -65,6 +73,7 @@ function startDatabaseWorkers(): void {
     invitationDeliveryWorker ||
     !maintenancePool ||
     !env.auth ||
+    !mailer ||
     env.auth.mailer.kind === 'refuse'
   ) {
     return;
@@ -72,7 +81,7 @@ function startDatabaseWorkers(): void {
   invitationDeliveryWorker = startInvitationDeliveryWorker({
     pool: maintenancePool,
     observer: observability.metrics.observer,
-    mailer: createMailer(env.auth.mailer),
+    mailer,
     publicBaseUrl: env.auth.baseUrl,
   });
 }
@@ -152,6 +161,7 @@ startDatabaseWorkers();
 
 const app = servesWeb
   ? createApp(env, {
+      mailer,
       encryptionKeys,
       assetStore,
       observability,
@@ -200,6 +210,7 @@ function shutdown() {
   // Stop queue claims and accepting HTTP work immediately, before waiting
   // for active WebSocket close handshakes or an in-flight delivery attempt.
   const workerStopped = invitationDeliveryWorker?.stop();
+  mailer?.close();
   const httpClosed = new Promise<void>((resolve, reject) => {
     server.close((error) => (error ? reject(error) : resolve()));
   });

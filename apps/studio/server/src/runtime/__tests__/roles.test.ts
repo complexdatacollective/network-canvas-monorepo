@@ -26,7 +26,7 @@ import {
 import { createPool } from '../../db/pool.ts';
 import type { DbEnv } from '../../env.ts';
 import { completeSetup } from '../../instance/bootstrap.ts';
-import { configuration, rootOne } from '../../pii/__tests__/fixtures.ts';
+import { encryptionEnvironment } from '../../pii/__tests__/fixtures.ts';
 import { enqueueInvitationDelivery } from '../../team/invitation-delivery-store.ts';
 
 const database = await reachableDb();
@@ -53,11 +53,6 @@ function launch(
   smtp?: string,
   clientDist?: string,
 ) {
-  const keyset = configuration();
-  keyset.roots = keyset.roots.map((root) => ({
-    ...root,
-    reference: `STUDIO_ENCRYPTION_ROOT_${root.reference}`,
-  }));
   const origin = `http://127.0.0.1:${port}`;
   const child = spawn(process.execPath, [entry], {
     env: {
@@ -69,9 +64,7 @@ function launch(
       PUBLIC_URL: origin,
       BETTER_AUTH_SECRET: 'synthetic-runtime-signing-secret-value',
       STUDIO_BOOTSTRAP_TOKEN: token,
-      STUDIO_ENCRYPTION_KEYSET: JSON.stringify(keyset),
-      STUDIO_ENCRYPTION_ROOT_TEST_ROOT_ONE: rootOne.toString('base64'),
-      STUDIO_ENCRYPTION_ROOT_TEST_ROOT_TWO: rootOne.toString('base64'),
+      ...encryptionEnvironment(),
       ...(clientDist ? { CLIENT_DIST: clientDist } : {}),
       ...(smtp ? { SMTP_URL: smtp, EMAIL_FROM: 'studio@example.test' } : {}),
     },
@@ -367,20 +360,20 @@ describe('actual runtime role separation and drain', () => {
       const second = await scratch.enqueue();
       runtime.child.kill('SIGTERM');
       expect((await wsClosed)[0]).toBe(1001);
-      smtp.messages[0]!.accept();
+      // Cancellation after DATA cannot prove delivery or non-delivery. Its
+      // committed uncertainty is the positive drain barrier, before HTTP ends.
       await expect
         .poll(
           async () =>
             (
               await scratch.pool.query(
-                'SELECT sent_at IS NOT NULL AS sent FROM team_invitation_deliveries WHERE invitation_id=$1',
+                'SELECT uncertain_at IS NOT NULL AS uncertain, sent_at, lease_owner FROM team_invitation_deliveries WHERE invitation_id=$1',
                 [first],
               )
-            ).rows[0]?.sent,
+            ).rows[0],
         )
-        .toBe(true);
-      // The completed first delivery is the positive barrier. An incorrect
-      // drain would immediately claim the second before HTTP finishes.
+        .toEqual({ uncertain: true, sent_at: null, lease_owner: null });
+      // An incorrect drain would claim the second before HTTP finishes.
       await delay(200);
       expect(
         (

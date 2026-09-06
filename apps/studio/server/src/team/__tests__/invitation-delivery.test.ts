@@ -1,5 +1,9 @@
+import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import { once } from 'node:events';
 import type { IncomingMessage, RequestOptions } from 'node:http';
+import { setTimeout as delay } from 'node:timers/promises';
+import { fileURLToPath } from 'node:url';
 
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -22,10 +26,12 @@ import {
 import { createMailer, type InvitationMailer } from '../../auth/email.ts';
 import { DEV } from '../../env/catalogue.ts';
 import type { OutboxLifecycleEvent } from '../../outbox/instrumentation.ts';
+import { encryptionEnvironment } from '../../pii/__tests__/fixtures.ts';
 import { cancelTeamInvitation } from '../commands.ts';
 import {
   InvitationDeliveryDispatcher,
   InvitationDeliveryRoleError,
+  startInvitationDeliveryWorker,
 } from '../invitation-delivery-dispatcher.ts';
 import { enqueueInvitationDelivery } from '../invitation-delivery-store.ts';
 
@@ -921,6 +927,144 @@ describe.skipIf(!db)('Postmark invitation delivery outcomes', () => {
 });
 
 describe.skipIf(!db)('SMTP invitation delivery outcomes', () => {
+  it('the actual Node SIGTERM drain persists a held SMTP outcome before exiting', async () => {
+    const scratch = await seededScratch();
+    const peer = await smtpFixture('silent_data');
+    let child: ReturnType<typeof spawn> | undefined;
+    let exited: Promise<unknown[]> | undefined;
+    try {
+      const invitation = await seedInvitation(scratch);
+      await enqueue(scratch, invitation);
+      const databaseUrl = scratch.pool.options.connectionString;
+      if (typeof databaseUrl !== 'string')
+        throw new Error('Missing fixture URL');
+      child = spawn(
+        process.execPath,
+        [fileURLToPath(new URL('../../index.ts', import.meta.url))],
+        {
+          env: {
+            ...encryptionEnvironment(),
+            NODE_ENV: 'production',
+            HOST: '127.0.0.1',
+            PORT: '0',
+            DATABASE_URL: databaseUrl,
+            BETTER_AUTH_SECRET:
+              'smtp-process-only-authentication-secret-32-characters',
+            PUBLIC_URL: 'https://studio.example.test',
+            SMTP_URL: peer.url,
+            EMAIL_FROM: 'Studio <sender@example.test>',
+          },
+          stdio: ['ignore', 'pipe', 'pipe'],
+        },
+      );
+      exited = once(child, 'exit');
+      let output = '';
+      let stderr = '';
+      const started = deferred();
+      child.stdout?.on('data', (chunk: Buffer) => {
+        output += chunk.toString();
+        if (output.includes('STUDIO_SERVER_STARTED')) started.resolve();
+      });
+      child.stderr?.on('data', (chunk: Buffer) => {
+        stderr += chunk.toString();
+      });
+      expect(
+        await Promise.race([
+          Promise.all([started.promise, peer.dataReceived]).then(() => true),
+          exited.then(() => false),
+          delay(8_000, false, { ref: false }),
+        ]),
+        `process must start and send fixture DATA: ${output} ${stderr}`,
+      ).toBe(true);
+      child.kill('SIGTERM');
+      expect(
+        await Promise.race([exited, delay(8_000, 'deadline', { ref: false })]),
+        'SIGTERM must settle SMTP and its durable outcome before the ten-second backstop',
+      ).toEqual([0, null]);
+      const stored = await scratch.pool.query(
+        `SELECT uncertain_at IS NOT NULL AS uncertain, lease_owner, attempt_count, last_error
+         FROM team_invitation_deliveries WHERE invitation_id = $1`,
+        [invitation.invitationId],
+      );
+      expect(stored.rows).toEqual([
+        {
+          uncertain: true,
+          lease_owner: null,
+          attempt_count: 1,
+          last_error: 'EMAIL_DELIVERY_UNCERTAIN',
+        },
+      ]);
+      expect(peer.messages).toHaveLength(1);
+      expect(stderr).toBe('');
+      expect(output).not.toContain('STUDIO_SHUTDOWN_FAILED');
+    } finally {
+      if (child && child.exitCode === null && child.signalCode === null)
+        child.kill('SIGKILL');
+      await exited;
+      await peer.close();
+      await scratch.dispose();
+    }
+  }, 25_000);
+
+  it('cancels a held SMTP send and persists uncertainty within the shutdown budget', async () => {
+    const scratch = await seededScratch();
+    const peer = await smtpFixture('silent_data');
+    let stopping: Promise<void> | undefined;
+    try {
+      const invitation = await seedInvitation(scratch);
+      await enqueue(scratch, invitation);
+      const mailer = createMailer({
+        kind: 'smtp',
+        url: peer.url,
+        from: 'Studio <sender@example.test>',
+      });
+      const worker = startInvitationDeliveryWorker({
+        pool: scratch.maintenance,
+        mailer,
+        publicBaseUrl: 'https://studio.example.test',
+        pollIntervalMs: 60_000,
+      });
+      await peer.dataReceived;
+      stopping = worker.stop();
+      // The real process exits after ten seconds. A held SMTP peer produces no
+      // event until cancellation, so an eight-second deadline is the oracle.
+      const finished = await Promise.race([
+        stopping.then(() => true),
+        delay(8_000, false, { ref: false }),
+      ]);
+      expect(
+        finished,
+        'shutdown must finalize ambiguity before the process backstop',
+      ).toBe(true);
+      const stored = await scratch.pool.query(
+        `SELECT uncertain_at IS NOT NULL AS uncertain, lease_owner, attempt_count, last_error
+         FROM team_invitation_deliveries WHERE invitation_id = $1`,
+        [invitation.invitationId],
+      );
+      expect(stored.rows).toEqual([
+        {
+          uncertain: true,
+          lease_owner: null,
+          attempt_count: 1,
+          last_error: 'EMAIL_DELIVERY_UNCERTAIN',
+        },
+      ]);
+      const replacement = createMailer({
+        kind: 'smtp',
+        url: peer.url,
+        from: 'Studio <sender@example.test>',
+      });
+      expect(
+        (await dispatcher(scratch.maintenance, replacement).runOnce()).claimed,
+      ).toBe(0);
+      expect(peer.messages).toHaveLength(1);
+    } finally {
+      await peer.close();
+      await stopping;
+      await scratch.dispose();
+    }
+  });
+
   it('delivers Mailpit magic links with the documented development sender', async () => {
     const peer = await smtpFixture();
     try {

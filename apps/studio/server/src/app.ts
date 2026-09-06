@@ -14,6 +14,7 @@ import {
 import { BETTER_AUTH_ORGANIZATION_ROUTE_POLICIES } from './audit/better-auth-policy.ts';
 import { createAuthService } from './auth/create.ts';
 import { requireSameOrigin, requireWsOrigin } from './auth/csrf.ts';
+import type { StudioMailer } from './auth/email.ts';
 import {
   createPrincipalMiddleware,
   requirePrincipal,
@@ -50,6 +51,7 @@ const BETTER_AUTH_ORGANIZATION_MUTATION_POLICIES: ReadonlyMap<
 );
 
 type CreateAppDeps = {
+  mailer?: StudioMailer;
   encryptionKeys?: EncryptionKeys;
   auth?: AuthService;
   assetStore?: AssetStore;
@@ -62,7 +64,8 @@ type CreateAppDeps = {
 
 export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
   const pool = deps.pool ?? (env.db ? createPool(env.db) : undefined);
-  const auth = deps.auth ?? createAuthService(env, pool, deps.encryptionKeys);
+  const auth =
+    deps.auth ?? createAuthService(env, pool, deps.encryptionKeys, deps.mailer);
   const assetStore =
     deps.assetStore ?? (env.s3 ? createAssetStore(env.s3) : undefined);
   const observability =
