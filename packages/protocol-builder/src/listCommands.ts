@@ -10,6 +10,7 @@ import {
 import {
   type ArrayRow,
   matchRows,
+  reseatEditedRow,
   resolveInsertIndex,
   resolveMove,
   rowIdentity,
@@ -215,7 +216,14 @@ export function commandForListChange(
  *
  * - a row the edit left exactly as it found it follows the ARRIVAL, so
  *   somebody else's rewrite of it stands;
- * - a row the edit changed keeps the researcher's version;
+ * - a row the edit changed keeps the researcher's version of what it changed,
+ *   LEAF by leaf against the row as the edit found it, so a collaborator's
+ *   edit to another property of that same row stands too and the researcher
+ *   wins only the leaves they decided. Both sides on one leaf is the
+ *   whole-list rule said one level down: the researcher at the keyboard wins.
+ *   `reseatEditedRow` is that merge, and it is the same one a list editor's
+ *   own commit goes through — a `set` composed from a form's values is a
+ *   revision behind whether it is being committed or replayed;
  * - a row the edit removed goes, and a row the arrival added appears;
  * - a row the edit added is put back beside the rows it was written beside —
  *   after the nearest one it followed that is still here, else in front of the
@@ -236,11 +244,19 @@ export function commandForListChange(
  * both sides reordered, the researcher's order wins, as their rewrite of a row
  * does.
  *
- * A row with no `id` of its own is answered by `matchRows` like any other,
- * which means its CONTENT is its identity: rewriting such a row reads as
- * removing it
- * and adding another, because from here those two edits are the same edit and
- * nothing in the document tells them apart. Matching an id-less row by
+ * Replacing a row WHOLESALE is answered by the same two rules, and which one
+ * answers is decided by whether the row has an id. A row that keeps its id has
+ * had every leaf decided by the researcher, so they win every leaf and the
+ * only thing of the arrival's that survives is a property they never had —
+ * one the collaborator added. A row with no id was not replaced at all: it was
+ * removed and another was added, and both sides' rows stand side by side.
+ *
+ * That is because a row with no `id` of its own is answered by `matchRows`
+ * like any other, which means its CONTENT is its identity: rewriting such a
+ * row reads as removing it and adding another, because from here those two
+ * edits are the same edit and nothing in the document tells them apart. There
+ * is no leaf merge to do for one, either — a matched id-less row is one whose
+ * content BOTH sides left alone. Matching an id-less row by
  * position instead — on the strength of the local list having kept its length,
  * as this did — was right only while the edit changed exactly one row and
  * moved none. A submit that reorders two rows and rewrites one of them is also
@@ -295,7 +311,7 @@ function mergeListArrival(
       row:
         canonicalize(localRow) === canonicalize(before[ancestor])
           ? row
-          : localRow,
+          : reseatEditedRow(before[ancestor], localRow, row),
       local,
     });
   });

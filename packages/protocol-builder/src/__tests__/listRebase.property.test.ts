@@ -42,7 +42,17 @@ const pick = <T>(rng: Rng, xs: readonly T[]): T => xs[int(rng, xs.length)]!;
 
 // ---------------------------------------------------------------- rows
 
-type Row = { id?: string; text: string };
+/**
+ * A row, with two properties an edit can reach independently.
+ *
+ * Two, and not one, because a row is where the two sides can both have edited
+ * and still not disagree: one changes the question, the other the input
+ * control. A single-property row cannot ask that.
+ */
+type Row = { id?: string; text?: string; hint?: string };
+
+/** The properties an edit reaches, which is what a leaf merge is asked of. */
+const LEAVES = ['text', 'hint'] as const;
 
 /** How a trial identifies a row for the reference model. */
 type Mode = 'identified' | 'idless';
@@ -61,7 +71,11 @@ type Mode = 'identified' | 'idless';
 const rowsOf = (rng: Rng, mode: Mode, count: number): Row[] =>
   Array.from({ length: count }, (_, i) =>
     mode === 'identified'
-      ? { id: `r${String(i)}`, text: `r${String(i)}-0` }
+      ? {
+          id: `r${String(i)}`,
+          text: `r${String(i)}-0`,
+          hint: `h${String(i)}-0`,
+        }
       : { text: `r${String(int(rng, Math.max(1, count - 1)))}` },
   );
 
@@ -101,9 +115,12 @@ function randomEdit(
     }
     case 'edit': {
       const at = int(rng, next.length);
+      // ONE leaf, chosen at random, so the two sides can edit the same row
+      // without disagreeing about anything.
+      const leaf = pick(rng, LEAVES);
       next[at] = {
         ...next[at]!,
-        text: `${next[at]!.id ?? ''}-${String(int(rng, 1000))}`,
+        [leaf]: `${next[at]!.id ?? ''}-${leaf}-${String(int(rng, 1000))}`,
       };
       return next;
     }
@@ -149,6 +166,31 @@ type Merged = Readonly<{ ids: string[]; byId: Map<string, Row> }>;
 const index = (list: readonly Row[]) =>
   new Map(list.map((row) => [keyOf(row), row] as const));
 
+/**
+ * The row a leaf merge leaves, for a row the local edit changed.
+ *
+ * The arrival's row with the local side's decisions written over it: a
+ * property they changed is theirs, and one they left as they found it is
+ * whatever reached it meanwhile. With nothing to merge against — a row the
+ * local side ADDED, or one the arrival does not hold — the local row is the
+ * whole answer.
+ */
+const mergedLeaves = (
+  base: Row | undefined,
+  local: Row,
+  remote: Row | undefined,
+): Row => {
+  if (base === undefined || remote === undefined) return local;
+  const merged: Row = { ...remote };
+  for (const leaf of LEAVES) {
+    const value = local[leaf];
+    if (value === base[leaf]) continue;
+    if (value === undefined) Reflect.deleteProperty(merged, leaf);
+    else merged[leaf] = value;
+  }
+  return merged;
+};
+
 /** How many copies of each row a list holds. */
 const copies = (list: readonly Row[]) =>
   list.reduce<Map<string, number>>(
@@ -163,8 +205,10 @@ const copies = (list: readonly Row[]) =>
  *
  * - a row present in the ancestor survives only if BOTH sides kept it;
  * - a row either side added is present;
- * - a row the local edit changed keeps the local content, otherwise the
- *   arrival's content stands.
+ * - a row the local edit changed keeps the local content PROPERTY by property,
+ *   so a property only the arrival changed keeps the arrival's value and one
+ *   they both changed keeps the local value; a row the local edit left alone
+ *   is the arrival's outright.
  *
  * Said as a COUNT rather than as presence, because an id-less row's identity is
  * its content and a list may hold two of them: the question is then not whether
@@ -205,11 +249,14 @@ function referenceMerge(
     if (present === 0) return;
     const localRow = localById.get(id);
     const baseRow = baseById.get(id);
+    const remoteRow = remoteById.get(id);
     const localChanged =
       localRow !== undefined &&
       (baseRow === undefined ||
         canonicalize(localRow) !== canonicalize(baseRow));
-    const row = localChanged ? localRow : (remoteById.get(id) ?? localRow);
+    const row = localChanged
+      ? mergedLeaves(baseRow, localRow, remoteRow)
+      : (remoteRow ?? localRow);
     if (row === undefined) return;
     for (let copy = 0; copy < present; copy += 1) ids.push(id);
     byId.set(id, row);
@@ -408,6 +455,19 @@ const ORPHANED_TRIALS: Readonly<Record<Mode, number>> = {
   idless: 100,
 };
 
+/**
+ * And how many must have both sides edit one row, the arrival changing a
+ * property the researcher's submit left alone.
+ */
+const CROSS_EDIT_TRIALS = 75;
+
+/**
+ * The leaf sweep runs wider than the general one for the same reason the order
+ * sweep does: both sides have to edit the SAME row, and different properties
+ * of it, which a short run of random edits rarely produces.
+ */
+const LEAF_TRIALS = 4000;
+
 function sweep(
   mode: Mode,
   check: (trial: Trial, outcome: Outcome) => string | null,
@@ -572,6 +632,27 @@ function localReordered(trial: Trial): boolean {
   );
 }
 
+/**
+ * Whether a trial asks the leaf question: one row both sides edited, where the
+ * arrival changed a property the researcher's submit left alone.
+ */
+function sidesEditedDifferentLeaves(trial: Trial): boolean {
+  const localById = index(trial.local);
+  const remoteById = index(trial.remote);
+  return trial.base.some((baseRow) => {
+    const local = localById.get(keyOf(baseRow));
+    const remote = remoteById.get(keyOf(baseRow));
+    if (local === undefined || remote === undefined) return false;
+    return (
+      LEAVES.some((leaf) => local[leaf] !== baseRow[leaf]) &&
+      LEAVES.some(
+        (leaf) =>
+          remote[leaf] !== baseRow[leaf] && local[leaf] === baseRow[leaf],
+      )
+    );
+  });
+}
+
 /** Whether a trial's diff fell back to writing a whole list out. */
 const carriesAWholeListSet = (trial: Trial): boolean =>
   trial.batches.some((batch) =>
@@ -659,4 +740,30 @@ describe('rebasing a list edit onto a collaborator’s arrival', () => {
       });
     });
   }
+
+  /**
+   * The leaf dimension, asked of identified rows alone.
+   *
+   * An id-less row's identity IS its content, so there is no such thing as an
+   * edit to one property of one: a rewritten id-less row is a row removed and
+   * a row added, which the sweeps above already say.
+   *
+   * `mergesLikeTheModel` is the same check the general sweep makes — the model
+   * states the leaf rule, so it already asks this — and what is added here is
+   * the count that keeps it from passing vacuously: the trials in which the
+   * arrival really did change a property the researcher's submit left alone.
+   */
+  it('keeps a collaborator’s edit to a property the submit left alone', () => {
+    const failures: string[] = [];
+    let asked = 0;
+    for (let seed = 1; seed <= LEAF_TRIALS; seed += 1) {
+      const { trial, outcome } = runTrial(seed, 'identified');
+      if (sidesEditedDifferentLeaves(trial)) asked += 1;
+      const problem = mergesLikeTheModel(trial, outcome);
+      if (problem !== null && failures.length < 3)
+        failures.push(describeTrial(trial, problem));
+    }
+    expect(failures).toEqual([]);
+    expect(asked).toBeGreaterThan(CROSS_EDIT_TRIALS);
+  });
 });
