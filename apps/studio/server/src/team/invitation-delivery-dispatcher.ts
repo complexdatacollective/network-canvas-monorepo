@@ -1,5 +1,6 @@
 import type pg from 'pg';
 
+import { EmailDeliveryError } from '@codaco/studio-sync/email-sender';
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 
 import type { InvitationMailer } from '../auth/email.ts';
@@ -63,6 +64,14 @@ function errorMessage(error: unknown): string {
 
 class InvitationDeliveryAdapter implements OutboxAdapter<ClaimedInvitationDelivery> {
   readonly queue = INVITATION_DELIVERY_QUEUE;
+
+  failureDisposition(error: unknown): 'retryable' | 'permanent' | 'uncertain' {
+    // Existing custom mailer failures retain their retry semantics. Shared
+    // email adapters distinguish rejection from potentially accepted delivery.
+    return error instanceof EmailDeliveryError
+      ? error.disposition
+      : 'retryable';
+  }
   private readonly pool: pg.Pool;
   private readonly mailer: InvitationMailer;
   private readonly publicBaseUrl: URL;
@@ -297,7 +306,7 @@ class InvitationDeliveryAdapter implements OutboxAdapter<ClaimedInvitationDelive
   }
 
   /**
-   * SMTP has accepted the message, but Studio could not prove that its sent
+   * SMTP may have accepted the message, or Studio could not prove that its sent
    * marker committed. This is terminal for automatic dispatch: retrying could
    * duplicate mail. A process crash still leaves the lease reclaimable, which
    * preserves the outbox's at-least-once crash semantics.
