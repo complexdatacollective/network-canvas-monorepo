@@ -9,6 +9,9 @@ export type PostgresMigrationConfig = {
   readonly applicationName: string;
   readonly allowedLoginsSetting: string;
   readonly runtimeRoles: readonly string[];
+  /** Exact direct membership sets for runtime logins, independent of ordering.
+   * The optional backup role is a separate singleton, never part of these sets. */
+  readonly runtimeLoginRoleSets: readonly (readonly string[])[];
   /** Validate this role when present; its own migration provisions it. */
   readonly backupRole?: string;
   /** Dedicated history schema; must differ from the application schema. */
@@ -35,6 +38,35 @@ export function createPostgresMigrator(input: PostgresMigrationConfig) {
     validateRoleNames([identifier]);
   }
   validateRoleNames(input.runtimeRoles);
+  if (
+    !Array.isArray(input.runtimeLoginRoleSets) ||
+    input.runtimeLoginRoleSets.length === 0
+  ) {
+    throw new Error('Supply valid PostgreSQL runtime login role sets.');
+  }
+  for (const roles of input.runtimeLoginRoleSets) {
+    validateRoleNames(roles);
+    if (roles.some((role) => !input.runtimeRoles.includes(role))) {
+      throw new Error('Supply valid PostgreSQL runtime login role sets.');
+    }
+  }
+  if (
+    input.runtimeRoles.some(
+      (role) =>
+        !input.runtimeLoginRoleSets.some((roles) => roles.includes(role)),
+    ) ||
+    input.runtimeLoginRoleSets.some((roles, index) =>
+      input.runtimeLoginRoleSets
+        .slice(0, index)
+        .some(
+          (previous) =>
+            previous.length === roles.length &&
+            previous.every((role) => roles.includes(role)),
+        ),
+    )
+  ) {
+    throw new Error('Supply valid PostgreSQL runtime login role sets.');
+  }
   if (input.backupRole !== undefined) {
     validateRoleNames([...input.runtimeRoles, input.backupRole]);
   }
@@ -49,6 +81,9 @@ export function createPostgresMigrator(input: PostgresMigrationConfig) {
   const config: PostgresMigrationConfig = Object.freeze({
     ...input,
     runtimeRoles: Object.freeze([...input.runtimeRoles]),
+    runtimeLoginRoleSets: Object.freeze(
+      input.runtimeLoginRoleSets.map((roles) => Object.freeze([...roles])),
+    ),
   });
   return {
     migrate: (

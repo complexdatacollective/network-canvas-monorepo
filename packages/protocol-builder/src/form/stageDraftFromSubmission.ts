@@ -9,6 +9,7 @@ import {
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import type { StageFormDraft } from '../session.ts';
+import type { StageFormStoreApi } from './stageEditorContext.ts';
 
 /**
  * A field the form no longer has mounted.
@@ -127,6 +128,33 @@ export function stageDraftFromSubmission(
   }
 
   return draft;
+}
+
+/**
+ * Where every field the form still has mounted lives.
+ *
+ * The submitted values are assembled from these, so a hidden container that
+ * encloses one of them must not be replayed over the top of what they hold.
+ */
+export function mountedPathsOf(storeApi: StageFormStoreApi): ObjectPath[] {
+  return [...storeApi.getState().fields].map(
+    ([name, field]) => field.path ?? resolveFieldPath([], name),
+  );
+}
+
+/**
+ * Every field the form is holding but not showing, as the store parked it.
+ *
+ * The submitted values cover only mounted fields, so without this a value
+ * hidden behind a collapsed group would look identical to one that was
+ * deliberately thrown away.
+ */
+export function dormantFieldsOf(storeApi: StageFormStoreApi): DormantField[] {
+  return [...storeApi.getState().dormantValues].map(([name, field]) => ({
+    name,
+    ...(field.path === undefined ? {} : { path: field.path }),
+    value: field.value,
+  }));
 }
 
 type ResolvedDormant = Readonly<{ path: ObjectPath; value: FieldValue }>;

@@ -9,6 +9,7 @@ const config: PostgresMigrationConfig = {
   applicationName: 'Registry',
   allowedLoginsSetting: 'REGISTRY_DATABASE_ALLOWED_LOGINS',
   runtimeRoles: ['registry_app', 'registry_operator'],
+  runtimeLoginRoleSets: [['registry_app'], ['registry_operator']],
   backupRole: 'registry_backup',
   historySchema: 'registry_migrations',
   schemaName: 'public',
@@ -26,7 +27,8 @@ describe('PostgreSQL migration configuration', () => {
         historySchema: 'migration"history',
         schemaName: 'schema-with-dash',
         fingerprintTable: "stamp'$tag$",
-        runtimeRoles: ['runtime"role', 'operator-role'],
+        runtimeRoles: ['runtime"role', 'opérateur-role'],
+        runtimeLoginRoleSets: [['opérateur-role', 'runtime"role']],
       }),
     ).not.toThrow();
   });
@@ -40,6 +42,30 @@ describe('PostgreSQL migration configuration', () => {
     { runtimeRoles: [] },
     { runtimeRoles: ['registry_app', 'registry_app'] },
     { runtimeRoles: ['role\udfff'] },
+    { runtimeLoginRoleSets: [] },
+    { runtimeLoginRoleSets: [[]] },
+    { runtimeLoginRoleSets: [['registry_app', 'registry_app']] },
+    { runtimeLoginRoleSets: [['registry_app']] },
+    { runtimeLoginRoleSets: [['registry_app', 'registry_operator', 'other']] },
+    {
+      runtimeLoginRoleSets: [
+        ['registry_app', 'registry_operator', 'registry_backup'],
+      ],
+    },
+    {
+      runtimeLoginRoleSets: [
+        ['registry_app'],
+        ['registry_operator'],
+        ['registry_app'],
+      ],
+    },
+    {
+      runtimeLoginRoleSets: [
+        ['registry_app', 'registry_operator'],
+        ['registry_operator', 'registry_app'],
+      ],
+    },
+    { runtimeLoginRoleSets: [['role\udfff']] },
     { backupRole: '' },
     { backupRole: 'registry_app' },
     { backupRole: 'b'.repeat(64) },

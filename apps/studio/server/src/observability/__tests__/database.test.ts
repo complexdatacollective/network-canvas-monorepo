@@ -1,10 +1,15 @@
 import { randomUUID } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 
+import { escapeIdentifier } from 'pg';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+
+import { readMigrations } from '@codaco/studio-sync/postgres-migration-artifacts';
 
 import { stubAuthService } from '../../__tests__/support/auth.ts';
 import {
   createScratchSchema,
+  createScratchDatabase,
   provisionScratchSchema,
   reachableDb,
 } from '../../__tests__/support/postgres.ts';
@@ -12,6 +17,8 @@ import { createRpcClient } from '../../__tests__/support/rpc.ts';
 import { createApp } from '../../app.ts';
 import type { AssetStore } from '../../assets.ts';
 import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
+import { migrateDatabase } from '../../db/migrations/migrate.ts';
+import { createPool } from '../../db/pool.ts';
 import { stampFingerprint } from '../../db/schema.ts';
 import { seed } from '../../db/seed.ts';
 import { readEnv } from '../../env.ts';
@@ -31,6 +38,82 @@ const store: AssetStore = {
 };
 const CANARY = 'participant@example.test-Token-Answer-Protocol-Export';
 
+describe.skipIf(!db)('readiness migration provenance', () => {
+  it('requires actual migration history with no runtime history grant, and preserves explicit development', async () => {
+    if (!db)
+      throw new Error('Database required for readiness provenance test.');
+    const migrations = await readMigrations(
+      fileURLToPath(new URL('../../../migrations', import.meta.url)),
+    );
+    expect(migrations.length).toBeGreaterThan(0);
+    for (const versioned of [false, true]) {
+      const scratch = await createScratchDatabase(db);
+      const pool = createPool(scratch.db);
+      try {
+        if (versioned) {
+          const identity = (
+            await scratch.pool.query<{ database: string; login: string }>(
+              'SELECT current_database() AS database, session_user AS login',
+            )
+          ).rows[0]!;
+          await scratch.pool
+            .query(`REVOKE CONNECT ON DATABASE ${escapeIdentifier(identity.database)} FROM PUBLIC;
+            GRANT CONNECT ON DATABASE ${escapeIdentifier(identity.database)} TO ${escapeIdentifier(identity.login)}`);
+          expect(
+            await migrateDatabase(
+              scratch.pool,
+              migrations,
+              SCHEMA_FINGERPRINT,
+              [identity.login],
+            ),
+          ).toEqual(migrations.map(({ manifest }) => manifest.id));
+        } else {
+          await provisionScratchSchema(scratch.pool);
+        }
+        expect((await pool.query('SELECT current_user AS role')).rows).toEqual([
+          { role: 'studio_app' },
+        ]);
+        const readiness = createReadiness({
+          pool,
+          assetStore: store,
+          cacheMs: 0,
+        });
+        try {
+          expect(await readiness.check()).toEqual({
+            status: versioned ? 'ready' : 'not_ready',
+            checks: {
+              database: 'ok',
+              object_store: 'ok',
+              schema: versioned ? 'current' : 'stale',
+            },
+          });
+        } finally {
+          readiness.stop();
+        }
+        if (versioned) {
+          await expect(
+            pool.query('SELECT * FROM studio_migrations.history'),
+          ).rejects.toMatchObject({ code: '42501' });
+        }
+        // The app's default observability construction must forward the same
+        // resolved development decision as the executable's construction.
+        for (const development of [false, true]) {
+          const app = createApp(
+            { ...readEnv(), db: scratch.db, devDefaults: development },
+            { pool, assetStore: store },
+          );
+          expect((await app.request('/readyz')).status).toBe(
+            versioned || development ? 200 : 503,
+          );
+        }
+      } finally {
+        await pool.end();
+        await scratch.dispose();
+      }
+    }
+  });
+});
+
 describe.skipIf(!db)(
   'operational probes against isolated PostgreSQL schemas',
   () => {
@@ -47,6 +130,7 @@ describe.skipIf(!db)(
     it('checks the current fingerprint on subsequent probes and never changes liveness', async () => {
       const runtime = createObservability({
         pool: scratch.app,
+        allowUnversionedSchema: true,
         assetStore: store,
         cacheMs: 0,
       });
@@ -75,6 +159,7 @@ describe.skipIf(!db)(
     it('fails readiness when object storage fails or is not configured', async () => {
       const failing = createReadiness({
         pool: scratch.app,
+        allowUnversionedSchema: true,
         assetStore: {
           ...store,
           checkHealth: () => Promise.reject(new Error(CANARY)),
@@ -85,7 +170,10 @@ describe.skipIf(!db)(
         status: 'not_ready',
         checks: { database: 'ok', object_store: 'failed', schema: 'current' },
       });
-      const missing = createReadiness({ pool: scratch.app });
+      const missing = createReadiness({
+        pool: scratch.app,
+        allowUnversionedSchema: true,
+      });
       expect((await missing.check()).checks.object_store).toBe('unconfigured');
       failing.stop();
       missing.stop();
@@ -135,6 +223,7 @@ describe.skipIf(!db)(
         (
           await createReadiness({
             pool: scratch.app,
+            allowUnversionedSchema: true,
             assetStore: store,
             cacheMs: 0,
           }).check()
@@ -151,6 +240,7 @@ describe.skipIf(!db)(
       );
       const readiness = createReadiness({
         pool: scratch.app,
+        allowUnversionedSchema: true,
         assetStore: store,
         timeoutMs: 20,
         cacheMs: 0,
@@ -347,6 +437,7 @@ describe.skipIf(!db)(
       }
       const runtime = createObservability({
         pool: scratch.app,
+        allowUnversionedSchema: true,
         maintenancePool: scratch.maintenance,
         assetStore: store,
         cacheMs: 0,
@@ -396,6 +487,7 @@ describe.skipIf(!db)(
         const openRuntime = () =>
           createObservability({
             pool: isolated.app,
+            allowUnversionedSchema: true,
             maintenancePool: isolated.maintenance,
             assetStore: store,
             cacheMs: 0,

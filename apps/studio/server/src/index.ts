@@ -57,6 +57,7 @@ const observability = createObservability({
   maintenancePool,
   assetStore,
   monitorProcess: true,
+  allowUnversionedSchema: env.devDefaults,
 });
 let invitationDeliveryWorker: InvitationDeliveryWorker | undefined;
 
@@ -107,7 +108,7 @@ if (pool) {
     const retry = setInterval(() => {
       if (attempting) return;
       attempting = true;
-      void checkSchema(pool)
+      void checkSchema(pool, { allowUnversioned: env.devDefaults })
         .then((state) => {
           exitIfFatal(state);
           if (state.kind === 'current') {
@@ -134,7 +135,9 @@ if (pool) {
   };
 
   try {
-    const state = await checkSchema(pool);
+    const state = await checkSchema(pool, {
+      allowUnversioned: env.devDefaults,
+    });
     if (state.kind === 'current') {
       startDatabaseWorkers();
     } else {

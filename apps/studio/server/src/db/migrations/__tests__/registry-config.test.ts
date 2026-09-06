@@ -12,7 +12,10 @@ import {
   createPostgresMigrator,
   type PostgresMigrationConfig,
 } from '@codaco/studio-sync/postgres-migrations';
-import { runtimeRolesSql } from '@codaco/studio-sync/role-bootstrap';
+import {
+  revokeLargeObjectPrivilegesSql,
+  runtimeRolesSql,
+} from '@codaco/studio-sync/role-bootstrap';
 
 import {
   createScratchDatabase,
@@ -34,6 +37,7 @@ function registryConfig(roles: RegistryRoles): PostgresMigrationConfig {
     applicationName: 'Registry',
     allowedLoginsSetting: 'REGISTRY_DATABASE_ALLOWED_LOGINS',
     runtimeRoles: [roles.app, roles.operator],
+    runtimeLoginRoleSets: [[roles.app], [roles.operator]],
     backupRole: roles.backup,
     historySchema: 'registry_migrations',
     schemaName: 'public',
@@ -158,12 +162,13 @@ async function withRegistryCluster(
     create: () => Promise<Awaited<ReturnType<typeof createDeployment>>>,
     roles: RegistryRoles,
   ) => Promise<void>,
+  roleNames?: (suffix: string) => RegistryRoles,
 ) {
   if (!database)
     throw new Error('Database required for registry migration tests.');
   const administrator = new Pool({ connectionString: database.url });
   const suffix = randomUUID().replaceAll('-', '');
-  const roles: RegistryRoles = {
+  const roles: RegistryRoles = roleNames?.(suffix) ?? {
     app: `registry_app_${suffix}`,
     operator: `registry_operator_${suffix}`,
     backup: `registry_backup_${suffix}`,
@@ -191,6 +196,850 @@ async function withRegistryCluster(
 describe.skipIf(!database)(
   'shared migration engine with registry configuration',
   () => {
+    it.each([
+      ['app', 'both', true],
+      ['operator', 'both', true],
+      ['app', 'neither', true],
+      ['operator', 'neither', true],
+      ['app', 'neither', false],
+    ] as const)(
+      'refuses Registry %s login with %s runtime memberships and backup configured %s',
+      async (identity, membership, withBackup) => {
+        await withRegistryCluster(async (create, roles) => {
+          const deployment = await create();
+          const { backupRole, ...withoutBackup } = deployment.config;
+          expect(backupRole).toBe(roles.backup);
+          const migrator = createPostgresMigrator(
+            withBackup ? deployment.config : withoutBackup,
+          );
+          const login = deployment.logins[identity];
+          const own = roles[identity];
+          const other = roles[identity === 'app' ? 'operator' : 'app'];
+          await deployment.administrator.query(
+            membership === 'both'
+              ? `GRANT ${escapeIdentifier(other)} TO ${escapeIdentifier(login)} WITH ADMIN FALSE, INHERIT FALSE, SET TRUE`
+              : `REVOKE ${escapeIdentifier(own)} FROM ${escapeIdentifier(login)}`,
+          );
+          const client = await deployment.connect(login).connect();
+          try {
+            if (membership === 'both') {
+              await client.query(`SET ROLE ${escapeIdentifier(other)}`);
+              expect(
+                (await client.query('SELECT current_user AS role')).rows,
+              ).toEqual([{ role: other }]);
+              await client.query('RESET ROLE');
+            } else {
+              await expect(
+                client.query(`SET ROLE ${escapeIdentifier(own)}`),
+              ).rejects.toMatchObject({ code: '42501' });
+            }
+          } finally {
+            client.release();
+          }
+          await expect(
+            migrator.migrate(
+              deployment.owner,
+              [artifact(roles)],
+              fingerprint,
+              deployment.allowedLogins,
+            ),
+          ).rejects.toThrow('one configured Registry runtime role set');
+          expect(
+            (
+              await deployment.administrator.query(
+                "SELECT to_regclass('registry_migrations.history') AS history, to_regclass('public.registry_items') AS items",
+              )
+            ).rows,
+          ).toEqual([{ history: null, items: null }]);
+          await deployment.administrator.query(
+            membership === 'both'
+              ? `REVOKE ${escapeIdentifier(other)} FROM ${escapeIdentifier(login)}`
+              : `GRANT ${escapeIdentifier(own)} TO ${escapeIdentifier(login)} WITH ADMIN FALSE, INHERIT FALSE, SET TRUE`,
+          );
+          expect(
+            await migrator.migrate(
+              deployment.owner,
+              [artifact(roles)],
+              fingerprint,
+              deployment.allowedLogins,
+            ),
+          ).toEqual(['0001_registry']);
+        });
+      },
+    );
+
+    it('compares configured role sets without ordering assumptions for quoted Unicode roles', async () => {
+      await withRegistryCluster(
+        async (create, roles) => {
+          const deployment = await create();
+          const names = [roles.app, roles.operator];
+          const roleSet = names.toReversed();
+          const migrator = createPostgresMigrator({
+            ...deployment.config,
+            runtimeRoles: names,
+            runtimeLoginRoleSets: [roleSet],
+          });
+          for (const login of [
+            deployment.logins.app,
+            deployment.logins.operator,
+          ]) {
+            await deployment.administrator.query(
+              `GRANT ${names.map(escapeIdentifier).join(', ')} TO ${escapeIdentifier(login)} WITH ADMIN FALSE, INHERIT FALSE, SET TRUE`,
+            );
+          }
+          expect(
+            await migrator.migrate(
+              deployment.owner,
+              [artifact(roles)],
+              fingerprint,
+              deployment.allowedLogins,
+            ),
+          ).toEqual(['0001_registry']);
+          const client = await deployment
+            .connect(deployment.logins.app)
+            .connect();
+          try {
+            for (const role of names) {
+              await client.query(`SET ROLE ${escapeIdentifier(role)}`);
+              expect(
+                (await client.query('SELECT current_user AS role')).rows,
+              ).toEqual([{ role }]);
+              await client.query('RESET ROLE');
+            }
+          } finally {
+            client.release();
+          }
+          await deployment.administrator.query(
+            `REVOKE ${escapeIdentifier(roles.app)} FROM ${escapeIdentifier(deployment.logins.app)}`,
+          );
+          await expect(
+            migrator.migrate(
+              deployment.owner,
+              [artifact(roles)],
+              fingerprint,
+              deployment.allowedLogins,
+            ),
+          ).rejects.toThrow('memberships');
+        },
+        (suffix) => ({
+          app: `Z-app"${suffix}`,
+          operator: `é-operator-${suffix}`,
+          backup: `backup-${suffix}`,
+        }),
+      );
+    });
+
+    it.each(['app', 'operator'] as const)(
+      'refuses configured Registry %s TRUNCATE despite empty RLS visibility',
+      async (identity) => {
+        await withRegistryCluster(async (create, roles) => {
+          const deployment = await create();
+          const migrator = createPostgresMigrator(deployment.config);
+          const initial = artifact(roles);
+          await migrator.migrate(
+            deployment.owner,
+            [initial],
+            fingerprint,
+            deployment.allowedLogins,
+          );
+          const role = roles[identity];
+          await deployment.owner
+            .query(`CREATE TABLE public.truncate_target (id integer PRIMARY KEY);
+            INSERT INTO public.truncate_target VALUES (1), (2);
+            ALTER TABLE public.truncate_target ENABLE ROW LEVEL SECURITY;
+            ALTER TABLE public.truncate_target FORCE ROW LEVEL SECURITY;
+            CREATE POLICY empty_visibility ON public.truncate_target USING (false);
+            GRANT SELECT, TRUNCATE ON public.truncate_target TO ${escapeIdentifier(role)}`);
+          const runtime = deployment.connect(
+            deployment.logins[identity],
+            `-c role=${role}`,
+          );
+          expect(
+            (await runtime.query('SELECT * FROM public.truncate_target')).rows,
+          ).toEqual([]);
+          expect(
+            (
+              await deployment.administrator.query(
+                'SELECT count(*)::int AS count FROM public.truncate_target',
+              )
+            ).rows,
+          ).toEqual([{ count: 2 }]);
+          await runtime.query('TRUNCATE public.truncate_target');
+          expect(
+            (
+              await deployment.administrator.query(
+                'SELECT count(*)::int AS count FROM public.truncate_target',
+              )
+            ).rows,
+          ).toEqual([{ count: 0 }]);
+          await expect(
+            migrator.migrate(
+              deployment.owner,
+              [initial],
+              fingerprint,
+              deployment.allowedLogins,
+            ),
+          ).rejects.toThrow('reviewed Registry roles');
+          await deployment.owner.query(
+            `REVOKE TRUNCATE ON public.truncate_target FROM ${escapeIdentifier(role)}`,
+          );
+          expect(
+            await migrator.migrate(
+              deployment.owner,
+              [initial],
+              fingerprint,
+              deployment.allowedLogins,
+            ),
+          ).toEqual([]);
+        });
+      },
+    );
+
+    it.each(['app', 'operator', 'login', 'PUBLIC'] as const)(
+      'refuses configured Registry %s large-object creation before objects exist, then accepts administrator revocation',
+      async (identity) => {
+        await withRegistryCluster(async (create, roles) => {
+          const deployment = await create();
+          const { backupRole, ...withoutBackup } = deployment.config;
+          expect(backupRole).toBe(roles.backup);
+          const migrator = createPostgresMigrator(withoutBackup);
+          const initial = artifact(roles);
+          const role =
+            identity === 'login'
+              ? deployment.logins.app
+              : identity === 'PUBLIC'
+                ? roles.app
+                : roles[identity];
+          const login =
+            identity === 'operator'
+              ? deployment.logins.operator
+              : deployment.logins.app;
+          await deployment.administrator.query(
+            `GRANT EXECUTE ON FUNCTION pg_catalog.lo_from_bytea(oid,bytea) TO ${identity === 'PUBLIC' ? 'PUBLIC' : escapeIdentifier(role)}`,
+          );
+          const runtime = deployment.connect(login);
+          const client = await runtime.connect();
+          try {
+            await client.query('BEGIN');
+            await client.query(`SET LOCAL ROLE ${escapeIdentifier(role)}`);
+            const object = (
+              await client.query<{ oid: number }>(
+                "SELECT lo_from_bytea(0, convert_to('unreviewed Registry bytes', 'UTF8')) AS oid",
+              )
+            ).rows[0]!;
+            expect(object.oid).toBeGreaterThan(0);
+            expect(
+              (
+                await client.query(
+                  "SELECT has_largeobject_privilege(current_user, $1, 'UPDATE') AS writable",
+                  [object.oid],
+                )
+              ).rows,
+            ).toEqual([{ writable: true }]);
+          } finally {
+            await client.query('ROLLBACK');
+            client.release();
+          }
+          expect(
+            (
+              await deployment.administrator.query(
+                'SELECT count(*)::int AS count FROM pg_largeobject_metadata',
+              )
+            ).rows,
+          ).toEqual([{ count: 0 }]);
+          await expect(
+            migrator.migrate(
+              deployment.owner,
+              [initial],
+              fingerprint,
+              deployment.allowedLogins,
+            ),
+          ).rejects.toThrow(
+            'Registry runtime and backup identities must not execute large-object creation',
+          );
+          expect(
+            (
+              await deployment.administrator.query(
+                "SELECT to_regclass('registry_migrations.history') AS history",
+              )
+            ).rows,
+          ).toEqual([{ history: null }]);
+          await deployment.administrator.query(
+            revokeLargeObjectPrivilegesSql([
+              roles.app,
+              roles.operator,
+              deployment.logins.app,
+            ]),
+          );
+          expect(
+            await migrator.migrate(
+              deployment.owner,
+              [initial],
+              fingerprint,
+              deployment.allowedLogins,
+            ),
+          ).toEqual(['0001_registry']);
+        });
+      },
+    );
+
+    it.each(['app', 'operator'] as const)(
+      'refuses effective Registry %s replication SET with no configured backup',
+      async (identity) => {
+        await withRegistryCluster(async (create, roles) => {
+          const deployment = await create();
+          const { backupRole, ...withoutBackup } = deployment.config;
+          expect(backupRole).toBe(roles.backup);
+          const migrator = createPostgresMigrator(withoutBackup);
+          const initial = artifact(roles);
+          await migrator.migrate(
+            deployment.owner,
+            [initial],
+            fingerprint,
+            deployment.allowedLogins,
+          );
+          const client = await deployment.administrator.connect();
+          try {
+            await client.query('BEGIN');
+            await client.query(
+              `GRANT SET ON PARAMETER session_replication_role TO ${escapeIdentifier(roles[identity])}`,
+            );
+            await client.query(
+              `SET LOCAL ROLE ${escapeIdentifier(roles[identity])}`,
+            );
+            await client.query('SET LOCAL session_replication_role = replica');
+            expect(
+              (
+                await client.query(
+                  "SELECT current_setting('session_replication_role') AS value",
+                )
+              ).rows,
+            ).toEqual([{ value: 'replica' }]);
+            await client.query('RESET ROLE');
+            await client.query('SET LOCAL session_replication_role = origin');
+            await client.query(
+              `SET LOCAL SESSION AUTHORIZATION ${escapeIdentifier(deployment.logins.owner)}`,
+            );
+            await expect(
+              migrator.enforceSecurity(client, deployment.allowedLogins),
+            ).rejects.toThrow(
+              'Registry runtime and backup identities must not have SET on lo_compat_privileges or session_replication_role',
+            );
+          } finally {
+            await client.query('ROLLBACK');
+            client.release();
+          }
+          expect(
+            await migrator.migrate(
+              deployment.owner,
+              [initial],
+              fingerprint,
+              deployment.allowedLogins,
+            ),
+          ).toEqual([]);
+        });
+      },
+    );
+
+    it.each([
+      ['lo_compat_privileges', 'on', 'role'],
+      ['lo_compat_privileges', 'on', 'database'],
+      ['lo_compat_privileges', 'on', 'role in database'],
+      ['session_replication_role', 'replica', 'role'],
+      ['session_replication_role', 'replica', 'database'],
+      ['session_replication_role', 'replica', 'role in database'],
+    ] as const)(
+      'refuses persisted Registry %s=%s for %s including shadowed defaults',
+      async (parameter, value, scope) => {
+        await withRegistryCluster(async (create, roles) => {
+          const deployment = await create();
+          const { backupRole, ...withoutBackup } = deployment.config;
+          expect(backupRole).toBe(roles.backup);
+          const migrator = createPostgresMigrator(withoutBackup);
+          const initial = artifact(roles);
+          await migrator.migrate(
+            deployment.owner,
+            [initial],
+            fingerprint,
+            deployment.allowedLogins,
+          );
+          const login = deployment.logins.operator;
+          const target =
+            scope === 'database'
+              ? `DATABASE ${escapeIdentifier(deployment.databaseName)}`
+              : `ROLE ${escapeIdentifier(login)}${scope === 'role in database' ? ` IN DATABASE ${escapeIdentifier(deployment.databaseName)}` : ''}`;
+          await deployment.administrator.query(
+            `ALTER ${target} SET ${parameter} = '${value}'`,
+          );
+          expect(
+            (
+              await deployment.owner.query(
+                "SELECT current_setting($1) AS value, has_parameter_privilege($2, $1, 'SET') AS can_set",
+                [parameter, login],
+              )
+            ).rows,
+          ).toEqual([
+            {
+              value: parameter === 'lo_compat_privileges' ? 'off' : 'origin',
+              can_set: false,
+            },
+          ]);
+          const runtime = deployment.connect(
+            login,
+            `-c role=${roles.operator}`,
+          );
+          expect(
+            (
+              await runtime.query('SELECT current_setting($1) AS value', [
+                parameter,
+              ])
+            ).rows,
+          ).toEqual([{ value }]);
+          await expect(
+            migrator.migrate(
+              deployment.owner,
+              [initial],
+              fingerprint,
+              deployment.allowedLogins,
+            ),
+          ).rejects.toThrow('Registry refuses persisted');
+          if (scope !== 'role in database') {
+            await deployment.administrator.query(
+              `ALTER ROLE ${escapeIdentifier(login)} IN DATABASE ${escapeIdentifier(deployment.databaseName)} SET ${parameter} = '${parameter === 'lo_compat_privileges' ? 'off' : 'origin'}'`,
+            );
+            const shadowed = deployment.connect(login);
+            expect(
+              (
+                await shadowed.query('SELECT current_setting($1) AS value', [
+                  parameter,
+                ])
+              ).rows,
+            ).toEqual([
+              {
+                value: parameter === 'lo_compat_privileges' ? 'off' : 'origin',
+              },
+            ]);
+            await expect(
+              migrator.migrate(
+                deployment.owner,
+                [initial],
+                fingerprint,
+                deployment.allowedLogins,
+              ),
+            ).rejects.toThrow('Registry refuses persisted');
+          }
+          await deployment.administrator.query(
+            `ALTER ${target} RESET ${parameter}`,
+          );
+          expect(
+            await migrator.migrate(
+              deployment.owner,
+              [initial],
+              fingerprint,
+              deployment.allowedLogins,
+            ),
+          ).toEqual([]);
+        });
+      },
+    );
+
+    it.each([
+      ['app', 'direct'],
+      ['app', 'cascade'],
+      ['app', 'disabled'],
+      ['operator', 'direct'],
+      ['operator', 'cascade'],
+      ['operator', 'disabled'],
+      ['app', 'rewrite'],
+      ['app', 'disabled rewrite'],
+      ['operator', 'rewrite'],
+      ['operator', 'disabled rewrite'],
+    ] as const)(
+      'refuses Registry evidence forged by its configured %s role through a %s dependency',
+      async (identity, path) => {
+        await withRegistryCluster(async (create, roles) => {
+          const deployment = await create();
+          const migrator = createPostgresMigrator(deployment.config);
+          const initial = artifact(roles);
+          await migrator.migrate(
+            deployment.owner,
+            [initial],
+            fingerprint,
+            deployment.allowedLogins,
+          );
+          const sql =
+            'CREATE TABLE public.required_registry_migration (id integer PRIMARY KEY)';
+          const snapshot = { fixture: 'registry', version: 2 };
+          const manifest = {
+            format: 1 as const,
+            id: '0002_registry',
+            previous: initial.manifest.id,
+            fingerprint: sha256(sql),
+            snapshotHash: jsonHash(snapshot),
+            sqlHash: sha256(sql),
+            sidecarsHash: sha256(''),
+          };
+          const next: Migration = {
+            sql,
+            sidecars: '',
+            snapshot,
+            manifest,
+            checksum: jsonHash(manifest),
+          };
+          const role = roles[identity];
+          const rewrite = path.includes('rewrite');
+          await deployment.owner
+            .query(`CREATE TABLE public.registry_trigger_source (id integer PRIMARY KEY, sibling integer);
+            INSERT INTO public.registry_trigger_source VALUES (1, 0);
+            CREATE TABLE public.registry_trigger_child (id integer PRIMARY KEY, source_id integer REFERENCES public.registry_trigger_source(id) ON DELETE CASCADE);
+            INSERT INTO public.registry_trigger_child VALUES (1, 1);
+            CREATE FUNCTION public.registry_trigger_forgery() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER AS $function$
+            BEGIN
+              INSERT INTO registry_migrations.history (position, id, checksum, fingerprint)
+                VALUES (2, '${next.manifest.id}', '${next.checksum}', '${next.manifest.fingerprint}');
+              UPDATE public.registry_schema_fingerprint SET fingerprint = '${next.manifest.fingerprint}';
+              RETURN NULL;
+            END
+            $function$;
+            REVOKE ALL ON FUNCTION public.registry_trigger_forgery() FROM PUBLIC, ${escapeIdentifier(roles.app)}, ${escapeIdentifier(roles.operator)}`);
+          const target =
+            path === 'cascade'
+              ? 'registry_trigger_child'
+              : 'registry_trigger_source';
+          const event = path === 'cascade' ? 'DELETE' : 'UPDATE OF sibling';
+          await deployment.owner.query(
+            rewrite
+              ? `CREATE RULE forge_registry AS ON UPDATE TO public.registry_trigger_source DO ALSO (
+                  INSERT INTO registry_migrations.history (position, id, checksum, fingerprint)
+                    VALUES (2, '${next.manifest.id}', '${next.checksum}', '${next.manifest.fingerprint}');
+                  UPDATE public.registry_schema_fingerprint SET fingerprint = '${next.manifest.fingerprint}'
+                )`
+              : `CREATE TRIGGER forge_registry AFTER ${event} ON public.${target}
+                FOR EACH ROW EXECUTE FUNCTION public.registry_trigger_forgery()`,
+          );
+          await deployment.owner.query(
+            path === 'cascade'
+              ? `GRANT DELETE ON public.registry_trigger_source TO ${escapeIdentifier(role)}`
+              : `GRANT UPDATE (sibling) ON public.registry_trigger_source TO ${escapeIdentifier(role)}`,
+          );
+          expect(
+            (
+              await deployment.administrator.query(
+                `SELECT
+            has_function_privilege($1, 'public.registry_trigger_forgery()', 'EXECUTE') AS executable,
+            has_table_privilege($1, 'registry_migrations.history', 'INSERT') AS history_writable,
+            has_table_privilege($1, 'public.registry_schema_fingerprint', 'UPDATE') AS fingerprint_writable,
+            has_table_privilege($1, 'public.registry_trigger_child', 'DELETE') AS child_writable`,
+                [role],
+              )
+            ).rows,
+          ).toEqual([
+            {
+              executable: false,
+              history_writable: false,
+              fingerprint_writable: false,
+              child_writable: false,
+            },
+          ]);
+          const runtime = deployment.connect(
+            deployment.logins[identity],
+            `-c role=${role}`,
+          );
+          expect(
+            (await runtime.query('SELECT current_user AS role')).rows,
+          ).toEqual([{ role }]);
+          expect(
+            (
+              await runtime.query(
+                path === 'cascade'
+                  ? 'DELETE FROM public.registry_trigger_source'
+                  : 'UPDATE public.registry_trigger_source SET sibling = 1',
+              )
+            ).rowCount,
+          ).toBe(1);
+          const forged = (
+            await deployment.administrator.query(
+              'SELECT * FROM registry_migrations.history ORDER BY position',
+            )
+          ).rows;
+          expect(forged).toHaveLength(2);
+          expect(forged.at(-1)).toMatchObject({
+            checksum: next.checksum,
+            fingerprint: next.manifest.fingerprint,
+          });
+          expect(
+            (
+              await deployment.administrator.query(
+                'SELECT fingerprint FROM public.registry_schema_fingerprint',
+              )
+            ).rows,
+          ).toEqual([{ fingerprint: next.manifest.fingerprint }]);
+          if (path.startsWith('disabled')) {
+            await deployment.owner.query(
+              `ALTER TABLE public.registry_trigger_source DISABLE ${rewrite ? 'RULE' : 'TRIGGER'} forge_registry`,
+            );
+            expect(
+              (
+                await deployment.administrator.query(
+                  rewrite
+                    ? "SELECT ev_enabled AS enabled FROM pg_rewrite WHERE rulename = 'forge_registry'"
+                    : "SELECT tgenabled AS enabled FROM pg_trigger WHERE tgname = 'forge_registry'",
+                )
+              ).rows,
+            ).toEqual([{ enabled: 'D' }]);
+          }
+          await expect(
+            migrator.migrate(
+              deployment.owner,
+              [initial, next],
+              next.manifest.fingerprint,
+              deployment.allowedLogins,
+            ),
+          ).rejects.toThrow(
+            rewrite
+              ? 'Registry does not support owner-backed rewrite rules'
+              : 'Registry does not support SECURITY DEFINER triggers',
+          );
+          expect(
+            (
+              await deployment.administrator.query(
+                'SELECT * FROM registry_migrations.history ORDER BY position',
+              )
+            ).rows,
+          ).toEqual(forged);
+          expect(
+            (
+              await deployment.administrator.query(
+                "SELECT to_regclass('public.required_registry_migration') AS marker",
+              )
+            ).rows,
+          ).toEqual([{ marker: null }]);
+        });
+      },
+    );
+
+    it.each([
+      ['app', true, false],
+      ['app', true, true],
+      ['operator', true, false],
+      ['operator', true, true],
+      ['backup', true, false],
+      ['backup', true, true],
+      ['login', true, false],
+      ['login', true, true],
+      ['PUBLIC', true, false],
+      ['PUBLIC', true, true],
+      ['app', false, false],
+      ['app', false, true],
+      ['operator', false, false],
+      ['operator', false, true],
+      ['login', false, false],
+      ['login', false, true],
+      ['PUBLIC', false, false],
+      ['PUBLIC', false, true],
+    ] as const)(
+      'refuses configured Registry %s parameter SET with backup configured %s and existing large object %s',
+      async (identity, withBackup, existingObject) => {
+        await withRegistryCluster(async (create, roles) => {
+          const deployment = await create();
+          const { backupRole, ...withoutBackup } = deployment.config;
+          expect(backupRole).toBe(roles.backup);
+          const migrator = createPostgresMigrator(
+            withBackup ? deployment.config : withoutBackup,
+          );
+          const initial = artifact(roles);
+          await migrator.migrate(
+            deployment.owner,
+            [initial],
+            fingerprint,
+            deployment.allowedLogins,
+          );
+          const history = (
+            await deployment.administrator.query(
+              'SELECT * FROM registry_migrations.history',
+            )
+          ).rows;
+          expect(history).toHaveLength(1);
+          const client = await deployment.administrator.connect();
+          try {
+            // Parameter grants are cluster-wide. Every grant and actual write
+            // stays in one administrator transaction and is rolled back.
+            await client.query('BEGIN');
+            if (withBackup)
+              await client.query(runtimeRolesSql([roles.backup], 'Registry'));
+            const role =
+              identity === 'login'
+                ? deployment.logins.app
+                : identity === 'PUBLIC'
+                  ? roles.app
+                  : roles[identity];
+            await client.query(
+              `GRANT SET ON PARAMETER lo_compat_privileges TO ${identity === 'PUBLIC' ? 'PUBLIC' : escapeIdentifier(role)}`,
+            );
+            if (existingObject) {
+              const object = (
+                await client.query<{ oid: number }>(
+                  "SELECT lo_from_bytea(0, convert_to('original', 'UTF8')) AS oid",
+                )
+              ).rows[0]!;
+              expect(object.oid).toBeGreaterThan(0);
+              await client.query(`SET LOCAL ROLE ${escapeIdentifier(role)}`);
+              expect(
+                (
+                  await client.query(
+                    `SELECT current_user AS role,
+                has_parameter_privilege(current_user, 'lo_compat_privileges', 'SET') AS can_set,
+                has_largeobject_privilege(current_user, $1, 'SELECT,UPDATE') AS object_access`,
+                    [object.oid],
+                  )
+                ).rows,
+              ).toEqual([{ role, can_set: true, object_access: false }]);
+              await client.query('SAVEPOINT normal_permissions');
+              await expect(
+                client.query(
+                  "SELECT lo_put($1, 0, convert_to('modified', 'UTF8'))",
+                  [object.oid],
+                ),
+              ).rejects.toMatchObject({ code: '42501' });
+              await client.query('ROLLBACK TO SAVEPOINT normal_permissions');
+              await client.query('SET LOCAL lo_compat_privileges = on');
+              await client.query(
+                "SELECT lo_put($1, 0, convert_to('modified', 'UTF8'))",
+                [object.oid],
+              );
+              await client.query('RESET ROLE');
+              expect(
+                (
+                  await client.query(
+                    "SELECT convert_from(lo_get($1), 'UTF8') AS content",
+                    [object.oid],
+                  )
+                ).rows,
+              ).toEqual([{ content: 'modified' }]);
+            } else {
+              expect(
+                (
+                  await client.query(
+                    'SELECT count(*)::int AS count FROM pg_largeobject_metadata',
+                  )
+                ).rows,
+              ).toEqual([{ count: 0 }]);
+            }
+            // Keep the capability oracle independent from permissive live mode.
+            await client.query('SET LOCAL lo_compat_privileges = off');
+            await client.query(
+              `SET LOCAL SESSION AUTHORIZATION ${escapeIdentifier(deployment.logins.owner)}`,
+            );
+            expect(
+              (
+                await client.query(
+                  'SELECT session_user AS login, current_user AS role',
+                )
+              ).rows,
+            ).toEqual([
+              { login: deployment.logins.owner, role: deployment.logins.owner },
+            ]);
+            await expect(
+              migrator.enforceSecurity(client, deployment.allowedLogins),
+            ).rejects.toThrow(
+              'Registry runtime and backup identities must not have SET on lo_compat_privileges',
+            );
+          } finally {
+            await client.query('ROLLBACK');
+            client.release();
+          }
+          expect(
+            (
+              await deployment.administrator.query(
+                'SELECT * FROM registry_migrations.history',
+              )
+            ).rows,
+          ).toEqual(history);
+          expect(
+            (
+              await deployment.administrator.query(
+                'SELECT count(*)::int AS count FROM pg_largeobject_metadata',
+              )
+            ).rows,
+          ).toEqual([{ count: 0 }]);
+          expect(
+            await migrator.migrate(
+              deployment.owner,
+              [initial],
+              fingerprint,
+              deployment.allowedLogins,
+            ),
+          ).toEqual([]);
+        });
+      },
+    );
+
+    it.each([true, false])(
+      'refuses sticky Registry compatibility mode after grant revocation with backup configured %s',
+      async (withBackup) => {
+        await withRegistryCluster(async (create, roles) => {
+          const deployment = await create();
+          const { backupRole, ...withoutBackup } = deployment.config;
+          expect(backupRole).toBe(roles.backup);
+          const migrator = createPostgresMigrator(
+            withBackup ? deployment.config : withoutBackup,
+          );
+          const initial = artifact(roles);
+          await migrator.migrate(
+            deployment.owner,
+            [initial],
+            fingerprint,
+            deployment.allowedLogins,
+          );
+          const client = await deployment.administrator.connect();
+          try {
+            await client.query('BEGIN');
+            await client.query(
+              `GRANT SET ON PARAMETER lo_compat_privileges TO ${escapeIdentifier(deployment.logins.owner)}`,
+            );
+            await client.query(
+              `SET LOCAL ROLE ${escapeIdentifier(deployment.logins.owner)}`,
+            );
+            await client.query('SET LOCAL lo_compat_privileges = on');
+            await client.query('RESET ROLE');
+            await client.query(
+              `REVOKE SET ON PARAMETER lo_compat_privileges FROM ${escapeIdentifier(deployment.logins.owner)}`,
+            );
+            await client.query(
+              `SET LOCAL SESSION AUTHORIZATION ${escapeIdentifier(deployment.logins.owner)}`,
+            );
+            expect(
+              (
+                await client.query(`SELECT current_setting('lo_compat_privileges') AS compatibility,
+            has_parameter_privilege(current_user, 'lo_compat_privileges', 'SET') AS can_set`)
+              ).rows,
+            ).toEqual([{ compatibility: 'on', can_set: false }]);
+            expect(
+              (
+                await client.query(
+                  'SELECT count(*)::int AS count FROM pg_largeobject_metadata',
+                )
+              ).rows,
+            ).toEqual([{ count: 0 }]);
+            await expect(
+              migrator.enforceSecurity(client, deployment.allowedLogins),
+            ).rejects.toThrow('lo_compat_privileges');
+          } finally {
+            await client.query('ROLLBACK');
+            client.release();
+          }
+          expect(
+            await migrator.migrate(
+              deployment.owner,
+              [initial],
+              fingerprint,
+              deployment.allowedLogins,
+            ),
+          ).toEqual([]);
+        });
+      },
+    );
+
     it('refuses existing objects in the configured schema before applying SQL', async () => {
       await withRegistryCluster(async (create, roles) => {
         const deployment = await create();
@@ -344,12 +1193,16 @@ describe.skipIf(!database)(
       await withRegistryCluster(async (create, roles) => {
         const deployment = await create();
         const mutableRoles = [roles.app, roles.operator];
+        const mutableRoleSets = [[roles.app], [roles.operator]];
         const mutableConfig = {
           ...deployment.config,
           runtimeRoles: mutableRoles,
+          runtimeLoginRoleSets: mutableRoleSets,
         };
         const migrator = createPostgresMigrator(mutableConfig);
         mutableRoles.splice(0, 2, 'wrong_role');
+        mutableRoleSets[0]?.splice(0, 1, roles.operator);
+        mutableRoleSets.splice(0, 2, [roles.app, roles.operator]);
         mutableConfig.historySchema = 'wrong_history';
         mutableConfig.fingerprintTable = 'wrong_stamp';
         expect(
@@ -728,6 +1581,11 @@ describe.skipIf(!database)(
         ).rows;
         expect(history).toHaveLength(1);
         const payload = Buffer.from('registry large-object fixture');
+        // The fixture's restore owner receives this administrator grant explicitly;
+        // the capability helper only revokes PUBLIC and restricted-role access.
+        await deployment.administrator.query(
+          `GRANT EXECUTE ON FUNCTION pg_catalog.lo_from_bytea(oid,bytea) TO ${escapeIdentifier(deployment.logins.owner)}`,
+        );
         const object = (
           await deployment.owner.query<{ oid: number }>(
             'SELECT lo_from_bytea(0, $1) AS oid',
@@ -904,6 +1762,9 @@ describe.skipIf(!database)(
             code: '42501',
           });
         const original = Buffer.from('registry backup large object');
+        await deployment.administrator.query(
+          `GRANT EXECUTE ON FUNCTION pg_catalog.lo_from_bytea(oid,bytea) TO ${escapeIdentifier(deployment.logins.owner)}`,
+        );
         const object = (
           await deployment.owner.query<{ oid: number }>(
             'SELECT lo_from_bytea(0, $1) AS oid',

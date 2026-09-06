@@ -2750,10 +2750,16 @@ importers:
       uuid:
         specifier: 'catalog:'
         version: 14.0.1
+      zod:
+        specifier: 'catalog:'
+        version: 4.4.3
     devDependencies:
       '@codaco/fresco-ui':
         specifier: workspace:^
         version: link:../fresco-ui
+      '@codaco/network-query':
+        specifier: workspace:^
+        version: link:../network-query
       '@codaco/protocols':
         specifier: workspace:^
         version: link:../protocols
