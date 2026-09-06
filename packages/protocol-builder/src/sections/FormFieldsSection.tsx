@@ -36,6 +36,7 @@ import {
   useSetVariableComponent,
 } from '../codebook/useCodebookVariableEdits.ts';
 import CodebookVariableValidationEditor from '../codebook/validation/CodebookVariableValidationEditor.tsx';
+import { parameterShapeFor } from '../codebook/variableParameters.ts';
 import {
   buildVariableRoleMap,
   excludeUnvalidatedUses,
@@ -129,6 +130,17 @@ const isOptionType = (type: string): boolean => OPTION_TYPES.includes(type);
 
 const CREATE_WITH_VALUES = 'Create this attribute and its values';
 const EDIT_VALUES = 'Change this attribute’s values';
+/**
+ * The same surface, for an attribute whose answer is not chosen from a list.
+ *
+ * A date field accepts dates between two bounds, at one of three precisions; a
+ * scale accepts a position between two ends the researcher names. Neither is a
+ * list of values, and both are the same question asked of a different kind of
+ * attribute — so it is one control, named for what the researcher is looking
+ * at. They cannot both apply: an attribute is either a list of answers or it
+ * takes settings, never both.
+ */
+const EDIT_PARAMETERS = 'Set what this field accepts';
 const EDIT_RULES = 'Set rules for this answer';
 
 const CREATE_WITH_VALUES_FIRST =
@@ -886,10 +898,11 @@ function AttributeCodebookControls({
   // attribute has to land on it rather than on the stage behind it.
   const setFieldValue = useFormStore((state) => state.setFieldValue);
   const chosen = asString(useRowValue('variable') ?? item.variable) ?? '';
+  const liveComponent = useRowValue(INPUT_CONTROL);
   const [editing, setEditing] = useState<Readonly<{
     /** Fresh for every open, so the editor starts from the draft it is given. */
     openId: string;
-    surface: 'create' | 'values' | 'rules';
+    surface: 'create' | 'defines' | 'rules';
     label: string;
     /**
      * The record id a created attribute is minted with, decided when the
@@ -898,34 +911,56 @@ function AttributeCodebookControls({
      * on the rename.
      */
     variableId: string;
+    /**
+     * The input control the editor authors settings FOR, taken from the row at
+     * the moment it opens rather than from the codebook.
+     *
+     * The row is where the control is chosen, and it is not committed until
+     * the row is saved — so a researcher who has just switched a date field
+     * from one picker to the other would otherwise be handed the settings of
+     * the control they have left behind, and the settings they author would be
+     * written beside a control that cannot take them.
+     */
+    component: string;
   }> | null>(null);
   const createTrigger = useRef<HTMLButtonElement>(null);
-  const valuesTrigger = useRef<HTMLButtonElement>(null);
+  const definesTrigger = useRef<HTMLButtonElement>(null);
   const rulesTrigger = useRef<HTMLButtonElement>(null);
 
   const variables = variablesIn(codebookDocument);
   const picked =
     chosen === '' || chosen === NEW_VARIABLE ? undefined : variables[chosen];
   const pickedType = asString(asRecord(picked).type) ?? '';
+  // The row's own choice while it is being made, falling back to the codebook
+  // for the render before the control has registered.
+  const pickedComponent =
+    asString(liveComponent) ?? asString(asRecord(picked).component) ?? '';
   const canEditValues = picked !== undefined && isOptionType(pickedType);
+  const canEditParameters =
+    picked !== undefined &&
+    parameterShapeFor(pickedType, pickedComponent) !== null;
   const canEditRules = picked !== undefined;
   const canCreate =
     inventingType !== undefined && isCollectableType(inventingType);
+  const definesLabel = canEditValues ? EDIT_VALUES : EDIT_PARAMETERS;
 
   if (readOnly || subject === undefined || codebookDocument === null) {
     return null;
   }
-  if (!canCreate && !canEditValues && !canEditRules) return null;
+  if (!canCreate && !canEditValues && !canEditParameters && !canEditRules) {
+    return null;
+  }
 
   const close = () => {
     setEditing(null);
   };
-  const open = (surface: 'create' | 'values' | 'rules', label: string) => {
+  const open = (surface: 'create' | 'defines' | 'rules', label: string) => {
     setEditing({
       openId: uuid(),
       surface,
       label,
       variableId: surface === 'create' ? uuid() : chosen,
+      component: pickedComponent,
     });
   };
 
@@ -949,15 +984,15 @@ function AttributeCodebookControls({
             {CREATE_WITH_VALUES}
           </Button>
         )}
-        {canEditValues && (
+        {(canEditValues || canEditParameters) && (
           <Button
-            ref={valuesTrigger}
+            ref={definesTrigger}
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => open('values', EDIT_VALUES)}
+            onClick={() => open('defines', definesLabel)}
           >
-            {EDIT_VALUES}
+            {definesLabel}
           </Button>
         )}
         {canEditRules && (
@@ -1010,13 +1045,13 @@ function AttributeCodebookControls({
           />
         </Dialog>
       )}
-      {editing?.surface === 'values' && (
+      {editing?.surface === 'defines' && (
         <Dialog
           open
           title={editing.label}
           size="readable"
           closeDialog={close}
-          finalFocus={() => valuesTrigger.current}
+          finalFocus={() => definesTrigger.current}
         >
           <VariableEditor
             mode="update"
@@ -1024,7 +1059,16 @@ function AttributeCodebookControls({
             subject={subject}
             authoritativeDocument={codebookDocument}
             variableId={editing.variableId}
-            initialDraft={asRecord(variables[editing.variableId])}
+            // The control comes from the row rather than from the codebook,
+            // because the row is where it was just chosen. The editor writes
+            // it alongside the settings that depend on it, so the pair can
+            // never disagree; the row's own save then finds it already there.
+            initialDraft={{
+              ...asRecord(variables[editing.variableId]),
+              ...(editing.component === ''
+                ? {}
+                : { component: editing.component }),
+            }}
             // The type is what the chosen input control was chosen FOR, so
             // changing it here would leave the field promising a control the
             // interview cannot render for it.
