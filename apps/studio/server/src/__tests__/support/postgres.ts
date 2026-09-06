@@ -160,6 +160,12 @@ export async function createScratchDatabase(
   url.pathname = `/${name}`;
   const scratchDb = { url: url.toString() };
   const pool = createOwnerPool(scratchDb);
+  // Dedicated production databases require this administrator provisioning:
+  // PUBLIC otherwise permits persistent large-object writes without table DML.
+  await pool.query(`REVOKE EXECUTE ON FUNCTION
+    pg_catalog.lo_create(oid), pg_catalog.lo_creat(integer),
+    pg_catalog.lo_from_bytea(oid, bytea), pg_catalog.lo_import(text),
+    pg_catalog.lo_import(text, oid), pg_catalog.lo_export(oid, text) FROM PUBLIC`);
 
   return {
     db: scratchDb,
