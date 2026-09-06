@@ -12,6 +12,11 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 
 import Icon from './Icon';
 import Surface from './layout/Surface';
+import {
+  headingTagBelow,
+  type HeadingTag,
+  useEnclosingHeadingLevel,
+} from './typography/EnclosingHeadingLevel';
 import Heading from './typography/Heading';
 import { paragraphVariants } from './typography/Paragraph';
 import { cva, cx, type VariantProps } from './utils/cva';
@@ -271,35 +276,47 @@ Alert.displayName = 'Alert';
 
 export type AlertTitleProps = React.HTMLAttributes<HTMLHeadingElement> & {
   /**
-   * Where this title sits in the page's heading outline. Defaults to `h4`.
+   * Where this title sits in the page's heading outline, when the surrounding
+   * outline does not already say.
    *
    * An alert can be raised anywhere — beside a page title, inside a section,
    * within a dialog — and a heading level is only correct relative to the
-   * heading above it. Fixed at `h4`, an alert placed under an `h2` skips a
+   * heading above it. Fixed at `h4`, an alert raised under an `h2` skips a
    * level, which is a `heading-order` failure and, for anyone navigating by
    * headings, a title that reads as belonging to a subsection that does not
-   * exist.
+   * exist. A dialog, and a section within it, each state the level they
+   * enclose, so a title inside one lands one below the NEAREST of them
+   * without being told; with no heading above it at all the level stays `h4`.
    *
    * Changes the element only. The title keeps the small all-caps treatment
    * that makes it read as an alert's title at every level, because that is
    * about what the thing IS rather than about how deep in the page it sits.
    */
-  headingLevel?: 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
+  headingLevel?: HeadingTag;
 };
 
 const AlertTitle = React.forwardRef<HTMLParagraphElement, AlertTitleProps>(
-  ({ className, headingLevel, ...props }, ref) => (
-    <Heading
-      level="h4"
-      variant="all-caps"
-      {...(headingLevel === undefined || headingLevel === 'h4'
-        ? {}
-        : { render: React.createElement(headingLevel) })}
-      ref={ref}
-      className={cx('mt-0!', className)}
-      {...props}
-    />
-  ),
+  ({ className, headingLevel, ...props }, ref) => {
+    // Derived rather than declared: an opt-in level is a level nobody opts
+    // into. Every alert in the codebase was raised without one, so each dialog
+    // that warns before deleting a participant's interviews put its `h4` under
+    // its own `h2` title — the failure the prop was there to fix.
+    const enclosingLevel = useEnclosingHeadingLevel();
+    const tag =
+      headingLevel ??
+      (enclosingLevel === null ? 'h4' : headingTagBelow(enclosingLevel));
+
+    return (
+      <Heading
+        level="h4"
+        variant="all-caps"
+        {...(tag === 'h4' ? {} : { render: React.createElement(tag) })}
+        ref={ref}
+        className={cx('mt-0!', className)}
+        {...props}
+      />
+    );
+  },
 );
 AlertTitle.displayName = 'AlertTitle';
 

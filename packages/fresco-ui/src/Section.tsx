@@ -3,7 +3,6 @@
 import { Collapsible } from '@base-ui/react/collapsible';
 import type { ReactNode } from 'react';
 import {
-  createContext,
   createElement,
   useCallback,
   useContext,
@@ -18,6 +17,12 @@ import { FieldUnmountPolicyProvider } from './form/FieldUnmountPolicy';
 import { FormStoreContext } from './form/store/formStoreProvider';
 import Surface, { useSurfaceDepth } from './layout/Surface';
 import Toggle from './Toggle';
+import {
+  EnclosingHeadingLevel,
+  headingTagBelow,
+  type HeadingTag,
+  useEnclosingHeadingLevel,
+} from './typography/EnclosingHeadingLevel';
 import Heading from './typography/Heading';
 import Paragraph from './typography/Paragraph';
 
@@ -52,61 +57,27 @@ export type SectionProps = SectionBaseProps & SectionToggleProps;
 
 const subscribeToNothing = () => () => {};
 
-const HEADING_TAGS = ['h2', 'h3', 'h4', 'h5', 'h6'] as const;
-
-type HeadingTag = (typeof HEADING_TAGS)[number];
-
-const EnclosingHeadingLevelContext = createContext<HeadingTag | null>(null);
-
 /**
- * States the level of the heading a subtree's sections sit under.
+ * The tag a section's title carries: one level below the nearest heading
+ * above it.
  *
- * A section derives its own level from Surface depth, which is the right proxy
- * on a page — a section nested inside another section is one Surface deeper —
- * and the wrong one inside an overlay: `DialogPopup` restarts the Surface
- * ladder at depth 1 so nested surfaces derive from the overlay base rather
- * than from wherever the dialog was opened, which left a first-level section
- * in a dialog an `h4` under the dialog's `h2` title. That is an axe
- * `heading-order` failure, and for anyone navigating by headings it reads as a
- * subsection that is not there.
+ * Nearest, not outermost. A dialog says it encloses an `h2`, but a section in
+ * that dialog then writes an `h3` of its own, and everything inside THAT
+ * section belongs under the `h3` — the section it is in, not the dialog the
+ * section is in. So a section states its own level for its subtree, and the
+ * next heading down counts from there. That is what makes a nested section an
+ * `h4` and an alert raised inside it an `h4` too, rather than both of them
+ * being peers of the section that contains them.
  *
- * The overlay that owns the enclosing heading says what it is, and sections
- * inside count down from it. Only the ELEMENT changes: a section keeps the
- * type treatment its Surface depth gives it, because that is about how deeply
- * nested it looks rather than where it sits in the document's outline.
- *
- * Absent — an ordinary page — nothing changes: the Surface-depth level stands.
- */
-export const EnclosingHeadingLevel = ({
-  level,
-  children,
-}: {
-  level: HeadingTag;
-  children: ReactNode;
-}) => (
-  <EnclosingHeadingLevelContext.Provider value={level}>
-    {children}
-  </EnclosingHeadingLevelContext.Provider>
-);
-
-/**
- * The tag a section's title should carry, or `null` when its Surface-depth
- * level is already right.
- *
- * `surfaceDepth` is 1 for the outermost section inside a dialog, so a level
- * below an `h2` enclosing heading is `h3`, and one section deeper is `h4` —
- * the same ladder a page gives, started from the right rung. It stops at `h6`,
- * which is as deep as HTML's outline goes.
+ * Absent any enclosing heading — an ordinary page — the level Surface depth
+ * gives is the one to state, because on a page that is the inference that
+ * works.
  */
 const sectionHeadingTag = (
   enclosingLevel: HeadingTag | null,
-  surfaceDepth: number,
-): HeadingTag | null => {
-  if (enclosingLevel === null) return null;
-  const level =
-    HEADING_TAGS.indexOf(enclosingLevel) + Math.max(surfaceDepth, 1);
-  return HEADING_TAGS[Math.min(level, HEADING_TAGS.length - 1)] ?? null;
-};
+  surfaceLevel: HeadingTag,
+): HeadingTag =>
+  enclosingLevel === null ? surfaceLevel : headingTagBelow(enclosingLevel);
 
 /**
  * A single-panel form section. Closing a toggleable section removes its panel
@@ -127,8 +98,8 @@ export default function Section({
   const descriptionId = useId();
   const surfaceDepth = useSurfaceDepth();
   const headingLevel = surfaceDepth === 0 ? 'h3' : 'h4';
-  const enclosingHeadingLevel = useContext(EnclosingHeadingLevelContext);
-  const headingTag = sectionHeadingTag(enclosingHeadingLevel, surfaceDepth);
+  const enclosingHeadingLevel = useEnclosingHeadingLevel();
+  const headingTag = sectionHeadingTag(enclosingHeadingLevel, headingLevel);
   const [open, setOpen] = useState(toggleable ? defaultOpen : true);
   const [isChangePending, setIsChangePending] = useState(false);
   const changePending = useRef(false);
@@ -208,7 +179,7 @@ export default function Section({
               level={headingLevel}
               margin="none"
               // The element only — `level` still carries the type treatment.
-              {...(headingTag === null || headingTag === headingLevel
+              {...(headingTag === headingLevel
                 ? {}
                 : { render: createElement(headingTag) })}
             >
@@ -251,7 +222,14 @@ export default function Section({
                 disabled={disabled}
                 className="m-0 min-w-0 border-0 px-8 py-6 disabled:opacity-60"
               >
-                {children}
+                {/* The title above is the nearest heading to everything in
+                    here, so this is where the ladder continues from. Without
+                    it a nested section counted from the dialog rather than
+                    from the section it sits in, and an alert's title landed
+                    beside its own section's heading instead of under it. */}
+                <EnclosingHeadingLevel level={headingTag}>
+                  {children}
+                </EnclosingHeadingLevel>
               </fieldset>
             </FieldUnmountPolicyProvider>
           )}

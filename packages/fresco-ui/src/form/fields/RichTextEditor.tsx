@@ -3,7 +3,15 @@
 import { Toggle } from '@base-ui/react/toggle';
 import { ToggleGroup } from '@base-ui/react/toggle-group';
 import { Toolbar } from '@base-ui/react/toolbar';
-import { type AnyExtension, Extension, Node as TiptapNode } from '@tiptap/core';
+import {
+  type AnyExtension,
+  createNodeFromContent,
+  type Editor,
+  Extension,
+  getSchema,
+  isProseMirrorFragment,
+  Node as TiptapNode,
+} from '@tiptap/core';
 import { BulletList } from '@tiptap/extension-bullet-list';
 import { Heading } from '@tiptap/extension-heading';
 import { OrderedList } from '@tiptap/extension-ordered-list';
@@ -12,7 +20,6 @@ import { Placeholder } from '@tiptap/extension-placeholder';
 import {
   type DOMOutputSpec,
   Fragment,
-  type Node as ProseMirrorNode,
   type Schema,
   Slice,
 } from '@tiptap/pm/model';
@@ -24,6 +31,7 @@ import {
   useEditorState,
 } from '@tiptap/react';
 import { StarterKit } from '@tiptap/starter-kit';
+import { isEqual } from 'es-toolkit';
 import {
   Bold,
   Check,
@@ -229,39 +237,199 @@ const SingleLineDocument = TiptapNode.create({
   content: 'paragraph',
 });
 
+/** The line being collected, and whether a break is owed before its next text. */
+type OneLineRun = {
+  collected: JSONContent[];
+  breakPending: boolean;
+};
+
+const SPACE = ' ';
+
 /**
- * Every inline node of a pasted slice, with each break between them spelled as
- * a space: block boundaries, and inline nodes that are not text (a hard break,
- * or an atom this field has no room for).
- *
- * Text nodes are carried over rather than re-made, so pasting a formatted
- * phrase into a single-line field keeps its bold and italic runs — the line
- * loses its line breaks, not its formatting.
+ * Adds text to the line, joining it to the run before it when they carry the
+ * same marks. That is what ProseMirror itself holds, so a flattened value
+ * compares equal to the document the editor makes of it.
  */
-const inlineNodesOf = (
-  fragment: Fragment,
+const pushRun = (
+  run: OneLineRun,
+  text: string,
+  marks: JSONContent['marks'],
+) => {
+  const carried = marks && marks.length > 0 ? marks : undefined;
+  const previous = run.collected.at(-1);
+
+  if (previous?.type === 'text' && isEqual(previous.marks, carried)) {
+    previous.text = `${previous.text ?? ''}${text}`;
+    return;
+  }
+
+  run.collected.push(
+    carried === undefined
+      ? { type: 'text', text }
+      : { type: 'text', marks: carried, text },
+  );
+};
+
+/**
+ * Adds a text node to the line, spelling any break owed before it as one
+ * space. The space carries no marks of its own: a bold space would serialise
+ * as part of the bold run, and markdown will not open emphasis on a space.
+ */
+const addText = (
+  run: OneLineRun,
+  text: string,
+  marks: JSONContent['marks'],
+) => {
+  if (run.breakPending && run.collected.length > 0) {
+    pushRun(run, SPACE, undefined);
+  }
+
+  run.breakPending = false;
+  pushRun(run, text, marks);
+};
+
+/** A run of newlines, however the platform that wrote them spells one. */
+const LINE_BREAKS = /(?:\r\n|[\n\r])+/;
+
+/**
+ * Adds a text node, treating the newlines INSIDE it as breaks like any other.
+ *
+ * A line break can live inside the text itself, where no schema was ever going
+ * to refuse it: markdown's own soft break parses to one text node with the
+ * newline still in it, and the editor renders with `white-space: pre-wrap`, so
+ * the field showed two lines while reporting `aria-multiline="false"` — and
+ * saved the break back into the label a participant reads.
+ */
+const addTextLines = (
+  run: OneLineRun,
+  text: string,
+  marks: JSONContent['marks'],
+) => {
+  for (const [index, line] of text.split(LINE_BREAKS).entries()) {
+    if (index > 0) {
+      run.breakPending = true;
+    }
+
+    if (line !== '') {
+      addText(run, line, marks);
+    }
+  }
+};
+
+/**
+ * The marks a text node can keep: the ones this schema has a type for.
+ *
+ * Marks are the half of a document the flattener carries through untouched,
+ * and that was only safe while every schema had the same marks. It does not:
+ * links are a toolbar option, and a field offering none has no `link` mark to
+ * read one back into. `Node.fromJSON` refuses a mark type it does not know
+ * exactly as it refuses a node type it does not know, and the reader answers
+ * that the same way — with an EMPTY document. So a linked phrase blanked the
+ * whole field, and the next edit saved the blank.
+ *
+ * The words are what a single-line field promised to keep; the link is a
+ * decoration the field was never offering to hold.
+ */
+const marksInSchema = (
+  marks: JSONContent['marks'],
   schema: Schema,
-  collected: ProseMirrorNode[] = [],
-): ProseMirrorNode[] => {
-  fragment.forEach((node) => {
-    if (node.isText) {
-      collected.push(node);
-      return;
+): JSONContent['marks'] =>
+  marks?.filter((mark) => Object.hasOwn(schema.marks, mark.type));
+
+/**
+ * Every line of a document, run together as the inline content of one.
+ *
+ * This works on the JSON rather than on a parsed document, because on the way
+ * IN there is nothing parsed yet — and for a single-line field there cannot
+ * be. Its schema has no heading, list or rule in it, `Node.fromJSON` throws on
+ * a node type it does not know, and TipTap answers that by handing back an
+ * EMPTY document. So a stored heading did not arrive flattened; it arrived as
+ * nothing at all, and the next edit saved that emptiness over the researcher's
+ * words. Reading the value first is the very thing that fails, so the shape is
+ * changed before anything reads it.
+ *
+ * Text keeps its marks, so a formatted phrase keeps its bold and italic runs:
+ * the line loses its line breaks, not its formatting.
+ *
+ * Every other node is a BREAK in the line — a block boundary, a hard break, an
+ * atom this field has no room for, a newline inside the text itself — and
+ * however many of them fall together
+ * they spell ONE space, and only between text that says something on both
+ * sides. Spelling each break separately put one in twice wherever blocks nest
+ * (a pasted list arrived as "One  Two"), put one beside an empty paragraph
+ * that has nothing on the other side of it, and left the saved line ending in
+ * one. Architect's markdown adapter reduces its own blocks by this same rule.
+ */
+const collectOneLine = (
+  content: JSONContent[] | null | undefined,
+  run: OneLineRun,
+  schema: Schema,
+) => {
+  for (const node of content ?? []) {
+    if (node.type === 'text') {
+      if (node.text) {
+        addTextLines(run, node.text, marksInSchema(node.marks, schema));
+      }
+      continue;
     }
 
-    if (node.isInline) {
-      collected.push(schema.text(' '));
-      return;
-    }
+    // Owed on both sides of whatever this node holds: the text after a block
+    // is on a new line, and so is the text after the block ends.
+    run.breakPending = true;
+    collectOneLine(node.content, run, schema);
+    run.breakPending = true;
+  }
+};
 
-    if (collected.length > 0) {
-      collected.push(schema.text(' '));
-    }
+/** The inline content a document's lines make when run together as one. */
+const oneLineContentOf = (
+  content: JSONContent[] | null | undefined,
+  schema: Schema,
+): JSONContent[] => {
+  const run: OneLineRun = { collected: [], breakPending: false };
+  collectOneLine(content, run, schema);
+  return run.collected;
+};
 
-    inlineNodesOf(node.content, schema, collected);
-  });
+/**
+ * The one-paragraph document a value makes.
+ *
+ * An empty paragraph carries no `content` at all, which is how ProseMirror
+ * writes one: the flattened value has to be comparable to the document the
+ * editor holds, key for key.
+ */
+const oneLineDocumentOf = (value: JSONContent, schema: Schema): JSONContent => {
+  const content = oneLineContentOf(value.content, schema);
 
-  return collected;
+  return {
+    type: 'doc',
+    content: [
+      content.length > 0
+        ? { type: 'paragraph', content }
+        : { type: 'paragraph' },
+    ],
+  };
+};
+
+/**
+ * The flattened value as the editor will hold it.
+ *
+ * Only the comparison in the sync effect needs this: reading the flattened
+ * document through the schema fills in the mark attributes a stored value can
+ * leave out, so a host echoing its own value back settles instead of having
+ * the document replaced on every pass. The document is a paragraph of text by
+ * then, and the marks are the ones this schema has, so the read cannot fail
+ * on a type it does not know. `createNodeFromContent` is the reader TipTap's
+ * own `content` option uses, so both ways in agree.
+ */
+const asOneLine = (value: JSONContent, schema: Schema): JSONContent => {
+  const flattened = oneLineDocumentOf(value, schema);
+  const parsed = createNodeFromContent(flattened, schema, { slice: false });
+
+  // A fragment only comes back from that reader's own empty-content fallback.
+  return isProseMirrorFragment(parsed)
+    ? flattened
+    : (parsed.toJSON() as JSONContent);
 };
 
 const swallowKeystroke = () => true;
@@ -302,8 +470,17 @@ const SingleLineInput = Extension.create({
           // The last step of every paste, whichever flavour the clipboard
           // offered: plain text is parsed into paragraphs first, so
           // transforming the text as well would only do this twice.
+          //
+          // Through the same flattening a value goes through, so however a
+          // line reaches this field a break is spelled the same way. The
+          // round trip is safe in this direction: a pasted slice was parsed
+          // with this schema, so everything in it can be read back.
           transformPasted: (slice: Slice) => {
-            const nodes = inlineNodesOf(slice.content, schema);
+            const pasted = slice.content.toJSON() as JSONContent[] | null;
+            const nodes = oneLineContentOf(pasted, schema).map((node) =>
+              schema.nodeFromJSON(node),
+            );
+
             return nodes.length === 0
               ? Slice.empty
               : new Slice(Fragment.fromArray(nodes), 0, 0);
@@ -606,6 +783,11 @@ export default function RichTextEditorField({
   onChangeRef.current = onChange;
   changeModeRef.current = changeMode;
 
+  // Whether the FIELD is unavailable — read-only, or disabled while its form
+  // submits. Read by a hook below, so it is worked out before the early
+  // return rather than beside the toolbar that shows it.
+  const isDisabled = Boolean(disabled) || Boolean(readOnly);
+
   const inputState = getInputState({
     disabled,
     readOnly,
@@ -707,6 +889,25 @@ export default function RichTextEditorField({
       placeholder,
     ],
   );
+  // The schema these extensions make, worked out before there is an editor to
+  // ask. A value has to be flattened against the marks the field will actually
+  // have, and the first value is read while the editor is being built.
+  const editorSchema = useMemo(
+    () => getSchema(editorExtensions),
+    [editorExtensions],
+  );
+
+  // What the field holds and the host has not been told about. `changeMode`
+  // decides how long that lasts: on `input` it is over as soon as the update
+  // is reported, and on `blur` it lasts until the caret leaves. For as long
+  // as it lasts, this is the only copy of the researcher's typing there is.
+  const unemittedDocumentRef = useRef<JSONContent | null>(null);
+  const syncedEditorRef = useRef<Editor | null>(null);
+  // Changing what the field offers rebuilds the editor around a new schema,
+  // and it is rebuilt from what the field holds — which on `changeMode="blur"`
+  // is a whole sentence ahead of `value` by design. Seeding the replacement
+  // from the value instead threw that sentence away mid-edit.
+  const seed = unemittedDocumentRef.current ?? value;
 
   const editor = useEditor(
     {
@@ -714,16 +915,31 @@ export default function RichTextEditorField({
         attributes: editorAttributes,
       },
       extensions: editorExtensions,
-      content: value,
+      // Flattened here rather than after the editor exists: `useEditor` reads
+      // this option itself, and reading a value with a block the single-line
+      // schema has no type for is what loses it. `onCreate` is too late twice
+      // over — it fires a tick after the field has painted, and by then the
+      // document it would flatten is already empty.
+      content:
+        singleLine && seed !== undefined
+          ? oneLineDocumentOf(seed, editorSchema)
+          : seed,
       editable: !disabled && !readOnly,
       autofocus: autoFocus ? 'end' : false,
       onUpdate: ({ editor: updateEditor }) => {
+        const updated = updateEditor.getJSON();
+
         if (changeModeRef.current === 'input') {
-          onChangeRef.current?.(updateEditor.getJSON());
+          unemittedDocumentRef.current = null;
+          onChangeRef.current?.(updated);
+          return;
         }
+
+        unemittedDocumentRef.current = updated;
       },
       onBlur: ({ editor: blurEditor }) => {
         if (changeModeRef.current === 'blur') {
+          unemittedDocumentRef.current = null;
           onChangeRef.current?.(blurEditor.getJSON());
         }
       },
@@ -750,7 +966,26 @@ export default function RichTextEditorField({
   });
 
   useEffect(() => {
-    if (!editor) return;
+    // A destroyed editor keeps its last document but nothing to change it
+    // with: `destroy` drops the schema and the command manager. Changing what
+    // the field offers — the single-line restriction included — rebuilds the
+    // editor, and this effect runs once more against the outgoing one before
+    // the new one arrives.
+    if (!editor || editor.isDestroyed) return;
+
+    const rebuilt = syncedEditorRef.current !== editor;
+    syncedEditorRef.current = editor;
+
+    // A rebuild that carried edits the host has not seen: the field now holds
+    // a document the outgoing schema could not express — the researcher's own
+    // words, flattened. Report it, and reconcile nothing this pass. `value` is
+    // what the host held a keystroke ago, and comparing against it here is
+    // what threw those words away.
+    if (rebuilt && unemittedDocumentRef.current !== null) {
+      unemittedDocumentRef.current = null;
+      onChangeRef.current?.(editor.getJSON());
+      return;
+    }
 
     if (value === undefined) {
       if (!editor.isEmpty) {
@@ -772,12 +1007,17 @@ export default function RichTextEditorField({
     // store no longer held (#1393). Keying the flag on the emitted document
     // instead is no better: it then refuses a host that legitimately sends the
     // same document back, which is exactly what undo-then-redo does.
+    // Compared as the editor will hold it, not as the host sent it: a
+    // single-line field flattens what it is given, so a host that keeps
+    // sending two paragraphs would otherwise never match and the document
+    // would be replaced again on every pass.
+    const incoming = singleLine ? asOneLine(value, editor.schema) : value;
     const currentContent = JSON.stringify(editor.getJSON());
-    const newContent = JSON.stringify(value);
+    const newContent = JSON.stringify(incoming);
     if (currentContent !== newContent) {
-      editor.commands.setContent(value, { emitUpdate: false });
+      editor.commands.setContent(incoming, { emitUpdate: false });
     }
-  }, [editor, value, isFocused]);
+  }, [editor, value, isFocused, singleLine]);
 
   // A LAYOUT effect: the editable flag lives in the DOM as `contenteditable`,
   // and a non-editable ProseMirror node carries no tabindex, so it cannot take
@@ -808,11 +1048,22 @@ export default function RichTextEditorField({
     }
   }, [editor, editorAttributes]);
 
+  // A popover outlives the button that opened it. Disabling the trigger says
+  // nothing about the panel already on screen: its URL box and its Apply and
+  // Remove buttons are in a portal of their own, and they went on running
+  // editor commands against a field the host had just made read-only —
+  // reporting the result back as a change a researcher had made. So the
+  // popover is closed when the field stops being one anybody can edit.
+  useEffect(() => {
+    if (!isDisabled) return;
+
+    setIsLinkPopoverOpen(false);
+    setLinkValidationMessage('');
+  }, [isDisabled]);
+
   if (!editor) {
     return null;
   }
-
-  const isDisabled = Boolean(disabled) || Boolean(readOnly);
 
   const getActiveFormattingValues = () => {
     const values: string[] = [];
@@ -998,7 +1249,10 @@ export default function RichTextEditorField({
                 toggle, so it does not belong inside their group element. */}
             {options.links && (
               <Popover
-                open={isLinkPopoverOpen}
+                // Closed by the render that makes the field unavailable, not
+                // by the effect that follows it: an effect leaves one commit
+                // in which the panel is on screen with its controls live.
+                open={isLinkPopoverOpen && !isDisabled}
                 onOpenChange={setLinkPopoverOpen}
               >
                 {/*
