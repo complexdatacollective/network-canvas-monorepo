@@ -13,6 +13,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
+import { imageOrCirclesBackgroundSchema } from '@codaco/protocol-validation';
 import {
   applyCommands,
   canonicalize,
@@ -298,9 +299,80 @@ const readList = (doc: SectionDoc, path: readonly string[]): Row[] => {
   return Array.isArray(cursor) ? (cursor as Row[]) : [];
 };
 
-const docWith = (path: readonly string[], list: readonly Row[]): SectionDoc => {
-  if (path.length === 1) return { label: 'S', [path[0]!]: [...list] };
-  return { label: 'S', nodeConfig: { type: 'x', [path[1]!]: [...list] } };
+// ------------------------------------------------ the exclusive variant
+
+/**
+ * A background, which a stage document may hold only ONE shape of: an image,
+ * or a number of concentric circles, and never both. `skewedTowardCenter` is
+ * the member both shapes allow, so that a side can write inside the container
+ * without deciding which shape it is.
+ *
+ * It rides along with every list trial because the two questions meet in one
+ * document: the diff that says a list edit structurally is the same diff that
+ * decides how deeply to address this, and the batches are rebased together.
+ */
+type Background = Readonly<{
+  image?: string;
+  concentricCircles?: number;
+  skewedTowardCenter?: boolean;
+}>;
+
+/** Which of the two shapes a background is, or that there is none. */
+const variantOf = (background: Background | undefined): string => {
+  if (background === undefined) return 'none';
+  return background.image === undefined ? 'circles' : 'image';
+};
+
+const someBackground = (rng: Rng, tag: string): Background =>
+  rng() < 0.5
+    ? { image: `${tag}.png` }
+    : { concentricCircles: 1 + int(rng, 4) };
+
+/**
+ * One change to a background: switching the capability on, switching which
+ * shape it is, rewriting the member the shape it has carries, or setting the
+ * member both shapes share.
+ *
+ * The last two are the writes INSIDE the container — the ones a diff
+ * addressing the deepest difference would say leaf by leaf, and so the ones
+ * that used to arrive as half of somebody else's variant.
+ */
+const changedBackground = (
+  rng: Rng,
+  background: Background | undefined,
+  tag: string,
+): Background => {
+  if (background === undefined) return someBackground(rng, tag);
+  const draw = rng();
+  if (draw < 0.35) {
+    return background.image === undefined
+      ? { image: `${tag}.png` }
+      : { concentricCircles: 1 + int(rng, 4) };
+  }
+  if (draw < 0.7) {
+    return background.image === undefined
+      ? { ...background, concentricCircles: 1 + int(rng, 4) }
+      : { ...background, image: `${tag}.png` };
+  }
+  return { ...background, skewedTowardCenter: draw < 0.85 };
+};
+
+const withBackground = (
+  document: SectionDoc,
+  background: Background | undefined,
+): SectionDoc =>
+  background === undefined ? document : { ...document, background };
+
+const docWith = (
+  path: readonly string[],
+  list: readonly Row[],
+  background?: Background,
+): SectionDoc => {
+  const document =
+    path.length === 1
+      ? { label: 'S', [path[0]!]: [...list] }
+      : { label: 'S', nodeConfig: { type: 'x', [path[1]!]: [...list] } };
+  return withBackground(document, background);
 };
 
 /**
@@ -325,6 +397,16 @@ type Trial = Readonly<{
   remote: Row[];
   batches: Command[][];
   appendedLast: Row | null;
+  baseBackground: Background | undefined;
+  localBackground: Background | undefined;
+  remoteBackground: Background | undefined;
+  /**
+   * Whether any of this session's submits actually said something about the
+   * background — which is not the same as its ending up different from the
+   * base, because a submit that changes it and a later one that changes it
+   * back are two writes and not none.
+   */
+  wroteBackground: boolean;
 }>;
 
 /**
@@ -383,6 +465,8 @@ type Outcome =
        * no longer there — the shape above, answered.
        */
       refusedIntoNothing: number;
+      /** What the merged document holds at the exclusive-variant container. */
+      background: unknown;
     };
 
 function runTrial(
@@ -396,6 +480,16 @@ function runTrial(
   const rng = mulberry32(seed);
   const path = rng() < 0.5 ? ['prompts'] : ['nodeConfig', 'form'];
   const base = rowsOf(rng, mode, int(rng, 5));
+
+  // The exclusive-variant dimension is drawn from a stream of ITS OWN, so that
+  // adding it left every list trial the counts below are calibrated on exactly
+  // as it was.
+  const variantRng = mulberry32(seed ^ 0x5bf03635);
+  const baseBackground =
+    variantRng() < 0.2 ? undefined : someBackground(variantRng, 'B');
+  let localBackground = baseBackground;
+  let remoteBackground = baseBackground;
+  let wroteBackground = false;
 
   // A row either side adds is a row of its own, in every mode: the copies a
   // trial is about are the ones the BASE holds — the roster imported twice,
@@ -439,9 +533,22 @@ function runTrial(
     } else {
       appendedLast = wasAppend ? after.at(-1)! : null;
     }
+    // Half the submits also touch the background, in the same diff — a submit
+    // is one draft against another, and everything it changed is in it.
+    const backgroundBefore = localBackground;
+    if (variantRng() < 0.5) {
+      localBackground = changedBackground(
+        variantRng,
+        localBackground,
+        `L${String(step)}`,
+      );
+    }
+    if (canonicalize(backgroundBefore) !== canonicalize(localBackground)) {
+      wroteBackground = true;
+    }
     const commands = commandsFromDraftChange(
-      docWith(path, before),
-      docWith(path, after),
+      docWith(path, before, backgroundBefore),
+      docWith(path, after, localBackground),
     );
     if (commands.length > 0) batches.push(commands);
     local = after;
@@ -455,6 +562,12 @@ function runTrial(
   for (let step = 0; step < remoteSteps; step += 1) {
     remote = arrivalStep(arrival, rng, mode, remote, mintRemote);
   }
+  // And the collaborator touches the background too — which for a dropped
+  // container is the only thing they did to this document besides taking the
+  // list's own container away.
+  if (variantRng() < 0.5) {
+    remoteBackground = changedBackground(variantRng, remoteBackground, 'R');
+  }
 
   const trial: Trial = {
     seed,
@@ -465,6 +578,10 @@ function runTrial(
     remote,
     batches,
     appendedLast,
+    baseBackground,
+    localBackground,
+    remoteBackground,
+    wroteBackground,
   };
 
   try {
@@ -472,8 +589,10 @@ function runTrial(
     // rebased against the document it was made on (the old base plus every
     // earlier batch, as issued) onto the new base plus every earlier REBASED
     // batch.
-    let basis = docWith(path, base);
-    let fields: SectionDoc = dropped ? { label: 'S' } : docWith(path, remote);
+    let basis = docWith(path, base, baseBackground);
+    let fields: SectionDoc = dropped
+      ? withBackground({ label: 'S' }, remoteBackground)
+      : docWith(path, remote, remoteBackground);
     const rebased: Command[][] = [];
     const inert: Command[] = [];
     let refusedIntoNothing = 0;
@@ -506,6 +625,7 @@ function runTrial(
         rebased,
         inert,
         refusedIntoNothing,
+        background: fields.background,
       },
     };
   } catch (error) {
@@ -516,6 +636,7 @@ function runTrial(
 const describeTrial = (trial: Trial, extra: string) =>
   [
     `seed ${String(trial.seed)} (${trial.mode}) at ${trial.path.join('.')}`,
+    `variant base ${JSON.stringify(trial.baseBackground)} local ${JSON.stringify(trial.localBackground)} arrival ${JSON.stringify(trial.remoteBackground)}`,
     `base    ${JSON.stringify(trial.base)}`,
     `local   ${JSON.stringify(trial.local)}`,
     `arrival ${JSON.stringify(trial.remote)}`,
@@ -582,6 +703,12 @@ const DROPPED_CONTAINER_TRIALS: Readonly<Record<Mode, number>> = {
   idless: 5,
   duplicated: 5,
 };
+
+/**
+ * And how many trials must have this session write inside the exclusive-variant
+ * container while the arrival switched which variant it is.
+ */
+const VARIANT_TRIALS = 25;
 
 /**
  * The leaf sweep runs wider than the general one for the same reason the order
@@ -810,6 +937,50 @@ function sidesEditedDifferentLeaves(trial: Trial): boolean {
 }
 
 /**
+ * The container the schema allows one shape of, after the merge.
+ *
+ * Two claims that are the same claim: what the merge left is a background the
+ * schema accepts, and it is one side's variant WHOLE — the researcher's when
+ * their submit touched it, the collaborator's when it did not. A write
+ * addressed at a member inside the container breaks both at once, by leaving
+ * the member it wrote beside the member the other side's variant carries.
+ */
+function keepsTheVariantWhole(trial: Trial, outcome: Outcome): string | null {
+  if (outcome.kind !== 'ok') return null;
+  const expected = trial.wroteBackground
+    ? trial.localBackground
+    : trial.remoteBackground;
+  const got = outcome.background;
+  const refused =
+    got !== undefined && !imageOrCirclesBackgroundSchema.safeParse(got).success;
+  if (!refused && canonicalize(got) === canonicalize(expected)) return null;
+  return [
+    `the background merged to ${JSON.stringify(got)}${refused ? ', which the schema refuses' : ''}`,
+    `and the whole variant would have been ${JSON.stringify(expected)}`,
+  ].join('\n');
+}
+
+/**
+ * Whether a trial asks the question the rule exists for: this session wrote
+ * INSIDE the container — a member of the variant it holds, or the member both
+ * variants share, or the whole container into a document that had none — while
+ * the arrival made it a different variant.
+ *
+ * That is the shape a diff addressing the deepest difference says leaf by
+ * leaf, and so exactly the shape that used to merge into a document holding
+ * half of each. The count is what keeps the sweep from passing by never asking.
+ */
+const wroteInsideAVariantTheArrivalSwitched = (trial: Trial): boolean => {
+  const base = variantOf(trial.baseBackground);
+  const local = variantOf(trial.localBackground);
+  const remote = variantOf(trial.remoteBackground);
+  const wroteInside =
+    trial.wroteBackground &&
+    (base === 'none' ? local !== 'none' : local === base);
+  return wroteInside && remote !== 'none' && remote !== local;
+};
+
+/**
  * Whether the rebase emitted a whole-list `set` with nothing left to say.
  *
  * The merge can answer with the list the arrival already holds — every row the
@@ -981,6 +1152,29 @@ describe('rebasing a list edit onto a collaborator’s arrival', () => {
    * the count that keeps it from passing vacuously: the trials in which the
    * arrival really did change a property the researcher's submit left alone.
    */
+  /**
+   * The dimension that is not about lists at all: the container a stage
+   * document may hold only ONE shape of, which every trial's submits and
+   * arrivals also touch.
+   *
+   * Asked once rather than per mode, because how a row is identified has
+   * nothing to do with it — the batches differ, and the question the merge is
+   * put is the same one.
+   */
+  it('never leaves a container holding half of each variant', () => {
+    const failures: string[] = [];
+    let asked = 0;
+    for (let seed = 1; seed <= TRIALS; seed += 1) {
+      const { trial, outcome } = runTrial(seed, 'identified');
+      if (wroteInsideAVariantTheArrivalSwitched(trial)) asked += 1;
+      const problem = keepsTheVariantWhole(trial, outcome);
+      if (problem !== null && failures.length < 3)
+        failures.push(describeTrial(trial, problem));
+    }
+    expect(failures).toEqual([]);
+    expect(asked).toBeGreaterThan(VARIANT_TRIALS);
+  });
+
   it('keeps a collaborator’s edit to a property the submit left alone', () => {
     const failures: string[] = [];
     let asked = 0;

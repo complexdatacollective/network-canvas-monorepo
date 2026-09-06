@@ -85,6 +85,11 @@ export {
   type VariableRoleGroup,
   type VariableRoleHit,
 } from './utils/findVariableRoleConflicts.ts';
+// Where a stage document may hold only ONE of several shapes, so that an
+// editor writing part of one can be told to write the whole of it. The paths
+// are read off the stage schemas rather than listed here; the two lists this
+// module also derives stay internal to it, for its own test.
+export { isExclusiveVariantContainer } from './schemas/8/exclusive-variant-containers.ts';
 // `findExclusiveVariableConflicts` stays internal: it exists to feed the
 // protocol schema's own refinement, and a host that wants to know whether a
 // protocol is admissible should call `validateProtocol`.

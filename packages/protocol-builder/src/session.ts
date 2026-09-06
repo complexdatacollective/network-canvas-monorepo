@@ -2,6 +2,7 @@ import { v4 as uuid } from 'uuid';
 
 import {
   CurrentProtocolSchema,
+  isExclusiveVariantContainer,
   type CurrentProtocol,
   type ProtocolValidationIssue,
   type StageType,
@@ -471,6 +472,30 @@ export function stageDocument(
  * merge rule the lists already follow — a row the edit removed goes, whatever
  * the arrival did to it.
  *
+ * And a container the schema allows only ONE SHAPE of is written whole, in
+ * either direction. A sociogram's `background` is an image or a number of
+ * concentric circles and never both, so a `set` of `background.image` replayed
+ * after a collaborator switched the stage to circles leaves both members set —
+ * a draft `imageOrCirclesBackgroundSchema` refuses, which the researcher
+ * cannot save and neither of them asked for. Depth is what makes that hybrid,
+ * so depth is what stops: the variant is the unit the two sides are deciding
+ * between, the whole of it travels, and a collaborator's switch conflicts with
+ * it at the container, where the later write wins entire. That is the same
+ * answer the `unset` above gives, and the losing side's switch is at least a
+ * decision one of them made rather than a shape neither of them chose.
+ *
+ * Refusing such a write at the REBASE instead — dropping the leaf command when
+ * the arrival has changed the variant — would answer only for this session's
+ * own replay, and it would have to answer by discarding the researcher's edit
+ * after the fact. Saying it at the diff answers wherever the batch is
+ * replayed, because the command that could make the hybrid is never minted:
+ * undo and redo compose their commands here too, and so does every other
+ * client.
+ *
+ * Which containers those are is read off the protocol schemas themselves — see
+ * `isExclusiveVariantContainer` in `@codaco/protocol-validation` — so a stage
+ * type that gains a variant is answered without anybody here remembering.
+ *
  * A one-segment path is still spelled as the bare key it always was
  * (`commandTarget`), so everything a top-level field emits is unchanged on the
  * wire and in the command log.
@@ -524,7 +549,8 @@ function collectDraftCommands(
     if (
       container !== undefined &&
       isDictionary(after) &&
-      here.length < MAX_COMMAND_PATH_SEGMENTS
+      here.length < MAX_COMMAND_PATH_SEGMENTS &&
+      !isExclusiveVariantContainer(here)
     ) {
       const said = commands.length;
       collectDraftCommands(here, container, after, commands);
