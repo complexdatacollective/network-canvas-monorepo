@@ -1,4 +1,5 @@
 {
   "protocolBuilder.censusPrompts.ordinalBinColorLabel": "Colour gradient",
-  "protocolBuilder.censusPrompts.ordinalBinColorTitle": "Colour of the scale"
+  "protocolBuilder.censusPrompts.ordinalBinColorTitle": "Colour of the scale",
+  "protocolBuilder.ordinalColor.groupLabel": "Colour gradient"
 }

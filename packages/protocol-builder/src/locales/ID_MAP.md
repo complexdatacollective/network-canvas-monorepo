@@ -121,6 +121,8 @@ name not here adds it here first, in the same pull request.
 | `censusPrompts`             | `sections/prompts/censusPromptsMessages.ts` and the five census and bin sections beside it (`CategoricalBin`, `OrdinalBin`, `DyadCensus`, `OneToManyDyadCensus`, `TieStrengthCensus`) | family E  |
 | `promptText`                | `sections/prompts/promptText.tsx`                                                                                                                                                     | family E  |
 | `promptAttribute`           | `sections/prompts/PromptAttributeField.tsx`                                                                                                                                           | family E  |
+| `removeAfterConsideration`  | `sections/RemoveAfterConsiderationSection.tsx`                                                                                                                                        | family E  |
+| `ordinalColor`              | `fields/OrdinalColorField.tsx`                                                                                                                                                        | family E  |
 
 The `*Messages.ts` files are the homes for copy more than one module renders —
 `extractMessages` throws when the same id is declared twice, so a shared string
@@ -183,24 +185,22 @@ editor report the same conflict, so a translator answers once.
 
 Named here so a later split takes the name rather than inventing a synonym.
 
-| `<area>`                   | Will own the copy in                         | Expected in |
-| -------------------------- | -------------------------------------------- | ----------- |
-| `subjectSelect`            | `fields/SubjectSelectField.tsx`              | splits 3–6  |
-| `nodePanels`               | `sections/NodePanelsSection`                 | family D    |
-| `searchOptions`            | `sections/SearchOptionsSection`              | family D    |
-| `alterLimits`              | `sections/AlterLimitsSection`                | family D    |
-| `quickAdd`                 | `sections/QuickAddSection`                   | family D    |
-| `sortOptions`              | `sections/SortOptionsSection`                | family D    |
-| `nameGeneratorPrompts`     | `sections/NameGeneratorPromptsSection`       | family D    |
-| `cardDisplay`              | `sections/CardDisplaySection`                | family D    |
-| `externalDataSource`       | `sections/ExternalDataSourceSection`         | family D    |
-| `removeAfterConsideration` | `sections/RemoveAfterConsiderationSection`   | family E    |
-| `ordinalColor`             | `fields/OrdinalColorField`                   | family E    |
-| `networkCanvas`            | `sections/network/`                          | family F    |
-| `pedigree`                 | `sections/pedigree/`                         | family F    |
-| `narrativePedigree`        | `sections/narrativePedigree/`                | family F    |
-| `geospatial`               | `sections/geospatial/`, geospatial `fields/` | family F    |
-| `anonymisation`            | `sections/anonymisation/`                    | family F    |
+| `<area>`               | Will own the copy in                         | Expected in |
+| ---------------------- | -------------------------------------------- | ----------- |
+| `subjectSelect`        | `fields/SubjectSelectField.tsx`              | splits 3–6  |
+| `nodePanels`           | `sections/NodePanelsSection`                 | family D    |
+| `searchOptions`        | `sections/SearchOptionsSection`              | family D    |
+| `alterLimits`          | `sections/AlterLimitsSection`                | family D    |
+| `quickAdd`             | `sections/QuickAddSection`                   | family D    |
+| `sortOptions`          | `sections/SortOptionsSection`                | family D    |
+| `nameGeneratorPrompts` | `sections/NameGeneratorPromptsSection`       | family D    |
+| `cardDisplay`          | `sections/CardDisplaySection`                | family D    |
+| `externalDataSource`   | `sections/ExternalDataSourceSection`         | family D    |
+| `networkCanvas`        | `sections/network/`                          | family F    |
+| `pedigree`             | `sections/pedigree/`                         | family F    |
+| `narrativePedigree`    | `sections/narrativePedigree/`                | family F    |
+| `geospatial`           | `sections/geospatial/`, geospatial `fields/` | family F    |
+| `anonymisation`        | `sections/anonymisation/`                    | family F    |
 
 Three reserved areas turned out to need no ids at all, and two name files that
 do not exist yet. Recorded rather than dropped, so nobody re-reserves a name
@@ -289,7 +289,10 @@ protocol stage labels, is the existing case, and it is English deliberately.
   Never imported at runtime; it is the translator artifact and the freshness
   oracle.
 - `en-GB.json` is a sparse override — only the words that differ (colour,
-  visualise, centred, organisation).
+  visualise, centred, organisation). The source locale is US English, as
+  fresco-ui's is, so the gradient copy says "Color" and this file says
+  "Colour"; it was `{}` until family E's gradient picker arrived, which is the
+  first copy in this package to use a word English spells two ways.
 - `es.json` is **complete**. `es` is not a regional variant of the source
   language, so the guard runs `checkFullLocale` over it: an id declared without
   Spanish fails this package's own suite. Every conversion ships its Spanish in

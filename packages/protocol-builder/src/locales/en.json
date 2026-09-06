@@ -1199,6 +1199,50 @@
     "defaultMessage": "option",
     "description": "Noun for one row of the list of options a categorical or ordinal attribute offers. Interpolated mid-sentence into things said ABOUT a row (\"This option was replaced…\"), so it is lower case and singular."
   },
+  "protocolBuilder.ordinalColor.groupLabel": {
+    "defaultMessage": "Color gradient",
+    "description": "Accessible name of the row of colour swatches, used only where the field around it has supplied none. Each swatch is one gradient the ordered answers of a scale are shaded along."
+  },
+  "protocolBuilder.ordinalColor.ordColorSeq1": {
+    "defaultMessage": "Sea Green",
+    "description": "Name of one colour swatch, read out in place of the swatch itself. A colour name rather than a position, because the researcher picks a gradient by how it looks and then has to be able to say which one they picked."
+  },
+  "protocolBuilder.ordinalColor.ordColorSeq10": {
+    "defaultMessage": "Slate Blue",
+    "description": "Name of one colour swatch, read out in place of the swatch itself. A muted violet-blue."
+  },
+  "protocolBuilder.ordinalColor.ordColorSeq2": {
+    "defaultMessage": "Sea Serpent",
+    "description": "Name of one colour swatch, read out in place of the swatch itself. A blue-green."
+  },
+  "protocolBuilder.ordinalColor.ordColorSeq3": {
+    "defaultMessage": "Tomato",
+    "description": "Name of one colour swatch, read out in place of the swatch itself. A red."
+  },
+  "protocolBuilder.ordinalColor.ordColorSeq4": {
+    "defaultMessage": "Neon Carrot",
+    "description": "Name of one colour swatch, read out in place of the swatch itself. A bright orange."
+  },
+  "protocolBuilder.ordinalColor.ordColorSeq5": {
+    "defaultMessage": "Kiwi",
+    "description": "Name of one colour swatch, read out in place of the swatch itself. A yellow-green."
+  },
+  "protocolBuilder.ordinalColor.ordColorSeq6": {
+    "defaultMessage": "Cerulean Blue",
+    "description": "Name of one colour swatch, read out in place of the swatch itself. A deep sky blue."
+  },
+  "protocolBuilder.ordinalColor.ordColorSeq7": {
+    "defaultMessage": "Paradise Pink",
+    "description": "Name of one colour swatch, read out in place of the swatch itself. A warm pink."
+  },
+  "protocolBuilder.ordinalColor.ordColorSeq8": {
+    "defaultMessage": "Mustard",
+    "description": "Name of one colour swatch, read out in place of the swatch itself. A dark yellow."
+  },
+  "protocolBuilder.ordinalColor.ordColorSeq9": {
+    "defaultMessage": "Purple Pizazz",
+    "description": "Name of one colour swatch, read out in place of the swatch itself. A bright purple."
+  },
   "protocolBuilder.outline.completeStatus": {
     "defaultMessage": "Finished",
     "description": "Spoken state of one section of a stage editor: everything it asks for has been filled in and nothing in it is invalid. Read out after the section’s own name, and never shown on screen."
@@ -1410,6 +1454,30 @@
   "protocolBuilder.promptsSection.waitingDescription": {
     "defaultMessage": "Choose what this stage works with before writing its prompts.",
     "description": "Shown in place of the prompts section’s description while the researcher has not yet chosen which node or edge type the stage is about, so there is nothing for a prompt to be written against."
+  },
+  "protocolBuilder.removeAfterConsideration.description": {
+    "defaultMessage": "Decide what happens to a person once the participant has finished considering them.",
+    "description": "Description of the section named above."
+  },
+  "protocolBuilder.removeAfterConsideration.fieldHint": {
+    "defaultMessage": "Removing them keeps the remaining choices short. Keeping them lets the participant revisit an answer.",
+    "description": "Guidance under that control, giving the reason to prefer each of its two answers."
+  },
+  "protocolBuilder.removeAfterConsideration.fieldLabel": {
+    "defaultMessage": "After a person has been considered",
+    "description": "Label of the two-answer control that decides what becomes of a person the participant has already been asked about."
+  },
+  "protocolBuilder.removeAfterConsideration.keepLabel": {
+    "defaultMessage": "Keep them in the list",
+    "description": "The answer that leaves a person in the list the participant chooses from after they have been asked about, so an answer can be revisited."
+  },
+  "protocolBuilder.removeAfterConsideration.removeLabel": {
+    "defaultMessage": "Remove them from the list",
+    "description": "The answer that takes a person out of the list the participant chooses from once they have been asked about."
+  },
+  "protocolBuilder.removeAfterConsideration.title": {
+    "defaultMessage": "Node availability",
+    "description": "Names this section of the stage editor, in the editor’s outline and to assistive technology. A node is one member of the network the participant is building; this section decides whether one they have already been asked about stays available to be asked about again."
   },
   "protocolBuilder.ruleCodebook.operatorNoLongerOffered": {
     "defaultMessage": "{operator} (no longer offered)",

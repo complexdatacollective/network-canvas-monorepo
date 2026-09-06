@@ -83,6 +83,11 @@ describe('the census and bin prompt sections, read in Spanish', () => {
         'Los grupos se sombrean a lo largo de este degradado en el orden en que el atributo lista sus valores.',
       ),
     ).toBeInTheDocument();
+    // The swatch names are the gradient picker's own, and a coloured circle
+    // has nothing else a screen reader can read.
+    expect(
+      screen.getByRole('radio', { name: 'Verde mar' }),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole('switch', { name: 'Orden dentro de cada grupo' }),
     ).toBeInTheDocument();
