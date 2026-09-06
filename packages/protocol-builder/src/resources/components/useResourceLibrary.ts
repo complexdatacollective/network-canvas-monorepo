@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useResourceGateway } from '../context.tsx';
-import type {
-  ResourceDescriptor,
-  ResourceKind,
-  ResourceResult,
+import {
+  resourceOk,
+  type ResourceDescriptor,
+  type ResourceKind,
+  type ResourceResult,
 } from '../gateway.ts';
 import { callGateway } from '../gatewayCall.ts';
 import {
@@ -57,10 +58,20 @@ export function useResourceLibrary(
   const latestKinds = useRef(kinds);
   latestKinds.current = kinds;
 
-  const list = useCallback(
-    () => gateway.list({ kinds: latestKinds.current }),
-    [gateway, key],
-  );
+  // Asked for, and then held to. `kinds` is a request a host serves; which
+  // resources a field may hold is the editor's own rule, and a picker that
+  // offered what its field cannot take would be inviting a choice it goes on
+  // to refuse. One seam, so every caller — the list on screen and the name
+  // check beside it — sees the same library.
+  const list = useCallback(async () => {
+    const listed = await gateway.list({ kinds: latestKinds.current });
+    if (listed.status !== 'ok') return listed;
+    const accepted = new Set<ResourceKind>(latestKinds.current);
+    const offered = listed.data.filter((descriptor) =>
+      accepted.has(descriptor.kind),
+    );
+    return offered.length === listed.data.length ? listed : resourceOk(offered);
+  }, [gateway, key]);
 
   const reload = useCallback(() => {
     run(list, setResources);

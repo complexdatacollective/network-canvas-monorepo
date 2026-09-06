@@ -175,6 +175,53 @@ export function describeResourceGatewayContract(
       expect(harness().stagingResidue()).toEqual([]);
     });
 
+    it('lists only the kinds it was asked for, committed and staged alike', async () => {
+      const image = await stageImage();
+      const roster = await stageRoster();
+      const secret = await stageSecret();
+
+      const listed = async (
+        options: Parameters<ProtocolBuilderResourceGateway['list']>[0],
+      ): Promise<readonly string[]> =>
+        expectOk(await gateway().list(options))
+          .map((descriptor) => descriptor.id)
+          .toSorted();
+
+      // Every picker's own filter, one row each. A field holds one kind of
+      // resource — an image field an image, a roster field a data file, a key
+      // field a key — and this option is the whole of how it asks for them. An
+      // adapter that ignores it hands the editor everything, and the API key
+      // browser offers a backdrop image and a roster as keys to choose from.
+      expect(await listed({ kinds: ['image'] })).toEqual(
+        [RESOURCE_GATEWAY_CONTRACT_SEED.committedImage.id, image.id].toSorted(),
+      );
+      expect(await listed({ kinds: ['network'] })).toEqual([roster.id]);
+      expect(await listed({ kinds: ['apikey'] })).toEqual([
+        secret.descriptor.id,
+      ]);
+      expect(await listed({ kinds: ['audio', 'video', 'geojson'] })).toEqual(
+        [],
+      );
+      // Several kinds at once: the untyped picker asks for all of them.
+      expect(await listed({ kinds: ['image', 'network'] })).toEqual(
+        [
+          RESOURCE_GATEWAY_CONTRACT_SEED.committedImage.id,
+          image.id,
+          roster.id,
+        ].toSorted(),
+      );
+      // And with the other option, because a picker asks for both together.
+      expect(await listed({ kinds: ['image'], status: 'staged' })).toEqual([
+        image.id,
+      ]);
+      expect(await listed({ kinds: ['image'], status: 'committed' })).toEqual([
+        RESOURCE_GATEWAY_CONTRACT_SEED.committedImage.id,
+      ]);
+      // Asked for nothing, answered with nothing: a picker whose field accepts
+      // no kind at all must not be handed the whole manifest.
+      expect(await listed({ kinds: [] })).toEqual([]);
+    });
+
     it('stages an upload with a referenceable asset id, outside the committed manifest', async () => {
       const staged = await stageImage();
 

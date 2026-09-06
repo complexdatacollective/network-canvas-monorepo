@@ -11,8 +11,10 @@ import { downloadResourceContent } from './downloadResourceContent.ts';
 import ResourceBrowserDialog from './ResourceBrowserDialog.tsx';
 import ResourceFailureNotice from './ResourceFailureNotice.tsx';
 import {
+  acceptsResourceKind,
   isPreviewableKind,
   RESOURCE_PICKER_COPY,
+  unsupportedResourceKindMessage,
   type ResourcePickerKind,
 } from './resourceKinds.ts';
 import ResourcePreview from './ResourcePreview.tsx';
@@ -148,6 +150,15 @@ export default function ResourcePickerControl({
   const handleSelect = (chosen: ResourceDescriptor) => {
     setBrowserOpen(false);
     setAskedForResource(false);
+    // The field's own rule, kept by the field. The browser asks the host for
+    // the kinds this picker accepts, but a host that answers with more than it
+    // was asked for — or a browser left open across a change — would otherwise
+    // put an image id into an API key field, which is a protocol the schema
+    // refuses and an interview that cannot load the stage.
+    if (!acceptsResourceKind(kind, chosen.kind)) {
+      setRefusal(unsupportedResourceKindMessage(kind));
+      return;
+    }
     // Asked of the session rather than decided here: another field may have
     // started discarding this very resource a moment ago, and only the session
     // knows that a discard is in flight. Taking it anyway would leave this

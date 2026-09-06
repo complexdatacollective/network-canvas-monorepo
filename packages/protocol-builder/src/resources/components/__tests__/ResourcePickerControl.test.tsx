@@ -22,6 +22,7 @@ import {
 } from '../../../session.ts';
 import {
   resourceFailure,
+  resourceOk,
   type ProtocolBuilderResourceGateway,
   type ResourceContent,
   type ResourceInspection,
@@ -83,6 +84,13 @@ const networkSeed: InMemoryResourceSeed = {
   source: 'community.json',
   contentType: 'application/json',
   bytes: bytesOf(ROSTER),
+};
+
+const apiKeySeed: InMemoryResourceSeed = {
+  kind: 'apikey',
+  id: 'apikey-1',
+  name: 'Mapbox key',
+  value: 'pk.picker-test-key',
 };
 
 /** A second image, so a field can be moved off the one it is holding. */
@@ -386,6 +394,81 @@ describe('ResourcePickerControl', () => {
     );
 
     await waitFor(() => expect(fieldValue('attachment')).toBe('network-1'));
+  });
+
+  it('offers only what the field can hold, whatever the host answers with', async () => {
+    const user = userEvent.setup();
+    const inner = new InMemoryResourceGateway({
+      committed: [imageSeed, networkSeed, apiKeySeed],
+    });
+    // An adapter that ignores the `kinds` filter. The contract requires it to
+    // be honoured, but which resources a field may hold is the editor's own
+    // rule: offering a backdrop image as an API key would put an id in the
+    // field that the schema refuses and the interview cannot load.
+    const gateway = overrideGateway(inner, {
+      list: (options) =>
+        inner.list(
+          options?.status === undefined ? {} : { status: options.status },
+        ),
+    });
+    renderResourceEditor({
+      gateway,
+      children: (
+        <ProtocolField
+          component={ResourcePickerControl}
+          name="apiKey"
+          label="Map provider API key"
+          kind="apikey"
+        />
+      ),
+    });
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Select an API key' }),
+    );
+    const library = await screen.findByRole('list', {
+      name: 'Resources in this protocol',
+    });
+
+    expect(
+      within(library)
+        .getAllByRole('button')
+        .map((button) => button.textContent),
+    ).toEqual(['Mapbox key']);
+  });
+
+  it('refuses a staged resource the host answered with a wrong kind for', async () => {
+    const user = userEvent.setup();
+    const inner = new InMemoryResourceGateway();
+    // An import route reaches the field with no list in between, so this is
+    // where a wrong kind arrives when the host decides one for itself.
+    const gateway = overrideGateway(inner, {
+      stageUpload: async (request) => {
+        const staged = await inner.stageUpload(request);
+        return staged.status === 'ok'
+          ? resourceOk({ ...staged.data, kind: 'network' as const })
+          : staged;
+      },
+    });
+    const { fieldValue } = renderResourceEditor({
+      gateway,
+      children: imageField(),
+    });
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Select an image' }),
+    );
+    await user.upload(
+      await screen.findByLabelText('Choose a file from your computer'),
+      new File(['fake-png-bytes'], 'skyline.png', { type: 'image/png' }),
+    );
+
+    expect(
+      await screen.findByText(
+        'That resource cannot be used in this field. It accepts: Image.',
+      ),
+    ).toBeVisible();
+    expect(fieldValue('backgroundImage')).toBeUndefined();
   });
 
   it('summarises an imported data file from what the host inspected', async () => {

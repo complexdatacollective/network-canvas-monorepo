@@ -73,6 +73,23 @@ export function browsableKinds(
   return kind === 'file' ? CONTENT_KINDS : Object.freeze([kind]);
 }
 
+/**
+ * Whether a field of this picker's kind may hold that resource.
+ *
+ * The gateway's `kinds` option asks a host for the right resources, and the
+ * contract requires an adapter to honour it — but the field's own rule is not
+ * the host's to keep. An adapter that ignores the filter, or a browser left
+ * open across a change, is all it takes for a descriptor of the wrong kind to
+ * reach a picker, and an asset id in a field the schema does not allow it in
+ * is a protocol that fails validation at best and the interview at worst.
+ */
+export function acceptsResourceKind(
+  picker: ResourcePickerKind,
+  kind: ResourceKind,
+): boolean {
+  return browsableKinds(picker).includes(kind);
+}
+
 /** Lowercased `.ext`, or an empty string for a name that carries none. */
 export function fileExtension(filename: string): string {
   const dot = filename.lastIndexOf('.');
@@ -230,6 +247,18 @@ export const RESOURCE_PICKER_COPY: Readonly<
 export function unsupportedFileMessage(kind: ResourcePickerKind): string {
   const accepted = acceptedExtensions(kind);
   return `That file cannot be imported here. Supported file types are: ${accepted.join(', ')}.`;
+}
+
+/**
+ * What a researcher is told when the resource they chose is not one this field
+ * can hold. Only a host that offered it in the first place can produce this,
+ * so it says what the field does accept rather than blaming the choice.
+ */
+export function unsupportedResourceKindMessage(
+  kind: ResourcePickerKind,
+): string {
+  const accepted = browsableKinds(kind).map(resourceKindLabel);
+  return `That resource cannot be used in this field. It accepts: ${accepted.join(', ')}.`;
 }
 
 /**
