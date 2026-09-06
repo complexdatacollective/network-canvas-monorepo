@@ -275,7 +275,8 @@ describe('Shell toast ownership', () => {
     const input = await within(first).findByRole('textbox', {
       name: 'Person name',
     });
-    await user.type(input, 'Álvaro & <first>');
+    await user.click(input);
+    await user.paste('Álvaro & <first>');
     const beforeFirst = structuredClone(firstStore.getState().session);
     const beforeSecond = structuredClone(secondStore.getState().session);
     firstSync.mockClear();
@@ -345,7 +346,9 @@ describe('Shell toast ownership', () => {
     // answer. The earlier no-write checks therefore cannot pass on an inert
     // probe, an unmounted stage, or a disconnected store/handler.
     const newInput = await within(first).findByRole('textbox');
-    await user.type(newInput, 'Álvaro & <first>{Enter}');
+    await user.click(newInput);
+    await user.paste('Álvaro & <first>');
+    await user.keyboard('{Enter}');
     await waitFor(() =>
       expect(firstStore.getState().session.network.nodes).toHaveLength(1),
     );
@@ -377,7 +380,7 @@ describe('Shell toast ownership', () => {
     expect(
       screen.getAllByRole('region', { name: 'Interview notifications' }),
     ).toHaveLength(1);
-    act(() =>
+    await act(() =>
       fireEvent.click(
         screen.getByRole('button', { name: 'Close standalone notification' }),
       ),
