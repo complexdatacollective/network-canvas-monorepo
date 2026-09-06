@@ -281,6 +281,66 @@ describe('session issues in the outline', () => {
   });
 
   /**
+   * Two different controls, described by the same words.
+   *
+   * A cross-reference message names the thing that is wrong rather than the
+   * control that holds it, so two controls with the same fault read alike. The
+   * repetition worth dropping is one CONTROL said twice; dropping the second
+   * control's problem would send the researcher to fix half of what is wrong
+   * and leave the section reading "error" over a fix they had already made.
+   */
+  it('names both controls when the same sentence is true of each', () => {
+    const store = storeWith({
+      sorting: ['sortOptions.sortOrder', 'sortOptions.sortableProperties'],
+    });
+
+    store.setValidationIssues([
+      said(
+        ['sortOptions', 'sortOrder', 0, 'property'],
+        'This stage sorts by an attribute that is no longer in the codebook.',
+      ),
+      said(
+        ['sortOptions', 'sortableProperties', 0, 'variable'],
+        'This stage sorts by an attribute that is no longer in the codebook.',
+      ),
+    ]);
+
+    expect(sectionNamed(store, 'sorting').issues).toEqual([
+      'This stage sorts by an attribute that is no longer in the codebook.',
+      'This stage sorts by an attribute that is no longer in the codebook.',
+    ]);
+  });
+
+  /**
+   * The required-field rule is about the field's OWN emptiness.
+   *
+   * A rule set that holds a rule is not empty, whatever is missing from inside
+   * the rule — so a required control cannot answer for a refusal raised in
+   * there. Silence would leave the researcher with a save the schema refuses
+   * and an outline that says the section is merely unfinished.
+   */
+  it('keeps a missing value found inside a required field', () => {
+    const store = storeWith({ skip: ['skipLogic.filter'] }, true);
+
+    store.setValidationIssues([
+      {
+        path: ['skipLogic', 'filter', 'rules', 0, 'options', 'attribute'],
+        code: 'custom',
+        message:
+          'An ego rule must reference an attribute; a type-level ego rule (no attribute) is not valid.',
+        absent: true,
+      },
+    ]);
+
+    expect(sectionNamed(store, 'skip').issues).toEqual([
+      'An ego rule must reference an attribute; a type-level ego rule (no attribute) is not valid.',
+    ]);
+    expect(sectionOutlineStatus(sectionNamed(store, 'skip'), EMPTY_FORM)).toBe(
+      'error',
+    );
+  });
+
+  /**
    * The other half of that rule. Nothing on the page says a value is needed
    * unless a field says it is required, so a section that stayed quiet here
    * would read "Finished" over a stage the protocol refuses to save.
