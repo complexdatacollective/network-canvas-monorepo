@@ -2307,9 +2307,8 @@ jobs:
   # Maintains generated PRs for the products that remain outside the normal
   # "Version Packages" PR. Normal-lane apps use that standard Changesets lane;
   # Documentation, Website, and Studio remain independently releasable. The
-  # Studio lane names all four Studio workspace packages so its release PR
-  # consumes changesets for either deployable half or the private boundary
-  # packages.
+  # Studio lane includes both Studio deployables, their private boundary
+  # packages and the independent template registry.
   product-release-pr:
     name: Release PR (${{ matrix.product }})
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -2330,6 +2329,7 @@ jobs:
               --package '@codaco/studio-rpc'
               --package '@codaco/studio-server'
               --package '@codaco/studio-sync'
+              --package '@codaco/template-registry'
     runs-on: ubuntu-latest
     concurrency:
       group: product-release-pr-${{ matrix.slug }}

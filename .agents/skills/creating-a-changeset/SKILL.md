@@ -16,7 +16,7 @@ released package or app:
   `@codaco/background-creator`, `fresco`, `@codaco/interviewer`,
   `@codaco/documentation`, `networkcanvas.com`, or a Studio package
   (`@codaco/studio-client`, `@codaco/studio-server`, `@codaco/studio-rpc`,
-  `@codaco/studio-sync`).
+  `@codaco/studio-sync`, `@codaco/template-registry`).
 
 Skip it for repository-docs-only, test-only, CI/tooling-only, internal
 refactors with no consumer-visible effect, or a fix for a defect that never
@@ -117,10 +117,10 @@ or with another gated lane because `changeset version` hard-errors on ignored
 and non-ignored packages in one file. If one feature affects multiple lanes,
 run `pnpm changeset` once per lane.
 
-The Studio lane spans all four Studio workspace packages —
+The Studio lane spans the four Studio workspace packages —
 `@codaco/studio-client`, `@codaco/studio-server`, `@codaco/studio-rpc`, and
-`@codaco/studio-sync` — so one Studio changeset may name any combination of
-them.
+`@codaco/studio-sync` — plus the independent `@codaco/template-registry`, so
+one Studio changeset may name any combination of them.
 
 | Lane                                                          | Bump type          | Ships via                                        |
 | ------------------------------------------------------------- | ------------------ | ------------------------------------------------ |
