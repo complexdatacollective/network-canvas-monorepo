@@ -19,6 +19,7 @@ import {
 import { cx } from '../../utils/cva';
 import type { CreateFormFieldProps } from '../Field/types';
 import { getInputState } from '../utils/getInputState';
+import { omitWidgetOnlyAria } from '../utils/omitWidgetOnlyAria';
 import ScaleValuePopover from './scale/ScaleValuePopover';
 import { useSliderActive } from './scale/useSliderActive';
 
@@ -113,7 +114,6 @@ export default function VisualAnalogScaleField(
     'aria-labelledby': ariaLabelledBy,
     'aria-describedby': ariaDescribedBy,
     'aria-invalid': ariaInvalid,
-    'aria-required': ariaRequired,
     ...rest
   } = props;
 
@@ -183,7 +183,9 @@ export default function VisualAnalogScaleField(
       // text and the muted thumb otherwise only express in ways a test cannot
       // read together. Also the styling seam if this state ever needs more.
       data-unanswered={hasValue ? undefined : 'true'}
-      {...rest}
+      // A roleless layout element carries only the global ARIA attributes,
+      // which `aria-readonly` and `aria-required` are not.
+      {...omitWidgetOnlyAria(rest)}
     >
       <div className="relative">
         <Slider.Root
@@ -209,9 +211,16 @@ export default function VisualAnalogScaleField(
           min={min}
           max={max}
           step={step}
+          // `Slider.Root` renders a `role="group"` wrapper, not the slider:
+          // the widget is the `<input type="range">` nested inside
+          // `Slider.Thumb`, and Base UI forwards only naming attributes to it.
+          // `aria-invalid` is global and valid on the group; `aria-readonly`
+          // and `aria-required` are not, and there is no seam to move them
+          // onto the input. Required-ness still reaches the input through the
+          // `aria-describedby` reference to the "Required" element below, and
+          // the read-only state through the suppressed pointer and key
+          // handlers.
           aria-invalid={ariaInvalid}
-          aria-required={ariaRequired}
-          aria-readonly={readOnly || undefined}
           aria-labelledby={ariaLabelledBy}
           className={sliderRootVariants({ state })}
         >

@@ -181,6 +181,35 @@ export function useStageValue(path: string): unknown {
 }
 
 /**
+ * How many times the stage form has been written to from an authoritative
+ * draft.
+ *
+ * The form-owned record of `reseedStageForm` having run — a count Fresco's own
+ * `Section` already watches to reapply `defaultOpen`. Anything in the editor
+ * holding state OF ITS OWN about the draft has the same problem the panel does
+ * (it was decided from a draft that has since been replaced beneath it) and so
+ * needs the same signal, or the two disagree about the same capability.
+ *
+ * Deliberately not the session's own generation: what matters is not that the
+ * draft moved but that the CONTROLS were rewritten from it, and only the form
+ * knows when that happened.
+ */
+export function useFormRestoreVersion(): number {
+  const { storeApi } = useStageEditorForm();
+
+  const subscribe = useCallback(
+    (onStoreChange: () => void) => storeApi.subscribe(onStoreChange),
+    [storeApi],
+  );
+  const getSnapshot = useCallback(
+    () => storeApi.getState().formRestoreVersion,
+    [storeApi],
+  );
+
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+}
+
+/**
  * Whether any of these paths currently holds a value.
  *
  * How an optional capability decides whether it is already switched on. It

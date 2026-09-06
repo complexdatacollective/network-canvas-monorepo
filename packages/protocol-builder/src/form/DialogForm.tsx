@@ -1,8 +1,10 @@
 import {
   createContext,
   type ReactNode,
+  type RefObject,
   useCallback,
   useContext,
+  useEffect,
   useState,
 } from 'react';
 
@@ -25,6 +27,7 @@ import type {
   FormSubmitHandler,
 } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
+import { ResizableFlexPanel } from '@codaco/fresco-ui/ResizableFlexPanel';
 
 import { useDiscardDraftGuard } from './discardDraftGuard.ts';
 
@@ -57,6 +60,20 @@ export type DialogFormProps = Readonly<{
    * the researcher has nothing to lose by — or has confirmed.
    */
   onClose: () => void;
+  /**
+   * Receives this dialog's own DISMISSAL route — the one Cancel, Escape, the
+   * close button and a click outside all take, which asks before a draft the
+   * researcher would lose is discarded and refuses outright while a save is
+   * running.
+   *
+   * For an owner that has to close the dialog for a reason of its own: the row
+   * it is editing left the document, the session around it ended. Setting
+   * `open` to false from outside would take the editor down over unsaved work
+   * without a word, which is the one thing this dialog exists to prevent — so
+   * the outside route is the same route as the inside one. The dialog answers
+   * with `null` as it unmounts.
+   */
+  requestCloseRef?: RefObject<(() => void) | null>;
   title: string;
   /** Supporting prose under the title, for a dialog whose title cannot carry it. */
   description?: ReactNode;
@@ -119,6 +136,14 @@ export type DialogFormProps = Readonly<{
    * while the dialog was open has been remounted as a different element.
    */
   finalFocus?: DialogProps['finalFocus'];
+  /**
+   * Supporting content shown BESIDE the fields — a live preview of the thing
+   * being edited, most often. It is rendered outside the `<form>` element, so
+   * a preview that is itself interactive can own its own form semantics
+   * instead of nesting one form inside another, and the dialog widens to the
+   * workspace preset unless `size` says otherwise.
+   */
+  aside?: ReactNode;
   children: ReactNode;
 }>;
 
@@ -207,6 +232,7 @@ const refusal = (errors: DialogFormErrors): FormSubmissionResult => ({
 function DialogFormBody({
   open,
   onClose,
+  requestCloseRef,
   title,
   description,
   formId,
@@ -219,6 +245,7 @@ function DialogFormBody({
   layoutId,
   style,
   finalFocus,
+  aside,
   children,
 }: DialogFormProps) {
   const storeApi = useContext(FormStoreContext);
@@ -261,6 +288,15 @@ function DialogFormBody({
     blocked: isSubmitting,
   });
 
+  useEffect(() => {
+    const published = requestCloseRef;
+    if (published === undefined) return undefined;
+    published.current = requestClose;
+    return () => {
+      published.current = null;
+    };
+  }, [requestClose, requestCloseRef]);
+
   /**
    * Fresco runs every field's own validation before this is reached, so the
    * form-level check only ever sees a draft whose individual fields are
@@ -299,7 +335,7 @@ function DialogFormBody({
       dismissible={!isSubmitting}
       title={title}
       description={description}
-      size={size}
+      size={size ?? (aside ? 'workspace' : undefined)}
       layoutId={layoutId}
       style={style}
       finalFocus={finalFocus}
@@ -317,9 +353,37 @@ function DialogFormBody({
       }
     >
       <DialogFormInitialValuesContext value={initialValues}>
-        <FormWithoutProvider id={domFormId} onSubmit={handleSubmit}>
-          {children}
-        </FormWithoutProvider>
+        {aside ? (
+          // Every responsive rule below stays anchored to `Dialog`'s own
+          // container. Making this panel a container instead would have its
+          // descendants query the narrower pane width while the panel itself
+          // still queries the dialog, so the split and the handle's visibility
+          // would answer to two different widths.
+          <ResizableFlexPanel
+            storageKey={`${formId}-workspace-split`}
+            defaultBasis={50}
+            min={30}
+            max={70}
+            stickyHandle
+            aria-label="Resize form and preview panes"
+            className="[&>button>span]:bg-text/30 @min-[60rem]:[&>button:hover>span]:bg-text/50 @min-[60rem]:[&>button:focus-visible>span]:bg-text/50 w-full min-w-0 flex-col items-start gap-8 @min-[60rem]:flex-row @min-[60rem]:gap-0 [&>button]:hidden @min-[60rem]:[&>button]:flex"
+          >
+            <FormWithoutProvider
+              id={domFormId}
+              onSubmit={handleSubmit}
+              className="min-w-0 @min-[60rem]:pr-4"
+            >
+              {children}
+            </FormWithoutProvider>
+            <aside className="z-10 min-w-0 @min-[60rem]:sticky @min-[60rem]:top-0 @min-[60rem]:pl-4">
+              {aside}
+            </aside>
+          </ResizableFlexPanel>
+        ) : (
+          <FormWithoutProvider id={domFormId} onSubmit={handleSubmit}>
+            {children}
+          </FormWithoutProvider>
+        )}
       </DialogFormInitialValuesContext>
     </Dialog>
   );
