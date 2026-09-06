@@ -1,9 +1,10 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import type { FinishRequest } from '../../../session.ts';
 import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
 import {
   renderStageEditor,
@@ -404,6 +405,7 @@ describe('what a network composer lets the participant build', () => {
 });
 
 const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: 'person' });
+const KNOWS_SECTION = sectionId({ kind: 'codebookEdge', typeId: 'knows' });
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -419,8 +421,8 @@ const personVariables = (
 };
 
 /**
- * One more attribute on the type this composer builds, put there from outside
- * the editor.
+ * One more attribute on a type this composer works with, put there from
+ * outside the editor.
  *
  * The whole section is replaced rather than the one key, because an entity
  * definition is parsed WHOLE: a document carrying only `variables` is a person
@@ -428,29 +430,60 @@ const personVariables = (
  * picker then offers nothing at all, which would satisfy an "is not offered"
  * claim for entirely the wrong reason.
  */
+const addSubjectVariable = (
+  harness: StageEditorHarness,
+  place: Readonly<{
+    entity: 'node' | 'edge';
+    typeId: string;
+    section: string;
+  }>,
+  variableId: string,
+  variable: Readonly<Record<string, unknown>>,
+): void => {
+  const section = harness.session.getSnapshot().protocolSections[place.section];
+  if (section === undefined) {
+    throw new Error(`the fixture has no "${place.typeId}" type`);
+  }
+  const variables = isRecord(section.variables) ? section.variables : {};
+  if (Object.hasOwn(variables, variableId)) {
+    throw new Error(
+      `"${place.typeId}" already has a "${variableId}" attribute, so adding one proves nothing.`,
+    );
+  }
+  const replacement = {
+    [place.typeId]: {
+      ...section,
+      variables: { ...variables, [variableId]: variable },
+    },
+  };
+  harness.receiveCodebookUpdate(
+    place.entity === 'node' ? { node: replacement } : { edge: replacement },
+  );
+};
+
 const addPersonVariable = (
   harness: StageEditorHarness,
   variableId: string,
   variable: Readonly<Record<string, unknown>>,
-): void => {
-  const section =
-    harness.session.getSnapshot().protocolSections[PERSON_SECTION];
-  if (section === undefined) throw new Error('the fixture has no person type');
-  const variables = isRecord(section.variables) ? section.variables : {};
-  if (Object.hasOwn(variables, variableId)) {
-    throw new Error(
-      `"person" already has a "${variableId}" attribute, so adding one proves nothing.`,
-    );
-  }
-  harness.receiveCodebookUpdate({
-    node: {
-      person: {
-        ...section,
-        variables: { ...variables, [variableId]: variable },
-      },
-    },
-  });
-};
+): void =>
+  addSubjectVariable(
+    harness,
+    { entity: 'node', typeId: 'person', section: PERSON_SECTION },
+    variableId,
+    variable,
+  );
+
+const addKnowsVariable = (
+  harness: StageEditorHarness,
+  variableId: string,
+  variable: Readonly<Record<string, unknown>>,
+): void =>
+  addSubjectVariable(
+    harness,
+    { entity: 'edge', typeId: 'knows', section: KNOWS_SECTION },
+    variableId,
+    variable,
+  );
 
 /**
  * What a composer field's ATTRIBUTE holds, reached from the field that records
@@ -515,7 +548,7 @@ describe('what a composer field’s attribute holds', () => {
     });
   });
 
-  it('leaves what the control accepts to the field, and says so by offering nothing', async () => {
+  it('leaves what the control accepts to the field, and asks for it there', async () => {
     const harness = renderStageEditor(openEditor());
     // A kind of attribute whose control DOES take settings, which the fixture
     // person type has none of — so without this the claim below would hold for
@@ -544,11 +577,15 @@ describe('what a composer field’s attribute holds', () => {
     expect(
       await field.findByRole('button', { name: 'Set rules for this answer' }),
     ).toBeInTheDocument();
-    // The settings that control takes are not: they are this field's, and this
-    // editor has yet to grow the surface that authors them stage-side.
+    // The settings that control takes are not, so the codebook's own surface
+    // for them is not offered …
     expect(
       field.queryByRole('button', { name: 'Set what this field accepts' }),
     ).not.toBeInTheDocument();
+    // … and they are asked for on the field itself instead.
+    expect(
+      field.getByRole('combobox', { name: 'Date resolution' }),
+    ).toBeInTheDocument();
   });
 });
 
@@ -602,5 +639,306 @@ describe('a composer field whose control is not the codebook’s', () => {
       'Toggle',
     );
     expect(field.getByRole('button', answerLabels)).toBeInTheDocument();
+  });
+});
+
+/**
+ * The settings the chosen input control takes, which a composer field keeps on
+ * the STAGE.
+ *
+ * `ComposerFormFieldSchema` puts `component` and `parameters` on the field
+ * itself, which is the whole point of the interface: one attribute can be a
+ * date picker bounded by two dates on this form and a relative window on the
+ * next. So they are authored here, on the field, and never written to the
+ * codebook attribute — whose own schemas are split on the control IT records
+ * and would refuse a block authored against a control it does not have.
+ *
+ * The same controls the codebook's own editor renders, over the same helpers,
+ * because the question a researcher is answering is identical; only where the
+ * answer is written differs. This is what Architect offers as "Control
+ * settings" on the same dialog, and what this editor had no answer to at all.
+ */
+describe('what a composer field’s control accepts', () => {
+  /**
+   * A node form field recording a date attribute, with its row dialog open.
+   *
+   * The fixture person type has no attribute whose control takes settings, so
+   * one is added from outside the editor first — otherwise every claim below
+   * would hold for the boring reason that nothing here takes any.
+   */
+  const openDateField = async (harness: StageEditorHarness) => {
+    addPersonVariable(harness, 'met_on', { name: 'met_on', type: 'datetime' });
+
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Node attributes' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', {
+        name: 'Create new node attribute field',
+      }),
+    );
+    const field = within(await screen.findByRole('dialog'));
+    await harness.user.selectOptions(
+      field.getByRole('combobox', { name: 'Attribute' }),
+      'met_on',
+    );
+    return field;
+  };
+
+  /** Saves the open row dialog and waits for it to go. */
+  const addRow = async (
+    harness: StageEditorHarness,
+    field: ReturnType<typeof within>,
+  ) => {
+    await harness.user.click(field.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+  };
+
+  const savedFields = (request: FinishRequest | null): unknown => {
+    const nodeForm = request?.stageDocument.nodeForm;
+    return isRecord(nodeForm) ? nodeForm.fields : undefined;
+  };
+
+  it('records the dates a node field accepts on the field, not on the attribute', async () => {
+    const harness = renderStageEditor(openEditor());
+    const field = await openDateField(harness);
+
+    // `fireEvent`, because a native date input takes its value whole rather
+    // than a keystroke at a time.
+    fireEvent.change(field.getByLabelText('Earliest date'), {
+      target: { value: '2020-01-01' },
+    });
+    fireEvent.change(field.getByLabelText('Latest date'), {
+      target: { value: '2024-12-31' },
+    });
+    await addRow(harness, field);
+
+    const request = await harness.submit();
+    expect(savedFields(request)).toEqual([
+      {
+        id: expect.any(String) as unknown as string,
+        variable: 'met_on',
+        component: 'DatePicker',
+        parameters: { min: '2020-01-01', max: '2024-12-31' },
+      },
+    ]);
+    // The attribute is what a date MEANS; the window this form offers is this
+    // form's. Nothing reached the codebook.
+    expect(personVariables(harness).met_on).toEqual({
+      name: 'met_on',
+      type: 'datetime',
+    });
+  });
+
+  it('records the same for a connection’s own form', async () => {
+    const harness = renderStageEditor(openWithConfiguredEdge());
+    addKnowsVariable(harness, 'first_met', {
+      name: 'first_met',
+      type: 'datetime',
+    });
+
+    await harness.user.click(
+      await screen.findByRole('button', {
+        name: 'Create new attribute field for "knows" connections',
+      }),
+    );
+    const field = within(await screen.findByRole('dialog'));
+    await harness.user.selectOptions(
+      field.getByRole('combobox', { name: 'Attribute' }),
+      'first_met',
+    );
+    fireEvent.change(field.getByLabelText('Earliest date'), {
+      target: { value: '2010-01-01' },
+    });
+    await addRow(harness, field);
+
+    const request = await harness.submit();
+    expect(request?.stageDocument.edges).toEqual([
+      {
+        ...CONFIGURED_EDGE,
+        form: {
+          fields: [
+            { variable: 'edgeNotes', component: 'Text' },
+            {
+              id: expect.any(String) as unknown as string,
+              variable: 'first_met',
+              component: 'DatePicker',
+              parameters: { min: '2010-01-01' },
+            },
+          ],
+        },
+      },
+    ]);
+  });
+
+  it('records the resolution, and clears the dates that were chosen under the old one', async () => {
+    const harness = renderStageEditor(openEditor());
+    const field = await openDateField(harness);
+
+    fireEvent.change(field.getByLabelText('Earliest date'), {
+      target: { value: '2020-01-01' },
+    });
+    await harness.user.selectOptions(
+      field.getByRole('combobox', { name: 'Date resolution' }),
+      'year',
+    );
+
+    // A full date is not a year, and re-deriving one would quietly widen a
+    // window the researcher chose. So it goes — and is said to have gone.
+    expect(
+      await field.findByText(
+        'The earliest and latest dates were cleared, because they were set at the previous resolution. Set them again if you still need them.',
+      ),
+    ).toBeVisible();
+    await addRow(harness, field);
+
+    const request = await harness.submit();
+    expect(savedFields(request)).toEqual([
+      {
+        id: expect.any(String) as unknown as string,
+        variable: 'met_on',
+        component: 'DatePicker',
+        parameters: { type: 'year' },
+      },
+    ]);
+  });
+
+  /**
+   * The two date controls are told apart by name in schemas that are strict
+   * about their own keys, so a `min` authored for one is a field the other
+   * refuses outright. Changing the control therefore makes what was authored
+   * for the old one meaningless rather than portable.
+   */
+  it('swaps the settings, and drops the old ones, when the control changes', async () => {
+    const harness = renderStageEditor(openEditor());
+    const field = await openDateField(harness);
+
+    fireEvent.change(field.getByLabelText('Earliest date'), {
+      target: { value: '2020-01-01' },
+    });
+    await harness.user.selectOptions(
+      field.getByRole('combobox', { name: 'Input control' }),
+      'RelativeDatePicker',
+    );
+
+    expect(field.queryByLabelText('Earliest date')).toBeNull();
+    expect(
+      field.queryByRole('combobox', { name: 'Date resolution' }),
+    ).toBeNull();
+    await harness.user.type(field.getByLabelText('Days before'), '30');
+    await addRow(harness, field);
+
+    const request = await harness.submit();
+    expect(savedFields(request)).toEqual([
+      {
+        id: expect.any(String) as unknown as string,
+        variable: 'met_on',
+        component: 'RelativeDatePicker',
+        // A number, not the string a number input reports: the schema takes
+        // integers, and `"30"` would be refused after the dialog had closed.
+        parameters: { before: 30 },
+      },
+    ]);
+  });
+
+  /**
+   * The control follows the attribute, so moving the field to an attribute
+   * nothing configurable can render takes the settings with it. Left behind,
+   * they would be a block authored for a control the field no longer has.
+   */
+  it('takes the settings away when the field moves to an attribute whose control takes none', async () => {
+    const harness = renderStageEditor(openEditor());
+    const field = await openDateField(harness);
+
+    fireEvent.change(field.getByLabelText('Earliest date'), {
+      target: { value: '2020-01-01' },
+    });
+    await harness.user.selectOptions(
+      field.getByRole('combobox', { name: 'Attribute' }),
+      'age',
+    );
+
+    expect(field.queryByLabelText('Earliest date')).toBeNull();
+    await addRow(harness, field);
+
+    const request = await harness.submit();
+    expect(savedFields(request)).toEqual([
+      {
+        id: expect.any(String) as unknown as string,
+        variable: 'age',
+        component: 'Number',
+      },
+    ]);
+  });
+
+  /**
+   * The protocol's own parameter schema, run before the row is committed.
+   *
+   * Nothing downstream would take a reversed window either, but it would be
+   * refused against a path once the dialog had closed — and the researcher
+   * could no longer see which of the two dates was the problem.
+   */
+  it('refuses a window that ends before it starts, against the date that ends it', async () => {
+    const harness = renderStageEditor(openEditor());
+    const field = await openDateField(harness);
+
+    fireEvent.change(field.getByLabelText('Earliest date'), {
+      target: { value: '2024-01-01' },
+    });
+    fireEvent.change(field.getByLabelText('Latest date'), {
+      target: { value: '2020-01-01' },
+    });
+    await harness.user.click(field.getByRole('button', { name: 'Add' }));
+
+    expect(
+      await field.findByText('DatePicker "min" must not be after "max"'),
+    ).toBeVisible();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    const request = await harness.submit();
+    expect(Object.hasOwn(request?.stageDocument ?? {}, 'nodeForm')).toBe(false);
+  });
+
+  /**
+   * A block someone else authored is the researcher's work, and the editor
+   * that now renders it must give it back exactly as it arrived — including
+   * the resolution, which is stored at whatever precision it was chosen under
+   * and can be coarser than anything this editor's date inputs would emit.
+   */
+  it('saves a stage whose fields already carry settings, unchanged', async () => {
+    const { type, fields } = loadFixtureStage('network-composer-1');
+    const harness = renderStageEditor({
+      stage: {
+        id: 'network-composer-settings',
+        type,
+        fields: {
+          ...fields,
+          nodeForm: {
+            fields: [
+              {
+                id: 'composer-node-field-dated',
+                variable: 'met_on',
+                component: 'DatePicker',
+                parameters: { type: 'month', min: '2020-01', max: '2024-12' },
+              },
+            ],
+          },
+        },
+      },
+      sections,
+    });
+    addPersonVariable(harness, 'met_on', { name: 'met_on', type: 'datetime' });
+
+    const request = await harness.roundTrip({ unowned: ['label', 'subject'] });
+    expect(savedFields(request)).toEqual([
+      {
+        id: 'composer-node-field-dated',
+        variable: 'met_on',
+        component: 'DatePicker',
+        parameters: { type: 'month', min: '2020-01', max: '2024-12' },
+      },
+    ]);
   });
 });
