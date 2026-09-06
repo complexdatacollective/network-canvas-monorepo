@@ -1,5 +1,9 @@
 import type { TeamRole } from '@codaco/studio-rpc';
-import { createSmtpEmailSender } from '@codaco/studio-sync/email-sender';
+import {
+  createSmtpEmailSender,
+  type EmailSender,
+} from '@codaco/studio-sync/email-sender';
+import { createPostmarkEmailSender } from '@codaco/studio-sync/postmark-email-sender';
 
 import type { MailerEnv } from '../env.ts';
 
@@ -36,8 +40,10 @@ export function createConsoleMailer(): StudioMailer {
   };
 }
 
-function createSmtpMailer(smtpUrl: string, from: string): StudioMailer {
-  const sender = createSmtpEmailSender({ url: smtpUrl });
+function createTransportMailer(
+  sender: EmailSender,
+  from: string,
+): StudioMailer {
   return {
     sendMagicLink: async ({ email, url }) => {
       await sender.send({
@@ -88,11 +94,13 @@ function createRefusingMailer(): StudioMailer {
   return {
     sendMagicLink: () =>
       Promise.reject(
-        new Error('No SMTP transport is configured; cannot send sign-in email'),
+        new Error(
+          'No email transport is configured; cannot send sign-in email',
+        ),
       ),
     sendTeamInvitation: () =>
       Promise.reject(
-        new Error('No SMTP transport is configured; cannot send invitation'),
+        new Error('No email transport is configured; cannot send invitation'),
       ),
   };
 }
@@ -100,7 +108,18 @@ function createRefusingMailer(): StudioMailer {
 export function createMailer(mailer: MailerEnv): StudioMailer {
   switch (mailer.kind) {
     case 'smtp':
-      return createSmtpMailer(mailer.url, mailer.from);
+      return createTransportMailer(
+        createSmtpEmailSender({ url: mailer.url }),
+        mailer.from,
+      );
+    case 'postmark':
+      return createTransportMailer(
+        createPostmarkEmailSender({
+          serverToken: mailer.serverToken,
+          messageStream: mailer.messageStream,
+        }),
+        mailer.from,
+      );
     case 'console':
       return createConsoleMailer();
     case 'refuse':

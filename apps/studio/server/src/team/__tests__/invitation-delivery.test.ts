@@ -1,10 +1,15 @@
 import { randomUUID } from 'node:crypto';
+import type { IncomingMessage, RequestOptions } from 'node:http';
 
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { createTenantDb } from '@codaco/studio-sync/tenant';
 
+import {
+  postmarkFixture,
+  type PostmarkReply,
+} from '../../../../../../packages/studio-sync/src/__tests__/postmark-fixture.ts';
 import {
   smtpFixture,
   type SmtpBehavior,
@@ -22,6 +27,25 @@ import {
   InvitationDeliveryRoleError,
 } from '../invitation-delivery-dispatcher.ts';
 import { enqueueInvitationDelivery } from '../invitation-delivery-store.ts';
+
+const postmarkRouting = vi.hoisted(() => ({ url: '' }));
+vi.mock('node:https', async () => {
+  const http = await import('node:http');
+  return {
+    request: (
+      _url: string,
+      options: RequestOptions,
+      callback: (response: IncomingMessage) => void,
+    ) => {
+      if (!postmarkRouting.url) throw new Error('No local Postmark receiver');
+      const outgoing = http.request(postmarkRouting.url, options, callback);
+      outgoing.once('socket', (socket) => {
+        socket.once('connect', () => socket.emit('secureConnect'));
+      });
+      return outgoing;
+    },
+  };
+});
 
 const db = await reachableDb();
 
@@ -722,6 +746,177 @@ describe.skipIf(!db)('invitation delivery outbox', () => {
     expect(JSON.stringify(events)).not.toContain(invitation.invitationId);
     expect(JSON.stringify(events)).not.toContain(providerError.message);
   });
+});
+
+describe('Postmark magic-link presentation', () => {
+  it('uses the same plaintext mail boundary without exposing links to logs', async () => {
+    const peer = await postmarkFixture();
+    postmarkRouting.url = peer.url;
+    const log = vi.spyOn(console, 'log');
+    try {
+      const mailer = createMailer({
+        kind: 'postmark',
+        serverToken: 'postmark-token-canary',
+        messageStream: 'outbound',
+        from: 'Studio <sender@example.test>',
+      });
+      await mailer.sendMagicLink({
+        email: 'private-recipient@example.test',
+        url: 'https://studio.example.test/secret-magic-link-canary',
+      });
+      expect(peer.messages).toHaveLength(1);
+      expect(peer.messages[0]?.body).toMatchObject({
+        To: 'private-recipient@example.test',
+        Subject: 'Sign in to Network Canvas Studio',
+        TextBody: expect.stringContaining(
+          'https://studio.example.test/secret-magic-link-canary',
+        ),
+        TrackLinks: 'None',
+        TrackOpens: false,
+      });
+      expect(log).not.toHaveBeenCalled();
+    } finally {
+      log.mockRestore();
+      postmarkRouting.url = '';
+      await peer.close();
+    }
+  });
+});
+
+describe.skipIf(!db)('Postmark invitation delivery outcomes', () => {
+  it.each([
+    [{}, 'sent', null],
+    [{ behavior: 'disconnect' }, 'uncertain', 'EMAIL_DELIVERY_UNCERTAIN'],
+    [{ behavior: 'silent' }, 'uncertain', 'EMAIL_DELIVERY_UNCERTAIN'],
+    [
+      {
+        status: 500,
+        body: { ErrorCode: 101, Message: 'private-provider-canary' },
+      },
+      'uncertain',
+      'EMAIL_DELIVERY_UNCERTAIN',
+    ],
+    [
+      {
+        status: 422,
+        body: { ErrorCode: 406, Message: 'private-provider-canary' },
+      },
+      'failed',
+      'EMAIL_DELIVERY_PERMANENT',
+    ],
+    [
+      { status: 429, body: { Message: 'private-provider-canary' } },
+      'retryable',
+      'EMAIL_DELIVERY_RETRYABLE',
+    ],
+    [
+      {
+        status: 503,
+        body: { ErrorCode: 100, Message: 'private-provider-canary' },
+      },
+      'retryable',
+      'EMAIL_DELIVERY_RETRYABLE',
+    ],
+  ] satisfies [PostmarkReply, string, string | null][])(
+    'persists actual Postmark outcome %# without repeating terminal sends',
+    async (reply: PostmarkReply, terminal, lastError) => {
+      const scratch = await seededScratch();
+      const peer = await postmarkFixture(reply);
+      postmarkRouting.url = peer.url;
+      try {
+        const invitation = await seedInvitation(scratch, {
+          email: 'private-recipient@example.test',
+        });
+        await enqueue(scratch, invitation);
+        const mailer = createMailer({
+          kind: 'postmark',
+          serverToken: 'postmark-token-canary',
+          messageStream: 'outbound',
+          from: 'Studio <sender@example.test>',
+        });
+        const events: OutboxLifecycleEvent[] = [];
+        const heartbeatRenewed = deferred();
+        const worker = dispatcher(scratch.maintenance, mailer, {
+          observer: (event) => {
+            events.push(event);
+            if (event.kind === 'heartbeat' && event.outcome === 'renewed')
+              heartbeatRenewed.resolve();
+          },
+        });
+        if (reply.behavior === 'silent')
+          vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        const running = worker.runOnce();
+        if (reply.behavior === 'silent') {
+          await peer.received();
+          await vi.advanceTimersByTimeAsync(20_001);
+          await heartbeatRenewed.promise;
+          await vi.advanceTimersByTimeAsync(10_000);
+        }
+        await running;
+        const stored = await scratch.pool.query<{
+          attempts: number;
+          sent: boolean;
+          failed: boolean;
+          uncertain: boolean;
+          last_error: string | null;
+        }>(
+          `SELECT attempt_count AS attempts, sent_at IS NOT NULL AS sent,
+          failed_at IS NOT NULL AS failed, uncertain_at IS NOT NULL AS uncertain, last_error
+          FROM team_invitation_deliveries WHERE invitation_id = $1`,
+          [invitation.invitationId],
+        );
+        expect(stored.rows).toEqual([
+          {
+            attempts: 1,
+            sent: terminal === 'sent',
+            failed: terminal === 'failed',
+            uncertain: terminal === 'uncertain',
+            last_error: lastError,
+          },
+        ]);
+        expect(peer.messages).toHaveLength(1);
+        expect(peer.messages[0]?.body).toMatchObject({
+          TextBody: expect.stringContaining(
+            `https://studio.example.test/invitations/${invitation.invitationId}`,
+          ),
+          Headers: [
+            {
+              Name: 'Message-ID',
+              Value: `<studio-invitation.${invitation.invitationId}@networkcanvas.local>`,
+            },
+          ],
+        });
+        expect(events).toContainEqual(
+          expect.objectContaining({
+            claimed: 1,
+            retried: terminal === 'retryable' ? 1 : 0,
+            uncertain: terminal === 'uncertain' ? 1 : 0,
+          }),
+        );
+        for (const canary of [
+          invitation.email,
+          invitation.invitationId,
+          'postmark-token-canary',
+          'private-provider-canary',
+        ]) {
+          expect(
+            JSON.stringify(stored.rows) + JSON.stringify(events),
+          ).not.toContain(canary);
+        }
+        const repeated = await dispatcher(
+          scratch.maintenance,
+          mailer,
+        ).runOnce();
+        expect(repeated.claimed).toBe(terminal === 'retryable' ? 1 : 0);
+        expect(peer.messages).toHaveLength(terminal === 'retryable' ? 2 : 1);
+      } finally {
+        vi.useRealTimers();
+        postmarkRouting.url = '';
+        await peer.close();
+        await scratch.dispose();
+      }
+    },
+  );
 });
 
 describe.skipIf(!db)('SMTP invitation delivery outcomes', () => {

@@ -66,8 +66,8 @@ class InvitationDeliveryAdapter implements OutboxAdapter<ClaimedInvitationDelive
   readonly queue = INVITATION_DELIVERY_QUEUE;
 
   failureDisposition(error: unknown): 'retryable' | 'permanent' | 'uncertain' {
-    // Existing custom mailer failures retain their retry semantics. The SMTP
-    // adapter supplies proof of rejection or of potentially accepted delivery.
+    // Existing custom mailer failures retain their retry semantics. Shared
+    // email adapters distinguish rejection from potentially accepted delivery.
     return error instanceof EmailDeliveryError
       ? error.disposition
       : 'retryable';
