@@ -119,6 +119,54 @@ describe('a command addressed at a nested path', () => {
     expect(applyCommand(doc, { op: 'unset', key: FORM })).toEqual(doc);
   });
 
+  /**
+   * A container named like something every object inherits.
+   *
+   * `toString`, `valueOf` and `hasOwnProperty` are ordinary document keys —
+   * nothing about a protocol says a stage may not keep one — and they are not
+   * the prototype-naming segments the path check refuses, because writing to
+   * one reaches this document and no other. Read off the object rather than out
+   * of it, though, every one of them answers with an inherited FUNCTION for a
+   * document that does not hold the key at all: the engine read that as a
+   * container it must not replace and refused the whole command.
+   */
+  it('creates a container named like an inherited property', () => {
+    for (const segment of ['toString', 'valueOf', 'hasOwnProperty']) {
+      expect(
+        applyCommand(
+          { type: 'FamilyPedigree' },
+          { op: 'set', key: [segment, 'label'], value: 'Hello' },
+        ),
+      ).toEqual({ type: 'FamilyPedigree', [segment]: { label: 'Hello' } });
+    }
+  });
+
+  it('reads a nested value the document does not hold as absent', () => {
+    // `asList` reads a missing list as empty, so an insert into one the
+    // document does not keep yet is an insert into nothing — whatever the key
+    // above it is called.
+    expect(
+      applyCommand(
+        { type: 'FamilyPedigree' },
+        { op: 'insertItem', key: ['valueOf', 'form'], index: 0, item: 'x' },
+      ),
+    ).toEqual({ type: 'FamilyPedigree', valueOf: { form: ['x'] } });
+  });
+
+  it('creates nothing on the way to removing one', () => {
+    const doc: SectionDoc = { type: 'FamilyPedigree' };
+    expect(
+      applyCommand(doc, { op: 'unset', key: ['toString', 'label'] }),
+    ).toEqual(doc);
+  });
+
+  it('reaches a document key that is called what an inherited one is', () => {
+    const doc: SectionDoc = { toString: { label: 'Your family' } };
+    expect(
+      applyCommand(doc, { op: 'set', key: ['toString', 'label'], value: 'Us' }),
+    ).toEqual({ toString: { label: 'Us' } });
+  });
+
   it('never writes through into the document it was given', () => {
     const before = structuredClone(PEDIGREE);
     applyCommand(PEDIGREE, {

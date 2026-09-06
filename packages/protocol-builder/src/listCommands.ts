@@ -68,7 +68,11 @@ function listAt(doc: SectionDoc, target: CommandTarget): unknown[] | null {
   for (const segment of targetPath(target)) {
     if (cursor === undefined) return [];
     if (!isDictionary(cursor)) return null;
-    cursor = cursor[segment];
+    // What the document HOLDS, exactly as the apply engine reads it: a key a
+    // document merely inherits — `toString`, `valueOf` — is not a container it
+    // has, and reading the inherited function would answer "not a list, do not
+    // rebase" for a place the apply reads as an empty list.
+    cursor = Object.hasOwn(cursor, segment) ? cursor[segment] : undefined;
   }
   if (cursor === undefined) return [];
   return Array.isArray(cursor) ? [...cursor] : null;
