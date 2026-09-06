@@ -12,4 +12,12 @@ container instead.
 
 The answer is read off the stage schemas themselves rather than from a list kept
 beside them, so a stage type that gains a variant is covered without anything
-else being remembered.
+else being remembered. A path may run through a list, naming its rows with the
+exported `VARIANT_ROW_SEGMENT`: a sociogram prompt's highlight is a variant too,
+and a merge that puts a rewritten row back property by property can leave half
+of each shape there just as readily.
+
+One path is deliberately unanswered, because the stage types disagree about it:
+a categorical bin's prompt row is itself a choice of shape, and every other
+stage type's prompt is an ordinary row. A caller holding a stage's fields cannot
+tell which it has, so neither answer is given.

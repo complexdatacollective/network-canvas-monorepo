@@ -339,13 +339,13 @@ function runTrial(seed: number): Readonly<{ trial: Trial; outcome: Outcome }> {
 
 // ------------------------------------------------------------- refusals
 
-const valueAt = (document: unknown, path: readonly (string | number)[]) =>
+const valueAt = (document: unknown, path: readonly PropertyKey[]) =>
   path.reduce<unknown>((cursor, segment) => {
     if (Array.isArray(cursor)) return cursor[Number(segment)];
     return isDictionary(cursor) ? cursor[String(segment)] : undefined;
   }, document);
 
-const rowsAt = (document: unknown, path: readonly (string | number)[]) => {
+const rowsAt = (document: unknown, path: readonly PropertyKey[]) => {
   const held = valueAt(document, path);
   return Array.isArray(held) ? held : undefined;
 };
@@ -373,7 +373,7 @@ const rowsAt = (document: unknown, path: readonly (string | number)[]) => {
 function isConflict(
   trial: Trial,
   merged: SectionDoc,
-  issuePath: readonly (string | number)[],
+  issuePath: readonly PropertyKey[],
 ): boolean {
   for (let depth = issuePath.length; depth > 0; depth -= 1) {
     const here = issuePath.slice(0, depth);
