@@ -320,7 +320,16 @@ describe('the sociogram stage editor', () => {
     ).toEqual(['Prompts']);
   });
 
-  it('leaves nothing pending, and nothing imported, when the edit is abandoned', async () => {
+  /**
+   * The import is held outside the protocol until the stage is finished, so a
+   * cancel has to leave the host holding none of it.
+   *
+   * The circles the image replaced are a different matter: leaving them behind
+   * is an edit the researcher made with no staged resource behind it, so it
+   * reached the host when it happened and the cancel has no claim on it. A
+   * cancel drops what was WITHHELD; it is not an undo of the session.
+   */
+  it('leaves nothing imported, and nothing pending but the background switch, when the edit is abandoned', async () => {
     const harness = openFixture();
 
     await harness.user.click(
@@ -342,7 +351,9 @@ describe('the sociogram stage editor', () => {
 
     await harness.cancel();
 
-    expect(harness.pendingCommands()).toEqual([]);
+    expect(
+      harness.pendingCommands().flatMap((batch) => [...batch.commands]),
+    ).toEqual([{ op: 'unset', key: 'background' }]);
     expect(harness.session.getSnapshot().stagedResources).toEqual([]);
     expect(harness.gateway.getStagingResidue()).toEqual([]);
   });

@@ -9,7 +9,10 @@ import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers
 
 import ProtocolField from '../../form/ProtocolField.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
-import { useClearStageValue } from '../../form/stageFormHooks.ts';
+import {
+  useDiscardStageValues,
+  useFormRestoreVersion,
+} from '../../form/stageFormHooks.ts';
 import ResourcePickerControl from '../../resources/components/ResourcePickerControl.tsx';
 import BuilderSection from '../BuilderSection.tsx';
 import { IntegerField } from './canvasFields.tsx';
@@ -108,6 +111,12 @@ export type BackgroundSectionProps = Readonly<{
  * stage and is refused there, against a path, long after the researcher made
  * the choice that created it.
  *
+ * Thrown away out of the SESSION rather than out of the form, because the
+ * session's draft is the single notion of what a path holds: every field is
+ * seeded from it as it mounts, so a clear that lived only in the form would
+ * hand the circles straight back the moment the researcher switched to an
+ * image and thought better of it.
+ *
  * The image itself is a protocol resource, chosen through the host's resource
  * gateway. This section never sees a file, a URL or a data store: it holds the
  * asset id the schema spells a background image with.
@@ -118,7 +127,7 @@ export default function BackgroundSection({
 }: BackgroundSectionProps) {
   const words = { ...DEFAULT_COPY, ...copy };
   const { committedFields, readOnly } = useStageEditorForm();
-  const clearStageValue = useClearStageValue();
+  const discardStageValues = useDiscardStageValues();
 
   /**
    * The mode the researcher has chosen this session, which outranks the shape
@@ -126,14 +135,24 @@ export default function BackgroundSection({
    *
    * It has to: switching TO an image shows an empty picker, and a draft with
    * no image in it yet is indistinguishable from a circles background. The
-   * override is dropped whenever the agreed draft is replaced beneath the
-   * controls — an undo, a collaborator's change, a save — because that draft's
-   * own shape is then the newer answer to which mode this stage is in.
+   * override is dropped whenever the agreed draft is REPLACED beneath the
+   * controls — an undo, a collaborator's change, a rollback — because that
+   * draft's own shape is then the newer answer to which mode this stage is in.
+   *
+   * Asked of the form's restore count rather than of the committed draft's
+   * identity, because switching modes now writes to the session itself. That
+   * write moves the draft, so an override dropped whenever the draft moved
+   * would be dropped by its own discard — and the mode would snap back to the
+   * branch the researcher had just left. The restore count is the narrower
+   * fact this actually needs: an arrival THIS FORM DID NOT MAKE has been
+   * written into the controls. It is the same signal `BuilderSection` keeps a
+   * capability's switch in step with, for the same reason.
    */
   const [override, setOverride] = useState<BackgroundMode | null>(null);
-  const seenCommitted = useRef(committedFields);
-  if (seenCommitted.current !== committedFields) {
-    seenCommitted.current = committedFields;
+  const restoreVersion = useFormRestoreVersion();
+  const seenRestore = useRef(restoreVersion);
+  if (seenRestore.current !== restoreVersion) {
+    seenRestore.current = restoreVersion;
     setOverride(null);
   }
 
@@ -146,18 +165,26 @@ export default function BackgroundSection({
     (next: string | number | (string | number)[] | undefined) => {
       const nextMode: BackgroundMode = next === 'image' ? 'image' : 'circles';
       if (nextMode === mode) return;
-      // Cleared as the switch happens rather than left to the fields
+      // Discarded as the switch happens rather than left to the fields
       // unmounting: a value parked by an unmounted field is replayed into the
       // saved stage, and here that means saving a background of both kinds.
-      if (nextMode === 'image') {
-        clearStageValue(CIRCLES_FIELD);
-        clearStageValue(SKEW_FIELD);
-      } else {
-        clearStageValue(IMAGE_FIELD);
-      }
+      //
+      // ONE call for the whole branch, so it leaves the draft as a single edit
+      // that a single undo brings back whole — the two circle keys belong to
+      // one decision and are lost by one.
+      //
+      // No cause travels with it. A cause is a value the researcher chose
+      // somewhere else that the discard only makes sense against, and this
+      // stage has none: its two backgrounds are told apart by which of their
+      // own keys are present rather than by a discriminant field, so these
+      // unsets ARE the switch. The control that issues them is not a stage
+      // value at all — it is the mode below, which no draft holds.
+      discardStageValues(
+        nextMode === 'image' ? [CIRCLES_FIELD, SKEW_FIELD] : [IMAGE_FIELD],
+      );
       setOverride(nextMode);
     },
-    [clearStageValue, mode],
+    [discardStageValues, mode],
   );
 
   return (
