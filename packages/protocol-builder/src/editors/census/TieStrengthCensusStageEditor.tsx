@@ -4,7 +4,7 @@ import InterviewerGuidanceSection from '../../sections/InterviewerGuidanceSectio
 import IntroductionSection from '../../sections/IntroductionSection.tsx';
 import TieStrengthCensusPromptsSection from '../../sections/prompts/TieStrengthCensusPromptsSection.tsx';
 import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
-import StageNameSection from '../../sections/StageNameSection.tsx';
+import StageHeading from '../../sections/StageHeading.tsx';
 import SubjectSection from '../../sections/SubjectSection.tsx';
 import type { StageEditorProps } from '../../stage-editor-contract.ts';
 
@@ -27,7 +27,7 @@ export function TieStrengthCensusStageEditor({
       controller={controller}
       {...(actions === undefined ? {} : { actions })}
     >
-      <StageNameSection documentationUrl={DOCUMENTATION} />
+      <StageHeading documentationUrl={DOCUMENTATION} />
       <SubjectSection entity="node" filter />
       <IntroductionSection />
       <TieStrengthCensusPromptsSection />

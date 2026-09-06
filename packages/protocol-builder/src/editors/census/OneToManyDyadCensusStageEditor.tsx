@@ -4,7 +4,7 @@ import InterviewerGuidanceSection from '../../sections/InterviewerGuidanceSectio
 import OneToManyDyadCensusPromptsSection from '../../sections/prompts/OneToManyDyadCensusPromptsSection.tsx';
 import RemoveAfterConsiderationSection from '../../sections/RemoveAfterConsiderationSection.tsx';
 import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
-import StageNameSection from '../../sections/StageNameSection.tsx';
+import StageHeading from '../../sections/StageHeading.tsx';
 import SubjectSection from '../../sections/SubjectSection.tsx';
 import type { StageEditorProps } from '../../stage-editor-contract.ts';
 
@@ -34,7 +34,7 @@ export function OneToManyDyadCensusStageEditor({
       controller={controller}
       {...(actions === undefined ? {} : { actions })}
     >
-      <StageNameSection documentationUrl={DOCUMENTATION} />
+      <StageHeading documentationUrl={DOCUMENTATION} />
       <SubjectSection entity="node" filter />
       <OneToManyDyadCensusPromptsSection />
       <RemoveAfterConsiderationSection />

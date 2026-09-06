@@ -1,4 +1,4 @@
-import { waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import type { StageType } from '@codaco/protocol-validation';
@@ -8,6 +8,7 @@ import {
   STAGE_TYPES,
 } from '../../stage-editor-contract.ts';
 import { composeStageEditorRegistry } from '../../stageEditorRegistry.ts';
+import { fixtureStageIds } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import { censusAndBinStageEditors } from '../censusAndBinStageEditors.ts';
 
@@ -153,6 +154,35 @@ describe('the census and bin editor family', () => {
       expect(harness.outline().map((section) => section.title)).toEqual([
         ...outline,
       ]);
+    },
+  );
+
+  /**
+   * Where the stage sits in the interview, on every editor in the family.
+   *
+   * Orientation is not an interface's own decision — a researcher who has just
+   * clicked a stage in the timeline is asking "which one is this?" whatever
+   * kind of stage it turns out to be — so this is asked of all five rather
+   * than of one. Each of these editors used to mount `StageNameSection`
+   * directly, which states no position, and an editor that quietly went back
+   * to it would fail here alone.
+   *
+   * The expected number is derived from the fixture's stage order rather than
+   * written out, because the heading reads it from the protocol the editor is
+   * already holding: a hard-coded number would agree with a heading that had
+   * stopped reading the protocol at all.
+   */
+  it.each(FAMILY)(
+    'says where a $stageType stage sits in the interview',
+    async ({ stageId }) => {
+      const order = fixtureStageIds();
+      renderStageEditor({ stageId });
+
+      expect(
+        await screen.findByText(
+          `Stage ${order.indexOf(stageId) + 1} of ${order.length}`,
+        ),
+      ).toBeInTheDocument();
     },
   );
 });
