@@ -190,11 +190,18 @@ export function commandForListChange(
  * Where a row of `before` is in `list` now.
  *
  * Its own id when it has one, then its content when that content appears
- * exactly once, and only then its position — the same cascade the list editors
- * resolve a rendered index with, for the same reason: an id survives every
+ * exactly once, and only then its position — the same cascade `resolveRowIndex`
+ * resolves a rendered index with, for the same reason: an id survives every
  * reorder, identical rows are genuinely indistinguishable, and a position is
  * the only thing that tells two of those apart. `-1` means the row is not
  * there at all.
+ *
+ * Not that function, because a merge asks a different question of the same
+ * cascade. `resolveRowIndex` refuses a row it cannot tell from another, which
+ * is right when the answer decides which row a command edits; here it would
+ * read as "the row is gone", and a merge that took that literally would DELETE
+ * a row over an ambiguity. So position is the last word rather than a refusal,
+ * and being genuinely absent is answered separately from being unresolvable.
  */
 function findRow(
   list: readonly unknown[],
