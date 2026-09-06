@@ -70,6 +70,11 @@ function asFieldValue(value: unknown): FieldValue {
  * rather than a command per key, so an undo brings the whole stage back at
  * once, subject included: an undo that restored the configuration without the
  * type it describes would leave the stage in a state no researcher chose.
+ *
+ * The same rule a capability's switch-off follows (`useDiscardStageValues`),
+ * for the same reason. It is spelled out here rather than shared with it
+ * because this reset also writes the new subject and the interface template's
+ * defaults, which have to be in the batch the undo brings back.
  */
 export function useResetStageOnSubjectChange(): void {
   const { storeApi, committedFields, identity, applyOwnCommands } =

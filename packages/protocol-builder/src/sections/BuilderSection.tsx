@@ -15,7 +15,8 @@ import {
   useStageEditorForm,
 } from '../form/stageEditorContext.ts';
 import {
-  useClearStageValue,
+  useDiscardStageValues,
+  useFormRestoreVersion,
   useStageHasAnyValue,
 } from '../form/stageFormHooks.ts';
 import { useOutlineSection } from '../form/useOutlineSection.ts';
@@ -26,7 +27,9 @@ import { useOutlineSection } from '../form/useOutlineSection.ts';
  * Switching it off throws its values away — that is what "this stage does not
  * do this" means to the protocol schema, which has no way to say "configured
  * but disabled". Because the loss is real, it is confirmed first, in the
- * capability's own words.
+ * capability's own words; and because it is a decision rather than a way of
+ * hiding something, it reaches the draft as an edit that travels with the
+ * session's other batches and comes back with its undo.
  */
 export type SectionCapability = Readonly<{
   /**
@@ -64,15 +67,54 @@ export type BuilderSectionProps = Readonly<{
    * protocol, which the schema accepts and the interview renders as an empty
    * card.
    *
-   * Switching the capability OFF rather than only clearing it is what keeps
-   * the fields from submitting an empty container in place of the absent one
-   * the schema requires.
+   * Switching the capability OFF as well as clearing it is what stops the
+   * section standing open over a capability that now holds nothing: the switch
+   * and the outline would both say it is configured, and the researcher would
+   * have to close it themselves to find out it is not.
    */
   resetOn?: unknown;
   children: ReactNode;
 }>;
 
 const NO_FIELDS: readonly string[] = Object.freeze([]);
+
+/**
+ * Keeps the researcher's switch in step with a draft that was replaced beneath
+ * it.
+ *
+ * The switch records a decision the researcher made, and nothing about the
+ * form's own editing should disturb it — emptying the last field inside an
+ * open capability is not switching it off. An authoritative arrival is the one
+ * exception: a replacement, an undo, a rollback after a lost lease can take
+ * every value a capability owns away, or bring a whole capability in, and a
+ * decision made about the draft that is gone no longer describes anything. The
+ * section's own panel is already reset from the same signal (Fresco's
+ * `Section` reapplies `defaultOpen` on a restore), so without this the outline
+ * would go on calling a capability available while the panel it lives in has
+ * closed itself over nothing.
+ *
+ * Only a capability whose OWN content changed across the arrival is touched:
+ * an arrival elsewhere in the stage says nothing about this capability, and
+ * must not undo a switch the researcher has just thrown.
+ *
+ * Adjusted during render rather than in an effect so the outline never commits
+ * a frame describing the draft that has just been replaced.
+ */
+function useSwitchFollowsTheDraft(
+  configured: boolean,
+  setSwitchedOn: (value: boolean) => void,
+): void {
+  const restoreVersion = useFormRestoreVersion();
+  const previous = useRef({ restoreVersion, configured });
+
+  if (
+    previous.current.restoreVersion !== restoreVersion &&
+    previous.current.configured !== configured
+  ) {
+    setSwitchedOn(configured);
+  }
+  previous.current = { restoreVersion, configured };
+}
 
 /**
  * One semantic section of a stage editor.
@@ -96,9 +138,10 @@ export default function BuilderSection({
 }: BuilderSectionProps) {
   const { readOnly } = useStageEditorForm();
   const { confirm } = useDialog();
-  const clearStageValue = useClearStageValue();
+  const discardStageValues = useDiscardStageValues();
   const configured = useStageHasAnyValue(capability?.fields ?? NO_FIELDS);
   const [switchedOn, setSwitchedOn] = useState(configured);
+  useSwitchFollowsTheDraft(configured, setSwitchedOn);
   // Holding a value is itself proof the capability is on, so an undo that
   // restores what a switch-off cleared reopens the section — which is exactly
   // what Fresco's Section does with the same fact — without this mirror
@@ -146,18 +189,20 @@ export default function BuilderSection({
         if (confirmed !== true) return false;
       }
 
-      // Every path the capability owns is cleared here rather than left to the
-      // panel's unmount. A field already parked by a collapsed group of
+      // Every path the capability owns is thrown away here rather than left to
+      // the panel's unmount. A field already parked by a collapsed group of
       // advanced options does not unmount again when the capability closes
       // around it, so its value would survive — and go on making the
       // capability look configured, and be written back on save.
-      for (const path of capability?.fields ?? NO_FIELDS) {
-        clearStageValue(path);
-      }
+      //
+      // One call for all of them, so the whole capability leaves the draft as a
+      // single edit: one entry in the session's history, so an undo brings the
+      // capability back whole rather than a path at a time.
+      discardStageValues(capability?.fields ?? NO_FIELDS);
       setSwitchedOn(false);
       return true;
     },
-    [capability, clearStageValue, configured, confirm],
+    [capability, configured, confirm, discardStageValues],
   );
 
   // Only on a CHANGE, and a change of VALUE. The first render is a stage being
@@ -169,21 +214,19 @@ export default function BuilderSection({
   // at all.
   //
   // The panel is remounted rather than closed, because its open state is its
-  // own — a caller can seed it but cannot close it — and a section left open
-  // over cleared fields keeps them registered, which submits the empty
-  // container the schema refuses in place of the absent one it wants. By the
-  // time the new key renders, the clear above has already made `defaultOpen`
-  // false.
+  // own: a caller can seed it through `defaultOpen` but has no way to close it.
+  // By the time the new key renders, the clear above has already made
+  // `defaultOpen` false.
   const [resetGeneration, setResetGeneration] = useState(0);
   const previousResetOn = useRef(resetOn);
   useEffect(() => {
     const before = previousResetOn.current;
     previousResetOn.current = resetOn;
     if (isEqual(before, resetOn)) return;
-    for (const path of capability?.fields ?? NO_FIELDS) clearStageValue(path);
+    discardStageValues(capability?.fields ?? NO_FIELDS);
     setSwitchedOn(false);
     setResetGeneration((generation) => generation + 1);
-  }, [capability, clearStageValue, resetOn]);
+  }, [capability, discardStageValues, resetOn]);
 
   const body = (
     <SectionScopeContext value={sectionId}>{children}</SectionScopeContext>
@@ -210,7 +253,15 @@ export default function BuilderSection({
       description={description}
       disabled={isDisabled}
       toggleable
-      defaultOpen={configured}
+      /**
+       * `Section` reads this when it mounts, and again whenever the form is
+       * restored from an authoritative draft. Both times the question is the
+       * same one the outline answers — is this capability on — so it is
+       * answered with the same value. Reading `configured` alone would close a
+       * capability the researcher had switched on and not yet filled in,
+       * every time anything else in the stage moved.
+       */
+      defaultOpen={enabled}
       onOpenChange={requestOpenChange}
     >
       {body}

@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
@@ -73,6 +73,40 @@ describe('the introduction a participant reads before a task', () => {
     expect(
       await screen.findByText('This field is required.'),
     ).toBeInTheDocument();
+  });
+
+  /**
+   * Spectating is not reading through a keyhole: the introduction stays legible
+   * while someone else holds the lease, and everything that would change it
+   * says it cannot.
+   *
+   * The rich text toolbar was the exception. Its buttons sat undimmed and
+   * operable beside a disabled heading field, and the link control — a
+   * disclosure that works out its own availability rather than taking the
+   * field's — reported itself available and opened its popover.
+   */
+  it('makes every rich text control unavailable to a spectator', async () => {
+    const harness = renderStageEditor({
+      stageId: 'ego-form-1',
+      sections: introduction,
+    });
+    const text = await screen.findByRole('textbox', {
+      name: 'Introduction text',
+    });
+
+    harness.setReadOnly();
+
+    const buttons = within(screen.getByRole('toolbar')).getAllByRole('button');
+    expect(buttons.length).toBeGreaterThan(1);
+    for (const button of buttons) {
+      expect(button).toBeDisabled();
+      expect(button).toHaveAttribute('aria-disabled', 'true');
+    }
+
+    // Still readable, and still the researcher's words.
+    expect(text).toHaveTextContent(
+      'There are a few questions about you before we begin.',
+    );
   });
 
   /**

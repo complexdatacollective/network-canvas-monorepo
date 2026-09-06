@@ -156,7 +156,7 @@ export default function SourceStageSection({ copy }: SourceStageSectionProps) {
     // The draft the session holds NOW, read with the empty batch that reads
     // without writing. A stage with nothing mapped — including the
     // `diseases: []` a new one is created with — is left untouched.
-    const current = applyOwnCommands([]);
+    const { draft: current } = applyOwnCommands([]);
     if (
       !holdsDiseases(diseases.current) &&
       !holdsDiseases(current[DISEASES_FIELD])

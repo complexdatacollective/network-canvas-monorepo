@@ -102,6 +102,58 @@ describe('resolveMove', () => {
 });
 
 describe('commandsForOperation', () => {
+  /**
+   * A drag whose two ends were measured against two different lists.
+   *
+   * `ArrayField` takes a pointer drag's `from` when the pointer goes DOWN and
+   * its `to` when it comes up, and re-syncs its rows from the value in
+   * between — so an insertion arriving mid-drag leaves `from` numbering a list
+   * that no longer exists. Reading it as a position in the list as it stands
+   * now picks up whichever row has since taken that place.
+   */
+  it('moves the row the drag picked up, not the one now at its old index', () => {
+    // The researcher took hold of A at the top of [A, B, C] and dropped it
+    // below B. A collaborator's row arrived at the front while the pointer was
+    // down, so the drop was measured against [X, A, B, C] — where A is index 2.
+    expect(
+      commandsForOperation(
+        'prompts',
+        [REMOTE, A, B, C],
+        [REMOTE, A, B, C],
+        { type: 'move', from: 0, to: 2, item: A },
+        byId,
+      ),
+    ).toEqual([{ op: 'moveItem', key: 'prompts', from: 1, to: 2 }]);
+  });
+
+  it('moves one of two rows nothing but position tells apart', () => {
+    // An options list may legitimately hold two blank rows. Neither carries an
+    // id and their content is identical, so the row a drag picked up cannot be
+    // named — but the list has not moved, so `from` still names it, and moving
+    // either of two identical rows produces the same array anyway.
+    const blank = {};
+    expect(
+      commandsForOperation('options', [blank, blank, A], [blank, blank, A], {
+        type: 'move',
+        from: 0,
+        to: 2,
+        item: blank,
+      }),
+    ).toEqual([{ op: 'moveItem', key: 'options', from: 0, to: 2 }]);
+  });
+
+  it('issues nothing when the row a drag picked up has since gone', () => {
+    expect(
+      commandsForOperation(
+        'prompts',
+        [REMOTE, B, C],
+        [REMOTE, B, C],
+        { type: 'move', from: 0, to: 2, item: A },
+        byId,
+      ),
+    ).toEqual([]);
+  });
+
   it('removes the row the editor named, not the index it drew it at', () => {
     expect(
       commandsForOperation(
@@ -150,6 +202,175 @@ describe('commandsForOperation', () => {
         byId,
       ),
     ).toEqual([{ op: 'insertItem', key: 'prompts', index: 3, item: added }]);
+  });
+
+  it('draws no rows out of a value that is not a list at all', () => {
+    const added = { id: 'n', text: 'New' };
+    // What a list field is handed when an import, a migration or a legacy
+    // protocol left something else at its key. The editor drew an empty list
+    // for it, so the operation numbers rows in a list with none in it — and
+    // reading `.every` off the value itself would take the editor down out of
+    // an ordinary Add click.
+    expect(
+      commandsForOperation(
+        'prompts',
+        [],
+        'legacy',
+        { type: 'insert', index: 0, item: added },
+        byId,
+      ),
+    ).toEqual([{ op: 'insertItem', key: 'prompts', index: 0, item: added }]);
+  });
+
+  it('refuses a row named against a value that is not a list at all', () => {
+    // No row was drawn, so there is no row the operation can name — and
+    // replaying its index onto the document would remove whatever now sits
+    // there.
+    expect(
+      commandsForOperation(
+        'prompts',
+        [A, B],
+        { text: 'not a list' },
+        { type: 'remove', index: 0 },
+        byId,
+      ),
+    ).toEqual([]);
+  });
+});
+
+/**
+ * The row-level twin of "rebuilt from what the session holds now". Rebuilding
+ * the ARRAY keeps a row that arrived from elsewhere; dropping the edited row in
+ * whole still discards an arrival that reached another property of that row.
+ */
+describe('a row that moved while its edit was being composed', () => {
+  // The editor drew this prompt and changed its text. Something else changed a
+  // property the editor never rendered on the same row meanwhile — a
+  // collaborator's edit, an undo, an acknowledgement.
+  const drawn = { id: 'b', text: 'Bravo', note: 'as drawn' };
+  const arrived = { id: 'b', text: 'Bravo', note: 'from elsewhere' };
+  const edited = { id: 'b', text: 'Bravo edited', note: 'as drawn' };
+
+  it('keeps the arrival when a replace commits', () => {
+    expect(
+      commandsForOperation(
+        'prompts',
+        [A, arrived],
+        [A, drawn],
+        { type: 'replace', index: 1, item: edited },
+        byId,
+      ),
+    ).toEqual([
+      {
+        op: 'set',
+        key: 'prompts',
+        value: [A, { id: 'b', text: 'Bravo edited', note: 'from elsewhere' }],
+      },
+    ]);
+  });
+
+  it('keeps the arrival when a save that outlived its editor commits', () => {
+    expect(
+      commandsForDetachedRow(
+        'prompts',
+        [A, arrived],
+        edited,
+        'b',
+        false,
+        byId,
+        drawn,
+      ),
+    ).toEqual([
+      {
+        op: 'set',
+        key: 'prompts',
+        value: [A, { id: 'b', text: 'Bravo edited', note: 'from elsewhere' }],
+      },
+    ]);
+  });
+
+  it('keeps an arrival on a SIBLING LEAF of the key the edit changed', () => {
+    // A stage document holds a capability as one object, and two people can be
+    // inside the same one: this edit set `edges.create` while `edges.display`
+    // arrived from elsewhere. Compared key by key, `edges` differs — so the
+    // whole object the dialog opened with would be written back, taking
+    // `display` with it and undoing a change the editor never rendered.
+    const drawnEdges = {
+      id: 'b',
+      text: 'Bravo',
+      edges: { create: 'knows', display: 'as drawn' },
+    };
+    const arrivedEdges = {
+      id: 'b',
+      text: 'Bravo',
+      edges: { create: 'knows', display: 'from elsewhere' },
+    };
+    const editedEdges = {
+      id: 'b',
+      text: 'Bravo',
+      edges: { create: 'friends', display: 'as drawn' },
+    };
+
+    expect(
+      commandsForOperation(
+        'prompts',
+        [A, arrivedEdges],
+        [A, drawnEdges],
+        { type: 'replace', index: 1, item: editedEdges },
+        byId,
+      ),
+    ).toEqual([
+      {
+        op: 'set',
+        key: 'prompts',
+        value: [
+          A,
+          {
+            id: 'b',
+            text: 'Bravo',
+            edges: { create: 'friends', display: 'from elsewhere' },
+          },
+        ],
+      },
+    ]);
+  });
+
+  it('treats a list inside the row as one leaf', () => {
+    // Rows of a nested list have no identity here, so merging two versions of
+    // it index by index would combine rows that are not the same row. The edit
+    // changed it, so the edit's list is the one that is written.
+    const drawnRules = { id: 'b', rules: [{ property: 'name' }] };
+    const arrivedRules = { id: 'b', rules: [{ property: 'age' }] };
+    const editedRules = {
+      id: 'b',
+      rules: [{ property: 'name' }, { property: 'label' }],
+    };
+
+    expect(
+      commandsForOperation(
+        'prompts',
+        [A, arrivedRules],
+        [A, drawnRules],
+        { type: 'replace', index: 1, item: editedRules },
+        byId,
+      ),
+    ).toEqual([{ op: 'set', key: 'prompts', value: [A, editedRules] }]);
+  });
+
+  it('still removes a property the edit itself cleared', () => {
+    // Surviving an arrival must not mean ignoring the edit: a key the
+    // researcher emptied is emptied, even though the row moved beneath them.
+    expect(
+      commandsForOperation(
+        'prompts',
+        [A, arrived],
+        [A, drawn],
+        { type: 'replace', index: 1, item: { id: 'b', text: 'Bravo' } },
+        byId,
+      ),
+    ).toEqual([
+      { op: 'set', key: 'prompts', value: [A, { id: 'b', text: 'Bravo' }] },
+    ]);
   });
 });
 

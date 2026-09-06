@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 
-import { overrideGateway } from '../../../resources/components/__tests__/overrideGateway.ts';
 import { ResourceGatewayProvider } from '../../../resources/context.tsx';
 import {
   resourceFailure,
@@ -12,6 +11,7 @@ import {
   type ProtocolBuilderResourceGateway,
 } from '../../../resources/gateway.ts';
 import { InMemoryResourceGateway } from '../../../resources/InMemoryResourceGateway.ts';
+import { overrideGateway } from '../../../resources/overrideGateway.ts';
 import {
   emitMapEvent,
   expectMapboxMocked,

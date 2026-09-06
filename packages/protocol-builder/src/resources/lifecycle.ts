@@ -1,9 +1,11 @@
 import type { ProtocolValidationIssue } from '@codaco/protocol-validation';
-import type { SectionDoc } from '@codaco/studio-sync/apply';
+import { canonicalize, type SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import {
   resourceFailure,
+  resourceOk,
+  type ManifestApplyOutcome,
   type ManifestApplyRequest,
   type ProtocolBuilderResourceGateway,
   type ResourceDescriptor,
@@ -17,6 +19,7 @@ import {
   type StageSecretRequest,
   type StageUploadRequest,
 } from './gateway.ts';
+import { callGateway, resultChannelGateway } from './gatewayCall.ts';
 import {
   collectStageResourceReferences,
   findDanglingResourceReferences,
@@ -25,6 +28,62 @@ import {
 
 const ASSETS_SECTION = sectionId({ kind: 'assets' });
 const STAGE_ORDER_SECTION = sectionId({ kind: 'stageOrder' });
+
+/**
+ * The manifest apply of a promotion replayed only to find out whether it
+ * committed. It refuses, so a host that never took that promotion rolls the
+ * replay back rather than committing the draft that has since replaced it.
+ *
+ * Never shown: reaching this outcome at all is the answer the replay wanted,
+ * and its caller reports nothing about the promotion the host declined to
+ * make. See {@link StagedResourceTracker.reconcileUndecidedPromotions}.
+ */
+const REPLAY_REFUSAL: ManifestApplyOutcome = Object.freeze({
+  status: 'failed' as const,
+  retryable: false,
+  message: 'this save was only asking whether an earlier one finished',
+});
+
+/**
+ * The one decision a session's gateway makes that a host's cannot: whether a
+ * field may come to name a staged resource right now.
+ *
+ * **A staged resource stops accepting references from the moment its discard
+ * is asked for, and never accepts one again.** Discarding is asynchronous, so
+ * the "is anything else using this?" a picker asks before it discards is a
+ * fact about the past: a second field choosing the same resource from the
+ * browser while the first field's discard is in flight arrives after that
+ * question and before the host has answered, and neither side would ever
+ * notice. The discard therefore marks the resource as leaving before it asks
+ * the host, and a reference taken while it is leaving is refused — so at every
+ * instant exactly one of the two can happen, and a field can never end up
+ * naming bytes the host is deleting.
+ *
+ * The mark is not enough on its own, because it is lifted the moment the host
+ * answers. A browser reads the resource list once, when it opens, so a second
+ * field's dialog left open across another field's discard is showing a
+ * resource that no longer exists — and clicking it lands after the mark has
+ * gone. A resource this session actually discarded is therefore refused for
+ * the rest of the session, by id: the mark covers the discard, and this covers
+ * everything after it.
+ *
+ * The count of references belongs to the form rather than here — a field's
+ * value reaches the session only on submit — so the picker still decides
+ * whether a discard is allowed at all. This decides only the order.
+ */
+export type StagedResourceReferenceGuard = Readonly<{
+  /**
+   * Ok when a field may name this resource; a failure to show the researcher
+   * when it may not. Anything this session is neither discarding nor has
+   * already discarded is ok, including every committed resource, which it
+   * knows nothing about.
+   */
+  referenceStaged(resourceId: string): ResourceResult<undefined>;
+}>;
+
+/** The host's port plus the staging decisions only a session can make. */
+export type SessionResourceGateway = ProtocolBuilderResourceGateway &
+  StagedResourceReferenceGuard;
 
 /**
  * The staged resources of one editing session, and the gateway the session
@@ -38,7 +97,7 @@ const STAGE_ORDER_SECTION = sectionId({ kind: 'stageOrder' });
  */
 export type StagedResourceTracker = Readonly<{
   /** The session-scoped gateway; the one the shell provides to editors. */
-  gateway: ProtocolBuilderResourceGateway;
+  gateway: SessionResourceGateway;
   /** Descriptors only, in staging order. Never secret material. */
   staged(): readonly ResourceDescriptor[];
   /** The opaque handle for a staged secret, for promotion. */
@@ -57,29 +116,129 @@ export type StagedResourceTracker = Readonly<{
     manifestSection: SectionDoc | undefined,
   ): readonly ResourceDescriptor[];
   /**
-   * Ends this session's staging and discards everything it staged.
+   * Ends this session's staging and discards everything it staged, except what
+   * a promotion left in doubt.
    *
-   * Staging that is still in flight is covered: an upload or a secret that
-   * lands after this is discarded at the host instead of being registered,
-   * because the call that started it belongs to a session that is over and
-   * nothing else would ever drop it.
+   * Staging that is still in flight is covered, and waited for: an upload or a
+   * secret that lands after this is discarded at the host instead of being
+   * registered, because the call that started it belongs to a session that is
+   * over and nothing else would ever drop it — and a host that refuses that
+   * discard leaves the resource registered here, where only this cancel's own
+   * sweep can still reach it. So the answer waits for those calls rather than
+   * racing them.
    *
-   * Refused while a promotion is in flight, because that promotion's manifest
-   * apply is mid-way through committing exactly these resources: discarding
-   * them now would leave the committed stage pointing at bytes this session
-   * threw away.
+   * Refused while a finish holds the session, because that finish is mid-way
+   * through deciding — and then committing — exactly these resources:
+   * discarding them now would leave the committed stage pointing at bytes this
+   * session threw away, and would report a cancel that had not happened.
+   *
+   * A resource whose promotion ended without saying what it did is kept and
+   * reported rather than discarded: see {@link StagedResourceCancelReport}.
    */
-  cancel(): Promise<ResourceResult<undefined>>;
+  cancel(): Promise<ResourceResult<StagedResourceCancelReport>>;
   /**
-   * Notes that a finish committed this session's staged resources.
+   * Settles every promotion that ended without saying what it did, so a finish
+   * may promote different content under an id of its own.
    *
-   * A finish promotes the resources the draft referenced *when it began*, so
-   * an upload or secret still in flight at that point is neither promoted nor
-   * discarded by it; keeping it would leave the host holding staging the
-   * finish already decided against. Staging started after the finish is an
-   * ordinary part of the next edit and is kept as usual.
+   * A doubt can only ever be answered under the promotion id that created it,
+   * and a finish whose content has changed must not commit under that id: an
+   * idempotent host asked under an id it has already completed hands back the
+   * promotion it made, which would report a save of the new draft that never
+   * happened. Those two rules only compose because the doubted id is replayed
+   * here as a *question* — a promotion whose manifest apply refuses, so
+   * nothing of the current draft can reach the protocol under it.
+   *
+   * Whether that apply is reached at all is the answer, and it is decisive
+   * however the host reports the refusal it caused:
+   *
+   * - the host returns the promotion without applying anything, so it holds
+   *   those resources and they are committed;
+   * - the host reaches the apply, so it had no promotion under that id and
+   *   never committed one, whatever it makes of the refusal;
+   * - the host answers neither, so it is unreachable, the doubt stands, and
+   *   the failure is reported for the finish to report.
+   *
+   * The first of those is reported back as
+   * {@link ReconciledPromotions.committed}, because a promotion's manifest
+   * apply is where the stage's own commands were applied too: the caller is
+   * the only thing that knows which batches that apply carried, and it has to
+   * retire them rather than send them again.
+   *
+   * Ok when nothing was in doubt, which is every ordinary finish.
    */
-  finished(): void;
+  reconcileUndecidedPromotions(): Promise<ResourceResult<ReconciledPromotions>>;
+  /**
+   * Takes the session for one finish: closes the staging window and returns
+   * what the finish has to decide — the same instant, on purpose.
+   *
+   * A finish promotes or discards exactly the resources it can see when it
+   * plans, so an upload or secret still in flight at that point is decided by
+   * nothing: keeping it would leave the host holding staging this session has
+   * already walked away from and will never look at again. Closing the window
+   * here rather than when the finish returns is what makes the plan complete —
+   * a result that lands while the promotion is in flight is discarded at the
+   * host, exactly as one landing after a cancel is. Staging started after this
+   * belongs to the next edit and is kept as usual.
+   *
+   * The hold is what makes a finish and a cancel one decision rather than two
+   * that overlap. Only one of them can be under way, so whichever asks second
+   * is refused and told so; the alternative is a cancel that reports success
+   * while the finish it raced goes on to commit the very resources the cancel
+   * said it had discarded. Refused, too, once the session has cancelled: there
+   * is nothing left to commit and the discard may still be running.
+   */
+  finishing(): ResourceResult<StagedResourceFinishHold>;
+}>;
+
+/**
+ * What settling the outstanding doubts proved about them.
+ *
+ * A promotion is half of one atomic apply — the manifest entries the gateway
+ * writes and the stage's own commands the caller applies inside it — so
+ * proving the host holds the promotion proves the whole apply committed. The
+ * resource half is settled here; the caller settles the other half, which is
+ * why the ids it can settle are named rather than merely counted.
+ */
+export type ReconciledPromotions = Readonly<{
+  /**
+   * The doubted promotion ids the host answered with a promotion it had
+   * already made, rather than by reaching the replay's refusing apply.
+   * Everything those applies carried is committed.
+   */
+  committed: readonly string[];
+}>;
+
+/**
+ * What a cancel did about the resources it could not simply discard.
+ *
+ * A promotion that ends without saying whether it committed leaves its
+ * resources in one state the session cannot tell apart from the other: the
+ * host may hold them as committed protocol assets, or may hold nothing at all.
+ * Discarding them would delete work the protocol has already taken, and
+ * reporting them as discarded would be reporting something that did not
+ * happen — so the cancel does neither, and says which resources those are. The
+ * way to settle it is to finish again: the promotion id is stable, so a host
+ * that really did promote hands that promotion back.
+ */
+export type StagedResourceCancelReport = Readonly<{
+  /** Descriptors the cancel deliberately left with the host. Usually empty. */
+  keptUnreconciled: readonly ResourceDescriptor[];
+}>;
+
+/**
+ * One finish's hold on a session's staging, and the resources it decides.
+ *
+ * {@link settle} must run however the finish ends — including when it throws —
+ * or the session can never be cancelled again. Releasing it is safe even for a
+ * finish whose promotion was never decided: what a cancel may then discard is
+ * fenced by the promotion's own outcome rather than by this hold, which is
+ * about one finish being under way at a time.
+ */
+export type StagedResourceFinishHold = Readonly<{
+  /** Descriptors only, as the staging window closed on them. */
+  staged: readonly ResourceDescriptor[];
+  /** Releases the hold, so a cancel or another finish may take it. */
+  settle: () => void;
 }>;
 
 export type StagedResourceTrackerOptions = Readonly<{
@@ -104,11 +263,64 @@ export function createStagedResourceTracker(
     promoted: boolean;
   }>;
   const entries = new Map<string, Entry>();
-  const host = options.gateway;
+  // Where the host's adapter enters the package, and so the one place its
+  // contract is made true: everything below — and every editor handed the
+  // gateway this returns — is written for a result, and an adapter that throws
+  // instead would escape whichever call it was in rather than be reported.
+  const host = resultChannelGateway(options.gateway);
   /** Ids of a promotion that is in flight; they cannot be discarded. */
   const promoting = new Set<string>();
+  /**
+   * Ids whose promotion ended without saying what it did, against the id of
+   * the promotion that left them that way.
+   *
+   * **A resource a promotion did not decide is never discarded.** A retryable
+   * promotion failure is the one answer that means both things at once: the
+   * host rolled back and holds the resource still, or the host committed it
+   * and lost only its reply. Nothing here can tell those apart, and the two
+   * call for opposite actions — so a discard of any kind refuses the resource
+   * until something settles it, and a cancel keeps it and says so. Only a
+   * promotion answering decisively settles it: `ok` means the host has it, and
+   * a refusal under the SAME promotion id means the host never took it, since
+   * a host that had would answer that id with the promotion it already made.
+   *
+   * That rule needs the doubted id to stay askable, which the id the session
+   * mints for a finish is not: it names one commit, so any edit before the
+   * retry rotates it. The two compose through
+   * {@link StagedResourceTracker.reconcileUndecidedPromotions}, which the
+   * session runs before it rotates: the doubted id is asked one last time,
+   * as a question rather than as a commit, and only an id nothing is waiting
+   * on is left behind.
+   */
+  const unreconciled = new Map<string, string>();
+  /**
+   * Ids a discard is deciding right now. They take no new references: see
+   * {@link StagedResourceReferenceGuard} for the rule and what it is for.
+   */
+  const leaving = new Set<string>();
+  /**
+   * Ids the host has actually dropped for this session. They take no new
+   * references either, and unlike {@link leaving} this is never lifted.
+   *
+   * Only a discard puts an id here. A resource that was promoted also leaves
+   * the staged set, and one whose manifest entry has caught up leaves the
+   * tracker altogether — but both of those are resources the protocol now
+   * has, and a field naming one is naming something that exists.
+   */
+  const discardedIds = new Set<string>();
   /** True once the session cancelled: nothing staged after it is kept. */
   let cancelled = false;
+  /**
+   * True while a finish holds the session — from the moment it reads its plan
+   * to the moment it has promoted, applied, and cleaned up.
+   *
+   * The whole finish is guarded rather than only its promotion: the inspection
+   * that decides whether the resources may be committed at all runs before any
+   * promotion starts, and a cancel slipping in there would discard the bytes
+   * the finish is about to commit while reporting that the session was
+   * cleanly abandoned.
+   */
+  let finishInFlight = false;
   /**
    * Bumped whenever this session stops staging (a cancel, or a finish that has
    * already chosen what it promotes). A staging call captures it before its
@@ -134,18 +346,80 @@ export function createStagedResourceTracker(
    * the call was in flight. Nothing else would ever drop such a resource — the
    * finish that ran promoted the resources it knew about, and a cancelled
    * session discards once — so it is dropped at the host here.
+   *
+   * Returns the failure the staging call must report, or `undefined` when the
+   * resource was kept. A host that refused the drop is reported as it
+   * answered: the resource really is still there, so saying it was not kept
+   * would be untrue, and a retryable failure is what the picker can act on.
+   *
+   * A refused drop is also tracked, because the host is still holding it and
+   * nothing else knows its id: the editor was handed a failure rather than a
+   * descriptor, so a session that dropped it here would leave the host with a
+   * resource no later cancel, finish, or host cleanup could name.
    */
   const keepStagedResult = async (
     stagedDuring: number,
+    subject: 'file' | 'secret',
     descriptor: ResourceDescriptor,
     handle?: StagedSecretHandle,
-  ): Promise<boolean> => {
+  ): Promise<ResourceResult<never> | undefined> => {
     if (!cancelled && stagedDuring === stagingWindow) {
       remember(descriptor, handle);
-      return true;
+      return undefined;
     }
-    await host.discardStaged(descriptor.id);
-    return false;
+    const discarded = await host.discardStaged(descriptor.id);
+    if (discarded.status === 'ok') {
+      return stagingEndedFailure(descriptor.id, subject);
+    }
+    remember(descriptor, handle);
+    return discarded;
+  };
+
+  /**
+   * The staging calls that have not settled yet, so a cancel can wait for
+   * them.
+   *
+   * A cancel decides these calls as much as it decides the resources already
+   * staged: the window closes before they land, so {@link keepStagedResult}
+   * drops what they staged at the host instead of registering it. That drop
+   * can fail — and then the resource IS registered, in a session that has just
+   * reported it had nothing left. Nothing would ever reach it again: a cancel
+   * is the terminal action of an editing session, and its own sweep is the
+   * last thing that could have discarded the resource or reported that it
+   * could not be.
+   *
+   * A finish deliberately does the opposite, and does not wait: it promotes
+   * what it can see when it plans, and staging that lands afterwards is
+   * decided by nothing and dropped. That is safe because a finish leaves the
+   * session alive — a cancel can still follow it — while nothing follows a
+   * cancel.
+   */
+  const stagingInFlight = new Set<Promise<unknown>>();
+
+  const trackStaging = async <T>(
+    call: () => Promise<ResourceResult<T>>,
+  ): Promise<ResourceResult<T>> => {
+    const running = call();
+    stagingInFlight.add(running);
+    try {
+      return await running;
+    } finally {
+      stagingInFlight.delete(running);
+    }
+  };
+
+  /**
+   * Waits for every staging call that is still running, including any started
+   * while waiting: those belong to a session that is already over, and their
+   * own cleanup is what the wait is for.
+   */
+  const settleStagingInFlight = async (): Promise<void> => {
+    while (stagingInFlight.size > 0) {
+      // Settled rather than resolved: a staging call that failed is over, and
+      // that is all this waits for. The set is read through in full before the
+      // first await, so a call starting during it is the next pass's.
+      await Promise.allSettled(stagingInFlight);
+    }
   };
 
   const forget = (resourceIds: Iterable<string>): void => {
@@ -156,11 +430,22 @@ export function createStagedResourceTracker(
     if (changed) options.onStagedChanged();
   };
 
+  /**
+   * Forgets resources the host has dropped. Not the same as {@link forget}:
+   * their ids stay refused for the rest of the session, because a browser
+   * opened before the drop is still offering them.
+   */
+  const forgetDiscarded = (resourceIds: Iterable<string>): void => {
+    const dropped = [...resourceIds];
+    for (const resourceId of dropped) discardedIds.add(resourceId);
+    forget(dropped);
+  };
+
   // A promoted resource is no longer staging, so a discard-everything leaves it
   // alone: it is committed, and the session goes on resolving it until the
   // host's revision carries its manifest entry.
   const forgetAllStaged = (): void => {
-    forget(
+    forgetDiscarded(
       [...entries.values()]
         .filter((entry) => !entry.promoted)
         .map((entry) => entry.descriptor.id),
@@ -180,70 +465,125 @@ export function createStagedResourceTracker(
     if (changed) options.onStagedChanged();
   };
 
-  const gateway: ProtocolBuilderResourceGateway = {
+  const gateway: SessionResourceGateway = {
+    secretStorage: host.secretStorage,
     list: (listOptions?: ResourceListOptions) => host.list(listOptions),
     inspect: (resourceId: string) => host.inspect(resourceId),
     download: (resourceId: string) => host.download(resourceId),
     resolvePreview: (resourceId: string) => host.resolvePreview(resourceId),
 
-    async stageUpload(
+    stageUpload(
       request: StageUploadRequest,
     ): Promise<ResourceResult<ResourceDescriptor>> {
-      if (!options.isEditable()) return readOnlyFailure();
-      const stagedDuring = stagingWindow;
-      const result = await host.stageUpload(request);
-      if (result.status !== 'ok') return result;
-      return (await keepStagedResult(stagedDuring, result.data))
-        ? result
-        : stagingEndedFailure(result.data.id, 'file');
+      if (!options.isEditable()) return Promise.resolve(readOnlyFailure());
+      // Tracked from here to the cleanup at the end, not only across the host
+      // call: what a cancel has to wait for is the whole decision about this
+      // resource, including the discard that stands in for registering it.
+      return trackStaging(async () => {
+        const stagedDuring = stagingWindow;
+        const result = await host.stageUpload(request);
+        if (result.status !== 'ok') return result;
+        return (
+          (await keepStagedResult(stagedDuring, 'file', result.data)) ?? result
+        );
+      });
     },
 
-    async stageSecret(
+    stageSecret(
       request: StageSecretRequest,
     ): Promise<ResourceResult<StagedSecret>> {
-      if (!options.isEditable()) return readOnlyFailure();
-      const stagedDuring = stagingWindow;
-      const result = await host.stageSecret(request);
-      if (result.status !== 'ok') return result;
-      return (await keepStagedResult(
-        stagedDuring,
-        result.data.descriptor,
-        result.data.handle,
-      ))
-        ? result
-        : stagingEndedFailure(result.data.descriptor.id, 'secret');
+      if (!options.isEditable()) return Promise.resolve(readOnlyFailure());
+      return trackStaging(async () => {
+        const stagedDuring = stagingWindow;
+        const result = await host.stageSecret(request);
+        if (result.status !== 'ok') return result;
+        return (
+          (await keepStagedResult(
+            stagedDuring,
+            'secret',
+            result.data.descriptor,
+            result.data.handle,
+          )) ?? result
+        );
+      });
     },
 
     async discardStaged(
       resourceId: string,
     ): Promise<ResourceResult<undefined>> {
       if (promoting.has(resourceId)) {
-        return promotionInFlightFailure(resourceId);
+        return saveInFlightFailure(resourceId);
       }
-      const result = await host.discardStaged(resourceId);
-      if (result.status === 'ok') forget([resourceId]);
-      return result;
+      if (unreconciled.has(resourceId)) {
+        return promotionUndecidedFailure(resourceId);
+      }
+      // Marked before the host is asked, and unmarked however it answers: a
+      // discard the host refused leaves the resource staged and choosable
+      // again, and one it carried out has already been forgotten, so the mark
+      // has nothing left to protect either way.
+      leaving.add(resourceId);
+      try {
+        const result = await host.discardStaged(resourceId);
+        if (result.status === 'ok') forgetDiscarded([resourceId]);
+        return result;
+      } finally {
+        leaving.delete(resourceId);
+      }
     },
 
     async discardAllStaged(): Promise<ResourceResult<undefined>> {
-      if (promoting.size > 0) return promotionInFlightFailure();
-      const result = await host.discardAllStaged();
-      if (result.status === 'ok') forgetAllStaged();
-      return result;
+      if (promoting.size > 0) return saveInFlightFailure();
+      // Nothing here can spare one resource from a discard of everything, so
+      // an undecided promotion refuses the whole call rather than sweeping the
+      // resource it may already have committed away with the rest.
+      if (unreconciled.size > 0) return promotionUndecidedFailure();
+      const all = [...entries.keys()];
+      for (const resourceId of all) leaving.add(resourceId);
+      try {
+        const result = await host.discardAllStaged();
+        if (result.status === 'ok') forgetAllStaged();
+        return result;
+      } finally {
+        for (const resourceId of all) leaving.delete(resourceId);
+      }
     },
 
     async promote(
       request: ResourcePromotionRequest,
     ): Promise<ResourceResult<ResourcePromotion>> {
       if (!options.isEditable()) return readOnlyFailure();
+      // Nothing this session staged survives its cancel, so committing any of
+      // it afterwards would publish a manifest entry for bytes the host has
+      // been told to drop — the exact outcome a successful cancel promised
+      // could not happen. Checked here as well as through the finish's hold,
+      // because the gateway is handed to editors that call it directly.
+      if (cancelled) return sessionCancelledFailure();
       // Held for exactly as long as the promotion is undecided, so a discard
       // arriving from the manifest apply — an editor cancelling mid-save — is
       // refused rather than deleting a resource the apply is committing.
       for (const resourceId of request.resourceIds) promoting.add(resourceId);
       try {
         const result = await host.promote(request);
+        // Where the doubt is created and where it is settled, because this is
+        // the only place a promotion's outcome is seen. See `unreconciled`.
         if (result.status === 'ok') {
           markPromoted(result.data.promoted.map((descriptor) => descriptor.id));
+          for (const resourceId of request.resourceIds) {
+            unreconciled.delete(resourceId);
+          }
+        } else if (result.failure.retryable) {
+          for (const resourceId of request.resourceIds) {
+            unreconciled.set(resourceId, request.id);
+          }
+        } else {
+          for (const resourceId of request.resourceIds) {
+            // Only this promotion's own doubt: a refusal of a promotion the
+            // researcher started after editing the draft — a different id —
+            // says nothing about whether the earlier one committed.
+            if (unreconciled.get(resourceId) === request.id) {
+              unreconciled.delete(resourceId);
+            }
+          }
         }
         return result;
       } finally {
@@ -252,29 +592,153 @@ export function createStagedResourceTracker(
         }
       }
     },
+
+    referenceStaged: (resourceId: string): ResourceResult<undefined> => {
+      // A cancelled session has told the host to drop everything it staged,
+      // so every staged id in it is on its way out whether or not one
+      // particular discard is still running.
+      if (cancelled) return sessionCancelledFailure();
+      if (leaving.has(resourceId)) return resourceLeavingFailure(resourceId);
+      // A discard that has already happened, whose mark is therefore long
+      // gone. The list the field chose from was read when its browser opened
+      // and nothing refreshes it, so this is the ordinary way a second field
+      // comes to name a resource that no longer exists.
+      if (discardedIds.has(resourceId)) {
+        return resourceDiscardedFailure(resourceId);
+      }
+      return resourceOk(undefined);
+    },
   };
+
+  const stagedNow = (): readonly ResourceDescriptor[] =>
+    Object.freeze(
+      [...entries.values()]
+        .filter((entry) => !entry.promoted)
+        .map((entry) => entry.descriptor),
+    );
 
   return Object.freeze({
     gateway,
-    cancel: async (): Promise<ResourceResult<undefined>> => {
-      if (promoting.size > 0) return promotionInFlightFailure();
+    cancel: async (): Promise<ResourceResult<StagedResourceCancelReport>> => {
+      // A finish that has started is the one deciding these resources, and it
+      // decides them to the end: reporting a clean cancel here would be
+      // reporting something the finish is in the middle of undoing.
+      if (finishInFlight || promoting.size > 0) return saveInFlightFailure();
       // Set before the discard is awaited: staging that lands while the host
       // is clearing up belongs to a session that is already over.
       cancelled = true;
       stagingWindow += 1;
-      const result = await host.discardAllStaged();
-      if (result.status === 'ok') forgetAllStaged();
-      return result;
+      // And waited for before anything is reported: an upload or a secret
+      // still in flight is one this cancel has just decided against, and a
+      // host that refuses to drop it leaves it registered here. Reporting a
+      // clean cancel before that is settled would report a session emptied
+      // while a resource was on its way into it, with nothing left that could
+      // ever discard it or say that it could not be discarded.
+      await settleStagingInFlight();
+      const kept = [...entries.values()]
+        .filter(
+          (entry) => !entry.promoted && unreconciled.has(entry.descriptor.id),
+        )
+        .map((entry) => entry.descriptor);
+      if (kept.length === 0) {
+        const result = await host.discardAllStaged();
+        if (result.status !== 'ok') return result;
+        forgetAllStaged();
+        return resourceOk(
+          Object.freeze({ keptUnreconciled: Object.freeze([]) }),
+        );
+      }
+      // One at a time, because `discardAllStaged` cannot spare the resources
+      // above. Everything else this session staged goes exactly as it would
+      // have; a host that refuses one of them is reported as a failed cancel,
+      // because that resource really is still there.
+      for (const entry of entries.values()) {
+        if (entry.promoted || unreconciled.has(entry.descriptor.id)) continue;
+        const result = await host.discardStaged(entry.descriptor.id);
+        if (result.status !== 'ok') return result;
+        forgetDiscarded([entry.descriptor.id]);
+      }
+      return resourceOk(
+        Object.freeze({ keptUnreconciled: Object.freeze(kept) }),
+      );
     },
-    finished: () => {
+    reconcileUndecidedPromotions: async (): Promise<
+      ResourceResult<ReconciledPromotions>
+    > => {
+      if (unreconciled.size === 0) return reconciled([]);
+      const doubted = new Map<string, string[]>();
+      for (const [resourceId, promotionId] of unreconciled) {
+        const named = doubted.get(promotionId);
+        if (named === undefined) doubted.set(promotionId, [resourceId]);
+        else named.push(resourceId);
+      }
+
+      const committed: string[] = [];
+      for (const [promotionId, resourceIds] of doubted) {
+        const secretHandles = resourceIds.flatMap((resourceId) => {
+          const handle = entries.get(resourceId)?.handle;
+          return handle === undefined ? [] : [handle];
+        });
+        let reachedApply = false;
+        // Through this session's own gateway, so an `ok` marks the resources
+        // promoted and clears their doubt exactly as any other promotion does.
+        const result = await gateway.promote({
+          id: promotionId,
+          resourceIds,
+          ...(secretHandles.length === 0 ? {} : { secretHandles }),
+          applyManifest: () => {
+            reachedApply = true;
+            return REPLAY_REFUSAL;
+          },
+        });
+        if (result.status === 'ok') {
+          // Answered with the promotion it had already made: it never called
+          // the refusing apply, so what it holds is the apply that DID run —
+          // manifest entries and the stage commands beside them alike. A host
+          // that reached the apply and reported success anyway has answered
+          // its own refusal with an `ok`, and nothing may be retired on that.
+          if (!reachedApply) committed.push(promotionId);
+          continue;
+        }
+        // The host had nothing under this id, so it never committed it. The
+        // promotion above cannot tell that from a rollback worth repeating —
+        // the answer is in whether the apply was reached, which only the
+        // caller that supplied it can see.
+        if (!reachedApply) return result;
+        for (const resourceId of resourceIds) {
+          if (unreconciled.get(resourceId) === promotionId) {
+            unreconciled.delete(resourceId);
+          }
+        }
+      }
+      return reconciled(committed);
+    },
+    finishing: (): ResourceResult<StagedResourceFinishHold> => {
+      // A cancel sets this before it awaits its discard, so a finish starting
+      // while that discard is still running is refused rather than planning to
+      // promote resources the host is being told to drop.
+      if (cancelled) return sessionCancelledFailure();
+      if (finishInFlight || promoting.size > 0) return saveInFlightFailure();
+      finishInFlight = true;
+      // Read before the bump and returned together with it, so there is no
+      // moment in which a caller holds the plan while the window is still open.
+      const staged = stagedNow();
       stagingWindow += 1;
+      let settled = false;
+      return resourceOk(
+        Object.freeze({
+          staged,
+          settle: () => {
+            // Idempotent, so a caller that settles on both a normal and an
+            // error path cannot release a hold a later finish has taken.
+            if (settled) return;
+            settled = true;
+            finishInFlight = false;
+          },
+        }),
+      );
     },
-    staged: () =>
-      Object.freeze(
-        [...entries.values()]
-          .filter((entry) => !entry.promoted)
-          .map((entry) => entry.descriptor),
-      ),
+    staged: stagedNow,
     secretHandle: (resourceId: string) => entries.get(resourceId)?.handle,
     promotedAwaitingManifest: (manifestSection: SectionDoc | undefined) => {
       const awaiting: ResourceDescriptor[] = [];
@@ -293,6 +757,14 @@ export function createStagedResourceTracker(
       return Object.freeze(awaiting);
     },
   });
+}
+
+function reconciled(
+  committed: readonly string[],
+): ResourceResult<ReconciledPromotions> {
+  return resourceOk(
+    Object.freeze({ committed: Object.freeze([...committed]) }),
+  );
 }
 
 /** What finish does with each staged resource, decided from the draft alone. */
@@ -324,11 +796,77 @@ export function planStagedResourceFinish(
   });
 }
 
+/**
+ * Everything one finish would commit, as a string that changes when it does.
+ *
+ * A promotion key names a specific commit rather than "the finish that is
+ * being retried", because that is what an idempotent host replays under it:
+ * asked twice under one key, it hands back the promotion it already made and
+ * never calls `applyManifest` again. So the key has to cover both halves of
+ * what that call would have carried — the stage document being applied, and
+ * the staged resources being promoted — and a finish whose content differs
+ * from the last attempt's is a different commit that must ask for itself.
+ *
+ * Only the resources the plan actually promotes are counted, not everything
+ * staged: a resource staged between two attempts that the draft does not
+ * reference changes nothing about the promotion, and rotating the key for it
+ * would throw away the very retry an uncertain first attempt needs.
+ *
+ * Compared rather than hashed, so two finishes can only share a key by being
+ * character-for-character the same commit.
+ */
+export function promotionContent(
+  stageDocument: SectionDoc,
+  staged: readonly ResourceDescriptor[],
+): string {
+  return canonicalize({
+    stage: stageDocument,
+    promote: planStagedResourceFinish(stageDocument, staged).promote,
+  });
+}
+
+/**
+ * A staged resource the finish walked away from and could not drop.
+ *
+ * The stage itself is committed, so this is not a failed finish — but the host
+ * is still holding the bytes or the secret, and the resource is still staged
+ * here. Reported so the host can retry or clear it up rather than being told
+ * a cleanup happened that did not.
+ */
+export type StagedResourceDiscardFailure = Readonly<{
+  resourceId: string;
+  failure: ResourceGatewayFailure;
+}>;
+
 export type StagedResourceFinishOutcome =
   | Readonly<{
       status: 'finished';
+      /**
+       * Whether {@link StagedResourceFinishOptions.applyStage} ran in this
+       * call.
+       *
+       * False only when the gateway answered under the id of a promotion it
+       * had already made, which it does without applying anything a second
+       * time. The finish succeeded either way, and the same edits reached the
+       * host either way — but in that case they reached it during the attempt
+       * that made the promotion, not during this one. A caller that tracks
+       * what it has delivered has to know which, because the batches this call
+       * handed to `applyStage` are not the batches the host received.
+       */
+      applied: boolean;
       promoted: readonly ResourceDescriptor[];
       discarded: readonly string[];
+      /** Abandoned resources the host would not drop. Usually empty. */
+      discardFailures: readonly StagedResourceDiscardFailure[];
+    }>
+  /**
+   * The draft references staged resources the host will not vouch for, so
+   * nothing was promoted, applied, or discarded. Report `issues` to the
+   * researcher as the draft's own validation problems.
+   */
+  | Readonly<{
+      status: 'unreadable-resources';
+      issues: readonly DanglingResourceReference[];
     }>
   /** The caller's own apply failed; nothing was promoted. Rethrow `error`. */
   | Readonly<{ status: 'apply-failed'; error: unknown }>
@@ -338,13 +876,28 @@ export type StagedResourceFinishOutcome =
 export type StagedResourceFinishOptions = Readonly<{
   gateway: ProtocolBuilderResourceGateway;
   /**
-   * Stable across a retried finish, and NOT reused once a finish has
-   * succeeded: a gateway returns an already-succeeded promotion without
-   * promoting or applying anything again.
+   * The key this finish's content is promoted under: stable across a retry of
+   * the identical finish, and never reused for a different one. A gateway
+   * returns an already-succeeded promotion without promoting or applying
+   * anything again, so a caller that carries one id across two different
+   * finishes is told the second one succeeded when none of it was committed.
+   * Derive it from {@link promotionContent}, which says what "different" means
+   * here.
    */
   promotionId: string;
   /** The draft being finished, including its session-owned id and type. */
   stageDocument: SectionDoc;
+  /**
+   * Where the stage sits in the canonical protocol, from
+   * {@link stageIndexForValidation}, so a resource this finish refuses is
+   * reported on the same path the schema would have used for the same field.
+   */
+  stageIndex: number;
+  /**
+   * What this finish decides, from {@link StagedResourceTracker.finishing}'s
+   * hold. The caller keeps that hold for as long as this call runs, so no
+   * cancel can discard these resources while the finish is committing them.
+   */
   staged: readonly ResourceDescriptor[];
   secretHandle(resourceId: string): StagedSecretHandle | undefined;
   /**
@@ -365,11 +918,26 @@ export type StagedResourceFinishOptions = Readonly<{
  * *inside* the promotion: a gateway that cannot complete the caller's apply
  * undoes its own moves and reports a retryable failure, leaving staging intact
  * for a retry.
+ *
+ * Nothing is promoted until the host has read every resource being promoted.
+ * Staging only says the host is holding bytes; whether they are usable as the
+ * kind the manifest is about to claim is something only the host can say, and
+ * a committed stage pointing at an unreadable roster is a protocol that fails
+ * when the interview loads it — with a manifest entry that looks perfectly
+ * valid. So the finish asks, and refuses rather than committing.
  */
 export async function finishStagedResources(
   options: StagedResourceFinishOptions,
 ): Promise<StagedResourceFinishOutcome> {
   const plan = planStagedResourceFinish(options.stageDocument, options.staged);
+
+  const unreadable = await unreadableResourceIssues(options, plan.promote);
+  if (unreadable.length > 0) {
+    return Object.freeze({
+      status: 'unreadable-resources' as const,
+      issues: unreadable,
+    });
+  }
 
   if (plan.promote.length === 0) {
     try {
@@ -377,10 +945,14 @@ export async function finishStagedResources(
     } catch (error: unknown) {
       return Object.freeze({ status: 'apply-failed' as const, error });
     }
+    const cleanup = await discardEach(options.gateway, plan.discard);
     return Object.freeze({
       status: 'finished' as const,
+      // Called directly above, so there is no promotion cache between this
+      // finish and the host.
+      applied: true,
       promoted: Object.freeze([]),
-      discarded: await discardEach(options.gateway, plan.discard),
+      ...cleanup,
     });
   }
 
@@ -390,26 +962,36 @@ export async function finishStagedResources(
   });
 
   let applyError: Readonly<{ error: unknown }> | undefined;
-  const result = await options.gateway.promote({
-    id: options.promotionId,
-    resourceIds: plan.promote,
-    ...(secretHandles.length === 0 ? {} : { secretHandles }),
-    applyManifest: async (manifest: ManifestApplyRequest) => {
-      try {
-        await options.applyStage(manifest);
-        return Object.freeze({ status: 'applied' as const });
-      } catch (error: unknown) {
-        applyError = Object.freeze({ error });
-        return Object.freeze({
-          status: 'failed' as const,
-          retryable: true,
-          // Deliberately generic: the caller's own error is reported by the
-          // caller, and this message reaches the gateway's failure path.
-          message: 'the stage could not be saved with its resources',
-        });
-      }
-    },
-  });
+  // Set by the gateway calling back, so it distinguishes a promotion this call
+  // made from one the gateway already held and handed straight back.
+  let applied = false;
+  // A gateway that throws is reported as a rolled-back promotion rather than
+  // as an exception, because that is the outcome the caller can act on: the
+  // promotion id makes finishing again safe, and a gateway that had in fact
+  // committed answers the repeat with the same promotion.
+  const result = await callGateway(() =>
+    options.gateway.promote({
+      id: options.promotionId,
+      resourceIds: plan.promote,
+      ...(secretHandles.length === 0 ? {} : { secretHandles }),
+      applyManifest: async (manifest: ManifestApplyRequest) => {
+        try {
+          await options.applyStage(manifest);
+          applied = true;
+          return Object.freeze({ status: 'applied' as const });
+        } catch (error: unknown) {
+          applyError = Object.freeze({ error });
+          return Object.freeze({
+            status: 'failed' as const,
+            retryable: true,
+            // Deliberately generic: the caller's own error is reported by the
+            // caller, and this message reaches the gateway's failure path.
+            message: 'the stage could not be saved with its resources',
+          });
+        }
+      },
+    }),
+  );
 
   if (applyError !== undefined) {
     return Object.freeze({
@@ -423,10 +1005,12 @@ export async function finishStagedResources(
       failure: result.failure,
     });
   }
+  const cleanup = await discardEach(options.gateway, plan.discard);
   return Object.freeze({
     status: 'finished' as const,
+    applied,
     promoted: result.data.promoted,
-    discarded: await discardEach(options.gateway, plan.discard),
+    ...cleanup,
   });
 }
 
@@ -535,16 +1119,77 @@ export function mergeDraftValidationIssues(
   ]);
 }
 
+/**
+ * The resources a finish is about to promote that the host will not vouch for,
+ * as validation problems on the fields that name them.
+ *
+ * Every failed inspection counts, not only `invalid-content`: this is the last
+ * moment before the protocol commits to the resource, and a host that cannot
+ * answer for it has not said it is usable. A transient failure reads as the
+ * host's own message on the field, and finishing again is what repeats the
+ * question — which is exactly what the researcher would want to do.
+ */
+async function unreadableResourceIssues(
+  options: StagedResourceFinishOptions,
+  promoting: readonly string[],
+): Promise<readonly DanglingResourceReference[]> {
+  if (promoting.length === 0) return Object.freeze([]);
+  const references = collectStageResourceReferences(options.stageDocument);
+  const issues: DanglingResourceReference[] = [];
+
+  for (const resourceId of promoting) {
+    const inspected = await callGateway(() =>
+      options.gateway.inspect(resourceId),
+    );
+    if (inspected.status === 'ok') continue;
+    for (const reference of references) {
+      if (reference.resourceId !== resourceId) continue;
+      issues.push(
+        Object.freeze({
+          code: 'custom',
+          path: ['stages', options.stageIndex, ...reference.path],
+          message: `The resource ("${resourceId}") this stage uses cannot be saved: ${inspected.failure.message}`,
+          resourceId,
+        }),
+      );
+    }
+  }
+  return Object.freeze(issues);
+}
+
+/**
+ * Drops each abandoned resource, and says which ones the host would not drop:
+ * a failure here leaves the resource staged, and a finish that reported only
+ * what it managed to discard would look like a clean one.
+ *
+ * This runs after the stage and its resources have already committed, so a
+ * host that throws is reported as a refused discard like any other. Letting
+ * the exception out would turn a save that succeeded into a save the
+ * researcher is told failed, over bytes nobody wanted.
+ */
 async function discardEach(
   gateway: ProtocolBuilderResourceGateway,
   resourceIds: readonly string[],
-): Promise<readonly string[]> {
+): Promise<
+  Readonly<{
+    discarded: readonly string[];
+    discardFailures: readonly StagedResourceDiscardFailure[];
+  }>
+> {
   const discarded: string[] = [];
+  const discardFailures: StagedResourceDiscardFailure[] = [];
   for (const resourceId of resourceIds) {
-    const result = await gateway.discardStaged(resourceId);
+    const result = await callGateway(() => gateway.discardStaged(resourceId));
     if (result.status === 'ok') discarded.push(resourceId);
+    else
+      discardFailures.push(
+        Object.freeze({ resourceId, failure: result.failure }),
+      );
   }
-  return Object.freeze(discarded);
+  return Object.freeze({
+    discarded: Object.freeze(discarded),
+    discardFailures: Object.freeze(discardFailures),
+  });
 }
 
 function pathKey(path: readonly (string | number)[]): string {
@@ -559,15 +1204,76 @@ function readOnlyFailure<T>(): ResourceResult<T> {
 }
 
 /**
- * A discard refused because the resources are mid-promotion. Retryable, and
- * true to what the researcher can do: once the save settles, an unwanted
- * resource can be discarded like any other.
+ * A discard, a cancel, or a second finish refused because a save of these
+ * resources is already under way. Retryable, and true to what the researcher
+ * can do: once the save settles, an unwanted resource can be discarded like
+ * any other, and an abandoned stage can be cancelled.
  */
-function promotionInFlightFailure<T>(resourceId?: string): ResourceResult<T> {
+function saveInFlightFailure<T>(resourceId?: string): ResourceResult<T> {
   return resourceFailure(
     'unavailable',
     'these resources are being saved right now, so they cannot be discarded until the save finishes',
     resourceId === undefined ? {} : { resourceId },
+  );
+}
+
+/**
+ * A discard refused because the last promotion of these resources never said
+ * what it did, so they may already be part of the protocol.
+ *
+ * Retryable, and true to the way out: finishing again asks the host under the
+ * same promotion id, which is what turns "maybe" into an answer — and once it
+ * has answered, the discard the researcher asked for either happens or has
+ * nothing left to do.
+ */
+function promotionUndecidedFailure<T>(resourceId?: string): ResourceResult<T> {
+  return resourceFailure(
+    'unavailable',
+    'the last attempt to save these resources did not say whether it finished, so they cannot be discarded until saving again settles it',
+    resourceId === undefined ? {} : { resourceId },
+  );
+}
+
+/**
+ * A save refused because the session was cancelled. Not retryable: the cancel
+ * discarded everything this session staged, so repeating the save could only
+ * ever commit a stage whose resources are gone.
+ */
+function sessionCancelledFailure<T>(): ResourceResult<T> {
+  return resourceFailure(
+    'read-only',
+    'this stage was discarded, so its resources can no longer be saved',
+  );
+}
+
+/**
+ * A reference refused because the resource is on its way out of the session.
+ *
+ * Reported as `not-found` because that is what the id is about to mean, and
+ * not retryable: asking again would only be waiting for the discard to finish
+ * making it true. The message offers the way out that always exists —
+ * something else — rather than describing the race.
+ */
+function resourceLeavingFailure<T>(resourceId: string): ResourceResult<T> {
+  return resourceFailure(
+    'not-found',
+    'That resource is being discarded, so it cannot be used here. Choose a different one.',
+    { resourceId },
+  );
+}
+
+/**
+ * A reference refused because the resource was discarded some time ago.
+ *
+ * The researcher is looking at a list that says otherwise, so the message says
+ * what to do about the list rather than only what went wrong: reopening the
+ * browser reads it again, and what is offered then is what there is.
+ */
+function resourceDiscardedFailure<T>(resourceId: string): ResourceResult<T> {
+  return resourceFailure(
+    'not-found',
+    'That resource is no longer available: it was discarded while this list was open. Close and reopen the browser to see what there is.',
+    { resourceId },
   );
 }
 

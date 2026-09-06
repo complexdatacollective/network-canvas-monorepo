@@ -75,6 +75,7 @@
   },
   "devDependencies": {
     "@codaco/fresco-ui": "workspace:^",
+    "@codaco/network-query": "workspace:^",
     "@codaco/protocols": "workspace:^",
     "@codaco/tailwind-config": "workspace:^",
     "@codaco/tsconfig": "workspace:^",

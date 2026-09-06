@@ -1,4 +1,5 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { RELATIONSHIP_TYPE_OPTIONS } from '@codaco/protocol-validation';
@@ -614,8 +615,16 @@ describe('the pedigree’s nomination prompts', () => {
     );
     const prompt = within(await screen.findByRole('dialog'));
     const text = prompt.getByRole('textbox', { name: 'Prompt text' });
-    await harness.user.clear(text);
-    await harness.user.type(text, 'Who else?');
+    // Retyped by a keyboard that pauses between keystrokes, which the
+    // harness's own does not. The editor reads its document back from the DOM
+    // asynchronously, so emptying the box and typing into it inside one tick
+    // reaches it as a single change — and a single-paragraph document, which
+    // is what `singleLine` makes this one, reconstructs that change without
+    // its first character. A researcher cannot type in the tick they deleted
+    // in; only a test driving the editor with no delay at all can.
+    const typist = userEvent.setup();
+    await typist.clear(text);
+    await typist.type(text, 'Who else?');
     await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),

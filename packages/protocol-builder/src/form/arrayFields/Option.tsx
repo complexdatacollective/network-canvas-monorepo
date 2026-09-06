@@ -11,7 +11,6 @@ import {
 } from 'react';
 
 import { IconButton } from '@codaco/fresco-ui/Button';
-import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import {
   ArrayFieldDragHandle,
   type ArrayFieldItemProps,
@@ -38,6 +37,10 @@ import {
   requiredRow,
   uniqueRowAttribute,
 } from './rowValidators.ts';
+import {
+  rowRemovalControlProps,
+  useConfirmRowRemoval,
+} from './useConfirmRowRemoval.ts';
 
 export type OptionValue = VariableOptions[number];
 
@@ -118,9 +121,16 @@ export default function Option({
   isBeingEdited,
   disabled,
   readOnly,
+  getAddTrigger,
 }: ArrayFieldItemProps<OptionValue>) {
   const { arrayName, allValues, showArrayError } = useOptionsContext();
-  const { confirm } = useDialog();
+  const { rowRef, confirmRemoval } = useConfirmRowRemoval({
+    item,
+    itemLabel: 'option',
+    index,
+    onDelete,
+    getAddTrigger,
+  });
   const interactionDisabled = disabled || readOnly;
   const rowFieldName = `${arrayName}[${committedIndex ?? index}]`;
 
@@ -160,13 +170,12 @@ export default function Option({
   };
 
   const handleDelete = () => {
-    void confirm({
+    confirmRemoval({
       title: 'Remove option',
       description: 'Are you sure you want to remove this option?',
       confirmLabel: 'Remove option',
       cancelLabel: 'Cancel',
       intent: 'destructive',
-      onConfirm: () => onDelete?.(),
     });
   };
 
@@ -176,6 +185,7 @@ export default function Option({
 
     return (
       <div
+        ref={rowRef}
         className={cx(
           'flex items-center gap-3',
           ROW_CLASSES,
@@ -215,6 +225,7 @@ export default function Option({
             onClick={onEdit}
           />
           <IconButton
+            {...rowRemovalControlProps}
             icon={<Trash2 />}
             aria-label={`Remove option ${index + 1}`}
             color="destructive"
@@ -228,6 +239,7 @@ export default function Option({
 
   return (
     <div
+      ref={rowRef}
       className={cx(
         'flex flex-col gap-4',
         ROW_CLASSES,
@@ -249,6 +261,7 @@ export default function Option({
           onClick={handleFinishEditing}
         />
         <IconButton
+          {...rowRemovalControlProps}
           icon={<Trash2 />}
           aria-label={`Remove option ${index + 1}`}
           color="destructive"

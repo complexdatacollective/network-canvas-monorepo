@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  applyCommands,
   contentHash,
   type Command,
   type SectionDoc,
@@ -19,6 +20,7 @@ import {
   StageIdentityCommandError,
   type CompoundEditResult,
   type CompoundEditRequest,
+  type FinishRequest,
   type ProtocolBuilderSessionOptions,
 } from '../session.ts';
 
@@ -243,6 +245,30 @@ describe('ProtocolBuilderSessionStore', () => {
     });
   });
 
+  it('validates the edit even when a live-applying host cannot take it', async () => {
+    const { onCommands, session } = createSession();
+    expect((await session.validate()).status).toBe('valid');
+    onCommands.mockImplementation(() => {
+      throw new Error('the host could not take the batch');
+    });
+
+    // The host's failure is the caller's to see: this batch did not reach it,
+    // and nothing here can resend it.
+    expect(() =>
+      session.dispatch([{ op: 'set', key: 'title', value: '' }]),
+    ).toThrow('the host could not take the batch');
+
+    // The edit is in the draft whatever the host made of the news, so a
+    // session left saying "validating" would go on saying it forever — and an
+    // editor reading that would let the researcher save a draft the schema
+    // rejects, on the strength of a verdict about the draft before this edit.
+    expect(session.getSnapshot().editedSection.fields.title).toBe('');
+    await vi.waitFor(() =>
+      expect(session.getSnapshot().validation.status).toBe('invalid'),
+    );
+    expect(session.getSnapshot().validatedProtocol).toBeNull();
+  });
+
   it('reuses protocol sections and context across field-only snapshots', () => {
     const personDocument = {
       name: 'Person',
@@ -316,6 +342,43 @@ describe('ProtocolBuilderSessionStore', () => {
     await expect(session.finish()).rejects.toBeInstanceOf(
       InvalidProtocolDraftError,
     );
+  });
+
+  it('does not carry the batches of a finish that succeeded into the next one', async () => {
+    // The whole of a buffering host: it applies what each finish carries, and
+    // acknowledges nothing, which it owes the session at no point.
+    let committed: SectionDoc = { ...initialFields };
+    const onFinish = vi.fn(({ pendingCommands }: FinishRequest) => {
+      committed = pendingCommands.reduce<SectionDoc>(
+        (document, batch) => applyCommands(document, [...batch.commands]),
+        committed,
+      );
+    });
+    const { session } = createSession({ onFinish });
+
+    session.dispatch([
+      {
+        op: 'insertItem',
+        key: 'items',
+        index: 0,
+        item: { id: 'item-1', type: 'text', content: 'First' },
+      },
+    ]);
+    await session.finish();
+
+    session.dispatch([{ op: 'set', key: 'title', value: 'Second thoughts' }]);
+    await session.finish();
+
+    // Sending the first finish's batch again inserts the item a second time,
+    // under a save that reports success. `items` is index-based, and nothing
+    // but the researcher reading their own stage would ever notice.
+    expect(
+      onFinish.mock.calls.at(-1)?.[0].pendingCommands.map((batch) => batch.id),
+    ).toEqual([2]);
+    expect(committed).toEqual(session.getSnapshot().editedSection.fields);
+    expect(committed.items).toEqual([
+      { id: 'item-1', type: 'text', content: 'First' },
+    ]);
   });
 
   it('acknowledges own commands but refuses generic authoritative rebasing', () => {

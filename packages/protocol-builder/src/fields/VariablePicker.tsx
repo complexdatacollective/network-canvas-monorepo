@@ -10,6 +10,15 @@ export type VariablePickerOption = Readonly<{
   value: string;
   label: string;
   type?: VariableType;
+  /**
+   * Whether this attribute can be chosen here. Absent means it can.
+   *
+   * An option the caller has ruled out is not the same thing as one the caller
+   * never mentioned: it is shown when the field already holds it, and named
+   * for what is wrong with it, rather than reported as a reference the
+   * codebook has lost.
+   */
+  usable?: boolean;
 }>;
 
 export type VariablePickerProps = CreateFormFieldProps<
@@ -34,6 +43,24 @@ const DEFAULT_EMPTY_MESSAGE = 'No attributes are available to choose from.';
  */
 const missingOptionLabel = (id: string) =>
   `${id} — this attribute is no longer in the codebook`;
+
+/**
+ * Names an attribute that is still in the codebook and still cannot carry a
+ * rule — a layout attribute, answered with a point nothing can be compared
+ * against.
+ *
+ * Its own wording, because the researcher's next move differs: a deleted
+ * attribute is one to find or recreate, and this one is sitting where they
+ * left it. Told it was "no longer in the codebook", they would go looking for
+ * something that never went anywhere.
+ */
+const unusableOptionLabel = (label: string) =>
+  `${label} — cannot be used in a rule`;
+
+const MISSING_MESSAGE =
+  'This attribute is no longer in the codebook. Choose another one.';
+const UNUSABLE_MESSAGE =
+  'This attribute cannot be used in a rule. Choose another one.';
 
 /**
  * Chooses one codebook attribute from a supplied list.
@@ -72,19 +99,30 @@ export function VariablePickerControl({
   const selected = options.find((option) => option.value === value);
   const isMissing =
     value !== undefined && value !== '' && selected === undefined;
+  const isUnusable = selected?.usable === false;
 
   const selectOptions = useMemo(() => {
-    const listed = options.map((option) => ({
-      value: option.value,
-      label: option.label,
-    }));
-    // The dangling reference is offered as the current choice so the control
-    // can show it as selected. It is last, so it never sits among the real
-    // attributes at the top of the list.
-    return isMissing && value !== undefined
-      ? [...listed, { value, label: missingOptionLabel(value) }]
-      : listed;
-  }, [isMissing, options, value]);
+    const listed = options.flatMap((option) =>
+      option.usable === false
+        ? []
+        : [{ value: option.value, label: option.label }],
+    );
+    // The choice the field already holds is offered so the control can show it
+    // as selected — a native select falls back to its placeholder otherwise,
+    // showing nothing chosen over a rule that is pointed somewhere, and saving
+    // the blank back. It goes last, so it never sits among the attributes a
+    // rule can actually be built on.
+    if (isMissing && value !== undefined) {
+      return [...listed, { value, label: missingOptionLabel(value) }];
+    }
+    if (isUnusable && selected !== undefined) {
+      return [
+        ...listed,
+        { value: selected.value, label: unusableOptionLabel(selected.label) },
+      ];
+    }
+    return listed;
+  }, [isMissing, isUnusable, options, selected, value]);
 
   if (selectOptions.length === 0) {
     return (
@@ -146,9 +184,9 @@ export function VariablePickerControl({
           </span>
         </Pill>
       )}
-      {isMissing && (
+      {(isMissing || isUnusable) && (
         <p className="text-destructive text-sm">
-          This attribute is no longer in the codebook. Choose another one.
+          {isMissing ? MISSING_MESSAGE : UNUSABLE_MESSAGE}
         </p>
       )}
     </div>

@@ -227,6 +227,7 @@ describe.skipIf(!reachable)('asset storage', () => {
 function memoryStore(): AssetStore {
   const objects = new Map<string, { bytes: Uint8Array; mediaType: string }>();
   return {
+    async checkHealth() {},
     async put(bytes, mediaType) {
       const hash = createHash('sha256').update(bytes).digest('hex');
       if (!objects.has(hash)) objects.set(hash, { bytes, mediaType });

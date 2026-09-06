@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { SkipLogicDestinationSchema } from '@codaco/protocol-validation';
+
 import {
   asSkipLogicDestination,
   destinationRoute,
@@ -9,6 +11,7 @@ import {
   skipLogicDestinationOptions,
   skipLogicDestinationProblem,
   stagePlacement,
+  UNREADABLE_DESTINATION_PROBLEM,
 } from '../skipLogicDestination.ts';
 
 const stages = [
@@ -43,6 +46,36 @@ describe('reading a stored destination', () => {
       { type: 'somewhere-else' },
     ]) {
       expect(asSkipLogicDestination(value)).toBeUndefined();
+    }
+  });
+
+  /**
+   * The schema's own two shapes are `strictObject`s, so a key beside them is
+   * a destination it refuses — however good the rest of the object looks.
+   * Read as the shape it resembles, `{ type: 'finish', stageId: 'stale' }`
+   * showed as "End the interview" with nothing wrong, while the stored value
+   * kept the key that refused the save.
+   */
+  it('reads a destination carrying a key the schema refuses as no destination', () => {
+    for (const value of [
+      { type: 'finish', stageId: 'stale' },
+      { type: 'stage', stageId: 'stage-2', action: 'SKIP' },
+    ]) {
+      // The premise, stated rather than assumed: these are values the protocol
+      // schema itself rejects, which is what makes reading them as clean
+      // destinations a save nothing in the editor can explain.
+      expect(SkipLogicDestinationSchema.safeParse(value).success).toBe(false);
+      expect(asSkipLogicDestination(value)).toBeUndefined();
+    }
+  });
+
+  it('keeps reading the two shapes the schema accepts', () => {
+    for (const value of [
+      { type: 'finish' },
+      { type: 'stage', stageId: 'stage-2' },
+    ]) {
+      expect(SkipLogicDestinationSchema.safeParse(value).success).toBe(true);
+      expect(asSkipLogicDestination(value)).toEqual(value);
     }
   });
 
@@ -180,5 +213,66 @@ describe('what is wrong with a destination', () => {
         { index: 2, isNew: false },
       ),
     ).toBe(EARLIER_DESTINATION_PROBLEM);
+  });
+
+  /**
+   * Absence is how "continue at the next available stage" is spelled, so a
+   * destination the schema cannot read has to be told apart from one that was
+   * never there: the protocol schema refuses the first and accepts the second,
+   * and reading them the same way leaves the researcher looking at a control
+   * that says the interview continues at the next stage while the stage they
+   * cannot see is what the save is refused for.
+   */
+  it('reports a destination it cannot read as a problem, not as no destination', () => {
+    // Stated before the sweep so the sweep cannot pass by comparing one
+    // absent verdict against another.
+    expect(UNREADABLE_DESTINATION_PROBLEM).toEqual(expect.any(String));
+    for (const value of [
+      { type: 'stage' },
+      { type: 'stage', stageId: '' },
+      { type: 'somewhere-else' },
+      // A valid discriminator carrying a key the schema's `strictObject`
+      // refuses: the one shape that used to read as a finished answer.
+      { type: 'finish', stageId: 'stale' },
+      { type: 'stage', stageId: 'stage-2', action: 'SKIP' },
+      'route:next',
+      [],
+      null,
+    ]) {
+      expect(skipLogicDestinationProblem(value, stages, placement)).toBe(
+        UNREADABLE_DESTINATION_PROBLEM,
+      );
+    }
+  });
+
+  it('keeps saying nothing about a destination that is genuinely absent', () => {
+    expect(
+      skipLogicDestinationProblem(undefined, stages, placement),
+    ).toBeUndefined();
+  });
+});
+
+describe('a destination the control cannot read', () => {
+  const placement = { index: 0, isNew: false };
+
+  it('does not route to the next available stage', () => {
+    // The route the select speaks is what decides which option reads as
+    // chosen, so sharing the absent route is what made a malformed
+    // destination show as "Next available stage".
+    expect(destinationRoute({ type: 'stage' })).not.toBe(
+      destinationRoute(undefined),
+    );
+  });
+
+  it('is shown as an option of its own rather than falling back', () => {
+    const options = skipLogicDestinationOptions(stages, placement, {
+      type: 'stage',
+    });
+
+    expect(options.at(-1)).toEqual({
+      value: destinationRoute({ type: 'stage' }),
+      label: 'A destination this editor cannot read',
+      disabled: true,
+    });
   });
 });

@@ -41,6 +41,7 @@ import {
 import { compose, cva, cx } from '../../../utils/cva';
 import type { CreateFormFieldProps } from '../../Field/types';
 import { getInputState } from '../../utils/getInputState';
+import { omitWidgetOnlyAria } from '../../utils/omitWidgetOnlyAria';
 import {
   useArrayFieldItems,
   type ArrayFieldOperation,
@@ -179,8 +180,16 @@ export type ArrayFieldItemProps<T extends Record<string, unknown>> = {
    * pattern. Undefined when the field is disabled or read-only — an
    * ItemComponent that renders its edit affordance from handler presence
    * should omit it then.
+   *
+   * Answers `false` when this row is no longer one of the list's — it was
+   * removed while the item component was holding on to the handler, which is
+   * what an update made after an `await` does. An item component that only
+   * ever updates from an event has nothing to read: the row it is rendered
+   * from is there by definition. One that updates when a round trip through
+   * its host finishes has to check, because the row can go while that runs and
+   * an unanswered write is one the researcher is never told about.
    */
-  onUpdate?: (value: Partial<T>) => void;
+  onUpdate?: (value: Partial<T>) => void | boolean;
   onCancel: () => void;
   /**
    * Undefined when the field is disabled or read-only — an ItemComponent
@@ -328,8 +337,18 @@ type ArrayFieldCustomProps<T extends Record<string, unknown>> = {
    * Receive one semantic descriptor for each committed mutation. When this is
    * provided, it replaces the value-level onChange callback so array-aware
    * form stores can preserve index-based metadata.
+   *
+   * Return `false` when the operation did NOT reach whatever this consumer
+   * commits to — a document that refused the write, a row it could not resolve
+   * — and the list puts its rows back to `value`. Returning nothing means the
+   * operation was taken, which is what a consumer whose own `value` is the only
+   * place a row can go always does. The answer matters because this list draws
+   * every mutation out of its own state before reporting it and re-reads
+   * `value` only when `value` changes: a consumer committing somewhere else can
+   * refuse without its value changing at all, and the row would then stay on
+   * screen belonging to no list.
    */
-  onOperation?: (operation: ArrayFieldOperation<T>) => void;
+  onOperation?: (operation: ArrayFieldOperation<T>) => void | boolean;
 };
 
 export type ArrayFieldProps<T extends Record<string, unknown>> =
@@ -459,7 +478,10 @@ type ArrayFieldItemWrapperProps<T extends Record<string, unknown>> = {
   hasMounted: boolean;
   onCancel: () => void;
   onChange?: (value: T) => void;
-  onUpdateItem?: (internalId: string, value: Partial<T>) => void;
+  // Answers the same way `onMoveItem` below does, and for the same reason: a
+  // `=> void` hop anywhere along the way type-erases the answer before it
+  // reaches the item component, and still typechecks.
+  onUpdateItem?: (internalId: string, value: Partial<T>) => void | boolean;
   onDeleteItem?: (internalId: string) => void;
   onEditItem?: (internalId: string) => void;
   // Carries the refusal channel through the wrapper too, for the reason given
@@ -644,11 +666,12 @@ export default function ArrayField<T extends Record<string, unknown>>({
   const isInteractionDisabled = (disabled ?? false) || (readOnly ?? false);
 
   const handleCommittedChange = useCallback(
-    (nextValue: T[], operation: ArrayFieldOperation<T>) => {
-      if (onOperation) {
-        onOperation(operation);
-        return;
-      }
+    (nextValue: T[], operation: ArrayFieldOperation<T>): void | boolean => {
+      // Answered straight through, refusal included: this list's rows go back
+      // to `value` when the consumer says the operation reached nothing.
+      if (onOperation) return onOperation(operation);
+      // The value-level route cannot refuse — the value it is handed IS where
+      // the rows live, so reporting the change is the write.
       onChange?.(nextValue);
     },
     [onChange, onOperation],
@@ -937,18 +960,8 @@ export default function ArrayField<T extends Record<string, unknown>>({
   const effectiveSortable = sortable && !isInteractionDisabled;
 
   // Extract conflicting event handlers and ref before spreading to motion
-  // component.
-  //
-  // `aria-readonly` and `aria-required` go with them, for a different reason:
-  // the element these land on is the `role="list"` below, and a list supports
-  // neither. `useField` gives every field both — `aria-readonly` always, even
-  // when false — so this is not a caller's mistake to fix at a call site, and
-  // an `aria-allowed-attr` violation is not advisory: an attribute a role does
-  // not support is undefined behaviour for a screen reader rather than
-  // something it ignores. Nothing is lost by dropping them here, because the
-  // list was never what conveyed them: each item's own controls carry their
-  // readonly and required state, and `aria-disabled` (which a list does
-  // support) still says the whole field is unavailable.
+  // component. `aria-readonly` and `aria-required` are dropped separately, at
+  // the element they would land on — see `omitWidgetOnlyAria` below.
   const {
     onAnimationStart,
     onAnimationEnd,
@@ -962,8 +975,6 @@ export default function ArrayField<T extends Record<string, unknown>>({
     onDragStart,
     onDrop,
     ref,
-    'aria-readonly': ariaReadOnly,
-    'aria-required': ariaRequired,
     ...safeAriaProps
   } = ariaProps;
 
@@ -994,7 +1005,12 @@ export default function ArrayField<T extends Record<string, unknown>>({
           style={{ borderRadius: 28 }}
           role="list"
           layout
-          {...safeAriaProps}
+          // `role="list"` allows neither `aria-readonly` nor `aria-required`,
+          // and this field has no widget to move them onto. The read-only
+          // state shows in the suppressed add, edit and delete affordances;
+          // required-ness in the label's marker and the visually hidden
+          // "Required" element this list already names in `aria-describedby`.
+          {...omitWidgetOnlyAria(safeAriaProps)}
         >
           <AnimatePresence mode="popLayout">
             {renderableItems.length === 0 && (
