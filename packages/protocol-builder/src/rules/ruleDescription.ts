@@ -1,7 +1,8 @@
+import { createAppIntl, defineMessages } from '@codaco/app-i18n/messages';
+import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import type {
   Codebook,
   ColorReference,
-  DateFormat,
   FilterOperator,
   NodeShape,
   VariableType,
@@ -36,6 +37,17 @@ import {
   ruleVariables,
   ruleVariableType,
 } from './ruleCodebook.ts';
+import { dateResolutionMessages, ruleSubjectMessages } from './ruleMessages.ts';
+
+/**
+ * The formatter used when a caller has none of its own.
+ *
+ * `describeRule` is the package's one public rule export, and a host reaches
+ * it with a validated protocol and no editing session — the printable protocol
+ * summary, an archive job, a server. Those get English; every display surface
+ * inside the builder threads the reader's own `intl` in.
+ */
+const englishIntl = createAppIntl({ locale: 'en' });
 
 /**
  * The entity a rule is about, resolved against the codebook.
@@ -240,6 +252,17 @@ export type DescribeRuleInput = Readonly<{
    * committing a second copy of one.
    */
   duplicateIds?: ReadonlySet<string>;
+  /**
+   * The reader's own formatter, for every word in the sentence and every
+   * problem reported beside it.
+   *
+   * Optional because this module is the package's one public rule export and a
+   * host reaches it without an editing session — the printable protocol
+   * summary has a validated protocol and nothing else. Omitted, the rule reads
+   * in English; the builder's own list, field and dialog thread the researcher's
+   * formatter in, so what the row says and what the editor says agree.
+   */
+  intl?: IntlShape;
 }>;
 
 /**
@@ -247,56 +270,211 @@ export type DescribeRuleInput = Readonly<{
  *
  * An ego rule reads "Ego has Age that is greater than 30"; an alter rule reads
  * "Person where Age is greater than 30". Whole phrases either way — assembling
- * one from "that" plus the alter wording only composes in English.
+ * one from "that" plus the alter wording only composes in English, which is
+ * why the two voices are two complete tables rather than one plus a prefix.
  *
  * Total over the schema's own operator set, so an operator added to
  * `AllOperators` arrives here as a typecheck failure rather than as a sentence
  * reading the token the protocol files it under.
  */
-const OPERATOR_TEXT: Readonly<
-  Record<FilterOperator, Readonly<{ alter: string; ego: string }>>
-> = Object.freeze({
-  // These two introduce the attribute instead of following it — "Person
-  // without Age", "Ego has EgoName" — so each voice states the whole
-  // connecting phrase rather than borrowing the one the other rules use.
-  EXISTS: { alter: 'where', ego: 'has' },
-  NOT_EXISTS: { alter: 'without', ego: 'without' },
-  EXACTLY: { alter: 'is exactly equal to', ego: 'that is exactly equal to' },
-  NOT: { alter: 'is not', ego: 'that is not' },
-  GREATER_THAN: { alter: 'is greater than', ego: 'that is greater than' },
+const ALTER_OPERATOR_TEXT = defineMessages({
+  EXISTS: {
+    id: 'protocolBuilder.ruleDescription.alterExists',
+    defaultMessage: 'where',
+    description:
+      'Phrase for the rule operator that asks only whether the attribute was answered at all. In the alter voice it introduces the attribute rather than following it, so the whole sentence reads "Person where Age". Read inside a sentence about a network member (an alter), between the attribute name and the value: "Person where Age is greater than 30".',
+  },
+  NOT_EXISTS: {
+    id: 'protocolBuilder.ruleDescription.alterNotExists',
+    defaultMessage: 'without',
+    description:
+      'Phrase for the rule operator that asks whether the attribute was left unanswered. In the alter voice it introduces the attribute rather than following it, so the whole sentence reads "Person without Age". Read inside a sentence about a network member (an alter), between the attribute name and the value: "Person where Age is greater than 30".',
+  },
+  EXACTLY: {
+    id: 'protocolBuilder.ruleDescription.alterExactly',
+    defaultMessage: 'is exactly equal to',
+    description:
+      'Phrase for the rule operator that matches an attribute answered with exactly the value that follows. Read inside a sentence about a network member (an alter), between the attribute name and the value: "Person where Age is greater than 30".',
+  },
+  NOT: {
+    id: 'protocolBuilder.ruleDescription.alterNot',
+    defaultMessage: 'is not',
+    description:
+      'Phrase for the rule operator that matches an attribute answered with anything other than the value that follows. Read inside a sentence about a network member (an alter), between the attribute name and the value: "Person where Age is greater than 30".',
+  },
+  GREATER_THAN: {
+    id: 'protocolBuilder.ruleDescription.alterGreaterThan',
+    defaultMessage: 'is greater than',
+    description:
+      'Phrase for the rule operator that matches an attribute answered with a number above the value that follows. Read inside a sentence about a network member (an alter), between the attribute name and the value: "Person where Age is greater than 30".',
+  },
   GREATER_THAN_OR_EQUAL: {
-    alter: 'is greater than or equal to',
-    ego: 'that is greater than or equal to',
+    id: 'protocolBuilder.ruleDescription.alterGreaterThanOrEqual',
+    defaultMessage: 'is greater than or equal to',
+    description:
+      'Phrase for the rule operator that matches an attribute answered with a number above the value that follows, or equal to it. Read inside a sentence about a network member (an alter), between the attribute name and the value: "Person where Age is greater than 30".',
   },
-  LESS_THAN: { alter: 'is less than', ego: 'that is less than' },
+  LESS_THAN: {
+    id: 'protocolBuilder.ruleDescription.alterLessThan',
+    defaultMessage: 'is less than',
+    description:
+      'Phrase for the rule operator that matches an attribute answered with a number below the value that follows. Read inside a sentence about a network member (an alter), between the attribute name and the value: "Person where Age is greater than 30".',
+  },
   LESS_THAN_OR_EQUAL: {
-    alter: 'is less than or equal to',
-    ego: 'that is less than or equal to',
+    id: 'protocolBuilder.ruleDescription.alterLessThanOrEqual',
+    defaultMessage: 'is less than or equal to',
+    description:
+      'Phrase for the rule operator that matches an attribute answered with a number below the value that follows, or equal to it. Read inside a sentence about a network member (an alter), between the attribute name and the value: "Person where Age is greater than 30".',
   },
-  CONTAINS: { alter: 'contains', ego: 'that contains' },
+  CONTAINS: {
+    id: 'protocolBuilder.ruleDescription.alterContains',
+    defaultMessage: 'contains',
+    description:
+      'Phrase for the rule operator that matches an attribute whose text answer matches the regular expression that follows. Read inside a sentence about a network member (an alter), between the attribute name and the value: "Person where Age is greater than 30".',
+  },
   DOES_NOT_CONTAIN: {
-    alter: 'does not contain',
-    ego: 'that does not contain',
+    id: 'protocolBuilder.ruleDescription.alterDoesNotContain',
+    defaultMessage: 'does not contain',
+    description:
+      'Phrase for the rule operator that matches an attribute whose text answer does not match the regular expression that follows. Read inside a sentence about a network member (an alter), between the attribute name and the value: "Person where Age is greater than 30".',
   },
-  INCLUDES: { alter: 'includes', ego: 'that includes' },
-  EXCLUDES: { alter: 'excludes', ego: 'that excludes' },
+  INCLUDES: {
+    id: 'protocolBuilder.ruleDescription.alterIncludes',
+    defaultMessage: 'includes',
+    description:
+      'Phrase for the rule operator that matches an attribute answered with one of the options that follow. Read inside a sentence about a network member (an alter), between the attribute name and the value: "Person where Age is greater than 30".',
+  },
+  EXCLUDES: {
+    id: 'protocolBuilder.ruleDescription.alterExcludes',
+    defaultMessage: 'excludes',
+    description:
+      'Phrase for the rule operator that matches an attribute answered with none of the options that follow. Read inside a sentence about a network member (an alter), between the attribute name and the value: "Person where Age is greater than 30".',
+  },
   OPTIONS_GREATER_THAN: {
-    alter: 'has selected options greater than',
-    ego: 'that has selected options greater than',
+    id: 'protocolBuilder.ruleDescription.alterOptionsGreaterThan',
+    defaultMessage: 'has selected options greater than',
+    description:
+      'Phrase for the rule operator that counts how many options a multiple-choice attribute was answered with and matches a count above the number that follows. Read inside a sentence about a network member (an alter), between the attribute name and the value: "Person where Age is greater than 30".',
   },
   OPTIONS_LESS_THAN: {
-    alter: 'has selected options less than',
-    ego: 'that has selected options less than',
+    id: 'protocolBuilder.ruleDescription.alterOptionsLessThan',
+    defaultMessage: 'has selected options less than',
+    description:
+      'Phrase for the rule operator that counts how many options a multiple-choice attribute was answered with and matches a count below the number that follows. Read inside a sentence about a network member (an alter), between the attribute name and the value: "Person where Age is greater than 30".',
   },
   OPTIONS_EQUALS: {
-    alter: 'has selected options equal to',
-    ego: 'that has selected options equal to',
+    id: 'protocolBuilder.ruleDescription.alterOptionsEquals',
+    defaultMessage: 'has selected options equal to',
+    description:
+      'Phrase for the rule operator that counts how many options a multiple-choice attribute was answered with and matches exactly the number that follows. Read inside a sentence about a network member (an alter), between the attribute name and the value: "Person where Age is greater than 30".',
   },
   OPTIONS_NOT_EQUALS: {
-    alter: 'has selected options not equal to',
-    ego: 'that has selected options not equal to',
+    id: 'protocolBuilder.ruleDescription.alterOptionsNotEquals',
+    defaultMessage: 'has selected options not equal to',
+    description:
+      'Phrase for the rule operator that counts how many options a multiple-choice attribute was answered with and matches any count other than the number that follows. Read inside a sentence about a network member (an alter), between the attribute name and the value: "Person where Age is greater than 30".',
   },
-});
+}) satisfies Record<FilterOperator, MessageDescriptor>;
+
+/** The same operators in the ego voice. See `ALTER_OPERATOR_TEXT`. */
+const EGO_OPERATOR_TEXT = defineMessages({
+  EXISTS: {
+    id: 'protocolBuilder.ruleDescription.egoExists',
+    defaultMessage: 'has',
+    description:
+      'Phrase for the rule operator that asks only whether the attribute was answered at all. In the alter voice it introduces the attribute rather than following it, so the whole sentence reads "Person where Age". Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: "Ego has Age that is greater than 30". English uses a relative clause here where the alter voice does not.',
+  },
+  NOT_EXISTS: {
+    id: 'protocolBuilder.ruleDescription.egoNotExists',
+    defaultMessage: 'without',
+    description:
+      'Phrase for the rule operator that asks whether the attribute was left unanswered. In the alter voice it introduces the attribute rather than following it, so the whole sentence reads "Person without Age". Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: "Ego has Age that is greater than 30". English uses a relative clause here where the alter voice does not.',
+  },
+  EXACTLY: {
+    id: 'protocolBuilder.ruleDescription.egoExactly',
+    defaultMessage: 'that is exactly equal to',
+    description:
+      'Phrase for the rule operator that matches an attribute answered with exactly the value that follows. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: "Ego has Age that is greater than 30". English uses a relative clause here where the alter voice does not.',
+  },
+  NOT: {
+    id: 'protocolBuilder.ruleDescription.egoNot',
+    defaultMessage: 'that is not',
+    description:
+      'Phrase for the rule operator that matches an attribute answered with anything other than the value that follows. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: "Ego has Age that is greater than 30". English uses a relative clause here where the alter voice does not.',
+  },
+  GREATER_THAN: {
+    id: 'protocolBuilder.ruleDescription.egoGreaterThan',
+    defaultMessage: 'that is greater than',
+    description:
+      'Phrase for the rule operator that matches an attribute answered with a number above the value that follows. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: "Ego has Age that is greater than 30". English uses a relative clause here where the alter voice does not.',
+  },
+  GREATER_THAN_OR_EQUAL: {
+    id: 'protocolBuilder.ruleDescription.egoGreaterThanOrEqual',
+    defaultMessage: 'that is greater than or equal to',
+    description:
+      'Phrase for the rule operator that matches an attribute answered with a number above the value that follows, or equal to it. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: "Ego has Age that is greater than 30". English uses a relative clause here where the alter voice does not.',
+  },
+  LESS_THAN: {
+    id: 'protocolBuilder.ruleDescription.egoLessThan',
+    defaultMessage: 'that is less than',
+    description:
+      'Phrase for the rule operator that matches an attribute answered with a number below the value that follows. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: "Ego has Age that is greater than 30". English uses a relative clause here where the alter voice does not.',
+  },
+  LESS_THAN_OR_EQUAL: {
+    id: 'protocolBuilder.ruleDescription.egoLessThanOrEqual',
+    defaultMessage: 'that is less than or equal to',
+    description:
+      'Phrase for the rule operator that matches an attribute answered with a number below the value that follows, or equal to it. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: "Ego has Age that is greater than 30". English uses a relative clause here where the alter voice does not.',
+  },
+  CONTAINS: {
+    id: 'protocolBuilder.ruleDescription.egoContains',
+    defaultMessage: 'that contains',
+    description:
+      'Phrase for the rule operator that matches an attribute whose text answer matches the regular expression that follows. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: "Ego has Age that is greater than 30". English uses a relative clause here where the alter voice does not.',
+  },
+  DOES_NOT_CONTAIN: {
+    id: 'protocolBuilder.ruleDescription.egoDoesNotContain',
+    defaultMessage: 'that does not contain',
+    description:
+      'Phrase for the rule operator that matches an attribute whose text answer does not match the regular expression that follows. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: "Ego has Age that is greater than 30". English uses a relative clause here where the alter voice does not.',
+  },
+  INCLUDES: {
+    id: 'protocolBuilder.ruleDescription.egoIncludes',
+    defaultMessage: 'that includes',
+    description:
+      'Phrase for the rule operator that matches an attribute answered with one of the options that follow. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: "Ego has Age that is greater than 30". English uses a relative clause here where the alter voice does not.',
+  },
+  EXCLUDES: {
+    id: 'protocolBuilder.ruleDescription.egoExcludes',
+    defaultMessage: 'that excludes',
+    description:
+      'Phrase for the rule operator that matches an attribute answered with none of the options that follow. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: "Ego has Age that is greater than 30". English uses a relative clause here where the alter voice does not.',
+  },
+  OPTIONS_GREATER_THAN: {
+    id: 'protocolBuilder.ruleDescription.egoOptionsGreaterThan',
+    defaultMessage: 'that has selected options greater than',
+    description:
+      'Phrase for the rule operator that counts how many options a multiple-choice attribute was answered with and matches a count above the number that follows. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: "Ego has Age that is greater than 30". English uses a relative clause here where the alter voice does not.',
+  },
+  OPTIONS_LESS_THAN: {
+    id: 'protocolBuilder.ruleDescription.egoOptionsLessThan',
+    defaultMessage: 'that has selected options less than',
+    description:
+      'Phrase for the rule operator that counts how many options a multiple-choice attribute was answered with and matches a count below the number that follows. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: "Ego has Age that is greater than 30". English uses a relative clause here where the alter voice does not.',
+  },
+  OPTIONS_EQUALS: {
+    id: 'protocolBuilder.ruleDescription.egoOptionsEquals',
+    defaultMessage: 'that has selected options equal to',
+    description:
+      'Phrase for the rule operator that counts how many options a multiple-choice attribute was answered with and matches exactly the number that follows. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: "Ego has Age that is greater than 30". English uses a relative clause here where the alter voice does not.',
+  },
+  OPTIONS_NOT_EQUALS: {
+    id: 'protocolBuilder.ruleDescription.egoOptionsNotEquals',
+    defaultMessage: 'that has selected options not equal to',
+    description:
+      'Phrase for the rule operator that counts how many options a multiple-choice attribute was answered with and matches any count other than the number that follows. Read inside a sentence about the ego — the interview participant themselves — between the attribute name and the value: "Ego has Age that is greater than 30". English uses a relative clause here where the alter voice does not.',
+  },
+}) satisfies Record<FilterOperator, MessageDescriptor>;
 
 /**
  * How a presence operator reads when it is the whole predicate.
@@ -305,13 +483,35 @@ const OPERATOR_TEXT: Readonly<
  * attribute may draw from — so a third one added there arrives as a typecheck
  * failure rather than as a sentence reading its own token.
  */
-const PRESENCE_OPERATOR_TEXT: Readonly<Record<PresenceOperator, string>> =
-  Object.freeze({
-    EXISTS: 'exists',
-    NOT_EXISTS: 'does not exist',
-  });
+const PRESENCE_OPERATOR_TEXT = defineMessages({
+  EXISTS: {
+    id: 'protocolBuilder.ruleDescription.presenceExists',
+    defaultMessage: 'exists',
+    description:
+      'The whole predicate of a rule that asks only whether any network member of a given type is present in the interview network: "Person exists". Follows the type name.',
+  },
+  NOT_EXISTS: {
+    id: 'protocolBuilder.ruleDescription.presenceNotExists',
+    defaultMessage: 'does not exist',
+    description:
+      'The whole predicate of a rule that asks whether no network member of a given type is present in the interview network: "Person does not exist". Follows the type name.',
+  },
+}) satisfies Record<PresenceOperator, MessageDescriptor>;
 
-const EGO_LABEL = 'Ego';
+const generalMessages = defineMessages({
+  egoLabel: {
+    id: 'protocolBuilder.ruleDescription.egoLabel',
+    defaultMessage: 'Ego',
+    description:
+      'What a rule about the interview participant themselves is said to be about. "Ego" is the network-research term for that participant, as opposed to the alters they name. Reads as the subject of the rule sentence: "Ego has Age".',
+  },
+  unreadableOperand: {
+    id: 'protocolBuilder.ruleDescription.unreadableOperand',
+    defaultMessage: '(a value this editor cannot read)',
+    description:
+      'Stands in for the value a rule compares against when the protocol holds something there that cannot be written out at all. Shown in place of the value inside the rule sentence, so the researcher can see which rule to repair.',
+  },
+});
 
 /**
  * A stored value that is not a string or a number, written out as it stands.
@@ -319,12 +519,14 @@ const EGO_LABEL = 'Ego';
  * Never thrown from and never empty: this is the last thing between a stored
  * operand and a sentence that does not mention it.
  */
-const operandLiteral = (item: unknown): string => {
+const operandLiteral = (item: unknown, intl: IntlShape): string => {
   if (typeof item === 'boolean') return item ? 'true' : 'false';
+  const unreadable = () =>
+    intl.formatMessage(generalMessages.unreadableOperand);
   try {
-    return JSON.stringify(item) ?? UNREADABLE_OPERAND;
+    return JSON.stringify(item) ?? unreadable();
   } catch {
-    return UNREADABLE_OPERAND;
+    return unreadable();
   }
 };
 
@@ -346,6 +548,7 @@ const operandLiteral = (item: unknown): string => {
 const operandItems = (
   value: unknown,
   label: (item: string | number) => string | number,
+  intl: IntlShape,
 ): (string | number)[] => {
   const items = Array.isArray(value) ? value : [value];
   return items.flatMap<string | number>((item) => {
@@ -353,7 +556,7 @@ const operandItems = (
       return [label(item)];
     }
     if (item === undefined) return [];
-    return [operandLiteral(item)];
+    return [operandLiteral(item, intl)];
   });
 };
 
@@ -369,8 +572,11 @@ export function describeRule({
   codebook,
   targets,
   duplicateIds,
+  intl = englishIntl,
 }: DescribeRuleInput): RuleDescription {
   const problems: RuleProblem[] = [];
+  const say = (message: MessageDescriptor, values?: Record<string, string>) =>
+    intl.formatMessage(message, values);
 
   if (!isRuleDraft(rule)) {
     return Object.freeze({
@@ -385,7 +591,7 @@ export function describeRule({
       problems: Object.freeze([
         {
           code: 'unknownTarget' as const,
-          message: UNKNOWN_TARGET_MESSAGE,
+          message: say(problemMessages.unknownTarget),
         },
       ]),
     });
@@ -394,7 +600,10 @@ export function describeRule({
   const options = ruleDraftOptions(rule);
   const target = isRuleTargetType(rule.type) ? rule.type : undefined;
   if (target === undefined) {
-    problems.push({ code: 'unknownTarget', message: UNKNOWN_TARGET_MESSAGE });
+    problems.push({
+      code: 'unknownTarget',
+      message: say(problemMessages.unknownTarget),
+    });
   }
 
   // A rule that is about something this rule set is not allowed to ask about.
@@ -408,7 +617,7 @@ export function describeRule({
   ) {
     problems.push({
       code: 'targetNotOffered',
-      message: TARGET_NOT_OFFERED_MESSAGES[target],
+      message: say(TARGET_NOT_OFFERED_MESSAGES[target]),
     });
   }
 
@@ -422,16 +631,17 @@ export function describeRule({
       : undefined;
   const hasAttributeKey = Object.hasOwn(options, 'attribute');
 
-  const entity = describeEntity(codebook, target, entityTypeId);
+  const entity = describeEntity(codebook, target, entityTypeId, intl);
   if (entity?.missing === true) {
     problems.push({
       code: 'missingEntityType',
-      message:
+      message: say(
         entity.kind === 'node'
-          ? MISSING_NODE_TYPE_MESSAGE
+          ? problemMessages.missingNodeType
           : entity.kind === 'edge'
-            ? MISSING_EDGE_TYPE_MESSAGE
-            : MISSING_EGO_MESSAGE,
+            ? problemMessages.missingEdgeType
+            : problemMessages.missingEgo,
+      ),
     });
   }
 
@@ -453,7 +663,7 @@ export function describeRule({
   if (attribute?.missing === true) {
     problems.push({
       code: 'missingAttribute',
-      message: MISSING_ATTRIBUTE_MESSAGE,
+      message: say(problemMessages.missingAttribute),
     });
   }
 
@@ -467,7 +677,7 @@ export function describeRule({
   const isPresenceRule = !isEgo && !hasAttributeKey;
   const operator: RuleDescriptionOperator = Object.freeze({
     id: operatorId,
-    text: operatorText(operatorId, { isEgo, isPresenceRule }),
+    text: operatorText(operatorId, { isEgo, isPresenceRule }, intl),
   });
 
   const choices = ruleVariableChoices(variables, attributeId);
@@ -488,7 +698,11 @@ export function describeRule({
     isFilterOperator(operatorId) && operatorsWithRegExp.has(operatorId);
   const rawItems = isExistenceOperator
     ? []
-    : operandItems(options.value, countsOptions ? (item) => item : labelFor);
+    : operandItems(
+        options.value,
+        countsOptions ? (item) => item : labelFor,
+        intl,
+      );
   const operand: RuleDescriptionOperand | undefined =
     rawItems.length === 0
       ? undefined
@@ -510,7 +724,7 @@ export function describeRule({
   ) {
     problems.push({
       code: 'invalidOperator',
-      message: INVALID_OPERATOR_MESSAGE,
+      message: say(problemMessages.invalidOperator),
     });
   }
 
@@ -529,7 +743,7 @@ export function describeRule({
   ) {
     problems.push({
       code: 'invalidOperator',
-      message: INVALID_PRESENCE_OPERATOR_MESSAGE,
+      message: say(problemMessages.invalidPresenceOperator),
     });
   }
 
@@ -547,7 +761,7 @@ export function describeRule({
   ) {
     problems.push({
       code: 'invalidOperand',
-      message: INVALID_OPERAND_MESSAGE,
+      message: say(problemMessages.invalidOperand),
     });
   }
 
@@ -564,7 +778,10 @@ export function describeRule({
     options.value !== '' &&
     !isCompilablePattern(options.value)
   ) {
-    problems.push({ code: 'invalidPattern', message: INVALID_PATTERN_MESSAGE });
+    problems.push({
+      code: 'invalidPattern',
+      message: say(problemMessages.invalidPattern),
+    });
   }
 
   // The same codebook drift again, one step finer. The attribute is still
@@ -581,10 +798,19 @@ export function describeRule({
   // option that never existed.
   const optionProblems =
     attribute !== undefined && !attribute.missing && operatorId !== undefined
-      ? operandOptionProblems(variables, attributeId, operatorId, options.value)
+      ? operandOptionProblems(
+          variables,
+          attributeId,
+          operatorId,
+          options.value,
+          intl,
+        )
       : [];
   if (optionProblems.some((problem) => problem.kind === 'unknownOption')) {
-    problems.push({ code: 'missingOption', message: MISSING_OPTION_MESSAGE });
+    problems.push({
+      code: 'missingOption',
+      message: say(problemMessages.missingOption),
+    });
   }
   const unusable = optionProblems.find(
     (problem) => problem.kind === 'unusableValue',
@@ -592,7 +818,9 @@ export function describeRule({
   if (unusable !== undefined) {
     problems.push({
       code: 'unusableOption',
-      message: unusableOptionMessage(unusable.describedAs),
+      message: say(problemMessages.unusableOption, {
+        describedAs: unusable.describedAs,
+      }),
     });
   }
 
@@ -608,7 +836,7 @@ export function describeRule({
   if (dateProblem !== undefined) {
     problems.push({
       code: 'unusableDate',
-      message: unusableDateMessage(dateProblem),
+      message: unusableDateMessage(dateProblem, intl),
     });
   }
 
@@ -625,12 +853,15 @@ export function describeRule({
   if (numberProblem !== undefined) {
     problems.push({
       code: 'unusableNumber',
-      message: unusableNumberMessage(numberProblem),
+      message: unusableNumberMessage(numberProblem, intl),
     });
   }
 
   if (!isCompleteRule(rule)) {
-    problems.push({ code: 'incomplete', message: INCOMPLETE_MESSAGE });
+    problems.push({
+      code: 'incomplete',
+      message: say(problemMessages.incomplete),
+    });
   }
 
   // The one part of a rule no control asks for. Both branches of
@@ -642,7 +873,10 @@ export function describeRule({
   // collaborator's edit; reported last because it is the only problem here the
   // researcher repairs simply by opening the rule and finishing it again.
   if (typeof rule.id !== 'string') {
-    problems.push({ code: 'missingId', message: MISSING_ID_MESSAGE });
+    problems.push({
+      code: 'missingId',
+      message: say(problemMessages.missingId),
+    });
   } else if (duplicateIds?.has(rule.id) === true) {
     // The same id, twice in one set. `findDuplicateId` refuses the protocol
     // for it, and the rule ITSELF looks perfect — so this is the one problem
@@ -650,7 +884,10 @@ export function describeRule({
     // researcher has no other way of seeing. Reported on BOTH rows, because
     // neither is the wrong one: repairing either repairs the set, and the
     // editor mints a fresh id for whichever is opened and saved.
-    problems.push({ code: 'duplicateId', message: DUPLICATE_ID_MESSAGE });
+    problems.push({
+      code: 'duplicateId',
+      message: say(problemMessages.duplicateId),
+    });
   }
 
   const attributePresence = attribute !== undefined && isExistenceOperator;
@@ -664,14 +901,17 @@ export function describeRule({
     operand,
     attributePresence,
     columns,
-    text: sentence({
-      entity,
-      attribute,
-      operator,
-      operand,
-      isEgo,
-      attributePresence,
-    }),
+    text: sentence(
+      {
+        entity,
+        attribute,
+        operator,
+        operand,
+        isEgo,
+        attributePresence,
+      },
+      intl,
+    ),
     problems: Object.freeze(problems),
   });
 }
@@ -680,13 +920,14 @@ function describeEntity(
   codebook: Readonly<Codebook>,
   target: RuleTargetType | undefined,
   entityTypeId: string | undefined,
+  intl: IntlShape,
 ): RuleDescriptionEntity | undefined {
   if (target === undefined) return undefined;
 
   if (target === 'ego') {
     return Object.freeze({
       kind: 'ego' as const,
-      label: EGO_LABEL,
+      label: intl.formatMessage(generalMessages.egoLabel),
       missing: codebook.ego === undefined,
     });
   }
@@ -718,6 +959,7 @@ function describeEntity(
 function operatorText(
   operatorId: string | undefined,
   context: Readonly<{ isEgo: boolean; isPresenceRule: boolean }>,
+  intl: IntlShape,
 ): string {
   if (operatorId === undefined) return '';
   if (context.isPresenceRule) {
@@ -725,23 +967,36 @@ function operatorText(
     // read as its own token, for the same reason as below: a rule nobody can
     // read is a rule nobody can fix.
     return isPresenceOperator(operatorId)
-      ? PRESENCE_OPERATOR_TEXT[operatorId]
+      ? intl.formatMessage(PRESENCE_OPERATOR_TEXT[operatorId])
       : operatorId.toLowerCase();
   }
   // An operator the schema itself does not have is read as its own token: a
   // hand-edited protocol can hold one, and printing it is what lets the
   // researcher see which rule to fix.
   if (!isFilterOperator(operatorId)) return operatorId.toLowerCase();
-  const phrasing = OPERATOR_TEXT[operatorId];
-  return context.isEgo ? phrasing.ego : phrasing.alter;
+  return intl.formatMessage(
+    context.isEgo
+      ? EGO_OPERATOR_TEXT[operatorId]
+      : ALTER_OPERATOR_TEXT[operatorId],
+  );
 }
 
 /**
  * The rule as one plain sentence.
  *
- * Assembled from whole phrases with single spaces between them: this is the
- * printable fallback and the accessible name a host reads out, not a template
- * a translator has to reconstruct grammar from.
+ * Three parts, and only three, because that is what a rule IS on screen: the
+ * subject the rule is about, the comparison it makes, and the value it
+ * compares against. `RulePreview` lays those same three out as three columns
+ * in the printable summary, and each of them holds markup there — a node
+ * glyph, an attribute pill, a Markdown-rendered operand — so they cannot be
+ * one string in the preview and would drift from it if they were one here.
+ *
+ * Inside each part nothing is glued together. The subject names the entity and
+ * the attribute inside one message, so a translator moves the connecting word
+ * ("where", "has") rather than having it concatenated on; the comparison is a
+ * whole operator phrase; and a rule whose operator introduces the attribute
+ * instead of following it — "Person without Age" — is one message of its own,
+ * because adding a connector as well produced "Person where Age where".
  */
 function sentence(
   parts: Readonly<{
@@ -752,49 +1007,196 @@ function sentence(
     isEgo: boolean;
     attributePresence: boolean;
   }>,
+  intl: IntlShape,
 ): string {
-  const words: string[] = [];
-  if (parts.entity !== undefined) words.push(parts.entity.label);
+  const entity = parts.entity?.label ?? '';
+  const attribute = parts.attribute?.label;
 
-  // A rule about whether the attribute was answered at all reads as one
-  // phrase — "Person without Age" — because its operator IS the word that
-  // introduces the attribute. Adding the connector as well, and then the
-  // operator again after the name, produced "Person where Age where".
-  if (parts.attributePresence && parts.attribute !== undefined) {
-    words.push(parts.operator.text, parts.attribute.label);
-    return words.filter((word) => word !== '').join(' ');
+  if (parts.attributePresence && attribute !== undefined) {
+    return entity === ''
+      ? intl.formatMessage(sentenceMessages.attributePresenceUnknownEntity, {
+          operator: parts.operator.text,
+          attribute,
+        })
+      : intl.formatMessage(sentenceMessages.attributePresence, {
+          entity,
+          operator: parts.operator.text,
+          attribute,
+        });
   }
 
-  if (parts.attribute !== undefined) {
-    words.push(parts.isEgo ? 'has' : 'where', parts.attribute.label);
-  }
-  if (parts.operator.text !== '') words.push(parts.operator.text);
-  if (parts.operand !== undefined) {
-    words.push(parts.operand.items.map(String).join(', '));
-  }
-  return words.filter((word) => word !== '').join(' ');
+  const subject =
+    attribute === undefined
+      ? entity
+      : entity === ''
+        ? intl.formatMessage(
+            parts.isEgo
+              ? ruleSubjectMessages.egoAttributeUnknownEntity
+              : ruleSubjectMessages.alterAttributeUnknownEntity,
+            { attribute },
+          )
+        : intl.formatMessage(
+            parts.isEgo
+              ? ruleSubjectMessages.egoAttribute
+              : ruleSubjectMessages.alterAttribute,
+            { entity, attribute },
+          );
+
+  const sentenceParts = [
+    subject,
+    parts.operator.text,
+    // The operands themselves are stored values, not copy: a comma-separated
+    // run of them is what the preview draws beside the comparison.
+    parts.operand === undefined
+      ? ''
+      : parts.operand.items.map(String).join(', '),
+  ];
+  return sentenceParts.filter((part) => part !== '').join(' ');
 }
 
-const UNKNOWN_TARGET_MESSAGE =
-  'This rule does not say whether it is about a node, an edge, or the ego. Edit or delete the rule.';
-const MISSING_NODE_TYPE_MESSAGE =
-  'This rule refers to a node type that is no longer in the codebook. Edit or delete the rule.';
-const MISSING_EDGE_TYPE_MESSAGE =
-  'This rule refers to an edge type that is no longer in the codebook. Edit or delete the rule.';
-const MISSING_EGO_MESSAGE =
-  'This rule refers to the ego, but this protocol no longer defines any ego attributes. Edit or delete the rule.';
-const MISSING_ATTRIBUTE_MESSAGE =
-  'This rule refers to an attribute that is no longer in the codebook. Edit or delete the rule.';
-const INVALID_OPERATOR_MESSAGE =
-  'This rule uses an operator that is not valid for its attribute type. Edit or delete the rule.';
-const INVALID_PRESENCE_OPERATOR_MESSAGE =
-  'This rule asks whether an entity type is present, but uses an operator that cannot ask that. Edit or delete the rule.';
-const INVALID_OPERAND_MESSAGE =
-  'This rule compares its attribute against a value of the wrong kind for the attribute’s type. Edit or delete the rule.';
-const INVALID_PATTERN_MESSAGE =
-  'This rule compares its attribute against a pattern that is not a valid regular expression, so the interview cannot apply the rule. Edit or delete the rule.';
-const MISSING_OPTION_MESSAGE =
-  'This rule compares its attribute against an option that is no longer one of that attribute’s choices. Edit or delete the rule.';
+/**
+ * Everything that can be wrong with a rule, in the words the ROW says it.
+ *
+ * Addressed to a researcher looking at a list of rules, so every one of them
+ * ends by naming the two things they can do about it from there. The dialog
+ * says the same faults differently, because a researcher inside it is already
+ * standing in front of the control that holds the fault.
+ */
+const problemMessages = defineMessages({
+  unknownTarget: {
+    id: 'protocolBuilder.ruleDescription.problemUnknownTarget',
+    defaultMessage:
+      'This rule does not say whether it is about a node, an edge, or the ego. Edit or delete the rule.',
+    description:
+      'Shown on a rule’s row in the rule list when the rule never recorded what it is about. Node and edge are the two kinds of thing in a network; ego is the interview participant themselves.',
+  },
+  missingNodeType: {
+    id: 'protocolBuilder.ruleDescription.problemMissingNodeType',
+    defaultMessage:
+      'This rule refers to a node type that is no longer in the codebook. Edit or delete the rule.',
+    description:
+      'Shown on a rule’s row in the rule list when the node type the rule names has been deleted. The codebook is the protocol’s definition of the node types, edge types and attributes a study records.',
+  },
+  missingEdgeType: {
+    id: 'protocolBuilder.ruleDescription.problemMissingEdgeType',
+    defaultMessage:
+      'This rule refers to an edge type that is no longer in the codebook. Edit or delete the rule.',
+    description:
+      'Shown on a rule’s row in the rule list when the edge type the rule names has been deleted. An edge is a relationship between two network members; the codebook is the protocol’s definition of the types and attributes a study records.',
+  },
+  missingEgo: {
+    id: 'protocolBuilder.ruleDescription.problemMissingEgo',
+    defaultMessage:
+      'This rule refers to the ego, but this protocol no longer defines any ego attributes. Edit or delete the rule.',
+    description:
+      'Shown on a rule’s row in the rule list when the rule is about the interview participant themselves (the ego) and the protocol records nothing about them any more.',
+  },
+  missingAttribute: {
+    id: 'protocolBuilder.ruleDescription.problemMissingAttribute',
+    defaultMessage:
+      'This rule refers to an attribute that is no longer in the codebook. Edit or delete the rule.',
+    description:
+      'Shown on a rule’s row in the rule list when the attribute the rule asks about has been deleted. An attribute is one variable a study records about a node, an edge or the ego.',
+  },
+  invalidOperator: {
+    id: 'protocolBuilder.ruleDescription.problemInvalidOperator',
+    defaultMessage:
+      'This rule uses an operator that is not valid for its attribute type. Edit or delete the rule.',
+    description:
+      'Shown on a rule’s row in the rule list when the comparison the rule makes is not one the protocol allows for that kind of attribute — usually because someone changed the attribute after the rule was written.',
+  },
+  invalidPresenceOperator: {
+    id: 'protocolBuilder.ruleDescription.problemInvalidPresenceOperator',
+    defaultMessage:
+      'This rule asks whether an entity type is present, but uses an operator that cannot ask that. Edit or delete the rule.',
+    description:
+      'Shown on a rule’s row in the rule list when a rule about whether any node or edge of a type exists at all uses a comparison that cannot answer that question.',
+  },
+  invalidOperand: {
+    id: 'protocolBuilder.ruleDescription.problemInvalidOperand',
+    defaultMessage:
+      'This rule compares its attribute against a value of the wrong kind for the attribute’s type. Edit or delete the rule.',
+    description:
+      'Shown on a rule’s row in the rule list when the stored comparison value is of a kind the attribute is never answered with, so the interview could never match it.',
+  },
+  invalidPattern: {
+    id: 'protocolBuilder.ruleDescription.problemInvalidPattern',
+    defaultMessage:
+      'This rule compares its attribute against a pattern that is not a valid regular expression, so the interview cannot apply the rule. Edit or delete the rule.',
+    description:
+      'Shown on a rule’s row in the rule list when the rule’s comparison value is meant to be a regular expression and will not compile. "The interview" is the session a participant takes.',
+  },
+  missingOption: {
+    id: 'protocolBuilder.ruleDescription.problemMissingOption',
+    defaultMessage:
+      'This rule compares its attribute against an option that is no longer one of that attribute’s choices. Edit or delete the rule.',
+    description:
+      'Shown on a rule’s row in the rule list when the rule names one of a multiple-choice attribute’s options and that option has since been renamed or deleted.',
+  },
+  unusableOption: {
+    id: 'protocolBuilder.ruleDescription.problemUnusableOption',
+    defaultMessage:
+      'This rule compares its attribute against {describedAs}, which cannot be one of that attribute’s choices. Edit or delete the rule.',
+    description:
+      'Shown on a rule’s row in the rule list when the stored comparison value is of no kind an authored option could ever be. describedAs is a noun phrase naming that kind, e.g. "a true/false value".',
+  },
+  unusableDateWrongResolution: {
+    id: 'protocolBuilder.ruleDescription.problemUnusableDateWrongResolution',
+    defaultMessage:
+      'This rule compares its attribute against “{value}”, but the attribute is now answered with {resolution}. Edit or delete the rule.',
+    description:
+      'Shown on a rule’s row in the rule list when the attribute records dates at a different precision from the one the rule’s date is written at. value is the stored date, unchanged; resolution is a noun phrase such as "a year".',
+  },
+  unusableDateImpossible: {
+    id: 'protocolBuilder.ruleDescription.problemUnusableDateImpossible',
+    defaultMessage:
+      'This rule compares its attribute against “{value}”, which is not a date on the calendar. Edit or delete the rule.',
+    description:
+      'Shown on a rule’s row in the rule list when the rule’s stored date is the right shape but not a real date, e.g. 31 February. value is the stored date, unchanged.',
+  },
+  unusableDateOutOfRange: {
+    id: 'protocolBuilder.ruleDescription.problemUnusableDateOutOfRange',
+    defaultMessage:
+      'This rule compares its attribute against “{value}”, which is outside the dates that attribute can record. Edit or delete the rule.',
+    description:
+      'Shown on a rule’s row in the rule list when the rule’s stored date falls outside the range the attribute’s own date picker offers. value is the stored date, unchanged.',
+  },
+  unusableNumberOptionCount: {
+    id: 'protocolBuilder.ruleDescription.problemUnusableNumberOptionCount',
+    defaultMessage:
+      'This rule compares the number of selected options against {value}. This attribute offers {optionCount, plural, one {# option} other {# options}}, so between 0 and {optionCount, number} of them can be selected. Edit or delete the rule.',
+    description:
+      'Shown on a rule’s row in the rule list when the rule counts how many options a multiple-choice attribute was answered with and names a count the option list puts out of reach. value is the number the rule names; optionCount is how many options the attribute offers.',
+  },
+  unusableNumberScale: {
+    id: 'protocolBuilder.ruleDescription.problemUnusableNumberScale',
+    defaultMessage:
+      'This rule compares its attribute against {value}. The attribute is answered on a scale from {min} to {max}. Edit or delete the rule.',
+    description:
+      'Shown on a rule’s row in the rule list when the attribute records a reading on a fixed scale and the rule names a number off it. value is the number the rule names; min and max are the ends of the scale.',
+  },
+  incomplete: {
+    id: 'protocolBuilder.ruleDescription.problemIncomplete',
+    defaultMessage:
+      'This rule is not complete. Edit it to fill in every part, or delete it.',
+    description:
+      'Shown on a rule’s row in the rule list when one of the rule’s parts was never answered.',
+  },
+  missingId: {
+    id: 'protocolBuilder.ruleDescription.problemMissingId',
+    defaultMessage:
+      'This rule has no identifier, so this protocol cannot be saved with it. Edit the rule to give it one, or delete the rule.',
+    description:
+      'Shown on a rule’s row in the rule list when the rule carries no internal identifier. Nothing on screen asks for one — opening and saving the rule supplies it — so the sentence names that repair.',
+  },
+  duplicateId: {
+    id: 'protocolBuilder.ruleDescription.problemDuplicateId',
+    defaultMessage:
+      'Another rule in this set has the same identifier, so this protocol cannot be saved with both. Edit or delete the rule.',
+    description:
+      'Shown on the rows of both rules in a rule set that share one internal identifier. Opening and saving either rule gives it a fresh one.',
+  },
+});
 
 /**
  * What a rule set that cannot be about this target says, in whole sentences.
@@ -803,20 +1205,51 @@ const MISSING_OPTION_MESSAGE =
  * entity class is an internal token, and "This rule is about a ego" is what
  * interpolating it produces.
  */
-const TARGET_NOT_OFFERED_MESSAGES: Readonly<Record<RuleTargetType, string>> =
-  Object.freeze({
-    ego: 'This rule is about the ego, which these rules cannot ask about. Edit or delete the rule.',
-    node: 'This rule is about a node, which these rules cannot ask about. Edit or delete the rule.',
-    edge: 'This rule is about an edge, which these rules cannot ask about. Edit or delete the rule.',
-  });
+const TARGET_NOT_OFFERED_MESSAGES = defineMessages({
+  ego: {
+    id: 'protocolBuilder.ruleDescription.targetNotOfferedEgo',
+    defaultMessage:
+      'This rule is about the ego, which these rules cannot ask about. Edit or delete the rule.',
+    description:
+      'Shown on a rule’s row in the rule list when the rule asks about the interview participant themselves (the ego) and this kind of rule set is not allowed to.',
+  },
+  node: {
+    id: 'protocolBuilder.ruleDescription.targetNotOfferedNode',
+    defaultMessage:
+      'This rule is about a node, which these rules cannot ask about. Edit or delete the rule.',
+    description:
+      'Shown on a rule’s row in the rule list when the rule asks about a node — a member of the interview network — and this kind of rule set is not allowed to.',
+  },
+  edge: {
+    id: 'protocolBuilder.ruleDescription.targetNotOfferedEdge',
+    defaultMessage:
+      'This rule is about an edge, which these rules cannot ask about. Edit or delete the rule.',
+    description:
+      'Shown on a rule’s row in the rule list when the rule asks about an edge — a relationship between two network members — and this kind of rule set is not allowed to.',
+  },
+}) satisfies Record<RuleTargetType, MessageDescriptor>;
 
-/** How a date attribute records an answer, in the researcher's own words. */
-const DATE_RESOLUTION_NAMES: Readonly<Record<DateFormat, string>> =
-  Object.freeze({
-    full: 'a full date',
-    month: 'a month and a year',
-    year: 'a year',
-  });
+/**
+ * The shapes a whole rule sentence takes when the operator introduces the
+ * attribute instead of following it.
+ *
+ * "Person where Age", "Ego has EgoName". The subject shapes the rest of the
+ * sentence uses live in `ruleMessages.ts`, because the preview says them too.
+ */
+const sentenceMessages = defineMessages({
+  attributePresence: {
+    id: 'protocolBuilder.ruleDescription.sentenceAttributePresence',
+    defaultMessage: '{entity} {operator} {attribute}',
+    description:
+      'A whole rule sentence for a rule that asks only whether an attribute was answered at all, where the operator introduces the attribute: "Person where Age", "Person without Age". entity and attribute are the researcher’s own codebook names and are not translated; operator is the phrase for the comparison.',
+  },
+  attributePresenceUnknownEntity: {
+    id: 'protocolBuilder.ruleDescription.sentenceAttributePresenceUnknownEntity',
+    defaultMessage: '{operator} {attribute}',
+    description:
+      'The same sentence as sentenceAttributePresence, for a broken rule that never said what it is about, so there is no entity to name. attribute is the researcher’s own codebook name; operator is the phrase for the comparison.',
+  },
+});
 
 /**
  * Why a date operand is reported, as a fact about the rule and nothing more.
@@ -829,37 +1262,51 @@ const DATE_RESOLUTION_NAMES: Readonly<Record<DateFormat, string>> =
  * to the right rule either way, and it is how the option messages beside these
  * already read.
  */
-const unusableDateMessage = (problem: OperandDateProblem): string => {
+const unusableDateMessage = (
+  problem: OperandDateProblem,
+  intl: IntlShape,
+): string => {
   switch (problem.kind) {
     case 'wrongResolution':
-      return `This rule compares its attribute against “${problem.value}”, but the attribute is now answered with ${DATE_RESOLUTION_NAMES[problem.resolution]}. Edit or delete the rule.`;
+      return intl.formatMessage(problemMessages.unusableDateWrongResolution, {
+        value: problem.value,
+        resolution: intl.formatMessage(
+          dateResolutionMessages[problem.resolution],
+        ),
+      });
     case 'impossibleDate':
-      return `This rule compares its attribute against “${problem.value}”, which is not a date on the calendar. Edit or delete the rule.`;
+      return intl.formatMessage(problemMessages.unusableDateImpossible, {
+        value: problem.value,
+      });
     case 'outOfRange':
-      return `This rule compares its attribute against “${problem.value}”, which is outside the dates that attribute can record. Edit or delete the rule.`;
+      return intl.formatMessage(problemMessages.unusableDateOutOfRange, {
+        value: problem.value,
+      });
     default:
       return assertNoSuchDateProblem(problem);
   }
 };
 
 /** The same, for a number outside the answers the attribute can record. */
-const unusableNumberMessage = (problem: OperandNumberProblem): string => {
+const unusableNumberMessage = (
+  problem: OperandNumberProblem,
+  intl: IntlShape,
+): string => {
   switch (problem.kind) {
     case 'unreachableOptionCount':
-      return `This rule compares the number of selected options against ${problem.value}. This attribute offers ${problem.optionCount} ${problem.optionCount === 1 ? 'option' : 'options'}, so between 0 and ${problem.optionCount} of them can be selected. Edit or delete the rule.`;
+      return intl.formatMessage(problemMessages.unusableNumberOptionCount, {
+        // The number the RULE names is echoed back as the researcher entered
+        // it, never regrouped: it identifies which rule to open.
+        value: String(problem.value),
+        optionCount: problem.optionCount,
+      });
     case 'unreachableScale':
-      return `This rule compares its attribute against ${problem.value}. The attribute is answered on a scale from ${problem.min} to ${problem.max}. Edit or delete the rule.`;
+      return intl.formatMessage(problemMessages.unusableNumberScale, {
+        value: String(problem.value),
+        min: String(problem.min),
+        max: String(problem.max),
+      });
     default:
       return assertNoSuchNumberProblem(problem);
   }
 };
-const unusableOptionMessage = (describedAs: string) =>
-  `This rule compares its attribute against ${describedAs}, which cannot be one of that attribute’s choices. Edit or delete the rule.`;
-const INCOMPLETE_MESSAGE =
-  'This rule is not complete. Edit it to fill in every part, or delete it.';
-const MISSING_ID_MESSAGE =
-  'This rule has no identifier, so this protocol cannot be saved with it. Edit the rule to give it one, or delete the rule.';
-const DUPLICATE_ID_MESSAGE =
-  'Another rule in this set has the same identifier, so this protocol cannot be saved with both. Edit or delete the rule.';
-/** What an operand no reader can make sense of is printed as. */
-const UNREADABLE_OPERAND = '(a value this editor cannot read)';

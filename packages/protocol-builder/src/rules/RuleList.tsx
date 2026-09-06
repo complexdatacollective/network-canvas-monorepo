@@ -1,6 +1,8 @@
 import { Pencil, Trash2 } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import ArrayField, {
   ArrayFieldDragHandle,
@@ -15,6 +17,34 @@ import type { RuleTargetType } from './ruleCodebook.ts';
 import { describeRule, duplicateRuleIds } from './ruleDescription.ts';
 import RuleEditorDialog, { type RuleTypeOption } from './RuleEditorDialog.tsx';
 import RulePreview from './RulePreview.tsx';
+
+const messages = defineMessages({
+  editAction: {
+    id: 'protocolBuilder.ruleList.editAction',
+    defaultMessage: 'Edit rule:',
+    description:
+      'Read out before the rule itself to name the control that opens one row of a rule list for editing, so a screen reader says "Edit rule: Person where Age is greater than 30". Not shown on screen.',
+  },
+  deleteAction: {
+    id: 'protocolBuilder.ruleList.deleteAction',
+    defaultMessage: 'Delete rule:',
+    description:
+      'Read out before the rule itself to name the control that removes one row of a rule list, so a screen reader says "Delete rule: Person where Age is greater than 30". Not shown on screen.',
+  },
+  emptyState: {
+    id: 'protocolBuilder.ruleList.emptyState',
+    defaultMessage: 'No rules have been created yet.',
+    description:
+      'Shown in place of the list when a researcher has added no rules to a rule set yet.',
+  },
+  saveUnavailable: {
+    id: 'protocolBuilder.ruleList.saveUnavailable',
+    defaultMessage:
+      'These rules are no longer editable, so this rule cannot be saved. Copy anything you want to keep, then close the editor.',
+    description:
+      'Shown inside the rule editor when the list it was opened from stopped accepting changes while the dialog was open — the rule cannot be committed, and the draft is kept on screen so nothing the researcher wrote is lost.',
+  },
+});
 
 /**
  * The rule a row holds, without the list's own bookkeeping — which fresco-ui
@@ -55,14 +85,21 @@ function RuleListItem({
   duplicateIds,
 }: RuleListItemProps) {
   const rule = asRule(item);
+  const intl = useAppIntl();
   const textId = useId();
   const editActionId = useId();
   const deleteActionId = useId();
   const interactionDisabled = disabled || readOnly;
   const description = useMemo(
     () =>
-      describeRule({ rule, codebook, targets: allowedTargets, duplicateIds }),
-    [allowedTargets, codebook, duplicateIds, rule],
+      describeRule({
+        rule,
+        codebook,
+        targets: allowedTargets,
+        duplicateIds,
+        intl,
+      }),
+    [allowedTargets, codebook, duplicateIds, intl, rule],
   );
 
   // External editors own the active row while their dialog is open. Hiding it
@@ -88,10 +125,10 @@ function RuleListItem({
         with the visible preview without duplicating content visually.
       */}
       <span id={editActionId} hidden>
-        Edit rule:
+        {intl.formatMessage(messages.editAction)}
       </span>
       <span id={deleteActionId} hidden>
-        Delete rule:
+        {intl.formatMessage(messages.deleteAction)}
       </span>
       <div className="@container w-full">
         <div className="flex w-full min-w-0 flex-col gap-3 @min-[34rem]:flex-row @min-[34rem]:items-center">
@@ -157,8 +194,12 @@ function RuleListItem({
   );
 }
 
-const SAVE_UNAVAILABLE_MESSAGE =
-  'These rules are no longer editable, so this rule cannot be saved. Copy anything you want to keep, then close the editor.';
+/**
+ * Encoded rather than formatted: this crosses `DialogForm`'s string-only
+ * `formErrors` contract, and `FormErrors` decodes it in the reader's own
+ * language where it is rendered.
+ */
+const SAVE_UNAVAILABLE_MESSAGE = createMessageError(messages.saveUnavailable);
 
 type RuleEditorSession = Readonly<{
   /** Bumped per session; the `key` that gives each one a fresh field store. */
@@ -338,6 +379,7 @@ export default function RuleList({
   disabled = false,
   readOnly = false,
 }: RuleListProps) {
+  const intl = useAppIntl();
   const duplicateIds = useDuplicateRuleIds(rules);
 
   // Bound here rather than through a context: the item and editor components
@@ -384,7 +426,7 @@ export default function RuleList({
       itemComponent={itemComponent}
       editorComponent={editorComponent}
       addButtonLabel={addButtonLabel}
-      emptyStateMessage="No rules have been created yet."
+      emptyStateMessage={intl.formatMessage(messages.emptyState)}
       itemClasses="elevation-low"
       sortable
       disabled={disabled}

@@ -1,5 +1,8 @@
 import { useCallback, useMemo } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
@@ -11,7 +14,7 @@ import type { RuleTypeOption } from './RuleEditorDialog.tsx';
 import RuleList from './RuleList.tsx';
 import {
   asRuleSetValue,
-  JOIN_OPTIONS,
+  joinOptions,
   type RuleSetValue,
   type RuleSetVariant,
   ruleSetTargets,
@@ -25,12 +28,53 @@ import {
  * list read twice rather than two lists that can disagree — which is how an
  * ego rule came to be unbuildable in a filter and unreported inside one.
  */
-const RULE_TYPE_LABELS: Readonly<Record<RuleTargetType, string>> =
-  Object.freeze({
-    node: 'Node - match a node type or one of its attributes.',
-    edge: 'Edge - match an edge type or one of its attributes.',
-    ego: 'Ego - match one of the ego attributes.',
-  });
+const RULE_TYPE_LABELS = defineMessages({
+  node: {
+    id: 'protocolBuilder.ruleSet.targetNode',
+    defaultMessage: 'Node - match a node type or one of its attributes.',
+    description:
+      'Choice offered when a researcher starts a rule: the rule will be about a node — a member of the interview network — either that a node of some type exists at all, or that one of its attributes has a particular value.',
+  },
+  edge: {
+    id: 'protocolBuilder.ruleSet.targetEdge',
+    defaultMessage: 'Edge - match an edge type or one of its attributes.',
+    description:
+      'Choice offered when a researcher starts a rule: the rule will be about an edge — a relationship between two network members — either that an edge of some type exists at all, or that one of its attributes has a particular value.',
+  },
+  ego: {
+    id: 'protocolBuilder.ruleSet.targetEgo',
+    defaultMessage: 'Ego - match one of the ego attributes.',
+    description:
+      'Choice offered when a researcher starts a rule: the rule will be about the ego — the interview participant themselves — and about one of the attributes recorded for them.',
+  },
+}) satisfies Record<RuleTargetType, MessageDescriptor>;
+
+const messages = defineMessages({
+  joinLabel: {
+    id: 'protocolBuilder.ruleSet.joinLabel',
+    defaultMessage: 'Rule Matching',
+    description:
+      'Label of the control where a researcher says whether every rule in a set has to match or any one of them will do.',
+  },
+  joinHint: {
+    id: 'protocolBuilder.ruleSet.joinHint',
+    defaultMessage: 'When you have multiple rules, how should matching work?',
+    description:
+      'Guidance under the control where a researcher says whether every rule in a set has to match or any one of them will do.',
+  },
+  addFilterRule: {
+    id: 'protocolBuilder.ruleSet.addFilterRule',
+    defaultMessage: 'Add new filter rule',
+    description:
+      'Action that adds a rule to the set narrowing which parts of the interview network a stage works on. A stage is one step of an interview. Named for its own rule set because a stage editor commonly shows two rule builders at once.',
+  },
+  addSkipLogicRule: {
+    id: 'protocolBuilder.ruleSet.addSkipLogicRule',
+    defaultMessage: 'Add new skip logic rule',
+    description:
+      'Action that adds a rule to the set deciding whether a stage is shown to a participant at all. A stage is one step of an interview. Named for its own rule set because a stage editor commonly shows two rule builders at once.',
+  },
+});
 
 export type RuleSetFieldProps = CreateFormFieldProps<
   RuleSetValue,
@@ -96,6 +140,7 @@ function RuleSetControl({
   'aria-invalid': ariaInvalid,
 }: RuleSetFieldProps) {
   const { protocolContext } = useStageEditorForm();
+  const intl = useAppIntl();
   const codebook = protocolContext.codebook;
 
   const ruleSet = asRuleSetValue(value);
@@ -114,9 +159,14 @@ function RuleSetControl({
       allowedTargets.flatMap<RuleTypeOption>((target) =>
         target === 'edge' && !allowEdgeRules
           ? []
-          : [{ label: RULE_TYPE_LABELS[target], value: target }],
+          : [
+              {
+                label: intl.formatMessage(RULE_TYPE_LABELS[target]),
+                value: target,
+              },
+            ],
       ),
-    [allowEdgeRules, allowedTargets],
+    [allowEdgeRules, allowedTargets, intl],
   );
 
   const updateRules = useCallback(
@@ -167,9 +217,9 @@ function RuleSetControl({
         <UnconnectedField
           name="join"
           component={RadioGroupField}
-          label="Rule Matching"
-          hint="When you have multiple rules, how should matching work?"
-          options={[...JOIN_OPTIONS]}
+          label={intl.formatMessage(messages.joinLabel)}
+          hint={intl.formatMessage(messages.joinHint)}
+          options={[...joinOptions(intl)]}
           value={join}
           disabled={disabled}
           readOnly={readOnly}
@@ -193,11 +243,12 @@ function RuleSetControl({
 export function FilterRuleSetField(
   props: Omit<RuleSetFieldProps, 'variant' | 'addRuleLabel'>,
 ) {
+  const intl = useAppIntl();
   return (
     <RuleSetControl
       {...props}
       variant="filter"
-      addRuleLabel="Add new filter rule"
+      addRuleLabel={intl.formatMessage(messages.addFilterRule)}
     />
   );
 }
@@ -205,11 +256,12 @@ export function FilterRuleSetField(
 export function QueryRuleSetField(
   props: Omit<RuleSetFieldProps, 'variant' | 'addRuleLabel' | 'allowEdgeRules'>,
 ) {
+  const intl = useAppIntl();
   return (
     <RuleSetControl
       {...props}
       variant="query"
-      addRuleLabel="Add new skip logic rule"
+      addRuleLabel={intl.formatMessage(messages.addSkipLogicRule)}
     />
   );
 }

@@ -1,3 +1,5 @@
+import { createAppIntl, defineMessages } from '@codaco/app-i18n/messages';
+import type { IntlShape } from '@codaco/app-i18n/messages';
 import {
   type Codebook,
   type ColorReference,
@@ -80,6 +82,16 @@ export type RuleEntityTypeOption = Readonly<{
 }>;
 
 const EMPTY_VARIABLES: Readonly<Variables> = Object.freeze({});
+
+/**
+ * The formatter used when a caller has none of its own.
+ *
+ * Every display surface threads the reader's own `intl` in. This is the
+ * fallback for the pure readers a host reaches without an editing session —
+ * the printable protocol summary and this package's own module tests — which
+ * have a rule and a codebook and nothing else.
+ */
+const englishIntl = createAppIntl({ locale: 'en' });
 
 /**
  * What a codebook definition is called, or the id it is filed under when it
@@ -362,12 +374,13 @@ export const ruleVariableChoices = (
 export const ruleOperatorOptions = (
   variableType: VariableType | undefined,
   operator?: unknown,
+  intl: IntlShape = englishIntl,
 ): RuleOperatorOption[] => {
   const allowed =
     variableType === undefined
       ? operatorsForSubject('exists')
       : operatorsForSubject(variableType);
-  const offered = operatorsAsOptions.filter((option) =>
+  const offered = operatorsAsOptions(intl).filter((option) =>
     allowed.has(option.value),
   );
   if (!isFilterOperator(operator) || allowed.has(operator)) return offered;
@@ -377,13 +390,39 @@ export const ruleOperatorOptions = (
     ...offered,
     {
       value: operator,
-      label: `${operatorLabel(operator)} ${
-        stillValid ? '(no longer offered)' : '(not valid for this attribute)'
-      }`,
+      label: intl.formatMessage(
+        stillValid
+          ? keptOperatorMessages.noLongerOffered
+          : keptOperatorMessages.notValidHere,
+        { operator: operatorLabel(operator, intl) },
+      ),
       ...(stillValid ? {} : { disabled: true }),
     },
   ];
 };
+
+/**
+ * How the one operator a rule already holds is labelled when the editor would
+ * not offer it.
+ *
+ * The whole label is one message with the operator phrase named inside it,
+ * rather than a phrase with a parenthesis glued after it: where the note sits
+ * relative to the phrase is a decision for whoever writes the language.
+ */
+const keptOperatorMessages = defineMessages({
+  noLongerOffered: {
+    id: 'protocolBuilder.ruleCodebook.operatorNoLongerOffered',
+    defaultMessage: '{operator} (no longer offered)',
+    description:
+      'Label for an operator a stored rule already uses which this editor no longer offers, shown so the researcher can read their own rule. The protocol schema still accepts it, so it can be chosen again. operator is the operator phrase, e.g. "is greater than".',
+  },
+  notValidHere: {
+    id: 'protocolBuilder.ruleCodebook.operatorNotValidHere',
+    defaultMessage: '{operator} (not valid for this attribute)',
+    description:
+      'Label for an operator a stored rule already uses which the protocol schema does not allow against this attribute type, usually because a collaborator changed the attribute. Shown but not selectable. operator is the operator phrase, e.g. "is greater than".',
+  },
+});
 
 /**
  * Whether the protocol schema accepts this operator against an attribute of
@@ -469,12 +508,53 @@ export type OperandOptionProblem =
  * Named rather than counted: "a true/false value" says which of their rules to
  * look at, where "an invalid value" would send them through all of them.
  */
-const describeUnusableValue = (value: unknown): string => {
-  if (value === null || value === undefined) return 'an empty value';
-  if (Array.isArray(value)) return 'a list';
-  if (typeof value === 'boolean') return 'a true/false value';
-  if (typeof value === 'object') return 'an object';
-  return 'a value an option cannot have';
+const unusableValueMessages = defineMessages({
+  empty: {
+    id: 'protocolBuilder.ruleCodebook.unusableValueEmpty',
+    defaultMessage: 'an empty value',
+    description:
+      'Noun phrase naming what a rule compares an attribute against when nothing is stored there. Interpolated into a sentence saying that value cannot be one of the attribute’s authored choices, so it reads as the object of "compares against".',
+  },
+  list: {
+    id: 'protocolBuilder.ruleCodebook.unusableValueList',
+    defaultMessage: 'a list',
+    description:
+      'Noun phrase naming what a rule compares an attribute against when several values are stored where one option was expected. Interpolated into a sentence saying that value cannot be one of the attribute’s authored choices, so it reads as the object of "compares against".',
+  },
+  boolean: {
+    id: 'protocolBuilder.ruleCodebook.unusableValueBoolean',
+    defaultMessage: 'a true/false value',
+    description:
+      'Noun phrase naming what a rule compares an attribute against when a yes/no value is stored where one option was expected. Interpolated into a sentence saying that value cannot be one of the attribute’s authored choices, so it reads as the object of "compares against".',
+  },
+  object: {
+    id: 'protocolBuilder.ruleCodebook.unusableValueObject',
+    defaultMessage: 'an object',
+    description:
+      'Noun phrase naming what a rule compares an attribute against when a structured value is stored where one option was expected. Interpolated into a sentence saying that value cannot be one of the attribute’s authored choices, so it reads as the object of "compares against".',
+  },
+  other: {
+    id: 'protocolBuilder.ruleCodebook.unusableValueOther',
+    defaultMessage: 'a value an option cannot have',
+    description:
+      'Noun phrase naming what a rule compares an attribute against when the stored value is of no kind an authored option could ever be. Interpolated into a sentence saying that value cannot be one of the attribute’s authored choices, so it reads as the object of "compares against".',
+  },
+});
+
+const describeUnusableValue = (value: unknown, intl: IntlShape): string => {
+  if (value === null || value === undefined) {
+    return intl.formatMessage(unusableValueMessages.empty);
+  }
+  if (Array.isArray(value)) {
+    return intl.formatMessage(unusableValueMessages.list);
+  }
+  if (typeof value === 'boolean') {
+    return intl.formatMessage(unusableValueMessages.boolean);
+  }
+  if (typeof value === 'object') {
+    return intl.formatMessage(unusableValueMessages.object);
+  }
+  return intl.formatMessage(unusableValueMessages.other);
 };
 
 /** Whether this operand is one the rule has simply not been given yet. */
@@ -515,6 +595,7 @@ export const operandOptionProblems = (
   variableId: string | undefined,
   operator: string,
   value: unknown,
+  intl: IntlShape = englishIntl,
 ): OperandOptionProblem[] => {
   const variableType = ruleVariableType(variables, variableId);
   if (!operandDrawsOnOptions(variableType, operator)) return [];
@@ -529,7 +610,10 @@ export const operandOptionProblems = (
   return items.flatMap<OperandOptionProblem>((item) => {
     if (typeof item !== 'string' && typeof item !== 'number') {
       return [
-        { kind: 'unusableValue', describedAs: describeUnusableValue(item) },
+        {
+          kind: 'unusableValue',
+          describedAs: describeUnusableValue(item, intl),
+        },
       ];
     }
     return authored.has(item) ? [] : [{ kind: 'unknownOption', value: item }];

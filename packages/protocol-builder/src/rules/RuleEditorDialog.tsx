@@ -2,6 +2,9 @@ import { isEqual } from 'es-toolkit/compat';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef } from 'react';
 import { v4 as uuid } from 'uuid';
 
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
@@ -11,11 +14,7 @@ import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Section from '@codaco/fresco-ui/Section';
-import type {
-  Codebook,
-  DateFormat,
-  VariableType,
-} from '@codaco/protocol-validation';
+import type { Codebook, VariableType } from '@codaco/protocol-validation';
 
 import { EntitySelectControl } from '../fields/EntitySelectField.tsx';
 import { VariablePickerControl } from '../fields/VariablePicker.tsx';
@@ -51,22 +50,404 @@ import {
 } from './ruleCodebook.ts';
 import { describeRule, type RuleProblemCode } from './ruleDescription.ts';
 import {
+  dateResolutionMessages,
+  ruleEditorRequiredMessage,
+} from './ruleMessages.ts';
+import {
   emptyRuleValue,
   RULE_VALUE_FIELD,
   RuleOperandField,
 } from './RuleValueField.tsx';
 
-/** Dialog title and submit label, verbatim — host page objects name both. */
-const RULE_EDITOR_TITLE = 'Construct a Rule';
-const RULE_EDITOR_SUBMIT = 'Finish and Close';
+const messages = defineMessages({
+  title: {
+    id: 'protocolBuilder.ruleEditor.title',
+    defaultMessage: 'Construct a Rule',
+    description:
+      'Title of the dialog a researcher builds one rule in. A rule decides which parts of an interview network a stage works on, or whether a stage is shown at all.',
+  },
+  submit: {
+    id: 'protocolBuilder.ruleEditor.submit',
+    defaultMessage: 'Finish and Close',
+    description:
+      'Action that commits the rule being built and closes the rule editor dialog.',
+  },
+  description: {
+    id: 'protocolBuilder.ruleEditor.description',
+    defaultMessage:
+      'Rules are used to filter the data in your study. You can use them to show or hide nodes and edges based on their attributes. For help with constructing rules, see our documentation articles on <skipLogic>skip logic</skipLogic> and <networkFiltering>network filtering</networkFiltering>.',
+    description:
+      'Opening paragraph of the rule editor. Nodes are the members of an interview network and edges the relationships between them. The two tags wrap the link text for documentation articles: skip logic decides whether a stage is shown to a participant, network filtering narrows what a stage works on.',
+  },
+  ruleTargetSection: {
+    id: 'protocolBuilder.ruleEditor.ruleTargetSection',
+    defaultMessage: 'Rule target',
+    description:
+      'Heading of the first section of the rule editor, where the researcher says what the rule is about.',
+  },
+  entityLabel: {
+    id: 'protocolBuilder.ruleEditor.entityLabel',
+    defaultMessage: 'Entity',
+    description:
+      'Label of the control where a researcher chooses whether a rule is about a node, an edge, or the ego. Entity is the general word for a thing in the interview network.',
+  },
+  entityHint: {
+    id: 'protocolBuilder.ruleEditor.entityHint',
+    defaultMessage: 'Select which network entity your rule should target.',
+    description:
+      'Guidance under the control where a researcher chooses whether a rule is about a node, an edge, or the ego.',
+  },
+  nodeTypeLabel: {
+    id: 'protocolBuilder.ruleEditor.nodeTypeLabel',
+    defaultMessage: 'Node type',
+    description:
+      'Label of the control where a researcher chooses which kind of node — which kind of network member — a rule is about.',
+  },
+  edgeTypeLabel: {
+    id: 'protocolBuilder.ruleEditor.edgeTypeLabel',
+    defaultMessage: 'Edge type',
+    description:
+      'Label of the control where a researcher chooses which kind of edge — which kind of relationship between network members — a rule is about.',
+  },
+  nodeTypeHint: {
+    id: 'protocolBuilder.ruleEditor.nodeTypeHint',
+    defaultMessage:
+      'Choose a node type to base your rule on. Remember you can add multiple rules if you need to cover different types.',
+    description:
+      'Guidance under the control where a researcher chooses which kind of node a rule is about. One rule covers one type, so several types need several rules.',
+  },
+  edgeTypeHint: {
+    id: 'protocolBuilder.ruleEditor.edgeTypeHint',
+    defaultMessage:
+      'Choose an edge type to base your rule on. Remember you can add multiple rules if you need to cover different types.',
+    description:
+      'Guidance under the control where a researcher chooses which kind of edge a rule is about. One rule covers one type, so several types need several rules.',
+  },
+  ruleBasisSection: {
+    id: 'protocolBuilder.ruleEditor.ruleBasisSection',
+    defaultMessage: 'Rule basis',
+    description:
+      'Heading of the section where a researcher says whether the rule asks about the presence of a node or edge type or about one of its attributes.',
+  },
+  ruleKindLabel: {
+    id: 'protocolBuilder.ruleEditor.ruleKindLabel',
+    defaultMessage: 'Rule type',
+    description:
+      'Label of the control where a researcher says whether the rule asks about the presence of a node or edge type or about one of its attributes.',
+  },
+  ruleKindHint: {
+    id: 'protocolBuilder.ruleEditor.ruleKindHint',
+    defaultMessage:
+      'Select whether this rule will be based on the entity type or an attribute.',
+    description:
+      'Guidance under the control where a researcher says whether the rule asks about the presence of a node or edge type or about one of its attributes.',
+  },
+  ruleKindAttribute: {
+    id: 'protocolBuilder.ruleEditor.ruleKindAttribute',
+    defaultMessage: 'Attribute',
+    description:
+      'One of two choices for what a rule is based on: one of the entity’s attributes — the variables a study records about it.',
+  },
+  ruleKindPresence: {
+    id: 'protocolBuilder.ruleEditor.ruleKindPresence',
+    defaultMessage: 'Presence',
+    description:
+      'One of two choices for what a rule is based on: whether anything of this type is in the interview network at all.',
+  },
+  ruleKindNodeAttributeHint: {
+    id: 'protocolBuilder.ruleEditor.ruleKindNodeAttributeHint',
+    defaultMessage: "Rule based on the value of this node type's attributes.",
+    description:
+      'Explains the "Attribute" choice for a rule about a node — a member of the interview network.',
+  },
+  ruleKindEdgeAttributeHint: {
+    id: 'protocolBuilder.ruleEditor.ruleKindEdgeAttributeHint',
+    defaultMessage: "Rule based on the value of this edge type's attributes.",
+    description:
+      'Explains the "Attribute" choice for a rule about an edge — a relationship between two network members.',
+  },
+  ruleKindNodePresenceHint: {
+    id: 'protocolBuilder.ruleEditor.ruleKindNodePresenceHint',
+    defaultMessage:
+      'Based on the presence or absence of this node type in the interview network.',
+    description:
+      'Explains the "Presence" choice for a rule about a node — a member of the interview network.',
+  },
+  ruleKindEdgePresenceHint: {
+    id: 'protocolBuilder.ruleEditor.ruleKindEdgePresenceHint',
+    defaultMessage:
+      'Based on the presence or absence of this edge type in the interview network.',
+    description:
+      'Explains the "Presence" choice for a rule about an edge — a relationship between two network members.',
+  },
+  presenceConditionSection: {
+    id: 'protocolBuilder.ruleEditor.presenceConditionSection',
+    defaultMessage: 'Presence condition',
+    description:
+      'Heading of the section where a researcher says whether the rule matches when an entity type is present or when it is absent.',
+  },
+  ruleStructureSection: {
+    id: 'protocolBuilder.ruleEditor.ruleStructureSection',
+    defaultMessage: 'Rule structure',
+    description:
+      'Heading of the section where a researcher chooses the attribute, the comparison and the value a rule is made of.',
+  },
+  ruleStructureHint: {
+    id: 'protocolBuilder.ruleEditor.ruleStructureHint',
+    defaultMessage:
+      'Choose an attribute, operator, and comparison value to define this rule.',
+    description:
+      'Guidance under the heading of the section where a researcher chooses the attribute, the comparison and the value a rule is made of.',
+  },
+  egoAttributeLabel: {
+    id: 'protocolBuilder.ruleEditor.egoAttributeLabel',
+    defaultMessage: 'Ego attribute',
+    description:
+      'Label of the control where a researcher chooses which attribute of the ego — the interview participant themselves — a rule asks about.',
+  },
+  egoAttributeHint: {
+    id: 'protocolBuilder.ruleEditor.egoAttributeHint',
+    defaultMessage: 'Select the ego attribute this rule will be based on.',
+    description:
+      'Guidance under the control where a researcher chooses which attribute of the ego — the interview participant themselves — a rule asks about.',
+  },
+  egoAttributeEmpty: {
+    id: 'protocolBuilder.ruleEditor.egoAttributeEmpty',
+    defaultMessage: 'This protocol has no ego attributes a rule can compare.',
+    description:
+      'Shown in place of the attribute list when the protocol records nothing about the ego — the interview participant themselves — that a rule could compare.',
+  },
+  nodeAttributeLabel: {
+    id: 'protocolBuilder.ruleEditor.nodeAttributeLabel',
+    defaultMessage: 'Node attribute',
+    description:
+      'Label of the control where a researcher chooses which attribute of a node — a member of the interview network — a rule asks about.',
+  },
+  edgeAttributeLabel: {
+    id: 'protocolBuilder.ruleEditor.edgeAttributeLabel',
+    defaultMessage: 'Edge attribute',
+    description:
+      'Label of the control where a researcher chooses which attribute of an edge — a relationship between network members — a rule asks about.',
+  },
+  attributeHint: {
+    id: 'protocolBuilder.ruleEditor.attributeHint',
+    defaultMessage: 'Select an attribute to base this rule on.',
+    description:
+      'Guidance under the control where a researcher chooses which attribute of a node or edge a rule asks about.',
+  },
+  nodeAttributeEmpty: {
+    id: 'protocolBuilder.ruleEditor.nodeAttributeEmpty',
+    defaultMessage: 'This node type has no attributes a rule can compare.',
+    description:
+      'Shown in place of the attribute list when the chosen node type records nothing a rule could compare.',
+  },
+  edgeAttributeEmpty: {
+    id: 'protocolBuilder.ruleEditor.edgeAttributeEmpty',
+    defaultMessage: 'This edge type has no attributes a rule can compare.',
+    description:
+      'Shown in place of the attribute list when the chosen edge type records nothing a rule could compare.',
+  },
+  operatorLabel: {
+    id: 'protocolBuilder.ruleEditor.operatorLabel',
+    defaultMessage: 'Operator',
+    description:
+      'Label of the control where a researcher chooses the comparison a rule makes — is exactly, is greater than, and so on.',
+  },
+  operatorPlaceholder: {
+    id: 'protocolBuilder.ruleEditor.operatorPlaceholder',
+    defaultMessage: 'Select an operator…',
+    description:
+      'Placeholder shown in the empty control where a researcher chooses the comparison a rule makes.',
+  },
+  egoOperatorHint: {
+    id: 'protocolBuilder.ruleEditor.egoOperatorHint',
+    defaultMessage:
+      'Select the operator that will be used to compare the ego attribute to the value.',
+    description:
+      'Guidance under the comparison control, for a rule about the ego — the interview participant themselves.',
+  },
+  attributeOperatorHint: {
+    id: 'protocolBuilder.ruleEditor.attributeOperatorHint',
+    defaultMessage:
+      'Select the operator that will be used to compare the attribute to the value.',
+    description:
+      'Guidance under the comparison control, for a rule about one of a node or edge type’s attributes.',
+  },
+  entityTypeOperatorHint: {
+    id: 'protocolBuilder.ruleEditor.entityTypeOperatorHint',
+    defaultMessage:
+      'Select the operator that will be used to compare the entity type to the value.',
+    description:
+      'Guidance under the comparison control, for a rule about whether anything of a node or edge type is in the interview network at all.',
+  },
+  egoRegExpHint: {
+    id: 'protocolBuilder.ruleEditor.egoRegExpHint',
+    defaultMessage:
+      'Enter the value to compare against. You can use a regular expression to match multiple values.',
+    description:
+      'Guidance under the value control, for a rule about the ego — the interview participant themselves — whose comparison matches text against a regular expression.',
+  },
+  attributeRegExpHint: {
+    id: 'protocolBuilder.ruleEditor.attributeRegExpHint',
+    defaultMessage: 'Enter a regular expression to compare against.',
+    description:
+      'Guidance under the value control, for a rule about a node or edge attribute whose comparison matches text against a regular expression.',
+  },
+  staleUnusableOptions: {
+    id: 'protocolBuilder.ruleEditor.staleUnusableOptions',
+    defaultMessage:
+      'This rule compares against {list}, which cannot be one of this attribute’s options. Choose from the options it offers.',
+    description:
+      'Refusal shown on the value control when the rule holds values of a kind no authored option could ever be. list is the offending values, joined for the reader’s language — each is a noun phrase such as "a true/false value".',
+  },
+  staleMissingOptions: {
+    id: 'protocolBuilder.ruleEditor.staleMissingOptions',
+    defaultMessage:
+      'This rule compares against {list}, which this attribute no longer offers. Choose from the options it does.',
+    description:
+      'Refusal shown on the value control when the rule names options this attribute has since stopped offering. list is the offending values, joined for the reader’s language; text values are shown in quotation marks.',
+  },
+  staleDateWrongResolution: {
+    id: 'protocolBuilder.ruleEditor.staleDateWrongResolution',
+    defaultMessage:
+      'This attribute is now answered with {resolution}, which “{value}” is not. Choose a date it can record.',
+    description:
+      'Refusal shown on the value control when the attribute records dates at a different precision from the rule’s date. resolution is a noun phrase such as "a year"; value is the stored date, unchanged.',
+  },
+  staleDateImpossible: {
+    id: 'protocolBuilder.ruleEditor.staleDateImpossible',
+    defaultMessage:
+      '“{value}” is not a date on the calendar. Choose a real date.',
+    description:
+      'Refusal shown on the value control when the rule’s stored date is the right shape but not a real date, e.g. 31 February. value is the stored date, unchanged.',
+  },
+  staleDateOutOfRange: {
+    id: 'protocolBuilder.ruleEditor.staleDateOutOfRange',
+    defaultMessage:
+      '“{value}” is outside the dates this attribute can record. Choose a date inside them.',
+    description:
+      'Refusal shown on the value control when the rule’s stored date falls outside the range the attribute’s own date picker offers. value is the stored date, unchanged.',
+  },
+  unreachableOptionCount: {
+    id: 'protocolBuilder.ruleEditor.unreachableOptionCount',
+    defaultMessage:
+      'This attribute offers {optionCount, plural, one {# option} other {# options}}, so between 0 and {optionCount, number} of them can be selected. Choose a number in that range.',
+    description:
+      'Refusal shown on the value control when a rule counts how many options a multiple-choice attribute was answered with and names a count the option list puts out of reach. optionCount is how many options the attribute offers.',
+  },
+  unreachableScale: {
+    id: 'protocolBuilder.ruleEditor.unreachableScale',
+    defaultMessage:
+      'This attribute is answered on a scale from {min} to {max}. Choose a number in that range.',
+    description:
+      'Refusal shown on the value control when the attribute records a reading on a fixed scale and the rule names a number off it. min and max are the ends of the scale.',
+  },
+  refuseTargetEgo: {
+    id: 'protocolBuilder.ruleEditor.refuseTargetEgo',
+    defaultMessage:
+      'These rules cannot ask about the ego. Choose another target.',
+    description:
+      'Refusal shown on the target control when the rule is about the ego — the interview participant themselves — and this kind of rule set is not allowed to ask about them.',
+  },
+  refuseTargetNode: {
+    id: 'protocolBuilder.ruleEditor.refuseTargetNode',
+    defaultMessage:
+      'These rules cannot ask about a node. Choose another target.',
+    description:
+      'Refusal shown on the target control when the rule is about a node — a member of the interview network — and this kind of rule set is not allowed to ask about one.',
+  },
+  refuseTargetEdge: {
+    id: 'protocolBuilder.ruleEditor.refuseTargetEdge',
+    defaultMessage:
+      'These rules cannot ask about an edge. Choose another target.',
+    description:
+      'Refusal shown on the target control when the rule is about an edge — a relationship between network members — and this kind of rule set is not allowed to ask about one.',
+  },
+  refuseRegExp: {
+    id: 'protocolBuilder.ruleEditor.refuseRegExp',
+    defaultMessage:
+      'This is not a valid regular expression. Correct it, or choose a different operator.',
+    description:
+      'Refusal shown on the value control when the pattern the rule compares against will not compile as a regular expression.',
+  },
+  refuseIncomplete: {
+    id: 'protocolBuilder.ruleEditor.refuseIncomplete',
+    defaultMessage:
+      'This rule cannot be saved until this question is answered.',
+    description:
+      'Refusal shown on whichever control in the rule editor is still unanswered when the researcher tries to finish the rule.',
+  },
+  refuseMissingId: {
+    id: 'protocolBuilder.ruleEditor.refuseMissingId',
+    defaultMessage:
+      'This rule has no identifier. Answer this question again to give it one.',
+    description:
+      'Refusal shown on the first control of the rule editor when the rule carries no internal identifier. Nothing on screen asks for one, so answering the question again is what supplies it.',
+  },
+  refuseMissingEntityType: {
+    id: 'protocolBuilder.ruleEditor.refuseMissingEntityType',
+    defaultMessage:
+      'This rule is pointed at "{typeId}", which is no longer in the codebook. Choose another type.',
+    description:
+      'Refusal shown on the type control when the node or edge type the rule names has been deleted. typeId is that type’s own identifier, shown unchanged so the researcher can match it against the rule. The codebook is the protocol’s definition of the types and attributes a study records.',
+  },
+  refuseMissingEntityTypeUnnamed: {
+    id: 'protocolBuilder.ruleEditor.refuseMissingEntityTypeUnnamed',
+    defaultMessage:
+      'This rule is pointed at a type that is no longer in the codebook. Choose another one.',
+    description:
+      'Refusal shown on the type control when the node or edge type the rule names has been deleted and the rule records no identifier to name.',
+  },
+  refuseMissingAttribute: {
+    id: 'protocolBuilder.ruleEditor.refuseMissingAttribute',
+    defaultMessage:
+      'This rule is about "{attributeId}", which is no longer in the codebook. Choose another attribute.',
+    description:
+      'Refusal shown on the attribute control when the attribute the rule asks about has been deleted. attributeId is that attribute’s own identifier, shown unchanged so the researcher can match it against the rule.',
+  },
+  refuseMissingAttributeUnnamed: {
+    id: 'protocolBuilder.ruleEditor.refuseMissingAttributeUnnamed',
+    defaultMessage:
+      'This rule is about an attribute that is no longer in the codebook. Choose another one.',
+    description:
+      'Refusal shown on the attribute control when the attribute the rule asks about has been deleted and the rule records no identifier to name.',
+  },
+  refuseMissingEgo: {
+    id: 'protocolBuilder.ruleEditor.refuseMissingEgo',
+    defaultMessage:
+      'This protocol no longer defines any ego attributes, so this rule cannot be about the ego. Choose another target.',
+    description:
+      'Refusal shown on the target control when the rule is about the ego — the interview participant themselves — and the protocol records nothing about them any more.',
+  },
+  refuseInvalidOperator: {
+    id: 'protocolBuilder.ruleEditor.refuseInvalidOperator',
+    defaultMessage:
+      'This operator is not valid for this attribute’s type. Choose another one.',
+    description:
+      'Refusal shown on the comparison control when the protocol does not allow that comparison against this kind of attribute, usually because someone changed the attribute after the rule was written.',
+  },
+  refuseInvalidPresenceOperator: {
+    id: 'protocolBuilder.ruleEditor.refuseInvalidPresenceOperator',
+    defaultMessage:
+      'This operator cannot ask whether an entity type is present. Choose another one.',
+    description:
+      'Refusal shown on the comparison control of a rule about whether anything of a node or edge type is in the interview network at all, when the chosen comparison cannot answer that question.',
+  },
+  refuseInvalidOperand: {
+    id: 'protocolBuilder.ruleEditor.refuseInvalidOperand',
+    defaultMessage:
+      'This is not the kind of value this attribute is answered with. Enter one it can be compared against.',
+    description:
+      'Refusal shown on the value control when the stored comparison value is of a kind the attribute is never answered with, so the interview could never match it.',
+  },
+});
+
 const RULE_EDITOR_FORM_ID = 'construct-a-rule';
 
 const TARGET_FIELD = 'type';
 const ENTITY_TYPE_FIELD = 'options.type';
 const ATTRIBUTE_FIELD = 'options.attribute';
 const OPERATOR_FIELD = 'options.operator';
-
-const REQUIRED_MESSAGE = 'This field is required.';
 
 /**
  * Whether an alter rule matches on the entity's presence or on one of its
@@ -80,8 +461,6 @@ const REQUIRED_MESSAGE = 'This field is required.';
 const RULE_KIND_FIELD = 'ruleKind';
 const VARIABLE_RULE = 'ALTER/VARIABLE';
 const TYPE_RULE = 'ALTER/TYPE';
-const RULE_STRUCTURE_DESCRIPTION =
-  'Choose an attribute, operator, and comparison value to define this rule.';
 
 /**
  * The rule's fields in the order each one constrains the next. A change to any
@@ -98,39 +477,33 @@ const RULE_CASCADE = [
 ] as const;
 
 /** Written out per entity kind: an entity class is a token, never copy. */
-const RULE_KIND_OPTIONS: Readonly<
-  Record<
-    RuleEntityTarget,
-    readonly Readonly<{ label: string; description: string; value: string }>[]
-  >
-> = Object.freeze({
-  node: [
-    {
-      label: 'Attribute',
-      description: "Rule based on the value of this node type's attributes.",
-      value: VARIABLE_RULE,
-    },
-    {
-      label: 'Presence',
-      description:
-        'Based on the presence or absence of this node type in the interview network.',
-      value: TYPE_RULE,
-    },
-  ],
-  edge: [
-    {
-      label: 'Attribute',
-      description: "Rule based on the value of this edge type's attributes.",
-      value: VARIABLE_RULE,
-    },
-    {
-      label: 'Presence',
-      description:
-        'Based on the presence or absence of this edge type in the interview network.',
-      value: TYPE_RULE,
-    },
-  ],
-});
+const ruleKindOptions = (
+  target: RuleEntityTarget,
+  intl: IntlShape,
+): readonly Readonly<{
+  label: string;
+  description: string;
+  value: string;
+}>[] => [
+  {
+    label: intl.formatMessage(messages.ruleKindAttribute),
+    description: intl.formatMessage(
+      target === 'node'
+        ? messages.ruleKindNodeAttributeHint
+        : messages.ruleKindEdgeAttributeHint,
+    ),
+    value: VARIABLE_RULE,
+  },
+  {
+    label: intl.formatMessage(messages.ruleKindPresence),
+    description: intl.formatMessage(
+      target === 'node'
+        ? messages.ruleKindNodePresenceHint
+        : messages.ruleKindEdgePresenceHint,
+    ),
+    value: TYPE_RULE,
+  },
+];
 
 /** One choice of rule target, as offered by the editor's Entity control. */
 export type RuleTypeOption = Readonly<{
@@ -147,9 +520,31 @@ export type RuleTypeOption = Readonly<{
  * only it knows which rule sets it offers. A target a rule already holds that
  * the host does not offer has no such sentence, so it is named — the entity
  * class is a token, and these are the words for it — rather than left out.
+ *
+ * One whole label per target rather than a name with a note appended: where
+ * the note sits relative to the name is a decision for whoever writes the
+ * language, and "a ego" is what interpolating the token produces.
  */
-const RULE_TARGET_NAMES: Readonly<Record<RuleTargetType, string>> =
-  Object.freeze({ node: 'Node', edge: 'Edge', ego: 'Ego' });
+const RULE_TARGET_NOT_OFFERED_LABELS = defineMessages({
+  node: {
+    id: 'protocolBuilder.ruleEditor.targetNotOfferedNodeLabel',
+    defaultMessage: 'Node (not offered in this rule set)',
+    description:
+      'The choice shown, and disabled, when a stored rule is about a node — a member of the interview network — and this rule set does not build node rules. Shown so the researcher can read what their rule targets.',
+  },
+  edge: {
+    id: 'protocolBuilder.ruleEditor.targetNotOfferedEdgeLabel',
+    defaultMessage: 'Edge (not offered in this rule set)',
+    description:
+      'The choice shown, and disabled, when a stored rule is about an edge — a relationship between two network members — and this rule set does not build edge rules.',
+  },
+  ego: {
+    id: 'protocolBuilder.ruleEditor.targetNotOfferedEgoLabel',
+    defaultMessage: 'Ego (not offered in this rule set)',
+    description:
+      'The choice shown, and disabled, when a stored rule is about the ego — the interview participant themselves — and this rule set does not build ego rules.',
+  },
+}) satisfies Record<RuleTargetType, MessageDescriptor>;
 
 /**
  * The targets on offer, plus the one this rule already has.
@@ -164,6 +559,7 @@ const RULE_TARGET_NAMES: Readonly<Record<RuleTargetType, string>> =
 const ruleTargetOptions = (
   offered: readonly RuleTypeOption[],
   seeded: string,
+  intl: IntlShape,
 ): readonly RuleTypeOption[] => {
   if (!isRuleTargetType(seeded)) return offered;
   if (offered.some((option) => option.value === seeded)) return offered;
@@ -171,7 +567,7 @@ const ruleTargetOptions = (
     ...offered,
     {
       value: seeded,
-      label: `${RULE_TARGET_NAMES[seeded]} (not offered in this rule set)`,
+      label: intl.formatMessage(RULE_TARGET_NOT_OFFERED_LABELS[seeded]),
       disabled: true,
     },
   ];
@@ -312,11 +708,6 @@ const staleRuleNumbers = (
 const describeStaleOption = (value: string | number): string =>
   typeof value === 'string' ? `"${value}"` : String(value);
 
-const asList = (described: readonly string[]): string =>
-  described.length <= 1
-    ? (described[0] ?? '')
-    : `${described.slice(0, -1).join(', ')} and ${described.at(-1) ?? ''}`;
-
 /**
  * Why the operand is refused, in whichever of the two voices applies.
  *
@@ -324,6 +715,10 @@ const asList = (described: readonly string[]): string =>
  * beside the string option it became — never was one of this attribute's
  * choices, so telling the researcher it is "no longer offered" would send them
  * looking through the option list for something that was never in it.
+ *
+ * The offending values are carried as a LIST rather than joined here: how
+ * several of them read together is `Intl.ListFormat`'s answer, and it differs
+ * by language.
  */
 const staleOptionsMessage = (
   problems: readonly OperandOptionProblem[],
@@ -332,23 +727,19 @@ const staleOptionsMessage = (
     problem.kind === 'unusableValue' ? [problem.describedAs] : [],
   );
   if (unusable.length > 0) {
-    return `This rule compares against ${asList(unusable)}, which cannot be one of this attribute’s options. Choose from the options it offers.`;
+    return createMessageError(messages.staleUnusableOptions, {
+      list: { list: unusable },
+    });
   }
   const missing = problems.flatMap((problem) =>
     problem.kind === 'unknownOption'
       ? [describeStaleOption(problem.value)]
       : [],
   );
-  return `This rule compares against ${asList(missing)}, which this attribute no longer offers. Choose from the options it does.`;
-};
-
-/** How a date attribute records an answer, in the researcher's own words. */
-const DATE_RESOLUTION_NAMES: Readonly<Record<DateFormat, string>> =
-  Object.freeze({
-    full: 'a full date',
-    month: 'a month and a year',
-    year: 'a year',
+  return createMessageError(messages.staleMissingOptions, {
+    list: { list: missing },
   });
+};
 
 /**
  * Why a date operand is refused, in the voice of the control holding it.
@@ -369,11 +760,24 @@ const staleDatesMessage = (problems: readonly OperandDateProblem[]): string => {
   if (problem === undefined) return INVALID_OPERAND_MESSAGE;
   switch (problem.kind) {
     case 'wrongResolution':
-      return `This attribute is now answered with ${DATE_RESOLUTION_NAMES[problem.resolution]}, which “${problem.value}” is not. Choose a date it can record.`;
+      return createMessageError(messages.staleDateWrongResolution, {
+        value: problem.value,
+        // The noun phrase for the precision is a message of its own, carried
+        // as a reference so it is chosen in the reader's language too.
+        resolution: {
+          messageError: createMessageError(
+            dateResolutionMessages[problem.resolution],
+          ),
+        },
+      });
     case 'impossibleDate':
-      return `“${problem.value}” is not a date on the calendar. Choose a real date.`;
+      return createMessageError(messages.staleDateImpossible, {
+        value: problem.value,
+      });
     case 'outOfRange':
-      return `“${problem.value}” is outside the dates this attribute can record. Choose a date inside them.`;
+      return createMessageError(messages.staleDateOutOfRange, {
+        value: problem.value,
+      });
     default:
       return assertNoSuchDateProblem(problem);
   }
@@ -393,9 +797,14 @@ const unreachableNumbersMessage = (
   if (problem === undefined) return INVALID_OPERAND_MESSAGE;
   switch (problem.kind) {
     case 'unreachableOptionCount':
-      return `This attribute offers ${problem.optionCount} ${problem.optionCount === 1 ? 'option' : 'options'}, so between 0 and ${problem.optionCount} of them can be selected. Choose a number in that range.`;
+      return createMessageError(messages.unreachableOptionCount, {
+        optionCount: problem.optionCount,
+      });
     case 'unreachableScale':
-      return `This attribute is answered on a scale from ${problem.min} to ${problem.max}. Choose a number in that range.`;
+      return createMessageError(messages.unreachableScale, {
+        min: String(problem.min),
+        max: String(problem.max),
+      });
     default:
       return assertNoSuchNumberProblem(problem);
   }
@@ -409,9 +818,9 @@ const unreachableNumbersMessage = (
  */
 const TARGET_NOT_OFFERED_MESSAGES: Readonly<Record<RuleTargetType, string>> =
   Object.freeze({
-    ego: 'These rules cannot ask about the ego. Choose another target.',
-    node: 'These rules cannot ask about a node. Choose another target.',
-    edge: 'These rules cannot ask about an edge. Choose another target.',
+    ego: createMessageError(messages.refuseTargetEgo),
+    node: createMessageError(messages.refuseTargetNode),
+    edge: createMessageError(messages.refuseTargetEdge),
   });
 
 /** The control the researcher has to visit to supply each part of a rule. */
@@ -640,28 +1049,32 @@ function EgoRuleFields({
   variableChoices,
   dateParameters,
 }: BranchProps) {
+  const intl = useAppIntl();
   return (
-    <Section title="Rule structure" description={RULE_STRUCTURE_DESCRIPTION}>
+    <Section
+      title={intl.formatMessage(messages.ruleStructureSection)}
+      description={intl.formatMessage(messages.ruleStructureHint)}
+    >
       <Field
         name={ATTRIBUTE_FIELD}
-        label="Ego attribute"
-        hint="Select the ego attribute this rule will be based on."
+        label={intl.formatMessage(messages.egoAttributeLabel)}
+        hint={intl.formatMessage(messages.egoAttributeHint)}
         component={VariablePickerControl}
         options={variableOptions}
-        emptyMessage="This protocol has no ego attributes a rule can compare."
+        emptyMessage={intl.formatMessage(messages.egoAttributeEmpty)}
         initialValue={seedString(seed, 'attribute')}
-        required={REQUIRED_MESSAGE}
+        required={intl.formatMessage(ruleEditorRequiredMessage)}
       />
       {attributeId !== undefined && (
         <Field
           name={OPERATOR_FIELD}
-          label="Operator"
-          hint="Select the operator that will be used to compare the ego attribute to the value."
+          label={intl.formatMessage(messages.operatorLabel)}
+          hint={intl.formatMessage(messages.egoOperatorHint)}
           component={NativeSelectField}
-          placeholder="Select an operator…"
+          placeholder={intl.formatMessage(messages.operatorPlaceholder)}
           options={[...operatorOptions]}
           initialValue={seedString(seed, 'operator')}
-          required={REQUIRED_MESSAGE}
+          required={intl.formatMessage(ruleEditorRequiredMessage)}
         />
       )}
       <RuleOperandField
@@ -670,7 +1083,7 @@ function EgoRuleFields({
         options={variableChoices}
         dateParameters={dateParameters}
         initialValue={seed.options?.value}
-        regExpHint="Enter the value to compare against. You can use a regular expression to match multiple values."
+        regExpHint={intl.formatMessage(messages.egoRegExpHint)}
       />
     </Section>
   );
@@ -702,64 +1115,72 @@ function EntityRuleFields({
   // assembled from the token, because the indefinite article differs between
   // the two and a sentence built from fragments cannot be localised.
   const isNode = target === 'node';
+  const intl = useAppIntl();
 
   return (
     <>
-      <Section title="Rule basis" disabled={entityTypeId === undefined}>
+      <Section
+        title={intl.formatMessage(messages.ruleBasisSection)}
+        disabled={entityTypeId === undefined}
+      >
         <Field
           name={RULE_KIND_FIELD}
-          label="Rule type"
-          hint="Select whether this rule will be based on the entity type or an attribute."
+          label={intl.formatMessage(messages.ruleKindLabel)}
+          hint={intl.formatMessage(messages.ruleKindHint)}
           component={RichSelectGroupField}
-          options={[...RULE_KIND_OPTIONS[target]]}
+          options={[...ruleKindOptions(target, intl)]}
           initialValue={seedRuleKind(seed)}
-          required={REQUIRED_MESSAGE}
+          required={intl.formatMessage(ruleEditorRequiredMessage)}
         />
       </Section>
 
       {ruleKind === TYPE_RULE && entityTypeId !== undefined && (
-        <Section title="Presence condition">
+        <Section title={intl.formatMessage(messages.presenceConditionSection)}>
           <Field
             name={OPERATOR_FIELD}
-            label="Operator"
-            hint="Select the operator that will be used to compare the entity type to the value."
+            label={intl.formatMessage(messages.operatorLabel)}
+            hint={intl.formatMessage(messages.entityTypeOperatorHint)}
             component={RadioGroupField}
             options={[...operatorOptions]}
             initialValue={seedString(seed, 'operator')}
-            required={REQUIRED_MESSAGE}
+            required={intl.formatMessage(ruleEditorRequiredMessage)}
           />
         </Section>
       )}
 
       {ruleKind === VARIABLE_RULE && entityTypeId !== undefined && (
         <Section
-          title="Rule structure"
-          description={RULE_STRUCTURE_DESCRIPTION}
+          title={intl.formatMessage(messages.ruleStructureSection)}
+          description={intl.formatMessage(messages.ruleStructureHint)}
         >
           <Field
             name={ATTRIBUTE_FIELD}
-            label={isNode ? 'Node attribute' : 'Edge attribute'}
-            hint="Select an attribute to base this rule on."
+            label={intl.formatMessage(
+              isNode
+                ? messages.nodeAttributeLabel
+                : messages.edgeAttributeLabel,
+            )}
+            hint={intl.formatMessage(messages.attributeHint)}
             component={VariablePickerControl}
             options={variableOptions}
-            emptyMessage={
+            emptyMessage={intl.formatMessage(
               isNode
-                ? 'This node type has no attributes a rule can compare.'
-                : 'This edge type has no attributes a rule can compare.'
-            }
+                ? messages.nodeAttributeEmpty
+                : messages.edgeAttributeEmpty,
+            )}
             initialValue={seedString(seed, 'attribute')}
-            required={REQUIRED_MESSAGE}
+            required={intl.formatMessage(ruleEditorRequiredMessage)}
           />
           {attributeId !== undefined && (
             <Field
               name={OPERATOR_FIELD}
-              label="Operator"
-              hint="Select the operator that will be used to compare the attribute to the value."
+              label={intl.formatMessage(messages.operatorLabel)}
+              hint={intl.formatMessage(messages.attributeOperatorHint)}
               component={NativeSelectField}
-              placeholder="Select an operator…"
+              placeholder={intl.formatMessage(messages.operatorPlaceholder)}
               options={[...operatorOptions]}
               initialValue={seedString(seed, 'operator')}
-              required={REQUIRED_MESSAGE}
+              required={intl.formatMessage(ruleEditorRequiredMessage)}
             />
           )}
           <RuleOperandField
@@ -768,7 +1189,7 @@ function EntityRuleFields({
             options={variableChoices}
             dateParameters={dateParameters}
             initialValue={seed.options?.value}
-            regExpHint="Enter a regular expression to compare against."
+            regExpHint={intl.formatMessage(messages.attributeRegExpHint)}
           />
         </Section>
       )}
@@ -786,6 +1207,7 @@ function RuleEditorFields({
   description: ReactNode;
 }>) {
   const { protocolContext } = useStageEditorForm();
+  const intl = useAppIntl();
   const codebook = protocolContext.codebook;
   const values = useFormValue(RULE_CASCADE);
   const target = isRuleTargetType(values[TARGET_FIELD])
@@ -816,8 +1238,8 @@ function RuleEditorFields({
   // select's placeholder. Read from the field rather than from the seed, so it
   // goes when the cascade clears it.
   const operatorOptions = useMemo(
-    () => ruleOperatorOptions(derived.variableType, operator),
-    [derived.variableType, operator],
+    () => ruleOperatorOptions(derived.variableType, operator, intl),
+    [derived.variableType, intl, operator],
   );
 
   // The operator is part of the answer: a categorical attribute empties to an
@@ -849,29 +1271,34 @@ function RuleEditorFields({
         which would flatten these documentation links into an announcement the
         researcher cannot follow. As body copy they are ordinary links.
       */}
-      <Section title="Rule target" description={description}>
+      <Section
+        title={intl.formatMessage(messages.ruleTargetSection)}
+        description={description}
+      >
         <Field
           name={TARGET_FIELD}
-          label="Entity"
-          hint="Select which network entity your rule should target."
+          label={intl.formatMessage(messages.entityLabel)}
+          hint={intl.formatMessage(messages.entityHint)}
           component={RadioGroupField}
-          options={[...ruleTargetOptions(ruleTypes, seed.type)]}
+          options={[...ruleTargetOptions(ruleTypes, seed.type, intl)]}
           initialValue={seed.type === '' ? undefined : seed.type}
-          required={REQUIRED_MESSAGE}
+          required={intl.formatMessage(ruleEditorRequiredMessage)}
         />
         {(target === 'node' || target === 'edge') && (
           <Field
             name={ENTITY_TYPE_FIELD}
-            label={target === 'node' ? 'Node type' : 'Edge type'}
-            hint={
+            label={intl.formatMessage(
               target === 'node'
-                ? 'Choose a node type to base your rule on. Remember you can add multiple rules if you need to cover different types.'
-                : 'Choose an edge type to base your rule on. Remember you can add multiple rules if you need to cover different types.'
-            }
+                ? messages.nodeTypeLabel
+                : messages.edgeTypeLabel,
+            )}
+            hint={intl.formatMessage(
+              target === 'node' ? messages.nodeTypeHint : messages.edgeTypeHint,
+            )}
             component={EntitySelectControl}
             entityType={target}
             initialValue={seedString(seed, 'type')}
-            required={REQUIRED_MESSAGE}
+            required={intl.formatMessage(ruleEditorRequiredMessage)}
           />
         )}
       </Section>
@@ -972,6 +1399,8 @@ export default function RuleEditorDialog({
    */
   const saved = useRef(false);
 
+  const intl = useAppIntl();
+
   // The codebook the session holds right now, read through a ref so the check
   // below stays live without giving the validator a new identity on every
   // snapshot the session receives. Same reason `useRuleSetValidation` does it:
@@ -1054,11 +1483,11 @@ export default function RuleEditorDialog({
     <DialogForm
       open={open}
       onClose={handleClose}
-      title={RULE_EDITOR_TITLE}
+      title={intl.formatMessage(messages.title)}
       formId={RULE_EDITOR_FORM_ID}
       validate={validate}
       onSubmit={handleSubmit}
-      submitLabel={RULE_EDITOR_SUBMIT}
+      submitLabel={intl.formatMessage(messages.submit)}
       size="editor"
       finalFocus={finalFocus}
       layoutId={layoutId}
@@ -1066,40 +1495,47 @@ export default function RuleEditorDialog({
       <RuleEditorFields
         seed={seed}
         ruleTypes={ruleTypes}
-        description={
-          <>
-            Rules are used to filter the data in your study. You can use them to
-            show or hide nodes and edges based on their attributes. For help
-            with constructing rules, see our documentation articles on{' '}
+        description={intl.formatMessage(messages.description, {
+          // The links are tags inside the sentence rather than markup around
+          // fragments of it, so a translator moves the whole clause and the
+          // link text with it.
+          skipLogic: (chunks: ReactNode) => (
             <NativeLink
+              key="skipLogic"
               href={protocolAuthoringLinks.skipLogic}
               target="_blank"
               rel="noopener noreferrer"
             >
-              skip logic
-            </NativeLink>{' '}
-            and{' '}
+              {chunks}
+            </NativeLink>
+          ),
+          networkFiltering: (chunks: ReactNode) => (
             <NativeLink
+              key="networkFiltering"
               href={protocolAuthoringLinks.networkFiltering}
               target="_blank"
               rel="noopener noreferrer"
             >
-              network filtering
+              {chunks}
             </NativeLink>
-            .
-          </>
-        }
+          ),
+        })}
       />
     </DialogForm>
   );
 }
 
-const INVALID_REG_EXP_MESSAGE =
-  'This is not a valid regular expression. Correct it, or choose a different operator.';
-const INCOMPLETE_RULE_MESSAGE =
-  'This rule cannot be saved until this question is answered.';
-const MISSING_ID_MESSAGE =
-  'This rule has no identifier. Answer this question again to give it one.';
+/**
+ * The refusals this dialog shows, encoded rather than formatted.
+ *
+ * They cross `DialogForm`'s string-only `fieldErrors` contract on their way to
+ * the control that holds the fault, and `FieldErrors` decodes them where they
+ * are rendered — which also puts a standing refusal into the reader's new
+ * language when they change it, without the researcher having to submit again.
+ */
+const INVALID_REG_EXP_MESSAGE = createMessageError(messages.refuseRegExp);
+const INCOMPLETE_RULE_MESSAGE = createMessageError(messages.refuseIncomplete);
+const MISSING_ID_MESSAGE = createMessageError(messages.refuseMissingId);
 
 /**
  * A reference the codebook has lost, named rather than described.
@@ -1110,22 +1546,24 @@ const MISSING_ID_MESSAGE =
  */
 const missingEntityTypeMessage = (typeId: string | undefined): string =>
   typeId === undefined
-    ? 'This rule is pointed at a type that is no longer in the codebook. Choose another one.'
-    : `This rule is pointed at "${typeId}", which is no longer in the codebook. Choose another type.`;
+    ? createMessageError(messages.refuseMissingEntityTypeUnnamed)
+    : createMessageError(messages.refuseMissingEntityType, { typeId });
 
 const missingAttributeMessage = (attributeId: string | undefined): string =>
   attributeId === undefined
-    ? 'This rule is about an attribute that is no longer in the codebook. Choose another one.'
-    : `This rule is about "${attributeId}", which is no longer in the codebook. Choose another attribute.`;
+    ? createMessageError(messages.refuseMissingAttributeUnnamed)
+    : createMessageError(messages.refuseMissingAttribute, { attributeId });
 
-const MISSING_EGO_MESSAGE =
-  'This protocol no longer defines any ego attributes, so this rule cannot be about the ego. Choose another target.';
-const INVALID_OPERATOR_MESSAGE =
-  'This operator is not valid for this attribute’s type. Choose another one.';
-const INVALID_PRESENCE_OPERATOR_MESSAGE =
-  'This operator cannot ask whether an entity type is present. Choose another one.';
+const MISSING_EGO_MESSAGE = createMessageError(messages.refuseMissingEgo);
+const INVALID_OPERATOR_MESSAGE = createMessageError(
+  messages.refuseInvalidOperator,
+);
+const INVALID_PRESENCE_OPERATOR_MESSAGE = createMessageError(
+  messages.refuseInvalidPresenceOperator,
+);
 // Says what the value IS rather than what the rule will do, for the reason
 // `staleDatesMessage` gives: beside a negating operator a value that can never
 // be compared makes the rule match every participant, not none of them.
-const INVALID_OPERAND_MESSAGE =
-  'This is not the kind of value this attribute is answered with. Enter one it can be compared against.';
+const INVALID_OPERAND_MESSAGE = createMessageError(
+  messages.refuseInvalidOperand,
+);
