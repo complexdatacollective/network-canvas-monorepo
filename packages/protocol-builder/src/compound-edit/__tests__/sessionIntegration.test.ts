@@ -917,11 +917,19 @@ describe('a codebook-only compound against each kind of host', () => {
 
   /**
    * The stage came back as neither — not the base these batches were built
-   * against, and not that base with any run of them applied. Something else
-   * moved it, and a session that adopted it would be replaying the
-   * researcher's batches onto a document they were not written for.
+   * against, and not that base with any run of them applied. A collaborator
+   * moved it while this request was in flight.
+   *
+   * A codebook-only request says nothing about the stage, so there is nothing
+   * about the stage to check before it is sent: this session finds out only
+   * from the answer, and by then the host has APPLIED the change and is
+   * answering with its own stage beside it. Refusing there is a refusal of
+   * something that already happened — the section exists on the host and the
+   * session stays on the revision before it, with no way back: a retry under a
+   * new id collides with the section that now exists, and one under the same
+   * id replays the cached result into the same refusal.
    */
-  it('refuses a stage it cannot account for, and loses nothing local', async () => {
+  it('adopts a stage it cannot account for, because the host has already applied the change', async () => {
     const { host, session } = createSession();
     session.dispatch([{ op: 'set', key: 'title', value: 'Places nearby' }]);
     const before = session.getSnapshot();
@@ -948,17 +956,33 @@ describe('a codebook-only compound against each kind of host', () => {
 
     await expect(
       session.requestCompoundEdit(createPlaceOnly),
-    ).resolves.toMatchObject({ status: 'failed', reason: 'stale-base' });
+    ).resolves.toMatchObject({ status: 'applied' });
 
+    // Applied on the host, which is the whole reason a refusal was never an
+    // honest answer, and now readable in this session too.
+    expect(host.getSnapshot().protocolSections[placeSection]).toMatchObject({
+      name: 'Place',
+    });
+    expect(
+      session.getSnapshot().protocolContext.codebook.node?.place,
+    ).toMatchObject({ name: 'Place' });
+    expect(session.getSnapshot().manifestRevision).not.toEqual(
+      before.manifestRevision,
+    );
+
+    // The collaborator's rename is the new base, and the researcher's unsaved
+    // title is rebased onto it rather than dropped.
+    expect(session.getSnapshot().editedSection.fields).toMatchObject({
+      label: 'Renamed elsewhere',
+      title: 'Places nearby',
+    });
     expect(session.getSnapshot().pendingCommands).toEqual(
       before.pendingCommands,
     );
-    expect(session.getSnapshot().editedSection.fields).toEqual(
-      before.editedSection.fields,
-    );
-    expect(session.getSnapshot().history).toEqual(before.history);
-    expect(session.getSnapshot().manifestRevision).toEqual(
-      before.manifestRevision,
+    // Fenced, exactly as `acknowledge` fences a foreign arrival: every undo
+    // entry predates a change this session did not make.
+    expect(session.getSnapshot().history.generation).toBe(
+      before.history.generation + 1,
     );
   });
 });

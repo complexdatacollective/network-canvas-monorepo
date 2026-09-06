@@ -817,19 +817,31 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
           (candidate) => canonicalize(candidate) === canonicalStage,
         );
         if (accounted === null) {
-          // The authoritative stage moved for a reason this session cannot
-          // account for, and the batches it is holding were built against the
-          // base it moved from. Refused with the base, the batches, the draft
-          // and the history exactly as they were, so nothing local is lost and
-          // the researcher can make the change again.
-          return compoundFailure(
-            'stale-base',
-            'the authoritative stage changed while this change was being made, so nothing local was altered',
-            stageSectionId,
-          );
+          // The stage came back as neither: a collaborator moved it while this
+          // request was in flight. Adopted and rebased onto, exactly as
+          // `acknowledge` treats a foreign arrival — because there is nothing
+          // left to refuse. This request said nothing about the stage, so
+          // nothing about the stage could be checked before it was sent (the
+          // fold's own stale base is refused in `planPendingCommands`, before
+          // the host is asked); by the time the answer says the stage moved,
+          // the host has APPLIED the codebook change and is answering with its
+          // own stage beside it. Reporting a refusal there left the section on
+          // the host and this session on the revision before it, with no way
+          // back — a retry under a new request id collides with the section
+          // that now exists, and one under the same id replays the host's
+          // cached result into the same refusal.
+          //
+          // Which of the delivered batches the host had already applied cannot
+          // be read off a stage a collaborator has also touched, so all of
+          // them stay pending and are rebased onto it. That is the same choice
+          // the paths above make, and it errs where they do: towards sending a
+          // batch the host may hold twice rather than losing the researcher's
+          // unsaved work outright.
+          rebased = true;
+        } else {
+          pendingCommands = pendingCommands.slice(accounted);
+          rebased = false;
         }
-        pendingCommands = pendingCommands.slice(accounted);
-        rebased = false;
       }
       let reconciledFields: StageFormDraft = this.snapshot.editedSection.fields;
       if (rebased) {
