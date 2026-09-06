@@ -182,6 +182,74 @@ export function resolveRowIndex<T extends ArrayRow>(
 }
 
 /**
+ * Where every row of `rendered` ended up in `current`, as a ONE-TO-ONE map.
+ *
+ * `-1` for a row that is not there any more; otherwise a position, and no
+ * position twice. That last part is the whole reason this is a single pass
+ * rather than `resolveRowIndex` asked once per row: a list may legitimately
+ * hold the same id-less row twice — a form asking one question twice, an
+ * options list with two blank rows — and an id-less row's identity IS its
+ * content, so two such rows are two rows nothing tells apart. Resolved
+ * independently, both would answer with the same candidate, and one copy on
+ * each side would be left over.
+ *
+ * The cascade is `resolveRowIndex`'s, spent rather than repeated:
+ *
+ * - a row with an id takes the candidate carrying that id, and answers `-1`
+ *   when there is none — an id that has left the list says the row has;
+ * - an id-less row takes the first candidate holding its content that no
+ *   earlier row has claimed, so the copies are paired off in ORDER: the first
+ *   copy on one side with the first on the other, and so on.
+ *
+ * In order, and never by absolute position, because this correspondence is
+ * drawn against lists that have moved relative to one another, and both
+ * drawings of it have to agree by construction. It is what tells apart the two
+ * questions this module is asked about a row: which row an edit is written
+ * INTO — where a guess writes over content nobody meant to touch, so
+ * `resolveRowIndex` refuses instead — and which OCCURRENCE of a row a position
+ * names, where the copies are interchangeable but their places are not.
+ */
+export function matchRows(
+  before: readonly unknown[],
+  list: readonly unknown[],
+  getId: (row: unknown) => string | undefined = rowIdentity,
+): number[] {
+  const matched = before.map(() => -1);
+  const claimed = new Set<number>();
+  const claim = (ancestor: number, candidate: number): void => {
+    matched[ancestor] = candidate;
+    claimed.add(candidate);
+  };
+
+  const identities = list.map((row) => getId(row));
+  const contents = list.map((row) => canonicalize(row));
+
+  const idless: number[] = [];
+  before.forEach((row, ancestor) => {
+    const id = getId(row);
+    if (id === undefined) {
+      idless.push(ancestor);
+      return;
+    }
+    const candidate = identities.findIndex(
+      (candidateId, index) => candidateId === id && !claimed.has(index),
+    );
+    if (candidate !== -1) claim(ancestor, candidate);
+  });
+
+  for (const ancestor of idless) {
+    const content = canonicalize(before[ancestor]);
+    const candidate = contents.findIndex(
+      (candidateContent, index) =>
+        candidateContent === content && !claimed.has(index),
+    );
+    if (candidate !== -1) claim(ancestor, candidate);
+  }
+
+  return matched;
+}
+
+/**
  * Where the row a move PICKED UP sits among the rows the editor drew.
  *
  * A move is the one operation whose two positions are not read off the same
@@ -239,6 +307,13 @@ export const movedRowIndex = <T extends ArrayRow>(
  * exist yet, so there is no wrong row to land on — but it still has to land in
  * the right PLACE. An append (which is what every list here does) stays an
  * append; an insert before a known row stays before that row.
+ *
+ * A row the list holds twice is a place all the same. `resolveRowIndex`
+ * refuses to say which copy a position names, because the answer decides which
+ * row an edit is written INTO; here it decides only where a new row goes, and
+ * the copies are paired off in order like everything else — so a row written
+ * between two identical ones stays between them instead of landing in front of
+ * both.
  */
 export function resolveInsertIndex<T extends ArrayRow>(
   current: readonly unknown[],
@@ -248,7 +323,13 @@ export function resolveInsertIndex<T extends ArrayRow>(
 ): number {
   if (index >= rendered.length) return current.length;
   const successor = resolveRowIndex(current, rendered, index, getId);
-  return successor ?? Math.min(index, current.length);
+  if (successor !== undefined) return successor;
+  const paired = matchRows(rendered, current, (row) =>
+    isRecord(row) ? getId?.(row as T) : undefined,
+  )[index];
+  return paired === undefined || paired === -1
+    ? Math.min(index, current.length)
+    : paired;
 }
 
 /**

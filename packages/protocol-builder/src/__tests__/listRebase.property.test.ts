@@ -412,20 +412,32 @@ function mergesLikeTheModel(trial: Trial, outcome: Outcome): string | null {
 }
 
 /**
- * The rows a trial can say anything about the ORDER of: those the base, the
- * researcher's list and the answer each hold exactly once. A list may hold the
- * same id-less row twice, and where it does there is no fact about which copy
- * is which, so the copies are left out rather than guessed at.
+ * The rows a trial can say anything about the ORDER of: those the
+ * researcher's list and the answer hold the same number of times.
+ *
+ * A list may hold the same id-less row twice, and there is no fact about which
+ * of the copies is which — but there IS a fact about where they sit among the
+ * rows that are not copies of them. `[a, b, a]` with the first `a` deleted is
+ * `[b, a]`, and an answer of `[a, b]` has kept the wrong one: the copies are
+ * indistinguishable, their positions are not. So the copies are compared by
+ * OCCURRENCE, which is exactly what comparing the two projections as sequences
+ * does, rather than being left out.
+ *
+ * Equal counts is what makes that comparison well posed. A row the arrival
+ * added a copy of, or one the merge legitimately kept a different number of,
+ * has no occurrence-to-occurrence correspondence to check, and the count
+ * itself is the data-loss question `mergesLikeTheModel` already asks.
  */
 const orderableKeys = (
   trial: Trial,
   result: readonly Row[],
 ): ((key: string) => boolean) => {
-  const inBase = copies(trial.base);
   const inLocal = copies(trial.local);
   const inResult = copies(result);
-  return (key) =>
-    inBase.get(key) === 1 && inLocal.get(key) === 1 && inResult.get(key) === 1;
+  return (key) => {
+    const locally = inLocal.get(key);
+    return locally !== undefined && locally === inResult.get(key);
+  };
 };
 
 /** How many commands a trial made, and how many the rebase kept. */

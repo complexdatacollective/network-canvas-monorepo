@@ -9,6 +9,7 @@ import {
 
 import {
   type ArrayRow,
+  matchRows,
   resolveInsertIndex,
   resolveMove,
   rowIdentity,
@@ -203,111 +204,6 @@ export function commandForListChange(
 }
 
 /**
- * A copy of `row` in `list`, or `-1` when the list holds none.
- *
- * Its own id when it has one — authoritative, and its absence means the row is
- * gone. Otherwise its content, at its own position when that position still
- * holds it and anywhere in the list when it does not: an id-less row's identity
- * IS its content, so every copy of it is the row.
- *
- * Any copy will do, because the only thing asked of the answer is where a
- * re-inserted row goes — after the row it followed locally — and two copies of
- * one row name the same place. That is the only question in this file a single
- * row can answer. Everything that turns on WHICH ancestor row a position holds
- * asks {@link matchRows} instead.
- */
-function findRow(
-  list: readonly unknown[],
-  row: unknown,
-  index: number,
-): number {
-  const id = rowIdentity(row);
-  if (id !== undefined) {
-    return list.findIndex((candidate) => rowIdentity(candidate) === id);
-  }
-  const content = canonicalize(row);
-  if (
-    index >= 0 &&
-    index < list.length &&
-    canonicalize(list[index]) === content
-  )
-    return index;
-  return list.findIndex((candidate) => canonicalize(candidate) === content);
-}
-
-/**
- * Where every row of `before` ended up in `list`, as a ONE-TO-ONE map.
- *
- * `-1` for a row that is not there any more; otherwise a position, and no
- * position twice. That last part is the whole reason this is a single pass
- * over the ancestor rather than `findRow` asked once per row: a list may
- * legitimately hold the same id-less row twice — a form asking one question
- * twice, an options list with two blank rows — and an id-less row's identity IS
- * its content, so two such rows are two rows nothing tells apart. Resolved
- * independently, both would answer with the SAME candidate and one copy on each
- * side would be left over: the arrival's spare read as a row nobody had seen,
- * the local spare as a row the researcher had just added, and the merge emitted
- * both. Two rows in, three rows out.
- *
- * The cascade is `findRow`'s, spent rather than repeated:
- *
- * - a row with an id takes the candidate carrying that id, and answers `-1`
- *   when there is none — an id that has left the list says the row has;
- * - an id-less row takes the first candidate holding its content that no
- *   earlier row has claimed, so the copies are paired off in order: the first
- *   ancestor copy with the first surviving one, and so on.
- *
- * In ORDER, and never by absolute position, because this correspondence is
- * drawn twice — against the researcher's list and against the collaborator's —
- * and the merge keeps an ancestor row only where both drawings kept it. Which
- * of three identical copies each side is deemed to have deleted cannot be
- * read off either list, so the two drawings have to agree by construction:
- * pairing in order makes each side keep the FIRST copies, and the two
- * agreements then overlap as far as they possibly can. Honouring a copy's own
- * position instead lets the researcher be deemed to have dropped the first copy
- * and the collaborator the second, and the merge, taking both at their word,
- * deletes two rows where each of them deleted one.
- */
-function matchRows(
-  before: readonly unknown[],
-  list: readonly unknown[],
-): number[] {
-  const matched = before.map(() => -1);
-  const claimed = new Set<number>();
-  const claim = (ancestor: number, candidate: number): void => {
-    matched[ancestor] = candidate;
-    claimed.add(candidate);
-  };
-
-  const identities = list.map((row) => rowIdentity(row));
-  const contents = list.map((row) => canonicalize(row));
-
-  const idless: number[] = [];
-  before.forEach((row, ancestor) => {
-    const id = rowIdentity(row);
-    if (id === undefined) {
-      idless.push(ancestor);
-      return;
-    }
-    const candidate = identities.findIndex(
-      (candidateId, index) => candidateId === id && !claimed.has(index),
-    );
-    if (candidate !== -1) claim(ancestor, candidate);
-  });
-
-  for (const ancestor of idless) {
-    const content = canonicalize(before[ancestor]);
-    const candidate = contents.findIndex(
-      (candidateContent, index) =>
-        candidateContent === content && !claimed.has(index),
-    );
-    if (candidate !== -1) claim(ancestor, candidate);
-  }
-
-  return matched;
-}
-
-/**
  * A whole-list `set` made against `before`, merged with the list a new base
  * holds.
  *
@@ -359,10 +255,24 @@ function mergeListArrival(
   next: readonly unknown[],
 ): unknown[] {
   // Where each ancestor row ended up on each side, one row to one position.
+  //
+  // Drawn TWICE — against the researcher's list and against the
+  // collaborator's — and an ancestor row is kept only where both drawings kept
+  // it, so the two have to agree by construction. Which of three identical
+  // copies each side is deemed to have deleted cannot be read off either list;
+  // pairing them off in order makes each side keep the FIRST copies, and the
+  // two agreements then overlap as far as they possibly can. Honouring a
+  // copy's own position instead lets the researcher be deemed to have dropped
+  // the first copy and the collaborator the second, and the merge, taking both
+  // at their word, deletes two rows where each of them deleted one.
   const localOf = matchRows(before, next);
   const remoteOf = matchRows(before, arrival);
 
-  const merged: unknown[] = [];
+  // A row of the answer, carrying WHICH of the researcher's rows it is — `-1`
+  // for one only the arrival has. Two copies of an id-less row are two rows
+  // nothing tells apart, but they are still at two different places, and the
+  // row a re-inserted one follows is one of them and not the other.
+  const merged: Readonly<{ row: unknown; local: number }>[] = [];
   // An ancestor row both sides kept: where it came from, and the place in
   // `merged` the arrival's order gave it.
   const survivors: Readonly<{
@@ -373,50 +283,63 @@ function mergeListArrival(
   arrival.forEach((row, index) => {
     const ancestor = remoteOf.indexOf(index);
     if (ancestor === -1) {
-      merged.push(row);
+      merged.push({ row, local: -1 });
       return;
     }
     const local = localOf[ancestor];
     if (local === undefined || local === -1) return;
     const localRow = next[local];
     survivors.push({ ancestor, local, slot: merged.length });
-    merged.push(
-      canonicalize(localRow) === canonicalize(before[ancestor])
-        ? row
-        : localRow,
-    );
+    merged.push({
+      row:
+        canonicalize(localRow) === canonicalize(before[ancestor])
+          ? row
+          : localRow,
+      local,
+    });
   });
 
   // The researcher's own order for those rows, when their submit gave them one
   // the ancestor did not. Only the survivors move, and only among the places
-  // they already occupy, so a row the arrival added keeps its own.
+  // they already occupy, so a row the arrival added keeps its own. The whole
+  // entry moves, so which of the researcher's rows a place holds travels with
+  // the row itself.
   const byLocal = survivors.toSorted((one, other) => one.local - other.local);
   const reordered = survivors
     .toSorted((one, other) => one.ancestor - other.ancestor)
     .some((survivor, at) => byLocal[at] !== survivor);
   if (reordered) {
-    const rowOf = new Map(
+    const entryOf = new Map(
       survivors.map((survivor) => [survivor, merged[survivor.slot]] as const),
     );
     survivors.forEach((survivor, at) => {
       const wanted = byLocal[at];
-      if (wanted !== undefined) merged[survivor.slot] = rowOf.get(wanted);
+      const entry = wanted === undefined ? undefined : entryOf.get(wanted);
+      if (entry !== undefined) merged[survivor.slot] = entry;
     });
   }
 
   next.forEach((row, index) => {
     if (localOf.includes(index)) return;
-    const predecessor = index === 0 ? undefined : next[index - 1];
+    // The row this one followed in the researcher's list, at its own place in
+    // the answer — the same row, not merely one that looks like it. Read by
+    // CONTENT, a list holding that row twice answered with the first copy
+    // wherever the researcher had written after the second, and the new row
+    // was put back several places from where they left it.
+    //
+    // `-1` — the arrival deleted the row this one followed, or this row is
+    // first — leaves the position the researcher left it at, which is the only
+    // thing left to go on.
     const after =
-      predecessor === undefined ? -1 : findRow(merged, predecessor, index - 1);
+      index === 0 ? -1 : merged.findIndex((entry) => entry.local === index - 1);
     merged.splice(
       after === -1 ? Math.min(index, merged.length) : after + 1,
       0,
-      row,
+      { row, local: index },
     );
   });
 
-  return merged;
+  return merged.map((entry) => entry.row);
 }
 
 /**
@@ -473,16 +396,20 @@ function rebaseCommand(
     // researcher's deletion outright, and the row they deleted came back the
     // moment a collaborator touched anything else in the list.
     //
-    // `-1` still refuses: the copy this command named is already gone, either
-    // because the collaborator deleted it too or because they deleted the lot.
+    // The command names one OCCURRENCE — the k-th copy — and that is what it
+    // is rebased onto: the position `matchRows` paired that same copy with.
+    // Rebasing it onto the last copy instead put the removal on the wrong side
+    // of whatever sits between them: deleting the first of `[a, b, a]` left
+    // `[a, b]`, when the row the researcher kept was the one after `b`.
     //
-    // Which copy it named is read as the LAST of them, whichever one the
-    // researcher clicked, because `matchRows` pairs copies off in order and so
-    // an edit that leaves one fewer copy behind has, in those terms, dropped
-    // the last. Taking the click's own index instead disagreed with the merge
-    // about the same list: two collaborators each deleting one of two identical
-    // rows would lose both, the removal here landing on the copy the merge had
-    // just decided survived.
+    // Whether the removal still applies at all is a question about the copies
+    // as a GROUP, and is asked of the last of them, because `matchRows` pairs
+    // copies off in order: an arrival holding one fewer copy leaves that last
+    // one unmatched. Refusing there is what keeps two collaborators who each
+    // delete one of two identical rows from losing both — the arrival has
+    // already dropped a copy, and this command would drop the copy the merge
+    // has just decided survived. Asking it of the named copy instead would say
+    // yes for every copy but the last.
     if (command.index >= before.length) return null;
     const content = canonicalize(before[command.index]);
     // Explicitly `number`: `before` is `unknown[]`, whose `reduce` resolves to
@@ -492,7 +419,9 @@ function rebaseCommand(
         canonicalize(candidate) === content ? at : latest,
       -1,
     );
-    const index = matchRows(before, arrival)[last];
+    const matched = matchRows(before, arrival);
+    if (matched[last] === undefined || matched[last] === -1) return null;
+    const index = matched[command.index];
     if (index === undefined || index === -1) return null;
     return index === command.index ? command : { ...command, index };
   }

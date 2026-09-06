@@ -214,6 +214,103 @@ describe('an id-less list rebased onto a collaborator’s arrival', () => {
    * the row they deleted came back the moment a collaborator touched anything
    * else in the list.
    */
+  /**
+   * Which copy was deleted, when the copies are not next to each other.
+   *
+   * Two identical rows with another row BETWEEN them are still two rows nothing
+   * tells apart, but the surviving copy's place is not: deleting the first
+   * leaves the survivor after `b`, and deleting the second leaves it before.
+   * So a removal has to be rebased onto the copy it named — the k-th copy stays
+   * the k-th copy — rather than onto whichever copy the pairing deems dropped.
+   */
+  it('keeps the deletion on the copy the researcher deleted', () => {
+    const session = openSession([a, b, a]);
+    session.dispatch(
+      commandsFromDraftChange(
+        session.getSnapshot().editedSection.fields,
+        stageWith([b, a]),
+      ),
+    );
+    expect(session.getSnapshot().pendingCommands[0]?.commands).toEqual([
+      { op: 'removeItem', key: ['form', 'fields'], index: 0 },
+    ]);
+
+    const n = field('n', 'Their name?');
+    session.acknowledge({
+      fields: stageWith([n, a, b, a]),
+      throughBatchId: 0,
+      manifestRevision: revision(2n),
+    });
+
+    // The first copy went, so the survivor is still the one after `b`.
+    expect(readFields(session.getSnapshot().editedSection.fields)).toEqual([
+      n,
+      b,
+      a,
+    ]);
+  });
+
+  /**
+   * The same occurrence question, asked of the row a NEW one follows.
+   *
+   * Where a row goes is said by naming the row beside it, and a list holding
+   * the same row twice names that row twice. Answering with the first copy put
+   * the new row in front of both of them, several places from where the
+   * researcher had written it.
+   */
+  it('puts a new row between two identical rows rather than in front of both', () => {
+    const session = openSession([a, a]);
+    const c = field('c', 'Their city?');
+    session.dispatch(
+      commandsFromDraftChange(
+        session.getSnapshot().editedSection.fields,
+        stageWith([a, c, a]),
+      ),
+    );
+    expect(session.getSnapshot().pendingCommands[0]?.commands).toEqual([
+      { op: 'insertItem', key: ['form', 'fields'], index: 1, item: c },
+    ]);
+
+    const n = field('n', 'Their name?');
+    session.acknowledge({
+      fields: stageWith([n, a, a]),
+      throughBatchId: 0,
+      manifestRevision: revision(2n),
+    });
+
+    expect(readFields(session.getSnapshot().editedSection.fields)).toEqual([
+      n,
+      a,
+      c,
+      a,
+    ]);
+  });
+
+  /** And the same again through a whole-list `set`, which merges row by row. */
+  it('keeps a row the researcher added after the second of two copies', () => {
+    const session = openSession([a, b, a]);
+    // One submit that rewrites `b` and adds a row at the end: two changes, so
+    // no single row operation says it.
+    const rewritten = field('b', 'What do they do?');
+    const c = field('c', 'Their city?');
+    edit(session, [a, rewritten, a, c]);
+
+    const n = field('n', 'Their name?');
+    session.acknowledge({
+      fields: stageWith([n, a, b, a]),
+      throughBatchId: 0,
+      manifestRevision: revision(2n),
+    });
+
+    expect(readFields(session.getSnapshot().editedSection.fields)).toEqual([
+      n,
+      a,
+      rewritten,
+      a,
+      c,
+    ]);
+  });
+
   it('keeps the deletion of one of two identical rows', () => {
     const session = openSession([a, a, b]);
     session.dispatch(
