@@ -24,14 +24,9 @@ function updateDocument(intl: IntlShape, preview: boolean) {
   document.title = preview
     ? intl.formatMessage(messages.previewTitle)
     : 'Architect';
-  const loader = document.getElementById('boot-loader');
-  if (loader) {
-    loader.setAttribute('role', 'status');
-    loader.setAttribute(
-      'aria-label',
-      intl.formatMessage(commonMessages.loading),
-    );
-    loader.removeAttribute('aria-hidden');
+  const loaderMessage = document.getElementById('boot-loader-message');
+  if (loaderMessage) {
+    loaderMessage.textContent = intl.formatMessage(commonMessages.loading);
   }
 }
 

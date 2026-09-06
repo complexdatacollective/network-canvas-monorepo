@@ -6,6 +6,10 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import Icon from '@codaco/fresco-ui/Icon';
 import Node, { NodeColors, type NodeShape } from '@codaco/fresco-ui/Node';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
+import {
+  markdownToRichTextContent,
+  type RichTextContent,
+} from '@codaco/protocol-builder/markdown/markdownAdapter';
 import type { ColorReference, VariableType } from '@codaco/protocol-validation';
 import { VariablePill } from '~/components/VariablePill';
 import { VARIABLE_TYPES } from '~/config/variables';
@@ -269,17 +273,35 @@ const ValueToken = ({ plain, markdown, value }: ValueTokenProps) => {
   );
 };
 
-const Value = ({ value = '', plain = false, markdown = false }: ValueProps) => {
-  const values = Array.isArray(value) ? value : [value];
+const richTextLabel = (content: RichTextContent): string =>
+  content.text ?? content.content?.map(richTextLabel).join('') ?? '';
 
-  return values.map((item, index) => (
-    <Fragment key={`${typeof item}-${String(item)}-${index}`}>
-      {/* Literal list punctuation separates authored values without modifying them. */}
-      {/* oxlint-disable-next-line formatjs/no-literal-string-in-jsx */}
-      {index > 0 && ', '}
-      <ValueToken plain={plain} markdown={markdown} value={item} />
-    </Fragment>
-  ));
+const Value = ({ value = '', plain = false, markdown = false }: ValueProps) => {
+  const intl = useAppIntl();
+  const values = Array.isArray(value) ? value : [value];
+  // Format the displayed words so emphasis/link syntax cannot hide the initial
+  // sound that chooses Spanish "y" versus "e". This text is only for grammar:
+  // restore each original token by position, including repeated option labels.
+  const labels = values.map((item) =>
+    markdown
+      ? richTextLabel(markdownToRichTextContent(String(item), true)).trim()
+      : String(item).trim(),
+  );
+  let nextValue = 0;
+  return intl.formatListToParts(labels).map((part) => {
+    if (part.type === 'literal') return part.value;
+    const index = nextValue++;
+    const item = values[index];
+    if (item === undefined) return part.value;
+    return (
+      <ValueToken
+        key={`${typeof item}-${String(item)}-${index}`}
+        plain={plain}
+        markdown={markdown}
+        value={item}
+      />
+    );
+  });
 };
 
 const EgoEntity = () => {

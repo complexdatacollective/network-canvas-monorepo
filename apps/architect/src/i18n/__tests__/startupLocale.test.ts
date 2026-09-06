@@ -64,14 +64,14 @@ it('uses the persisted researcher locale for startup restoration before React mo
   expect(store.getState().activeProtocol.present).toBeNull();
   expect(protocol.name).toBe('Research_Name');
   expect(document.body).toBeEmptyDOMElement();
-  document.body.innerHTML = '<div id="boot-loader" aria-hidden="true"></div>';
+  document.body.innerHTML =
+    '<div id="boot-loader" role="status" aria-live="polite"><span id="boot-loader-message">Architect</span></div>';
   const { initializeArchitectDocument } = await import('../documentMetadata');
   initializeArchitectDocument(true);
   expect(document.documentElement).toHaveAttribute('lang', 'es');
   expect(document.documentElement).toHaveAttribute('dir', 'ltr');
   expect(document.title).toBe('Vista previa de Architect');
-  expect(document.getElementById('boot-loader')).toHaveAttribute(
-    'aria-label',
+  expect(document.getElementById('boot-loader-message')).toHaveTextContent(
     'Cargando…',
   );
   expect(document.getElementById('boot-loader')).not.toHaveAttribute(
