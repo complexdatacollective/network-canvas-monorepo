@@ -517,12 +517,18 @@ describe('the attributes a pedigree may bind', () => {
  * remove the third — rather than by replacing the node configuration around
  * it.
  *
- * What that buys is everything a collaborator does to the same pedigree at the
- * same time. A whole-value `set` on `nodeConfig` could say only "the node
- * configuration is now this": it merges with nothing, so a colleague binding
- * the biological-sex slot in the same second would have their choice thrown
- * away — and it would need every sibling slot mounted to say even that much,
- * which is why an editor without them used to have to mount them anyway.
+ * What that buys is what the commands SAY. A whole-value `set` on `nodeConfig`
+ * can say only "the node configuration is now this", so it needs every sibling
+ * slot mounted to say even that much — which is why an editor without them
+ * used to have to mount them anyway — and it carries nothing a merge could act
+ * on. `insertItem`/`moveItem`/`removeItem` at `['nodeConfig','form']` name the
+ * row and the list it belongs to, which is the material a rebase would need.
+ *
+ * Whether the session then rebases anything is a separate question this test
+ * does not answer, and today the answer is no: `session.undo()` re-emits a
+ * whole-key `set nodeConfig`, and an authoritative update inserting a
+ * colleague's row into `nodeConfig.form` is dropped rather than replayed onto
+ * this draft. Both live in the session's own command derivation and reseed.
  */
 describe('the way a family member form reaches the document', () => {
   it('commits an added, moved and removed field as that row’s own edit', async () => {
