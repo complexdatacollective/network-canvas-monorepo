@@ -11,6 +11,7 @@ import {
 } from '../../../testing/renderStageEditor.tsx';
 import {
   expectOpenedAsANewStage,
+  expectStatesItsPosition,
   NEW_STAGE_POSITION,
 } from '../../__tests__/creationSignal.ts';
 import { pedigreeAndAnonymisationStageEditors } from '../../pedigreeAndAnonymisationStageEditors.ts';
@@ -85,6 +86,18 @@ describe('the anonymisation stage editor', () => {
     });
 
     await expectOpenedAsANewStage('Anonymisation');
+  });
+
+  /**
+   * And the other way round: a stage the interview already holds says where in
+   * it the researcher is. Asked here rather than only in the dispatch suite
+   * because this editor composes the shared heading itself, so dropping it
+   * would leave every other test in this file passing.
+   */
+  it('says where the stage sits in the interview', () => {
+    openFixture();
+
+    expectStatesItsPosition('anonymisation-1');
   });
 
   it('claims exactly this interface in its family', () => {

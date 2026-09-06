@@ -9,6 +9,7 @@ import {
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import {
   expectOpenedAsANewStage,
+  expectStatesItsPosition,
   NEW_STAGE_POSITION,
 } from '../../__tests__/creationSignal.ts';
 import { GeospatialStageEditor } from '../GeospatialStageEditor.tsx';
@@ -46,6 +47,18 @@ describe('the geospatial stage editor', () => {
     });
 
     await expectOpenedAsANewStage('Geospatial');
+  });
+
+  /**
+   * And the other way round: a stage the interview already holds says where in
+   * it the researcher is. Asked here rather than only in the dispatch suite
+   * because this editor composes the shared heading itself, so dropping it
+   * would leave every other test in this file passing.
+   */
+  it('says where the stage sits in the interview', () => {
+    openFixture();
+
+    expectStatesItsPosition('geospatial-1');
   });
 
   it('runs against a mocked Mapbox SDK, and builds no map by mounting', async () => {

@@ -5,10 +5,9 @@ import MapAppearanceSection from '../../sections/geospatial/MapAppearanceSection
 import MapSourceSection from '../../sections/geospatial/MapSourceSection.tsx';
 import InterviewerGuidanceSection from '../../sections/InterviewerGuidanceSection.tsx';
 import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
-import StageNameSection from '../../sections/StageNameSection.tsx';
+import StageHeading from '../../sections/StageHeading.tsx';
 import SubjectSection from '../../sections/SubjectSection.tsx';
 import type { StageEditorProps } from '../../stage-editor-contract.ts';
-import { interviewPosition } from '../pedigree/stageEditorComposition.ts';
 
 const DOCUMENTATION_URL = interfaceDocumentationUrl('geospatial');
 
@@ -36,21 +35,12 @@ export function GeospatialStageEditor({
   controller,
   actions,
 }: StageEditorProps<'Geospatial'>) {
-  const { snapshot } = controller;
-  const position = interviewPosition(
-    snapshot.protocolContext,
-    snapshot.editedSection.identity.id,
-  );
-
   return (
     <StageEditorShell
       controller={controller}
       {...(actions === undefined ? {} : { actions })}
     >
-      <StageNameSection
-        {...(position === undefined ? {} : { position })}
-        documentationUrl={DOCUMENTATION_URL}
-      />
+      <StageHeading documentationUrl={DOCUMENTATION_URL} />
       <SubjectSection entity="node" filter />
       <MapSourceSection />
       <GeospatialPromptsSection />

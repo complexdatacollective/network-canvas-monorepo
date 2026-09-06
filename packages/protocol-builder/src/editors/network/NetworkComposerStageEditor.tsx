@@ -5,10 +5,9 @@ import BackgroundSection from '../../sections/network/BackgroundSection.tsx';
 import ComposerEdgeConfigurationSection from '../../sections/network/ComposerEdgeConfigurationSection.tsx';
 import ComposerNodeConfigurationSection from '../../sections/network/ComposerNodeConfigurationSection.tsx';
 import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
-import StageNameSection from '../../sections/StageNameSection.tsx';
+import StageHeading from '../../sections/StageHeading.tsx';
 import SubjectSection from '../../sections/SubjectSection.tsx';
 import type { StageEditorProps } from '../../stage-editor-contract.ts';
-import { interviewPosition } from '../pedigree/stageEditorComposition.ts';
 
 const DOCUMENTATION_URL = interfaceDocumentationUrl('network-composer');
 
@@ -31,21 +30,12 @@ export function NetworkComposerStageEditor({
   controller,
   actions,
 }: StageEditorProps<'NetworkComposer'>) {
-  const { snapshot } = controller;
-  const position = interviewPosition(
-    snapshot.protocolContext,
-    snapshot.editedSection.identity.id,
-  );
-
   return (
     <StageEditorShell
       controller={controller}
       {...(actions === undefined ? {} : { actions })}
     >
-      <StageNameSection
-        {...(position === undefined ? {} : { position })}
-        documentationUrl={DOCUMENTATION_URL}
-      />
+      <StageHeading documentationUrl={DOCUMENTATION_URL} />
       <SubjectSection entity="node" />
       <ComposerNodeConfigurationSection />
       <ComposerEdgeConfigurationSection />

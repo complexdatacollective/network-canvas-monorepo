@@ -15,9 +15,8 @@ import NominationPromptsSection from '../../sections/pedigree/NominationPromptsS
 import PedigreeEdgeConfigurationSection from '../../sections/pedigree/PedigreeEdgeConfigurationSection.tsx';
 import PedigreeNodeConfigurationSection from '../../sections/pedigree/PedigreeNodeConfigurationSection.tsx';
 import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
-import StageNameSection from '../../sections/StageNameSection.tsx';
+import StageHeading from '../../sections/StageHeading.tsx';
 import type { StageEditorProps } from '../../stage-editor-contract.ts';
-import { interviewPosition } from './stageEditorComposition.ts';
 
 const DOCUMENTATION_URL = interfaceDocumentationUrl('family-pedigree');
 
@@ -43,21 +42,12 @@ export function FamilyPedigreeStageEditor({
   controller,
   actions,
 }: StageEditorProps<'FamilyPedigree'>) {
-  const { snapshot } = controller;
-  const position = interviewPosition(
-    snapshot.protocolContext,
-    snapshot.editedSection.identity.id,
-  );
-
   return (
     <StageEditorShell
       controller={controller}
       {...(actions === undefined ? {} : { actions })}
     >
-      <StageNameSection
-        {...(position === undefined ? {} : { position })}
-        documentationUrl={DOCUMENTATION_URL}
-      />
+      <StageHeading documentationUrl={DOCUMENTATION_URL} />
       <FramingConfigSection />
       <BoundaryOptionsSection />
       <PedigreeNodeConfigurationSection />

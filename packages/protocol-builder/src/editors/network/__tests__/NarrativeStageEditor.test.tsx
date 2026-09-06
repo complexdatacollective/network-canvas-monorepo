@@ -10,6 +10,7 @@ import {
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import {
   expectOpenedAsANewStage,
+  expectStatesItsPosition,
   NEW_STAGE_POSITION,
 } from '../../__tests__/creationSignal.ts';
 import { NarrativeStageEditor } from '../NarrativeStageEditor.tsx';
@@ -58,6 +59,18 @@ describe('the narrative stage editor', () => {
     });
 
     await expectOpenedAsANewStage('Narrative');
+  });
+
+  /**
+   * And the other way round: a stage the interview already holds says where in
+   * it the researcher is. Asked here rather than only in the dispatch suite
+   * because this editor composes the shared heading itself, so dropping it
+   * would leave every other test in this file passing.
+   */
+  it('says where the stage sits in the interview', () => {
+    openFixture();
+
+    expectStatesItsPosition('narrative-1');
   });
 
   it('saves the stage it opened, unchanged', async () => {

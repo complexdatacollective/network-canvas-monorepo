@@ -5,9 +5,8 @@ import AnonymisationValidationSection from '../../sections/anonymisation/Anonymi
 import EncryptedVariablesSection from '../../sections/anonymisation/EncryptedVariablesSection.tsx';
 import InterviewerGuidanceSection from '../../sections/InterviewerGuidanceSection.tsx';
 import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
-import StageNameSection from '../../sections/StageNameSection.tsx';
+import StageHeading from '../../sections/StageHeading.tsx';
 import type { StageEditorProps } from '../../stage-editor-contract.ts';
-import { interviewPosition } from './stageEditorComposition.ts';
 
 const DOCUMENTATION_URL = interfaceDocumentationUrl('anonymisation');
 
@@ -33,21 +32,12 @@ export function AnonymisationStageEditor({
   controller,
   actions,
 }: StageEditorProps<'Anonymisation'>) {
-  const { snapshot } = controller;
-  const position = interviewPosition(
-    snapshot.protocolContext,
-    snapshot.editedSection.identity.id,
-  );
-
   return (
     <StageEditorShell
       controller={controller}
       {...(actions === undefined ? {} : { actions })}
     >
-      <StageNameSection
-        {...(position === undefined ? {} : { position })}
-        documentationUrl={DOCUMENTATION_URL}
-      />
+      <StageHeading documentationUrl={DOCUMENTATION_URL} />
       <AnonymisationExplanationSection />
       <AnonymisationValidationSection />
       <EncryptedVariablesSection />

@@ -6,10 +6,9 @@ import BackgroundSection from '../../sections/network/BackgroundSection.tsx';
 import NarrativeBehavioursSection from '../../sections/network/NarrativeBehavioursSection.tsx';
 import SociogramPromptsSection from '../../sections/network/SociogramPromptsSection.tsx';
 import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
-import StageNameSection from '../../sections/StageNameSection.tsx';
+import StageHeading from '../../sections/StageHeading.tsx';
 import SubjectSection from '../../sections/SubjectSection.tsx';
 import type { StageEditorProps } from '../../stage-editor-contract.ts';
-import { interviewPosition } from '../pedigree/stageEditorComposition.ts';
 
 const DOCUMENTATION_URL = interfaceDocumentationUrl('sociogram');
 
@@ -54,21 +53,12 @@ export function SociogramStageEditor({
   controller,
   actions,
 }: StageEditorProps<'Sociogram'>) {
-  const { snapshot } = controller;
-  const position = interviewPosition(
-    snapshot.protocolContext,
-    snapshot.editedSection.identity.id,
-  );
-
   return (
     <StageEditorShell
       controller={controller}
       {...(actions === undefined ? {} : { actions })}
     >
-      <StageNameSection
-        {...(position === undefined ? {} : { position })}
-        documentationUrl={DOCUMENTATION_URL}
-      />
+      <StageHeading documentationUrl={DOCUMENTATION_URL} />
       <SubjectSection entity="node" filter />
       <SociogramPromptsSection />
       <BackgroundSection allowsImage />
