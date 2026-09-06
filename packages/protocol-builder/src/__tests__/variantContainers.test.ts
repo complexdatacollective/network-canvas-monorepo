@@ -19,7 +19,10 @@
  */
 import { describe, expect, it, vi } from 'vitest';
 
-import { imageOrCirclesBackgroundSchema } from '@codaco/protocol-validation';
+import {
+  imageOrCirclesBackgroundSchema,
+  sociogramPromptSchema,
+} from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import {
@@ -203,5 +206,105 @@ describe('an edit inside a container the schema allows one variant of', () => {
       filter: { join: 'OR', rules: [] },
       destination: { type: 'finish' },
     });
+  });
+});
+
+/**
+ * The same rule, one level further in: a variant container inside a list ROW.
+ *
+ * A sociogram prompt's `highlight` is one — highlighting is on and names the
+ * attribute tapping a node writes, or it is off — and a prompt is a row of a
+ * list. The command vocabulary cannot reach inside a row, so a rewritten row
+ * travels as a whole-list `set` and the merge re-seats it on the row the
+ * session holds LEAF by leaf, which is what keeps a collaborator's edit to
+ * another property of the same row. For a variant container that granularity
+ * makes the same hybrid it makes at the top of the document: the researcher
+ * turns highlighting on while a collaborator clears the attribute it names,
+ * and the merge answers with highlighting on and nothing to write — a prompt
+ * the schema refuses.
+ *
+ * So a variant inside a row travels whole too, and the researcher's whole
+ * variant is what stands.
+ */
+describe('a variant container inside a list row', () => {
+  const prompt = (highlight: SectionDoc): SectionDoc => ({
+    id: 'p1',
+    text: 'Who do you spend time with?',
+    layout: { layoutVariable: 'position' },
+    highlight,
+  });
+
+  const promptsOf = (session: ProtocolBuilderSessionStore): unknown =>
+    session.getSnapshot().editedSection.fields.prompts;
+
+  it('travels whole rather than being merged leaf by leaf', () => {
+    const session = openSession({
+      label: 'Who',
+      prompts: [prompt({ allowHighlighting: false, variable: 'isClose' })],
+    });
+
+    // The researcher turns highlighting on. Rewriting one row is a whole-list
+    // `set`: the vocabulary cannot say "this property of this row".
+    edit(session, {
+      label: 'Who',
+      prompts: [prompt({ allowHighlighting: true, variable: 'isClose' })],
+    });
+
+    // A collaborator clears the attribute the highlight names, leaving the
+    // other variant of the same container.
+    arrives(session, {
+      label: 'Who',
+      prompts: [prompt({ allowHighlighting: false })],
+    });
+
+    const merged = promptsOf(session);
+    expect(merged).toEqual([
+      prompt({ allowHighlighting: true, variable: 'isClose' }),
+    ]);
+    // Said by the schema rather than by the shape above: highlighting on with
+    // no attribute to write is a prompt it refuses.
+    expect(
+      sociogramPromptSchema.safeParse(
+        Array.isArray(merged) ? merged[0] : merged,
+      ).success,
+    ).toBe(true);
+  });
+
+  /**
+   * The other half, which is what makes this a rule about the container rather
+   * than about the researcher always winning: a row property OUTSIDE the
+   * variant is still merged leaf by leaf, so both of them keep their work.
+   */
+  it('leaves the rest of the row addressed property by property', () => {
+    const session = openSession({
+      label: 'Who',
+      prompts: [prompt({ allowHighlighting: false, variable: 'isClose' })],
+    });
+
+    edit(session, {
+      label: 'Who',
+      prompts: [
+        { ...prompt({ allowHighlighting: true, variable: 'isClose' }) },
+      ],
+    });
+
+    // The collaborator rewrote the question, and said nothing about the
+    // highlight.
+    arrives(session, {
+      label: 'Who',
+      prompts: [
+        {
+          ...prompt({ allowHighlighting: false, variable: 'isClose' }),
+          text: 'Who do you see most often?',
+        },
+      ],
+    });
+
+    expect(promptsOf(session)).toEqual([
+      {
+        ...prompt({ allowHighlighting: true, variable: 'isClose' }),
+        text: 'Who do you see most often?',
+      },
+    ]);
   });
 });

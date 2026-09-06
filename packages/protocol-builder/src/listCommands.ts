@@ -14,6 +14,7 @@ import {
   resolveInsertIndex,
   resolveMove,
   rowIdentity,
+  rowPathFor,
 } from './form/arrayFields/arrayFieldCommands.ts';
 
 /**
@@ -326,6 +327,7 @@ function mergeListArrival(
   before: readonly unknown[],
   arrival: readonly unknown[],
   next: readonly unknown[],
+  rowPath: readonly string[],
 ): unknown[] {
   // Where each ancestor row ended up on each side, one row to one position.
   //
@@ -367,7 +369,7 @@ function mergeListArrival(
       row:
         canonicalize(localRow) === canonicalize(before[ancestor])
           ? row
-          : reseatEditedRow(before[ancestor], localRow, row),
+          : reseatEditedRow(before[ancestor], localRow, row, rowPath),
       local,
     });
   });
@@ -476,7 +478,12 @@ function rebaseCommand(
 
   if (command.op === 'set') {
     if (!Array.isArray(written)) return command;
-    const value = mergeListArrival(before, arrival, written);
+    const value = mergeListArrival(
+      before,
+      arrival,
+      written,
+      rowPathFor(command.key),
+    );
     // A merge that answers with the list already there is a command with
     // nothing left to say, and saying it anyway is not free: a `set` WRITES
     // the containers on the way to its key, so replaying one whose rows the

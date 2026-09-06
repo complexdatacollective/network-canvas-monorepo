@@ -2,9 +2,14 @@ import { isEqual } from 'es-toolkit/compat';
 
 import type { ArrayFieldOperation } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import {
+  isExclusiveVariantContainer,
+  VARIANT_ROW_SEGMENT,
+} from '@codaco/protocol-validation';
+import {
   type Command,
   type CommandTarget,
   canonicalize,
+  targetPath,
 } from '@codaco/studio-sync/apply';
 
 export type ArrayRow = Record<string, unknown>;
@@ -503,24 +508,48 @@ export function resolveMove<T extends ArrayRow>(
  * A list is a leaf. Its rows have no identity here, so merging two versions of
  * one index by index would combine rows that are not the same row; a list the
  * edit changed is the edit's, and one it left alone is the row's.
+ *
+ * And a container the schema allows only ONE shape of is a leaf too. Leaf by
+ * leaf is what makes a hybrid there: the researcher switches a sociogram
+ * prompt's highlighting on while a collaborator clears the attribute it names,
+ * and each of those is a leaf neither side contests, so the merge answers with
+ * highlighting on and nothing to write — a prompt the schema refuses and
+ * neither of them asked for. The variant is the unit the two sides are
+ * deciding between, so the whole of it travels and the side that touched it
+ * wins it entire. It is the rule the draft diff already follows at an object
+ * path, said for the rows a diff cannot reach into.
+ *
+ * `rowPath` is where this row lives in the stage document, with
+ * `VARIANT_ROW_SEGMENT` for the list itself — `['prompts', '*']`. `undefined`
+ * is for a row with no such path at all: a list nested inside another row is
+ * part of the row around it and has no key of its own, and the row it is part
+ * of is what gets committed.
  */
 export function reseatEditedRow(
   base: unknown,
   edited: unknown,
   latest: unknown,
+  rowPath: readonly string[] | undefined,
 ): unknown {
   if (!isRecord(base) || !isRecord(edited) || !isRecord(latest)) return edited;
   // Nothing reached the row while the edit was being made, so the edit already
   // describes the whole row and re-seating it could only lose information.
   if (isEqual(base, latest)) return edited;
+  // The ROW is the variant: a categorical bin prompt offering an 'other'
+  // option carries all three of the fields describing it, and one that does
+  // not carries none of them.
+  if (rowPath !== undefined && isExclusiveVariantContainer(rowPath)) {
+    return edited;
+  }
 
-  return reseatRecord(base, edited, latest);
+  return reseatRecord(base, edited, latest, rowPath);
 }
 
 function reseatRecord(
   base: ArrayRow,
   edited: ArrayRow,
   latest: ArrayRow,
+  path: readonly string[] | undefined,
 ): ArrayRow {
   const next: ArrayRow = { ...latest };
   for (const key of new Set([...Object.keys(base), ...Object.keys(edited)])) {
@@ -538,13 +567,26 @@ function reseatRecord(
     const editedValue = edited[key];
     const baseValue = base[key];
     const latestValue = next[key];
+    const here = path === undefined ? undefined : [...path, key];
     next[key] =
-      isRecord(baseValue) && isRecord(editedValue) && isRecord(latestValue)
-        ? reseatRecord(baseValue, editedValue, latestValue)
+      isRecord(baseValue) &&
+      isRecord(editedValue) &&
+      isRecord(latestValue) &&
+      !(here !== undefined && isExclusiveVariantContainer(here))
+        ? reseatRecord(baseValue, editedValue, latestValue, here)
         : editedValue;
   }
   return next;
 }
+
+/**
+ * Where the rows of the list at this key live, as a path the variant list
+ * understands.
+ */
+export const rowPathFor = (key: CommandTarget): readonly string[] => [
+  ...targetPath(key),
+  VARIANT_ROW_SEGMENT,
+];
 
 /**
  * One committed list mutation, as commands against the stage document.
@@ -600,6 +642,7 @@ export function commandsForOperation<T extends ArrayRow>(
     rendered[operation.index],
     operation.item,
     current[index],
+    rowPathFor(key),
   );
   return [{ op: 'set', key, value: next }];
 }
@@ -634,7 +677,7 @@ export function commandsForDetachedRow<T extends ArrayRow>(
         );
   if (index !== -1) {
     const next = [...current];
-    next[index] = reseatEditedRow(base, row, current[index]);
+    next[index] = reseatEditedRow(base, row, current[index], rowPathFor(key));
     return [{ op: 'set', key, value: next }];
   }
   return isNewRow

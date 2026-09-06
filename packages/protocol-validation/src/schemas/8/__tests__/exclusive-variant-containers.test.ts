@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
 import {
+  AMBIGUOUS_VARIANT_CONTAINERS,
   EXCLUSIVE_VARIANT_CONTAINERS,
   isExclusiveVariantContainer,
   UNREADABLE_STAGE_CONTAINERS,
@@ -22,6 +23,8 @@ describe('the exclusive-variant containers of a stage document', () => {
    * stage type gaining a variant changes it — and that change has to be read
    * by somebody, since it changes how an editor's commands are addressed.
    *
+   * At an object path, where a command can address a member directly:
+   *
    * - `background` is a sociogram's, a narrative's and a network composer's:
    *   an image XOR a number of concentric circles, said once as an
    *   author-facing refinement and once as the union it narrows to.
@@ -30,13 +33,55 @@ describe('the exclusive-variant containers of a stage document', () => {
    *   carries nothing.
    * - `skipLogic.destination` is every stage's, discriminated on `type`: a
    *   named stage to jump to, or the end of the interview.
+   *
+   * And inside a list ROW, where no command reaches but the merge that replays
+   * a rewritten row does — leaf by leaf, which is the same granularity one
+   * level down:
+   *
+   * - a filter rule is a choice of subject, discriminated on `type`, wherever
+   *   a filter appears: on the stage's skip logic, on a network filter, and on
+   *   each of a narrative's panels.
+   * - a content item — an Information stage's `items`, a family pedigree's
+   *   `introScreen.items` — is text XOR an asset.
+   * - `prompts.*.highlight` is a sociogram's: highlighting is on and names the
+   *   attribute a tap writes, or it is off.
    */
   it('is every choice between object shapes the stage schemas declare', () => {
     expect(EXCLUSIVE_VARIANT_CONTAINERS).toEqual([
       ['background'],
+      ['filter', 'rules', '*'],
       ['framing'],
+      ['introScreen', 'items', '*'],
+      ['items', '*'],
+      ['panels', '*', 'filter', 'rules', '*'],
+      ['prompts', '*', 'highlight'],
       ['skipLogic', 'destination'],
+      ['skipLogic', 'filter', 'rules', '*'],
     ]);
+  });
+
+  /**
+   * The one path the stage types disagree about, and the reason the list above
+   * is answerable at all without knowing which stage this is.
+   *
+   * A categorical bin's PROMPT is itself a choice between two shapes: one that
+   * offers an 'other' option carries all three of the fields describing it,
+   * and one that does not carries none of them. Every other stage type's
+   * prompt is an ordinary row. Calling `prompts.*` a variant for all of them
+   * would hand the researcher's whole prompt row to whoever touched it and
+   * throw away a collaborator's edit to another property of the same row;
+   * calling it ordinary for all of them lets a categorical bin prompt hold
+   * half of each shape.
+   *
+   * Neither is said. The consumers that ask are handed a stage's fields and
+   * not its type — a draft carries no `type` — so a question they cannot ask
+   * gets no answer, and a categorical bin prompt row is merged property by
+   * property like any other. Pinned here so that a stage type creating a new
+   * disagreement is a failure rather than a silent one.
+   */
+  it('says nothing about a path the stage types disagree about', () => {
+    expect(AMBIGUOUS_VARIANT_CONTAINERS).toEqual([['prompts', '*']]);
+    expect(isExclusiveVariantContainer(['prompts', '*'])).toBe(false);
   });
 
   /**
@@ -44,11 +89,10 @@ describe('the exclusive-variant containers of a stage document', () => {
    *
    * A variant declared with `.transform()` rather than `.pipe()` — the shape
    * `narrowTo` uses in `common/prompts.ts` — hides behind a function the
-   * derivation cannot look through. Every one of those in the stage schemas
-   * today is inside an array row, which a stage editor's diff never descends
-   * into: the command vocabulary addresses object keys, and a list is edited
-   * as rows. One at an object path would be a variant nothing here can see, so
-   * it is reported and this fails rather than being silently left out.
+   * derivation cannot look through. Both of those declare themselves with
+   * `asExclusiveVariants`, which is what puts them in the list above. One that
+   * did not would be a variant nothing here can see, so it is reported and
+   * this fails rather than being silently left out.
    */
   it('leaves nowhere for a variant to hide from it', () => {
     expect(UNREADABLE_STAGE_CONTAINERS).toEqual([]);
