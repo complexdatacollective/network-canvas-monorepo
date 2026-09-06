@@ -11,7 +11,6 @@ import {
   variableRoleConflicts,
 } from '../../codebook/variableRoles.ts';
 import { draftAdditionalAttributeVariableIds } from '../../codebook/variableValidation.ts';
-import ProtocolField from '../../form/ProtocolField.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import { protocolContextFromSections } from '../../protocol-context.ts';
