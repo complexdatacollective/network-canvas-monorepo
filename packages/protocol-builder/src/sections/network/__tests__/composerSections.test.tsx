@@ -551,3 +551,56 @@ describe('what a composer field’s attribute holds', () => {
     ).not.toBeInTheDocument();
   });
 });
+
+/**
+ * Which control decides what the CODEBOOK holds, when the row keeps a control
+ * of its own.
+ *
+ * A boolean's two answers are held under a schema keyed on the attribute's own
+ * `component`: the `Boolean` control takes the pair of words, and `Toggle` is a
+ * strict schema with no `options` key at all. A composer field's control never
+ * reaches the attribute, so the codebook's is the only one its schema is keyed
+ * on — and a row switched to a toggle here says nothing about what the
+ * attribute may hold.
+ */
+describe('a composer field whose control is not the codebook’s', () => {
+  it('offers a boolean’s answer labels by the codebook’s control, not the row’s', async () => {
+    const harness = renderStageEditor(openEditor());
+    // Nothing writes this one unvalidated, so a form may collect it.
+    addPersonVariable(harness, 'consented', {
+      name: 'consented',
+      type: 'boolean',
+      component: 'Boolean',
+    });
+
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Node attributes' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', {
+        name: 'Create new node attribute field',
+      }),
+    );
+    const field = within(await screen.findByRole('dialog'));
+    await harness.user.selectOptions(
+      field.getByRole('combobox', { name: 'Attribute' }),
+      'consented',
+    );
+    const answerLabels = {
+      name: 'Change this attribute’s answer labels',
+    } as const;
+    expect(await field.findByRole('button', answerLabels)).toBeInTheDocument();
+
+    // Asking for a switch is a decision about THIS form. The attribute still
+    // holds the two answers every other form shows for it, so the way to
+    // change their wording has to stay where it was.
+    await harness.user.selectOptions(
+      field.getByRole('combobox', { name: 'Input control' }),
+      'Toggle',
+    );
+    expect(field.getByRole('combobox', { name: 'Input control' })).toHaveValue(
+      'Toggle',
+    );
+    expect(field.getByRole('button', answerLabels)).toBeInTheDocument();
+  });
+});
