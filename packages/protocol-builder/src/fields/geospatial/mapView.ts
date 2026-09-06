@@ -1,3 +1,7 @@
+import { createMessageError } from '@codaco/app-i18n/messages';
+
+import { geospatialMessages } from '../../sections/geospatial/geospatialMessages.ts';
+
 /**
  * Where a geospatial stage's map opens, as the protocol schema holds it: a
  * `[longitude, latitude]` pair and a zoom level.
@@ -64,17 +68,29 @@ const LATITUDE_RANGE = 90;
  *
  * Absence is deliberately not reported here: a field says whether it is
  * required, and saying it twice would show two messages for one empty control.
+ *
+ * Encoded rather than formatted: this is a `messageRuleValidation` rule, which
+ * hands the form a plain string, and `FieldErrors` decodes it where the
+ * researcher reads it. A formatter cannot reach here — the rule is built once,
+ * outside any component — so a sentence written in place would be the one
+ * refusal on the stage that stayed English.
  */
 export function centerIssue(value: unknown): string | undefined {
   if (value === undefined || value === null) return undefined;
   if (!isMapCenter(value)) {
-    return 'Enter both a longitude and a latitude for the starting view.';
+    return createMessageError(geospatialMessages.centerIncomplete);
   }
   if (Math.abs(value[0]) > LONGITUDE_RANGE) {
-    return `Longitude must be between -${LONGITUDE_RANGE} and ${LONGITUDE_RANGE}.`;
+    return createMessageError(geospatialMessages.longitudeOutOfRange, {
+      min: -LONGITUDE_RANGE,
+      max: LONGITUDE_RANGE,
+    });
   }
   if (Math.abs(value[1]) > LATITUDE_RANGE) {
-    return `Latitude must be between -${LATITUDE_RANGE} and ${LATITUDE_RANGE}.`;
+    return createMessageError(geospatialMessages.latitudeOutOfRange, {
+      min: -LATITUDE_RANGE,
+      max: LATITUDE_RANGE,
+    });
   }
   return undefined;
 }

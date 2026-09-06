@@ -1,48 +1,16 @@
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import FeaturePropertyField from '../../fields/geospatial/FeaturePropertyField.tsx';
 import ProtocolField from '../../form/ProtocolField.tsx';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import ResourcePickerControl from '../../resources/components/ResourcePickerControl.tsx';
 import BuilderSection from '../BuilderSection.tsx';
+import { geospatialMessages } from './geospatialMessages.ts';
 import {
   LAYER_FIELD,
   PROPERTY_FIELD,
   TOKEN_FIELD,
 } from './mapOptionsFields.ts';
-
-export type MapSourceCopy = Readonly<{
-  accessTitle: string;
-  accessDescription: string;
-  tokenLabel: string;
-  tokenHint: string;
-  layerTitle: string;
-  layerDescription: string;
-  layerLabel: string;
-  layerHint: string;
-  propertyLabel: string;
-  propertyHint: string;
-}>;
-
-const DEFAULT_COPY: MapSourceCopy = {
-  accessTitle: 'Map access',
-  accessDescription:
-    'This stage draws a Mapbox map, which needs an API key from your Mapbox account.',
-  tokenLabel: 'Mapbox API key',
-  tokenHint:
-    'The key is stored with the protocol and is never shown again once it is saved.',
-  layerTitle: 'Map layer',
-  layerDescription:
-    'The areas a participant can choose between come from a GeoJSON layer.',
-  layerLabel: 'Map layer',
-  layerHint:
-    'Each feature in the layer is one area a participant can select. Large layers, and areas outside the study region, make the map slow to open.',
-  propertyLabel: 'Recorded property',
-  propertyHint:
-    'The value of this property is what gets stored when a participant selects an area, so choose one that is filled in and unique for every feature — a census tract, a postcode, or a neighbourhood name.',
-};
-
-export type MapSourceSectionProps = Readonly<{
-  copy?: Partial<MapSourceCopy>;
-}>;
 
 /**
  * What the map IS: the key that lets one be drawn, and the layer that says
@@ -63,36 +31,36 @@ export type MapSourceSectionProps = Readonly<{
  * `MapAppearanceSection` asks the host to resolve the map for that id rather
  * than asking for the key.
  */
-export default function MapSourceSection({ copy }: MapSourceSectionProps) {
-  const words = { ...DEFAULT_COPY, ...copy };
+export default function MapSourceSection() {
+  const intl = useAppIntl();
   const dataSourceAssetId = useStageValue(LAYER_FIELD);
 
   return (
     <>
       <BuilderSection
-        title={words.accessTitle}
-        description={words.accessDescription}
+        title={intl.formatMessage(geospatialMessages.accessTitle)}
+        description={intl.formatMessage(geospatialMessages.accessDescription)}
       >
         <ProtocolField<typeof ResourcePickerControl>
           name={TOKEN_FIELD}
           component={ResourcePickerControl}
           kind="apikey"
-          label={words.tokenLabel}
-          hint={words.tokenHint}
+          label={intl.formatMessage(geospatialMessages.tokenLabel)}
+          hint={intl.formatMessage(geospatialMessages.tokenHint)}
           required
         />
       </BuilderSection>
 
       <BuilderSection
-        title={words.layerTitle}
-        description={words.layerDescription}
+        title={intl.formatMessage(geospatialMessages.layerTitle)}
+        description={intl.formatMessage(geospatialMessages.layerDescription)}
       >
         <ProtocolField<typeof ResourcePickerControl>
           name={LAYER_FIELD}
           component={ResourcePickerControl}
           kind="geojson"
-          label={words.layerLabel}
-          hint={words.layerHint}
+          label={intl.formatMessage(geospatialMessages.layerLabel)}
+          hint={intl.formatMessage(geospatialMessages.layerHint)}
           required
         />
         <ProtocolField<typeof FeaturePropertyField>
@@ -103,8 +71,8 @@ export default function MapSourceSection({ copy }: MapSourceSectionProps) {
               ? dataSourceAssetId
               : undefined
           }
-          label={words.propertyLabel}
-          hint={words.propertyHint}
+          label={intl.formatMessage(geospatialMessages.propertyLabel)}
+          hint={intl.formatMessage(geospatialMessages.propertyHint)}
           required
         />
       </BuilderSection>

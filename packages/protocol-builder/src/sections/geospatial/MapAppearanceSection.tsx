@@ -1,10 +1,13 @@
+import { useMemo } from 'react';
+
+import { useAppIntl } from '@codaco/app-i18n/react';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 import { OrdinalColorSequence } from '@codaco/protocol-validation';
 
-import { MAP_STYLE_OPTIONS } from '../../fields/geospatial/mapboxStyles.ts';
+import { mapStyleOptions } from '../../fields/geospatial/mapboxStyles.ts';
 import MapCenterField from '../../fields/geospatial/MapCenterField.tsx';
 import {
   centerIssue,
@@ -15,6 +18,7 @@ import MapZoomField from '../../fields/geospatial/MapZoomField.tsx';
 import ProtocolField from '../../form/ProtocolField.tsx';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import BuilderSection from '../BuilderSection.tsx';
+import { geospatialMessages } from './geospatialMessages.ts';
 import {
   CENTER_FIELD,
   COLOR_FIELD,
@@ -25,68 +29,9 @@ import {
   ZOOM_FIELD,
 } from './mapOptionsFields.ts';
 
-/**
- * The colours a selectable area can be drawn in.
- *
- * Named rather than only shown, because a colour has to be sayable: it is
- * chosen once here and then discussed, documented, and matched against the
- * basemap by people who are not looking at this control.
- */
-const COLOR_OPTIONS = OrdinalColorSequence.map((value, index) => ({
-  value,
-  label: `Highlight colour ${index + 1}`,
-}));
-
 const centerValidation = {
   custom: messageRuleValidation([centerIssue]),
 };
-
-export type MapAppearanceCopy = Readonly<{
-  appearanceTitle: string;
-  appearanceDescription: string;
-  styleLabel: string;
-  styleHint: string;
-  colorLabel: string;
-  colorHint: string;
-  transitLabel: string;
-  transitHint: string;
-  searchLabel: string;
-  searchHint: string;
-  viewTitle: string;
-  viewDescription: string;
-  centerLabel: string;
-  centerHint: string;
-  zoomLabel: string;
-  zoomHint: string;
-}>;
-
-const DEFAULT_COPY: MapAppearanceCopy = {
-  appearanceTitle: 'Map appearance',
-  appearanceDescription: 'Choose how the map looks to the participant.',
-  styleLabel: 'Basemap',
-  styleHint:
-    'The map drawn beneath the selectable areas. Check that place names on it stay readable under the highlight colour.',
-  colorLabel: 'Highlight colour',
-  colorHint:
-    'Selectable areas are outlined in this colour, and the area a participant chooses is filled with it.',
-  transitLabel: 'Show public transport',
-  transitHint: 'Draw transit routes and stations on the map.',
-  searchLabel: 'Allow searching the map',
-  searchHint:
-    'Let participants search for an address, a neighbourhood, or a landmark instead of panning to it.',
-  viewTitle: 'Starting map view',
-  viewDescription:
-    'Where the map is centred, and how far in it is zoomed, when the stage opens.',
-  centerLabel: 'Starting centre',
-  centerHint:
-    'Enter the coordinates, or set them by panning a map. Longitude runs from -180 to 180, latitude from -90 to 90.',
-  zoomLabel: 'Starting zoom',
-  zoomHint: `${MIN_ZOOM} shows the whole world; ${MAX_ZOOM} is street level.`,
-};
-
-export type MapAppearanceSectionProps = Readonly<{
-  copy?: Partial<MapAppearanceCopy>;
-}>;
 
 /**
  * How the map LOOKS, and where it opens.
@@ -100,51 +45,73 @@ export type MapAppearanceSectionProps = Readonly<{
  * The preview behind the starting centre asks the host to resolve a map for
  * the key's asset id. This editor never sees the key itself.
  */
-export default function MapAppearanceSection({
-  copy,
-}: MapAppearanceSectionProps) {
-  const words = { ...DEFAULT_COPY, ...copy };
+export default function MapAppearanceSection() {
+  const intl = useAppIntl();
   const tokenAssetId = useStageValue(TOKEN_FIELD);
+
+  const styleOptions = useMemo(() => mapStyleOptions(intl), [intl]);
+
+  /**
+   * The colours a selectable area can be drawn in.
+   *
+   * Named rather than only shown, because a colour has to be sayable: it is
+   * chosen once here and then discussed, documented, and matched against the
+   * basemap by people who are not looking at this control. The stored value is
+   * a position in the theme's ordinal palette, so the position is what the
+   * name is built from.
+   */
+  const colorOptions = useMemo(
+    () =>
+      OrdinalColorSequence.map((value, index) => ({
+        value,
+        label: intl.formatMessage(geospatialMessages.colorOptionLabel, {
+          position: index + 1,
+        }),
+      })),
+    [intl],
+  );
 
   return (
     <>
       <BuilderSection
-        title={words.appearanceTitle}
-        description={words.appearanceDescription}
+        title={intl.formatMessage(geospatialMessages.appearanceTitle)}
+        description={intl.formatMessage(
+          geospatialMessages.appearanceDescription,
+        )}
       >
         <ProtocolField<typeof NativeSelectField>
           name={STYLE_FIELD}
           component={NativeSelectField}
-          options={[...MAP_STYLE_OPTIONS]}
-          label={words.styleLabel}
-          hint={words.styleHint}
+          options={styleOptions}
+          label={intl.formatMessage(geospatialMessages.styleLabel)}
+          hint={intl.formatMessage(geospatialMessages.styleHint)}
           required
         />
         <ProtocolField<typeof RadioGroupField>
           name={COLOR_FIELD}
           component={RadioGroupField}
-          options={COLOR_OPTIONS}
-          label={words.colorLabel}
-          hint={words.colorHint}
+          options={colorOptions}
+          label={intl.formatMessage(geospatialMessages.colorLabel)}
+          hint={intl.formatMessage(geospatialMessages.colorHint)}
           required
         />
         <ProtocolField<typeof ToggleField>
           name={TRANSIT_FIELD}
           component={ToggleField}
-          label={words.transitLabel}
-          hint={words.transitHint}
+          label={intl.formatMessage(geospatialMessages.transitLabel)}
+          hint={intl.formatMessage(geospatialMessages.transitHint)}
         />
         <ProtocolField<typeof ToggleField>
           name={SEARCH_FIELD}
           component={ToggleField}
-          label={words.searchLabel}
-          hint={words.searchHint}
+          label={intl.formatMessage(geospatialMessages.searchLabel)}
+          hint={intl.formatMessage(geospatialMessages.searchHint)}
         />
       </BuilderSection>
 
       <BuilderSection
-        title={words.viewTitle}
-        description={words.viewDescription}
+        title={intl.formatMessage(geospatialMessages.viewTitle)}
+        description={intl.formatMessage(geospatialMessages.viewDescription)}
       >
         <ProtocolField<typeof MapCenterField>
           name={CENTER_FIELD}
@@ -153,16 +120,19 @@ export default function MapAppearanceSection({
           tokenAssetId={
             typeof tokenAssetId === 'string' ? tokenAssetId : undefined
           }
-          label={words.centerLabel}
-          hint={words.centerHint}
+          label={intl.formatMessage(geospatialMessages.centerLabel)}
+          hint={intl.formatMessage(geospatialMessages.centerHint)}
           required
           {...centerValidation}
         />
         <ProtocolField<typeof MapZoomField>
           name={ZOOM_FIELD}
           component={MapZoomField}
-          label={words.zoomLabel}
-          hint={words.zoomHint}
+          label={intl.formatMessage(geospatialMessages.zoomLabel)}
+          hint={intl.formatMessage(geospatialMessages.zoomHint, {
+            min: MIN_ZOOM,
+            max: MAX_ZOOM,
+          })}
           required
           minValue={MIN_ZOOM}
           maxValue={MAX_ZOOM}

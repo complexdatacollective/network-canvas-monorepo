@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { v4 as uuid } from 'uuid';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
@@ -16,14 +17,10 @@ import { useStageValue } from '../../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import { variablesForSubject } from '../../protocol-context.ts';
 import type { RowEditorProps } from '../rowRenderers.tsx';
+import { geospatialMessages } from './geospatialMessages.ts';
 
 /** The only attribute type that can hold a place on a map. */
 const LOCATION = VariableTypes.location;
-
-const CREATE_LABEL = 'Create a new location attribute';
-
-const NO_LOCATION_ATTRIBUTES =
-  'This type has no location attributes yet. Create one to record where the participant chooses.';
 
 const subjectOf = (value: unknown): CodebookSubject | null => {
   if (typeof value !== 'object' || value === null) return null;
@@ -53,6 +50,10 @@ const subjectOf = (value: unknown): CodebookSubject | null => {
  * row's cells with the stage would let a deleted row's value come back on save.
  */
 export default function GeospatialPromptEditor({ item }: RowEditorProps) {
+  const intl = useAppIntl();
+  const createLabel = intl.formatMessage(
+    geospatialMessages.createAttributeLabel,
+  );
   const { controller, readOnly } = useStageEditorForm();
   const setRowFieldValue = useFormStore((store) => store.setFieldValue);
   const subject = subjectOf(useStageValue('subject'));
@@ -96,21 +97,23 @@ export default function GeospatialPromptEditor({ item }: RowEditorProps) {
     <>
       <Field
         name="text"
-        label="Prompt text"
-        hint="The question the participant reads while the map is open."
+        label={intl.formatMessage(geospatialMessages.promptTextLabel)}
+        hint={intl.formatMessage(geospatialMessages.promptTextHint)}
         component={InputField}
         initialValue={text}
-        required="Write the question this prompt asks."
+        required={intl.formatMessage(geospatialMessages.promptTextRequired)}
       />
       <Field
         name="variable"
-        label="Location attribute"
-        hint="The attribute the participant's chosen area is stored in."
+        label={intl.formatMessage(geospatialMessages.promptVariableLabel)}
+        hint={intl.formatMessage(geospatialMessages.promptVariableHint)}
         component={VariablePickerControl}
         initialValue={variable}
         options={options}
-        emptyMessage={NO_LOCATION_ATTRIBUTES}
-        required="Choose the attribute this prompt records."
+        emptyMessage={intl.formatMessage(
+          geospatialMessages.promptVariableEmptyState,
+        )}
+        required={intl.formatMessage(geospatialMessages.promptVariableRequired)}
       />
       {!readOnly && subject !== null && authoritativeDocument !== undefined && (
         <Button
@@ -121,7 +124,7 @@ export default function GeospatialPromptEditor({ item }: RowEditorProps) {
           className="self-start"
           onClick={() => setCreating({ key: uuid(), variableId: uuid() })}
         >
-          {CREATE_LABEL}
+          {createLabel}
         </Button>
       )}
       {creating !== null &&
@@ -129,7 +132,7 @@ export default function GeospatialPromptEditor({ item }: RowEditorProps) {
         authoritativeDocument !== undefined && (
           <Dialog
             open
-            title={CREATE_LABEL}
+            title={createLabel}
             size="readable"
             closeDialog={() => setCreating(null)}
             finalFocus={() => triggerRef.current}
@@ -143,7 +146,9 @@ export default function GeospatialPromptEditor({ item }: RowEditorProps) {
               variableId={creating.variableId}
               initialDraft={{ name: '', type: LOCATION }}
               allowedVariableTypes={[LOCATION]}
-              description="Create a location attribute for this prompt"
+              description={intl.formatMessage(
+                geospatialMessages.createAttributeDescription,
+              )}
               createRequestId={() => uuid()}
               onSubmitRequest={(request) =>
                 controller.requestCompoundEdit(request)

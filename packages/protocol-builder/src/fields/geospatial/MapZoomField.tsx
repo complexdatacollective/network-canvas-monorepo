@@ -1,6 +1,8 @@
+import { useAppIntl } from '@codaco/app-i18n/react';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 
+import { geospatialMessages } from '../../sections/geospatial/geospatialMessages.ts';
 import { MAX_ZOOM, MIN_ZOOM } from './mapView.ts';
 
 /**
@@ -27,6 +29,8 @@ export default function MapZoomField({
   onChange,
   ...inputProps
 }: MapZoomFieldProps) {
+  const intl = useAppIntl();
+
   return (
     <InputField
       {...inputProps}
@@ -38,7 +42,10 @@ export default function MapZoomField({
       // "Increase value", which is also what the two coordinate controls
       // beside this one would be called — three numbers describing one
       // starting view, six buttons a screen reader cannot tell apart.
-      stepperLabels={{ increase: 'Increase zoom', decrease: 'Decrease zoom' }}
+      stepperLabels={{
+        increase: intl.formatMessage(geospatialMessages.zoomIncrease),
+        decrease: intl.formatMessage(geospatialMessages.zoomDecrease),
+      }}
       value={
         typeof value === 'number' && Number.isFinite(value) ? String(value) : ''
       }

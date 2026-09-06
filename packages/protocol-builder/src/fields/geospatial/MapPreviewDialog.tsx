@@ -2,6 +2,8 @@ import type { Map as MapboxMap } from 'mapbox-gl/esm';
 import * as mapboxgl from 'mapbox-gl/esm';
 import { useEffect, useRef, useState } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
@@ -13,6 +15,7 @@ import type {
   ResourceGatewayFailure,
   ResourcePreview,
 } from '../../resources/gateway.ts';
+import { geospatialMessages } from '../../sections/geospatial/geospatialMessages.ts';
 import {
   hasMapViewChanged,
   type MapCenter,
@@ -30,11 +33,6 @@ export type MapPreviewDialogProps = Readonly<{
 }>;
 
 type MapStatus = 'resolving' | 'loading' | 'ready' | 'error';
-
-const NO_KEY_MESSAGE =
-  'Choose a Mapbox API key before setting the starting view on a map.';
-const LOAD_ERROR_MESSAGE =
-  'The map could not be drawn. Check that the API key is still valid, then try again.';
 
 /**
  * Sets a stage's starting view by panning and zooming a real map.
@@ -55,6 +53,7 @@ export default function MapPreviewDialog({
   onSave,
   onClose,
 }: MapPreviewDialogProps) {
+  const intl = useAppIntl();
   const gateway = useResourceGateway();
   const [container, setContainer] = useState<HTMLElement | null>(null);
   const [styleUrl, setStyleUrl] = useState<string | undefined>(undefined);
@@ -159,21 +158,21 @@ export default function MapPreviewDialog({
   const moved = hasMapViewChanged(viewCenter, viewZoom, center, zoom);
   const message =
     tokenAssetId === undefined || tokenAssetId === ''
-      ? NO_KEY_MESSAGE
+      ? intl.formatMessage(geospatialMessages.previewMissingKey)
       : status === 'error' && failure === undefined
-        ? LOAD_ERROR_MESSAGE
+        ? intl.formatMessage(geospatialMessages.previewLoadFailure)
         : undefined;
 
   return (
     <Dialog
       open
       closeDialog={onClose}
-      title="Starting map view"
+      title={intl.formatMessage(geospatialMessages.viewTitle)}
       size="workspace"
       footer={
         <>
           <Button color="default" onClick={onClose}>
-            Cancel
+            {intl.formatMessage(commonMessages.cancel)}
           </Button>
           {status === 'ready' && moved && (
             <Button
@@ -183,7 +182,7 @@ export default function MapPreviewDialog({
                 onClose();
               }}
             >
-              Use this view
+              {intl.formatMessage(geospatialMessages.previewAcceptLabel)}
             </Button>
           )}
         </>
@@ -191,12 +190,13 @@ export default function MapPreviewDialog({
     >
       <div className="flex flex-col gap-3">
         <Paragraph margin="none" emphasis="muted">
-          Pan and zoom to the view participants should see when the map first
-          opens.
+          {intl.formatMessage(geospatialMessages.previewInstructions)}
         </Paragraph>
 
         {status === 'resolving' && (
-          <output className="sr-only">Loading the map.</output>
+          <output className="sr-only">
+            {intl.formatMessage(geospatialMessages.previewLoading)}
+          </output>
         )}
 
         {message !== undefined && (
@@ -208,7 +208,9 @@ export default function MapPreviewDialog({
         {failure !== undefined && (
           <ResourceFailureNotice
             failure={failure}
-            retryLabel="Try loading the map again"
+            retryLabel={intl.formatMessage(
+              geospatialMessages.previewRetryLabel,
+            )}
             onRetry={() => setAttempt((current) => current + 1)}
           />
         )}
@@ -216,7 +218,7 @@ export default function MapPreviewDialog({
         {styleUrl !== undefined && (
           <section
             ref={setContainer}
-            aria-label="Interactive map"
+            aria-label={intl.formatMessage(geospatialMessages.previewMapLabel)}
             aria-busy={status === 'loading'}
             className="h-[50vh] w-full"
           />

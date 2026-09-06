@@ -1,11 +1,13 @@
 import { useId, useState } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
+import { geospatialMessages } from '../../sections/geospatial/geospatialMessages.ts';
 import MapPreviewDialog from './MapPreviewDialog.tsx';
 import { type MapCenter, resolveZoom } from './mapView.ts';
 
@@ -123,6 +125,7 @@ export default function MapCenterField({
   'aria-invalid': ariaInvalid,
   'aria-labelledby': ariaLabelledBy,
 }: MapCenterFieldProps) {
+  const intl = useAppIntl();
   const { storeApi } = useStageEditorForm();
   const controlId = useId();
   const [mapOpen, setMapOpen] = useState(false);
@@ -177,7 +180,9 @@ export default function MapCenterField({
     >
       <div className="flex flex-wrap gap-4">
         <div className="flex min-w-40 flex-1 flex-col gap-1">
-          <label htmlFor={`${controlId}-longitude`}>Longitude</label>
+          <label htmlFor={`${controlId}-longitude`}>
+            {intl.formatMessage(geospatialMessages.longitudeLabel)}
+          </label>
           <InputField
             id={`${controlId}-longitude`}
             type="number"
@@ -190,13 +195,19 @@ export default function MapCenterField({
             // field's "Increase value" is the same name on both halves of the
             // pair and on the zoom beside them.
             stepperLabels={{
-              increase: 'Increase longitude',
-              decrease: 'Decrease longitude',
+              increase: intl.formatMessage(
+                geospatialMessages.longitudeIncrease,
+              ),
+              decrease: intl.formatMessage(
+                geospatialMessages.longitudeDecrease,
+              ),
             }}
           />
         </div>
         <div className="flex min-w-40 flex-1 flex-col gap-1">
-          <label htmlFor={`${controlId}-latitude`}>Latitude</label>
+          <label htmlFor={`${controlId}-latitude`}>
+            {intl.formatMessage(geospatialMessages.latitudeLabel)}
+          </label>
           <InputField
             id={`${controlId}-latitude`}
             type="number"
@@ -205,8 +216,8 @@ export default function MapCenterField({
             aria-invalid={ariaInvalid}
             onChange={(next) => setCoordinate(1, next)}
             stepperLabels={{
-              increase: 'Increase latitude',
-              decrease: 'Decrease latitude',
+              increase: intl.formatMessage(geospatialMessages.latitudeIncrease),
+              decrease: intl.formatMessage(geospatialMessages.latitudeDecrease),
             }}
           />
         </div>
@@ -220,7 +231,7 @@ export default function MapCenterField({
         disabled={locked}
         onClick={() => setMapOpen(true)}
       >
-        Set the starting view on a map
+        {intl.formatMessage(geospatialMessages.openPreviewLabel)}
       </Button>
 
       {mapOpen && (

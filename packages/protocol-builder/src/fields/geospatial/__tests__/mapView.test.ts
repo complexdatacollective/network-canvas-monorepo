@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { readMessage } from '../../../testing/i18n.ts';
 import {
   centerIssue,
   hasMapViewChanged,
@@ -9,6 +10,21 @@ import {
   resolveCenter,
   resolveZoom,
 } from '../mapView.ts';
+
+/**
+ * What a researcher actually reads about a bad centre.
+ *
+ * `centerIssue` travels through a `messageRuleValidation` rule, which is a
+ * string-only contract, so it hands back an encoded descriptor and the form's
+ * error region decodes it. Decoding here is the same step, which is what keeps
+ * these assertions about the sentence rather than about the envelope carrying
+ * it — an envelope that contains the English either way, and so would pass
+ * whatever the message said.
+ */
+const issue = (value: unknown): string | undefined => {
+  const encoded = centerIssue(value);
+  return encoded === undefined ? undefined : readMessage(encoded);
+};
 
 describe('the view a geospatial stage opens on', () => {
   it('recognises a longitude and latitude pair, and nothing else', () => {
@@ -68,10 +84,10 @@ describe('the view a geospatial stage opens on', () => {
     });
 
     it('names the coordinate that is out of range', () => {
-      expect(centerIssue([181, 0])).toContain('Longitude');
-      expect(centerIssue([0, 91])).toContain('Latitude');
-      expect(centerIssue([-74])).toContain('longitude and a latitude');
-      expect(centerIssue('here')).toContain('longitude and a latitude');
+      expect(issue([181, 0])).toBe('Longitude must be between -180 and 180.');
+      expect(issue([0, 91])).toBe('Latitude must be between -90 and 90.');
+      expect(issue([-74])).toContain('longitude and a latitude');
+      expect(issue('here')).toContain('longitude and a latitude');
     });
   });
 

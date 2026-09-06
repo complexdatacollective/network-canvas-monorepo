@@ -1,10 +1,12 @@
 import { useMemo } from 'react';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import ResourceFailureNotice from '../../resources/components/ResourceFailureNotice.tsx';
+import { geospatialMessages } from '../../sections/geospatial/geospatialMessages.ts';
 import { useGeoJsonFeatureProperties } from './useGeoJsonFeatureProperties.ts';
 
 export type FeaturePropertyFieldProps = CreateFormFieldProps<
@@ -15,16 +17,6 @@ export type FeaturePropertyFieldProps = CreateFormFieldProps<
     dataSourceAssetId?: string;
   }
 >;
-
-const NO_LAYER =
-  'Choose a map layer first. Its features are where these properties come from.';
-const NO_PROPERTIES =
-  'The features in this layer carry no properties, so there is nothing to record a selection as. Choose a layer whose features are labelled.';
-const UNREADABLE =
-  'This layer could not be read as GeoJSON, so its properties cannot be listed.';
-
-const missingPropertyLabel = (property: string) =>
-  `${property} — this property is not in the chosen layer`;
 
 /**
  * Which property of a selected area is recorded as the participant's answer.
@@ -53,6 +45,7 @@ export default function FeaturePropertyField({
   'aria-labelledby': ariaLabelledBy,
   'aria-required': ariaRequired,
 }: FeaturePropertyFieldProps) {
+  const intl = useAppIntl();
   const { names, busy, failure, retry, unreadable } =
     useGeoJsonFeatureProperties(dataSourceAssetId);
 
@@ -68,17 +61,27 @@ export default function FeaturePropertyField({
     // Offered last, as the current choice, so a stale reference is visible
     // without sitting among the properties the layer really has.
     return isMissing && selected !== undefined
-      ? [...listed, { value: selected, label: missingPropertyLabel(selected) }]
+      ? [
+          ...listed,
+          {
+            value: selected,
+            label: intl.formatMessage(
+              geospatialMessages.propertyMissingOptionLabel,
+              { property: selected },
+            ),
+          },
+        ]
       : listed;
-  }, [isMissing, names, selected]);
+  }, [intl, isMissing, names, selected]);
 
+  const noLayer = intl.formatMessage(geospatialMessages.propertyNoLayer);
   const note =
     dataSourceAssetId === undefined || dataSourceAssetId === ''
-      ? NO_LAYER
+      ? noLayer
       : unreadable
-        ? UNREADABLE
+        ? intl.formatMessage(geospatialMessages.propertyUnreadable)
         : names !== undefined && names.length === 0
-          ? NO_PROPERTIES
+          ? intl.formatMessage(geospatialMessages.propertyNoProperties)
           : undefined;
 
   return (
@@ -88,13 +91,17 @@ export default function FeaturePropertyField({
       onBlur={onBlur}
       onFocus={onFocus}
     >
-      {busy && <output className="sr-only">Reading the map layer.</output>}
+      {busy && (
+        <output className="sr-only">
+          {intl.formatMessage(geospatialMessages.propertyLoading)}
+        </output>
+      )}
 
       {failure !== undefined && (
         <ResourceFailureNotice
           failure={failure}
           onRetry={retry}
-          retryLabel="Try reading the map layer again"
+          retryLabel={intl.formatMessage(geospatialMessages.propertyRetryLabel)}
           busy={busy}
         />
       )}
@@ -106,7 +113,7 @@ export default function FeaturePropertyField({
           emphasis="muted"
           aria-describedby={ariaDescribedBy}
         >
-          {note ?? NO_LAYER}
+          {note ?? noLayer}
         </Paragraph>
       ) : (
         <>
@@ -128,7 +135,7 @@ export default function FeaturePropertyField({
           />
           {isMissing && (
             <p className="text-destructive mt-2 text-sm">
-              This property is not in the chosen map layer. Choose one that is.
+              {intl.formatMessage(geospatialMessages.propertyMissingRefusal)}
             </p>
           )}
         </>

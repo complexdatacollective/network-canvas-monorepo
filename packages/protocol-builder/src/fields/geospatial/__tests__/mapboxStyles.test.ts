@@ -3,7 +3,15 @@ import { describe, expect, it } from 'vitest';
 import { CurrentProtocolSchema } from '@codaco/protocol-validation';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 
-import { MAP_STYLE_OPTIONS } from '../mapboxStyles.ts';
+import { enIntl } from '../../../testing/i18n.ts';
+import { mapStyleOptions } from '../mapboxStyles.ts';
+
+/**
+ * The basemaps as a researcher reading English sees them. The names are
+ * descriptors now, so the list is built through a formatter rather than
+ * declared — and this is the formatter the control beside them renders with.
+ */
+const MAP_STYLE_OPTIONS = mapStyleOptions(enIntl);
 
 type Stage = Record<string, unknown>;
 
