@@ -737,6 +737,75 @@ describe('a single-line RichTextEditorField', () => {
     });
   });
 
+  it('keeps typing the host has not been told about when it becomes single-line', async () => {
+    // `changeMode="blur"` is the default, and it means the host's `value` is
+    // deliberately BEHIND what the field holds for as long as the caret is in
+    // it. Changing the restriction rebuilds the editor around a new schema,
+    // and rebuilding it from that stale value threw away everything typed
+    // since the field was entered — silently, mid-sentence.
+    const onChange = vi.fn();
+    const user = userEvent.setup();
+    const field = (singleLine: boolean) => (
+      <RichTextEditorField
+        id="label"
+        name="label"
+        aria-describedby="label-hint"
+        aria-label="Answer"
+        value={emptyDocument}
+        onChange={onChange}
+        {...(singleLine ? { singleLine: true } : {})}
+      />
+    );
+    const { rerender } = render(field(false));
+    const before = await screen.findByRole('textbox', { name: 'Answer' });
+
+    await user.click(before);
+    await user.type(before, 'Never met');
+    expect(onChange).not.toHaveBeenCalled();
+
+    rerender(field(true));
+
+    const after = await screen.findByRole('textbox', { name: 'Answer' });
+    await waitFor(() => {
+      expect(after.textContent).toBe('Never met');
+    });
+    // And the host is told, because the document it holds is now one the
+    // field's schema could not have made a moment ago.
+    expect(onChange).toHaveBeenCalled();
+  });
+
+  it('flattens typing the host has not been told about', async () => {
+    const onChange = vi.fn();
+    const user = userEvent.setup();
+    const field = (singleLine: boolean) => (
+      <RichTextEditorField
+        id="label"
+        name="label"
+        aria-describedby="label-hint"
+        aria-label="Answer"
+        value={emptyDocument}
+        onChange={onChange}
+        {...(singleLine ? { singleLine: true } : {})}
+      />
+    );
+    const { rerender } = render(field(false));
+    const before = await screen.findByRole('textbox', { name: 'Answer' });
+
+    await user.click(before);
+    await user.type(before, 'Never met');
+    await user.keyboard('{Enter}');
+    await user.type(before, 'in person');
+    expect(before.querySelectorAll('p')).toHaveLength(2);
+
+    rerender(field(true));
+
+    const after = await screen.findByRole('textbox', { name: 'Answer' });
+    await waitFor(() => {
+      expect(after.textContent).toBe('Never met in person');
+    });
+    expect(after.querySelectorAll('p')).toHaveLength(1);
+  });
+
   it('spells a newline inside an incoming text node as a space', async () => {
     // Markdown's own line break: a paragraph holding one arrives as a single
     // text node with the newline still in it, which no schema is going to

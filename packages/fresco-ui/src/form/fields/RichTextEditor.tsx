@@ -6,6 +6,7 @@ import { Toolbar } from '@base-ui/react/toolbar';
 import {
   type AnyExtension,
   createNodeFromContent,
+  type Editor,
   Extension,
   getSchema,
   isProseMirrorFragment,
@@ -896,6 +897,18 @@ export default function RichTextEditorField({
     [editorExtensions],
   );
 
+  // What the field holds and the host has not been told about. `changeMode`
+  // decides how long that lasts: on `input` it is over as soon as the update
+  // is reported, and on `blur` it lasts until the caret leaves. For as long
+  // as it lasts, this is the only copy of the researcher's typing there is.
+  const unemittedDocumentRef = useRef<JSONContent | null>(null);
+  const syncedEditorRef = useRef<Editor | null>(null);
+  // Changing what the field offers rebuilds the editor around a new schema,
+  // and it is rebuilt from what the field holds — which on `changeMode="blur"`
+  // is a whole sentence ahead of `value` by design. Seeding the replacement
+  // from the value instead threw that sentence away mid-edit.
+  const seed = unemittedDocumentRef.current ?? value;
+
   const editor = useEditor(
     {
       editorProps: {
@@ -908,18 +921,25 @@ export default function RichTextEditorField({
       // over — it fires a tick after the field has painted, and by then the
       // document it would flatten is already empty.
       content:
-        singleLine && value !== undefined
-          ? oneLineDocumentOf(value, editorSchema)
-          : value,
+        singleLine && seed !== undefined
+          ? oneLineDocumentOf(seed, editorSchema)
+          : seed,
       editable: !disabled && !readOnly,
       autofocus: autoFocus ? 'end' : false,
       onUpdate: ({ editor: updateEditor }) => {
+        const updated = updateEditor.getJSON();
+
         if (changeModeRef.current === 'input') {
-          onChangeRef.current?.(updateEditor.getJSON());
+          unemittedDocumentRef.current = null;
+          onChangeRef.current?.(updated);
+          return;
         }
+
+        unemittedDocumentRef.current = updated;
       },
       onBlur: ({ editor: blurEditor }) => {
         if (changeModeRef.current === 'blur') {
+          unemittedDocumentRef.current = null;
           onChangeRef.current?.(blurEditor.getJSON());
         }
       },
@@ -950,9 +970,22 @@ export default function RichTextEditorField({
     // with: `destroy` drops the schema and the command manager. Changing what
     // the field offers — the single-line restriction included — rebuilds the
     // editor, and this effect runs once more against the outgoing one before
-    // the new one arrives. The rebuilt editor is created from `value`, so
-    // there is nothing to sync here anyway.
+    // the new one arrives.
     if (!editor || editor.isDestroyed) return;
+
+    const rebuilt = syncedEditorRef.current !== editor;
+    syncedEditorRef.current = editor;
+
+    // A rebuild that carried edits the host has not seen: the field now holds
+    // a document the outgoing schema could not express — the researcher's own
+    // words, flattened. Report it, and reconcile nothing this pass. `value` is
+    // what the host held a keystroke ago, and comparing against it here is
+    // what threw those words away.
+    if (rebuilt && unemittedDocumentRef.current !== null) {
+      unemittedDocumentRef.current = null;
+      onChangeRef.current?.(editor.getJSON());
+      return;
+    }
 
     if (value === undefined) {
       if (!editor.isEmpty) {
