@@ -7,6 +7,7 @@ import type { EncryptionEnv } from '../env/encryption.ts';
 import {
   initializeCredentialMigration,
   initializeEncryption,
+  resumeEncryptionMaintenance,
 } from './initialize.ts';
 import {
   migrateLegacyOAuthBatch,
@@ -21,6 +22,7 @@ export async function runEncryptionCommand(
   args: string[],
   maintenancePool: pg.Pool,
   encryption: EncryptionEnv,
+  legacyOperatorPool?: pg.Pool,
 ) {
   const { positionals, values } = parseArgs({
     args,
@@ -56,10 +58,19 @@ export async function runEncryptionCommand(
   const afterId = parseLegacyCursor(values['after-id'] ?? null);
   if ((await checkSchema(maintenancePool)).kind !== 'current')
     throw new Error('Encryption maintenance requires the current schema.');
+  if (operation === 'migrate-legacy' && !legacyOperatorPool)
+    throw new Error(
+      'Legacy conversion requires its separate operator connection.',
+    );
   const input = { maintenancePool, ...encryption };
-  const keys = await (operation === 'migrate-legacy'
-    ? initializeCredentialMigration(input)
-    : initializeEncryption(input));
+  const resumed =
+    (operation === 'rotate' && cursor !== undefined) ||
+    (operation === 'migrate-legacy' && afterId !== null);
+  const keys = await (resumed
+    ? resumeEncryptionMaintenance(input)
+    : operation === 'migrate-legacy'
+      ? initializeCredentialMigration(input)
+      : initializeEncryption(input));
   if (operation === 'verify') return { operation, verified: true } as const;
   if (operation === 'rotate')
     return {
@@ -71,7 +82,7 @@ export async function runEncryptionCommand(
     };
   return {
     operation,
-    ...(await migrateLegacyOAuthBatch(maintenancePool, keys, {
+    ...(await migrateLegacyOAuthBatch(legacyOperatorPool!, keys, {
       limit,
       afterId,
     })),

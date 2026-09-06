@@ -8,8 +8,11 @@ const LOCK_SEED = '1677700182879916';
 export async function acquireWebLease(pool: pg.Pool, onLost: () => void) {
   const client = await pool.connect();
   try {
-    const result = await client.query<{ acquired: boolean }>(
-      'SELECT pg_try_advisory_lock(hashtextextended(current_schema(), $1::bigint)) AS acquired',
+    // Different search-path prefixes can resolve the same Studio tables.
+    // Advisory locks are already database-scoped; bind this one to the actual
+    // evidence relation so those prefixes cannot admit another web process.
+    const result = await client.query<{ acquired: boolean | null }>(
+      `SELECT pg_try_advisory_lock(hashtextextended(to_regclass('"schemaFingerprint"')::oid::text, $1::bigint)) AS acquired`,
       [LOCK_SEED],
     );
     if (!result.rows[0]?.acquired)

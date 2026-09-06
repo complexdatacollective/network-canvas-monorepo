@@ -209,7 +209,12 @@ it('restores a real pre-rotation pg_dump with retained keys and refuses missing 
     });
     await expect(
       rotateEncryptionBatch(scratch.maintenance, rotated, { limit: 100 }),
-    ).resolves.toEqual({ processed: 3, remaining: 0, cursor: null });
+    ).resolves.toEqual({
+      processed: 3,
+      scanned: 3,
+      passComplete: true,
+      cursor: null,
+    });
     expect(
       (
         await scratch.pool.query(
@@ -244,7 +249,15 @@ it('restores a real pre-rotation pg_dump with retained keys and refuses missing 
         ],
         dump,
       );
-      expect(await checkSchema(app)).toEqual({ kind: 'current' });
+      // This encryption fixture restores a dev-applied schema-only dump. Its
+      // fingerprint is current, but production must still require real history.
+      expect(await checkSchema(app)).toMatchObject({
+        kind: 'stale',
+        reason: 'unversioned',
+      });
+      expect(await checkSchema(app, { allowUnversioned: true })).toEqual({
+        kind: 'current',
+      });
       expect(
         (
           await maintenance.query(

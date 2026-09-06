@@ -1,7 +1,7 @@
 {
   "dialect": "postgres",
-  "id": "75cb54c7-9bb5-4684-92a0-d853e9f9fa9c",
-  "prevIds": ["b24a5a29-c477-4c1a-8bc2-789f6344cfad"],
+  "id": "00297fe5-fd38-48ca-a5ca-030a0a78d318",
+  "prevIds": ["98ddb368-c738-47e9-b6e3-0b90f934db8b"],
   "version": "8",
   "ddl": [
     {
@@ -802,6 +802,22 @@
       "generated": null,
       "identity": null,
       "name": "idToken",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "account"
+    },
+    {
+      "type": "boolean",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": {
+        "as": "\"accessToken\" IS NOT NULL OR \"refreshToken\" IS NOT NULL OR \"idToken\" IS NOT NULL",
+        "type": "stored"
+      },
+      "identity": null,
+      "name": "legacy_tokens_present",
       "entityType": "columns",
       "schema": "public",
       "table": "account"
@@ -14047,7 +14063,7 @@
       "table": "encryption_key_verifications"
     },
     {
-      "value": "\"action\" IN ('read', 'write', 'rotate', 'migrate_legacy')",
+      "value": "\"action\" IN ('read', 'write', 'rotate', 'migrate_legacy', 'delete')",
       "name": "credential_audit_events_action_check",
       "entityType": "checks",
       "schema": "public",

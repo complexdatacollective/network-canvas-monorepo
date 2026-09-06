@@ -18,11 +18,14 @@ import { WebSocket } from 'ws';
 import type { contract } from '@codaco/studio-rpc';
 import { createTenantDb } from '@codaco/studio-sync/tenant';
 
+import { enrollMigrationTestDatabase } from '../../__tests__/support/migrations.ts';
 import {
   createScratchDatabase,
-  provisionScratchSchema,
   reachableDb,
 } from '../../__tests__/support/postgres.ts';
+import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
+import { readMigrations } from '../../db/migrations/artifact.ts';
+import { migrateDatabase } from '../../db/migrations/migrate.ts';
 import { createPool } from '../../db/pool.ts';
 import type { DbEnv } from '../../env.ts';
 import { completeSetup } from '../../instance/bootstrap.ts';
@@ -121,7 +124,18 @@ function launch(
 async function fixture() {
   if (!database) throw new Error('A local PostgreSQL instance is required.');
   const scratch = await createScratchDatabase(database);
-  await provisionScratchSchema(scratch.pool);
+  const allowedLogins = await enrollMigrationTestDatabase(
+    scratch.pool,
+    database,
+  );
+  await migrateDatabase(
+    scratch.pool,
+    await readMigrations(
+      fileURLToPath(new URL('../../../migrations', import.meta.url)),
+    ),
+    SCHEMA_FINGERPRINT,
+    allowedLogins,
+  );
   const app = createPool(scratch.db);
   const clientDist = await mkdtemp(join(tmpdir(), 'studio-runtime-client-'));
   await writeFile(
@@ -239,7 +253,7 @@ describe('actual runtime role separation and drain', () => {
     let worker: ReturnType<typeof launch> | undefined;
     let duplicate: ReturnType<typeof launch> | undefined;
     try {
-      expect(await web.started).toBe(true);
+      expect(await web.started, JSON.stringify(web.records())).toBe(true);
       const client = createORPCClient<ContractRouterClient<typeof contract>>(
         new RPCLink({
           origin: web.origin,
@@ -278,7 +292,7 @@ describe('actual runtime role separation and drain', () => {
         smtp.url,
         scratch.clientDist,
       );
-      expect(await worker.started).toBe(true);
+      expect(await worker.started, JSON.stringify(worker.records())).toBe(true);
       expect((await fetch(`${worker.origin}/healthz`)).status).toBe(200);
       for (const path of [
         '/rpc/status',
@@ -305,7 +319,10 @@ describe('actual runtime role separation and drain', () => {
       expect(await web.stop()).toBe(0);
       const replacement = launch(scratch.db, await unusedPort(), 'web');
       try {
-        expect(await replacement.started).toBe(true);
+        expect(
+          await replacement.started,
+          JSON.stringify(replacement.records()),
+        ).toBe(true);
       } finally {
         await replacement.stop();
       }
@@ -324,7 +341,9 @@ describe('actual runtime role separation and drain', () => {
     let ws: WebSocket | undefined;
     let slow: ReturnType<typeof request> | undefined;
     try {
-      expect(await runtime.started).toBe(true);
+      expect(await runtime.started, JSON.stringify(runtime.records())).toBe(
+        true,
+      );
       await expect.poll(() => smtp.messages.length).toBe(1);
       const signIn = await fetch(`${runtime.origin}/api/auth/sign-in/email`, {
         method: 'POST',
@@ -407,7 +426,9 @@ describe('actual runtime role separation and drain', () => {
     const scratch = await fixture();
     const runtime = launch(scratch.db, await unusedPort(), 'web');
     try {
-      expect(await runtime.started).toBe(true);
+      expect(await runtime.started, JSON.stringify(runtime.records())).toBe(
+        true,
+      );
       const killed = await scratch.pool.query(
         `SELECT pg_terminate_backend(pid) AS killed FROM pg_locks WHERE locktype='advisory' AND database=(SELECT oid FROM pg_database WHERE datname=current_database())`,
       );

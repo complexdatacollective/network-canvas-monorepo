@@ -25,9 +25,9 @@ export function runtimeRolesSql(roles: readonly string[]): string {
   const names = roles.map(escapeLiteral).join(', ');
   const body = `DECLARE conflicting_constraint text;
 BEGIN
-  ${roles
-    .map(
-      (role) => `
+${roles
+  .map(
+    (role) => `
   -- A pre-created role must work for an operator without CREATEROLE. Role
   -- names are cluster-wide; advisory locks serialize only one database.
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ${escapeLiteral(role)}) THEN
@@ -40,8 +40,8 @@ BEGIN
         IF conflicting_constraint <> 'pg_authid_rolname_index' THEN RAISE; END IF;
     END;
   END IF;`,
-    )
-    .join('\n')}
+  )
+  .join('\n')}
   -- Re-read and validate the winner after a duplicate-name race too. A safe
   -- direct role can still assume or inherit an unsafe parent role.
   IF (SELECT count(*) FROM pg_roles WHERE rolname IN (${names})) <> ${roles.length}

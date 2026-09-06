@@ -178,22 +178,50 @@ index IDs are explicitly unverified; startup refuses them rather than blessing
 an unknown historical key. Existing unversioned databases remain governed by
 the migration foundation's export/restore rule and are never silently adopted.
 
-Any legacy OAuth value refuses normal boot. `initializeCredentialMigration`
-permits only that legacy condition while retaining all key-proof checks.
+Any legacy OAuth value refuses normal boot. Startup reads only the stored
+`legacy_tokens_present` generated column; an ordinary runtime update cannot
+forge that presence flag. `initializeCredentialMigration` permits only that
+legacy condition while retaining all key-proof checks.
 `migrateLegacyOAuthBatch` converts at most 100 accounts per call. It locks the
 row, seals the old values, clears plaintext and appends the immutable audit in
-one transaction; failure preserves the original data. Runtime database triggers
-forbid introducing any new legacy plaintext.
+one transaction; failure preserves the original data. Both `studio_app` and
+`studio_maintenance` refuse SELECT, INSERT and UPDATE on every retained plaintext
+column, including SELECT *, predicates, explicit NULL/default assignments,
+upserts and COPY. The shared adapter projection grants runtime access only to
+current account columns. A trigger also refuses every runtime change to a
+retained value, including clearing it, if a column grant is mistakenly restored.
+The ordinary runtime login cannot convert them by assuming either role.
 
-`rotateEncryptionBatch` processes at most 100 participant, webhook or OAuth
-records per call. A returned cursor binds the selected current encryption IDs
+Offline conversion alone opens a separate, unpinned operator connection from the
+command's `DATABASE_URL`. That login must connect as itself and own the account
+table or hold its own direct SELECT grant on all three retained columns;
+inherited, PUBLIC or SET ROLE access is insufficient. A database administrator's
+superuser authority also qualifies, although ordinary non-superuser operators
+are supported and preferred. The operator must also have the existing account
+update and mandatory credential-audit insert privileges. Keep these credentials
+in the migration command's isolated environment, never the web/worker runtime.
+Verification and rotation continue to use only the pinned maintenance pool;
+the unpinned pool is lazy and is never queried by those operations.
+
+The adapter uses an explicit model projection for every read and RETURNING path. Triggers
+forbid changing retained legacy plaintext and append one immutable deletion audit
+per credential identity, including bulk deletes and user cascades. A failed
+audit insert rolls back the deleting SQL statement.
+
+`rotateEncryptionBatch` visits at most 100 participant, webhook or OAuth
+records per call, including rows already using the target keys. Pages use native
+primary-key ordering. Maintenance transactions prefer ordered index scans by
+locally discouraging bitmap, sequential and explicit sort plans. This avoids
+RLS estimates turning a page into a suffix-wide sort. A returned cursor binds
+the selected current encryption IDs
 and is safe to persist and replay. Failed records leave earlier committed work
 idempotent. Reads are audited before replacement; the final locked comparison
 refuses overwriting a concurrent update. Closed studies permit only the actual
 maintenance role to rewrite encrypted representation, leaving identity,
-handles, scheduling and provenance frozen. Old writers must be stopped before
-a rotation is declared complete; a remaining-row scan restarts a pass if an old
-replica wrote behind the cursor. No roots or proof evidence are removed.
+handles, scheduling and provenance frozen. Old-key writers must be stopped
+before starting a pass: rows inserted or changed behind its cursor require
+another complete pass. No roots or proof
+evidence are removed.
 
 The built image exposes `encryption verify`, `encryption rotate --limit 100`
 and `encryption migrate-legacy --limit 100`. Locally the equivalent is
@@ -203,8 +231,18 @@ settings. It does not require mail, OAuth provider or session-signing settings.
 
 Each operation returns one JSON result. Save a rotation result's `cursor` and
 pass its JSON unchanged as `--cursor` on the next invocation. For legacy
-conversion, pass a non-null `afterId` as `--after-id`. Repeat until `remaining`
-is zero; a null cursor with remaining legacy rows means start another pass.
+conversion, pass a non-null `afterId` as `--after-id`. Each page reports `scanned`
+(rows visited), `processed` (rows changed), and `passComplete`. Repeat until
+`passComplete` is true and the cursor is null; a completely full final page
+requires one more call to observe exhaustion. These are bounded progress values,
+not exact remaining-corpus counts. `passComplete` only declares traversal
+exhaustion, never safe key retirement or absence of concurrent old-key writes.
+
+The first CLI batch performs full stored-reference verification. Resumed batches
+verify every retained root against immutable proofs, refuse unregistered keys,
+and never register or remove proofs; they do not scan the corpus again. Run
+`encryption verify` after the pass for full startup/restore verification. Removing
+historical roots remains unsupported and fails both resume and full verification.
 Failure exits nonzero with a fixed diagnostic and leaves the last returned
 cursor safe to replay. Commands never start listeners or background dispatchers.
 
@@ -244,3 +282,21 @@ deployment requirement.
 Run `pnpm --filter @codaco/studio-server test src/pii` for the engine and real
 Postgres integration tests. Deliberate production defects must make the
 security assertions fail before those assertions are accepted.
+
+### Unreleased migration correction (PR #1718)
+
+The credential grants, generated legacy-presence flag and deletion-audit correction amend the unshipped `0002`
+artifact. It has only been exercised in disposable qualification fixtures; no
+published or deployed migration history changes. `0001` remains byte-identical.
+Downstream unshipped snapshots must be regenerated against this corrected base.
+
+| Evidence           | Original 0002                                                      | Corrected 0002                                                     |
+| ------------------ | ------------------------------------------------------------------ | ------------------------------------------------------------------ |
+| Schema fingerprint | `1da550d8f6fe27991609c86a20890993485e88c64a649498aadd975d76a4a886` | `e145181cea6fc46e51188e2643d47bfc13ddec8c1a8f37b149d29a7983166f2f` |
+| History checksum   | `824011a309d2907bd6da4847150e2b44c9c1715d31562fe45f90ed82ae599669` | `2fda5c8f128822cce43353881b248e3229985741d0be3f4570814191b932e00f` |
+
+The follow-up operator separation supersedes the first review correction's
+fingerprint `e27a8fdf4f477da530dd10265f5c4f2833256bac9204e7ee623b35dfc3bf9a9b`
+and checksum `5549052ccacedd9595aa50c7f6f129a3462214f3fc94fd6b0100221fbe0c5786`.
+Neither earlier `0002` artifact was published or deployed outside disposable
+qualification databases.
