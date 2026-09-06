@@ -128,25 +128,15 @@ const outlineStateOf = (harness: StageEditorHarness, title: string) =>
 /**
  * Chooses the pedigree this stage reads, and waits until it has been taken.
  *
- * The second attempt is not belt and braces. A stage that holds a `diseases`
- * key — which the interface's own template gives every stage a host creates —
- * loses the FIRST choice: `SourceStageSection` drops the diseases through
- * `controller.changeFields`, and a whole-draft change is indistinguishable to
- * the shell from a draft arriving from somewhere else, so the form is re-seeded
- * from the session and the researcher's unflushed choice is written back to
- * what it was. The key is gone by then, so the next choice sticks.
- *
- * Recorded here rather than worked around silently: the defect is in a section
- * this editor composes, and the fix belongs with whoever owns the whole-draft
- * write — either by not clearing what is already empty, or by marking a
- * section's own `changeFields` the way the shell marks its own submit.
+ * Waited for rather than assumed: the choice throws away the diseases that
+ * described the pedigree being left, which is a write to the draft the form is
+ * showing, and the section below only stops saying "not available yet" once
+ * the source it reads has arrived.
  */
 async function chooseSourceStage(
   harness: StageEditorHarness,
   optionLabel: string,
 ): Promise<void> {
-  await chooseOption(harness, 'Source stage', optionLabel);
-  if (outlineStateOf(harness, 'Diseases') !== 'Not available yet') return;
   await chooseOption(harness, 'Source stage', optionLabel);
   await waitFor(() =>
     expect(outlineStateOf(harness, 'Diseases')).not.toBe('Not available yet'),
@@ -250,9 +240,9 @@ describe('the narrative pedigree stage editor', () => {
   it('saves a new stage once it reads a pedigree and marks something', async () => {
     const harness = openNewStage();
 
-    // The source comes first, and the stage's name after it: choosing a source
-    // re-seeds the whole form from the session — see `chooseSourceStage` — so
-    // anything typed before it is written back to what the template held.
+    // The source comes first because everything below it is asked against the
+    // pedigree it names — the diseases section is unavailable until there is
+    // one — not because anything typed before it would be lost.
     await chooseSourceStage(harness, 'Family Pedigree');
     await harness.user.type(
       screen.getByRole('textbox', { name: 'Stage name' }),
