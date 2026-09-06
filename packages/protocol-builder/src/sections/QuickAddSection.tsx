@@ -1,10 +1,17 @@
-import { type ComponentType, useCallback, useMemo, useState } from 'react';
+import {
+  type ComponentType,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { v4 as uuid } from 'uuid';
 
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import { resolveFieldErrorTarget } from '@codaco/fresco-ui/form/utils/focusFirstError';
 
 import { compoundFailureMessage } from '../codebook/compoundFailureCopy.ts';
 import { buildUpdateVariableRequest } from '../codebook/editing.ts';
@@ -53,6 +60,9 @@ const MISSING_TYPE =
 
 const REFUSED_UNCHANGED =
   'This attribute could not be changed, so nothing was changed. Try again.';
+
+const NOW_REQUIRED =
+  'This attribute now has to be answered, everywhere the protocol uses it.';
 
 /** Nothing left to ask for, or nothing was written — either way, carry on. */
 type RequireAnswerOutcome =
@@ -198,6 +208,24 @@ function QuickAddAnswerRequirement({
   const requireAnswer = useRequireCodebookAnswer(subject);
   const [problem, setProblem] = useState<string | undefined>(undefined);
   const [busy, setBusy] = useState(false);
+  // Which attribute this session made required, so the confirmation belongs to
+  // the researcher's own act rather than appearing against every attribute
+  // that happens to arrive already required.
+  const [requiredHere, setRequiredHere] = useState<string | undefined>(
+    undefined,
+  );
+
+  // Accepting destroys the control that was pressed — the offer is about an
+  // attribute that can be left empty, and it no longer can — so focus goes to
+  // the picker the offer was about. `resolveFieldErrorTarget` is the package's
+  // one answer to "which control does this field name?", tiers and all; asking
+  // it here rather than reaching for a selector keeps that answer in one place.
+  // In an effect, so the field is asked for after the commit that removed the
+  // button.
+  useEffect(() => {
+    if (requiredHere === undefined) return;
+    resolveFieldErrorTarget(QUICK_ADD)?.focus();
+  }, [requiredHere]);
 
   const variable =
     subject === undefined || variableId === undefined
@@ -208,15 +236,30 @@ function QuickAddAnswerRequirement({
   // A dangling reference has its own message on the picker above, and a
   // requirement offered against an attribute that is not there would be a
   // second, worse explanation of the same thing.
-  if (variable === undefined || alreadyRequired || variableId === undefined) {
-    return null;
+  if (variable === undefined || variableId === undefined) return null;
+
+  if (alreadyRequired) {
+    // Said only to the researcher who just asked for it. Focus has moved to a
+    // control that says nothing about what changed, so this is the whole of
+    // what they are told — and `Alert`'s success variant carries `role=
+    // "status"`, which is how it reaches a screen reader without interrupting.
+    return requiredHere === variableId ? (
+      <Alert variant="success" className="my-7">
+        <AlertDescription>{NOW_REQUIRED}</AlertDescription>
+      </Alert>
+    ) : null;
   }
 
   const accept = async () => {
     setBusy(true);
     const outcome = await requireAnswer(variableId);
     setBusy(false);
-    setProblem(outcome.status === 'refused' ? outcome.message : undefined);
+    if (outcome.status === 'refused') {
+      setProblem(outcome.message);
+      return;
+    }
+    setProblem(undefined);
+    setRequiredHere(variableId);
   };
 
   return (

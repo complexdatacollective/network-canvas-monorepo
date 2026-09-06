@@ -246,6 +246,39 @@ describe('a quick-add attribute that need not be answered', () => {
     ).not.toBeInTheDocument();
   });
 
+  /**
+   * Accepting the offer destroys the control that was pressed: the warning it
+   * sits in is about an attribute that can be left empty, and the attribute no
+   * longer can. Focus fell to `<body>` with it, so a researcher working from
+   * the keyboard was returned to the top of the document with nothing said,
+   * and a screen-reader user was told nothing had happened at all.
+   */
+  it('hands the researcher back to the picker, and says what changed', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-quick-add-1',
+      sections: quickAdd,
+    });
+
+    await screen.findByText('This attribute can be left empty');
+    const accept = screen.getByRole('button', { name: 'Require an answer' });
+    accept.focus();
+    await harness.user.click(accept);
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText('This attribute can be left empty'),
+      ).not.toBeInTheDocument(),
+    );
+    expect(screen.getByRole('combobox', { name: /Attribute filled in/ })).toBe(
+      document.activeElement,
+    );
+    expect(
+      within(await screen.findByRole('status')).getByText(
+        'This attribute now has to be answered, everywhere the protocol uses it.',
+      ),
+    ).toBeInTheDocument();
+  });
+
   it('says nothing about an attribute that already requires an answer', async () => {
     const harness = renderStageEditor({
       stage: {
