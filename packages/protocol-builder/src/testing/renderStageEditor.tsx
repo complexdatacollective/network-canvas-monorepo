@@ -335,7 +335,11 @@ export function renderStageEditor<T extends StageType = StageType>(
   // chain or a timer that a real typist's fingers would have let through
   // arrives here only after the whole string is in — so these tests exercise
   // one scheduling of a change, not the one a person produces.
-  const user = userEvent.setup({ delay: null });
+  //
+  // The one turn of the event loop that IS needed — the one between `type`'s
+  // own click and the keystrokes that follow it — is given below.
+  const keyboard = userEvent.setup({ delay: null });
+  const user = withSafeTypingIntoRichText(keyboard);
   // Only fabricated revisions are numbered here. A real seeded change takes
   // the number the host gives it.
   let fabrications = 0n;
@@ -474,6 +478,49 @@ export function renderStageEditor<T extends StageType = StageType>(
               },
         );
       });
+    },
+  };
+}
+
+type HarnessUser = ReturnType<typeof userEvent.setup>;
+
+// Read from the attribute rather than from `isContentEditable`, which jsdom
+// leaves undefined.
+const isContentEditable = (element: Element): boolean => {
+  const editable = element.getAttribute('contenteditable');
+  return editable === '' || editable === 'true';
+};
+
+/**
+ * A keyboard whose `type` is safe to point at a rich text field.
+ *
+ * `clear` then `type` on a `singleLine` field saved "ho else?" for "Who
+ * else?": one keystroke short, from the top. `type` clicks the element itself
+ * before typing into it, and a `contenteditable` is where that click goes
+ * wrong. jsdom lays nothing out, so user-event cannot place a caret from
+ * coordinates; it walks the element for text instead, finds none in a field
+ * that was just emptied, and settles the caret at the END OF THE ELEMENT —
+ * outside the paragraph rather than inside it. ProseMirror puts a stray
+ * selection like that back on its next turn of the event loop, and `type`,
+ * which does its own click, never gives it one: the first character is
+ * written into the DOM as a bare text node between blocks, and a document that
+ * is one paragraph has nowhere to hold it.
+ *
+ * So the click is made as a call of its own, and the typing skips its own.
+ * Every top-level user-event call is wrapped in `act`, which is the turn
+ * ProseMirror needs. Nothing about the CONTROL is at fault — a researcher
+ * cannot put a caret between blocks, and a browser's own click never does —
+ * so this is the harness's to get right rather than the editor's.
+ */
+function withSafeTypingIntoRichText(keyboard: HarnessUser): HarnessUser {
+  return {
+    ...keyboard,
+    type: async (element, text, options) => {
+      if (options?.skipClick === true || !isContentEditable(element)) {
+        return keyboard.type(element, text, options);
+      }
+      await keyboard.click(element);
+      return keyboard.type(element, text, { ...options, skipClick: true });
     },
   };
 }

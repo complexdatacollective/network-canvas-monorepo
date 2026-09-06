@@ -6,6 +6,8 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { buildUpdateVariableRequest } from '../../codebook/editing.ts';
+import RichTextField from '../../fields/RichTextField.tsx';
+import ProtocolField from '../../form/ProtocolField.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useResourceGateway } from '../../resources/context.tsx';
 import BuilderSection from '../../sections/BuilderSection.tsx';
@@ -259,6 +261,60 @@ describe('the stage-editor test harness', () => {
 
     harness.setReadOnly(false);
     expect(harness.session.getSnapshot().access.mode).toBe('editable');
+  });
+});
+
+/**
+ * A single-paragraph markdown field, which is what a prompt, a question and a
+ * hint are. The stage key is one every stage may carry, so this mounts over
+ * the fixture's own stage rather than inventing a schema the save would
+ * refuse.
+ */
+function SingleLineQuestion() {
+  return (
+    <BuilderSection title="Question">
+      <ProtocolField<typeof RichTextField>
+        name="interviewScript"
+        component={RichTextField}
+        label="Question text"
+        singleLine
+      />
+    </BuilderSection>
+  );
+}
+
+const informationAsking = (question: string) => {
+  const information = loadFixtureStage('information-1');
+  return {
+    id: information.id,
+    type: information.type,
+    fields: { ...information.fields, interviewScript: question },
+  };
+};
+
+/**
+ * The harness types with no wait between keystrokes, which is a saving of real
+ * seconds across the suite and must not cost a keystroke. Rich text is where
+ * it could: the field is a `contenteditable`, and user-event has no layout to
+ * place a caret from.
+ */
+describe('the harness keyboard', () => {
+  it('replaces a single-line rich text answer without losing its first character', async () => {
+    const harness = renderStageEditor({
+      stage: informationAsking('Who is closest to you?'),
+      sections: <SingleLineQuestion />,
+    });
+
+    const question = await screen.findByRole('textbox', {
+      name: 'Question text',
+    });
+    await harness.user.clear(question);
+    await harness.user.type(question, 'Who else?');
+
+    // The saved markdown, not the text on screen: a lost first character
+    // reaches the protocol, and this is the value a researcher's stage keeps.
+    const request = await harness.submit();
+    expect(request?.stageDocument.interviewScript).toBe('Who else?');
   });
 });
 
