@@ -825,6 +825,15 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       let pendingCommands = this.snapshot.pendingCommands.filter(
         (batch) => batch.id > planned.throughBatchId,
       );
+      // How many of those the host was HANDED before this request went out.
+      // A batch given to `onCommands` is the host's — applied in the order it
+      // was given, and before the host answers anything else this session asks
+      // of it (see the option) — so its being in the answer is not something to
+      // read off the answer at all. The reading below decides only the batches
+      // delivery cannot order: the ones made while this request was in flight.
+      const deliveredBefore = pendingCommands.filter(
+        (batch) => batch.id <= planned.deliveredThroughBatchId,
+      ).length;
       // Whether this apply moved the ground the batches still pending stand on.
       let rebased: boolean;
       if (stageAbsentByCreation) {
@@ -862,16 +871,21 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
               return false;
             }
           },
+          deliveredBefore,
         );
-        // `null` is a stage a collaborator also moved. Everything stays
-        // pending and is rebased onto it, which errs where every other path
-        // here errs: towards sending a batch the host may hold twice rather
-        // than losing the researcher's unsaved work outright.
-        if (accounted !== null)
-          pendingCommands = pendingCommands.slice(accounted);
+        // `null` is a stage a collaborator also moved, which says nothing
+        // about the batches this session handed over BEFORE the request: the
+        // host applied those whoever else touched the stage afterwards, so
+        // they are retired and only what was made during the round trip is
+        // rebased onto the answer.
+        pendingCommands = pendingCommands.slice(accounted ?? deliveredBefore);
         // The draft has to pick up the request's own decision either way, so
-        // the history is fenced only if the stage actually moved.
-        rebased = canonicalize(fields) !== canonicalize(this.baseFields);
+        // the history is fenced only if the stage actually moved — and always
+        // when it moved somewhere this session cannot account for, because the
+        // batches left pending are then standing on new ground.
+        rebased =
+          accounted === null ||
+          canonicalize(fields) !== canonicalize(this.baseFields);
       } else if (pendingCommands.length === 0) {
         // No unsaved work at stake: the authoritative stage is simply adopted,
         // and the history is fenced only if it actually moved.
@@ -894,7 +908,9 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
         const accounted = this.deliveredPrefixLength(
           pendingCommands,
           (candidate) => canonicalize(candidate) === canonicalStage,
+          deliveredBefore,
         );
+        pendingCommands = pendingCommands.slice(accounted ?? deliveredBefore);
         if (accounted === null) {
           // The stage came back as neither: a collaborator moved it while this
           // request was in flight. Adopted and rebased onto, exactly as
@@ -910,15 +926,17 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
           // that now exists, and one under the same id replays the host's
           // cached result into the same refusal.
           //
-          // Which of the delivered batches the host had already applied cannot
-          // be read off a stage a collaborator has also touched, so all of
-          // them stay pending and are rebased onto it. That is the same choice
-          // the paths above make, and it errs where they do: towards sending a
-          // batch the host may hold twice rather than losing the researcher's
-          // unsaved work outright.
+          // The batches this session HANDED OVER before the request are the
+          // host's all the same — that is what `onCommands` means, and a
+          // collaborator's edit to the same stage says nothing about it — so
+          // they are retired above and are in the answer being adopted here.
+          // Keeping them pending replayed them onto a stage already holding
+          // them: the researcher's row a second time in the draft, and a
+          // finish that writes the duplicate to the host. Only the batches
+          // made while the request was in flight are still this session's, and
+          // those are rebased onto the answer rather than lost.
           rebased = true;
         } else {
-          pendingCommands = pendingCommands.slice(accounted);
           rebased = false;
         }
       }
@@ -1540,6 +1558,16 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
          */
         throughBatchId: number;
         /**
+         * Batches up to and including this id were HANDED to the host before
+         * this request went out, so it applied them before answering it (see
+         * `onCommands`). `-1` for a host that has been given nothing.
+         *
+         * Delivery, not a reading: what the answer is read for is the batches
+         * made while the request was in flight, which are the only ones
+         * delivery cannot order against it.
+         */
+        deliveredThroughBatchId: number;
+        /**
          * Whether the request says anything about the edited stage. When it
          * does, the stage the host answers with is the request's own decision;
          * when it does not, the host was asked to leave the stage alone, and
@@ -1573,6 +1601,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
         status: 'send',
         edits: request.edits,
         throughBatchId: -1,
+        deliveredThroughBatchId: -1,
         stageEdited,
         ...(stageEdit === undefined
           ? {}
@@ -1590,11 +1619,16 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       });
     }
 
+    // What the host is holding: the base plus every batch already handed over.
+    const delivered = this.deliveredBatchCount(pending);
+    const deliveredThroughBatchId = pending[delivered - 1]?.id ?? -1;
+
     if (stageEdit === undefined) {
       return Object.freeze({
         status: 'send',
         edits: request.edits,
         throughBatchId: -1,
+        deliveredThroughBatchId,
         stageEdited,
       });
     }
@@ -1623,9 +1657,8 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       });
     }
 
-    // What the host is holding, and so what this update is addressed at: the
-    // base plus every batch already handed over. Only the rest is folded.
-    const delivered = this.deliveredBatchCount(pending);
+    // What this update is addressed at, then: the stage the host is holding.
+    // Only the batches it has not been given are folded in.
     const held = this.stageWithBatches(pending.slice(0, delivered));
     if (held === null) {
       return Object.freeze({
@@ -1654,6 +1687,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
           : edit,
       ),
       throughBatchId: folded[folded.length - 1]?.id ?? -1,
+      deliveredThroughBatchId,
       stageEdited,
       stageCommands: stageEdit.commands,
     });
@@ -1714,6 +1748,14 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
    * with, a request carrying a stage edit compares that answer with its own
    * commands applied, and the pre-flight check compares the content hash the
    * request was BUILT from.
+   *
+   * `from` is the prefix the CONTRACT already settles — the batches handed
+   * over before the request went out, which the host applied before answering
+   * it. Shorter prefixes are not offered as readings of the answer, because
+   * one of them matching would say the host had not applied a batch it was
+   * given: two batches that cancel each other out make the base itself match
+   * again, and reading that as "the host holds neither" leaves both pending
+   * for a finish to send a second time.
    */
   /**
    * The outstanding batches, re-expressed against a base that has moved.
@@ -1803,9 +1845,10 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
   private deliveredPrefixLength(
     pending: readonly PendingCommandBatch[],
     isHostStage: (fields: SectionDoc) => boolean,
+    from = 0,
   ): number | null {
     let document = cloneDoc(this.baseFields);
-    if (isHostStage(document)) return 0;
+    if (from === 0 && isHostStage(document)) return 0;
     // Without an `onCommands` the host has been given nothing, so the base is
     // the only stage it can honestly be holding.
     if (this.options.onCommands === undefined) return null;
@@ -1824,7 +1867,7 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
         // difference between it and the host's stage.
         return null;
       }
-      if (isHostStage(document)) return index + 1;
+      if (index + 1 >= from && isHostStage(document)) return index + 1;
     }
     return null;
   }

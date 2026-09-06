@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { contentHash, type SectionDoc } from '@codaco/studio-sync/apply';
+import {
+  contentHash,
+  type Command,
+  type SectionDoc,
+} from '@codaco/studio-sync/apply';
 import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -286,6 +290,38 @@ const renameAndCreatePlace = (host: InMemoryCompoundHost) => ({
     request.edits[1]!,
   ],
 });
+
+/**
+ * A change to the stage made from ANOTHER session, applied straight on the
+ * host — the collaborator this session can only find out about from an answer.
+ */
+const collaboratorStageEdit = (
+  host: InMemoryCompoundHost,
+  id: string,
+  commands: readonly Command[],
+): void => {
+  const sections = host.getSnapshot().protocolSections;
+  const result = host.submit({
+    id,
+    description: 'Edit the stage from another session',
+    edits: [
+      {
+        kind: 'update',
+        sectionId: stageSection,
+        expectedContentHash: contentHash(sections[stageSection] ?? {}),
+        commands: [...commands],
+      },
+    ],
+    authority: {
+      sectionId: stageSection,
+      leaseOwner: 'owner-primary',
+      leaseEpoch: 4n,
+    },
+  });
+  if (result.status !== 'applied') {
+    throw new Error('the collaborator’s edit was refused');
+  }
+};
 
 /** One block of an Information stage's page, as the schema stores it. */
 const block = (id: string) => ({ id, type: 'text', content: `Block ${id}` });
@@ -996,26 +1032,9 @@ describe('a codebook-only compound against each kind of host', () => {
     const { host, session } = createSession();
     session.dispatch([{ op: 'set', key: 'title', value: 'Places nearby' }]);
     const before = session.getSnapshot();
-    const sections = host.getSnapshot().protocolSections;
-    expect(
-      host.submit({
-        id: 'collaborator-rename',
-        description: 'Rename the stage from another session',
-        edits: [
-          {
-            kind: 'update',
-            sectionId: stageSection,
-            expectedContentHash: contentHash(sections[stageSection] ?? {}),
-            commands: [{ op: 'set', key: 'label', value: 'Renamed elsewhere' }],
-          },
-        ],
-        authority: {
-          sectionId: stageSection,
-          leaseOwner: 'owner-primary',
-          leaseEpoch: 4n,
-        },
-      }),
-    ).toMatchObject({ status: 'applied' });
+    collaboratorStageEdit(host, 'collaborator-rename', [
+      { op: 'set', key: 'label', value: 'Renamed elsewhere' },
+    ]);
 
     await expect(
       session.requestCompoundEdit(createPlaceOnly),
@@ -1047,5 +1066,41 @@ describe('a codebook-only compound against each kind of host', () => {
     expect(session.getSnapshot().history.generation).toBe(
       before.history.generation + 1,
     );
+  });
+
+  /**
+   * The same adoption, for a host that has been GIVEN the researcher's batch.
+   *
+   * Which batches the host holds is delivery, not evidence, and a stage a
+   * collaborator has also touched does not stop being one the host applied
+   * this session's batch to. Adopting the answer while keeping that batch
+   * pending replayed it onto a stage already holding it — a second copy of the
+   * researcher's row in the draft, and a finish that writes it to the host.
+   */
+  it('does not replay a batch the live host is holding onto a stage a collaborator also moved', async () => {
+    const { host, session } = createSession({ applyLive: true });
+    session.dispatch(insertBlock('one', 0));
+    // Handed over, and applied: the host holds this row already.
+    expect(host.getSnapshot().protocolSections[stageSection]).toMatchObject({
+      items: [block('one')],
+    });
+    const before = session.getSnapshot();
+    collaboratorStageEdit(host, 'collaborator-block', insertBlock('zero', 0));
+
+    await expect(
+      session.requestCompoundEdit(createPlaceOnly),
+    ).resolves.toMatchObject({ status: 'applied' });
+
+    // Once, not twice, and beside the row the collaborator added.
+    expect(stageItems(session)).toEqual([block('zero'), block('one')]);
+    // Nothing is owed any more, so the finish sends it no second time.
+    expect(session.getSnapshot().pendingCommands).toEqual([]);
+    expect(session.getSnapshot().history.generation).toBe(
+      before.history.generation + 1,
+    );
+    await session.finish();
+    expect(host.getSnapshot().protocolSections[stageSection]).toMatchObject({
+      items: [block('zero'), block('one')],
+    });
   });
 });
