@@ -258,21 +258,27 @@ function findRow(
  * The arrival's order stands, because the edit that produced a `set` is about
  * a row's contents rather than about where the rows are — a reorder is a
  * `moveItem`, which is rebased rather than merged.
+ *
+ * A row with no `id` of its own is answered by `findRow` like any other, which
+ * means its CONTENT is its identity: rewriting such a row reads as removing it
+ * and adding another, because from here those two edits are the same edit and
+ * nothing in the document tells them apart. Matching an id-less row by
+ * position instead — on the strength of the local list having kept its length,
+ * as this did — was right only while the edit changed exactly one row and
+ * moved none. A submit that reorders two rows and rewrites one of them is also
+ * length-preserving, and there the mapping was wrong for every row at once: it
+ * resurrected a row the collaborator had deleted and dropped the researcher's
+ * rewrite. `FormFieldSchema.id` is optional by design — Architect started
+ * minting one and the schema must tolerate a protocol that predates that — so
+ * `form.fields` and `nodeConfig.form` really do hold such rows.
  */
 function mergeListArrival(
   before: readonly unknown[],
   arrival: readonly unknown[],
   next: readonly unknown[],
 ): unknown[] {
-  // Where each ancestor row ended up on each side. An id-less row in a list the
-  // edit did not resize is matched by POSITION: such an edit rewrote one row in
-  // place, and its rewritten content is exactly what content matching cannot
-  // find.
-  const localOf = before.map((row, index) =>
-    rowIdentity(row) === undefined && next.length === before.length
-      ? index
-      : findRow(next, row, index),
-  );
+  // Where each ancestor row ended up on each side.
+  const localOf = before.map((row, index) => findRow(next, row, index));
   const remoteOf = before.map((row, index) => findRow(arrival, row, index));
 
   const merged: unknown[] = [];
