@@ -1,4 +1,5 @@
 import {
+  createElement,
   useEffect,
   useMemo,
   useRef,
@@ -9,6 +10,11 @@ import {
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import Surface from '@codaco/fresco-ui/layout/Surface';
+import {
+  EnclosingHeadingLevel,
+  headingTagBelow,
+  useEnclosingHeadingLevel,
+} from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
@@ -267,6 +273,16 @@ export default function CodebookVariableValidationEditor({
     }
   };
 
+  // Opened from a dialog, whose own title is the heading above this one: an
+  // `h2` written out here sat beside the dialog's title instead of under it,
+  // and every alert this editor raises counted from the dialog and landed
+  // beside this title in turn.
+  const enclosingHeadingLevel = useEnclosingHeadingLevel();
+  const headingTag =
+    enclosingHeadingLevel === null
+      ? 'h2'
+      : headingTagBelow(enclosingHeadingLevel);
+
   const saveLabel =
     snapshot.status === 'submitting'
       ? 'Saving…'
@@ -279,7 +295,14 @@ export default function CodebookVariableValidationEditor({
       <form onSubmit={(event) => void handleSubmit(event)} noValidate>
         <div className="flex flex-col gap-6">
           <div>
-            <Heading level="h2" margin="none">
+            <Heading
+              level="h2"
+              margin="none"
+              // The element only — `level` still carries the type treatment.
+              {...(headingTag === 'h2'
+                ? {}
+                : { render: createElement(headingTag) })}
+            >
               Edit validation for {variableName}
             </Heading>
             <Paragraph emphasis="muted" margin="none">
@@ -288,82 +311,84 @@ export default function CodebookVariableValidationEditor({
             </Paragraph>
           </div>
 
-          {snapshot.authoritativeChanged &&
-            !attributeUnavailable &&
-            !attributeTypeChanged && (
+          <EnclosingHeadingLevel level={headingTag}>
+            {snapshot.authoritativeChanged &&
+              !attributeUnavailable &&
+              !attributeTypeChanged && (
+                <Alert variant="warning" appearance="soft" density="compact">
+                  <AlertTitle>Newer codebook data is available</AlertTitle>
+                  <AlertDescription>
+                    Your validation draft has been kept. Saving will apply it to
+                    the latest authoritative entity data.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+            {attributeTypeChanged && (
               <Alert variant="warning" appearance="soft" density="compact">
-                <AlertTitle>Newer codebook data is available</AlertTitle>
+                <AlertTitle>Attribute type changed</AlertTitle>
                 <AlertDescription>
-                  Your validation draft has been kept. Saving will apply it to
-                  the latest authoritative entity data.
+                  The attribute type changed while this validation draft was
+                  open. Your draft is still visible, but it cannot be saved.
+                  Close and reopen this editor to configure validation for the
+                  new attribute type.
                 </AlertDescription>
               </Alert>
             )}
 
-          {attributeTypeChanged && (
-            <Alert variant="warning" appearance="soft" density="compact">
-              <AlertTitle>Attribute type changed</AlertTitle>
-              <AlertDescription>
-                The attribute type changed while this validation draft was open.
-                Your draft is still visible, but it cannot be saved. Close and
-                reopen this editor to configure validation for the new attribute
-                type.
-              </AlertDescription>
-            </Alert>
-          )}
+            {snapshot.lastFailure !== null && (
+              <Alert
+                ref={failureRef}
+                variant="destructive"
+                appearance="soft"
+                density="compact"
+                tabIndex={-1}
+              >
+                <AlertTitle>Could not save validation</AlertTitle>
+                <AlertDescription>
+                  {compoundFailureMessage(snapshot.lastFailure)}
+                </AlertDescription>
+              </Alert>
+            )}
 
-          {snapshot.lastFailure !== null && (
-            <Alert
-              ref={failureRef}
-              variant="destructive"
-              appearance="soft"
-              density="compact"
-              tabIndex={-1}
-            >
-              <AlertTitle>Could not save validation</AlertTitle>
-              <AlertDescription>
-                {compoundFailureMessage(snapshot.lastFailure)}
-              </AlertDescription>
-            </Alert>
-          )}
+            {attributeUnavailable || draftVariable === undefined ? (
+              <Alert variant="destructive" appearance="soft" density="compact">
+                <AlertTitle>Attribute unavailable</AlertTitle>
+                <AlertDescription>
+                  The latest entity data no longer contains this attribute.
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <VariableValidationEditor
+                entity={subject.entity}
+                variableType={variableType}
+                currentVariableId={variableId}
+                allVariables={variablesForValidation}
+                value={validation}
+                onChange={(nextValidation) => {
+                  activeRequestId.current = null;
+                  session.replaceDraft(
+                    withVariableValidation(
+                      snapshot.draft,
+                      variableId,
+                      nextValidation,
+                    ),
+                  );
+                }}
+                readOnly={readOnly || busy || attributeTypeChanged}
+              />
+            )}
 
-          {attributeUnavailable || draftVariable === undefined ? (
-            <Alert variant="destructive" appearance="soft" density="compact">
-              <AlertTitle>Attribute unavailable</AlertTitle>
-              <AlertDescription>
-                The latest entity data no longer contains this attribute.
-              </AlertDescription>
-            </Alert>
-          ) : (
-            <VariableValidationEditor
-              entity={subject.entity}
-              variableType={variableType}
-              currentVariableId={variableId}
-              allVariables={variablesForValidation}
-              value={validation}
-              onChange={(nextValidation) => {
-                activeRequestId.current = null;
-                session.replaceDraft(
-                  withVariableValidation(
-                    snapshot.draft,
-                    variableId,
-                    nextValidation,
-                  ),
-                );
-              }}
-              readOnly={readOnly || busy || attributeTypeChanged}
-            />
-          )}
-
-          <div className="flex flex-wrap justify-end gap-3">
-            <Button
-              type="submit"
-              color="primary"
-              disabled={readOnly || busy || !dirty || issue !== undefined}
-            >
-              {saveLabel}
-            </Button>
-          </div>
+            <div className="flex flex-wrap justify-end gap-3">
+              <Button
+                type="submit"
+                color="primary"
+                disabled={readOnly || busy || !dirty || issue !== undefined}
+              >
+                {saveLabel}
+              </Button>
+            </div>
+          </EnclosingHeadingLevel>
         </div>
       </form>
     </Surface>

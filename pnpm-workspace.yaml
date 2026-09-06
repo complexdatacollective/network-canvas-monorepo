@@ -96,6 +96,10 @@ catalog:
   '@vitest/browser': ^4.1.11
   '@vitest/browser-playwright': ^4.1.11
   '@vitest/coverage-v8': ^4.1.11
+  # The engine behind Storybook's a11y addon, used directly by the
+  # protocol-builder suite so a heading ladder is judged by the same
+  # `heading-order` rule a story is.
+  axe-core: ^4.11.4
   # Pinned: 1.7.1 is the first release whose peer range admits the pinned
   # drizzle-orm 1.0.0 RC (1.6.x pins ^0.45.2).
   better-auth: 1.7.1

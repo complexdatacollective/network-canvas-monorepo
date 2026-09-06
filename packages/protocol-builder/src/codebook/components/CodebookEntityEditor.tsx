@@ -1,4 +1,5 @@
 import {
+  createElement,
   useCallback,
   useEffect,
   useMemo,
@@ -15,6 +16,11 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelect from '@codaco/fresco-ui/form/fields/Select/Native';
 import { isInterviewerIconName } from '@codaco/fresco-ui/Icon';
 import Surface from '@codaco/fresco-ui/layout/Surface';
+import {
+  EnclosingHeadingLevel,
+  headingTagBelow,
+  useEnclosingHeadingLevel,
+} from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
@@ -400,13 +406,31 @@ export default function CodebookEntityEditor({
   const busy = snapshot.status !== 'editing';
   const interactionDisabled = readOnly || busy;
   const canSubmit = modeProps.mode === 'create' || subject.entity !== 'ego';
+  // Every host opens this editor inside a dialog, whose own title is the
+  // heading above it — so writing an `h2` here put the editor's title beside
+  // the dialog's rather than under it, and the alerts below counted from the
+  // dialog too and landed beside this title in turn. Read instead of written
+  // out, so the same editor is also correct on a page of its own, where an
+  // `h2` is what it has always been.
+  const enclosingHeadingLevel = useEnclosingHeadingLevel();
+  const headingTag =
+    enclosingHeadingLevel === null
+      ? 'h2'
+      : headingTagBelow(enclosingHeadingLevel);
 
   return (
     <Surface spacing="md" shadow="md" noContainer>
       <form onSubmit={(event) => void handleSubmit(event)} noValidate>
         <div className="flex flex-col gap-6">
           <div>
-            <Heading level="h2" margin="none">
+            <Heading
+              level="h2"
+              margin="none"
+              // The element only — `level` still carries the type treatment.
+              {...(headingTag === 'h2'
+                ? {}
+                : { render: createElement(headingTag) })}
+            >
               {modeProps.mode === 'create' ? 'Create' : 'Edit'}{' '}
               {entityLabel(subject)}
             </Heading>
@@ -416,67 +440,69 @@ export default function CodebookEntityEditor({
             </Paragraph>
           </div>
 
-          {snapshot.authoritativeChanged && (
-            <Alert variant="warning" appearance="soft" density="compact">
-              <AlertTitle>Newer codebook data is available</AlertTitle>
-              <AlertDescription>
-                Your draft has been kept. Close and reopen this editor to load
-                the latest entity before saving.
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {snapshot.lastFailure !== null && (
-            <Alert
-              ref={failureRef}
-              variant="destructive"
-              appearance="soft"
-              density="compact"
-              tabIndex={-1}
-            >
-              <AlertTitle>Could not save this entity</AlertTitle>
-              <AlertDescription>
-                {compoundFailureMessage(snapshot.lastFailure)}
-              </AlertDescription>
-            </Alert>
-          )}
-
-          <CodebookEntityFields
-            subject={subject}
-            draft={snapshot.draft}
-            onChange={(draft) => {
-              activeRequestId.current = null;
-              session.replaceDraft(draft);
-            }}
-            errors={errors}
-            disabled={interactionDisabled}
-          />
-
-          <div className="flex flex-wrap justify-end gap-3">
-            {onCancel !== undefined && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onCancel}
-                disabled={busy}
-              >
-                Cancel
-              </Button>
+          <EnclosingHeadingLevel level={headingTag}>
+            {snapshot.authoritativeChanged && (
+              <Alert variant="warning" appearance="soft" density="compact">
+                <AlertTitle>Newer codebook data is available</AlertTitle>
+                <AlertDescription>
+                  Your draft has been kept. Close and reopen this editor to load
+                  the latest entity before saving.
+                </AlertDescription>
+              </Alert>
             )}
-            {canSubmit && (
-              <Button
-                type="submit"
-                color="primary"
-                disabled={
-                  interactionDisabled ||
-                  snapshot.authoritativeChanged ||
-                  (modeProps.mode === 'update' && !session.isDirty())
-                }
+
+            {snapshot.lastFailure !== null && (
+              <Alert
+                ref={failureRef}
+                variant="destructive"
+                appearance="soft"
+                density="compact"
+                tabIndex={-1}
               >
-                {snapshot.status === 'submitting' ? 'Saving…' : 'Save entity'}
-              </Button>
+                <AlertTitle>Could not save this entity</AlertTitle>
+                <AlertDescription>
+                  {compoundFailureMessage(snapshot.lastFailure)}
+                </AlertDescription>
+              </Alert>
             )}
-          </div>
+
+            <CodebookEntityFields
+              subject={subject}
+              draft={snapshot.draft}
+              onChange={(draft) => {
+                activeRequestId.current = null;
+                session.replaceDraft(draft);
+              }}
+              errors={errors}
+              disabled={interactionDisabled}
+            />
+
+            <div className="flex flex-wrap justify-end gap-3">
+              {onCancel !== undefined && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onCancel}
+                  disabled={busy}
+                >
+                  Cancel
+                </Button>
+              )}
+              {canSubmit && (
+                <Button
+                  type="submit"
+                  color="primary"
+                  disabled={
+                    interactionDisabled ||
+                    snapshot.authoritativeChanged ||
+                    (modeProps.mode === 'update' && !session.isDirty())
+                  }
+                >
+                  {snapshot.status === 'submitting' ? 'Saving…' : 'Save entity'}
+                </Button>
+              )}
+            </div>
+          </EnclosingHeadingLevel>
         </div>
       </form>
     </Surface>

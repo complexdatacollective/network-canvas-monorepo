@@ -91,6 +91,7 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
+    "axe-core": "catalog:",
     "jsdom": "catalog:",
     "motion": "catalog:",
     "react": "catalog:",
