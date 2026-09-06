@@ -45,18 +45,21 @@ describe('the questions an ordinal bin asks', () => {
   });
 
   /**
-   * SKIPPED until S's `itemTemplate` passthrough lands on `PromptsSection`
-   * (branch `feat/protocol-builder-editor-sections`; `DialogArrayField`
-   * already accepts `itemTemplate`, `PromptsSection` does not forward it).
-   * The `TODO(S itemTemplate)` in `OrdinalBinPromptsSection.tsx` names the
-   * template to pass.
+   * A researcher who never forms an opinion about the colours still writes a
+   * valid prompt, as they can in Architect.
    *
-   * Architect seeds a new ordinal prompt with the first swatch of the schema's
-   * sequence, so a researcher who never looks at the gradient still writes a
-   * valid prompt. Unskipping this REPLACES the refusal tested below: once the
-   * gradient is seeded there is no prompt with no gradient to refuse.
+   * This is the only test of the gradient on a NEW prompt, and it replaces a
+   * refusal: the gradient is required, so before it was seeded a prompt that
+   * had everything else was refused for a choice the interface is happy to
+   * make. There is no longer a prompt with no gradient to refuse — the control
+   * offers no unset state, so nothing the researcher can do in this dialog
+   * takes the colour back off.
+   *
+   * The assertion is on what the STAGE receives, not on the checked radio: a
+   * control showing a swatch it had not written would pass a check on the
+   * radio while saving a prompt with no colour at all.
    */
-  it.skip('seeds a new prompt with the first swatch, as Architect does', async () => {
+  it('seeds a new prompt with the first swatch, as Architect does', async () => {
     const harness = renderStageEditor(openEditor());
 
     await harness.user.click(
@@ -85,21 +88,48 @@ describe('the questions an ordinal bin asks', () => {
     );
   });
 
-  it('refuses a prompt with no gradient, and says which one', async () => {
-    const harness = renderStageEditor(openEditor());
+  /**
+   * The gradient is still required, and a prompt that arrives without one is
+   * still refused by name.
+   *
+   * The seed above covers prompts this editor ADDS, and nothing else: a prompt
+   * the stage was already holding keeps what it was saved with, which is the
+   * whole point of seeding only the added row. A protocol written before the
+   * key was required — or by hand — can therefore reach this editor with no
+   * gradient, and the researcher has to be told which choice is missing rather
+   * than left with a dialog that will not close.
+   *
+   * Built rather than taken from the fixture, because the fixture protocol is
+   * valid and a valid ordinal prompt has a colour.
+   */
+  it('refuses a prompt that arrived with no gradient, and says which one', async () => {
+    const harness = renderStageEditor({
+      stage: {
+        id: 'ordinal-bin-legacy',
+        type: 'OrdinalBin',
+        fields: {
+          label: 'Ordinal Bin',
+          subject: { entity: 'node', type: 'person' },
+          prompts: [
+            {
+              id: 'ordinal-bin-legacy-prompt-1',
+              text: 'How often do you have contact with this person?',
+              variable: 'contactFreq',
+            },
+          ],
+        },
+      },
+      sections: <OrdinalBinPromptsSection />,
+    });
 
     await harness.user.click(
-      screen.getByRole('button', { name: 'Create new prompt' }),
+      screen.getByRole('button', { name: 'Edit prompt' }),
     );
-    await harness.user.type(
-      await screen.findByRole('textbox', { name: 'Prompt text' }),
-      'How often do you talk?',
-    );
-    await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Attribute' }),
-      'contactFreq',
-    );
-    await harness.user.click(screen.getByRole('button', { name: 'Add' }));
+    // No swatch is checked, so there is a refusal to reach at all.
+    await screen.findByRole('combobox', { name: 'Attribute' });
+    expect(screen.getByRole('radio', { name: 'Sea Green' })).not.toBeChecked();
+
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(
       await screen.findByText('Choose the gradient the bins are shaded along.'),

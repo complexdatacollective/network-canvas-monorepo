@@ -153,29 +153,29 @@ export default function OrdinalBinPromptsSection({
     subjectForRow: () => subject,
   });
 
-  /*
-    TODO(S itemTemplate): pass
-      itemTemplate={() => ({ color: 'ord-color-seq-1' })}
-    to `PromptsSection` once it forwards `itemTemplate` to `DialogArrayField`
-    — S is adding that passthrough on `feat/protocol-builder-editor-sections`,
-    and `DialogArrayField` already takes it.
-
-    Architect seeds a new ordinal prompt with the first swatch of the schema's
-    sequence (`OrdinalBinPrompts/OrdinalBinPrompts.tsx`:
-    `const template = () => ({ color: 'ord-color-seq-1' })`), so a researcher
-    who never looks at the gradient still writes a valid prompt. Here the
-    gradient is required and unseeded, so a new prompt is refused until they
-    pick one — correct, but a step Architect does not ask for.
-
-    The test that proves the seed is skipped beside the refusal it replaces,
-    in `__tests__/OrdinalBinPromptsSection.test.tsx`.
-  */
-
   return (
     <PromptsSection
       PromptEditor={OrdinalBinPromptEditor}
       PromptPreview={PromptTextPreview}
       editorValidate={pickGate}
+      /*
+        A new prompt arrives already shaded, as Architect's does
+        (`OrdinalBinPrompts/OrdinalBinPrompts.tsx`:
+        `const template = () => ({ color: 'ord-color-seq-1' })`).
+
+        The gradient is required and there is no unset state to offer, so a
+        researcher who never forms an opinion about the colours would otherwise
+        have their prompt refused for a choice the interface is happy to make
+        for them. The first swatch of the schema's own sequence is the choice,
+        and it is only a starting point: the control is right there, and
+        changing it is one click.
+
+        Seeded here rather than defaulted in the control, because it is a value
+        the saved prompt holds. A control that showed a swatch it had not
+        written would save a prompt with no colour while telling the researcher
+        it had one.
+      */
+      itemTemplate={() => ({ color: 'ord-color-seq-1' })}
       copy={{ ...PROMPTS_COPY, ...copy }}
     />
   );
