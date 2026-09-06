@@ -284,8 +284,9 @@ export type AlertTitleProps = React.HTMLAttributes<HTMLHeadingElement> & {
    * heading above it. Fixed at `h4`, an alert raised under an `h2` skips a
    * level, which is a `heading-order` failure and, for anyone navigating by
    * headings, a title that reads as belonging to a subsection that does not
-   * exist. A dialog states the level it encloses, so a title inside one lands
-   * one below it without being told; anywhere else the level stays `h4`.
+   * exist. A dialog, and a section within it, each state the level they
+   * enclose, so a title inside one lands one below the NEAREST of them
+   * without being told; with no heading above it at all the level stays `h4`.
    *
    * Changes the element only. The title keeps the small all-caps treatment
    * that makes it read as an alert's title at every level, because that is
@@ -303,7 +304,7 @@ const AlertTitle = React.forwardRef<HTMLParagraphElement, AlertTitleProps>(
     const enclosingLevel = useEnclosingHeadingLevel();
     const tag =
       headingLevel ??
-      (enclosingLevel === null ? 'h4' : headingTagBelow(enclosingLevel, 1));
+      (enclosingLevel === null ? 'h4' : headingTagBelow(enclosingLevel));
 
     return (
       <Heading
