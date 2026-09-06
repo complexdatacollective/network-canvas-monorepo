@@ -21,7 +21,11 @@
     "./tenant": "./src/tenant.ts",
     "./role-bootstrap": "./src/role-bootstrap.ts",
     "./postgres-migrations": "./src/postgres-migrations.ts",
-    "./postgres-migration-artifacts": "./src/postgres-migration-artifacts.ts"
+    "./postgres-migration-artifacts": "./src/postgres-migration-artifacts.ts",
+    "./postgres-pool": "./src/postgres-pool.ts",
+    "./section-validation": "./src/section-validation.ts",
+    "./template-metadata": "./src/template-metadata.ts",
+    "./template-exchange": "./src/template-exchange.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -29,9 +33,14 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@codaco/protocol-validation": "workspace:^",
     "@noble/hashes": "^2.3.0",
+    "crc-32": "^1.2.2",
     "drizzle-orm": "catalog:",
+    "fflate": "^0.8.3",
+    "file-type": "^22.0.2",
     "pg": "^8.22.0",
+    "pg-connection-string": "^2.14.0",
     "zod": "catalog:"
   },
   "devDependencies": {
