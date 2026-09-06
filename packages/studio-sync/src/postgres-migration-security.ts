@@ -294,6 +294,12 @@ export async function enforceMigrationSecurity(
               OR has_any_column_privilege(login.oid, object.oid, 'REFERENCES')
             ) ELSE false END
         )
+        OR EXISTS (
+          SELECT 1 FROM pg_class object WHERE object.relnamespace IN (SELECT oid FROM namespaces)
+            AND CASE WHEN object.relkind = 'S'
+              THEN has_sequence_privilege(login.oid, object.oid, 'UPDATE')
+              ELSE false END
+        )
         OR (login.rolname = $3 AND EXISTS (
           SELECT 1 FROM pg_class object WHERE object.relnamespace IN (SELECT oid FROM namespaces)
             AND CASE WHEN object.relkind IN ('r', 'p') THEN (
@@ -340,7 +346,7 @@ export async function enforceMigrationSecurity(
   }
   if (!loginAccess.rows[0].safe) {
     throw new Error(
-      `Runtime and backup identities must own no database objects and hold no access outside their reviewed ${applicationName} roles: remove direct or PUBLIC login data grants, CREATE, CONNECT grant options, executable SECURITY DEFINER routines, view, materialized view, foreign table, or large object access beyond read-only backup grants, and backup table or sequence writes.`,
+      `Runtime and backup identities must own no database objects and hold no access outside their reviewed ${applicationName} roles: remove direct or PUBLIC login data grants, CREATE, CONNECT grant options, executable SECURITY DEFINER routines, view, materialized view, foreign table, or large object access beyond read-only backup grants, backup table writes, or sequence UPDATE privileges.`,
     );
   }
   // CONNECT is checked only at connection admission. Enrollment must already
@@ -393,6 +399,29 @@ export async function enforceMigrationSecurity(
   if (sessions.rows[0]?.present) {
     throw new Error(
       `${applicationName} has existing connections from unenrolled logins. Quarantine database admission and have the administrator remove those sessions before migrating.`,
+    );
+  }
+}
+
+/** Pending schema changes require all non-administrative sessions to be gone.
+ * Deployment admission must remain closed for the entire migration window. */
+export async function enforceMigrationQuiescence(
+  client: pg.PoolClient,
+  applicationName: string,
+): Promise<void> {
+  await client.query('SELECT pg_stat_clear_snapshot()');
+  const sessions = await client.query<{ present: boolean }>(`
+    SELECT EXISTS (
+      SELECT 1 FROM pg_stat_activity activity
+        JOIN pg_roles login ON login.oid = activity.usesysid
+        JOIN pg_database database ON database.datname = activity.datname
+      WHERE activity.datname = current_database() AND NOT login.rolsuper
+        AND login.oid <> database.datdba AND login.rolname <> session_user
+    ) AS present
+  `);
+  if (sessions.rows[0]?.present !== false) {
+    throw new Error(
+      `${applicationName} has existing runtime connections. Keep admission closed and stop all web, worker and backup processes before applying pending migrations.`,
     );
   }
 }

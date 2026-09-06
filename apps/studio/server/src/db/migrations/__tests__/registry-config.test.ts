@@ -83,6 +83,26 @@ function artifact(roles: RegistryRoles, extraSidecars = ''): Migration {
   return { sql, sidecars, snapshot, manifest, checksum: jsonHash(manifest) };
 }
 
+function nextArtifact(previous: Migration, sql: string): Migration {
+  const snapshot = { fixture: 'registry', version: 2 };
+  const manifest = {
+    format: 1 as const,
+    id: '0002_registry',
+    previous: previous.manifest.id,
+    fingerprint: sha256(sql),
+    snapshotHash: jsonHash(snapshot),
+    sqlHash: sha256(sql),
+    sidecarsHash: sha256(''),
+  };
+  return {
+    sql,
+    sidecars: '',
+    snapshot,
+    manifest,
+    checksum: jsonHash(manifest),
+  };
+}
+
 async function createDeployment(db: DbEnv, roles: RegistryRoles) {
   const scratch = await createScratchDatabase(db);
   const administrator = new Pool({ connectionString: db.url });
@@ -109,7 +129,9 @@ async function createDeployment(db: DbEnv, roles: RegistryRoles) {
     return pool;
   };
   const dispose = async () => {
-    await Promise.all(pools.map((pool) => pool.end()));
+    await Promise.all(
+      pools.filter((pool) => !pool.ended).map((pool) => pool.end()),
+    );
     await scratch.dispose();
     await administrator.query(
       `DROP ROLE IF EXISTS ${allowedLogins.map(escapeIdentifier).join(', ')}`,
@@ -196,6 +218,294 @@ async function withRegistryCluster(
 describe.skipIf(!database)(
   'shared migration engine with registry configuration',
   () => {
+    it.each(['app', 'operator'] as const)(
+      'refuses configured Registry %s sequence resets but preserves ordinary allocation and reads',
+      async (identity) => {
+        await withRegistryCluster(async (create, roles) => {
+          const deployment = await create();
+          const migrator = createPostgresMigrator(deployment.config);
+          const initial = artifact(roles);
+          await migrator.migrate(
+            deployment.owner,
+            [initial],
+            fingerprint,
+            deployment.allowedLogins,
+          );
+          const role = roles[identity];
+          await deployment.owner
+            .query(`CREATE SEQUENCE public.registry_sequence MAXVALUE 9;
+            GRANT USAGE, SELECT ON SEQUENCE public.registry_sequence TO ${escapeIdentifier(role)}`);
+          const runtime = deployment.connect(deployment.logins[identity]);
+          const client = await runtime.connect();
+          try {
+            await client.query(`SET ROLE ${escapeIdentifier(role)}`);
+            expect(
+              (
+                await client.query(
+                  "SELECT nextval('registry_sequence') AS value",
+                )
+              ).rows,
+            ).toEqual([{ value: '1' }]);
+            await expect(
+              client.query("SELECT setval('registry_sequence', 9, true)"),
+            ).rejects.toMatchObject({ code: '42501' });
+            await expect(
+              migrator.migrate(
+                deployment.owner,
+                [initial],
+                fingerprint,
+                deployment.allowedLogins,
+              ),
+            ).resolves.toEqual([]);
+            await deployment.owner.query(
+              `GRANT UPDATE ON SEQUENCE public.registry_sequence TO ${escapeIdentifier(role)}`,
+            );
+            expect(
+              (
+                await client.query(
+                  "SELECT setval('registry_sequence', 9, true) AS value",
+                )
+              ).rows,
+            ).toEqual([{ value: '9' }]);
+            await expect(
+              client.query("SELECT nextval('registry_sequence')"),
+            ).rejects.toMatchObject({ code: '2200H' });
+            await expect(
+              migrator.migrate(
+                deployment.owner,
+                [initial],
+                fingerprint,
+                deployment.allowedLogins,
+              ),
+            ).rejects.toThrow('sequence UPDATE');
+            await deployment.owner.query(
+              `REVOKE UPDATE ON SEQUENCE public.registry_sequence FROM ${escapeIdentifier(role)}`,
+            );
+            expect(
+              (await client.query('SELECT last_value FROM registry_sequence'))
+                .rows,
+            ).toEqual([{ last_value: '9' }]);
+            await expect(
+              migrator.migrate(
+                deployment.owner,
+                [initial],
+                fingerprint,
+                deployment.allowedLogins,
+              ),
+            ).resolves.toEqual([]);
+          } finally {
+            client.release();
+            await runtime.end();
+          }
+        });
+      },
+    );
+
+    it.each([
+      ['app', undefined],
+      ['app', 'app'],
+      ['operator', undefined],
+      ['operator', 'operator'],
+      ['operator', 'backup'],
+    ] as const)(
+      'requires Registry %s sessions using %s to drain before pending SQL while preserving live no-op checks',
+      async (identity, assumedRole) => {
+        await withRegistryCluster(async (create, roles) => {
+          const deployment = await create();
+          const migrator = createPostgresMigrator(deployment.config);
+          const initial = artifact(roles);
+          await migrator.migrate(
+            deployment.owner,
+            [initial],
+            fingerprint,
+            deployment.allowedLogins,
+          );
+          if (assumedRole === 'backup') {
+            await deployment.administrator.query(
+              runtimeRolesSql([roles.backup], 'Registry'),
+            );
+            await deployment.administrator
+              .query(`REVOKE ${escapeIdentifier(roles.operator)} FROM ${escapeIdentifier(deployment.logins.operator)};
+              GRANT ${escapeIdentifier(roles.backup)} TO ${escapeIdentifier(deployment.logins.operator)} WITH ADMIN FALSE, INHERIT FALSE, SET TRUE`);
+          }
+          await deployment.owner.query(
+            'CREATE SEQUENCE public.registry_execution_probe',
+          );
+          const next = nextArtifact(
+            initial,
+            "SELECT nextval('public.registry_execution_probe'); CREATE TABLE public.registry_pending_guard (id integer)",
+          );
+          const runtime = deployment.connect(deployment.logins[identity]);
+          const client = await runtime.connect();
+          try {
+            if (assumedRole)
+              await client.query(
+                `SET ROLE ${escapeIdentifier(roles[assumedRole])}`,
+              );
+            expect(
+              (await client.query('SELECT current_user AS identity')).rows,
+            ).toEqual([
+              {
+                identity: assumedRole
+                  ? roles[assumedRole]
+                  : deployment.logins[identity],
+              },
+            ]);
+            await expect(
+              migrator.migrate(
+                deployment.owner,
+                [initial],
+                fingerprint,
+                deployment.allowedLogins,
+              ),
+            ).resolves.toEqual([]);
+            await expect(
+              migrator.migrate(
+                deployment.owner,
+                [initial, next],
+                next.manifest.fingerprint,
+                deployment.allowedLogins,
+              ),
+            ).rejects.toThrow('Registry has existing runtime connections');
+            expect(
+              (
+                await deployment.owner.query(
+                  "SELECT to_regclass('public.registry_pending_guard') AS relation",
+                )
+              ).rows,
+            ).toEqual([{ relation: null }]);
+            expect(
+              (
+                await deployment.owner.query(
+                  'SELECT fingerprint FROM public.registry_schema_fingerprint',
+                )
+              ).rows,
+            ).toEqual([{ fingerprint }]);
+            // Sequence allocation survives transaction rollback. A final-only
+            // refusal therefore cannot satisfy this proof that SQL never began.
+            expect(
+              (
+                await deployment.owner.query(
+                  'SELECT is_called FROM public.registry_execution_probe',
+                )
+              ).rows,
+            ).toEqual([{ is_called: false }]);
+          } finally {
+            client.release();
+            await runtime.end();
+          }
+          await expect(
+            migrator.migrate(
+              deployment.owner,
+              [initial, next],
+              next.manifest.fingerprint,
+              deployment.allowedLogins,
+            ),
+          ).resolves.toEqual([next.manifest.id]);
+          expect(
+            (
+              await deployment.owner.query(
+                'SELECT fingerprint FROM public.registry_schema_fingerprint',
+              )
+            ).rows,
+          ).toEqual([{ fingerprint: next.manifest.fingerprint }]);
+          expect(
+            (
+              await deployment.owner.query(
+                'SELECT is_called FROM public.registry_execution_probe',
+              )
+            ).rows,
+          ).toEqual([{ is_called: true }]);
+        });
+      },
+    );
+
+    it('rolls Registry pending SQL back when a configured operator connects after its initial drain check', async () => {
+      await withRegistryCluster(async (create, roles) => {
+        const deployment = await create();
+        const migrator = createPostgresMigrator(deployment.config);
+        const initial = artifact(roles);
+        await migrator.migrate(
+          deployment.owner,
+          [initial],
+          fingerprint,
+          deployment.allowedLogins,
+        );
+        const gate = Number.parseInt(randomUUID().slice(0, 7), 16);
+        const blocker = await deployment.administrator.connect();
+        let pending: Promise<unknown> | undefined;
+        try {
+          await blocker.query('SELECT pg_advisory_lock($1)', [gate]);
+          const next = nextArtifact(
+            initial,
+            `CREATE TABLE registry_racing_guard (id integer); SELECT pg_advisory_xact_lock(${gate})`,
+          );
+          pending = migrator
+            .migrate(
+              deployment.owner,
+              [initial, next],
+              next.manifest.fingerprint,
+              deployment.allowedLogins,
+            )
+            .catch((error: unknown) => error);
+          await expect
+            .poll(
+              async () =>
+                (
+                  await deployment.administrator.query<{ waiting: boolean }>(
+                    "SELECT EXISTS (SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND classid = 0 AND objid = $1 AND NOT granted) AS waiting",
+                    [gate],
+                  )
+                ).rows[0]?.waiting,
+            )
+            .toBe(true);
+          const runtime = deployment.connect(deployment.logins.operator);
+          const client = await runtime.connect();
+          try {
+            await client.query(`SET ROLE ${escapeIdentifier(roles.operator)}`);
+            expect(
+              (await client.query('SELECT current_user AS role')).rows,
+            ).toEqual([{ role: roles.operator }]);
+            await blocker.query('SELECT pg_advisory_unlock($1)', [gate]);
+            const outcome = await pending;
+            expect(outcome).toBeInstanceOf(Error);
+            expect(String(outcome)).toContain(
+              'Registry has existing runtime connections',
+            );
+            expect(
+              (
+                await deployment.owner.query(
+                  "SELECT to_regclass('public.registry_racing_guard') AS relation",
+                )
+              ).rows,
+            ).toEqual([{ relation: null }]);
+            expect(
+              (
+                await deployment.owner.query(
+                  'SELECT fingerprint FROM public.registry_schema_fingerprint',
+                )
+              ).rows,
+            ).toEqual([{ fingerprint }]);
+          } finally {
+            client.release();
+            await runtime.end();
+          }
+          await expect(
+            migrator.migrate(
+              deployment.owner,
+              [initial, next],
+              next.manifest.fingerprint,
+              deployment.allowedLogins,
+            ),
+          ).resolves.toEqual([next.manifest.id]);
+        } finally {
+          await blocker.query('SELECT pg_advisory_unlock($1)', [gate]);
+          blocker.release();
+          await pending;
+        }
+      });
+    });
+
     it.each([
       ['app', 'both', true],
       ['operator', 'both', true],
@@ -220,7 +530,8 @@ describe.skipIf(!database)(
               ? `GRANT ${escapeIdentifier(other)} TO ${escapeIdentifier(login)} WITH ADMIN FALSE, INHERIT FALSE, SET TRUE`
               : `REVOKE ${escapeIdentifier(own)} FROM ${escapeIdentifier(login)}`,
           );
-          const client = await deployment.connect(login).connect();
+          const probePool = deployment.connect(login);
+          const client = await probePool.connect();
           try {
             if (membership === 'both') {
               await client.query(`SET ROLE ${escapeIdentifier(other)}`);
@@ -235,6 +546,9 @@ describe.skipIf(!database)(
             }
           } finally {
             client.release();
+            // The permission proof is complete; pending schema work requires
+            // the actual runtime connection to leave before its positive control.
+            await probePool.end();
           }
           await expect(
             migrator.migrate(
@@ -439,6 +753,7 @@ describe.skipIf(!database)(
           } finally {
             await client.query('ROLLBACK');
             client.release();
+            await runtime.end();
           }
           expect(
             (
@@ -669,23 +984,7 @@ describe.skipIf(!database)(
           );
           const sql =
             'CREATE TABLE public.required_registry_migration (id integer PRIMARY KEY)';
-          const snapshot = { fixture: 'registry', version: 2 };
-          const manifest = {
-            format: 1 as const,
-            id: '0002_registry',
-            previous: initial.manifest.id,
-            fingerprint: sha256(sql),
-            snapshotHash: jsonHash(snapshot),
-            sqlHash: sha256(sql),
-            sidecarsHash: sha256(''),
-          };
-          const next: Migration = {
-            sql,
-            sidecars: '',
-            snapshot,
-            manifest,
-            checksum: jsonHash(manifest),
-          };
+          const next = nextArtifact(initial, sql);
           const role = roles[identity];
           const rewrite = path.includes('rewrite');
           await deployment.owner
