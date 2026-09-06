@@ -1187,12 +1187,32 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       return;
     }
     assertNoIdentityFields(params.fields);
+    // Read before the base moves, for the same reason `rebasePending` is.
+    const foreign = !this.isOwnAcknowledgedStage(
+      params.fields,
+      params.throughBatchId,
+    );
     const rebase = this.rebasePending(
       cloneDoc(params.fields),
       (batch) => batch.id > params.throughBatchId,
     );
     this.baseFields = cloneDoc(params.fields);
     const { batches: pendingCommands, fields } = rebase;
+    if (foreign) {
+      // An undo entry is a whole draft, and every one of these predates the
+      // arrival: undoing to one would take the collaborator's rows back out
+      // with the researcher's own edit. So the history is fenced and rebuilt
+      // out of the rebase's own steps — the draft before each rebased batch —
+      // exactly as the compound-edit apply rebuilds it, which leaves the
+      // researcher able to undo their own outstanding batches one at a time
+      // and nothing else. The generation and the revision are what let the UI
+      // say the history was cut and why.
+      this.undoStack.length = 0;
+      this.redoStack.length = 0;
+      this.historyGeneration += 1;
+      this.fencedAtRevision = params.manifestRevision;
+      this.undoStack.push(...rebase.steps);
+    }
     this.releaseWithheldFrom(pendingCommands);
     this.replaceSnapshot({
       fields,
@@ -1204,6 +1224,42 @@ export class ProtocolBuilderSessionStore implements ProtocolBuilderSession {
       validatedProtocol: null,
     });
     void this.runValidation();
+  }
+
+  /**
+   * Whether an acknowledged stage is nothing but this session's own work.
+   *
+   * The question the undo history turns on. A host that applies `onCommands`
+   * live acknowledges EVERY batch as it commits, so "the base moved" is the
+   * ordinary case and fencing on it would leave the researcher unable to undo
+   * anything they had saved. What actually invalidates the history is a stage
+   * carrying something this session did not put there — a collaborator's row —
+   * because an undo entry is a whole draft that predates it.
+   *
+   * So the base is walked through the batches the acknowledgement covers,
+   * which is the stage the host would be holding if it had applied those and
+   * nothing else, and compared with the one it answered with. A batch that no
+   * longer applies to the base it was made on says nothing reliable, and is
+   * answered the conservative way: treat the arrival as foreign, which fences
+   * the history rather than leaving a stale entry standing.
+   *
+   * Must be called BEFORE `baseFields` is replaced, exactly as
+   * {@link rebasePending} must.
+   */
+  private isOwnAcknowledgedStage(
+    fields: StageFormDraft,
+    throughBatchId: number,
+  ): boolean {
+    let document: SectionDoc = cloneDoc(this.baseFields);
+    for (const batch of this.snapshot.pendingCommands) {
+      if (batch.id > throughBatchId) break;
+      try {
+        document = applyCommands(document, [...batch.commands]);
+      } catch {
+        return false;
+      }
+    }
+    return canonicalize(document) === canonicalize(fields);
   }
 
   /**
