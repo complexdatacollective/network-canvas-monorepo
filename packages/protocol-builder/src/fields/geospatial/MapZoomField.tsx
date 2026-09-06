@@ -34,6 +34,11 @@ export default function MapZoomField({
       min={MIN_ZOOM}
       max={MAX_ZOOM}
       step={1}
+      // Named for the number they move. The shared field's default is
+      // "Increase value", which is also what the two coordinate controls
+      // beside this one would be called — three numbers describing one
+      // starting view, six buttons a screen reader cannot tell apart.
+      stepperLabels={{ increase: 'Increase zoom', decrease: 'Decrease zoom' }}
       value={
         typeof value === 'number' && Number.isFinite(value) ? String(value) : ''
       }

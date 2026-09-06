@@ -185,6 +185,14 @@ export default function MapCenterField({
             readOnly={readOnly}
             aria-invalid={ariaInvalid}
             onChange={(next) => setCoordinate(0, next)}
+            // The steppers are named for the coordinate they move. A screen
+            // reader announces a button by its name alone, and the shared
+            // field's "Increase value" is the same name on both halves of the
+            // pair and on the zoom beside them.
+            stepperLabels={{
+              increase: 'Increase longitude',
+              decrease: 'Decrease longitude',
+            }}
           />
         </div>
         <div className="flex min-w-40 flex-1 flex-col gap-1">
@@ -196,6 +204,10 @@ export default function MapCenterField({
             readOnly={readOnly}
             aria-invalid={ariaInvalid}
             onChange={(next) => setCoordinate(1, next)}
+            stepperLabels={{
+              increase: 'Increase latitude',
+              decrease: 'Decrease latitude',
+            }}
           />
         </div>
       </div>

@@ -134,3 +134,34 @@ describe('clearing a coordinate of the starting centre', () => {
     expect(latitudeInput()).toHaveValue(FIXTURE_LATITUDE);
   });
 });
+
+/**
+ * Three numbers describe the starting view — longitude, latitude and zoom —
+ * so the section carries six stepper buttons, and a screen reader announces a
+ * button by its name alone. Left to the shared field's default, all six are
+ * called "Increase value" or "Decrease value": the control that moves the map
+ * east cannot be told from the one that zooms it in without seeing where it
+ * sits on the page.
+ */
+describe('the steppers beside the starting view’s numbers', () => {
+  it('names each one for the number it moves', () => {
+    openEditor();
+
+    const stepperNames = screen
+      .getAllByRole('button')
+      .map((button) => button.getAttribute('aria-label') ?? '')
+      .filter((name) => /^(Increase|Decrease) /.test(name));
+
+    expect(stepperNames).toHaveLength(6);
+    expect(new Set(stepperNames)).toEqual(
+      new Set([
+        'Increase longitude',
+        'Decrease longitude',
+        'Increase latitude',
+        'Decrease latitude',
+        'Increase zoom',
+        'Decrease zoom',
+      ]),
+    );
+  });
+});
