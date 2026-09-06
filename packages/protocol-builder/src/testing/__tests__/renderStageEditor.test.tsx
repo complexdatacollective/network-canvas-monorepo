@@ -358,6 +358,87 @@ describe('the harness keyboard', () => {
       'Also: Who is closest to you?',
     );
   });
+
+  /**
+   * And the same is true of a caret a test placed ITSELF, which is worth
+   * pinning because it looks as though it should work: `hasSelectedRangeInside`
+   * lets a selection through, so a test could reasonably expect a caret to be
+   * one. It is not. The harness's own click moves it to the start of the text,
+   * and skipping the click leaves ProseMirror never hearing of it — so a test
+   * that needs a position selects a range and types the answer out whole.
+   */
+  it('types at the start whatever caret a test placed', async () => {
+    const harness = renderStageEditor({
+      stage: informationAsking('Who is closest to you?'),
+      sections: <SingleLineQuestion />,
+    });
+    const question = await screen.findByRole('textbox', {
+      name: 'Question text',
+    });
+
+    // Where a click in a browser would leave it: after the first word.
+    const text = question.ownerDocument.evaluate(
+      './/text()',
+      question,
+      null,
+      XPathResult.FIRST_ORDERED_NODE_TYPE,
+      null,
+    ).singleNodeValue;
+    if (text === null) throw new Error('no text in the editor');
+    const selection = question.ownerDocument.defaultView?.getSelection();
+    if (selection == null) throw new Error('no selection');
+    const range = question.ownerDocument.createRange();
+    range.setStart(text, 4);
+    range.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    await harness.user.type(question, 'exactly ');
+
+    const request = await harness.submit();
+    expect(request?.stageDocument.interviewScript).toBe(
+      'exactly Who is closest to you?',
+    );
+  });
+
+  /**
+   * The other two ways a test writes into one of these fields, which are NOT
+   * wrapped. Each is a top-level call, so ProseMirror gets the turn between
+   * them that `type`'s own inner click never gives it, and both write at the
+   * selection they were left with rather than placing one.
+   */
+  it('pastes into a rich text field a test has just emptied', async () => {
+    const harness = renderStageEditor({
+      stage: informationAsking('Who is closest to you?'),
+      sections: <SingleLineQuestion />,
+    });
+    const question = await screen.findByRole('textbox', {
+      name: 'Question text',
+    });
+
+    await harness.user.clear(question);
+    await harness.user.paste('Who else?');
+
+    const request = await harness.submit();
+    expect(request?.stageDocument.interviewScript).toBe('Who else?');
+  });
+
+  it('pastes over an answer a test selected', async () => {
+    const harness = renderStageEditor({
+      stage: informationAsking('Who is closest to you?'),
+      sections: <SingleLineQuestion />,
+    });
+    const question = await screen.findByRole('textbox', {
+      name: 'Question text',
+    });
+
+    await harness.user.click(question);
+    await harness.user.keyboard('{Control>}a{/Control}');
+    await harness.user.paste('Who else?');
+
+    const request = await harness.submit();
+    expect(request?.stageDocument.interviewScript).toBe('Who else?');
+  });
 });
 
 /**
