@@ -101,6 +101,9 @@ export async function migrateDatabase(
     // Fixed and transaction-local: DATABASE_URL options cannot redirect DDL or
     // the stamp into an arbitrary schema. The runtime also uses public.
     await client.query("SELECT set_config('search_path', 'public', true)");
+    // Catalog-only checks must precede every read of stored evidence. A valid
+    // checksum cannot establish integrity while runtime identities can forge it.
+    await enforceMigrationSecurity(client, allowedLogins);
     const probe = await client.query<{ present: boolean }>(
       'SELECT to_regclass($1) IS NOT NULL AS present',
       [HISTORY_TABLE],
@@ -135,8 +138,6 @@ export async function migrateDatabase(
     const previous = applied.at(-1);
     if (previous) await verifyFingerprint(client, previous.fingerprint);
 
-    await enforceMigrationSecurity(client, allowedLogins);
-
     await client.query(`CREATE SCHEMA IF NOT EXISTS studio_migrations;
       REVOKE ALL ON SCHEMA studio_migrations FROM PUBLIC;
       CREATE TABLE IF NOT EXISTS ${HISTORY_TABLE} (
@@ -153,6 +154,10 @@ export async function migrateDatabase(
       // from today's source. Their order preserves narrow security revocations.
       await executeAtomicSql(client, migration.sql);
       await executeAtomicSql(client, migration.sidecars);
+      // Historical sidecars may grant broad evidence privileges. Contain those
+      // uncommitted grants before another migration or evidence write executes.
+      await protectMigrationEvidence(client);
+      await enforceMigrationSecurity(client, allowedLogins);
       await stampFingerprint(client, migration.manifest.fingerprint);
       await client.query(
         `INSERT INTO ${HISTORY_TABLE} (position, id, checksum, fingerprint) VALUES ($1, $2, $3, $4)`,
@@ -167,8 +172,8 @@ export async function migrateDatabase(
     }
     // Repeatable security is independent of historical schema checksums. It
     // runs on no-op migrations too and contains grants in every old sidecar.
-    await enforceMigrationSecurity(client, allowedLogins);
     await protectMigrationEvidence(client);
+    await enforceMigrationSecurity(client, allowedLogins);
     await verifyFingerprint(client, expectedFingerprint);
     await client.query('COMMIT');
     return completed;

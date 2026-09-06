@@ -469,6 +469,10 @@ describe.skipIf(!database)('explicit Studio migrations', () => {
       await pool.query(
         `INSERT INTO public."user" (id, name, email, "emailVerified") VALUES ('keep', 'Keep me', 'keep@example.test', false)`,
       );
+      // Read-only legacy evidence still must not be adopted. Remove this
+      // fixture's broad historical grants to reach that separate boundary.
+      await pool.query(`REVOKE ALL ON public."schemaFingerprint" FROM PUBLIC, studio_app, studio_maintenance;
+        GRANT SELECT ON public."schemaFingerprint" TO studio_app, studio_maintenance`);
       await expect(
         migrateTestDatabase(pool, shipped, SCHEMA_FINGERPRINT),
       ).rejects.toThrow('not adopted automatically');
