@@ -50,6 +50,7 @@ GRANT studio_app, studio_maintenance TO studio_migrator, studio_runtime
 CREATE DATABASE studio OWNER studio_migrator ALLOW_CONNECTIONS false;
 BEGIN;
 REVOKE CONNECT ON DATABASE studio FROM PUBLIC, studio_app, studio_maintenance;
+REVOKE TEMPORARY ON DATABASE studio FROM PUBLIC, studio_app, studio_maintenance, studio_runtime;
 GRANT CONNECT ON DATABASE studio TO studio_migrator, studio_runtime;
 COMMIT;
 ALTER DATABASE studio ALLOW_CONNECTIONS true;
@@ -80,11 +81,28 @@ Runtime and backup logins must hold no direct or PUBLIC data privileges in
 application schemas, including table/column, view, materialized-view, foreign-table,
 and sequence grants. Access belongs to their reviewed NOLOGIN roles. Both the
 logins and those roles must own no database objects, have no database/schema
-CREATE or CONNECT grant options, and be unable to execute user-defined SECURITY
-DEFINER routines. This prevents SET ROLE NONE, object ownership, or a view/function
-from bypassing the intended privileges. PostgreSQL catalog access and ordinary
-invoker functions remain available. Correct unexpected grants explicitly before
-migrating; the migration does not silently enroll those extra capabilities.
+CREATE, database TEMPORARY, or CONNECT grant options, and be unable to execute
+user-defined SECURITY DEFINER routines. This prevents SET ROLE NONE, object
+ownership, or a view/function from bypassing the intended privileges.
+
+Ordinary TEMPORARY permission implicitly grants CREATE in the connection's
+current temporary namespace, even without a namespace ACL. Revoke it from PUBLIC
+and every restricted role/login, including any provisioned backup identity,
+before initial migration and after restoring a database. Direct grants survive
+PUBLIC revocation. The migrator checks this capability even before a temporary
+namespace exists; it does not repair database ACLs. The separately enrolled
+administrator/owner may retain TEMPORARY for migration and restore work.
+
+PostgreSQL 18's reviewed stock PUBLIC catalog reads and ordinary functions remain
+available. Before trusting any migration evidence, and again after sidecars,
+Studio refuses additional effective catalog function/table/column capabilities,
+including system columns such as `ctid`; reserved namespace ownership, CREATE,
+and USAGE grant options; and unreviewed SECURITY DEFINER routines in `pg_*` or
+`information_schema`. Unknown or extension-provided grants are not treated as
+stock permissions. Stock `pg_settings` UPDATE remains the session SET interface
+and obeys the forbidden-parameter checks below. Correct unexpected grants
+explicitly before migrating; the migration does not silently enroll those extra
+capabilities. Catalog definition integrity remains an administrator responsibility.
 
 Large-object creation is an additional administrator provisioning step in
 **each dedicated database**. PostgreSQL normally grants PUBLIC permission to

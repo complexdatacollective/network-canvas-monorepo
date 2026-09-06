@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
-import { escapeIdentifier, Pool } from 'pg';
+import { escapeIdentifier, Pool, type PoolClient } from 'pg';
 import { describe, expect, it } from 'vitest';
 
 import { BACKUP_ROLE } from '@codaco/studio-sync/rls';
@@ -1382,9 +1382,10 @@ describe.skipIf(!database)('migration security invariants', () => {
     async (role) => {
       await withDeployment(async ({ owner, url, logins }) => {
         await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+        await owner.query('CREATE SEQUENCE public.runtime_execution_probe');
         const next = nextMigration(
           shipped.at(-1)!,
-          'CREATE TABLE pending_runtime_guard (id integer)',
+          "SELECT nextval('public.runtime_execution_probe'); CREATE TABLE public.pending_runtime_guard (id integer)",
         );
         await connectAs(
           url,
@@ -1418,6 +1419,15 @@ describe.skipIf(!database)('migration security invariants', () => {
                 )
               ).rows,
             ).toEqual([{ fingerprint: SCHEMA_FINGERPRINT }]);
+            // Sequence allocation survives rollback: a final-only refusal must
+            // not masquerade as refusing to begin pending SQL.
+            expect(
+              (
+                await owner.query(
+                  'SELECT is_called FROM public.runtime_execution_probe',
+                )
+              ).rows,
+            ).toEqual([{ is_called: false }]);
           },
         );
         await expect(
@@ -1428,6 +1438,13 @@ describe.skipIf(!database)('migration security invariants', () => {
             logins,
           ),
         ).resolves.toEqual([next.manifest.id]);
+        expect(
+          (
+            await owner.query(
+              'SELECT is_called FROM public.runtime_execution_probe',
+            )
+          ).rows,
+        ).toEqual([{ is_called: true }]);
       });
     },
   );
@@ -2722,4 +2739,272 @@ describe.skipIf(!database)('migration security invariants', () => {
       }
     });
   });
+});
+
+/** Observe the real restricted session identity, without retaining its grants or
+ * objects; the original administrator is used only to roll back the probe. */
+async function asRestrictedIdentity<T>(
+  pool: Pool,
+  identity: string,
+  action: (client: PoolClient) => Promise<T>,
+): Promise<T> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(
+      `SET LOCAL SESSION AUTHORIZATION ${escapeIdentifier(identity)}`,
+    );
+    return await action(client);
+  } finally {
+    await client.query('ROLLBACK');
+    client.release();
+  }
+}
+
+const catalogCases = [
+  {
+    name: 'catalog function',
+    privilege:
+      'EXECUTE ON FUNCTION pg_catalog.pg_read_file(text,bigint,bigint)',
+    probe:
+      "SELECT length(pg_catalog.pg_read_file('PG_VERSION',0,10)) > 0 AS observed",
+  },
+  {
+    name: 'catalog table',
+    privilege: 'SELECT ON TABLE pg_catalog.pg_authid',
+    probe:
+      'SELECT bool_or(rolpassword IS NOT NULL) AS observed FROM pg_catalog.pg_authid',
+  },
+  {
+    name: 'catalog ordinary column',
+    privilege: 'SELECT (rolpassword) ON TABLE pg_catalog.pg_authid',
+    probe:
+      'SELECT bool_or(rolpassword IS NOT NULL) AS observed FROM pg_catalog.pg_authid',
+  },
+  {
+    name: 'catalog system column',
+    privilege: 'SELECT (ctid) ON TABLE pg_catalog.pg_authid',
+    probe: 'SELECT count(ctid) > 0 AS observed FROM pg_catalog.pg_authid',
+  },
+] as const;
+const catalogIdentities = [
+  'studio_app',
+  'studio_maintenance',
+  BACKUP_ROLE,
+  'enrolled login',
+] as const;
+
+describe.skipIf(!database)('migration catalog admission boundary', () => {
+  it.each(
+    catalogIdentities.flatMap((identity) =>
+      catalogCases.map((testCase) => ({ identity, ...testCase })),
+    ),
+  )(
+    'refuses $identity $name before pending SQL and revalidates a no-op',
+    async ({ identity, privilege, probe }) => {
+      await withDeployment(async ({ administrator, owner, logins }) => {
+        await administrator.query(runtimeRolesSql([BACKUP_ROLE]));
+        // Optional backup identity is compatible with both fresh and no-op runs.
+        await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+        await owner.query('CREATE SEQUENCE public.catalog_execution_probe');
+        const next = nextMigration(
+          shipped.at(-1)!,
+          "SELECT nextval('public.catalog_execution_probe'); CREATE TABLE public.catalog_guard_applied (id integer PRIMARY KEY)",
+        );
+        const role = identity === 'enrolled login' ? logins[1] : identity;
+        await administrator.query(
+          `GRANT ${privilege} TO ${escapeIdentifier(role)}`,
+        );
+        try {
+          // These probes expose only a boolean about this disposable fixture:
+          // never file contents, password hashes, or cluster identity names.
+          expect(
+            await asRestrictedIdentity(
+              administrator,
+              role,
+              async (client) => (await client.query(probe)).rows,
+            ),
+          ).toEqual([{ observed: true }]);
+          await expect(
+            migrateDatabase(
+              owner,
+              [...shipped, next],
+              next.manifest.fingerprint,
+              logins,
+            ),
+          ).rejects.toThrow('PostgreSQL catalog');
+          // Sequence allocation survives rollback: the final security check alone
+          // cannot make this assertion pass after unsafe pending SQL has begun.
+          expect(
+            (
+              await owner.query(
+                'SELECT is_called FROM public.catalog_execution_probe',
+              )
+            ).rows,
+          ).toEqual([{ is_called: false }]);
+          await expect(
+            migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+          ).rejects.toThrow('PostgreSQL catalog');
+        } finally {
+          await administrator.query(
+            `REVOKE ${privilege} FROM ${escapeIdentifier(role)}`,
+          );
+        }
+        expect(
+          await migrateDatabase(
+            owner,
+            [...shipped, next],
+            next.manifest.fingerprint,
+            logins,
+          ),
+        ).toEqual([next.manifest.id]);
+        expect(
+          (
+            await owner.query(
+              'SELECT is_called FROM public.catalog_execution_probe',
+            )
+          ).rows,
+        ).toEqual([{ is_called: true }]);
+      });
+    },
+  );
+
+  it('refuses catalog capability before trusting corrupt recorded evidence', async () => {
+    await withDeployment(async ({ administrator, owner, logins }) => {
+      await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+      await owner.query(
+        "UPDATE studio_migrations.history SET checksum = 'untrusted-catalog-evidence'",
+      );
+      await administrator.query(
+        'GRANT SELECT (ctid) ON pg_catalog.pg_authid TO studio_app',
+      );
+      await expect(
+        migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+      ).rejects.toThrow('PostgreSQL catalog');
+      await administrator.query(
+        'REVOKE SELECT (ctid) ON pg_catalog.pg_authid FROM studio_app',
+      );
+      // Positive control: after the capability is removed, the actual recorded
+      // evidence is examined and still refused, without adopting or repairing it.
+      await expect(
+        migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+      ).rejects.toThrow('Applied migration history differs');
+    });
+  });
+
+  it.each(
+    ['pg_catalog', 'information_schema'].flatMap((namespace) =>
+      ['CREATE', 'USAGE WITH GRANT OPTION'].map((privilege) => ({
+        namespace,
+        privilege,
+      })),
+    ),
+  )(
+    'refuses reserved $namespace $privilege before it can add an unsafe object',
+    async ({ namespace, privilege }) => {
+      await withDeployment(async ({ administrator, owner, logins }) => {
+        await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+        await administrator.query(
+          `GRANT ${privilege === 'CREATE' ? 'CREATE' : 'USAGE'} ON SCHEMA ${namespace} TO studio_app${privilege === 'CREATE' ? '' : ' WITH GRANT OPTION'}`,
+        );
+        try {
+          await asRestrictedIdentity(
+            administrator,
+            'studio_app',
+            async (client) => {
+              if (privilege === 'CREATE') {
+                await client.query(
+                  `CREATE FUNCTION ${namespace}.studio_catalog_probe() RETURNS integer LANGUAGE sql AS 'SELECT 1'`,
+                );
+                expect(
+                  (
+                    await client.query(
+                      `SELECT ${namespace}.studio_catalog_probe() AS observed`,
+                    )
+                  ).rows,
+                ).toEqual([{ observed: 1 }]);
+              } else {
+                await client.query(
+                  `GRANT USAGE ON SCHEMA ${namespace} TO ${escapeIdentifier(logins[1])} WITH GRANT OPTION`,
+                );
+                expect(
+                  (
+                    await client.query(
+                      'SELECT has_schema_privilege($1, $2, $3) AS observed',
+                      [logins[1], namespace, 'USAGE WITH GRANT OPTION'],
+                    )
+                  ).rows,
+                ).toEqual([{ observed: true }]);
+              }
+            },
+          );
+          // The function or delegated grant has already rolled back. Refusal must
+          // cover the retained capability, before an unsafe object is installed.
+          await expect(
+            migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+          ).rejects.toThrow('PostgreSQL catalog');
+        } finally {
+          const revoked =
+            privilege === 'CREATE' ? 'CREATE' : 'GRANT OPTION FOR USAGE';
+          await administrator.query(
+            `REVOKE ${revoked} ON SCHEMA ${namespace} FROM studio_app`,
+          );
+        }
+        expect(
+          await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+        ).toEqual([]);
+      });
+    },
+  );
+
+  it.each([...catalogIdentities, 'PUBLIC'])(
+    'refuses ordinary TEMP from %s before a temporary namespace exists',
+    async (identity) => {
+      await withDeployment(
+        async ({ administrator, owner, logins, databaseName }) => {
+          await administrator.query(runtimeRolesSql([BACKUP_ROLE]));
+          const role = identity === 'enrolled login' ? logins[1] : identity;
+          const grantee = role === 'PUBLIC' ? 'PUBLIC' : escapeIdentifier(role);
+          const probeRole = role === 'PUBLIC' ? logins[1] : role;
+          // Fresh migrations must reject the implicit future namespace capability,
+          // without relying on there already being an object to scan.
+          await administrator.query(
+            `GRANT TEMPORARY ON DATABASE ${escapeIdentifier(databaseName)} TO ${grantee}`,
+          );
+          try {
+            await expect(
+              migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+            ).rejects.toThrow('TEMPORARY');
+            await asRestrictedIdentity(
+              administrator,
+              probeRole,
+              async (client) => {
+                await client.query(
+                  'CREATE TEMP TABLE catalog_temp_probe (id integer); INSERT INTO catalog_temp_probe VALUES (1)',
+                );
+                expect(
+                  (await client.query('SELECT id FROM catalog_temp_probe'))
+                    .rows,
+                ).toEqual([{ id: 1 }]);
+              },
+            );
+          } finally {
+            await administrator.query(
+              `REVOKE TEMPORARY ON DATABASE ${escapeIdentifier(databaseName)} FROM ${grantee}`,
+            );
+          }
+          await expect(
+            asRestrictedIdentity(administrator, probeRole, (client) =>
+              client.query(
+                'CREATE TEMP TABLE catalog_temp_refused (id integer)',
+              ),
+            ),
+          ).rejects.toMatchObject({ code: '42501' });
+          expect(
+            await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+          ).toEqual(shipped.map(({ manifest }) => manifest.id));
+        },
+      );
+    },
+  );
 });
