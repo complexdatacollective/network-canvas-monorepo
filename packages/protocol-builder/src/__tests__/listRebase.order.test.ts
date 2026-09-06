@@ -187,3 +187,74 @@ describe('a reordering submit rebased onto a collaborator’s arrival', () => {
     });
   }
 });
+
+/**
+ * A move rebased onto a list that holds one id twice.
+ *
+ * Two rows carrying the same `id` is a shape a real document holds: a roster
+ * imported a second time, or a row copy-pasted and then edited. An id is
+ * still what tells such a row from the rows around it — but it no longer tells
+ * it from its own copy, so which COPY a position names is a question about the
+ * copies as a group, answered the way `matchRows` answers it for a row with no
+ * id at all: paired off in order, one apiece.
+ *
+ * The destination of a move is anchored through that correspondence. The row
+ * being PICKED UP was resolved id-first instead, which answers with the first
+ * copy carrying the id whichever copy the researcher dragged — so the wrong
+ * row moved, and it moved to a place computed against a list the other copy
+ * had been taken out of.
+ */
+describe('a move rebased onto a list that holds one id twice', () => {
+  const age: SectionDoc = { id: 'f-1', variable: 'age', prompt: 'Their age?' };
+  const job: SectionDoc = { id: 'f-2', variable: 'job', prompt: 'Their job?' };
+  const city: SectionDoc = {
+    id: 'f-3',
+    variable: 'city',
+    prompt: 'Their city?',
+  };
+  // The copy: the same id as `age`, and a question of its own.
+  const ageAgain: SectionDoc = {
+    id: 'f-1',
+    variable: 'ageAgain',
+    prompt: 'And their age at diagnosis?',
+  };
+  const name: SectionDoc = {
+    id: 'f-4',
+    variable: 'name',
+    prompt: 'Their name?',
+  };
+
+  it('moves the copy the researcher dragged, not the first one carrying its id', () => {
+    const session = openSession([age, job, city, ageAgain]);
+    // The whole of one submit is a reorder, so it reaches the wire as the move
+    // it is: the second copy dragged to the top.
+    edit(session, [ageAgain, age, job, city]);
+    expect(session.getSnapshot().pendingCommands[0]?.commands).toEqual([
+      { op: 'moveItem', key: ['form', 'fields'], from: 3, to: 0 },
+    ]);
+
+    // A collaborator appends a row, which is enough to make the list the move
+    // was made against no longer the list it lands on.
+    arrives(session, [age, job, city, ageAgain, name]);
+
+    expect(
+      variableNames(readFields(session.getSnapshot().editedSection.fields)),
+    ).toEqual(['ageAgain', 'age', 'job', 'city', 'name']);
+  });
+
+  it('anchors that move on the rows the copies are paired with', () => {
+    const session = openSession([age, job, ageAgain]);
+    edit(session, [ageAgain, age, job]);
+    expect(session.getSnapshot().pendingCommands[0]?.commands).toEqual([
+      { op: 'moveItem', key: ['form', 'fields'], from: 2, to: 0 },
+    ]);
+
+    // The collaborator's row lands BETWEEN the two copies, so the copy the
+    // researcher dragged is no longer at the index their move named.
+    arrives(session, [age, job, name, ageAgain]);
+
+    expect(
+      variableNames(readFields(session.getSnapshot().editedSection.fields)),
+    ).toEqual(['ageAgain', 'age', 'job', 'name']);
+  });
+});

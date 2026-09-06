@@ -358,6 +358,18 @@ export function resolveInsertIndex<T extends ArrayRow>(
  * says where a row goes relative to the rows the researcher could see, and
  * every one of those that is still here says it. `undefined` refuses the move,
  * which is the answer when none of them is.
+ *
+ * The row being PICKED UP and the rows it is anchored on are read off ONE
+ * drawing of the correspondence between the two lists, so the two cannot
+ * disagree about which row is which. `resolveRowIndex` answered for the moved
+ * row on its own, and its id search takes the FIRST row carrying that id — so
+ * for a list holding one id twice (a roster imported a second time, a row
+ * copy-pasted) it answered with the wrong copy whenever the researcher dragged
+ * the later one, and then anchored the destination on a list that copy had not
+ * been taken out of. Two rows sharing an id are two rows nothing tells apart,
+ * which is what `matchRows` already says of two rows sharing content: the
+ * copies are paired off in order, one apiece, and a position names the k-th of
+ * them at both ends.
  */
 export function resolveMove<T extends ArrayRow>(
   current: readonly unknown[],
@@ -366,38 +378,40 @@ export function resolveMove<T extends ArrayRow>(
   to: number,
   getId?: ArrayRowIdentity<T>,
 ): Readonly<{ from: number; to: number }> | undefined {
-  const currentFrom = resolveRowIndex(current, rendered, from, getId);
-  if (currentFrom === undefined) return undefined;
+  if (rendered[from] === undefined) return undefined;
   if (sameList(current, rendered)) {
     return to >= 0 && to < current.length ? { from, to } : undefined;
   }
 
-  // The rows the drag moved PAST, in the order the drop left them: the rendered
-  // list without the row being moved, which is what `remaining` is the
-  // current-list counterpart of. A neighbour at position `at` in that order is
-  // `reordered[at]` for a place above the drop and `reordered[at + 1]` below
-  // it.
-  const others = [...rendered];
-  const [moved] = others.splice(from, 1);
-  if (moved === undefined) return undefined;
-
-  const remaining = [...current];
-  remaining.splice(currentFrom, 1);
-  // Where each of those rows sits in the list now, one row to one position.
-  //
-  // `matchRows` rather than `resolveRowIndex` asked per neighbour, for the
-  // reason `resolveInsertIndex` puts the same question to it: an anchor
-  // decides only WHERE the moved row goes, never which row an edit is written
-  // into, so a list holding the same id-less row twice is two places rather
-  // than a guess to refuse over — and the copies are paired off in order, so
-  // "after the second blank row" stays after the second one.
-  const paired = matchRows(others, remaining, (row) =>
+  // Where every row the editor drew sits in the list now, one row to one
+  // position — the moved row included, which is what makes this the same
+  // question `resolveInsertIndex` puts to `matchRows` rather than a guess to
+  // refuse over: an anchor and a pick-up both decide only WHERE a row goes,
+  // never which row an edit is written into.
+  const paired = matchRows(rendered, current, (row) =>
     isRecord(row) ? getId?.(row as T) : undefined,
   );
+  const currentFrom = paired[from];
+  // The row the researcher was dragging is not in the list any more — either
+  // it has gone, or the arrival has taken away the copy this position named.
+  // Landing the move on whatever the id still finds would move a row they
+  // never picked up, and the merge has already decided that copy is gone.
+  if (currentFrom === undefined || currentFrom === -1) return undefined;
+
+  // The rows the drag moved PAST, in the order the drop left them: the rendered
+  // list without the row being moved. A neighbour at position `at` in that
+  // order is `rendered[at]` for a place above the pick-up and `rendered[at + 1]`
+  // below it, and its place among the rows the answer is measured in — the
+  // current list without the moved row — is one lower than its own wherever it
+  // sits after the pick-up.
   const anchorIndex = (at: number): number | undefined => {
-    const index = paired[at];
-    return index === undefined || index === -1 ? undefined : index;
+    const index = paired[at < from ? at : at + 1];
+    if (index === undefined || index === -1) return undefined;
+    return index > currentFrom ? index - 1 : index;
   };
+  /** How many rows the drag could have moved past, at either end. */
+  const drawnOthers = rendered.length - 1;
+  const remainingRows = current.length - 1;
 
   // The row the moved one will FOLLOW says where it goes; when it is moving to
   // the very top of the rows the editor could see, the row it will PRECEDE
@@ -418,7 +432,7 @@ export function resolveMove<T extends ArrayRow>(
       return { from: currentFrom, to: predecessor + 1 };
   }
 
-  for (let later = to; later < others.length; later += 1) {
+  for (let later = to; later < drawnOthers; later += 1) {
     const successor = anchorIndex(later);
     if (successor !== undefined) return { from: currentFrom, to: successor };
   }
@@ -426,7 +440,7 @@ export function resolveMove<T extends ArrayRow>(
   // No row the editor drew survives to say where this one goes. A list holding
   // only rows that arrived from elsewhere is not one the researcher's move
   // says anything about, so it is refused rather than landed on a guess.
-  return remaining.length === 0 ? { from: currentFrom, to: 0 } : undefined;
+  return remainingRows === 0 ? { from: currentFrom, to: 0 } : undefined;
 }
 
 /**

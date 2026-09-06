@@ -54,8 +54,16 @@ type Row = { id?: string; text?: string; hint?: string };
 /** The properties an edit reaches, which is what a leaf merge is asked of. */
 const LEAVES = ['text', 'hint'] as const;
 
-/** How a trial identifies a row for the reference model. */
-type Mode = 'identified' | 'idless';
+/**
+ * How a trial identifies a row for the reference model.
+ *
+ * `duplicated` is `identified` with the ids drawn from an alphabet smaller
+ * than the list, so the same id names two rows — a roster imported a second
+ * time, a row copy-pasted. An id is then still what tells a row from the rows
+ * around it and no longer what tells it from its own copy, so the copies are
+ * the question `idless` asks of content, asked of an id.
+ */
+type Mode = 'identified' | 'idless' | 'duplicated';
 
 /**
  * The rows a trial starts from.
@@ -67,17 +75,25 @@ type Mode = 'identified' | 'idless';
  * of an identity that is content: two such rows are two rows nothing tells
  * apart, and every correspondence this code draws has to pair them off one
  * apiece rather than answer both with the same partner.
+ *
+ * A duplicated row is drawn from that same smaller alphabet and carries the id
+ * to match, so two copies are one row said twice at both ends: the reference
+ * model below keys a row on its id when it has one, which makes a duplicated id
+ * exactly what a duplicated content is — a key the list holds twice, whose
+ * copies the model counts rather than merely notes the presence of.
  */
 const rowsOf = (rng: Rng, mode: Mode, count: number): Row[] =>
-  Array.from({ length: count }, (_, i) =>
-    mode === 'identified'
-      ? {
-          id: `r${String(i)}`,
-          text: `r${String(i)}-0`,
-          hint: `h${String(i)}-0`,
-        }
-      : { text: `r${String(int(rng, Math.max(1, count - 1)))}` },
-  );
+  Array.from({ length: count }, (_, i) => {
+    if (mode === 'identified') {
+      return {
+        id: `r${String(i)}`,
+        text: `r${String(i)}-0`,
+        hint: `h${String(i)}-0`,
+      };
+    }
+    const drawn = `r${String(int(rng, Math.max(1, count - 1)))}`;
+    return mode === 'idless' ? { text: drawn } : { id: drawn, text: drawn };
+  });
 
 /** Applies one random edit to a list, returning the new list. */
 function randomEdit(
@@ -90,6 +106,13 @@ function randomEdit(
   // An idless row's identity IS its content, so rewriting one in place is
   // indistinguishable from deleting it and adding another — there is no
   // question to ask about it, and it is left out of that mode.
+  //
+  // A duplicated row is left out for the mirror image of that reason: its
+  // identity is an id its copy also carries, so an edit to one copy leaves two
+  // rows that are the same row by identity and different by content — a state
+  // the model below cannot say (it keeps one content per key), and one no
+  // merge rule could answer without deciding which copy is which. The copies
+  // stay interchangeable, which is what makes them copies.
   const kinds =
     mode === 'identified'
       ? (['append', 'insert', 'remove', 'move', 'edit'] as const)
@@ -374,17 +397,25 @@ function runTrial(
   const path = rng() < 0.5 ? ['prompts'] : ['nodeConfig', 'form'];
   const base = rowsOf(rng, mode, int(rng, 5));
 
+  // A row either side adds is a row of its own, in every mode: the copies a
+  // trial is about are the ones the BASE holds — the roster imported twice,
+  // the row copy-pasted before this editing session began. A minted copy would
+  // put an added row under a key the base also holds, and the model below reads
+  // the two lists' end states rather than the steps between them: a researcher
+  // who deletes a row and pastes a copy back leaves the same count as one who
+  // never touched it, which is a question about the model rather than about the
+  // merge.
   let minted = 0;
   const mintLocal = (): Row => {
     minted += 1;
     const tag = `L${String(minted)}`;
-    return mode === 'identified' ? { id: tag, text: tag } : { text: tag };
+    return mode === 'idless' ? { text: tag } : { id: tag, text: tag };
   };
   let mintedRemote = 0;
   const mintRemote = (): Row => {
     mintedRemote += 1;
     const tag = `R${String(mintedRemote)}`;
-    return mode === 'identified' ? { id: tag, text: tag } : { text: tag };
+    return mode === 'idless' ? { text: tag } : { id: tag, text: tag };
   };
 
   // One local "step" is one or two edits diffed together and dispatched as ONE
@@ -511,6 +542,7 @@ const ORDER_TRIALS = 2000;
 const REORDERING_TRIALS: Readonly<Record<Mode, number>> = {
   identified: 100,
   idless: 5,
+  duplicated: 5,
 };
 
 /**
@@ -520,6 +552,7 @@ const REORDERING_TRIALS: Readonly<Record<Mode, number>> = {
 const ORPHANED_TRIALS: Readonly<Record<Mode, number>> = {
   identified: 300,
   idless: 100,
+  duplicated: 100,
 };
 
 /**
@@ -530,6 +563,7 @@ const ORPHANED_TRIALS: Readonly<Record<Mode, number>> = {
 const ANCHORED_MOVE_TRIALS: Readonly<Record<Mode, number>> = {
   identified: 8,
   idless: 1,
+  duplicated: 1,
 };
 
 /**
@@ -546,6 +580,7 @@ const CROSS_EDIT_TRIALS = 75;
 const DROPPED_CONTAINER_TRIALS: Readonly<Record<Mode, number>> = {
   identified: 75,
   idless: 5,
+  duplicated: 5,
 };
 
 /**
@@ -641,10 +676,10 @@ const commandCount = (batches: readonly (readonly Command[])[]): number =>
  *
  * Asked only of a rebase that kept every command, because a REFUSED one is a
  * step of the researcher's the merge never saw. `resolveMove` refuses a move
- * whose anchor row it cannot tell from another — an id-less list holding the
- * same row twice, where the row a moved one will follow names two places — and
- * that refusal is this file's deliberate answer to a guess that would write
- * onto the wrong row, not something the order of a merge decides. See
+ * whose row the arrival took away, and one no surviving row is left to anchor
+ * — the merge has already decided that row is gone, and a move landed on a
+ * guess would reorder rows the researcher never touched. That refusal is this
+ * file's deliberate answer, not something the order of a merge decides. See
  * `resolveMove` in `form/arrayFields/arrayFieldCommands.ts`.
  */
 function keepsTheLocalOrder(trial: Trial, outcome: Outcome): string | null {
@@ -800,7 +835,7 @@ const carriesAWholeListSet = (trial: Trial): boolean =>
   );
 
 describe('rebasing a list edit onto a collaborator’s arrival', () => {
-  for (const mode of ['identified', 'idless'] as const) {
+  for (const mode of ['identified', 'idless', 'duplicated'] as const) {
     describe(`rows ${mode}`, () => {
       it('never emits a command the apply engine refuses', () => {
         expect(sweep(mode, neverRefused)).toEqual([]);
