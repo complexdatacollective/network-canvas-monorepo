@@ -38,12 +38,13 @@ export type ComposerFormFieldsListProps = Omit<
  * The fields of one form a network composer shows.
  *
  * A field component, so it can be mounted two ways without being written
- * twice. A composer's node form is a document key of its own and is mounted
- * through `ProtocolArrayField`, which gives it an outline anchor and a place
- * for the form's rules to be reported. Each connection type's form has no key
- * of its own — it lives inside a row of `edges` — so it is mounted with the
- * value and change handler of the control that owns that list, exactly as any
- * other list nested inside a row.
+ * twice. A composer's node form has a place of its own in the stage document
+ * — `nodeForm.fields` — and is mounted through `ProtocolArrayField`, which
+ * binds it there, gives it an outline anchor, and gives the form's rules
+ * somewhere to be reported. Each connection type's form has no such place: it
+ * is reached through a row's position in `edges`, which a collaborator's
+ * insert can move, so it is mounted with the value and change handler of the
+ * control that owns that list, exactly as any other list nested inside a row.
  *
  * One rule belongs to the form rather than to any field in it: a form may not
  * record one attribute twice, which is the protocol schema's own

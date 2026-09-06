@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { RELATIONSHIP_TYPE_OPTIONS } from '@codaco/protocol-validation';
@@ -44,6 +44,37 @@ const openWithNominationPrompts = () => ({
   stage: familyPedigreeStageWith({ nominationPrompts: NOMINATION_ROWS }),
   sections: pedigreeSections,
 });
+
+const FIXTURE_NODE_CONFIG = {
+  type: 'family_member',
+  nodeLabelVariable: 'fm_name',
+  egoVariable: 'is_ego',
+  relationshipVariable: 'fm_relationship_to_ego',
+  biologicalSexVariable: 'biologicalSex',
+};
+
+/** The fixture pedigree, already asking one thing about each family member. */
+const openWithFamilyMemberForm = () => ({
+  stage: familyPedigreeStageWith({
+    nodeConfig: {
+      ...FIXTURE_NODE_CONFIG,
+      form: [{ variable: 'fm_name', prompt: 'What do they go by?' }],
+    },
+  }),
+  sections: pedigreeSections,
+});
+
+/** Every command this session has issued and not had acknowledged. */
+const commandsOf = (harness: StageEditorHarness) =>
+  harness.pendingCommands().flatMap((batch) => [...batch.commands]);
+
+/** The family member form as the session holds it right now. */
+const formRows = (harness: StageEditorHarness): unknown[] => {
+  const nodeConfig =
+    harness.session.getSnapshot().editedSection.fields.nodeConfig;
+  const form = isRecord(nodeConfig) ? nodeConfig.form : undefined;
+  return Array.isArray(form) ? form : [];
+};
 
 /**
  * The attributes a picker is currently offering, by their ids.
@@ -413,6 +444,100 @@ describe('the attributes a pedigree may bind', () => {
     ].map((option) => option.textContent);
 
     expect(offered).not.toContain('kinship');
+  });
+});
+
+/**
+ * The family member form is a list the stage keeps NESTED, at
+ * `nodeConfig.form`, and it is edited as one — insert this row, move that one,
+ * remove the third — rather than by replacing the node configuration around
+ * it.
+ *
+ * What that buys is everything a collaborator does to the same pedigree at the
+ * same time. A whole-value `set` on `nodeConfig` could say only "the node
+ * configuration is now this": it merges with nothing, so a colleague binding
+ * the biological-sex slot in the same second would have their choice thrown
+ * away — and it would need every sibling slot mounted to say even that much,
+ * which is why an editor without them used to have to mount them anyway.
+ */
+describe('the way a family member form reaches the document', () => {
+  it('commits an added, moved and removed field as that row’s own edit', async () => {
+    const harness = renderStageEditor(openWithFamilyMemberForm());
+
+    // Added. Every boolean this node type already has is written unvalidated
+    // somewhere — this pedigree's own slots, and the narrative pedigree's
+    // disease — so the field invents its attribute rather than picking one.
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Create new form field' }),
+    );
+    const field = within(await screen.findByRole('dialog'));
+    await harness.user.selectOptions(
+      field.getByRole('combobox', { name: 'Attribute' }),
+      '__create_new_attribute__',
+    );
+    await harness.user.type(
+      await field.findByRole('textbox', { name: 'Attribute name' }),
+      'unwell',
+    );
+    await harness.user.selectOptions(
+      field.getByRole('combobox', { name: 'Kind of answer' }),
+      'boolean',
+    );
+    await harness.user.type(
+      field.getByRole('textbox', { name: 'Question text' }),
+      'Have they been unwell?',
+    );
+    await harness.user.click(field.getByRole('button', { name: 'Add' }));
+    await waitFor(() => expect(formRows(harness)).toHaveLength(2));
+
+    const unwell = variableIdByName(harness, 'unwell');
+    if (unwell === undefined) throw new Error('the attribute was not created');
+    // The row identity the list stamps on a row it creates, which is a fresh
+    // uuid and cannot be written down here.
+    const added = {
+      id: expect.any(String) as unknown as string,
+      variable: unwell,
+      prompt: 'Have they been unwell?',
+    };
+
+    // Moved, through the keyboard half of the drag handle — the same operation
+    // a pointer drag commits.
+    const handle = await screen.findByRole('button', {
+      name: 'Reorder field 2 of 2',
+    });
+    handle.focus();
+    fireEvent.keyDown(handle, { key: 'ArrowUp' });
+    await waitFor(() =>
+      expect(
+        formRows(harness).map((row) =>
+          isRecord(row) ? row.variable : undefined,
+        ),
+      ).toEqual([unwell, 'fm_name']),
+    );
+
+    // Removed: the row's own affordance, then the confirmation that carries
+    // the same words.
+    await harness.user.click(
+      (await screen.findAllByRole('button', { name: 'Remove field' }))[1]!,
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Remove field' }),
+    );
+    await waitFor(() => expect(formRows(harness)).toHaveLength(1));
+
+    // Each one says WHICH row it was, and where the list it belongs to lives.
+    expect(commandsOf(harness)).toEqual([
+      { op: 'insertItem', key: ['nodeConfig', 'form'], index: 1, item: added },
+      { op: 'moveItem', key: ['nodeConfig', 'form'], from: 1, to: 0 },
+      { op: 'removeItem', key: ['nodeConfig', 'form'], index: 1 },
+    ]);
+
+    // And the slots beside the list are exactly as the pedigree held them: no
+    // section had to mount, or rewrite, a sibling to move one row.
+    expect((await harness.submit())?.stageDocument.nodeConfig).toEqual({
+      ...FIXTURE_NODE_CONFIG,
+      form: [added],
+    });
   });
 });
 
