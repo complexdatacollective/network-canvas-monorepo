@@ -347,18 +347,28 @@ export const AcquireSectionResultSchema = z.discriminatedUnion('mode', [
  * A prototype name is refused outright — the apply engine will not follow one,
  * and a command is better rejected at the boundary than part-way through a
  * transaction.
+ *
+ * Both rules — a segment must name something, and must not name a prototype —
+ * apply to EVERY segment, and the bare string is a one-segment path rather
+ * than a form of its own: `commandTarget` writes a one-segment path as the
+ * plain string, so `""` and `"__proto__"` reach this schema in that shape and
+ * in no other. Bounding only the array form let them through to `targetPath`,
+ * which throws on them inside the commit — after the draft head is locked, and
+ * as an unclassified server fault instead of the bad request it is.
  */
 const UNSAFE_PATH_SEGMENTS = new Set(['__proto__', 'constructor', 'prototype']);
+const PathSegmentSchema = z
+  .string()
+  .min(1)
+  .refine((segment) => !UNSAFE_PATH_SEGMENTS.has(segment), {
+    message: 'must not name a prototype',
+  });
 const CommandTargetSchema = z.union([
-  z.string(),
+  PathSegmentSchema,
   z
-    .array(z.string().min(1))
+    .array(PathSegmentSchema)
     .min(1)
     .max(16)
-    .refine(
-      (path) => path.every((segment) => !UNSAFE_PATH_SEGMENTS.has(segment)),
-      { message: 'must not name a prototype' },
-    )
     // Readonly to match the apply engine's own `CommandTarget`: nothing
     // downstream may rewrite an address after it has been validated.
     .readonly(),
