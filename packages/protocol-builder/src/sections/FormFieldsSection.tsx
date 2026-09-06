@@ -4,40 +4,22 @@ import {
   useCallback,
   useContext,
   useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore,
 } from 'react';
-import { v4 as uuid } from 'uuid';
 
 import { Badge } from '@codaco/fresco-ui/Badge';
-import { Button } from '@codaco/fresco-ui/Button';
-import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
-import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
-import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import Section from '@codaco/fresco-ui/Section';
-import {
-  duplicateFormFieldIndices,
-  VARIABLE_TYPE_COMPONENTS,
-  type VariableType,
-} from '@codaco/protocol-validation';
-import type { SectionDoc } from '@codaco/studio-sync/apply';
+import { duplicateFormFieldIndices } from '@codaco/protocol-validation';
 
-import VariableEditor from '../codebook/components/VariableEditor.tsx';
 import {
-  useCodebookSectionDocument,
   useCreateCodebookVariable,
   useSetVariableComponent,
 } from '../codebook/useCodebookVariableEdits.ts';
-import CodebookVariableValidationEditor from '../codebook/validation/CodebookVariableValidationEditor.tsx';
-import { optionsShapeFor } from '../codebook/variableOptions.ts';
-import { parameterShapeFor } from '../codebook/variableParameters.ts';
 import {
   buildVariableRoleMap,
   excludeUnvalidatedUses,
@@ -61,7 +43,16 @@ import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useStageValue } from '../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../protocol-context.ts';
 import { variablesForSubject } from '../protocol-context.ts';
+import AttributeCodebookControls, {
+  useRowValue,
+} from './AttributeCodebookControls.tsx';
 import BuilderSection, { type SectionCapability } from './BuilderSection.tsx';
+import {
+  controlsForType,
+  isCollectableType,
+  isOptionType,
+  TYPE_OPTIONS,
+} from './collectableTypes.ts';
 import {
   type RowEditorProps,
   type RowPreviewProps,
@@ -114,45 +105,6 @@ const INCOMPLETE_FIELD =
 const DUPLICATE_FIELD =
   'Two fields collect the same attribute. Each attribute may be collected once per form.';
 
-/**
- * The attribute types that ARE a list of answers.
- *
- * `categoricalOptionsSchema` requires at least two of them, so a categorical
- * or ordinal attribute cannot exist without its values — which is why these
- * two are invented through the codebook's own editor rather than from a name
- * and a type, and why a field collecting one offers a way back to that list.
- */
-const OPTION_TYPES: readonly string[] = Object.freeze([
-  'categorical',
-  'ordinal',
-]);
-
-const isOptionType = (type: string): boolean => OPTION_TYPES.includes(type);
-
-const CREATE_WITH_VALUES = 'Create this attribute and its values';
-const EDIT_VALUES = 'Change this attribute’s values';
-/**
- * The same surface for a boolean, whose list is two answers rather than a list
- * the researcher adds to.
- *
- * Named for what is actually being changed: a boolean's two values are true
- * and false whatever the researcher does, and what they author is the words on
- * them — so "values" would name the one part of it they cannot touch.
- */
-const EDIT_ANSWER_LABELS = 'Change this attribute’s answer labels';
-/**
- * The same surface, for an attribute whose answer is not chosen from a list.
- *
- * A date field accepts dates between two bounds, at one of three precisions; a
- * scale accepts a position between two ends the researcher names. Neither is a
- * list of values, and both are the same question asked of a different kind of
- * attribute — so it is one control, named for what the researcher is looking
- * at. They cannot both apply: an attribute is either a list of answers or it
- * takes settings, never both.
- */
-const EDIT_PARAMETERS = 'Set what this field accepts';
-const EDIT_RULES = 'Set rules for this answer';
-
 const CREATE_WITH_VALUES_FIRST =
   'Create this attribute and the values it offers before adding the field that collects it.';
 
@@ -168,29 +120,6 @@ const VariablePicker = VariablePickerControl as ComponentType<
 const SelectControl = NativeSelectField as ComponentType<
   Record<string, unknown>
 >;
-
-/**
- * The attribute types a form can ask for.
- *
- * `layout` and `location` are left out: they hold a position rather than an
- * answer, have no input control at all, and a form cannot ask for one — which
- * is also why the same test excludes them from the picker below.
- */
-const COLLECTABLE_TYPES = Object.entries(VARIABLE_TYPE_COMPONENTS).filter(
-  ([, components]) => components.length > 0,
-);
-
-const TYPE_OPTIONS = COLLECTABLE_TYPES.map(([type]) => ({
-  value: type,
-  label: type,
-}));
-
-const isCollectableType = (type: string): type is VariableType =>
-  COLLECTABLE_TYPES.some(([candidate]) => candidate === type);
-
-/** The controls a given kind of answer may be collected with. */
-const controlsForType = (type: string): readonly string[] =>
-  COLLECTABLE_TYPES.find(([candidate]) => candidate === type)?.[1] ?? [];
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -779,8 +708,10 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
             a control to be chosen for. */}
         {!inventingWithValues && <InputControlField item={item} />}
         <AttributeCodebookControls
-          item={item}
-          inventingType={inventingWithValues ? newType : undefined}
+          subject={subject}
+          committedVariable={item.variable}
+          componentField={INPUT_CONTROL}
+          {...(inventingWithValues ? { inventingType: newType } : {})}
         />
         {subject === undefined && (
           <p className="text-sm text-current/70">
@@ -873,282 +804,6 @@ function InputControlField({
     />
   );
 }
-
-/**
- * What the attribute holds, reached from the field that collects it.
- *
- * A form field is a question bound to a codebook attribute, and three things
- * the researcher is bound to want next belong to that attribute rather than to
- * the field: the values a participant chooses between, the rules their answer
- * has to satisfy, and — for an attribute that IS a list of values — its own
- * existence. Architect authors all of them inline in this same dialog and
- * writes them through the field's save (`Form/fieldCommit.ts`).
- *
- * They cannot be inline here, because a codebook attribute lives in a
- * different protocol section from the stage: changing it is a compound edit
- * that lands whole or not at all, and a save that carried both would be a
- * stage the schema cannot accept until the attribute exists. So each opens the
- * codebook's own editor, which is where a refusal is already turned into words
- * for the researcher. What happens to the row dialog behind an editor saved
- * this way is `nestedEditorSubmit`'s subject: nothing, which is the point.
- */
-function AttributeCodebookControls({
-  item,
-  inventingType,
-}: Readonly<{
-  item: RowEditorProps['item'];
-  /** The type of an attribute being invented WITH its values, if that is what
-   * this row is doing. */
-  inventingType?: string;
-}>) {
-  const { controller, protocolContext, readOnly } = useStageEditorForm();
-  const { subject } = useFormFieldsScope();
-  const codebookDocument = useCodebookSectionDocument(subject);
-  // The dialog's OWN store: the picker's choice is the row's, and the created
-  // attribute has to land on it rather than on the stage behind it.
-  const setFieldValue = useFormStore((state) => state.setFieldValue);
-  const chosen = asString(useRowValue('variable') ?? item.variable) ?? '';
-  const liveComponent = useRowValue(INPUT_CONTROL);
-  const [editing, setEditing] = useState<Readonly<{
-    /** Fresh for every open, so the editor starts from the draft it is given. */
-    openId: string;
-    surface: 'create' | 'defines' | 'rules';
-    label: string;
-    /**
-     * The record id a created attribute is minted with, decided when the
-     * editor opens rather than per render — and never shown: a researcher
-     * renames an attribute, and references made of its old name would break
-     * on the rename.
-     */
-    variableId: string;
-    /**
-     * The input control the editor authors settings FOR, taken from the row at
-     * the moment it opens rather than from the codebook.
-     *
-     * The row is where the control is chosen, and it is not committed until
-     * the row is saved — so a researcher who has just switched a date field
-     * from one picker to the other would otherwise be handed the settings of
-     * the control they have left behind, and the settings they author would be
-     * written beside a control that cannot take them.
-     */
-    component: string;
-  }> | null>(null);
-  const createTrigger = useRef<HTMLButtonElement>(null);
-  const definesTrigger = useRef<HTMLButtonElement>(null);
-  const rulesTrigger = useRef<HTMLButtonElement>(null);
-
-  const variables = variablesIn(codebookDocument);
-  const picked =
-    chosen === '' || chosen === NEW_VARIABLE ? undefined : variables[chosen];
-  const pickedType = asString(asRecord(picked).type) ?? '';
-  // The row's own choice while it is being made, falling back to the codebook
-  // for the render before the control has registered.
-  const pickedComponent =
-    asString(liveComponent) ?? asString(asRecord(picked).component) ?? '';
-  // Which list of answers the attribute holds — a list the researcher adds to,
-  // or the two a boolean choice names — asked of the control the ROW is
-  // showing, for the reason the settings are: a boolean moved to a toggle
-  // holds no list at all.
-  const optionsShape =
-    picked === undefined ? null : optionsShapeFor(pickedType, pickedComponent);
-  const canEditValues = optionsShape === 'choice';
-  const canEditAnswers = optionsShape === 'boolean';
-  const canEditParameters =
-    picked !== undefined &&
-    parameterShapeFor(pickedType, pickedComponent) !== null;
-  const canEditRules = picked !== undefined;
-  const canCreate =
-    inventingType !== undefined && isCollectableType(inventingType);
-  const definesLabel = canEditValues
-    ? EDIT_VALUES
-    : canEditAnswers
-      ? EDIT_ANSWER_LABELS
-      : EDIT_PARAMETERS;
-
-  if (readOnly || subject === undefined || codebookDocument === null) {
-    return null;
-  }
-  if (
-    !canCreate &&
-    !canEditValues &&
-    !canEditAnswers &&
-    !canEditParameters &&
-    !canEditRules
-  ) {
-    return null;
-  }
-
-  const close = () => {
-    setEditing(null);
-  };
-  const open = (surface: 'create' | 'defines' | 'rules', label: string) => {
-    setEditing({
-      openId: uuid(),
-      surface,
-      label,
-      variableId: surface === 'create' ? uuid() : chosen,
-      component: pickedComponent,
-    });
-  };
-
-  return (
-    <>
-      {canCreate && (
-        <p className="mb-3 text-sm text-current/70">
-          An attribute participants choose an answer from needs at least two
-          values, so it is created together with them.
-        </p>
-      )}
-      <div className="mb-8 flex flex-wrap gap-3">
-        {canCreate && (
-          <Button
-            ref={createTrigger}
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => open('create', CREATE_WITH_VALUES)}
-          >
-            {CREATE_WITH_VALUES}
-          </Button>
-        )}
-        {(canEditValues || canEditAnswers || canEditParameters) && (
-          <Button
-            ref={definesTrigger}
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => open('defines', definesLabel)}
-          >
-            {definesLabel}
-          </Button>
-        )}
-        {canEditRules && (
-          <Button
-            ref={rulesTrigger}
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => open('rules', EDIT_RULES)}
-          >
-            {EDIT_RULES}
-          </Button>
-        )}
-      </div>
-      {/* Each surface is written out rather than switched inside one dialog:
-          which attribute an editor is editing is decided when it OPENS, and a
-          shared dialog would hand it whatever the row named by the time it
-          rendered. */}
-      {editing?.surface === 'create' && canCreate && (
-        <Dialog
-          open
-          title={editing.label}
-          size="readable"
-          closeDialog={close}
-          finalFocus={() => createTrigger.current}
-        >
-          <VariableEditor
-            mode="create"
-            openId={editing.openId}
-            subject={subject}
-            protocolContext={protocolContext}
-            authoritativeDocument={codebookDocument}
-            variableId={editing.variableId}
-            initialDraft={{ name: '', type: inventingType, options: [] }}
-            // The kind of answer was chosen in the row behind this, and the
-            // whole reason the editor is open is the values that kind needs.
-            allowedVariableTypes={[inventingType]}
-            title={editing.label}
-            description={editing.label}
-            createRequestId={() => uuid()}
-            onSubmitRequest={(request) =>
-              controller.requestCompoundEdit(request)
-            }
-            onComplete={(variableId) => {
-              // The picker now names something that exists, which is what
-              // takes this row out of inventing anything.
-              setFieldValue('variable', variableId);
-              close();
-            }}
-          />
-        </Dialog>
-      )}
-      {editing?.surface === 'defines' && (
-        <Dialog
-          open
-          title={editing.label}
-          size="readable"
-          closeDialog={close}
-          finalFocus={() => definesTrigger.current}
-        >
-          <VariableEditor
-            mode="update"
-            openId={editing.openId}
-            subject={subject}
-            authoritativeDocument={codebookDocument}
-            variableId={editing.variableId}
-            // The control comes from the row rather than from the codebook,
-            // because the row is where it was just chosen. The editor writes
-            // it alongside the settings that depend on it, so the pair can
-            // never disagree; the row's own save then finds it already there.
-            initialDraft={{
-              ...asRecord(variables[editing.variableId]),
-              ...(editing.component === ''
-                ? {}
-                : { component: editing.component }),
-            }}
-            // The type is what the chosen input control was chosen FOR, so
-            // changing it here would leave the field promising a control the
-            // interview cannot render for it.
-            allowedVariableTypes={
-              isCollectableType(pickedType) ? [pickedType] : undefined
-            }
-            title={editing.label}
-            description={editing.label}
-            createRequestId={() => uuid()}
-            onSubmitRequest={(request) =>
-              controller.requestCompoundEdit(request)
-            }
-            onComplete={close}
-          />
-        </Dialog>
-      )}
-      {editing?.surface === 'rules' && (
-        <Dialog
-          open
-          title={editing.label}
-          size="readable"
-          closeDialog={close}
-          finalFocus={() => rulesTrigger.current}
-        >
-          <CodebookVariableValidationEditor
-            openId={editing.openId}
-            subject={subject}
-            variableId={editing.variableId}
-            authoritativeEntityDocument={codebookDocument}
-            allSubjectVariables={variables}
-            requestMetadata={{
-              createId: () => uuid(),
-              description: editing.label,
-            }}
-            onSubmitRequest={(request) =>
-              controller.requestCompoundEdit(request)
-            }
-            onComplete={close}
-          />
-        </Dialog>
-      )}
-    </>
-  );
-}
-
-const asRecord = (value: unknown): Record<string, unknown> =>
-  isRecord(value) ? value : {};
-
-const variablesIn = (
-  document: Readonly<SectionDoc> | null,
-): Record<string, unknown> =>
-  document === null ? {} : asRecord(document.variables);
-
 /**
  * The attributes this field may collect.
  *
@@ -1248,34 +903,6 @@ function FormFieldPreview({ item }: RowPreviewProps) {
       </div>
     </div>
   );
-}
-
-/**
- * A value of the row dialog's OWN form, live.
- *
- * `useStageValue` deliberately reads past the dialog to the stage behind it,
- * which is right for everything a row needs to know about its surroundings and
- * wrong for the row itself: the picker's current choice only exists in the
- * dialog's store until the row is saved, so a row editor reading the stage
- * would never see the researcher choose anything.
- */
-function useRowValue(name: string): unknown {
-  const storeApi = useContext(FormStoreContext);
-
-  const subscribe = useCallback(
-    (onStoreChange: () => void) =>
-      storeApi === undefined
-        ? () => undefined
-        : storeApi.subscribe(onStoreChange),
-    [storeApi],
-  );
-  const getSnapshot = useCallback((): unknown => {
-    if (storeApi === undefined) return undefined;
-    const state = storeApi.getState();
-    return state.hasValue(name) ? state.getValue(name) : undefined;
-  }, [name, storeApi]);
-
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
 
 /**
