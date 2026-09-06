@@ -1,4 +1,23 @@
+import { defineMessages } from '@codaco/app-i18n/messages';
+import type { IntlShape } from '@codaco/app-i18n/messages';
 import { ComponentTypes, VariableTypes } from '@codaco/protocol-validation';
+
+const messages = defineMessages({
+  unnamedAnswer: {
+    id: 'protocolBuilder.codebookVariable.unnamedBooleanAnswer',
+    defaultMessage:
+      'Write what this answer says, or clear both to offer Yes and No.',
+    description:
+      'Refusal shown under one of the two answers of a yes/no attribute when it has been left blank while the other is written. Clearing both is a real answer: an attribute that names neither is offered to the participant as Yes and No.',
+  },
+  repeatedAnswer: {
+    id: 'protocolBuilder.codebookVariable.repeatedBooleanAnswer',
+    defaultMessage:
+      'Give this answer different words: two buttons saying the same thing cannot be told apart.',
+    description:
+      'Refusal shown under the second of the two answers of a yes/no attribute when both have been given the same words, which leaves the participant two buttons they cannot tell apart.',
+  },
+});
 
 /**
  * The list of answers an attribute offers, as the protocol schema shapes them.
@@ -164,12 +183,6 @@ export const optionsForShape = (
 
 export type BooleanAnswerIssues = Readonly<Record<number, readonly string[]>>;
 
-const UNNAMED_ANSWER =
-  'Write what this answer says, or clear both to offer Yes and No.';
-
-const REPEATED_ANSWER =
-  'Give this answer different words: two buttons saying the same thing cannot be told apart.';
-
 /**
  * What is wrong with these two answers, per answer.
  *
@@ -197,12 +210,15 @@ const REPEATED_ANSWER =
  */
 export const validateBooleanAnswers = (
   options: unknown,
+  intl: IntlShape,
 ): BooleanAnswerIssues => {
   const written = booleanOptionsFrom(options);
   if (written === undefined) return {};
   const issues: Record<number, string[]> = {};
   written.forEach((answer, index) => {
-    if (answer.label.trim() === '') issues[index] = [UNNAMED_ANSWER];
+    if (answer.label.trim() === '') {
+      issues[index] = [intl.formatMessage(messages.unnamedAnswer)];
+    }
   });
   const [first, second] = written;
   if (
@@ -211,10 +227,10 @@ export const validateBooleanAnswers = (
     issues[1] === undefined &&
     first.label.trim() === second.label.trim()
   ) {
-    issues[1] = [REPEATED_ANSWER];
+    issues[1] = [intl.formatMessage(messages.repeatedAnswer)];
   }
   return issues;
 };
 
 export const hasBooleanAnswerIssues = (issues: BooleanAnswerIssues): boolean =>
-  Object.values(issues).some((messages) => messages.length > 0);
+  Object.values(issues).some((reported) => reported.length > 0);

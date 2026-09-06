@@ -1,3 +1,5 @@
+import { defineMessages } from '@codaco/app-i18n/messages';
+import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import {
   ComponentTypes,
   type DATE_RESOLUTION,
@@ -5,6 +7,45 @@ import {
   relativeDatePickerParametersSchema,
   VariableTypes,
 } from '@codaco/protocol-validation';
+
+const messages = defineMessages({
+  resolutionFull: {
+    id: 'protocolBuilder.variableParameters.resolutionFull',
+    defaultMessage: 'Year, month and day (YYYY-MM-DD)',
+    description:
+      'Choice offered for how precise a date a field collects: a whole calendar date. The bracketed pattern is the literal format the protocol stores and is not translated.',
+  },
+  resolutionMonth: {
+    id: 'protocolBuilder.variableParameters.resolutionMonth',
+    defaultMessage: 'Year and month (YYYY-MM)',
+    description:
+      'Choice offered for how precise a date a field collects: a month within a year. The bracketed pattern is the literal format the protocol stores and is not translated.',
+  },
+  resolutionYear: {
+    id: 'protocolBuilder.variableParameters.resolutionYear',
+    defaultMessage: 'Year only (YYYY)',
+    description:
+      'Choice offered for how precise a date a field collects: a year on its own. The bracketed pattern is the literal format the protocol stores and is not translated.',
+  },
+  minLabelRequired: {
+    id: 'protocolBuilder.variableParameters.minLabelRequired',
+    defaultMessage: 'Write what the low end of the scale means.',
+    description:
+      'Refusal shown under the field naming the low end of a sliding scale when the researcher has left it empty. The participant sees this wording at one end of the scale, so a scale with no such words is a line with nothing at either end of it.',
+  },
+  maxLabelRequired: {
+    id: 'protocolBuilder.variableParameters.maxLabelRequired',
+    defaultMessage: 'Write what the high end of the scale means.',
+    description:
+      'Refusal shown under the field naming the high end of a sliding scale when the researcher has left it empty.',
+  },
+  settingRequired: {
+    id: 'protocolBuilder.variableParameters.settingRequired',
+    defaultMessage: 'This setting is required.',
+    description:
+      'Refusal shown under one of an input control’s settings when it must hold a value and holds none, and nothing more specific is written for it.',
+  },
+});
 
 /**
  * The settings one input control takes, as the protocol schema shapes them.
@@ -65,10 +106,10 @@ export const DEFAULT_DATE_RESOLUTION = 'full';
  * gluing a phrase to a format string is a label no translator can move around.
  */
 export const DATE_RESOLUTION_LABELS = {
-  full: 'Year, month and day (YYYY-MM-DD)',
-  month: 'Year and month (YYYY-MM)',
-  year: 'Year only (YYYY)',
-} as const satisfies Record<keyof typeof DATE_RESOLUTION, string>;
+  full: messages.resolutionFull,
+  month: messages.resolutionMonth,
+  year: messages.resolutionYear,
+} as const satisfies Record<keyof typeof DATE_RESOLUTION, MessageDescriptor>;
 
 export type DateResolution = keyof typeof DATE_RESOLUTION_LABELS;
 
@@ -83,10 +124,11 @@ const DATE_RESOLUTION_VALUES: readonly DateResolution[] = [
   'year',
 ];
 
-export const DATE_RESOLUTION_OPTIONS = DATE_RESOLUTION_VALUES.map((value) => ({
-  value,
-  label: DATE_RESOLUTION_LABELS[value],
-}));
+export const dateResolutionOptions = (intl: IntlShape) =>
+  DATE_RESOLUTION_VALUES.map((value) => ({
+    value,
+    label: intl.formatMessage(DATE_RESOLUTION_LABELS[value]),
+  }));
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -186,9 +228,9 @@ const REQUIRED_PARAMETERS = {
   scalar: ['minLabel', 'maxLabel'],
 } as const satisfies Record<ParameterShape, readonly string[]>;
 
-const REQUIRED_MESSAGES: Readonly<Record<string, string>> = {
-  minLabel: 'Write what the low end of the scale means.',
-  maxLabel: 'Write what the high end of the scale means.',
+const REQUIRED_MESSAGES: Readonly<Record<string, MessageDescriptor>> = {
+  minLabel: messages.minLabelRequired,
+  maxLabel: messages.maxLabelRequired,
 };
 
 /**
@@ -221,6 +263,7 @@ export type ParameterIssues = Readonly<Record<string, readonly string[]>>;
 export const validateParameters = (
   shape: ParameterShape,
   parameters: unknown,
+  intl: IntlShape,
 ): ParameterIssues => {
   const written = parametersForShape(shape, parameters) ?? {};
   const issues: Record<string, string[]> = {};
@@ -230,7 +273,10 @@ export const validateParameters = (
 
   for (const key of REQUIRED_PARAMETERS[shape]) {
     if (written[key] === undefined) {
-      add(key, REQUIRED_MESSAGES[key] ?? 'This setting is required.');
+      add(
+        key,
+        intl.formatMessage(REQUIRED_MESSAGES[key] ?? messages.settingRequired),
+      );
     }
   }
 
@@ -249,4 +295,4 @@ export const validateParameters = (
 };
 
 export const hasParameterIssues = (issues: ParameterIssues): boolean =>
-  Object.values(issues).some((messages) => messages.length > 0);
+  Object.values(issues).some((reported) => reported.length > 0);
