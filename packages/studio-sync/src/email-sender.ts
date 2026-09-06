@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { createConnection, type Socket } from 'node:net';
+import { Readable } from 'node:stream';
 
 import nodemailer from 'nodemailer';
 import parseAddresses from 'nodemailer/lib/addressparser/index.js';
@@ -128,7 +129,7 @@ function connectionOptions(value: string) {
   }
 }
 
-function failure(error: unknown, connected: boolean): EmailDeliveryError {
+function failure(error: unknown, contentStarted: boolean): EmailDeliveryError {
   if (error instanceof EmailDeliveryError) return error;
   if (error !== null && typeof error === 'object') {
     const responseCode =
@@ -142,15 +143,13 @@ function failure(error: unknown, connected: boolean): EmailDeliveryError {
     }
     const code = 'code' in error ? error.code : undefined;
     if (
-      ['EAUTH', 'EENVELOPE', 'EMESSAGE', 'ETLS', 'EREQUIRETLS'].includes(
-        String(code),
-      )
+      ['EAUTH', 'EENVELOPE', 'EMESSAGE', 'EREQUIRETLS'].includes(String(code))
     )
       return new EmailDeliveryError('permanent');
   }
-  // Nodemailer labels both greeting and post-DATA timeouts ETIMEDOUT/CONN.
-  // A connected timeout or unexplained close is conservatively terminal.
-  return new EmailDeliveryError(connected ? 'uncertain' : 'retryable');
+  // Greeting, authentication, envelope and TLS failures cannot deliver mail
+  // before the peer permits DATA and starts consuming the message stream.
+  return new EmailDeliveryError(contentStarted ? 'uncertain' : 'retryable');
 }
 
 export function createSmtpEmailSender({ url }: { url: string }): EmailSender {
@@ -175,7 +174,8 @@ export function createSmtpEmailSender({ url }: { url: string }): EmailSender {
         message.messageId ?? `<${randomUUID()}@networkcanvas.local>`;
       const to = normalizeMailbox(message.to);
       let socket: Socket | undefined;
-      let connected = false;
+      let contentStarted = false;
+      const streams = new Set<Readable>();
       let canceled = false;
       const { promise: deadline, reject: rejectDeadline } =
         Promise.withResolvers<never>();
@@ -183,7 +183,7 @@ export function createSmtpEmailSender({ url }: { url: string }): EmailSender {
         canceled = true;
         socket?.destroy();
         rejectDeadline(
-          new EmailDeliveryError(connected ? 'uncertain' : 'retryable'),
+          new EmailDeliveryError(contentStarted ? 'uncertain' : 'retryable'),
         );
       };
       active.add(cancel);
@@ -233,10 +233,32 @@ export function createSmtpEmailSender({ url }: { url: string }): EmailSender {
               callback(new EmailDeliveryError('retryable'), false);
               return;
             }
-            connected = true;
             callback(null, { connection });
           });
         },
+      });
+      transport.use('stream', (mail, callback) => {
+        mail.message.processFunc((source) => {
+          // This must be lazy: eagerly piping into a Transform would mark mail
+          // as sent while SMTP is still negotiating the envelope. Nodemailer
+          // consumes this stream only after the DATA response. Explicit SMTP
+          // rejection remains authoritative even if it drains the stream.
+          const observed = Readable.from(
+            (async function* () {
+              for await (const chunk of source as AsyncIterable<
+                Buffer | string
+              >) {
+                contentStarted = true;
+                yield chunk;
+              }
+            })(),
+            { objectMode: false },
+          );
+          streams.add(source);
+          streams.add(observed);
+          return observed;
+        });
+        callback();
       });
       try {
         const receipt: SMTPTransport.SentMessageInfo = await Promise.race([
@@ -266,11 +288,12 @@ export function createSmtpEmailSender({ url }: { url: string }): EmailSender {
           throw new EmailDeliveryError('uncertain');
         return { status: 'accepted', messageId };
       } catch (error) {
-        throw failure(error, connected);
+        throw failure(error, contentStarted);
       } finally {
         clearTimeout(timer);
         active.delete(cancel);
         socket?.destroy();
+        for (const stream of streams) stream.destroy();
         transport.close();
       }
     },
