@@ -15,7 +15,7 @@ import { router } from './router.tsx';
 void queryClient
   .fetchQuery(statusQueryOptions)
   .then((status) =>
-    clientTelemetry.start(status.telemetry === true, {
+    clientTelemetry.start(status.telemetry, {
       mode: status.deployment.mode,
       runtime: 'client',
       version: status.version,
@@ -33,7 +33,8 @@ if (!container) {
 }
 
 createRoot(container, {
-  onUncaughtError: (error) => clientTelemetry.capture('client_render', error),
+  // Retain React's default browser reporting for uncaught render failures.
+  // The owned error listener captures that report when telemetry is enabled.
   onCaughtError: (error) => clientTelemetry.capture('client_render', error),
 }).render(
   <StrictMode>
