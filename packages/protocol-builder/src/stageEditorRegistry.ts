@@ -159,7 +159,6 @@ export const AWAITING_STAGE_EDITORS = [
   'CategoricalBin',
   'DyadCensus',
   'EgoForm',
-  'Geospatial',
   'Information',
   'NameGenerator',
   'NameGeneratorQuickAdd',

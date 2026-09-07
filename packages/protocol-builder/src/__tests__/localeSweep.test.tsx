@@ -8,6 +8,9 @@ import {
   TestPromptPreview,
 } from '../sections/__tests__/rowFixtures.tsx';
 import FormFieldsSection from '../sections/FormFieldsSection.tsx';
+import GeospatialPromptsSection from '../sections/geospatial/GeospatialPromptsSection.tsx';
+import MapAppearanceSection from '../sections/geospatial/MapAppearanceSection.tsx';
+import MapSourceSection from '../sections/geospatial/MapSourceSection.tsx';
 import InterviewerGuidanceSection from '../sections/InterviewerGuidanceSection.tsx';
 import IntroductionSection from '../sections/IntroductionSection.tsx';
 import AtRiskStatusesSection from '../sections/narrativePedigree/AtRiskStatusesSection.tsx';
@@ -44,8 +47,8 @@ import {
  * The labels the row-editor stand-ins put on screen.
  *
  * `rowFixtures.tsx` names a family's fields in English on purpose — the tests
- * around it read those names back — and two real areas happen to have chosen
- * the same words for their own labels. See `SweepAllowances`.
+ * around it read those names back — and three real areas happen to have
+ * chosen the same words for their own labels. See `SweepAllowances`.
  */
 const FIXTURE_ROW_EDITOR_WORDS = [
   'Prompt text',
@@ -303,6 +306,23 @@ describe('the interface families under es, at rest', () => {
       'sociogram canvas sections at rest',
       researcherWords(harness),
     );
+  });
+
+  it('sweeps a geospatial stage', async () => {
+    const harness = renderStageEditor({
+      stageId: 'geospatial-1',
+      locale: 'es',
+      sections: (
+        <>
+          <MapSourceSection />
+          <GeospatialPromptsSection />
+          <MapAppearanceSection />
+        </>
+      ),
+    });
+    await settled(harness);
+
+    expectNoLocaleLeaks('geospatial stage at rest', researcherWords(harness));
   });
 
   it('sweeps a family pedigree', async () => {
