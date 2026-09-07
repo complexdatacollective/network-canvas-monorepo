@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -9,6 +8,7 @@ import {
 } from '../apps/studio/deployment/installer/release.mjs';
 import { canonicalize } from '../packages/studio-sync/src/apply.ts';
 import { readMigrations } from '../packages/studio-sync/src/postgres-migration-artifacts.ts';
+import { readCommittedFile } from './studio-committed-file.mjs';
 import { validateCycloneDx } from './studio-image-evidence.mjs';
 
 const schemaRoots = {
@@ -40,15 +40,7 @@ async function committedSchema(candidate, prefix) {
       )
         throw new Error('Unexpected committed migration artifact.');
       const target = join(directory, parts[0]);
-      const bytes = Buffer.from(candidate.read(file.path));
-      const oid = createHash('sha1')
-        .update(`blob ${bytes.length}\0`)
-        .update(bytes)
-        .digest('hex');
-      if (oid !== file.oid)
-        throw new Error(
-          'Migration content does not match its committed Git blob.',
-        );
+      const bytes = readCommittedFile(candidate, file.path);
       mkdirSync(target, { recursive: true, mode: 0o700 });
       writeFileSync(join(target, parts[1]), bytes, {
         flag: 'wx',

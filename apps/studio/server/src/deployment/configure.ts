@@ -44,6 +44,35 @@ const databaseLogins = [
   'studio_backup_login',
 ];
 
+/** The signed installer and offline configure command share these public bytes.
+ * This renderer never generates or reads deployment secrets. */
+export function renderDeploymentTemplate(name: string, input: Buffer): Buffer {
+  if (!configurationFiles.includes(name))
+    throw new Error('Unknown deployment template.');
+  let bytes = Buffer.from(input);
+  if (name.startsWith('deployment/postgres-')) {
+    let sql = bytes.toString();
+    const substitutions = new Map([
+      [
+        '/* STUDIO_LARGE_OBJECT_PRIVILEGES */',
+        revokeLargeObjectPrivilegesSql([...databaseRoles, ...databaseLogins]),
+      ],
+    ]);
+    if (name === 'deployment/postgres-init.sql')
+      substitutions.set(
+        '/* STUDIO_RUNTIME_ROLES */',
+        runtimeRolesSql(databaseRoles),
+      );
+    for (const [marker, replacement] of substitutions) {
+      if (sql.split(marker).length !== 2)
+        throw new Error('Invalid database provisioning template.');
+      sql = sql.replace(marker, replacement);
+    }
+    bytes = Buffer.from(sql);
+  }
+  return bytes;
+}
+
 /** Offline only: no environment, listener, database or external service access. */
 export async function configureDeployment(
   input: z.input<typeof optionsSchema>,
@@ -53,31 +82,13 @@ export async function configureDeployment(
   // Validate inputs and read the complete shipped bundle before writing anything.
   const templates = await Promise.all(
     configurationFiles.map(async (name) => {
-      let bytes = await readFile(join(templateRoot, name));
-      if (name.startsWith('deployment/postgres-')) {
-        let sql = bytes.toString();
-        const substitutions = new Map([
-          [
-            '/* STUDIO_LARGE_OBJECT_PRIVILEGES */',
-            revokeLargeObjectPrivilegesSql([
-              ...databaseRoles,
-              ...databaseLogins,
-            ]),
-          ],
-        ]);
-        if (name === 'deployment/postgres-init.sql')
-          substitutions.set(
-            '/* STUDIO_RUNTIME_ROLES */',
-            runtimeRolesSql(databaseRoles),
-          );
-        for (const [marker, replacement] of substitutions) {
-          if (sql.split(marker).length !== 2)
-            throw new Error('Invalid database provisioning template.');
-          sql = sql.replace(marker, replacement);
-        }
-        bytes = Buffer.from(sql);
-      }
-      return { name, bytes };
+      return {
+        name,
+        bytes: renderDeploymentTemplate(
+          name,
+          await readFile(join(templateRoot, name)),
+        ),
+      };
     }),
   );
   const output = resolve(options.output);
