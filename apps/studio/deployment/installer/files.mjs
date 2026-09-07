@@ -160,6 +160,7 @@ export function readInstallerBundle(directory, expectedDigest) {
     'configuration-files.json',
     'release.json',
     'release.sigstore.json',
+    ...configurationFiles.map((name) => `templates/${name}`),
     ...configurationFiles.map((name) => `configuration/${name}`),
   ])
     if (!files.has(required))

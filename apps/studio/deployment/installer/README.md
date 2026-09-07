@@ -30,6 +30,13 @@ binding again, verifies the manifest signature and all six controlled GHCR image
 signatures, and matches each pulled platform's actual image configuration ID.
 It performs these checks before starting any image.
 
+The bundle inventories both raw deployment templates and their expected rendered
+output. The offline configuration image receives those verified raw templates
+through a read-only mount, then the installer compares every rendered file.
+This lets a Compose-only release use its current configuration while retaining
+the selected backend image identities; templates embedded in an older image
+cannot silently replace the selected release's templates.
+
 For a fresh installation, pass an empty mode0700 installation directory and the
 public domain and ACME contact email:
 

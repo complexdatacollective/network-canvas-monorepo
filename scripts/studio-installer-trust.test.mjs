@@ -61,6 +61,12 @@ function fixture(t, release = releasedDistribution()) {
     'release.sigstore.json': '{}',
     ...Object.fromEntries(
       configurationFiles.map((name) => [
+        `templates/${name}`,
+        `# raw ${name}\n`,
+      ]),
+    ),
+    ...Object.fromEntries(
+      configurationFiles.map((name) => [
         `configuration/${name}`,
         `# ${name}\n`,
       ]),
@@ -232,6 +238,17 @@ test('the complete installer inventory refuses missing, changed, added and linke
     rmSync(path, { force: true });
     writeFileSync(path, original);
   }
+  const rawTemplate = join(
+    f.bundleDirectory,
+    'templates/deployment/postgres-init.sql',
+  );
+  const originalTemplate = readFileSync(rawTemplate);
+  writeFileSync(rawTemplate, 'different administrator provisioning bytes');
+  assert.throws(
+    () => readInstallerBundle(f.bundleDirectory, f.expectedDigest),
+    /signed inventory/,
+  );
+  writeFileSync(rawTemplate, originalTemplate);
   writeFileSync(
     join(f.bundleDirectory, 'unlisted.mjs'),
     'extra executable bytes',

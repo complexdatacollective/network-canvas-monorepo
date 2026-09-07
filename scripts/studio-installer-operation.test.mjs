@@ -88,8 +88,10 @@ function fixture(t) {
     );
     files.set('release.json', Buffer.from(JSON.stringify(release.value)));
     files.set('release.sigstore.json', Buffer.from('{}'));
-    for (const [name, bytes] of Object.entries(templates))
+    for (const [name, bytes] of Object.entries(templates)) {
+      files.set(`templates/${name}`, bytes);
       files.set(`configuration/${name}`, bytes);
+    }
     const metadata = {
       format: 1,
       source: release.current.source,
@@ -147,6 +149,18 @@ function fixture(t) {
       });
     }
     if (args[0] === 'run') {
+      const raw = args.find((value) =>
+        value.endsWith('target=/app/deployment-bundle,readonly'),
+      );
+      assert.ok(
+        raw,
+        'the configuration command must mount the verified current templates',
+      );
+      const templateRoot = raw
+        .slice('type=bind,source='.length)
+        .split(',target=')[0];
+      for (const [name, bytes] of Object.entries(templates))
+        assert.deepEqual(readFileSync(join(templateRoot, name)), bytes);
       const output = args[args.indexOf('--mount') + 1]
         .split('source=')[1]
         .split(',target=')[0];

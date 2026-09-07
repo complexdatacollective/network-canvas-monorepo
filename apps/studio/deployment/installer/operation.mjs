@@ -317,6 +317,10 @@ export function executeOperation(options, run = command) {
       `${process.getuid()}:${process.getgid()}`,
       '--mount',
       `type=bind,source=${configuration},target=/configuration`,
+      // Compose-only releases may reuse this exact image. The signed bundle
+      // supplies current raw templates; the verified image still owns rendering.
+      '--mount',
+      `type=bind,source=${join(archivedBundle, 'templates')},target=/app/deployment-bundle,readonly`,
       images.studio,
       'configure',
       '--domain',

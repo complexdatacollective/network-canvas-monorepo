@@ -22,7 +22,7 @@ type CommandOptions = {
   timeout?: number;
 };
 
-it('executes the current-image installer drain, backup, migration and authenticated smoke against real private Compose services', async () => {
+it('uses the selected template bundle for a same-image update, then drains, backs up, migrates and privately smokes real Compose services', async () => {
   const fixture = await localDeployment('installer-operation');
   const root = privateDirectory(join(fixture.root, 'installation'));
   const data = privateDirectory(join(fixture.root, 'independent-data'));
@@ -114,7 +114,15 @@ networks:
       return [name, result];
     }),
   );
-  await fixture.configure();
+  const rawDirectory = privateDirectory(join(fixture.root, 'raw-templates'));
+  const rawTemplates = new Map<string, Buffer>();
+  for (const name of configurationFiles) {
+    const bytes = await readFile(new URL(`../../${name}`, import.meta.url));
+    rawTemplates.set(name, bytes);
+    await mkdir(dirname(join(rawDirectory, name)), { recursive: true });
+    await writeFile(join(rawDirectory, name), bytes);
+  }
+  await fixture.configure(rawDirectory);
   const templates = new Map(
     await Promise.all(
       configurationFiles.map(
@@ -207,6 +215,20 @@ networks:
       'configuration-files.json',
     ])
       files.set(name, await readFile(join(source, name)));
+    // This second release changes its deployment template while reusing the
+    // same actual image bytes. Embedded templates must not override the bundle.
+    if (generation > 1) {
+      const comment = Buffer.from(
+        `\n# Selected installer generation ${generation}\n`,
+      );
+      for (const contents of [rawTemplates, templates])
+        contents.set(
+          'docker-compose.yml',
+          Buffer.concat([contents.get('docker-compose.yml')!, comment]),
+        );
+    }
+    for (const [name, bytes] of rawTemplates)
+      files.set(`templates/${name}`, bytes);
     for (const [name, bytes] of templates)
       files.set(`configuration/${name}`, bytes);
     files.set('release.json', Buffer.from(JSON.stringify(synthetic.value)));
@@ -233,6 +255,9 @@ networks:
       credentialsFile,
       backupDirectory: data,
       keyCustodyDirectory: keys,
+      actualConfigurations: Object.values(synthetic.value.images).map(
+        ({ configurations }) => configurations,
+      ),
     };
   }
   try {
@@ -257,6 +282,12 @@ networks:
     expect((await fetch(`${fixture.origin}/setup`)).status).toBe(404);
     const nextOptions = await bundle(2, [firstRelease]);
     const nextRelease = release!;
+    // The manifest references differ, but the inspected Linux configuration
+    // IDs are deliberately identical. This is a Compose-template-only update,
+    // not compatibility evidence for distinct backend images.
+    expect(nextOptions.actualConfigurations).toEqual(
+      firstOptions.actualConfigurations,
+    );
     expect(() => executeOperation(nextOptions, run)).toThrow(
       'Injected private-smoke interruption',
     );
@@ -274,6 +305,12 @@ networks:
     const retry = executeOperation(nextOptions, run);
     selectedConfiguration = retry.configuration;
     expect(retry.setup).toBeUndefined();
+    expect(
+      await readFile(join(retry.configuration, 'docker-compose.yml'), 'utf8'),
+    ).toContain('# Selected installer generation 2');
+    expect(
+      await readFile(join(first.configuration, 'docker-compose.yml'), 'utf8'),
+    ).not.toContain('# Selected installer generation 2');
     expect(await readdir(data)).toEqual(countsBeforeRetry);
     expect((await readdir(keys)).length).toBe(1);
     expect((await fetch(`${fixture.origin}/setup`)).status).toBe(404);
