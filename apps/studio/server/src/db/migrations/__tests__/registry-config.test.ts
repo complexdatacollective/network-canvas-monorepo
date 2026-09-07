@@ -218,6 +218,68 @@ async function withRegistryCluster(
 describe.skipIf(!database)(
   'shared migration engine with registry configuration',
   () => {
+    it.each(['absent', 'unconfigured'] as const)(
+      'checks runtime catalog privileges with an %s optional backup role',
+      async (mode) => {
+        await withRegistryCluster(async (create, roles) => {
+          const deployment = await create();
+          const { backupRole, ...withoutBackup } = deployment.config;
+          expect(backupRole).toBe(roles.backup);
+          const migrator = createPostgresMigrator(
+            mode === 'absent' ? deployment.config : withoutBackup,
+          );
+          const owner = await deployment.owner.connect();
+          try {
+            await expect(
+              migrator.enforceSecurity(owner, deployment.allowedLogins),
+            ).resolves.toBeUndefined();
+          } finally {
+            owner.release();
+          }
+          const client = await deployment.administrator.connect();
+          try {
+            await client.query('BEGIN');
+            expect(
+              (
+                await client.query(
+                  'SELECT rolname FROM pg_roles WHERE rolname = $1',
+                  [roles.backup],
+                )
+              ).rows,
+            ).toEqual([]);
+            await client.query(`GRANT SELECT(ctid) ON pg_catalog.pg_authid TO ${escapeIdentifier(roles.app)};
+              SET LOCAL ROLE ${escapeIdentifier(roles.app)}`);
+            expect(
+              (
+                await client.query(
+                  'SELECT ctid IS NOT NULL AS reached FROM pg_catalog.pg_authid LIMIT 1',
+                )
+              ).rows,
+            ).toEqual([{ reached: true }]);
+            await client.query(
+              `RESET ROLE; SET LOCAL SESSION AUTHORIZATION ${escapeIdentifier(deployment.logins.owner)}`,
+            );
+            await expect(
+              migrator.enforceSecurity(client, deployment.allowedLogins),
+            ).rejects.toThrow(
+              'Registry runtime and backup identities have unsafe PostgreSQL catalog privileges.',
+            );
+            expect(
+              (
+                await client.query(
+                  'SELECT rolname FROM pg_roles WHERE rolname = $1',
+                  [roles.backup],
+                )
+              ).rows,
+            ).toEqual([]);
+          } finally {
+            await client.query('ROLLBACK');
+            client.release();
+          }
+        });
+      },
+    );
+
     it.each(['app', 'operator'] as const)(
       'refuses configured Registry %s sequence resets but preserves ordinary allocation and reads',
       async (identity) => {

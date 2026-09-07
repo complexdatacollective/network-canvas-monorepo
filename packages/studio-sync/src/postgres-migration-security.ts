@@ -1,6 +1,7 @@
 import { escapeIdentifier } from 'pg';
 import type pg from 'pg';
 
+import { assertSafePostgresCatalogPrivileges } from './postgres-catalog-privileges.ts';
 import type { PostgresMigrationConfig } from './postgres-migrations.ts';
 import {
   runtimeRolesSql,
@@ -257,7 +258,7 @@ export async function enforceMigrationSecurity(
       SELECT oid FROM pg_namespace WHERE nspname !~ '^pg_' AND nspname <> 'information_schema'
     ) SELECT NOT EXISTS (
       SELECT 1 FROM identities login WHERE
-        has_database_privilege(login.oid, current_database(), 'CREATE,CONNECT WITH GRANT OPTION,TEMPORARY WITH GRANT OPTION')
+        has_database_privilege(login.oid, current_database(), 'CREATE,TEMPORARY,CONNECT WITH GRANT OPTION,TEMPORARY WITH GRANT OPTION')
         OR EXISTS (
           SELECT 1 FROM pg_shdepend dependency
           WHERE dependency.refclassid = 'pg_authid'::regclass AND dependency.refobjid = login.oid
@@ -346,7 +347,18 @@ export async function enforceMigrationSecurity(
   }
   if (!loginAccess.rows[0].safe) {
     throw new Error(
-      `Runtime and backup identities must own no database objects and hold no access outside their reviewed ${applicationName} roles: remove direct or PUBLIC login data grants, CREATE, CONNECT grant options, executable SECURITY DEFINER routines, view, materialized view, foreign table, or large object access beyond read-only backup grants, backup table writes, or sequence UPDATE privileges.`,
+      `Runtime and backup identities must own no database objects and hold no access outside their reviewed ${applicationName} roles: remove direct or PUBLIC login data grants, CREATE, TEMPORARY, CONNECT grant options, executable SECURITY DEFINER routines, view, materialized view, foreign table, or large object access beyond read-only backup grants, backup table writes, or sequence UPDATE privileges.`,
+    );
+  }
+  try {
+    await assertSafePostgresCatalogPrivileges(client, [
+      ...runtimeRoles,
+      ...optionalRoles,
+      ...restrictedLogins,
+    ]);
+  } catch {
+    throw new Error(
+      `${applicationName} runtime and backup identities have unsafe PostgreSQL catalog privileges.`,
     );
   }
   // CONNECT is checked only at connection admission. Enrollment must already

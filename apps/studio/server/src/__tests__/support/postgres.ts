@@ -163,6 +163,10 @@ export async function createScratchDatabase(
   url.pathname = `/${name}`;
   const scratchDb = { url: url.toString() };
   const pool = createOwnerPool(scratchDb);
+  // Runtime/backup sessions must not obtain implicit temp-schema CREATE.
+  await pool.query(
+    `REVOKE TEMPORARY ON DATABASE ${pg.escapeIdentifier(name)} FROM PUBLIC`,
+  );
   // Dedicated production databases require this administrator provisioning:
   // PUBLIC otherwise permits persistent large-object writes without table DML.
   await pool.query(revokeLargeObjectPrivilegesSql());

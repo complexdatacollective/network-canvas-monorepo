@@ -1,10 +1,13 @@
 import { escapeIdentifier } from 'pg';
 import type pg from 'pg';
 
+import { assertSafePostgresCatalogPrivileges } from './postgres-catalog-privileges.ts';
 import {
   RESTRICTED_LARGE_OBJECT_FUNCTIONS,
   validateRoleNames,
 } from './role-bootstrap.ts';
+
+const BACKUP_VERIFICATION_TIMEOUT_MS = 10_000;
 
 export type PostgresBackupConfiguration = {
   readonly role: string;
@@ -77,10 +80,12 @@ export function createPostgresBackupVerifier(
     input.rowSecurity.mode === 'policy' ? input.rowSecurity.name : '';
   const policyExpression =
     input.rowSecurity.mode === 'policy' ? input.rowSecurity.expression : '';
-  return async function assertBackupAccess(
-    pool: Pick<pg.Pool, 'query'>,
-  ): Promise<void> {
-    const identity = await pool.query<{ safe: boolean }>(
+  async function assertConnection(client: pg.PoolClient): Promise<void> {
+    const identity = await client.query<{
+      safe: boolean;
+      current: string;
+      session: string;
+    }>(
       `
     SELECT current_user = $1
       AND EXISTS (
@@ -95,11 +100,11 @@ export function createPostgresBackupVerifier(
             SELECT 1 FROM pg_auth_members membership JOIN pg_roles parent ON parent.oid = membership.roleid
             WHERE membership.member = login.oid AND (parent.rolname <> $1 OR membership.admin_option OR membership.inherit_option OR NOT membership.set_option)
           )
-      ) AS safe`,
+      ) AS safe, current_user AS current, session_user AS session`,
       [role],
     );
     if (identity.rows[0]?.safe !== true) throw new Error(failureCode);
-    const result = await pool.query<{ safe: boolean }>(
+    const result = await client.query<{ safe: boolean }>(
       `
     -- Refuse bypass capabilities even with no existing objects, and refuse
     -- permissive live sessions after formerly granted SET was revoked.
@@ -130,8 +135,8 @@ export function createPostgresBackupVerifier(
         WHERE has_function_privilege(current_user, routine, 'EXECUTE')
           OR has_function_privilege(session_user, routine, 'EXECUTE')
       )
-      AND NOT has_database_privilege(current_user, current_database(), 'CREATE')
-      AND NOT has_database_privilege(session_user, current_database(), 'CREATE')
+      AND NOT has_database_privilege(current_user, current_database(), 'CREATE,TEMPORARY')
+      AND NOT has_database_privilege(session_user, current_database(), 'CREATE,TEMPORARY')
       -- RESET ROLE/SET ROLE NONE must not expose login-owned objects or writes.
       AND NOT EXISTS (
         SELECT 1 FROM pg_namespace WHERE (nspname NOT IN ('pg_catalog', 'information_schema') AND (
@@ -213,5 +218,86 @@ export function createPostgresBackupVerifier(
       ],
     );
     if (result.rows[0]?.safe !== true) throw new Error(failureCode);
+    await assertSafePostgresCatalogPrivileges(client, [
+      identity.rows[0].current,
+      identity.rows[0].session,
+    ]);
+  }
+
+  return async function assertBackupAccess(
+    connection: pg.Pool | pg.PoolClient,
+  ): Promise<void> {
+    // A checked-out client belongs to its caller, including transaction state.
+    // Structural discrimination also supports clients from another pg copy.
+    if ('release' in connection) {
+      try {
+        if (typeof connection.release !== 'function')
+          throw new Error(failureCode);
+        await assertConnection(connection);
+      } catch {
+        throw new Error(failureCode);
+      }
+      return;
+    }
+
+    let client: pg.PoolClient | undefined;
+    let released = false;
+    let expired = false;
+    const interrupted = Promise.withResolvers<never>();
+    const release = (destroy: boolean) => {
+      if (!client || released) return;
+      released = true;
+      const borrowed = client;
+      if (destroy) {
+        // pg can emit a final socket error after its active query rejects.
+        // Keep the fixed-error listener until disposal actually finishes.
+        borrowed.once('end', () => borrowed.off('error', abort));
+      } else {
+        borrowed.off('error', abort);
+      }
+      borrowed.release(destroy);
+    };
+    const abort = () => {
+      expired = true;
+      try {
+        release(true);
+      } catch {
+        // Neither a socket event nor deadline cleanup may expose provider errors.
+      }
+      interrupted.reject(new Error(failureCode));
+    };
+    const operation = async () => {
+      let succeeded = false;
+      try {
+        client = await connection.connect();
+        client.on('error', abort);
+        // Acquisition can finish after our deadline. Never leak that borrower.
+        if (expired) throw new Error(failureCode);
+        await client.query('BEGIN READ ONLY');
+        await assertConnection(client);
+        await client.query('COMMIT');
+        succeeded = true;
+      } catch {
+        if (client && !expired) {
+          try {
+            await client.query('ROLLBACK');
+          } catch {
+            // Every unsuccessful borrower is discarded, including rollback failure.
+          }
+        }
+        throw new Error(failureCode);
+      } finally {
+        release(!succeeded);
+      }
+    };
+    const timer = setTimeout(abort, BACKUP_VERIFICATION_TIMEOUT_MS);
+    try {
+      // One deadline covers acquisition, every query, and rollback cleanup.
+      await Promise.race([operation(), interrupted.promise]);
+    } catch {
+      throw new Error(failureCode);
+    } finally {
+      clearTimeout(timer);
+    }
   };
 }

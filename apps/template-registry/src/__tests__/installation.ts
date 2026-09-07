@@ -16,7 +16,9 @@ import { REGISTRY_BACKUP_ROLE, REGISTRY_ROLES } from '../db/schema.ts';
 // Only a disposable local PostgreSQL fixture; no deployment credentials load.
 // oxlint-disable-next-line node/no-process-env
 const port = Number(process.env.PGPORT ?? 54318);
-const adminUrl = `postgres://postgres:spike@127.0.0.1:${port}/postgres`;
+// oxlint-disable-next-line node/no-process-env -- isolated test database boundary
+const administratorPassword = process.env.PGPASSWORD ?? 'spike';
+const adminUrl = `postgres://postgres:${encodeURIComponent(administratorPassword)}@127.0.0.1:${port}/postgres`;
 
 /** The real immutable artifact names its roles. Validate those shared NOLOGIN
  * roles, never alter/drop them, and isolate every LOGIN and database per suite. */
@@ -139,6 +141,7 @@ export async function createRegistryInstallation() {
     );
     await admin.query(`BEGIN;
       REVOKE ALL ON DATABASE ${escapeIdentifier(databaseName)} FROM PUBLIC;
+      REVOKE TEMPORARY ON DATABASE ${escapeIdentifier(databaseName)} FROM ${[...Object.values(REGISTRY_ROLES), REGISTRY_BACKUP_ROLE, logins.app, logins.operator, logins.backup].map(escapeIdentifier).join(', ')};
       GRANT CONNECT ON DATABASE ${escapeIdentifier(databaseName)} TO ${allowedLogins.map(escapeIdentifier).join(', ')};
       COMMIT`);
     await admin.query(
