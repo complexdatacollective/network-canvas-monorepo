@@ -47,7 +47,10 @@
     "./rules/ruleDescription": "./src/rules/ruleDescription.ts",
     "./session": "./src/session.ts",
     "./stage-editor-contract": "./src/stage-editor-contract.ts",
+    "./StageEditor": "./src/StageEditor.tsx",
+    "./stageEditorRegistry": "./src/stageEditorRegistry.ts",
     "./styles.css": "./src/styles.css",
+    "./testing/renderStageEditor": "./src/testing/renderStageEditor.tsx",
     "./validation-attribution": "./src/validationAttribution.ts"
   },
   "scripts": {
@@ -66,6 +69,7 @@
     "csvtojson": "catalog:",
     "es-toolkit": "catalog:",
     "lucide-react": "catalog:",
+    "mapbox-gl": "^3.25.0",
     "remark-parse": "^11.0.0",
     "unified": "^11.0.5",
     "uuid": "catalog:",

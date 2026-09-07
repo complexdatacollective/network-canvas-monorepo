@@ -93,7 +93,7 @@ name not here adds it here first, in the same pull request.
 | `codebookVariable`     | `codebook/components/VariableEditor.tsx`, `codebook/variableRoles.ts`                                                                                                            | i18n-2a   |
 | `variableValidation`   | `codebook/variableValidation.ts`, `codebook/validation/VariableValidationEditor.tsx`, `codebook/validation/CodebookVariableValidationEditor.tsx`, `codebook/codebookMessages.ts` | i18n-2a   |
 | `codebookEditing`      | `codebook/editing.ts`, `codebook/codebookMessages.ts`                                                                                                                            | i18n-2a   |
-| `shell`                | `form/StageEditorShell.tsx`                                                                                                                                                      | i18n-2b   |
+| `shell`                | `form/StageEditorShell.tsx`, `editors/saveStageAction.tsx`                                                                                                                       | i18n-2b   |
 | `outline`              | `form/SectionOutline.tsx`                                                                                                                                                        | i18n-2b   |
 | `dialogForm`           | `form/DialogForm.tsx`, `form/discardDraftGuard.ts`                                                                                                                               | i18n-2b   |
 | `protocolField`        | `form/ProtocolField.tsx`                                                                                                                                                         | i18n-2b   |
@@ -107,6 +107,11 @@ name not here adds it here first, in the same pull request.
 | `networkFilter`        | `sections/NetworkFilterSection.tsx`                                                                                                                                              | i18n-2b   |
 | `skipLogic`            | `sections/SkipLogicSection.tsx`                                                                                                                                                  | i18n-2b   |
 | `interviewerGuidance`  | `sections/InterviewerGuidanceSection.tsx`                                                                                                                                        | i18n-2b   |
+
+`shell` covers `editors/saveStageAction.tsx` as well as the shell itself,
+rather than that control taking an area of its own: the fallback save button is
+the shell's action slot standing in for a host that rendered none, so its words
+are the shell's chrome like the refusals already declared there.
 
 The `*Messages.ts` files are the homes for copy more than one module renders —
 `extractMessages` throws when the same id is declared twice, so a shared string
