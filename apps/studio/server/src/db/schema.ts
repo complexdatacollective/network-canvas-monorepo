@@ -5,6 +5,8 @@ import { Pool, type PoolClient } from 'pg';
 import {
   assertSafePostgresDatabaseEnrollment,
   copyPostgresAdministrativeLogins,
+  copyPostgresDatabaseEnrollmentOptions,
+  type PostgresDatabaseEnrollmentOptions,
   UnsafePostgresDatabaseEnrollmentError,
 } from '@codaco/studio-sync/postgres-database-enrollment';
 import {
@@ -167,6 +169,9 @@ export async function checkSchema(
     allowedLogins?: readonly string[];
     administrativeLogins?: readonly string[];
   } = {},
+  // Only an independently verified backup connection may inspect an enrollment
+  // whose writer LOGINs have been closed for capture or recovery.
+  enrollmentOptions: PostgresDatabaseEnrollmentOptions = {},
 ): Promise<SchemaState> {
   const allowUnversioned = options.allowUnversioned === true;
   const unsafe: SchemaState = {
@@ -177,7 +182,9 @@ export async function checkSchema(
   };
   let allowedLogins: string[] | undefined;
   let administrativeLogins: string[];
+  let enrollment: Required<PostgresDatabaseEnrollmentOptions>;
   try {
+    enrollment = copyPostgresDatabaseEnrollmentOptions(enrollmentOptions);
     allowedLogins = options.allowedLogins
       ? [...options.allowedLogins]
       : undefined;
@@ -193,11 +200,15 @@ export async function checkSchema(
   if (pool instanceof Pool) {
     const client = await pool.connect();
     try {
-      return await checkSchema(client, {
-        allowUnversioned,
-        allowedLogins,
-        administrativeLogins,
-      });
+      return await checkSchema(
+        client,
+        {
+          allowUnversioned,
+          allowedLogins,
+          administrativeLogins,
+        },
+        enrollment,
+      );
     } finally {
       client.release();
     }
@@ -205,7 +216,11 @@ export async function checkSchema(
   if (!allowUnversioned) {
     if (!allowedLogins) return unsafe;
     try {
-      await assertSafePostgresDatabaseEnrollment(pool, allowedLogins);
+      await assertSafePostgresDatabaseEnrollment(
+        pool,
+        allowedLogins,
+        enrollment,
+      );
     } catch (error) {
       if (!(error instanceof UnsafePostgresDatabaseEnrollmentError))
         throw error;
@@ -299,12 +314,16 @@ export async function checkSchema(
 
   if (!allowUnversioned && (stamped || tables)) {
     try {
-      await assertSafePostgresRestrictedIdentities(pool, {
-        allowedLogins: allowedLogins ?? [],
-        administrativeLogins,
-        runtimeRoleSets: [[TENANT_ROLES.app], [TENANT_ROLES.maintenance]],
-        backupRole: BACKUP_ROLE,
-      });
+      await assertSafePostgresRestrictedIdentities(
+        pool,
+        {
+          allowedLogins: allowedLogins ?? [],
+          administrativeLogins,
+          runtimeRoleSets: [[TENANT_ROLES.app], [TENANT_ROLES.maintenance]],
+          backupRole: BACKUP_ROLE,
+        },
+        enrollment,
+      );
     } catch (error) {
       if (!(error instanceof UnsafePostgresRestrictedIdentitiesError))
         throw error;

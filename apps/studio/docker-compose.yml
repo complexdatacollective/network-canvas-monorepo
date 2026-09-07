@@ -68,6 +68,7 @@ services:
     # No encryption env_file, authentication or runtime credentials.
     environment:
       DATABASE_URL: postgresql://studio_backup_login:${STUDIO_BACKUP_PASSWORD:?Missing backup password}@postgres:5432/studio
+      STUDIO_DATABASE_ALLOWED_LOGINS: '["studio_migrator","studio_runtime","studio_maintenance_runtime","studio_backup_login"]'
     networks: [data]
 
   traefik:

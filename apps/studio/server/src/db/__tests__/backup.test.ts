@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { randomBytes, randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
 import { getTableName } from 'drizzle-orm';
@@ -379,29 +380,78 @@ it('verifies the operator command without runtime credentials or secret output',
       const url = new URL(source.db.url);
       url.username = backupLogin;
       url.password = backupPassword;
-      const run = (databaseUrl: string, args: string[] = []) =>
-        spawnSync(process.execPath, ['src/backup.ts', ...args], {
-          // oxlint-disable-next-line node/no-process-env -- isolated child gets the synthetic backup identity only
-          env: {
-            ...process.env,
-            DATABASE_URL: databaseUrl,
-            STUDIO_DATABASE_ALLOWED_LOGINS: JSON.stringify(allowedLogins),
-          },
+      const run = (
+        databaseUrl: string,
+        args: string[] = [],
+        enrollment: readonly string[] | null = allowedLogins,
+      ) => {
+        // oxlint-disable-next-line node/no-process-env -- isolated child gets the synthetic backup identity only
+        const env: NodeJS.ProcessEnv = {
+          ...process.env,
+          DATABASE_URL: databaseUrl,
+        };
+        if (enrollment)
+          env.STUDIO_DATABASE_ALLOWED_LOGINS = JSON.stringify(enrollment);
+        else delete env.STUDIO_DATABASE_ALLOWED_LOGINS;
+        return spawnSync(process.execPath, ['src/backup.ts', ...args], {
+          env,
           encoding: 'utf8',
           timeout: 15_000,
           maxBuffer: 1024 * 1024,
         });
+      };
       await source.pool.query(
         `ALTER ROLE ${pg.escapeIdentifier(runtimeLogin)} NOLOGIN;
-       ALTER ROLE ${pg.escapeIdentifier(maintenanceLogin)} NOLOGIN`,
+         ALTER ROLE ${pg.escapeIdentifier(maintenanceLogin)} NOLOGIN`,
       );
       const good = run(url.toString());
       expect(good.error).toBeUndefined();
-      expect(good.status, good.stdout + good.stderr).toBe(0);
+      expect(good.status).toBe(0);
       expect(good.stdout).toBe('Studio backup access verified.\n');
+      // Closing a writer for capture does not forgive unsafe direct grants.
+      // Prove the exact closed identity can write, then exercise the real CLI.
+      await source.pool.query(
+        `GRANT UPDATE(name) ON public.teams TO ${pg.escapeIdentifier(runtimeLogin)}`,
+      );
+      const writer = await source.pool.connect();
+      try {
+        await writer.query('BEGIN');
+        await writer.query(
+          `SET LOCAL SESSION AUTHORIZATION ${pg.escapeIdentifier(runtimeLogin)}`,
+        );
+        expect(
+          (
+            await writer.query(
+              "UPDATE public.teams SET name = 'Closed writer canary'",
+            )
+          ).rowCount,
+        ).toBe(2);
+      } finally {
+        await writer.query('ROLLBACK');
+        writer.release();
+      }
+      const unsafe = run(url.toString());
+      expect(unsafe.error).toBeUndefined();
+      expect(unsafe.status).toBe(1);
+      expect(unsafe.stdout + unsafe.stderr).toContain(
+        'STUDIO_BACKUP_ACCESS_UNSAFE',
+      );
+      await source.pool.query(
+        `REVOKE UPDATE(name) ON public.teams FROM ${pg.escapeIdentifier(runtimeLogin)}`,
+      );
+      expect(run(url.toString()).status).toBe(0);
+      expect(
+        (
+          await source.pool.query(
+            'SELECT rolcanlogin FROM pg_roles WHERE rolname = ANY($1::text[])',
+            [[runtimeLogin, maintenanceLogin]],
+          )
+        ).rows,
+      ).toEqual([{ rolcanlogin: false }, { rolcanlogin: false }]);
       for (const rejected of [
         run(source.db.url),
         run(url.toString(), ['SECRET_ARGUMENT_CANARY']),
+        run(url.toString(), [], null),
       ]) {
         expect(rejected.error).toBeUndefined();
         expect(rejected.status).toBe(1);
@@ -416,6 +466,16 @@ it('verifies the operator command without runtime credentials or secret output',
           expect(output).not.toContain(secret);
       }
     },
+  );
+});
+
+it('passes the complete configured Studio enrollment to backup verification', async () => {
+  const compose = await readFile(
+    fileURLToPath(new URL('../../../../docker-compose.yml', import.meta.url)),
+    'utf8',
+  );
+  expect(compose).toContain(
+    'STUDIO_DATABASE_ALLOWED_LOGINS: \'["studio_migrator","studio_runtime","studio_maintenance_runtime","studio_backup_login"]\'',
   );
 });
 
@@ -518,6 +578,260 @@ it('refuses owner-backed writes through views or callable definer routines', asy
   );
 });
 
+it('requires complete read-only large-object access, including objects outside table schemas', async () => {
+  await backupFixture(async ({ source, backup }) => {
+    const created = await source.pool.query<{ id: number }>(
+      "SELECT lo_from_bytea(0, decode(value, 'hex')) AS id FROM (VALUES ('01020304'), ('05060708')) bytes(value)",
+    );
+    expect(created.rows).toHaveLength(2);
+    const [first, second] = created.rows;
+    if (!first || !second) throw new Error('Expected two large objects');
+    await expect(assertBackupAccess(backup)).rejects.toThrow(
+      'STUDIO_BACKUP_ACCESS_UNSAFE',
+    );
+    await source.pool.query(
+      `GRANT SELECT ON LARGE OBJECT ${first.id}, ${second.id} TO ${BACKUP_ROLE}`,
+    );
+    expect(
+      (
+        await backup.query<{ bytes: string }>(
+          "SELECT encode(lo_get($1), 'hex') AS bytes",
+          [first.id],
+        )
+      ).rows,
+    ).toEqual([{ bytes: '01020304' }]);
+    expect(
+      (
+        await backup.query<{ bytes: string }>(
+          "SELECT encode(lo_get($1), 'hex') AS bytes",
+          [second.id],
+        )
+      ).rows,
+    ).toEqual([{ bytes: '05060708' }]);
+    await expect(assertBackupAccess(backup)).resolves.toBeUndefined();
+    await source.pool.query(
+      `REVOKE SELECT ON LARGE OBJECT ${second.id} FROM ${BACKUP_ROLE}`,
+    );
+    await expect(
+      backup.query('SELECT lo_get($1)', [second.id]),
+    ).rejects.toMatchObject({ code: '42501' });
+    await expect(assertBackupAccess(backup)).rejects.toThrow(
+      'STUDIO_BACKUP_ACCESS_UNSAFE',
+    );
+    await source.pool.query(
+      `GRANT SELECT ON LARGE OBJECT ${second.id} TO ${BACKUP_ROLE}`,
+    );
+    await expect(assertBackupAccess(backup)).resolves.toBeUndefined();
+  });
+});
+
+it('refuses real large-object writes through the backup role, its login, or PUBLIC grants', async () => {
+  await backupFixture(async ({ source, backup, backupLogin }) => {
+    const created = await source.pool.query<{ id: number }>(
+      "SELECT lo_from_bytea(0, decode('01020304', 'hex')) AS id",
+    );
+    const object = created.rows[0];
+    if (!object) throw new Error('Expected a large object');
+    await source.pool.query(
+      `GRANT SELECT ON LARGE OBJECT ${object.id} TO ${BACKUP_ROLE}`,
+    );
+    await expect(assertBackupAccess(backup)).resolves.toBeUndefined();
+    const grants = [BACKUP_ROLE, pg.escapeIdentifier(backupLogin), 'PUBLIC'];
+    expect(grants).toHaveLength(3);
+    for (const grantee of grants) {
+      await source.pool.query(
+        `GRANT SELECT, UPDATE ON LARGE OBJECT ${object.id} TO ${grantee}`,
+      );
+      const writer = await backup.connect();
+      try {
+        if (grantee === pg.escapeIdentifier(backupLogin))
+          await writer.query('SET ROLE NONE');
+        await writer.query("SELECT lo_put($1, 0, decode('05060708', 'hex'))", [
+          object.id,
+        ]);
+      } finally {
+        await writer.query('RESET ROLE');
+        writer.release();
+      }
+      expect(
+        (
+          await source.pool.query<{ bytes: string }>(
+            "SELECT encode(lo_get($1), 'hex') AS bytes",
+            [object.id],
+          )
+        ).rows,
+      ).toEqual([{ bytes: '05060708' }]);
+      // The direct-login refusal must detect UPDATE itself, independently of a
+      // SELECT privilege a stricter deployment preflight may also disallow.
+      if (grantee === pg.escapeIdentifier(backupLogin))
+        await source.pool.query(
+          `REVOKE SELECT ON LARGE OBJECT ${object.id} FROM ${grantee}`,
+        );
+      await expect(assertBackupAccess(backup)).rejects.toThrow(
+        'STUDIO_BACKUP_ACCESS_UNSAFE',
+      );
+      await source.pool.query(
+        `REVOKE UPDATE ON LARGE OBJECT ${object.id} FROM ${grantee}`,
+      );
+      if (grantee === 'PUBLIC')
+        await source.pool.query(
+          `REVOKE SELECT ON LARGE OBJECT ${object.id} FROM PUBLIC`,
+        );
+      await source.pool.query(
+        "SELECT lo_put($1, 0, decode('01020304', 'hex'))",
+        [object.id],
+      );
+      await expect(assertBackupAccess(backup)).resolves.toBeUndefined();
+    }
+  });
+});
+
+// Parameter privileges are cluster-wide. Keep every GRANT uncommitted on one
+// administrator connection, then exercise the real restricted identities on
+// that connection so parallel databases never observe a transient privilege.
+async function withBackupParameterGrant(
+  owner: pg.Pool,
+  backupLogin: string,
+  grantee: string,
+  work: (connection: pg.PoolClient) => Promise<void>,
+) {
+  const connection = await owner.connect();
+  try {
+    await connection.query('BEGIN');
+    await connection.query(
+      `GRANT SET ON PARAMETER lo_compat_privileges TO ${grantee}`,
+    );
+    await connection.query(
+      `SET LOCAL SESSION AUTHORIZATION ${pg.escapeIdentifier(backupLogin)}; SET LOCAL ROLE ${BACKUP_ROLE}`,
+    );
+    await work(connection);
+  } finally {
+    await connection.query('ROLLBACK');
+    connection.release();
+  }
+}
+
+it.each(['role', 'login'] as const)(
+  'refuses lo_compat_privileges SET grants to the backup %s even without large objects',
+  async (identity) => {
+    await backupFixture(async ({ source, backup, backupLogin }) => {
+      expect(
+        (
+          await source.pool.query(
+            'SELECT count(*)::int AS count FROM pg_largeobject_metadata',
+          )
+        ).rows,
+      ).toEqual([{ count: 0 }]);
+      const grantee =
+        identity === 'role' ? BACKUP_ROLE : pg.escapeIdentifier(backupLogin);
+      await withBackupParameterGrant(
+        source.pool,
+        backupLogin,
+        grantee,
+        async (connection) => {
+          await expect(assertBackupAccess(connection)).rejects.toThrow(
+            'STUDIO_BACKUP_ACCESS_UNSAFE',
+          );
+        },
+      );
+      await expect(assertBackupAccess(backup)).resolves.toBeUndefined();
+    });
+  },
+);
+
+it.each(['role', 'login'] as const)(
+  'refuses the backup %s capability that actually bypasses large-object ACLs',
+  async (identity) => {
+    await backupFixture(async ({ source, backup, backupLogin }) => {
+      const grantee =
+        identity === 'role' ? BACKUP_ROLE : pg.escapeIdentifier(backupLogin);
+      const created = await source.pool.query<{ id: number }>(
+        "SELECT lo_from_bytea(0, decode('01020304', 'hex')) AS id",
+      );
+      const object = created.rows[0];
+      if (!object) throw new Error('Expected a large object');
+      await source.pool.query(
+        `GRANT SELECT ON LARGE OBJECT ${object.id} TO ${BACKUP_ROLE}`,
+      );
+      await withBackupParameterGrant(
+        source.pool,
+        backupLogin,
+        grantee,
+        async (connection) => {
+          if (identity === 'login')
+            await connection.query('SET LOCAL ROLE NONE');
+          await connection.query('SET LOCAL lo_compat_privileges = on');
+          await connection.query(
+            "SELECT lo_put($1, 0, decode('05060708', 'hex'))",
+            [object.id],
+          );
+          await connection.query('SET LOCAL lo_compat_privileges = off');
+          await connection.query(`SET LOCAL ROLE ${BACKUP_ROLE}`);
+          expect(
+            (
+              await connection.query<{ bytes: string }>(
+                "SELECT encode(lo_get($1), 'hex') AS bytes",
+                [object.id],
+              )
+            ).rows,
+          ).toEqual([{ bytes: '05060708' }]);
+          expect(
+            (
+              await connection.query<{ write: boolean }>(
+                "SELECT has_largeobject_privilege(current_user, $1, 'UPDATE') AS write",
+                [object.id],
+              )
+            ).rows,
+          ).toEqual([{ write: false }]);
+          await expect(assertBackupAccess(connection)).rejects.toThrow(
+            'STUDIO_BACKUP_ACCESS_UNSAFE',
+          );
+        },
+      );
+      await expect(assertBackupAccess(backup)).resolves.toBeUndefined();
+      expect(
+        (
+          await backup.query<{ bytes: string }>(
+            "SELECT encode(lo_get($1), 'hex') AS bytes",
+            [object.id],
+          )
+        ).rows,
+      ).toEqual([{ bytes: '01020304' }]);
+    });
+  },
+);
+
+it('refuses a live backup session left with permissive large-object behavior after its SET grant is revoked', async () => {
+  await backupFixture(async ({ source, backup, backupLogin }) => {
+    await withBackupParameterGrant(
+      source.pool,
+      backupLogin,
+      BACKUP_ROLE,
+      async (connection) => {
+        await connection.query('SET LOCAL lo_compat_privileges = on');
+        await connection.query('RESET ROLE; RESET SESSION AUTHORIZATION');
+        await connection.query(
+          `REVOKE SET ON PARAMETER lo_compat_privileges FROM ${BACKUP_ROLE}`,
+        );
+        await connection.query(
+          `SET LOCAL SESSION AUTHORIZATION ${pg.escapeIdentifier(backupLogin)}; SET LOCAL ROLE ${BACKUP_ROLE}`,
+        );
+        expect(
+          (
+            await connection.query(
+              "SELECT current_setting('lo_compat_privileges') AS mode, has_parameter_privilege(current_user, 'lo_compat_privileges', 'SET') AS can_set",
+            )
+          ).rows,
+        ).toEqual([{ mode: 'on', can_set: false }]);
+        await expect(assertBackupAccess(connection)).rejects.toThrow(
+          'STUDIO_BACKUP_ACCESS_UNSAFE',
+        );
+      },
+    );
+    await expect(assertBackupAccess(backup)).resolves.toBeUndefined();
+  });
+});
+
 it('restores a complete pg_dump made with the restricted backup identity', async () => {
   await backupFixture(
     async ({ source, backup, backupLogin, backupPassword }) => {
@@ -561,6 +875,14 @@ it('restores a complete pg_dump made with the restricted backup identity', async
           throw new Error('The restricted backup/restore command failed.');
         return result.stdout;
       };
+      const largeObjects = await source.pool.query<{ id: number }>(
+        "SELECT lo_from_bytea(0, decode('0102030405060708', 'hex')) AS id",
+      );
+      const largeObject = largeObjects.rows[0];
+      if (!largeObject) throw new Error('Expected a retained large object');
+      await source.pool.query(
+        `GRANT SELECT ON LARGE OBJECT ${largeObject.id} TO ${BACKUP_ROLE}`,
+      );
       await assertBackupAccess(backup);
       const dump = command([
         'pg_dump',
@@ -585,6 +907,7 @@ it('restores a complete pg_dump made with the restricted backup identity', async
       expect(dump).not.toContain(canary);
       expect(dump).not.toContain(Buffer.from(canary).toString('hex'));
       expect(dump).not.toContain(rootOne.toString('hex'));
+      expect(dump).toContain('pg_catalog.lo_create');
       const restored = await createScratchDatabase(requireDatabase());
       try {
         const destination = new URL(restored.db.url);
@@ -604,6 +927,21 @@ it('restores a complete pg_dump made with the restricted backup identity', async
           dump,
         );
         expect(await inventory(restored.pool)).toEqual(await inventory(backup));
+        expect(
+          (
+            await restored.pool.query<{ oid: number }>(
+              'SELECT oid FROM pg_largeobject_metadata',
+            )
+          ).rows,
+        ).toEqual([{ oid: largeObject.id }]);
+        expect(
+          (
+            await restored.pool.query<{ bytes: string }>(
+              "SELECT encode(lo_get($1), 'hex') AS bytes",
+              [largeObject.id],
+            )
+          ).rows,
+        ).toEqual([{ bytes: '0102030405060708' }]);
       } finally {
         await restored.dispose();
       }
