@@ -22,6 +22,8 @@ x-studio: &studio
     STUDIO_ROLE: ${STUDIO_ROLE:-both}
     PUBLIC_URL: https://${STUDIO_DOMAIN:?Run configure with the public domain}
     DATABASE_URL: postgresql://studio_runtime:${STUDIO_DATABASE_PASSWORD:?Missing runtime password}@postgres:5432/studio
+    STUDIO_MAINTENANCE_DATABASE_URL: postgresql://studio_maintenance_runtime:${STUDIO_MAINTENANCE_DATABASE_PASSWORD:?Missing maintenance password}@postgres:5432/studio
+    STUDIO_DATABASE_ALLOWED_LOGINS: ${STUDIO_DATABASE_ALLOWED_LOGINS:?Missing explicit database login enrollment}
     BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Missing authentication secret}
     STUDIO_BOOTSTRAP_TOKEN: ${STUDIO_BOOTSTRAP_TOKEN:?Missing bootstrap token}
     STUDIO_METRICS_TOKEN: ${STUDIO_METRICS_TOKEN:?Missing metrics token}
@@ -81,6 +83,7 @@ services:
     environment:
       <<: *studio-environment
       STUDIO_ROLE: worker
+      DATABASE_URL: ''
       TRUSTED_PROXIES: ''
 
   backup-verify:
@@ -93,7 +96,7 @@ services:
     # No encryption env_file, authentication or runtime credentials.
     environment:
       DATABASE_URL: postgresql://studio_backup_login:${STUDIO_BACKUP_PASSWORD:?Missing backup password}@postgres:5432/studio
-      STUDIO_DATABASE_ALLOWED_LOGINS: '["studio_migrator","studio_runtime","studio_backup_login"]'
+      STUDIO_DATABASE_ALLOWED_LOGINS: '["studio_migrator","studio_runtime","studio_maintenance_runtime","studio_backup_login"]'
     networks: [data]
 
   traefik:
@@ -151,6 +154,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Missing database administrator password}
       STUDIO_MIGRATION_PASSWORD: ${STUDIO_MIGRATION_PASSWORD:?Missing migrator password}
       STUDIO_DATABASE_PASSWORD: ${STUDIO_DATABASE_PASSWORD}
+      STUDIO_MAINTENANCE_DATABASE_PASSWORD: ${STUDIO_MAINTENANCE_DATABASE_PASSWORD:?Missing maintenance password}
       STUDIO_BACKUP_PASSWORD: ${STUDIO_BACKUP_PASSWORD:?Missing backup password}
       POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
     volumes:

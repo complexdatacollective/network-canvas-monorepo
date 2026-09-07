@@ -130,7 +130,12 @@ export async function publishStudioDistribution({ source }, adapter) {
   await adapter.verify(artifacts);
   const finalGate = await admission(adapter, source);
   const manifest = validateArtifacts(artifacts, finalGate);
-  await adapter.qualify(manifest, artifacts);
+  // Qualification may consume or annotate its inputs. Keep the authenticated
+  // publication bytes and identity private to this state machine.
+  await adapter.qualify(
+    structuredClone(manifest),
+    new Map([...artifacts].map(([name, bytes]) => [name, Buffer.from(bytes)])),
+  );
   // Qualification can be long-running. Re-check publication and ancestry after
   // it, including a dependency publication that was withdrawn in the meantime.
   validateArtifacts(artifacts, await admission(adapter, source));

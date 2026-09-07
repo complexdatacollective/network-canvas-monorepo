@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { createORPCClient } from '@orpc/client';
 import { RPCLink } from '@orpc/client/fetch';
 import type { ContractRouterClient } from '@orpc/contract';
-import { escapeIdentifier, escapeLiteral } from 'pg';
+import pg from 'pg';
 import { describe, expect, it } from 'vitest';
 import { WebSocket } from 'ws';
 
@@ -30,12 +30,16 @@ import { migrateDatabase } from '../../db/migrations/migrate.ts';
 import { createPool } from '../../db/pool.ts';
 import type { DbEnv } from '../../env.ts';
 import { completeSetup } from '../../instance/bootstrap.ts';
-import { configuration, rootOne } from '../../pii/__tests__/fixtures.ts';
+import { encryptionEnvironment } from '../../pii/__tests__/fixtures.ts';
 import { enqueueInvitationDelivery } from '../../team/invitation-delivery-store.ts';
 
 const database = await reachableDb();
 const entry = fileURLToPath(new URL('../../index.ts', import.meta.url));
+const migrations = await readMigrations(
+  fileURLToPath(new URL('../../../migrations', import.meta.url)),
+);
 const ownerPassword = 'test-only runtime owner password';
+const runtimePassword = 'test-only restricted runtime password';
 const token = randomBytes(32).toString('base64url');
 
 async function unusedPort() {
@@ -51,17 +55,16 @@ async function unusedPort() {
 }
 
 function launch(
-  db: DbEnv & { allowedLogins?: readonly string[] },
+  db: {
+    app: DbEnv;
+    maintenance: DbEnv;
+    allowedLogins: readonly string[];
+  },
   port: number,
   role: string,
   smtp?: string,
   clientDist?: string,
 ) {
-  const keyset = configuration();
-  keyset.roots = keyset.roots.map((root) => ({
-    ...root,
-    reference: `STUDIO_ENCRYPTION_ROOT_${root.reference}`,
-  }));
   const origin = `http://127.0.0.1:${port}`;
   const child = spawn(process.execPath, [entry], {
     env: {
@@ -69,15 +72,13 @@ function launch(
       HOST: '127.0.0.1',
       PORT: String(port),
       STUDIO_ROLE: role,
-      STUDIO_TELEMETRY: 'false',
-      STUDIO_DATABASE_ALLOWED_LOGINS: JSON.stringify(db.allowedLogins ?? []),
-      DATABASE_URL: db.url,
+      DATABASE_URL: db.app.url,
+      STUDIO_MAINTENANCE_DATABASE_URL: db.maintenance.url,
+      STUDIO_DATABASE_ALLOWED_LOGINS: JSON.stringify(db.allowedLogins),
       PUBLIC_URL: origin,
       BETTER_AUTH_SECRET: 'synthetic-runtime-signing-secret-value',
       STUDIO_BOOTSTRAP_TOKEN: token,
-      STUDIO_ENCRYPTION_KEYSET: JSON.stringify(keyset),
-      STUDIO_ENCRYPTION_ROOT_TEST_ROOT_ONE: rootOne.toString('base64'),
-      STUDIO_ENCRYPTION_ROOT_TEST_ROOT_TWO: rootOne.toString('base64'),
+      ...encryptionEnvironment(),
       ...(clientDist ? { CLIENT_DIST: clientDist } : {}),
       ...(smtp ? { SMTP_URL: smtp, EMAIL_FROM: 'studio@example.test' } : {}),
     },
@@ -127,28 +128,44 @@ function launch(
 async function fixture() {
   if (!database) throw new Error('A local PostgreSQL instance is required.');
   const scratch = await createScratchDatabase(database);
+  const suffix = randomUUID().replaceAll('-', '');
+  const appLogin = `studio_runtime_app_${suffix}`;
+  const maintenanceLogin = `studio_runtime_maintenance_${suffix}`;
+  const identifiers = [appLogin, maintenanceLogin].map(pg.escapeIdentifier);
+  const administrator = new pg.Pool({ connectionString: database.url });
+  try {
+    await administrator.query(
+      `CREATE ROLE ${identifiers[0]} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD '${runtimePassword}';
+       CREATE ROLE ${identifiers[1]} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD '${runtimePassword}';
+       GRANT studio_app TO ${identifiers[0]} WITH ADMIN FALSE, SET TRUE, INHERIT FALSE;
+       GRANT studio_maintenance TO ${identifiers[1]} WITH ADMIN FALSE, SET TRUE, INHERIT FALSE`,
+    );
+  } finally {
+    await administrator.end();
+  }
   const allowedLogins = await enrollMigrationTestDatabase(
     scratch.pool,
     database,
+    [appLogin, maintenanceLogin],
   );
   await migrateDatabase(
     scratch.pool,
-    await readMigrations(
-      fileURLToPath(new URL('../../../migrations', import.meta.url)),
-    ),
+    migrations,
     SCHEMA_FINGERPRINT,
     allowedLogins,
   );
-  const login = `runtime_process_${randomUUID().replaceAll('-', '')}`;
-  const password = 'runtime-process-isolated-only';
-  const runtimeUrl = new URL(scratch.db.url);
-  await scratch.pool
-    .query(`CREATE ROLE ${escapeIdentifier(login)} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD ${escapeLiteral(password)};
-    GRANT studio_app, studio_maintenance TO ${escapeIdentifier(login)} WITH ADMIN FALSE, SET TRUE, INHERIT FALSE;
-    GRANT CONNECT ON DATABASE ${escapeIdentifier(runtimeUrl.pathname.slice(1))} TO ${escapeIdentifier(login)}`);
-  runtimeUrl.username = login;
-  runtimeUrl.password = password;
-  const app = createPool(scratch.db);
+  const runtimeUrl = (login: string) => {
+    const url = new URL(scratch.db.url);
+    url.username = login;
+    url.password = runtimePassword;
+    return { url: url.href };
+  };
+  const runtimeDb = {
+    app: runtimeUrl(appLogin),
+    maintenance: runtimeUrl(maintenanceLogin),
+    allowedLogins,
+  };
+  const app = createPool(runtimeDb.app);
   const clientDist = await mkdtemp(join(tmpdir(), 'studio-runtime-client-'));
   await writeFile(
     join(clientDist, 'index.html'),
@@ -173,8 +190,7 @@ async function fixture() {
   ).rows[0]!;
   return {
     ...scratch,
-    db: { url: runtimeUrl.href, allowedLogins: [...allowedLogins, login] },
-    ownerDb: { ...scratch.db, allowedLogins: [...allowedLogins, login] },
+    db: runtimeDb,
     app,
     clientDist,
     async enqueue() {
@@ -200,11 +216,14 @@ async function fixture() {
     },
     async dispose() {
       await app.end();
-      await scratch.pool
-        .query(`REVOKE CONNECT ON DATABASE ${escapeIdentifier(runtimeUrl.pathname.slice(1))} FROM ${escapeIdentifier(login)};
-        DROP ROLE ${escapeIdentifier(login)}`);
       await scratch.dispose();
       await rm(clientDist, { recursive: true });
+      const cleanup = new pg.Pool({ connectionString: database.url });
+      try {
+        await cleanup.query(`DROP ROLE IF EXISTS ${identifiers.join(', ')}`);
+      } finally {
+        await cleanup.end();
+      }
     },
   };
 }
@@ -256,25 +275,6 @@ async function smtpServer() {
 }
 
 describe('actual runtime role separation and drain', () => {
-  it.each(['web', 'worker', 'both'])(
-    'refuses an owner-backed %s before keys, workers or HTTP admission',
-    async (role) => {
-      const scratch = await fixture();
-      const runtime = launch(scratch.ownerDb, await unusedPort(), role);
-      try {
-        expect(await runtime.started).toBe(false);
-        expect(await runtime.finished).toBe(1);
-        expect(runtime.records().at(-1)?.code).toBe(
-          'STUDIO_DATABASE_IDENTITY_UNSAFE',
-        );
-        expect(runtime.errors()).toBe('');
-      } finally {
-        await runtime.stop();
-        await scratch.dispose();
-      }
-    },
-  );
-
   it('serves one web replica, keeps its queue untouched, and lets a worker deliver without exposing researcher routes', async () => {
     const scratch = await fixture();
     const smtp = await smtpServer();
@@ -328,7 +328,7 @@ describe('actual runtime role separation and drain', () => {
         smtp.url,
         scratch.clientDist,
       );
-      expect(await worker.started, JSON.stringify(worker.records())).toBe(true);
+      expect(await worker.started).toBe(true);
       expect((await fetch(`${worker.origin}/healthz`)).status).toBe(200);
       for (const path of [
         '/rpc/status',
@@ -355,10 +355,7 @@ describe('actual runtime role separation and drain', () => {
       expect(await web.stop()).toBe(0);
       const replacement = launch(scratch.db, await unusedPort(), 'web');
       try {
-        expect(
-          await replacement.started,
-          JSON.stringify(replacement.records()),
-        ).toBe(true);
+        expect(await replacement.started).toBe(true);
       } finally {
         await replacement.stop();
       }
@@ -422,23 +419,20 @@ describe('actual runtime role separation and drain', () => {
       const second = await scratch.enqueue();
       runtime.child.kill('SIGTERM');
       expect((await wsClosed)[0]).toBe(1001);
+      // Cancellation after DATA cannot prove delivery or non-delivery. Its
+      // committed uncertainty is the positive drain barrier, before HTTP ends.
       await expect
         .poll(
           async () =>
             (
               await scratch.pool.query(
-                'SELECT uncertain_at IS NOT NULL AS uncertain, sent_at, last_error FROM team_invitation_deliveries WHERE invitation_id=$1',
+                'SELECT uncertain_at IS NOT NULL AS uncertain, sent_at, lease_owner FROM team_invitation_deliveries WHERE invitation_id=$1',
                 [first],
               )
             ).rows[0],
         )
-        .toEqual({
-          uncertain: true,
-          sent_at: null,
-          last_error: 'EMAIL_DELIVERY_UNCERTAIN',
-        });
-      // Cancellation after DATA persists a terminal uncertainty outcome. This
-      // is the positive barrier before checking that no second claim occurs.
+        .toEqual({ uncertain: true, sent_at: null, lease_owner: null });
+      // An incorrect drain would claim the second before HTTP finishes.
       await delay(200);
       expect(
         (

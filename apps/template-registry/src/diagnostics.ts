@@ -17,7 +17,9 @@ export type RegistryDiagnostic =
   | 'REGISTRY_OPERATOR_COMPLETE'
   | 'REGISTRY_OPERATOR_FAILED'
   | 'REGISTRY_BACKUP_VERIFIED'
-  | 'REGISTRY_BACKUP_FAILED';
+  | 'REGISTRY_BACKUP_FAILED'
+  | 'REGISTRY_RECOVERY_RECONCILED'
+  | 'REGISTRY_RECOVERY_FAILED';
 
 /** No exception, address, URL, provider reply, token, or content enters a log. */
 export function logRegistryDiagnostic(

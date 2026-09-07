@@ -210,10 +210,20 @@ export async function readParticipantPiiField(
         if (!(await authorize(client, context, target.studyId, false)))
           return denied(audit, 'read');
         if (!row) throw new ParticipantPiiError('FORBIDDEN');
+        const current = await selectParticipantCiphertext(
+          client,
+          context.tenantDb.teamId,
+          target,
+          true,
+        );
+        if (!current || current[target.column] !== null)
+          throw new ParticipantPiiError('CONFLICT');
         return {
           status: 'succeeded',
           result: null,
-          events: [event(audit, row, 'participant.pii.read', [target.column])],
+          events: [
+            event(audit, current, 'participant.pii.read', [target.column]),
+          ],
         };
       });
     }

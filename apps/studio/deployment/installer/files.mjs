@@ -17,6 +17,7 @@ import {
 import { dirname, join, resolve } from 'node:path';
 
 import configurationFiles from './configuration-files.json' with { type: 'json' };
+import registryConfigurationFiles from './registry-configuration-files.json' with { type: 'json' };
 import { readRelease, readState, sha256 } from './release.mjs';
 
 // Inventory order is byte-lexical and independent of the host's locale.
@@ -181,10 +182,15 @@ export function validateInstallerInventory(inventoryFiles, expectedDigest) {
     'verify.mjs',
     'smoke.mjs',
     'configuration-files.json',
+    'registry-configuration-files.json',
     'release.json',
     'release.sigstore.json',
     ...configurationFiles.map((name) => `templates/${name}`),
     ...configurationFiles.map((name) => `configuration/${name}`),
+    ...registryConfigurationFiles.map((name) => `registry-templates/${name}`),
+    ...registryConfigurationFiles.map(
+      (name) => `registry-configuration/${name}`,
+    ),
   ])
     if (!inventoryFiles.has(required))
       throw new Error('Installer bundle is incomplete.');

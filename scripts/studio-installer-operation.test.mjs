@@ -25,6 +25,7 @@ import {
   parseArguments,
 } from '../apps/studio/deployment/installer/install.mjs';
 import { executeOperation } from '../apps/studio/deployment/installer/operation.mjs';
+import registryConfigurationFiles from '../apps/studio/deployment/installer/registry-configuration-files.json' with { type: 'json' };
 import {
   readRelease,
   sha256,
@@ -75,6 +76,12 @@ function fixture(t) {
       Buffer.from(`# synthetic command-boundary template ${name}\n`),
     ]),
   );
+  const registryTemplates = Object.fromEntries(
+    registryConfigurationFiles.map((name) => [
+      name,
+      Buffer.from(`# synthetic Registry template ${name}\n`),
+    ]),
+  );
   let chosen;
   let failure;
   function select(release) {
@@ -89,6 +96,7 @@ function fixture(t) {
       'verify.mjs',
       'smoke.mjs',
       'configuration-files.json',
+      'registry-configuration-files.json',
     ];
     const files = new Map(
       modules.map((name) => [
@@ -106,6 +114,10 @@ function fixture(t) {
     for (const [name, bytes] of Object.entries(templates)) {
       files.set(`templates/${name}`, bytes);
       files.set(`configuration/${name}`, bytes);
+    }
+    for (const [name, bytes] of Object.entries(registryTemplates)) {
+      files.set(`registry-templates/${name}`, bytes);
+      files.set(`registry-configuration/${name}`, bytes);
     }
     const metadata = {
       format: 1,
@@ -126,6 +138,9 @@ function fixture(t) {
       expectedDigest: release.current.digest,
       domain: 'studio.example.test',
       email: 'operator@example.test',
+      registryDomain: 'registry.example.test',
+      registryMailFrom: 'registry@example.test',
+      registrySmtpUrl: 'smtp://mail.example.test',
       credentialsFile,
       backupDirectory: data,
       keyCustodyDirectory: keys,
@@ -139,10 +154,17 @@ function fixture(t) {
       assert.equal(state.public, false);
       assert.equal(state.web, false);
       assert.equal(state.workers, false);
-      const [, target, keyFile] = args;
+      const [, target, keyFile, registryFile] = args;
       mkdirSync(target);
       writeFileSync(keyFile, custodyBytes, { mode: 0o600 });
+      writeFileSync(registryFile, 'synthetic registry custody', {
+        mode: 0o600,
+      });
       writeFileSync(join(target, 'encryption.sha256'), sha256(custodyBytes));
+      writeFileSync(
+        join(target, 'registry-configuration.sha256'),
+        sha256(Buffer.from('synthetic registry custody')),
+      );
       state.captures.push(state.schema);
       if (failure === 'backup') throw new Error('Injected backup failure');
       writeFileSync(
@@ -174,11 +196,26 @@ function fixture(t) {
       const templateRoot = raw
         .slice('type=bind,source='.length)
         .split(',target=')[0];
-      for (const [name, bytes] of Object.entries(templates))
+      const registry = args.at(-1) === 'dist/configure.js';
+      const expectedTemplates = registry ? registryTemplates : templates;
+      for (const [name, bytes] of Object.entries(expectedTemplates))
         assert.deepEqual(readFileSync(join(templateRoot, name)), bytes);
       const output = args[args.indexOf('--mount') + 1]
         .split('source=')[1]
         .split(',target=')[0];
+      if (registry) {
+        for (const [name, bytes] of Object.entries(registryTemplates)) {
+          const target = join(output, 'deployment/registry', name);
+          mkdirSync(dirname(target), { recursive: true });
+          writeFileSync(target, bytes);
+        }
+        writeFileSync(
+          join(output, 'registry.env'),
+          "REGISTRY_DOMAIN='registry.example.test'\nREGISTRY_MAIL_FROM='registry@example.test'\nREGISTRY_SMTP_URL='smtp://mail.example.test'\nREGISTRY_POSTMARK_SERVER_TOKEN=''\nREGISTRY_POSTMARK_MESSAGE_STREAM=''\nREGISTRY_IMAGE='synthetic'\nMINIO_IMAGE='synthetic'\nREGISTRY_S3_REGION='us-east-1'\nREGISTRY_POSTGRES_PASSWORD='a'\nREGISTRY_MIGRATION_PASSWORD='b'\nREGISTRY_DATABASE_PASSWORD='c'\nREGISTRY_OPERATOR_PASSWORD='d'\nREGISTRY_BACKUP_PASSWORD='e'\nREGISTRY_AUTH_SECRET='f'\nREGISTRY_MINIO_ROOT_USER='g'\nREGISTRY_MINIO_ROOT_PASSWORD='h'\nREGISTRY_S3_ACCESS_KEY_ID='i'\nREGISTRY_S3_SECRET_ACCESS_KEY='j'\n",
+          { mode: 0o600 },
+        );
+        return '{"configured":true}';
+      }
       for (const [name, bytes] of Object.entries(templates)) {
         mkdirSync(dirname(join(output, name)), { recursive: true });
         writeFileSync(join(output, name), bytes);
@@ -269,6 +306,8 @@ function fixture(t) {
         assert.equal(state.web, true);
       }
       if (failure === 'smoke') throw new Error('Injected smoke failure');
+      if (tail.includes('--registry-installer-smoke'))
+        return JSON.stringify({ ready: true });
       const input = JSON.parse(options.input);
       if (input.mode === 'update')
         assert.deepEqual(input.credentials, credentials);
@@ -322,7 +361,11 @@ test('the actual caller drains, captures, migrates and privately authenticates b
   assert.deepEqual(f.protectedState().active, next.current);
   assert.deepEqual(readFileSync(join(first.configuration, '.env')), original);
   assert.deepEqual(readFileSync(join(result.configuration, '.env')), original);
-  assert.equal(readdirSync(f.keys).length, 1);
+  assert.equal(readdirSync(f.keys).length, 2);
+  assert.equal(
+    readdirSync(f.keys).filter((name) => name.endsWith('.registry.env')).length,
+    1,
+  );
   assert.equal(readdirSync(f.data).length, 1);
   assert.equal(
     JSON.stringify(f.calls.map(({ args }) => args)).includes(
@@ -336,6 +379,32 @@ test('the actual caller drains, captures, migrates and privately authenticates b
     ),
     false,
   );
+  assert.equal(
+    JSON.stringify(f.calls.map(({ args }) => args)).includes(
+      'smtp://mail.example.test',
+    ),
+    false,
+  );
+});
+
+test('fresh installation requires the Registry domain, sender, and one private mail transport before configuration', (t) => {
+  const f = fixture(t);
+  const options = f.select(releasedDistribution());
+  for (const missing of [
+    'registryDomain',
+    'registryMailFrom',
+    'registrySmtpUrl',
+  ]) {
+    const attempt = { ...options };
+    delete attempt[missing];
+    assert.throws(() => executeOperation(attempt, f.run), /Registry domain/);
+    assert.equal(
+      f.calls.some(
+        ({ program, args }) => program === 'docker' && args[0] === 'run',
+      ),
+      false,
+    );
+  }
 });
 
 test('an installer-only release preserves the running backend across smoke interruption and exact retry', (t) => {
@@ -356,7 +425,7 @@ test('an installer-only release preserves the running backend across smoke inter
   f.setFailure(undefined);
   f.state.trace = [];
   executeOperation(options, f.run);
-  assert.deepEqual(f.state.trace, ['smoke']);
+  assert.deepEqual(f.state.trace, ['smoke', 'smoke']);
   assert.deepEqual(f.protectedState().active, next.current);
   assert.equal(f.state.public, true);
   assert.equal(f.state.web, true);

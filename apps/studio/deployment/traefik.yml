@@ -6,12 +6,26 @@ http:
       service: studio
       tls:
         certResolver: public
+    registry:
+      entryPoints: [websecure]
+      rule: 'Host(`{{ env "REGISTRY_DOMAIN" }}`)'
+      service: registry
+      tls:
+        certResolver: public
   services:
     studio:
       loadBalancer:
         # Exactly one web/both process: sync and denial summaries are local.
         servers:
           - url: http://studio:3000
+        healthCheck:
+          path: /readyz
+          interval: 5s
+          timeout: 3s
+    registry:
+      loadBalancer:
+        servers:
+          - url: http://registry:3000
         healthCheck:
           path: /readyz
           interval: 5s

@@ -187,6 +187,10 @@ describe.skipIf(!database)('repeatable runtime role bootstrap', () => {
         const connection = new URL(otherUrl);
         connection.username = operator;
         connection.password = 'role-bootstrap-test-only';
+        const databaseName = decodeURIComponent(connection.pathname.slice(1));
+        await administrator.query(
+          `GRANT CONNECT ON DATABASE ${escapeIdentifier(databaseName)} TO ${escapeIdentifier(operator)}`,
+        );
         const pool = new Pool({ connectionString: connection.href });
         try {
           await pool.query(runtimeRolesSql([role]));

@@ -213,6 +213,22 @@ test('a failed readback cannot expose a corrupt draft', async (t) => {
   assert.ok(!f.calls.includes('publish'));
 });
 
+test('qualification cannot mutate the authenticated publication identity or bytes', async (t) => {
+  const f = fixture(t);
+  f.adapter.qualify = async (manifest, artifacts) => {
+    manifest.current.digest = 'f'.repeat(64);
+    artifacts.get('release.json').fill(0);
+    artifacts.clear();
+  };
+  const result = await f.run();
+  assert.equal(result.manifestSha256, f.release.current.digest);
+  assert.deepEqual(
+    f.retained.get('release.json'),
+    f.artifacts.get('release.json'),
+  );
+  assert.equal(f.retained.size, 10);
+});
+
 for (const operation of ['verify', 'qualify']) {
   test(`${operation} failure precedes release writes`, async (t) => {
     const f = fixture(t);

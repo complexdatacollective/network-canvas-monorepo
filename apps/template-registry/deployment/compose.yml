@@ -2,6 +2,10 @@
 # The primary Compose file owns ingress and its edge network. The registry
 # uses independent PostgreSQL and object-store volumes and credentials.
 services:
+  traefik:
+    environment:
+      REGISTRY_DOMAIN: ${REGISTRY_DOMAIN:?Select the registry public domain}
+
   registry:
     image: ${REGISTRY_IMAGE:?Select the signed registry image digest}
     profiles: [registry]
@@ -20,6 +24,7 @@ services:
       REGISTRY_PUBLIC_URL: https://${REGISTRY_DOMAIN:?Select the registry public domain}
       REGISTRY_DATABASE_URL: postgresql://registry_runtime:${REGISTRY_DATABASE_PASSWORD:?Missing registry runtime password}@registry-postgres:5432/registry
       REGISTRY_OPERATOR_DATABASE_URL: postgresql://registry_operations:${REGISTRY_OPERATOR_PASSWORD:?Missing registry operator password}@registry-postgres:5432/registry
+      REGISTRY_DATABASE_ALLOWED_LOGINS: '["registry_migrator","registry_runtime","registry_operations","registry_backup_login"]'
       REGISTRY_AUTH_SECRET: ${REGISTRY_AUTH_SECRET:?Missing registry authentication key}
       REGISTRY_SMTP_URL: ${REGISTRY_SMTP_URL:-}
       REGISTRY_POSTMARK_SERVER_TOKEN: ${REGISTRY_POSTMARK_SERVER_TOKEN:-}
@@ -67,6 +72,20 @@ services:
     depends_on:
       registry-postgres:
         condition: service_healthy
+
+  registry-recover-verify:
+    image: ${REGISTRY_IMAGE}
+    profiles: [registry-recovery]
+    entrypoint: [node, dist/recover.js]
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    networks: [registry-data]
+    depends_on:
+      registry-postgres:
+        condition: service_healthy
+      registry-minio:
+        condition: service_started
 
   registry-postgres:
     image: postgres:18.6-alpine@sha256:d3e1620b530c944afa6e887d22eb899824da68e19c52024bf98f5220c88a65b2

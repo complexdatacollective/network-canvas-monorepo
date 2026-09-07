@@ -9,6 +9,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
 import configurationFiles from '../../apps/studio/deployment/installer/configuration-files.json' with { type: 'json' };
+import registryConfigurationFiles from '../../apps/studio/deployment/installer/registry-configuration-files.json' with { type: 'json' };
 import { buildInstallerArchive } from '../studio-installer-archive.mjs';
 import { releasedDistribution } from './studio-release.mjs';
 
@@ -30,6 +31,7 @@ export function installerFixture(
     'verify.mjs',
     'smoke.mjs',
     'configuration-files.json',
+    'registry-configuration-files.json',
   ])
     contents.set(
       name,
@@ -51,6 +53,19 @@ export function installerFixture(
     contents.set(
       `configuration/${name}`,
       Buffer.from(`# local fixture ${name}\n`),
+    );
+  }
+  for (const name of registryConfigurationFiles) {
+    const bytes = readFileSync(
+      new URL(
+        `../../apps/template-registry/deployment/${name}`,
+        import.meta.url,
+      ),
+    );
+    contents.set(`registry-templates/${name}`, bytes);
+    contents.set(
+      `registry-configuration/${name}`,
+      Buffer.from(`# local Registry fixture ${name}\n`),
     );
   }
   contents.set('Z-order', Buffer.from('last uppercase'));

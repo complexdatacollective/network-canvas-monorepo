@@ -18,7 +18,7 @@ import { createApp } from '../../app.ts';
 import type { AssetStore } from '../../assets.ts';
 import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
 import { migrateDatabase } from '../../db/migrations/migrate.ts';
-import { createPool } from '../../db/pool.ts';
+import { createPool, createMaintenancePool } from '../../db/pool.ts';
 import { stampFingerprint } from '../../db/schema.ts';
 import { seed } from '../../db/seed.ts';
 import { readEnv } from '../../env.ts';
@@ -48,14 +48,33 @@ describe.skipIf(!db)('readiness migration provenance', () => {
     expect(migrations.length).toBeGreaterThan(0);
     for (const versioned of [false, true]) {
       const scratch = await createScratchDatabase(db);
-      const pool = createPool(scratch.db);
+      const loginSuffix = randomUUID().replaceAll('-', '');
+      const appRuntimeLogin = `readiness_app_${loginSuffix}`;
+      const maintenanceRuntimeLogin = `readiness_maintenance_${loginSuffix}`;
+      const runtimePassword = 'readiness-runtime-synthetic-only';
+      const identity = (
+        await scratch.pool.query<{ database: string; login: string }>(
+          'SELECT current_database() AS database, session_user AS login',
+        )
+      ).rows[0]!;
+      const allowedLogins = [
+        identity.login,
+        appRuntimeLogin,
+        maintenanceRuntimeLogin,
+      ];
+      const runtimeUrl = new URL(scratch.db.url);
+      runtimeUrl.username = appRuntimeLogin;
+      runtimeUrl.password = runtimePassword;
+      const maintenanceUrl = new URL(scratch.db.url);
+      maintenanceUrl.username = maintenanceRuntimeLogin;
+      maintenanceUrl.password = runtimePassword;
+      const pool = createPool({ url: runtimeUrl.href });
+      const maintenancePool = createMaintenancePool({
+        url: maintenanceUrl.href,
+      });
+      let created = false;
       try {
         if (versioned) {
-          const identity = (
-            await scratch.pool.query<{ database: string; login: string }>(
-              'SELECT current_database() AS database, session_user AS login',
-            )
-          ).rows[0]!;
           await scratch.pool
             .query(`REVOKE CONNECT ON DATABASE ${escapeIdentifier(identity.database)} FROM PUBLIC;
             GRANT CONNECT ON DATABASE ${escapeIdentifier(identity.database)} TO ${escapeIdentifier(identity.login)}`);
@@ -70,11 +89,21 @@ describe.skipIf(!db)('readiness migration provenance', () => {
         } else {
           await provisionScratchSchema(scratch.pool);
         }
+        await scratch.pool
+          .query(`CREATE ROLE ${escapeIdentifier(appRuntimeLogin)} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD '${runtimePassword}';
+          CREATE ROLE ${escapeIdentifier(maintenanceRuntimeLogin)} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD '${runtimePassword}';
+          GRANT studio_app TO ${escapeIdentifier(appRuntimeLogin)} WITH ADMIN FALSE, SET TRUE, INHERIT FALSE;
+          GRANT studio_maintenance TO ${escapeIdentifier(maintenanceRuntimeLogin)} WITH ADMIN FALSE, SET TRUE, INHERIT FALSE;
+          GRANT CONNECT ON DATABASE ${escapeIdentifier(identity.database)} TO ${escapeIdentifier(appRuntimeLogin)}, ${escapeIdentifier(maintenanceRuntimeLogin)};
+          REVOKE INSERT, UPDATE, DELETE ON "schemaFingerprint" FROM studio_app, studio_maintenance`);
+        created = true;
         expect((await pool.query('SELECT current_user AS role')).rows).toEqual([
           { role: 'studio_app' },
         ]);
         const readiness = createReadiness({
           pool,
+          maintenancePool,
+          allowedLogins,
           assetStore: store,
           cacheMs: 0,
         });
@@ -99,7 +128,13 @@ describe.skipIf(!db)('readiness migration provenance', () => {
         // resolved development decision as the executable's construction.
         for (const development of [false, true]) {
           const app = createApp(
-            { ...readEnv(), db: scratch.db, devDefaults: development },
+            {
+              ...readEnv(),
+              db: { url: runtimeUrl.href },
+              maintenanceDb: { url: maintenanceUrl.href },
+              devDefaults: development,
+              databaseAllowedLogins: allowedLogins,
+            },
             { pool, assetStore: store },
           );
           expect((await app.request('/readyz')).status).toBe(
@@ -108,6 +143,12 @@ describe.skipIf(!db)('readiness migration provenance', () => {
         }
       } finally {
         await pool.end();
+        await maintenancePool.end();
+        if (created)
+          await scratch.pool.query(
+            `REVOKE CONNECT ON DATABASE ${escapeIdentifier(identity.database)} FROM ${escapeIdentifier(appRuntimeLogin)}, ${escapeIdentifier(maintenanceRuntimeLogin)};
+             DROP ROLE ${escapeIdentifier(appRuntimeLogin)}, ${escapeIdentifier(maintenanceRuntimeLogin)}`,
+          );
         await scratch.dispose();
       }
     }
@@ -184,6 +225,7 @@ describe.skipIf(!db)(
       const empty = await createScratchSchema(db);
       const readiness = createReadiness({
         pool: empty.pool,
+        allowUnversionedSchema: true,
         assetStore: store,
         cacheMs: 0,
       });

@@ -23,6 +23,8 @@
     "test": "vitest run && vitest run --config vitest.account.config.ts",
     "test:watch": "vitest",
     "backup:verify": "node --env-file-if-exists=.env src/backup.ts",
+    "configure": "node src/configure.ts",
+    "recover:verify": "node --env-file-if-exists=.env src/recover.ts",
     "test:account": "vitest run --config vitest.account.config.ts"
   },
   "dependencies": {

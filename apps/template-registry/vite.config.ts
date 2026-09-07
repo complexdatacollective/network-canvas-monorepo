@@ -12,6 +12,8 @@ export default defineConfig({
         migrate: 'src/migrate.ts',
         operator: 'src/operator.ts',
         backup: 'src/backup.ts',
+        configure: 'src/configure.ts',
+        recover: 'src/recover.ts',
       },
       output: { entryFileNames: '[name].js' },
     },

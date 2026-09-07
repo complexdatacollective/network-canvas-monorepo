@@ -68,15 +68,16 @@ export async function createRegistryInstallation() {
   setRegistryPoolBounds(pool);
   setRegistryPoolBounds(operatorPool);
   let disposed = false;
+  let runtimeDisposed = false;
+  const closeRuntimePools = async () => {
+    if (runtimeDisposed) return;
+    runtimeDisposed = true;
+    await Promise.all([pool.end(), operatorPool.end()]);
+  };
   const dispose = async () => {
     if (disposed) return;
     disposed = true;
-    await Promise.all([
-      pool.end(),
-      operatorPool.end(),
-      backupPool.end(),
-      owner.end(),
-    ]);
+    await Promise.all([closeRuntimePools(), backupPool.end(), owner.end()]);
     try {
       const deadline = Date.now() + 2000;
       for (;;) {
@@ -169,6 +170,7 @@ export async function createRegistryInstallation() {
     runtimeDatabaseUrl: url(logins.app),
     operatorDatabaseUrl: url(logins.operator),
     backupDatabaseUrl: url(logins.backup),
+    closeRuntimePools,
     withAdministrator,
     dispose,
   };

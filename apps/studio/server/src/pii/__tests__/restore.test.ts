@@ -249,11 +249,21 @@ it('restores a real pre-rotation pg_dump with retained keys and refuses missing 
         ],
         dump,
       );
-      // This encryption fixture restores a dev-applied schema-only dump. Its
-      // fingerprint is current, but production must still require real history.
-      expect(await checkSchema(app)).toMatchObject({
+      // This local encryption drill restores a dev-applied schema-only dump.
+      // It has neither deployment enrollment nor versioned history. Production
+      // refuses that evidence before trusting the otherwise current fingerprint.
+      expect(
+        (
+          await maintenance.query(
+            "SELECT to_regclass('studio_migrations.history') IS NULL AS unversioned",
+          )
+        ).rows,
+      ).toEqual([{ unversioned: true }]);
+      expect(await checkSchema(app)).toEqual({
         kind: 'stale',
-        reason: 'unversioned',
+        reason: 'unsafe-evidence',
+        found: null,
+        appliedAt: null,
       });
       expect(await checkSchema(app, { allowUnversioned: true })).toEqual({
         kind: 'current',

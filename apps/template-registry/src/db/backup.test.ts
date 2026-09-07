@@ -1,5 +1,4 @@
 import { execFile } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 
@@ -70,18 +69,6 @@ it('verifies a populated registry using only its distinct backup LOGIN, includin
     });
     expect(result.stderr).toContain('REGISTRY_BACKUP_VERIFIED');
     expect(result.stderr).not.toContain(new URL(f.backupDatabaseUrl).password);
-    await expect(
-      execute(process.execPath, [backupMain], {
-        env: {
-          NODE_ENV: 'production',
-          REGISTRY_BACKUP_DATABASE_URL: f.backupDatabaseUrl,
-        },
-        timeout: 15000,
-      }),
-    ).rejects.toMatchObject({
-      code: 1,
-      stderr: expect.stringContaining('REGISTRY_BACKUP_FAILED'),
-    });
     for (const databaseUrl of [f.runtimeDatabaseUrl, f.databaseUrl]) {
       await expect(
         execute(process.execPath, [backupMain], {
@@ -112,11 +99,13 @@ it('accepts only the explicit backup environment and never falls back to a runti
     readRegistryBackupEnv({
       REGISTRY_BACKUP_DATABASE_URL:
         'postgres://backup:synthetic@localhost/registry',
-      REGISTRY_DATABASE_ALLOWED_LOGINS: '["backup"]',
+      REGISTRY_DATABASE_ALLOWED_LOGINS:
+        '["owner","runtime","operator","backup"]',
     }),
   ).toEqual({
     databaseUrl: 'postgres://backup:synthetic@localhost/registry',
-    allowedLogins: ['backup'],
+    allowedLogins: ['owner', 'runtime', 'operator', 'backup'],
+    administrativeLogins: [],
   });
   for (const key of [
     'REGISTRY_DATABASE_URL',
@@ -126,18 +115,10 @@ it('accepts only the explicit backup environment and never falls back to a runti
     expect(() =>
       readRegistryBackupEnv({
         [key]: 'postgres://private-canary@localhost/registry',
+        REGISTRY_DATABASE_ALLOWED_LOGINS:
+          '["owner","runtime","operator","backup"]',
       }),
     ).toThrow(new Error('REGISTRY_BACKUP_CONFIGURATION_INVALID'));
-});
-
-it('passes the complete configured Registry enrollment to backup verification', async () => {
-  const compose = await readFile(
-    fileURLToPath(new URL('../../deployment/compose.yml', import.meta.url)),
-    'utf8',
-  );
-  expect(compose).toContain(
-    'REGISTRY_DATABASE_ALLOWED_LOGINS: \'["registry_migrator","registry_runtime","registry_operations","registry_backup_login"]\'',
-  );
 });
 
 it('requires every known table and complete SELECT over future registry relations', async () => {

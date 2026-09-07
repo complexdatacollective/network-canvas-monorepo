@@ -165,6 +165,10 @@ describe('runtime configuration and owned hooks', () => {
     'defaults on and really opts out in %s, including the function and validation-skip lanes',
     async (mode) => {
       vi.stubEnv('EMAIL_FROM', '');
+      vi.stubEnv(
+        'STUDIO_DATABASE_ALLOWED_LOGINS',
+        '["studio_migrator","studio_runtime"]',
+      );
       vi.stubEnv('STUDIO_DEPLOYMENT_MODE', mode);
       vi.stubEnv('STUDIO_TELEMETRY', '');
       expect(readEnv().telemetry).toBe(true);

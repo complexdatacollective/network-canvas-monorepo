@@ -30,29 +30,32 @@ binding again, verifies the manifest signature and all six controlled GHCR image
 signatures, and matches each pulled platform's actual image configuration ID.
 It performs these checks before starting any image.
 
-The bundle inventories both raw deployment templates and their expected rendered
-output. The offline configuration image receives those verified raw templates
-through a read-only mount, then the installer compares every rendered file.
+The bundle inventories both Studio and Registry raw deployment templates and
+their expected rendered output. Each verified application image receives only
+its own templates through a read-only mount, then the installer compares every
+rendered file.
 This lets a Compose-only release use its current configuration while retaining
 the selected backend image identities; templates embedded in an older image
 cannot silently replace the selected release's templates.
 
-If both generations resolve to the same Studio Compose deployment, the same
-Studio schema, and identical retained environment and encryption inputs, the
+If both generations resolve to the same combined Compose deployment, the same
+Studio and Registry schemas, and identical retained private inputs, the
 installer privately smokes the running service and records the new active
-generation without stopping or recreating containers. The Registry image is
-verified with the release, but Registry deployment remains a separate owner;
-this Studio installer never marks Registry as deployed.
+generation without stopping or recreating containers.
 
 For a fresh installation, pass an empty mode0700 installation directory and the
-public domain and ACME contact email:
+Studio domain, ACME contact email, Registry domain and sender, plus exactly one
+Registry mail transport:
 
 ```sh
 node install.mjs \
   --directory /srv/studio \
   --expected-manifest-sha256 "$EXPECTED_MANIFEST_SHA256" \
   --domain studio.example.org \
-  --email operator@example.org
+  --email operator@example.org \
+  --registry-domain registry.example.org \
+  --registry-mail-from registry@example.org \
+  --registry-smtp-url 'smtps://USER:PASSWORD@mail.example.org'
 ```
 
 The successful first invocation prints the setup token once. Complete `/setup`
@@ -74,11 +77,11 @@ node install.mjs \
   --key-custody-directory /separate-encrypted-custody/studio
 ```
 
-The installer closes public admission, stops web and worker processes, and
-captures a quiesced backup before starting migration. Historical roots stay in
-the separate custody file. Its digest is recorded in the data backup; the data
-archive does not include those roots. Keep custody on operator-controlled
-encrypted storage, inaccessible to the credentials that download data backups.
+The installer closes public admission, stops Studio web/workers and Registry
+HTTP/cleanup, quarantines both databases' writer logins, and captures both
+databases and object stores before migration. Historical Studio roots and the
+Registry private configuration are separately copied into the custody
+directory; their digests bind them to the data backup.
 
 Migration, key verification, the restricted backup verifier, retained client
 asset installation, readiness and authentication all run with public admission
@@ -101,8 +104,12 @@ The source qualification exercises these commands against real local Compose
 services, including a post-migration interruption, quiesced backup, retry and
 authenticated smoke. It uses two manifests of the same retained backend image;
 actual adjacent/oldest-supported image compatibility and GitHub OIDC signature
-qualification remain separate release requirements. The optional Registry
-deployment and its recovery are also a separate integration boundary.
+qualification remain separate release requirements. Populated recovery also
+requires independently obtained current Registry owner/operator/publisher
+reconciliation evidence and its SHA-256. The restore keeps both HTTP services
+and all workers closed while the Registry recovery executable invalidates
+restored sessions, magic links and active personal access tokens and verifies
+every referenced object.
 
 ## Building the authenticated archive
 

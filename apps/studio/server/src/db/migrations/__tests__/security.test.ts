@@ -34,7 +34,7 @@ async function withDeployment(
     administrator: Pool;
     owner: Pool;
     url: URL;
-    logins: [string, string];
+    logins: [string, string, string];
     databaseName: string;
   }) => Promise<void>,
 ) {
@@ -42,7 +42,11 @@ async function withDeployment(
     throw new Error('Database required for migration security tests.');
   // Quoted, deployment-specific identities exercise actual SQL identifier handling.
   const suffix = randomUUID().replaceAll('-', '');
-  const logins: [string, string] = [`migrator-${suffix}`, `runtime"${suffix}`];
+  const logins: [string, string, string] = [
+    `migrator-${suffix}`,
+    `app-runtime"${suffix}`,
+    `maintenance-runtime-${suffix}`,
+  ];
   const administrator = new Pool({ connectionString: database.url });
   const scratch = await createScratchDatabase(database);
   const url = new URL(scratch.db.url);
@@ -52,14 +56,15 @@ async function withDeployment(
     await administrator.query(
       `ALTER DATABASE ${escapeIdentifier(databaseName)} ALLOW_CONNECTIONS false`,
     );
-    for (const login of logins) {
+    for (const login of logins)
       await administrator.query(
         `CREATE ROLE ${escapeIdentifier(login)} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD '${password}'`,
       );
-      await administrator.query(
-        `GRANT studio_app, studio_maintenance TO ${escapeIdentifier(login)} WITH SET TRUE, INHERIT FALSE`,
-      );
-    }
+    await administrator.query(
+      `GRANT studio_app, studio_maintenance TO ${escapeIdentifier(logins[0])} WITH SET TRUE, INHERIT FALSE;
+       GRANT studio_app TO ${escapeIdentifier(logins[1])} WITH SET TRUE, INHERIT FALSE;
+       GRANT studio_maintenance TO ${escapeIdentifier(logins[2])} WITH SET TRUE, INHERIT FALSE`,
+    );
     await administrator.query(
       `ALTER DATABASE ${escapeIdentifier(databaseName)} OWNER TO ${escapeIdentifier(logins[0])}`,
     );
@@ -86,6 +91,15 @@ async function withDeployment(
     );
     await administrator.end();
   }
+}
+
+function runtimeLoginForRole(
+  logins: readonly [string, string, string],
+  role: string,
+): string {
+  if (role === 'studio_app') return logins[1];
+  if (role === 'studio_maintenance') return logins[2];
+  throw new Error(`Unexpected runtime role: ${role}`);
 }
 
 async function connectAs(
@@ -139,7 +153,7 @@ async function rollbackPrepared(pool: Pool, gid: string): Promise<void> {
 describe.skipIf(!database)('migration security invariants', () => {
   it('administrator provisioning removes direct and PUBLIC large-object capabilities without granting another identity access', async () => {
     await withDeployment(async ({ administrator, owner, logins }) => {
-      const roles = ['studio_app', 'studio_maintenance', logins[1]];
+      const roles = ['studio_app', 'studio_maintenance', logins[1], logins[2]];
       // Seed this test's initial ACL independently of the helper under test.
       await administrator.query(`REVOKE EXECUTE ON FUNCTION
         pg_catalog.lo_create(oid), pg_catalog.lo_creat(integer),
@@ -160,8 +174,8 @@ describe.skipIf(!database)('migration security invariants', () => {
           roles,
         ])
       ).rows;
-      expect(before).toHaveLength(18);
-      expect(before.filter(({ executable }) => executable)).toHaveLength(10);
+      expect(before).toHaveLength(24);
+      expect(before.filter(({ executable }) => executable)).toHaveLength(12);
       await expect(
         migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
       ).rejects.toThrow('large-object creation');
@@ -179,7 +193,7 @@ describe.skipIf(!database)('migration security invariants', () => {
           [...roles, logins[0]],
         ])
       ).rows;
-      expect(after).toHaveLength(24);
+      expect(after).toHaveLength(30);
       expect(after.every(({ executable }) => !executable)).toBe(true);
       expect(
         await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
@@ -213,12 +227,17 @@ describe.skipIf(!database)('migration security invariants', () => {
             )
           ).rows,
         ).toEqual([{ history_write: false, stamp_write: false }]);
-        await connectAs(url, logins[1], `-c role=${role}`, async (runtime) => {
-          expect(
-            (await runtime.query('INSERT INTO rewrite_source VALUES (1)'))
-              .rowCount,
-          ).toBe(1);
-        });
+        await connectAs(
+          url,
+          runtimeLoginForRole(logins, role),
+          `-c role=${role}`,
+          async (runtime) => {
+            expect(
+              (await runtime.query('INSERT INTO rewrite_source VALUES (1)'))
+                .rowCount,
+            ).toBe(1);
+          },
+        );
         const forged = (
           await administrator.query(
             'SELECT * FROM studio_migrations.history ORDER BY position',
@@ -476,20 +495,18 @@ describe.skipIf(!database)('migration security invariants', () => {
   );
 
   it.each([
-    'studio_app',
-    'studio_maintenance',
-    'studio_app, studio_maintenance',
-  ])(
-    'requires complete runtime memberships when %s is missing',
-    async (missing) => {
+    ['studio_app', 1],
+    ['studio_maintenance', 2],
+  ] as const)(
+    'requires the %s runtime membership',
+    async (missing, loginIndex) => {
       await withDeployment(async ({ administrator, owner, url, logins }) => {
         await administrator.query(
-          `REVOKE ${missing} FROM ${escapeIdentifier(logins[1])}`,
+          `REVOKE ${missing} FROM ${escapeIdentifier(logins[loginIndex])}`,
         );
-        await connectAs(url, logins[1], undefined, async (runtime) => {
-          const absent = missing.split(', ')[0]!;
+        await connectAs(url, logins[loginIndex], undefined, async (runtime) => {
           await expect(
-            runtime.query(`SET ROLE ${escapeIdentifier(absent)}`),
+            runtime.query(`SET ROLE ${escapeIdentifier(missing)}`),
           ).rejects.toMatchObject({ code: '42501' });
         });
         await expect(
@@ -503,7 +520,7 @@ describe.skipIf(!database)('migration security invariants', () => {
           ).rows,
         ).toEqual([{ history: null }]);
         await administrator.query(
-          `GRANT studio_app, studio_maintenance TO ${escapeIdentifier(logins[1])} WITH INHERIT FALSE, SET TRUE`,
+          `GRANT ${missing} TO ${escapeIdentifier(logins[loginIndex])} WITH INHERIT FALSE, SET TRUE`,
         );
         expect(
           await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
@@ -523,12 +540,17 @@ describe.skipIf(!database)('migration security invariants', () => {
           ALTER TABLE truncate_target FORCE ROW LEVEL SECURITY;
           CREATE POLICY empty_visibility ON truncate_target USING (false);
           GRANT SELECT, TRUNCATE ON truncate_target TO ${escapeIdentifier(role)}`);
-        await connectAs(url, logins[1], `-c role=${role}`, async (runtime) => {
-          expect(
-            (await runtime.query('SELECT * FROM truncate_target')).rows,
-          ).toEqual([]);
-          await runtime.query('TRUNCATE truncate_target');
-        });
+        await connectAs(
+          url,
+          runtimeLoginForRole(logins, role),
+          `-c role=${role}`,
+          async (runtime) => {
+            expect(
+              (await runtime.query('SELECT * FROM truncate_target')).rows,
+            ).toEqual([]);
+            await runtime.query('TRUNCATE truncate_target');
+          },
+        );
         // The unrestricted observer proves real deletion; the runtime's empty
         // RLS result alone would have been a vacuous truncation oracle.
         expect(
@@ -611,12 +633,17 @@ describe.skipIf(!database)('migration security invariants', () => {
             child_writable: false,
           },
         ]);
-        await connectAs(url, logins[1], `-c role=${role}`, async (runtime) => {
-          expect(
-            (await runtime.query('SELECT current_user AS role')).rows,
-          ).toEqual([{ role }]);
-          expect((await runtime.query(attack)).rowCount).toBe(1);
-        });
+        await connectAs(
+          url,
+          runtimeLoginForRole(logins, role),
+          `-c role=${role}`,
+          async (runtime) => {
+            expect(
+              (await runtime.query('SELECT current_user AS role')).rows,
+            ).toEqual([{ role }]);
+            expect((await runtime.query(attack)).rowCount).toBe(1);
+          },
+        );
         const forged = (
           await administrator.query(
             'SELECT * FROM studio_migrations.history ORDER BY position',
@@ -1497,21 +1524,27 @@ describe.skipIf(!database)('migration security invariants', () => {
         await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
       ).toEqual([]);
       for (const role of ['studio_app', 'studio_maintenance']) {
-        await connectAs(url, logins[1], `-c role=${role}`, async (pool) => {
-          expect(
-            (await pool.query('SELECT * FROM public."schemaFingerprint"')).rows,
-          ).toEqual(before);
-          for (const sql of [
-            'UPDATE public."schemaFingerprint" SET fingerprint = \'forged\'',
-            'DELETE FROM public."schemaFingerprint"',
-            'TRUNCATE public."schemaFingerprint"',
-            'INSERT INTO public."schemaFingerprint" (fingerprint) VALUES (\'forged\')',
-          ]) {
-            await expect(pool.query(sql)).rejects.toMatchObject({
-              code: '42501',
-            });
-          }
-        });
+        await connectAs(
+          url,
+          runtimeLoginForRole(logins, role),
+          `-c role=${role}`,
+          async (pool) => {
+            expect(
+              (await pool.query('SELECT * FROM public."schemaFingerprint"'))
+                .rows,
+            ).toEqual(before);
+            for (const sql of [
+              'UPDATE public."schemaFingerprint" SET fingerprint = \'forged\'',
+              'DELETE FROM public."schemaFingerprint"',
+              'TRUNCATE public."schemaFingerprint"',
+              'INSERT INTO public."schemaFingerprint" (fingerprint) VALUES (\'forged\')',
+            ]) {
+              await expect(pool.query(sql)).rejects.toMatchObject({
+                code: '42501',
+              });
+            }
+          },
+        );
       }
       expect(
         (await administrator.query('SELECT * FROM public."schemaFingerprint"'))
@@ -1536,11 +1569,15 @@ describe.skipIf(!database)('migration security invariants', () => {
           second.logins,
         );
         for (const deployment of [first, second]) {
-          for (const login of deployment.logins) {
+          for (const [login, role] of [
+            [deployment.logins[0], 'studio_app'],
+            [deployment.logins[1], 'studio_app'],
+            [deployment.logins[2], 'studio_maintenance'],
+          ] as const) {
             await connectAs(
               deployment.url,
               login,
-              '-c role=studio_app',
+              `-c role=${role}`,
               async (pool) => {
                 expect(
                   (
@@ -1660,31 +1697,39 @@ describe.skipIf(!database)('migration security invariants', () => {
         await expect(
           migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
         ).resolves.toEqual([]);
-        await connectAs(url, logins[1], `-c role=${role}`, async (runtime) => {
-          expect(
-            (await runtime.query("SELECT nextval('runtime_sequence') AS value"))
-              .rows,
-          ).toEqual([{ value: '1' }]);
-          await expect(
-            runtime.query("SELECT setval('runtime_sequence', 9, true)"),
-          ).rejects.toMatchObject({ code: '42501' });
-          await owner.query(
-            `GRANT UPDATE ON SEQUENCE runtime_sequence TO ${escapeIdentifier(role)}`,
-          );
-          expect(
-            (
-              await runtime.query(
-                "SELECT setval('runtime_sequence', 9, true) AS value",
-              )
-            ).rows,
-          ).toEqual([{ value: '9' }]);
-          await expect(
-            runtime.query("SELECT nextval('runtime_sequence')"),
-          ).rejects.toMatchObject({ code: '2200H' });
-          await expect(
-            migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
-          ).rejects.toThrow('sequence');
-        });
+        await connectAs(
+          url,
+          runtimeLoginForRole(logins, role),
+          `-c role=${role}`,
+          async (runtime) => {
+            expect(
+              (
+                await runtime.query(
+                  "SELECT nextval('runtime_sequence') AS value",
+                )
+              ).rows,
+            ).toEqual([{ value: '1' }]);
+            await expect(
+              runtime.query("SELECT setval('runtime_sequence', 9, true)"),
+            ).rejects.toMatchObject({ code: '42501' });
+            await owner.query(
+              `GRANT UPDATE ON SEQUENCE runtime_sequence TO ${escapeIdentifier(role)}`,
+            );
+            expect(
+              (
+                await runtime.query(
+                  "SELECT setval('runtime_sequence', 9, true) AS value",
+                )
+              ).rows,
+            ).toEqual([{ value: '9' }]);
+            await expect(
+              runtime.query("SELECT nextval('runtime_sequence')"),
+            ).rejects.toMatchObject({ code: '2200H' });
+            await expect(
+              migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+            ).rejects.toThrow('sequence');
+          },
+        );
       });
     },
   );
@@ -1701,7 +1746,7 @@ describe.skipIf(!database)('migration security invariants', () => {
         );
         await connectAs(
           url,
-          logins[1],
+          role === 'studio_maintenance' ? logins[2] : logins[1],
           role ? `-c role=${role}` : undefined,
           async (runtime) => {
             await runtime.query('SELECT 1');

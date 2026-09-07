@@ -1,0 +1,8 @@
+[
+  "compose.yml",
+  "postgres-init.sql",
+  "postgres-privileges.sql",
+  "minio-init.sh",
+  "minio-policy.json",
+  "recovery.yml"
+]

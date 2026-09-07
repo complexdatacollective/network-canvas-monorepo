@@ -55,7 +55,20 @@ function fixture(t) {
     },
     minioSource: release.value.evidence.minioSource,
   };
-  const prior = releasedDistribution(2);
+  const historical = releasedDistribution(2);
+  const priorSboms = new Map(
+    Object.entries(historical.value.images).map(([name, image]) => {
+      const bytes = studioSbom(image);
+      historical.value.evidence.sboms[name].sha256 = sha256(bytes);
+      return [name, bytes];
+    }),
+  );
+  const priorBytes = Buffer.from(JSON.stringify(historical.value));
+  const prior = {
+    ...readRelease(priorBytes),
+    releaseBytes: priorBytes,
+    sboms: priorSboms,
+  };
   const history = {
     authenticatedPriorRelease: prior,
     upgradeFrom: [prior.current],
@@ -179,10 +192,15 @@ test('composes authenticated history, exact tool paths and all four fresh public
   assert.equal(f.observed.verified, true);
   assert.equal(f.observed.published, 1);
   assert.equal(f.assets.size, 10);
-  assert.equal(
+  assert.notEqual(
     f.observed.qualification.qualificationSources,
     f.history.qualificationSources,
   );
+  assert.deepEqual(
+    f.observed.qualification.qualificationSources.map(({ current }) => current),
+    f.history.qualificationSources.map(({ current }) => current),
+  );
+  assert.deepEqual(Object.keys(f.observed.qualification.store), ['readAsset']);
   assert.deepEqual(f.observed.qualification.executables, f.inputs.executables);
 });
 
@@ -251,4 +269,45 @@ test('missing qualification or unpinned executable names fail before I/O', async
       /explicit qualified caller/,
     );
   assert.equal(f.observed.fetches, 0);
+});
+
+test('consuming qualifier history cannot redefine the required upgrades', async (t) => {
+  const f = fixture(t);
+  f.inputs.qualify = async ({ qualificationSources }) => {
+    qualificationSources.splice(0);
+    return { ...f.receipt, upgrades: [] };
+  };
+  await assert.rejects(f.run, /qualification is incomplete/);
+  assert.equal(f.history.qualificationSources.length, 1);
+  assert.equal(f.observed.drafts, 0);
+  assert.equal(f.observed.published, 0);
+});
+
+test('annotating the qualifier manifest cannot redefine the expected digest', async (t) => {
+  const f = fixture(t);
+  f.inputs.qualify = async ({ manifest }) => {
+    manifest.current.digest = 'f'.repeat(64);
+    return { ...f.receipt, manifestSha256: manifest.current.digest };
+  };
+  await assert.rejects(f.run, /qualification is incomplete/);
+  assert.equal(f.observed.drafts, 0);
+  assert.equal(f.observed.published, 0);
+});
+
+test('qualifier byte consumption cannot change authenticated historical artifacts', async (t) => {
+  const f = fixture(t);
+  const prior = f.history.qualificationSources[0];
+  const expected = Buffer.from(prior.releaseBytes);
+  const sbom = Buffer.from(prior.sboms.get('studio'));
+  f.inputs.qualify = async ({ qualificationSources }) => {
+    qualificationSources[0].releaseBytes.fill(0);
+    qualificationSources[0].sboms.get('studio').fill(0);
+    qualificationSources[0].sboms.clear();
+    return f.receipt;
+  };
+  await f.run();
+  assert.deepEqual(prior.releaseBytes, expected);
+  assert.deepEqual(prior.sboms.get('studio'), sbom);
+  assert.equal(prior.sboms.size, 6);
+  assert.equal(f.observed.published, 1);
 });

@@ -4,8 +4,10 @@ import { dirname, join } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 
 import configurationFiles from '../apps/studio/deployment/installer/configuration-files.json' with { type: 'json' };
+import registryConfigurationFiles from '../apps/studio/deployment/installer/registry-configuration-files.json' with { type: 'json' };
 import { readRelease } from '../apps/studio/deployment/installer/release.mjs';
 import { renderDeploymentTemplate } from '../apps/studio/server/src/deployment/configure.ts';
+import { renderRegistryDeploymentTemplate } from '../apps/template-registry/src/deployment/configure.ts';
 import { readCommittedFile } from './studio-committed-file.mjs';
 import { buildInstallerArchive } from './studio-installer-archive.mjs';
 
@@ -63,6 +65,17 @@ export function buildStudioInstaller({ candidate, release, signature }) {
       const bytes = readCommittedFile(candidate, `apps/studio/${name}`);
       stage(`templates/${name}`, bytes);
       stage(`configuration/${name}`, renderDeploymentTemplate(name, bytes));
+    }
+    for (const name of registryConfigurationFiles) {
+      const bytes = readCommittedFile(
+        candidate,
+        `apps/template-registry/deployment/${name}`,
+      );
+      stage(`registry-templates/${name}`, bytes);
+      stage(
+        `registry-configuration/${name}`,
+        renderRegistryDeploymentTemplate(name, bytes),
+      );
     }
     stage('release.json', release);
     stage('release.sigstore.json', signature);

@@ -14,6 +14,8 @@ export function createObservability(options: {
   timeoutMs?: number;
   cacheMs?: number;
   allowUnversionedSchema?: boolean;
+  allowedLogins?: readonly string[];
+  administrativeLogins?: readonly string[];
 }) {
   const readiness = createReadiness(options);
   const metrics = createOperationalMetrics({ ...options, readiness });

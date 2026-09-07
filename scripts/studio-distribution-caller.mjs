@@ -103,26 +103,42 @@ export async function publishReviewedStudioDistribution(
       qualify: async (manifest, artifacts) => {
         if (!history)
           throw new Error('Authenticated upgrade history is unavailable.');
+        const expectedDigest = manifest.current.digest;
+        const expectedUpgrades = history.qualificationSources.map(
+          ({ current }) => ({
+            source: current.source,
+            manifestSha256: current.digest,
+          }),
+        );
+        const qualificationSources = history.qualificationSources.map(
+          (prior) => ({
+            ...structuredClone({
+              release: prior.release,
+              current: prior.current,
+            }),
+            releaseBytes: Buffer.from(prior.releaseBytes),
+            sboms: new Map(
+              [...prior.sboms].map(([name, bytes]) => [
+                name,
+                Buffer.from(bytes),
+              ]),
+            ),
+          }),
+        );
         const receipt = await qualify({
           manifest,
           artifacts,
-          qualificationSources: history.qualificationSources,
+          qualificationSources,
           executables: { ...paths },
-          store,
+          store: { readAsset: (tag, name) => store.readAsset(tag, name) },
         });
         if (
           receipt?.verdict !== 'passed' ||
           receipt.source !== source ||
-          receipt.manifestSha256 !== manifest.current.digest ||
+          receipt.manifestSha256 !== expectedDigest ||
           receipt.freshInstall !== true ||
           receipt.populatedRecovery !== true ||
-          !isDeepStrictEqual(
-            receipt.upgrades,
-            history.qualificationSources.map(({ current }) => ({
-              source: current.source,
-              manifestSha256: current.digest,
-            })),
-          )
+          !isDeepStrictEqual(receipt.upgrades, expectedUpgrades)
         )
           throw new Error(
             'Studio installation and recovery qualification is incomplete.',
