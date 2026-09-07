@@ -7,11 +7,10 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 
-import {
-  type BooleanAnswer,
-  type BooleanAnswerIssues,
-  type BooleanAnswers,
-  DEFAULT_BOOLEAN_LABELS,
+import type {
+  BooleanAnswer,
+  BooleanAnswerIssues,
+  BooleanAnswers,
 } from '../variableOptions.ts';
 
 const InputControl = InputField as ComponentType<Record<string, unknown>>;
@@ -24,6 +23,12 @@ const messages = defineMessages({
       '{records, select, true {Label for “true”} other {Label for “false”}}',
     description:
       'Label of the field holding the words on one of the two answers a yes/no attribute offers. records says which of the two stored values this answer records; “true” and “false” are the literal values the protocol stores and an export records, so they stay as they are.',
+  },
+  answerPlaceholder: {
+    id: 'protocolBuilder.codebookVariable.booleanAnswerPlaceholder',
+    defaultMessage: '{records, select, true {Yes} other {No}}',
+    description:
+      'Placeholder in the field holding the words on one of the two answers a yes/no attribute offers, shown while the researcher has written none. It has to read exactly as the interview’s own yes/no control does for an attribute that names no answers — frescoUi.booleanField.yes and frescoUi.booleanField.no — because that is literally what the participant will see. records says which of the two stored values this answer records.',
   },
   negativeLabel: {
     id: 'protocolBuilder.codebookVariable.booleanNegativeLabel',
@@ -82,7 +87,15 @@ export default function VariableBooleanAnswerFields({
               name={`boolean-answer-${records}-label`}
               label={intl.formatMessage(messages.answerLabel, { records })}
               component={InputControl}
-              placeholder={DEFAULT_BOOLEAN_LABELS[records]}
+              // What the interview will actually show for an answer nobody has
+              // named: the participant reads fresco-ui's own boolean control,
+              // which supplies its translated Yes/No when the protocol carries
+              // no `options` at all — and this editor writes no `options` key
+              // while both labels are blank. `booleanPlaceholdersMatchFresco`
+              // holds the two wordings together.
+              placeholder={intl.formatMessage(messages.answerPlaceholder, {
+                records,
+              })}
               value={answer.label}
               onChange={(value: unknown) =>
                 onChange(index, {

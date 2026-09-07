@@ -190,6 +190,16 @@ export type PromptsSectionProps = Readonly<{
    * Deliberately only these four. The section's own heading, its field label
    * and everything about the dialog stay shared, so a researcher moving
    * between two interfaces is not learning two vocabularies for one control.
+   *
+   * Each is formatted with NO VALUES. A descriptor carrying a placeholder —
+   * `'Ask about {relative} in this order.'`, the obvious thing to write —
+   * renders the pattern on screen, braces and all. The types cannot refuse
+   * one: `extractMessages` only sees `defineMessages`, and `defineMessages`
+   * widens `defaultMessage` to `string`, so no conditional type can read the
+   * braces and a descriptor declared through a helper that kept the literal
+   * would be invisible to extraction. What says so instead is
+   * `sections/__tests__/namedDescriptorProps.test.tsx`, and the locale sweep,
+   * which fails on an unformatted placeholder wherever one reaches the screen.
    */
   description?: MessageDescriptor;
   /** Said instead of `description` while the section waits on a subject. */

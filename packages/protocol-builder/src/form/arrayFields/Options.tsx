@@ -1,5 +1,7 @@
 import { useCallback, useMemo } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import ArrayField, {
   type ArrayFieldProps,
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
@@ -17,6 +19,15 @@ import { allowedVariableNameRow } from './rowValidators.ts';
 import { useArrayFieldCommands } from './useArrayFieldCommands.ts';
 
 export type { OptionValue } from './Option.tsx';
+
+const messages = defineMessages({
+  emptyState: {
+    id: 'protocolBuilder.option.emptyState',
+    defaultMessage: 'No options have been added yet.',
+    description:
+      'Shown in place of the list of answers a categorical or ordinal attribute offers, while the researcher has added none.',
+  },
+});
 
 /**
  * Array-level rules. They belong to the caller's `ProtocolArrayField`
@@ -185,6 +196,7 @@ export default function Options({
   'aria-invalid': ariaInvalid = false,
   ...arrayFieldProps
 }: OptionsProps) {
+  const intl = useAppIntl();
   const context = useMemo(
     () => ({
       arrayName: name,
@@ -212,7 +224,7 @@ export default function Options({
         itemTemplate={itemTemplate}
         itemClasses="p-0! shadow-none"
         addButtonLabel={addButtonLabel}
-        emptyStateMessage="No options have been added yet."
+        emptyStateMessage={intl.formatMessage(messages.emptyState)}
         immediateAdd
         sortable
         confirmDelete={false}

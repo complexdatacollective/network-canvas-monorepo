@@ -181,6 +181,60 @@ from `codebook/variableValidation.ts` rather than declaring
 `arrayField.*ElsewhereRefusal` twins of them. The array field and the codebook
 editor report the same conflict, so a translator answers once.
 
+### Landed here, in i18n-2's areas
+
+Storybook's Language control found 23 researcher-facing strings written as JSX
+ATTRIBUTES — `label=`, `placeholder=`, `hint=`, `aria-label=` — still rendering
+English inside otherwise Spanish surfaces, plus `DialogForm`'s own `'Cancel'`
+default and `VariablePicker`'s `'Select an attribute…'`. `formatjs/no-literal-string-in-jsx`
+reads children rather than attributes, and this package does not have it turned
+on, so nothing saw them.
+
+They belong to i18n-2's areas and were converted here because this branch is
+what mounts them in Spanish. Every id below is the one **L2 already chose** —
+read from `wt/L2`, reused verbatim so the merge is a union rather than two
+spellings of one string. An id L2 had not declared yet was taken from its
+Spanish catalog, which was already ahead of its source. **i18n-2 must reuse
+these ids rather than re-key them.**
+
+| `<area>`           | Ids landed here                                                                                                                                                                                                      |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `dialogForm`       | `resizeHandle`, `discardTitle`, `discardDescription`, `discardConfirm`, `keepEditing`                                                                                                                                |
+| `variablePicker`   | `placeholder`, `emptyState`, `missingOptionLabel`, `unusableOptionLabel`, `missingAttribute`, `unusableAttribute`, `attributeTypeLabel`                                                                              |
+| `option`           | `removeOption`, `removeOptionDescription`, `reorderOption`, `editOption`, `removeOptionAt`, `finishEditing`, `untitled`, `noValue`, `labelLabel`, `labelPlaceholder`, `valueLabel`, `valuePlaceholder`, `emptyState` |
+| `assignAttributes` | `booleanTrue`, `booleanFalse`, `unassignedTitle`, `rowReplaced`, `listClosed`, `rowGone`, `variableLabel`, `valueLabel`, `valueHint`, `deleteRow`, `addButton`, `emptyState`                                         |
+| `codebookEntity`   | all of `CodebookSurface.tsx`'s, plus the entity editor's `nameLabel`, `nameHint`, `colorLabel`, `colorHint`, `colorPlaceholder`, `shapeLabel`, `shapeHint`, `shapePlaceholder`, `iconLabel`, `iconHint`              |
+| `codebookVariable` | `nameLabel`, `nameHint`, `typeLabel`, `typePlaceholder`, `optionLabelField`, `optionValueField`, `removeOption`, `booleanAnswerPlaceholder`                                                                          |
+
+What is still English in those files is what does not reach a researcher
+through a JSX attribute and is not one of the findings above:
+`form/arrayFields/rowValidators.ts` (`'Required'`, the uniqueness and NMTOKEN
+sentences), `form/arrayFields/Options.tsx`'s array-level rules, and the entity
+and attribute editors' own refusals and headings. Those are i18n-2's to finish,
+under the same area names.
+
+### Two rules the guards now hold
+
+**Copy is never a JSX attribute string.** `src/__tests__/copyInJsxAttributes.test.ts`
+scans the package's non-fixture source for a copy-bearing prop
+(`label`, `placeholder`, `hint`, `title`, `description`, `aria-label`, anything
+ending `Label`/`Message`/`Text`, …) whose value is a string or template
+literal. Template literals are included because that is the form an author
+reaches for the moment a sentence needs a name in it — and the form that also
+loses the sentence's word order to whatever English happens to do.
+
+**A named descriptor prop is formatted with no values.** The sentences a family
+hands `PromptsSection`, `FormFieldsSection`, `PageContentSection`,
+`SubjectSection` and `SectionCapability.confirmClear` are `MessageDescriptor`s
+the section formats with no arguments, so one carrying a placeholder renders
+`{like this}` on screen. It cannot be said in the type system: `extractMessages`
+only sees `defineMessages`, `defineMessages` widens `defaultMessage` to
+`string`, and declaring these through a `const`-generic helper that kept the
+literal would put every section sentence beyond extraction — a worse defect
+than the one it guards. `sections/__tests__/namedDescriptorProps.test.tsx`
+records it, and the locale sweep below fails on an unformatted placeholder
+wherever one reaches the screen.
+
 ### Reserved — not yet converted
 
 Named here so a later split takes the name rather than inventing a synonym.
@@ -332,3 +386,50 @@ protocol stage labels, is the existing case, and it is English deliberately.
   prompt = _pregunta_, attribute = _atributo_, node = _nodo_, edge = _vínculo_,
   ego = _ego_, alter = _álter_, network = _red_, rule = _regla_, roster =
   _lista_, resource = _recurso_, interview = _entrevista_.
+
+## Negative tests: what a Spanish reader actually gets
+
+Every locale test in this package used to be POSITIVE — name a Spanish sentence
+and find it. A positive test says nothing about the words beside it, which is
+how `'Cancel'` and `'Select an attribute…'` sat inside otherwise translated
+dialogs: each was somebody else's file, and nobody's test named it.
+
+`src/__tests__/localeSweep.test.tsx` asks the opposite question of a whole
+rendered surface — three stages at rest, and the add, edit and remove dialogs.
+`src/testing/localeSweep.ts` walks the document under `es` and reports three
+things: an English `defaultMessage` whose Spanish differs, the raw
+`@codaco/app-i18n/error/v1:` prefix of an encoded message nobody decoded, and
+an ICU argument nothing filled in.
+
+Two things it deliberately does not report. **Protocol content**: a researcher's
+own words are stored in the protocol and rendered to the participant verbatim,
+and some of them read exactly like copy this package owns (a stage called
+"Sociogram"), so the sweep reads the protocol document the harness is mounted
+over and never reports a string it holds. **A string no descriptor has ever
+stood behind**: the catalog is what it compares against, so a hardcoded literal
+with no id is invisible to it — the JSX-attribute scan is the structural half,
+and the two are meant to be read together.
+
+## Reading a story in another language
+
+This package's Storybook carries the shared **Language** and **Direction**
+toolbar controls from `@codaco/storybook-config` — the same ones
+`@codaco/fresco-ui`'s Storybook mounts, wired here in
+`.storybook/i18n.ts` and mounted as the preview's only decorator. Language
+offers every `ecosystemLocales` entry plus the `en-XA` pseudo-locale, and the
+decorator mounts an `AppI18nProvider` over `common.*`, `frescoUi.*` and
+`protocolBuilder.*` merged in that host order, so a section renders the words
+an app will actually show it. **It opens on `en` and stays there until somebody
+changes it**: `en` has no catalog in any of the three, so every descriptor
+renders its `defaultMessage` and the stories, their play functions and the
+Chromatic captures are byte-for-byte what they were before the control existed
+(the choice is remembered per browser, but never under Chromatic, Playwright or
+any other automated host). Switching to Español is the cheapest way to see
+whether a section is converted at all: a string that stays English there has no
+descriptor behind it — the provider-less English fallback in `useAppIntl()`
+makes an unconverted string and an untranslated one look identical until you
+switch. A story's own hardcoded host copy stays English too, which is expected;
+so is a play function that asserts an English literal failing when the language
+is forced, since plays are written against the source locale. The URL form is
+`?id=<story>&globals=appLocale:es`, and
+`src/__tests__/storybookLocaleSwitcher.test.tsx` holds the wiring in place.

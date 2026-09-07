@@ -1037,3 +1037,35 @@ describe('a codebook change the harness seeds', () => {
     ).toThrow(/did not take the seeded codebook change/);
   });
 });
+
+/**
+ * `liveCommands()` answers about a HOST, and a harness opened without
+ * `applyLive` has none.
+ *
+ * Over a buffering host the session hands nothing over until finish, so
+ * `expect(harness.liveCommands()).toEqual([])` — the assertion every test that
+ * reaches for this writes — is true whatever the editor did. A cancelled edit
+ * that left its whole batch behind would pass it, which is precisely the
+ * failure the reader is asking about. Refusing the question is what keeps the
+ * answer worth having.
+ */
+describe('liveCommands', () => {
+  it('refuses to answer when no live host was asked for', () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: commonSections,
+    });
+
+    expect(() => harness.liveCommands()).toThrow(/needs a live host/);
+  });
+
+  it('answers, with nothing yet, when one was', () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: commonSections,
+      applyLive: true,
+    });
+
+    expect(harness.liveCommands()).toEqual([]);
+  });
+});

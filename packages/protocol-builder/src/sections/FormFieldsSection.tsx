@@ -273,7 +273,7 @@ const messages = defineMessages({
     defaultMessage:
       'How this attribute is named in the codebook and in exported data.',
     description:
-      'Guidance under the new-attribute name field. The codebook is the protocol’s definition of what an interview records; exported data is the file a researcher analyses afterwards.',
+      'Guidance under the new-attribute name field. The codebook is the protocol’s definition of what an interview records; exported data is the file a researcher analyzes afterwards.',
   },
   newNamePlaceholder: {
     id: 'protocolBuilder.formFields.newNamePlaceholder',
@@ -605,6 +605,11 @@ export type FormFieldsSectionProps = Readonly<{
    *
    * `waitingDescription` and the dialog's own titles stay shared: they are
    * said about the CONTROL rather than about what it collects.
+   *
+   * Formatted with no values, like every named descriptor a shared section
+   * takes: one carrying a placeholder renders the pattern on screen, and
+   * nothing in the types can refuse it. See `PromptsSection`'s own note and
+   * `sections/__tests__/namedDescriptorProps.test.tsx`.
    */
   title?: MessageDescriptor;
   description?: MessageDescriptor;

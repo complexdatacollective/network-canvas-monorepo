@@ -1,5 +1,7 @@
 import { useMemo } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import Pill from '@codaco/fresco-ui/Pill';
@@ -31,36 +33,71 @@ export type VariablePickerProps = CreateFormFieldProps<
   }
 >;
 
-const PLACEHOLDER = 'Select an attribute…';
-const DEFAULT_EMPTY_MESSAGE = 'No attributes are available to choose from.';
-
-/**
- * Names an attribute the researcher has since deleted.
- *
- * A stored id that the codebook no longer describes is kept and shown rather
- * than quietly dropped: blanking the control would hide the very reference the
- * researcher has to resolve, and would then write the blank back over it.
- */
-const missingOptionLabel = (id: string) =>
-  `${id} — this attribute is no longer in the codebook`;
-
-/**
- * Names an attribute that is still in the codebook and still cannot carry a
- * rule — a layout attribute, answered with a point nothing can be compared
- * against.
- *
- * Its own wording, because the researcher's next move differs: a deleted
- * attribute is one to find or recreate, and this one is sitting where they
- * left it. Told it was "no longer in the codebook", they would go looking for
- * something that never went anywhere.
- */
-const unusableOptionLabel = (label: string) =>
-  `${label} — cannot be used in a rule`;
-
-const MISSING_MESSAGE =
-  'This attribute is no longer in the codebook. Choose another one.';
-const UNUSABLE_MESSAGE =
-  'This attribute cannot be used in a rule. Choose another one.';
+const messages = defineMessages({
+  placeholder: {
+    id: 'protocolBuilder.variablePicker.placeholder',
+    defaultMessage: 'Select an attribute…',
+    description:
+      'Placeholder in the select a researcher chooses one codebook attribute from, shown while nothing has been chosen. An attribute is a variable the protocol’s codebook defines for a node type, an edge type or the interview participant.',
+  },
+  emptyState: {
+    id: 'protocolBuilder.variablePicker.emptyState',
+    defaultMessage: 'No attributes are available to choose from.',
+    description:
+      'Shown in place of the select when nothing can be picked — the caller offered no attributes at all. An attribute is a variable the protocol’s codebook defines. Callers that can say something more specific pass their own sentence instead.',
+  },
+  /**
+   * Names an attribute the researcher has since deleted.
+   *
+   * A stored id that the codebook no longer describes is kept and shown rather
+   * than quietly dropped: blanking the control would hide the very reference
+   * the researcher has to resolve, and would then write the blank back over
+   * it.
+   */
+  missingOptionLabel: {
+    id: 'protocolBuilder.variablePicker.missingOptionLabel',
+    defaultMessage:
+      '{attributeId} — this attribute is no longer in the codebook',
+    description:
+      'Name of the one option standing for an attribute the protocol’s codebook no longer defines. attributeId is the raw stored identifier — there is no name left to show, because the definition it would have come from has been deleted.',
+  },
+  /**
+   * Names an attribute that is still in the codebook and still cannot carry a
+   * rule — a layout attribute, answered with a point nothing can be compared
+   * against.
+   *
+   * Its own wording, because the researcher's next move differs: a deleted
+   * attribute is one to find or recreate, and this one is sitting where they
+   * left it. Told it was "no longer in the codebook", they would go looking
+   * for something that never went anywhere.
+   */
+  unusableOptionLabel: {
+    id: 'protocolBuilder.variablePicker.unusableOptionLabel',
+    defaultMessage: '{attributeName} — cannot be used in a rule',
+    description:
+      'Name of the one option standing for an attribute that is still in the protocol’s codebook and still cannot carry a rule, such as one answered with a map position. attributeName is the researcher’s own name for it, from the codebook, and is not translated.',
+  },
+  missingAttribute: {
+    id: 'protocolBuilder.variablePicker.missingAttribute',
+    defaultMessage:
+      'This attribute is no longer in the codebook. Choose another one.',
+    description:
+      'Shown under the select when the attribute a researcher’s stored choice names has been deleted from the protocol’s codebook, so the choice has to be made again.',
+  },
+  unusableAttribute: {
+    id: 'protocolBuilder.variablePicker.unusableAttribute',
+    defaultMessage:
+      'This attribute cannot be used in a rule. Choose another one.',
+    description:
+      'Shown under the select when the attribute a researcher’s stored choice names is still in the codebook but cannot carry a rule. Worded apart from the deleted-attribute sentence on purpose: this attribute is still where the researcher left it.',
+  },
+  attributeTypeLabel: {
+    id: 'protocolBuilder.variablePicker.attributeTypeLabel',
+    defaultMessage: 'Attribute type: {attributeType}',
+    description:
+      'Accessible name of the badge stating what kind of answer the chosen attribute records. attributeType is a protocol schema token such as "number", "text" or "categorical", and is shown as it is stored rather than translated. Read as a label and its value, not as a sentence.',
+  },
+});
 
 /**
  * Chooses one codebook attribute from a supplied list.
@@ -87,7 +124,7 @@ export function VariablePickerControl({
   onBlur,
   onFocus,
   options = [],
-  emptyMessage = DEFAULT_EMPTY_MESSAGE,
+  emptyMessage,
   disabled = false,
   readOnly = false,
   className,
@@ -96,6 +133,7 @@ export function VariablePickerControl({
   'aria-labelledby': ariaLabelledBy,
   'aria-required': ariaRequired,
 }: VariablePickerProps) {
+  const intl = useAppIntl();
   const selected = options.find((option) => option.value === value);
   const isMissing =
     value !== undefined && value !== '' && selected === undefined;
@@ -113,16 +151,29 @@ export function VariablePickerControl({
     // the blank back. It goes last, so it never sits among the attributes a
     // rule can actually be built on.
     if (isMissing && value !== undefined) {
-      return [...listed, { value, label: missingOptionLabel(value) }];
+      return [
+        ...listed,
+        {
+          value,
+          label: intl.formatMessage(messages.missingOptionLabel, {
+            attributeId: value,
+          }),
+        },
+      ];
     }
     if (isUnusable && selected !== undefined) {
       return [
         ...listed,
-        { value: selected.value, label: unusableOptionLabel(selected.label) },
+        {
+          value: selected.value,
+          label: intl.formatMessage(messages.unusableOptionLabel, {
+            attributeName: selected.label,
+          }),
+        },
       ];
     }
     return listed;
-  }, [isMissing, isUnusable, options, selected, value]);
+  }, [intl, isMissing, isUnusable, options, selected, value]);
 
   if (selectOptions.length === 0) {
     return (
@@ -135,7 +186,7 @@ export function VariablePickerControl({
           aria-describedby={ariaDescribedBy}
           className="w-full py-6 text-center text-sm text-current/70 italic"
         >
-          {emptyMessage}
+          {emptyMessage ?? intl.formatMessage(messages.emptyState)}
         </p>
       </div>
     );
@@ -157,7 +208,7 @@ export function VariablePickerControl({
           onChange?.(typeof next === 'string' ? next : String(next ?? ''));
         }}
         options={selectOptions}
-        placeholder={PLACEHOLDER}
+        placeholder={intl.formatMessage(messages.placeholder)}
         disabled={disabled}
         readOnly={readOnly}
         aria-describedby={ariaDescribedBy}
@@ -177,7 +228,9 @@ export function VariablePickerControl({
           data-attribute-type={selected.type}
           // A label and its value, not a sentence: the words around the type
           // name never have to agree with it grammatically.
-          aria-label={`Attribute type: ${selected.type}`}
+          aria-label={intl.formatMessage(messages.attributeTypeLabel, {
+            attributeType: selected.type,
+          })}
         >
           <span className="min-w-0 overflow-hidden text-ellipsis">
             {selected.type}
@@ -186,7 +239,9 @@ export function VariablePickerControl({
       )}
       {(isMissing || isUnusable) && (
         <p className="text-destructive text-sm">
-          {isMissing ? MISSING_MESSAGE : UNUSABLE_MESSAGE}
+          {intl.formatMessage(
+            isMissing ? messages.missingAttribute : messages.unusableAttribute,
+          )}
         </p>
       )}
     </div>

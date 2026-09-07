@@ -228,6 +228,11 @@ const itemsValidation = {
  * step does. Whole sentences per variant rather than a noun swapped into a
  * shared frame, because the two read differently in any language that inflects
  * around the noun.
+ *
+ * Formatted with no values, like every named descriptor a shared section
+ * takes: one carrying a placeholder renders the pattern on screen, and nothing
+ * in the types can refuse it. See `PromptsSection`'s own note and
+ * `sections/__tests__/namedDescriptorProps.test.tsx`.
  */
 const WORDS: Readonly<
   Record<

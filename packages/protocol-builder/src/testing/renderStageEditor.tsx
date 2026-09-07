@@ -134,8 +134,13 @@ export type StageEditorHarness = RenderResult &
      * the one thing `pendingCommands` cannot say, because a batch that has
      * gone to the host is pending there too until it is acknowledged.
      *
-     * Empty unless the harness was opened with `applyLive`, which is what
-     * puts a live host under it at all.
+     * THROWS unless the harness was opened with `applyLive`, which is what
+     * puts a live host under it at all. Not empty: a buffering host is handed
+     * nothing until finish, so `toEqual([])` over one is true however the
+     * editor behaved — the assertion every test here reaches for would pass
+     * over a cancelled edit that left its whole batch behind. Answering only
+     * where there is a host to answer about is what keeps that assertion
+     * meaning something.
      */
     liveCommands(): readonly Command[];
     /**
@@ -515,7 +520,14 @@ export function renderStageEditor<T extends StageType = StageType>(
     hostCodebook: () =>
       protocolContextFromSections(host.getSnapshot().protocolSections).codebook,
     pendingCommands: () => session.getSnapshot().pendingCommands,
-    liveCommands: () => [...liveCommands],
+    liveCommands: () => {
+      if (options.applyLive !== true) {
+        throw new Error(
+          'renderStageEditor: liveCommands() needs a live host. Open the harness with `applyLive: true`; without one the session buffers every batch until finish, so an empty answer here says nothing about what the editor did.',
+        );
+      }
+      return [...liveCommands];
+    },
     ownedKeys: () => readOwnedKeys(),
     roundTrip: async ({ unowned = [] } = {}) => {
       // Before the save, because it is a question about what is on screen and
