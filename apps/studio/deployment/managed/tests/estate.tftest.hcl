@@ -44,17 +44,17 @@ run "candidate_contract" {
   command = plan
 
   assert {
-    condition     = length(output.candidate_inventory.fly.machine_api_specs) == 4
+    condition     = length(output.candidate_inventory.fly.service_specs) == 4
     error_message = "The Fly handoff must contain exactly four singleton specs."
   }
 
   assert {
-    condition     = alltrue([for spec in values(output.candidate_inventory.fly.machine_api_specs) : spec.region == "iad" && spec.count == 1 && spec.auto_stop == false])
+    condition     = alltrue([for spec in values(output.candidate_inventory.fly.service_specs) : spec.region == "iad" && spec.count == 1 && spec.auto_stop == false])
     error_message = "Every service must remain an always-on singleton in IAD."
   }
 
   assert {
-    condition     = output.candidate_inventory.fly.machine_api_specs["studio-production"].environment.STUDIO_DEPLOYMENT_MODE == "managed" && length(output.candidate_inventory.fly.machine_api_specs["registry-production"].environment) == 0
+    condition     = output.candidate_inventory.fly.service_specs["studio-production"].environment.STUDIO_DEPLOYMENT_MODE == "managed" && length(output.candidate_inventory.fly.service_specs["registry-production"].environment) == 0
     error_message = "Only Studio receives the shared-artifact deployment-mode switch."
   }
 
@@ -90,4 +90,60 @@ run "reject_mutable_image" {
   }
 
   expect_failures = [var.signed_image_references]
+}
+
+run "reject_empty_iam_resource" {
+  command = plan
+  variables {
+    kms_admin_principal_arns = ["arn:aws:iam::000000000000:"]
+  }
+  expect_failures = [var.kms_admin_principal_arns]
+}
+
+run "reject_shared_runtime_identity" {
+  command = plan
+  variables {
+    kms_runtime_decrypt_principal_arns = { production = ["arn:aws:iam::000000000000:role/runtime"], staging = ["arn:aws:iam::000000000000:role/runtime"] }
+  }
+  expect_failures = [var.kms_runtime_decrypt_principal_arns]
+}
+
+run "reject_runtime_administrator" {
+  command = plan
+  variables {
+    kms_admin_principal_arns = ["arn:aws:iam::000000000000:role/production-runtime"]
+  }
+  expect_failures = [var.kms_admin_principal_arns]
+}
+
+run "reject_runtime_wrapper" {
+  command = plan
+  variables {
+    kms_wrapping_principal_arns = { production = ["arn:aws:iam::000000000000:role/production-runtime"], staging = ["arn:aws:iam::000000000000:role/staging-wrapper"] }
+  }
+  expect_failures = [var.kms_wrapping_principal_arns]
+}
+
+run "reject_shared_deployment_id" {
+  command = plan
+  variables {
+    deployment_ids = { production = "studio-production", staging = "studio-production" }
+  }
+  expect_failures = [var.deployment_ids]
+}
+
+run "reject_invalid_deployment_id" {
+  command = plan
+  variables {
+    deployment_ids = { production = "", staging = "studio-staging" }
+  }
+  expect_failures = [var.deployment_ids]
+}
+
+run "reject_unpriced_compute" {
+  command = plan
+  variables {
+    service_resources = { studio-production = { cpu_kind = "performance", cpus = 2, memory_mb = 8192 }, studio-staging = { cpu_kind = "shared", cpus = 1, memory_mb = 512 }, registry-production = { cpu_kind = "shared", cpus = 1, memory_mb = 512 }, registry-staging = { cpu_kind = "shared", cpus = 1, memory_mb = 512 } }
+  }
+  expect_failures = [var.service_resources]
 }

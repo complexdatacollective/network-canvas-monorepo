@@ -18,7 +18,7 @@ test('reports the illustrative estimate without qualifying it', () => {
 test('refuses to turn an incomplete estimate into a release gate', () => {
   assert.throws(
     () => evaluateManagedEstateCost(fixture, { requireQualification: true }),
-    /qualificationComplete must be true/,
+    /cannot qualify/,
   );
 });
 
@@ -46,39 +46,33 @@ test('refuses free credits, paid monitoring fallback, and weakened PostgreSQL me
   }
 });
 
-test('refuses an estimate over the cap when used as a qualification gate', () => {
+test('refuses an estimate over the cap when checking the budget', () => {
   const mutated = structuredClone(fixture);
-  mutated.qualificationComplete = true;
-  for (const gate of Object.keys(mutated.evidenceGates))
-    mutated.evidenceGates[gate] = true;
   mutated.lineItems.find(
     ({ category }) => category === 'reserve',
   ).unitPriceUsd = 100;
   assert.throws(
-    () => evaluateManagedEstateCost(mutated, { requireQualification: true }),
+    () => evaluateManagedEstateCost(mutated, { requireBudget: true }),
     /exceeds the \$100\.00 cap/,
   );
 });
 
-test('refuses qualification when a named live evidence gate is absent', () => {
+test('a passing budget check still cannot qualify deployment', () => {
   const mutated = structuredClone(fixture);
-  mutated.qualificationComplete = true;
-  assert.throws(
-    () => evaluateManagedEstateCost(mutated, { requireQualification: true }),
-    /every named live evidence gate/,
-  );
+  mutated.lineItems.find(
+    ({ category }) => category === 'reserve',
+  ).unitPriceUsd = 1;
+  const result = evaluateManagedEstateCost(mutated, { requireBudget: true });
+  assert.equal(result.withinCap, true);
+  assert.equal(result.budgetAccepted, true);
+  assert.equal(result.qualificationComplete, false);
 });
 
-test('refuses qualification without priced reserve and measured monitoring headroom', () => {
-  const noReserve = structuredClone(fixture);
-  noReserve.qualificationComplete = true;
-  for (const gate of Object.keys(noReserve.evidenceGates))
-    noReserve.evidenceGates[gate] = true;
+test('requires a priced reserve for the budget and measured monitoring headroom', () => {
   assert.throws(
-    () => evaluateManagedEstateCost(noReserve, { requireQualification: true }),
+    () => evaluateManagedEstateCost(fixture, { requireBudget: true }),
     /non-zero recovery reserve/,
   );
-
   const crowdedMonitoring = structuredClone(fixture);
   crowdedMonitoring.newRelicMonthlyIngestGb = 51;
   assert.throws(
@@ -143,4 +137,80 @@ test('requires the actual free monitoring limit and refuses missing price eviden
   const missingQuote = structuredClone(fixture);
   delete missingQuote.lineItems[0].evidence;
   assert.throws(() => evaluateManagedEstateCost(missingQuote), /evidence/);
+});
+
+test('cannot qualify production from Boolean declarations and placeholder quotes', () => {
+  const mutated = structuredClone(fixture);
+  mutated.qualificationComplete = true;
+  mutated.evidenceGates = Object.fromEntries(
+    [
+      'providerQuotesCurrent',
+      'trafficMeasured',
+      'capacityQualified',
+      'recoveryQualified',
+      'retentionQualified',
+      'alertDeliveryQualified',
+    ].map((gate) => [gate, true]),
+  );
+  mutated.lineItems.find(
+    ({ category }) => category === 'reserve',
+  ).unitPriceUsd = 1;
+  assert.throws(
+    () => evaluateManagedEstateCost(mutated, { requireQualification: true }),
+    /cannot qualify/,
+  );
+});
+
+test('refuses unpriced ingress, compute sizing, and validator execution changes', () => {
+  for (const [field, value] of [
+    ['primaryIngressGb', 1000000],
+    [
+      'flyServiceResources',
+      {
+        'studio-production': {
+          cpu_kind: 'performance',
+          cpus: 64,
+          memory_mb: 65536,
+        },
+      },
+    ],
+    ['flyMonthlyHours', 1],
+    ['validatorMemoryGb', 64],
+    ['validatorDurationSeconds', 900],
+  ]) {
+    const mutated = structuredClone(fixture);
+    mutated[field] = value;
+    assert.throws(() => evaluateManagedEstateCost(mutated), undefined, field);
+  }
+});
+
+test('increasing declared ingress and validator execution increases the estimate', () => {
+  const mutated = structuredClone(fixture);
+  const before = evaluateManagedEstateCost(mutated).totalUsd;
+  mutated.primaryIngressGb = 100;
+  const ingress = mutated.lineItems.find(
+    ({ category }) => category === 'primary-ingress',
+  );
+  ingress.quantity = 100;
+  ingress.unitPriceUsd = 0.02;
+  mutated.validatorMemoryGb *= 2;
+  mutated.lineItems.find(
+    ({ category }) => category === 'validator-compute',
+  ).quantity *= 2;
+  assert.ok(evaluateManagedEstateCost(mutated).totalUsd >= before + 7.95);
+});
+
+test('does not round away a breach of the minimum budget headroom', () => {
+  const mutated = structuredClone(fixture);
+  const subtotal = mutated.lineItems.reduce(
+    (sum, item) => sum + item.quantity * item.unitPriceUsd,
+    0,
+  );
+  mutated.lineItems.find(
+    ({ category }) => category === 'reserve',
+  ).unitPriceUsd = 100 - subtotal - mutated.minimumHeadroomUsd + 0.004;
+  assert.throws(
+    () => evaluateManagedEstateCost(mutated, { requireBudget: true }),
+    /below the explicit minimum/,
+  );
 });

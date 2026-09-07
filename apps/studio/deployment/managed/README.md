@@ -27,7 +27,10 @@ assets in the composite image. There is no managed product fork.
   rotation. Runtime principals can only decrypt with Studio's actual
   `studio-deployment`, `studio-purpose=root-key.v1`, and
   `studio-root-reference=STUDIO_ENCRYPTION_ROOT_*` context. Separate wrapping
-  principals can encrypt/generate data keys with the same context.
+  principals can encrypt/generate data keys with the same context. Input
+  validation requires complete IAM user/role ARNs, disjoint production/staging
+  runtime principals, no runtime overlap with wrappers or administrators, and
+  distinct valid deployment context ids.
 - One private B2 bucket with SSE-B2/AES256, Object Lock, and 31-day compliance
   retention. The recovery pipeline must additionally encrypt and authenticate
   every archive client-side using a private key held outside B2 and the primary
@@ -39,8 +42,10 @@ Lock retention. The Crunchy provider only provisions the cluster. It does not
 create the four databases or enforce the SQL security contract.
 
 Fly's official Terraform provider was archived in 2024. `candidate_inventory`
-therefore emits exact Fly Machines API inputs and this module does not pretend
-to provision compute. A reviewed authenticated Machines API module must create
+therefore emits service requirements, not Machines API request bodies. This
+module does not provision compute. The four sizes and 744-hour billing month
+come from `candidate-sizing.json`, shared with the cost estimator; changes to
+CPU or memory require a reviewed sizing and price update. A reviewed authenticated Machines API module must create
 each service with one IAD Machine, no auto-stop, the exact digest, private
 database/object connectivity, health checks, secret injection, and the
 single-origin routing contract. R2 credentials/versioning, database enrollment,
@@ -69,22 +74,28 @@ configuration archive, and their account-recovery paths.
 ## Gates before any apply or promotion
 
 1. Confirm current provider quotes and account-visible product identifiers. Run
-   `node cost-model.mjs cost-input.json --gate`; it rejects missing cost classes,
-   credits, paid New Relic fallback, fewer than four services/databases, or the
-   weakened PostgreSQL minimums. The earlier $91.67 estimate and the checked-in
-   model's current $86.83 result are both illustrative rather than complete
-   quotes; the checked-in input is designed to fail qualification. Quantities
-   are tied to the declared estate and measured usage, including validator
-   invocations and traffic; missing memory or retention measurements refuse
-   evaluation. Per-request and per-run prices must include the quoted execution
-   size and duration. The gate checks the supplied evidence declarations, not
-   provider accounts; a true Boolean is not independent proof. Measure
-   ingress, database transfer, R2
-   storage/Class A/Class B/egress, KMS requests, B2 storage/requests/egress,
-   validator requests/traffic, mail, DNS, and a non-zero recovery reserve. Total
-   recurring cost, including reserve, must be at most $100/month and preserve
-   the explicitly selected dollar headroom. Measured New Relic ingest must keep
-   at least 2x headroom under its free limit.
+   `node cost-model.mjs cost-input.json --budget` to check the arithmetic,
+   complete billing categories, reserve, and headroom against the $100 cap.
+   This command **cannot qualify an apply or promotion**: its result always
+   reports `qualificationComplete: false`. The retired `--gate` option fails
+   closed even if the input contains true evidence Booleans. Actual provider,
+   capacity, recovery, retention, and alert receipts must be independently
+   authenticated by the deployment qualification workflow before it can admit
+   deployment. That workflow is not implemented in this foundation.
+
+   The checked-in input is illustrative and incomplete, with unverified prices
+   and zero reserve; it fails `--budget`. `node cost-model.mjs cost-input.json`
+   only reports the estimate. Quantities must match measured usage: compute
+   prices all four candidate Machines for 744 hours, ingress is priced per GB
+   separately from fixed DNS, and validator compute prices run count times
+   measured memory GB times billed seconds (GB-seconds), with requests and
+   transfer separate. A changed resource size is refused unless the shared
+   candidate and price review are updated together. Measure database transfer,
+   R2 storage/Class A/Class B/egress, KMS requests, B2 storage/requests/egress,
+   mail, and monitoring. Total recurring cost including a non-zero recovery
+   reserve must be at most $100/month and preserve the selected dollar headroom.
+   Measured New Relic ingest must keep at least 2x headroom under its free limit.
+
 2. Prove Hobby-2 can actually sustain `shared_buffers >= 1 GB` and app-role
    `work_mem >= 256 MB`, all process pools and four logical databases under
    representative concurrent load. Record CPU throttling, memory, connection,

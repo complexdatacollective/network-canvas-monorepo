@@ -1,5 +1,5 @@
 locals {
-  fly_region = "iad"
+  fly_region = jsondecode(file("${path.module}/candidate-sizing.json")).region
   aws_region = "us-east-1"
 
   databases = {
@@ -20,9 +20,9 @@ locals {
     registry-staging    = var.signed_image_references.registry
   }
 
-  # Fly's official Terraform provider is archived. These exact, reviewable
-  # Machine API inputs are outputs for a separately implemented authenticated
-  # deployment module; this foundation deliberately does not create Machines.
+  # Fly's official Terraform provider is archived. These service requirements
+  # are a handoff to a separately implemented authenticated deployment module,
+  # not Machines API request bodies. This foundation does not create Machines.
   fly_machine_specs = {
     for name, resources in var.service_resources : name => {
       name       = "${var.estate_name}-${name}"
