@@ -67,7 +67,7 @@ describe('the prompt list a stage owns', () => {
       screen.getByRole('button', { name: 'Create new prompt' }),
     );
     await harness.user.type(
-      await screen.findByRole('textbox', { name: 'Test prompt text' }),
+      await screen.findByRole('textbox', { name: 'Prompt text' }),
       'And who else?',
     );
     await harness.user.click(screen.getByRole('button', { name: 'Add' }));
@@ -90,7 +90,7 @@ describe('the prompt list a stage owns', () => {
       screen.getByRole('button', { name: 'Create new prompt' }),
     );
     await harness.user.type(
-      await screen.findByRole('textbox', { name: 'Test prompt text' }),
+      await screen.findByRole('textbox', { name: 'Prompt text' }),
       'And who else?',
     );
     await harness.user.click(screen.getByRole('button', { name: 'Add' }));
@@ -189,13 +189,13 @@ describe('the prompt list a stage owns', () => {
       screen.getByRole('button', { name: 'Create new prompt' }),
     );
     await harness.user.type(
-      await screen.findByRole('textbox', { name: 'Test prompt text' }),
+      await screen.findByRole('textbox', { name: 'Prompt text' }),
       'And who else?',
     );
     // Touched and left empty, which is how a value becomes `''` rather than
     // simply never existing.
     await harness.user.click(
-      screen.getByRole('textbox', { name: 'Test negative label' }),
+      screen.getByRole('textbox', { name: 'Negative label' }),
     );
     await harness.user.tab();
     await harness.user.click(screen.getByRole('button', { name: 'Add' }));
@@ -240,7 +240,7 @@ describe('the prompt list a stage owns', () => {
       screen.getByRole('button', { name: 'Create new prompt' }),
     );
     expect(
-      await screen.findByRole('textbox', { name: 'Test prompt text' }),
+      await screen.findByRole('textbox', { name: 'Prompt text' }),
     ).toHaveValue('And who else?');
     // Saved without the researcher typing anything: the seed is a value the
     // row already holds, not placeholder text the dialog draws over an empty
@@ -401,9 +401,9 @@ describe('what a row editor is given to work with', () => {
     // …and the CONTROLS opened holding them. A row editor whose fields start
     // blank is not editing the row: saving would write the emptiness back over
     // the prompt the researcher meant to change one word of.
-    expect(
-      screen.getByRole('textbox', { name: 'Test prompt text' }),
-    ).toHaveValue('Who are the people you know?');
+    expect(screen.getByRole('textbox', { name: 'Prompt text' })).toHaveValue(
+      'Who are the people you know?',
+    );
     // The form the dialog actually rendered, so a control outside it can
     // associate through `form=`.
     const form = dialog.querySelector('form');
@@ -454,7 +454,7 @@ describe('what a family says about its own prompt', () => {
       screen.getByRole('button', { name: 'Create new prompt' }),
     );
     await harness.user.type(
-      await screen.findByRole('textbox', { name: 'Test prompt text' }),
+      await screen.findByRole('textbox', { name: 'Prompt text' }),
       SEEDED_QUESTION,
     );
     await harness.user.click(screen.getByRole('button', { name: 'Add' }));
@@ -495,7 +495,7 @@ describe('what a family says about its own prompt', () => {
       await screen.findByRole('button', { name: 'Edit prompt' }),
     );
     await harness.user.type(
-      await screen.findByRole('textbox', { name: 'Test negative label' }),
+      await screen.findByRole('textbox', { name: 'Negative label' }),
       'Nobody',
     );
     await harness.user.click(screen.getByRole('button', { name: 'Save' }));
@@ -552,7 +552,7 @@ describe('what a family says about its own prompt', () => {
       await screen.findByRole('button', { name: 'Edit prompt' }),
     );
     await harness.user.type(
-      await screen.findByRole('textbox', { name: 'Test prompt text' }),
+      await screen.findByRole('textbox', { name: 'Prompt text' }),
       ' Anyone else?',
     );
     await harness.user.click(screen.getByRole('button', { name: 'Save' }));

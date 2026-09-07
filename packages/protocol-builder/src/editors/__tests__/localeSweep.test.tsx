@@ -116,7 +116,7 @@ describe('the name-generator editors under es, at rest', () => {
     });
 
     expectNoLocaleLeaks('a roster name generator at rest', harness, {
-      allowing: RESOURCE_SUMMARY_IS_ENGLISH,
+      stillEnglish: RESOURCE_SUMMARY_IS_ENGLISH,
     });
   });
 

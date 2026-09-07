@@ -20,6 +20,20 @@ import { expectNoLocaleLeaks, localeLeaks } from '../testing/localeSweep.ts';
 import { renderStageEditor } from '../testing/renderStageEditor.tsx';
 
 /**
+ * The labels the row-editor stand-ins put on screen.
+ *
+ * `rowFixtures.tsx` names a family's fields in English on purpose — the tests
+ * around it read those names back — and a real area may happen to have chosen
+ * the same words for its own label. See `SweepAllowances`.
+ */
+const FIXTURE_ROW_EDITOR_WORDS = [
+  'Prompt text',
+  'Negative label',
+  'Block type',
+  'Block text',
+] as const;
+
+/**
  * What a Spanish researcher actually reads.
  *
  * Every other locale test in this package is POSITIVE: it names a Spanish
@@ -116,7 +130,9 @@ describe('the row dialogs under es', () => {
       await screen.findByRole('button', { name: 'Crear nueva pregunta' }),
     );
     await screen.findByRole('dialog');
-    expectNoLocaleLeaks('the add-a-prompt dialog', harness);
+    expectNoLocaleLeaks('the add-a-prompt dialog', harness, {
+      fixtureWords: FIXTURE_ROW_EDITOR_WORDS,
+    });
 
     await harness.user.keyboard('{Escape}');
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
@@ -125,7 +141,9 @@ describe('the row dialogs under es', () => {
       await screen.findByRole('button', { name: /^Editar pregunta$/ }),
     );
     await screen.findByRole('dialog');
-    expectNoLocaleLeaks('the edit-a-prompt dialog', harness);
+    expectNoLocaleLeaks('the edit-a-prompt dialog', harness, {
+      fixtureWords: FIXTURE_ROW_EDITOR_WORDS,
+    });
 
     await harness.user.keyboard('{Escape}');
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
@@ -134,7 +152,9 @@ describe('the row dialogs under es', () => {
       await screen.findByRole('button', { name: /^Eliminar pregunta$/ }),
     );
     await screen.findByRole('dialog');
-    expectNoLocaleLeaks('the remove-a-prompt confirmation', harness);
+    expectNoLocaleLeaks('the remove-a-prompt confirmation', harness, {
+      fixtureWords: FIXTURE_ROW_EDITOR_WORDS,
+    });
   });
 
   it('sweeps the form-fields dialog, where the attribute picker lives', async () => {
@@ -225,28 +245,42 @@ describe('the sweep itself', () => {
    * protocol and rendered verbatim to the participant, so the sweep must not
    * report one that happens to read like a message this package owns.
    *
-   * "Who are the people you know?" is exactly that collision, and no longer a
-   * hypothetical one: it is the English of
+   * "Sociogram" is exactly that collision, and not a hypothetical one: it is
+   * the English of `protocolBuilder.interface.sociogram`, the name this
+   * package gives that interface — and it is also what a researcher calls the
+   * stage, because the package suggested it. "Who are the people you know?" is
+   * the same collision one layer down: it is the English of
    * `protocolBuilder.nameGeneratorPrompts.textPlaceholder`, the placeholder
-   * the name generator's own prompt field shows — a sentence this package
-   * suggests BECAUSE it is the sentence a researcher writes. So it is passed
-   * as content, which is how every real sweep gets it: read out of the stage
-   * the harness is mounted over rather than listed here. The short ones need
-   * no help; the four-letter floor keeps "Age" and "No" out on their own.
+   * the name generator's own prompt field shows, and it is a sentence this
+   * package suggests BECAUSE it is the sentence a researcher writes. So both
+   * are passed as content, which is how every real sweep gets them: read out
+   * of the protocol the harness is mounted over rather than listed here. The
+   * other two need no help; the four-letter floor keeps "Age" and "No" out on
+   * their own.
    */
   it('says nothing about a researcher’s own English', () => {
     document.body.innerHTML =
-      '<p>Who are the people you know?</p><p>Age</p><p>No</p>';
+      '<p>Who are the people you know?</p><p>Sociogram</p><p>Age</p><p>No</p>';
 
-    expect(localeLeaks(new Set(['Who are the people you know?']))).toEqual([]);
+    expect(
+      localeLeaks(new Set(['Sociogram', 'Who are the people you know?'])),
+    ).toEqual([]);
   });
 
   /**
-   * The other half of the same rule, which is what makes the exclusion above
-   * mean something: the sentence is reported when the protocol does NOT hold
-   * it, because then a Spanish reader is looking at this package's English
-   * placeholder rather than at their own writing.
+   * The other half of the same rule, which is what makes the exclusions above
+   * mean something: each is reported when the protocol does NOT hold it,
+   * because then a Spanish reader is looking at this package's English rather
+   * than at their own writing.
    */
+  it('names that same word when it is the package’s own', () => {
+    document.body.innerHTML = '<p>Sociogram</p>';
+
+    expect(localeLeaks()).toEqual([
+      'protocolBuilder.interface.sociogram rendered in English: Sociogram',
+    ]);
+  });
+
   it('names that same sentence when it is the package’s own', () => {
     document.body.innerHTML = '<p>Who are the people you know?</p>';
 
