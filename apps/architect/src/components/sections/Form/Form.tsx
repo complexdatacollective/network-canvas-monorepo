@@ -1,10 +1,16 @@
 import { useCallback, useMemo, type ComponentType } from 'react';
 import { useSelector } from 'react-redux';
 
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Section from '@codaco/fresco-ui/Section';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
 import ArchitectField from '~/components/Form/ArchitectField';
+import {
+  arrayItemMessages,
+  arrayValidationMessages,
+} from '~/components/Form/arrayFields/arrayMessages';
 import DialogArrayField from '~/components/Form/arrayFields/DialogArrayField';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
 import {
@@ -34,6 +40,70 @@ import FieldEditorPreview from './FieldEditorPreview';
 import FieldFields from './FieldFields';
 import FieldPreview from './FieldPreview';
 import { itemSelector, normalizeField } from './helpers';
+const remainingMessages = defineMessages({
+  editField: {
+    id: 'architect.remaining.sections.form.form.editField',
+    defaultMessage: 'Edit Field',
+    description: 'The addTitle text in components / sections / Form / Form.',
+  },
+});
+const chromeMessages = defineMessages({
+  selectTypeAboveToConfigureThis: {
+    id: 'architect.chrome.sections.form.form.selectTypeAboveToConfigureThis',
+    defaultMessage:
+      'Select {entity, select, edge {an edge} other {a node}} type above to configure this section.',
+    description:
+      'Researcher-facing explanatory text in components / sections / Form / Form.',
+  },
+});
+const additionalMessages = defineMessages({
+  createNewFormField: {
+    id: 'architect.additional.sections.form.form.createNewFormField',
+    defaultMessage: 'Create new form field',
+    description:
+      'The addButtonLabel text in components / sections / Form / Form.',
+  },
+});
+const messages = defineMessages({
+  formConfiguration: {
+    id: 'architect.sections.form.form.formConfiguration',
+    defaultMessage: 'Form configuration',
+    description: 'The title text in components / sections / Form / Form.',
+  },
+  mapAttributesToInputControlsAnd: {
+    id: 'architect.sections.form.form.mapAttributesToInputControlsAnd',
+    defaultMessage:
+      'Map attributes to input controls and define the validation rules for this form.',
+    description: 'The description text in components / sections / Form / Form.',
+  },
+  formTitle: {
+    id: 'architect.sections.form.form.formTitle',
+    defaultMessage: 'Form title',
+    description: 'The label text in components / sections / Form / Form.',
+  },
+  shownAtTheTopOfThe: {
+    id: 'architect.sections.form.form.shownAtTheTopOfThe',
+    defaultMessage:
+      "Shown at the top of the form. Use a short descriptive title such as 'Add a contact'.",
+    description: 'The hint text in components / sections / Form / Form.',
+  },
+  enterATitle: {
+    id: 'architect.sections.form.form.enterATitle',
+    defaultMessage: 'Enter a title...',
+    description: 'The placeholder text in components / sections / Form / Form.',
+  },
+  formFields: {
+    id: 'architect.sections.form.form.formFields',
+    defaultMessage: 'Form fields',
+    description: 'The label text in components / sections / Form / Form.',
+  },
+  addOneOrMoreFieldsTo: {
+    id: 'architect.sections.form.form.addOneOrMoreFieldsTo',
+    defaultMessage:
+      'Add one or more fields to your form to collect attributes. Use the drag handle on the left of each prompt to adjust its order.',
+    description: 'The hint text in components / sections / Form / Form.',
+  },
+});
 
 // DialogArrayField renders these with the edited row's own properties, so it
 // types them by the only shape it can know.
@@ -59,15 +129,16 @@ const Form = ({
   stagePosition,
   interfaceType,
 }: StageEditorSectionProps) => {
+  const intl = useAppIntl();
   const { entity, type } = useSubject();
   const disableFormTitle = INTERFACES_WITHOUT_FORM_TITLE.has(interfaceType);
   // Without a subject there is no codebook to draw variables from, so the
   // section is inert until one is chosen. EgoForm needs no subject at all.
   const disabled = interfaceType !== 'EgoForm' && !type;
   const disabledMessage = disabled
-    ? `Select ${
-        interfaceType === 'AlterEdgeForm' ? 'an edge' : 'a node'
-      } type above to configure this section.`
+    ? intl.formatMessage(chromeMessages.selectTypeAboveToConfigureThis, {
+        entity: interfaceType === 'AlterEdgeForm' ? 'edge' : 'node',
+      })
     : undefined;
 
   // Memoized on the primitives so the subject object identity is stable
@@ -129,6 +200,7 @@ const Form = ({
       undefined,
       hasUnvalidatedUseForSubject,
       resolvedFormViews,
+      undefined,
     );
     return (
       values: Record<string, unknown>,
@@ -153,8 +225,7 @@ const Form = ({
       // value is unchanged, so this does not churn on unrelated keystrokes.
       if (isVariableUsedBySibling(formFields, variable, props?.editIndex)) {
         return {
-          variable:
-            'This attribute is already collected by another field in this form. Choose a different attribute, or edit the existing field instead.',
+          variable: createMessageError(arrayValidationMessages.duplicateField),
         };
       }
       return validateField(values, props);
@@ -178,40 +249,44 @@ const Form = ({
 
   return (
     <Section
-      title="Form configuration"
+      title={intl.formatMessage(messages.formConfiguration)}
       description={
         disabled
           ? disabledMessage
-          : 'Map attributes to input controls and define the validation rules for this form.'
+          : intl.formatMessage(messages.mapAttributesToInputControlsAnd)
       }
       disabled={disabled}
     >
       {!disableFormTitle && (
         <ArchitectField
           name="form.title"
-          label="Form title"
-          hint="Shown at the top of the form. Use a short descriptive title such as 'Add a contact'."
+          label={intl.formatMessage(messages.formTitle)}
+          hint={intl.formatMessage(messages.shownAtTheTopOfThe)}
           component={InputField}
           initialValue={initialTitle}
           validation={{ required: true }}
-          placeholder="Enter a title..."
+          placeholder={intl.formatMessage(messages.enterATitle)}
         />
       )}
       <ArchitectArrayField
         name="form.fields"
-        label="Form fields"
-        hint="Add one or more fields to your form to collect attributes. Use the drag handle on the left of each prompt to adjust its order."
+        label={intl.formatMessage(messages.formFields)}
+        hint={intl.formatMessage(messages.addOneOrMoreFieldsTo)}
         component={DialogArrayField}
-        addButtonLabel="Create new form field"
+        addButtonLabel={intl.formatMessage(
+          additionalMessages.createNewFormField,
+        )}
         initialValue={initialFields ?? NO_FIELDS}
-        validation={{ required: 'You must create at least one item.' }}
-        addTitle="Edit Field"
-        editorTitle="Edit Field"
+        validation={{
+          required: createMessageError(arrayValidationMessages.required),
+        }}
+        addTitle={intl.formatMessage(remainingMessages.editField)}
+        editorTitle={intl.formatMessage(remainingMessages.editField)}
         editorFieldsComponent={EditorFields}
         editorPreviewComponent={EditorPreview}
         editorProps={editorProps}
         editorValidate={editorValidate}
-        itemLabel="field"
+        itemLabelMessage={arrayItemMessages.field}
         itemSelector={rowItemSelector}
         normalizeItem={(value: unknown) =>
           normalizeField(value as Record<string, unknown>)

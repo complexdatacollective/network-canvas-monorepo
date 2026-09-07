@@ -1,9 +1,19 @@
 import type { ButtonHTMLAttributes, CSSProperties } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Icon from '@codaco/fresco-ui/Icon';
 import type { ColorReference } from '@codaco/protocol-validation';
 import { cx } from '~/utils/cva';
 import { resolveProtocolColor } from '~/utils/resolveProtocolColor';
+const chromeMessages = defineMessages({
+  selectEdge: {
+    id: 'architect.chrome.sections.fields.entitySelectField.previewEdge.selectEdge',
+    defaultMessage: 'Select edge {label}',
+    description:
+      'The aria-label text in components / sections / fields / EntitySelectField / PreviewEdge.',
+  },
+});
 
 type PreviewEdgeProps = Omit<
   ButtonHTMLAttributes<HTMLButtonElement>,
@@ -24,6 +34,7 @@ const PreviewEdge = ({
   className,
   ...buttonProps
 }: PreviewEdgeProps) => {
+  const intl = useAppIntl();
   const wrapperStyle = {
     '--edge-color': resolveProtocolColor(color),
   } as CSSProperties;
@@ -62,7 +73,10 @@ const PreviewEdge = ({
         )}
         style={wrapperStyle}
         onClick={onClick}
-        aria-label={buttonProps['aria-label'] ?? `Select edge ${label}`}
+        aria-label={
+          buttonProps['aria-label'] ??
+          intl.formatMessage(chromeMessages.selectEdge, { label: label })
+        }
       >
         {content}
       </button>

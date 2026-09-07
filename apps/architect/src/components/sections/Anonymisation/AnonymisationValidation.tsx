@@ -1,3 +1,5 @@
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import Section from '@codaco/fresco-ui/Section';
 import type { StageEditorSectionProps } from '~/components/StageEditor/Interfaces';
@@ -6,6 +8,20 @@ import {
   useStageInitialValue,
 } from '~/components/StageEditor/stageFormHooks';
 import Validations from '~/components/Validations/Validations';
+const messages = defineMessages({
+  passphraseValidation: {
+    id: 'architect.sections.anonymisation.anonymisationValidation.passphraseValidation',
+    defaultMessage: 'Passphrase validation',
+    description:
+      'The title text in components / sections / Anonymisation / AnonymisationValidation.',
+  },
+  chooseWhichValidationRulesApplyTo: {
+    id: 'architect.sections.anonymisation.anonymisationValidation.chooseWhichValidationRulesApplyTo',
+    defaultMessage: 'Choose which validation rules apply to the passphrase.',
+    description:
+      'The description text in components / sections / Anonymisation / AnonymisationValidation.',
+  },
+});
 
 type ValidationValue = boolean | number | string | null;
 type ValidationMap = Record<string, ValidationValue>;
@@ -17,6 +33,7 @@ const AnonymisationValidation = ({
   stagePath,
   interfaceType,
 }: StageEditorSectionProps) => {
+  const intl = useAppIntl();
   // The Field's own `initialValue` is registration-time only and must not
   // track live edits, or every keystroke would re-register the field. Before
   // the field has ever registered, the committed value chooses the toggle's
@@ -33,8 +50,10 @@ const AnonymisationValidation = ({
   return (
     <Section
       toggleable
-      title="Passphrase validation"
-      description="Choose which validation rules apply to the passphrase."
+      title={intl.formatMessage(messages.passphraseValidation)}
+      description={intl.formatMessage(
+        messages.chooseWhichValidationRulesApplyTo,
+      )}
       defaultOpen={hasValidation}
     >
       <Validations

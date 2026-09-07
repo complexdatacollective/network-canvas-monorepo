@@ -1,7 +1,5 @@
-import type { ReactNode } from 'react';
-import { useCallback } from 'react';
-import { Router } from 'wouter';
-import type { AroundNavHandler } from 'wouter';
+import { type ReactNode, useCallback } from 'react';
+import { Router, type AroundNavHandler } from 'wouter';
 
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { hasDirtyNestedDraft } from '~/components/DialogForm/nestedDraftRegistry';

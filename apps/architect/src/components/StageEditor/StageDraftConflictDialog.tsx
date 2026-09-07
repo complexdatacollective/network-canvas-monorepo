@@ -1,8 +1,10 @@
-import { useEffect, useRef } from 'react';
+import { createElement, useEffect, useRef } from 'react';
 import { useStore } from 'react-redux';
 import { v4 as uuid } from 'uuid';
 import { useLocation } from 'wouter';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppMessage } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { Stage } from '@codaco/protocol-validation';
 import {
@@ -22,6 +24,26 @@ import { downloadActiveProtocol } from '~/utils/downloadActiveProtocol';
 
 import { buildProtocolWithStage } from './buildProtocolWithStage';
 import { flushStageLiveValues } from './StageFormBridge';
+const messages = defineMessages({
+  downloadACopy: {
+    id: 'architect.stageEditor.stageDraftConflictDialog.downloadACopy',
+    defaultMessage: 'Download a Copy',
+    description:
+      'The label text in components / StageEditor / StageDraftConflictDialog.',
+  },
+  discardMyChanges: {
+    id: 'architect.stageEditor.stageDraftConflictDialog.discardMyChanges',
+    defaultMessage: 'Discard My Changes',
+    description:
+      'The label text in components / StageEditor / StageDraftConflictDialog.',
+  },
+  decideLater: {
+    id: 'architect.stageEditor.stageDraftConflictDialog.decideLater',
+    defaultMessage: 'Decide Later',
+    description:
+      'The label text in components / StageEditor / StageDraftConflictDialog.',
+  },
+});
 
 /**
  * Asks the researcher what to do when the tab holding this protocol closes
@@ -37,13 +59,34 @@ import { flushStageLiveValues } from './StageFormBridge';
  * explaining why nothing can be saved.
  */
 
-const CONFLICT_TITLE = 'Choose what to do with your unsaved changes';
+const CONFLICT_TITLE = defineMessages({
+  message: {
+    id: 'architect.constants.components.stageeditor.stagedraftconflictdialog.conflictTitle',
+    defaultMessage: 'Choose what to do with your unsaved changes',
+    description:
+      'Researcher-facing status or validation message. Context: components/StageEditor/StageDraftConflictDialog.tsx.',
+  },
+}).message;
 
-const PENDING_DESCRIPTION =
-  'The other tab has been closed, so this protocol can be edited here again. Your unsaved changes to this stage were made before that tab saved its own version, and there is no safe way to combine the two. You can download a copy of the protocol as it stands here, with your changes to this stage included in it — that copy will not contain anything the other tab saved. Loading the saved version instead discards your changes to this stage, along with any attributes you added or edited while it was open.';
+const PENDING_DESCRIPTION = defineMessages({
+  message: {
+    id: 'architect.constants.components.stageeditor.stagedraftconflictdialog.pendingDescription',
+    defaultMessage:
+      'The other tab has been closed, so this protocol can be edited here again. Your unsaved changes to this stage were made before that tab saved its own version, and there is no safe way to combine the two. You can download a copy of the protocol as it stands here, with your changes to this stage included in it — that copy will not contain anything the other tab saved. Loading the saved version instead discards your changes to this stage, along with any attributes you added or edited while it was open.',
+    description:
+      'Researcher-facing status or validation message. Context: components/StageEditor/StageDraftConflictDialog.tsx.',
+  },
+}).message;
 
-const DOWNLOADED_DESCRIPTION =
-  'Your copy has been downloaded. It contains your changes to this stage, but not the changes the other tab saved, so keep it alongside your protocol rather than in place of it. Nothing in this tab has been changed yet. Loading the saved version now discards your changes to this stage, along with any attributes you added or edited while it was open.';
+const DOWNLOADED_DESCRIPTION = defineMessages({
+  message: {
+    id: 'architect.constants.components.stageeditor.stagedraftconflictdialog.downloadedDescription',
+    defaultMessage:
+      'Your copy has been downloaded. It contains your changes to this stage, but not the changes the other tab saved, so keep it alongside your protocol rather than in place of it. Nothing in this tab has been changed yet. Loading the saved version now discards your changes to this stage, along with any attributes you added or edited while it was open.',
+    description:
+      'Researcher-facing status or validation message. Context: components/StageEditor/StageDraftConflictDialog.tsx.',
+  },
+}).message;
 
 type StageDraftConflictDialogProps = {
   /** The stage being edited, or `null` when the editor is creating one. */
@@ -168,24 +211,33 @@ const StageDraftConflictDialog = ({
           type: 'choice',
           intent: 'warning',
           size: 'readable',
-          title: CONFLICT_TITLE,
+          title: createElement(AppMessage, { message: CONFLICT_TITLE }),
           description: downloaded
-            ? DOWNLOADED_DESCRIPTION
-            : PENDING_DESCRIPTION,
+            ? createElement(AppMessage, { message: DOWNLOADED_DESCRIPTION })
+            : createElement(AppMessage, { message: PENDING_DESCRIPTION }),
           actions: {
             // Keeping the work leads: it is the only action here that loses
             // nothing, and the other one cannot be taken back.
             // Short enough that all three fit one row of the dialog footer,
             // which does not wrap; the description carries the detail.
             primary: {
-              label: 'Download a Copy',
+              label: createElement(AppMessage, {
+                message: messages.downloadACopy,
+              }),
               value: 'download' as const,
             },
             secondary: {
-              label: 'Discard My Changes',
+              label: createElement(AppMessage, {
+                message: messages.discardMyChanges,
+              }),
               value: 'discard' as const,
             },
-            cancel: { label: 'Decide Later', value: null },
+            cancel: {
+              label: createElement(AppMessage, {
+                message: messages.decideLater,
+              }),
+              value: null,
+            },
           },
         });
         // Only if it is still ours: a re-ask started by `choiceRequest` has
