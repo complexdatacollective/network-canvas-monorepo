@@ -403,3 +403,5 @@ Primary operational references: [PostgreSQL 18 upgrades](https://www.postgresql.
 [Compose service configuration](https://docs.docker.com/reference/compose-file/services/),
 [Traefik file routing](https://doc.traefik.io/traefik/reference/dynamic-configuration/file/),
 and [the MinIO source security release](https://github.com/minio/minio/releases/tag/RELEASE.2025-10-15T17-29-55Z).
+
+For incident response and scheduled operations, see [OPERATIONS.md](OPERATIONS.md).

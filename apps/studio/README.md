@@ -146,8 +146,10 @@ every variable is catalogued under [Environment](#environment) below.
 
 Deployed databases use the versioned migrations shipped inside the image,
 applied by its explicit `migrate` command. See [Database migrations](MIGRATIONS.md)
-for upgrade, backup, recovery, and migration-authoring instructions. Local
-development keeps its disposable reset-and-seed workflow.
+for upgrade, backup, recovery, and migration-authoring instructions. The
+[operational runbooks](OPERATIONS.md) cover deployment, outages, dispatcher
+backlogs, key rotation, and recovery quarantine. Local development keeps its
+disposable reset-and-seed workflow.
 
 Studio has one schema, defined as Drizzle tables in seventeen modules that live
 with their owners:
