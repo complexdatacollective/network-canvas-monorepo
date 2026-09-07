@@ -10,17 +10,17 @@ import {
   type TemplateArtifactInput,
 } from '@codaco/studio-sync/template-exchange';
 
+import {
+  PublisherSchema,
+  TokenDescriptionSchema,
+} from '../account-contract.ts';
 import { createRegistryApp } from '../app.ts';
 import {
   createRegistryAuth,
   type RegistryAuthOptions,
 } from '../auth/service.ts';
 import type { RegistryBlobStore } from '../blob-store.ts';
-import {
-  EntrySchema,
-  PublisherSchema,
-  TokenDescriptionSchema,
-} from '../contract.ts';
+import { EntrySchema } from '../contract.ts';
 import { REGISTRY_TABLES, registrySidecarSql } from '../db/schema.ts';
 import type { RegistryLimits } from '../limits.ts';
 import { RegistryStore } from '../store.ts';

@@ -6,6 +6,7 @@ import { expect, it, vi } from 'vitest';
 import { readMigrations } from '@codaco/studio-sync/postgres-migration-artifacts';
 import { createPostgresPool } from '@codaco/studio-sync/postgres-pool';
 
+import { createAccountAssetsFixture } from './__tests__/account-assets-fixture.ts';
 import { createRegistryInstallation } from './__tests__/installation.ts';
 import type { RegistryBlobStore } from './blob-store.ts';
 import { REGISTRY_SCHEMA_FINGERPRINT } from './db/fingerprint.generated.ts';
@@ -21,6 +22,7 @@ const migrations = await readMigrations(
 );
 
 async function fixture(stamped = true) {
+  const assets = await createAccountAssetsFixture();
   const database = await createRegistryInstallation();
   await registryMigrator.migrate(
     database.owner,
@@ -69,6 +71,7 @@ async function fixture(stamped = true) {
   };
   const onDiagnostic = vi.fn();
   return {
+    accountAssetDirectory: assets.directory,
     database,
     configuration,
     pool,
@@ -82,6 +85,7 @@ async function fixture(stamped = true) {
           .map((candidate) => candidate.end()),
       );
       await database.dispose();
+      await assets.dispose();
     },
   };
 }
@@ -247,6 +251,27 @@ it('marks a running registry unready when versioned provenance disappears withou
     ).toEqual([{ history: null }]);
   } finally {
     await runtime.close();
+    await inputs.dispose();
+  }
+});
+
+it('refuses missing account assets before auth, workers and listener admission', async () => {
+  const inputs = await fixture();
+  try {
+    await expect(
+      initializeRegistry({
+        ...inputs,
+        accountAssetDirectory: `${inputs.accountAssetDirectory}/missing`,
+      }),
+    ).rejects.toEqual(new Error('REGISTRY_STARTUP_FAILED'));
+    expect(
+      (await inputs.database.owner.query('SELECT id FROM registry_auth_user'))
+        .rows,
+    ).toEqual([]);
+    expect(inputs.blobs.close).toHaveBeenCalledTimes(1);
+    expect(inputs.pool.ending).toBe(true);
+    expect(inputs.operatorPool.ending).toBe(true);
+  } finally {
     await inputs.dispose();
   }
 });

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { retainArtifactResponse } from './response-body.ts';
+import { retainResponseBody } from './response-body.ts';
 
 function source(chunks: Uint8Array[]) {
   let offset = 0;
@@ -34,7 +34,7 @@ describe('artifact response capacity lifetime', () => {
   it('retains the slot without a consumer until cancellation or the default deadline', async () => {
     const input = source([new Uint8Array([1, 2, 3])]);
     const release = vi.fn();
-    const output = retainArtifactResponse(
+    const output = retainResponseBody(
       input.stream,
       new AbortController().signal,
       release,
@@ -51,7 +51,7 @@ describe('artifact response capacity lifetime', () => {
     const input = source([new Uint8Array([1, 2]), new Uint8Array([3])]);
     const controller = new AbortController();
     const release = vi.fn();
-    const reader = retainArtifactResponse(
+    const reader = retainResponseBody(
       input.stream,
       controller.signal,
       release,
@@ -80,7 +80,7 @@ describe('artifact response capacity lifetime', () => {
     const input = source([new Uint8Array([1]), new Uint8Array([2])]);
     const controller = new AbortController();
     const release = vi.fn();
-    const reader = retainArtifactResponse(
+    const reader = retainResponseBody(
       input.stream,
       controller.signal,
       release,
@@ -114,7 +114,7 @@ describe('artifact response capacity lifetime', () => {
       },
       { highWaterMark: 0 },
     );
-    const reader = retainArtifactResponse(
+    const reader = retainResponseBody(
       input,
       controller.signal,
       release,
@@ -135,7 +135,7 @@ describe('artifact response capacity lifetime', () => {
     );
     const controller = new AbortController();
     const release = vi.fn();
-    const reader = retainArtifactResponse(
+    const reader = retainResponseBody(
       input,
       controller.signal,
       release,
@@ -157,7 +157,7 @@ describe('artifact response capacity lifetime', () => {
     const input = source([new Uint8Array([1])]);
     const controller = new AbortController();
     const release = vi.fn();
-    const output = retainArtifactResponse(
+    const output = retainResponseBody(
       input.stream,
       controller.signal,
       release,
@@ -184,7 +184,7 @@ describe('artifact response capacity lifetime', () => {
       { highWaterMark: 0 },
     );
     const release = vi.fn();
-    const reader = retainArtifactResponse(
+    const reader = retainResponseBody(
       input,
       new AbortController().signal,
       release,
@@ -205,7 +205,7 @@ describe('artifact response capacity lifetime', () => {
     const controller = new AbortController();
     const first = source([new Uint8Array([1])]);
     const firstRelease = vi.fn();
-    const firstOutput = retainArtifactResponse(
+    const firstOutput = retainResponseBody(
       first.stream,
       controller.signal,
       firstRelease,
@@ -217,7 +217,7 @@ describe('artifact response capacity lifetime', () => {
     expect(firstRelease).toHaveBeenCalledTimes(1);
     const second = source([new Uint8Array([2])]);
     const secondRelease = vi.fn();
-    const secondOutput = retainArtifactResponse(
+    const secondOutput = retainResponseBody(
       second.stream,
       controller.signal,
       secondRelease,
@@ -240,7 +240,7 @@ describe('artifact response capacity lifetime', () => {
     controller.abort();
     const input = source([new Uint8Array([1])]);
     const release = vi.fn();
-    const output = retainArtifactResponse(
+    const output = retainResponseBody(
       input.stream,
       controller.signal,
       release,
@@ -264,12 +264,7 @@ describe('artifact response capacity lifetime', () => {
     );
     const release = vi.fn();
     const controller = new AbortController();
-    const output = retainArtifactResponse(
-      input,
-      controller.signal,
-      release,
-      50,
-    );
+    const output = retainResponseBody(input, controller.signal, release, 50);
     let outcome = 'pending';
     const cancellation = output.cancel().then(
       () => {
@@ -299,7 +294,7 @@ describe('artifact response capacity lifetime', () => {
       { highWaterMark: 0 },
     );
     const release = vi.fn();
-    const output = retainArtifactResponse(
+    const output = retainResponseBody(
       input,
       new AbortController().signal,
       release,

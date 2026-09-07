@@ -1,0 +1,8 @@
+---
+'@codaco/template-registry': minor
+---
+
+Add a verified-email account page for publisher profiles, one-time scoped
+credentials and registry administration. Keep browser moderation bound to a
+current operator session, preserve the public bearer API, and serve a validated,
+bounded asset inventory from the separate registry image.

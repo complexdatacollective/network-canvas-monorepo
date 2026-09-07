@@ -10,12 +10,20 @@ import {
   TemplateContentHashSchema,
 } from '@codaco/studio-sync/template-exchange';
 import {
-  OrcidSchema,
   TemplateKindSchema,
   TemplateLicenseSchema,
   TemplateMetadataSchema,
 } from '@codaco/studio-sync/template-metadata';
 
+import {
+  AccountSchema,
+  ClaimPublisherSchema,
+  CreateTokenSchema,
+  PublisherSchema,
+  ReportSchema,
+  ReportsPageSchema,
+  TokenDescriptionSchema,
+} from './account-contract.ts';
 import {
   REGISTRY_PROBLEMS,
   RegistryProblemSchema,
@@ -23,18 +31,7 @@ import {
   registryErrorStatuses,
 } from './problems.ts';
 
-const nonblank = z
-  .string()
-  .min(1)
-  .max(200)
-  .refine(
-    (value) =>
-      value.trim().length > 0 && value.isWellFormed() && !value.includes('\0'),
-  );
 const stamp = z.iso.datetime();
-export const PublisherSchema = z
-  .strictObject({ id: z.uuid(), name: nonblank, orcid: OrcidSchema.nullable() })
-  .meta({ id: 'Publisher' });
 export const EntrySummarySchema = z
   .strictObject({
     id: z.uuid(),
@@ -73,49 +70,6 @@ export const ListEntriesSchema = z
   .meta({ id: 'ListEntries' });
 export type ListEntries = z.infer<typeof ListEntriesSchema>;
 
-export const ClaimPublisherSchema = z.strictObject({
-  name: nonblank,
-  orcid: OrcidSchema.optional(),
-});
-const TokenScopeSchema = z.enum(['publish', 'moderate']);
-export const CreateTokenSchema = z.strictObject({
-  name: z.string().min(1).max(100),
-  scopes: z
-    .array(TokenScopeSchema)
-    .min(1)
-    .max(2)
-    .refine((scopes) => new Set(scopes).size === scopes.length),
-  lifetime_days: z.number().int().min(1).max(365).default(90),
-});
-export const TokenDescriptionSchema = z.strictObject({
-  id: z.uuid(),
-  name: z.string(),
-  scopes: z.array(TokenScopeSchema),
-  created_at: stamp,
-  expires_at: stamp,
-  revoked_at: stamp.nullable(),
-});
-export const ReportSchema = z.strictObject({
-  category: z.enum([
-    'privacy',
-    'copyright',
-    'harmful_content',
-    'spam',
-    'other',
-  ]),
-  details: z
-    .string()
-    .min(1)
-    .max(2000)
-    .refine(
-      (value) =>
-        value.trim().length > 0 &&
-        value.isWellFormed() &&
-        !value.includes('\0'),
-    ),
-});
-export type RegistryReport = z.infer<typeof ReportSchema>;
-
 const route = oc.errors({
   ...REGISTRY_PROBLEMS,
   RATE_LIMITED: {
@@ -146,6 +100,108 @@ const artifactTarget = z.object({
   body: empty.optional(),
 });
 const success = z.strictObject({ ok: z.literal(true) });
+
+function moderationRoutes(
+  prefix: '/moderation' | '/account/moderation',
+  security: typeof bearer | typeof cookie,
+) {
+  return {
+    takedown: route
+      .meta(
+        openapi({
+          method: 'POST',
+          path: `${prefix}/entries/{id}/takedown`,
+          summary: 'Remove access to an entry’s artifact across all locators',
+          inputStructure: 'detailed',
+          spec: (operation) => ({ ...operation, security }),
+        }),
+      )
+      .input(entryTarget)
+      .output(success),
+    restore: route
+      .meta(
+        openapi({
+          method: 'POST',
+          path: `${prefix}/entries/{id}/restore`,
+          summary: 'Restore access after a takedown',
+          inputStructure: 'detailed',
+          spec: (operation) => ({ ...operation, security }),
+        }),
+      )
+      .input(entryTarget)
+      .output(success),
+    hardDelete: route
+      .meta(
+        openapi({
+          method: 'DELETE',
+          path: `${prefix}/artifacts/{root}`,
+          summary: 'Permanently remove content and queue object cleanup',
+          successStatus: 202,
+          inputStructure: 'detailed',
+          spec: (operation) => ({ ...operation, security }),
+        }),
+      )
+      .input(artifactTarget)
+      .output(success),
+    suspendPublisher: route
+      .meta(
+        openapi({
+          method: 'PUT',
+          path: `${prefix}/publishers/{id}/suspension`,
+          summary: 'Suspend or reinstate a publisher',
+          inputStructure: 'detailed',
+          spec: (operation) => ({ ...operation, security }),
+        }),
+      )
+      .input(
+        z.object({
+          params: entryId,
+          query: empty,
+          body: z.strictObject({ suspended: z.boolean() }),
+        }),
+      )
+      .output(success),
+    curate: route
+      .meta(
+        openapi({
+          method: 'PUT',
+          path: `${prefix}/entries/{id}/curation`,
+          summary: 'Grant or revoke the curated badge',
+          inputStructure: 'detailed',
+          spec: (operation) => ({ ...operation, security }),
+        }),
+      )
+      .input(
+        z.object({
+          params: entryId,
+          query: empty,
+          body: z.strictObject({ curated: z.boolean() }),
+        }),
+      )
+      .output(success),
+    reports: route
+      .meta(
+        openapi({
+          method: security === cookie ? 'POST' : 'GET',
+          path: `${prefix}/reports`,
+          summary: 'Read pending reports',
+          spec: (operation) => ({ ...operation, security }),
+        }),
+      )
+      .input(
+        z.strictObject({
+          after: z
+            .string()
+            .regex(/^[1-9][0-9]{0,18}$/)
+            .optional(),
+          limit: z.coerce.number().int().min(1).max(100).default(20),
+        }),
+      )
+      .output(ReportsPageSchema),
+  };
+}
+const publicModeration = moderationRoutes('/moderation', bearer);
+const accountModeration = moderationRoutes('/account/moderation', cookie);
 
 export const registryContract = {
   listEntries: route
@@ -255,6 +311,17 @@ export const registryContract = {
       }),
     )
     .output(PublisherSchema),
+  account: route
+    .meta(
+      openapi({
+        method: 'GET',
+        path: '/account',
+        summary: 'Read the current verified account and publisher',
+        spec: (operation) => ({ ...operation, security: cookie }),
+      }),
+    )
+    .input(empty)
+    .output(AccountSchema),
   claimPublisher: route
     .meta(
       openapi({
@@ -302,111 +369,13 @@ export const registryContract = {
     )
     .input(entryTarget)
     .output(success),
-  takedown: route
-    .meta(
-      openapi({
-        method: 'POST',
-        path: '/moderation/entries/{id}/takedown',
-        summary: 'Remove access to an entry’s artifact across all locators',
-        inputStructure: 'detailed',
-        spec: (operation) => ({ ...operation, security: bearer }),
-      }),
-    )
-    .input(entryTarget)
-    .output(success),
-  restore: route
-    .meta(
-      openapi({
-        method: 'POST',
-        path: '/moderation/entries/{id}/restore',
-        summary: 'Restore access after a takedown',
-        inputStructure: 'detailed',
-        spec: (operation) => ({ ...operation, security: bearer }),
-      }),
-    )
-    .input(entryTarget)
-    .output(success),
-  hardDelete: route
-    .meta(
-      openapi({
-        method: 'DELETE',
-        path: '/moderation/artifacts/{root}',
-        summary: 'Permanently remove content and queue object cleanup',
-        successStatus: 202,
-        inputStructure: 'detailed',
-        spec: (operation) => ({ ...operation, security: bearer }),
-      }),
-    )
-    .input(artifactTarget)
-    .output(success),
-  suspendPublisher: route
-    .meta(
-      openapi({
-        method: 'PUT',
-        path: '/moderation/publishers/{id}/suspension',
-        summary: 'Suspend or reinstate a publisher',
-        inputStructure: 'detailed',
-        spec: (operation) => ({ ...operation, security: bearer }),
-      }),
-    )
-    .input(
-      z.object({
-        params: entryId,
-        query: empty,
-        body: z.strictObject({ suspended: z.boolean() }),
-      }),
-    )
-    .output(success),
-  curate: route
-    .meta(
-      openapi({
-        method: 'PUT',
-        path: '/moderation/entries/{id}/curation',
-        summary: 'Grant or revoke the curated badge',
-        inputStructure: 'detailed',
-        spec: (operation) => ({ ...operation, security: bearer }),
-      }),
-    )
-    .input(
-      z.object({
-        params: entryId,
-        query: empty,
-        body: z.strictObject({ curated: z.boolean() }),
-      }),
-    )
-    .output(success),
-  reports: route
-    .meta(
-      openapi({
-        method: 'GET',
-        path: '/moderation/reports',
-        summary: 'Read pending reports',
-        spec: (operation) => ({ ...operation, security: bearer }),
-      }),
-    )
-    .input(
-      z.strictObject({
-        after: z
-          .string()
-          .regex(/^[1-9][0-9]{0,18}$/)
-          .optional(),
-        limit: z.coerce.number().int().min(1).max(100).default(20),
-      }),
-    )
-    .output(
-      z.strictObject({
-        data: z.array(
-          z.strictObject({
-            id: z.uuid(),
-            entry_id: z.uuid(),
-            category: ReportSchema.shape.category,
-            details: z.string().nullable(),
-            created_at: stamp,
-          }),
-        ),
-        next_cursor: z.string().nullable(),
-      }),
-    ),
+  ...publicModeration,
+  accountTakedown: accountModeration.takedown,
+  accountRestore: accountModeration.restore,
+  accountHardDelete: accountModeration.hardDelete,
+  accountSuspendPublisher: accountModeration.suspendPublisher,
+  accountCurate: accountModeration.curate,
+  accountReports: accountModeration.reports,
 };
 
 export async function generateRegistryOpenApi() {

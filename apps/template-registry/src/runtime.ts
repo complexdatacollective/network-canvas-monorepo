@@ -1,5 +1,6 @@
 import type pg from 'pg';
 
+import { loadRegistryAccountAssets } from './account-assets.ts';
 import { createRegistryApp } from './app.ts';
 import { createRegistryAuth } from './auth/service.ts';
 import type { RegistryBlobStore } from './blob-store.ts';
@@ -17,12 +18,14 @@ export async function initializeRegistry({
   operatorPool,
   blobs,
   onDiagnostic,
+  accountAssetDirectory,
 }: {
   configuration: RegistryEnv;
   pool: pg.Pool;
   operatorPool: pg.Pool;
   blobs: RegistryBlobStore;
   onDiagnostic: (code: RegistryDiagnostic, requestId?: string) => void;
+  accountAssetDirectory?: string;
 }) {
   let mailer: ReturnType<typeof createRegistryMailer> | undefined;
   let worker: ReturnType<typeof startRegistryCleanup> | undefined;
@@ -46,6 +49,9 @@ export async function initializeRegistry({
   try {
     const identity = await verifyRegistryDatabases(pool, operatorPool);
     await blobs.ready();
+    const accountAssets = await loadRegistryAccountAssets(
+      accountAssetDirectory,
+    );
     // No auth callback, email transport, worker, or listener starts before
     // both database roles prove the same current registry installation.
     mailer = createRegistryMailer(
@@ -71,6 +77,7 @@ export async function initializeRegistry({
     const app = createRegistryApp({
       auth,
       store,
+      accountAssets,
       accepting: () => accepting,
       ready: async () => {
         if (!accepting) return false;

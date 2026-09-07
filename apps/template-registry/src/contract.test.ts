@@ -47,7 +47,12 @@ type PathRoute =
   | 'restore'
   | 'hardDelete'
   | 'suspendPublisher'
-  | 'curate';
+  | 'curate'
+  | 'accountTakedown'
+  | 'accountRestore'
+  | 'accountHardDelete'
+  | 'accountSuspendPublisher'
+  | 'accountCurate';
 type Method = 'GET' | 'POST' | 'PUT' | 'DELETE';
 type PathCase = {
   key: PathRoute;
@@ -134,6 +139,43 @@ const pathCases: PathCase[] = [
     status: 200,
     body: { curated: true },
   },
+  {
+    key: 'accountTakedown',
+    method: 'POST',
+    path: '/account/moderation/entries/{id}/takedown',
+    parameter: 'id',
+    status: 200,
+  },
+  {
+    key: 'accountRestore',
+    method: 'POST',
+    path: '/account/moderation/entries/{id}/restore',
+    parameter: 'id',
+    status: 200,
+  },
+  {
+    key: 'accountHardDelete',
+    method: 'DELETE',
+    path: '/account/moderation/artifacts/{root}',
+    parameter: 'root',
+    status: 202,
+  },
+  {
+    key: 'accountSuspendPublisher',
+    method: 'PUT',
+    path: '/account/moderation/publishers/{id}/suspension',
+    parameter: 'id',
+    status: 200,
+    body: { suspended: true },
+  },
+  {
+    key: 'accountCurate',
+    method: 'PUT',
+    path: '/account/moderation/entries/{id}/curation',
+    parameter: 'id',
+    status: 200,
+    body: { curated: true },
+  },
 ];
 
 const errorStatuses = {
@@ -208,6 +250,21 @@ function codec(errorCode?: RegistryProblemCode) {
       ),
       curate: os.curate.handler(({ input }) =>
         respond('curate', input, { ok: true as const }),
+      ),
+      accountTakedown: os.accountTakedown.handler(({ input }) =>
+        respond('accountTakedown', input, { ok: true as const }),
+      ),
+      accountRestore: os.accountRestore.handler(({ input }) =>
+        respond('accountRestore', input, { ok: true as const }),
+      ),
+      accountHardDelete: os.accountHardDelete.handler(({ input }) =>
+        respond('accountHardDelete', input, { ok: true as const }),
+      ),
+      accountSuspendPublisher: os.accountSuspendPublisher.handler(({ input }) =>
+        respond('accountSuspendPublisher', input, { ok: true as const }),
+      ),
+      accountCurate: os.accountCurate.handler(({ input }) =>
+        respond('accountCurate', input, { ok: true as const }),
       ),
     },
     { errorStatusMap: registryErrorStatuses },
@@ -457,6 +514,55 @@ const operationCases = [
     status: 200,
     security: 'registryToken',
   },
+  {
+    key: 'account',
+    method: 'get',
+    path: '/account',
+    status: 200,
+    security: 'registrySession',
+  },
+  {
+    key: 'accountTakedown',
+    method: 'post',
+    path: '/account/moderation/entries/{id}/takedown',
+    status: 200,
+    security: 'registrySession',
+  },
+  {
+    key: 'accountRestore',
+    method: 'post',
+    path: '/account/moderation/entries/{id}/restore',
+    status: 200,
+    security: 'registrySession',
+  },
+  {
+    key: 'accountHardDelete',
+    method: 'delete',
+    path: '/account/moderation/artifacts/{root}',
+    status: 202,
+    security: 'registrySession',
+  },
+  {
+    key: 'accountSuspendPublisher',
+    method: 'put',
+    path: '/account/moderation/publishers/{id}/suspension',
+    status: 200,
+    security: 'registrySession',
+  },
+  {
+    key: 'accountCurate',
+    method: 'put',
+    path: '/account/moderation/entries/{id}/curation',
+    status: 200,
+    security: 'registrySession',
+  },
+  {
+    key: 'accountReports',
+    method: 'post',
+    path: '/account/moderation/reports',
+    status: 200,
+    security: 'registrySession',
+  },
 ] as const;
 
 describe('generated registry OpenAPI', () => {
@@ -466,8 +572,8 @@ describe('generated registry OpenAPI', () => {
   });
 
   it('covers every operation, path target and public problem code', () => {
-    expect(operationCases).toHaveLength(17);
-    expect(pathCases).toHaveLength(10);
+    expect(operationCases).toHaveLength(24);
+    expect(pathCases).toHaveLength(15);
     expect(Object.keys(registryContract).toSorted()).toEqual(
       operationCases.map((scenario) => scenario.key).toSorted(),
     );

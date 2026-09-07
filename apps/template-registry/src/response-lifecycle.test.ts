@@ -3,7 +3,7 @@ import { createServer, type ServerResponse } from 'node:http';
 
 import { afterEach, expect, it, vi } from 'vitest';
 
-import { retainArtifactTransport } from './response-lifecycle.ts';
+import { retainResponseTransport } from './response-lifecycle.ts';
 
 async function fixture(timeoutMs?: number) {
   const release = vi.fn();
@@ -12,7 +12,7 @@ async function fixture(timeoutMs?: number) {
     handlerCompleted: () => void;
   }>();
   const server = createServer((_request, response) => {
-    const handlerCompleted = retainArtifactTransport(
+    const handlerCompleted = retainResponseTransport(
       response,
       release,
       timeoutMs,

@@ -18,19 +18,22 @@ import {
   type TemplateMetadata,
 } from '@codaco/studio-sync/template-metadata';
 
-import type { RegistryAuth } from './auth/service.ts';
-import type { RegistryBlobStore } from './blob-store.ts';
 import {
+  AccountSchema,
   ClaimPublisherSchema,
   CreateTokenSchema,
-  EntrySchema,
-  ListEntriesSchema,
   PublisherSchema,
   ReportSchema,
   TokenDescriptionSchema,
+  type RegistryReport,
+} from './account-contract.ts';
+import type { RegistryAuth } from './auth/service.ts';
+import type { RegistryBlobStore } from './blob-store.ts';
+import {
+  EntrySchema,
+  ListEntriesSchema,
   type ListEntries,
   type RegistryEntry,
-  type RegistryReport,
 } from './contract.ts';
 import {
   appendRegistryAudit,
@@ -84,6 +87,12 @@ const CursorSchema = z.strictObject({
   filter: z.string().regex(/^[0-9a-f]{64}$/),
 });
 const TOKEN_PATTERN = /^ncr1_[A-Za-z0-9_-]{43}$/;
+
+// These credentials are supplied by trusted route handlers. Public exchange
+// routes accept bearer tokens; private account routes accept verified cookies.
+type ModerationCredential =
+  | { readonly kind: 'credential'; readonly token: string }
+  | { readonly kind: 'account'; readonly headers: Headers };
 
 export class RegistryStore {
   readonly #pool: pg.Pool;
@@ -173,6 +182,37 @@ export class RegistryStore {
 
   async publisher(token: string) {
     return this.#publicPublisher(await this.#principal(this.#pool, token));
+  }
+  async account(headers: Headers) {
+    const userId = await this.#verifiedSession(new Headers(headers));
+    const result = await this.#pool.query<{
+      id: string;
+      email: string;
+      publisher_id: string | null;
+      name: string | null;
+      orcid: string | null;
+      suspended: boolean;
+      operator: boolean;
+    }>(
+      `SELECT u.id, u.email, p.id AS publisher_id, p.name, p.orcid,
+      p.suspended_at IS NOT NULL AS suspended,
+      p.id IS NOT NULL AND p.suspended_at IS NULL AND COALESCE(o.enabled, false) AS operator
+      FROM registry_auth_user u LEFT JOIN registry_publishers p ON p.user_id = u.id
+      LEFT JOIN registry_operators o ON o.user_id = u.id
+      WHERE u.id = $1 AND u.email_verified = true`,
+      [userId],
+    );
+    const row = result.rows[0];
+    if (!row) throw new RegistryError('AUTHENTICATION_REQUIRED');
+    return AccountSchema.parse({
+      id: row.id,
+      email: row.email,
+      publisher: row.publisher_id
+        ? { id: row.publisher_id, name: row.name, orcid: row.orcid }
+        : null,
+      suspended: row.suspended,
+      operator: row.operator,
+    });
   }
   async authorizePublish(token: string): Promise<void> {
     await this.#principal(this.#pool, token, 'publish');
@@ -691,22 +731,36 @@ export class RegistryStore {
   }
 
   async #moderate<T>(
-    token: string,
+    credential: ModerationCredential,
     work: (client: pg.PoolClient, actor: RegistryActor) => Promise<T>,
   ) {
+    // Snapshot the selected authentication lane before any await. The session
+    // alone never grants operator access: the current user, publisher and grant
+    // are read again in the serialized command transaction below.
+    const token = credential.kind === 'credential' ? credential.token : null;
+    const userId =
+      credential.kind === 'account'
+        ? await this.#verifiedSession(new Headers(credential.headers), true)
+        : null;
     return registryTransaction(this.#operatorPool, async (client) => {
-      const principal = await this.#principal(client, token, 'moderate');
+      const principal =
+        token !== null
+          ? await this.#principal(client, token, 'moderate')
+          : userId !== null
+            ? await this.#accountPublisher(client, userId)
+            : null;
+      if (!principal?.operator) throw new RegistryError('FORBIDDEN');
       return work(client, { kind: 'operator', id: principal.publisherId });
     });
   }
 
   async visibility(
-    token: string,
+    credential: ModerationCredential,
     id: string,
     removed: boolean,
     requestId: string,
   ): Promise<void> {
-    await this.#moderate(token, async (client, actor) => {
+    await this.#moderate(credential, async (client, actor) => {
       const result = await client.query<{
         artifact_root: string;
         deleted_at: Date | null;
@@ -732,12 +786,12 @@ export class RegistryStore {
   }
 
   async suspend(
-    token: string,
+    credential: ModerationCredential,
     id: string,
     suspended: boolean,
     requestId: string,
   ): Promise<void> {
-    await this.#moderate(token, async (client, actor) => {
+    await this.#moderate(credential, async (client, actor) => {
       const result = await client.query(
         `UPDATE registry_publishers SET suspended_at = ${suspended ? 'statement_timestamp()' : 'NULL'} WHERE id = $1 RETURNING id`,
         [id],
@@ -754,12 +808,12 @@ export class RegistryStore {
   }
 
   async curate(
-    token: string,
+    credential: ModerationCredential,
     id: string,
     curated: boolean,
     requestId: string,
   ): Promise<void> {
-    await this.#moderate(token, async (client, actor) => {
+    await this.#moderate(credential, async (client, actor) => {
       const entry = await this.#readEntry(client, id);
       if (
         curated &&
@@ -782,11 +836,11 @@ export class RegistryStore {
   }
 
   async hardDelete(
-    token: string,
+    credential: ModerationCredential,
     root: string,
     requestId: string,
   ): Promise<void> {
-    await this.#moderate(token, async (client, actor) => {
+    await this.#moderate(credential, async (client, actor) => {
       const result = await client.query<{ deleted_at: Date | null }>(
         'SELECT deleted_at FROM registry_artifacts WHERE root = $1',
         [root],
@@ -820,12 +874,16 @@ export class RegistryStore {
     });
   }
 
-  async reports(token: string, after: string | undefined, limit: number) {
+  async reports(
+    credential: ModerationCredential,
+    after: string | undefined,
+    limit: number,
+  ) {
     if (after && !SequenceSchema.safeParse(after).success)
       throw new RegistryError('INVALID_REQUEST');
     if (!Number.isInteger(limit) || limit < 1 || limit > 100)
       throw new RegistryError('INVALID_REQUEST');
-    return this.#moderate(token, async (client) => {
+    return this.#moderate(credential, async (client) => {
       const rows = (
         await client.query<{
           id: string;

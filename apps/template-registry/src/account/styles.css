@@ -1,0 +1,9 @@
+@import '@codaco/tailwind-config/studio.css';
+@import '@codaco/fresco-ui/styles.css';
+
+@layer base {
+  html,
+  body {
+    @apply text-text bg-background publish-colors text-base;
+  }
+}

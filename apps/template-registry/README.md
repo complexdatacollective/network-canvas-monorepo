@@ -64,6 +64,29 @@ uses PostgreSQL catalogs. The listener is admitted only after those checks.
 Shutdown stops admission, drains sockets, finishes bounded cleanup and exits
 within 25 seconds.
 
+The built account page is served at `/account`. It uses the same verified-email
+sign-in flow as the API. Account holders can maintain their publisher profile
+and create or revoke scoped credentials. A new credential is displayed once;
+the page clears it on dismissal or sign-out and never writes it to browser
+storage. A credential must be revoked to remove a tool's access.
+
+An operator enrolls an existing verified account with
+`node dist/operator.js grant <account-id>` and can revoke that authority with
+the corresponding `revoke` command. The verified account's ID is available from
+`GET /api/v1/account`. Enrolled operators see reported entries and confirmed
+curation, takedown, restoration, suspension and deletion commands on the account
+page. These private commands require a same-origin session cookie and current
+operator authority. The public moderation API continues to require a scoped
+bearer credential.
+
+The build includes the account page's scripts, styles and fonts. Startup checks
+the complete asset manifest before admitting a listener. The immutable asset
+inventory is capped at 16 MiB, individual assets at 8 MiB, and concurrent asset
+responses share an 8 MiB admission budget until their transport finishes. The
+page has its own restrictive content security policy; API responses retain
+their existing sandbox policy. Run `build` once before using the source `dev`
+command in a new checkout.
+
 The HTTP process requires `REGISTRY_PUBLIC_URL`, `REGISTRY_DATABASE_URL`,
 `REGISTRY_OPERATOR_DATABASE_URL`, `REGISTRY_AUTH_SECRET`,
 `REGISTRY_S3_ENDPOINT`, `REGISTRY_S3_REGION`, `REGISTRY_S3_BUCKET`,
@@ -89,7 +112,6 @@ commands and the recovery boundary.
 
 ## Remaining issue integration
 
-The minimal registry account/operation page is the next operational slice.
 Person-owned encrypted Studio account connections, audited immutable version
 publication records and provenance-preserving Studio import remain the separate
 registry product followup; they do not block the managed hosting prerequisite.

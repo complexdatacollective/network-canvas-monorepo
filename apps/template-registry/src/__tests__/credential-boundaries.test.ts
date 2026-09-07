@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
-import { TokenDescriptionSchema } from '../contract.ts';
+import { TokenDescriptionSchema } from '../account-contract.ts';
 import {
   createRegistryFixture,
   ORIGIN,

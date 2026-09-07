@@ -9,6 +9,7 @@ import {
   TEMPLATE_ARTIFACT_MEDIA_TYPE,
 } from '@codaco/studio-sync/template-exchange';
 
+import type { RegistryAccountAssets } from './account-assets.ts';
 import type { RegistryAuth } from './auth/service.ts';
 import { readBytesCapped } from './body.ts';
 import { generateRegistryOpenApi, registryContract } from './contract.ts';
@@ -20,9 +21,9 @@ import {
   isRegistryProblemCode,
   type RegistryProblemCode,
 } from './problems.ts';
-import { retainArtifactResponse } from './response-body.ts';
+import { retainResponseBody } from './response-body.ts';
 import {
-  retainArtifactTransport,
+  retainResponseTransport,
   type RegistryResponse,
 } from './response-lifecycle.ts';
 import type { RegistryStore } from './store.ts';
@@ -62,6 +63,7 @@ function publicCode(code: string): RegistryProblemCode {
 export type RegistryAppDependencies = {
   store: RegistryStore;
   auth: RegistryAuth;
+  accountAssets?: RegistryAccountAssets;
   accepting: () => boolean;
   ready: () => Promise<boolean>;
   onDiagnostic: (
@@ -73,6 +75,7 @@ export type RegistryAppDependencies = {
 export function createRegistryApp({
   store,
   auth,
+  accountAssets,
   accepting,
   ready,
   onDiagnostic,
@@ -128,6 +131,9 @@ export function createRegistryApp({
     me: os.me.handler(({ context }) =>
       invoke(() => store.publisher(bearer(context.request))),
     ),
+    account: os.account.handler(({ context }) =>
+      invoke(() => store.account(context.request.headers)),
+    ),
     claimPublisher: os.claimPublisher.handler(({ input, context }) =>
       invoke(() =>
         store.claimPublisher(context.request.headers, input, context.requestId),
@@ -154,7 +160,7 @@ export function createRegistryApp({
     takedown: os.takedown.handler(({ input, context }) =>
       invoke(async () => {
         await store.visibility(
-          bearer(context.request),
+          { kind: 'credential', token: bearer(context.request) },
           input.params.id,
           true,
           context.requestId,
@@ -165,7 +171,7 @@ export function createRegistryApp({
     restore: os.restore.handler(({ input, context }) =>
       invoke(async () => {
         await store.visibility(
-          bearer(context.request),
+          { kind: 'credential', token: bearer(context.request) },
           input.params.id,
           false,
           context.requestId,
@@ -176,7 +182,7 @@ export function createRegistryApp({
     hardDelete: os.hardDelete.handler(({ input, context }) =>
       invoke(async () => {
         await store.hardDelete(
-          bearer(context.request),
+          { kind: 'credential', token: bearer(context.request) },
           input.params.root,
           context.requestId,
         );
@@ -186,7 +192,7 @@ export function createRegistryApp({
     suspendPublisher: os.suspendPublisher.handler(({ input, context }) =>
       invoke(async () => {
         await store.suspend(
-          bearer(context.request),
+          { kind: 'credential', token: bearer(context.request) },
           input.params.id,
           input.body.suspended,
           context.requestId,
@@ -197,7 +203,7 @@ export function createRegistryApp({
     curate: os.curate.handler(({ input, context }) =>
       invoke(async () => {
         await store.curate(
-          bearer(context.request),
+          { kind: 'credential', token: bearer(context.request) },
           input.params.id,
           input.body.curated,
           context.requestId,
@@ -207,7 +213,75 @@ export function createRegistryApp({
     ),
     reports: os.reports.handler(({ input, context }) =>
       invoke(() =>
-        store.reports(bearer(context.request), input.after, input.limit),
+        store.reports(
+          { kind: 'credential', token: bearer(context.request) },
+          input.after,
+          input.limit,
+        ),
+      ),
+    ),
+    accountTakedown: os.accountTakedown.handler(({ input, context }) =>
+      invoke(async () => {
+        await store.visibility(
+          { kind: 'account', headers: context.request.headers },
+          input.params.id,
+          true,
+          context.requestId,
+        );
+        return { ok: true as const };
+      }),
+    ),
+    accountRestore: os.accountRestore.handler(({ input, context }) =>
+      invoke(async () => {
+        await store.visibility(
+          { kind: 'account', headers: context.request.headers },
+          input.params.id,
+          false,
+          context.requestId,
+        );
+        return { ok: true as const };
+      }),
+    ),
+    accountHardDelete: os.accountHardDelete.handler(({ input, context }) =>
+      invoke(async () => {
+        await store.hardDelete(
+          { kind: 'account', headers: context.request.headers },
+          input.params.root,
+          context.requestId,
+        );
+        return { ok: true as const };
+      }),
+    ),
+    accountSuspendPublisher: os.accountSuspendPublisher.handler(
+      ({ input, context }) =>
+        invoke(async () => {
+          await store.suspend(
+            { kind: 'account', headers: context.request.headers },
+            input.params.id,
+            input.body.suspended,
+            context.requestId,
+          );
+          return { ok: true as const };
+        }),
+    ),
+    accountCurate: os.accountCurate.handler(({ input, context }) =>
+      invoke(async () => {
+        await store.curate(
+          { kind: 'account', headers: context.request.headers },
+          input.params.id,
+          input.body.curated,
+          context.requestId,
+        );
+        return { ok: true as const };
+      }),
+    ),
+    accountReports: os.accountReports.handler(({ input, context }) =>
+      invoke(() =>
+        store.reports(
+          { kind: 'account', headers: context.request.headers },
+          input.after,
+          input.limit,
+        ),
       ),
     ),
   };
@@ -216,6 +290,7 @@ export function createRegistryApp({
     Variables: { requestId: string };
   }>();
   let activeArtifactUnits = 0;
+  let activeAccountBytes = 0;
   let openapi: Awaited<ReturnType<typeof generateRegistryOpenApi>> | undefined;
 
   app.use('*', async (context, next) => {
@@ -224,11 +299,14 @@ export function createRegistryApp({
     await next();
     context.header('X-Request-ID', requestId);
     context.header('X-Content-Type-Options', 'nosniff');
-    context.header('Cache-Control', 'no-store');
-    context.header(
-      'Content-Security-Policy',
-      "default-src 'none'; frame-ancestors 'none'; sandbox",
-    );
+    if (!context.res.headers.has('Cache-Control'))
+      context.header('Cache-Control', 'no-store');
+    if (!context.res.headers.has('Content-Security-Policy'))
+      context.header(
+        'Content-Security-Policy',
+        "default-src 'none'; frame-ancestors 'none'; sandbox",
+      );
+    context.header('Referrer-Policy', 'no-referrer');
   });
   app.use('*', async (context, next) => {
     if (!accepting() && !['/healthz', '/readyz'].includes(context.req.path))
@@ -251,6 +329,50 @@ export function createRegistryApp({
     return new Response(JSON.stringify(body), { status: body.status, headers });
   });
   app.get('/healthz', (context) => context.json({ status: 'ok' }));
+  app.get('/account/*', (context) => {
+    const asset = accountAssets?.get(context.req.path);
+    if (!asset) throw new RegistryError('NOT_FOUND');
+    const headers = {
+      'Content-Type': asset.contentType,
+      'Cache-Control': asset.document
+        ? 'no-store'
+        : 'public, max-age=31536000, immutable',
+      'ETag': asset.etag,
+      'Content-Security-Policy':
+        "default-src 'none'; script-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; font-src 'self'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
+    };
+    if (context.req.method === 'HEAD') return new Response(null, { headers });
+    // Page downloads share a fixed 8 MiB body budget alongside the artifact
+    // budget. Slow readers cannot multiply the compiled bundle by 128 sockets.
+    if (activeAccountBytes + asset.byteLength > 8 * 1024 * 1024)
+      throw new RegistryError('SERVICE_UNAVAILABLE', {
+        retry_after_seconds: 1,
+      });
+    activeAccountBytes += asset.byteLength;
+    const release = () => {
+      activeAccountBytes -= asset.byteLength;
+    };
+    let complete: (() => void) | undefined;
+    let transferred = false;
+    try {
+      if (context.env?.outgoing)
+        complete = retainResponseTransport(context.env.outgoing, release);
+      const body = new Response(asset.body()).body;
+      if (!body) throw new RegistryError('INTERNAL_SERVER_ERROR');
+      if (complete) return new Response(body, { headers });
+      const retained = retainResponseBody(
+        body,
+        context.req.raw.signal,
+        release,
+      );
+      transferred = true;
+      return new Response(retained, { headers });
+    } finally {
+      if (complete) complete();
+      else if (!transferred) release();
+    }
+  });
+  app.get('/account', (context) => context.redirect('/account/', 302));
   app.get('/readyz', async (context) => {
     try {
       if (await ready()) return context.json({ status: 'ready' });
@@ -312,7 +434,7 @@ export function createRegistryApp({
         activeArtifactUnits += artifactUnits;
         artifactSlot = true;
         if (download && context.env?.outgoing) {
-          completeTransport = retainArtifactTransport(
+          completeTransport = retainResponseTransport(
             context.env.outgoing,
             () => {
               activeArtifactUnits -= artifactUnits;
@@ -376,7 +498,7 @@ export function createRegistryApp({
         result.response.ok &&
         result.response.body
       ) {
-        const body = retainArtifactResponse(
+        const body = retainResponseBody(
           result.response.body,
           original.signal,
           () => {

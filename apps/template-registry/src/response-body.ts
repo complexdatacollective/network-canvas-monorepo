@@ -1,7 +1,7 @@
 import { RegistryError } from './problems.ts';
 
-/** Hold scarce artifact capacity until the client consumes or cancels its bytes. */
-export function retainArtifactResponse(
+/** Hold bounded response capacity until the client consumes or cancels its bytes. */
+export function retainResponseBody(
   body: ReadableStream<Uint8Array>,
   signal: AbortSignal,
   release: () => void,

@@ -5,7 +5,7 @@ export type RegistryResponse =
   | Http2Bindings['outgoing'];
 
 /** Release capacity only after the handler and its actual transport finish. */
-export function retainArtifactTransport(
+export function retainResponseTransport(
   outgoing: RegistryResponse,
   release: () => void,
   timeoutMs = 60_000,
@@ -27,7 +27,7 @@ export function retainArtifactTransport(
     clearTimeout(timer);
     finish();
   };
-  // A slow reader must not keep a fully buffered artifact alive indefinitely.
+  // A slow reader must not keep a fully buffered response alive indefinitely.
   // Destroying the actual response also cancels the adapter's active reader.
   const timer = setTimeout(() => outgoing.destroy(), timeoutMs);
   timer.unref();

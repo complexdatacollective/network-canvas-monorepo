@@ -8,11 +8,8 @@ import {
   templateBytesHash,
 } from '@codaco/studio-sync/template-exchange';
 
-import {
-  EntrySchema,
-  EntrySummarySchema,
-  TokenDescriptionSchema,
-} from '../contract.ts';
+import { TokenDescriptionSchema } from '../account-contract.ts';
+import { EntrySchema, EntrySummarySchema } from '../contract.ts';
 import { RegistryProblemSchema } from '../problems.ts';
 import {
   createRegistryFixture,
