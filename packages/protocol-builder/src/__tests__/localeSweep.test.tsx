@@ -10,6 +10,9 @@ import {
 import FormFieldsSection from '../sections/FormFieldsSection.tsx';
 import InterviewerGuidanceSection from '../sections/InterviewerGuidanceSection.tsx';
 import IntroductionSection from '../sections/IntroductionSection.tsx';
+import AtRiskStatusesSection from '../sections/narrativePedigree/AtRiskStatusesSection.tsx';
+import DiseasesSection from '../sections/narrativePedigree/DiseasesSection.tsx';
+import SourceStageSection from '../sections/narrativePedigree/SourceStageSection.tsx';
 import NetworkFilterSection from '../sections/NetworkFilterSection.tsx';
 import PageContentSection from '../sections/PageContentSection.tsx';
 import BoundaryOptionsSection from '../sections/pedigree/BoundaryOptionsSection.tsx';
@@ -289,6 +292,23 @@ describe('the interface families under es, at rest', () => {
     await settled(harness);
 
     expectNoLocaleLeaks('family pedigree at rest', researcherWords(harness));
+  });
+
+  it('sweeps a narrative pedigree', async () => {
+    const harness = renderStageEditor({
+      stageId: 'narrative-pedigree-1',
+      locale: 'es',
+      sections: (
+        <>
+          <SourceStageSection />
+          <DiseasesSection />
+          <AtRiskStatusesSection />
+        </>
+      ),
+    });
+    await settled(harness);
+
+    expectNoLocaleLeaks('narrative pedigree at rest', researcherWords(harness));
   });
 });
 
