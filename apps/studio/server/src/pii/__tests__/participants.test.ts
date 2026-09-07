@@ -249,6 +249,20 @@ describe('authorized and audited participant PII', () => {
         },
       ]);
       expect(JSON.stringify(audit.rows)).not.toContain('person@example.org');
+      expect(
+        (
+          await scratch.pool.query(
+            `SELECT event_type, alert_policy_key
+             FROM audit_alert_outbox
+             ORDER BY audit_event_sequence`,
+          )
+        ).rows,
+      ).toEqual([
+        {
+          event_type: 'participant.pii.read',
+          alert_policy_key: 'contact_access',
+        },
+      ]);
     });
   });
 });
