@@ -14,3 +14,5 @@ Before production request admission, verify the actual Studio app and maintenanc
 Require the same explicit database login enrollment at production startup and readiness as during migration. Refuse outside effective CONNECT grants and surviving outside sessions, keep both runtime connections restricted, and verify effective migration-evidence table and column privileges before reading a fingerprint. Apply the existing migration policy for owner-backed triggers and rewrite rules at startup too. Explicit local development keeps its unversioned schema path.
 
 Preserve separately provisioned non-owner migration and conversion operators through the explicit optional administrative login inventory. Validate it against database enrollment, refuse administrative serving identities, and require non-owner CLI migration operators to be declared before applying SQL.
+
+Recheck every enrolled restricted database identity during startup and readiness using the migration capability policy, including direct grants on other logins and owner-backed view access.

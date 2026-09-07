@@ -3,6 +3,10 @@ import { randomUUID } from 'node:crypto';
 import { escapeIdentifier, type Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
+import {
+  assertSafePostgresRestrictedIdentities,
+  type PostgresRestrictedIdentityPolicy,
+} from '../postgres-restricted-identities.ts';
 import { assertSafePostgresRuntimeIdentity } from '../postgres-runtime-identity.ts';
 import { revokeLargeObjectPrivilegesSql } from '../role-bootstrap.ts';
 import { fixturePool, closeFixturePool } from './support/pool-lifecycle.ts';
@@ -17,6 +21,9 @@ const roles = {
   login: `runtime_login_${suffix}`,
   owner: `runtime_owner_${suffix}`,
   outside: `runtime_outside_${suffix}`,
+  backup: `runtime_backup_${suffix}`,
+  backupLogin: `runtime_backup_login_${suffix}`,
+  maintenanceLogin: `runtime_maint_login_${suffix}`,
 };
 const allowedRoles = [roles.app, roles.maintenance];
 const allowedLogins = [roles.owner, roles.login];
@@ -105,6 +112,227 @@ describe.skipIf(!reachable)('PostgreSQL runtime identity boundary', () => {
     await closeFixturePool(administrator);
   });
 
+  async function withSingletonPolicy(
+    run: (policy: PostgresRestrictedIdentityPolicy) => Promise<void>,
+  ): Promise<void> {
+    const extraLogins = [roles.backupLogin, roles.maintenanceLogin];
+    await databaseAdmin.query(`
+      ALTER ROLE ${escapeIdentifier(roles.backupLogin)} LOGIN PASSWORD '${password}';
+      ALTER ROLE ${escapeIdentifier(roles.maintenanceLogin)} LOGIN PASSWORD '${password}';
+      REVOKE ${escapeIdentifier(roles.maintenance)} FROM ${escapeIdentifier(roles.login)};
+      GRANT ${escapeIdentifier(roles.maintenance)} TO ${escapeIdentifier(roles.maintenanceLogin)} WITH ADMIN FALSE, INHERIT FALSE, SET TRUE;
+      GRANT ${escapeIdentifier(roles.backup)} TO ${escapeIdentifier(roles.backupLogin)} WITH ADMIN FALSE, INHERIT FALSE, SET TRUE;
+      GRANT CONNECT ON DATABASE ${escapeIdentifier(database)} TO ${extraLogins.map(escapeIdentifier).join(', ')};
+      CREATE TABLE singleton_data (id integer, changed boolean);
+      INSERT INTO singleton_data VALUES (1, false);
+      CREATE VIEW singleton_backup_view AS SELECT * FROM singleton_data;
+      CREATE MATERIALIZED VIEW singleton_backup_snapshot AS SELECT * FROM singleton_data;
+      GRANT SELECT, INSERT, UPDATE, DELETE ON singleton_data TO ${allowedRoles.map(escapeIdentifier).join(', ')};
+      GRANT SELECT ON singleton_data, singleton_backup_view, singleton_backup_snapshot TO ${escapeIdentifier(roles.backup)};
+    `);
+    try {
+      await run({
+        allowedLogins: [...allowedLogins, ...extraLogins],
+        runtimeRoleSets: [[roles.app], [roles.maintenance]],
+        backupRole: roles.backup,
+      });
+    } finally {
+      await databaseAdmin.query(`
+        DROP TABLE singleton_data CASCADE;
+        REVOKE ${allowedRoles.map(escapeIdentifier).join(', ')}, ${escapeIdentifier(roles.backup)} FROM ${extraLogins.map(escapeIdentifier).join(', ')};
+        REVOKE CONNECT ON DATABASE ${escapeIdentifier(database)} FROM ${extraLogins.map(escapeIdentifier).join(', ')};
+        ALTER ROLE ${escapeIdentifier(roles.backupLogin)} NOLOGIN;
+        ALTER ROLE ${escapeIdentifier(roles.maintenanceLogin)} NOLOGIN;
+        GRANT ${escapeIdentifier(roles.maintenance)} TO ${escapeIdentifier(roles.login)} WITH ADMIN FALSE, INHERIT FALSE, SET TRUE;
+      `);
+    }
+  }
+
+  it('accepts independent singleton classes and backup reads while refusing cross-class SET ROLE', async () => {
+    await withSingletonPolicy(async (policy) => {
+      for (const [login, intendedRole] of [
+        [roles.login, roles.app],
+        [roles.maintenanceLogin, roles.maintenance],
+      ] as const) {
+        await withClient(runtimePool(login, intendedRole), async (client) => {
+          await expect(
+            assertSafePostgresRuntimeIdentity(client, {
+              ...policy,
+              intendedRole,
+              allowedRoles: [intendedRole],
+            }),
+          ).resolves.toBeUndefined();
+          expect(
+            (await client.query('SELECT id FROM singleton_data')).rows,
+          ).toEqual([{ id: 1 }]);
+          await expect(
+            client.query(
+              `SET ROLE ${escapeIdentifier(intendedRole === roles.app ? roles.maintenance : roles.app)}`,
+            ),
+          ).rejects.toMatchObject({ code: '42501' });
+        });
+      }
+      await withClient(
+        runtimePool(roles.backupLogin, roles.backup),
+        async (client) => {
+          for (const relation of [
+            'singleton_data',
+            'singleton_backup_view',
+            'singleton_backup_snapshot',
+          ]) {
+            expect(
+              (await client.query(`SELECT id FROM ${relation}`)).rows,
+            ).toEqual([{ id: 1 }]);
+          }
+          await expect(
+            client.query('UPDATE singleton_data SET changed = true'),
+          ).rejects.toMatchObject({ code: '42501' });
+        },
+      );
+    });
+  });
+
+  it('refuses mixed singleton classes even when both class memberships otherwise look safe', async () => {
+    await withSingletonPolicy(async (policy) => {
+      await databaseAdmin.query(
+        `GRANT ${escapeIdentifier(roles.maintenance)} TO ${escapeIdentifier(roles.login)} WITH ADMIN FALSE, INHERIT FALSE, SET TRUE`,
+      );
+      await withClient(runtimePool(roles.login, roles.app), async (client) => {
+        await client.query(`SET ROLE ${escapeIdentifier(roles.maintenance)}`);
+        await client.query(`SET ROLE ${escapeIdentifier(roles.app)}`);
+        await expect(
+          assertSafePostgresRestrictedIdentities(client, policy),
+        ).rejects.toMatchObject({ reason: 'memberships' });
+      });
+    });
+  });
+
+  it.each([roles.maintenanceLogin, roles.backupLogin])(
+    'refuses direct column data access held by another singleton login %s',
+    async (login) => {
+      await withSingletonPolicy(async (policy) => {
+        await databaseAdmin.query(
+          `GRANT UPDATE(changed) ON singleton_data TO ${escapeIdentifier(login)}`,
+        );
+        const intendedRole =
+          login === roles.backupLogin ? roles.backup : roles.maintenance;
+        await withClient(runtimePool(login, intendedRole), async (client) => {
+          await client.query('SET ROLE NONE');
+          expect(
+            (await client.query('UPDATE singleton_data SET changed = true'))
+              .rowCount,
+          ).toBe(1);
+        });
+        await withClient(
+          runtimePool(roles.login, roles.app),
+          async (client) => {
+            await expect(
+              assertSafePostgresRuntimeIdentity(client, {
+                ...policy,
+                intendedRole: roles.app,
+                allowedRoles: [roles.app],
+              }),
+            ).rejects.toThrow('POSTGRES_RUNTIME_IDENTITY_UNSAFE');
+          },
+        );
+      });
+    },
+  );
+
+  it.each(['singleton_backup_view', 'singleton_backup_snapshot'])(
+    'refuses runtime SELECT on owner-backed relation %s while preserving backup reads',
+    async (relation) => {
+      await withSingletonPolicy(async (policy) => {
+        await databaseAdmin.query(
+          `GRANT SELECT ON ${relation} TO ${escapeIdentifier(roles.maintenance)}`,
+        );
+        await withClient(
+          runtimePool(roles.maintenanceLogin, roles.maintenance),
+          async (client) => {
+            expect(
+              (await client.query(`SELECT id FROM ${relation}`)).rows,
+            ).toEqual([{ id: 1 }]);
+          },
+        );
+        await withClient(
+          runtimePool(roles.login, roles.app),
+          async (client) => {
+            await expect(
+              assertSafePostgresRestrictedIdentities(client, policy),
+            ).rejects.toMatchObject({ reason: 'access' });
+          },
+        );
+      });
+    },
+  );
+
+  it.each([
+    'singleton_data',
+    'singleton_backup_view',
+    'singleton_backup_snapshot',
+  ])(
+    'refuses backup SELECT delegation on %s before it can grant runtime access',
+    async (relation) => {
+      await withSingletonPolicy(async (policy) => {
+        await databaseAdmin.query(
+          `GRANT SELECT ON ${relation} TO ${escapeIdentifier(roles.backup)} WITH GRANT OPTION`,
+        );
+        await withClient(
+          runtimePool(roles.login, roles.app),
+          async (client) => {
+            await expect(
+              assertSafePostgresRestrictedIdentities(client, policy),
+            ).rejects.toMatchObject({ reason: 'access' });
+          },
+        );
+        await withClient(
+          runtimePool(roles.backupLogin, roles.backup),
+          async (client) => {
+            await client.query(
+              `GRANT SELECT ON ${relation} TO ${escapeIdentifier(roles.maintenance)}`,
+            );
+          },
+        );
+        await withClient(
+          runtimePool(roles.maintenanceLogin, roles.maintenance),
+          async (client) => {
+            expect(
+              (await client.query(`SELECT id FROM ${relation}`)).rows,
+            ).toEqual([{ id: 1 }]);
+          },
+        );
+      });
+    },
+  );
+
+  it.each([
+    { runtimeRoleSets: null },
+    { runtimeRoleSets: [] },
+    { runtimeRoleSets: [[roles.app], [roles.app]] },
+    { runtimeRoleSets: [[roles.app], 'not-an-array'] },
+    { runtimeRoleSets: [[roles.app], [1]] },
+    { runtimeRoleSets: [[roles.app]], backupRole: roles.app },
+    { runtimeRoleSets: [[roles.app]], backupRole: null },
+  ])(
+    'validates complete role classes before querying (%j)',
+    async (invalid) => {
+      await withClient(runtimePool(roles.login, roles.app), async (client) => {
+        const query = vi.spyOn(client, 'query');
+        try {
+          await expect(
+            assertSafePostgresRestrictedIdentities(client, {
+              allowedLogins,
+              ...invalid,
+            } as never),
+          ).rejects.toMatchObject({ reason: 'configuration' });
+          expect(query).not.toHaveBeenCalled();
+        } finally {
+          query.mockRestore();
+        }
+      });
+    },
+  );
+
   it.each([roles.app, roles.maintenance])(
     'accepts a dedicated login pinned to reviewed role %s',
     async (intendedRole) => {
@@ -115,6 +343,7 @@ describe.skipIf(!reachable)('PostgreSQL runtime identity boundary', () => {
             assertSafePostgresRuntimeIdentity(client, {
               intendedRole,
               allowedRoles,
+              runtimeRoleSets: [allowedRoles],
               allowedLogins,
             }),
           ).resolves.toBeUndefined();
@@ -133,6 +362,7 @@ describe.skipIf(!reachable)('PostgreSQL runtime identity boundary', () => {
             assertSafePostgresRuntimeIdentity(client, {
               intendedRole,
               allowedRoles,
+              runtimeRoleSets: [allowedRoles],
               allowedLogins,
               administrativeLogins: [roles.login],
             }),
@@ -158,6 +388,7 @@ describe.skipIf(!reachable)('PostgreSQL runtime identity boundary', () => {
             assertSafePostgresRuntimeIdentity(client, {
               intendedRole: roles.app,
               allowedRoles,
+              runtimeRoleSets: [allowedRoles],
               allowedLogins,
               administrativeLogins: administrativeLogins as never,
             }),
@@ -203,6 +434,7 @@ describe.skipIf(!reachable)('PostgreSQL runtime identity boundary', () => {
             assertSafePostgresRuntimeIdentity(client, {
               intendedRole: roles.app,
               allowedRoles,
+              runtimeRoleSets: [allowedRoles],
               allowedLogins,
             }),
           ).rejects.toThrow('POSTGRES_RUNTIME_IDENTITY_UNSAFE');
@@ -215,6 +447,7 @@ describe.skipIf(!reachable)('PostgreSQL runtime identity boundary', () => {
             assertSafePostgresRuntimeIdentity(client, {
               intendedRole: roles.maintenance,
               allowedRoles,
+              runtimeRoleSets: [allowedRoles],
               allowedLogins,
             }),
           ).rejects.toThrow('POSTGRES_RUNTIME_IDENTITY_UNSAFE');
@@ -248,6 +481,7 @@ describe.skipIf(!reachable)('PostgreSQL runtime identity boundary', () => {
           assertSafePostgresRuntimeIdentity(client, {
             intendedRole: roles.app,
             allowedRoles,
+            runtimeRoleSets: [allowedRoles],
             allowedLogins,
           }),
         ).resolves.toBeUndefined();
@@ -259,6 +493,7 @@ describe.skipIf(!reachable)('PostgreSQL runtime identity boundary', () => {
             assertSafePostgresRuntimeIdentity(client, {
               intendedRole: roles.app,
               allowedRoles,
+              runtimeRoleSets: [allowedRoles],
               allowedLogins: [roles.owner, roles.outside],
             }),
           ).resolves.toBeUndefined();
@@ -291,6 +526,7 @@ describe.skipIf(!reachable)('PostgreSQL runtime identity boundary', () => {
           assertSafePostgresRuntimeIdentity(client, {
             intendedRole: roles.app,
             allowedRoles,
+            runtimeRoleSets: [allowedRoles],
             allowedLogins,
           }),
         ).rejects.toThrow('POSTGRES_RUNTIME_IDENTITY_UNSAFE');
@@ -322,6 +558,7 @@ describe.skipIf(!reachable)('PostgreSQL runtime identity boundary', () => {
                 assertSafePostgresRuntimeIdentity(client, {
                   intendedRole: roles.app,
                   allowedRoles,
+                  runtimeRoleSets: [allowedRoles],
                   allowedLogins,
                 }),
               ).rejects.toThrow('POSTGRES_RUNTIME_IDENTITY_UNSAFE');
@@ -334,6 +571,7 @@ describe.skipIf(!reachable)('PostgreSQL runtime identity boundary', () => {
           assertSafePostgresRuntimeIdentity(client, {
             intendedRole: roles.app,
             allowedRoles,
+            runtimeRoleSets: [allowedRoles],
             allowedLogins,
           }),
         ).resolves.toBeUndefined();
@@ -360,6 +598,7 @@ describe.skipIf(!reachable)('PostgreSQL runtime identity boundary', () => {
           assertSafePostgresRuntimeIdentity(client, {
             intendedRole: roles.app,
             allowedRoles,
+            runtimeRoleSets: [allowedRoles],
             allowedLogins: logins,
           }),
         ).rejects.toThrow(/POSTGRES_RUNTIME_IDENTITY_(INVALID|UNSAFE)/);
@@ -374,6 +613,7 @@ describe.skipIf(!reachable)('PostgreSQL runtime identity boundary', () => {
       const verification = assertSafePostgresRuntimeIdentity(client, {
         intendedRole: roles.app,
         allowedRoles: mutable,
+        runtimeRoleSets: [mutable],
         allowedLogins: mutableLogins,
         administrativeLogins: mutableAdministrators,
       });
@@ -389,6 +629,7 @@ describe.skipIf(!reachable)('PostgreSQL runtime identity boundary', () => {
         assertSafePostgresRuntimeIdentity(client, {
           intendedRole: roles.app,
           allowedRoles: [roles.app, roles.app],
+          runtimeRoleSets: [allowedRoles],
           allowedLogins,
         }),
       ).rejects.toThrow('POSTGRES_RUNTIME_IDENTITY_INVALID');
@@ -401,6 +642,7 @@ describe.skipIf(!reachable)('PostgreSQL runtime identity boundary', () => {
         assertSafePostgresRuntimeIdentity(client, {
           intendedRole: roles.app,
           allowedRoles,
+          runtimeRoleSets: [allowedRoles],
           allowedLogins,
         }),
       ).rejects.toThrow('POSTGRES_RUNTIME_IDENTITY_UNSAFE');
@@ -417,6 +659,7 @@ describe.skipIf(!reachable)('PostgreSQL runtime identity boundary', () => {
           assertSafePostgresRuntimeIdentity(client, {
             intendedRole: roles.app,
             allowedRoles,
+            runtimeRoleSets: [allowedRoles],
             allowedLogins,
           }),
         ).rejects.toThrow('POSTGRES_RUNTIME_IDENTITY_UNSAFE');
@@ -453,6 +696,7 @@ describe.skipIf(!reachable)('PostgreSQL runtime identity boundary', () => {
           assertSafePostgresRuntimeIdentity(client, {
             intendedRole: roles.app,
             allowedRoles,
+            runtimeRoleSets: [allowedRoles],
             allowedLogins,
           }),
         ).rejects.toThrow('POSTGRES_RUNTIME_IDENTITY_UNSAFE');
@@ -482,6 +726,7 @@ describe.skipIf(!reachable)('PostgreSQL runtime identity boundary', () => {
           assertSafePostgresRuntimeIdentity(client, {
             intendedRole: roles.app,
             allowedRoles,
+            runtimeRoleSets: [allowedRoles],
             allowedLogins,
           }),
         ).rejects.toThrow('POSTGRES_RUNTIME_IDENTITY_UNSAFE');
@@ -501,6 +746,7 @@ describe.skipIf(!reachable)('PostgreSQL runtime identity boundary', () => {
           assertSafePostgresRuntimeIdentity(client, {
             intendedRole: roles.app,
             allowedRoles,
+            runtimeRoleSets: [allowedRoles],
             allowedLogins,
           }),
         ).rejects.toThrow('POSTGRES_RUNTIME_IDENTITY_UNSAFE');

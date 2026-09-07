@@ -339,3 +339,13 @@ operator before applying SQL. Serving app and maintenance connections refuse
 configured administrative logins even if their other capabilities appear safe.
 Offline conversion uses a separately owned, unpinned administrative connection
 for schema inspection while its row operations retain their scoped connection.
+
+Migration, production schema inspection, startup and readiness share the complete
+restricted-identity capability check. Every enrolled non-administrative login
+must belong to exactly one configured SET-only role class and hold no direct data
+privileges. Checking the current connection alone does not establish that another
+enrolled login is safe. The current serving connection must also match its own
+intended role; the complete inventory does not authorize switching role classes.
+Runtime access to owner-backed views, materialized views and foreign tables is
+refused before fingerprint rows are read. The separate backup class may retain
+reviewed read access, without writes or grant options.
