@@ -263,6 +263,402 @@
     "defaultMessage": "Choose a roster data file before deciding what its cards show.",
     "description": "Shown in place of the card-details section’s description while no data file has been chosen, so there are no columns for a card to show."
   },
+  "protocolBuilder.censusPrompts.affirmativeRequired": {
+    "defaultMessage": "Choose the type of connection an affirmative answer creates.",
+    "description": "Refusal shown when a researcher saves a census prompt without saying what a yes from the participant records."
+  },
+  "protocolBuilder.censusPrompts.affirmativeTitle": {
+    "defaultMessage": "Affirmative answer",
+    "description": "Heading of the group that says what a yes from the participant records between the people the prompt asked about."
+  },
+  "protocolBuilder.censusPrompts.attributeCreateLabel": {
+    "defaultMessage": "Create a new attribute",
+    "description": "Button that opens the codebook editor for inventing an attribute this prompt can write to. Also the title of the dialog it opens."
+  },
+  "protocolBuilder.censusPrompts.attributeEditLabel": {
+    "defaultMessage": "Change this attribute's values",
+    "description": "Button that opens the codebook editor for the list of answers the picked attribute offers, which are the bins or the points of the scale this prompt is answered on. Also the title of the dialog it opens."
+  },
+  "protocolBuilder.censusPrompts.attributeLabel": {
+    "defaultMessage": "Attribute",
+    "description": "Label of the control that picks which codebook attribute one prompt writes its answer to. An attribute is one thing an interview records about a network member."
+  },
+  "protocolBuilder.censusPrompts.binAttributeRequired": {
+    "defaultMessage": "Choose the attribute whose values become the bins.",
+    "description": "Refusal shown when a researcher saves a bin prompt without saying which attribute it sorts people by. A bin is one answer the participant drags a network member into."
+  },
+  "protocolBuilder.censusPrompts.binDescription": {
+    "defaultMessage": "Write the questions this stage asks about each person, and drag them into the order the participant answers them.",
+    "description": "Description of the prompts section in a stage where the participant answers each question about one network member at a time by dragging them into a bin. A stage is one step of an interview; a prompt is one question the participant is asked."
+  },
+  "protocolBuilder.censusPrompts.binLimitTitle": {
+    "defaultMessage": "More bins than fit on one screen",
+    "description": "Heading of the warning shown when the attribute a bin prompt uses offers more values than the interview screen can draw as bins."
+  },
+  "protocolBuilder.censusPrompts.binOrderAddLabel": {
+    "defaultMessage": "Add a rule for the order within a bin",
+    "description": "Button that appends one sort rule to the list ordering the people already dragged into a bin."
+  },
+  "protocolBuilder.censusPrompts.binOrderDescription": {
+    "defaultMessage": "Choose the order people already sorted into a bin are listed in.",
+    "description": "Description of the group holding the rules that order the people already dragged into a bin."
+  },
+  "protocolBuilder.censusPrompts.binOrderEmptyState": {
+    "defaultMessage": "No rules yet, so people are listed in the order they were dropped in.",
+    "description": "Shown in place of the sort rules ordering the people already dragged into a bin, when the researcher has written none."
+  },
+  "protocolBuilder.censusPrompts.binOrderLabel": {
+    "defaultMessage": "Rules for the order within a bin",
+    "description": "Label of the list of sort rules that order the people already dragged into a bin."
+  },
+  "protocolBuilder.censusPrompts.binOrderTitle": {
+    "defaultMessage": "Order within each bin",
+    "description": "Heading of the optional group holding the rules that order the people already dragged into a bin."
+  },
+  "protocolBuilder.censusPrompts.bucketOrderAddLabel": {
+    "defaultMessage": "Add a rule for the order people are handed over in",
+    "description": "Button that appends one sort rule to the list ordering the people a bin stage has not been asked about yet."
+  },
+  "protocolBuilder.censusPrompts.bucketOrderDescription": {
+    "defaultMessage": "Choose the order the people still to be sorted are offered in.",
+    "description": "Description of the group holding the rules that order the people a bin stage has not been asked about yet."
+  },
+  "protocolBuilder.censusPrompts.bucketOrderEmptyState": {
+    "defaultMessage": "No rules yet, so people are handed over in the order they were added.",
+    "description": "Shown in place of the sort rules ordering the people a bin stage has not been asked about yet, when the researcher has written none."
+  },
+  "protocolBuilder.censusPrompts.bucketOrderLabel": {
+    "defaultMessage": "Rules for handing people over",
+    "description": "Label of the list of sort rules that order the people a bin stage has not been asked about yet."
+  },
+  "protocolBuilder.censusPrompts.bucketOrderTitle": {
+    "defaultMessage": "Order people are handed to the participant in",
+    "description": "Heading of the optional group holding the rules that order the people a bin stage has not been asked about yet."
+  },
+  "protocolBuilder.censusPrompts.categoricalBinBinsDescription": {
+    "defaultMessage": "Choose the attribute whose values the participant sorts people into.",
+    "description": "Description of the group that picks the attribute whose values are the bins the participant drags people into. An attribute is one thing an interview records about a network member."
+  },
+  "protocolBuilder.censusPrompts.categoricalBinBinsEmpty": {
+    "defaultMessage": "This type has no categorical attributes yet. Create one to say what the bins are.",
+    "description": "Shown in place of the attribute picker’s options when the node type this stage collects has no attribute whose answers come from a named list."
+  },
+  "protocolBuilder.censusPrompts.categoricalBinBinsHint": {
+    "defaultMessage": "Each of this attribute's values becomes a bin, and dropping someone into a bin records that value for them.",
+    "description": "Guidance under the attribute picker in a Categorical Bin prompt, saying what happens to the attribute’s values in the interview."
+  },
+  "protocolBuilder.censusPrompts.categoricalBinBinsTitle": {
+    "defaultMessage": "The bins",
+    "description": "Heading of the group that picks the attribute whose values are the bins the participant drags people into."
+  },
+  "protocolBuilder.censusPrompts.categoricalBinFieldHint": {
+    "defaultMessage": "The participant sorts everyone into bins for one question at a time, in this order.",
+    "description": "Guidance under the list of prompts in a Categorical Bin stage, where a bin is one named answer the participant drags a network member into, and the bins have no order among them."
+  },
+  "protocolBuilder.censusPrompts.categoricalBinGuidance": {
+    "defaultMessage": "The participant drags each person into one of the bins below, so write a question the bins are the answers to — “what kind of contact do you have with this person?” rather than a yes or no question.",
+    "description": "Guidance shown above the box where a researcher writes a Categorical Bin prompt, saying what the participant does with it. The quoted sentence is an example of a question whose answers are the bins."
+  },
+  "protocolBuilder.censusPrompts.categoricalBinLimitDescription": {
+    "defaultMessage": "This interface is designed for up to eight bins, including a follow-up bin. Beyond that the bins become hard to read and hard to drop into, which costs data quality. Consider grouping the values and asking for the detail in a later question.",
+    "description": "Body of the warning shown when a Categorical Bin prompt would draw more bins than its interview screen is designed for. The follow-up bin is the extra one this prompt can add for answers none of the attribute’s values cover."
+  },
+  "protocolBuilder.censusPrompts.categoricalBinOtherAttributeCreateLabel": {
+    "defaultMessage": "Create a new text attribute",
+    "description": "Button that opens the codebook editor for inventing the text attribute the follow-up bin stores its answers in. Also the title of the dialog it opens."
+  },
+  "protocolBuilder.censusPrompts.categoricalBinOtherAttributeEmpty": {
+    "defaultMessage": "This type has no text attributes yet. Create one to store what the participant types.",
+    "description": "Shown in place of the follow-up bin’s attribute options when the node type this stage collects has no attribute the participant can type into."
+  },
+  "protocolBuilder.censusPrompts.categoricalBinOtherAttributeHint": {
+    "defaultMessage": "The participant types their own answer, so this is a text attribute.",
+    "description": "Guidance under the control that picks which attribute holds what the participant types into the follow-up bin, saying why only text attributes are offered."
+  },
+  "protocolBuilder.censusPrompts.categoricalBinOtherAttributeLabel": {
+    "defaultMessage": "Attribute the answer is stored in",
+    "description": "Label of the control that picks which attribute holds what the participant types into the follow-up bin."
+  },
+  "protocolBuilder.censusPrompts.categoricalBinOtherAttributeRequired": {
+    "defaultMessage": "Choose the attribute this bin's answers are stored in.",
+    "description": "Refusal shown when a researcher switches the follow-up bin on and saves the prompt without saying where its answers are stored."
+  },
+  "protocolBuilder.censusPrompts.categoricalBinOtherAttributeValidationLabel": {
+    "defaultMessage": "Set rules for what the participant types",
+    "description": "Button that opens the codebook editor for the rules the participant’s typed answer has to satisfy. Also the title of the dialog it opens."
+  },
+  "protocolBuilder.censusPrompts.categoricalBinOtherBinHint": {
+    "defaultMessage": "Shown on the bin itself, so it has to read as somewhere to put a person the other bins do not fit.",
+    "description": "Guidance under the box a researcher writes the follow-up bin’s own name into."
+  },
+  "protocolBuilder.censusPrompts.categoricalBinOtherBinLabel": {
+    "defaultMessage": "Bin label",
+    "description": "Label of the box a researcher writes the follow-up bin’s own name into — the words drawn on that bin in the interview."
+  },
+  "protocolBuilder.censusPrompts.categoricalBinOtherBinPlaceholder": {
+    "defaultMessage": "Other",
+    "description": "Example name in the empty box where a researcher names the follow-up bin."
+  },
+  "protocolBuilder.censusPrompts.categoricalBinOtherBinRequired": {
+    "defaultMessage": "Name the bin the participant drops everyone else into.",
+    "description": "Refusal shown when a researcher switches the follow-up bin on and saves the prompt without naming it."
+  },
+  "protocolBuilder.censusPrompts.categoricalBinOtherDescription": {
+    "defaultMessage": "Add a bin for people none of the values above describe, and ask the participant what to record instead.",
+    "description": "Description of the optional group that adds one more bin for people none of the attribute’s values describe."
+  },
+  "protocolBuilder.censusPrompts.categoricalBinOtherPromptHint": {
+    "defaultMessage": "Asked as soon as someone is dropped into this bin.",
+    "description": "Guidance under the box a researcher writes the follow-up bin’s own question into, saying when the participant reads it."
+  },
+  "protocolBuilder.censusPrompts.categoricalBinOtherPromptLabel": {
+    "defaultMessage": "Follow-up question",
+    "description": "Label of the box a researcher writes the question asked as soon as the participant uses the follow-up bin."
+  },
+  "protocolBuilder.censusPrompts.categoricalBinOtherPromptPlaceholder": {
+    "defaultMessage": "What type of contact do you have with this person?",
+    "description": "Example question in the empty box where a researcher writes the follow-up bin’s own question."
+  },
+  "protocolBuilder.censusPrompts.categoricalBinOtherPromptRequired": {
+    "defaultMessage": "Write the question this bin asks.",
+    "description": "Refusal shown when a researcher switches the follow-up bin on and saves the prompt without writing the question it asks."
+  },
+  "protocolBuilder.censusPrompts.categoricalBinOtherTitle": {
+    "defaultMessage": "A bin for anything else",
+    "description": "Heading of the optional group that adds one more bin for people none of the attribute’s values describe."
+  },
+  "protocolBuilder.censusPrompts.categoricalBinPlaceholder": {
+    "defaultMessage": "What type of contact do you have most with this person?",
+    "description": "Example question in the empty box where a researcher writes a Categorical Bin prompt."
+  },
+  "protocolBuilder.censusPrompts.dyadCensusEdgeDescription": {
+    "defaultMessage": "Choose the kind of connection an affirmative answer records between the pair.",
+    "description": "Description of the group that says what a yes from the participant records between the two people a Dyad Census prompt asked about."
+  },
+  "protocolBuilder.censusPrompts.dyadCensusEdgeHint": {
+    "defaultMessage": "A connection of this type is created between the two people whenever the participant answers yes.",
+    "description": "Guidance under the control that picks what a yes from the participant records between the two people a Dyad Census prompt asked about."
+  },
+  "protocolBuilder.censusPrompts.dyadCensusGuidance": {
+    "defaultMessage": "The participant sees two people side by side and answers yes or no, so write the question about the pair in front of them — “these two people” rather than a name — and phrase it so that yes and no are both sensible answers.",
+    "description": "Guidance shown above the box where a researcher writes a Dyad Census prompt, saying what the participant is looking at while they answer it. The quoted phrase is an example of how to refer to the pair."
+  },
+  "protocolBuilder.censusPrompts.dyadCensusPlaceholder": {
+    "defaultMessage": "Do these two people know each other?",
+    "description": "Example question in the empty box where a researcher writes a Dyad Census prompt."
+  },
+  "protocolBuilder.censusPrompts.edgeCreateDescription": {
+    "defaultMessage": "Create a connection type and use it for this prompt",
+    "description": "Description at the top of the dialog for inventing a kind of connection, saying that the prompt will point at it once it exists."
+  },
+  "protocolBuilder.censusPrompts.edgeCreateLabel": {
+    "defaultMessage": "Create a new connection type",
+    "description": "Button that opens the codebook editor for inventing a kind of connection this prompt can record. Also the title of the dialog it opens."
+  },
+  "protocolBuilder.censusPrompts.edgeLabel": {
+    "defaultMessage": "Connection created",
+    "description": "Label of the control that picks which kind of connection between two people this prompt records. A connection is what the protocol schema calls an edge; the researcher never sees that word."
+  },
+  "protocolBuilder.censusPrompts.oneToManyAskedOrderAddLabel": {
+    "defaultMessage": "Add a rule for the order people are asked about",
+    "description": "Button that appends one sort rule to the list ordering the people the participant is asked about."
+  },
+  "protocolBuilder.censusPrompts.oneToManyAskedOrderDescription": {
+    "defaultMessage": "Choose the order the participant is asked about each person in.",
+    "description": "Description of the group holding the rules that order the people the participant is asked about, one at a time."
+  },
+  "protocolBuilder.censusPrompts.oneToManyAskedOrderEmptyState": {
+    "defaultMessage": "No rules yet, so people are asked about in the order they were added.",
+    "description": "Shown in place of the sort rules ordering the people the participant is asked about, when the researcher has written none."
+  },
+  "protocolBuilder.censusPrompts.oneToManyAskedOrderLabel": {
+    "defaultMessage": "Rules for the order people are asked about",
+    "description": "Label of the list of sort rules that order the people the participant is asked about, one at a time."
+  },
+  "protocolBuilder.censusPrompts.oneToManyAskedOrderTitle": {
+    "defaultMessage": "Order of the people asked about",
+    "description": "Heading of the optional group holding the rules that order the people the participant is asked about, one at a time."
+  },
+  "protocolBuilder.censusPrompts.oneToManyChoiceOrderAddLabel": {
+    "defaultMessage": "Add a rule for the order people are shown in",
+    "description": "Button that appends one sort rule to the list ordering the people the participant picks from."
+  },
+  "protocolBuilder.censusPrompts.oneToManyChoiceOrderDescription": {
+    "defaultMessage": "Choose the order the people the participant selects from are shown in.",
+    "description": "Description of the group holding the rules that order the people the participant picks from for whoever they were asked about."
+  },
+  "protocolBuilder.censusPrompts.oneToManyChoiceOrderEmptyState": {
+    "defaultMessage": "No rules yet, so people are shown in the order they were added.",
+    "description": "Shown in place of the sort rules ordering the people the participant picks from, when the researcher has written none."
+  },
+  "protocolBuilder.censusPrompts.oneToManyChoiceOrderLabel": {
+    "defaultMessage": "Rules for the order people are shown in",
+    "description": "Label of the list of sort rules that order the people the participant picks from."
+  },
+  "protocolBuilder.censusPrompts.oneToManyChoiceOrderTitle": {
+    "defaultMessage": "Order of the people to choose from",
+    "description": "Heading of the optional group holding the rules that order the people the participant picks from for whoever they were asked about."
+  },
+  "protocolBuilder.censusPrompts.oneToManyDescription": {
+    "defaultMessage": "Write the questions this stage asks about one person and the group around them, and drag them into the order the participant answers them.",
+    "description": "Description of the prompts section in a stage that shows the participant one network member alongside all the others and asks which of the others the question applies to. A stage is one step of an interview; a prompt is one question the participant is asked."
+  },
+  "protocolBuilder.censusPrompts.oneToManyEdgeDescription": {
+    "defaultMessage": "Choose the kind of connection an affirmative answer records between the two people.",
+    "description": "Description of the group that says what selecting someone records between them and the person the prompt asked about."
+  },
+  "protocolBuilder.censusPrompts.oneToManyEdgeHint": {
+    "defaultMessage": "A connection of this type is created from the person being asked about to everyone the participant selects.",
+    "description": "Guidance under the control that picks what selecting someone records between them and the person the prompt asked about."
+  },
+  "protocolBuilder.censusPrompts.oneToManyFieldHint": {
+    "defaultMessage": "The participant is shown one person at a time and chooses who among the others the question applies to.",
+    "description": "Guidance under the list of prompts in a One-to-Many Dyad Census stage, where the participant selects any number of the remaining network members for the person in front of them."
+  },
+  "protocolBuilder.censusPrompts.oneToManyGuidance": {
+    "defaultMessage": "The participant sees one person alongside everyone else and selects whoever the question applies to, so write it as a question about that one person and the group — “which of these people does this person know?” rather than a question about a single pair.",
+    "description": "Guidance shown above the box where a researcher writes a One-to-Many Dyad Census prompt, saying what the participant is looking at while they answer it. The quoted sentence is an example of a question about one person and the group."
+  },
+  "protocolBuilder.censusPrompts.oneToManyPlaceholder": {
+    "defaultMessage": "Which of these people does this person know?",
+    "description": "Example question in the empty box where a researcher writes a One-to-Many Dyad Census prompt."
+  },
+  "protocolBuilder.censusPrompts.ordinalBinColorDescription": {
+    "defaultMessage": "Choose the gradient the bins run through, from the first value to the last.",
+    "description": "Description of the group that picks the colour gradient the bins of an Ordinal Bin are shaded along."
+  },
+  "protocolBuilder.censusPrompts.ordinalBinColorHint": {
+    "defaultMessage": "The bins are shaded along this gradient in the order the attribute lists its values.",
+    "description": "Guidance under the control that picks the colour gradient the bins of an Ordinal Bin are shaded along."
+  },
+  "protocolBuilder.censusPrompts.ordinalBinColorLabel": {
+    "defaultMessage": "Color gradient",
+    "description": "Label of the control that picks the colour gradient the bins of an Ordinal Bin are shaded along."
+  },
+  "protocolBuilder.censusPrompts.ordinalBinColorRequired": {
+    "defaultMessage": "Choose the gradient the bins are shaded along.",
+    "description": "Refusal shown when a researcher saves an Ordinal Bin prompt without a colour gradient for its bins."
+  },
+  "protocolBuilder.censusPrompts.ordinalBinColorTitle": {
+    "defaultMessage": "Color of the scale",
+    "description": "Heading of the group that picks the colour gradient the bins of an Ordinal Bin are shaded along."
+  },
+  "protocolBuilder.censusPrompts.ordinalBinFieldHint": {
+    "defaultMessage": "The participant sorts everyone into ordered bins for one question at a time, in this order.",
+    "description": "Guidance under the list of prompts in an Ordinal Bin stage, where the bins are a scale running from least to most and their order is what the answer means."
+  },
+  "protocolBuilder.censusPrompts.ordinalBinGuidance": {
+    "defaultMessage": "The participant drags each person into one of a row of bins running from least to most, so write a question those bins are the scale of — “how often do you see this person?” rather than a yes or no question.",
+    "description": "Guidance shown above the box where a researcher writes an Ordinal Bin prompt, saying what the participant does with it. The quoted sentence is an example of a question a scale can answer."
+  },
+  "protocolBuilder.censusPrompts.ordinalBinLimitDescription": {
+    "defaultMessage": "This interface is designed for up to five bins. Beyond that the bins become hard to read and hard to drop into, which costs data quality.",
+    "description": "Body of the warning shown when an Ordinal Bin prompt would draw more bins than its interview screen is designed for."
+  },
+  "protocolBuilder.censusPrompts.ordinalBinPlaceholder": {
+    "defaultMessage": "How often do you have contact with this person?",
+    "description": "Example question in the empty box where a researcher writes an Ordinal Bin prompt."
+  },
+  "protocolBuilder.censusPrompts.ordinalBinScaleDescription": {
+    "defaultMessage": "Choose the attribute whose ordered values the participant sorts people into.",
+    "description": "Description of the group that picks the attribute whose ordered values are the bins the participant drags people into. An attribute is one thing an interview records about a network member."
+  },
+  "protocolBuilder.censusPrompts.ordinalBinScaleEmpty": {
+    "defaultMessage": "This type has no ordinal attributes yet. Create one to say what the scale is.",
+    "description": "Shown in place of the attribute picker’s options when the node type this stage collects has no attribute whose answers run in an order."
+  },
+  "protocolBuilder.censusPrompts.ordinalBinScaleHint": {
+    "defaultMessage": "Each of this attribute's values becomes a bin, in the order the attribute lists them.",
+    "description": "Guidance under the attribute picker in an Ordinal Bin prompt, saying that the attribute’s own order is the order of the bins."
+  },
+  "protocolBuilder.censusPrompts.pairDescription": {
+    "defaultMessage": "Write the questions this stage asks about each pair, and drag them into the order the participant answers them.",
+    "description": "Description of the prompts section in a stage that shows the participant two network members side by side and asks about the two of them together. A stage is one step of an interview; a prompt is one question the participant is asked."
+  },
+  "protocolBuilder.censusPrompts.pairFieldHint": {
+    "defaultMessage": "The participant is shown one pair of people at a time and answers these questions about them, in this order.",
+    "description": "Guidance under the list of prompts in a stage that shows the participant two network members side by side and asks about the two of them together."
+  },
+  "protocolBuilder.censusPrompts.scaleTitle": {
+    "defaultMessage": "The scale",
+    "description": "Heading of the group that picks the attribute whose ordered values the participant answers on — the points running from least to most."
+  },
+  "protocolBuilder.censusPrompts.sortRulesAddedHint": {
+    "defaultMessage": "Rules are applied in order. Use the asterisk to keep the order the people were added in.",
+    "description": "Guidance under a list of sort rules whose fallback is the order the people were added to the network. The asterisk is the wildcard option offered in the rule’s own attribute picker."
+  },
+  "protocolBuilder.censusPrompts.sortRulesDroppedHint": {
+    "defaultMessage": "Rules are applied in order. Use the asterisk to keep the order the people were dropped in.",
+    "description": "The same guidance for a list of sort rules inside a bin, where the fallback is the order the participant dragged people into that bin. The asterisk is the wildcard option offered in the rule’s own attribute picker."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthDeclineDescription": {
+    "defaultMessage": "Give the participant a way to say these two people are not connected at all.",
+    "description": "Description of the group holding the words the participant chooses to say the two people in front of them are not connected."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthDeclineHint": {
+    "defaultMessage": "Shown at the end of the scale. Choosing it records no connection between the pair.",
+    "description": "Guidance under the box a researcher writes the decline answer into, saying where the participant sees it and what choosing it does."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthDeclineLabel": {
+    "defaultMessage": "Decline answer",
+    "description": "Label of the box a researcher writes the words the participant chooses to say the two people are not connected."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthDeclinePlaceholder": {
+    "defaultMessage": "They don't know each other",
+    "description": "Example wording in the empty box where a researcher writes the decline answer."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthDeclineRequired": {
+    "defaultMessage": "Write how the participant says there is no connection.",
+    "description": "Refusal shown when a researcher saves a Tie-Strength Census prompt without wording for the decline answer."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthDeclineTitle": {
+    "defaultMessage": "Answering that there is no connection",
+    "description": "Heading of the group holding the words the participant chooses to say the two people in front of them are not connected."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthEdgeDescription": {
+    "defaultMessage": "Choose the kind of connection an answer on the scale records between the pair.",
+    "description": "Description of the group that says what answering on the scale records between the two people a Tie-Strength Census prompt asked about."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthEdgeHint": {
+    "defaultMessage": "A connection of this type is created between the two people whenever the participant answers on the scale.",
+    "description": "Guidance under the control that picks what answering on the scale records between the two people a Tie-Strength Census prompt asked about."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthEdgeRequired": {
+    "defaultMessage": "Choose the type of connection this prompt creates.",
+    "description": "Refusal shown when a researcher saves a Tie-Strength Census prompt without saying what an answer on the scale records."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthGuidance": {
+    "defaultMessage": "The participant sees two people side by side and answers on a scale, so write the question about the pair in front of them — “how close are these two people?” rather than a name — and phrase it so that every point on the scale is a sensible answer.",
+    "description": "Guidance shown above the box where a researcher writes a Tie-Strength Census prompt, saying what the participant is looking at while they answer it. The quoted sentence is an example of a question a scale can answer."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthPlaceholder": {
+    "defaultMessage": "How close are these two people?",
+    "description": "Example question in the empty box where a researcher writes a Tie-Strength Census prompt."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthScaleDescription": {
+    "defaultMessage": "Choose the attribute whose ordered values the participant answers on.",
+    "description": "Description of the group that picks the attribute whose ordered values are the points of the scale. The attribute belongs to the connection this prompt creates, not to either person."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthScaleEmpty": {
+    "defaultMessage": "This connection type has no ordinal attributes yet. Create one to say what the scale is.",
+    "description": "Shown in place of the attribute picker’s options when the kind of connection this prompt creates has no attribute whose answers run in an order."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthScaleHint": {
+    "defaultMessage": "The participant taps one of this attribute's values, and it is recorded on the connection.",
+    "description": "Guidance under the attribute picker in a Tie-Strength Census prompt, saying where the participant’s answer is stored."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthScaleLimitDescription": {
+    "defaultMessage": "This interface is designed for up to five points on the scale, with the decline answer beside them. Beyond that they become hard to read and hard to tap, which costs data quality.",
+    "description": "Body of the warning shown when a Tie-Strength Census prompt would draw more points on its scale than its interview screen is designed for. The decline answer is the extra control the participant uses to say the two people are not connected."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthScaleLimitTitle": {
+    "defaultMessage": "More answers than fit on one screen",
+    "description": "Heading of the warning shown when the attribute a Tie-Strength Census prompt uses offers more values than the interview screen can draw as points on its scale."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthScaleRequired": {
+    "defaultMessage": "Choose the attribute the participant answers on.",
+    "description": "Refusal shown when a researcher saves a Tie-Strength Census prompt without saying which attribute holds the strength."
+  },
   "protocolBuilder.codebookEditing.createDescription": {
     "defaultMessage": "Create the attribute \"{name}\"",
     "description": "What the change is called in the record a host keeps of protocol edits, and in any undo history it offers. name is the attribute name the researcher typed."
@@ -1459,6 +1855,50 @@
     "defaultMessage": "Enter a value...",
     "description": "Placeholder in the empty field holding what this option is stored and exported as."
   },
+  "protocolBuilder.ordinalColor.groupLabel": {
+    "defaultMessage": "Color gradient",
+    "description": "Accessible name of the row of colour swatches, used only where the field around it has supplied none. Each swatch is one gradient the ordered answers of a scale are shaded along."
+  },
+  "protocolBuilder.ordinalColor.ordColorSeq1": {
+    "defaultMessage": "Sea Green",
+    "description": "Name of one colour swatch, read out in place of the swatch itself. A colour name rather than a position, because the researcher picks a gradient by how it looks and then has to be able to say which one they picked."
+  },
+  "protocolBuilder.ordinalColor.ordColorSeq10": {
+    "defaultMessage": "Slate Blue",
+    "description": "Name of one colour swatch, read out in place of the swatch itself. A muted violet-blue."
+  },
+  "protocolBuilder.ordinalColor.ordColorSeq2": {
+    "defaultMessage": "Sea Serpent",
+    "description": "Name of one colour swatch, read out in place of the swatch itself. A blue-green."
+  },
+  "protocolBuilder.ordinalColor.ordColorSeq3": {
+    "defaultMessage": "Tomato",
+    "description": "Name of one colour swatch, read out in place of the swatch itself. A red."
+  },
+  "protocolBuilder.ordinalColor.ordColorSeq4": {
+    "defaultMessage": "Neon Carrot",
+    "description": "Name of one colour swatch, read out in place of the swatch itself. A bright orange."
+  },
+  "protocolBuilder.ordinalColor.ordColorSeq5": {
+    "defaultMessage": "Kiwi",
+    "description": "Name of one colour swatch, read out in place of the swatch itself. A yellow-green."
+  },
+  "protocolBuilder.ordinalColor.ordColorSeq6": {
+    "defaultMessage": "Cerulean Blue",
+    "description": "Name of one colour swatch, read out in place of the swatch itself. A deep sky blue."
+  },
+  "protocolBuilder.ordinalColor.ordColorSeq7": {
+    "defaultMessage": "Paradise Pink",
+    "description": "Name of one colour swatch, read out in place of the swatch itself. A warm pink."
+  },
+  "protocolBuilder.ordinalColor.ordColorSeq8": {
+    "defaultMessage": "Mustard",
+    "description": "Name of one colour swatch, read out in place of the swatch itself. A dark yellow."
+  },
+  "protocolBuilder.ordinalColor.ordColorSeq9": {
+    "defaultMessage": "Purple Pizazz",
+    "description": "Name of one colour swatch, read out in place of the swatch itself. A bright purple."
+  },
   "protocolBuilder.outline.completeStatus": {
     "defaultMessage": "Finished",
     "description": "Spoken state of one section of a stage editor: everything it asks for has been filled in and nothing in it is invalid. Read out after the section’s own name, and never shown on screen."
@@ -1599,6 +2039,34 @@
     "defaultMessage": "Page content",
     "description": "Heading of the section where a researcher builds a page of text and media that a participant reads instead of doing a task."
   },
+  "protocolBuilder.promptAttribute.lockedOptions": {
+    "defaultMessage": "These values are set by the interface that uses this attribute, so they cannot be changed here.",
+    "description": "Shown under the attribute picker when the values the picked attribute offers are derived by another interface in the protocol, so the researcher cannot edit them from this prompt. An attribute is one thing an interview records about a network member."
+  },
+  "protocolBuilder.promptText.description": {
+    "defaultMessage": "Write the question or instruction the participant sees for this prompt.",
+    "description": "Description of the group holding the question or instruction one prompt shows the participant."
+  },
+  "protocolBuilder.promptText.emptyPreview": {
+    "defaultMessage": "This prompt has no question yet.",
+    "description": "Shown in place of a prompt’s own words in the list of prompts, when the researcher has written none."
+  },
+  "protocolBuilder.promptText.label": {
+    "defaultMessage": "Prompt text",
+    "description": "Label of the box a researcher writes the question or instruction one prompt shows the participant into."
+  },
+  "protocolBuilder.promptText.placeholder": {
+    "defaultMessage": "Enter your prompt...",
+    "description": "Placeholder in the empty box a researcher writes a prompt into, where the family mounting it has offered no example of its own."
+  },
+  "protocolBuilder.promptText.required": {
+    "defaultMessage": "Write the question or instruction this prompt shows the participant.",
+    "description": "Refusal shown when a researcher saves a prompt without writing anything for the participant to read."
+  },
+  "protocolBuilder.promptText.title": {
+    "defaultMessage": "Participant prompt",
+    "description": "Heading of the group holding the question or instruction one prompt shows the participant. A prompt is one question the participant is asked during a stage, which is one step of an interview."
+  },
   "protocolBuilder.promptsSection.addLabel": {
     "defaultMessage": "Create new prompt",
     "description": "Button that opens the dialog for writing one more question. Whole rather than a generic \"Add\", because a stage editor shows several lists at once and they would otherwise be indistinguishable to anyone navigating by a list of buttons."
@@ -1718,6 +2186,30 @@
   "protocolBuilder.quickAdd.waitingDescription": {
     "defaultMessage": "Choose what this stage works with before setting up quick add.",
     "description": "Shown in place of the quick-add section’s description while the researcher has not yet chosen which node type the stage is about, so there are no attributes to choose from."
+  },
+  "protocolBuilder.removeAfterConsideration.description": {
+    "defaultMessage": "Decide what happens to a person once the participant has finished considering them.",
+    "description": "Description of the section named above."
+  },
+  "protocolBuilder.removeAfterConsideration.fieldHint": {
+    "defaultMessage": "Removing them keeps the remaining choices short. Keeping them lets the participant revisit an answer.",
+    "description": "Guidance under that control, giving the reason to prefer each of its two answers."
+  },
+  "protocolBuilder.removeAfterConsideration.fieldLabel": {
+    "defaultMessage": "After a person has been considered",
+    "description": "Label of the two-answer control that decides what becomes of a person the participant has already been asked about."
+  },
+  "protocolBuilder.removeAfterConsideration.keepLabel": {
+    "defaultMessage": "Keep them in the list",
+    "description": "The answer that leaves a person in the list the participant chooses from after they have been asked about, so an answer can be revisited."
+  },
+  "protocolBuilder.removeAfterConsideration.removeLabel": {
+    "defaultMessage": "Remove them from the list",
+    "description": "The answer that takes a person out of the list the participant chooses from once they have been asked about."
+  },
+  "protocolBuilder.removeAfterConsideration.title": {
+    "defaultMessage": "Node availability",
+    "description": "Names this section of the stage editor, in the editor’s outline and to assistive technology. A node is one member of the network the participant is building; this section decides whether one they have already been asked about stays available to be asked about again."
   },
   "protocolBuilder.rosterColumns.missingColumn": {
     "defaultMessage": "{column} — this attribute is not in the data file",

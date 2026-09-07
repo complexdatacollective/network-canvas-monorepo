@@ -30,6 +30,7 @@
  */
 import type { StageType } from '@codaco/protocol-validation';
 
+import { censusAndBinStageEditors } from './editors/censusAndBinStageEditors.ts';
 import { formStageEditors } from './editors/formStageEditors.ts';
 import { nameGeneratorStageEditors } from './editors/nameGeneratorStageEditors.ts';
 import type { StageEditorRegistryPart } from './stage-editor-contract.ts';
@@ -95,6 +96,7 @@ export function composeStageEditorRegistry(
  */
 const REGISTRY_PARTS = [
   // One imported part per line, alphabetically, each with a trailing comma.
+  censusAndBinStageEditors,
   formStageEditors,
   nameGeneratorStageEditors,
 ] as const satisfies readonly StageEditorRegistryPart[];
@@ -154,17 +156,12 @@ export type UnregisteredStageType = UnregisteredIn<typeof REGISTRY_PARTS>;
  */
 export const AWAITING_STAGE_EDITORS = [
   'Anonymisation',
-  'CategoricalBin',
-  'DyadCensus',
   'FamilyPedigree',
   'Geospatial',
   'Narrative',
   'NarrativePedigree',
   'NetworkComposer',
-  'OneToManyDyadCensus',
-  'OrdinalBin',
   'Sociogram',
-  'TieStrengthCensus',
 ] as const satisfies readonly UnregisteredStageType[];
 
 export type Assert<T extends true> = T;

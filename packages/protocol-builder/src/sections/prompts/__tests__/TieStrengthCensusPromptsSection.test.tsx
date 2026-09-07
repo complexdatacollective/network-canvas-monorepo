@@ -1,0 +1,384 @@
+import { screen, waitFor, within } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+
+import {
+  renderStageEditor,
+  type StageEditorHarness,
+} from '../../../testing/renderStageEditor.tsx';
+import TieStrengthCensusPromptsSection from '../TieStrengthCensusPromptsSection.tsx';
+
+const openEditor = () => ({
+  stageId: 'tie-strength-census-1',
+  sections: <TieStrengthCensusPromptsSection />,
+});
+
+const prompts = (stage: Record<string, unknown>): Record<string, unknown>[] =>
+  Array.isArray(stage.prompts)
+    ? stage.prompts.filter(
+        (row: unknown): row is Record<string, unknown> =>
+          typeof row === 'object' && row !== null,
+      )
+    : [];
+
+describe('the questions a tie-strength census asks about a pair', () => {
+  it('saves the stage it opened, unchanged', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    // The stage's name, the type it asks about and the screen shown before
+    // it belong to sections this mount does not include.
+    await harness.roundTrip({
+      unowned: ['label', 'subject', 'introductionPanel'],
+    });
+  });
+
+  it('opens a prompt holding everything it was saved with', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+
+    expect(await screen.findByRole('radio', { name: 'knows' })).toBeChecked();
+    // The scale is the CONNECTION's attribute, not the person's.
+    const picker = screen.getByRole('combobox', { name: 'Attribute' });
+    expect(
+      [...picker.querySelectorAll('option')]
+        .map((option) => option.value)
+        .filter((value) => value !== ''),
+    ).toEqual(['closeness']);
+    expect(picker).toHaveValue('closeness');
+    expect(
+      screen.getByRole('textbox', { name: 'Decline answer' }),
+    ).toHaveTextContent("Don't know each other");
+  });
+
+  /**
+   * The scale belongs to the connection, so there is nothing to choose from
+   * until the connection type is known.
+   */
+  it('offers no scale until the connection type is chosen', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create new prompt' }),
+    );
+    await screen.findByRole('radio', { name: 'knows' });
+    expect(
+      screen.queryByRole('combobox', { name: 'Attribute' }),
+    ).not.toBeInTheDocument();
+
+    await harness.user.click(
+      screen.getByRole('radio', { name: 'family_edge' }),
+    );
+
+    // And it offers that connection type's own ordinal attributes; a
+    // `family_edge` has none, so the picker says so rather than offering the
+    // person's.
+    expect(
+      await screen.findByText(
+        'This connection type has no ordinal attributes yet. Create one to say what the scale is.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * The scale names an attribute OF the connection type, so changing the
+   * connection type leaves the prompt naming an attribute the new one does not
+   * have.
+   *
+   * Left in place it is unsaveable and unexplained: the picker kept the stale
+   * pick on offer as "no longer in the codebook" — which is not true, it
+   * belongs to the other connection type — the row dialog accepted it, and the
+   * refusal only arrived at the stage save, in the schema's words about a
+   * codebook the researcher was not looking at. Cleared, the prompt says what
+   * it needs, in the dialog the researcher is still in.
+   */
+  it('clears the scale when the connection type changes under it', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    expect(
+      await screen.findByRole('combobox', { name: 'Attribute' }),
+    ).toHaveValue('closeness');
+
+    await harness.user.click(
+      screen.getByRole('radio', { name: 'family_edge' }),
+    );
+
+    // The new connection type has no ordinal attributes at all, so the picker
+    // has nothing to offer and nothing left over from the old one.
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('option', { name: /closeness/ }),
+      ).not.toBeInTheDocument(),
+    );
+
+    // And the prompt refuses here, naming the pick it is missing, rather than
+    // being accepted and refused by the stage save.
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(
+      await screen.findByText(
+        'Choose the attribute the participant answers on.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  /**
+   * The other side of the same rule: reopening a prompt is not a change of
+   * connection type, so the scale it was saved with survives being looked at.
+   */
+  it('keeps the scale when the connection type is left alone', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    await screen.findByRole('combobox', { name: 'Attribute' });
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    expect(prompts(request?.stageDocument ?? {})[0]).toMatchObject({
+      createEdge: 'knows',
+      edgeVariable: 'closeness',
+    });
+  });
+
+  it('refuses a prompt with no way to decline, and says which one', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create new prompt' }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Prompt text' }),
+      'How much trust?',
+    );
+    await harness.user.click(screen.getByRole('radio', { name: 'knows' }));
+    await harness.user.selectOptions(
+      await screen.findByRole('combobox', { name: 'Attribute' }),
+      'closeness',
+    );
+    await harness.user.click(screen.getByRole('button', { name: 'Add' }));
+
+    expect(
+      await screen.findByText(
+        'Write how the participant says there is no connection.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('saves a whole new prompt with its own identity', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create new prompt' }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Prompt text' }),
+      'How much trust?',
+    );
+    await harness.user.click(screen.getByRole('radio', { name: 'knows' }));
+    await harness.user.selectOptions(
+      await screen.findByRole('combobox', { name: 'Attribute' }),
+      'closeness',
+    );
+    await harness.user.type(
+      screen.getByRole('textbox', { name: 'Decline answer' }),
+      'Not at all',
+    );
+    await harness.user.click(screen.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    const rows = prompts(request?.stageDocument ?? {});
+    expect(rows).toHaveLength(2);
+    expect(rows[0]?.id).toBe('tie-strength-census-prompt-1');
+    expect(rows[1]).toEqual({
+      id: expect.any(String) as unknown as string,
+      text: 'How much trust?',
+      createEdge: 'knows',
+      edgeVariable: 'closeness',
+      negativeLabel: 'Not at all',
+    });
+  });
+
+  it('discards an edit the researcher cancelled', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    const decline = await screen.findByRole('textbox', {
+      name: 'Decline answer',
+    });
+    await harness.user.clear(decline);
+    await harness.user.type(decline, 'Never met');
+    await harness.user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Discard changes' }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    await harness.roundTrip({
+      unowned: ['label', 'subject', 'introductionPanel'],
+    });
+  });
+});
+
+/**
+ * Both of this prompt's codebook writes are compound edits against the
+ * codebook alone: the connection type, and then the scale that belongs to it.
+ */
+describe('creating a scale from inside a tie-strength prompt', () => {
+  /**
+   * This is the codebook half of the journey and stops where the codebook
+   * does. That the prompt naming the new scale then reaches the STAGE save is
+   * `TieStrengthCensusStageEditor.test.tsx`'s, over the whole editor.
+   */
+  it('asks the host once, and points the prompt at what it created', async () => {
+    const harness = renderStageEditor(openEditor());
+    const submit = vi.spyOn(harness.host, 'submit');
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Create a new attribute' }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Attribute name' }),
+      'trust',
+    );
+    await addOption(harness, 1, 'Some', 1);
+    await addOption(harness, 2, 'Lots', 2);
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create attribute' }),
+    );
+
+    const picker = await screen.findByRole('combobox', { name: 'Attribute' });
+    await waitFor(() =>
+      expect(
+        within(picker).getByRole('option', { name: 'trust' }),
+      ).toBeInTheDocument(),
+    );
+
+    expect(submit).toHaveBeenCalledTimes(1);
+    const submission = submit.mock.calls[0]?.[0];
+    expect(submission?.edits).toHaveLength(1);
+    const edit = submission?.edits[0];
+    expect(edit?.kind).toBe('update');
+    // The connection type's own section, not the stage's and not the
+    // person's: the scale hangs off the edge the prompt creates.
+    expect(edit?.sectionId).toBe('codebook:edge:knows');
+    expect(submit.mock.results[0]?.value).toMatchObject({ status: 'applied' });
+
+    // And the prompt is pointing at it rather than at the scale it opened on,
+    // as an unsaved change: nothing has been staged against the stage.
+    expect(
+      within(picker).getByRole('option', { selected: true }),
+    ).toHaveTextContent('trust');
+    expect(harness.pendingCommands()).toEqual([]);
+  });
+});
+
+/**
+ * The same nesting the categorical bin has, reached here through the scale
+ * that hangs off the connection: a codebook dialog opened from inside a prompt
+ * is a form INSIDE the prompt's form, so saving it would submit the prompt
+ * around it and the row would close.
+ *
+ * What stops that is the `stopPropagation` each nested codebook editor puts on
+ * its own submit — `VariableEditor`, `CodebookVariableValidationEditor` and
+ * `CodebookEntityEditor` — so this case is one of the ones that says that fix
+ * is still in place. Its three siblings are in
+ * `CategoricalBinPromptsSection.test.tsx`.
+ */
+describe('a codebook dialog saved from inside a tie-strength prompt', () => {
+  it('leaves the prompt open when the scale is saved', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    await screen.findByRole('combobox', { name: 'Attribute' });
+    expect(screen.queryAllByRole('dialog')).toHaveLength(1);
+
+    await harness.user.click(
+      screen.getByRole('button', { name: "Change this attribute's values" }),
+    );
+    const scaleName = await screen.findByRole('textbox', {
+      name: 'Attribute name',
+    });
+    await harness.user.clear(scaleName);
+    await harness.user.type(scaleName, 'renamedScale');
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save attribute' }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('textbox', { name: 'Attribute name' }),
+      ).not.toBeInTheDocument(),
+    );
+
+    expect(screen.queryAllByRole('dialog')).toHaveLength(1);
+  });
+});
+
+describe('a codebook that changes while a tie-strength prompt is open', () => {
+  it('follows an attribute a collaborator deleted, without echoing a command', async () => {
+    const harness = renderStageEditor(openEditor());
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    await screen.findByRole('combobox', { name: 'Attribute' });
+    const dispatch = vi.spyOn(harness.session, 'dispatch');
+
+    harness.receiveCodebookUpdate({
+      edge: {
+        knows: { name: 'knows', color: 'edge-color-seq-1', variables: {} },
+      },
+    });
+
+    expect(
+      await screen.findByText(
+        'This attribute is no longer in the codebook. Choose another one.',
+      ),
+    ).toBeInTheDocument();
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(harness.pendingCommands()).toEqual([]);
+  });
+});
+
+/**
+ * Adds one option to the attribute editor that is open.
+ *
+ * The value is typed rather than cleared first: a new option's value starts
+ * empty, and the attribute is refused without one.
+ */
+async function addOption(
+  harness: StageEditorHarness,
+  position: number,
+  label: string,
+  value: number,
+) {
+  await harness.user.click(screen.getByRole('button', { name: 'Add option' }));
+  await harness.user.type(
+    await screen.findByRole('textbox', { name: `Option ${position} label` }),
+    label,
+  );
+  await harness.user.type(
+    screen.getByRole('textbox', { name: `Option ${position} value` }),
+    String(value),
+  );
+}

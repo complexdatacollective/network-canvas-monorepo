@@ -88,6 +88,31 @@ describe('composing the registry from family parts', () => {
   });
 
   /**
+   * This module imports every family's part, so a part that imported anything
+   * back from this one would close a cycle — and a cycle here is not a warning
+   * but a crash, in whichever direction a program happens to enter it. Loading
+   * the family module first leaves this one half-evaluated, and `REGISTRY_PARTS`
+   * then reads a part binding that holds nothing yet.
+   *
+   * Reached through the family module deliberately, and with the module
+   * registry reset so it is genuinely the first of the pair to be evaluated:
+   * the static imports at the top of this file have already loaded them in the
+   * safe order, which is the order that hides the fault.
+   */
+  it('composes whichever of the registry and a family part is loaded first', async () => {
+    vi.resetModules();
+
+    const { censusAndBinStageEditors } =
+      await import('../editors/censusAndBinStageEditors.ts');
+    const registry = await import('../stageEditorRegistry.ts');
+
+    expect(Object.keys(registry.stageEditorRegistry).toSorted()).toEqual(
+      Object.keys(censusAndBinStageEditors).toSorted(),
+    );
+    expect(Object.keys(registry.stageEditorRegistry)).not.toHaveLength(0);
+  });
+
+  /**
    * Nothing chooses between two families that both think they own an
    * interface: whichever won would edit stages the other family's researchers
    * are looking at, and the disagreement would never surface.
