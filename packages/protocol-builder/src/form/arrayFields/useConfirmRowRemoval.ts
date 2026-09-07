@@ -3,17 +3,37 @@ import { useCallback, useRef, type RefObject } from 'react';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { stripManagedProperties } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 
-type ConfirmOptions = Parameters<ReturnType<typeof useDialog>['confirm']>[0];
-
 /**
- * Everything a caller says about its own confirm. The action is ours, and so
- * is where focus goes: a row that named its own would be a row that could
- * forget to, which is the whole failure this hook exists to make unsayable.
+ * The three sentences a caller says about its own removal, as DESCRIPTORS.
+ *
+ * Not the strings fresco-ui's `confirm` takes. A seam typed `React.ReactNode`
+ * accepts `title: 'Remove option'` without complaint, and a caller that writes
+ * one has produced copy no extraction sees, no catalog holds and no translator
+ * can ever answer for — the same hole `copy?: Partial<…Copy>` was, one level
+ * down. Descriptors are what `src/__tests__/hostCopyOverrides.test.ts` looks
+ * for and what a Spanish reader gets.
+ *
+ * Everything else about the dialog is this hook's: the action, where focus
+ * goes, that a row removal is destructive, and the dismissal — which is the
+ * shared, translated `common.cancel` and never a word a row chooses. A row
+ * that named its own is a row that could forget to, which is the whole failure
+ * this hook exists to make unsayable.
  */
-type RowRemovalConfirm = Omit<ConfirmOptions, 'onConfirm' | 'finalFocus'>;
+export type RowRemovalConfirm = Readonly<{
+  title: MessageDescriptor;
+  description: MessageDescriptor;
+  confirmLabel: MessageDescriptor;
+  /**
+   * Values all three are formatted with, for a list whose noun for a row is
+   * itself a message — `DialogArrayField` names every one of its lists this
+   * way. A list whose sentences take no placeholders leaves this out.
+   */
+  values?: Readonly<Record<string, string | number>>;
+}>;
 
 /**
  * Put on the control that opens a row's removal confirm — and on no other
@@ -143,6 +163,7 @@ export function useConfirmRowRemoval<E extends HTMLElement = HTMLDivElement>(
   rowRef: RefObject<E | null>;
   confirmRemoval: (confirmOptions: RowRemovalConfirm) => void;
 }> {
+  const intl = useAppIntl();
   const { confirm } = useDialog();
   const { itemLabel } = removal;
   const rowRef = useRef<E | null>(null);
@@ -163,7 +184,19 @@ export function useConfirmRowRemoval<E extends HTMLElement = HTMLDivElement>(
       const list = rowRef.current?.closest('[role="list"]') ?? null;
 
       void confirm({
-        ...confirmOptions,
+        title: intl.formatMessage(confirmOptions.title, confirmOptions.values),
+        description: intl.formatMessage(
+          confirmOptions.description,
+          confirmOptions.values,
+        ),
+        confirmLabel: intl.formatMessage(
+          confirmOptions.confirmLabel,
+          confirmOptions.values,
+        ),
+        // Neither the intent nor the dismissal is the row's to choose: every
+        // use of this hook removes a row, and `confirm` writes the shared
+        // `common.cancel` when nothing overrides it.
+        intent: 'destructive',
         finalFocus: () =>
           resolveRemovalFocus(
             list,
@@ -189,7 +222,7 @@ export function useConfirmRowRemoval<E extends HTMLElement = HTMLDivElement>(
         },
       });
     },
-    [confirm, itemLabel],
+    [confirm, intl, itemLabel],
   );
 
   return { rowRef, confirmRemoval };

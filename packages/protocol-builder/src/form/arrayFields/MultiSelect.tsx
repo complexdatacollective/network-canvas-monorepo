@@ -8,7 +8,6 @@ import {
   type ComponentType,
 } from 'react';
 
-import { commonMessages } from '@codaco/app-i18n/common';
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
@@ -252,11 +251,9 @@ function MultiSelectRow({
 
   const handleDelete = () => {
     confirmRemoval({
-      title: intl.formatMessage(messages.removeItem),
-      description: intl.formatMessage(messages.removeItemDescription),
-      confirmLabel: intl.formatMessage(messages.removeItem),
-      cancelLabel: intl.formatMessage(commonMessages.cancel),
-      intent: 'destructive',
+      title: messages.removeItem,
+      description: messages.removeItemDescription,
+      confirmLabel: messages.removeItem,
     });
   };
 

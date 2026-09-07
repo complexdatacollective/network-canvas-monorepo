@@ -819,9 +819,61 @@
     "defaultMessage": "number of selected options is not",
     "description": "Researcher-facing name for the rule operator that counts how many options a multiple-choice attribute was answered with and matches any count other than this number. Read as a whole phrase before the number being compared against."
   },
+  "protocolBuilder.option.editOption": {
+    "defaultMessage": "Edit option {position}",
+    "description": "Accessible name of the button that opens one option for editing. position is the option’s own place in the list, counting from one — the only thing that tells two blank options apart."
+  },
+  "protocolBuilder.option.emptyState": {
+    "defaultMessage": "No options have been added yet.",
+    "description": "Shown in place of the list of answers a categorical or ordinal attribute offers, while the researcher has added none."
+  },
+  "protocolBuilder.option.finishEditing": {
+    "defaultMessage": "Finish editing option",
+    "description": "Accessible name of the button that collapses an option back to a single line once the researcher has filled it in."
+  },
+  "protocolBuilder.option.labelLabel": {
+    "defaultMessage": "Label",
+    "description": "Label of the field holding what a participant reads for this option."
+  },
+  "protocolBuilder.option.labelPlaceholder": {
+    "defaultMessage": "Enter a label...",
+    "description": "Placeholder in the empty field holding what a participant reads for this option."
+  },
+  "protocolBuilder.option.noValue": {
+    "defaultMessage": "No value",
+    "description": "Stands in for an option’s stored value on the collapsed row while the researcher has not entered one yet."
+  },
   "protocolBuilder.option.optionNoun": {
     "defaultMessage": "option",
     "description": "Noun for one row of the list of options a categorical or ordinal attribute offers. Interpolated mid-sentence into things said ABOUT a row (\"This option was replaced…\"), so it is lower case and singular."
+  },
+  "protocolBuilder.option.removeOption": {
+    "defaultMessage": "Remove option",
+    "description": "Action that deletes one option from the list. Used as the title of the confirmation it raises and as that confirmation’s own confirm button."
+  },
+  "protocolBuilder.option.removeOptionAt": {
+    "defaultMessage": "Remove option {position}",
+    "description": "Accessible name of the button that deletes one option. position is the option’s own place in the list, counting from one — the only thing that tells two blank options apart."
+  },
+  "protocolBuilder.option.removeOptionDescription": {
+    "defaultMessage": "Are you sure you want to remove this option?",
+    "description": "Body of the confirmation raised when a researcher deletes one option from the list."
+  },
+  "protocolBuilder.option.reorderOption": {
+    "defaultMessage": "Reorder option {position} of {count, number}",
+    "description": "Accessible name of the handle that drags one option into a different position. position is the option’s own place in the list, counting from one; count is how many options the list holds."
+  },
+  "protocolBuilder.option.untitled": {
+    "defaultMessage": "Untitled option",
+    "description": "Stands in for an option’s label on the collapsed row while the researcher has not written one yet."
+  },
+  "protocolBuilder.option.valueLabel": {
+    "defaultMessage": "Value",
+    "description": "Label of the field holding what this option is stored and exported as, as opposed to what a participant reads."
+  },
+  "protocolBuilder.option.valuePlaceholder": {
+    "defaultMessage": "Enter a value...",
+    "description": "Placeholder in the empty field holding what this option is stored and exported as."
   },
   "protocolBuilder.outline.completeStatus": {
     "defaultMessage": "Finished",
