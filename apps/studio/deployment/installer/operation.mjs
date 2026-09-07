@@ -21,7 +21,7 @@ import {
   saveState,
   writePrivateFile,
 } from './files.mjs';
-import { activateRelease, sha256 } from './release.mjs';
+import { activateRelease, readRelease, sha256 } from './release.mjs';
 import { command, pullVerifiedImages, verifyOperation } from './verify.mjs';
 
 const phases = [
@@ -67,17 +67,22 @@ function environment() {
 }
 
 function loadJournal(path, digest, kind) {
-  if (!existsSync(path)) return { format: 1, digest, phase: 'accepted', kind };
+  if (!existsSync(path))
+    return { format: 1, digest, phase: 'accepted', kind, reuse: false };
   const value = JSON.parse(privateFile(path));
   if (
-    Object.keys(value).toSorted().join(',') !== 'digest,format,kind,phase' ||
+    ![
+      'digest,format,kind,phase',
+      'digest,format,kind,phase,reuse',
+    ].includes(Object.keys(value).toSorted().join(',')) ||
     value.format !== 1 ||
     value.digest !== digest ||
     !phases.includes(value.phase) ||
-    !['fresh', 'update'].includes(value.kind)
+    !['fresh', 'update'].includes(value.kind) ||
+    (value.reuse !== undefined && typeof value.reuse !== 'boolean')
   )
     throw new Error('Invalid protected installation progress.');
-  return value;
+  return { ...value, reuse: value.reuse ?? false };
 }
 
 function storeBundle(bundle, destination) {
@@ -140,6 +145,24 @@ function checkTemplates(bundle, configuration) {
         'Deployment configuration differs from the signed installer.',
       );
   }
+}
+
+function normalizeDeployment(value, roots) {
+  if (typeof value === 'string') {
+    for (const root of roots)
+      if (value === root || value.startsWith(`${root}${sep}`))
+        return `$CONFIGURATION${value.slice(root.length)}`;
+    return value;
+  }
+  if (Array.isArray(value)) return value.map((item) => normalizeDeployment(item, roots));
+  if (value && typeof value === 'object')
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [
+        key,
+        normalizeDeployment(item, roots),
+      ]),
+    );
+  return value;
 }
 
 function backupParents(options, root) {
@@ -284,6 +307,40 @@ export function executeOperation(options, run = command) {
       [],
       { input: sql },
     );
+  const smoke = (directory) => {
+    const origin = parseEnv(
+      privateFile(join(directory, '.env')).toString(),
+    ).STUDIO_DOMAIN;
+    const result = JSON.parse(
+      compose(
+        directory,
+        [
+          'exec',
+          '-T',
+          'studio',
+          'node',
+          '--input-type=module',
+          '-e',
+          bundle.files.get('smoke.mjs').toString(),
+          '--',
+          '--studio-installer-smoke',
+        ],
+        ['deployment/quarantine.yml'],
+        {
+          input: JSON.stringify({
+            mode: journal.kind,
+            origin: `https://${origin}`,
+            credentials,
+          }),
+        },
+      ),
+    );
+    if (
+      result.ready !== true ||
+      result.authenticated !== (journal.kind === 'update')
+    )
+      throw new Error('Private release smoke returned an invalid verdict.');
+  };
   const stop = (directory) => {
     compose(directory, ['stop', 'traefik']);
     compose(directory, ['stop', 'studio', 'worker']);
@@ -432,9 +489,23 @@ export function executeOperation(options, run = command) {
     }
   }
   if (
+    journal.reuse &&
+    previous?.active?.digest === bundle.current.digest &&
+    journal.phase === 'verified'
+  ) {
+    advance('active');
+    return { state: 'active', release: bundle.current.digest, configuration };
+  }
+  if (
     journal.phase === 'active' &&
     previous?.active?.digest === bundle.current.digest
   ) {
+    if (journal.reuse)
+      return {
+        state: 'active',
+        release: bundle.current.digest,
+        configuration,
+      };
     compose(configuration, [
       'up',
       '-d',
@@ -444,6 +515,46 @@ export function executeOperation(options, run = command) {
       'worker',
       'traefik',
     ]);
+    return { state: 'active', release: bundle.current.digest, configuration };
+  }
+  const reusable = (() => {
+    if (!updating || !oldConfiguration) return false;
+    const previousRelease = readRelease(
+      privateFile(join(oldConfiguration, 'release.json'), 4 * 1024 * 1024),
+    ).release;
+    if (
+      previousRelease.postgresMajor !== bundle.release.postgresMajor ||
+      JSON.stringify(previousRelease.schemas.studio) !==
+        JSON.stringify(bundle.release.schemas.studio) ||
+      !privateFile(join(oldConfiguration, '.env')).equals(
+        privateFile(join(configuration, '.env')),
+      ) ||
+      !privateFile(join(oldConfiguration, 'deployment/encryption.env')).equals(
+        privateFile(join(configuration, 'deployment/encryption.env')),
+      )
+    )
+      return false;
+    const oldEffective = JSON.parse(
+      compose(oldConfiguration, ['config', '--format', 'json']),
+    );
+    return (
+      JSON.stringify(
+        normalizeDeployment(oldEffective, [oldConfiguration, configuration]),
+      ) ===
+      JSON.stringify(
+        normalizeDeployment(effective, [oldConfiguration, configuration]),
+      )
+    );
+  })();
+  if (reusable) {
+    // The verified configuration resolves to the same local runtime. Its only
+    // normalized path differences are this operation's two generation roots.
+    // Registry is verified but is not a Studio Compose service or activation.
+    smoke(configuration);
+    journal.reuse = true;
+    advance('verified');
+    saveState(control, activateRelease(accepted, bundle.current));
+    advance('active');
     return { state: 'active', release: bundle.current.digest, configuration };
   }
   if (updating && phases.indexOf(journal.phase) < phases.indexOf('captured')) {
@@ -512,38 +623,7 @@ export function executeOperation(options, run = command) {
     ['up', '-d', '--no-deps', '--wait', 'studio'],
     ['deployment/quarantine.yml'],
   );
-  const origin = parseEnv(
-    privateFile(join(configuration, '.env')).toString(),
-  ).STUDIO_DOMAIN;
-  const smokeResult = JSON.parse(
-    compose(
-      configuration,
-      [
-        'exec',
-        '-T',
-        'studio',
-        'node',
-        '--input-type=module',
-        '-e',
-        bundle.files.get('smoke.mjs').toString(),
-        '--',
-        '--studio-installer-smoke',
-      ],
-      ['deployment/quarantine.yml'],
-      {
-        input: JSON.stringify({
-          mode: journal.kind,
-          origin: `https://${origin}`,
-          credentials,
-        }),
-      },
-    ),
-  );
-  if (
-    smokeResult.ready !== true ||
-    smokeResult.authenticated !== (journal.kind === 'update')
-  )
-    throw new Error('Private release smoke returned an invalid verdict.');
+  smoke(configuration);
   advance('verified');
   compose(configuration, ['stop', 'studio']);
   compose(configuration, [

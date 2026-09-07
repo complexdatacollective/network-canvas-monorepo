@@ -22,7 +22,7 @@ type CommandOptions = {
   timeout?: number;
 };
 
-it('uses the selected template bundle for a same-image update, then drains, backs up, migrates and privately smokes real Compose services', async () => {
+it('keeps real Studio containers running for a same-image template update and retries its private smoke safely', async () => {
   const fixture = await localDeployment('installer-operation');
   const root = privateDirectory(join(fixture.root, 'installation'));
   const data = privateDirectory(join(fixture.root, 'independent-data'));
@@ -166,7 +166,8 @@ networks:
       if (
         args.includes('--input-type=module') &&
         !refusedSmoke &&
-        migrationAttempts === 2
+        (JSON.parse(options.input?.toString() ?? '{}') as { mode?: unknown })
+          .mode === 'update'
       ) {
         refusedSmoke = true;
         throw new Error(
@@ -185,6 +186,31 @@ networks:
     }
     return execute(program, args, options);
   };
+  function containerIds(configuration: string) {
+    return Object.fromEntries(
+      ['postgres', 'minio', 'studio', 'worker', 'traefik'].map((service) => [
+        service,
+        execute('docker', [
+          'compose',
+          '--project-name',
+          project,
+          '--env-file',
+          join(configuration, '.env'),
+          '-f',
+          join(configuration, 'docker-compose.yml'),
+          '-f',
+          join(configuration, 'deployment/release-images.yml'),
+          '-f',
+          overlay,
+          '--profile',
+          '*',
+          'ps',
+          '--quiet',
+          service,
+        ]).trim(),
+      ]),
+    );
+  }
   async function bundle(
     generation: number,
     previous: ReturnType<typeof readRelease>[] = [],
@@ -280,6 +306,11 @@ networks:
       }),
     ).toEqual({ state: 'complete' });
     expect((await fetch(`${fixture.origin}/setup`)).status).toBe(404);
+    const beforeUpdate = containerIds(first.configuration);
+    expect(Object.values(beforeUpdate).every((id) => id.length > 0)).toBe(
+      true,
+    );
+    const commandsBeforeUpdate = readFileSync(commands, 'utf8').length;
     const nextOptions = await bundle(2, [firstRelease]);
     const nextRelease = release!;
     // The manifest references differ, but the inspected Linux configuration
@@ -293,10 +324,7 @@ networks:
     );
     expect(refusedSmoke).toBe(true);
     const countsBeforeRetry = await readdir(data);
-    expect(countsBeforeRetry).toHaveLength(1);
-    expect(
-      await readFile(join(data, countsBeforeRetry[0]!, 'COMPLETE'), 'utf8'),
-    ).toContain('Studio quiesced backup');
+    expect(countsBeforeRetry).toHaveLength(0);
     const protectedState = JSON.parse(
       await readFile(join(root, 'control/state.json'), 'utf8'),
     ) as { active: { digest: string }; highest: { digest: string } };
@@ -312,9 +340,18 @@ networks:
       await readFile(join(first.configuration, 'docker-compose.yml'), 'utf8'),
     ).not.toContain('# Selected installer generation 2');
     expect(await readdir(data)).toEqual(countsBeforeRetry);
-    expect((await readdir(keys)).length).toBe(1);
+    expect((await readdir(keys)).length).toBe(0);
     expect((await fetch(`${fixture.origin}/setup`)).status).toBe(404);
-    expect(migrationAttempts).toBe(3);
+    expect((await fetch(`${fixture.origin}/readyz`)).status).toBe(200);
+    expect(containerIds(retry.configuration)).toEqual(beforeUpdate);
+    const updateCommands = readFileSync(commands, 'utf8').slice(
+      commandsBeforeUpdate,
+    );
+    expect(updateCommands).not.toContain('"stop"');
+    expect(updateCommands).not.toContain('"up"');
+    expect(updateCommands).not.toContain('"migrate"');
+    expect(updateCommands).not.toContain('sh [');
+    expect(migrationAttempts).toBe(1);
     expect(readFileSync(commands, 'utf8')).not.toContain(credentials.password);
     expect(
       (
@@ -323,6 +360,13 @@ networks:
         ) as { active: { digest: string } }
       ).active.digest,
     ).toBe(nextRelease.current.digest);
+    const exactRetryStart = readFileSync(commands, 'utf8').length;
+    expect(executeOperation(nextOptions, run).state).toBe('active');
+    expect(containerIds(retry.configuration)).toEqual(beforeUpdate);
+    const exactRetryCommands = readFileSync(commands, 'utf8').slice(
+      exactRetryStart,
+    );
+    expect(exactRetryCommands).not.toContain('"up"');
   } finally {
     // Only this test's derived project may be removed. A failed earlier attempt
     // still has its selected generation's public config available for cleanup.

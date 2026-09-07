@@ -25,7 +25,7 @@ import {
   parseArguments,
 } from '../apps/studio/deployment/installer/install.mjs';
 import { executeOperation } from '../apps/studio/deployment/installer/operation.mjs';
-import { sha256 } from '../apps/studio/deployment/installer/release.mjs';
+import { readRelease, sha256 } from '../apps/studio/deployment/installer/release.mjs';
 import { releasedDistribution } from './test-support/studio-release.mjs';
 
 const custodyBytes = Buffer.from(
@@ -35,6 +35,17 @@ const credentials = {
   email: 'synthetic@example.test',
   password: 'SYNTHETIC_PRIVATE_PASSWORD',
 };
+
+function sameRuntimeRelease(generation, previous) {
+  const next = releasedDistribution(generation, [previous]);
+  next.value.images = structuredClone(previous.release.images);
+  next.value.schemas.studio = structuredClone(previous.release.schemas.studio);
+  next.value.postgresMajor = previous.release.postgresMajor;
+  return {
+    value: next.value,
+    ...readRelease(Buffer.from(JSON.stringify(next.value))),
+  };
+}
 
 function fixture(t) {
   const directory = mkdtempSync(join(tmpdir(), 'studio-installer-operation-'));
@@ -246,9 +257,13 @@ function fixture(t) {
     }
     if (tail[0] === 'exec' && tail.includes('node')) {
       state.trace.push('smoke');
-      assert.equal(state.public, false);
-      assert.equal(state.workers, false);
-      assert.equal(state.web, true);
+      if (state.public) {
+        assert.equal(state.workers, true);
+        assert.equal(state.web, true);
+      } else {
+        assert.equal(state.workers, false);
+        assert.equal(state.web, true);
+      }
       if (failure === 'smoke') throw new Error('Injected smoke failure');
       const input = JSON.parse(options.input);
       if (input.mode === 'update')
@@ -313,6 +328,38 @@ test('the actual caller drains, captures, migrates and privately authenticates b
       'SYNTHETIC_AUTH_SECRET',
     ),
     false,
+  );
+});
+
+test('an installer-only release preserves the running backend across smoke interruption and exact retry', (t) => {
+  const f = fixture(t);
+  const old = releasedDistribution();
+  executeOperation(f.select(old), f.run);
+  const next = sameRuntimeRelease(2, old);
+  const options = f.select(next);
+  f.state.trace = [];
+  f.setFailure('smoke');
+  assert.throws(() => executeOperation(options, f.run), /Injected smoke/);
+  assert.deepEqual(f.state.trace, ['smoke']);
+  assert.equal(f.state.public, true);
+  assert.equal(f.state.web, true);
+  assert.equal(f.state.workers, true);
+  assert.deepEqual(f.protectedState().highest, next.current);
+  assert.deepEqual(f.protectedState().active, old.current);
+  f.setFailure(undefined);
+  f.state.trace = [];
+  executeOperation(options, f.run);
+  assert.deepEqual(f.state.trace, ['smoke']);
+  assert.deepEqual(f.protectedState().active, next.current);
+  assert.equal(f.state.public, true);
+  assert.equal(f.state.web, true);
+  assert.equal(f.state.workers, true);
+  f.state.trace = [];
+  executeOperation(options, f.run);
+  assert.deepEqual(
+    f.state.trace,
+    [],
+    'an exact active retry must not recreate unchanged containers',
   );
 });
 

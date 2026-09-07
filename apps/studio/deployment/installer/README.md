@@ -37,6 +37,13 @@ This lets a Compose-only release use its current configuration while retaining
 the selected backend image identities; templates embedded in an older image
 cannot silently replace the selected release's templates.
 
+If both generations resolve to the same Studio Compose deployment, the same
+Studio schema, and identical retained environment and encryption inputs, the
+installer privately smokes the running service and records the new active
+generation without stopping or recreating containers. The Registry image is
+verified with the release, but Registry deployment remains a separate owner;
+this Studio installer never marks Registry as deployed.
+
 For a fresh installation, pass an empty mode0700 installation directory and the
 public domain and ACME contact email:
 
