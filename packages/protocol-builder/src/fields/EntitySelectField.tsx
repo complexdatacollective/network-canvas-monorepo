@@ -1,5 +1,8 @@
 import { type CSSProperties, useId, useMemo } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import Icon from '@codaco/fresco-ui/Icon';
 import Node, {
@@ -37,31 +40,65 @@ const asNodeColor = (color: ColorReference): NodeColorSequence =>
  * produced "No node types" beside "Choose an node type…" once before. Each
  * sentence is whole, so a translator moves it rather than reassembling it.
  */
-const EMPTY_MESSAGES: Readonly<Record<RuleEntityTarget, string>> =
-  Object.freeze({
-    node: 'This protocol has no node types yet.',
-    edge: 'This protocol has no edge types yet.',
-  });
-
-const GROUP_LABELS: Readonly<Record<RuleEntityTarget, string>> = Object.freeze({
-  node: 'Node type',
-  edge: 'Edge type',
-});
+const EMPTY_MESSAGES = defineMessages({
+  node: {
+    id: 'protocolBuilder.entitySelect.nodeEmptyState',
+    defaultMessage: 'This protocol has no node types yet.',
+    description:
+      'Shown in place of the chips when a researcher is asked to choose a node type and the protocol’s codebook defines none. A node type is a kind of network member the study records, such as a person or a place.',
+  },
+  edge: {
+    id: 'protocolBuilder.entitySelect.edgeEmptyState',
+    defaultMessage: 'This protocol has no edge types yet.',
+    description:
+      'Shown in place of the chips when a researcher is asked to choose an edge type and the protocol’s codebook defines none. An edge type is a kind of relationship between two network members, such as a friendship.',
+  },
+}) satisfies Record<RuleEntityTarget, MessageDescriptor>;
 
 /**
- * Names a type the researcher — or a collaborator — has since deleted.
- *
- * A stored id the codebook no longer describes is kept and shown rather than
- * quietly left out: a group of chips with none of them selected reads as a
- * question nobody has answered, while the rule underneath is still pointed at
- * the deleted type and saves back that way. The same treatment
- * `VariablePickerControl` gives a deleted attribute, for the same reason.
+ * What the group of chips is called when the surrounding field supplies no
+ * label of its own — the accessible name a screen reader announces for the
+ * whole choice, not a heading anybody sees.
  */
-const missingOptionLabel = (id: string) =>
-  `${id} — this type is no longer in the codebook`;
+const GROUP_LABELS = defineMessages({
+  node: {
+    id: 'protocolBuilder.entitySelect.nodeGroupLabel',
+    defaultMessage: 'Node type',
+    description:
+      'Accessible name of the group of chips a researcher picks a node type from. A node type is a kind of network member the study records, such as a person or a place.',
+  },
+  edge: {
+    id: 'protocolBuilder.entitySelect.edgeGroupLabel',
+    defaultMessage: 'Edge type',
+    description:
+      'Accessible name of the group of chips a researcher picks an edge type from. An edge type is a kind of relationship between two network members, such as a friendship.',
+  },
+}) satisfies Record<RuleEntityTarget, MessageDescriptor>;
 
-const MISSING_TYPE_MESSAGE =
-  'This type is no longer in the codebook. Choose another one.';
+const messages = defineMessages({
+  /**
+   * Names a type the researcher — or a collaborator — has since deleted.
+   *
+   * A stored id the codebook no longer describes is kept and shown rather than
+   * quietly left out: a group of chips with none of them selected reads as a
+   * question nobody has answered, while the rule underneath is still pointed
+   * at the deleted type and saves back that way. The same treatment
+   * `VariablePickerControl` gives a deleted attribute, for the same reason.
+   */
+  missingOptionLabel: {
+    id: 'protocolBuilder.entitySelect.missingOptionLabel',
+    defaultMessage: '{typeId} — this type is no longer in the codebook',
+    description:
+      'Name of the one chip standing for a node or edge type the protocol’s codebook no longer defines. typeId is the raw stored identifier of that type — there is no name left to show, because the definition it would have come from has been deleted. The codebook is the protocol’s definition of the node types, edge types and attributes a study records.',
+  },
+  missingType: {
+    id: 'protocolBuilder.entitySelect.missingType',
+    defaultMessage:
+      'This type is no longer in the codebook. Choose another one.',
+    description:
+      'Shown under the chips when the node or edge type a researcher’s stored choice names has been deleted from the protocol’s codebook, so the choice has to be made again.',
+  },
+});
 
 /** Custom properties the edge chip tints itself through. */
 type EdgeChipStyle = CSSProperties & {
@@ -197,6 +234,7 @@ export function EntitySelectControl({
   'aria-required': ariaRequired,
 }: EntitySelectFieldProps) {
   const { protocolContext, readOnly: sessionReadOnly } = useStageEditorForm();
+  const intl = useAppIntl();
   const readOnly = readOnlyProp || sessionReadOnly;
   const generatedGroupName = useId();
   const groupName = name ?? generatedGroupName;
@@ -218,13 +256,15 @@ export function EntitySelectControl({
             ...codebookOptions,
             {
               value,
-              label: missingOptionLabel(value),
+              label: intl.formatMessage(messages.missingOptionLabel, {
+                typeId: value,
+              }),
               color:
                 entityType === 'edge' ? DEFAULT_EDGE_COLOR : DEFAULT_NODE_COLOR,
             },
           ]
         : codebookOptions,
-    [codebookOptions, entityType, isMissing, value],
+    [codebookOptions, entityType, intl, isMissing, value],
   );
 
   return (
@@ -238,7 +278,9 @@ export function EntitySelectControl({
         id={id}
         role="radiogroup"
         aria-label={
-          ariaLabelledBy === undefined ? GROUP_LABELS[entityType] : undefined
+          ariaLabelledBy === undefined
+            ? intl.formatMessage(GROUP_LABELS[entityType])
+            : undefined
         }
         aria-labelledby={ariaLabelledBy}
         aria-describedby={ariaDescribedBy}
@@ -254,7 +296,7 @@ export function EntitySelectControl({
       >
         {options.length === 0 ? (
           <p className="w-full py-6 text-center text-sm text-current/70 italic">
-            {EMPTY_MESSAGES[entityType]}
+            {intl.formatMessage(EMPTY_MESSAGES[entityType])}
           </p>
         ) : (
           <div className="flex flex-row flex-wrap justify-start gap-3">
@@ -277,7 +319,9 @@ export function EntitySelectControl({
         )}
       </fieldset>
       {isMissing && (
-        <p className="text-destructive text-sm">{MISSING_TYPE_MESSAGE}</p>
+        <p className="text-destructive text-sm">
+          {intl.formatMessage(messages.missingType)}
+        </p>
       )}
     </div>
   );

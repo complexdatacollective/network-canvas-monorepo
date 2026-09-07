@@ -23,21 +23,6 @@ import {
 /** The character limit is the control's own; it is not a validation rule. */
 const STAGE_NAME_LIMIT = 50;
 
-/**
- * What this host calls a stage.
- *
- * Architect says "stage"; Studio says "screen". Each string is whole rather
- * than assembled from a noun and a frame, so a host can say the thing its
- * researchers already read everywhere else in it.
- */
-export type StageNameCopy = Readonly<{
-  /** Names the section in the outline and to assistive technology. */
-  sectionTitle: string;
-  fieldLabel: string;
-  placeholder: string;
-  position: (index: number, total: number) => string;
-}>;
-
 const messages = defineMessages({
   stageName: {
     id: 'protocolBuilder.stageName.name',
@@ -82,7 +67,6 @@ export type StageNameSectionProps = Readonly<{
    * leaves that only the section writing them can assemble.
    */
   autoName?: Readonly<{ panels?: readonly AutoStageNamePanel[] }>;
-  copy?: Partial<StageNameCopy>;
 }>;
 
 /**
@@ -97,19 +81,13 @@ export default function StageNameSection({
   documentationUrl,
   autoFocus = false,
   autoName,
-  copy,
 }: StageNameSectionProps) {
   const { identity } = useStageEditorForm();
   const intl = useAppIntl();
-  const words: StageNameCopy = {
-    sectionTitle: intl.formatMessage(messages.stageName),
-    fieldLabel: intl.formatMessage(messages.stageName),
-    placeholder: intl.formatMessage(messages.placeholder),
-    position: (index, total) =>
-      intl.formatMessage(messages.position, { index, total }),
-    ...copy,
-  };
-  const { sectionId } = useOutlineSection(words.sectionTitle);
+  // One descriptor read twice: the section's name in the outline and the
+  // field's own label are the same words, and a translator moves them once.
+  const stageNameLabel = intl.formatMessage(messages.stageName);
+  const { sectionId } = useOutlineSection(stageNameLabel);
   const headingId = useId();
   const interfaceName =
     interfaceDisplayName(identity.type, intl) ?? identity.type;
@@ -128,7 +106,7 @@ export default function StageNameSection({
       className="flex min-w-0 flex-col justify-center pt-7 outline-none *:data-[field-name=label]:m-0"
     >
       <span id={headingId} className="sr-only">
-        {words.sectionTitle}
+        {stageNameLabel}
       </span>
       {position && (
         <Paragraph
@@ -139,7 +117,10 @@ export default function StageNameSection({
             className: 'text-current/70',
           })}
         >
-          {words.position(position.index, position.total)}
+          {intl.formatMessage(messages.position, {
+            index: position.index,
+            total: position.total,
+          })}
         </Paragraph>
       )}
       <SectionScopeContext value={sectionId}>
@@ -149,9 +130,9 @@ export default function StageNameSection({
           // The hero input is the visible heading, so the label exists for
           // assistive technology — but it still has to exist, because it is
           // what the outline and a host's problem panel call this field.
-          label={words.fieldLabel}
+          label={stageNameLabel}
           labelHidden
-          placeholder={words.placeholder}
+          placeholder={intl.formatMessage(messages.placeholder)}
           characterLimit={STAGE_NAME_LIMIT}
           required
           autoFocus={autoFocus}

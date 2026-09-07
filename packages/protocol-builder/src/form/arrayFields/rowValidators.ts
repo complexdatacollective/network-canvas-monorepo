@@ -1,5 +1,11 @@
 import { get, isEqual } from 'es-toolkit/compat';
 
+import {
+  createMessageError,
+  defineMessage,
+  defineMessages,
+} from '@codaco/app-i18n/messages';
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 import { normalizeForComparison } from '@codaco/shared-consts';
 
@@ -32,8 +38,49 @@ const isRoughlyEqual = (left: unknown, right: unknown) =>
     ? normalizeForComparison(left) === normalizeForComparison(right)
     : isEqual(left, right);
 
-const capitalize = (word: string) =>
-  word.replace(/^\w/, (firstLetter) => firstLetter.toUpperCase());
+/**
+ * A row cell's own complaints.
+ *
+ * Every one crosses a string-only contract — a `RowValidator` answers with a
+ * `string | undefined` that `RowField` hands to `FieldErrors` — so they are
+ * encoded here and decoded there.
+ */
+const rowRequiredMessage = defineMessage({
+  id: 'protocolBuilder.arrayField.rowRequired',
+  defaultMessage: 'Required',
+  description:
+    'Shown under one cell of a row in an editable list when the researcher has left it empty. Terse because it sits inside a row of a table-like list rather than under a full-width field.',
+});
+
+/**
+ * The subjects `allowedVariableNameRow` reports about.
+ *
+ * Whole nouns rather than words spliced together, and separate descriptors
+ * rather than one: they are the object of a sentence, and a language that
+ * inflects the object cannot get there from the English noun.
+ */
+export const variableNameSubjects = defineMessages({
+  attributeName: {
+    id: 'protocolBuilder.arrayField.attributeNameSubject',
+    defaultMessage: 'attribute name',
+    description:
+      'What the researcher was entering, named inside the sentence that refuses it: the name of a codebook variable. Interpolated mid-sentence after "Not a valid", so it is lower case.',
+  },
+  optionValue: {
+    id: 'protocolBuilder.arrayField.optionValueSubject',
+    defaultMessage: 'option value',
+    description:
+      'What the researcher was entering, named inside the sentence that refuses it: the stored value of one option of a categorical or ordinal attribute, as opposed to the label a participant reads. Interpolated mid-sentence after "Not a valid", so it is lower case.',
+  },
+});
+
+const invalidNameMessage = defineMessage({
+  id: 'protocolBuilder.arrayField.invalidName',
+  defaultMessage:
+    'Not a valid {subject}. Only letters, numbers and the symbols ._-: are supported',
+  description:
+    'Shown under a cell whose text cannot be stored as an XML element name or a CSV column header. subject names what was being entered — an attribute name, an option value — already in the reader’s language. The characters listed are literal punctuation and stay as they are.',
+});
 
 /**
  * Nothing entered. `false` and `0` are answers; absent, empty and
@@ -48,7 +95,7 @@ const capitalize = (word: string) =>
  * fault.
  */
 export const requiredRow =
-  (message = 'Required'): RowValidator =>
+  (message = createMessageError(rowRequiredMessage)): RowValidator =>
   (value) =>
     isUnanswered(value) ? message : undefined;
 
@@ -59,9 +106,17 @@ export const requiredRow =
  * array and the column, exactly as the host rule it replaces does, so a row
  * bound to the wrong index cannot silently compare itself against a different
  * column.
+ *
+ * `message` is REQUIRED, and it is a whole sentence. It used to be optional,
+ * and the fallback built one out of the column's own field name —
+ * `Labels must be unique` from `options[3].label` — which is a sentence no
+ * translator can be handed: the capital and the plural `s` are English string
+ * surgery over an identifier that is never translated at all. A caller naming
+ * the clash it is actually reporting is the only version of this that can be
+ * read in another language.
  */
 export const uniqueRowAttribute =
-  (message?: string): RowValidator =>
+  (message: string): RowValidator =>
   (value, allValues, name) => {
     // Emptiness is `required`'s business, and it is the same emptiness: two
     // rows that have both been left blank are not a clash to report. `0` and
@@ -82,9 +137,7 @@ export const uniqueRowAttribute =
         isRoughlyEqual(Reflect.get(row, attribute), value),
     ).length;
 
-    return matches >= 2
-      ? (message ?? `${capitalize(attribute)}s must be unique`)
-      : undefined;
+    return matches >= 2 ? message : undefined;
   };
 
 /**
@@ -92,7 +145,9 @@ export const uniqueRowAttribute =
  * headers, so they must respect NMTOKEN rules.
  */
 export const allowedVariableNameRow =
-  (subject = 'attribute name'): RowValidator =>
+  (
+    subject: MessageDescriptor = variableNameSubjects.attributeName,
+  ): RowValidator =>
   (value) => {
     // Anything that is not text is not a name; stringifying it would either
     // pass a number that is legal anyway or report `[object Object]` back to
@@ -103,7 +158,13 @@ export const allowedVariableNameRow =
         : '';
     return /^[a-zA-Z0-9._\-:]+$/.test(text)
       ? undefined
-      : `Not a valid ${subject}. Only letters, numbers and the symbols ._-: are supported`;
+      : createMessageError(invalidNameMessage, {
+          // Nested rather than resolved here: this rule runs wherever a value
+          // is judged — including at module scope, before any reader has a
+          // language — so the noun is settled at the same moment the sentence
+          // around it is.
+          subject: { messageError: createMessageError(subject) },
+        });
   };
 
 /**

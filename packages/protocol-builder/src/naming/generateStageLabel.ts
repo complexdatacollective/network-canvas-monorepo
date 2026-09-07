@@ -5,6 +5,36 @@ export const MAX_LABEL_LENGTH = 50;
 
 export type Qualifier = { full: string; summary: string };
 
+/**
+ * Everything in this module is English on purpose, and stays English.
+ *
+ * What it produces is not copy: it is a SEEDED VALUE. `useAutoStageName` writes
+ * the result straight into the stage form's `label` field, which is saved into
+ * the protocol document as `stage.label` — a researcher-authored name that then
+ * travels with the protocol into exports, printed codebooks, and every other
+ * host that opens it. This is exactly the case `INTERFACE_NAMES` in
+ * `interfaces/interfaceNames.ts` exists for: the same names are localized for
+ * DISPLAY through `interfaceDisplayName(type, intl)` and left English where
+ * they seed a stored label.
+ *
+ * Three things break if the proposal is localized:
+ *
+ * - `dedupeStageLabel` decides uniqueness by comparing the proposal against the
+ *   labels already stored in the protocol. Localize the proposal and a stage
+ *   named in one language stops colliding with the same stage named in another,
+ *   so reopening a protocol elsewhere proposes a fresh name for a configuration
+ *   that already has one, and ` #2` suffixes accumulate across languages.
+ * - `MAX_LABEL_LENGTH` caps the STORED value at 50 characters, and
+ *   `truncateToWord` decides where it is cut. A longer translation is cut in a
+ *   different place, so the same stage acquires a different stored name
+ *   depending on who created it.
+ * - The label is the researcher's to edit afterwards. A value that changed
+ *   language under a collaborator would read as their protocol being rewritten.
+ *
+ * Displayed copy derived from a stage — the badge naming the interface, the
+ * outline, a host's timeline — is localized where it is rendered, and none of
+ * it comes from here.
+ */
 export const STAGE_TYPE_NAMES: Record<StageType, string> = {
   NameGenerator: 'Form Name Generator',
   NameGeneratorQuickAdd: 'Quick Add Name Generator',

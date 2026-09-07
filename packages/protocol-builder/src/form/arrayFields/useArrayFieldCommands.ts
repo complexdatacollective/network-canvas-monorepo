@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useRef } from 'react';
 
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import type { ArrayFieldOperation } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import { canonicalize, type Command } from '@codaco/studio-sync/apply';
 
@@ -14,9 +15,9 @@ import {
   reseatEditedRow,
   resolveRowIndex,
 } from './arrayFieldCommands.ts';
+import { DEFAULT_ITEM_LABEL } from './arrayMessages.ts';
 import {
   type ArrayWriteRefusal,
-  DEFAULT_ITEM_LABEL,
   writeRefusalMessage,
 } from './arrayWriteRefusal.ts';
 
@@ -300,7 +301,7 @@ export function useArrayFieldCommands<T extends ArrayRow>(
   rendered: unknown,
   onChange?: (next: T[]) => void,
   getId?: ArrayRowIdentity<T>,
-  itemLabel: string = DEFAULT_ITEM_LABEL,
+  itemLabel: MessageDescriptor = DEFAULT_ITEM_LABEL,
 ): ArrayFieldCommands<T> {
   const { applyOwnCommands, committedFields, reportRefusedWrite } =
     useStageEditorForm();

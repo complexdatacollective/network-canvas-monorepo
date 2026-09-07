@@ -9,12 +9,9 @@ import FormStoreProvider, {
 } from '@codaco/fresco-ui/form/store/formStoreProvider';
 
 import type { StageFormStoreApi } from '../../stageEditorContext.ts';
+import { VALUE_VALIDATORS } from '../Option.tsx';
 import RowField, { arrayScopedValues } from '../RowField.tsx';
-import {
-  allowedVariableNameRow,
-  requiredRow,
-  uniqueRowAttribute,
-} from '../rowValidators.ts';
+import { requiredRow } from '../rowValidators.ts';
 
 const Control = InputField as ComponentType<Record<string, unknown>>;
 
@@ -124,11 +121,10 @@ describe('RowField', () => {
               { value: 'yes please' },
               { value: 'yes please' },
             ])}
-            validators={[
-              requiredRow(),
-              uniqueRowAttribute(),
-              allowedVariableNameRow('option value'),
-            ]}
+            // The rules an option's value cell really runs, so the two
+            // messages below are the ones that cell shows rather than a
+            // plausible restatement of them.
+            validators={VALUE_VALIDATORS}
           />
         </FormStoreProvider>
       );
