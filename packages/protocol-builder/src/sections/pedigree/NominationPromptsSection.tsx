@@ -1,0 +1,206 @@
+import { get } from 'es-toolkit/compat';
+import { useCallback, useMemo } from 'react';
+
+import { createMessageError } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
+
+import {
+  hasValidatedUse,
+  interfaceOwnedPickIssue,
+} from '../../codebook/variableRoles.ts';
+import { withoutAbsentValues } from '../../form/absentValues.ts';
+import {
+  crossClassPickIssue,
+  validatedElsewhereMessage,
+} from '../../form/arrayFields/crossClassPick.ts';
+import DialogArrayField from '../../form/arrayFields/DialogArrayField.tsx';
+import ProtocolArrayField from '../../form/ProtocolArrayField.tsx';
+import { useStageEditorForm } from '../../form/stageEditorContext.ts';
+import { useStageValue } from '../../form/stageFormHooks.ts';
+import type { CodebookSubject } from '../../protocol-context.ts';
+import { variablesForSubject } from '../../protocol-context.ts';
+import BuilderSection from '../BuilderSection.tsx';
+import { useRowRenderers } from '../rowRenderers.tsx';
+import { usePedigreeVariableIndexes } from './entityTypeReset.ts';
+import {
+  NominationPromptEditor,
+  NominationPromptPreview,
+} from './NominationPromptRow.tsx';
+import { pedigreeMessages } from './pedigreeMessages.ts';
+
+const PROMPTS_FIELD = 'nominationPrompts';
+const NODE_TYPE_FIELD = 'nodeConfig.type';
+
+/**
+ * The refusal a switched-on but empty list earns.
+ *
+ * Encoded rather than formatted: it crosses the field's string-only error
+ * contract on its way to the form's error region, and `FieldErrors` decodes it
+ * where it is rendered — which also puts a standing refusal into the reader's
+ * new language when they change it, without the researcher having to submit
+ * again.
+ */
+const AT_LEAST_ONE_PROMPT = createMessageError(
+  pedigreeMessages.nominationAtLeastOne,
+);
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * The optional questions the pedigree asks about every family member at once.
+ *
+ * A capability rather than a required list: a pedigree that only draws the
+ * family is a complete pedigree, and the schema spells "this stage does not do
+ * this" as the key's absence — so switching the section off removes it rather
+ * than leaving an empty array behind.
+ *
+ * Every prompt names an attribute of the node type, so the section resets on
+ * that type. `resetOn` is what takes the SWITCH off with the prompts: the node
+ * configuration's own reset already discards them, but nothing there can reach
+ * this section's switch, so it would stand open over an empty list and the
+ * outline would call an optional section nobody has filled in finished. The
+ * two resets compose into one batch rather than costing two steps of undo —
+ * see `NODE_TYPE_DEPENDENT_FIELDS`.
+ *
+ * Each prompt writes its attribute through a per-person toggle the participant
+ * operates, which makes it an UNVALIDATED writer. Two rules follow, and they
+ * are enforced twice each — once by the picker, which never offers a refused
+ * attribute, and once here at save time, which is what catches a draft that
+ * predates the rule or an imported protocol that never met it:
+ *
+ * 1. it may not take an attribute a form elsewhere collects, whose validation
+ *    the toggle would bypass; and
+ * 2. it may never take one the pedigree itself derives — the participant
+ *    marker above all — and that rule has NO unchanged-pick escape, because
+ *    re-saving such a prompt would go on overwriting the marker.
+ *
+ * The escape for rule 1 is anchored to the stage's own COMMITTED prompts,
+ * found BY ROW ID rather than by the row the dialog opened on. The two differ
+ * once a prompt has been edited more than once in a single unsaved session,
+ * and only the committed anchor keeps an attribute the protocol ALREADY binds
+ * here saveable.
+ */
+export default function NominationPromptsSection() {
+  const intl = useAppIntl();
+  const { committedFields, protocolContext } = useStageEditorForm();
+  const { roleMap, slotMap } = usePedigreeVariableIndexes();
+  const nodeType = useStageValue(NODE_TYPE_FIELD);
+  const waiting = typeof nodeType !== 'string';
+
+  const subject: CodebookSubject | null = useMemo(
+    () =>
+      typeof nodeType === 'string' ? { entity: 'node', type: nodeType } : null,
+    [nodeType],
+  );
+
+  const allVariables = useMemo(
+    () =>
+      subject === null ? {} : variablesForSubject(protocolContext, subject),
+    [protocolContext, subject],
+  );
+
+  /** This row's own saved attribute, found by the row's stable id. */
+  const committedVariableFor = useCallback(
+    (rowId: unknown): string => {
+      const committed: unknown = get(committedFields, PROMPTS_FIELD);
+      if (!Array.isArray(committed) || typeof rowId !== 'string') return '';
+      const row = committed.find(
+        (candidate) => isRecord(candidate) && candidate.id === rowId,
+      );
+      const variable = isRecord(row) ? row.variable : undefined;
+      return typeof variable === 'string' ? variable : '';
+    },
+    [committedFields],
+  );
+
+  const onBeforeSave = useCallback(
+    (value: unknown) => {
+      if (subject === null || !isRecord(value)) return value;
+      const variable = typeof value.variable === 'string' ? value.variable : '';
+
+      const ownedIssue = interfaceOwnedPickIssue(slotMap, subject, variable);
+      if (ownedIssue !== undefined) {
+        return { success: false, fieldErrors: { variable: [ownedIssue] } };
+      }
+
+      const issue = crossClassPickIssue({
+        variableId: variable,
+        originalVariableId: committedVariableFor(value.id),
+        hasConflictingUse: (variableId) =>
+          hasValidatedUse(roleMap, subject, variableId),
+        allVariables,
+        message: validatedElsewhereMessage,
+      });
+      if (issue !== undefined) {
+        return { success: false, fieldErrors: { variable: [issue] } };
+      }
+      return value;
+    },
+    [allVariables, committedVariableFor, roleMap, slotMap, subject],
+  );
+
+  const promptsValidation = useMemo(
+    () => ({
+      custom: messageRuleValidation([
+        (value: unknown) =>
+          Array.isArray(value) && value.length > 0
+            ? undefined
+            : AT_LEAST_ONE_PROMPT,
+      ]),
+    }),
+    [],
+  );
+
+  const { editorFieldsComponent, previewComponent } = useRowRenderers(
+    NominationPromptEditor,
+    NominationPromptPreview,
+  );
+
+  return (
+    <BuilderSection
+      title={intl.formatMessage(pedigreeMessages.nominationTitle)}
+      description={intl.formatMessage(
+        waiting
+          ? pedigreeMessages.nominationWaitingDescription
+          : pedigreeMessages.nominationDescription,
+      )}
+      disabled={waiting}
+      resetOn={NODE_TYPE_FIELD}
+      capability={{
+        fields: [PROMPTS_FIELD],
+        confirmClear: {
+          title: pedigreeMessages.nominationPromptsClearTitle,
+          description: pedigreeMessages.nominationPromptsClearDescription,
+          confirmLabel: pedigreeMessages.nominationPromptsClearConfirm,
+        },
+      }}
+    >
+      <ProtocolArrayField<typeof DialogArrayField>
+        name={PROMPTS_FIELD}
+        label={intl.formatMessage(pedigreeMessages.nominationFieldLabel)}
+        hint={intl.formatMessage(pedigreeMessages.nominationFieldHint)}
+        component={DialogArrayField}
+        addButtonLabel={intl.formatMessage(pedigreeMessages.nominationAddLabel)}
+        addTitle={intl.formatMessage(pedigreeMessages.nominationAddTitle)}
+        editorTitle={intl.formatMessage(pedigreeMessages.nominationEditTitle)}
+        // A DESCRIPTOR rather than a word: `DialogArrayField` formats the row
+        // noun where the sentence around it is read, or encodes it for a
+        // reader further on, so resolving it here would put an English noun
+        // into a Spanish sentence.
+        itemLabel={pedigreeMessages.nominationPromptNoun}
+        emptyStateMessage={intl.formatMessage(
+          pedigreeMessages.nominationEmptyState,
+        )}
+        editorFieldsComponent={editorFieldsComponent}
+        previewComponent={previewComponent}
+        editorDialogSize="editor"
+        normalizeItem={withoutAbsentValues}
+        onBeforeSave={onBeforeSave}
+        sortable
+        {...promptsValidation}
+      />
+    </BuilderSection>
+  );
+}
