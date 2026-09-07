@@ -1,9 +1,12 @@
 import {
+  chmod,
+  lstat,
   mkdtemp,
   readFile,
   readdir,
   rm,
   stat,
+  symlink,
   writeFile,
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -16,6 +19,7 @@ import { describe, expect, it } from 'vitest';
 import {
   configureRegistryDeployment,
   registryConfigurationFiles,
+  renderRegistryDeploymentTemplate,
 } from '../configure.ts';
 
 const templateRoot = fileURLToPath(
@@ -55,6 +59,12 @@ async function environment(output: string) {
 }
 
 describe('Registry deployment configuration', () => {
+  it('limits public rendering to the signed Registry template inventory', () => {
+    expect(() =>
+      renderRegistryDeploymentTemplate('unrelated.env', Buffer.from('value')),
+    ).toThrow('Unknown Registry deployment template');
+  });
+
   it('renders public Registry provisioning and writes independent private inputs', async () => {
     await fixture(async (output) => {
       await configureRegistryDeployment({ ...options, output }, templateRoot);
@@ -101,6 +111,69 @@ describe('Registry deployment configuration', () => {
       ).rejects.toThrow('already initialized');
       expect(await environment(output)).toEqual(after);
       expect(await readdir(output)).not.toContain('.registry-configure.lock');
+    });
+  });
+
+  it('refuses mutated public templates and unsafe private modes without changing the generation', async () => {
+    await fixture(async (output) => {
+      await configureRegistryDeployment({ ...options, output }, templateRoot);
+      const template = join(output, 'deployment/registry/compose.yml');
+      const original = await readFile(template);
+      await writeFile(
+        template,
+        Buffer.concat([original, Buffer.from('# changed\n')]),
+      );
+      await expect(
+        configureRegistryDeployment({ ...options, output }, templateRoot),
+      ).rejects.toThrow('templates differ');
+      expect(await readFile(template)).not.toEqual(original);
+
+      await writeFile(template, original);
+      const environmentPath = join(output, 'registry.env');
+      const environmentBytes = await readFile(environmentPath);
+      await chmod(environmentPath, 0o400);
+      await expect(
+        configureRegistryDeployment({ ...options, output }, templateRoot),
+      ).rejects.toThrow('mode0600');
+      expect(await readFile(environmentPath)).toEqual(environmentBytes);
+    });
+  });
+
+  it('does not publish a credential marker when its final staged write fails', async () => {
+    await fixture(async (output) => {
+      await expect(
+        configureRegistryDeployment({ ...options, output }, templateRoot, {
+          write: async (path, bytes, writeOptions) => {
+            if (
+              typeof path === 'string' &&
+              path.includes('.registry.env-writing-')
+            )
+              throw new Error('synthetic private write failure');
+            await writeFile(path, bytes, writeOptions);
+          },
+        }),
+      ).rejects.toThrow('synthetic private write failure');
+      expect(await readdir(output)).toEqual([]);
+    });
+  });
+
+  it('refuses a symlinked deployment root and leaves pre-existing data intact', async () => {
+    await fixture(async (output) => {
+      await configureRegistryDeployment({ ...options, output }, templateRoot);
+      const deployment = join(output, 'deployment');
+      const retained = await mkdtemp(
+        join(tmpdir(), 'registry-configure-link-'),
+      );
+      try {
+        await rm(deployment, { recursive: true });
+        await symlink(retained, deployment);
+        await expect(
+          configureRegistryDeployment({ ...options, output }, templateRoot),
+        ).rejects.toThrow('incomplete');
+        expect((await lstat(deployment)).isSymbolicLink()).toBe(true);
+      } finally {
+        await rm(retained, { recursive: true, force: true });
+      }
     });
   });
 
@@ -223,6 +296,78 @@ describe('Registry deployment configuration', () => {
           ),
         ).rejects.toThrow();
         expect(await readdir(output)).toEqual([]);
+      } finally {
+        await rm(previous, { recursive: true, force: true });
+      }
+    });
+  });
+
+  it('refuses malformed retained credentials and aliased transition roots without modifying either root', async () => {
+    const previous = await mkdtemp(
+      join(tmpdir(), 'registry-configure-malformed-'),
+    );
+    await fixture(async (output) => {
+      try {
+        await configureRegistryDeployment(
+          { ...options, output: previous },
+          templateRoot,
+        );
+        const environmentPath = join(previous, 'registry.env');
+        const before = await readFile(environmentPath);
+        await writeFile(
+          environmentPath,
+          before
+            .toString()
+            .replace(
+              /REGISTRY_AUTH_SECRET='[^']+'/,
+              "REGISTRY_AUTH_SECRET='x'",
+            ),
+        );
+        const malformed = await readFile(environmentPath);
+        await expect(
+          configureRegistryDeployment(
+            { ...options, output, previousConfigurationRoot: previous },
+            templateRoot,
+          ),
+        ).rejects.toThrow('private configuration is incomplete');
+        expect(await readFile(environmentPath)).toEqual(malformed);
+        expect(await readdir(output)).toEqual([]);
+
+        const postgresPassword = /REGISTRY_POSTGRES_PASSWORD='([^']+)'/.exec(
+          before.toString(),
+        )?.[1];
+        expect(postgresPassword).toBeDefined();
+        await writeFile(
+          environmentPath,
+          before
+            .toString()
+            .replace(
+              /REGISTRY_AUTH_SECRET='[^']+'/,
+              `REGISTRY_AUTH_SECRET='${postgresPassword}'`,
+            ),
+        );
+        await expect(
+          configureRegistryDeployment(
+            { ...options, output, previousConfigurationRoot: previous },
+            templateRoot,
+          ),
+        ).rejects.toThrow('private configuration is incomplete');
+        expect(await readdir(output)).toEqual([]);
+
+        const nestedOutput = join(previous, 'next');
+        await expect(
+          configureRegistryDeployment(
+            {
+              ...options,
+              output: nestedOutput,
+              previousConfigurationRoot: previous,
+            },
+            templateRoot,
+          ),
+        ).rejects.toThrow('separate configuration roots');
+        await expect(lstat(nestedOutput)).rejects.toMatchObject({
+          code: 'ENOENT',
+        });
       } finally {
         await rm(previous, { recursive: true, force: true });
       }

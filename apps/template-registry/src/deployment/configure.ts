@@ -4,11 +4,14 @@ import {
   open,
   readFile,
   readdir,
+  realpath,
+  rename,
   rm,
+  rmdir,
   lstat,
   writeFile,
 } from 'node:fs/promises';
-import { dirname, join, resolve } from 'node:path';
+import { basename, dirname, join, relative, resolve } from 'node:path';
 import { parseEnv } from 'node:util';
 
 import { z } from 'zod';
@@ -87,7 +90,7 @@ export function renderRegistryDeploymentTemplate(
   name: string,
   input: Buffer,
 ): Buffer {
-  if (!registryConfigurationFiles.includes(name as never))
+  if (!registryConfigurationFiles.some((known) => known === name))
     throw new Error('Unknown Registry deployment template.');
   if (name !== 'postgres-init.sql') return Buffer.from(input);
   let sql = input.toString();
@@ -117,8 +120,11 @@ function dotenv(values: Record<string, string>): Buffer {
   );
 }
 
+function secret() {
+  return randomBytes(32).toString('hex');
+}
+
 function generatedEnvironment() {
-  const secret = () => randomBytes(32).toString('hex');
   return {
     REGISTRY_POSTGRES_PASSWORD: secret(),
     REGISTRY_MIGRATION_PASSWORD: secret(),
@@ -133,23 +139,45 @@ function generatedEnvironment() {
   };
 }
 
+function completeGenerated(
+  values: Partial<Record<(typeof generatedNames)[number], string>>,
+): values is Record<(typeof generatedNames)[number], string> {
+  return generatedNames.every((name) => typeof values[name] === 'string');
+}
+
 function retainedGenerated(values: Record<string, string | undefined>) {
-  const retained = Object.fromEntries(
-    generatedNames.map((name) => [name, values[name]]),
-  );
+  const valuesByName: Partial<Record<(typeof generatedNames)[number], string>> =
+    {};
+  for (const name of generatedNames) valuesByName[name] = values[name];
   if (
-    Object.values(retained).some(
-      (value) => typeof value !== 'string' || !value || /['\r\n]/.test(value),
-    )
+    !completeGenerated(valuesByName) ||
+    !/^[a-f0-9]{64}$/.test(valuesByName.REGISTRY_POSTGRES_PASSWORD ?? '') ||
+    !/^[a-f0-9]{64}$/.test(valuesByName.REGISTRY_MIGRATION_PASSWORD ?? '') ||
+    !/^[a-f0-9]{64}$/.test(valuesByName.REGISTRY_DATABASE_PASSWORD ?? '') ||
+    !/^[a-f0-9]{64}$/.test(valuesByName.REGISTRY_OPERATOR_PASSWORD ?? '') ||
+    !/^[a-f0-9]{64}$/.test(valuesByName.REGISTRY_BACKUP_PASSWORD ?? '') ||
+    !/^[a-f0-9]{64}$/.test(valuesByName.REGISTRY_AUTH_SECRET ?? '') ||
+    !/^registry_admin_[a-f0-9]{16}$/.test(
+      valuesByName.REGISTRY_MINIO_ROOT_USER ?? '',
+    ) ||
+    !/^[a-f0-9]{64}$/.test(valuesByName.REGISTRY_MINIO_ROOT_PASSWORD ?? '') ||
+    !/^registry_[a-f0-9]{16}$/.test(
+      valuesByName.REGISTRY_S3_ACCESS_KEY_ID ?? '',
+    ) ||
+    !/^[a-f0-9]{64}$/.test(valuesByName.REGISTRY_S3_SECRET_ACCESS_KEY ?? '') ||
+    new Set(Object.values(valuesByName)).size !== generatedNames.length
   )
     throw new Error('Registry private configuration is incomplete.');
-  return retained as Record<(typeof generatedNames)[number], string>;
+  return valuesByName;
 }
 
 async function readRegistryConfiguration(
   root: string,
   lockName?: string,
 ): Promise<Record<string, string | undefined>> {
+  const rootInfo = await lstat(root);
+  if (!rootInfo.isDirectory() || rootInfo.isSymbolicLink())
+    throw new Error('Registry configuration directory is incomplete.');
   const expected = [
     'deployment',
     'registry.env',
@@ -164,12 +192,16 @@ async function readRegistryConfiguration(
   if (
     !environmentInfo.isFile() ||
     environmentInfo.isSymbolicLink() ||
-    environmentInfo.mode & 0o077
+    (environmentInfo.mode & 0o777) !== 0o600
   )
     throw new Error('Registry private configuration must be mode0600.');
   const values = parseEnv(await readFile(environmentPath, 'utf8'));
   retainedGenerated(values);
-  const deployment = join(root, 'deployment', 'registry');
+  const deploymentRoot = join(root, 'deployment');
+  const deploymentRootInfo = await lstat(deploymentRoot);
+  if (!deploymentRootInfo.isDirectory() || deploymentRootInfo.isSymbolicLink())
+    throw new Error('Registry configuration directory is incomplete.');
+  const deployment = join(deploymentRoot, 'registry');
   const deploymentInfo = await lstat(deployment);
   if (
     !deploymentInfo.isDirectory() ||
@@ -180,10 +212,39 @@ async function readRegistryConfiguration(
     throw new Error('Registry configuration directory is incomplete.');
   for (const name of registryConfigurationFiles) {
     const info = await lstat(join(deployment, name));
-    if (!info.isFile() || info.isSymbolicLink())
+    if (
+      !info.isFile() ||
+      info.isSymbolicLink() ||
+      (info.mode & 0o777) !== 0o644
+    )
       throw new Error('Registry configuration directory is incomplete.');
   }
   return values;
+}
+
+function nested(left: string, right: string) {
+  const relation = relative(right, left);
+  return relation === '' || (!relation.startsWith('..') && relation !== '..');
+}
+
+async function outputRoot(path: string): Promise<string> {
+  try {
+    const info = await lstat(path);
+    if (!info.isDirectory() || info.isSymbolicLink())
+      throw new Error('Registry configuration output is unsafe.');
+    return realpath(path);
+  } catch (error: unknown) {
+    if (
+      !(
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        error.code === 'ENOENT'
+      )
+    )
+      throw error;
+    return join(await outputRoot(dirname(path)), basename(path));
+  }
 }
 
 /** Configure only Registry-owned public templates and private Registry inputs.
@@ -191,6 +252,7 @@ async function readRegistryConfiguration(
 export async function configureRegistryDeployment(
   input: z.input<typeof optionsSchema>,
   templateRoot: string,
+  { write: save = writeFile }: { write?: typeof writeFile } = {},
 ): Promise<void> {
   const options = optionsSchema.parse(input);
   const templates = await Promise.all(
@@ -203,6 +265,7 @@ export async function configureRegistryDeployment(
     })),
   );
   const output = resolve(options.output);
+  const canonicalOutput = await outputRoot(output);
   const publicEnvironment = {
     REGISTRY_DOMAIN: options.domain,
     REGISTRY_MAIL_FROM: options.mailFrom,
@@ -218,10 +281,15 @@ export async function configureRegistryDeployment(
         const supplied = await lstat(options.previousConfigurationRoot!);
         if (!supplied.isDirectory() || supplied.isSymbolicLink())
           throw new Error('Registry previous configuration is unsafe.');
-        const previous = resolve(options.previousConfigurationRoot!);
-        if (previous === output)
+        const previous = await realpath(
+          resolve(options.previousConfigurationRoot!),
+        );
+        if (
+          nested(canonicalOutput, previous) ||
+          nested(previous, canonicalOutput)
+        )
           throw new Error(
-            'Registry transition requires a new configuration root.',
+            'Registry transition requires separate configuration roots.',
           );
         return retainedGenerated(await readRegistryConfiguration(previous));
       })()
@@ -230,6 +298,7 @@ export async function configureRegistryDeployment(
   const lockPath = join(output, '.registry-configure.lock');
   const lock = await open(lockPath, 'wx', 0o600);
   const written: string[] = [];
+  const directories: string[] = [];
   try {
     const environmentPath = join(output, 'registry.env');
     const existing = await readdir(output);
@@ -254,32 +323,50 @@ export async function configureRegistryDeployment(
         )
       )
         throw new Error('Registry configuration is already initialized.');
+      for (const { name, bytes } of templates) {
+        if (
+          !(
+            await readFile(join(output, 'deployment', 'registry', name))
+          ).equals(bytes)
+        )
+          throw new Error('Registry configuration templates differ.');
+      }
       return;
     }
     const secrets = retained ?? generatedEnvironment();
-    const deployment = join(output, 'deployment', 'registry');
-    await mkdir(deployment, { recursive: true, mode: 0o700 });
+    const deploymentRoot = join(output, 'deployment');
+    await mkdir(deploymentRoot, { mode: 0o700 });
+    directories.push(deploymentRoot);
+    const deployment = join(deploymentRoot, 'registry');
+    await mkdir(deployment, { mode: 0o700 });
+    directories.push(deployment);
     for (const { name, bytes } of templates) {
       const target = join(deployment, name);
-      await writeFile(target, bytes, { flag: 'wx', mode: 0o644 });
+      await save(target, bytes, { flag: 'wx', mode: 0o644 });
       written.push(target);
     }
     // Credentials are the final file. A partial public template copy is never
     // mistaken for a runnable Registry configuration root.
-    await writeFile(
-      environmentPath,
+    const stagedEnvironment = join(
+      output,
+      `.registry.env-writing-${randomBytes(16).toString('hex')}`,
+    );
+    await save(
+      stagedEnvironment,
       dotenv({ ...publicEnvironment, ...secrets }),
       {
         flag: 'wx',
         mode: 0o600,
       },
     );
+    written.push(stagedEnvironment);
+    await rename(stagedEnvironment, environmentPath);
+    written.pop();
     written.push(environmentPath);
   } catch (error) {
-    if (!(await readdir(output)).includes('registry.env')) {
-      await Promise.all(written.map((path) => rm(path, { force: true })));
-      await rm(join(output, 'deployment'), { recursive: true, force: true });
-    }
+    await Promise.all(written.map((path) => rm(path, { force: true })));
+    for (const path of directories.toReversed())
+      await rmdir(path).catch(() => undefined);
     throw error;
   } finally {
     await lock.close();
