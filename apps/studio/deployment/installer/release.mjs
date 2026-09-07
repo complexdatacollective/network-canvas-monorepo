@@ -208,6 +208,11 @@ export function readRelease(bytes) {
     (value) => HASH.test(value),
     20,
   );
+  unique(
+    release.upgrade.from.map(({ source }) => source),
+    (value) => SOURCE.test(value),
+    20,
+  );
   return { release, current };
 }
 
