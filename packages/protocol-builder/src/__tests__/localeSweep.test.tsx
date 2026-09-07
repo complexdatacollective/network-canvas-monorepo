@@ -7,6 +7,9 @@ import {
   TestPromptEditor,
   TestPromptPreview,
 } from '../sections/__tests__/rowFixtures.tsx';
+import AnonymisationExplanationSection from '../sections/anonymisation/AnonymisationExplanationSection.tsx';
+import AnonymisationValidationSection from '../sections/anonymisation/AnonymisationValidationSection.tsx';
+import EncryptedVariablesSection from '../sections/anonymisation/EncryptedVariablesSection.tsx';
 import FormFieldsSection from '../sections/FormFieldsSection.tsx';
 import GeospatialPromptsSection from '../sections/geospatial/GeospatialPromptsSection.tsx';
 import MapAppearanceSection from '../sections/geospatial/MapAppearanceSection.tsx';
@@ -262,14 +265,14 @@ describe('the row dialogs under es', () => {
 });
 
 /**
- * The interface families this package edits, swept the same way.
+ * The five interface families, swept the same way.
  *
  * Each family owns a `sections/<family>/` directory and one `*Messages.ts`,
  * and each is swept once because a family is the unit a leak belongs to: the
  * sentences one family writes for itself are declared together, translated
  * together, and are exactly the words no OTHER family's sweep would ever
- * render. Sweeping one stage editor per family would leave the message files
- * of the families it did not reach with nothing looking at them at all.
+ * render. Sweeping three of the seven stage editors would leave two of the
+ * five message files with nothing looking at them at all.
  *
  * The sections mounted are the family-owned ones from that family's editor,
  * without the shared sections above them — those are swept by the stages at
@@ -360,6 +363,26 @@ describe('the interface families under es, at rest', () => {
     await settled(harness);
 
     expectNoLocaleLeaks('narrative pedigree at rest', researcherWords(harness));
+  });
+
+  it('sweeps an anonymisation stage', async () => {
+    const harness = renderStageEditor({
+      stageId: 'anonymisation-1',
+      locale: 'es',
+      sections: (
+        <>
+          <AnonymisationExplanationSection />
+          <AnonymisationValidationSection />
+          <EncryptedVariablesSection />
+        </>
+      ),
+    });
+    await settled(harness);
+
+    expectNoLocaleLeaks(
+      'anonymisation stage at rest',
+      researcherWords(harness),
+    );
   });
 });
 

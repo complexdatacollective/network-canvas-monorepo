@@ -13,14 +13,15 @@ import { NarrativeStageEditor } from '../network/NarrativeStageEditor.tsx';
 import { NetworkComposerStageEditor } from '../network/NetworkComposerStageEditor.tsx';
 import { SociogramStageEditor } from '../network/SociogramStageEditor.tsx';
 import { shimMarkdownEditorMeasurement } from '../pedigree/__tests__/editorFixtures.tsx';
+import { AnonymisationStageEditor } from '../pedigree/AnonymisationStageEditor.tsx';
 import { FamilyPedigreeStageEditor } from '../pedigree/FamilyPedigreeStageEditor.tsx';
 import { NarrativePedigreeStageEditor } from '../pedigree/NarrativePedigreeStageEditor.tsx';
 
 shimMarkdownEditorMeasurement();
 
 /**
- * The interfaces these two families claim between them, and — for each — the
- * outline sections only that editor composes.
+ * The seven interfaces these two families claim between them, and — for each —
+ * the outline sections only that editor composes.
  *
  * The section names are the discriminator because they are what a researcher
  * would see: opening a sociogram in the narrative editor is not a type error,
@@ -30,6 +31,11 @@ shimMarkdownEditorMeasurement();
  * discriminate, so a lazy one here fails rather than passing vacuously.
  */
 const CLAIMED = [
+  {
+    stageType: 'Anonymisation',
+    editor: AnonymisationStageEditor,
+    sections: ['Passphrase explanation'],
+  },
   {
     stageType: 'FamilyPedigree',
     editor: FamilyPedigreeStageEditor,
@@ -110,9 +116,9 @@ describe('the interfaces the network, spatial and pedigree families claim', () =
    * so `StageEditor` reaches for `stageEditorRegistry`, and each stage of the
    * shared protocol has to open on the sections its own family composes.
    *
-   * One test rather than one per interface, because the claim is comparative
-   * — each discriminator has to name exactly ONE of these editors, which
-   * cannot be asserted from inside a single render.
+   * One test rather than seven, because the claim is comparative — each
+   * discriminator has to name exactly ONE of the seven editors, which cannot
+   * be asserted from inside a single render.
    */
   it('opens each of them on its own editor', () => {
     const outlines = new Map<StageType, Set<string>>();

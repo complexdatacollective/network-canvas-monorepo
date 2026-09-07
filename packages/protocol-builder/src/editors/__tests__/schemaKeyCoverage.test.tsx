@@ -11,6 +11,7 @@ import { NarrativeStageEditor } from '../network/NarrativeStageEditor.tsx';
 import { NetworkComposerStageEditor } from '../network/NetworkComposerStageEditor.tsx';
 import { SociogramStageEditor } from '../network/SociogramStageEditor.tsx';
 import {
+  anonymisationEditor,
   familyPedigreeEditor,
   narrativePedigreeEditor,
   shimMarkdownEditorMeasurement,
@@ -251,6 +252,17 @@ const NARRATIVE_PEDIGREE_FIELDS: SectionDoc = {
   ],
 };
 
+const ANONYMISATION_FIELDS: SectionDoc = {
+  label: 'Anonymisation',
+  interviewScript: INTERVIEW_SCRIPT,
+  skipLogic: SKIP_LOGIC,
+  explanationText: {
+    title: 'This interview uses enhanced privacy protection',
+    body: 'You can encrypt the names of the people you mention, so nobody but you can read them.',
+  },
+  validation: { minLength: 4, maxLength: 12 },
+};
+
 type MaximalStage = Readonly<{
   stageType: StageType;
   editor: StageEditorComponent;
@@ -305,6 +317,11 @@ const MAXIMAL: readonly MaximalStage[] = [
     stageType: 'NarrativePedigree',
     editor: narrativePedigreeEditor,
     fields: NARRATIVE_PEDIGREE_FIELDS,
+  },
+  {
+    stageType: 'Anonymisation',
+    editor: anonymisationEditor,
+    fields: ANONYMISATION_FIELDS,
   },
 ];
 
@@ -363,6 +380,7 @@ const FIXTURE_STAGES: readonly Readonly<{
   },
   { stageId: 'family-pedigree-1', editor: familyPedigreeEditor },
   { stageId: 'narrative-pedigree-1', editor: narrativePedigreeEditor },
+  { stageId: 'anonymisation-1', editor: anonymisationEditor },
 ];
 
 /**
