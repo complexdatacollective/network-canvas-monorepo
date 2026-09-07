@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
+import { randomInt, randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 import { escapeIdentifier } from 'pg';
@@ -40,6 +40,27 @@ describe.skipIf(!database)(
     let appRuntimeUrl: string;
     let maintenanceRuntimeUrl: string;
     let databaseName: string;
+    const evidenceLockNamespace = randomInt(1, 2 ** 31);
+    let evidenceLockVersion = 0;
+
+    // A session lock is visible to the independent observer and works inside
+    // read-only probes. Each reset uses a fresh key, so pooled sessions cannot
+    // carry an earlier read into a later assertion.
+    const resetEvidenceReadCanary = async () => {
+      evidenceLockVersion += 1;
+      await scratch.pool.query(
+        `ALTER POLICY evidence_read_canary ON "schemaFingerprint" USING (pg_try_advisory_lock(${evidenceLockNamespace}, ${evidenceLockVersion}) IS NOT NULL)`,
+      );
+    };
+    const readEvidenceReadCanary = async () =>
+      (
+        await scratch.pool.query<{ is_called: boolean }>(
+          `SELECT EXISTS(SELECT 1 FROM pg_locks WHERE locktype = 'advisory'
+          AND database = (SELECT oid FROM pg_database WHERE datname = current_database())
+          AND classid = $1::oid AND objid = $2::oid AND objsubid = 2) AS is_called`,
+          [evidenceLockNamespace, evidenceLockVersion],
+        )
+      ).rows;
 
     beforeAll(async () => {
       if (!database)
@@ -68,10 +89,8 @@ describe.skipIf(!database)(
       }
       await scratch.pool
         .query(`GRANT CONNECT ON DATABASE ${escapeIdentifier(databaseName)} TO ${escapeIdentifier(appRuntimeLogin)}, ${escapeIdentifier(maintenanceRuntimeLogin)};
-      CREATE SEQUENCE evidence_read_canary;
-      GRANT USAGE ON evidence_read_canary TO studio_app, studio_maintenance;
       ALTER TABLE "schemaFingerprint" ENABLE ROW LEVEL SECURITY;
-      CREATE POLICY evidence_read_canary ON "schemaFingerprint" FOR SELECT TO studio_app, studio_maintenance USING (nextval('evidence_read_canary') > 0);
+      CREATE POLICY evidence_read_canary ON "schemaFingerprint" FOR SELECT TO studio_app, studio_maintenance USING (pg_try_advisory_lock(${evidenceLockNamespace}, ${evidenceLockVersion}) IS NOT NULL);
       CREATE POLICY evidence_write_control ON "schemaFingerprint" FOR UPDATE TO studio_app, studio_maintenance USING (true) WITH CHECK (true)`);
       allowedLogins = [
         identity.login,
@@ -162,13 +181,7 @@ describe.skipIf(!database)(
         expect(await checkSchema(pool, { allowedLogins })).toEqual({
           kind: 'current',
         });
-        expect(
-          (
-            await scratch.pool.query(
-              'SELECT is_called FROM evidence_read_canary',
-            )
-          ).rows,
-        ).toEqual([{ is_called: true }]);
+        expect(await readEvidenceReadCanary()).toEqual([{ is_called: true }]);
         await expect(
           pool.query('SELECT * FROM studio_migrations.history'),
         ).rejects.toMatchObject({ code: '42501' });
@@ -191,6 +204,78 @@ describe.skipIf(!database)(
       expect(result.stdout).toContain('admission-listener-started');
     });
 
+    it('requires app and maintenance connections to reach the same live database', async () => {
+      if (!database) throw new Error('PostgreSQL is required.');
+      const other = await createScratchDatabase(database);
+      let otherMaintenance:
+        | ReturnType<typeof createMaintenancePool>
+        | undefined;
+      try {
+        const migrations = await readMigrations(
+          fileURLToPath(new URL('../../../migrations', import.meta.url)),
+        );
+        await migrateDatabase(other.pool, migrations, SCHEMA_FINGERPRINT, [
+          allowedLogins[0]!,
+        ]);
+        const otherName = decodeURIComponent(
+          new URL(other.db.url).pathname.slice(1),
+        );
+        await other.pool.query(
+          `GRANT CONNECT ON DATABASE ${escapeIdentifier(otherName)} TO ${escapeIdentifier(appRuntimeLogin)}, ${escapeIdentifier(maintenanceRuntimeLogin)}`,
+        );
+        const url = new URL(other.db.url);
+        url.username = maintenanceRuntimeLogin;
+        url.password = password;
+        otherMaintenance = createMaintenancePool({ url: url.href });
+        expect(await checkSchema(otherMaintenance, { allowedLogins })).toEqual({
+          kind: 'current',
+        });
+        expect(await checkSchema(runtime, { allowedLogins })).toEqual({
+          kind: 'current',
+        });
+        const probe = createReadiness({
+          pool: runtime,
+          maintenancePool: otherMaintenance,
+          allowedLogins,
+          cacheMs: 0,
+          assetStore: {
+            checkHealth: async () => {},
+            put: async () => {
+              throw new Error('unused');
+            },
+            get: async () => null,
+          },
+        });
+        try {
+          expect((await probe.check()).status).toBe('not_ready');
+        } finally {
+          probe.stop();
+        }
+        const result = boot(allowedLogins, [], url.href);
+        expect(result.error).toBeUndefined();
+        expect(result.status).toBe(1);
+        expect(result.stdout).toContain('STUDIO_DATABASE_IDENTITY_UNSAFE');
+        expect(result.stdout).not.toContain('admission-listener-started');
+        const healthy = readiness();
+        try {
+          expect((await healthy.check()).status).toBe('ready');
+        } finally {
+          healthy.stop();
+        }
+        for (const pool of [runtime, otherMaintenance])
+          expect(
+            (
+              await pool.query(
+                "SELECT count(*)::int AS locks FROM pg_locks WHERE pid = pg_backend_pid() AND locktype = 'advisory' AND objsubid = 1",
+              )
+            ).rows,
+          ).toEqual([{ locks: 0 }]);
+      } finally {
+        await otherMaintenance?.end();
+        await other.dispose();
+      }
+    }, 30_000);
+
     it.each(['studio_app', 'studio_maintenance'] as const)(
       'rejects actual %s column-level fingerprint forgery before reading evidence',
       async (role) => {
@@ -207,21 +292,15 @@ describe.skipIf(!database)(
               )
             ).rowCount,
           ).toBe(1);
-          await scratch.pool.query(
-            "SELECT setval('evidence_read_canary', 1, false)",
-          );
+          await resetEvidenceReadCanary();
           expect(await checkSchema(pool, { allowedLogins })).toMatchObject({
             kind: 'stale',
             reason: 'unsafe-evidence',
             found: null,
           });
-          expect(
-            (
-              await scratch.pool.query(
-                'SELECT is_called FROM evidence_read_canary',
-              )
-            ).rows,
-          ).toEqual([{ is_called: false }]);
+          expect(await readEvidenceReadCanary()).toEqual([
+            { is_called: false },
+          ]);
           const probe = readiness();
           try {
             expect((await probe.check()).status).toBe('not_ready');
@@ -290,20 +369,14 @@ describe.skipIf(!database)(
               )
             ).rows,
           ).toEqual([{ held: false }]);
-          await scratch.pool.query(
-            "SELECT setval('evidence_read_canary', 1, false)",
-          );
+          await resetEvidenceReadCanary();
           expect(await checkSchema(runtime, { allowedLogins })).toMatchObject({
             kind: 'stale',
             reason: 'unsafe-evidence',
           });
-          expect(
-            (
-              await scratch.pool.query(
-                'SELECT is_called FROM evidence_read_canary',
-              )
-            ).rows,
-          ).toEqual([{ is_called: false }]);
+          expect(await readEvidenceReadCanary()).toEqual([
+            { is_called: false },
+          ]);
         } finally {
           await scratch.pool.query(
             'DROP TABLE evidence_write_path CASCADE; DROP FUNCTION IF EXISTS evidence_owner_write()',
@@ -359,9 +432,7 @@ describe.skipIf(!database)(
               )
             ).rowCount,
           ).toBe(1);
-          await scratch.pool.query(
-            "SELECT setval('evidence_read_canary', 1, false)",
-          );
+          await resetEvidenceReadCanary();
           const schema = await checkSchema(runtime, {
             allowedLogins: enrolled,
           });
@@ -379,11 +450,7 @@ describe.skipIf(!database)(
             health,
             exit: result.status,
             listener: result.stdout.includes('admission-listener-started'),
-            readEvidence: (
-              await scratch.pool.query(
-                'SELECT is_called FROM evidence_read_canary',
-              )
-            ).rows[0]?.is_called,
+            readEvidence: (await readEvidenceReadCanary())[0]?.is_called,
           }).toEqual({
             schema: 'stale',
             health: 'not_ready',
@@ -427,9 +494,7 @@ describe.skipIf(!database)(
               )
             ).rows,
           ).toEqual([{ writable: false }]);
-          await scratch.pool.query(
-            "SELECT setval('evidence_read_canary', 1, false)",
-          );
+          await resetEvidenceReadCanary();
           const schema = await checkSchema(pool, { allowedLogins });
           const probe = readiness();
           let health: string;
@@ -445,11 +510,7 @@ describe.skipIf(!database)(
             health,
             exit: result.status,
             listener: result.stdout.includes('admission-listener-started'),
-            readEvidence: (
-              await scratch.pool.query(
-                'SELECT is_called FROM evidence_read_canary',
-              )
-            ).rows[0]?.is_called,
+            readEvidence: (await readEvidenceReadCanary())[0]?.is_called,
           }).toEqual({
             schema: 'stale',
             health: 'not_ready',
@@ -541,17 +602,12 @@ describe.skipIf(!database)(
     });
 
     it('fails closed before evidence reads when production enrollment is missing', async () => {
-      await scratch.pool.query(
-        "SELECT setval('evidence_read_canary', 1, false)",
-      );
+      await resetEvidenceReadCanary();
       expect(await checkSchema(runtime)).toMatchObject({
         kind: 'stale',
         reason: 'unsafe-evidence',
       });
-      expect(
-        (await scratch.pool.query('SELECT is_called FROM evidence_read_canary'))
-          .rows,
-      ).toEqual([{ is_called: false }]);
+      expect(await readEvidenceReadCanary()).toEqual([{ is_called: false }]);
       const missing = boot(null);
       expect(missing.error).toBeUndefined();
       expect(missing.status).toBe(1);

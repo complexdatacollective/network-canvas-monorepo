@@ -1,5 +1,6 @@
 import type pg from 'pg';
 
+import { assertSamePostgresDatabase } from '@codaco/studio-sync/postgres-database-identity';
 import { assertSafePostgresRuntimeIdentity } from '@codaco/studio-sync/postgres-runtime-identity';
 import { BACKUP_ROLE, TENANT_ROLES } from '@codaco/studio-sync/rls';
 
@@ -37,34 +38,49 @@ export function createReadiness(options: {
     pool
       ? (signal) =>
           withProbeClient(pool, signal, async (client) => {
-            await client.query('SELECT 1');
-            if (!allowUnversionedSchema)
-              await assertSafePostgresRuntimeIdentity(client, {
-                intendedRole: TENANT_ROLES.app,
-                allowedRoles: [TENANT_ROLES.app],
-                runtimeRoleSets,
-                backupRole: BACKUP_ROLE,
-                allowedLogins,
-                administrativeLogins,
-              });
-            const state = await checkSchema(client, {
-              allowUnversioned: allowUnversionedSchema,
-              allowedLogins,
-              administrativeLogins,
-            });
-            if (!allowUnversionedSchema && maintenancePool) {
-              await withProbeClient(maintenancePool, signal, (maintenance) =>
-                assertSafePostgresRuntimeIdentity(maintenance, {
-                  intendedRole: TENANT_ROLES.maintenance,
-                  allowedRoles: [TENANT_ROLES.maintenance],
+            try {
+              await client.query('BEGIN READ ONLY');
+
+              if (!allowUnversionedSchema)
+                await assertSafePostgresRuntimeIdentity(client, {
+                  intendedRole: TENANT_ROLES.app,
+                  allowedRoles: [TENANT_ROLES.app],
                   runtimeRoleSets,
                   backupRole: BACKUP_ROLE,
                   allowedLogins,
                   administrativeLogins,
-                }),
-              );
+                });
+              const state = await checkSchema(client, {
+                allowUnversioned: allowUnversionedSchema,
+                allowedLogins,
+                administrativeLogins,
+              });
+              if (!allowUnversionedSchema && maintenancePool) {
+                await withProbeClient(
+                  maintenancePool,
+                  signal,
+                  async (maintenance) => {
+                    try {
+                      await maintenance.query('BEGIN READ ONLY');
+                      await assertSafePostgresRuntimeIdentity(maintenance, {
+                        intendedRole: TENANT_ROLES.maintenance,
+                        allowedRoles: [TENANT_ROLES.maintenance],
+                        runtimeRoleSets,
+                        backupRole: BACKUP_ROLE,
+                        allowedLogins,
+                        administrativeLogins,
+                      });
+                      await assertSamePostgresDatabase(client, maintenance);
+                    } finally {
+                      await maintenance.query('ROLLBACK');
+                    }
+                  },
+                );
+              }
+              return state;
+            } finally {
+              await client.query('ROLLBACK');
             }
-            return state;
           })
       : undefined,
     timeoutMs,
