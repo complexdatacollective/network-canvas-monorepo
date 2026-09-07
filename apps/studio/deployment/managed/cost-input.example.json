@@ -13,6 +13,9 @@
   },
   "flySingletonCount": 4,
   "logicalDatabaseCount": 4,
+  "postgresStorageGb": 20,
+  "kmsBillableKeyVersions": 6,
+  "kmsRequestCount": 100000,
   "postgresSharedBuffersBytes": 1073741824,
   "postgresAppRoleWorkMemBytes": 268435456,
   "monitoringRetentionDays": 30,
@@ -27,7 +30,8 @@
   "primaryObjectEgressGb": 50,
   "databaseTransferGb": 10,
   "validatorRequestCount": 11904,
-  "validatorTransferGb": 5952,
+  "validatorRunCount": 5952,
+  "validatorTransferGb": 119.04,
   "backupStoredGb": 143.6,
   "backupRequestCount": 11904,
   "backupEgressGb": 1190.4,
@@ -112,9 +116,15 @@
     },
     {
       "category": "validator-compute",
-      "quantity": 1,
-      "unitPriceUsd": 5.95,
+      "quantity": 5952,
+      "unitPriceUsd": 0.001,
       "evidence": "illustrative 5952 runs x 2 GB x 30 seconds"
+    },
+    {
+      "category": "validator-requests",
+      "quantity": 11904,
+      "unitPriceUsd": 0.0000002,
+      "evidence": "illustrative Lambda invocation charge; independent execution location still requires qualification"
     },
     {
       "category": "validator-transfer",

@@ -86,3 +86,61 @@ test('refuses qualification without priced reserve and measured monitoring headr
     /2x measured headroom/,
   );
 });
+
+test('refuses missing or non-numeric capacity and retention evidence', () => {
+  for (const field of [
+    'postgresSharedBuffersBytes',
+    'postgresAppRoleWorkMemBytes',
+    'monitoringRetentionDays',
+  ]) {
+    for (const value of [undefined, null, 'not measured', NaN, Infinity]) {
+      const mutated = structuredClone(fixture);
+      mutated[field] = value;
+      assert.throws(
+        () => evaluateManagedEstateCost(mutated),
+        /must be a finite non-negative number/,
+        `${field} must reject ${String(value)}`,
+      );
+    }
+  }
+});
+
+test('prices the declared services and traffic instead of independent smaller quantities', () => {
+  for (const category of [
+    'compute',
+    'database-plan',
+    'database-storage',
+    'database-transfer',
+    'primary-object-storage',
+    'primary-object-class-a',
+    'primary-object-class-b',
+    'primary-object-egress',
+    'kms-keys',
+    'kms-requests',
+    'backup-storage',
+    'backup-requests',
+    'backup-egress',
+    'validator-compute',
+    'validator-requests',
+    'validator-transfer',
+  ]) {
+    const mutated = structuredClone(fixture);
+    const item = mutated.lineItems.find((entry) => entry.category === category);
+    assert.ok(item, `${category} must be priced`);
+    item.quantity = 0;
+    assert.throws(
+      () => evaluateManagedEstateCost(mutated),
+      /quantity does not match/,
+      `${category} must price its measured quantity`,
+    );
+  }
+});
+
+test('requires the actual free monitoring limit and refuses missing price evidence', () => {
+  const inventedLimit = structuredClone(fixture);
+  inventedLimit.newRelicFreeIngestLimitGb = 10_000;
+  assert.throws(() => evaluateManagedEstateCost(inventedLimit), /100 GB/);
+  const missingQuote = structuredClone(fixture);
+  delete missingQuote.lineItems[0].evidence;
+  assert.throws(() => evaluateManagedEstateCost(missingQuote), /evidence/);
+});
