@@ -3,6 +3,8 @@
 Issue: #1616. Branch: `feat/architect-app-i18n`. Base at start:
 `4c4789f59`. Shared prerequisites are owned by the orchestration branch and
 must merge first; this PR owns Architect and its normal-lane app changeset.
+The final review correction also adds a small default-label text helper beside
+the shared Markdown renderer, with a separate normal-lane library changeset.
 
 The accepted 2026-09-04 app UI design and 2026-08-27 protocol localization
 design govern the work. The user's amendment adds complete neutral Spanish
@@ -14,19 +16,19 @@ The existing app-i18n APIs, Studio implementation and PR #1651 were inspected.
 This table records the current implementation status; the dated checkpoints
 below preserve earlier results without promoting them to final evidence.
 
-| Surface / acceptance area              | Implementation and evidence                                                                                                                    | Current status                                                                                                                                                              |
-| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Device preference and language setting | Immediate en/es/en-GB selection, Automatic, persistence, rejected-storage feedback and cross-tab updates                                       | All eight focused production workflows pass, including held-module startup, six existing language flows and actual editor/printed rule lists                                |
-| Full and inline preview boundaries     | Shell owns built-in interface language; host supplies its resolved request and scoped finish copy; protocol-authored strings/data stay literal | Full-preview menu, queued-dialog and independent-language workflows pass; actual inline field, response and parent dialog survive ES–GB–ES                                  |
-| Home, editors, codebook and resources  | Complete chrome, guidance, errors, counts and locale-aware alphabetical controls                                                               | Reviewed Codebook counts, related positions/thresholds/conflicts and queued plurals remain covered; static startup exposes the proper product name before JavaScript        |
-| Printed summaries and codebook         | Locale collation and whole linked/operand lists retain literal names, exact targets, rich labels and language grammar                          | Actual schema-valid editor and printed rule lists change live across ES/EN/GB, including Spanish “e Isabel”; authored data stays exact                                      |
-| Catalogs and production locales        | 1,825 complete EN/ES descriptors and 37 sparse en-GB overrides                                                                                 | Prior independently reviewed ten EN/ES pairs and ten GB overrides remain byte-identical; round three adds no copy                                                           |
-| Development pseudo-locale              | Development-only registry option; never persisted as a production preference                                                                   | Existing scope preserved                                                                                                                                                    |
-| Static and catalog checks              | App+E2E types, type-aware lint, full repository Knip, byte-identical extraction/parity, formatting and changeset guard pass                    | Fresh round-three source verified, production build/PWA integrity pass                                                                                                      |
-| Focused source verification            | Round three: 32/32 units across three suites and 8/8 real production browser workflows                                                         | Four no-write faults prove forced-English grammar, raw-Markdown conjunctions, token remounting and inaccessible static boot are detected; controls pass                     |
-| Broad app and shared integration gates | 2,516 unit/script passes plus three existing todos, all 293 files; 173/173 native passes; cold Storybook 15/15                                 | All current local gates pass; the Storybook operand assertion now requires the intentional whole-list conjunction                                                           |
-| Canonical images                       | CI runs 34057696010 and 34057709075 pass 2/2 each, 28/28 repeat stable; the six approved changes were adopted                                  | Normal fd856 pixel CI passes. Round-three recursive fixture census and actual printed DOM prove no changed branch in any capture; all 28 PNGs and 19 JSONs remain unchanged |
-| PR, CI and review                      | Runtime #1719 merged; Architect normally integrates main 4ea9fe095 via f35e12bcd; fd856 standard main CI34059080801 fully succeeds             | Two further review findings are corrected in round three. A completed clean current-head Codex verdict and fresh standard CI remain required after the corrective push      |
+| Surface / acceptance area              | Implementation and evidence                                                                                                                    | Current status                                                                                                                                                                                  |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Device preference and language setting | Immediate en/es/en-GB selection, Automatic, persistence, rejected-storage feedback and cross-tab updates                                       | All eight focused production workflows pass, including held-module startup, six existing language flows and actual editor/printed rule lists                                                    |
+| Full and inline preview boundaries     | Shell owns built-in interface language; host supplies its resolved request and scoped finish copy; protocol-authored strings/data stay literal | Full-preview menu, queued-dialog and independent-language workflows pass; actual inline field, response and parent dialog survive ES–GB–ES                                                      |
+| Home, editors, codebook and resources  | Complete chrome, guidance, errors, counts and locale-aware alphabetical controls                                                               | Reviewed Codebook counts, related positions/thresholds/conflicts and queued plurals remain covered; static startup exposes the proper product name before JavaScript                            |
+| Printed summaries and codebook         | Locale collation and whole linked/operand lists retain literal names, exact targets, rich labels and language grammar                          | Actual schema-valid editor and printed rule lists change live across ES/EN/GB, including Spanish “e Isabel”; authored data stays exact                                                          |
+| Catalogs and production locales        | 1,825 complete EN/ES descriptors and 37 sparse en-GB overrides                                                                                 | Prior independently reviewed ten EN/ES pairs and ten GB overrides remain byte-identical; round three adds no copy                                                                               |
+| Development pseudo-locale              | Development-only registry option; never persisted as a production preference                                                                   | Existing scope preserved                                                                                                                                                                        |
+| Static and catalog checks              | App+E2E types, type-aware lint, full repository Knip, byte-identical extraction/parity, formatting and changeset guard pass                    | Fresh round-three source verified, production build/PWA integrity pass                                                                                                                          |
+| Focused source verification            | Round four: 43/43 app rule tests, 31/31 shared renderer tests and 4/4 production browser workflows                                             | Five additional no-write faults detect the old editor parser and missing GFM, HTML, sanitization or unwrapping; prior language, identity and boot proofs remain applicable                      |
+| Broad app and shared integration gates | 2,516 unit/script passes plus three existing todos, all 293 files; 173/173 native passes; cold Storybook 15/15                                 | Full 9585 CI passes all six E2E jobs; round-four focused gates and both affected Rules stories pass, with fresh final CI required after push                                                    |
+| Canonical images                       | CI runs 34057696010 and 34057709075 pass 2/2 each, 28/28 repeat stable; the six approved changes were adopted                                  | Normal fd856 pixel CI passes. Round-three recursive fixture census and actual printed DOM prove no changed branch in any capture; all 28 PNGs and 19 JSONs remain unchanged                     |
+| PR, CI and review                      | Runtime #1719 merged; Architect normally integrates main 4ea9fe095 via f35e12bcd; fd856 standard main CI34059080801 fully succeeds             | The final Markdown-dialect finding is corrected in round four. Independent focused review is clean; a completed clean final-head Codex verdict and fresh standard CI remain required after push |
 
 ## Deliberate scope boundaries
 
@@ -1374,3 +1376,68 @@ unreleased feature corrections. The corrected source must receive one normal
 push, replies/resolution for both findings, fresh explicit current-head Codex
 review and green standard main-merge-tree CI before the lead’s merge. No new
 package-only dispatch or local PNG generation substitutes for those gates.
+
+### Final Markdown dialect correction — 2026-09-07
+
+Completed Codex review of `9585a6c663f86cb05aded8714159e8e88d145b1f`
+identified one further actionable finding: the grammar-only editor Markdown
+adapter did not match the GFM/raw-HTML dialect used to display option labels.
+The old adapter causes six new real component assertions to fail, while nine
+controls pass. The correction uses `getMarkdownLabelText` beside the shared
+`RenderMarkdown` component. Both use the same default GFM/gemoji, raw HTML,
+sanitization, allowed elements and unwrapping options. The helper reads the
+synchronous renderer's processed React tree; it needs no new dependency, DOM
+parser, server renderer or custom Spanish heuristic. An `unknown` child walker
+with explicit guards respects the repository's Array.isArray typing.
+
+The helper is restricted to the default label dialect. Custom components,
+explicit empty plugin arrays, section tags, wrapper properties and false
+unwrapping options retain their existing behavior. The call-site audit found
+23 production modules referencing RenderMarkdown; their rendering behavior
+is unchanged. The sole grammar-only editor-adapter use moved to this helper.
+Architect's option editor, protocol-builder's option editor and RichTextField
+retain their intentionally separate editing conversion contract. Original
+rule tokens, DOM identity, links, authored markup and stored values remain
+unchanged. The existing app changeset covers the new language feature; the
+new public library helper has its own minor normal-lane changeset.
+
+Final local verification:
+
+- 43/43 actual rule component assertions and 31/31 shared renderer assertions
+  pass. Explicit expected strings and actual DOM text cover strike variants,
+  raw/filtered HTML, script stripping, entities, reference and unsafe links,
+  image removal, emoji, code, escaped syntax, whitespace, GFM structures and
+  custom option controls.
+- Five no-write faults fail their intended assertions: old adapter 6 red /
+  9 controls; missing GFM 5/26; missing HTML processing 8/23; missing
+  sanitization 1/30; missing unwrapping 23/8. Production files are not mutated.
+- Both affected Rules Storybook cases pass from a fresh dependency optimizer.
+  The preceding full app run passed all 15 stories, 2,516 unit/script cases
+  with three existing todos, and 173 native cases; those are prior full-run
+  evidence, not claimed as repeated on this correction.
+- Four fresh production browser workflows pass after the final PWA build:
+  three schema-valid GFM/raw/sanitized HTML option-label variants in the real
+  editor and printed summary across ES/EN/GB, plus the held-module startup
+  status. Exact emphasis, full list grammar and unchanged persisted protocol
+  are positive assertions.
+- Architect app/E2E and Fresco UI types, type-aware lint (existing warnings),
+  full root Knip, format, extraction, catalog hashes and changeset lanes pass.
+  Production build verifies its 101-entry precache, all 24 JavaScript chunks
+  and 69 stage-preview assets. A package-manager auto-verification briefly
+  recreated this temporary checkout's modules; the frozen offline install
+  restored them, and these final gates ran afterward. No lockfile changed.
+- All EN/ES/GB catalogs and all 28 PNG/19 JSON baselines remain unchanged.
+  The rule branch is absent from the canonical fixture, as the preceding
+  recursive census and actual printed DOM establish. Shared renderer
+  defaults are unchanged and positive parity tests verify their output; no
+  unrelated canonical image regeneration is warranted.
+- An independent focused code review found no actionable issues. The last
+  full standard CI run, 34061280205 on 9585, passed every selected job. Fresh
+  standard CI and a completed clean explicit Codex review of the new final
+  head remain the delivery gates before enqueueing.
+
+Detailed temporary logs use the prefix
+`/private/tmp/nc-architect-review-round4-`, including `renderer-final.log`,
+`app-final.log`, `stories.log`, `browser-final.log`, `build-final.log`,
+`types-final.log`, `lint-final.log`, `knip-final.log`, `extraction.log`,
+`changesets.log` and each named mutation log.

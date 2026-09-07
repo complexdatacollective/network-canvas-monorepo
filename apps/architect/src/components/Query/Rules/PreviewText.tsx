@@ -5,11 +5,10 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Icon from '@codaco/fresco-ui/Icon';
 import Node, { NodeColors, type NodeShape } from '@codaco/fresco-ui/Node';
-import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import {
-  markdownToRichTextContent,
-  type RichTextContent,
-} from '@codaco/protocol-builder/markdown/markdownAdapter';
+  getMarkdownLabelText,
+  RenderMarkdown,
+} from '@codaco/fresco-ui/RenderMarkdown';
 import type { ColorReference, VariableType } from '@codaco/protocol-validation';
 import { VariablePill } from '~/components/VariablePill';
 import { VARIABLE_TYPES } from '~/config/variables';
@@ -273,19 +272,14 @@ const ValueToken = ({ plain, markdown, value }: ValueTokenProps) => {
   );
 };
 
-const richTextLabel = (content: RichTextContent): string =>
-  content.text ?? content.content?.map(richTextLabel).join('') ?? '';
-
 const Value = ({ value = '', plain = false, markdown = false }: ValueProps) => {
   const intl = useAppIntl();
   const values = Array.isArray(value) ? value : [value];
-  // Format the displayed words so emphasis/link syntax cannot hide the initial
+  // Format the displayed words so Markdown syntax cannot hide the initial
   // sound that chooses Spanish "y" versus "e". This text is only for grammar:
   // restore each original token by position, including repeated option labels.
   const labels = values.map((item) =>
-    markdown
-      ? richTextLabel(markdownToRichTextContent(String(item), true)).trim()
-      : String(item).trim(),
+    markdown ? getMarkdownLabelText(String(item)).trim() : String(item).trim(),
   );
   let nextValue = 0;
   return intl.formatListToParts(labels).map((part) => {
