@@ -1,10 +1,41 @@
 import { useCallback } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 
-const DISCARD_DRAFT_TITLE = 'Discard your changes?';
-const DISCARD_DRAFT_DESCRIPTION =
-  'This editor holds changes that have not been saved. Closing it now discards them.';
+/**
+ * Filed under `dialogForm`, the area that owns the dialog this guard is the
+ * dismissal route of. The confirm is raised by `DialogForm` and is never a
+ * surface of its own.
+ */
+const messages = defineMessages({
+  discardTitle: {
+    id: 'protocolBuilder.dialogForm.discardTitle',
+    defaultMessage: 'Discard your changes?',
+    description:
+      'Title of the confirmation raised when a researcher tries to close an editing dialog that holds unsaved work.',
+  },
+  discardDescription: {
+    id: 'protocolBuilder.dialogForm.discardDescription',
+    defaultMessage:
+      'This editor holds changes that have not been saved. Closing it now discards them.',
+    description:
+      'Body of the confirmation raised when a researcher tries to close an editing dialog that holds unsaved work.',
+  },
+  discardConfirm: {
+    id: 'protocolBuilder.dialogForm.discardConfirm',
+    defaultMessage: 'Discard changes',
+    description:
+      'Button that closes an editing dialog and throws away the unsaved work in it.',
+  },
+  keepEditing: {
+    id: 'protocolBuilder.dialogForm.keepEditing',
+    defaultMessage: 'Keep editing',
+    description:
+      'Button that dismisses the discard confirmation and leaves the editing dialog open with its unsaved work intact.',
+  },
+});
 
 export type DiscardDraftGuardOptions = Readonly<{
   /**
@@ -47,6 +78,7 @@ export function useDiscardDraftGuard({
   onClose,
   blocked = false,
 }: DiscardDraftGuardOptions): () => void {
+  const intl = useAppIntl();
   const { confirm } = useDialog();
 
   return useCallback(() => {
@@ -59,14 +91,14 @@ export function useDiscardDraftGuard({
 
     void (async () => {
       const confirmed = await confirm({
-        title: DISCARD_DRAFT_TITLE,
-        description: DISCARD_DRAFT_DESCRIPTION,
-        confirmLabel: 'Discard changes',
-        cancelLabel: 'Keep editing',
+        title: intl.formatMessage(messages.discardTitle),
+        description: intl.formatMessage(messages.discardDescription),
+        confirmLabel: intl.formatMessage(messages.discardConfirm),
+        cancelLabel: intl.formatMessage(messages.keepEditing),
         intent: 'warning',
         onConfirm: () => undefined,
       });
       if (confirmed === true) onClose();
     })();
-  }, [blocked, confirm, hasDraft, onClose]);
+  }, [blocked, confirm, hasDraft, intl, onClose]);
 }

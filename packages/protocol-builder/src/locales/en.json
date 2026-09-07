@@ -335,6 +335,26 @@
     "defaultMessage": "Choose the video this block plays.",
     "description": "Refusal shown under the file picker of a video block when nothing has been chosen."
   },
+  "protocolBuilder.dialogForm.discardConfirm": {
+    "defaultMessage": "Discard changes",
+    "description": "Button that closes an editing dialog and throws away the unsaved work in it."
+  },
+  "protocolBuilder.dialogForm.discardDescription": {
+    "defaultMessage": "This editor holds changes that have not been saved. Closing it now discards them.",
+    "description": "Body of the confirmation raised when a researcher tries to close an editing dialog that holds unsaved work."
+  },
+  "protocolBuilder.dialogForm.discardTitle": {
+    "defaultMessage": "Discard your changes?",
+    "description": "Title of the confirmation raised when a researcher tries to close an editing dialog that holds unsaved work."
+  },
+  "protocolBuilder.dialogForm.keepEditing": {
+    "defaultMessage": "Keep editing",
+    "description": "Button that dismisses the discard confirmation and leaves the editing dialog open with its unsaved work intact."
+  },
+  "protocolBuilder.dialogForm.resizeHandle": {
+    "defaultMessage": "Resize form and preview panes",
+    "description": "Accessible name of the divider a researcher drags to give more room either to the fields of an editing dialog or to the live preview beside them."
+  },
   "protocolBuilder.formFields.addLabel": {
     "defaultMessage": "Create new form field",
     "description": "Button that opens the dialog for adding one more question to a form. Whole rather than a generic \"Add\", because a stage editor shows several lists at once."
