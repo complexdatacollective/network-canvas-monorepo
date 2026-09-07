@@ -171,3 +171,34 @@ it.each(['missing', 'view', 'materialized view'] as const)(
     );
   },
 );
+
+// Shape admission is shared with Studio and runs before fingerprint reads, on
+// restricted runtime sockets that cannot access the migration history schema.
+it.each(['fingerprint', 'history'] as const)(
+  'refuses a cascading %s relation in migration and runtime admission',
+  async (relation) => {
+    const database = await setup();
+    const table =
+      relation === 'history'
+        ? 'registry_migrations.history'
+        : 'public.registry_schema_fingerprint';
+    const column = relation === 'history' ? 'checksum' : 'fingerprint';
+    await database.owner
+      .query(`CREATE TABLE public.evidence_reference_source (value text PRIMARY KEY);
+    INSERT INTO public.evidence_reference_source SELECT ${column} FROM ${table};
+    ALTER TABLE ${table} ADD CONSTRAINT evidence_reference_path FOREIGN KEY (${column}) REFERENCES public.evidence_reference_source(value) ON UPDATE CASCADE`);
+    await expect(
+      registryMigrator.migrate(
+        database.owner,
+        migrations,
+        REGISTRY_SCHEMA_FINGERPRINT,
+        database.allowedLogins,
+      ),
+    ).rejects.toThrow('cascading foreign-key action paths');
+    for (const pool of [database.pool, database.operatorPool]) {
+      await expect(readRegistrySchemaIdentity(pool)).rejects.toThrow(
+        'REGISTRY_SCHEMA_NOT_CURRENT',
+      );
+    }
+  },
+);

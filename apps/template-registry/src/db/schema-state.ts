@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto';
 import type pg from 'pg';
 import { z } from 'zod';
 
+import { assertSafePostgresMigrationEvidence } from '@codaco/studio-sync/postgres-migration-evidence';
 import { assertSafePostgresRuntimeIdentity } from '@codaco/studio-sync/postgres-runtime-identity';
 
 import { REGISTRY_SCHEMA_FINGERPRINT } from './fingerprint.generated.ts';
@@ -15,7 +16,7 @@ const stampSchema = z.strictObject({
 
 /** Read-only boot check; the separate migration command owns every schema write. */
 export async function readRegistrySchemaIdentity(
-  pool: Pick<pg.Pool, 'query'>,
+  pool: pg.Pool | pg.PoolClient,
 ): Promise<string> {
   try {
     // A development schema push can carry the same fingerprint. Only the
@@ -32,6 +33,10 @@ export async function readRegistrySchemaIdentity(
     `);
     if (provenance.rows[0]?.versioned !== true)
       throw new Error('REGISTRY_SCHEMA_NOT_CURRENT');
+    await assertSafePostgresMigrationEvidence(pool, {
+      history: { schema: 'registry_migrations', name: 'history' },
+      fingerprint: { schema: 'public', name: 'registry_schema_fingerprint' },
+    });
     const result = await pool.query<{
       fingerprint: string;
       instance_id: string;

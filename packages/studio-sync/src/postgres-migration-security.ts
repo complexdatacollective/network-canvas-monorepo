@@ -2,6 +2,7 @@ import { escapeIdentifier } from 'pg';
 import type pg from 'pg';
 
 import { assertSafePostgresCatalogPrivileges } from './postgres-catalog-privileges.ts';
+import { assertSafePostgresMigrationEvidence } from './postgres-migration-evidence.ts';
 import type { PostgresMigrationConfig } from './postgres-migrations.ts';
 import {
   runtimeRolesSql,
@@ -250,24 +251,17 @@ export async function enforceMigrationSecurity(
     `${escapeIdentifier(config.historySchema)}.history`,
     `${escapeIdentifier(config.schemaName)}.${escapeIdentifier(config.fingerprintTable)}`,
   ];
-  // Evidence is authored as standalone ordinary tables. Inheritance and
-  // partition routing authorize against a parent, bypassing these tables' own
-  // ACLs; inherited children also contribute rows to ordinary evidence reads.
-  // Reject either direction before the runner trusts any recorded history.
-  const evidenceShape = await client.query<{ safe: boolean }>(
-    `SELECT NOT EXISTS (
-      SELECT 1 FROM pg_catalog.pg_class evidence
-      WHERE evidence.oid IN (pg_catalog.to_regclass($1), pg_catalog.to_regclass($2))
-        AND (evidence.relkind <> 'r' OR evidence.relispartition OR EXISTS (
-          SELECT 1 FROM pg_catalog.pg_inherits inheritance
-          WHERE inheritance.inhrelid = evidence.oid OR inheritance.inhparent = evidence.oid
-        ))
-    ) AS safe`,
-    evidenceRelations,
-  );
-  if (evidenceShape.rows[0]?.safe !== true) {
+  try {
+    await assertSafePostgresMigrationEvidence(client, {
+      history: { schema: config.historySchema, name: 'history' },
+      fingerprint: {
+        schema: config.schemaName,
+        name: config.fingerprintTable,
+      },
+    });
+  } catch {
     throw new Error(
-      `${applicationName} migration evidence must be standalone ordinary tables without inheritance or partitions. Existing evidence is untrusted; restore a verified backup before migrating.`,
+      `${applicationName} migration evidence must be standalone ordinary tables without inheritance, partitions, or cascading foreign-key action paths. Existing evidence is untrusted; restore a verified backup before migrating.`,
     );
   }
   const loginAccess = await client.query<{
