@@ -148,8 +148,8 @@ describe('composing the registry from family parts', () => {
 });
 
 /**
- * Nineteen families are still to land, on branches of their own, and each of
- * them edits the same two lists in `stageEditorRegistry.ts`. Written as one
+ * Families are still landing, on branches of their own, and each of them
+ * edits the same two lists in `stageEditorRegistry.ts`. Written as one
  * entry per line in a fixed alphabetical order, three concurrent one-line
  * changes touch three different lines and merge; written any other way — a
  * list collapsed onto one line, two entries sharing a line, an order nobody
@@ -321,16 +321,13 @@ describe('dispatching to a named editor', () => {
 
     try {
       // An interface a landed family claims opens in that family's editor with
-      // no registry passed at all, which is how a host reaches one.
+      // no registry passed at all, which is how a host reaches one. Every
+      // family has landed, so no interface is left awaiting its editor; the
+      // refusal for an interface nothing is registered for is pinned above
+      // with an explicit empty registry.
       const harness = renderStageEditor({ stageId: 'information-1' });
       expect(harness.getByRole('textbox', { name: 'Stage name' })).toHaveValue(
         'Information',
-      );
-
-      // An interface still awaiting its family says so rather than rendering a
-      // blank page.
-      expect(() => renderStageEditor({ stageId: 'sociogram-1' })).toThrow(
-        UnregisteredStageTypeError,
       );
     } finally {
       consoleError.mockRestore();

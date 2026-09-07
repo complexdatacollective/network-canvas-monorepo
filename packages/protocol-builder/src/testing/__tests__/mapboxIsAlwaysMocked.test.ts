@@ -65,19 +65,21 @@ const shortName = (file: string) => relative(packageSource, file);
 
 describe('the Mapbox SDK in this package', () => {
   /**
-   * Only the mock names the SDK here yet: no editor family has landed on this
-   * branch, so nothing draws a map. The geospatial family will add its map
-   * preview to this list, and that is the point of writing it down — a new
-   * importer means the alias has another route to cover, so it is named
-   * deliberately rather than discovered by a bill.
+   * Two modules name the SDK: the mock that replaces it, and the map preview
+   * the geospatial family draws. That is the point of writing the list down —
+   * a new importer means the alias has another route to cover, so it is named
+   * deliberately here rather than discovered by a bill.
    */
-  it('is named by the mock that replaces it, and by nothing else yet', () => {
+  it('is named by the mock that replaces it, and by the one map that draws it', () => {
     const importers = files
       .filter((file) => IMPORTS_MAPBOX.test(contents.get(file) ?? ''))
       .map(shortName)
       .toSorted();
 
-    expect(importers).toEqual(['testing/mapboxMock.ts']);
+    expect(importers).toEqual([
+      'fields/geospatial/MapPreviewDialog.tsx',
+      'testing/mapboxMock.ts',
+    ]);
   });
 
   it.each([

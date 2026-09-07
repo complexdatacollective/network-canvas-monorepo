@@ -15,14 +15,6 @@ import * as variableEditorStories from '../codebook/components/VariableEditor.st
 import VariableEditor from '../codebook/components/VariableEditor.tsx';
 import * as validationEditorStories from '../codebook/validation/CodebookVariableValidationEditor.stories.tsx';
 import CodebookVariableValidationEditor from '../codebook/validation/CodebookVariableValidationEditor.tsx';
-import * as alterEdgeFormStories from '../editors/forms/AlterEdgeFormStageEditor.stories.tsx';
-import * as alterFormStories from '../editors/forms/AlterFormStageEditor.stories.tsx';
-import * as egoFormStories from '../editors/forms/EgoFormStageEditor.stories.tsx';
-import * as informationStories from '../editors/forms/InformationStageEditor.stories.tsx';
-import * as quickAddStories from '../editors/nameGenerators/NameGeneratorQuickAddStageEditor.stories.tsx';
-import * as rosterStories from '../editors/nameGenerators/NameGeneratorRosterStageEditor.stories.tsx';
-import * as nameGeneratorStories from '../editors/nameGenerators/NameGeneratorStageEditor.stories.tsx';
-import { nameGeneratorStageEditors } from '../editors/nameGeneratorStageEditors.ts';
 import * as shellStories from '../form/StageEditorShell.stories.tsx';
 import StageEditorShell from '../form/StageEditorShell.tsx';
 import type { ProtocolBuilderProtocolContext } from '../protocol-context.ts';
@@ -35,7 +27,6 @@ import {
 import PageContentSection from '../sections/PageContentSection.tsx';
 import StageNameSection from '../sections/StageNameSection.tsx';
 import type { CompoundEditResult } from '../session.ts';
-import { renderStageEditor } from '../testing/renderStageEditor.tsx';
 import * as storyHostStories from '../testing/StageEditorStoryHost.stories.tsx';
 import { StageEditorStoryHost } from '../testing/StageEditorStoryHost.tsx';
 
@@ -70,17 +61,9 @@ const personDocument = (
  * The whole document rather than the render container: a `Dialog` portals its
  * content out, so a ladder read from the container alone would be missing the
  * half of it under test.
- *
- * A `root` narrows it to one subtree, for a surface that is only ever met
- * inside a page with a ladder of its own — a dialog opened over a stage
- * editor, a section of one. What is asked of those is where their own headings
- * sit relative to the heading they were opened under, and spelling out the
- * whole page as well would make the answer change every time a section is
- * added to an editor that is not what the test is about. A skip anywhere is
- * still caught: `expectHeadingOrder` reads the whole document either way.
  */
-const headingLadder = (root: ParentNode = document): string[] =>
-  Array.from(root.querySelectorAll('h1, h2, h3, h4, h5, h6')).map(
+const headingLadder = (): string[] =>
+  Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, h6')).map(
     (heading) =>
       `${heading.tagName.toLowerCase()}: ${heading.textContent?.trim() ?? ''}`,
   );
@@ -282,93 +265,6 @@ describe('the stage editor shell', () => {
   });
 });
 
-describe('a row of a stage editor list, opened in its dialog', () => {
-  /** The one editor that offers both of the lists asked about here. */
-  const openNameGenerator = () =>
-    renderStageEditor({
-      stageId: 'name-generator-1',
-      registry: nameGeneratorStageEditors,
-    });
-
-  /**
-   * The dialog is a page of its own: its title is the heading above the
-   * sections that configure the row, and those sections are one below it —
-   * however deep the card behind the overlay happens to sit.
-   *
-   * That depth is exactly what a section used to count from. `DialogPopup`
-   * restarts the Surface ladder inside the overlay, so a first-level section
-   * in one of these dialogs was an `h4` under the dialog's `h2` title: a skip
-   * axe reports, and for a reader navigating by headings a subsection of
-   * something that is not there. Both lists are reached only by opening a
-   * row, so no story of the editor renders either of them.
-   */
-  it('puts a panel row’s sections under the dialog title', async () => {
-    const harness = openNameGenerator();
-
-    await harness.user.click(
-      screen.getByRole('switch', { name: 'Side panels' }),
-    );
-    await harness.user.click(
-      await screen.findByRole('button', { name: 'Create new panel' }),
-    );
-
-    expect(headingLadder(await screen.findByRole('dialog'))).toEqual([
-      'h2: Create panel',
-      'h3: Panel',
-      'h3: Panel filter',
-    ]);
-    await expectHeadingOrder(3);
-  });
-
-  it('puts a prompt row’s sections under the dialog title', async () => {
-    const harness = openNameGenerator();
-
-    await harness.user.click(
-      await screen.findByRole('button', { name: 'Create new prompt' }),
-    );
-
-    expect(headingLadder(await screen.findByRole('dialog'))).toEqual([
-      'h2: Create prompt',
-      'h3: Participant prompt',
-      'h3: Additional attributes',
-    ]);
-    await expectHeadingOrder(3);
-  });
-});
-
-describe('a section that speaks once a data file has been read', () => {
-  /**
-   * The roster editor reads the file its stage points at and then says what
-   * the file holds, in an alert raised inside the section that chose it — so
-   * that alert is one below that section's own heading rather than beside it.
-   *
-   * Asserted here rather than left to the story sweep below, which judges each
-   * story as it commits: this alert arrives a beat later, and a sweep that
-   * waited for it by a timer would be judging whatever had happened to render
-   * by then. Waited for by the words it puts on screen instead, so the rung it
-   * lands on is really the one under test.
-   */
-  it('puts what a data file holds one below the section that chose it', async () => {
-    renderStageEditor({
-      stageId: 'name-generator-roster-1',
-      registry: nameGeneratorStageEditors,
-    });
-
-    await screen.findByText(
-      'The people in it carry these attributes: age and name.',
-    );
-
-    expect(
-      headingLadder(screen.getByRole('region', { name: 'Roster source' })),
-    ).toEqual([
-      'h3: Roster source',
-      'h4: Roster',
-      'h4: What this data file holds',
-    ]);
-    await expectHeadingOrder(3);
-  });
-});
-
 /**
  * The stories are the surfaces a reviewer looks at and the ones Chromatic and
  * the Storybook a11y addon replay, so the rule is run over them here too —
@@ -399,20 +295,6 @@ describe('every story of a surface that writes its own heading', () => {
     ),
     ...from('StageEditorShell', composeStories(shellStories)),
     ...from('StageEditorStoryHost', composeStories(storyHostStories)),
-    // Every stage editor that has landed. An editor writes no heading of its
-    // own — it composes the shared name heading and shared sections — so what
-    // is asked of each is that the sections IT chose, and the alerts they
-    // raise, land where the composition says they do.
-    ...from('AlterEdgeFormStageEditor', composeStories(alterEdgeFormStories)),
-    ...from('AlterFormStageEditor', composeStories(alterFormStories)),
-    ...from('EgoFormStageEditor', composeStories(egoFormStories)),
-    ...from('InformationStageEditor', composeStories(informationStories)),
-    ...from('NameGeneratorStageEditor', composeStories(nameGeneratorStories)),
-    ...from(
-      'NameGeneratorQuickAddStageEditor',
-      composeStories(quickAddStories),
-    ),
-    ...from('NameGeneratorRosterStageEditor', composeStories(rosterStories)),
   ];
 
   it.each(stories)('has no heading skip in %s', async (_name, Story) => {

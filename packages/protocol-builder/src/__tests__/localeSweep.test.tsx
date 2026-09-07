@@ -7,24 +7,47 @@ import {
   TestPromptEditor,
   TestPromptPreview,
 } from '../sections/__tests__/rowFixtures.tsx';
+import AnonymisationExplanationSection from '../sections/anonymisation/AnonymisationExplanationSection.tsx';
+import AnonymisationValidationSection from '../sections/anonymisation/AnonymisationValidationSection.tsx';
+import EncryptedVariablesSection from '../sections/anonymisation/EncryptedVariablesSection.tsx';
 import FormFieldsSection from '../sections/FormFieldsSection.tsx';
+import GeospatialPromptsSection from '../sections/geospatial/GeospatialPromptsSection.tsx';
+import MapAppearanceSection from '../sections/geospatial/MapAppearanceSection.tsx';
+import MapSourceSection from '../sections/geospatial/MapSourceSection.tsx';
 import InterviewerGuidanceSection from '../sections/InterviewerGuidanceSection.tsx';
 import IntroductionSection from '../sections/IntroductionSection.tsx';
+import AtRiskStatusesSection from '../sections/narrativePedigree/AtRiskStatusesSection.tsx';
+import DiseasesSection from '../sections/narrativePedigree/DiseasesSection.tsx';
+import SourceStageSection from '../sections/narrativePedigree/SourceStageSection.tsx';
+import AutomaticLayoutSection from '../sections/network/AutomaticLayoutSection.tsx';
+import BackgroundSection from '../sections/network/BackgroundSection.tsx';
+import NarrativeBehavioursSection from '../sections/network/NarrativeBehavioursSection.tsx';
+import { networkCanvasMessages } from '../sections/network/networkCanvasMessages.ts';
+import SociogramPromptsSection from '../sections/network/SociogramPromptsSection.tsx';
 import NetworkFilterSection from '../sections/NetworkFilterSection.tsx';
 import PageContentSection from '../sections/PageContentSection.tsx';
+import BoundaryOptionsSection from '../sections/pedigree/BoundaryOptionsSection.tsx';
+import CensusPromptSection from '../sections/pedigree/CensusPromptSection.tsx';
+import FramingConfigSection from '../sections/pedigree/FramingConfigSection.tsx';
+import NominationPromptsSection from '../sections/pedigree/NominationPromptsSection.tsx';
+import PedigreeEdgeConfigurationSection from '../sections/pedigree/PedigreeEdgeConfigurationSection.tsx';
+import PedigreeNodeConfigurationSection from '../sections/pedigree/PedigreeNodeConfigurationSection.tsx';
 import PromptsSection from '../sections/PromptsSection.tsx';
 import SkipLogicSection from '../sections/SkipLogicSection.tsx';
 import StageNameSection from '../sections/StageNameSection.tsx';
 import SubjectSection from '../sections/SubjectSection.tsx';
 import { expectNoLocaleLeaks, localeLeaks } from '../testing/localeSweep.ts';
-import { renderStageEditor } from '../testing/renderStageEditor.tsx';
+import {
+  renderStageEditor,
+  type StageEditorHarness,
+} from '../testing/renderStageEditor.tsx';
 
 /**
  * The labels the row-editor stand-ins put on screen.
  *
  * `rowFixtures.tsx` names a family's fields in English on purpose — the tests
- * around it read those names back — and a real area may happen to have chosen
- * the same words for its own label. See `SweepAllowances`.
+ * around it read those names back — and three real areas happen to have
+ * chosen the same words for their own labels. See `SweepAllowances`.
  */
 const FIXTURE_ROW_EDITOR_WORDS = [
   'Prompt text',
@@ -199,6 +222,131 @@ describe('the row dialogs under es', () => {
     await screen.findByRole('dialog');
 
     expectNoLocaleLeaks('the add-a-content-block dialog', harness);
+  });
+});
+
+/**
+ * The five interface families, swept the same way.
+ *
+ * Each family owns a `sections/<family>/` directory and one `*Messages.ts`,
+ * and each is swept once because a family is the unit a leak belongs to: the
+ * sentences one family writes for itself are declared together, translated
+ * together, and are exactly the words no OTHER family's sweep would ever
+ * render. Sweeping three of the seven stage editors would leave two of the
+ * five message files with nothing looking at them at all.
+ *
+ * The sections mounted are the family-owned ones from that family's editor,
+ * without the shared sections above them — those are swept by the stages at
+ * the top of this file, and leaving them out is what makes a failure here name
+ * the family that caused it.
+ */
+describe('the interface families under es, at rest', () => {
+  const settled = async (harness: StageEditorHarness) => {
+    await waitFor(() => expect(harness.outline().length).toBeGreaterThan(0));
+    return harness;
+  };
+
+  it('sweeps a sociogram’s canvas sections', async () => {
+    const harness = renderStageEditor({
+      stageId: 'sociogram-1',
+      locale: 'es',
+      sections: (
+        <>
+          <SociogramPromptsSection />
+          <BackgroundSection allowsImage />
+          <AutomaticLayoutSection />
+          <NarrativeBehavioursSection
+            description={
+              networkCanvasMessages.sociogramCanvasInteractionDescription
+            }
+            repositioningHint={networkCanvasMessages.sociogramRepositioningHint}
+          />
+        </>
+      ),
+    });
+    await settled(harness);
+
+    expectNoLocaleLeaks('sociogram canvas sections at rest', harness);
+  });
+
+  it('sweeps a geospatial stage', async () => {
+    const harness = renderStageEditor({
+      stageId: 'geospatial-1',
+      locale: 'es',
+      sections: (
+        <>
+          <MapSourceSection />
+          <GeospatialPromptsSection />
+          <MapAppearanceSection />
+        </>
+      ),
+    });
+    await settled(harness);
+
+    expectNoLocaleLeaks('geospatial stage at rest', harness, {
+      // `resources/components/resourceKinds.ts` still names each resource kind
+      // in English (`geojson: 'Map layer'`), and the chosen layer's summary
+      // shows that name as a badge. It is the one area `NOT_CONVERTED_YET`
+      // still excuses, and it goes when i18n-1 lands — at which point this
+      // entry stops matching and has to be deleted.
+      stillEnglish: [
+        'protocolBuilder.geospatial.layerTitle rendered in English: Map layer',
+      ],
+    });
+  });
+
+  it('sweeps a family pedigree', async () => {
+    const harness = renderStageEditor({
+      stageId: 'family-pedigree-1',
+      locale: 'es',
+      sections: (
+        <>
+          <FramingConfigSection />
+          <BoundaryOptionsSection />
+          <PedigreeNodeConfigurationSection />
+          <PedigreeEdgeConfigurationSection />
+          <CensusPromptSection />
+          <NominationPromptsSection />
+        </>
+      ),
+    });
+    await settled(harness);
+
+    expectNoLocaleLeaks('family pedigree at rest', harness);
+  });
+
+  it('sweeps a narrative pedigree', async () => {
+    const harness = renderStageEditor({
+      stageId: 'narrative-pedigree-1',
+      locale: 'es',
+      sections: (
+        <>
+          <SourceStageSection />
+          <DiseasesSection />
+          <AtRiskStatusesSection />
+        </>
+      ),
+    });
+    await settled(harness);
+
+    expectNoLocaleLeaks('narrative pedigree at rest', harness);
+  });
+
+  it('sweeps an anonymisation stage', async () => {
+    const harness = renderStageEditor({
+      stageId: 'anonymisation-1',
+      locale: 'es',
+      sections: (
+        <>
+          <AnonymisationExplanationSection />
+          <AnonymisationValidationSection />
+          <EncryptedVariablesSection />
+        </>
+      ),
+    });
+    await settled(harness);
+
+    expectNoLocaleLeaks('anonymisation stage at rest', harness);
   });
 });
 

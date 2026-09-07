@@ -133,6 +133,11 @@ name not here adds it here first, in the same pull request.
 | `promptAttribute`           | `sections/prompts/PromptAttributeField.tsx`                                                                                                                                           | family E  |
 | `removeAfterConsideration`  | `sections/RemoveAfterConsiderationSection.tsx`                                                                                                                                        | family E  |
 | `ordinalColor`              | `fields/OrdinalColorField.tsx`                                                                                                                                                        | family E  |
+| `networkCanvas`             | `sections/network/`, `editors/network/SociogramStageEditor.tsx`                                                                                                                  | family F  |
+| `pedigree`                  | `sections/pedigree/`                                                                                                                                                             | family F  |
+| `narrativePedigree`         | `sections/narrativePedigree/`                                                                                                                                                    | family F  |
+| `geospatial`                | `sections/geospatial/`, `fields/geospatial/`                                                                                                                                     | family F  |
+| `anonymisation`             | `sections/anonymisation/`                                                                                                                                                        | family F  |
 
 Family D added two second-level segments the reserved list did not hold. One
 line each, because a closed list is only closed if adding to it is argued:
@@ -210,6 +215,14 @@ this package refuses is refused in `codebookVariable`'s and
 `variableValidation`'s words; and the five editors in `editors/census/`, like
 `editors/censusAndBinStageEditors.ts`, only compose sections.
 
+- `sections/network/networkCanvasMessages.ts`,
+  `sections/pedigree/pedigreeMessages.ts`,
+  `sections/narrativePedigree/narrativePedigreeMessages.ts`,
+  `sections/geospatial/geospatialMessages.ts` and
+  `sections/anonymisation/anonymisationMessages.ts` — one file per interface
+  family, holding EVERYTHING that family says rather than only its shared
+  strings. See "One file per family", below.
+
 Two areas own the same sentence in two modules, and the sentence is declared
 once: `form/arrayFields/crossClassPick.ts` re-exports the cross-class refusals
 from `codebook/variableValidation.ts` rather than declaring
@@ -278,40 +291,34 @@ Named here so a later split takes the name rather than inventing a synonym.
 | --------------- | ------------------------------- | ----------- |
 | `subjectSelect` | `fields/SubjectSelectField.tsx` | splits 3–6  |
 
-### Part converted — family F
+### One file per family — the five interface families
 
-These five are OPEN: each already declares the ids its sections hand to a
-shared component, and each still holds English `DEFAULT_COPY` literals for
-everything it renders itself. Both halves live under the same area name, so
-the rest of the conversion adds ids here and renames none.
+| `<area>`            | Owns the copy in                                                | Declared in                                               |
+| ------------------- | --------------------------------------------------------------- | --------------------------------------------------------- |
+| `networkCanvas`     | `sections/network/`, `editors/network/SociogramStageEditor.tsx` | `sections/network/networkCanvasMessages.ts`               |
+| `pedigree`          | `sections/pedigree/`                                            | `sections/pedigree/pedigreeMessages.ts`                   |
+| `narrativePedigree` | `sections/narrativePedigree/`                                   | `sections/narrativePedigree/narrativePedigreeMessages.ts` |
+| `geospatial`        | `sections/geospatial/`, `fields/geospatial/`                    | `sections/geospatial/geospatialMessages.ts`               |
+| `anonymisation`     | `sections/anonymisation/`                                       | `sections/anonymisation/anonymisationMessages.ts`         |
 
-What crossed first is what a shared component says on the family's behalf and
-could not be given as a string: `SectionCapability.confirmClear`, the row noun
-`DialogArrayField` builds its affordances and refusals around, and the
-sentences `PromptsSection` and `FormFieldsSection` say for one interface. Those
-are declared in each family's own `*Messages.ts` — the one file per area named
-below — and are covered by the catalog guards like any other id.
+A `*Messages.ts` per family, holding every id the family declares — rather than
+descriptors beside each section's markup, which is the rule everywhere else in
+this package. The reason is the seam. Much of what these families say is
+rendered somewhere ELSE: in `BuilderSection`'s confirmation before a capability
+is switched off, in `DialogArrayField`'s row affordances and write refusals, in
+the sentences `PromptsSection` and `FormFieldsSection` say for one interface.
+Splitting a family's words between the file that renders them and the file that
+hands them to somebody else would leave a translator answering half a question
+in two places, so one file per family answers it once.
 
-What has NOT crossed is each section's own `copy?: Partial<…Copy>` of plain
-strings. `src/__tests__/hostCopyOverrides.test.ts` excludes these five
-directories by name for exactly as long as that is true, and each exclusion
-goes with the family's conversion.
-
-| `<area>`            | Owns the copy in                             | Declared in                                               |
-| ------------------- | -------------------------------------------- | --------------------------------------------------------- |
-| `networkCanvas`     | `sections/network/`                          | `sections/network/networkCanvasMessages.ts`               |
-| `pedigree`          | `sections/pedigree/`                         | `sections/pedigree/pedigreeMessages.ts`                   |
-| `narrativePedigree` | `sections/narrativePedigree/`                | `sections/narrativePedigree/narrativePedigreeMessages.ts` |
-| `geospatial`        | `sections/geospatial/`, geospatial `fields/` | `sections/geospatial/geospatialMessages.ts`               |
-| `anonymisation`     | `sections/anonymisation/`                    | `sections/anonymisation/anonymisationMessages.ts`         |
-
-A `*Messages.ts` per area rather than descriptors beside each section's markup,
-which is the rule for a converted module. The reason is the seam: every id here
-is rendered somewhere ELSE — in `BuilderSection`'s confirmation, in
-`DialogArrayField`'s refusals, in the shared prompt and form sections — so a
-translator reading one of these files sees the whole of what a family says
-through other people's components, and the family's own copy joins it there
-when the rest is converted.
+A family that needs different words from a shared section names them one at a
+time as `MessageDescriptor` props — `PromptsSection`'s `description`,
+`FormFieldsSection`'s `title`, `SectionCapability.confirmClear` — never as
+strings and never as a `copy` bundle. `src/__tests__/hostCopyOverrides.test.ts`
+is the scan that keeps it that way, and it now covers these five directories:
+its `NOT_CONVERTED_YET` exclusion named them while the conversion was in
+flight and no longer does, so a section reintroducing a `copy?:` prop or a
+string-bearing `…Copy` type fails there. Only `resources/` is still excluded.
 
 Three reserved areas turned out to need no ids at all, and two name files that
 do not exist yet. Recorded rather than dropped, so nobody re-reserves a name
