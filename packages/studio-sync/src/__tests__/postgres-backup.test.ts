@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { setTimeout } from 'node:timers/promises';
 
 import pg, { escapeIdentifier, escapeLiteral } from 'pg';
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
 
 import {
   createPostgresBackupVerifier,
@@ -553,3 +553,112 @@ it('snapshots mutable configuration before asynchronous database access', async 
     await f.dispose();
   }
 });
+
+it('runs an optional capture guard on the one borrowed read-only connection', async () => {
+  const f = await fixture();
+  try {
+    let guarded: pg.PoolClient | undefined;
+    let transaction: unknown;
+    const acquired: pg.PoolClient[] = [];
+    const onAcquire = (client: pg.PoolClient) => acquired.push(client);
+    f.backup.on('acquire', onAcquire);
+    try {
+      await expect(
+        f.verify(f.backup, async (client) => {
+          guarded = client;
+          transaction = (
+            await client.query(
+              "SELECT current_user AS role, current_setting('transaction_read_only') AS readonly",
+            )
+          ).rows[0];
+        }),
+      ).resolves.toBeUndefined();
+    } finally {
+      f.backup.off('acquire', onAcquire);
+    }
+    expect(acquired).toHaveLength(1);
+    expect(guarded).toBe(acquired[0]);
+    expect(transaction).toEqual({ role: f.role, readonly: 'on' });
+  } finally {
+    await f.dispose();
+  }
+});
+
+it('converts a capture guard failure to the fixed verifier code', async () => {
+  const f = await fixture();
+  try {
+    await expect(
+      f.verify(f.backup, async () => {
+        throw new Error('synthetic capture guard diagnostic');
+      }),
+    ).rejects.toThrow(configuration.failureCode);
+    await expect(f.verify(f.backup)).resolves.toBeUndefined();
+  } finally {
+    await f.dispose();
+  }
+});
+
+it('preserves a caller-owned backup transaction while running its capture guard', async () => {
+  const f = await fixture();
+  const client = await f.backup.connect();
+  try {
+    await client.query(
+      "BEGIN READ ONLY; SET LOCAL application_name = 'caller-owned-backup'; SAVEPOINT callback_guard",
+    );
+    let guarded: pg.PoolClient | undefined;
+    await expect(
+      f.verify(client, async (borrowed) => {
+        guarded = borrowed;
+      }),
+    ).resolves.toBeUndefined();
+    expect(guarded).toBe(client);
+    expect(
+      (
+        await client.query(
+          "SELECT current_setting('application_name') AS marker, current_setting('transaction_read_only') AS readonly",
+        )
+      ).rows,
+    ).toEqual([{ marker: 'caller-owned-backup', readonly: 'on' }]);
+  } finally {
+    await client.query('ROLLBACK');
+    client.release();
+    await f.dispose();
+  }
+});
+
+it('returns at the bounded deadline and prevents a late guard from committing', async () => {
+  const f = await fixture();
+  try {
+    const started = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    const finished = Promise.withResolvers<void>();
+    let querySpy:
+      | {
+          mock: { calls: unknown[][] };
+          mockRestore: () => void;
+        }
+      | undefined;
+    const verification = f.verify(f.backup, async (client) => {
+      querySpy = vi.spyOn(client, 'query');
+      started.resolve();
+      await release.promise;
+      finished.resolve();
+    });
+    await started.promise;
+    await expect(verification).rejects.toThrow(configuration.failureCode);
+    release.resolve();
+    await finished.promise;
+    // Let the verifier resume after the callback before observing its client.
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(querySpy).toBeDefined();
+    expect(
+      querySpy!.mock.calls
+        .map(([query]) => query)
+        .filter((query) => query === 'COMMIT'),
+    ).toEqual([]);
+    querySpy!.mockRestore();
+    await expect(f.verify(f.backup)).resolves.toBeUndefined();
+  } finally {
+    await f.dispose();
+  }
+}, 15_000);
