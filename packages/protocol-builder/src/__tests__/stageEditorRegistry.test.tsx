@@ -106,8 +106,11 @@ describe('composing the registry from family parts', () => {
       await import('../editors/censusAndBinStageEditors.ts');
     const registry = await import('../stageEditorRegistry.ts');
 
-    expect(Object.keys(registry.stageEditorRegistry).toSorted()).toEqual(
-      Object.keys(censusAndBinStageEditors).toSorted(),
+    // Every family is composed into the registry whichever module loaded
+    // first, so the part loaded ahead of it is present in full — the cycle
+    // between a part and the registry never drops a claim.
+    expect(Object.keys(registry.stageEditorRegistry)).toEqual(
+      expect.arrayContaining(Object.keys(censusAndBinStageEditors)),
     );
     expect(Object.keys(registry.stageEditorRegistry)).not.toHaveLength(0);
   });
@@ -167,6 +170,10 @@ describe('the two lists a family edits', () => {
 
   /** The lines between a list's own brackets, comments and blanks dropped. */
   const entriesOf = (name: string): string[] => {
+    // Every family has landed, so a list may legitimately be empty: `[]` on
+    // one line is what the formatter writes for it, and it holds no entries
+    // for two families to collide on.
+    if (new RegExp(`const ${name} = \\[\\] as const`).test(source)) return [];
     const body = new RegExp(
       `const ${name} = \\[\\n([\\s\\S]*?)\\n\\] as const`,
     ).exec(source)?.[1];
