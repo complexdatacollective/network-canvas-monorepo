@@ -425,11 +425,18 @@ export async function enforceMigrationQuiescence(
         JOIN pg_database database ON database.datname = activity.datname
       WHERE activity.datname = current_database() AND NOT login.rolsuper
         AND login.oid <> database.datdba AND login.rolname <> session_user
+    ) OR EXISTS (
+      SELECT 1 FROM pg_prepared_xacts prepared
+        JOIN pg_roles owner_role ON owner_role.rolname = prepared.owner
+        JOIN pg_database database ON database.datname = prepared.database
+      WHERE prepared.database = current_database() AND NOT owner_role.rolsuper
+        AND owner_role.oid <> database.datdba
+        AND owner_role.rolname <> session_user
     ) AS present
   `);
   if (sessions.rows[0]?.present !== false) {
     throw new Error(
-      'Studio has existing runtime connections. Keep admission closed and stop all web, worker and backup processes before applying pending migrations.',
+      'Studio has existing runtime connections or prepared transactions. Keep admission closed and stop all web, worker and backup processes before applying pending migrations.',
     );
   }
 }

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
-import { escapeIdentifier, Pool, type PoolClient } from 'pg';
+import { escapeIdentifier, escapeLiteral, Pool, type PoolClient } from 'pg';
 import { describe, expect, it } from 'vitest';
 
 import { BACKUP_ROLE } from '@codaco/studio-sync/rls';
@@ -126,6 +126,15 @@ function nextMigration(
     sidecarsHash: sha256(sidecars),
   };
   return { manifest, snapshot, sql, sidecars, checksum: jsonHash(manifest) };
+}
+
+async function rollbackPrepared(pool: Pool, gid: string): Promise<void> {
+  const prepared = await pool.query<{ present: boolean }>(
+    'SELECT EXISTS (SELECT 1 FROM pg_prepared_xacts WHERE gid = $1 AND database = current_database()) AS present',
+    [gid],
+  );
+  if (prepared.rows[0]?.present)
+    await pool.query(`ROLLBACK PREPARED ${escapeLiteral(gid)}`);
 }
 
 describe.skipIf(!database)('migration security invariants', () => {
@@ -1555,6 +1564,109 @@ describe.skipIf(!database)('migration security invariants', () => {
     },
   );
 
+  it('refuses disconnected prepared work before pending SQL while preserving no-op checks', async () => {
+    await withDeployment(
+      async ({ administrator, owner, url, logins, databaseName }) => {
+        await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+        expect(
+          Number(
+            (
+              await administrator.query<{
+                max_prepared_transactions: string;
+              }>('SHOW max_prepared_transactions')
+            ).rows[0]?.max_prepared_transactions,
+          ),
+        ).toBeGreaterThan(0);
+        await owner.query(`CREATE TABLE public.prepared_runtime_probe (id integer PRIMARY KEY, value text NOT NULL);
+          INSERT INTO public.prepared_runtime_probe (id, value) VALUES (1, 'before');
+          GRANT SELECT, UPDATE ON public.prepared_runtime_probe TO studio_app;
+          CREATE SEQUENCE public.prepared_runtime_execution_probe`);
+        const next = nextMigration(
+          shipped.at(-1)!,
+          "SELECT nextval('public.prepared_runtime_execution_probe'); CREATE TABLE public.pending_prepared_guard (id integer)",
+        );
+        const gid = `studio-before-${randomUUID()}`;
+        try {
+          await connectAs(url, logins[1], undefined, async (runtime) => {
+            await runtime.query(`BEGIN;
+              SET ROLE studio_app;
+              UPDATE public.prepared_runtime_probe SET value = 'prepared' WHERE id = 1;
+              PREPARE TRANSACTION ${escapeLiteral(gid)}`);
+          });
+          expect(
+            (
+              await administrator.query(
+                `SELECT prepared.owner, prepared.database,
+                  EXISTS (SELECT 1 FROM pg_stat_activity activity
+                    WHERE activity.datname = current_database() AND activity.usename = $2) AS connected
+                 FROM pg_prepared_xacts prepared
+                 WHERE prepared.gid = $1 AND prepared.database = current_database()`,
+                [gid, logins[1]],
+              )
+            ).rows,
+          ).toEqual([
+            {
+              owner: 'studio_app',
+              database: databaseName,
+              connected: false,
+            },
+          ]);
+          await expect(
+            migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+          ).resolves.toEqual([]);
+          await expect(
+            migrateDatabase(
+              owner,
+              [...shipped, next],
+              next.manifest.fingerprint,
+              logins,
+            ),
+          ).rejects.toThrow(
+            'Studio has existing runtime connections or prepared transactions',
+          );
+          expect(
+            (
+              await owner.query(
+                "SELECT to_regclass('public.pending_prepared_guard') AS relation",
+              )
+            ).rows,
+          ).toEqual([{ relation: null }]);
+          expect(
+            (
+              await owner.query(
+                'SELECT fingerprint FROM public."schemaFingerprint"',
+              )
+            ).rows,
+          ).toEqual([{ fingerprint: SCHEMA_FINGERPRINT }]);
+          expect(
+            (
+              await owner.query(
+                'SELECT is_called FROM public.prepared_runtime_execution_probe',
+              )
+            ).rows,
+          ).toEqual([{ is_called: false }]);
+        } finally {
+          await rollbackPrepared(administrator, gid);
+        }
+        await expect(
+          migrateDatabase(
+            owner,
+            [...shipped, next],
+            next.manifest.fingerprint,
+            logins,
+          ),
+        ).resolves.toEqual([next.manifest.id]);
+        expect(
+          (
+            await owner.query(
+              'SELECT is_called FROM public.prepared_runtime_execution_probe',
+            )
+          ).rows,
+        ).toEqual([{ is_called: true }]);
+      },
+    );
+  });
+
   it('rolls back pending SQL when an enrolled runtime session arrives during migration', async () => {
     await withDeployment(async ({ administrator, owner, url, logins }) => {
       await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
@@ -1614,6 +1726,103 @@ describe.skipIf(!database)('migration security invariants', () => {
         await blocker.query('SELECT pg_advisory_unlock($1)', [gate]);
         blocker.release();
         await pending;
+      }
+    });
+  });
+
+  it('rolls back pending SQL when disconnected prepared work arrives after the initial drain check', async () => {
+    await withDeployment(async ({ administrator, owner, url, logins }) => {
+      await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+      expect(
+        Number(
+          (
+            await administrator.query<{
+              max_prepared_transactions: string;
+            }>('SHOW max_prepared_transactions')
+          ).rows[0]?.max_prepared_transactions,
+        ),
+      ).toBeGreaterThan(0);
+      await owner.query(`CREATE TABLE public.final_prepared_runtime_probe (id integer PRIMARY KEY, value text NOT NULL);
+        INSERT INTO public.final_prepared_runtime_probe (id, value) VALUES (1, 'before');
+        GRANT SELECT, UPDATE ON public.final_prepared_runtime_probe TO studio_app;
+        CREATE SEQUENCE public.final_prepared_execution_probe`);
+      const gate = Number.parseInt(randomUUID().slice(0, 7), 16);
+      const gid = `studio-final-${randomUUID()}`;
+      const blocker = await administrator.connect();
+      let pending: Promise<unknown> | undefined;
+      try {
+        await blocker.query('SELECT pg_advisory_lock($1)', [gate]);
+        const next = nextMigration(
+          shipped.at(-1)!,
+          `SELECT nextval('public.final_prepared_execution_probe'); CREATE TABLE public.final_prepared_guard (id integer); SELECT pg_advisory_xact_lock(${gate})`,
+        );
+        pending = migrateDatabase(
+          owner,
+          [...shipped, next],
+          next.manifest.fingerprint,
+          logins,
+        ).catch((error: unknown) => error);
+        await expect
+          .poll(
+            async () =>
+              (
+                await administrator.query<{ waiting: boolean }>(
+                  "SELECT EXISTS (SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND classid = 0 AND objid = $1 AND NOT granted) AS waiting",
+                  [gate],
+                )
+              ).rows[0]?.waiting,
+          )
+          .toBe(true);
+        await connectAs(url, logins[1], undefined, async (runtime) => {
+          await runtime.query(`BEGIN;
+            SET ROLE studio_app;
+            UPDATE public.final_prepared_runtime_probe SET value = 'prepared' WHERE id = 1;
+            PREPARE TRANSACTION ${escapeLiteral(gid)}`);
+        });
+        expect(
+          (
+            await administrator.query(
+              `SELECT prepared.owner,
+                EXISTS (SELECT 1 FROM pg_stat_activity activity
+                  WHERE activity.datname = current_database() AND activity.usename = $2) AS connected
+               FROM pg_prepared_xacts prepared
+               WHERE prepared.gid = $1 AND prepared.database = current_database()`,
+              [gid, logins[1]],
+            )
+          ).rows,
+        ).toEqual([{ owner: 'studio_app', connected: false }]);
+        await blocker.query('SELECT pg_advisory_unlock($1)', [gate]);
+        const outcome = await pending;
+        expect(outcome).toBeInstanceOf(Error);
+        expect(String(outcome)).toContain(
+          'Studio has existing runtime connections or prepared transactions',
+        );
+        expect(
+          (
+            await owner.query(
+              "SELECT to_regclass('public.final_prepared_guard') AS relation",
+            )
+          ).rows,
+        ).toEqual([{ relation: null }]);
+        expect(
+          (
+            await owner.query(
+              'SELECT fingerprint FROM public."schemaFingerprint"',
+            )
+          ).rows,
+        ).toEqual([{ fingerprint: SCHEMA_FINGERPRINT }]);
+        expect(
+          (
+            await owner.query(
+              'SELECT is_called FROM public.final_prepared_execution_probe',
+            )
+          ).rows,
+        ).toEqual([{ is_called: true }]);
+      } finally {
+        await blocker.query('SELECT pg_advisory_unlock($1)', [gate]);
+        blocker.release();
+        await pending;
+        await rollbackPrepared(administrator, gid);
       }
     });
   });
