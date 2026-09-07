@@ -11,8 +11,10 @@ import {
   useState,
 } from 'react';
 
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import FormErrorsList from '@codaco/fresco-ui/form/FormErrors';
 import { useForm } from '@codaco/fresco-ui/form/hooks/useForm';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import FormStoreProvider, {
   FormStoreContext,
 } from '@codaco/fresco-ui/form/store/formStoreProvider';
@@ -32,6 +34,7 @@ import {
   SessionReadOnlyError,
   type StageFormDraft,
 } from '../session.ts';
+import type { StageEditorActions } from '../stage-editor-contract.ts';
 import { SectionOutlineStore } from './outlineStore.ts';
 import { reseedStageForm } from './reseedStageForm.ts';
 import SectionOutline from './SectionOutline.tsx';
@@ -46,22 +49,20 @@ import {
 } from './stageEditorContext.ts';
 
 /**
- * What a host needs to render its own action chrome for the editor.
- *
- * The package owns the form and knows whether it can be submitted; the host
- * owns where the buttons live and what else sits beside them. `formId` is the
- * whole contract for a submit control rendered outside the form element.
+ * Where the slot's own types live is `stage-editor-contract.ts`: they are part
+ * of what a named editor takes, and the contract is a module of types a host
+ * can read without compiling a component tree. Carried on through here because
+ * this is the component that calls the slot.
  */
-export type StageEditorActionContext = Readonly<{
-  controller: StageEditorController;
-  formId: string;
-  readOnly: boolean;
-}>;
+export type {
+  StageEditorActionContext,
+  StageEditorActions,
+} from '../stage-editor-contract.ts';
 
 export type StageEditorShellProps = Readonly<{
   controller: StageEditorController;
   /** The host's action chrome. Receives the controller and the form id. */
-  actions?: (context: StageEditorActionContext) => ReactNode;
+  actions?: StageEditorActions;
   children: ReactNode;
   className?: string;
 }>;
@@ -338,6 +339,20 @@ function StageEditorFormBody({
     ],
   );
 
+  /**
+   * Whether a save is in flight, worn by the FORM.
+   *
+   * The package's own `SubmitButton` already says this about itself, but a
+   * host need not use it: `formId` is the whole contract for a submit control
+   * rendered outside the form, and a plain `<button form={formId}>` is a
+   * conforming host. So the fact that the form is busy has to be readable from
+   * the form — by assistive technology, which is being told that this region
+   * is updating rather than merely that one button is; and by anything else
+   * that has to know a submit has settled without knowing what the host put in
+   * the action slot.
+   */
+  const isSubmitting = useFormStore((state) => state.isSubmitting);
+
   const { formProps, formErrors } = useForm({
     onSubmit: handleSubmit,
     onSubmitInvalid: (errors) => {
@@ -412,6 +427,7 @@ function StageEditorFormBody({
               id={formId}
               ref={formRef}
               noValidate // The form reports its own problems; the browser's differ.
+              aria-busy={isSubmitting}
               onSubmit={formProps.onSubmit}
               className="flex min-w-0 flex-col"
             >
@@ -496,14 +512,53 @@ function useCommittedFields(
   return committed.current;
 }
 
-const READ_ONLY_MESSAGE =
-  'This stage is read-only, so your changes were not saved. Take over editing and try again.';
+/**
+ * What a save or a structural write that reached nothing is called on screen.
+ *
+ * Encoded rather than formatted, because none of the three is rendered where
+ * it is decided: they are handed to the form as `formErrors`, held there until
+ * something replaces them, and rendered by `FormErrors`, which decodes them —
+ * so a refusal already on screen follows a change of language.
+ */
+const messages = defineMessages({
+  readOnly: {
+    id: 'protocolBuilder.shell.readOnlyRefusal',
+    defaultMessage:
+      'This stage is read-only, so your changes were not saved. Take over editing and try again.',
+    description:
+      'Shown above a stage editor’s fields when the researcher no longer holds the right to edit this stage (a stage is one step of an interview) and something they did would have written to it. Taking over editing is an action offered elsewhere in the host application.',
+  },
+  formUnavailable: {
+    id: 'protocolBuilder.shell.formUnavailableRefusal',
+    defaultMessage:
+      'This stage could not be saved because its form is no longer available. Reopen the stage and try again.',
+    description:
+      'Shown above a stage editor’s fields when a save arrives after the editor’s own form has been taken down, so there are no values left to save.',
+  },
+  saveFailed: {
+    id: 'protocolBuilder.shell.saveFailedRefusal',
+    defaultMessage:
+      'This stage could not be saved. Wait a moment and try again.',
+    description:
+      'Shown above a stage editor’s fields when saving failed for a reason that carried no explanation of its own. The last resort, used only when the failure said nothing readable.',
+  },
+});
 
-const UNAVAILABLE_MESSAGE =
-  'This stage could not be saved because its form is no longer available. Reopen the stage and try again.';
+const READ_ONLY_MESSAGE = createMessageError(messages.readOnly);
 
+const UNAVAILABLE_MESSAGE = createMessageError(messages.formUnavailable);
+
+/**
+ * The failure's own account of itself where it has one, and this package's
+ * sentence where it does not.
+ *
+ * A host's message is passed through as it stands: it is already written for
+ * the researcher, and `FormErrors` renders either an encoded descriptor or a
+ * plain sentence — `formatMessageError(text, intl) ?? text` — so a host that
+ * localizes its own failures is carried too.
+ */
 function failureMessage(error: unknown): string {
   return error instanceof Error && error.message !== ''
     ? error.message
-    : 'This stage could not be saved. Wait a moment and try again.';
+    : createMessageError(messages.saveFailed);
 }

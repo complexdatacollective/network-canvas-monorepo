@@ -90,7 +90,7 @@ by the current acceptance matrix and the latest checkpoint at the end.
   independent review requested from the orchestrator against fixed snapshots
   `/private/tmp/architect-translation-source-en.json` and
   `/private/tmp/architect-es-review-snapshot.json`. Glossary: atributo, nodo,
-  vínculo, diccionario de datos, protocolo, etapa; alter/alteri retain the
+  vínculo, libro de códigos, protocolo, etapa; alter/alteri retain the
   established research terms. Translation changes from review will be recorded.
 - A refreshed non-JSX census identified 369 remaining candidates across 114
   files, including intentional technical tokens. Concrete next action: finish

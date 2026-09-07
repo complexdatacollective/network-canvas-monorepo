@@ -19,6 +19,7 @@ import { DialogFormField } from '../../DialogForm.tsx';
 import ProtocolArrayField from '../../ProtocolArrayField.tsx';
 import StageEditorShell from '../../StageEditorShell.tsx';
 import DialogArrayField from '../DialogArrayField.tsx';
+import { promptItemLabel } from './itemLabel.ts';
 
 /**
  * The row editor's whole lifecycle, against a model of what it owes the
@@ -290,7 +291,7 @@ function renderLifecycleList(session: ProtocolBuilderSession) {
             addButtonLabel="Create new prompt"
             editorTitle="Edit prompt"
             addTitle="Add prompt"
-            itemLabel="prompt"
+            itemLabel={promptItemLabel}
             previewComponent={PromptPreview}
             editorFieldsComponent={LifecycleFields}
           />

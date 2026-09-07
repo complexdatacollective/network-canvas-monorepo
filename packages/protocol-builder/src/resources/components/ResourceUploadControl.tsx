@@ -149,6 +149,12 @@ export default function ResourceUploadControl({
    * waits.
    */
   const [rejected, setRejected] = useState<string | undefined>(undefined);
+  /**
+   * What was announced last, encoded for the same reason the refusal above is:
+   * an announcement stays in its live region until another replaces it, so a
+   * sentence formatted when the import landed would be the one thing left in
+   * the old language after the application changes its own.
+   */
   const [status, setStatus] = useState('');
   const [dragging, setDragging] = useState(false);
   /**
@@ -241,7 +247,7 @@ export default function ResourceUploadControl({
           }),
         (descriptor) => {
           setStatus(
-            intl.formatMessage(messages.importedAnnouncement, {
+            createMessageError(messages.importedAnnouncement, {
               name: descriptor.name,
             }),
           );
@@ -256,7 +262,7 @@ export default function ResourceUploadControl({
       // `busy` without ever being reported as nothing in between.
       setReading(false);
     },
-    [begin, gateway, intl, kind, onStaged],
+    [begin, gateway, kind, onStaged],
   );
 
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {
@@ -318,7 +324,9 @@ export default function ResourceUploadControl({
       )}
 
       <span className="sr-only" aria-live="polite" aria-atomic="true">
-        {busy ? intl.formatMessage(messages.importingAnnouncement) : status}
+        {busy
+          ? intl.formatMessage(messages.importingAnnouncement)
+          : (formatMessageError(status, intl) ?? status)}
       </span>
     </div>
   );

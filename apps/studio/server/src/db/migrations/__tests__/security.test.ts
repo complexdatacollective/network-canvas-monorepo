@@ -151,6 +151,36 @@ async function rollbackPrepared(pool: Pool, gid: string): Promise<void> {
     await pool.query(`ROLLBACK PREPARED ${escapeLiteral(gid)}`);
 }
 
+async function preparedWorkIsDisconnected(
+  administrator: Pool,
+  gid: string,
+  runtimeLogin: string,
+  databaseName: string,
+) {
+  return expect
+    .poll(
+      async () =>
+        (
+          await administrator.query(
+            `SELECT prepared.owner, prepared.database,
+            EXISTS (SELECT 1 FROM pg_stat_activity activity
+              WHERE activity.datname = current_database() AND activity.usename = $2) AS connected
+           FROM pg_prepared_xacts prepared
+           WHERE prepared.gid = $1 AND prepared.database = current_database()`,
+            [gid, runtimeLogin],
+          )
+        ).rows,
+      { timeout: 10_000, interval: 100 },
+    )
+    .toEqual([
+      {
+        owner: 'studio_app',
+        database: databaseName,
+        connected: false,
+      },
+    ]);
+}
+
 describe.skipIf(!database)('migration security invariants', () => {
   it('administrator provisioning removes direct and PUBLIC large-object capabilities without granting another identity access', async () => {
     await withDeployment(async ({ administrator, owner, logins }) => {
@@ -1836,24 +1866,12 @@ describe.skipIf(!database)('migration security invariants', () => {
               UPDATE public.prepared_runtime_probe SET value = 'prepared' WHERE id = 1;
               PREPARE TRANSACTION ${escapeLiteral(gid)}`);
           });
-          expect(
-            (
-              await administrator.query(
-                `SELECT prepared.owner, prepared.database,
-                  EXISTS (SELECT 1 FROM pg_stat_activity activity
-                    WHERE activity.datname = current_database() AND activity.usename = $2) AS connected
-                 FROM pg_prepared_xacts prepared
-                 WHERE prepared.gid = $1 AND prepared.database = current_database()`,
-                [gid, logins[1]],
-              )
-            ).rows,
-          ).toEqual([
-            {
-              owner: 'studio_app',
-              database: databaseName,
-              connected: false,
-            },
-          ]);
+          await preparedWorkIsDisconnected(
+            administrator,
+            gid,
+            logins[1],
+            databaseName,
+          );
           await expect(
             migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
           ).resolves.toEqual([]);

@@ -2,6 +2,7 @@ import type pg from 'pg';
 
 import {
   assertSafePostgresDatabaseEnrollment,
+  copyPostgresAdministrativeLogins,
   UnsafePostgresDatabaseEnrollmentError,
 } from '@codaco/studio-sync/postgres-database-enrollment';
 import {
@@ -22,8 +23,13 @@ import {
 export async function enforceMigrationSecurity(
   client: pg.PoolClient,
   allowedLogins: readonly string[],
+  administrativeLogins?: readonly string[],
 ): Promise<void> {
   validateRoleNames(allowedLogins);
+  const copiedAdministrativeLogins = copyPostgresAdministrativeLogins(
+    allowedLogins,
+    administrativeLogins,
+  );
   // Backup identity provisioning belongs to its own versioned sidecar. Check
   // it when present without creating a future role on an older installation.
   const optionalRoles = await client.query<{ rolname: string }>(
@@ -60,7 +66,13 @@ export async function enforceMigrationSecurity(
   }
   // Ownership and the migration connection are administrative capabilities.
   // They may belong to distinct enrolled logins; neither is a runtime identity.
-  const administrators = [operator.operator, operator.owner];
+  const administrators = [
+    ...new Set([
+      operator.operator,
+      operator.owner,
+      ...copiedAdministrativeLogins,
+    ]),
+  ];
   const restrictedLogins = allowedLogins.filter(
     (login) => !administrators.includes(login),
   );

@@ -200,6 +200,12 @@ export default function ResourcePickerControl({
   const action = useResourceAttempt();
   const referenceCount = useStageResourceUsage();
   const [browserOpen, setBrowserOpen] = useState(false);
+  /**
+   * What was announced last, encoded for the same reason the refusal below is:
+   * an announcement stays in its live region until another replaces it, so a
+   * sentence formatted when the choice was made would be the one thing left in
+   * the old language after the application changes its own.
+   */
   const [status, setStatus] = useState('');
   /**
    * Why the last choice was refused, encoded rather than formatted. Some of
@@ -276,7 +282,7 @@ export default function ResourcePickerControl({
     action.clear();
     onChange?.(chosen.id);
     setStatus(
-      intl.formatMessage(messages.selectedAnnouncement, { name: chosen.name }),
+      createMessageError(messages.selectedAnnouncement, { name: chosen.name }),
     );
   };
 
@@ -287,7 +293,7 @@ export default function ResourcePickerControl({
     action.clear();
     setRefusal(undefined);
     onChange?.(undefined);
-    setStatus(intl.formatMessage(messages.removedAnnouncement));
+    setStatus(createMessageError(messages.removedAnnouncement));
   };
 
   const handleDiscard = () => {
@@ -308,7 +314,7 @@ export default function ResourcePickerControl({
         // The field goes with it: a discarded resource is gone from the host,
         // so a reference left behind could only ever be dangling.
         onChange?.(undefined);
-        setStatus(intl.formatMessage(messages.discardedAnnouncement));
+        setStatus(createMessageError(messages.discardedAnnouncement));
       },
     );
   };
@@ -321,7 +327,7 @@ export default function ResourcePickerControl({
       (content) => {
         downloadResourceContent(content, descriptor.source ?? descriptor.name);
         setStatus(
-          intl.formatMessage(messages.downloadedAnnouncement, {
+          createMessageError(messages.downloadedAnnouncement, {
             name: descriptor.name,
           }),
         );
@@ -336,7 +342,7 @@ export default function ResourcePickerControl({
       setRefusal(undefined);
       action.clear();
       onChange?.(INTERVIEW_NETWORK);
-      setStatus(intl.formatMessage(messages.interviewNetworkAnnouncement));
+      setStatus(createMessageError(messages.interviewNetworkAnnouncement));
       return;
     }
     if (next === 'resource') {
@@ -376,10 +382,15 @@ export default function ResourcePickerControl({
             // field is announced by the control saying so, with the message
             // reached through `aria-describedby`. With nothing on this group
             // saying so, a required picker whose submit was refused announces
-            // exactly like one that was accepted, and a picker that never says
-            // it is required announces as an optional one.
+            // exactly like one that was accepted.
             'aria-invalid': ariaInvalid,
-            'aria-required': ariaRequired,
+            // No `aria-required`, which `group` does not take (ARIA 1.2) —
+            // assistive technology is entitled to ignore it there, and axe
+            // reports it as a violation. The field says it is required in the
+            // way every field does instead: it renders a visually hidden
+            // "Required" beside its label and names it in the
+            // `aria-describedby` that arrives here, so the group is announced
+            // as required whether or not this attribute is on it.
           })}
       data-name={name}
       onBlur={onBlur}
@@ -564,7 +575,7 @@ export default function ResourcePickerControl({
       {/* Mounted with the field rather than with the message, so the first
           announcement is an update to a region that was already there. */}
       <span className="sr-only" aria-live="polite" aria-atomic="true">
-        {status}
+        {formatMessageError(status, intl) ?? status}
       </span>
     </div>
   );

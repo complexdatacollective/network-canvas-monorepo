@@ -4,6 +4,7 @@ import { v4 as uuid } from 'uuid';
 import {
   createMessageError,
   defineMessages,
+  formatMessageError,
   type MessageDescriptor,
 } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -214,6 +215,12 @@ export default function ResourceSecretControl({
   const [errors, setErrors] = useState<
     Readonly<{ name?: string; value?: string }>
   >({});
+  /**
+   * What was announced last, encoded for the same reason the errors above are:
+   * an announcement stays in its live region until another replaces it, so a
+   * sentence formatted when the key was staged would be the one thing left in
+   * the old language after the application changes its own.
+   */
   const [status, setStatus] = useState('');
   const waitingId = useId();
   // One id per key the researcher is adding, so a retry after an uncertain
@@ -340,7 +347,7 @@ export default function ResourceSecretControl({
         unsettled.current = undefined;
         requestId.current = uuid();
         setStatus(
-          intl.formatMessage(messages.addedAnnouncement, {
+          createMessageError(messages.addedAnnouncement, {
             name: staged.descriptor.name,
           }),
         );
@@ -457,7 +464,7 @@ export default function ResourceSecretControl({
       </Button>
 
       <span className="sr-only" aria-live="polite" aria-atomic="true">
-        {status}
+        {formatMessageError(status, intl) ?? status}
       </span>
     </form>
   );
