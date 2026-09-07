@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -28,7 +34,9 @@ function fixture(t) {
     '#!/usr/bin/env node\n' +
       "const fs = require('node:fs');\n" +
       'const args = process.argv.slice(2);\n' +
-      "fs.appendFileSync('" + log + "', JSON.stringify(args) + '\\n');\n" +
+      "fs.appendFileSync('" +
+      log +
+      "', JSON.stringify(args) + '\\n');\n" +
       "if (args[0] === 'digest') process.stdout.write('sha256:' + 'a'.repeat(64) + '\\n');\n" +
       "if (args.includes('--output')) {\n" +
       '  const image = args[0];\n' +
@@ -86,16 +94,34 @@ test('builds/copies immutable six-image inputs, then acquires digest evidence an
     },
   );
   assert.deepEqual(result.reused, []);
-  assert.deepEqual(Object.keys(result.images).toSorted(), Object.keys(IMAGE_REPOSITORIES).toSorted());
+  assert.deepEqual(
+    Object.keys(result.images).toSorted(),
+    Object.keys(IMAGE_REPOSITORIES).toSorted(),
+  );
   assert.equal(result.sboms.size, 6);
-  const commands = readFileSync(f.log, 'utf8').trim().split('\n').map(JSON.parse);
-  assert.equal(commands.filter((args) => args[0] === 'buildx').length, 3);
-  assert.equal(commands.filter((args) => args[0] === 'copy').length, 3);
-  for (const args of commands.filter((args) => args[0] === 'buildx'))
-    assert.ok(args.includes('linux/amd64,linux/arm64') && args.includes('--push'));
-  assert.ok(commands.some((args) => args[0] === 'copy' && /postgres:18\.6-alpine@sha256:/.test(args[1])));
-  assert.equal(commands.filter((args) => args[0] === 'digest').length, 6);
-  assert.equal(commands.filter((args) => args.includes('--output')).length, 6);
+  const commands = readFileSync(f.log, 'utf8')
+    .trim()
+    .split('\n')
+    .map(JSON.parse);
+  assert.equal(commands.filter((record) => record[0] === 'buildx').length, 3);
+  assert.equal(commands.filter((record) => record[0] === 'copy').length, 3);
+  for (const record of commands.filter(
+    (candidate) => candidate[0] === 'buildx',
+  ))
+    assert.ok(
+      record.includes('linux/amd64,linux/arm64') && record.includes('--push'),
+    );
+  assert.ok(
+    commands.some(
+      (record) =>
+        record[0] === 'copy' && /postgres:18\.6-alpine@sha256:/.test(record[1]),
+    ),
+  );
+  assert.equal(commands.filter((record) => record[0] === 'digest').length, 6);
+  assert.equal(
+    commands.filter((record) => record.includes('--output')).length,
+    6,
+  );
 });
 
 test('refuses a candidate that differs from the checked-out reviewed source before invoking image tools', async (t) => {
