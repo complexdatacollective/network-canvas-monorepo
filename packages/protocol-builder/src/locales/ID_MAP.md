@@ -93,7 +93,7 @@ name not here adds it here first, in the same pull request.
 | `codebookVariable`          | `codebook/components/VariableEditor.tsx`, `codebook/variableRoles.ts`, `codebook/variableOptions.ts`, `codebook/components/VariableBooleanAnswerFields.tsx`                      | i18n-2    |
 | `variableValidation`        | `codebook/variableValidation.ts`, `codebook/validation/VariableValidationEditor.tsx`, `codebook/validation/CodebookVariableValidationEditor.tsx`, `codebook/codebookMessages.ts` | i18n-2    |
 | `codebookEditing`           | `codebook/editing.ts`, `codebook/codebookMessages.ts`, `codebook/useCodebookVariableEdits.ts`                                                                                    | i18n-2    |
-| `shell`                     | `form/StageEditorShell.tsx`                                                                                                                                                      | i18n-2    |
+| `shell`                     | `form/StageEditorShell.tsx`, `editors/saveStageAction.tsx`                                                                                                                       | i18n-2    |
 | `outline`                   | `form/SectionOutline.tsx`                                                                                                                                                        | i18n-2    |
 | `dialogForm`                | `form/DialogForm.tsx`, `form/discardDraftGuard.ts`                                                                                                                               | i18n-2    |
 | `protocolField`             | `form/ProtocolField.tsx`                                                                                                                                                         | i18n-2    |
@@ -118,6 +118,11 @@ name not here adds it here first, in the same pull request.
 | `pageContent`               | `sections/PageContentSection.tsx`                                                                                                                                                | sections  |
 | `contentBlock`              | `sections/contentBlocks/contentBlockTypes.ts`, `ContentBlockEditor.tsx`, `ContentBlockPreview.tsx`                                                                               | sections  |
 | `promptsSection`            | `sections/PromptsSection.tsx`                                                                                                                                                    | sections  |
+
+`shell` covers `editors/saveStageAction.tsx` as well as the shell itself,
+rather than that control taking an area of its own: the fallback save button is
+the shell's action slot standing in for a host that rendered none, so its words
+are the shell's chrome like the refusals already declared there.
 
 The `*Messages.ts` files are the homes for copy more than one module renders —
 `extractMessages` throws when the same id is declared twice, so a shared string

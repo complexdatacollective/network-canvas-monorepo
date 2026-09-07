@@ -2043,6 +2043,10 @@
     "defaultMessage": "This stage could not be saved. Wait a moment and try again.",
     "description": "Shown above a stage editor’s fields when saving failed for a reason that carried no explanation of its own. The last resort, used only when the failure said nothing readable."
   },
+  "protocolBuilder.shell.saveStage": {
+    "defaultMessage": "Save stage",
+    "description": "Action that saves the step of the interview a researcher is editing. Names the stage rather than saying only \"Save\", because a host may show its own controls beside this one."
+  },
   "protocolBuilder.skipLogic.actionHint": {
     "defaultMessage": "What should happen when the rules match?",
     "description": "Guidance under the control where a researcher says what skip logic does when its rules match."
