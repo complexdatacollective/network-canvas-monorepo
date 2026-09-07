@@ -30,6 +30,7 @@
  */
 import type { StageType } from '@codaco/protocol-validation';
 
+import { networkStageEditors } from './editors/networkStageEditors.ts';
 import { pedigreeAndAnonymisationStageEditors } from './editors/pedigreeAndAnonymisationStageEditors.ts';
 import type { StageEditorRegistryPart } from './stage-editor-contract.ts';
 
@@ -94,6 +95,7 @@ export function composeStageEditorRegistry(
  */
 const REGISTRY_PARTS = [
   // One imported part per line, alphabetically, each with a trailing comma.
+  networkStageEditors,
   pedigreeAndAnonymisationStageEditors,
 ] as const satisfies readonly StageEditorRegistryPart[];
 
@@ -162,11 +164,8 @@ export const AWAITING_STAGE_EDITORS = [
   'NameGenerator',
   'NameGeneratorQuickAdd',
   'NameGeneratorRoster',
-  'Narrative',
-  'NetworkComposer',
   'OneToManyDyadCensus',
   'OrdinalBin',
-  'Sociogram',
   'TieStrengthCensus',
 ] as const satisfies readonly UnregisteredStageType[];
 

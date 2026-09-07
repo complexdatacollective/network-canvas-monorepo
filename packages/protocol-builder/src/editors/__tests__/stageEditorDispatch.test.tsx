@@ -8,6 +8,9 @@ import {
   loadFixtureStage,
 } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
+import { NarrativeStageEditor } from '../network/NarrativeStageEditor.tsx';
+import { NetworkComposerStageEditor } from '../network/NetworkComposerStageEditor.tsx';
+import { SociogramStageEditor } from '../network/SociogramStageEditor.tsx';
 import { shimMarkdownEditorMeasurement } from '../pedigree/__tests__/editorFixtures.tsx';
 import { FamilyPedigreeStageEditor } from '../pedigree/FamilyPedigreeStageEditor.tsx';
 import { NarrativePedigreeStageEditor } from '../pedigree/NarrativePedigreeStageEditor.tsx';
@@ -15,12 +18,13 @@ import { NarrativePedigreeStageEditor } from '../pedigree/NarrativePedigreeStage
 shimMarkdownEditorMeasurement();
 
 /**
- * The interfaces this family claims, and — for each — the outline sections
- * only that editor composes.
+ * The interfaces these two families claim between them, and — for each — the
+ * outline sections only that editor composes.
  *
  * The section names are the discriminator because they are what a researcher
- * would see: opening a family pedigree in the narrative pedigree editor is not
- * a type error, it is a page with the wrong things on it. The check below
+ * would see: opening a sociogram in the narrative editor is not a type error,
+ * it is a page with the wrong things on it. Sociogram is named by two, because
+ * it shares almost everything with the narrative editor; the check below
  * refuses a discriminator that does not in fact discriminate, so a lazy one
  * here fails rather than passing vacuously.
  */
@@ -31,9 +35,24 @@ const CLAIMED = [
     sections: ['Pedigree framing'],
   },
   {
+    stageType: 'Narrative',
+    editor: NarrativeStageEditor,
+    sections: ['Visualization presets'],
+  },
+  {
     stageType: 'NarrativePedigree',
     editor: NarrativePedigreeStageEditor,
     sections: ['Pedigree source'],
+  },
+  {
+    stageType: 'NetworkComposer',
+    editor: NetworkComposerStageEditor,
+    sections: ['Adding and arranging nodes'],
+  },
+  {
+    stageType: 'Sociogram',
+    editor: SociogramStageEditor,
+    sections: ['Prompts', 'Node layout'],
   },
 ] as const satisfies readonly {
   stageType: StageType;
@@ -61,7 +80,7 @@ function fixtureStageOfType(stageType: StageType): string {
   return stageId;
 }
 
-describe('the interfaces the pedigree family claims', () => {
+describe('the interfaces the network, spatial and pedigree families claim', () => {
   /**
    * By identity, against the registry the package actually composes — not
    * against either family's own part. A part that is written correctly but
