@@ -224,11 +224,34 @@ describe('the sweep itself', () => {
    * Protocol content is not chrome. A researcher's own words are stored in the
    * protocol and rendered verbatim to the participant, so the sweep must not
    * report one that happens to read like a message this package owns.
+   *
+   * "Who are the people you know?" is exactly that collision, and no longer a
+   * hypothetical one: it is the English of
+   * `protocolBuilder.nameGeneratorPrompts.textPlaceholder`, the placeholder
+   * the name generator's own prompt field shows — a sentence this package
+   * suggests BECAUSE it is the sentence a researcher writes. So it is passed
+   * as content, which is how every real sweep gets it: read out of the stage
+   * the harness is mounted over rather than listed here. The short ones need
+   * no help; the four-letter floor keeps "Age" and "No" out on their own.
    */
   it('says nothing about a researcher’s own English', () => {
     document.body.innerHTML =
       '<p>Who are the people you know?</p><p>Age</p><p>No</p>';
 
-    expect(localeLeaks()).toEqual([]);
+    expect(localeLeaks(new Set(['Who are the people you know?']))).toEqual([]);
+  });
+
+  /**
+   * The other half of the same rule, which is what makes the exclusion above
+   * mean something: the sentence is reported when the protocol does NOT hold
+   * it, because then a Spanish reader is looking at this package's English
+   * placeholder rather than at their own writing.
+   */
+  it('names that same sentence when it is the package’s own', () => {
+    document.body.innerHTML = '<p>Who are the people you know?</p>';
+
+    expect(localeLeaks()).toEqual([
+      'protocolBuilder.nameGeneratorPrompts.textPlaceholder rendered in English: Who are the people you know?',
+    ]);
   });
 });

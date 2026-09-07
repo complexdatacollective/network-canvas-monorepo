@@ -24,6 +24,15 @@ import type { RowEditorProps, RowPreviewProps } from '../rowRenderers.tsx';
  * value resurrecting itself on save. A bare Fresco `Field` would be worse
  * still — nothing would hand it the row's value, so editing a prompt would
  * open on an empty box and save the emptiness back.
+ *
+ * No label in this file may spell a sentence the package's own catalog holds.
+ * These are English literals in a file nobody translates, and the locale
+ * sweeps read the whole rendered document — so a fixture label that happens to
+ * be real copy is reported as that message reaching a Spanish reader in
+ * English, against whichever section was open. This one's two labels say
+ * "Test" first because they did exactly that: "Prompt text" is
+ * `protocolBuilder.nameGeneratorPrompts.textLabel`. The fixture's own words
+ * are not a translation defect, and they must not be able to look like one.
  */
 export function TestPromptEditor({ item, editIndex, form }: RowEditorProps) {
   return (
@@ -42,13 +51,13 @@ export function TestPromptEditor({ item, editIndex, form }: RowEditorProps) {
       </dl>
       <DialogFormField
         name="text"
-        label="Prompt text"
+        label="Test prompt text"
         component={InputField}
         required="Enter the question this prompt asks."
       />
       <DialogFormField
         name="negativeLabel"
-        label="Negative label"
+        label="Test negative label"
         component={InputField}
       />
     </>

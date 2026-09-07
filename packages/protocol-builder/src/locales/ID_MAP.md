@@ -400,6 +400,39 @@ stood behind**: the catalog is what it compares against, so a hardcoded literal
 with no id is invisible to it — the JSX-attribute scan is the structural half,
 and the two are meant to be read together.
 
+`src/editors/__tests__/localeSweep.test.tsx` asks the same question of three
+whole EDITORS, reached through their family's registry: the roster, form-based
+and quick-add name generators, which between them mount every section family D
+added plus the frame all three share. A section sweep cannot see what only
+composition produces — a shell control no section test mounts, or one section
+rendering English between two that do not.
+
+Three rules those two sweeps put on everything else in the package:
+
+- **A fixture must not spell real copy.** `sections/__tests__/rowFixtures.tsx`
+  labelled its stand-in prompt field `Prompt text`, which is
+  `nameGeneratorPrompts.textLabel` — so the sweep read the fixture's own
+  English as that message reaching a Spanish reader. Its labels now all begin
+  "Test".
+- **The harness's stand-in controls say what the real ones say.**
+  `testing/renderStageEditor.tsx` wrote its fallback submit button's label as
+  the literal `'Save stage'`, which is `shell.saveStage`; it now reads that
+  descriptor out of the same catalog the provider was given, so the button is
+  Spanish on a Spanish surface and unchanged everywhere else.
+- **An English sentence this package suggests is only protocol content when
+  the protocol holds it.** `nameGeneratorPrompts.textPlaceholder` is "Who are
+  the people you know?" — a placeholder that is deliberately the sentence a
+  researcher writes. Rendered where the stage does not hold it, it is a leak;
+  the sweep's own tests state both halves.
+
+One leak is recorded rather than fixed. A roster stage mounts the shared
+resource picker, whose summary writes `<Detail term="Attributes">` — the
+English of `codebookEntity.attributesHeading`. `src/resources` belongs to the
+localisation branch and is listed in `NOT_CONVERTED_YET`, so the editor sweep
+names that one leak in `expectNoLocaleLeaks`'s `allowing` list. It is an exact
+list, not a filter: converting `ResourceSummary.tsx` fails the sweep until the
+allowance goes with it.
+
 ## Reading a story in another language
 
 This package's Storybook carries the shared **Language** and **Direction**

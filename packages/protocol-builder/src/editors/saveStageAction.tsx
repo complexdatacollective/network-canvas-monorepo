@@ -4,7 +4,14 @@ import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 
 import type { StageEditorActionContext } from '../stage-editor-contract.ts';
 
-const messages = defineMessages({
+/**
+ * Exported for the test harness, which stands in for this control on the path
+ * that mounts sections without an editor around them: a stand-in that named
+ * itself would put a second spelling of the same words into the package, and —
+ * because it would be a literal — an ENGLISH one, which the locale sweeps then
+ * find on a Spanish surface and report against whichever section was open.
+ */
+export const saveStageMessages = defineMessages({
   saveStage: {
     id: 'protocolBuilder.shell.saveStage',
     defaultMessage: 'Save stage',
@@ -51,7 +58,7 @@ function SaveStageAction({ formId }: Readonly<{ formId: string }>) {
   return (
     <div className="flex justify-end">
       <SubmitButton form={formId}>
-        {intl.formatMessage(messages.saveStage)}
+        {intl.formatMessage(saveStageMessages.saveStage)}
       </SubmitButton>
     </div>
   );

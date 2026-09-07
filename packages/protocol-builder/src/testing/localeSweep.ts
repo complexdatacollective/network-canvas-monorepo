@@ -195,12 +195,24 @@ export const localeLeaks = (
  *
  * `where` names the surface, because a sweep drives several and the failure
  * has to say which one was open.
+ *
+ * `allowing` is for a surface that mounts one of the areas
+ * `src/__tests__/packageSource.ts` still lists as `NOT_CONVERTED_YET`: an
+ * EDITOR composes sections with shared controls a section test never reaches,
+ * and one of those controls belongs to a branch that has not landed. Written
+ * as an exact list rather than as a filter, so it holds the same discipline
+ * the rest of those exclusions do — the leak going away FAILS this too, and
+ * the allowance is deleted with the branch that fixes it rather than
+ * outliving it as a permanently green blind spot.
  */
 export const expectNoLocaleLeaks = (
   where: string,
   harness?: StageEditorHarness,
+  { allowing = [] }: Readonly<{ allowing?: readonly string[] }> = {},
 ): void => {
   const content =
     harness === undefined ? new Set<string>() : protocolContent(harness);
-  expect(localeLeaks(content), `Spanish leaks at ${where}`).toEqual([]);
+  expect(localeLeaks(content), `Spanish leaks at ${where}`).toEqual(
+    [...allowing].toSorted(),
+  );
 };
