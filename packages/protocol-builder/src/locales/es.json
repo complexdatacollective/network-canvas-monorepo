@@ -502,8 +502,15 @@
   "protocolBuilder.variableParameters.resolutionMonth": "Año y mes (AAAA-MM)",
   "protocolBuilder.variableParameters.resolutionYear": "Solo el año (AAAA)",
   "protocolBuilder.variableParameters.settingRequired": "Este ajuste es obligatorio.",
+  "protocolBuilder.variablePicker.attributeTypeLabel": "Tipo de atributo: {attributeType}",
   "protocolBuilder.variablePicker.createAction": "Crear el atributo",
   "protocolBuilder.variablePicker.createHint": "Lo añade al libro de códigos de este tipo y lo selecciona arriba.",
   "protocolBuilder.variablePicker.createLabel": "Crear un atributo nuevo",
-  "protocolBuilder.variablePicker.createPlaceholder": "nominado_pronto"
+  "protocolBuilder.variablePicker.createPlaceholder": "nominado_pronto",
+  "protocolBuilder.variablePicker.emptyState": "No hay atributos entre los que elegir.",
+  "protocolBuilder.variablePicker.missingAttribute": "Este atributo ya no está en el libro de códigos. Elige otro.",
+  "protocolBuilder.variablePicker.missingOptionLabel": "{attributeId} — este atributo ya no está en el libro de códigos",
+  "protocolBuilder.variablePicker.placeholder": "Selecciona un atributo…",
+  "protocolBuilder.variablePicker.unusableAttribute": "Este atributo no se puede usar en una regla. Elige otro.",
+  "protocolBuilder.variablePicker.unusableOptionLabel": "{attributeName} — no se puede usar en una regla"
 }

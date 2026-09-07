@@ -2011,6 +2011,10 @@
     "defaultMessage": "This setting is required.",
     "description": "Refusal shown under one of an input control’s settings when it must hold a value and holds none, and nothing more specific is written for it."
   },
+  "protocolBuilder.variablePicker.attributeTypeLabel": {
+    "defaultMessage": "Attribute type: {attributeType}",
+    "description": "Accessible name of the badge stating what kind of answer the chosen attribute records. attributeType is a protocol schema token such as \"number\", \"text\" or \"categorical\", and is shown as it is stored rather than translated. Read as a label and its value, not as a sentence."
+  },
   "protocolBuilder.variablePicker.createAction": {
     "defaultMessage": "Create the attribute",
     "description": "Button that adds the attribute named in the box beside it to the codebook and selects it."
@@ -2026,5 +2030,29 @@
   "protocolBuilder.variablePicker.createPlaceholder": {
     "defaultMessage": "nominated_early",
     "description": "Example attribute name shown in the empty box. A name the codebook would accept: letters, digits and the symbols . _ - : only, so it deliberately has no space in it. Translate it to an equally valid example if that reads better."
+  },
+  "protocolBuilder.variablePicker.emptyState": {
+    "defaultMessage": "No attributes are available to choose from.",
+    "description": "Shown in place of the select when nothing can be picked — the caller offered no attributes at all. An attribute is a variable the protocol’s codebook defines. Callers that can say something more specific pass their own sentence instead."
+  },
+  "protocolBuilder.variablePicker.missingAttribute": {
+    "defaultMessage": "This attribute is no longer in the codebook. Choose another one.",
+    "description": "Shown under the select when the attribute a researcher’s stored choice names has been deleted from the protocol’s codebook, so the choice has to be made again."
+  },
+  "protocolBuilder.variablePicker.missingOptionLabel": {
+    "defaultMessage": "{attributeId} — this attribute is no longer in the codebook",
+    "description": "Name of the one option standing for an attribute the protocol’s codebook no longer defines. attributeId is the raw stored identifier — there is no name left to show, because the definition it would have come from has been deleted."
+  },
+  "protocolBuilder.variablePicker.placeholder": {
+    "defaultMessage": "Select an attribute…",
+    "description": "Placeholder in the select a researcher chooses one codebook attribute from, shown while nothing has been chosen. An attribute is a variable the protocol’s codebook defines for a node type, an edge type or the interview participant."
+  },
+  "protocolBuilder.variablePicker.unusableAttribute": {
+    "defaultMessage": "This attribute cannot be used in a rule. Choose another one.",
+    "description": "Shown under the select when the attribute a researcher’s stored choice names is still in the codebook but cannot carry a rule. Worded apart from the deleted-attribute sentence on purpose: this attribute is still where the researcher left it."
+  },
+  "protocolBuilder.variablePicker.unusableOptionLabel": {
+    "defaultMessage": "{attributeName} — cannot be used in a rule",
+    "description": "Name of the one option standing for an attribute that is still in the protocol’s codebook and still cannot carry a rule, such as one answered with a map position. attributeName is the researcher’s own name for it, from the codebook, and is not translated."
   }
 }
