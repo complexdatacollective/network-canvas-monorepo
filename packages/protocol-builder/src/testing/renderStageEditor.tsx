@@ -44,6 +44,7 @@ import type {
 } from '../stage-editor-contract.ts';
 import StageEditor from '../StageEditor.tsx';
 import {
+  FIXTURE_LEASE_EPOCH,
   FIXTURE_SESSION_OWNER,
   openFixtureStageSession,
   type SeededStage,
@@ -232,7 +233,13 @@ export type StageEditorHarness = RenderResult &
     ): Promise<FinishRequest>;
     /** The section outline, in the order it is rendered. */
     outline(): { title: string; state: string }[];
-    /** Takes editing away from this session, or gives it back. */
+    /**
+     * Takes editing away from this session, or gives it back.
+     *
+     * Given back under the lease the host is still holding, so a compound edit
+     * after the round trip is judged by the same authority as one before it.
+     * See `FIXTURE_LEASE_EPOCH`.
+     */
     setReadOnly(readOnly?: boolean): void;
   }>;
 
@@ -615,7 +622,19 @@ export function renderStageEditor<T extends StageType = StageType>(
             : {
                 mode: 'editable',
                 leaseOwner: FIXTURE_SESSION_OWNER,
-                leaseEpoch: 2n,
+                // The epoch the HOST holds, not a new one. A real host takes
+                // its epoch from whoever issued the lease and the issuer's own
+                // record carries the same number, so the two ends never
+                // disagree about it; this one grants the lease once, at
+                // `FIXTURE_LEASE_EPOCH`, and nothing here rotates it.
+                //
+                // Handing back an epoch of its own left the session claiming
+                // an authority the host does not recognise, and every compound
+                // edit after it was refused `stale-epoch` — invisible to a
+                // test that only reads the page, and reported against whatever
+                // the editor tried to write next rather than against the line
+                // that took editing back.
+                leaseEpoch: FIXTURE_LEASE_EPOCH,
               },
         );
       });
