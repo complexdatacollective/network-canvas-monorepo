@@ -53,7 +53,12 @@ type StagePreset =
   /** An information screen showing two, which may be the same image. */
   | 'two-image-items'
   /** A roster name generator, whose data source is a network resource. */
-  | 'roster';
+  | 'roster'
+  /**
+   * A name generator with a side panel, whose source may be an imported file
+   * OR the network the interview has built so far.
+   */
+  | 'panel-data-source';
 
 type StageScenario = Readonly<{
   identity: StageIdentity;
@@ -109,6 +114,35 @@ function assetItem(index: number, holding: string): SectionDoc {
 }
 
 /**
+ * The parts of a panel the researcher does not decide here.
+ *
+ * Mounted out of sight for the same reason an item's `id` and `type` are: the
+ * form replaces `panels` wholesale with the paths that are mounted, so a panel
+ * missing its id or title would be a panel the schema refuses — and the field
+ * this story is about would be validated inside something invalid.
+ */
+function panelIdentityFields(index: number): ReactNode {
+  return (
+    <div className="hidden">
+      <ProtocolField
+        component={InputField}
+        name={`panels[${index}].id`}
+        nameMode="path"
+        label={`Panel ${index + 1} id`}
+        labelHidden
+      />
+      <ProtocolField
+        component={InputField}
+        name={`panels[${index}].title`}
+        nameMode="path"
+        label={`Panel ${index + 1} title`}
+        labelHidden
+      />
+    </div>
+  );
+}
+
+/**
  * Keyed by preset rather than switched on it, so a preset added above without
  * a stage to open it on fails to compile.
  */
@@ -142,6 +176,36 @@ const STAGE_SCENARIOS: Readonly<
         {imageItemPicker(0, 'First image')}
         {itemIdentityFields(1)}
         {imageItemPicker(1, 'Second image')}
+      </>
+    ),
+  }),
+  'panel-data-source': (holding) => ({
+    identity: createStageIdentity('NameGenerator', () => 'people-you-know'),
+    fields: {
+      label: 'People you know',
+      subject: { entity: 'node', type: 'person' },
+      prompts: [{ id: 'prompt-1', text: 'Who do you know?' }],
+      panels: [
+        {
+          id: 'panel-1',
+          title: 'People you named earlier',
+          // `existing` is the interview's own network — the source all but a
+          // handful of panels use, and the one that is always there.
+          dataSource: holding ?? 'existing',
+        },
+      ],
+    },
+    children: (
+      <>
+        {panelIdentityFields(0)}
+        <ProtocolField
+          component={ResourcePickerControl}
+          name="panels[0].dataSource"
+          nameMode="path"
+          label="Where this panel’s people come from"
+          kind="network"
+          canUseExisting
+        />
       </>
     ),
   }),
@@ -427,4 +491,54 @@ export const TheHostCannotAnswer: Story = {
 /** Someone else holds the lease: the field can be read and nothing else. */
 export const Spectating: Story = {
   args: { holding: IMAGE_RESOURCE.id, readOnly: true },
+};
+
+/**
+ * A field whose answer may not be a resource at all.
+ *
+ * A name generator's side panel lists people from somewhere, and for all but a
+ * handful of panels that somewhere is the network the interview has built so
+ * far — a source that is always there, and that no manifest entry describes.
+ * So the field asks which kind of answer it is being given before it offers a
+ * resource at all, and the interview's own network is what it opens on.
+ */
+export const APanelSourcedFromTheInterview: Story = {
+  args: { stage: 'panel-data-source' },
+};
+
+/**
+ * The same field, answered with a file.
+ *
+ * Choosing "an imported data file" only records that the question was asked:
+ * the field goes on holding the interview network until a file is actually
+ * chosen, so closing the browser leaves the panel exactly as it was found
+ * rather than emptying a required field on the way to a choice nobody made.
+ */
+export const APanelSourcedFromADataFile: Story = {
+  args: { stage: 'panel-data-source' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    await expect(
+      canvas.getByRole('radio', {
+        name: 'Use the network from the in-progress interview',
+      }),
+    ).toBeChecked();
+
+    await userEvent.click(
+      canvas.getByRole('radio', { name: 'Use an imported data file' }),
+    );
+    // The browser opens on the question, portalled out of the story root.
+    await userEvent.click(
+      await screen.findByRole('button', { name: ROSTER_RESOURCE.name }),
+    );
+
+    await expect(
+      await canvas.findByText(ROSTER_RESOURCE.name),
+    ).toBeInTheDocument();
+    await expect(
+      canvas.getByRole('radio', { name: 'Use an imported data file' }),
+    ).toBeChecked();
+  },
 };

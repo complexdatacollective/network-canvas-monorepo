@@ -47,7 +47,7 @@ describe('the resource picker stories', () => {
   it('has a story for every surface', () => {
     // A count rather than a list: it fails when a story is deleted, which is
     // the way this suite could silently stop covering something.
-    expect(RESOURCE_STORIES.length).toBe(23);
+    expect(RESOURCE_STORIES.length).toBe(25);
   });
 
   it.each(RESOURCE_STORIES)('renders and plays %s', async (_name, Story) => {
