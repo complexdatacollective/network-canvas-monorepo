@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
 import { networkStageEditors } from '../../networkStageEditors.ts';
+import { NetworkComposerStageEditor } from '../NetworkComposerStageEditor.tsx';
 import { SociogramStageEditor } from '../SociogramStageEditor.tsx';
 
 describe('the network and spatial editor family', () => {
   it('claims exactly the interfaces it edits', () => {
-    expect(Object.keys(networkStageEditors).toSorted()).toEqual(['Sociogram']);
+    expect(Object.keys(networkStageEditors).toSorted()).toEqual([
+      'NetworkComposer',
+      'Sociogram',
+    ]);
   });
 
   /**
@@ -15,5 +19,8 @@ describe('the network and spatial editor family', () => {
    */
   it('registers the editor that belongs to each interface', () => {
     expect(networkStageEditors.Sociogram).toBe(SociogramStageEditor);
+    expect(networkStageEditors.NetworkComposer).toBe(
+      NetworkComposerStageEditor,
+    );
   });
 });

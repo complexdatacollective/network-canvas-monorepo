@@ -6,6 +6,7 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import type { StageEditorComponent } from '../../stage-editor-contract.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import { harnessEditor } from '../network/__tests__/editorFixtures.tsx';
+import { NetworkComposerStageEditor } from '../network/NetworkComposerStageEditor.tsx';
 import { SociogramStageEditor } from '../network/SociogramStageEditor.tsx';
 import {
   familyPedigreeEditor,
@@ -109,6 +110,37 @@ const SOCIOGRAM_FIELDS: SectionDoc = {
   ],
 };
 
+const NETWORK_COMPOSER_FIELDS: SectionDoc = {
+  label: 'Network Composer',
+  interviewScript: INTERVIEW_SCRIPT,
+  skipLogic: SKIP_LOGIC,
+  subject: PERSON,
+  quickAdd: 'composerName',
+  layoutVariable: 'layout',
+  // The inspector's own form, and one form per kind of connection drawn.
+  nodeForm: {
+    fields: [
+      {
+        id: 'composer-node-field-1',
+        variable: 'name',
+        component: 'Text',
+        label: 'What do you call them?',
+        hint: 'A first name is enough.',
+      },
+    ],
+  },
+  convexHullVariable: 'contactType',
+  background: { concentricCircles: 4 },
+  behaviours: { automaticLayout: true },
+  edges: [
+    {
+      id: 'composer-edge-1',
+      subject: { entity: 'edge', type: 'knows' },
+      form: { fields: [{ variable: 'edgeNotes', component: 'Text' }] },
+    },
+  ],
+};
+
 const FAMILY_PEDIGREE_FIELDS: SectionDoc = {
   label: 'Family Pedigree',
   interviewScript: INTERVIEW_SCRIPT,
@@ -201,6 +233,11 @@ const MAXIMAL: readonly MaximalStage[] = [
     fields: SOCIOGRAM_FIELDS,
   },
   {
+    stageType: 'NetworkComposer',
+    editor: harnessEditor(NetworkComposerStageEditor, 'NetworkComposer'),
+    fields: NETWORK_COMPOSER_FIELDS,
+  },
+  {
     stageType: 'FamilyPedigree',
     editor: familyPedigreeEditor,
     fields: FAMILY_PEDIGREE_FIELDS,
@@ -252,6 +289,10 @@ const FIXTURE_STAGES: readonly Readonly<{
   {
     stageId: 'sociogram-1',
     editor: harnessEditor(SociogramStageEditor, 'Sociogram'),
+  },
+  {
+    stageId: 'network-composer-1',
+    editor: harnessEditor(NetworkComposerStageEditor, 'NetworkComposer'),
   },
   { stageId: 'family-pedigree-1', editor: familyPedigreeEditor },
   { stageId: 'narrative-pedigree-1', editor: narrativePedigreeEditor },

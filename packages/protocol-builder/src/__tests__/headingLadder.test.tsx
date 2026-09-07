@@ -15,6 +15,9 @@ import * as variableEditorStories from '../codebook/components/VariableEditor.st
 import VariableEditor from '../codebook/components/VariableEditor.tsx';
 import * as validationEditorStories from '../codebook/validation/CodebookVariableValidationEditor.stories.tsx';
 import CodebookVariableValidationEditor from '../codebook/validation/CodebookVariableValidationEditor.tsx';
+import { harnessEditor } from '../editors/network/__tests__/editorFixtures.tsx';
+import * as composerEditorStories from '../editors/network/NetworkComposerStageEditor.stories.tsx';
+import { NetworkComposerStageEditor } from '../editors/network/NetworkComposerStageEditor.tsx';
 import * as sociogramEditorStories from '../editors/network/SociogramStageEditor.stories.tsx';
 import * as familyPedigreeEditorStories from '../editors/pedigree/FamilyPedigreeStageEditor.stories.tsx';
 import * as narrativePedigreeEditorStories from '../editors/pedigree/NarrativePedigreeStageEditor.stories.tsx';
@@ -30,6 +33,8 @@ import {
 import PageContentSection from '../sections/PageContentSection.tsx';
 import StageNameSection from '../sections/StageNameSection.tsx';
 import type { CompoundEditResult } from '../session.ts';
+import { loadFixtureStage } from '../testing/protocolFixture.ts';
+import { renderStageEditor } from '../testing/renderStageEditor.tsx';
 import * as storyHostStories from '../testing/StageEditorStoryHost.stories.tsx';
 import { StageEditorStoryHost } from '../testing/StageEditorStoryHost.tsx';
 
@@ -278,12 +283,53 @@ describe('a heading a section writes inside itself', () => {
    * section containing it reads to anyone navigating by headings as though
    * that section had ended, and passes the rule.
    *
-   * So the levels are read out here, from the arrangement that moves them: a
-   * host that mounts a whole editor under a heading of its own. The whole
-   * ladder moves together, the prose headings written inside a section
-   * included — fixed at `h4`, the two explanations below became peers of the
-   * section explaining them the moment a host stated a heading of its own, and
-   * a section is exactly what a host of this editor is.
+   * So the levels are read out here, from the two arrangements that move
+   * them: a section nested inside another one, and a host that mounts an
+   * editor under a heading of its own.
+   */
+  it('counts a connection type’s form from the section that lists them', async () => {
+    const { type, fields } = loadFixtureStage('network-composer-1');
+
+    renderStageEditor({
+      stage: {
+        id: 'network-composer-edges',
+        type,
+        // The fixture ticks no connection type, and the forms section only
+        // exists once one is ticked — so the nesting under test is not on
+        // screen at all without this.
+        fields: {
+          ...fields,
+          edges: [
+            {
+              id: 'composer-edge-1',
+              subject: { entity: 'edge', type: 'knows' },
+            },
+          ],
+        },
+      },
+      editor: harnessEditor(NetworkComposerStageEditor, 'NetworkComposer'),
+    });
+
+    expect(headingLadder()).toEqual([
+      'h2: Stage name',
+      'h3: Node type',
+      'h3: Adding and arranging nodes',
+      'h4: Node attributes',
+      'h3: Connections',
+      'h4: Connection attributes',
+      'h5: Attributes for "knows" connections',
+      'h3: Background',
+      'h3: Skip logic',
+      'h3: Interviewer guidance',
+    ]);
+    await expectHeadingOrder(10);
+  });
+
+  /**
+   * The whole ladder moves together, the prose headings written inside a
+   * section included. Fixed at `h4`, the two explanations below became peers
+   * of the section explaining them the moment a host stated a heading of its
+   * own — and a section is exactly what a host of this editor is.
    */
   it('moves prose inside a section down with the editor around it', async () => {
     const { Editing } = composeStories(narrativePedigreeEditorStories);
@@ -347,6 +393,10 @@ describe('every story of a surface that writes its own heading', () => {
     // its author happened to be looking at and wrong one rung down, and only
     // a whole editor puts both depths on screen at once.
     ...from('SociogramStageEditor', composeStories(sociogramEditorStories)),
+    ...from(
+      'NetworkComposerStageEditor',
+      composeStories(composerEditorStories),
+    ),
     ...from(
       'FamilyPedigreeStageEditor',
       composeStories(familyPedigreeEditorStories),
