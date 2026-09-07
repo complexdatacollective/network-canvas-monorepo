@@ -262,6 +262,10 @@ export const KeyboardNavigation: Story = {
     const dots = await canvas.findAllByLabelText(/Go to card/);
     await expect(dots).toHaveLength(4);
 
+    // The navigation renders before ResizeObserver gives the deck its first
+    // nonzero height. Wait for the real import card before activating it.
+    await canvas.findByLabelText('Choose a .netcanvas protocol file');
+
     await userEvent.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}');
     await waitFor(() =>
       expect(dots[3]).toHaveAttribute('aria-current', 'true'),

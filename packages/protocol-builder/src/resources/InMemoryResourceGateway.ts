@@ -1,5 +1,6 @@
 import csv from 'csvtojson';
 
+import { createMessageError } from '@codaco/app-i18n/messages';
 import type { Asset } from '@codaco/protocol-validation';
 import {
   entityAttributesProperty,
@@ -33,6 +34,7 @@ import {
   type StageSecretRequest,
   type StageUploadRequest,
 } from './gateway.ts';
+import { resourceFailureMessages } from './resourceMessages.ts';
 
 export type InMemoryResourceSeed =
   | Readonly<{
@@ -100,7 +102,7 @@ const ASSETS_SECTION = sectionId({ kind: 'assets' });
 
 const DEFAULT_INJECTED_FAILURE = Object.freeze({
   reason: 'unavailable' as ResourceFailureReason,
-  message: 'the resource host is temporarily unavailable',
+  message: createMessageError(resourceFailureMessages.hostUnavailable),
 });
 
 /**
@@ -297,7 +299,7 @@ export class InMemoryResourceGateway implements ProtocolBuilderResourceGateway {
       return Promise.resolve(
         resourceFailure(
           'invalid-request',
-          'a staged file needs a stable request id and a name',
+          createMessageError(resourceFailureMessages.uploadNeedsIdAndName),
         ),
       );
     }
@@ -310,20 +312,25 @@ export class InMemoryResourceGateway implements ProtocolBuilderResourceGateway {
       return Promise.resolve(
         resourceFailure(
           'invalid-request',
-          'a staged file needs a filename without path separators',
+          createMessageError(resourceFailureMessages.uploadNeedsFilename),
         ),
       );
     }
     if (request.bytes.byteLength === 0) {
       return Promise.resolve(
-        resourceFailure('invalid-content', 'the selected file is empty'),
+        resourceFailure(
+          'invalid-content',
+          createMessageError(resourceFailureMessages.fileEmpty),
+        ),
       );
     }
     if (request.bytes.byteLength > this.maxByteLength) {
       return Promise.resolve(
         resourceFailure(
           'too-large',
-          `the selected file is larger than the ${this.maxByteLength} byte limit`,
+          createMessageError(resourceFailureMessages.fileTooLarge, {
+            limit: this.maxByteLength,
+          }),
         ),
       );
     }
@@ -367,13 +374,16 @@ export class InMemoryResourceGateway implements ProtocolBuilderResourceGateway {
       return Promise.resolve(
         resourceFailure(
           'invalid-request',
-          'a staged secret needs a stable request id and a name',
+          createMessageError(resourceFailureMessages.secretNeedsIdAndName),
         ),
       );
     }
     if (request.value === '') {
       return Promise.resolve(
-        resourceFailure('invalid-content', 'the secret value is empty'),
+        resourceFailure(
+          'invalid-content',
+          createMessageError(resourceFailureMessages.secretValueEmpty),
+        ),
       );
     }
 
@@ -421,7 +431,7 @@ export class InMemoryResourceGateway implements ProtocolBuilderResourceGateway {
       return Promise.resolve(
         resourceFailure(
           'unsupported-kind',
-          'secret material cannot be previewed',
+          createMessageError(resourceFailureMessages.previewUnsupported),
           { resourceId },
         ),
       );
@@ -482,7 +492,7 @@ export class InMemoryResourceGateway implements ProtocolBuilderResourceGateway {
       return Promise.resolve(
         resourceFailure(
           'unsupported-kind',
-          'secret material cannot be downloaded',
+          createMessageError(resourceFailureMessages.downloadUnsupported),
           { resourceId },
         ),
       );
@@ -600,7 +610,7 @@ export class InMemoryResourceGateway implements ProtocolBuilderResourceGateway {
         rollback();
         return resourceFailure(
           'promotion-failed',
-          'the resources could not be stored; nothing was changed',
+          createMessageError(resourceFailureMessages.promotionRolledBack),
           { resourceId: staged.descriptor.id },
         );
       }
@@ -610,7 +620,7 @@ export class InMemoryResourceGateway implements ProtocolBuilderResourceGateway {
         rollback();
         return resourceFailure(
           'promotion-failed',
-          'the resources could not be stored; nothing was changed',
+          createMessageError(resourceFailureMessages.promotionRolledBack),
           { resourceId: staged.descriptor.id },
         );
       }
@@ -638,7 +648,7 @@ export class InMemoryResourceGateway implements ProtocolBuilderResourceGateway {
         'promotion-failed',
         error instanceof Error && error.message !== ''
           ? error.message
-          : 'the asset manifest could not be updated',
+          : createMessageError(resourceFailureMessages.manifestUpdateFailed),
       );
     }
 
@@ -664,19 +674,19 @@ export class InMemoryResourceGateway implements ProtocolBuilderResourceGateway {
     if (request.id.trim() === '') {
       return resourceFailure(
         'invalid-request',
-        'a promotion requires a stable request id',
+        createMessageError(resourceFailureMessages.promotionNeedsId),
       );
     }
     if (request.resourceIds.length === 0) {
       return resourceFailure(
         'invalid-request',
-        'a promotion must name at least one staged resource',
+        createMessageError(resourceFailureMessages.promotionNeedsResource),
       );
     }
     if (new Set(request.resourceIds).size !== request.resourceIds.length) {
       return resourceFailure(
         'invalid-request',
-        'a promotion may name each resource only once',
+        createMessageError(resourceFailureMessages.promotionDuplicateResource),
       );
     }
 
@@ -688,7 +698,7 @@ export class InMemoryResourceGateway implements ProtocolBuilderResourceGateway {
         return this.committed.has(resourceId)
           ? resourceFailure(
               'invalid-request',
-              'that resource is already part of the protocol',
+              createMessageError(resourceFailureMessages.alreadyCommitted),
               { resourceId },
             )
           : notFoundFailure(resourceId);
@@ -696,7 +706,7 @@ export class InMemoryResourceGateway implements ProtocolBuilderResourceGateway {
       if (staged.secret !== undefined && !handles.has(staged.secret.handle)) {
         return resourceFailure(
           'invalid-request',
-          'a staged secret can only be promoted with its staged handle',
+          createMessageError(resourceFailureMessages.secretNeedsHandle),
           { resourceId },
         );
       }
@@ -845,17 +855,29 @@ type RosterFacts = Readonly<{
  * Why a file cannot be the roster a stage points at, in the researcher's
  * terms. Lower case and without a full stop, because every surface that shows
  * it puts it after a clause of its own.
+ *
+ * The string is an encoded message rather than English prose: it crosses the
+ * port's string-only `ResourceGatewayFailure.message` on its way to the
+ * editor, which decodes it in the reader's own language.
  */
 type RosterProblem = Readonly<{ unreadable: string }>;
 
-const UNREADABLE_ROSTER = 'the selected file is not a readable network';
-
+/**
+ * The refusal, with the specific fault named when there is one.
+ *
+ * `detail` is itself an encoded message, carried as a reference rather than
+ * pasted in as text: a sentence assembled from two languages' worth of
+ * fragments reads as neither, so the whole of it is resolved at once where it
+ * is rendered.
+ */
 function unreadableRoster(detail?: string): RosterProblem {
   return Object.freeze({
     unreadable:
       detail === undefined
-        ? UNREADABLE_ROSTER
-        : `${UNREADABLE_ROSTER}: ${detail}`,
+        ? createMessageError(resourceFailureMessages.rosterUnreadable)
+        : createMessageError(resourceFailureMessages.rosterUnreadableDetail, {
+            detail: { messageError: detail },
+          }),
   });
 }
 
@@ -880,8 +902,7 @@ function unusableRoster(reason: string): RosterProblem {
  * when the interview runs — and this is the last moment at which choosing a
  * different file is still what the researcher would do.
  */
-const EMPTY_ROSTER =
-  'the selected file has no records in it, so a stage using it would have nobody to show';
+const EMPTY_ROSTER = createMessageError(resourceFailureMessages.rosterEmpty);
 
 /**
  * The attribute names a roster may carry, which are the variable names the
@@ -901,7 +922,9 @@ function unusableAttributeName(
   for (const name of names) {
     if (VariableNameSchema.safeParse(name).success) continue;
     return unusableRoster(
-      `the "${name}" attribute cannot be used as a variable name: names may hold only letters, digits, and the characters . _ - :`,
+      createMessageError(resourceFailureMessages.rosterAttributeNameUnusable, {
+        name,
+      }),
     );
   }
   return undefined;
@@ -971,7 +994,10 @@ async function parseCsvRoster(
   if (attributes.length !== parsedRows.length) return unreadableRoster();
   for (const [index, row] of attributes.entries()) {
     // One-based, because it names a line of the researcher's own file.
-    const unreadableValue = unreadableAttributeValue(row, `row ${index + 1}`);
+    const unreadableValue = unreadableAttributeValue(row, {
+      kind: 'row',
+      position: index + 1,
+    });
     if (unreadableValue !== undefined) return unreadableValue;
   }
 
@@ -1019,19 +1045,26 @@ function parseJsonRoster(text: string): RosterFacts | RosterProblem {
     // One-based, because it names a row of the researcher's own file.
     const position = index + 1;
     if (!isAttributeRecord(node)) {
-      return unreadableRoster(`node ${position} is not an object`);
+      return unreadableRoster(
+        createMessageError(resourceFailureMessages.rosterNodeNotObject, {
+          position,
+        }),
+      );
     }
     const attributes: unknown = node[entityAttributesProperty];
     if (attributes === undefined) continue;
     if (!isAttributeRecord(attributes)) {
       return unreadableRoster(
-        `the attributes of node ${position} are not an object`,
+        createMessageError(
+          resourceFailureMessages.rosterNodeAttributesNotObject,
+          { position },
+        ),
       );
     }
-    const unreadableValue = unreadableAttributeValue(
-      attributes,
-      `node ${position}`,
-    );
+    const unreadableValue = unreadableAttributeValue(attributes, {
+      kind: 'node',
+      position,
+    });
     if (unreadableValue !== undefined) return unreadableValue;
     nodeAttributes.push(attributes);
   }
@@ -1063,21 +1096,38 @@ function parseJsonRoster(text: string): RosterFacts | RosterProblem {
  * value it carries wrongly.
  *
  * `entry` names the row in the researcher's own file, which with the attribute
- * name is the whole of what they have to go and fix.
+ * name is the whole of what they have to go and fix. It picks between two
+ * whole sentences rather than being dropped into one: "row" and "node" sit
+ * inside a clause whose wording a translator has to be able to change.
  */
 function unreadableAttributeValue(
   attributes: Readonly<Record<string, unknown>>,
-  entry: string,
+  entry: RosterEntryPosition,
 ): RosterProblem | undefined {
   for (const [name, value] of Object.entries(attributes)) {
     if (value === null || value === undefined) continue;
     if (VariableValueSchema.safeParse(value).success) continue;
     return unreadableRoster(
-      `the "${name}" attribute of ${entry} is not a value a variable can hold`,
+      entry.kind === 'row'
+        ? createMessageError(resourceFailureMessages.rosterValueUnusableInRow, {
+            name,
+            row: entry.position,
+          })
+        : createMessageError(
+            resourceFailureMessages.rosterValueUnusableInNode,
+            { name, position: entry.position },
+          ),
     );
   }
   return undefined;
 }
+
+/** Which entry of the researcher's own file a roster problem is about. */
+type RosterEntryPosition = Readonly<{
+  kind: 'node' | 'row';
+  /** One-based, because it names a line or entry the researcher can see. */
+  position: number;
+}>;
 
 /**
  * Sorted rather than in the order the file happens to list them, because this
@@ -1101,15 +1151,17 @@ function isAttributeRecord(
 }
 
 function notFoundFailure<T>(resourceId: string): ResourceResult<T> {
-  return resourceFailure('not-found', 'that resource is no longer available', {
-    resourceId,
-  });
+  return resourceFailure(
+    'not-found',
+    createMessageError(resourceFailureMessages.notFound),
+    { resourceId },
+  );
 }
 
 function readOnlyFailure<T>(): ResourceResult<T> {
   return resourceFailure(
     'read-only',
-    'this protocol is open for viewing only, so its resources cannot change',
+    createMessageError(resourceFailureMessages.readOnly),
   );
 }
 

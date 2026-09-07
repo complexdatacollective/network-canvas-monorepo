@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { BootstrapTokenSchema } from '@codaco/studio-rpc';
 import { DEPLOYMENT_MODES } from '@codaco/studio-rpc/surfaces';
+import { postmarkConfiguration } from '@codaco/studio-sync/postmark-email-sender';
 
 import { isProxyAddress } from '../observability/proxy.ts';
 
@@ -22,6 +23,8 @@ export const serverSchemas = {
    * cannot run with them.
    */
   STUDIO_DEV_DEFAULTS: z.stringbool().optional(),
+
+  STUDIO_TELEMETRY: z.stringbool().optional(),
 
   PORT: z.coerce.number().int().min(0).max(65535).optional(),
   HOST: z.string().min(1).optional(),
@@ -74,6 +77,8 @@ export const serverSchemas = {
   PUBLIC_URL: z.url({ protocol: /^https?$/ }).optional(),
 
   SMTP_URL: z.string().min(1).optional(),
+  POSTMARK_SERVER_TOKEN: postmarkConfiguration.shape.serverToken.optional(),
+  POSTMARK_MESSAGE_STREAM: postmarkConfiguration.shape.messageStream,
   EMAIL_FROM: z.string().min(1).optional(),
 
   GOOGLE_CLIENT_ID: z.string().min(1).optional(),

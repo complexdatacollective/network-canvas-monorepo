@@ -12,7 +12,7 @@ import {
   type RefObject,
 } from 'react';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
+import { defineMessages, formatMessageError } from '@codaco/app-i18n/messages';
 import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert } from '@codaco/fresco-ui/Alert';
@@ -1531,6 +1531,14 @@ function Inspector(props: {
   );
 }
 
+/**
+ * A validation problem's `message` is a plain string because two very
+ * different writers put one there: the protocol schema, whose message is
+ * already a sentence, and `@codaco/protocol-builder`, which encodes one of its
+ * own descriptors into the field so the reader's language decides the wording
+ * rather than the language the check ran in. Decoding here is what tells them
+ * apart — `?? text` leaves the schema's sentence exactly as it arrived.
+ */
 function ProtocolProblems(props: { validation: DraftValidation }) {
   const intl = useAppIntl();
   return (
@@ -1551,7 +1559,9 @@ function ProtocolProblems(props: { validation: DraftValidation }) {
       {props.validation.status === 'invalid' && (
         <ul className="list-disc space-y-2 ps-5">
           {props.validation.issues.map((issue, index) => (
-            <li key={`${issue.path.join('.')}-${index}`}>{issue.message}</li>
+            <li key={`${issue.path.join('.')}-${index}`}>
+              {formatMessageError(issue.message, intl) ?? issue.message}
+            </li>
           ))}
         </ul>
       )}

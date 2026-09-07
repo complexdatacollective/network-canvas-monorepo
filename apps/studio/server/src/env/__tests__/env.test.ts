@@ -215,7 +215,65 @@ describe('the development marker', () => {
     vi.stubEnv('STUDIO_DEV_DEFAULTS', '');
     vi.stubEnv('EMAIL_FROM', 'signin@studio.example');
     vi.stubEnv('SMTP_URL', '');
-    expect(() => readEnv()).toThrow(/SMTP_URL is required when EMAIL_FROM/);
+    expect(() => readEnv()).toThrow(
+      'SMTP_URL or POSTMARK_SERVER_TOKEN is required when EMAIL_FROM is set',
+    );
+  });
+});
+
+describe('Postmark mail configuration', () => {
+  it.each(['managed', 'self-hosted'])(
+    'selects the configured Postmark sender in %s mode',
+    (mode) => {
+      vi.stubEnv('STUDIO_DEPLOYMENT_MODE', mode);
+      vi.stubEnv('POSTMARK_SERVER_TOKEN', 'synthetic-token');
+      expect(readEnv().auth?.mailer).toEqual({
+        kind: 'postmark',
+        serverToken: 'synthetic-token',
+        messageStream: 'outbound',
+        from: DEV.emailFrom,
+      });
+      vi.stubEnv('POSTMARK_MESSAGE_STREAM', 'studio-transactional');
+      expect(readEnv().auth?.mailer).toMatchObject({
+        messageStream: 'studio-transactional',
+      });
+    },
+  );
+
+  it('refuses ambiguous transport selection even in development', () => {
+    vi.stubEnv('POSTMARK_SERVER_TOKEN', 'synthetic-token');
+    vi.stubEnv('SMTP_URL', 'smtp://localhost:1025');
+    expect(() => readEnv()).toThrow(
+      'Configure only one of SMTP_URL or POSTMARK_SERVER_TOKEN',
+    );
+  });
+
+  it('requires the sender identity and the server token as a complete configuration', () => {
+    vi.stubEnv('POSTMARK_MESSAGE_STREAM', 'outbound');
+    expect(() => readEnv()).toThrow(
+      'POSTMARK_SERVER_TOKEN is required when POSTMARK_MESSAGE_STREAM is set',
+    );
+    vi.stubEnv('POSTMARK_SERVER_TOKEN', 'synthetic-token');
+    vi.stubEnv('EMAIL_FROM', '');
+    expect(() => readEnv()).toThrow(
+      'EMAIL_FROM is required when POSTMARK_SERVER_TOKEN is set',
+    );
+  });
+
+  it.each([
+    ['POSTMARK_SERVER_TOKEN', 'private-token\ncanary'],
+    ['POSTMARK_SERVER_TOKEN', 'private-token'.repeat(100)],
+    ['POSTMARK_MESSAGE_STREAM', 'stream with spaces'],
+    ['POSTMARK_MESSAGE_STREAM', 'x'.repeat(31)],
+  ])('refuses invalid %s without disclosing its value', (name, value) => {
+    vi.stubEnv(name, value);
+    expect(() => readEnv()).toThrow('Invalid environment variables');
+  });
+
+  it('withholds mail configuration entirely from the entrypoint without auth', () => {
+    vi.stubEnv('POSTMARK_SERVER_TOKEN', 'invalid\nsecret-canary');
+    vi.stubEnv('POSTMARK_MESSAGE_STREAM', 'invalid stream');
+    expect(readEnv({ withoutDatabaseOrAuth: true }).auth).toBeUndefined();
   });
 });
 

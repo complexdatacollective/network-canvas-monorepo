@@ -1,5 +1,6 @@
 import type pg from 'pg';
 
+import { assertSafePostgresCatalogPrivileges } from '@codaco/studio-sync/postgres-catalog-privileges';
 import { BACKUP_ROLE, TENANT_ROLES } from '@codaco/studio-sync/rls';
 import {
   runtimeRolesSql,
@@ -19,12 +20,11 @@ export async function enforceMigrationSecurity(
     'SELECT rolname FROM pg_roles WHERE rolname = $1',
     [BACKUP_ROLE],
   );
-  await client.query(
-    runtimeRolesSql([
-      ...Object.values(TENANT_ROLES),
-      ...optionalRoles.rows.map(({ rolname }) => rolname),
-    ]),
-  );
+  const scopedRoles = [
+    ...Object.values(TENANT_ROLES),
+    ...optionalRoles.rows.map(({ rolname }) => rolname),
+  ];
+  await client.query(runtimeRolesSql(scopedRoles));
   const identity = await client.query<{
     operator: string;
     current: string;
@@ -221,6 +221,26 @@ export async function enforceMigrationSecurity(
       'Studio does not support owner-backed rewrite rules on application database relations. Their presence makes existing migration evidence untrusted; restore a verified backup before migrating.',
     );
   }
+  // Evidence is authored as standalone ordinary tables. Inheritance and
+  // partition routing authorize against a parent, bypassing these tables' own
+  // ACLs; inherited children also contribute rows to ordinary evidence reads.
+  // Reject either direction before the runner trusts any recorded history.
+  const evidenceShape = await client.query<{ safe: boolean }>(
+    `SELECT NOT EXISTS (
+      SELECT 1 FROM pg_catalog.pg_class evidence
+      WHERE evidence.oid IN (pg_catalog.to_regclass($1), pg_catalog.to_regclass($2))
+        AND (evidence.relkind <> 'r' OR evidence.relispartition OR EXISTS (
+          SELECT 1 FROM pg_catalog.pg_inherits inheritance
+          WHERE inheritance.inhrelid = evidence.oid OR inheritance.inhparent = evidence.oid
+        ))
+    ) AS safe`,
+    ['studio_migrations.history', 'public."schemaFingerprint"'],
+  );
+  if (evidenceShape.rows[0]?.safe !== true) {
+    throw new Error(
+      'Studio migration evidence must be standalone ordinary tables without inheritance or partitions. Existing evidence is untrusted; restore a verified backup before migrating.',
+    );
+  }
   const loginAccess = await client.query<{
     safe: boolean;
     evidence_safe: boolean;
@@ -233,7 +253,7 @@ export async function enforceMigrationSecurity(
       SELECT oid FROM pg_namespace WHERE nspname !~ '^pg_' AND nspname <> 'information_schema'
     ) SELECT NOT EXISTS (
       SELECT 1 FROM identities login WHERE
-        has_database_privilege(login.oid, current_database(), 'CREATE,CONNECT WITH GRANT OPTION,TEMPORARY WITH GRANT OPTION')
+        has_database_privilege(login.oid, current_database(), 'CREATE,TEMPORARY,CONNECT WITH GRANT OPTION')
         OR EXISTS (
           SELECT 1 FROM pg_shdepend dependency
           WHERE dependency.refclassid = 'pg_authid'::regclass AND dependency.refobjid = login.oid
@@ -269,6 +289,12 @@ export async function enforceMigrationSecurity(
               has_table_privilege(login.oid, object.oid, 'TRUNCATE,REFERENCES,TRIGGER,MAINTAIN')
               OR has_any_column_privilege(login.oid, object.oid, 'REFERENCES')
             ) ELSE false END
+        )
+        OR EXISTS (
+          SELECT 1 FROM pg_class object WHERE object.relnamespace IN (SELECT oid FROM namespaces)
+            AND CASE WHEN object.relkind = 'S'
+              THEN has_sequence_privilege(login.oid, object.oid, 'UPDATE')
+              ELSE false END
         )
         OR (login.rolname = $3 AND EXISTS (
           SELECT 1 FROM pg_class object WHERE object.relnamespace IN (SELECT oid FROM namespaces)
@@ -316,7 +342,7 @@ export async function enforceMigrationSecurity(
   }
   if (!loginAccess.rows[0].safe) {
     throw new Error(
-      'Runtime and backup identities must own no database objects and hold no access outside their reviewed Studio roles: remove direct or PUBLIC login data grants, CREATE, CONNECT grant options, executable SECURITY DEFINER routines, view, materialized view, foreign table, or large object access beyond read-only backup grants, and backup table or sequence writes.',
+      'Runtime and backup identities must own no database objects and hold no access outside their reviewed Studio roles: remove direct or PUBLIC login data grants, CREATE or TEMPORARY, CONNECT grant options, executable SECURITY DEFINER routines, view, materialized view, foreign table, or large object access beyond read-only backup grants, backup table writes, or sequence UPDATE privileges.',
     );
   }
   // CONNECT is checked only at connection admission. Enrollment must already
@@ -369,6 +395,48 @@ export async function enforceMigrationSecurity(
   if (sessions.rows[0]?.present) {
     throw new Error(
       'Studio has existing connections from unenrolled logins. Quarantine database admission and have the administrator remove those sessions before migrating.',
+    );
+  }
+  // This remains inside the repeatable preflight/finalizer, before the caller
+  // trusts history or fingerprints. Include session identities: SET ROLE NONE
+  // restores their direct privileges independently of the pinned runtime role.
+  try {
+    await assertSafePostgresCatalogPrivileges(client, [
+      ...scopedRoles,
+      ...restrictedLogins,
+    ]);
+  } catch {
+    throw new Error(
+      'Runtime and backup identities have unsupported PostgreSQL catalog capabilities or the catalog could not be verified. Ask the database administrator to investigate reserved namespace and catalog grants before migrating.',
+    );
+  }
+}
+
+/** Pending schema changes require all non-administrative sessions to be gone.
+ * Deployment admission must remain closed for the entire migration window. */
+export async function enforceMigrationQuiescence(
+  client: pg.PoolClient,
+): Promise<void> {
+  await client.query('SELECT pg_stat_clear_snapshot()');
+  const sessions = await client.query<{ present: boolean }>(`
+    SELECT EXISTS (
+      SELECT 1 FROM pg_stat_activity activity
+        JOIN pg_roles login ON login.oid = activity.usesysid
+        JOIN pg_database database ON database.datname = activity.datname
+      WHERE activity.datname = current_database() AND NOT login.rolsuper
+        AND login.oid <> database.datdba AND login.rolname <> session_user
+    ) OR EXISTS (
+      SELECT 1 FROM pg_prepared_xacts prepared
+        JOIN pg_roles owner_role ON owner_role.rolname = prepared.owner
+        JOIN pg_database database ON database.datname = prepared.database
+      WHERE prepared.database = current_database() AND NOT owner_role.rolsuper
+        AND owner_role.oid <> database.datdba
+        AND owner_role.rolname <> session_user
+    ) AS present
+  `);
+  if (sessions.rows[0]?.present !== false) {
+    throw new Error(
+      'Studio has existing runtime connections or prepared transactions. Keep admission closed and stop all web, worker and backup processes before applying pending migrations.',
     );
   }
 }

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { readMessage } from '../../testing/i18n.ts';
 import { attributeValidationIssues } from '../../validationAttribution.ts';
 import {
   collectStageResourceReferences,
@@ -91,7 +92,10 @@ describe('findDanglingResourceReferences', () => {
     expect(problems).toHaveLength(1);
     expect(problems[0]?.resourceId).toBe('map-layers');
     expect(problems[0]?.path).toEqual(['mapOptions', 'dataSourceAssetId']);
-    expect(problems[0]?.message).toBe(
+    // Read back through the same decode the form's error region does: the
+    // issue carries the descriptor and its values, not the sentence, so an
+    // assertion on the raw string would pass on the id alone.
+    expect(readMessage(problems[0]?.message ?? '')).toBe(
       'This stage uses a resource ("map-layers") that is not in the protocol.',
     );
   });
@@ -105,7 +109,7 @@ describe('findDanglingResourceReferences', () => {
       'map-token',
       'map-layers',
     ]);
-    expect(problems.map((problem) => problem.message)).toEqual([
+    expect(problems.map((problem) => readMessage(problem.message))).toEqual([
       'This stage uses a resource ("map-token") that is not in the protocol.',
       'This stage uses a resource ("map-layers") that is not in the protocol.',
     ]);
@@ -122,10 +126,11 @@ describe('findDanglingResourceReferences', () => {
 
     expect(problems).toHaveLength(1);
     expect(problems[0]?.resourceId).toBe('map-layers');
-    expect(problems[0]?.message).toContain(
+    const message = readMessage(problems[0]?.message ?? '');
+    expect(message).toContain(
       'The resource ("map-layers") this stage uses is not valid',
     );
-    expect(problems[0]?.message).not.toContain('not in the protocol');
+    expect(message).not.toContain('not in the protocol');
   });
 
   it('prefixes paths so the issues attribute to the owning stage section', () => {
