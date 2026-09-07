@@ -67,6 +67,35 @@ async function verifyExistingProofs(
   return knownProofs;
 }
 
+/** Read-only readiness gate for the keys already loaded by this process. A
+ * restored backend cannot acquire new proofs or be blessed by a health probe. */
+export async function verifyEncryptionReadiness(
+  client: pg.PoolClient,
+  keys: EncryptionKeys,
+): Promise<void> {
+  const proofs = await verifyExistingProofs(client, keys);
+  for (const purpose of PURPOSES) {
+    for (const keyId of keys.ids(purpose)) {
+      if (!proofs.has(JSON.stringify([purpose, keyId])))
+        throw new EncryptionStartupError();
+    }
+  }
+  const references = await client.query<KeyReference>(
+    STORED_KEY_REFERENCES_SQL,
+  );
+  for (const { purpose, keyId } of references.rows) {
+    if (
+      !keys.has(purpose, keyId) ||
+      !proofs.has(JSON.stringify([purpose, keyId]))
+    )
+      throw new EncryptionStartupError();
+  }
+  const legacy = await client.query<{ exists: boolean }>(
+    'SELECT EXISTS (SELECT 1 FROM account WHERE legacy_tokens_present) AS exists',
+  );
+  if (legacy.rows[0]?.exists !== false) throw new EncryptionStartupError();
+}
+
 /** Internal transaction seam shared by startup and the explicit demo seeder. */
 export async function verifyEncryptionKeyTransaction(
   client: pg.PoolClient,
