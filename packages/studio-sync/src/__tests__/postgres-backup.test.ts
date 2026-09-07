@@ -247,6 +247,15 @@ it('allows only a quarantined enrolled login during backup capture', async () =>
       options.allowClosedEnrolledLogins = false;
       await expect(captured).resolves.toBeUndefined();
       await expect(
+        assertSafePostgresDatabaseEnrollment(
+          client,
+          f.allowedLogins,
+          [] as never,
+        ),
+      ).rejects.toMatchObject(
+        new UnsafePostgresDatabaseEnrollmentError('configuration'),
+      );
+      await expect(
         assertSafePostgresDatabaseEnrollment(client, f.allowedLogins, {
           allowClosedEnrolledLogins: 'true',
         } as never),

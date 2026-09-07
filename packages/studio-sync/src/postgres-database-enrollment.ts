@@ -36,14 +36,14 @@ export async function assertSafePostgresDatabaseEnrollment(
     if (
       options === null ||
       typeof options !== 'object' ||
-      !Object.keys(options).every(
-        (key) => key === 'allowClosedEnrolledLogins',
-      ) ||
-      (options.allowClosedEnrolledLogins !== undefined &&
-        typeof options.allowClosedEnrolledLogins !== 'boolean')
+      Array.isArray(options) ||
+      !Object.keys(options).every((key) => key === 'allowClosedEnrolledLogins')
     )
       throw new Error();
-    allowClosedEnrolledLogins = options.allowClosedEnrolledLogins ?? false;
+    const allowClosed = options.allowClosedEnrolledLogins;
+    if (allowClosed !== undefined && typeof allowClosed !== 'boolean')
+      throw new Error();
+    allowClosedEnrolledLogins = allowClosed ?? false;
     logins = copied;
   } catch {
     throw new UnsafePostgresDatabaseEnrollmentError('configuration');
