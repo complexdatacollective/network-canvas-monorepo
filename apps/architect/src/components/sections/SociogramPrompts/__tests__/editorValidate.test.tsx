@@ -7,6 +7,7 @@ import FormStoreProvider from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { Stage } from '@codaco/protocol-validation';
 import StageFormBridge from '~/components/StageEditor/StageFormBridge';
 import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
+import { messageFields } from '~/test/messageText';
 
 // The cross-class exclusivity gate runs as `editorValidate`, captured from
 // the mocked `DialogArrayField` — see SociogramPrompts.tsx's comment on why
@@ -115,11 +116,13 @@ describe('SociogramPrompts editorValidate cross-class gate', () => {
     const editorValidate = renderWithStore(PROTOCOL_WITH_FORM_CONFLICT);
 
     expect(
-      editorValidate({
-        id: 'p1',
-        text: 'T',
-        highlight: { allowHighlighting: true, variable: 'flagged' },
-      }),
+      messageFields(
+        editorValidate({
+          id: 'p1',
+          text: 'T',
+          highlight: { allowHighlighting: true, variable: 'flagged' },
+        }),
+      ),
     ).toEqual({
       'highlight.variable':
         '"Flagged" is collected by a form elsewhere in this protocol, so it cannot be written by this stage (values written here would bypass its validation)',
@@ -134,7 +137,9 @@ describe('SociogramPrompts editorValidate cross-class gate', () => {
       highlight: { allowHighlighting: true, variable: 'flagged' },
     };
 
-    expect(editorValidate(value, { initialValues: value })).toBeUndefined();
+    expect(
+      messageFields(editorValidate(value, { initialValues: value })),
+    ).toBeUndefined();
   });
 
   it('allows a save with no cross-class conflict', () => {
@@ -145,11 +150,13 @@ describe('SociogramPrompts editorValidate cross-class gate', () => {
     const editorValidate = renderWithStore(sociogramOnly);
 
     expect(
-      editorValidate({
-        id: 'p1',
-        text: 'T',
-        highlight: { allowHighlighting: true, variable: 'flagged' },
-      }),
+      messageFields(
+        editorValidate({
+          id: 'p1',
+          text: 'T',
+          highlight: { allowHighlighting: true, variable: 'flagged' },
+        }),
+      ),
     ).toBeUndefined();
   });
 
@@ -157,11 +164,13 @@ describe('SociogramPrompts editorValidate cross-class gate', () => {
     const editorValidate = renderWithStore(PROTOCOL_WITH_FORM_CONFLICT);
 
     expect(
-      editorValidate({
-        id: 'p1',
-        text: 'T',
-        highlight: { allowHighlighting: false },
-      }),
+      messageFields(
+        editorValidate({
+          id: 'p1',
+          text: 'T',
+          highlight: { allowHighlighting: false },
+        }),
+      ),
     ).toBeUndefined();
   });
 });

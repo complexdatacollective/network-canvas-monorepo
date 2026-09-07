@@ -33,6 +33,22 @@ type QualifierStageFields = {
   nominationPrompts?: { variable: string }[];
 };
 
+/**
+ * The English fragments below are English on purpose, and stay English.
+ *
+ * Every one of them is a part of the SEEDED stage label `generateStageLabel`
+ * assembles and `useAutoStageName` writes into the protocol's stored
+ * `stage.label` — not copy anybody reads on its own. That is the case
+ * `INTERFACE_NAMES` in `interfaces/interfaceNames.ts` is the precedent for:
+ * names are localized where they are DISPLAYED, and left English where they
+ * seed a stored value. The reasoning, and what breaks if the proposal is
+ * localized, is written out over `STAGE_TYPE_NAMES` in `generateStageLabel.ts`.
+ *
+ * It also means `joinList` below stays a hand-rolled join rather than becoming
+ * `intl.formatList`: it is building part of a stored string, so the separators
+ * have to be the same ones every host writes, in every language.
+ */
+
 export function resolveStageSubjectName(
   subject: StageSubject | undefined,
   resolveEntityName: EntityNameResolver,

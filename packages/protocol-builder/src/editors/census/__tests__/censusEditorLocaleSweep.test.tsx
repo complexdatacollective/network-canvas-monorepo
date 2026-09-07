@@ -1,7 +1,10 @@
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { expectNoLocaleLeaks } from '../../../testing/localeSweep.ts';
+import {
+  expectNoLocaleLeaks,
+  protocolStrings,
+} from '../../../testing/localeSweep.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
@@ -54,6 +57,23 @@ const closeDialog = async (harness: StageEditorHarness): Promise<void> => {
 };
 
 /**
+ * Everything on screen that belongs to the researcher rather than to this
+ * package: the protocol's own sections, the stage's seeded fields, and the
+ * codebook the family's attribute pickers read type and attribute names out
+ * of.
+ *
+ * Read out of the harness itself rather than listed by hand, so a fixture
+ * that gains an attribute does not quietly widen the sweep's blind spot — or
+ * start failing it.
+ */
+const researcherWords = (harness: StageEditorHarness) =>
+  protocolStrings(
+    harness.session.getSnapshot().protocolSections,
+    harness.seeded.fields,
+    harness.hostCodebook(),
+  );
+
+/**
  * Turns on everything that is off, and keeps going until nothing is.
  *
  * One pass is not enough: switching a capability on MOUNTS its fields, and
@@ -103,7 +123,7 @@ const sweepFamily = async (
   harness: StageEditorHarness,
 ): Promise<void> => {
   await screen.findAllByRole('button');
-  expectNoLocaleLeaks(`${family} at rest`, harness);
+  expectNoLocaleLeaks(`${family} at rest`, researcherWords(harness));
 
   // Named rather than found, so a section that stopped saying its own name in
   // Spanish fails here instead of quietly dropping out of the sweep.
@@ -111,25 +131,28 @@ const sweepFamily = async (
     await switchOn(harness, screen.getByRole('switch', { name: section }));
   }
   await switchEverythingOn(harness);
-  expectNoLocaleLeaks(`${family} with every section switched on`, harness);
+  expectNoLocaleLeaks(
+    `${family} with every section switched on`,
+    researcherWords(harness),
+  );
 
   await harness.user.click(
     screen.getByRole('button', { name: 'Crear nueva pregunta' }),
   );
   await screen.findByRole('dialog');
-  expectNoLocaleLeaks(`${family}, adding a prompt`, harness);
+  expectNoLocaleLeaks(`${family}, adding a prompt`, researcherWords(harness));
   await closeDialog(harness);
 
   await harness.user.click(
     screen.getByRole('button', { name: 'Editar pregunta' }),
   );
   await screen.findByRole('dialog');
-  expectNoLocaleLeaks(`${family}, editing a prompt`, harness);
+  expectNoLocaleLeaks(`${family}, editing a prompt`, researcherWords(harness));
 
   await switchEverythingOn(harness);
   expectNoLocaleLeaks(
     `${family}, editing a prompt with every field it offers switched on`,
-    harness,
+    researcherWords(harness),
   );
   await closeDialog(harness);
 
@@ -137,7 +160,7 @@ const sweepFamily = async (
     screen.getByRole('button', { name: 'Eliminar pregunta' }),
   );
   await screen.findByRole('dialog');
-  expectNoLocaleLeaks(`${family}, removing a prompt`, harness);
+  expectNoLocaleLeaks(`${family}, removing a prompt`, researcherWords(harness));
 };
 
 describe('the census and bin editors, swept under es', () => {

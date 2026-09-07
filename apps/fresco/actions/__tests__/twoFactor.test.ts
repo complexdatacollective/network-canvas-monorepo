@@ -1,3 +1,9 @@
+import { formatActionError } from './formatActionError';
+vi.mock('~/i18n/server', async () => {
+  const { createAppIntl } = await import('@codaco/app-i18n/messages');
+  return { getServerIntl: async () => createAppIntl({ locale: 'en' }) };
+});
+
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
@@ -138,15 +144,17 @@ vi.mock('~/queries/appSettings', () => ({
 }));
 
 vi.mock('~/schemas/totp', () => ({
-  verifyTwoFactorSchema: {
-    safeParse: mockVerifyTwoFactorSchemaSafeParse,
-  },
-  verifyTotpSetupSchema: {
-    safeParse: vi.fn(),
-  },
-  disableTotpSchema: {
-    safeParse: vi.fn(),
-  },
+  createTotpSchemas: () => ({
+    verifyTwoFactorSchema: {
+      safeParse: mockVerifyTwoFactorSchemaSafeParse,
+    },
+    verifyTotpSetupSchema: {
+      safeParse: vi.fn(),
+    },
+    disableTotpSchema: {
+      safeParse: vi.fn(),
+    },
+  }),
 }));
 
 import { verifyTwoFactor } from '../twoFactor';
@@ -180,7 +188,9 @@ describe('verifyTwoFactor', () => {
 
       expect(result.success).toBe(false);
       if (!result.success && 'formErrors' in result) {
-        expect(result.formErrors).toContain('Invalid submission');
+        expect(result.formErrors?.map(formatActionError)).toContain(
+          'Invalid submission',
+        );
       }
     });
   });
@@ -200,7 +210,7 @@ describe('verifyTwoFactor', () => {
 
       expect(result.success).toBe(false);
       if (!result.success && 'formErrors' in result) {
-        expect(result.formErrors).toContain(
+        expect(result.formErrors?.map(formatActionError)).toContain(
           'Two-factor session expired. Please sign in again.',
         );
       }
@@ -229,7 +239,7 @@ describe('verifyTwoFactor', () => {
 
       expect(result.success).toBe(false);
       if (!result.success && 'formErrors' in result) {
-        expect(result.formErrors).toContain(
+        expect(result.formErrors?.map(formatActionError)).toContain(
           'Too many attempts. Please sign in again.',
         );
       }
@@ -255,7 +265,7 @@ describe('verifyTwoFactor', () => {
 
       expect(result.success).toBe(false);
       if (!result.success && 'formErrors' in result) {
-        expect(result.formErrors).toContain(
+        expect(result.formErrors?.map(formatActionError)).toContain(
           'Two-factor authentication is not configured',
         );
       }
@@ -312,7 +322,9 @@ describe('verifyTwoFactor', () => {
 
       expect(result.success).toBe(false);
       if (!result.success && 'formErrors' in result) {
-        expect(result.formErrors).toContain('Invalid verification code');
+        expect(result.formErrors?.map(formatActionError)).toContain(
+          'Invalid verification code',
+        );
       }
     });
 
@@ -409,7 +421,9 @@ describe('verifyTwoFactor', () => {
 
       expect(result.success).toBe(false);
       if (!result.success && 'formErrors' in result) {
-        expect(result.formErrors).toContain('Invalid recovery code');
+        expect(result.formErrors?.map(formatActionError)).toContain(
+          'Invalid recovery code',
+        );
       }
     });
 
@@ -468,7 +482,9 @@ describe('verifyTwoFactor', () => {
 
       expect(result.success).toBe(false);
       if (!result.success && 'formErrors' in result) {
-        expect(result.formErrors).toContain('Invalid code format');
+        expect(result.formErrors?.map(formatActionError)).toContain(
+          'Invalid code format',
+        );
       }
       expect(mockRecordLoginAttempt).toHaveBeenCalledWith(
         VALID_USERNAME,

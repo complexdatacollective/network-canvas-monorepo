@@ -2,6 +2,7 @@ import { render, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { AnyDialog } from '@codaco/fresco-ui/dialogs/DialogProvider';
+import { renderQueuedMessage } from '~/test/renderQueuedMessage';
 
 const openDialogSpy = globalThis.__architectDialogMocks.openDialog;
 
@@ -138,9 +139,13 @@ describe('promptLeaveEditor copy', () => {
     );
 
     const dialog = captured[0];
-    expect(dialog?.description).not.toMatch(/saved automatically/i);
+    expect(renderQueuedMessage(dialog?.description)).not.toMatch(
+      /saved automatically/i,
+    );
     // The single decision point: this copy has to cover an open editor too,
     // because the researcher is not asked a second time by the editor itself.
-    expect(dialog?.description).toMatch(/editor you still have open/i);
+    expect(renderQueuedMessage(dialog?.description)).toMatch(
+      /editor you still have open/i,
+    );
   });
 });

@@ -1,3 +1,4 @@
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import {
   EdgeDefinitionSchema,
   EgoDefinitionSchema,
@@ -22,7 +23,6 @@ import {
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
-import { allowedNameMessage } from '../form/arrayFields/rowValidators.ts';
 import type {
   CodebookSubject,
   ProtocolBuilderProtocolContext,
@@ -56,6 +56,57 @@ export type CodebookDraftIssue = Readonly<{
   message: string;
 }>;
 
+/**
+ * The refusals in this module a researcher can actually read.
+ *
+ * All of them cross a string-only contract — a `CodebookDraftIssue.message` or
+ * an `Error.message` — so they are encoded with `createMessageError` and
+ * decoded where they are rendered. The invariants around them stay English on
+ * purpose: `AuxiliaryDraftBusyError`, 'the variable draft is invalid', 'the
+ * authoritative codebook entity is invalid', 'Entity variables must be a
+ * record', 'submission failed' and the `assertNonEmpty` checks all report that
+ * a caller wired something wrong, and no researcher action produces them.
+ */
+const messages = defineMessages({
+  optionsIncomplete: {
+    id: 'protocolBuilder.codebookEditing.optionsIncomplete',
+    defaultMessage: 'Every option needs both a label and a value.',
+    description:
+      'Refusal shown when a researcher saves an attribute whose list of allowed answers has a row with an empty label or an empty stored value. The label is what a participant reads; the value is what the export records.',
+  },
+  optionsDuplicateValue: {
+    id: 'protocolBuilder.codebookEditing.optionsDuplicateValue',
+    defaultMessage: 'Every option needs a unique value.',
+    description:
+      'Refusal shown when two allowed answers of one attribute would be stored under the same value, which the export cannot tell apart.',
+  },
+  optionsDuplicateLabel: {
+    id: 'protocolBuilder.codebookEditing.optionsDuplicateLabel',
+    defaultMessage: 'Every option needs a unique label.',
+    description:
+      'Refusal shown when two allowed answers of one attribute would read the same to a participant.',
+  },
+  optionsInvalidValue: {
+    id: 'protocolBuilder.codebookEditing.optionsInvalidValue',
+    defaultMessage:
+      'Not a valid option value. Only letters, numbers and the symbols ._-: are supported',
+    description:
+      'Refusal shown when an allowed answer’s stored value holds characters the export formats cannot carry. The listed symbols are literal characters and must not be translated.',
+  },
+  duplicateVariableName: {
+    id: 'protocolBuilder.codebookEditing.duplicateVariableName',
+    defaultMessage: 'Attribute with name "{name}" already exists',
+    description:
+      'Refusal shown when a researcher names an attribute (a codebook variable) something another attribute of the same entity is already called. name is what they typed.',
+  },
+  missingVariable: {
+    id: 'protocolBuilder.codebookEditing.missingVariable',
+    defaultMessage: 'Attribute record id "{variableId}" does not exist',
+    description:
+      'Refusal shown when a save is submitted for an attribute (a codebook variable) that is no longer in the protocol — usually because a collaborator deleted it while this editor was open. variableId is the attribute’s stored record id, which the researcher does not choose.',
+  },
+});
+
 export class InvalidCodebookDraftError extends Error {
   readonly issues: readonly CodebookDraftIssue[];
 
@@ -65,21 +116,38 @@ export class InvalidCodebookDraftError extends Error {
   }
 }
 
+/**
+ * Deliberately English. A variable's record id is minted by the host, never
+ * typed or chosen by a researcher, and both throw sites check it against the
+ * whole protocol before the editor is allowed to submit — so a collision means
+ * the host handed the editor an id the codebook already holds. That is a
+ * wiring defect to fix, not a refusal to translate.
+ */
 export class DuplicateVariableIdError extends Error {
   constructor(variableId: string) {
     super(`Attribute record id "${variableId}" already exists`);
   }
 }
 
+/**
+ * A researcher reaches this by typing a name another attribute of the same
+ * entity already has, so it is encoded and decoded where the editor shows it.
+ */
 export class DuplicateVariableNameError extends Error {
   constructor(name: string) {
-    super(`Attribute with name "${name}" already exists`);
+    super(createMessageError(messages.duplicateVariableName, { name }));
   }
 }
 
+/**
+ * A researcher reaches this too, though only through a collaborator: the
+ * variable editor keeps submitting an update after the attribute it is editing
+ * disappears from the authoritative document, so a concurrent delete surfaces
+ * here rather than as a guard. Encoded for the same reason.
+ */
 export class MissingVariableError extends Error {
   constructor(variableId: string) {
-    super(`Attribute record id "${variableId}" does not exist`);
+    super(createMessageError(messages.missingVariable, { variableId }));
   }
 }
 
@@ -305,7 +373,7 @@ const categoricalOptionIssue = (
   ) {
     return Object.freeze({
       path: Object.freeze(['options']),
-      message: 'Every option needs both a label and a value.',
+      message: createMessageError(messages.optionsIncomplete),
     });
   }
 
@@ -318,7 +386,7 @@ const categoricalOptionIssue = (
     if (seen.has(comparableValue)) {
       return Object.freeze({
         path: Object.freeze(['options']),
-        message: 'Every option needs a unique value.',
+        message: createMessageError(messages.optionsDuplicateValue),
       });
     }
     seen.add(comparableValue);
@@ -330,7 +398,7 @@ const categoricalOptionIssue = (
     if (labels.has(comparableLabel)) {
       return Object.freeze({
         path: Object.freeze(['options']),
-        message: 'Every option needs a unique label.',
+        message: createMessageError(messages.optionsDuplicateLabel),
       });
     }
     labels.add(comparableLabel);
@@ -343,7 +411,7 @@ const categoricalOptionIssue = (
   ) {
     return Object.freeze({
       path: Object.freeze(['options']),
-      message: allowedNameMessage('option value'),
+      message: createMessageError(messages.optionsInvalidValue),
     });
   }
   return null;

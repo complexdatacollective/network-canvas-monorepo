@@ -158,8 +158,8 @@ function renderOptions(session: ProtocolBuilderSession) {
 }
 
 const SORT_PROPERTIES: PropertyField[] = [
-  { fieldName: 'property', control: 'input' },
-  { fieldName: 'direction', control: 'input' },
+  { fieldName: 'property', control: 'input', label: 'Property' },
+  { fieldName: 'direction', control: 'input', label: 'Direction' },
 ];
 
 function renderSortRules(session: ProtocolBuilderSession) {

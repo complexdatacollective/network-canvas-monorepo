@@ -9,6 +9,8 @@ import {
 import { useCallback, useEffect, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Heading from '@codaco/fresco-ui/typography/Heading';
@@ -30,6 +32,7 @@ import {
   openLocalNetcanvas,
   type ProtocolOpenResult,
 } from '~/ducks/modules/userActions/userActions';
+import { formatConfig } from '~/i18n/formatConfig';
 import {
   BUNDLED_TEMPLATES,
   type BundledTemplate,
@@ -47,15 +50,69 @@ import LibraryPanel from './LibraryPanel';
 import ProtocolLoadingOverlay from './ProtocolLoadingOverlay';
 import { TIMELINE_SCRIPT } from './timelineScript';
 import TransitMap from './TransitMap';
+const configMessages = defineMessages({
+  docs: {
+    id: 'architect.home.home.config.docs',
+    defaultMessage: 'Docs',
+    description:
+      'Presentation label or description in components/Home/Home.tsx. Identifiers are not translated.',
+  },
+  community: {
+    id: 'architect.home.home.config.community',
+    defaultMessage: 'Community',
+    description:
+      'Presentation label or description in components/Home/Home.tsx. Identifiers are not translated.',
+  },
+});
+const messages = defineMessages({
+  protocolImportError: {
+    id: 'architect.home.home.protocolImportError',
+    defaultMessage: 'Protocol Import Error',
+    description: 'The title text in components / Home / Home.',
+  },
+  nameYourProtocol: {
+    id: 'architect.home.home.nameYourProtocol',
+    defaultMessage: 'Name your protocol',
+    description: 'The title text in components / Home / Home.',
+  },
+  welcomeToArchitect: {
+    id: 'architect.home.home.welcomeToArchitect',
+    defaultMessage: 'Welcome to <span>Architect</span>',
+    description: 'Visible text in components / Home / Home.',
+  },
+  architectIsTheProtocolDesignerFor: {
+    id: 'architect.home.home.architectIsTheProtocolDesignerFor',
+    defaultMessage:
+      'Architect is the protocol designer for Network Canvas. Compose name generators, capture ordinal and categorical data, map connections, and explore narratives.',
+    description: 'Visible text in components / Home / Home.',
+  },
+  createANewProtocol: {
+    id: 'architect.home.home.createANewProtocol',
+    defaultMessage: 'Create a new protocol',
+    description: 'Visible text in components / Home / Home.',
+  },
+  openExistingProtocol: {
+    id: 'architect.home.home.openExistingProtocol',
+    defaultMessage: 'Open existing protocol',
+    description: 'Visible text in components / Home / Home.',
+  },
+  orDropANetcanvasFileAnywhere: {
+    id: 'architect.home.home.orDropANetcanvasFileAnywhere',
+    defaultMessage:
+      'Or drop a <code>.netcanvas</code> file anywhere on this page',
+    description: 'Visible text in components / Home / Home.',
+  },
+});
+
 const NAV_LINKS = [
   {
     href: documentationLinks.home,
-    label: 'Docs',
+    label: configMessages.docs,
     Icon: BookOpen,
   },
   {
     href: 'https://community.networkcanvas.com',
-    label: 'Community',
+    label: configMessages.community,
     Icon: Users,
   },
   {
@@ -65,6 +122,7 @@ const NAV_LINKS = [
   },
 ];
 const Home = () => {
+  const intl = useAppIntl();
   const dispatch = useAppDispatch();
   const { openDialog } = useDialog();
   const [isLoading, setIsLoading] = useState(false);
@@ -203,7 +261,7 @@ const Home = () => {
           await showProtocolOpenResultDialog({
             result: {
               status: 'error',
-              title: 'Protocol Import Error',
+              title: createMessageError(messages.protocolImportError),
               ...describeImportFailure(error, TEMPLATE_OPEN_FAILURE_MESSAGE),
             },
             openDialog,
@@ -221,10 +279,7 @@ const Home = () => {
         const result = await runAction(() =>
           dispatch(openLibraryProtocol({ id })).unwrap(),
         );
-        await showProtocolOpenResultDialog({
-          result,
-          openDialog,
-        });
+        await showProtocolOpenResultDialog({ result, openDialog });
       })();
     },
     [dispatch, openDialog, runAction],
@@ -243,7 +298,7 @@ const Home = () => {
           if (!open) setPendingTemplate(null);
         }}
         onSubmit={handleConfirmTemplate}
-        title="Name your protocol"
+        title={intl.formatMessage(messages.nameYourProtocol)}
         initialName={pendingTemplate?.defaultName}
       />
 
@@ -251,7 +306,7 @@ const Home = () => {
         {...getRootProps()}
         className="flex h-full min-w-0 flex-col overflow-x-hidden"
       >
-        <input {...getInputProps()} />
+        <input {...getInputProps()} aria-hidden="true" tabIndex={-1} />
 
         {/* Dropzone */}
         {isDragActive && (
@@ -264,7 +319,7 @@ const Home = () => {
         <NavShell
           trailing={
             <>
-              {NAV_LINKS.map(({ href, label, Icon }) => (
+              {formatConfig(NAV_LINKS, intl).map(({ href, label, Icon }) => (
                 <a
                   key={href}
                   href={href}
@@ -291,7 +346,10 @@ const Home = () => {
               aria-hidden
               className="tablet-landscape:block desktop:w-1/2 pointer-events-none hidden h-full w-2/5 shrink-0"
             >
-              <TransitMap stops={TIMELINE_SCRIPT} count={visibleCount} />
+              <TransitMap
+                stops={formatConfig(TIMELINE_SCRIPT, intl)}
+                count={visibleCount}
+              />
             </div>
 
             <div className="short:gap-3 laptop:gap-8 @container-size flex h-full min-w-0 flex-1 flex-col items-start justify-start gap-6 text-left">
@@ -304,16 +362,20 @@ const Home = () => {
                     className="leading-[0.92] font-black tracking-tight"
                     {...routeFocusTargetProps}
                   >
-                    Welcome to <span className="text-action">Architect</span>
+                    {intl.formatMessage(messages.welcomeToArchitect, {
+                      span: (chunks) => (
+                        <span className="text-action">{chunks}</span>
+                      ),
+                    })}
                   </Heading>
                   <Paragraph
                     intent="lead"
                     margin="none"
                     className="hidden max-w-xl text-current/70 [@container_(height>760px)]:block"
                   >
-                    Architect is the protocol designer for Network Canvas.
-                    Compose name generators, capture ordinal and categorical
-                    data, map connections, and explore narratives.
+                    {intl.formatMessage(
+                      messages.architectIsTheProtocolDesignerFor,
+                    )}
                   </Paragraph>
                 </div>
 
@@ -324,7 +386,7 @@ const Home = () => {
                     className="@min-xl:h-16 @min-xl:px-8 @min-xl:text-lg"
                   >
                     <FilePlus />
-                    Create a new protocol
+                    {intl.formatMessage(messages.createANewProtocol)}
                   </Button>
                   <Button
                     color="default"
@@ -333,14 +395,15 @@ const Home = () => {
                     className="@min-xl:h-16 @min-xl:px-8 @min-xl:text-lg"
                   >
                     <FolderOpen />
-                    Open existing protocol
+                    {intl.formatMessage(messages.openExistingProtocol)}
                   </Button>
                 </div>
 
                 <Paragraph className="hint my-0 hidden items-center gap-1.5 [@container_(height>760px)]:flex">
                   <Upload className="h-3.5 w-3.5" />
-                  Or drop a <code className="code">.netcanvas</code> file
-                  anywhere on this page
+                  {intl.formatMessage(messages.orDropANetcanvasFileAnywhere, {
+                    code: (chunks) => <code className="code">{chunks}</code>,
+                  })}
                 </Paragraph>
               </div>
 

@@ -1,15 +1,66 @@
+import { createElement } from 'react';
+
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import {
+  AppErrorMessage,
+  AppMessage,
+  useAppIntl,
+} from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import { getStorageUnavailable } from '~/ducks/modules/app';
 import { exportNetcanvas } from '~/ducks/modules/userActions/userActions';
+const messages = defineMessages({
+  thisProtocolIsnTBeingSavedOn: {
+    id: 'architect.storageUnavailableBanner.thisProtocolIsnTBeingSavedOn',
+    defaultMessage:
+      "This protocol isn't being saved on this device — local app storage is unavailable, which is common in private browsing. Download a copy to keep your work.",
+    description: 'Visible text in components / StorageUnavailableBanner.',
+  },
+  downloadNetcanvas: {
+    id: 'architect.storageUnavailableBanner.downloadNetcanvas',
+    defaultMessage: 'Download .netcanvas',
+    description: 'Visible text in components / StorageUnavailableBanner.',
+  },
+  someAssetsCouldNotBeExported: {
+    id: 'architect.storageUnavailableBanner.someAssetsCouldNotBeExported',
+    defaultMessage: 'Some assets could not be exported',
+    description: 'The title text in components / StorageUnavailableBanner.',
+  },
+  oK: {
+    id: 'architect.storageUnavailableBanner.oK',
+    defaultMessage: 'OK',
+    description: 'The label text in components / StorageUnavailableBanner.',
+  },
+  downloadFailed: {
+    id: 'architect.storageUnavailableBanner.downloadFailed',
+    defaultMessage: 'Download failed',
+    description: 'The title text in components / StorageUnavailableBanner.',
+  },
+  yourProtocolCouldnTBeDownloadedPlease: {
+    id: 'architect.storageUnavailableBanner.yourProtocolCouldnTBeDownloadedPlease',
+    defaultMessage: "Your protocol couldn't be downloaded. Please try again.",
+    description:
+      'The description text in components / StorageUnavailableBanner.',
+  },
+});
+const finalMessages = defineMessages({
+  skippedAssets: {
+    id: 'architect.final.components.StorageUnavailableBanner.skippedAssets',
+    defaultMessage:
+      'Your protocol was downloaded, but these assets could not be included and are missing from the file: {assetList}.',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+});
 
 // Shown across the protocol editor when a protocol was opened from an in-memory
 // copy because the browser's storage is unavailable (e.g. private browsing).
 // Non-blocking: the user can keep editing, but their work won't persist, so we
 // keep a download action close at hand.
 const StorageUnavailableBanner = () => {
+  const intl = useAppIntl();
   const dispatch = useAppDispatch();
   const { openDialog } = useDialog();
   const storageUnavailable = useAppSelector(getStorageUnavailable);
@@ -25,11 +76,7 @@ const StorageUnavailableBanner = () => {
       className="my-0 rounded-none! px-7 py-2.5 shadow-none!"
     >
       <AlertDescription className="flex items-center justify-between gap-5 text-sm">
-        <span>
-          This protocol isn&apos;t being saved on this device — local app
-          storage is unavailable, which is common in private browsing. Download
-          a copy to keep your work.
-        </span>
+        <span>{intl.formatMessage(messages.thisProtocolIsnTBeingSavedOn)}</span>
         <Button
           size="sm"
           color="primary"
@@ -40,32 +87,52 @@ const StorageUnavailableBanner = () => {
               .unwrap()
               .then(({ skippedAssets }) => {
                 if (skippedAssets.length === 0) return;
-                const assetList = skippedAssets
-                  .map((asset) => asset.name)
-                  .join(', ');
                 void openDialog({
                   type: 'acknowledge',
                   intent: 'warning',
-                  title: 'Some assets could not be exported',
-                  description:
-                    'Your protocol was downloaded, but these assets could not be ' +
-                    `included and are missing from the file: ${assetList}.`,
-                  actions: { primary: { label: 'OK', value: true } },
+                  title: createElement(AppMessage, {
+                    message: messages.someAssetsCouldNotBeExported,
+                  }),
+                  description: createElement(AppErrorMessage, {
+                    error: createMessageError(finalMessages.skippedAssets, {
+                      assetList: {
+                        list: skippedAssets.map((asset) => asset.name),
+                      },
+                    }),
+                  }),
+                  actions: {
+                    primary: {
+                      label: createElement(AppMessage, {
+                        message: messages.oK,
+                      }),
+                      value: true,
+                    },
+                  },
                 });
               })
               .catch(() => {
                 void openDialog({
                   type: 'acknowledge',
                   intent: 'destructive',
-                  title: 'Download failed',
-                  description:
-                    "Your protocol couldn't be downloaded. Please try again.",
-                  actions: { primary: { label: 'OK', value: true } },
+                  title: createElement(AppMessage, {
+                    message: messages.downloadFailed,
+                  }),
+                  description: createElement(AppMessage, {
+                    message: messages.yourProtocolCouldnTBeDownloadedPlease,
+                  }),
+                  actions: {
+                    primary: {
+                      label: createElement(AppMessage, {
+                        message: messages.oK,
+                      }),
+                      value: true,
+                    },
+                  },
                 });
               });
           }}
         >
-          Download .netcanvas
+          {intl.formatMessage(messages.downloadNetcanvas)}
         </Button>
       </AlertDescription>
     </Alert>

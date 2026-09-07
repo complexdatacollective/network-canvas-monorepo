@@ -1,4 +1,16 @@
+import { createAppIntl, defineMessages } from '@codaco/app-i18n/messages';
+import type { IntlShape } from '@codaco/app-i18n/messages';
 import type { SkipLogicDestination } from '@codaco/protocol-validation';
+
+/**
+ * The formatter used when a caller has none of its own.
+ *
+ * `SkipLogicDestinationField` threads the researcher's own formatter in. This
+ * is the fallback for a caller reading the destinations or the verdict without
+ * one — this package's own module tests, and a host asking what is wrong with
+ * a stored protocol.
+ */
+const englishIntl = createAppIntl({ locale: 'en' });
 
 /**
  * A stage as the destination control needs to read it: which one it is, and
@@ -47,16 +59,91 @@ const STAGE_ROUTE_PREFIX = 'route:stage:';
  */
 const UNREADABLE_ROUTE = 'route:unreadable';
 
-const UNTITLED_STAGE = 'Untitled stage';
-
-export const MISSING_DESTINATION_PROBLEM =
-  'The stage this skips to is no longer part of this interview. Choose where the interview should continue instead.';
-
-export const EARLIER_DESTINATION_PROBLEM =
-  'The stage this skips to no longer comes after this one. Choose a later stage, or end the interview.';
-
-export const UNREADABLE_DESTINATION_PROBLEM =
-  'The stage this skips to cannot be read. Choose where the interview should continue instead.';
+/**
+ * What the control offers, and what it says is wrong with what it holds.
+ *
+ * A stage the researcher has not named is written out in full in each option
+ * it can appear in, rather than substituted into the option as a noun: a
+ * translator moves the whole phrase, and neither combination is assembled out
+ * of parts that have to agree.
+ */
+const messages = defineMessages({
+  nextAvailable: {
+    id: 'protocolBuilder.skipLogicDestination.nextAvailable',
+    defaultMessage: 'Next available stage',
+    description:
+      'The default destination offered when a researcher says where an interview continues after a stage is skipped: whichever stage comes next and is not itself skipped. A stage is one step of an interview.',
+  },
+  finish: {
+    id: 'protocolBuilder.skipLogicDestination.finish',
+    defaultMessage: 'End the interview',
+    description:
+      'Destination offered when a researcher says where an interview continues after a stage is skipped: it does not continue — the interview finishes there.',
+  },
+  stageOption: {
+    id: 'protocolBuilder.skipLogicDestination.stageOption',
+    defaultMessage: 'Stage {position, number} — {stageLabel}',
+    description:
+      'One stage offered as the destination an interview continues at. position is where that stage will sit in the finished interview, counting from one; stageLabel is the researcher’s own name for it and is not translated.',
+  },
+  untitledStageOption: {
+    id: 'protocolBuilder.skipLogicDestination.untitledStageOption',
+    defaultMessage: 'Stage {position, number} — Untitled stage',
+    description:
+      'The same offered destination as stageOption, for a stage the researcher has not named yet, so there is no name to show. position is where that stage will sit in the finished interview, counting from one.',
+  },
+  unreadableOption: {
+    id: 'protocolBuilder.skipLogicDestination.unreadableOption',
+    defaultMessage: 'A destination this editor cannot read',
+    description:
+      'Shown as the current, unselectable choice when the stage records a destination in a shape the protocol will not accept — a hand-edit or a merge left it there. Nothing is known about where it pointed, so it is named for what is wrong with it.',
+  },
+  unavailableOption: {
+    id: 'protocolBuilder.skipLogicDestination.unavailableOption',
+    defaultMessage: 'A destination that is no longer available',
+    description:
+      'Shown as the current, unselectable choice when the stage’s stored destination is one this control can no longer offer and cannot describe more precisely than this.',
+  },
+  deletedStageOption: {
+    id: 'protocolBuilder.skipLogicDestination.deletedStageOption',
+    defaultMessage: 'A stage that is no longer in this interview',
+    description:
+      'Shown as the current, unselectable choice when the stage a skip pointed at has been deleted, so there is no name left to show for it.',
+  },
+  earlierStageOption: {
+    id: 'protocolBuilder.skipLogicDestination.earlierStageOption',
+    defaultMessage: '{stageLabel} (earlier in the interview)',
+    description:
+      'Shown as the current, unselectable choice when the stage a skip pointed at still exists but has moved to before this one, so the interview can no longer reach it by skipping forward. stageLabel is the researcher’s own name for that stage and is not translated.',
+  },
+  earlierUntitledStageOption: {
+    id: 'protocolBuilder.skipLogicDestination.earlierUntitledStageOption',
+    defaultMessage: 'Untitled stage (earlier in the interview)',
+    description:
+      'The same unselectable choice as earlierStageOption, for a stage the researcher has not named yet, so there is no name to show.',
+  },
+  missingProblem: {
+    id: 'protocolBuilder.skipLogicDestination.missingProblem',
+    defaultMessage:
+      'The stage this skips to is no longer part of this interview. Choose where the interview should continue instead.',
+    description:
+      'Shown beside the destination control when the stage a skip pointed at has been deleted from the interview. Addressed to the researcher authoring the protocol.',
+  },
+  earlierProblem: {
+    id: 'protocolBuilder.skipLogicDestination.earlierProblem',
+    defaultMessage:
+      'The stage this skips to no longer comes after this one. Choose a later stage, or end the interview.',
+    description:
+      'Shown beside the destination control when the stage a skip pointed at has been moved to before this one, so the interview can no longer reach it by skipping forward.',
+  },
+  unreadableProblem: {
+    id: 'protocolBuilder.skipLogicDestination.unreadableProblem',
+    defaultMessage:
+      'The stage this skips to cannot be read. Choose where the interview should continue instead.',
+    description:
+      'Shown beside the destination control when the stage records a destination in a shape the protocol will not accept, so nothing can be said about where it pointed.',
+  },
+});
 
 /**
  * The keys each destination shape is allowed to carry.
@@ -213,8 +300,16 @@ const stageOptionLabel = (
   stage: DestinationStage,
   index: number,
   placement: StagePlacement,
-): string =>
-  `Stage ${stageNumber(index, placement)} — ${stage.label === '' ? UNTITLED_STAGE : stage.label}`;
+  intl: IntlShape,
+): string => {
+  const position = stageNumber(index, placement);
+  return stage.label === ''
+    ? intl.formatMessage(messages.untitledStageOption, { position })
+    : intl.formatMessage(messages.stageOption, {
+        position,
+        stageLabel: stage.label,
+      });
+};
 
 /**
  * Where the interview may continue from here.
@@ -231,26 +326,33 @@ export function skipLogicDestinationOptions(
   stages: readonly DestinationStage[],
   placement: StagePlacement,
   value?: unknown,
+  intl: IntlShape = englishIntl,
 ): SkipLogicDestinationOption[] {
   const options: SkipLogicDestinationOption[] = [
-    { value: NEXT_AVAILABLE_ROUTE, label: 'Next available stage' },
+    {
+      value: NEXT_AVAILABLE_ROUTE,
+      label: intl.formatMessage(messages.nextAvailable),
+    },
   ];
 
   stages.forEach((stage, index) => {
     if (!isLaterStage(index, placement)) return;
     options.push({
       value: `${STAGE_ROUTE_PREFIX}${stage.id}`,
-      label: stageOptionLabel(stage, index, placement),
+      label: stageOptionLabel(stage, index, placement, intl),
     });
   });
 
-  options.push({ value: FINISH_ROUTE, label: 'End the interview' });
+  options.push({
+    value: FINISH_ROUTE,
+    label: intl.formatMessage(messages.finish),
+  });
 
   const route = destinationRoute(value);
   if (!options.some((option) => option.value === route)) {
     options.push({
       value: route,
-      label: unavailableDestinationLabel(value, stages),
+      label: unavailableDestinationLabel(value, stages, intl),
       disabled: true,
     });
   }
@@ -270,21 +372,29 @@ export function skipLogicDestinationOptions(
 function unavailableDestinationLabel(
   value: unknown,
   stages: readonly DestinationStage[],
+  intl: IntlShape,
 ): string {
   const stored = readDestination(value);
   if (stored.kind === 'unreadable') {
-    return 'A destination this editor cannot read';
+    return intl.formatMessage(messages.unreadableOption);
   }
-  if (stored.kind === 'absent')
-    return 'A destination that is no longer available';
+  if (stored.kind === 'absent') {
+    return intl.formatMessage(messages.unavailableOption);
+  }
   const destination = stored.destination;
   if (destination.type !== 'stage') {
-    return 'A destination that is no longer available';
+    return intl.formatMessage(messages.unavailableOption);
   }
   const index = stages.findIndex((stage) => stage.id === destination.stageId);
   const stage = stages[index];
-  if (stage === undefined) return 'A stage that is no longer in this interview';
-  return `${stage.label === '' ? UNTITLED_STAGE : stage.label} (earlier in the interview)`;
+  if (stage === undefined) {
+    return intl.formatMessage(messages.deletedStageOption);
+  }
+  return stage.label === ''
+    ? intl.formatMessage(messages.earlierUntitledStageOption)
+    : intl.formatMessage(messages.earlierStageOption, {
+        stageLabel: stage.label,
+      });
 }
 
 /**
@@ -306,15 +416,18 @@ export function skipLogicDestinationProblem(
   value: unknown,
   stages: readonly DestinationStage[],
   placement: StagePlacement,
+  intl: IntlShape = englishIntl,
 ): string | undefined {
   const stored = readDestination(value);
-  if (stored.kind === 'unreadable') return UNREADABLE_DESTINATION_PROBLEM;
+  if (stored.kind === 'unreadable') {
+    return intl.formatMessage(messages.unreadableProblem);
+  }
   if (stored.kind === 'absent') return undefined;
   const destination = stored.destination;
   if (destination.type === 'finish') return undefined;
   const index = stages.findIndex((stage) => stage.id === destination.stageId);
-  if (index === -1) return MISSING_DESTINATION_PROBLEM;
+  if (index === -1) return intl.formatMessage(messages.missingProblem);
   return isLaterStage(index, placement)
     ? undefined
-    : EARLIER_DESTINATION_PROBLEM;
+    : intl.formatMessage(messages.earlierProblem);
 }

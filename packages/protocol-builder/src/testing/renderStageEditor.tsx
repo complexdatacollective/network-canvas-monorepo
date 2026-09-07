@@ -52,6 +52,13 @@ import { dispatchThroughPart } from './incompleteRegistry.ts';
 import { loadFixtureStage } from './protocolFixture.ts';
 
 /**
+ * A catalog entry and a `defaultMessage` are both typed as the string OR the
+ * pre-parsed ICU form, and only the string one can name a control.
+ */
+const literal = (value: unknown) =>
+  typeof value === 'string' ? value : undefined;
+
+/**
  * What the harness's own submit control says, in the reader's language.
  *
  * The `sections` path mounts a stand-in for the shared `saveStageAction`, so
@@ -63,10 +70,6 @@ import { loadFixtureStage } from './protocolFixture.ts';
  */
 const defaultSubmitLabel = (locale: string | undefined): string => {
   const { id, defaultMessage } = saveStageMessages.saveStage;
-  // A catalog entry and a `defaultMessage` are both typed as the string OR the
-  // pre-parsed ICU form, and only the string one can name a control.
-  const literal = (value: unknown) =>
-    typeof value === 'string' ? value : undefined;
   const label =
     literal(
       locale === undefined || id === undefined

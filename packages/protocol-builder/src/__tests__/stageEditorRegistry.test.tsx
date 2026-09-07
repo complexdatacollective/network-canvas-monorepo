@@ -183,10 +183,11 @@ describe('the two lists a family edits', () => {
     // Every family has landed, so a list may legitimately be empty, and an
     // empty one holds no entries for two families to collide on. Whether the
     // formatter leaves `[]` beside the name or wraps it onto the next line is
-    // its decision and not a fact about merging — `AWAITING_STAGE_EDITORS`
-    // crossed 80 columns and moved — so the whitespace after `=` is matched
-    // rather than spelled.
-    if (new RegExp(`const ${name} =\\s+\\[\\] as const`).test(source))
+    // its decision and not a fact about merging — `AWAITING_STAGE_EDITORS`'s
+    // `satisfies` clause is long enough to force the wrap — so the whitespace
+    // after `=` is matched loosely enough to accept either layout rather than
+    // spelled out.
+    if (new RegExp(`const ${name} =\\s*\\[\\] as const`).test(source))
       return [];
     const body = new RegExp(
       `const ${name} =\\s+\\[\\n([\\s\\S]*?)\\n\\] as const`,

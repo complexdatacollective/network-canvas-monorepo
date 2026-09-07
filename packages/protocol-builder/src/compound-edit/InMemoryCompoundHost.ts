@@ -1,3 +1,4 @@
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import {
   assetSchema,
   CurrentProtocolSchema,
@@ -27,6 +28,157 @@ import type {
   ManifestRevision,
   ProtocolBuilderPresence,
 } from '../session.ts';
+import { compoundRequestMessages } from './compoundRequestMessages.ts';
+
+/**
+ * Why this host could not apply a compound edit.
+ *
+ * The request-shape refusals it shares with the session live in
+ * `compoundRequestMessages`; these are the ones only a host can reach — a
+ * lease that moved, a working copy the change no longer fits, a protocol the
+ * schema refuses once the change is folded in.
+ *
+ * They travel to the screen inside a `CompoundEditResult`'s plain-string
+ * `message`, so they are encoded with `createMessageError` and decoded where
+ * they are rendered. Where a message is a schema's or the assembler's own
+ * wording it is passed through untouched: that copy belongs to the package
+ * that wrote it.
+ */
+const messages = defineMessages({
+  leaseGone: {
+    id: 'protocolBuilder.compoundEdit.leaseGone',
+    defaultMessage: 'the primary section lease is no longer held',
+    description:
+      'Why the host could not change the codebook alongside the interview step being edited: nobody holds the step for editing any more.',
+  },
+  leaseTaken: {
+    id: 'protocolBuilder.compoundEdit.leaseTaken',
+    defaultMessage: 'the primary section lease is now held by another editor',
+    description:
+      'Why the host could not change the codebook alongside the interview step being edited: someone else is editing the step now.',
+  },
+  leaseEpochStale: {
+    id: 'protocolBuilder.compoundEdit.leaseEpochStale',
+    defaultMessage: 'the primary section lease epoch is stale',
+    description:
+      'Why the host could not change the codebook alongside the interview step being edited: editing of the step was handed over since the change was prepared.',
+  },
+  staleBase: {
+    id: 'protocolBuilder.compoundEdit.staleBase',
+    defaultMessage:
+      'the compound edit was built from an outdated section document',
+    description:
+      'Why the host could not change the codebook alongside the interview step being edited: that part of the protocol has changed since the edit was prepared.',
+  },
+  sectionExists: {
+    id: 'protocolBuilder.compoundEdit.sectionExists',
+    defaultMessage: 'cannot create a compound section that already exists',
+    description:
+      'Why the host could not change the codebook alongside the interview step being edited: it was asked to add a part of the protocol that is already there.',
+  },
+  removeMissingSection: {
+    id: 'protocolBuilder.compoundEdit.removeMissingSection',
+    defaultMessage: 'cannot remove a compound section that does not exist',
+    description:
+      'Why the host could not change the codebook alongside the interview step being edited: it was asked to delete a part of the protocol that is not there.',
+  },
+  updateMissingSection: {
+    id: 'protocolBuilder.compoundEdit.updateMissingSection',
+    defaultMessage: 'cannot update a compound section that does not exist',
+    description:
+      'Why the host could not change the codebook alongside the interview step being edited: it was asked to change a part of the protocol that is not there.',
+  },
+  updateMissingDocument: {
+    id: 'protocolBuilder.compoundEdit.updateMissingDocument',
+    defaultMessage: 'cannot update a missing compound section document',
+    description:
+      'Why the host could not change the codebook alongside the interview step being edited: the part of the protocol it was changing went missing partway through.',
+  },
+  failed: {
+    id: 'protocolBuilder.compoundEdit.failed',
+    defaultMessage: 'the compound edit failed',
+    description:
+      'Why the host could not change the codebook alongside the interview step being edited, when nothing more specific is known.',
+  },
+  unknownSectionNamed: {
+    id: 'protocolBuilder.compoundEdit.unknownSectionNamed',
+    defaultMessage: 'the compound edit names an unknown section',
+    description:
+      'Why the host could not change the codebook alongside the interview step being edited: it named a part of the protocol this version does not recognise.',
+  },
+  stageIdMismatch: {
+    id: 'protocolBuilder.compoundEdit.stageIdMismatch',
+    defaultMessage: 'the stage document id does not match its section id',
+    description:
+      'Why the host could not change the codebook alongside the interview step being edited: the identifier inside the step disagrees with the one it is filed under. "stage" is one step of an interview.',
+  },
+  unsupportedSection: {
+    id: 'protocolBuilder.compoundEdit.unsupportedSection',
+    defaultMessage: 'the compound edit names an unsupported section',
+    description:
+      'Why the host could not change the codebook alongside the interview step being edited: it named a part of the protocol this host cannot change.',
+  },
+  sectionInvalid: {
+    id: 'protocolBuilder.compoundEdit.sectionInvalid',
+    defaultMessage: 'section validation failed',
+    description:
+      'Why the host could not change the codebook alongside the interview step being edited: the changed part of the protocol did not pass its checks, and the checks said nothing more specific.',
+  },
+  assemblyFailed: {
+    id: 'protocolBuilder.compoundEdit.assemblyFailed',
+    defaultMessage: 'protocol assembly failed',
+    description:
+      'Why the host could not change the codebook alongside the interview step being edited: the parts could not be put back together into a whole protocol, and nothing more specific is known.',
+  },
+  protocolInvalid: {
+    id: 'protocolBuilder.compoundEdit.protocolInvalid',
+    defaultMessage: 'protocol validation failed',
+    description:
+      'Why the host could not change the codebook alongside the interview step being edited: the whole protocol did not pass its checks, and the checks said nothing more specific.',
+  },
+  settingsUnknownKey: {
+    id: 'protocolBuilder.compoundEdit.settingsUnknownKey',
+    defaultMessage: 'protocol settings contain unknown key {key}',
+    description:
+      'Why the host could not change the codebook alongside the interview step being edited: the protocol settings hold something this version does not recognise. key is the unrecognised setting name.',
+  },
+  settingsInvalid: {
+    id: 'protocolBuilder.compoundEdit.settingsInvalid',
+    defaultMessage: 'settings validation failed',
+    description:
+      'Why the host could not change the codebook alongside the interview step being edited: the protocol settings did not pass their checks, and the checks said nothing more specific.',
+  },
+  stageOrderUnknownKey: {
+    id: 'protocolBuilder.compoundEdit.stageOrderUnknownKey',
+    defaultMessage: 'stage order contains an unknown key',
+    description:
+      'Why the host could not change the codebook alongside the interview step being edited: the record of the interview step order holds something other than the order. "stage" is one step of an interview.',
+  },
+  stageOrderNotList: {
+    id: 'protocolBuilder.compoundEdit.stageOrderNotList',
+    defaultMessage: 'stage order must be a list of non-empty stage ids',
+    description:
+      'Why the host could not change the codebook alongside the interview step being edited: the record of the interview step order is not a list of steps. "stage" is one step of an interview.',
+  },
+  stageOrderDuplicate: {
+    id: 'protocolBuilder.compoundEdit.stageOrderDuplicate',
+    defaultMessage: 'stage order lists the same stage twice',
+    description:
+      'Why the host could not change the codebook alongside the interview step being edited: one step appears twice in the interview step order. "stage" is one step of an interview.',
+  },
+  assetInvalid: {
+    id: 'protocolBuilder.compoundEdit.assetInvalid',
+    defaultMessage: 'asset {assetId}: {reason}',
+    description:
+      'Why the host could not change the codebook alongside the interview step being edited: one of the resources in the protocol did not pass its checks. assetId identifies the resource; reason is the wording of the check that refused it.',
+  },
+  assetInvalidReason: {
+    id: 'protocolBuilder.compoundEdit.assetInvalidReason',
+    defaultMessage: 'asset validation failed',
+    description:
+      'Stands in for the reason a resource failed its checks when the checks said nothing more specific. Read inside the "asset {assetId}: {reason}" message.',
+  },
+});
 
 export type InMemoryCompoundHostLease = Readonly<{
   sectionId: ProtocolSectionId;
@@ -179,7 +331,7 @@ export class InMemoryCompoundHost {
     if (fingerprint === null) {
       return failed(
         'invalid-request',
-        'the compound edit payload is not canonically serializable',
+        createMessageError(compoundRequestMessages.notSerializable),
       );
     }
 
@@ -187,7 +339,9 @@ export class InMemoryCompoundHost {
     if (stored !== undefined && stored.fingerprint !== fingerprint) {
       return failed(
         'invalid-request',
-        `compound edit request id ${submission.id} was reused for a different payload`,
+        createMessageError(compoundRequestMessages.requestIdReused, {
+          requestId: submission.id,
+        }),
       );
     }
     if (stored?.applied !== undefined) return stored.applied;
@@ -202,7 +356,7 @@ export class InMemoryCompoundHost {
     if (primaryLease === undefined) {
       return failed(
         'lease-lost',
-        'the primary section lease is no longer held',
+        createMessageError(messages.leaseGone),
         submission.authority.sectionId,
       );
     }
@@ -210,7 +364,7 @@ export class InMemoryCompoundHost {
     if (primaryLease.leaseOwner !== submission.authority.leaseOwner) {
       return failed(
         'lease-lost',
-        'the primary section lease is now held by another editor',
+        createMessageError(messages.leaseTaken),
         submission.authority.sectionId,
         primaryLease.holder,
       );
@@ -219,7 +373,7 @@ export class InMemoryCompoundHost {
     if (primaryLease.leaseEpoch !== submission.authority.leaseEpoch) {
       return failed(
         'stale-epoch',
-        'the primary section lease epoch is stale',
+        createMessageError(messages.leaseEpochStale),
         submission.authority.sectionId,
       );
     }
@@ -262,7 +416,7 @@ export class InMemoryCompoundHost {
       ) {
         return failed(
           'stale-base',
-          'the compound edit was built from an outdated section document',
+          createMessageError(messages.staleBase),
           edit.sectionId,
         );
       }
@@ -277,7 +431,7 @@ export class InMemoryCompoundHost {
           if (Object.hasOwn(working, edit.sectionId)) {
             throw new CompoundHostSectionError(
               edit.sectionId,
-              'cannot create a compound section that already exists',
+              createMessageError(messages.sectionExists),
             );
           }
           defineSection(working, edit.sectionId, edit.document);
@@ -288,8 +442,8 @@ export class InMemoryCompoundHost {
           throw new CompoundHostSectionError(
             edit.sectionId,
             edit.kind === 'remove'
-              ? 'cannot remove a compound section that does not exist'
-              : 'cannot update a compound section that does not exist',
+              ? createMessageError(messages.removeMissingSection)
+              : createMessageError(messages.updateMissingSection),
           );
         }
 
@@ -302,7 +456,7 @@ export class InMemoryCompoundHost {
         if (current === undefined) {
           throw new CompoundHostSectionError(
             edit.sectionId,
-            'cannot update a missing compound section document',
+            createMessageError(messages.updateMissingDocument),
           );
         }
         defineSection(
@@ -316,7 +470,9 @@ export class InMemoryCompoundHost {
     } catch (error: unknown) {
       return failed(
         'host-error',
-        error instanceof Error ? error.message : 'the compound edit failed',
+        error instanceof Error
+          ? error.message
+          : createMessageError(messages.failed),
         error instanceof CompoundHostSectionError ? error.sectionId : undefined,
       );
     }
@@ -351,7 +507,7 @@ export const validateCanonicalChangedSections: InMemoryCompoundHostValidator = (
     } catch {
       throw new CompoundHostSectionError(
         sectionId,
-        'the compound edit names an unknown section',
+        createMessageError(messages.unknownSectionNamed),
       );
     }
 
@@ -361,7 +517,7 @@ export const validateCanonicalChangedSections: InMemoryCompoundHostValidator = (
           if (document.id !== ref.stageId) {
             throw new CompoundHostSectionError(
               sectionId,
-              'the stage document id does not match its section id',
+              createMessageError(messages.stageIdMismatch),
             );
           }
           return stageSchema.safeParse(document);
@@ -380,13 +536,14 @@ export const validateCanonicalChangedSections: InMemoryCompoundHostValidator = (
       }
       throw new CompoundHostSectionError(
         sectionId,
-        'the compound edit names an unsupported section',
+        createMessageError(messages.unsupportedSection),
       );
     })();
 
     if (!result.success) {
       const message =
-        result.error.issues[0]?.message ?? 'section validation failed';
+        result.error.issues[0]?.message ??
+        createMessageError(messages.sectionInvalid);
       throw new CompoundHostSectionError(sectionId, message);
     }
   }
@@ -402,11 +559,14 @@ function validateCompleteCanonicalProtocol(
   try {
     protocol = assembleProtocolSections(protocolSections);
   } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : 'protocol assembly failed';
+    // The assembler's own wording is passed through — that copy belongs to
+    // `@codaco/studio-sync` — and it is also what decides which section the
+    // failure is reported against, so the routing reads the raw text rather
+    // than an encoded stand-in that would never contain the words it looks for.
+    const reported = error instanceof Error ? error.message : null;
     throw new CompoundHostSectionError(
-      sectionForAssemblyFailure(message, changedSectionIds),
-      message,
+      sectionForAssemblyFailure(reported ?? '', changedSectionIds),
+      reported ?? createMessageError(messages.assemblyFailed),
     );
   }
 
@@ -420,7 +580,7 @@ function validateCompleteCanonicalProtocol(
       issue?.path ?? [],
       changedSectionIds,
     ),
-    issue?.message ?? 'protocol validation failed',
+    issue?.message ?? createMessageError(messages.protocolInvalid),
   );
 }
 
@@ -485,7 +645,7 @@ function validateSettingsSection(
   );
   if (unknownKey !== undefined) {
     return invalidSection(
-      `protocol settings contain unknown key ${unknownKey}`,
+      createMessageError(messages.settingsUnknownKey, { key: unknownKey }),
     );
   }
   const result = CurrentProtocolSchema.safeParse({
@@ -496,7 +656,8 @@ function validateSettingsSection(
   return result.success
     ? validSection
     : invalidSection(
-        result.error.issues[0]?.message ?? 'settings validation failed',
+        result.error.issues[0]?.message ??
+          createMessageError(messages.settingsInvalid),
       );
 }
 
@@ -504,17 +665,17 @@ function validateStageOrderSection(
   document: Readonly<SectionDoc>,
 ): CanonicalSectionValidation {
   if (Object.keys(document).some((key) => key !== 'stages')) {
-    return invalidSection('stage order contains an unknown key');
+    return invalidSection(createMessageError(messages.stageOrderUnknownKey));
   }
   const stages = document.stages;
   if (
     !Array.isArray(stages) ||
     stages.some((stageId) => typeof stageId !== 'string' || stageId === '')
   ) {
-    return invalidSection('stage order must be a list of non-empty stage ids');
+    return invalidSection(createMessageError(messages.stageOrderNotList));
   }
   if (new Set(stages).size !== stages.length) {
-    return invalidSection('stage order lists the same stage twice');
+    return invalidSection(createMessageError(messages.stageOrderDuplicate));
   }
   return validSection;
 }
@@ -526,7 +687,12 @@ function validateAssetsSection(
     const result = assetSchema.safeParse(asset);
     if (!result.success) {
       return invalidSection(
-        `asset ${assetId}: ${result.error.issues[0]?.message ?? 'asset validation failed'}`,
+        createMessageError(messages.assetInvalid, {
+          assetId,
+          reason: result.error.issues[0]?.message ?? {
+            messageError: createMessageError(messages.assetInvalidReason),
+          },
+        }),
       );
     }
   }
@@ -539,7 +705,7 @@ function validateSubmissionShape(
   if (submission.id.trim() === '' || submission.edits.length === 0) {
     return failed(
       'invalid-request',
-      'a compound edit requires an id and at least one section edit',
+      createMessageError(compoundRequestMessages.missingId),
     );
   }
 
@@ -548,7 +714,7 @@ function validateSubmissionShape(
     if (seen.has(edit.sectionId)) {
       return failed(
         'invalid-request',
-        'a compound edit may touch each section only once',
+        createMessageError(compoundRequestMessages.duplicateSection),
         edit.sectionId,
       );
     }
@@ -559,14 +725,14 @@ function validateSubmissionShape(
     } catch {
       return failed(
         'invalid-request',
-        'a compound edit contains an unknown section id',
+        createMessageError(compoundRequestMessages.unknownSection),
         edit.sectionId,
       );
     }
     if (edit.kind === 'update' && edit.commands.length === 0) {
       return failed(
         'invalid-request',
-        'a compound section update requires at least one command',
+        createMessageError(compoundRequestMessages.updateNeedsCommands),
         edit.sectionId,
       );
     }
@@ -577,7 +743,7 @@ function validateSubmissionShape(
     ) {
       return failed(
         'invalid-request',
-        'a compound section edit requires an expected content hash',
+        createMessageError(compoundRequestMessages.editNeedsHash),
         edit.sectionId,
       );
     }
@@ -591,7 +757,7 @@ function validateSubmissionShape(
     ) {
       return failed(
         'invalid-request',
-        'stage identity fields cannot be changed by a compound edit',
+        createMessageError(compoundRequestMessages.stageIdentityLocked),
         edit.sectionId,
       );
     }
@@ -603,7 +769,7 @@ function validateSubmissionShape(
     ) {
       return failed(
         'invalid-request',
-        'only codebook sections can be structurally created or removed',
+        createMessageError(compoundRequestMessages.structuralSectionLocked),
         edit.sectionId,
       );
     }

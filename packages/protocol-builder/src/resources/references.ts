@@ -9,6 +9,7 @@ import {
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { resourceProblemMessage } from '../form/schemaProblems.ts';
+import { resourceFailureMessages } from './resourceMessages.ts';
 
 export type StageResourceReference = Readonly<{
   /** Path from the stage document root to the field holding the id. */
@@ -84,7 +85,9 @@ export function findDanglingResourceReferences(
         Object.freeze({
           code: 'custom',
           path,
-          message: `This stage uses a resource ("${reference.resourceId}") that is not in the protocol.`,
+          message: createMessageError(resourceFailureMessages.missingResource, {
+            resourceId: reference.resourceId,
+          }),
           resourceId: reference.resourceId,
         }),
       );

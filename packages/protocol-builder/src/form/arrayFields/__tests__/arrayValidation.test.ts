@@ -8,11 +8,18 @@ import { makeMultiSelectValidation } from '../MultiSelect.tsx';
 import { optionsValidation } from '../Options.tsx';
 
 /**
- * What the field would report for this whole array.
+ * What the field would report for this whole array, as the researcher reads
+ * it.
  *
  * The rules are exercised through the bag a call site actually passes, not one
  * by one: the bag is the unit — a call site cannot keep some of it and drop
  * others — and reaching past it would leave the composition itself untested.
+ *
+ * Every rule here answers with an encoded descriptor rather than a sentence
+ * (see `createMessageError`), because the message travels through Fresco's
+ * string-only validation contract before `FieldErrors` renders it. `readMessage`
+ * is the same decode that render site does, so these assertions still name the
+ * words on screen — and still fail when the copy behind a rule changes.
  */
 async function arrayIssue(
   custom: CustomFieldValidation,
@@ -117,8 +124,8 @@ describe('optionsValidation', () => {
 
 describe('makeMultiSelectValidation', () => {
   const { custom } = makeMultiSelectValidation([
-    { fieldName: 'property' },
-    { fieldName: 'direction' },
+    { fieldName: 'property', label: 'Property' },
+    { fieldName: 'direction', label: 'Direction' },
   ]);
 
   it('passes the unconfigured state', async () => {
@@ -154,7 +161,10 @@ describe('makeMultiSelectValidation', () => {
     const MISSING = 'This rule points at an attribute that no longer exists.';
 
     const { custom: withDangling } = makeMultiSelectValidation(
-      [{ fieldName: 'property' }, { fieldName: 'direction' }],
+      [
+        { fieldName: 'property', label: 'Property' },
+        { fieldName: 'direction', label: 'Direction' },
+      ],
       [{ fieldName: 'property', values: ['nickname'], message: MISSING }],
     );
 

@@ -1,6 +1,6 @@
 import { type ComponentType, useCallback, useMemo } from 'react';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import ArrayField, {
   type ArrayFieldProps,
@@ -29,6 +29,13 @@ export type {
 } from './Attribute.tsx';
 
 const messages = defineMessages({
+  incomplete: {
+    id: 'protocolBuilder.assignAttributes.incomplete',
+    defaultMessage:
+      'Every additional attribute needs both an attribute and a value.',
+    description:
+      'Shown under the list of attributes a prompt stamps onto every node it creates, when the researcher tries to save with a row that names only one of the two. An attribute is a codebook variable; a prompt is the question a participant reads.',
+  },
   addButton: {
     id: 'protocolBuilder.assignAttributes.addButton',
     defaultMessage: 'Add new attribute to assign',
@@ -94,7 +101,7 @@ const completeAttributes = (value: unknown) =>
       row.variable !== '' &&
       typeof row.value === 'boolean',
   )
-    ? 'Every additional attribute needs both an attribute and a value.'
+    ? createMessageError(messages.incomplete)
     : undefined;
 
 /**

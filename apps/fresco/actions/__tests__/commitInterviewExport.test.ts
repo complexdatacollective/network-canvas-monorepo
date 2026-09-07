@@ -1,3 +1,8 @@
+vi.mock('~/i18n/server', async () => {
+  const { createAppIntl } = await import('@codaco/app-i18n/messages');
+  return { getServerIntl: async () => createAppIntl({ locale: 'en' }) };
+});
+
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
@@ -81,6 +86,7 @@ describe('commitInterviewExport', () => {
     expect(addEvent).toHaveBeenCalledWith(
       'Data Exported',
       expect.stringContaining('1 interview(s)'),
+      { kind: 'dataExported', values: { username: 'alice', count: 1 } },
       { interviewCount: 1 },
     );
     expect(result).toEqual({ error: null, data: { count: 1 } });

@@ -10,13 +10,29 @@ import {
 
 import { buildCreateVariableRequest } from '../../codebook/editing.ts';
 import type {
+  CompoundEditResult,
   CompoundEditSubmission,
   ProtocolBuilderPresence,
 } from '../../session.ts';
+import { readMessage } from '../../testing/i18n.ts';
 import {
   InMemoryCompoundHost,
   type InMemoryCompoundHostLease,
 } from '../InMemoryCompoundHost.ts';
+
+/**
+ * A refusal as the researcher reads it.
+ *
+ * `message` is a plain string because a host writes its own into the same
+ * field, so the ones this package produces travel through it encoded and are
+ * decoded where they are rendered. Asserting on the decoded text is what the
+ * editors show; asserting on the raw string would pass for a message that had
+ * been silently replaced.
+ */
+const asRead = (result: CompoundEditResult): CompoundEditResult =>
+  result.status === 'failed'
+    ? { ...result, message: readMessage(result.message) }
+    : result;
 
 const stageSection = sectionId({ kind: 'stage', stageId: 'stage-1' });
 const secondStageSection = sectionId({
@@ -466,7 +482,7 @@ describe('InMemoryCompoundHost', () => {
       ),
     );
 
-    expect(result).toEqual({
+    expect(asRead(result)).toEqual({
       status: 'failed',
       reason: 'stale-epoch',
       message: 'the primary section lease epoch is stale',
@@ -581,15 +597,17 @@ describe('InMemoryCompoundHost', () => {
     const before = compoundHost.getSnapshot();
 
     expect(
-      compoundHost.submit(
-        submission('lost-primary-owner', [
-          {
-            kind: 'update',
-            sectionId: personSection,
-            expectedContentHash: baseHash(personSection),
-            commands: [{ op: 'set', key: 'name', value: 'People' }],
-          },
-        ]),
+      asRead(
+        compoundHost.submit(
+          submission('lost-primary-owner', [
+            {
+              kind: 'update',
+              sectionId: personSection,
+              expectedContentHash: baseHash(personSection),
+              commands: [{ op: 'set', key: 'name', value: 'People' }],
+            },
+          ]),
+        ),
       ),
     ).toEqual({
       status: 'failed',
@@ -633,7 +651,9 @@ describe('InMemoryCompoundHost', () => {
       draft: { name: 'local', type: 'text' },
     });
 
-    expect(compoundHost.submit(submission(request.id, request.edits))).toEqual({
+    expect(
+      asRead(compoundHost.submit(submission(request.id, request.edits))),
+    ).toEqual({
       status: 'failed',
       reason: 'stale-base',
       message: 'the compound edit was built from an outdated section document',
