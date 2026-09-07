@@ -90,8 +90,15 @@ const showsTheInterface = async (
   ).toBeInTheDocument();
   // `getAllBy`, because the fixture's stages are named after the interfaces
   // they are of: the badge under the name field says "Sociogram" and so, on
-  // most of these stages, does the researcher's own label for it.
-  await expect(canvas.getAllByText(INTERFACE_NAMES[type])[0]).toBeVisible();
+  // most of these stages, does the researcher's own label for it — which the
+  // name field's own invisible sizing replica then ALSO renders, ahead of the
+  // badge in the DOM. Filtered to the one match not hidden from assistive
+  // technology, so this reads the badge whether the label happens to repeat
+  // it or not.
+  const [visibleMatch] = canvas
+    .getAllByText(INTERFACE_NAMES[type])
+    .filter((element) => element.closest('[aria-hidden="true"]') === null);
+  await expect(visibleMatch).toBeVisible();
   await expect(
     canvas.getByRole('link', { name: 'Documentation' }),
   ).toBeInTheDocument();
