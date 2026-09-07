@@ -359,8 +359,11 @@ describe('dispatching to a named editor', () => {
       registry: { Information: ChromeEditor },
       actions: ({ formId, readOnly }) => `chrome for ${formId}, ${readOnly}`,
     });
+    // The id is this harness's own — one per mounted harness, so that two
+    // forms never answer to the same one — and it is what the host is handed,
+    // so it is read off the harness rather than written down here.
     expect(
-      withChrome.getByText('chrome for stage-form, false'),
+      withChrome.getByText(`chrome for ${withChrome.formId}, false`),
     ).toBeInTheDocument();
   });
 
@@ -372,7 +375,9 @@ describe('dispatching to a named editor', () => {
       actions: ({ formId }) => `chrome for ${formId}`,
     });
 
-    expect(harness.getByText('chrome for stage-form')).toBeInTheDocument();
+    expect(
+      harness.getByText(`chrome for ${harness.formId}`),
+    ).toBeInTheDocument();
   });
 
   /**
