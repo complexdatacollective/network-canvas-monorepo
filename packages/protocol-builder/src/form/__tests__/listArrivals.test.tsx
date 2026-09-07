@@ -182,12 +182,7 @@ describe('a collaborator’s rows arriving under an unsaved list edit', () => {
       ),
     });
 
-    await rewriteRow(
-      harness,
-      'Edit prompt',
-      'Fixture prompt text',
-      'Who exactly?',
-    );
+    await rewriteRow(harness, 'Edit prompt', 'Prompt text', 'Who exactly?');
     expect(harness.pendingCommands()).toHaveLength(1);
 
     act(() => {

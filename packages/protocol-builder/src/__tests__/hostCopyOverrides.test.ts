@@ -247,27 +247,52 @@ describe('the not-yet-converted exclusions', () => {
   });
 
   /**
-   * And the ones that are not on this branch at all are named, rather than
-   * skipped.
+   * And every one of them is a directory that is actually here.
    *
-   * Family F's five section directories are excluded here so that merging its
-   * branch is a union rather than a conflict, and until then the check above
-   * cannot say anything about them. Asserting the absent list is what makes
-   * their arrival visible: the moment family F lands, this fails and whoever
-   * merged has to move each directory into the checked set — or delete its
-   * exclusion, if the conversion came with it.
+   * An exclusion naming a path this package does not have excuses nothing, and
+   * the check above cannot see it: `present` filters it out before asking
+   * whether anything is left to excuse. Family F's five section directories
+   * were carried on this list for exactly that reason — they lived on another
+   * branch — and this is what stops a name outliving the merge that brought
+   * its directory in.
    */
-  it('names the excluded directories this branch does not have yet', () => {
+  it('names only directories that are here to exclude', () => {
     const absent = NOT_CONVERTED_YET.filter(
       (directory) => !existsSync(join(packageSource, directory)),
     );
 
-    expect(absent).toEqual([
+    expect(absent).toEqual([]);
+  });
+
+  /**
+   * The interface families that ARE here are inside the scan, not merely
+   * un-excluded.
+   *
+   * Deleting a name from `NOT_CONVERTED_YET` is not by itself proof the rules
+   * reach that directory: `sourceFiles` also drops fixtures and test-support
+   * paths, so a family whose sections were all `__tests__`-adjacent would read
+   * as converted while nothing looked at it. Asked of the families present
+   * rather than of all five, because they arrive one branch at a time — the
+   * ones that have landed are covered, and the ones that have not cannot be
+   * claimed either way.
+   */
+  it('reaches every interface family that is here', () => {
+    const families = [
       'sections/network',
       'sections/pedigree',
       'sections/narrativePedigree',
       'sections/geospatial',
       'sections/anonymisation',
-    ]);
+    ];
+    const present = families.filter((directory) =>
+      existsSync(join(packageSource, directory)),
+    );
+    const scanned = sourceFiles().map(sourcePath);
+
+    const covered = present.filter((directory) =>
+      scanned.some((path) => path.startsWith(`${directory}/`)),
+    );
+
+    expect(covered).toEqual(present);
   });
 });

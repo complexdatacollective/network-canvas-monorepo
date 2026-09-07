@@ -27,29 +27,27 @@ const FIXTURE_DIRECTORIES = ['testing'];
  *
  * `resources/` is the localisation branch's to convert, and until that lands it
  * holds both a `ResourcePickerCopy` of plain strings and English JSX
- * attributes. The five interface families under `sections/` are family F's,
- * whose sections still carry a `copy?: Partial<…Copy>` each — the ids are
- * reserved in `src/locales/ID_MAP.md` (`networkCanvas`, `pedigree`,
- * `narrativePedigree`, `geospatial`, `anonymisation`) and the copy joins them
- * there. Those five directories do not exist on this branch; they are kept
- * here rather than dropped so the merge with family F is a union, and
- * `hostCopyOverrides.test.ts` names them explicitly so the list cannot quietly
- * rot instead.
+ * attributes.
+ *
+ * The five interface families under `sections/` — `network`, `pedigree`,
+ * `narrativePedigree`, `geospatial`, `anonymisation` — were listed here while
+ * they lived on family F's branch and still carried a `copy?: Partial<…Copy>`
+ * each. They are not listed any more, and that holds whether or not the branch
+ * that owns them has been merged in yet: an exclusion naming a directory this
+ * package does not have excuses nothing and cannot be seen to rot, and the
+ * families arrive converted — every word each of them says is a
+ * `MessageDescriptor` declared in that family's own `*Messages.ts` (the areas
+ * are in `src/locales/ID_MAP.md`), so the rules built on this list cover them
+ * like anything else.
  *
  * Excluded by directory rather than by file, and deliberately narrow: these are
  * the only places in the package the rules built on this list do not yet hold.
  * Each entry goes when its area's conversion lands, and the expected-failure
  * discipline in `hostCopyOverrides.test.ts` is what forces that — an exclusion
- * covering a directory with nothing left to excuse FAILS.
+ * covering a directory with nothing left to excuse FAILS, and so does one
+ * naming a directory that is not here at all.
  */
-export const NOT_CONVERTED_YET = [
-  'resources',
-  'sections/network',
-  'sections/pedigree',
-  'sections/narrativePedigree',
-  'sections/geospatial',
-  'sections/anonymisation',
-] as const;
+export const NOT_CONVERTED_YET = ['resources'] as const;
 
 const isUnder = (path: string, directories: readonly string[]) => {
   const relativePath = relative(packageSource, path).replaceAll('\\', '/');

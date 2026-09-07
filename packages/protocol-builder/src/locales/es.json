@@ -633,6 +633,7 @@
   "protocolBuilder.shell.formUnavailableRefusal": "Esta etapa no se ha podido guardar porque su formulario ya no está disponible. Vuelve a abrir la etapa e inténtalo de nuevo.",
   "protocolBuilder.shell.readOnlyRefusal": "Esta etapa es de solo lectura, así que tus cambios no se han guardado. Toma el control de la edición e inténtalo de nuevo.",
   "protocolBuilder.shell.saveFailedRefusal": "Esta etapa no se ha podido guardar. Espera un momento e inténtalo de nuevo.",
+  "protocolBuilder.shell.saveStage": "Guardar etapa",
   "protocolBuilder.skipLogic.actionHint": "¿Qué debe ocurrir cuando se cumplan las reglas?",
   "protocolBuilder.skipLogic.actionLabel": "Acción",
   "protocolBuilder.skipLogic.clearConfirm": "Borrar lógica de salto",

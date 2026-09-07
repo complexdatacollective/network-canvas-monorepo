@@ -40,15 +40,9 @@ export function TestPromptEditor({ item, editIndex, form }: RowEditorProps) {
         <dt>Editor form</dt>
         <dd>{form}</dd>
       </dl>
-      {/* Named so it is not a sentence this package's catalog owns. The
-          negative locale sweep reads the rendered document and reports any
-          English it has Spanish for, and it cannot tell a fixture's words from
-          a section's: while this said "Prompt text" — which is what
-          `protocolBuilder.promptText.label` says — a sweep of any surface
-          mounting this fixture reported the real field as untranslated. */}
       <DialogFormField
         name="text"
-        label="Fixture prompt text"
+        label="Prompt text"
         component={InputField}
         required="Enter the question this prompt asks."
       />

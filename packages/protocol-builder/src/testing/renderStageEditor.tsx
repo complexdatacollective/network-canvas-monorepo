@@ -26,6 +26,7 @@ import {
 
 import type { InMemoryCompoundHost } from '../compound-edit/InMemoryCompoundHost.ts';
 import { useStageEditorController } from '../controller.ts';
+import { saveStageMessages } from '../editors/saveStageAction.tsx';
 import StageEditorShell from '../form/StageEditorShell.tsx';
 import { getInterfaceTemplate } from '../interfaces/templates.ts';
 import { protocolBuilderCatalogs } from '../locales/catalogs.ts';
@@ -49,7 +50,38 @@ import {
 } from './fixtureSession.ts';
 import { loadFixtureStage } from './protocolFixture.ts';
 
-const DEFAULT_SUBMIT_LABEL = 'Save stage';
+/**
+ * What the harness's own submit control says, in the reader's language.
+ *
+ * The `sections` path mounts a stand-in for the shared `saveStageAction`, so
+ * it says the same words that control says — read out of the same catalog the
+ * provider above it was given, and falling back to the descriptor's own
+ * English when there is no provider at all. A literal here would be the one
+ * English string on an otherwise Spanish surface, and the locale sweeps would
+ * report the harness's defect against whichever section was open.
+ */
+const defaultSubmitLabel = (locale: string | undefined): string => {
+  const { id, defaultMessage } = saveStageMessages.saveStage;
+  // A catalog entry and a `defaultMessage` are both typed as the string OR the
+  // pre-parsed ICU form, and only the string one can name a control.
+  const literal = (value: unknown) =>
+    typeof value === 'string' ? value : undefined;
+  const label =
+    literal(
+      locale === undefined || id === undefined
+        ? undefined
+        : protocolBuilderCatalogs[locale]?.[id],
+    ) ?? literal(defaultMessage);
+  // Thrown rather than fallen back from: an empty name would send every
+  // `submit()` in the suite looking for a button called nothing, and every
+  // one of them would fail somewhere other than here.
+  if (label === undefined) {
+    throw new TypeError(
+      'The save-stage message is not a literal string, so the harness cannot name its own submit control.',
+    );
+  }
+  return label;
+};
 
 /** DOM id of the stage form the harness mounts. See `HarnessEditor`. */
 const STAGE_FORM_ID = 'stage-form';
@@ -262,7 +294,13 @@ export type RenderStageEditorOptions<T extends StageType = StageType> =
      * the harness's own submit button, which is the only control that path has.
      */
     actions?: StageEditorActions;
-    /** Accessible name of the control that saves the stage. */
+    /**
+     * Accessible name of the control that saves the stage.
+     *
+     * Left out, it is what the shared `saveStageAction` says in the language
+     * this call opened — see `defaultSubmitLabel`. Give it only for a host's
+     * own action chrome, which names its own control.
+     */
     submitLabel?: string;
     /** Open the stage as a spectator. */
     readOnly?: boolean;
@@ -384,7 +422,7 @@ export function renderStageEditor<T extends StageType = StageType>(
     },
   });
 
-  const submitLabel = options.submitLabel ?? DEFAULT_SUBMIT_LABEL;
+  const submitLabel = options.submitLabel ?? defaultSubmitLabel(options.locale);
   const view = render(
     <LocaleFrame
       {...(options.locale === undefined ? {} : { locale: options.locale })}
