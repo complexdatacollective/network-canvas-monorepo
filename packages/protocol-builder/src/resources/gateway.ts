@@ -1,6 +1,12 @@
+import { createMessageError } from '@codaco/app-i18n/messages';
 import { assetSchema, type Asset } from '@codaco/protocol-validation';
 import type { Command } from '@codaco/studio-sync/apply';
 import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
+
+import {
+  assetValidationReason,
+  resourceFailureMessages,
+} from './resourceMessages.ts';
 
 /**
  * The editor-facing port for protocol resources (the protocol format's asset
@@ -409,7 +415,10 @@ export function validateManifestEntry(
   if (result.success) return resourceOk(result.data);
   return resourceFailure(
     'invalid-content',
-    `asset ${resourceId}: ${result.error.issues[0]?.message ?? 'asset validation failed'}`,
+    createMessageError(resourceFailureMessages.invalidManifestEntry, {
+      resourceId,
+      reason: assetValidationReason(result.error.issues[0]?.message),
+    }),
     { resourceId },
   );
 }
