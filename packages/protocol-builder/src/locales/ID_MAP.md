@@ -122,6 +122,7 @@ name not here adds it here first, in the same pull request.
 | `pedigree`                  | `sections/pedigree/`                                                                                                                                                             | family F  |
 | `narrativePedigree`         | `sections/narrativePedigree/`                                                                                                                                                    | family F  |
 | `geospatial`                | `sections/geospatial/`, `fields/geospatial/`                                                                                                                                     | family F  |
+| `anonymisation`             | `sections/anonymisation/`                                                                                                                                                        | family F  |
 
 `shell` covers `editors/saveStageAction.tsx` as well as the shell itself,
 rather than that control taking an area of its own: the fallback save button is
@@ -152,10 +153,11 @@ has to have exactly one:
   sentence is built around.
 - `sections/network/networkCanvasMessages.ts`,
   `sections/pedigree/pedigreeMessages.ts`,
-  `sections/narrativePedigree/narrativePedigreeMessages.ts` and
-  `sections/geospatial/geospatialMessages.ts` — one file per interface family,
-  holding EVERYTHING that family says rather than only its shared strings. See
-  "One file per family", below.
+  `sections/narrativePedigree/narrativePedigreeMessages.ts`,
+  `sections/geospatial/geospatialMessages.ts` and
+  `sections/anonymisation/anonymisationMessages.ts` — one file per interface
+  family, holding EVERYTHING that family says rather than only its shared
+  strings. See "One file per family", below.
 
 `controller.ts` renders no copy of its own, so the `session` area covers
 `session.ts` alone until it does.
@@ -232,7 +234,7 @@ Named here so a later split takes the name rather than inventing a synonym.
 | `geospatial`               | `sections/geospatial/`, geospatial `fields/` | family F    |
 | `anonymisation`            | `sections/anonymisation/`                    | family F    |
 
-### One file per family — the interface families
+### One file per family — the five interface families
 
 | `<area>`            | Owns the copy in                                                | Declared in                                               |
 | ------------------- | --------------------------------------------------------------- | --------------------------------------------------------- |
@@ -240,9 +242,7 @@ Named here so a later split takes the name rather than inventing a synonym.
 | `pedigree`          | `sections/pedigree/`                                            | `sections/pedigree/pedigreeMessages.ts`                   |
 | `narrativePedigree` | `sections/narrativePedigree/`                                   | `sections/narrativePedigree/narrativePedigreeMessages.ts` |
 | `geospatial`        | `sections/geospatial/`, `fields/geospatial/`                    | `sections/geospatial/geospatialMessages.ts`               |
-
-The last family of the same series — `anonymisation` — keeps its reserved name
-above and adds a row here when it lands.
+| `anonymisation`     | `sections/anonymisation/`                                       | `sections/anonymisation/anonymisationMessages.ts`         |
 
 A `*Messages.ts` per family, holding every id the family declares — rather than
 descriptors beside each section's markup, which is the rule everywhere else in
@@ -258,9 +258,12 @@ A family that needs different words from a shared section names them one at a
 time as `MessageDescriptor` props — `PromptsSection`'s `description`,
 `FormFieldsSection`'s `title`, `SectionCapability.confirmClear` — never as
 strings and never as a `copy` bundle. `src/__tests__/hostCopyOverrides.test.ts`
-is the scan that keeps it that way, and it covers these directories the moment
-they exist: its `NOT_CONVERTED_YET` exclusion list is empty, so a section
-reintroducing a `copy?:` prop or a string-bearing `…Copy` type fails there.
+is the scan that keeps it that way, and it now covers these five directories:
+its `NOT_CONVERTED_YET` exclusion named them while the conversion was in
+flight and no longer does, so a section reintroducing a `copy?:` prop or a
+string-bearing `…Copy` type fails there. `resources/` was the only other
+exclusion; i18n-1b converted it too, so `NOT_CONVERTED_YET` now excludes
+nothing.
 
 Three reserved areas turned out to need no ids at all, and two name files that
 do not exist yet. Recorded rather than dropped, so nobody re-reserves a name
