@@ -20,3 +20,5 @@ Require explicitly configured runtime login membership sets and administrator re
 Use the shared database enrollment and migration evidence guards for every configured migration runner. Preserve each application's role sets and schema identifiers while refusing outside CONNECT and effective evidence-write privileges before recorded history is trusted.
 
 Use the same complete restricted-identity capability policy as runtime admission, preserving independent role classes and rejecting direct enrolled-login data grants and owner-backed view access. Validate disjoint classes before a migration connection can be supplied.
+
+Keep closed enrolled identities subject to the complete capability checks during explicitly requested backup verification, without reopening quarantined logins or weakening runtime and migration admission. Bind backup-specific checks to the verifier’s same bounded connection.

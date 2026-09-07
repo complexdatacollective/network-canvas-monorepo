@@ -148,6 +148,111 @@ describe.skipIf(!reachable)('PostgreSQL runtime identity boundary', () => {
     }
   }
 
+  it('keeps quarantined enrolled identities subject to all capability checks only in explicit backup mode', async () => {
+    await withSingletonPolicy(async (policy) => {
+      const serving = runtimePool(roles.login, roles.app);
+      const servingClient = await serving.connect();
+      const closed = [roles.owner, roles.login, roles.maintenanceLogin];
+      const options = { allowClosedEnrolledLogins: true };
+      const inspected = await databaseAdmin.connect();
+      try {
+        await assertSafePostgresRestrictedIdentities(inspected, policy);
+        for (const login of closed)
+          await inspected.query(
+            `ALTER ROLE ${escapeIdentifier(login)} NOLOGIN`,
+          );
+        await expect(
+          assertSafePostgresRestrictedIdentities(inspected, policy),
+        ).rejects.toMatchObject({ reason: 'logins' });
+        await expect(
+          assertSafePostgresRestrictedIdentities(inspected, policy, options),
+        ).resolves.toBeUndefined();
+        // An already admitted serving connection is still usable in PostgreSQL,
+        // but normal runtime admission cannot opt into the backup exception.
+        expect(
+          (await servingClient.query('SELECT id FROM singleton_data')).rows,
+        ).toEqual([{ id: 1 }]);
+        await expect(
+          assertSafePostgresRuntimeIdentity(servingClient, {
+            ...policy,
+            intendedRole: roles.app,
+            allowedRoles: [roles.app],
+          }),
+        ).rejects.toThrow('POSTGRES_RUNTIME_IDENTITY_UNSAFE');
+        const refused = runtimePool(roles.login, roles.app);
+        try {
+          await expect(refused.query('SELECT 1')).rejects.toMatchObject({
+            code: '28000',
+          });
+        } finally {
+          await closeFixturePool(refused);
+        }
+        await inspected.query(`GRANT USAGE ON SCHEMA public TO ${escapeIdentifier(roles.maintenanceLogin)};
+          GRANT UPDATE(changed) ON singleton_data TO ${escapeIdentifier(roles.maintenanceLogin)};
+          SET ROLE ${escapeIdentifier(roles.maintenanceLogin)};
+          UPDATE singleton_data SET changed = true;
+          RESET ROLE`);
+        expect(
+          (await inspected.query('SELECT changed FROM singleton_data')).rows,
+        ).toEqual([{ changed: true }]);
+        await expect(
+          assertSafePostgresRestrictedIdentities(inspected, policy, options),
+        ).rejects.toMatchObject({ reason: 'access' });
+        await inspected.query(`REVOKE ALL ON singleton_data FROM ${escapeIdentifier(roles.maintenanceLogin)};
+          REVOKE ALL ON SCHEMA public FROM ${escapeIdentifier(roles.maintenanceLogin)}`);
+        await expect(
+          assertSafePostgresRestrictedIdentities(inspected, policy, options),
+        ).resolves.toBeUndefined();
+        await expect(
+          assertSafePostgresRestrictedIdentities(
+            inspected,
+            {
+              ...policy,
+              allowedLogins: [...policy.allowedLogins, `missing_${suffix}`],
+            },
+            options,
+          ),
+        ).rejects.toMatchObject({ reason: 'logins' });
+      } finally {
+        await inspected.query('RESET ROLE');
+        await inspected.query(`REVOKE ALL ON singleton_data FROM ${escapeIdentifier(roles.maintenanceLogin)};
+          REVOKE ALL ON SCHEMA public FROM ${escapeIdentifier(roles.maintenanceLogin)}`);
+        for (const login of closed)
+          await inspected.query(`ALTER ROLE ${escapeIdentifier(login)} LOGIN`);
+        inspected.release();
+        servingClient.release();
+        await closeFixturePool(serving);
+      }
+    });
+  });
+
+  it('validates the backup-only capability option before querying a supplied connection', async () => {
+    await withSingletonPolicy(async (policy) => {
+      const client = await databaseAdmin.connect();
+      const query = vi.spyOn(client, 'query');
+      try {
+        for (const options of [
+          null,
+          [],
+          { allowClosedEnrolledLogins: 'true' },
+          { allowClosedEnrolledLogins: true, unexpected: true },
+        ]) {
+          await expect(
+            Reflect.apply(assertSafePostgresRestrictedIdentities, undefined, [
+              client,
+              policy,
+              options,
+            ]),
+          ).rejects.toMatchObject({ reason: 'configuration' });
+        }
+        expect(query).not.toHaveBeenCalled();
+      } finally {
+        query.mockRestore();
+        client.release();
+      }
+    });
+  });
+
   it('accepts independent singleton classes and backup reads while refusing cross-class SET ROLE', async () => {
     await withSingletonPolicy(async (policy) => {
       for (const [login, intendedRole] of [
