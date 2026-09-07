@@ -211,7 +211,9 @@ export const protocolStrings = (
  *   raw payload.
  * - **An ICU argument nothing filled in**, which reaches them as `{name}`.
  */
-const localeLeaks = (content: ReadonlySet<string> = new Set()): string[] => {
+export const localeLeaks = (
+  content: ReadonlySet<string> = new Set(),
+): string[] => {
   const strings = visibleStrings();
   const leaks: string[] = [];
 
@@ -244,14 +246,42 @@ const localeLeaks = (content: ReadonlySet<string> = new Set()): string[] => {
 };
 
 /**
+ * The one thing a surface can put on screen that is English on purpose.
+ *
+ * Narrow, and declared at the call site, because a sweep that quietly forgave
+ * a leak would be a green tick over the defect it exists to find.
+ */
+export type SweepAllowances = Readonly<{
+  /**
+   * Words a test FIXTURE renders, which are nobody's copy.
+   *
+   * `TestPromptEditor` labels a box "Prompt text" as a stand-in for a family's
+   * own field. Three real areas happen to say the same words
+   * (`networkCanvas`, `pedigree` and `geospatial` each declare a `Prompt text`
+   * label), so the sweep — which indexes by the English SENTENCE, not by where
+   * it was rendered — reports the fixture's stand-in under whichever id is
+   * spelled the same. Naming them here says "a fixture put this here", the
+   * same claim `packageSource.ts` makes about a fixture FILE.
+   *
+   * Not a route around a real leak: a word listed here is one nothing in this
+   * package declares as copy, and the sweep still reports every id that does.
+   */
+  fixtureWords?: readonly string[];
+}>;
+
+/**
  * Assert that nothing on screen is English, raw or unformatted.
  *
  * `where` names the surface, because a sweep drives several and the failure
- * has to say which one was open.
+ * has to say which one was open. `content` is what the RESEARCHER wrote —
+ * build it with {@link protocolStrings} out of the documents the test mounted.
  */
 export const expectNoLocaleLeaks = (
   where: string,
   content: ReadonlySet<string> = new Set(),
+  { fixtureWords = [] }: SweepAllowances = {},
 ): void => {
-  expect(localeLeaks(content), `Spanish leaks at ${where}`).toEqual([]);
+  const allowed = new Set<string>(content);
+  for (const word of fixtureWords) allowed.add(collapse(word));
+  expect(localeLeaks(allowed), `Spanish leaks at ${where}`).toEqual([]);
 };
