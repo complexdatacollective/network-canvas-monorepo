@@ -49,7 +49,7 @@ import {
   openFixtureStageSession,
   type SeededStage,
 } from './fixtureSession.ts';
-import { loadFixtureStage } from './protocolFixture.ts';
+import { type FixtureStageId, loadFixtureStage } from './protocolFixture.ts';
 
 /**
  * A catalog entry and a `defaultMessage` are both typed as the string OR the
@@ -350,8 +350,23 @@ type StageEditorMounting<T extends StageType> =
  */
 type StageEditorSeeding<T extends StageType> =
   | Readonly<{
-      /** Open this stage of the shared all-interfaces protocol. */
-      stageId?: string;
+      /**
+       * Open this stage of the shared all-interfaces protocol.
+       *
+       * Narrowed to the stages that ARE `T` as soon as the call has named an
+       * interface — which, for this mounting mode, means as soon as it names
+       * the editor under test. `T` used to come from the editor alone, and the
+       * stage type the harness hands that editor is a runtime string the
+       * call's own type parameter relabelled: an `Information` editor over
+       * `ego-form-1` compiled, mounted, and was told it was editing an
+       * EgoForm. See `FixtureStageId`.
+       *
+       * A call that has NOT named an interface — sections under test, the
+       * dispatcher under test, a family helper passing an id it computed —
+       * leaves `T` at the whole union and may pass any string; those are the
+       * calls `assertDeclaredStageType` covers at open time.
+       */
+      stageId?: StageType extends T ? string : FixtureStageId<T>;
       stage?: never;
       create?: never;
     }>
