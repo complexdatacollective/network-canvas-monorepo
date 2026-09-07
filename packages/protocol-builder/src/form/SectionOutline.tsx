@@ -1,7 +1,7 @@
 import { AlertCircle, Check, Circle, Lock, MinusCircle } from 'lucide-react';
 import { useSyncExternalStore } from 'react';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
+import { defineMessages, formatMessageError } from '@codaco/app-i18n/messages';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
@@ -59,6 +59,12 @@ const messages = defineMessages({
     defaultMessage: 'Stage sections',
     description:
       'Accessible name of the navigation landmark listing the sections of the stage being edited. A stage is one step of an interview.',
+  },
+  statusWithProblems: {
+    id: 'protocolBuilder.outline.statusWithProblems',
+    defaultMessage: '{status}. {problems}',
+    description:
+      'Read out for a section of a stage editor whose only account of what is wrong is here. status is the section’s spoken state ("Has a problem"); problems is one or more whole sentences describing what the protocol refused, already in the reader’s language. Both are complete sentences, so this is only the punctuation that separates them.',
   },
 });
 
@@ -143,8 +149,40 @@ function SectionOutlineItem({ section }: { section: OutlineSection }) {
       getFieldErrors: (name) => state.getFieldErrors(name),
     }),
   );
+  // Asked separately, and as a boolean, because a selector answering with an
+  // object would hand the store a new value on every read.
+  const hasFieldError = useFormStore((state) =>
+    section.fields.some(
+      (field) => (state.getFieldErrors(field.name)?.length ?? 0) > 0,
+    ),
+  );
   const presentation = STATUS_PRESENTATION[status];
   const StatusIcon = presentation.icon;
+  // The section's own words come first. A control showing a message beside
+  // itself has already said what is wrong in the vocabulary of the thing being
+  // edited, and repeating the schema's version of it underneath would be two
+  // accounts of one fault. The session's words are added only when nothing
+  // else on the page can explain the state — a reference to a resource the
+  // protocol does not have, a type a collaborator deleted — because then this
+  // is the only place it is written down.
+  //
+  // The problems are DECODED here rather than read as they were stored: the
+  // outline store has no reader, so each one arrives as an encoded descriptor
+  // (`schemaProblemSentence`) — or as a plain sentence a host or the protocol
+  // schema wrote, which the same call passes through untouched.
+  const statusLabel = intl.formatMessage(presentation.label);
+  const announced =
+    status === 'error' && !hasFieldError && section.issues.length > 0
+      ? intl.formatMessage(messages.statusWithProblems, {
+          status: statusLabel,
+          // Joined with a space rather than through `formatList`: these are
+          // whole sentences in sequence, not the members of a list, and "a, b
+          // and c" would read them as one thing that is three ways wrong.
+          problems: section.issues
+            .map((issue) => formatMessageError(issue, intl) ?? issue)
+            .join(' '),
+        })
+      : statusLabel;
 
   return (
     <button
@@ -157,7 +195,13 @@ function SectionOutlineItem({ section }: { section: OutlineSection }) {
         className={cx('size-4 shrink-0', presentation.className)}
       />
       <span className="truncate">{section.title}</span>
-      <span className="sr-only">{intl.formatMessage(presentation.label)}</span>
+      {/*
+        The status, and — when the problem is one only the session can see —
+        what it is. A dangling resource reference has no field showing a
+        message beside it, so the outline is the only place it is written down,
+        and reading it must not depend on seeing the colour of an icon.
+      */}
+      <span className="sr-only">{announced}</span>
     </button>
   );
 }

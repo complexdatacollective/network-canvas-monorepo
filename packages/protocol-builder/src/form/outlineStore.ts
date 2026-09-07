@@ -1,5 +1,9 @@
+import { resolveFieldPath } from '@codaco/fresco-ui/form/FieldNamespace';
 import type { FieldState } from '@codaco/fresco-ui/form/store/types';
+import type { ObjectPath } from '@codaco/fresco-ui/form/utils/objectPath';
 import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
+
+import { type SchemaProblem, schemaProblemSentence } from './schemaProblems.ts';
 
 /**
  * What the outline says about one section.
@@ -34,11 +38,29 @@ export type OutlineFieldRegistration = Readonly<{
   required: boolean;
 }>;
 
+/**
+ * A problem the SESSION found in the stage, addressed by its path inside the
+ * stage document rather than by a form field name.
+ *
+ * These are the refusals a form field cannot see: a reference to a resource
+ * the protocol does not have, a subject naming a type a collaborator deleted,
+ * a rule the schema states about the stage as a whole. The path is what makes
+ * one attributable — the section that registered a field at, above or below it
+ * is the section the researcher has to go to.
+ */
+export type SectionValidationIssue = SchemaProblem &
+  Readonly<{
+    /** Relative to the stage document: `['prompts', 0, 'variable']`. */
+    path: readonly (string | number)[];
+  }>;
+
 export type OutlineSection = Readonly<{
   id: string;
   title: string;
   availability: SectionAvailability;
   fields: readonly OutlineFieldRegistration[];
+  /** Session validation problems this section's fields answer for. */
+  issues: readonly string[];
 }>;
 
 type SectionRecord = {
@@ -49,6 +71,53 @@ type SectionRecord = {
 };
 
 const EMPTY_SECTIONS: readonly OutlineSection[] = Object.freeze([]);
+const NO_ISSUES: readonly SectionValidationIssue[] = Object.freeze([]);
+
+/**
+ * A registered field's name, read back as the path it is filed under.
+ *
+ * Canonical parsing rather than legacy, because that is what
+ * `formatObjectPath` produced when the field registered: a protocol-authored
+ * key containing a dot is one segment, not a route.
+ */
+function fieldPath(name: string): ObjectPath | null {
+  try {
+    return resolveFieldPath([], name, 'path');
+  } catch {
+    return null;
+  }
+}
+
+function sharedPrefixLength(
+  a: readonly (string | number)[],
+  b: readonly (string | number)[],
+): number {
+  let shared = 0;
+  while (shared < a.length && shared < b.length && a[shared] === b[shared]) {
+    shared += 1;
+  }
+  return shared;
+}
+
+function sameIssues(
+  a: readonly SectionValidationIssue[],
+  b: readonly SectionValidationIssue[],
+): boolean {
+  return (
+    a.length === b.length &&
+    a.every((issue, index) => {
+      const other = b[index];
+      return (
+        other !== undefined &&
+        issue.message === other.message &&
+        issue.code === other.code &&
+        issue.absent === other.absent &&
+        sharedPrefixLength(issue.path, other.path) === issue.path.length &&
+        issue.path.length === other.path.length
+      );
+    })
+  );
+}
 
 /**
  * The sections and fields currently mounted in one stage editor, in the order
@@ -73,6 +142,12 @@ export class SectionOutlineStore {
     string,
     Map<string, OutlineFieldRegistration>
   >();
+  /**
+   * The session's own validation problems, as paths into the stage document.
+   * Kept whole rather than filed under a section: a field registering later
+   * can be the one that claims an issue that arrived before it.
+   */
+  private validationIssues: readonly SectionValidationIssue[] = NO_ISSUES;
   private cachedSnapshot: readonly OutlineSection[] = EMPTY_SECTIONS;
   private cachedVersion = -1;
   private version = 0;
@@ -95,6 +170,7 @@ export class SectionOutlineStore {
       return this.cachedSnapshot;
     }
     this.cachedVersion = this.version;
+    const issuesBySection = this.attributeIssues(ordered);
     this.cachedSnapshot = Object.freeze(
       ordered.map((record) =>
         Object.freeze({
@@ -104,6 +180,7 @@ export class SectionOutlineStore {
           fields: Object.freeze([
             ...(this.fieldsBySection.get(record.id)?.values() ?? []),
           ]),
+          issues: Object.freeze(issuesBySection.get(record.id) ?? []),
         }),
       ),
     );
@@ -171,6 +248,20 @@ export class SectionOutlineStore {
     this.changed();
   }
 
+  /**
+   * Replaces everything the session currently says is wrong with the stage.
+   *
+   * The whole set at once, because that is what "cleared" means here: an issue
+   * stops being reported by not being in the next set, and a section holding a
+   * stale one would go on refusing to say it is finished.
+   */
+  setValidationIssues(issues: readonly SectionValidationIssue[]): void {
+    const next = Object.freeze([...issues]);
+    if (sameIssues(this.validationIssues, next)) return;
+    this.validationIssues = next;
+    this.changed();
+  }
+
   registerField(
     sectionId: string,
     field: OutlineFieldRegistration,
@@ -191,6 +282,104 @@ export class SectionOutlineStore {
         this.changed();
       }
     };
+  }
+
+  /**
+   * Which section answers for each session issue, by the fields mounted in it.
+   *
+   * A field claims an issue when one of the two paths runs through the other —
+   * the field registered AT the path the schema complained about, at a leaf
+   * inside it (a capability whose container is wrong, reported by the controls
+   * that make it up), or at a container around it (one compound control owning
+   * a whole sub-document). The deepest such field wins, so the section that
+   * edits the exact value is preferred over one that merely encloses it, and
+   * ties go to whichever section comes first on the page.
+   *
+   * An issue no mounted field reaches is left unattributed rather than pinned
+   * somewhere arbitrary: nothing on this page can be pointed at for it, and it
+   * is still reported above the form when the save is refused.
+   *
+   * The field that claims an issue also decides whether it is a problem at all.
+   * A schema that refuses a stage because a value is MISSING is saying what a
+   * required field says when it is empty, so where the claiming field is
+   * required, that is all it is: the issue is dropped here and the field's own
+   * required state answers for it — the section reads "Not finished", and the
+   * control asks for the value in the same words it uses when the researcher
+   * empties it themselves. A researcher who resets a stage, or whose
+   * collaborator unsets a key, otherwise meets the validator's own account of
+   * a missing string, once per key, in a list beside a section title.
+   *
+   * That stands only where the issue is AT the field's own path. A required
+   * control saying "this needs a value" answers for its own emptiness and for
+   * nothing inside it: a rule set holding a rule is not empty, whatever is
+   * missing from the rule, and dropping an issue raised deep inside it would
+   * leave the researcher with a stage the save refuses and an outline that
+   * mentions nothing at all.
+   *
+   * A missing value NO required field claims stays a problem, because nothing
+   * else on the page would say anything about it and the save is still refused.
+   *
+   * Repeats are dropped per claiming FIELD rather than per section, because
+   * that is what the repetition is: one compound control owning a sub-document
+   * claims every refusal inside it, and its one sentence said again is not more
+   * information. Two different controls that happen to be described by the same
+   * sentence — which a `custom` message, naming a thing rather than a control,
+   * easily is — are two problems, and a section reporting one of them would
+   * send the researcher to fix half of what is wrong.
+   */
+  private attributeIssues(
+    ordered: readonly SectionRecord[],
+  ): Map<string, string[]> {
+    const bySection = new Map<string, string[]>();
+    if (this.validationIssues.length === 0) return bySection;
+
+    const registered = ordered.flatMap((record) =>
+      [...(this.fieldsBySection.get(record.id)?.values() ?? [])].flatMap(
+        (field) => {
+          const path = fieldPath(field.name);
+          return path === null ? [] : [{ sectionId: record.id, path, field }];
+        },
+      ),
+    );
+
+    const saidByField = new Set<string>();
+    for (const issue of this.validationIssues) {
+      let owner: (typeof registered)[number] | undefined;
+      let depth = 0;
+      for (const field of registered) {
+        const shared = sharedPrefixLength(field.path, issue.path);
+        if (shared === 0) continue;
+        // One path has to run through the other: a field at `subject.type` and
+        // an issue at `subject.entity` share a segment without either being
+        // about the other.
+        if (shared !== Math.min(field.path.length, issue.path.length)) continue;
+        if (shared <= depth) continue;
+        depth = shared;
+        owner = field;
+      }
+      if (owner === undefined) continue;
+      if (
+        issue.absent &&
+        owner.field.required &&
+        owner.path.length === issue.path.length
+      ) {
+        continue;
+      }
+      const sentence = schemaProblemSentence(issue, owner.field.label);
+      // Serialised rather than joined: a section id or a field name may
+      // legally contain whatever separator a join would pick.
+      const said = JSON.stringify([
+        owner.sectionId,
+        owner.field.name,
+        sentence,
+      ]);
+      if (saidByField.has(said)) continue;
+      saidByField.add(said);
+      const claimed = bySection.get(owner.sectionId);
+      if (claimed === undefined) bySection.set(owner.sectionId, [sentence]);
+      else claimed.push(sentence);
+    }
+    return bySection;
   }
 
   private sameOrder(ordered: readonly SectionRecord[]): boolean {
@@ -239,7 +428,15 @@ export function sectionOutlineStatus(
   section: OutlineSection,
   reader: SectionFieldReader,
 ): SectionOutlineStatus {
+  // Availability still comes first. A section the researcher cannot type into
+  // is not one they can fix anything in, and a stage waiting on a subject has
+  // a problem at almost every path it will eventually own — reporting all of
+  // them would bury the one choice that unlocks the rest.
   if (section.availability !== 'available') return section.availability;
+  // A problem only the session can see outranks the fields, which by
+  // definition cannot see it: a dangling resource reference and a deleted
+  // codebook type are both values a control accepts and a protocol refuses.
+  if (section.issues.length > 0) return 'error';
 
   let incomplete = false;
   for (const field of section.fields) {
