@@ -28,7 +28,7 @@ This workstream owns `apps/interviewer/**`, this plan, its normal-lane Interview
 
 Spanish was AI translated and independently AI reviewed by the lead; no human linguistic review is claimed. The lead read all 444 IDs / 416 unique English–Spanish pairs in the frozen `/private/tmp/nc-review-interviewer.json` snapshot. All five findings were applied:
 
-- `interviewer.sampleProtocol.description`: codebooks uses “diccionarios de datos”.
+- `interviewer.sampleProtocol.description`: codebooks uses “libros de códigos”.
 - `interviewer.settingsDialog.includeCSVFilesAttributesEdgesEgoIn`: network edges uses “vínculos”.
 - `interviewer.dataView.allStrongLengthStrongOnThisPage`, `interviewer.dataView.allStrongSelectedCountStrongMatchingInterviewsAre`, and `interviewer.dataView.selectAllTotalCountMatching` use natural singular “Se ha seleccionado … entrevista” and “Seleccionar # coincidencia”, preserving the all/count meanings.
 - `interviewer.dataViewColumns.stepProgress` formats the known total as a number while retaining the unknown-total marker.
