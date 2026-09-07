@@ -230,8 +230,17 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
     group: 'Database',
     summary: 'JSON array of this deployment’s database login names.',
     deployment:
-      'Required by `migrate` only. Enroll the database owner, migration login, runtime login, and any separately provisioned backup login. Provision explicit CONNECT before admitting database connections. Migration refuses PUBLIC, shared-role, missing, or unexpected access.',
+      'Required by `migrate` and by every persistent server outside explicit local development. Enroll the database owner, migration login, runtime login, and any separately provisioned backup login. Provision explicit CONNECT before admitting database connections. Migration, startup, and readiness refuse PUBLIC, shared-role, missing, or unexpected access.',
     example: '["studio_migrator","studio_runtime"]',
+  },
+
+  STUDIO_DATABASE_ADMINISTRATIVE_LOGINS: {
+    group: 'Database',
+    summary:
+      'Optional JSON array of explicitly administrative database login names.',
+    deployment:
+      'Defaults to an empty array. Configure a separately provisioned non-owner migration or conversion login here and in STUDIO_DATABASE_ALLOWED_LOGINS. Database ownership is recognized separately. Serving app and maintenance connections must never use a configured administrative login.',
+    example: '["studio_schema_operator"]',
   },
 
   BETTER_AUTH_SECRET: {

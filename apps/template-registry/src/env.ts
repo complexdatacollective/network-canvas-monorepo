@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { validateEmailAddress } from '@codaco/studio-sync/email-sender';
+import { copyPostgresAdministrativeLogins } from '@codaco/studio-sync/postgres-database-enrollment';
 import {
   postmarkConfiguration,
   validatePostmarkFrom,
@@ -48,14 +49,33 @@ const integer = (value: string | undefined, fallback: number) =>
   value === undefined ? fallback : Number(value);
 const databaseUrl = networkUrl(['postgres:', 'postgresql:']);
 const loginName = z.string().regex(/^[a-z_][a-z0-9_]{0,62}$/);
-const migrationSchema = z.strictObject({
-  databaseUrl,
+const enrollmentSchema = z.strictObject({
   allowedLogins: z
     .array(loginName)
     .min(1)
     .max(32)
     .refine((names) => new Set(names).size === names.length),
+  administrativeLogins: z.array(loginName).max(32),
 });
+const migrationSchema = z.strictObject({
+  databaseUrl,
+  ...enrollmentSchema.shape,
+});
+const readDatabaseAdmission = (raw: RawEnv) => {
+  const parsed = enrollmentSchema.parse({
+    allowedLogins: JSON.parse(raw.REGISTRY_DATABASE_ALLOWED_LOGINS ?? ''),
+    administrativeLogins: JSON.parse(
+      raw.REGISTRY_DATABASE_ADMINISTRATIVE_LOGINS || '[]',
+    ),
+  });
+  return {
+    allowedLogins: parsed.allowedLogins,
+    administrativeLogins: copyPostgresAdministrativeLogins(
+      parsed.allowedLogins,
+      parsed.administrativeLogins,
+    ),
+  };
+};
 const fromAddress = z
   .string()
   .transform((value) => validateEmailAddress(value));
@@ -64,6 +84,7 @@ const schema = z.strictObject({
   publicUrl: originUrl,
   databaseUrl,
   operatorDatabaseUrl: databaseUrl,
+  ...enrollmentSchema.shape,
   authSecret: nonblank.min(32).max(1024),
   mailer: z.discriminatedUnion('kind', [
     z.strictObject({
@@ -110,6 +131,7 @@ export function readRegistryEnv(raw: RawEnv = process.env): RegistryEnv {
     if (Boolean(smtp) === Boolean(postmark) || (stream && !postmark))
       throw new Error('Invalid registry email transport selection');
     return schema.parse({
+      ...readDatabaseAdmission(raw),
       port: integer(raw.PORT, 3000),
       publicUrl: raw.REGISTRY_PUBLIC_URL,
       databaseUrl: raw.REGISTRY_DATABASE_URL,
@@ -182,7 +204,7 @@ export function readRegistryMigrationEnv(raw: RawEnv = process.env) {
   try {
     return migrationSchema.parse({
       databaseUrl: raw.REGISTRY_MIGRATION_DATABASE_URL,
-      allowedLogins: JSON.parse(raw.REGISTRY_DATABASE_ALLOWED_LOGINS ?? ''),
+      ...readDatabaseAdmission(raw),
     });
   } catch {
     throw new Error('REGISTRY_MIGRATION_CONFIGURATION_INVALID');
@@ -193,10 +215,10 @@ export function readRegistryMigrationEnv(raw: RawEnv = process.env) {
 // oxlint-disable-next-line node/no-process-env
 export function readRegistryBackupEnv(raw: RawEnv = process.env) {
   try {
-    return migrationSchema.parse({
-      databaseUrl: raw.REGISTRY_BACKUP_DATABASE_URL,
-      allowedLogins: JSON.parse(raw.REGISTRY_DATABASE_ALLOWED_LOGINS ?? ''),
-    });
+    return {
+      databaseUrl: databaseUrl.parse(raw.REGISTRY_BACKUP_DATABASE_URL),
+      ...readDatabaseAdmission(raw),
+    };
   } catch {
     throw new Error('REGISTRY_BACKUP_CONFIGURATION_INVALID');
   }

@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { readMigrations } from '@codaco/studio-sync/postgres-migration-artifacts';
 import { createPostgresPool } from '@codaco/studio-sync/postgres-pool';
 
+import { assertRegistryMigrationOperator } from './db/admission.ts';
 import { REGISTRY_SCHEMA_FINGERPRINT } from './db/fingerprint.generated.ts';
 import { registryMigrator } from './db/migrate.ts';
 import { changeRegistryOperator } from './db/operators.ts';
@@ -39,11 +40,12 @@ if (import.meta.main) {
       let discard = false;
       try {
         await preflight.query('BEGIN; SET LOCAL search_path = public');
+        await assertRegistryMigrationOperator(preflight, configuration);
         await registryMigrator.enforceSecurity(
           preflight,
           configuration.allowedLogins,
         );
-        await readRegistrySchemaIdentity(preflight);
+        await readRegistrySchemaIdentity(preflight, configuration);
       } finally {
         try {
           await preflight.query('ROLLBACK');

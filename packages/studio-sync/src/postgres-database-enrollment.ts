@@ -17,6 +17,53 @@ export class UnsafePostgresDatabaseEnrollmentError extends Error {
   }
 }
 
+/** Snapshot the optional administrative exception before a caller can await.
+ * These names express deployment intent, never inferred object ownership. */
+export function copyPostgresAdministrativeLogins(
+  allowedLogins: readonly string[],
+  administrativeLogins: readonly string[] = [],
+): string[] {
+  try {
+    if (!Array.isArray(allowedLogins) || !Array.isArray(administrativeLogins))
+      throw new Error();
+    const enrolled: unknown[] = [...allowedLogins];
+    const administrators: unknown[] = [...administrativeLogins];
+    if (
+      !enrolled.every((name): name is string => typeof name === 'string') ||
+      !administrators.every((name): name is string => typeof name === 'string')
+    )
+      throw new Error();
+    validateRoleNames(enrolled);
+    if (administrators.length) validateRoleNames(administrators);
+    if (administrators.some((name) => !enrolled.includes(name)))
+      throw new Error();
+    return administrators;
+  } catch {
+    throw new UnsafePostgresDatabaseEnrollmentError('configuration');
+  }
+}
+
+/** Snapshot the one backup-only exception before any database operation. */
+export function copyPostgresDatabaseEnrollmentOptions(
+  options: PostgresDatabaseEnrollmentOptions = {},
+): Required<PostgresDatabaseEnrollmentOptions> {
+  try {
+    if (
+      options === null ||
+      typeof options !== 'object' ||
+      Array.isArray(options) ||
+      !Object.keys(options).every((key) => key === 'allowClosedEnrolledLogins')
+    )
+      throw new Error();
+    const allowClosed = options.allowClosedEnrolledLogins;
+    if (allowClosed !== undefined && typeof allowClosed !== 'boolean')
+      throw new Error();
+    return { allowClosedEnrolledLogins: allowClosed ?? false };
+  } catch {
+    throw new UnsafePostgresDatabaseEnrollmentError('configuration');
+  }
+}
+
 /** Recheck the administrator's explicit, committed database admission policy.
  * Shared cluster roles do not identify which deployment a LOGIN belongs to.
  * This is read-only; the caller owns the pinned connection and transaction. */
@@ -33,17 +80,8 @@ export async function assertSafePostgresDatabaseEnrollment(
     if (!copied.every((login): login is string => typeof login === 'string'))
       throw new Error();
     validateRoleNames(copied);
-    if (
-      options === null ||
-      typeof options !== 'object' ||
-      Array.isArray(options) ||
-      !Object.keys(options).every((key) => key === 'allowClosedEnrolledLogins')
-    )
-      throw new Error();
-    const allowClosed = options.allowClosedEnrolledLogins;
-    if (allowClosed !== undefined && typeof allowClosed !== 'boolean')
-      throw new Error();
-    allowClosedEnrolledLogins = allowClosed ?? false;
+    ({ allowClosedEnrolledLogins } =
+      copyPostgresDatabaseEnrollmentOptions(options));
     logins = copied;
   } catch {
     throw new UnsafePostgresDatabaseEnrollmentError('configuration');
@@ -58,7 +96,7 @@ export async function assertSafePostgresDatabaseEnrollment(
         pg_catalog.aclexplode(COALESCE(database.datacl, pg_catalog.acldefault('d', database.datdba))) acl
       WHERE acl.privilege_type = 'CONNECT'
     ) SELECT
-      (SELECT count(*) FROM enrolled WHERE rolcanlogin OR $2::boolean) = pg_catalog.cardinality($1::pg_catalog.text[])
+      (SELECT count(*) FROM enrolled WHERE rolcanlogin OR $2::pg_catalog.bool) = pg_catalog.cardinality($1::pg_catalog.text[])
       AND EXISTS (SELECT 1 FROM enrolled, database WHERE enrolled.oid = database.datdba)
       AND NOT EXISTS (
         SELECT 1 FROM access LEFT JOIN pg_catalog.pg_roles grantee ON grantee.oid = access.grantee

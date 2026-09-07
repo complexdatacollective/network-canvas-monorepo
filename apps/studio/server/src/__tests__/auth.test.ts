@@ -128,6 +128,8 @@ describe('unconfigured auth', () => {
     devDefaults: false,
     deploymentMode: 'self-hosted',
     seedAdminPassword: undefined,
+    databaseAllowedLogins: undefined,
+    databaseAdministrativeLogins: [],
   };
 
   it('refuses /api/auth with 503 problem JSON', async () => {

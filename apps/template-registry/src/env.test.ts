@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
-import { readRegistryEnv, readRegistryMigrationEnv } from './env.ts';
+import {
+  readRegistryBackupEnv,
+  readRegistryEnv,
+  readRegistryMigrationEnv,
+} from './env.ts';
 
 const valid = {
   REGISTRY_PUBLIC_URL: 'https://registry.example.test',
   REGISTRY_DATABASE_URL: 'postgres://runtime:synthetic@127.0.0.1/registry',
   REGISTRY_OPERATOR_DATABASE_URL:
     'postgres://operator:synthetic@127.0.0.1/registry',
+  REGISTRY_DATABASE_ALLOWED_LOGINS: '["owner","runtime","operator","backup"]',
   REGISTRY_AUTH_SECRET: 'synthetic-auth-secret-used-only-in-this-test',
   REGISTRY_SMTP_URL: 'smtps://sender:synthetic@mail.example.test',
   REGISTRY_MAIL_FROM: 'registry@example.test',
@@ -29,6 +34,8 @@ it('resolves explicit runtime inputs and bounded defaults without migration cred
     magicLinksPerDay: 100,
     databaseUrl: valid.REGISTRY_DATABASE_URL,
     operatorDatabaseUrl: valid.REGISTRY_OPERATOR_DATABASE_URL,
+    allowedLogins: ['runtime', 'operator'],
+    administrativeLogins: [],
     limits: { publisherBytes: 104857600, totalBytes: 1073741824 },
   });
   expect(JSON.stringify(result)).not.toContain('never-runtime');
@@ -38,6 +45,14 @@ describe('refuses unsafe runtime configuration with a bounded private error', ()
   const cases = [
     { REGISTRY_DATABASE_URL: undefined },
     { REGISTRY_OPERATOR_DATABASE_URL: undefined },
+    { REGISTRY_DATABASE_ALLOWED_LOGINS: undefined },
+    { REGISTRY_DATABASE_ALLOWED_LOGINS: '[]' },
+    { REGISTRY_DATABASE_ALLOWED_LOGINS: '["runtime","runtime"]' },
+    { REGISTRY_DATABASE_ALLOWED_LOGINS: '{"runtime":true}' },
+    { REGISTRY_DATABASE_ADMINISTRATIVE_LOGINS: '["undeclared"]' },
+    { REGISTRY_DATABASE_ADMINISTRATIVE_LOGINS: '["owner","owner"]' },
+    { REGISTRY_DATABASE_ADMINISTRATIVE_LOGINS: '[null]' },
+    { REGISTRY_DATABASE_ADMINISTRATIVE_LOGINS: 'null' },
     { REGISTRY_PUBLIC_URL: 'http://public.example.test' },
     { REGISTRY_PUBLIC_URL: 'https://registry.example.test/untrusted' },
     { REGISTRY_PUBLIC_URL: 'https://secret@registry.example.test/' },
@@ -134,6 +149,7 @@ it('requires an explicit owner URL and exact allowed-login JSON for migrations',
   ).toEqual({
     databaseUrl: 'postgres://owner:synthetic@localhost/registry',
     allowedLogins: ['registry_http', 'registry_worker'],
+    administrativeLogins: [],
   });
   const bad = [
     undefined,
@@ -160,6 +176,38 @@ it('requires an explicit owner URL and exact allowed-login JSON for migrations',
       REGISTRY_DATABASE_ALLOWED_LOGINS: '["runtime"]',
     }),
   ).toThrow('REGISTRY_MIGRATION_CONFIGURATION_INVALID');
+});
+
+it('shares complete enrollment and explicit administrator parsing across runtime, migrations and backup', () => {
+  const input = {
+    ...valid,
+    REGISTRY_DATABASE_ALLOWED_LOGINS:
+      '["owner","migrator","runtime","operator","backup"]',
+    REGISTRY_DATABASE_ADMINISTRATIVE_LOGINS: '["migrator"]',
+    REGISTRY_MIGRATION_DATABASE_URL:
+      'postgres://migrator:synthetic@localhost/registry',
+    REGISTRY_BACKUP_DATABASE_URL:
+      'postgres://backup:synthetic@localhost/registry',
+  };
+  for (const read of [
+    readRegistryEnv,
+    readRegistryMigrationEnv,
+    readRegistryBackupEnv,
+  ]) {
+    expect(read(input)).toMatchObject({
+      allowedLogins: ['owner', 'migrator', 'runtime', 'operator', 'backup'],
+      administrativeLogins: ['migrator'],
+    });
+    expect(() =>
+      read({ ...input, REGISTRY_DATABASE_ALLOWED_LOGINS: undefined }),
+    ).toThrow();
+    expect(() =>
+      read({
+        ...input,
+        REGISTRY_DATABASE_ADMINISTRATIVE_LOGINS: '["outside"]',
+      }),
+    ).toThrow();
+  }
 });
 
 it('selects the shared Postmark transport and validates its configured sender before runtime admission', () => {

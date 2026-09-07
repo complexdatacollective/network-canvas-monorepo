@@ -33,9 +33,9 @@ it('installs the shipped registry schema with real restricted logins and preserv
     );
     const preflight = await installation.pool.connect();
     try {
-      await expect(readRegistrySchemaIdentity(preflight)).rejects.toThrow(
-        'REGISTRY_SCHEMA_NOT_CURRENT',
-      );
+      await expect(
+        readRegistrySchemaIdentity(preflight, installation),
+      ).rejects.toThrow('REGISTRY_SCHEMA_NOT_CURRENT');
     } finally {
       preflight.release(true);
     }
@@ -63,6 +63,7 @@ it('installs the shipped registry schema with real restricted logins and preserv
     const identity = await verifyRegistryDatabases(
       installation.pool,
       installation.operatorPool,
+      installation,
     );
     const delta = await pushSchema(
       REGISTRY_TABLES,
@@ -101,6 +102,7 @@ it('installs the shipped registry schema with real restricted logins and preserv
       await verifyRegistryDatabases(
         installation.pool,
         installation.operatorPool,
+        installation,
       ),
     ).toEqual(identity);
     expect(

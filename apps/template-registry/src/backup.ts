@@ -1,4 +1,3 @@
-import { assertSafePostgresDatabaseEnrollment } from '@codaco/studio-sync/postgres-database-enrollment';
 import { createPostgresPool } from '@codaco/studio-sync/postgres-pool';
 
 import { assertRegistryBackupAccess } from './db/backup.ts';
@@ -21,14 +20,14 @@ if (import.meta.main) {
     });
     setRegistryPoolBounds(pool);
     try {
-      await assertRegistryBackupAccess(pool, (client) =>
-        assertSafePostgresDatabaseEnrollment(
-          client,
-          configuration.allowedLogins,
-          { allowClosedEnrolledLogins: true },
-        ),
-      );
-      await readRegistrySchemaIdentity(pool);
+      await assertRegistryBackupAccess(pool, async (client) => {
+        // The verifier has proved this actual backup LOGIN is read-only.
+        // Quarantined runtime/owner identities stay closed while their complete
+        // enrollment, evidence and capability policy is checked on this socket.
+        await readRegistrySchemaIdentity(client, configuration, {
+          allowClosedEnrolledLogins: true,
+        });
+      });
       logRegistryDiagnostic('REGISTRY_BACKUP_VERIFIED');
     } finally {
       await pool.end();

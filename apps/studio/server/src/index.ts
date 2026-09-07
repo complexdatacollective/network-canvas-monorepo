@@ -5,7 +5,7 @@ import { serve } from '@hono/node-server';
 import { WebSocketServer } from 'ws';
 
 import { assertSafePostgresRuntimeIdentity } from '@codaco/studio-sync/postgres-runtime-identity';
-import { TENANT_ROLES } from '@codaco/studio-sync/rls';
+import { BACKUP_ROLE, TENANT_ROLES } from '@codaco/studio-sync/rls';
 
 import { createApp } from './app.ts';
 import { createAssetStore } from './assets.ts';
@@ -134,6 +134,10 @@ async function admitDatabaseRuntime(): Promise<boolean> {
         await assertSafePostgresRuntimeIdentity(client, {
           intendedRole,
           allowedRoles: roles,
+          runtimeRoleSets: [roles],
+          backupRole: BACKUP_ROLE,
+          allowedLogins: env.databaseAllowedLogins ?? [],
+          administrativeLogins: env.databaseAdministrativeLogins,
         });
       } finally {
         client.release();
@@ -170,6 +174,8 @@ if (schemaPool) {
     try {
       const state = await checkSchema(schemaPool, {
         allowUnversioned: env.devDefaults,
+        allowedLogins: env.databaseAllowedLogins,
+        administrativeLogins: env.databaseAdministrativeLogins,
       });
       if (state.kind === 'current') break;
       exitIfFatal(state);
@@ -223,6 +229,8 @@ const observability = createObservability({
   assetStore,
   monitorProcess: true,
   allowUnversionedSchema: env.devDefaults,
+  allowedLogins: env.databaseAllowedLogins,
+  administrativeLogins: env.databaseAdministrativeLogins,
 });
 startDatabaseWorkers();
 

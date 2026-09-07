@@ -42,7 +42,11 @@ const encryptionKeys = await loadEncryptionKeys(
 const pool = createOwnerPool(db);
 
 try {
-  const state = await checkSchema(pool, { allowUnversioned: env.devDefaults });
+  const state = await checkSchema(pool, {
+    allowedLogins: env.databaseAllowedLogins,
+    administrativeLogins: env.databaseAdministrativeLogins,
+    allowUnversioned: env.devDefaults,
+  });
   if (state.kind !== 'current') {
     console.error(schemaProblemMessage(state));
     process.exit(1);

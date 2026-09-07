@@ -396,6 +396,46 @@ it('verifies the operator command without runtime credentials or secret output',
       expect(good.error).toBeUndefined();
       expect(good.status).toBe(0);
       expect(good.stdout).toBe('Studio backup access verified.\n');
+      // Closing a writer for capture does not forgive unsafe direct grants.
+      // Prove the exact closed identity can write, then exercise the real CLI.
+      await source.pool.query(
+        `GRANT UPDATE(name) ON public.teams TO ${pg.escapeIdentifier(runtimeLogin)}`,
+      );
+      const writer = await source.pool.connect();
+      try {
+        await writer.query('BEGIN');
+        await writer.query(
+          `SET LOCAL SESSION AUTHORIZATION ${pg.escapeIdentifier(runtimeLogin)}`,
+        );
+        expect(
+          (
+            await writer.query(
+              "UPDATE public.teams SET name = 'Closed writer canary'",
+            )
+          ).rowCount,
+        ).toBe(2);
+      } finally {
+        await writer.query('ROLLBACK');
+        writer.release();
+      }
+      const unsafe = run(url.toString());
+      expect(unsafe.error).toBeUndefined();
+      expect(unsafe.status).toBe(1);
+      expect(unsafe.stdout + unsafe.stderr).toContain(
+        'STUDIO_BACKUP_ACCESS_UNSAFE',
+      );
+      await source.pool.query(
+        `REVOKE UPDATE(name) ON public.teams FROM ${pg.escapeIdentifier(runtimeLogin)}`,
+      );
+      expect(run(url.toString()).status).toBe(0);
+      expect(
+        (
+          await source.pool.query(
+            'SELECT rolcanlogin FROM pg_roles WHERE rolname = $1',
+            [runtimeLogin],
+          )
+        ).rows,
+      ).toEqual([{ rolcanlogin: false }]);
       for (const rejected of [
         run(source.db.url),
         run(url.toString(), ['SECRET_ARGUMENT_CANARY']),
