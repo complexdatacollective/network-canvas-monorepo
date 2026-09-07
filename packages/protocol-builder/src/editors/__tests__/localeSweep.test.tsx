@@ -22,17 +22,17 @@ import { nameGeneratorStageEditors } from '../nameGeneratorStageEditors.ts';
  * question of individual sections. This one asks it of the COMPOSITION,
  * because that is the only place several of these defects can appear at all: a
  * shell control no section test mounts, an outline entry naming a section from
- * outside it, a section rendering English between two that do not. The editor
+ * outside it, a section rendering English between two that do not. Each editor
  * is reached through its family's registry, so what is swept is also what a
  * host would dispatch to.
  *
- * One stage rather than five: the form-based generator mounts every section
- * this branch added — the prompt list and its stamps, the side panels and the
- * nomination window — plus the frame under them. The four form editors mount
+ * Two stages rather than six: between them these generators mount every
+ * section the family has landed so far — the form-based one's form fields,
+ * prompt stamps and side panels; quick add's single attribute — plus the
+ * nomination window and the frame they share. The four form editors mount
  * `FormFieldsSection` and `PageContentSection`, which the sibling sweep
- * already drives, and the generator below mounts the first of them again in
- * composition. The other two name generators join this table with their own
- * sections.
+ * already drives, and the form-based generator below mounts the first of them
+ * again in composition. The roster joins this table with its own sections.
  */
 
 /**
@@ -108,7 +108,7 @@ const researcherWords = (harness: StageEditorHarness) =>
     harness.hostCodebook(),
   );
 
-describe('the name-generator editor under es, at rest', () => {
+describe('the name-generator editors under es, at rest', () => {
   it('sweeps a form-based name generator', async () => {
     const harness = renderStageEditor({
       stage: { type: 'NameGenerator', fields: PANELLED_NAME_GENERATOR },
@@ -120,6 +120,20 @@ describe('the name-generator editor under es, at rest', () => {
 
     expectNoLocaleLeaks(
       'a form-based name generator at rest',
+      researcherWords(harness),
+    );
+  });
+
+  it('sweeps a quick-add name generator', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-quick-add-1',
+      locale: 'es',
+      registry: nameGeneratorStageEditors,
+    });
+    await settled(harness);
+
+    expectNoLocaleLeaks(
+      'a quick-add name generator at rest',
       researcherWords(harness),
     );
   });

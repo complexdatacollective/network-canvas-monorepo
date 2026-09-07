@@ -2023,6 +2023,82 @@
     "defaultMessage": "This field is required.",
     "description": "Shown under any unanswered required control in a stage editor when the researcher tries to save the stage. Addresses the researcher authoring the protocol, not a participant answering it."
   },
+  "protocolBuilder.quickAdd.canBeEmptyDescription": {
+    "defaultMessage": "What the participant types here is the only thing they gave, so a person added without it has no name. Requiring an answer changes the attribute everywhere the protocol uses it.",
+    "description": "Warning body offering to make the quick-add attribute one that has to be answered, and saying that the change reaches every other stage using the same attribute."
+  },
+  "protocolBuilder.quickAdd.canBeEmptyTitle": {
+    "defaultMessage": "This attribute can be left empty",
+    "description": "Warning heading shown when the attribute quick add fills in does not have to be answered, so a person could be created with no name."
+  },
+  "protocolBuilder.quickAdd.createAttribute": {
+    "defaultMessage": "Create the attribute",
+    "description": "Action that adds the named text attribute to the codebook and selects it for quick add."
+  },
+  "protocolBuilder.quickAdd.description": {
+    "defaultMessage": "Choose the attribute the participant fills in when they add someone with a single box.",
+    "description": "Description of the quick-add section."
+  },
+  "protocolBuilder.quickAdd.fieldHint": {
+    "defaultMessage": "What the participant types goes here. Use the attribute holding a person’s name unless you have a reason not to — the interview labels people by it.",
+    "description": "Guidance under the quick-add attribute control."
+  },
+  "protocolBuilder.quickAdd.fieldLabel": {
+    "defaultMessage": "Attribute filled in",
+    "description": "Label of the control choosing which attribute receives what the participant types into the quick-add box."
+  },
+  "protocolBuilder.quickAdd.fieldRequired": {
+    "defaultMessage": "Choose the attribute quick add fills in.",
+    "description": "Refusal shown when a researcher saves a quick-add stage without saying which attribute receives what the participant types, which would create people with no name at all."
+  },
+  "protocolBuilder.quickAdd.missingType": {
+    "defaultMessage": "This type is no longer in the codebook, so its attributes cannot be changed.",
+    "description": "Refusal shown when the node type the stage works with has been deleted from the codebook — the protocol’s definition of what an interview records — while the researcher was editing."
+  },
+  "protocolBuilder.quickAdd.nameTheAttribute": {
+    "defaultMessage": "Name the attribute quick add should fill in.",
+    "description": "Refusal shown when a researcher asks to create a quick-add attribute without typing a name for it."
+  },
+  "protocolBuilder.quickAdd.newAttributeHint": {
+    "defaultMessage": "Adds a text attribute to this type’s codebook and fills it in here.",
+    "description": "Guidance under the box naming a new quick-add attribute, saying that inventing one also selects it above."
+  },
+  "protocolBuilder.quickAdd.newAttributeLabel": {
+    "defaultMessage": "Create a new attribute",
+    "description": "Label of the box naming an attribute to add to the codebook for quick add to fill in."
+  },
+  "protocolBuilder.quickAdd.newAttributePlaceholder": {
+    "defaultMessage": "name",
+    "description": "Example shown in the empty box naming a new quick-add attribute. The attribute most studies want here is the one holding a person’s name, so the example is that word, lower case as an attribute name is written."
+  },
+  "protocolBuilder.quickAdd.noTextAttribute": {
+    "defaultMessage": "This type has no text attribute quick add could fill in. Create one below.",
+    "description": "Shown in place of the quick-add attribute list when the chosen node type has no attribute holding typed text. Points at the control beneath, which invents one."
+  },
+  "protocolBuilder.quickAdd.nowRequired": {
+    "defaultMessage": "This attribute now has to be answered, everywhere the protocol uses it.",
+    "description": "Confirmation shown to the researcher who just asked for the quick-add attribute to be required, because focus has moved to a control that says nothing about what changed."
+  },
+  "protocolBuilder.quickAdd.refusedUnchanged": {
+    "defaultMessage": "This attribute could not be changed, so nothing was changed. Try again.",
+    "description": "Refusal shown when requiring an answer for the quick-add attribute failed for a reason with no explanation of its own."
+  },
+  "protocolBuilder.quickAdd.requireAnswer": {
+    "defaultMessage": "Require an answer",
+    "description": "Action that adds \"must be answered\" to the rules of the attribute quick add fills in."
+  },
+  "protocolBuilder.quickAdd.requireAnswerDescription": {
+    "defaultMessage": "Require an answer for the quick-add attribute",
+    "description": "What the change is called in the record a host keeps of protocol edits, and in any undo history it offers."
+  },
+  "protocolBuilder.quickAdd.title": {
+    "defaultMessage": "Quick add",
+    "description": "Heading of the section choosing which attribute a participant fills in when they add someone with a single box. An attribute is one field the protocol records about a person."
+  },
+  "protocolBuilder.quickAdd.waitingDescription": {
+    "defaultMessage": "Choose what this stage works with before setting up quick add.",
+    "description": "Shown in place of the quick-add section’s description while the researcher has not yet chosen which node type the stage is about, so there are no attributes to choose from."
+  },
   "protocolBuilder.resourceBrowser.emptyState": {
     "defaultMessage": "There are no resources to choose from yet.",
     "description": "Shown in place of the resource list when the protocol holds none of the kind this field accepts and none has been imported yet."

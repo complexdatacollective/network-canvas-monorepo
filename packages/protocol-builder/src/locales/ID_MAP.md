@@ -122,6 +122,7 @@ name not here adds it here first, in the same pull request.
 | `alterLimits`               | `sections/AlterLimitsSection.tsx`                                                                                                                                                | family D  |
 | `nameGeneratorPrompts`      | `sections/NameGeneratorPromptsSection.tsx`                                                                                                                                       | family D  |
 | `nodePanels`                | `sections/NodePanelsSection.tsx`                                                                                                                                                 | family D  |
+| `quickAdd`                  | `sections/QuickAddSection.tsx`                                                                                                                                                   | family D  |
 
 Family D added a second-level segment the reserved list did not hold. One line,
 because a closed list is only closed if adding to it is argued:
@@ -393,9 +394,9 @@ through that family's registry. A section sweep cannot see what only
 composition produces — a shell control no section test mounts, or one section
 rendering English between two that do not.
 
-`src/editors/__tests__/localeSweep.test.tsx` is family D's: the form-based
-name generator, which mounts every section this half of the family added plus
-the frame all three of them share.
+`src/editors/__tests__/localeSweep.test.tsx` is family D's: the form-based and
+quick-add name generators, which between them mount every section the family
+has landed so far plus the frame all three of them share.
 
 Three rules those sweeps put on everything else in the package. Each was a real
 defect, and each is the sweep reading something that is not a section's copy as

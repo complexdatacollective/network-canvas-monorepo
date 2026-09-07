@@ -7,6 +7,7 @@ import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import AlterLimitsSection from '../AlterLimitsSection.tsx';
 import NameGeneratorPromptsSection from '../NameGeneratorPromptsSection.tsx';
 import NodePanelsSection from '../NodePanelsSection.tsx';
+import QuickAddSection from '../QuickAddSection.tsx';
 
 /**
  * The name-generator sections read in Spanish.
@@ -57,6 +58,21 @@ describe('the name-generator sections, read in Spanish', () => {
     ).toHaveValue(8);
     expect(
       screen.getByText('Deja el campo vacío para no establecer un máximo.'),
+    ).toBeInTheDocument();
+  });
+
+  it('names the quick-add attribute and the offer to invent one', () => {
+    renderStageEditor({
+      stageId: 'name-generator-quick-add-1',
+      locale: 'es',
+      sections: <QuickAddSection />,
+    });
+
+    expect(
+      screen.getByRole('combobox', { name: /Atributo que se rellena/ }),
+    ).toHaveValue('name');
+    expect(
+      screen.getByRole('button', { name: 'Crear el atributo' }),
     ).toBeInTheDocument();
   });
 
