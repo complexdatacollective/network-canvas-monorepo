@@ -139,17 +139,32 @@ describe('Registry deployment configuration', () => {
     });
   });
 
-  it('does not publish a credential marker when its final staged write fails', async () => {
+  it('removes a partially written owned deployment template', async () => {
     await fixture(async (output) => {
       await expect(
         configureRegistryDeployment({ ...options, output }, templateRoot, {
-          write: async (path, bytes, writeOptions) => {
-            if (
-              typeof path === 'string' &&
-              path.includes('.registry.env-writing-')
-            )
+          write: async (file, bytes) => {
+            await file.write(bytes.subarray(0, 7));
+            throw new Error('synthetic template write failure');
+          },
+        }),
+      ).rejects.toThrow('synthetic template write failure');
+      expect(await readdir(output)).toEqual([]);
+    });
+  });
+
+  it('does not publish a credential marker when the final staged write partially fails', async () => {
+    await fixture(async (output) => {
+      let writes = 0;
+      await expect(
+        configureRegistryDeployment({ ...options, output }, templateRoot, {
+          write: async (file, bytes) => {
+            writes += 1;
+            if (writes === registryConfigurationFiles.length + 1) {
+              await file.write(bytes.subarray(0, 7));
               throw new Error('synthetic private write failure');
-            await writeFile(path, bytes, writeOptions);
+            }
+            await file.writeFile(bytes);
           },
         }),
       ).rejects.toThrow('synthetic private write failure');
@@ -174,6 +189,29 @@ describe('Registry deployment configuration', () => {
       } finally {
         await rm(retained, { recursive: true, force: true });
       }
+    });
+  });
+
+  it('refuses extra public deployment entries and private environment names', async () => {
+    await fixture(async (output) => {
+      await configureRegistryDeployment({ ...options, output }, templateRoot);
+      const deployment = join(output, 'deployment');
+      const unexpected = await mkdtemp(join(deployment, 'unexpected-'));
+      await expect(
+        configureRegistryDeployment({ ...options, output }, templateRoot),
+      ).rejects.toThrow('incomplete');
+      expect(await readdir(deployment)).toContain(unexpected.split('/').at(-1));
+
+      await rm(unexpected, { recursive: true });
+      const environmentPath = join(output, 'registry.env');
+      await writeFile(
+        environmentPath,
+        (await readFile(environmentPath, 'utf8')) + 'EXTRA=value\n',
+      );
+      await expect(
+        configureRegistryDeployment({ ...options, output }, templateRoot),
+      ).rejects.toThrow('private configuration is incomplete');
+      expect(await readFile(environmentPath, 'utf8')).toContain('EXTRA=value');
     });
   });
 

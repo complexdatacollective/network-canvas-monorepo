@@ -9,8 +9,8 @@ import {
   rm,
   rmdir,
   lstat,
-  writeFile,
 } from 'node:fs/promises';
+import type { FileHandle } from 'node:fs/promises';
 import { basename, dirname, join, relative, resolve } from 'node:path';
 import { parseEnv } from 'node:util';
 
@@ -84,6 +84,16 @@ const generatedNames = [
   'REGISTRY_MINIO_ROOT_PASSWORD',
   'REGISTRY_S3_ACCESS_KEY_ID',
   'REGISTRY_S3_SECRET_ACCESS_KEY',
+] as const;
+const publicEnvironmentNames = [
+  'REGISTRY_DOMAIN',
+  'REGISTRY_MAIL_FROM',
+  'REGISTRY_IMAGE',
+  'MINIO_IMAGE',
+  'REGISTRY_SMTP_URL',
+  'REGISTRY_POSTMARK_SERVER_TOKEN',
+  'REGISTRY_POSTMARK_MESSAGE_STREAM',
+  'REGISTRY_S3_REGION',
 ] as const;
 
 export function renderRegistryDeploymentTemplate(
@@ -171,6 +181,13 @@ function retainedGenerated(values: Record<string, string | undefined>) {
   return valuesByName;
 }
 
+function exactNames(values: Record<string, string | undefined>) {
+  return (
+    Object.keys(values).toSorted().join(',') ===
+    [...publicEnvironmentNames, ...generatedNames].toSorted().join(',')
+  );
+}
+
 async function readRegistryConfiguration(
   root: string,
   lockName?: string,
@@ -196,10 +213,16 @@ async function readRegistryConfiguration(
   )
     throw new Error('Registry private configuration must be mode0600.');
   const values = parseEnv(await readFile(environmentPath, 'utf8'));
+  if (!exactNames(values))
+    throw new Error('Registry private configuration is incomplete.');
   retainedGenerated(values);
   const deploymentRoot = join(root, 'deployment');
   const deploymentRootInfo = await lstat(deploymentRoot);
-  if (!deploymentRootInfo.isDirectory() || deploymentRootInfo.isSymbolicLink())
+  if (
+    !deploymentRootInfo.isDirectory() ||
+    deploymentRootInfo.isSymbolicLink() ||
+    (await readdir(deploymentRoot)).toSorted().join(',') !== 'registry'
+  )
     throw new Error('Registry configuration directory is incomplete.');
   const deployment = join(deploymentRoot, 'registry');
   const deploymentInfo = await lstat(deployment);
@@ -247,12 +270,33 @@ async function outputRoot(path: string): Promise<string> {
   }
 }
 
+async function writeOwned(
+  path: string,
+  bytes: Buffer,
+  mode: number,
+  owned: string[],
+  write: (file: FileHandle, value: Buffer) => Promise<void>,
+) {
+  const file = await open(path, 'wx', mode);
+  owned.push(path);
+  try {
+    await write(file, bytes);
+    await file.sync();
+  } finally {
+    await file.close();
+  }
+}
+
 /** Configure only Registry-owned public templates and private Registry inputs.
  * It never reads or emits Studio encryption roots, credentials, or account data. */
 export async function configureRegistryDeployment(
   input: z.input<typeof optionsSchema>,
   templateRoot: string,
-  { write: save = writeFile }: { write?: typeof writeFile } = {},
+  {
+    write = (file, bytes) => file.writeFile(bytes),
+  }: {
+    write?: (file: FileHandle, bytes: Buffer) => Promise<void>;
+  } = {},
 ): Promise<void> {
   const options = optionsSchema.parse(input);
   const templates = await Promise.all(
@@ -342,8 +386,7 @@ export async function configureRegistryDeployment(
     directories.push(deployment);
     for (const { name, bytes } of templates) {
       const target = join(deployment, name);
-      await save(target, bytes, { flag: 'wx', mode: 0o644 });
-      written.push(target);
+      await writeOwned(target, bytes, 0o644, written, write);
     }
     // Credentials are the final file. A partial public template copy is never
     // mistaken for a runnable Registry configuration root.
@@ -351,15 +394,13 @@ export async function configureRegistryDeployment(
       output,
       `.registry.env-writing-${randomBytes(16).toString('hex')}`,
     );
-    await save(
+    await writeOwned(
       stagedEnvironment,
       dotenv({ ...publicEnvironment, ...secrets }),
-      {
-        flag: 'wx',
-        mode: 0o600,
-      },
+      0o600,
+      written,
+      write,
     );
-    written.push(stagedEnvironment);
     await rename(stagedEnvironment, environmentPath);
     written.pop();
     written.push(environmentPath);
