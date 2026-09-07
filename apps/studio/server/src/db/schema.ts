@@ -2,6 +2,10 @@ import { getTableName, sql } from 'drizzle-orm';
 import { boolean, check, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 import type pg from 'pg';
 
+import {
+  assertSafePostgresMigrationEvidence,
+  UnsafePostgresMigrationEvidenceError,
+} from '@codaco/studio-sync/postgres-migration-evidence';
 import { SYNC_SIDECAR_SQL, SYNC_TABLES } from '@codaco/studio-sync/schema';
 
 import { ASSET_SIDECAR_SQL, ASSET_TABLES } from '../asset/schema.ts';
@@ -109,7 +113,7 @@ export const SCHEMA_LOCK_KEY = 4021775688147129;
 export type StaleSchema = {
   kind: 'stale';
   /** `unstamped` is a database carrying the tables but no fingerprint row. */
-  reason: 'mismatch' | 'unstamped' | 'unversioned';
+  reason: 'mismatch' | 'unsafe-evidence' | 'unstamped' | 'unversioned';
   found: string | null;
   appliedAt: Date | null;
 };
@@ -133,11 +137,13 @@ export async function checkSchema(
   options: { allowUnversioned?: boolean } = {},
 ): Promise<SchemaState> {
   const probe = await pool.query<{
+    schemaName: string;
     stamped: boolean;
     tables: boolean;
     versioned: boolean;
   }>(
-    `select to_regclass('"schemaFingerprint"') is not null as stamped,
+    `select current_schema() as "schemaName",
+            to_regclass('"schemaFingerprint"') is not null as stamped,
             ${SCHEMA_TABLES.map(
               (table) => `to_regclass('"${table}"') is not null`,
             ).join(' or ')} as tables,
@@ -148,11 +154,27 @@ export async function checkSchema(
                 AND relation.relname = 'history' AND relation.relkind = 'r'
             ) AS versioned`,
   );
-  const { stamped, tables, versioned } = probe.rows[0] ?? {
+  const { schemaName, stamped, tables, versioned } = probe.rows[0] ?? {
+    schemaName: 'public',
     stamped: false,
     tables: false,
     versioned: false,
   };
+
+  try {
+    await assertSafePostgresMigrationEvidence(pool, {
+      history: { schema: 'studio_migrations', name: 'history' },
+      fingerprint: { schema: schemaName, name: 'schemaFingerprint' },
+    });
+  } catch (error) {
+    if (!(error instanceof UnsafePostgresMigrationEvidenceError)) throw error;
+    return {
+      kind: 'stale',
+      reason: 'unsafe-evidence',
+      found: null,
+      appliedAt: null,
+    };
+  }
 
   if (stamped) {
     const recorded = await pool.query<{
@@ -211,6 +233,14 @@ export function schemaProblemMessage(state: SchemaProblem): string {
       'Create it and start again:',
       '  pnpm --filter @codaco/studio-server db:reset        (local development)',
       '  docker compose run --rm studio migrate             (a deployed database)',
+    ].join('\n');
+  }
+
+  if (state.reason === 'unsafe-evidence') {
+    return [
+      'The database migration evidence has an unsupported relation shape.',
+      'Preserve the original database and its encryption keys. Restore a verified backup before starting Studio or applying migrations.',
+      'See apps/studio/MIGRATIONS.md for recovery and replacement procedures.',
     ].join('\n');
   }
 

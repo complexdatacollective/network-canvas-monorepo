@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
-import { escapeIdentifier } from 'pg';
+import { escapeIdentifier, Pool } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -106,6 +106,54 @@ describe.skipIf(!database)('startup migration provenance', () => {
         expect(current.status).toBe(0);
         expect(current.stdout).toContain('"marker":"startup-completed"');
         expect(current.stdout).not.toContain('"code":"STUDIO_SCHEMA_STALE"');
+
+        const staleFingerprint = 'a'.repeat(64);
+        await versioned.pool.query(
+          'UPDATE public."schemaFingerprint" SET fingerprint = $1',
+          [staleFingerprint],
+        );
+        await versioned.pool
+          .query(`CREATE TABLE public.startup_fingerprint_action
+            (fingerprint text PRIMARY KEY);
+          INSERT INTO public.startup_fingerprint_action
+            SELECT fingerprint FROM public."schemaFingerprint";
+          ALTER TABLE public."schemaFingerprint"
+            ADD CONSTRAINT startup_fingerprint_action
+            FOREIGN KEY (fingerprint)
+            REFERENCES public.startup_fingerprint_action(fingerprint)
+            ON UPDATE CASCADE;
+          GRANT UPDATE ON public.startup_fingerprint_action TO studio_app`);
+        const runtime = new Pool({
+          connectionString: runtimeUrl.href,
+          options: '-c role=studio_app',
+        });
+        try {
+          expect(
+            (
+              await runtime.query(
+                'UPDATE public.startup_fingerprint_action SET fingerprint = $1',
+                [SCHEMA_FINGERPRINT],
+              )
+            ).rowCount,
+          ).toBe(1);
+        } finally {
+          await runtime.end();
+        }
+        expect(
+          (
+            await versioned.pool.query(
+              'SELECT fingerprint FROM public."schemaFingerprint"',
+            )
+          ).rows,
+        ).toEqual([{ fingerprint: SCHEMA_FINGERPRINT }]);
+        const forgedCurrent = run(false, runtimeUrl.href);
+        expect(forgedCurrent.error).toBeUndefined();
+        expect(forgedCurrent.status).toBe(1);
+        expect(forgedCurrent.stderr).toBe('');
+        expect(forgedCurrent.stdout).toContain('"code":"STUDIO_SCHEMA_STALE"');
+        expect(forgedCurrent.stdout).not.toContain(
+          '"marker":"startup-completed"',
+        );
       } finally {
         if (runtimeCreated)
           await versioned.pool.query(

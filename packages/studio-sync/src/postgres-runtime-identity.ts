@@ -67,6 +67,13 @@ export async function assertSafePostgresRuntimeIdentity(
           OR rolcreaterole OR rolcreatedb OR rolreplication)
         AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_auth_members membership
           WHERE membership.member IN (SELECT oid FROM scoped))
+        -- An outsider granted this LOGIN inherits its direct CONNECT and can
+        -- follow the LOGIN's SET chain without entering the verified pool.
+        AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_auth_members membership
+          JOIN pg_catalog.pg_roles member ON member.oid = membership.member
+          WHERE membership.roleid IN (SELECT oid FROM login)
+            AND NOT member.rolsuper
+            AND member.oid NOT IN (SELECT oid FROM login))
         AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_auth_members membership
           WHERE membership.member IN (SELECT oid FROM login)
             AND (membership.roleid NOT IN (SELECT oid FROM scoped)

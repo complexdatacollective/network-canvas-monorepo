@@ -27,6 +27,7 @@
     "./template-metadata": "./src/template-metadata.ts",
     "./template-exchange": "./src/template-exchange.ts",
     "./postgres-catalog-privileges": "./src/postgres-catalog-privileges.ts",
+    "./postgres-migration-evidence": "./src/postgres-migration-evidence.ts",
     "./postgres-runtime-identity": "./src/postgres-runtime-identity.ts"
   },
   "scripts": {

@@ -410,11 +410,14 @@ describe.skipIf(!db)('schema verification', () => {
       ).toEqual([{ relkind: 'v' }]);
       expect(await checkSchema(pool)).toMatchObject({
         kind: 'stale',
-        reason: 'unversioned',
+        reason: 'unsafe-evidence',
       });
-      expect(await checkSchema(pool, { allowUnversioned: true })).toEqual({
-        kind: 'current',
-      });
+      expect(await checkSchema(pool, { allowUnversioned: true })).toMatchObject(
+        {
+          kind: 'stale',
+          reason: 'unsafe-evidence',
+        },
+      );
     });
   });
 
@@ -758,6 +761,19 @@ describe('schema problem message', () => {
     expect(message).toContain('no versioned migration history');
     expect(message).toContain('Preserve the original database');
     expect(message).toContain('new empty database');
+    expect(message).not.toContain('docker compose run --rm studio migrate');
+  });
+
+  it('directs unsafe migration evidence to verified-backup recovery without echoing evidence', () => {
+    const message = schemaProblemMessage({
+      ...stale,
+      reason: 'unsafe-evidence',
+      found: null,
+      appliedAt: null,
+    });
+    expect(message).toContain('unsupported relation shape');
+    expect(message).toContain('Restore a verified backup');
+    expect(message).not.toContain(stale.found!);
     expect(message).not.toContain('docker compose run --rm studio migrate');
   });
 
