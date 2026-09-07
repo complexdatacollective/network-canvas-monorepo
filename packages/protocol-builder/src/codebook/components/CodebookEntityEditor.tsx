@@ -1,4 +1,5 @@
 import {
+  createElement,
   useCallback,
   useEffect,
   useMemo,
@@ -9,11 +10,7 @@ import {
 } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
-import {
-  createMessageError,
-  defineMessages,
-  formatMessageError,
-} from '@codaco/app-i18n/messages';
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
@@ -23,6 +20,11 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelect from '@codaco/fresco-ui/form/fields/Select/Native';
 import { isInterviewerIconName } from '@codaco/fresco-ui/Icon';
 import Surface from '@codaco/fresco-ui/layout/Surface';
+import {
+  EnclosingHeadingLevel,
+  headingTagBelow,
+  useEnclosingHeadingLevel,
+} from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
@@ -40,11 +42,11 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import type { CompoundEditRequest, CompoundEditResult } from '../../session.ts';
 import { codebookEditingMessages } from '../codebookMessages.ts';
+import { compoundFailureMessage } from '../compoundFailureCopy.ts';
 import {
   AuxiliaryCodebookDraftSession,
   buildCreateEntityRequest,
   buildUpdateEntityRequest,
-  type AuxiliaryCodebookDraftFailure,
   type CodebookEntityDraft,
 } from '../editing.ts';
 
@@ -357,33 +359,6 @@ const validateFields = (
   return errors;
 };
 
-/**
- * `intl` rather than `useAppIntl()` inside, because the refusal being
- * presented reaches here as a plain string: a compound edit's `message` is
- * either this package's own encoded descriptor or a host's already-written
- * sentence, and `formatMessageError(…) ?? text` is what tells them apart.
- */
-const failureMessage = (
-  failure: AuxiliaryCodebookDraftFailure,
-  intl: IntlShape,
-): string => {
-  if (failure.kind === 'error') {
-    return formatMessageError(failure.message, intl) ?? failure.message;
-  }
-  if (failure.result.status === 'failed') {
-    return (
-      formatMessageError(failure.result.message, intl) ?? failure.result.message
-    );
-  }
-  const blocker = failure.result.blockedSections[0];
-  if (blocker?.holder !== undefined) {
-    return intl.formatMessage(codebookEditingMessages.blockedByHolder, {
-      name: blocker.holder.displayName,
-    });
-  }
-  return intl.formatMessage(codebookEditingMessages.blockedUnknownHolder);
-};
-
 export type CodebookEntityFieldsProps = Readonly<{
   subject: CodebookSubject;
   draft: CodebookEntityDraft;
@@ -595,6 +570,12 @@ export default function CodebookEntityEditor({
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    // Stops at this form: a `Dialog` portals out of the DOM but stays a React
+    // descendant, so React would otherwise hand this submit to the form the
+    // editor was opened from — `SubjectSection` mounts it inside the stage
+    // form — and save that instead. `preventDefault` alone only stops the
+    // browser's own navigation, which is not what propagates here.
+    event.stopPropagation();
     if (
       readOnly ||
       snapshot.status !== 'editing' ||
@@ -663,13 +644,31 @@ export default function CodebookEntityEditor({
   const busy = snapshot.status !== 'editing';
   const interactionDisabled = readOnly || busy;
   const canSubmit = modeProps.mode === 'create' || subject.entity !== 'ego';
+  // Every host opens this editor inside a dialog, whose own title is the
+  // heading above it — so writing an `h2` here put the editor's title beside
+  // the dialog's rather than under it, and the alerts below counted from the
+  // dialog too and landed beside this title in turn. Read instead of written
+  // out, so the same editor is also correct on a page of its own, where an
+  // `h2` is what it has always been.
+  const enclosingHeadingLevel = useEnclosingHeadingLevel();
+  const headingTag =
+    enclosingHeadingLevel === null
+      ? 'h2'
+      : headingTagBelow(enclosingHeadingLevel);
 
   return (
     <Surface spacing="md" shadow="md" noContainer>
       <form onSubmit={(event) => void handleSubmit(event)} noValidate>
         <div className="flex flex-col gap-6">
           <div>
-            <Heading level="h2" margin="none">
+            <Heading
+              level="h2"
+              margin="none"
+              // The element only — `level` still carries the type treatment.
+              {...(headingTag === 'h2'
+                ? {}
+                : { render: createElement(headingTag) })}
+            >
               {intl.formatMessage(
                 modeProps.mode === 'create'
                   ? messages.createTitle
@@ -682,76 +681,78 @@ export default function CodebookEntityEditor({
             </Paragraph>
           </div>
 
-          {snapshot.authoritativeChanged && (
-            <Alert variant="warning" appearance="soft" density="compact">
-              <AlertTitle>
-                {intl.formatMessage(
-                  codebookEditingMessages.staleAuthoritativeTitle,
-                )}
-              </AlertTitle>
-              <AlertDescription>
-                {intl.formatMessage(messages.staleAuthoritativeDescription)}
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {snapshot.lastFailure !== null && (
-            <Alert
-              ref={failureRef}
-              variant="destructive"
-              appearance="soft"
-              density="compact"
-              tabIndex={-1}
-            >
-              <AlertTitle>
-                {intl.formatMessage(messages.failureTitle)}
-              </AlertTitle>
-              <AlertDescription>
-                {failureMessage(snapshot.lastFailure, intl)}
-              </AlertDescription>
-            </Alert>
-          )}
-
-          <CodebookEntityFields
-            subject={subject}
-            draft={snapshot.draft}
-            onChange={(draft) => {
-              activeRequestId.current = null;
-              session.replaceDraft(draft);
-            }}
-            errors={errors}
-            disabled={interactionDisabled}
-          />
-
-          <div className="flex flex-wrap justify-end gap-3">
-            {onCancel !== undefined && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onCancel}
-                disabled={busy}
-              >
-                {intl.formatMessage(commonMessages.cancel)}
-              </Button>
+          <EnclosingHeadingLevel level={headingTag}>
+            {snapshot.authoritativeChanged && (
+              <Alert variant="warning" appearance="soft" density="compact">
+                <AlertTitle>
+                  {intl.formatMessage(
+                    codebookEditingMessages.staleAuthoritativeTitle,
+                  )}
+                </AlertTitle>
+                <AlertDescription>
+                  {intl.formatMessage(messages.staleAuthoritativeDescription)}
+                </AlertDescription>
+              </Alert>
             )}
-            {canSubmit && (
-              <Button
-                type="submit"
-                color="primary"
-                disabled={
-                  interactionDisabled ||
-                  snapshot.authoritativeChanged ||
-                  (modeProps.mode === 'update' && !session.isDirty())
-                }
+
+            {snapshot.lastFailure !== null && (
+              <Alert
+                ref={failureRef}
+                variant="destructive"
+                appearance="soft"
+                density="compact"
+                tabIndex={-1}
               >
-                {intl.formatMessage(
-                  snapshot.status === 'submitting'
-                    ? codebookEditingMessages.saving
-                    : messages.submit,
-                )}
-              </Button>
+                <AlertTitle>
+                  {intl.formatMessage(messages.failureTitle)}
+                </AlertTitle>
+                <AlertDescription>
+                  {compoundFailureMessage(snapshot.lastFailure, intl)}
+                </AlertDescription>
+              </Alert>
             )}
-          </div>
+
+            <CodebookEntityFields
+              subject={subject}
+              draft={snapshot.draft}
+              onChange={(draft) => {
+                activeRequestId.current = null;
+                session.replaceDraft(draft);
+              }}
+              errors={errors}
+              disabled={interactionDisabled}
+            />
+
+            <div className="flex flex-wrap justify-end gap-3">
+              {onCancel !== undefined && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onCancel}
+                  disabled={busy}
+                >
+                  {intl.formatMessage(commonMessages.cancel)}
+                </Button>
+              )}
+              {canSubmit && (
+                <Button
+                  type="submit"
+                  color="primary"
+                  disabled={
+                    interactionDisabled ||
+                    snapshot.authoritativeChanged ||
+                    (modeProps.mode === 'update' && !session.isDirty())
+                  }
+                >
+                  {intl.formatMessage(
+                    snapshot.status === 'submitting'
+                      ? codebookEditingMessages.saving
+                      : messages.submit,
+                  )}
+                </Button>
+              )}
+            </div>
+          </EnclosingHeadingLevel>
         </div>
       </form>
     </Surface>

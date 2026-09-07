@@ -1,4 +1,5 @@
 import {
+  createElement,
   useEffect,
   useMemo,
   useRef,
@@ -6,12 +7,17 @@ import {
   type FormEvent,
 } from 'react';
 
-import { defineMessages, formatMessageError } from '@codaco/app-i18n/messages';
+import { defineMessages } from '@codaco/app-i18n/messages';
 import type { IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import Surface from '@codaco/fresco-ui/layout/Surface';
+import {
+  EnclosingHeadingLevel,
+  headingTagBelow,
+  useEnclosingHeadingLevel,
+} from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
@@ -22,10 +28,11 @@ import {
   codebookEditingMessages,
   missingComparisonTargetMessage,
 } from '../codebookMessages.ts';
+import { compoundFailureMessage } from '../compoundFailureCopy.ts';
 import {
   AuxiliaryCodebookDraftSession,
   buildUpdateVariableRequest,
-  type AuxiliaryCodebookDraftFailure,
+  type AuxiliaryCodebookSubmitResult,
 } from '../editing.ts';
 import {
   isValidationWithListValue,
@@ -165,33 +172,6 @@ const withVariableValidation = (
   ]);
 };
 
-/**
- * `intl` rather than `useAppIntl()` inside, because the refusal being
- * presented reaches here as a plain string: a compound edit's `message` is
- * either this package's own encoded descriptor or a host's already-written
- * sentence, and `formatMessageError(…) ?? text` is what tells them apart.
- */
-const failureMessage = (
-  failure: AuxiliaryCodebookDraftFailure,
-  intl: IntlShape,
-): string => {
-  if (failure.kind === 'error') {
-    return formatMessageError(failure.message, intl) ?? failure.message;
-  }
-  if (failure.result.status === 'failed') {
-    return (
-      formatMessageError(failure.result.message, intl) ?? failure.result.message
-    );
-  }
-  const blocker = failure.result.blockedSections[0];
-  if (blocker?.holder !== undefined) {
-    return intl.formatMessage(codebookEditingMessages.blockedByHolder, {
-      name: blocker.holder.displayName,
-    });
-  }
-  return intl.formatMessage(codebookEditingMessages.blockedUnknownHolder);
-};
-
 const missingTargetIssue = (
   validation: Readonly<ValidationMap>,
   allVariables: Readonly<UnknownRecord>,
@@ -220,9 +200,17 @@ export type CodebookVariableValidationEditorProps = Readonly<{
   allSubjectVariables: Readonly<UnknownRecord>;
   requestMetadata: CodebookVariableValidationRequestMetadata;
   readOnly?: boolean;
+  /**
+   * Sends the compound edit, and may refuse it instead.
+   *
+   * A host that knows the draft contradicts rules already committed answers
+   * `{ status: 'contradiction', message }` rather than a `failed` result: the
+   * sentence is already written for the researcher, and the editor shows it
+   * verbatim. See `AuxiliaryCodebookContradiction`.
+   */
   onSubmitRequest(
     request: CompoundEditRequest,
-  ): Promise<CompoundEditResult> | CompoundEditResult;
+  ): Promise<AuxiliaryCodebookSubmitResult> | AuxiliaryCodebookSubmitResult;
   onComplete?(result: Extract<CompoundEditResult, { status: 'applied' }>): void;
 }>;
 
@@ -328,6 +316,12 @@ export default function CodebookVariableValidationEditor({
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    // Stops at this form: a `Dialog` portals out of the DOM but stays a React
+    // descendant, so React would otherwise hand this submit to the form the
+    // editor was opened from — a prompt row, or the stage itself — and save
+    // that instead. `preventDefault` alone only stops the browser's own
+    // navigation, which is not what propagates here.
+    event.stopPropagation();
     if (readOnly || busy || !dirty || issue !== undefined) return;
     const requestId = activeRequestId.current ?? requestMetadata.createId();
     activeRequestId.current = requestId;
@@ -367,6 +361,16 @@ export default function CodebookVariableValidationEditor({
     }
   };
 
+  // Opened from a dialog, whose own title is the heading above this one: an
+  // `h2` written out here sat beside the dialog's title instead of under it,
+  // and every alert this editor raises counted from the dialog and landed
+  // beside this title in turn.
+  const enclosingHeadingLevel = useEnclosingHeadingLevel();
+  const headingTag =
+    enclosingHeadingLevel === null
+      ? 'h2'
+      : headingTagBelow(enclosingHeadingLevel);
+
   const saveLabel = intl.formatMessage(
     snapshot.status === 'submitting'
       ? codebookEditingMessages.saving
@@ -380,7 +384,14 @@ export default function CodebookVariableValidationEditor({
       <form onSubmit={(event) => void handleSubmit(event)} noValidate>
         <div className="flex flex-col gap-6">
           <div>
-            <Heading level="h2" margin="none">
+            <Heading
+              level="h2"
+              margin="none"
+              // The element only — `level` still carries the type treatment.
+              {...(headingTag === 'h2'
+                ? {}
+                : { render: createElement(headingTag) })}
+            >
               {intl.formatMessage(messages.title, { name: variableName })}
             </Heading>
             <Paragraph emphasis="muted" margin="none">
@@ -388,88 +399,90 @@ export default function CodebookVariableValidationEditor({
             </Paragraph>
           </div>
 
-          {snapshot.authoritativeChanged &&
-            !attributeUnavailable &&
-            !attributeTypeChanged && (
+          <EnclosingHeadingLevel level={headingTag}>
+            {snapshot.authoritativeChanged &&
+              !attributeUnavailable &&
+              !attributeTypeChanged && (
+                <Alert variant="warning" appearance="soft" density="compact">
+                  <AlertTitle>
+                    {intl.formatMessage(
+                      codebookEditingMessages.staleAuthoritativeTitle,
+                    )}
+                  </AlertTitle>
+                  <AlertDescription>
+                    {intl.formatMessage(messages.staleAuthoritativeDescription)}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+            {attributeTypeChanged && (
               <Alert variant="warning" appearance="soft" density="compact">
                 <AlertTitle>
-                  {intl.formatMessage(
-                    codebookEditingMessages.staleAuthoritativeTitle,
-                  )}
+                  {intl.formatMessage(messages.typeChangedTitle)}
                 </AlertTitle>
                 <AlertDescription>
-                  {intl.formatMessage(messages.staleAuthoritativeDescription)}
+                  {intl.formatMessage(messages.typeChangedDescription)}
                 </AlertDescription>
               </Alert>
             )}
 
-          {attributeTypeChanged && (
-            <Alert variant="warning" appearance="soft" density="compact">
-              <AlertTitle>
-                {intl.formatMessage(messages.typeChangedTitle)}
-              </AlertTitle>
-              <AlertDescription>
-                {intl.formatMessage(messages.typeChangedDescription)}
-              </AlertDescription>
-            </Alert>
-          )}
+            {snapshot.lastFailure !== null && (
+              <Alert
+                ref={failureRef}
+                variant="destructive"
+                appearance="soft"
+                density="compact"
+                tabIndex={-1}
+              >
+                <AlertTitle>
+                  {intl.formatMessage(messages.failureTitle)}
+                </AlertTitle>
+                <AlertDescription>
+                  {compoundFailureMessage(snapshot.lastFailure, intl)}
+                </AlertDescription>
+              </Alert>
+            )}
 
-          {snapshot.lastFailure !== null && (
-            <Alert
-              ref={failureRef}
-              variant="destructive"
-              appearance="soft"
-              density="compact"
-              tabIndex={-1}
-            >
-              <AlertTitle>
-                {intl.formatMessage(messages.failureTitle)}
-              </AlertTitle>
-              <AlertDescription>
-                {failureMessage(snapshot.lastFailure, intl)}
-              </AlertDescription>
-            </Alert>
-          )}
+            {attributeUnavailable || draftVariable === undefined ? (
+              <Alert variant="destructive" appearance="soft" density="compact">
+                <AlertTitle>
+                  {intl.formatMessage(messages.attributeUnavailableTitle)}
+                </AlertTitle>
+                <AlertDescription>
+                  {intl.formatMessage(messages.attributeUnavailableDescription)}
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <VariableValidationEditor
+                entity={subject.entity}
+                variableType={variableType}
+                currentVariableId={variableId}
+                allVariables={variablesForValidation}
+                value={validation}
+                onChange={(nextValidation) => {
+                  activeRequestId.current = null;
+                  session.replaceDraft(
+                    withVariableValidation(
+                      snapshot.draft,
+                      variableId,
+                      nextValidation,
+                    ),
+                  );
+                }}
+                readOnly={readOnly || busy || attributeTypeChanged}
+              />
+            )}
 
-          {attributeUnavailable || draftVariable === undefined ? (
-            <Alert variant="destructive" appearance="soft" density="compact">
-              <AlertTitle>
-                {intl.formatMessage(messages.attributeUnavailableTitle)}
-              </AlertTitle>
-              <AlertDescription>
-                {intl.formatMessage(messages.attributeUnavailableDescription)}
-              </AlertDescription>
-            </Alert>
-          ) : (
-            <VariableValidationEditor
-              entity={subject.entity}
-              variableType={variableType}
-              currentVariableId={variableId}
-              allVariables={variablesForValidation}
-              value={validation}
-              onChange={(nextValidation) => {
-                activeRequestId.current = null;
-                session.replaceDraft(
-                  withVariableValidation(
-                    snapshot.draft,
-                    variableId,
-                    nextValidation,
-                  ),
-                );
-              }}
-              readOnly={readOnly || busy || attributeTypeChanged}
-            />
-          )}
-
-          <div className="flex flex-wrap justify-end gap-3">
-            <Button
-              type="submit"
-              color="primary"
-              disabled={readOnly || busy || !dirty || issue !== undefined}
-            >
-              {saveLabel}
-            </Button>
-          </div>
+            <div className="flex flex-wrap justify-end gap-3">
+              <Button
+                type="submit"
+                color="primary"
+                disabled={readOnly || busy || !dirty || issue !== undefined}
+              >
+                {saveLabel}
+              </Button>
+            </div>
+          </EnclosingHeadingLevel>
         </div>
       </form>
     </Surface>

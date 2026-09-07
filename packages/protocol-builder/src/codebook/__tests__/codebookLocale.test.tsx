@@ -352,10 +352,12 @@ describe('the codebook editors swept for English', () => {
 
     await user.click(screen.getByRole('button', { name: 'Crear atributo' }));
 
-    // The blocker itself is a section id, so the sentence around it is what
-    // identifies the alert.
+    // A section id is an internal address and is never shown, so a blocked
+    // save is reported by who is holding it — here, by nobody the host named.
     expect(
-      await screen.findByText(/Tu borrador se ha conservado\./),
+      await screen.findByText(
+        'Se está editando ahora mismo una sección necesaria para este cambio.',
+      ),
     ).toBeVisible();
     expectNoLocaleLeaks(
       'the attribute editor after a refused save',
@@ -476,7 +478,7 @@ describe('the codebook editors swept for English', () => {
 
     expect(
       await screen.findByText(
-        'Se está editando una sección necesaria para este cambio.',
+        'Se está editando ahora mismo una sección necesaria para este cambio.',
       ),
     ).toBeVisible();
     expectNoLocaleLeaks(

@@ -3,17 +3,17 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ecosystemLocales } from '@codaco/app-i18n/locales';
-import { createMessageError } from '@codaco/app-i18n/messages';
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { compoundRequestMessages } from '../../../compound-edit/compoundRequestMessages.ts';
 import { protocolBuilderCatalogs } from '../../../locales/catalogs.ts';
 import type {
   CompoundEditRequest,
   CompoundEditResult,
 } from '../../../session.ts';
+import type { AuxiliaryCodebookSubmitResult } from '../../editing.ts';
+import { draftValidatedElsewhereMessage } from '../../variableValidation.ts';
 import CodebookVariableValidationEditor, {
   type CodebookVariableValidationEditorProps,
 } from '../CodebookVariableValidationEditor.tsx';
@@ -59,6 +59,41 @@ const appliedResult = (): Extract<
     manifestRevision: { sequence: 2n, hash: 'revision-2' },
   },
 });
+
+/**
+ * The package's own words for a refused save, from `compoundFailureCopy`.
+ *
+ * Written out here rather than imported: the point of the copy is that it is
+ * NOT the message the host sent, and a test that read the same table as the
+ * component would still pass if that table were replaced by a passthrough.
+ */
+const REFUSED = {
+  'heldByNobodyNamed':
+    'A section needed for this change is currently being edited.',
+  'stale-epoch':
+    'Editing access changed while this was being saved, so nothing was saved. Try again.',
+  'lease-lost':
+    'You are no longer the editor of this stage, so nothing was saved. Take over editing and try again.',
+  'stale-base':
+    'Someone else changed this while you were editing it, so nothing was saved. Close and reopen this editor to load their version, then make your change again.',
+  'host-error':
+    'The protocol would not be valid with this change, so nothing was saved. Adjust this type and try again, or close this and come back once the rest of the stage is filled in.',
+  'threw':
+    'This change could not be saved, and nothing was altered. Wait a moment and try again.',
+  'invalid-request':
+    'This change could not be sent, and nothing was saved. Close this editor and try again.',
+} as const;
+
+/** What a host says. None of it reaches the researcher. */
+const HOST_WORDS =
+  'Expected object, received undefined at codebook.node.person';
+
+/**
+ * What a surface that refused the draft itself says, in the shape
+ * `findDraftContradictions` writes. This one DOES reach the researcher.
+ */
+const CONTRADICTION =
+  '“Minimum value” is above the maximum this attribute is allowed to hold.';
 
 const blockedResult = (): Extract<
   CompoundEditResult,
@@ -258,25 +293,25 @@ describe('CodebookVariableValidationEditor', () => {
     {
       name: 'blocked',
       result: blockedResult(),
-      message: 'A section needed for this change is currently being edited.',
+      message: REFUSED.heldByNobodyNamed,
     },
     {
       name: 'stale',
       result: {
         status: 'failed' as const,
         reason: 'stale-epoch' as const,
-        message: 'Editing authority changed before the request completed.',
+        message: HOST_WORDS,
       },
-      message: 'Editing authority changed before the request completed.',
+      message: REFUSED['stale-epoch'],
     },
     {
       name: 'failed',
       result: {
         status: 'failed' as const,
         reason: 'host-error' as const,
-        message: 'The codebook service rejected the request.',
+        message: HOST_WORDS,
       },
-      message: 'The codebook service rejected the request.',
+      message: REFUSED['host-error'],
     },
   ])(
     'keeps the dirty draft visible after a $name result',
@@ -288,7 +323,12 @@ describe('CodebookVariableValidationEditor', () => {
 
       await user.click(screen.getByRole('button', { name: 'Save validation' }));
 
-      expect(await screen.findByRole('alert')).toHaveTextContent(message);
+      const alert = await screen.findByRole('alert');
+      expect(alert).toHaveTextContent(message);
+      // Never the host's own words, and never an internal section address: a
+      // researcher is told what happened to their change, not where.
+      expect(alert).not.toHaveTextContent(HOST_WORDS);
+      expect(alert).not.toHaveTextContent('codebook:node:person');
       expect(
         screen.getByRole('spinbutton', { name: 'Minimum value' }),
       ).toHaveValue(5);
@@ -299,9 +339,64 @@ describe('CodebookVariableValidationEditor', () => {
     },
   );
 
+  /**
+   * The one refusal shown in the words it arrived in.
+   *
+   * A contradiction — rules that cannot all hold at once for this attribute —
+   * is legal to the codebook schema and to the host, so nothing downstream
+   * refuses it. The surface that detects it says which rule is the problem,
+   * which is more than `compoundFailureCopy` could write about it.
+   *
+   * The control is the second case: the SAME sentence, reported the way it was
+   * before this channel existed, is discarded and the researcher is told the
+   * change could not be sent. That is the bug the status exists to fix, so the
+   * test would pass on the old code for the wrong reason without it.
+   */
+  it.each([
+    {
+      name: 'a contradiction the surface refused itself',
+      result: {
+        status: 'contradiction',
+        message: CONTRADICTION,
+      } satisfies AuxiliaryCodebookSubmitResult,
+      shown: CONTRADICTION,
+      hidden: REFUSED['invalid-request'],
+    },
+    {
+      name: 'the same sentence sent as a failed result',
+      result: {
+        status: 'failed',
+        reason: 'invalid-request',
+        message: CONTRADICTION,
+      } satisfies AuxiliaryCodebookSubmitResult,
+      shown: REFUSED['invalid-request'],
+      hidden: CONTRADICTION,
+    },
+  ])('reports $name', async ({ result, shown, hidden }) => {
+    const onSubmitRequest = vi.fn(() => result);
+    const onComplete = vi.fn();
+    renderEditor({ onSubmitRequest, onComplete });
+    const user = await replaceMinimumValue('5');
+
+    await user.click(screen.getByRole('button', { name: 'Save validation' }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(shown);
+    expect(alert).not.toHaveTextContent(hidden);
+    // Refused either way: the dirty draft stays put and the editor stays open.
+    expect(
+      screen.getByRole('spinbutton', { name: 'Minimum value' }),
+    ).toHaveValue(5);
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole('button', { name: 'Save validation' }),
+    ).toBeEnabled();
+  });
+
   it('reads a refusal this package wrote in the reader’s language', async () => {
-    // `CompoundEditResult.message` is a plain string because a HOST writes its
-    // own into it, so the ones this package produces travel encoded and have
+    // A contradiction is the one refusal shown in the words it arrived in, and
+    // those words are a plain string because a HOST writes its own into the
+    // same field — so the ones this package produces travel encoded and have
     // to be decoded here. Without the decode this alert shows the raw
     // `@codaco/app-i18n/error/v1:` payload, which is neither English nor
     // Spanish. That payload carries the English `defaultMessage` inside it, so
@@ -309,10 +404,14 @@ describe('CodebookVariableValidationEditor', () => {
     // of anything — each language is paired with the assertion that the
     // envelope is gone. Both languages, so a decode wired to a fixed formatter
     // would fail too.
+    //
+    // Every OTHER refusal reaches the reader as `compoundFailureCopy`'s own
+    // sentence for that reason rather than as the message it arrived with, so
+    // this is the only channel through which an undecoded payload could ever
+    // be rendered by this editor.
     const refusal = {
-      status: 'failed' as const,
-      reason: 'invalid-request' as const,
-      message: createMessageError(compoundRequestMessages.touchesNothing),
+      status: 'contradiction' as const,
+      message: draftValidatedElsewhereMessage('Height'),
     };
     const props: CodebookVariableValidationEditorProps = {
       openId: 'open-1',
@@ -341,7 +440,7 @@ describe('CodebookVariableValidationEditor', () => {
     await user.click(screen.getByRole('button', { name: 'Save validation' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'a compound edit must touch at least one section',
+      '"Height" is collected by this stage\'s form, so it cannot be assigned by this prompt',
     );
     expect(screen.getByRole('alert')).not.toHaveTextContent(
       '@codaco/app-i18n/error/v1',
@@ -349,7 +448,7 @@ describe('CodebookVariableValidationEditor', () => {
 
     rerender(view('es'));
     expect(screen.getByRole('alert')).toHaveTextContent(
-      'una edición compuesta debe afectar al menos a una sección',
+      'El formulario de esta etapa recoge «Height», por lo que esta pregunta no puede asignarlo',
     );
     expect(screen.getByRole('alert')).not.toHaveTextContent(
       '@codaco/app-i18n/error/v1',
@@ -408,7 +507,7 @@ describe('CodebookVariableValidationEditor', () => {
     const user = await replaceMinimumValue('5');
 
     await user.click(screen.getByRole('button', { name: 'Save validation' }));
-    await screen.findByText('Connection dropped.');
+    await screen.findByText(REFUSED.threw);
 
     const reemitted = structuredClone(initial);
     rerender(
@@ -440,7 +539,7 @@ describe('CodebookVariableValidationEditor', () => {
         .mockReturnValueOnce({
           status: 'failed',
           reason,
-          message: 'The request base changed.',
+          message: HOST_WORDS,
         })
         .mockReturnValueOnce(appliedResult());
       renderEditor({
@@ -453,7 +552,7 @@ describe('CodebookVariableValidationEditor', () => {
       const user = await replaceMinimumValue('5');
 
       await user.click(screen.getByRole('button', { name: 'Save validation' }));
-      await screen.findByText('The request base changed.');
+      await screen.findByText(REFUSED[reason]);
       await user.click(screen.getByRole('button', { name: 'Save validation' }));
 
       await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(2));
