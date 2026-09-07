@@ -5,6 +5,7 @@ import { SCHEMA_LOCK_KEY, stampFingerprint } from '../schema.ts';
 import type { Migration } from './artifact.ts';
 import {
   enforceMigrationSecurity,
+  enforceMigrationQuiescence,
   protectMigrationEvidence,
 } from './security.ts';
 
@@ -137,6 +138,8 @@ export async function migrateDatabase(
     }
     const previous = applied.at(-1);
     if (previous) await verifyFingerprint(client, previous.fingerprint);
+    const pending = applied.length < migrations.length;
+    if (pending) await enforceMigrationQuiescence(client);
 
     await client.query(`CREATE SCHEMA IF NOT EXISTS studio_migrations;
       REVOKE ALL ON SCHEMA studio_migrations FROM PUBLIC;
@@ -175,6 +178,9 @@ export async function migrateDatabase(
     await protectMigrationEvidence(client);
     await enforceMigrationSecurity(client, allowedLogins);
     await verifyFingerprint(client, expectedFingerprint);
+    // Refresh after SQL so a runtime that breaches the deployment drain
+    // cannot remain connected while this transaction commits a new schema.
+    if (pending) await enforceMigrationQuiescence(client);
     await client.query('COMMIT');
     return completed;
   } catch (error) {

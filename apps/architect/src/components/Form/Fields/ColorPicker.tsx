@@ -1,3 +1,6 @@
+import { type IntlShape, createAppIntl } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+const defaultIntl = createAppIntl({ locale: 'en' });
 import { Radio } from '@base-ui/react/radio';
 import { RadioGroup } from '@base-ui/react/radio-group';
 import { range } from 'es-toolkit';
@@ -31,9 +34,12 @@ type ColorPickerProps = CreateFormFieldProps<
   }
 >;
 
-const asColorOption = (name: string): ColorOption => {
+const asColorOption = (
+  name: string,
+  intl: IntlShape = defaultIntl,
+): ColorOption => {
   const value = ColorReferenceSchema.parse(name);
-  return { label: getColorSwatchName(value), value };
+  return { label: getColorSwatchName(value, intl), value };
 };
 
 /**
@@ -58,11 +64,12 @@ const ColorPicker = ({
   'aria-labelledby': ariaLabelledBy,
   'aria-required': ariaRequired,
 }: ColorPickerProps) => {
+  const intl = useAppIntl();
   // range() is end-exclusive, so run to paletteRange + 1 — otherwise the
   // palette's last colour can never be picked.
   const offered = palette
     ? range(1, paletteRange + 1).map((index) =>
-        asColorOption(`${palette}-${index}`),
+        asColorOption(`${palette}-${index}`, intl),
       )
     : options;
 
@@ -74,7 +81,7 @@ const ColorPicker = ({
   const colors =
     currentReference.success &&
     !offered.some((color) => color.value === currentReference.data)
-      ? [...offered, asColorOption(currentReference.data)]
+      ? [...offered, asColorOption(currentReference.data, intl)]
       : offered;
 
   const isRequired = required || Boolean(ariaRequired);

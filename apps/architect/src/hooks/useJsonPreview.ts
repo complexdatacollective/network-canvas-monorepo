@@ -1,8 +1,22 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRoute } from 'wouter';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { useAppSelector } from '~/ducks/hooks';
 import { getProtocol, getStage } from '~/selectors/protocol';
+const messages = defineMessages({
+  stageJSON: {
+    id: 'architect.hooks.useJsonPreview.stageJSON',
+    defaultMessage: 'Stage JSON',
+    description: 'The label text in hooks / useJsonPreview.',
+  },
+  protocolJSON: {
+    id: 'architect.hooks.useJsonPreview.protocolJSON',
+    defaultMessage: 'Protocol JSON',
+    description: 'The label text in hooks / useJsonPreview.',
+  },
+});
 
 type JsonPreviewContext = {
   label: string;
@@ -10,6 +24,7 @@ type JsonPreviewContext = {
 } | null;
 
 export function useJsonPreview() {
+  const intl = useAppIntl();
   const [isOpen, setIsOpen] = useState(false);
 
   const [, stageParams] = useRoute('/protocol/stage/:stageId');
@@ -23,9 +38,9 @@ export function useJsonPreview() {
 
   const context: JsonPreviewContext =
     isStageRoute && stage
-      ? { label: 'Stage JSON', data: stage }
+      ? { label: intl.formatMessage(messages.stageJSON), data: stage }
       : protocol
-        ? { label: 'Protocol JSON', data: protocol }
+        ? { label: intl.formatMessage(messages.protocolJSON), data: protocol }
         : null;
 
   const toggle = useCallback(() => {

@@ -10,6 +10,9 @@ import {
   useSyncExternalStore,
 } from 'react';
 
+import { formatMessageError } from '@codaco/app-i18n/messages';
+import type { IntlShape } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button, { IconButton } from '@codaco/fresco-ui/Button';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
@@ -173,6 +176,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
     [draftSession],
   );
   const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const intl = useAppIntl();
   const [issues, setIssues] = useState<readonly CodebookDraftIssue[]>([]);
   const activeRequestId = useRef<string | null>(null);
   const failureRef = useRef<HTMLDivElement>(null);
@@ -379,7 +383,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
   const nameErrors = messagesAt(issues, 'name');
   const typeErrors = messagesAt(issues, 'type');
   const optionErrors = messagesAt(issues, 'options');
-  const failurePresentation = failureFrom(snapshot.lastFailure);
+  const failurePresentation = failureFrom(snapshot.lastFailure, intl);
 
   return (
     <Surface
@@ -731,13 +735,25 @@ function messagesAt(
     .map((issue) => issue.message);
 }
 
-function failureFrom(failure: AuxiliaryCodebookDraftFailure | null): Readonly<{
+/**
+ * `intl` rather than `useAppIntl()` inside, because the refusal being
+ * presented reaches here as a plain string: a compound edit's `message` is
+ * either this package's own encoded descriptor or a host's already-written
+ * sentence, and `formatMessageError(…) ?? text` is what tells them apart.
+ */
+function failureFrom(
+  failure: AuxiliaryCodebookDraftFailure | null,
+  intl: IntlShape,
+): Readonly<{
   variant: 'warning' | 'destructive';
   message: string;
 }> | null {
   if (failure === null) return null;
   if (failure.kind === 'error') {
-    return { variant: 'destructive', message: failure.message };
+    return {
+      variant: 'destructive',
+      message: formatMessageError(failure.message, intl) ?? failure.message,
+    };
   }
   if (failure.result.status === 'blocked') {
     const blockers = failure.result.blockedSections.map(
@@ -751,9 +767,11 @@ function failureFrom(failure: AuxiliaryCodebookDraftFailure | null): Readonly<{
       message: `The edit is blocked by ${blockers.join(', ')}. Your draft has been preserved.`,
     };
   }
+  const reason =
+    formatMessageError(failure.result.message, intl) ?? failure.result.message;
   return {
     variant: 'destructive',
-    message: `${failure.result.message} Your draft has been preserved.`,
+    message: `${reason} Your draft has been preserved.`,
   };
 }
 

@@ -3,6 +3,9 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { serve } from '@hono/node-server';
 import { WebSocketServer } from 'ws';
 
+import { assertSafePostgresRuntimeIdentity } from '@codaco/studio-sync/postgres-runtime-identity';
+import { TENANT_ROLES } from '@codaco/studio-sync/rls';
+
 import { createApp } from './app.ts';
 import { createAssetStore } from './assets.ts';
 import { flushDeniedAuditSummaries } from './audit/denial-rate-limit.ts';
@@ -15,6 +18,7 @@ import {
 } from './db/pool.ts';
 import { checkSchema, type SchemaState } from './db/schema.ts';
 import { readEncryptionEnv, readEnv } from './env.ts';
+import { installFatalErrorHandlers } from './fatal-errors.ts';
 import { logOperational } from './observability/logger.ts';
 import { observeWebSocketServer } from './observability/requests.ts';
 import { createObservability } from './observability/runtime.ts';
@@ -24,15 +28,16 @@ import {
   type InvitationDeliveryWorker,
   startInvitationDeliveryWorker,
 } from './team/invitation-delivery-dispatcher.ts';
+import { createServerTelemetry, type ServerTelemetry } from './telemetry.ts';
+import { STUDIO_VERSION } from './version.ts';
 
-// The executable owns process failure policy. Imported app modules never
-// install process hooks, and a fatal error never continues serving requests.
-function failProcess(): never {
-  logOperational('STUDIO_PROCESS_FAILED');
-  process.exit(1);
-}
-process.on('uncaughtException', failProcess);
-process.on('unhandledRejection', failProcess);
+// Process policy is installed before configuration or SDK loading can fail.
+let telemetry: ServerTelemetry | undefined;
+let stopServing = () => {};
+installFatalErrorHandlers({
+  telemetry: () => telemetry,
+  stopServing: () => stopServing(),
+});
 
 // The server entry, development and production both: one Node process serving
 // the public API, the internal RPC surface, /healthz, and the app WebSocket
@@ -41,14 +46,33 @@ process.on('unhandledRejection', failProcess);
 // and development serves them from the Vite dev server, which proxies API
 // paths here so both topologies present a single origin.
 
-const env = (() => {
+const { env, mailer } = (() => {
   try {
-    return readEnv();
+    const resolvedEnv = readEnv();
+    // One owned transport serves authentication and the invitation worker.
+    // Validate it before database work or request admission.
+    return {
+      env: resolvedEnv,
+      mailer: resolvedEnv.auth
+        ? createMailer(resolvedEnv.auth.mailer)
+        : undefined,
+    };
   } catch {
     logOperational('STUDIO_CONFIGURATION_INVALID');
     return process.exit(1);
   }
 })();
+if (env.telemetry) {
+  try {
+    telemetry = await createServerTelemetry(true, {
+      mode: env.deploymentMode,
+      runtime: 'both',
+      version: STUDIO_VERSION,
+    });
+  } catch {
+    /* SDK availability cannot prevent Studio from starting. */
+  }
+}
 const pool = env.db ? createPool(env.db) : undefined;
 const maintenancePool = env.db ? createMaintenancePool(env.db) : undefined;
 const assetStore = env.s3 ? createAssetStore(env.s3) : undefined;
@@ -59,6 +83,7 @@ function startDatabaseWorkers(): void {
     invitationDeliveryWorker ||
     !maintenancePool ||
     !env.auth ||
+    !mailer ||
     env.auth.mailer.kind === 'refuse'
   ) {
     return;
@@ -66,9 +91,35 @@ function startDatabaseWorkers(): void {
   invitationDeliveryWorker = startInvitationDeliveryWorker({
     pool: maintenancePool,
     observer: observability.metrics.observer,
-    mailer: createMailer(env.auth.mailer),
+    reportError: (error) => telemetry?.capture('server_worker', error),
+    mailer,
     publicBaseUrl: env.auth.baseUrl,
   });
+}
+
+async function admitDatabaseRuntime(): Promise<boolean> {
+  if (!pool || !maintenancePool || env.devDefaults) return true;
+  const roles = Object.values(TENANT_ROLES);
+  try {
+    for (const [runtimePool, intendedRole] of [
+      [pool, TENANT_ROLES.app],
+      [maintenancePool, TENANT_ROLES.maintenance],
+    ] as const) {
+      const client = await runtimePool.connect();
+      try {
+        await assertSafePostgresRuntimeIdentity(client, {
+          intendedRole,
+          allowedRoles: roles,
+        });
+      } finally {
+        client.release();
+      }
+    }
+    return true;
+  } catch {
+    logOperational('STUDIO_DATABASE_IDENTITY_UNSAFE');
+    return process.exit(1);
+  }
 }
 
 // Outside development a stale or absent schema is a resolved answer, not a
@@ -115,6 +166,10 @@ if (pool) {
   }
 }
 
+// Verify both actual serving logins before reading keys, constructing auth, or
+// admitting workers and requests.
+await admitDatabaseRuntime();
+
 let encryptionKeys: EncryptionKeys | undefined;
 if (maintenancePool) {
   try {
@@ -139,6 +194,8 @@ startDatabaseWorkers();
 
 const app = createApp(env, {
   encryptionKeys,
+  telemetry,
+  mailer,
   assetStore,
   observability,
   invitationDeliveryAvailable: Boolean(
@@ -162,6 +219,15 @@ const server = serve(
   () => logOperational('STUDIO_SERVER_STARTED'),
 );
 
+stopServing = () => {
+  server.close();
+  if ('closeAllConnections' in server) server.closeAllConnections();
+  for (const socket of wsServer.clients) socket.terminate();
+  void invitationDeliveryWorker?.stop();
+  mailer?.close();
+  observability.stop();
+};
+
 // Graceful shutdown is a requirement, not a nicety (#1247): every backend
 // deploy drops live sync sessions, so connections are told to go away (1001)
 // and their close handshakes are awaited before the listener drains and the
@@ -174,6 +240,11 @@ function shutdown() {
   shuttingDown = true;
   observability.stop();
   setTimeout(() => process.exit(1), 10_000).unref();
+  const workerStopped = invitationDeliveryWorker?.stop();
+  mailer?.close();
+  const httpClosed = new Promise<void>((resolve, reject) => {
+    server.close((error) => (error ? reject(error) : resolve()));
+  });
   const closing = [...wsServer.clients].map(
     (client) =>
       new Promise<void>((done) => {
@@ -181,24 +252,29 @@ function shutdown() {
         client.close(1001, 'Server shutting down');
       }),
   );
-  void Promise.all(closing).then(() => {
-    server.close(() => {
-      // Suppression summaries use the application pool, so give their
-      // bounded flush a chance to become immutable before closing database
-      // resources. The outer ten-second backstop still caps total shutdown.
-      void Promise.all([
-        invitationDeliveryWorker?.stop(),
-        flushDeniedAuditSummaries(),
-      ])
-        .catch(() => undefined)
-        .then(() => Promise.all([pool?.end(), maintenancePool?.end()]))
-        .catch(() => logOperational('STUDIO_SHUTDOWN_FAILED'))
-        .finally(() => {
-          process.exit(0);
-        });
-    });
-    return undefined;
-  });
+  wsServer.close();
+  void (async () => {
+    let exitCode = 0;
+    try {
+      await Promise.all([httpClosed, workerStopped, ...closing]);
+      if (!(await flushDeniedAuditSummaries()))
+        throw new Error('Audit summaries did not flush.');
+    } catch {
+      logOperational('STUDIO_SHUTDOWN_FAILED');
+      exitCode = 1;
+    } finally {
+      const ended = await Promise.allSettled([
+        pool?.end(),
+        maintenancePool?.end(),
+        telemetry?.close(),
+      ]);
+      if (ended.some((result) => result.status === 'rejected')) {
+        logOperational('STUDIO_SHUTDOWN_FAILED');
+        exitCode = 1;
+      }
+      process.exit(exitCode);
+    }
+  })();
 }
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);

@@ -1,13 +1,39 @@
 import { Upload } from 'lucide-react';
 import type { DropzoneState } from 'react-dropzone';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import { ExternalLink } from '../ExternalLink';
 import { CARD_RADIUS_PX, cardBase, cardHeadingSizeClass } from './cardStyles';
 
-const IMPORT_HEADING = 'Import a protocol';
+const messages = defineMessages({
+  chooseANetcanvasProtocolFile: {
+    id: 'interviewer.importTriggerCard.chooseANetcanvasProtocolFile',
+    defaultMessage: 'Choose a .netcanvas protocol file',
+    description: 'User-facing message in Interviewer Import Trigger Card.',
+  },
+  importAProtocol: {
+    id: 'interviewer.importTriggerCard.importAProtocol',
+    defaultMessage: 'Import a protocol',
+    description: 'The aria-label label in Interviewer Import Trigger Card.',
+  },
+  drop: {
+    id: 'interviewer.importTriggerCard.drop',
+    defaultMessage:
+      'Drop a <extension>.netcanvas</extension> file, or click to browse',
+    description:
+      'Import instructions; preserve the literal .netcanvas file extension inside the styled tag.',
+  },
+  authoring: {
+    id: 'interviewer.importTriggerCard.authoring',
+    defaultMessage: 'Protocols are authored in <link>Architect</link>.',
+    description:
+      'Explains where protocols are created; Architect is a product name and link.',
+  },
+});
 
 type ImportTriggerCardProps = {
   // Carousel activation (click / Enter on the active card): opens the file
@@ -29,6 +55,8 @@ export function ImportTriggerCard({
   getInputProps,
   isDragActive,
 }: ImportTriggerCardProps) {
+  const intl = useAppIntl();
+  const importHeading = intl.formatMessage(messages.importAProtocol);
   const rootProps = getRootProps({
     // Match the protocol card's radius so the visual footprint (and
     // therefore perceived size) is identical.
@@ -44,7 +72,9 @@ export function ImportTriggerCard({
     <div {...rootProps}>
       <input
         {...getInputProps({
-          'aria-label': 'Choose a .netcanvas protocol file',
+          'aria-label': intl.formatMessage(
+            messages.chooseANetcanvasProtocolFile,
+          ),
         })}
         data-testid="protocol-import-input"
       />
@@ -55,7 +85,7 @@ export function ImportTriggerCard({
       <button
         type="button"
         onClick={onActivate}
-        aria-label="Import a protocol"
+        aria-label={intl.formatMessage(messages.importAProtocol)}
         className={cx(
           cardBase(),
           'absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-[inherit] px-8 pb-12 text-center',
@@ -76,24 +106,29 @@ export function ImportTriggerCard({
           margin="none"
           className={cx(
             'text-text font-black',
-            cardHeadingSizeClass(IMPORT_HEADING),
+            cardHeadingSizeClass(importHeading),
           )}
         >
-          {IMPORT_HEADING}
+          {importHeading}
         </Heading>
         <span className="text-sm">
-          Drop a <span className="font-monospace text-text">.netcanvas</span>{' '}
-          file, or click to browse
+          {intl.formatMessage(messages.drop, {
+            extension: (chunks) => (
+              <span className="font-monospace text-text">{chunks}</span>
+            ),
+          })}
         </span>
       </button>
       <p className="text-text/70 pointer-events-none absolute inset-x-0 bottom-0 px-8 pb-6 text-center text-xs">
-        Protocols are authored in{' '}
-        <span className="pointer-events-auto">
-          <ExternalLink href="https://architect.networkcanvas.com">
-            Architect
-          </ExternalLink>
-        </span>
-        .
+        {intl.formatMessage(messages.authoring, {
+          link: (chunks) => (
+            <span className="pointer-events-auto">
+              <ExternalLink href="https://architect.networkcanvas.com">
+                {chunks}
+              </ExternalLink>
+            </span>
+          ),
+        })}
       </p>
     </div>
   );

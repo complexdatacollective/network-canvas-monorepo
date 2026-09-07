@@ -1,6 +1,8 @@
-import { useId, useMemo } from 'react';
+import { type ReactNode, useId, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl, useAppLocale } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import Form from '@codaco/fresco-ui/form/Form';
@@ -9,11 +11,13 @@ import {
   useFormValue,
 } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Surface from '@codaco/fresco-ui/layout/Surface';
+import { PortalContainerProvider } from '@codaco/fresco-ui/PortalContainer';
 import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
   createInitialNetwork,
+  InterviewI18nProvider,
   ProtocolField,
   type ProtocolFieldDefinition,
 } from '@codaco/interview';
@@ -34,6 +38,55 @@ import { getProtocol } from '~/selectors/protocol';
 
 import { completeRuleValues } from '../../Validations/ruleValue';
 import { CREATE_NEW_VARIABLE_FIELD } from './withFieldsHandlers';
+const messages = defineMessages({
+  interactivePreview: {
+    id: 'architect.sections.form.fieldEditorPreview.interactivePreview',
+    defaultMessage: 'Interactive preview',
+    description:
+      'Visible text in components / sections / Form / FieldEditorPreview.',
+  },
+  tryTheFieldAsAParticipant: {
+    id: 'architect.sections.form.fieldEditorPreview.tryTheFieldAsAParticipant',
+    defaultMessage:
+      'Try the field as a participant. Use Check response to test its current validation rules.',
+    description:
+      'Visible text in components / sections / Form / FieldEditorPreview.',
+  },
+  whenSelectingAnExistingAttributeChanges: {
+    id: 'architect.sections.form.fieldEditorPreview.whenSelectingAnExistingAttributeChanges',
+    defaultMessage:
+      'When selecting an existing attribute, changes you make to the input control or validation options will also change other uses of this attribute.',
+    description:
+      'Visible text in components / sections / Form / FieldEditorPreview.',
+  },
+  checkResponse: {
+    id: 'architect.sections.form.fieldEditorPreview.checkResponse',
+    defaultMessage: 'Check response',
+    description:
+      'Visible text in components / sections / Form / FieldEditorPreview.',
+  },
+  selectAnAttributeAndInputControl: {
+    id: 'architect.sections.form.fieldEditorPreview.selectAnAttributeAndInputControl',
+    defaultMessage:
+      'Select an attribute and input control to preview this field.',
+    description:
+      'Visible text in components / sections / Form / FieldEditorPreview.',
+  },
+});
+const finalMessages = defineMessages({
+  attribute: {
+    id: 'architect.final.components.sections.Form.FieldEditorPreview.attribute',
+    defaultMessage: 'Attribute label',
+    description:
+      'Built-in inline-preview fallback when no authored attribute label or name is available; authored labels are always preserved.',
+  },
+  question: {
+    id: 'architect.final.components.sections.Form.FieldEditorPreview.question',
+    defaultMessage: 'Your question will appear here.',
+    description:
+      'Built-in inline-preview fallback when no authored question is available; authored questions are always preserved.',
+  },
+});
 
 const PREVIEW_DRAFT_FIELDS = [
   'variable',
@@ -77,6 +130,15 @@ const asNonEmptyString = (value: unknown): string | undefined => {
 
 const passPreviewValidation = () => ({ success: true as const });
 
+function PreviewLocaleRegion({ children }: { children: ReactNode }) {
+  const { locale, direction } = useAppLocale();
+  return (
+    <div lang={locale} dir={direction}>
+      {children}
+    </div>
+  );
+}
+
 /**
  * Interactive participant-facing rendering of the field currently being
  * authored. This component reads the parent dialog's draft store, then mounts
@@ -89,6 +151,7 @@ const FieldEditorPreview = ({
   mode = 'form',
   item = {},
 }: FieldEditorPreviewProps) => {
+  const intl = useAppIntl();
   const headingId = useId();
   const liveValues = useFormValue(PREVIEW_DRAFT_FIELDS);
   // A field the form has not registered yet has no live value to show — the
@@ -137,8 +200,8 @@ const FieldEditorPreview = ({
         codebookVariable?.name ??
         asNonEmptyString(createNewVariable) ??
         variableId ??
-        'Attribute label')
-      : (prompt ?? 'Your question will appear here.');
+        intl.formatMessage(finalMessages.attribute))
+      : (prompt ?? intl.formatMessage(finalMessages.question));
 
   const stageSubject = useMemo<StageSubject | null>(() => {
     if (entity === 'ego') return { entity: 'ego' };
@@ -196,18 +259,17 @@ const FieldEditorPreview = ({
   return (
     <section aria-labelledby={headingId}>
       <Heading id={headingId} level="h3" margin="none">
-        Interactive preview
+        {intl.formatMessage(messages.interactivePreview)}
       </Heading>
       <Paragraph className="mt-2 max-w-[65ch]">
-        Try the field as a participant. Use Check response to test its current
-        validation rules.
+        {intl.formatMessage(messages.tryTheFieldAsAParticipant)}
       </Paragraph>
       {codebookVariable && (
         <Alert variant="info" className="mt-4">
           <AlertDescription>
-            When selecting an existing attribute, changes you make to the input
-            control or validation options will also change other uses of this
-            attribute.
+            {intl.formatMessage(
+              messages.whenSelectingAnExistingAttributeChanges,
+            )}
           </AlertDescription>
         </Alert>
       )}
@@ -218,19 +280,27 @@ const FieldEditorPreview = ({
               key={`${field.type}:${field.component}`}
               onSubmit={passPreviewValidation}
             >
-              <ProtocolField
-                field={field}
-                name="preview-value"
-                validationContext={validationContext}
-              />
+              <InterviewI18nProvider requestedLocale={intl.locale}>
+                <PreviewLocaleRegion>
+                  <PortalContainerProvider>
+                    <ProtocolField
+                      field={field}
+                      name="preview-value"
+                      validationContext={validationContext}
+                    />
+                  </PortalContainerProvider>
+                </PreviewLocaleRegion>
+              </InterviewI18nProvider>
               <div className="flex justify-end">
-                <Button type="submit">Check response</Button>
+                <Button type="submit">
+                  {intl.formatMessage(messages.checkResponse)}
+                </Button>
               </div>
             </Form>
           ) : (
             <div className="flex min-h-56 items-center justify-center text-center">
               <Paragraph className="max-w-[36ch]" margin="none">
-                Select an attribute and input control to preview this field.
+                {intl.formatMessage(messages.selectAnAttributeAndInputControl)}
               </Paragraph>
             </div>
           )}

@@ -1,9 +1,24 @@
 import { Lock, Settings } from 'lucide-react';
 import { motion } from 'motion/react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import { ViewSwitcher } from '~/components/ViewSwitcher';
 import { useAuth } from '~/lib/auth/AuthContext';
+
+const messages = defineMessages({
+  lockApp: {
+    id: 'interviewer.topActionBar.lockApp',
+    defaultMessage: 'Lock app',
+    description: 'The aria-label label in Interviewer Top Action Bar.',
+  },
+  settings: {
+    id: 'interviewer.topActionBar.settings',
+    defaultMessage: 'Settings',
+    description: 'The aria-label label in Interviewer Top Action Bar.',
+  },
+});
 
 // Icon buttons in the top bar share the SegmentedSwitcher's size token so
 // their heights line up (switcher height == Button height per token).
@@ -26,6 +41,7 @@ export function TopActionBarView({
   onLock: () => void;
   onOpenSettings: () => void;
 }) {
+  const intl = useAppIntl();
   return (
     <div className="flex items-center gap-3">
       <ViewSwitcher />
@@ -40,7 +56,7 @@ export function TopActionBarView({
             variant="glass"
             size={TOP_BAR_SIZE}
             icon={<Lock size={22} className="stroke-[3px]" aria-hidden />}
-            aria-label="Lock app"
+            aria-label={intl.formatMessage(messages.lockApp)}
             onClick={onLock}
             className="border-outline"
           />
@@ -56,7 +72,7 @@ export function TopActionBarView({
           variant="glass"
           size={TOP_BAR_SIZE}
           icon={<Settings size={22} className="stroke-[3px]" aria-hidden />}
-          aria-label="Settings"
+          aria-label={intl.formatMessage(messages.settings)}
           onClick={onOpenSettings}
           className="border-outline"
           data-testid="settings-trigger"

@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from 'motion/react';
 
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import type { SkipContext } from '@codaco/fresco-ui/dialogs/DialogProvider';
 
 import { useTrack } from '../../../../analytics/useTrack';
@@ -9,7 +10,8 @@ import ActionButton from '../../../../components/ActionButton';
 import { useStageSelector } from '../../../../hooks/useStageSelector';
 import { useFamilyPedigreeStore } from '../../FamilyPedigreeContext';
 import { useFamilyPedigreeDialog } from '../../familyPedigreeDialog';
-import { FRAMING_TERMS, type FramingTerms } from '../../framingTerms';
+import { getFramingTerms, type FramingTerms } from '../../framingTerms';
+import { messages } from '../../messages';
 import type { VariableConfig } from '../../store';
 import { getFramingConfig, getIntroScreen } from '../../utils/stageConfig';
 import AdditionalParentsStep from '../quickStartWizard/AdditionalParentsStep';
@@ -52,8 +54,9 @@ function FramingStepTitle({
     'eggParent' | 'spermParent' | 'gestationalCarrier'
   >;
 }) {
+  const intl = useAppIntl();
   const framing = useFamilyPedigreeStore((s) => s.framing);
-  return <>{FRAMING_TERMS[framing ?? 'gamete'][termKey]}</>;
+  return <>{getFramingTerms(framing ?? 'gamete', intl)[termKey]}</>;
 }
 
 export default function EgoCellWizard({
@@ -61,6 +64,7 @@ export default function EgoCellWizard({
   onSubmit,
   variableConfig,
 }: EgoCellWizardProps) {
+  const intl = useAppIntl();
   const { openDialog } = useFamilyPedigreeDialog();
   const track = useTrack();
   const introScreen = useStageSelector(getIntroScreen);
@@ -69,15 +73,14 @@ export default function EgoCellWizard({
   const handleClick = async () => {
     const result = await openDialog({
       type: 'wizard',
-      title: 'Your Biological Parents',
+      title: <AppMessage message={messages.yourBiologicalParents} />,
       className: 'tablet-portrait:min-w-[70ch]',
       progress: null,
       confirmCancel: {
-        title: 'Close family pedigree setup?',
-        description:
-          'If you continue, all information you have entered in this family pedigree will be lost. You will need to start again.',
-        primaryLabel: 'Close and lose progress',
-        cancelLabel: 'Continue setup',
+        title: <AppMessage message={messages.closeSetupQuestion} />,
+        description: <AppMessage message={messages.closeSetupDescription} />,
+        primaryLabel: <AppMessage message={messages.closeLoseProgress} />,
+        cancelLabel: <AppMessage message={messages.continueSetup} />,
         intent: 'destructive',
       },
       steps: [
@@ -88,17 +91,22 @@ export default function EgoCellWizard({
         // fixed-framing protocol with no intro screen.
         ...(shouldSkipIntroStep(introScreen)
           ? []
-          : [{ title: 'Introduction', content: IntroStep }]),
+          : [
+              {
+                title: <AppMessage message={messages.introduction} />,
+                content: IntroStep,
+              },
+            ]),
         ...(shouldSkipFramingSelectionStep(framingConfig)
           ? []
           : [
               {
-                title: 'How we’ll refer to your parents',
+                title: <AppMessage message={messages.referToParents} />,
                 content: FramingSelectionStep,
               },
             ]),
         {
-          title: 'About you',
+          title: <AppMessage message={messages.aboutYou} />,
           content: EgoSexStep,
         },
         {
@@ -116,25 +124,25 @@ export default function EgoCellWizard({
           content: SpermParentStep,
         },
         {
-          title: 'Other parents',
+          title: <AppMessage message={messages.otherParents} />,
           content: OtherParentsStep,
         },
         {
-          title: 'Additional parents',
+          title: <AppMessage message={messages.additionalParents} />,
           content: AdditionalParentsStep,
           skip: ({ getFieldValue }: SkipContext) =>
             getFieldValue('hasOtherParents') !== true,
         },
         {
-          title: 'Parent partnerships',
+          title: <AppMessage message={messages.parentPartnerships} />,
           content: ParentPartnershipsStep,
         },
         {
-          title: 'Partner and children',
+          title: <AppMessage message={messages.partnerChildren} />,
           content: PartnerAndChildrenStep,
         },
         {
-          title: 'Children details',
+          title: <AppMessage message={messages.childrenDetails} />,
           content: ChildrenDetailStep,
           skip: ({ getFieldValue }: SkipContext) => {
             if (getFieldValue('hasPartner') !== true) return true;
@@ -171,7 +179,7 @@ export default function EgoCellWizard({
         animate="animate"
       >
         <ActionButton
-          aria-label="Build family pedigree"
+          aria-label={intl.formatMessage(messages.buildAccessible)}
           data-testid="pedigree-get-started"
           iconName="Network"
           onClick={handleClick}

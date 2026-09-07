@@ -3,7 +3,10 @@
 import { WifiOff } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 
+import { AppMessage } from '@codaco/app-i18n/react';
+
 import useOnline from '../hooks/useOnline';
+import { runtimeMessages as messages } from '../i18n/runtimeMessages';
 
 // Persistent banner shown while a Geospatial stage is on screen and the device
 // is offline. The map will not load without a connection, so this is a
@@ -27,7 +30,7 @@ export function GeospatialOfflineIndicator({ active }: { active: boolean }) {
         >
           <WifiOff className="size-4 shrink-0" aria-hidden />
           <span>
-            You are offline — the map will not load until you reconnect.
+            <AppMessage message={messages.offlineMap} />
           </span>
         </motion.div>
       )}

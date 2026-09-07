@@ -1153,6 +1153,7 @@ function exhaustedConflict(
     variableIds: members.map((member) => member.entry.id),
     variableNames: members.map((member) => member.entry.name),
     rules: declaredRules(members),
+    reasonCode: 'drawExhausted',
     reason:
       'no value satisfies these rules alongside the values chosen for the ' +
       'attributes they refer to',

@@ -6,7 +6,9 @@ import {
   VariableTypesKeys,
 } from '@codaco/protocol-validation';
 
+import { enIntl } from '../../testing/i18n.ts';
 import { operatorsForSubject, ruleVariableTypes } from '../operators.ts';
+import type { OperandOptionProblem } from '../ruleCodebook.ts';
 import {
   operandDateProblems,
   operandOptionProblems,
@@ -683,42 +685,78 @@ describe('an operand naming an option the attribute no longer offers', () => {
 describe('an operand that is not the shape an option can have', () => {
   const variables = ruleVariables(codebook, 'node', 'person');
 
+  /**
+   * `describedAs` is a message DESCRIPTOR, so the noun phrase is chosen in the
+   * reader's language wherever the problem is finally rendered. Formatted here
+   * so these assertions still name the words a researcher reads, and still
+   * fail when that copy changes.
+   */
+  const asPhrases = (problems: readonly OperandOptionProblem[]) =>
+    problems.map((problem) =>
+      problem.kind === 'unusableValue'
+        ? {
+            kind: problem.kind,
+            describedAs: enIntl.formatMessage(problem.describedAs),
+          }
+        : problem,
+    );
+
   it('reports a boolean left behind by the migration', () => {
     expect(
-      operandOptionProblems(variables, 'mood', 'INCLUDES', [true]),
+      asPhrases(operandOptionProblems(variables, 'mood', 'INCLUDES', [true])),
     ).toEqual([{ kind: 'unusableValue', describedAs: 'a true/false value' }]);
   });
 
   it('reports a null member rather than skipping it', () => {
     expect(
-      operandOptionProblems(variables, 'mood', 'INCLUDES', [null]),
+      asPhrases(operandOptionProblems(variables, 'mood', 'INCLUDES', [null])),
     ).toEqual([{ kind: 'unusableValue', describedAs: 'an empty value' }]);
   });
 
   it('reports an object member', () => {
-    expect(operandOptionProblems(variables, 'mood', 'INCLUDES', [{}])).toEqual([
-      { kind: 'unusableValue', describedAs: 'an object' },
-    ]);
+    expect(
+      asPhrases(operandOptionProblems(variables, 'mood', 'INCLUDES', [{}])),
+    ).toEqual([{ kind: 'unusableValue', describedAs: 'an object' }]);
   });
 
   it('reports a bare value that is not a list at all', () => {
-    expect(operandOptionProblems(variables, 'mood', 'INCLUDES', true)).toEqual([
-      { kind: 'unusableValue', describedAs: 'a true/false value' },
-    ]);
+    expect(
+      asPhrases(operandOptionProblems(variables, 'mood', 'INCLUDES', true)),
+    ).toEqual([{ kind: 'unusableValue', describedAs: 'a true/false value' }]);
   });
 
   it('reports every member of a mixed operand, in its own voice', () => {
     expect(
-      operandOptionProblems(variables, 'mood', 'INCLUDES', [
-        'happy',
-        true,
-        'retired',
-        [1],
-      ]),
+      asPhrases(
+        operandOptionProblems(variables, 'mood', 'INCLUDES', [
+          'happy',
+          true,
+          'retired',
+          [1],
+        ]),
+      ),
     ).toEqual([
       { kind: 'unusableValue', describedAs: 'a true/false value' },
       { kind: 'unknownOption', value: 'retired' },
       { kind: 'unusableValue', describedAs: 'a list' },
     ]);
+  });
+
+  it('names the kind of value without choosing a language', () => {
+    // The regression the descriptor exists for. A phrase chosen here would be
+    // frozen into the editor's encoded refusal, and read as English inside an
+    // otherwise Spanish sentence.
+    const [problem] = operandOptionProblems(
+      variables,
+      'mood',
+      'INCLUDES',
+      true,
+    );
+    expect(problem).toEqual({
+      kind: 'unusableValue',
+      describedAs: expect.objectContaining({
+        id: 'protocolBuilder.ruleCodebook.unusableValueBoolean',
+      }),
+    });
   });
 });

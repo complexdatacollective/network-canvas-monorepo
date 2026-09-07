@@ -543,6 +543,11 @@ export function useStudioStageSession(params: {
               ...protocolSections,
               [selectedSectionId]: currentStage,
             }),
+          // Handing a batch over here says the server holds it, so the commits
+          // are queued in order and anything else this session asks the server
+          // must go through the same queue: an `onCompoundEdit` wired straight
+          // to the RPC client could overtake a commit still in flight, and the
+          // server would judge the compound edit against a stage without it.
           onCommands: (batch) => {
             const lease = currentLease;
             if (lease === null) return;

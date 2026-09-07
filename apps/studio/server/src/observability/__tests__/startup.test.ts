@@ -1,7 +1,8 @@
 import { spawnSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
-import { escapeIdentifier } from 'pg';
+import { escapeIdentifier, Pool } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -16,6 +17,7 @@ import { readEnv } from '../../env.ts';
 import { encryptionEnvironment } from '../../pii/__tests__/fixtures.ts';
 
 const database = await reachableDb();
+const runtimePassword = 'startup-runtime-synthetic-only';
 
 describe.skipIf(!database)('startup migration provenance', () => {
   it('refuses an unversioned development database outside the explicit development lane', async () => {
@@ -60,6 +62,8 @@ describe.skipIf(!database)('startup migration provenance', () => {
       expect(deployed.stdout).toContain('"code":"STUDIO_SCHEMA_STALE"');
       expect(deployed.stdout).not.toContain('"marker":"startup-completed"');
       const versioned = await createScratchDatabase(database);
+      const runtimeLogin = `startup_runtime_${randomUUID().replaceAll('-', '')}`;
+      let runtimeCreated = false;
       try {
         const identity = (
           await versioned.pool.query<{ database: string; login: string }>(
@@ -81,12 +85,83 @@ describe.skipIf(!database)('startup migration provenance', () => {
             [identity.login],
           ),
         ).toEqual(migrations.map(({ manifest }) => manifest.id));
-        const current = run(false, versioned.db.url);
+        await versioned.pool.query(
+          `CREATE ROLE ${escapeIdentifier(runtimeLogin)} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD '${runtimePassword}';
+           GRANT studio_app, studio_maintenance TO ${escapeIdentifier(runtimeLogin)} WITH ADMIN FALSE, SET TRUE, INHERIT FALSE;
+           GRANT CONNECT ON DATABASE ${escapeIdentifier(identity.database)} TO ${escapeIdentifier(runtimeLogin)}`,
+        );
+        runtimeCreated = true;
+        const ownerBacked = run(false, versioned.db.url);
+        expect(ownerBacked.error).toBeUndefined();
+        expect(ownerBacked.status).toBe(1);
+        expect(ownerBacked.stdout).toContain(
+          '"code":"STUDIO_DATABASE_IDENTITY_UNSAFE"',
+        );
+        expect(ownerBacked.stdout).not.toContain(
+          '"marker":"startup-completed"',
+        );
+        const runtimeUrl = new URL(versioned.db.url);
+        runtimeUrl.username = runtimeLogin;
+        runtimeUrl.password = runtimePassword;
+        const current = run(false, runtimeUrl.href);
         expect(current.error).toBeUndefined();
         expect(current.status).toBe(0);
         expect(current.stdout).toContain('"marker":"startup-completed"');
         expect(current.stdout).not.toContain('"code":"STUDIO_SCHEMA_STALE"');
+
+        const staleFingerprint = 'a'.repeat(64);
+        await versioned.pool.query(
+          'UPDATE public."schemaFingerprint" SET fingerprint = $1',
+          [staleFingerprint],
+        );
+        await versioned.pool
+          .query(`CREATE TABLE public.startup_fingerprint_action
+            (fingerprint text PRIMARY KEY);
+          INSERT INTO public.startup_fingerprint_action
+            SELECT fingerprint FROM public."schemaFingerprint";
+          ALTER TABLE public."schemaFingerprint"
+            ADD CONSTRAINT startup_fingerprint_action
+            FOREIGN KEY (fingerprint)
+            REFERENCES public.startup_fingerprint_action(fingerprint)
+            ON UPDATE CASCADE;
+          GRANT UPDATE ON public.startup_fingerprint_action TO studio_app`);
+        const runtime = new Pool({
+          connectionString: runtimeUrl.href,
+          options: '-c role=studio_app',
+        });
+        try {
+          expect(
+            (
+              await runtime.query(
+                'UPDATE public.startup_fingerprint_action SET fingerprint = $1',
+                [SCHEMA_FINGERPRINT],
+              )
+            ).rowCount,
+          ).toBe(1);
+        } finally {
+          await runtime.end();
+        }
+        expect(
+          (
+            await versioned.pool.query(
+              'SELECT fingerprint FROM public."schemaFingerprint"',
+            )
+          ).rows,
+        ).toEqual([{ fingerprint: SCHEMA_FINGERPRINT }]);
+        const forgedCurrent = run(false, runtimeUrl.href);
+        expect(forgedCurrent.error).toBeUndefined();
+        expect(forgedCurrent.status).toBe(1);
+        expect(forgedCurrent.stderr).toBe('');
+        expect(forgedCurrent.stdout).toContain('"code":"STUDIO_SCHEMA_STALE"');
+        expect(forgedCurrent.stdout).not.toContain(
+          '"marker":"startup-completed"',
+        );
       } finally {
+        if (runtimeCreated)
+          await versioned.pool.query(
+            `REVOKE CONNECT ON DATABASE ${escapeIdentifier(new URL(versioned.db.url).pathname.slice(1))} FROM ${escapeIdentifier(runtimeLogin)};
+             DROP ROLE ${escapeIdentifier(runtimeLogin)}`,
+          );
         await versioned.dispose();
       }
     } finally {
@@ -109,7 +184,14 @@ describe('startup diagnostic privacy', () => {
         `await import(${JSON.stringify(entry)}); ${failure};`,
       ],
       {
-        env: { NODE_ENV: 'production', PORT: '0', HOST: '127.0.0.1' },
+        // This suite owns log privacy; the separate telemetry subprocess suite
+        // exercises default-on reporting against a local receiver.
+        env: {
+          NODE_ENV: 'production',
+          PORT: '0',
+          HOST: '127.0.0.1',
+          STUDIO_TELEMETRY: 'false',
+        },
         encoding: 'utf8',
         timeout: 10_000,
       },
@@ -150,26 +232,38 @@ describe('startup diagnostic privacy', () => {
     }
   });
 
-  it('exits the actual Node entrypoint with one fixed diagnostic for invalid configuration', () => {
-    const child = spawnSync(
-      process.execPath,
-      [fileURLToPath(new URL('../../index.ts', import.meta.url))],
-      {
-        env: { NODE_ENV: 'production', STUDIO_METRICS_TOKEN: 'secret\n' },
-        encoding: 'utf8',
-        timeout: 10_000,
-      },
-    );
-    expect(child.error).toBeUndefined();
-    expect(child.status).toBe(1);
-    expect(child.stderr).toBe('');
-    const lines = child.stdout.trim().split('\n');
-    expect(lines).toHaveLength(1);
-    expect(JSON.parse(lines[0]!)).toEqual({
-      level: 50,
-      time: expect.any(String),
-      event: 'operational',
-      code: 'STUDIO_CONFIGURATION_INVALID',
-    });
-  });
+  it.each([
+    { STUDIO_METRICS_TOKEN: 'secret\n' },
+    {
+      DATABASE_URL: 'postgres://localhost:1/studio',
+      BETTER_AUTH_SECRET: 'startup-only-authentication-secret-32-characters',
+      PUBLIC_URL: 'https://studio.example.test',
+      SMTP_URL: 'smtp://127.0.0.1:1',
+      EMAIL_FROM: 'Invalid <private-sender-canary>',
+    },
+  ])(
+    'exits the actual Node entrypoint with one fixed diagnostic for invalid configuration: %j',
+    (configuration) => {
+      const child = spawnSync(
+        process.execPath,
+        [fileURLToPath(new URL('../../index.ts', import.meta.url))],
+        {
+          env: { NODE_ENV: 'production', ...configuration },
+          encoding: 'utf8',
+          timeout: 10_000,
+        },
+      );
+      expect(child.error).toBeUndefined();
+      expect(child.status).toBe(1);
+      expect(child.stderr).toBe('');
+      const lines = child.stdout.trim().split('\n');
+      expect(lines).toHaveLength(1);
+      expect(JSON.parse(lines[0]!)).toEqual({
+        level: 50,
+        time: expect.any(String),
+        event: 'operational',
+        code: 'STUDIO_CONFIGURATION_INVALID',
+      });
+    },
+  );
 });

@@ -87,6 +87,7 @@ function rpc(
       {
         auth: stubAuthService(),
         deployment: { mode, billing: false },
+        telemetry: false,
         pool,
         bootstrapToken,
         invitationDeliveryAvailable: false,

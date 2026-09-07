@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { useWizard } from '@codaco/fresco-ui/dialogs/useWizard';
 import RichSelectGroupField from '@codaco/fresco-ui/form/fields/RichSelectGroup';
@@ -11,6 +13,73 @@ import {
 } from '~/lib/pwa/passkeyWindowLimitation';
 
 import type { WizardSelectedMethod } from '../SetupWizardDialog';
+
+const messages = defineMessages({
+  thisDeviceLockIsAlreadyProtectingStored: {
+    id: 'interviewer.step2MethodPicker.thisDeviceLockIsAlreadyProtectingStored',
+    defaultMessage:
+      'This device lock is already protecting stored data. Finish setup before changing it from the Security settings.',
+    description: 'Visible copy in Interviewer Step2Method Picker.',
+  },
+  biometricAuthentication: {
+    id: 'interviewer.step2MethodPicker.biometricAuthentication',
+    defaultMessage: 'Biometric authentication',
+    description: 'User-facing message in Interviewer Step2Method Picker.',
+  },
+  pINCode: {
+    id: 'interviewer.step2MethodPicker.pINCode',
+    defaultMessage: 'PIN code',
+    description: 'User-facing message in Interviewer Step2Method Picker.',
+  },
+  an8DigitNumericPIN: {
+    id: 'interviewer.step2MethodPicker.an8DigitNumericPIN',
+    defaultMessage: 'An 8-digit numeric PIN.',
+    description: 'User-facing message in Interviewer Step2Method Picker.',
+  },
+  passphrase: {
+    id: 'interviewer.step2MethodPicker.passphrase',
+    defaultMessage: 'Passphrase',
+    description: 'User-facing message in Interviewer Step2Method Picker.',
+  },
+  aPasswordOfAtLeast12Characters: {
+    id: 'interviewer.step2MethodPicker.aPasswordOfAtLeast12Characters',
+    defaultMessage: 'A password of at least 12 characters.',
+    description: 'User-facing message in Interviewer Step2Method Picker.',
+  },
+  noSecurityNotRecommended: {
+    id: 'interviewer.step2MethodPicker.noSecurityNotRecommended',
+    defaultMessage: 'No security (not recommended)',
+    description: 'User-facing message in Interviewer Step2Method Picker.',
+  },
+  skipAppSecurityYourDataWillNot: {
+    id: 'interviewer.step2MethodPicker.skipAppSecurityYourDataWillNot',
+    defaultMessage:
+      'Skip app security. Your data will not be protected by the app.',
+    description: 'User-facing message in Interviewer Step2Method Picker.',
+  },
+  continueWithoutSecurity: {
+    id: 'interviewer.step2MethodPicker.continueWithoutSecurity',
+    defaultMessage: 'Continue without security?',
+    description: 'User-facing message in Interviewer Step2Method Picker.',
+  },
+  yourDataWillNotBeProtectedBy: {
+    id: 'interviewer.step2MethodPicker.yourDataWillNotBeProtectedBy',
+    defaultMessage:
+      'Your data will not be protected by an app lock or encryption managed by this app. Anyone with access to this device may be able to view collected data.',
+    description: 'User-facing message in Interviewer Step2Method Picker.',
+  },
+  continueWithoutSecurity2: {
+    id: 'interviewer.step2MethodPicker.continueWithoutSecurity2',
+    defaultMessage: 'Continue without security',
+    description: 'User-facing message in Interviewer Step2Method Picker.',
+  },
+  biometricDescription: {
+    id: 'interviewer.step2MethodPicker.biometricDescription',
+    defaultMessage:
+      '{macInstalledLimitation, select, true {Use Face ID, Touch ID, Windows Hello, or another biometric sensor on this device. Note: on macOS, Chrome cannot use biometrics from the installed app — there you would unlock with your recovery passphrase.} other {Use Face ID, Touch ID, Windows Hello, or another biometric sensor on this device.}}',
+    description: 'Administration text in Interviewer Step2MethodPicker.',
+  },
+});
 
 const WIZARD_METHODS: WizardSelectedMethod[] = [
   'biometric',
@@ -28,6 +97,7 @@ export default function Step2MethodPicker({
 }: {
   lockCommittedMethod?: boolean;
 }) {
+  const intl = useAppIntl();
   const { data, setStepData, setNextEnabled } = useWizard();
   const { confirm } = useDialog();
   const biometric = useBiometric();
@@ -56,22 +126,20 @@ export default function Step2MethodPicker({
   // In a macOS Chromium browser tab, biometric enrolment works (Apple
   // Passwords), but the installed app cannot reach that passkey later
   // (crbug.com/364926914) — say so before the researcher commits to it.
-  const macInstallCaveat =
-    isMacChromium() && !hasPasskeyWindowLimitation()
-      ? ' Note: on macOS, Chrome cannot use biometrics from the installed app — there you would unlock with your recovery passphrase.'
-      : '';
-
   const biometricDescription =
     biometric.status === 'unavailable'
       ? biometric.reason
-      : `Use Face ID, Touch ID, Windows Hello, or another biometric sensor on this device.${macInstallCaveat}`;
+      : intl.formatMessage(messages.biometricDescription, {
+          macInstalledLimitation: String(
+            isMacChromium() && !hasPasskeyWindowLimitation(),
+          ),
+        });
 
   return (
     <>
       {methodLocked ? (
         <Paragraph intent="smallText" emphasis="muted">
-          This device lock is already protecting stored data. Finish setup
-          before changing it from the Security settings.
+          {intl.formatMessage(messages.thisDeviceLockIsAlreadyProtectingStored)}
         </Paragraph>
       ) : null}
       <Step2MethodPickerView
@@ -80,10 +148,13 @@ export default function Step2MethodPicker({
           if (methodLocked && value !== selectedMethod) return;
           if (value === 'none') {
             void confirm({
-              title: 'Continue without security?',
-              description:
-                'Your data will not be protected by an app lock or encryption managed by this app. Anyone with access to this device may be able to view collected data.',
-              confirmLabel: 'Continue without security',
+              title: <AppMessage message={messages.continueWithoutSecurity} />,
+              description: (
+                <AppMessage message={messages.yourDataWillNotBeProtectedBy} />
+              ),
+              confirmLabel: (
+                <AppMessage message={messages.continueWithoutSecurity2} />
+              ),
               intent: 'warning',
               onConfirm: () => {
                 commitMethod('none');
@@ -114,10 +185,11 @@ export function Step2MethodPickerView({
   biometricDescription: string;
   lockedMethod?: WizardSelectedMethod | null;
 }) {
+  const intl = useAppIntl();
   const options = [
     {
       value: 'biometric' as const,
-      label: 'Biometric authentication',
+      label: intl.formatMessage(messages.biometricAuthentication),
       description: biometricDescription,
       disabled:
         biometricDisabled ||
@@ -125,22 +197,21 @@ export function Step2MethodPickerView({
     },
     {
       value: 'pin' as const,
-      label: 'PIN code',
-      description: 'An 8-digit numeric PIN.',
+      label: intl.formatMessage(messages.pINCode),
+      description: intl.formatMessage(messages.an8DigitNumericPIN),
       disabled: lockedMethod !== null && lockedMethod !== 'pin',
     },
     {
       value: 'passphrase' as const,
-      label: 'Passphrase',
-      description: 'A password of at least 12 characters.',
+      label: intl.formatMessage(messages.passphrase),
+      description: intl.formatMessage(messages.aPasswordOfAtLeast12Characters),
       disabled: lockedMethod !== null && lockedMethod !== 'passphrase',
     },
     { type: 'spacer' as const },
     {
       value: 'none' as const,
-      label: 'No security (not recommended)',
-      description:
-        'Skip app security. Your data will not be protected by the app.',
+      label: intl.formatMessage(messages.noSecurityNotRecommended),
+      description: intl.formatMessage(messages.skipAppSecurityYourDataWillNot),
       disabled: lockedMethod !== null && lockedMethod !== 'none',
     },
   ];

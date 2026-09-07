@@ -1,5 +1,7 @@
 import { useId } from 'react';
 
+import { formatMessageError } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import Surface from '@codaco/fresco-ui/layout/Surface';
@@ -141,6 +143,10 @@ export default function CodebookSurface({
   onCreateVariable,
   onEditVariable,
 }: CodebookSurfaceProps) {
+  // An issue's message is a plain string carrying either this package's own
+  // encoded descriptor or the protocol schema's own wording, so it is decoded
+  // here and passed through untouched when it is not one of ours.
+  const intl = useAppIntl();
   const titleId = useId();
   const nodeTypesId = useId();
   const edgeTypesId = useId();
@@ -208,7 +214,8 @@ export default function CodebookSurface({
             >
               {context.issues.map((issue, index) => (
                 <li key={`${issue.sectionId}:${issue.path.join(':')}:${index}`}>
-                  <code>{issue.sectionId}</code>: {issue.message}
+                  <code>{issue.sectionId}</code>:{' '}
+                  {formatMessageError(issue.message, intl) ?? issue.message}
                 </li>
               ))}
             </ul>
