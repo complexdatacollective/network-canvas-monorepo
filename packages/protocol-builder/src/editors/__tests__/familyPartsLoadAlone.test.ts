@@ -29,6 +29,7 @@ describe('a family part reached before the registry', () => {
     expect(Object.keys(nameGeneratorStageEditors).toSorted()).toEqual([
       'NameGenerator',
       'NameGeneratorQuickAdd',
+      'NameGeneratorRoster',
     ]);
   });
 });

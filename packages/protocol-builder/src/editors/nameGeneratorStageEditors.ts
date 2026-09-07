@@ -1,5 +1,6 @@
 import { defineStageEditorPart } from '../stage-editor-contract.ts';
 import { NameGeneratorQuickAddStageEditor } from './nameGenerators/NameGeneratorQuickAddStageEditor.tsx';
+import { NameGeneratorRosterStageEditor } from './nameGenerators/NameGeneratorRosterStageEditor.tsx';
 import { NameGeneratorStageEditor } from './nameGenerators/NameGeneratorStageEditor.tsx';
 
 /**
@@ -7,9 +8,8 @@ import { NameGeneratorStageEditor } from './nameGenerators/NameGeneratorStageEdi
  *
  * One family, because they share their hard parts: the prompt list and its
  * attribute stamps, the nomination window, and the node type everything else
- * on the stage is described against. What differs between them is only how a
- * person gets into the network — a form, a single box, or a list they were
- * already on. The first two are here; the roster joins them as it lands.
+ * on the stage is described against. What differs is only how a person gets
+ * into the network — a form, a single box, or a list they were already on.
  *
  * Declared through `defineStageEditorPart` so the exact set of interfaces this
  * family claims survives into the type system: see that function's comment for
@@ -18,4 +18,5 @@ import { NameGeneratorStageEditor } from './nameGenerators/NameGeneratorStageEdi
 export const nameGeneratorStageEditors = defineStageEditorPart({
   NameGenerator: NameGeneratorStageEditor,
   NameGeneratorQuickAdd: NameGeneratorQuickAddStageEditor,
+  NameGeneratorRoster: NameGeneratorRosterStageEditor,
 });
