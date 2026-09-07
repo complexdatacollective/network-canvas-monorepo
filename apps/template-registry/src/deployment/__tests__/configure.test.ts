@@ -80,6 +80,7 @@ describe('Registry deployment configuration', () => {
       expect(values.every((value) => value.length >= 17)).toBe(true);
       expect(new Set(values).size).toBe(values.length);
       expect(env.REGISTRY_IMAGE).toBe(options.registryImage);
+      expect(env.REGISTRY_SMTP_URL).toBe(options.smtpUrl);
       expect(env.REGISTRY_DOMAIN).toBe(options.domain);
       expect(env.REGISTRY_S3_ACCESS_KEY_ID).toMatch(/^registry_/);
     });
@@ -89,13 +90,16 @@ describe('Registry deployment configuration', () => {
     await fixture(async (output) => {
       await configureRegistryDeployment({ ...options, output }, templateRoot);
       const before = await environment(output);
-      await configureRegistryDeployment(
-        { ...options, domain: 'catalog.example.test', output },
-        templateRoot,
-      );
+      await configureRegistryDeployment({ ...options, output }, templateRoot);
       const after = await environment(output);
       for (const name of generatedNames) expect(after[name]).toBe(before[name]);
-      expect(after.REGISTRY_DOMAIN).toBe('catalog.example.test');
+      await expect(
+        configureRegistryDeployment(
+          { ...options, domain: 'catalog.example.test', output },
+          templateRoot,
+        ),
+      ).rejects.toThrow('already initialized');
+      expect(await environment(output)).toEqual(after);
       expect(await readdir(output)).not.toContain('.registry-configure.lock');
     });
   });
@@ -105,6 +109,8 @@ describe('Registry deployment configuration', () => {
     { mailFrom: 'registry@example.test\nINJECTED=value' },
     { registryImage: 'ghcr.io/example/registry:latest' },
     { smtpUrl: undefined, postmarkServerToken: undefined },
+    { smtpUrl: "smtps://user:pass'@mail.example.test" },
+    { postmarkServerToken: 'token\nINJECTED=value', smtpUrl: undefined },
     { postmarkMessageStream: 'outbound' },
   ])(
     'refuses unsafe or incomplete inputs before writing configuration: %j',

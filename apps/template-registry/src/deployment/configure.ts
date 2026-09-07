@@ -5,7 +5,7 @@ import {
   readFile,
   readdir,
   rm,
-  stat,
+  lstat,
   writeFile,
 } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
@@ -23,6 +23,8 @@ const image = z
   .regex(
     /^[a-z0-9.-]+(?::[0-9]{1,5})?\/[a-z0-9][a-z0-9._/-]*@sha256:[a-f0-9]{64}$/,
   );
+const dotenvValue = z.string().regex(/^[^'\r\n]+$/);
+
 const optionsSchema = z
   .object({
     domain: z
@@ -36,9 +38,9 @@ const optionsSchema = z
     registryImage: image,
     minioImage: image,
     output: z.string().min(1),
-    smtpUrl: z.string().url().max(2048).optional(),
-    postmarkServerToken: z.string().min(1).max(1024).optional(),
-    postmarkMessageStream: z.string().min(1).max(256).optional(),
+    smtpUrl: dotenvValue.url().max(2048).optional(),
+    postmarkServerToken: dotenvValue.min(1).max(1024).optional(),
+    postmarkMessageStream: dotenvValue.min(1).max(256).optional(),
   })
   .superRefine((value, context) => {
     if (Boolean(value.smtpUrl) === Boolean(value.postmarkServerToken))
@@ -173,11 +175,6 @@ export async function configureRegistryDeployment(
       existing.some((name) => name !== '.registry-configure.lock')
     )
       throw new Error('Registry configuration directory is incomplete.');
-    const secrets = hasEnvironment
-      ? retainedGenerated(parseEnv(await readFile(environmentPath, 'utf8')))
-      : generatedEnvironment();
-    if (hasEnvironment && (await stat(environmentPath)).mode & 0o077)
-      throw new Error('Registry private configuration must be mode0600.');
     const publicEnvironment = {
       REGISTRY_DOMAIN: options.domain,
       REGISTRY_MAIL_FROM: options.mailFrom,
@@ -187,22 +184,65 @@ export async function configureRegistryDeployment(
       REGISTRY_POSTMARK_SERVER_TOKEN: options.postmarkServerToken ?? '',
       REGISTRY_POSTMARK_MESSAGE_STREAM: options.postmarkMessageStream ?? '',
       REGISTRY_S3_REGION: 'us-east-1',
-      ...secrets,
     };
+    if (hasEnvironment) {
+      // This is a dedicated Registry configuration root. A generation rerun is
+      // idempotent only; a changed public deployment belongs in a new root.
+      if (
+        existing.toSorted().join(',') !==
+        '.registry-configure.lock,deployment,registry.env'
+      )
+        throw new Error('Registry configuration directory is incomplete.');
+      const environmentInfo = await lstat(environmentPath);
+      if (
+        !environmentInfo.isFile() ||
+        environmentInfo.isSymbolicLink() ||
+        environmentInfo.mode & 0o077
+      )
+        throw new Error('Registry private configuration must be mode0600.');
+      const current = parseEnv(await readFile(environmentPath, 'utf8'));
+      retainedGenerated(current);
+      if (
+        Object.entries(publicEnvironment).some(
+          ([name, value]) => current[name] !== value,
+        )
+      )
+        throw new Error('Registry configuration is already initialized.');
+      const deployment = join(output, 'deployment', 'registry');
+      const deploymentInfo = await lstat(deployment);
+      if (
+        !deploymentInfo.isDirectory() ||
+        deploymentInfo.isSymbolicLink() ||
+        (await readdir(deployment)).toSorted().join(',') !==
+          [...registryConfigurationFiles].toSorted().join(',')
+      )
+        throw new Error('Registry configuration directory is incomplete.');
+      for (const name of registryConfigurationFiles) {
+        const target = join(deployment, name);
+        const info = await lstat(target);
+        if (!info.isFile() || info.isSymbolicLink())
+          throw new Error('Registry configuration directory is incomplete.');
+      }
+      return;
+    }
+    const secrets = generatedEnvironment();
     const deployment = join(output, 'deployment', 'registry');
     await mkdir(deployment, { recursive: true, mode: 0o700 });
     for (const { name, bytes } of templates) {
       const target = join(deployment, name);
-      await writeFile(target, bytes, {
-        flag: hasEnvironment ? 'w' : 'wx',
-        mode: 0o644,
-      });
+      await writeFile(target, bytes, { flag: 'wx', mode: 0o644 });
       written.push(target);
     }
-    await writeFile(environmentPath, dotenv(publicEnvironment), {
-      flag: hasEnvironment ? 'w' : 'wx',
-      mode: 0o600,
-    });
+    // Credentials are the final file. A partial public template copy is never
+    // mistaken for a runnable Registry configuration root.
+    await writeFile(
+      environmentPath,
+      dotenv({ ...publicEnvironment, ...secrets }),
+      {
+        flag: 'wx',
+        mode: 0o600,
+      },
+    );
     written.push(environmentPath);
   } catch (error) {
     if (!(await readdir(output)).includes('registry.env')) {
