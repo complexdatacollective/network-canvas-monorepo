@@ -1,0 +1,11 @@
+# Studio distribution caller
+
+Local implementation for #1243. The production workflow and actual composed install/upgrade/recovery qualification remain incomplete; this caller does not publish anything by itself.
+
+`scripts/studio-distribution-caller.mjs` composes the existing publication, GitHub store, admission, historical-manifest authentication, image preparation and signature-verification modules. It fetches main and immutable tags before every admission. It preserves the publisher's four gates, exact asset readback and source reservation. Historical manifests and their retained SBOMs reach preparation only after authentication. The supplied absolute Cosign, Crane and Syft paths come from the separately verified tool bootstrap.
+
+The eventual workflow must hold the same non-cancelling distribution/promotion lock for this entire invocation. It must supply a concrete isolated qualifier, with no live production credentials. A qualification receipt must bind the candidate source and manifest digest, successful fresh installation and populated recovery, and exactly the authenticated oldest/immediately previous upgrade sources. Missing, failed, substituted or incomplete receipts prevent the GitHub draft and asset writes. The receipt is an internal contract with the qualifier, not cryptographic evidence that an installation ran; the actual harness must exercise the operations and preserve its execution evidence.
+
+The caller does not supply an environment-selected command, success stub or automatic waiver for unavailable qualification. Workflow integration must remain disabled until the actual harness is implemented and reviewed. Managed provisioning has its own unresolved provider and budget gates.
+
+Validation: 14 caller tests exercise the real publication state machine with isolated I/O boundaries. They cover all four fresh gates, history and pinned-tool propagation, failed boundaries, malformed qualification, and eligibility withdrawal after draft readback. Separate disposable module mutations remove the fresh-install and manifest-binding checks; the corresponding refusal tests then fail with the expected missing-rejection assertion. These tests do not claim live registry publication, Sigstore signing or installation/recovery qualification.
