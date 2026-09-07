@@ -15,40 +15,109 @@ export const CLASSIFIED_LEGACY_CONTACT_INDEX_ID = 'legacy-public-hmac-v1';
  * number 0004, which already belongs to the audit history.
  */
 export const LEGACY_INDEX_REMEDIATION_GUARD_SQL = `
-CREATE OR REPLACE FUNCTION legacy_blind_index_writes_are_guarded() RETURNS trigger AS $$
+CREATE OR REPLACE FUNCTION public.legacy_blind_index_writes_are_guarded() RETURNS trigger AS $$
 DECLARE
   raw_id text := CASE WHEN TG_TABLE_NAME = 'participants' THEN '${RAW_LEGACY_PARTICIPANT_INDEX_ID}' ELSE '${RAW_LEGACY_CONTACT_INDEX_ID}' END;
   classified_id text := '${CLASSIFIED_LEGACY_CONTACT_INDEX_ID}';
-  marker text := current_setting('app.legacy_index_remediation', true);
+  marker text := pg_catalog.current_setting('app.legacy_index_remediation', true);
+  old_reserved boolean;
+  new_reserved boolean;
+  proof_ready boolean;
 BEGIN
-  IF TG_OP = 'UPDATE' AND NEW.blind_index_key_id IS NOT DISTINCT FROM OLD.blind_index_key_id THEN
+  new_reserved := coalesce(NEW.blind_index_key_id IN (raw_id, classified_id), false);
+  IF TG_OP = 'INSERT' THEN
+    IF new_reserved THEN
+      RAISE EXCEPTION 'legacy blind indexes are written only by encryption maintenance';
+    END IF;
     RETURN NEW;
   END IF;
-  IF TG_OP = 'UPDATE' AND marker = 'v1' AND (
-    (TG_TABLE_NAME = 'participants' AND current_user = 'studio_maintenance'
-      AND OLD.blind_index_key_id = raw_id AND NEW.blind_index_key_id NOT IN (raw_id, classified_id))
-    OR (TG_TABLE_NAME <> 'participants'
-      AND current_user = pg_catalog.pg_get_userbyid((SELECT relowner FROM pg_catalog.pg_class WHERE oid = TG_RELID))
-      AND OLD.blind_index_key_id = raw_id AND NEW.blind_index_key_id = classified_id)
-  ) THEN
-    RETURN NEW;
+
+  old_reserved := coalesce(OLD.blind_index_key_id IN (raw_id, classified_id), false);
+  IF TG_TABLE_NAME = 'participants' THEN
+    IF NEW.blind_index_key_id IS NOT DISTINCT FROM OLD.blind_index_key_id
+       AND NEW.email_index IS NOT DISTINCT FROM OLD.email_index
+       AND NEW.phone_index IS NOT DISTINCT FROM OLD.phone_index
+       AND NEW.email_ciphertext IS NOT DISTINCT FROM OLD.email_ciphertext
+       AND NEW.phone_ciphertext IS NOT DISTINCT FROM OLD.phone_ciphertext
+       AND NEW.name_ciphertext IS NOT DISTINCT FROM OLD.name_ciphertext
+       AND NEW.attributes_ciphertext IS NOT DISTINCT FROM OLD.attributes_ciphertext
+       AND NEW.pii_key_id IS NOT DISTINCT FROM OLD.pii_key_id
+       AND NEW.pii_algorithm IS NOT DISTINCT FROM OLD.pii_algorithm THEN
+      RETURN NEW;
+    END IF;
+
+    IF old_reserved AND marker = 'v1' AND current_user = 'studio_maintenance'
+       AND OLD.blind_index_key_id = raw_id
+       AND NEW.blind_index_key_id IS NOT NULL
+       AND NEW.blind_index_key_id NOT IN (raw_id, classified_id)
+       AND OLD.pii_key_id IS NOT NULL
+       AND NEW.pii_key_id IS NOT NULL
+       AND NEW.pii_key_id IS DISTINCT FROM OLD.pii_key_id
+       AND NEW.pii_algorithm = 'aes-256-gcm.v1'
+       AND ((OLD.email_ciphertext IS NULL AND NEW.email_ciphertext IS NULL)
+         OR (OLD.email_ciphertext IS NOT NULL AND NEW.email_ciphertext IS NOT NULL
+           AND NEW.email_ciphertext IS DISTINCT FROM OLD.email_ciphertext))
+       AND ((OLD.phone_ciphertext IS NULL AND NEW.phone_ciphertext IS NULL)
+         OR (OLD.phone_ciphertext IS NOT NULL AND NEW.phone_ciphertext IS NOT NULL
+           AND NEW.phone_ciphertext IS DISTINCT FROM OLD.phone_ciphertext))
+       AND ((OLD.name_ciphertext IS NULL AND NEW.name_ciphertext IS NULL)
+         OR (OLD.name_ciphertext IS NOT NULL AND NEW.name_ciphertext IS NOT NULL
+           AND NEW.name_ciphertext IS DISTINCT FROM OLD.name_ciphertext))
+       AND ((OLD.attributes_ciphertext IS NULL AND NEW.attributes_ciphertext IS NULL)
+         OR (OLD.attributes_ciphertext IS NOT NULL AND NEW.attributes_ciphertext IS NOT NULL
+           AND NEW.attributes_ciphertext IS DISTINCT FROM OLD.attributes_ciphertext))
+       AND ((OLD.email_index IS NULL AND NEW.email_index IS NULL)
+         OR (OLD.email_index IS NOT NULL AND NEW.email_index IS NOT NULL
+           AND NEW.email_index IS DISTINCT FROM OLD.email_index))
+       AND ((OLD.phone_index IS NULL AND NEW.phone_index IS NULL)
+         OR (OLD.phone_index IS NOT NULL AND NEW.phone_index IS NOT NULL
+           AND NEW.phone_index IS DISTINCT FROM OLD.phone_index)) THEN
+      EXECUTE pg_catalog.format(
+        'SELECT EXISTS (SELECT 1 FROM %I.encryption_key_verifications WHERE purpose = ''pii-enc'' AND key_id = $1)
+           AND EXISTS (SELECT 1 FROM %I.encryption_key_verifications WHERE purpose = ''pii-enc'' AND key_id = $2)
+           AND EXISTS (SELECT 1 FROM %I.encryption_key_verifications WHERE purpose = ''pii-index'' AND key_id = $3)',
+        TG_TABLE_SCHEMA, TG_TABLE_SCHEMA, TG_TABLE_SCHEMA
+      ) INTO proof_ready USING OLD.pii_key_id, NEW.pii_key_id, NEW.blind_index_key_id;
+      IF proof_ready THEN RETURN NEW; END IF;
+    END IF;
+  ELSE
+    IF NEW.blind_index_key_id IS NOT DISTINCT FROM OLD.blind_index_key_id
+       AND NEW.recipient_blind_index IS NOT DISTINCT FROM OLD.recipient_blind_index
+       AND NEW.channel IS NOT DISTINCT FROM OLD.channel THEN
+      RETURN NEW;
+    END IF;
+    IF old_reserved AND marker = 'v1'
+       AND current_user = pg_catalog.pg_get_userbyid(
+         (SELECT relation.relowner FROM pg_catalog.pg_class AS relation WHERE relation.oid = TG_RELID)
+       )
+       AND OLD.blind_index_key_id = raw_id
+       AND NEW.blind_index_key_id = classified_id
+       AND NEW.recipient_blind_index IS NOT DISTINCT FROM OLD.recipient_blind_index
+       AND NEW.channel IS NOT DISTINCT FROM OLD.channel THEN
+      RETURN NEW;
+    END IF;
   END IF;
-  IF NEW.blind_index_key_id IN (raw_id, classified_id) THEN
+
+  IF old_reserved OR new_reserved THEN
     RAISE EXCEPTION 'legacy blind indexes are written only by encryption maintenance';
   END IF;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SET search_path = pg_catalog;
 
 CREATE OR REPLACE TRIGGER participants_legacy_blind_index_guard
-  BEFORE INSERT OR UPDATE OF blind_index_key_id ON participants
-  FOR EACH ROW EXECUTE FUNCTION legacy_blind_index_writes_are_guarded();
+  BEFORE INSERT OR UPDATE OF blind_index_key_id, email_index, phone_index,
+    email_ciphertext, phone_ciphertext, name_ciphertext, attributes_ciphertext,
+    pii_key_id, pii_algorithm ON public.participants
+  FOR EACH ROW EXECUTE FUNCTION public.legacy_blind_index_writes_are_guarded();
 CREATE OR REPLACE TRIGGER message_deliveries_legacy_blind_index_guard
-  BEFORE INSERT OR UPDATE OF blind_index_key_id ON message_deliveries
-  FOR EACH ROW EXECUTE FUNCTION legacy_blind_index_writes_are_guarded();
+  BEFORE INSERT OR UPDATE OF blind_index_key_id, recipient_blind_index, channel
+  ON public.message_deliveries
+  FOR EACH ROW EXECUTE FUNCTION public.legacy_blind_index_writes_are_guarded();
 CREATE OR REPLACE TRIGGER participant_contact_optouts_legacy_blind_index_guard
-  BEFORE INSERT OR UPDATE OF blind_index_key_id ON participant_contact_optouts
-  FOR EACH ROW EXECUTE FUNCTION legacy_blind_index_writes_are_guarded();
+  BEFORE INSERT OR UPDATE OF blind_index_key_id, recipient_blind_index, channel
+  ON public.participant_contact_optouts
+  FOR EACH ROW EXECUTE FUNCTION public.legacy_blind_index_writes_are_guarded();
 `;
 
 // This value was public source code used only by the pre-encryption synthetic

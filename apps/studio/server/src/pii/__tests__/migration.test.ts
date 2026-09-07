@@ -319,7 +319,8 @@ it('authenticates and resumes every legacy index phase before OAuth and preserve
     const teamId = randomUUID();
     const protocolId = randomUUID();
     const studyId = randomUUID();
-    const participantId = randomUUID();
+    const participantId = 'ffffffff-ffff-4fff-bfff-ffffffffffff';
+    const corruptParticipantId = '00000000-0000-4000-8000-000000000001';
     const templateId = randomUUID();
     const deliveryId = randomUUID();
     const userId = randomUUID();
@@ -379,6 +380,17 @@ it('authenticates and resumes every legacy index phase before OAuth and preserve
       [participantId, teamId, studyId, encrypted.envelope, legacyIndex],
     );
     await scratch.pool.query(
+      `INSERT INTO participants (id, team_id, study_id, participant_code, email_ciphertext, email_index, pii_key_id, pii_algorithm)
+       VALUES ($1, $2, $3, 'P-legacy-corrupt', $4, $5, 'v1', 'aes-256-gcm.v1')`,
+      [
+        corruptParticipantId,
+        teamId,
+        studyId,
+        randomBytes(encrypted.envelope.length),
+        randomBytes(32),
+      ],
+    );
+    await scratch.pool.query(
       `INSERT INTO message_templates (id, team_id, kind, channel, locale, version, state, subject, body)
        VALUES ($1, $2, 'invitation', 'email', 'en', 1, 'published', 'Invitation', 'Body')`,
       [templateId, teamId],
@@ -408,6 +420,88 @@ it('authenticates and resumes every legacy index phase before OAuth and preserve
       allowedLogins,
     );
     await scratch.pool.query(LEGACY_INDEX_REMEDIATION_GUARD_SQL);
+    expect(
+      (
+        await scratch.pool.query<{ proconfig: string[] }>(
+          `SELECT procedure.proconfig
+           FROM pg_catalog.pg_proc AS procedure
+           JOIN pg_catalog.pg_namespace AS namespace
+             ON namespace.oid = procedure.pronamespace
+           WHERE namespace.nspname = 'public'
+             AND procedure.proname = 'legacy_blind_index_writes_are_guarded'`,
+        )
+      ).rows,
+    ).toEqual([{ proconfig: ['search_path=pg_catalog'] }]);
+    const appTenant = createTenantDb(app, teamId);
+    for (const runtime of [appTenant, createTenantDb(maintenance, teamId)]) {
+      await expect(
+        runtime.query(
+          `UPDATE participants SET blind_index_key_id = 'index-1'
+           WHERE id = $1 AND team_id = $2`,
+          [participantId, teamId],
+        ),
+      ).rejects.toThrow('legacy blind indexes are written only');
+      await expect(
+        runtime.query(
+          `UPDATE participants SET email_index = $1
+           WHERE id = $2 AND team_id = $3`,
+          [randomBytes(32), participantId, teamId],
+        ),
+      ).rejects.toThrow('legacy blind indexes are written only');
+    }
+    const markedMaintenance = await maintenance.connect();
+    try {
+      await markedMaintenance.query('BEGIN');
+      await markedMaintenance.query(
+        "SELECT set_config('app.legacy_index_remediation', 'v1', true)",
+      );
+      await expect(
+        markedMaintenance.query(
+          `UPDATE participants SET blind_index_key_id = 'index-1'
+           WHERE id = $1 AND team_id = $2`,
+          [participantId, teamId],
+        ),
+      ).rejects.toThrow('legacy blind indexes are written only');
+    } finally {
+      await markedMaintenance.query('ROLLBACK');
+      markedMaintenance.release();
+    }
+    await expect(
+      app.query(
+        `UPDATE participant_contact_optouts SET blind_index_key_id = 'index-1'
+         WHERE blind_index_key_id = $1`,
+        [RAW_LEGACY_CONTACT_INDEX_ID],
+      ),
+    ).rejects.toMatchObject({ code: '42501' });
+    await expect(
+      maintenance.query(
+        `UPDATE participant_contact_optouts SET blind_index_key_id = 'index-1'
+         WHERE blind_index_key_id = $1`,
+        [RAW_LEGACY_CONTACT_INDEX_ID],
+      ),
+    ).rejects.toThrow('legacy blind indexes are written only');
+    const owner = await scratch.pool.connect();
+    try {
+      await owner.query('BEGIN');
+      await owner.query(
+        "SELECT set_config('app.legacy_index_remediation', 'v1', true)",
+      );
+      await expect(
+        owner.query(
+          `UPDATE participant_contact_optouts
+           SET blind_index_key_id = $1, recipient_blind_index = $2
+           WHERE blind_index_key_id = $3`,
+          [
+            CLASSIFIED_LEGACY_CONTACT_INDEX_ID,
+            randomBytes(32),
+            RAW_LEGACY_CONTACT_INDEX_ID,
+          ],
+        ),
+      ).rejects.toThrow('legacy blind indexes are written only');
+    } finally {
+      await owner.query('ROLLBACK');
+      owner.release();
+    }
     await expect(
       createTenantDb(app, teamId).query(
         `INSERT INTO message_deliveries
@@ -457,10 +551,6 @@ it('authenticates and resumes every legacy index phase before OAuth and preserve
         return Buffer.alloc(32, 93);
       },
     });
-    await maintenance.query(
-      'UPDATE participants SET email_ciphertext = $1 WHERE id = $2',
-      [randomBytes(encrypted.envelope.length), participantId],
-    );
     await expect(
       migrateLegacyDataBatch(maintenance, scratch.pool, keys, {
         limit: 1,
@@ -478,14 +568,15 @@ it('authenticates and resumes every legacy index phase before OAuth and preserve
       (
         await scratch.pool.query(
           'SELECT blind_index_key_id FROM participants WHERE id = $1',
-          [participantId],
+          [corruptParticipantId],
         )
       ).rows,
     ).toEqual([{ blind_index_key_id: RAW_LEGACY_PARTICIPANT_INDEX_ID }]);
-    await maintenance.query(
-      'UPDATE participants SET email_ciphertext = $1 WHERE id = $2',
-      [encrypted.envelope, participantId],
-    );
+    // Keep the failed row intact through the assertion. Removing this isolated
+    // fixture with the owner lets the same test continue through the valid row.
+    await maintenance.query('DELETE FROM participants WHERE id = $1', [
+      corruptParticipantId,
+    ]);
 
     let afterId: string | null = null;
     const first = await migrateLegacyDataBatch(
@@ -535,6 +626,28 @@ it('authenticates and resumes every legacy index phase before OAuth and preserve
       { limit: 1, afterId },
     );
     expect(third).toMatchObject({ processed: 1, passComplete: false });
+    for (const runtime of [app, maintenance]) {
+      const mutation = runtime.query(
+        `UPDATE participant_contact_optouts SET recipient_blind_index = $1
+         WHERE blind_index_key_id = $2`,
+        [randomBytes(32), CLASSIFIED_LEGACY_CONTACT_INDEX_ID],
+      );
+      if (runtime === app)
+        await expect(mutation).rejects.toMatchObject({ code: '42501' });
+      else
+        await expect(mutation).rejects.toThrow(
+          'legacy blind indexes are written only',
+        );
+    }
+    expect(
+      (
+        await scratch.pool.query(
+          `SELECT recipient_blind_index FROM participant_contact_optouts
+           WHERE blind_index_key_id = $1`,
+          [CLASSIFIED_LEGACY_CONTACT_INDEX_ID],
+        )
+      ).rows,
+    ).toEqual([{ recipient_blind_index: legacyIndex }]);
     expect(
       (await scratch.pool.query('SELECT "accessToken" FROM account')).rows,
     ).toEqual([{ accessToken: 'synthetic-legacy-oauth-token' }]);
