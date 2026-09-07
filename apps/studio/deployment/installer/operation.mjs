@@ -1,5 +1,6 @@
 import {
   closeSync,
+  cpSync,
   existsSync,
   fsyncSync,
   mkdirSync,
@@ -21,6 +22,7 @@ import {
   saveState,
   writePrivateFile,
 } from './files.mjs';
+import registryConfigurationFiles from './registry-configuration-files.json' with { type: 'json' };
 import { activateRelease, readRelease, sha256 } from './release.mjs';
 import { command, pullVerifiedImages, verifyOperation } from './verify.mjs';
 
@@ -42,6 +44,13 @@ const serviceImages = {
   'minio': 'minio',
   'minio-init': 'minioClient',
   'traefik': 'traefik',
+  'registry': 'registry',
+  'registry-migrate': 'registry',
+  'registry-backup-verify': 'registry',
+  'registry-recover-verify': 'registry',
+  'registry-postgres': 'postgres',
+  'registry-minio': 'minio',
+  'registry-minio-init': 'minioClient',
 };
 
 const nested = (left, right) =>
@@ -144,6 +153,16 @@ function checkTemplates(bundle, configuration) {
         'Deployment configuration differs from the signed installer.',
       );
   }
+  for (const name of registryConfigurationFiles) {
+    if (
+      !readFileSync(join(configuration, 'deployment/registry', name)).equals(
+        bundle.files.get(`registry-configuration/${name}`),
+      )
+    )
+      throw new Error(
+        'Registry deployment configuration differs from the signed installer.',
+      );
+  }
 }
 
 function normalizeConfigurationPath(path, roots) {
@@ -181,6 +200,9 @@ function sameRuntimeInputs(previous, configuration) {
     ) ||
     !privateFile(join(previous, 'deployment/encryption.env')).equals(
       privateFile(join(configuration, 'deployment/encryption.env')),
+    ) ||
+    !privateFile(join(previous, 'registry.env')).equals(
+      privateFile(join(configuration, 'registry.env')),
     )
   )
     return false;
@@ -188,13 +210,20 @@ function sameRuntimeInputs(previous, configuration) {
   // service or consumed by an operator step. Keep reuse conservative: an
   // input change takes the full offline path, while Compose comments remain
   // harmless because the effective deployment comparison handles that file.
-  return configurationFiles
-    .filter((name) => name.startsWith('deployment/'))
-    .every((name) =>
-      readFileSync(join(previous, name)).equals(
-        readFileSync(join(configuration, name)),
+  return (
+    configurationFiles
+      .filter((name) => name.startsWith('deployment/'))
+      .every((name) =>
+        readFileSync(join(previous, name)).equals(
+          readFileSync(join(configuration, name)),
+        ),
+      ) &&
+    registryConfigurationFiles.every((name) =>
+      readFileSync(join(previous, 'deployment/registry', name)).equals(
+        readFileSync(join(configuration, 'deployment/registry', name)),
       ),
-    );
+    )
+  );
 }
 
 function backupParents(options, root) {
@@ -281,6 +310,7 @@ export function executeOperation(options, run = command) {
   const images = pullVerifiedImages(bundle, run);
   const project = `studio-${sha256(root).slice(0, 24)}`;
   const configuration = join(generation, 'configuration');
+  const registryConfiguration = join(generation, 'registry-configuration');
   const archivedBundle = join(generation, 'bundle');
   storeBundle(bundle, archivedBundle);
   const oldGeneration = updating
@@ -288,6 +318,9 @@ export function executeOperation(options, run = command) {
     : null;
   const oldConfiguration = oldGeneration
     ? join(oldGeneration, 'configuration')
+    : null;
+  const oldRegistryConfiguration = oldGeneration
+    ? join(oldGeneration, 'registry-configuration')
     : null;
   if (oldGeneration)
     checkTemplates(
@@ -307,8 +340,12 @@ export function executeOperation(options, run = command) {
         project,
         '--env-file',
         join(directory, '.env'),
+        '--env-file',
+        join(directory, 'registry.env'),
         '-f',
         join(directory, 'docker-compose.yml'),
+        '-f',
+        join(directory, 'deployment/registry/compose.yml'),
         '-f',
         join(directory, 'deployment/release-images.yml'),
         ...overlays.flatMap((path) => ['-f', join(directory, path)]),
@@ -335,6 +372,25 @@ export function executeOperation(options, run = command) {
         'postgres',
         '-d',
         'studio',
+      ],
+      [],
+      { input: sql },
+    );
+  const registryAdmin = (directory, database, sql) =>
+    compose(
+      directory,
+      [
+        'exec',
+        '-T',
+        'registry-postgres',
+        'psql',
+        '-X',
+        '-v',
+        'ON_ERROR_STOP=1',
+        '-U',
+        'postgres',
+        '-d',
+        database,
       ],
       [],
       { input: sql },
@@ -372,13 +428,42 @@ export function executeOperation(options, run = command) {
       result.authenticated !== (journal.kind === 'update')
     )
       throw new Error('Private release smoke returned an invalid verdict.');
+    const registry = JSON.parse(
+      compose(
+        directory,
+        [
+          'exec',
+          '-T',
+          'registry',
+          'node',
+          '--input-type=module',
+          '-e',
+          bundle.files.get('smoke.mjs').toString(),
+          '--',
+          '--registry-installer-smoke',
+        ],
+        ['deployment/quarantine.yml'],
+      ),
+    );
+    if (registry.ready !== true)
+      throw new Error('Private Registry smoke returned an invalid verdict.');
   };
   const stop = (directory) => {
     compose(directory, ['stop', 'traefik']);
-    compose(directory, ['stop', 'studio', 'worker']);
+    compose(directory, ['stop', 'studio', 'worker', 'registry']);
   };
   let bootstrap = null;
   if (phases.indexOf(journal.phase) < phases.indexOf('configured')) {
+    if (
+      journal.kind === 'fresh' &&
+      (typeof options.registryDomain !== 'string' ||
+        typeof options.registryMailFrom !== 'string' ||
+        Boolean(options.registrySmtpUrl) ===
+          Boolean(options.registryPostmarkServerToken))
+    )
+      throw new Error(
+        'Fresh installation requires the Registry domain, sender, and exactly one mail transport.',
+      );
     if (journal.phase === 'accepted') {
       if (existsSync(configuration))
         throw new Error(
@@ -391,6 +476,8 @@ export function executeOperation(options, run = command) {
     // This generation has never been selected. Clear only its incomplete
     // configuration from a failed offline configure; no prior generation moves.
     if (existsSync(configuration)) rmSync(configuration, { recursive: true });
+    if (existsSync(registryConfiguration))
+      rmSync(registryConfiguration, { recursive: true });
     privateDirectory(configuration);
     const oldEnv = oldConfiguration
       ? parseEnv(privateFile(join(oldConfiguration, '.env')).toString())
@@ -424,6 +511,87 @@ export function executeOperation(options, run = command) {
       '/configuration',
     ]);
     bootstrap = oldConfiguration ? null : JSON.parse(generated);
+    privateDirectory(registryConfiguration);
+    const previousRegistry = oldConfiguration
+      ? parseEnv(privateFile(join(oldConfiguration, 'registry.env')).toString())
+      : null;
+    const registryInput = previousRegistry
+      ? {
+          domain: previousRegistry.REGISTRY_DOMAIN,
+          mailFrom: previousRegistry.REGISTRY_MAIL_FROM,
+          registryImage: bundle.release.images.registry.reference,
+          minioImage: bundle.release.images.minio.reference,
+          output: '/registry-configuration',
+          previousConfigurationRoot: '/previous-registry-configuration',
+          ...(previousRegistry.REGISTRY_SMTP_URL
+            ? { smtpUrl: previousRegistry.REGISTRY_SMTP_URL }
+            : {
+                postmarkServerToken:
+                  previousRegistry.REGISTRY_POSTMARK_SERVER_TOKEN,
+                ...(previousRegistry.REGISTRY_POSTMARK_MESSAGE_STREAM
+                  ? {
+                      postmarkMessageStream:
+                        previousRegistry.REGISTRY_POSTMARK_MESSAGE_STREAM,
+                    }
+                  : {}),
+              }),
+        }
+      : {
+          domain: options.registryDomain,
+          mailFrom: options.registryMailFrom,
+          registryImage: bundle.release.images.registry.reference,
+          minioImage: bundle.release.images.minio.reference,
+          output: '/registry-configuration',
+          ...(options.registrySmtpUrl
+            ? { smtpUrl: options.registrySmtpUrl }
+            : {
+                postmarkServerToken: options.registryPostmarkServerToken,
+                ...(options.registryPostmarkMessageStream
+                  ? {
+                      postmarkMessageStream:
+                        options.registryPostmarkMessageStream,
+                    }
+                  : {}),
+              }),
+        };
+    docker(
+      [
+        'run',
+        '--rm',
+        '--network=none',
+        '--read-only',
+        '--cap-drop=ALL',
+        '--security-opt=no-new-privileges:true',
+        '--user',
+        `${process.getuid()}:${process.getgid()}`,
+        '--mount',
+        `type=bind,source=${registryConfiguration},target=/registry-configuration`,
+        '--mount',
+        `type=bind,source=${join(archivedBundle, 'registry-templates')},target=/app/deployment-bundle,readonly`,
+        ...(oldRegistryConfiguration
+          ? [
+              '--mount',
+              `type=bind,source=${oldRegistryConfiguration},target=/previous-registry-configuration,readonly`,
+            ]
+          : []),
+        images.registry,
+        'dist/configure.js',
+      ],
+      { input: JSON.stringify(registryInput) },
+    );
+    cpSync(
+      join(registryConfiguration, 'registry.env'),
+      join(configuration, 'registry.env'),
+    );
+    cpSync(
+      join(registryConfiguration, 'deployment/registry'),
+      join(configuration, 'deployment/registry'),
+      { recursive: true },
+    );
+    writePrivateFile(
+      join(configuration, 'registry.env'),
+      privateFile(join(configuration, 'registry.env')),
+    );
     // Every public template must agree with the complete signed installer.
     checkTemplates(bundle, configuration);
     if (oldConfiguration) {
@@ -545,6 +713,7 @@ export function executeOperation(options, run = command) {
       '--wait',
       'studio',
       'worker',
+      'registry',
       'traefik',
     ]);
     return { state: 'active', release: bundle.current.digest, configuration };
@@ -558,6 +727,8 @@ export function executeOperation(options, run = command) {
       previousRelease.postgresMajor !== bundle.release.postgresMajor ||
       JSON.stringify(previousRelease.schemas.studio) !==
         JSON.stringify(bundle.release.schemas.studio) ||
+      JSON.stringify(previousRelease.schemas.registry) !==
+        JSON.stringify(bundle.release.schemas.registry) ||
       !sameRuntimeInputs(oldConfiguration, configuration)
     )
       return false;
@@ -576,7 +747,7 @@ export function executeOperation(options, run = command) {
   if (reusable) {
     // The verified configuration resolves to the same local runtime. Its only
     // normalized path differences are this operation's two generation roots.
-    // Registry is verified but is not a Studio Compose service or activation.
+    // Both private services are checked before selecting this signed generation.
     smoke(configuration);
     journal.reuse = true;
     advance('verified');
@@ -595,18 +766,33 @@ export function executeOperation(options, run = command) {
       oldConfiguration,
       'ALTER ROLE studio_runtime LOGIN; ALTER ROLE studio_maintenance_runtime LOGIN; ALTER ROLE studio_migrator LOGIN;\n',
     );
+    registryAdmin(
+      oldConfiguration,
+      'postgres',
+      'ALTER ROLE registry_runtime LOGIN; ALTER ROLE registry_operations LOGIN; ALTER ROLE registry_migrator LOGIN;\n',
+    );
     const name = `${bundle.current.digest}-${Date.now()}`;
     const data = join(custody.data, name);
     const keys = join(custody.keys, `${name}.env`);
-    run('sh', [join(oldConfiguration, 'deployment/backup.sh'), data, keys], {
-      cwd: oldConfiguration,
-      env: {
-        ...environment(),
-        COMPOSE_PROJECT_NAME: project,
-        COMPOSE_FILE: `${join(oldConfiguration, 'docker-compose.yml')}:${join(oldConfiguration, 'deployment/release-images.yml')}`,
+    const registryKeys = join(custody.keys, `${name}.registry.env`);
+    run(
+      'sh',
+      [
+        join(oldConfiguration, 'deployment/backup.sh'),
+        data,
+        keys,
+        registryKeys,
+      ],
+      {
+        cwd: oldConfiguration,
+        env: {
+          ...environment(),
+          COMPOSE_PROJECT_NAME: project,
+          COMPOSE_FILE: `${join(oldConfiguration, 'docker-compose.yml')}:${join(oldConfiguration, 'deployment/registry/compose.yml')}:${join(oldConfiguration, 'deployment/release-images.yml')}`,
+        },
+        timeout: 30 * 60_000,
       },
-      timeout: 30 * 60_000,
-    });
+    );
     if (!existsSync(join(data, 'COMPLETE')))
       throw new Error('The quiesced backup did not complete.');
     const retainedKeys = privateFile(keys);
@@ -615,6 +801,13 @@ export function executeOperation(options, run = command) {
       readFileSync(join(data, 'encryption.sha256'), 'utf8').trim()
     )
       throw new Error('The independent backup key snapshot does not match.');
+    if (
+      sha256(privateFile(registryKeys)) !==
+      readFileSync(join(data, 'registry-configuration.sha256'), 'utf8').trim()
+    )
+      throw new Error(
+        'The independent Registry configuration snapshot does not match.',
+      );
     writePrivateFile(
       join(configuration, 'deployment/encryption.env'),
       retainedKeys,
@@ -626,11 +819,31 @@ export function executeOperation(options, run = command) {
   if (phases.indexOf(journal.phase) < phases.indexOf('migrating'))
     advance('migrating');
   stop(configuration);
-  compose(configuration, ['up', '-d', '--wait', 'postgres', 'minio']);
+  compose(configuration, [
+    'up',
+    '-d',
+    '--wait',
+    'postgres',
+    'minio',
+    'registry-postgres',
+    'registry-minio',
+  ]);
   compose(configuration, ['run', '--rm', '--no-deps', '-T', 'minio-init']);
+  compose(configuration, [
+    'run',
+    '--rm',
+    '--no-deps',
+    '-T',
+    'registry-minio-init',
+  ]);
   admin(
     configuration,
     readFileSync(join(configuration, 'deployment/postgres-privileges.sql')),
+  );
+  registryAdmin(
+    configuration,
+    'postgres',
+    'ALTER ROLE registry_runtime LOGIN; ALTER ROLE registry_operations LOGIN; ALTER ROLE registry_migrator LOGIN;\n',
   );
   admin(
     configuration,
@@ -641,21 +854,36 @@ export function executeOperation(options, run = command) {
     ['run', '--rm', '--no-deps', '-T', 'studio', 'migrate'],
     ['deployment/migrate.yml', 'deployment/quarantine.yml'],
   );
+  compose(configuration, [
+    'run',
+    '--rm',
+    '--no-deps',
+    '-T',
+    'registry-migrate',
+  ]);
   compose(
     configuration,
     ['run', '--rm', '--no-deps', '-T', 'encryption-verify'],
     ['deployment/quarantine.yml', 'deployment/encryption.yml'],
   );
   compose(configuration, ['run', '--rm', '--no-deps', '-T', 'backup-verify']);
+  compose(configuration, [
+    'run',
+    '--rm',
+    '--no-deps',
+    '-T',
+    'registry-backup-verify',
+  ]);
   compose(configuration, ['run', '--rm', '--no-deps', '-T', 'client-assets']);
   compose(
     configuration,
-    ['up', '-d', '--no-deps', '--wait', 'studio'],
+    ['up', '-d', '--no-deps', '--wait', 'studio', 'registry'],
     ['deployment/quarantine.yml'],
   );
   smoke(configuration);
   advance('verified');
   compose(configuration, ['stop', 'studio']);
+  compose(configuration, ['stop', 'registry']);
   compose(configuration, [
     'up',
     '-d',
@@ -663,6 +891,7 @@ export function executeOperation(options, run = command) {
     '--wait',
     'studio',
     'worker',
+    'registry',
   ]);
   saveState(control, activateRelease(accepted, bundle.current));
   advance('active');

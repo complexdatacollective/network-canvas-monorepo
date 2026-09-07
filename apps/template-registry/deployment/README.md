@@ -1,6 +1,6 @@
-# Optional registry installation contract
+# Registry installation contract
 
-The signed Studio installer owns configuration and consumes these files as an optional overlay. It copies them into `deployment/registry/`, adds `deployment/registry/compose.yml` to the primary Compose file list, and enables the `registry` profile. The primary ingress owns a distinct HTTPS registry hostname and forwards it to `registry:3000`. The managed service uses the same registry image on its required container PaaS; this Compose overlay is the self-hosted reference only.
+The signed Studio installer owns configuration and consumes these files as a required independent service overlay. It copies them into `deployment/registry/`, adds `deployment/registry/compose.yml` to the primary Compose file list, and enables the registry profiles. The primary ingress owns a distinct HTTPS registry hostname and forwards it to `registry:3000`. The managed service uses the same registry image on its required container PaaS; this Compose overlay is the self-hosted reference only.
 
 Before writing `postgres-init.sql`, replace its one `/* REGISTRY_RUNTIME_ROLES */` marker with `runtimeRolesSql(['registry_app', 'registry_operator', 'registry_backup'], 'Template Registry')` from `@codaco/studio-sync/role-bootstrap`. Refuse a missing or repeated marker. Do not duplicate or freeze the role validation into migration history. PostgreSQL's initializer executes only for a fresh volume; an existing database requires reviewed explicit operator provisioning.
 

@@ -111,6 +111,7 @@ for (const missing of [
   'install.mjs',
   'release.sigstore.json',
   'templates/deployment/restore.sh',
+  'registry-templates/recovery.yml',
 ]) {
   test(`refuses missing required file ${missing}`, (t) => {
     const f = fixture(t);

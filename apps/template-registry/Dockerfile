@@ -30,7 +30,7 @@ COPY --from=builder /repo/apps/template-registry/spec ./spec
 USER node
 # Import every runtime entry from the exact production dependency closure.
 # import.meta.main stays false, so this never reads deployment configuration.
-RUN node --input-type=module -e "await Promise.all(['index', 'migrate', 'operator', 'backup'].map((entry) => import('./dist/' + entry + '.js')))"
+RUN node --input-type=module -e "await Promise.all(['index', 'migrate', 'operator', 'backup', 'configure', 'recover'].map((entry) => import('./dist/' + entry + '.js')))"
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
   CMD ["node", "-e", "fetch(`http://127.0.0.1:${process.env.PORT ?? 3000}/healthz`).then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]

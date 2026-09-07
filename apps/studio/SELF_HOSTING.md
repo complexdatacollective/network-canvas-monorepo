@@ -190,7 +190,8 @@ first; only then select the new signed manifest's image digests:
 
 ```sh
 sh deployment/backup.sh /absolute/private/pre-upgrade-backup \
-  /independent-encrypted-key-custody/pre-upgrade-keys.env
+  /independent-encrypted-key-custody/pre-upgrade-keys.env \
+  /independent-encrypted-key-custody/pre-upgrade-registry.env
 # Now update .env and release.json to the new verified release.
 docker compose pull
 # If the release requires new database roles, run its administrator-only
@@ -221,13 +222,15 @@ or destroyed automatically.
 
 ## Back up and restore
 
-A complete recovery set has two separately held parts. The data archive contains
-the database, object-store data, retained hashed browser assets, exact release
+A complete recovery set has three separately held parts. The data archive contains
+both databases, both object-store data sets, retained hashed browser assets, exact release
 manifest/images, `.env` and public
 deployment configuration. The separate `encryption.env` custody file contains
 every historical PII, integration and stable blind-index root and the keyset.
-The data archive contains only this file's SHA-256 binding, never its contents.
-Keep the mode 0600 custody file on operator-controlled encrypted storage in a
+The independent Registry custody file contains its database, authentication,
+mail and object-store credentials. The data archive contains only the SHA-256
+bindings for both custody files, never their contents. Keep both mode 0600
+custody files on operator-controlled encrypted storage in a
 different backup location. Data-backup download credentials must not grant access
 to it. Encrypt the data archive and restrict access as well. There is no
 third-party escrow. Possession of the data archive alone cannot decrypt protected
@@ -240,8 +243,8 @@ lose encrypted contacts, sensitive attributes and integration credentials.
 Stable participant codes, consent, sessions and collected network data remain
 outside that encrypted tier, but still need normal research-data protection.
 
-The backup command stops the proxy and every web/worker replica, disables the
-two dedicated database logins, and refuses any remaining Studio connection
+The backup command stops the proxy, every Studio web/worker replica and Registry
+HTTP/cleanup, disables every writer login in both databases, and refuses any remaining connection
 before capture. Stop independently launched maintenance commands too. A
 refused capture leaves quarantine in place; it never kills an outside session
 or silently restarts writers. The administrator closes admission; the dump uses
@@ -256,12 +259,13 @@ Choose a new path on encrypted storage, outside Docker volumes:
 umask 077
 BACKUP_DIR="/secure-backups/studio-$(date -u +%Y%m%dT%H%M%SZ)"
 KEY_CUSTODY="/independent-encrypted-key-custody/studio-$(date -u +%Y%m%dT%H%M%SZ).env"
-sh deployment/backup.sh "$BACKUP_DIR" "$KEY_CUSTODY"
+REGISTRY_CUSTODY="/independent-encrypted-key-custody/registry-$(date -u +%Y%m%dT%H%M%SZ).env"
+sh deployment/backup.sh "$BACKUP_DIR" "$KEY_CUSTODY" "$REGISTRY_CUSTODY"
 ```
 
 The command first copies the complete encryption file to the new independent
 custody path and verifies that exact key snapshot. It then takes a database
-archive, stops MinIO and captures its volume, locks and verifies the retained
+archive plus the independent Registry database, stops both MinIO services and captures their volumes, locks and verifies the retained
 client generation into `client-assets.tar`, copies configuration while
 excluding all roots, records data counts, and verifies its
 checksum list before writing `COMPLETE`. Preserve the signed release manifest
@@ -289,7 +293,10 @@ rewrite immutable history or triggers.
 
 ```sh
 export COMPOSE_PROJECT_NAME=studio-restore
-sh deployment/restore.sh "$BACKUP_DIR" "$KEY_CUSTODY"
+REGISTRY_RECONCILIATION=/independent-current-evidence/registry-users.json
+REGISTRY_RECONCILIATION_SHA256=$(sha256sum "$REGISTRY_RECONCILIATION" | cut -d' ' -f1)
+sh deployment/restore.sh "$BACKUP_DIR" "$KEY_CUSTODY" "$REGISTRY_CUSTODY" \
+  "$REGISTRY_RECONCILIATION" "$REGISTRY_RECONCILIATION_SHA256"
 export COMPOSE_FILE=docker-compose.yml:deployment/recovery-images.yml:deployment/quarantine.yml
 docker compose -f docker-compose.yml -f deployment/encryption.yml run --rm --no-deps encryption-verify
 docker compose up -d studio

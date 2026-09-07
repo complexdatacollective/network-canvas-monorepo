@@ -14,6 +14,11 @@ export function parseArguments(args) {
     '--backup-directory': 'backupDirectory',
     '--key-custody-directory': 'keyCustodyDirectory',
     '--credentials-file': 'credentialsFile',
+    '--registry-domain': 'registryDomain',
+    '--registry-mail-from': 'registryMailFrom',
+    '--registry-smtp-url': 'registrySmtpUrl',
+    '--registry-postmark-server-token': 'registryPostmarkServerToken',
+    '--registry-postmark-message-stream': 'registryPostmarkMessageStream',
   };
   const result = {};
   for (let i = 0; i < args.length; i += 2) {

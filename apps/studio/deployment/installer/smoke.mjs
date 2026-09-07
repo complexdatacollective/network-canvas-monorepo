@@ -82,6 +82,16 @@ export async function smoke(input, request = fetch) {
   return { ready: true, setup: 'completed', authenticated: true };
 }
 
+export async function registrySmoke(request = fetch) {
+  const response = await request('http://127.0.0.1:3000/readyz', {
+    redirect: 'error',
+    signal: AbortSignal.timeout(5000),
+  });
+  if (!response.ok || (await response.json()).status !== 'ready')
+    throw new Error('Private Registry readiness failed.');
+  return { ready: true };
+}
+
 async function runSmoke() {
   try {
     const bytes = readFileSync(0);
@@ -96,5 +106,16 @@ async function runSmoke() {
   }
 }
 
-if (process.argv.length === 2 && process.argv[1] === '--studio-installer-smoke')
-  await runSmoke();
+if (process.argv.length === 2) {
+  if (process.argv[1] === '--studio-installer-smoke') await runSmoke();
+  if (process.argv[1] === '--registry-installer-smoke') {
+    try {
+      process.stdout.write(`${JSON.stringify(await registrySmoke())}\n`);
+    } catch {
+      process.stderr.write(
+        'Private Registry smoke failed; admission must remain closed.\n',
+      );
+      process.exitCode = 1;
+    }
+  }
+}

@@ -62,8 +62,10 @@ const optionsSchema = z
 export const registryConfigurationFiles = [
   'compose.yml',
   'postgres-init.sql',
+  'postgres-privileges.sql',
   'minio-init.sh',
   'minio-policy.json',
+  'recovery.yml',
 ] as const;
 
 const roles = ['registry_app', 'registry_operator', 'registry_backup'] as const;
@@ -102,18 +104,19 @@ export function renderRegistryDeploymentTemplate(
 ): Buffer {
   if (!registryConfigurationFiles.some((known) => known === name))
     throw new Error('Unknown Registry deployment template.');
-  if (name !== 'postgres-init.sql') return Buffer.from(input);
+  if (name !== 'postgres-init.sql' && name !== 'postgres-privileges.sql')
+    return Buffer.from(input);
   let sql = input.toString();
-  const substitutions = new Map([
-    [
+  const substitutions = new Map<string, string>();
+  if (name === 'postgres-init.sql')
+    substitutions.set(
       '/* REGISTRY_RUNTIME_ROLES */',
       runtimeRolesSql([...roles], 'Template Registry'),
-    ],
-    [
-      '/* REGISTRY_LARGE_OBJECT_PRIVILEGES */',
-      revokeLargeObjectPrivilegesSql([...roles, ...logins]),
-    ],
-  ]);
+    );
+  substitutions.set(
+    '/* REGISTRY_LARGE_OBJECT_PRIVILEGES */',
+    revokeLargeObjectPrivilegesSql([...roles, ...logins]),
+  );
   for (const [marker, replacement] of substitutions) {
     if (sql.split(marker).length !== 2)
       throw new Error('Invalid Registry database provisioning template.');
@@ -290,7 +293,7 @@ async function writeOwned(
 /** Configure only Registry-owned public templates and private Registry inputs.
  * It never reads or emits Studio encryption roots, credentials, or account data. */
 export async function configureRegistryDeployment(
-  input: z.input<typeof optionsSchema>,
+  input: unknown,
   templateRoot: string,
   {
     write = (file, bytes) => file.writeFile(bytes),
