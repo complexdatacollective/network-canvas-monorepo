@@ -15,6 +15,10 @@ import * as variableEditorStories from '../codebook/components/VariableEditor.st
 import VariableEditor from '../codebook/components/VariableEditor.tsx';
 import * as validationEditorStories from '../codebook/validation/CodebookVariableValidationEditor.stories.tsx';
 import CodebookVariableValidationEditor from '../codebook/validation/CodebookVariableValidationEditor.tsx';
+import * as alterEdgeFormStories from '../editors/forms/AlterEdgeFormStageEditor.stories.tsx';
+import * as alterFormStories from '../editors/forms/AlterFormStageEditor.stories.tsx';
+import * as egoFormStories from '../editors/forms/EgoFormStageEditor.stories.tsx';
+import * as informationStories from '../editors/forms/InformationStageEditor.stories.tsx';
 import * as shellStories from '../form/StageEditorShell.stories.tsx';
 import StageEditorShell from '../form/StageEditorShell.tsx';
 import type { ProtocolBuilderProtocolContext } from '../protocol-context.ts';
@@ -295,6 +299,14 @@ describe('every story of a surface that writes its own heading', () => {
     ),
     ...from('StageEditorShell', composeStories(shellStories)),
     ...from('StageEditorStoryHost', composeStories(storyHostStories)),
+    // Every stage editor that has landed. An editor writes no heading of its
+    // own — it composes the shared name heading and shared sections — so what
+    // is asked of each is that the sections IT chose, and the alerts they
+    // raise, land where the composition says they do.
+    ...from('AlterEdgeFormStageEditor', composeStories(alterEdgeFormStories)),
+    ...from('AlterFormStageEditor', composeStories(alterFormStories)),
+    ...from('EgoFormStageEditor', composeStories(egoFormStories)),
+    ...from('InformationStageEditor', composeStories(informationStories)),
   ];
 
   it.each(stories)('has no heading skip in %s', async (_name, Story) => {
