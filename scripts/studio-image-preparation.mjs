@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -22,6 +23,10 @@ const DIGEST = /^sha256:[a-f0-9]{64}$/;
 
 function imageTag(name, source) {
   return `${IMAGE_REPOSITORIES[name]}:sha-${source}`;
+}
+
+function stagingTag(name, source, nonce) {
+  return `${IMAGE_REPOSITORIES[name]}:preparation-${source}-${nonce}`;
 }
 
 function sourceImage(value) {
@@ -86,9 +91,9 @@ function priorRelease(value) {
   return { release: prior.release, sboms: value.sboms };
 }
 
-/** Build or copy the six controlled images only from an admitted source snapshot.
- * The caller owns image-tag reservation and supplies any prior release only
- * after its signatures and retained artifact bytes have been authenticated. */
+/** Build or copy the six controlled images from an admitted source snapshot to
+ * fresh noncanonical staging tags. The caller authenticates the resulting
+ * evidence before publishing canonical tags or signing image references. */
 export async function prepareStudioImages(
   { candidate, gate, authenticatedPriorRelease },
   {
@@ -97,7 +102,7 @@ export async function prepareStudioImages(
     syft = 'syft',
     run = command,
     acquire = acquireImageEvidence,
-    probe = probeImageTag,
+    stagingNonce = randomBytes(16).toString('hex'),
     timeoutMs = 300_000,
   } = {},
 ) {
@@ -107,6 +112,7 @@ export async function prepareStudioImages(
     !SOURCE.test(candidate.commit) ||
     gate?.eligibility?.status !== 'ready' ||
     gate.eligibility.source !== candidate.commit ||
+    !/^[a-f0-9]{32}$/.test(stagingNonce) ||
     !Number.isSafeInteger(timeoutMs) ||
     timeoutMs <= 0
   )
@@ -143,27 +149,12 @@ export async function prepareStudioImages(
     const targets = Object.fromEntries(
       Object.keys(IMAGE_REPOSITORIES).map((name) => [
         name,
-        imageTag(name, candidate.commit),
+        stagingTag(name, candidate.commit, stagingNonce),
       ]),
     );
-    const retained = new Map();
-    for (const name of Object.keys(IMAGE_REPOSITORIES)) {
-      if (reuse.has(name)) continue;
-      const digest = await probe({
-        name,
-        reference: targets[name],
-        crane,
-        timeoutMs,
-      });
-      if (digest !== null && !DIGEST.test(digest))
-        throw new Error(
-          'Studio image preparation received invalid retained tag evidence.',
-        );
-      if (digest !== null) retained.set(name, digest);
-    }
 
     for (const name of ['studio', 'registry', 'minio']) {
-      if (reuse.has(name) || retained.has(name)) continue;
+      if (reuse.has(name)) continue;
       const args = [
         'buildx',
         'build',
@@ -186,7 +177,6 @@ export async function prepareStudioImages(
       execution(run, docker, args, context);
     }
     for (const name of ['postgres', 'traefik', 'minioClient']) {
-      if (retained.has(name)) continue;
       execution(
         run,
         crane,
@@ -213,9 +203,12 @@ export async function prepareStudioImages(
         sboms.set(name, Buffer.from(prior.sboms.get(name)));
         continue;
       }
-      const digest =
-        retained.get(name) ??
-        execution(run, crane, ['digest', targets[name]], context).trim();
+      const digest = execution(
+        run,
+        crane,
+        ['digest', targets[name]],
+        context,
+      ).trim();
       if (!DIGEST.test(digest))
         throw new Error(
           'Studio image preparation received an invalid image digest.',
@@ -267,5 +260,88 @@ export async function prepareStudioImages(
     return { images, sboms, reused: [...reuse].toSorted() };
   } finally {
     rmSync(temporary, { recursive: true, force: true });
+  }
+}
+
+/** Publish canonical source tags only after the caller authenticates the exact
+ * image preparation checkpoint. All existing tags are checked before the first
+ * write, and every newly written tag is read back by digest. */
+export async function publishStudioImageTags(
+  { candidate, evidence },
+  {
+    crane = 'crane',
+    run = command,
+    probe = probeImageTag,
+    timeoutMs = 300_000,
+  } = {},
+) {
+  if (
+    !candidate ||
+    typeof candidate.cwd !== 'string' ||
+    !SOURCE.test(candidate.commit) ||
+    !evidence?.images ||
+    Object.keys(evidence.images).toSorted().join('\n') !==
+      Object.keys(IMAGE_REPOSITORIES).toSorted().join('\n') ||
+    !Number.isSafeInteger(timeoutMs) ||
+    timeoutMs <= 0
+  )
+    throw new Error('Studio canonical image publication is not configured.');
+  const expected = new Map();
+  const targets = new Map();
+  const existing = new Map();
+  for (const name of Object.keys(IMAGE_REPOSITORIES)) {
+    const reference = evidence.images[name]?.reference;
+    const prefix = `${IMAGE_REPOSITORIES[name]}@`;
+    const digest =
+      typeof reference === 'string' && reference.startsWith(prefix)
+        ? reference.slice(prefix.length)
+        : '';
+    if (!DIGEST.test(digest))
+      throw new Error('Authenticated image evidence is invalid.');
+    const target = imageTag(name, candidate.commit);
+    const retained = await probe({
+      name,
+      reference: target,
+      crane,
+      timeoutMs,
+    });
+    if (retained !== null && retained !== digest)
+      throw new Error(
+        'A canonical Studio image tag has different authenticated evidence.',
+      );
+    expected.set(name, digest);
+    targets.set(name, target);
+    existing.set(name, retained);
+  }
+  for (const name of Object.keys(IMAGE_REPOSITORIES)) {
+    if (existing.get(name) === null) {
+      const retained = await probe({
+        name,
+        reference: targets.get(name),
+        crane,
+        timeoutMs,
+      });
+      if (retained !== null) {
+        if (retained !== expected.get(name))
+          throw new Error(
+            'A canonical Studio image tag changed before publication.',
+          );
+        continue;
+      }
+      execution(
+        run,
+        crane,
+        ['copy', evidence.images[name].reference, targets.get(name)],
+        { cwd: candidate.cwd, timeoutMs },
+      );
+      const published = await probe({
+        name,
+        reference: targets.get(name),
+        crane,
+        timeoutMs,
+      });
+      if (published !== expected.get(name))
+        throw new Error('Canonical Studio image tag failed exact readback.');
+    }
   }
 }

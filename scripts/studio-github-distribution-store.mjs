@@ -12,6 +12,16 @@ const PAGE_LIMIT = 10;
 const REQUEST_TIMEOUT_MS = 30_000;
 const STDERR_LIMIT = 64 * 1024;
 const OUTPUT_LIMIT = ASSET_LIMIT + 1024 * 1024;
+const PREPARATION_ASSETS = new Set([
+  'image-preparation.checkpoint.json',
+  'release.json',
+  'release.sigstore.json',
+  'installer.tar',
+  'installer.sigstore.json',
+  ...Object.keys(IMAGE_REPOSITORIES).map(
+    (name) => `${name}.image.sigstore.json`,
+  ),
+]);
 
 export class GitHubRequestError extends Error {
   constructor(status, message) {
@@ -581,15 +591,27 @@ export function createGitHubDistributionStore({
             'Preparation checkpoint has different immutable evidence.',
           );
         releaseId(release);
+        const assets = await listAssets(release);
+        const names = assets.map(({ name }) => name);
+        if (
+          new Set(names).size !== names.length ||
+          names.some((name) => !PREPARATION_ASSETS.has(name))
+        )
+          throw new Error('Preparation checkpoint asset inventory is invalid.');
         return release;
       }
       await retained(true);
       return {
         async read(name) {
-          return readAssetFromRelease(await retained(), name);
+          const release = await retained();
+          if (!PREPARATION_ASSETS.has(name))
+            throw new Error('Preparation checkpoint asset name is invalid.');
+          return readAssetFromRelease(release, name);
         },
         async write(name, bytes) {
           const release = await retained();
+          if (!PREPARATION_ASSETS.has(name))
+            throw new Error('Preparation checkpoint asset name is invalid.');
           const previous = await readAssetFromRelease(release, name);
           if (previous !== null) {
             if (!Buffer.isBuffer(bytes) || !previous.equals(bytes))
