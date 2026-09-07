@@ -78,8 +78,17 @@ function files(root, path = '') {
       throw new Error('Invalid installer path.');
     if (info.isDirectory())
       for (const [child, bytes] of files(root, item)) out.set(child, bytes);
-    else if (info.isFile()) out.set(item, readFileSync(join(root, item)));
-    else throw new Error('Invalid installer path.');
+    else if (info.isFile()) {
+      if (info.size > 8 * 1024 * 1024)
+        throw new Error('Installer inventory is too large.');
+      out.set(item, readFileSync(join(root, item)));
+      if (
+        out.size > 1000 ||
+        [...out.values()].reduce((total, bytes) => total + bytes.length, 0) >
+          32 * 1024 * 1024
+      )
+        throw new Error('Installer inventory is too large.');
+    } else throw new Error('Invalid installer path.');
   }
   return out;
 }
@@ -101,7 +110,7 @@ export function buildInstallerArchive({ directory, source, output }) {
   inventory.set('installer.json', metadata);
   const bytes = Buffer.concat(
     [...inventory]
-      .toSorted(([a], [b]) => a.localeCompare(b))
+      .toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
       .map(([name, body]) => entry(name, body))
       .concat(Buffer.alloc(block * 2)),
   );
@@ -128,6 +137,7 @@ export function buildInstallerArchive({ directory, source, output }) {
 export function readInstallerArchive(bytes, expectedManifestSha256) {
   const entries = new Map();
   let offset = 0;
+  let terminated = false;
   while (offset + block <= bytes.length) {
     const header = bytes.subarray(offset, offset + block);
     if (header.every((byte) => byte === 0)) {
@@ -137,6 +147,7 @@ export function readInstallerArchive(bytes, expectedManifestSha256) {
       )
         throw new Error('Invalid installer archive terminator.');
       offset = bytes.length;
+      terminated = true;
       break;
     }
     const expected = Number.parseInt(
@@ -162,7 +173,8 @@ export function readInstallerArchive(bytes, expectedManifestSha256) {
       header[156] !== 48 ||
       !Number.isSafeInteger(size) ||
       size < 0 ||
-      entries.has(name)
+      entries.has(name) ||
+      entries.size >= 1000
     )
       throw new Error('Invalid installer archive.');
     const body = bytes.subarray(offset + block, offset + block + size);
@@ -177,9 +189,14 @@ export function readInstallerArchive(bytes, expectedManifestSha256) {
     )
       throw new Error('Invalid installer archive padding.');
     entries.set(name, body);
+    if (
+      [...entries.values()].reduce((total, item) => total + item.length, 0) >
+      32 * 1024 * 1024
+    )
+      throw new Error('Installer inventory is too large.');
     offset += block + Math.ceil(size / block) * block;
   }
-  if (offset !== bytes.length)
+  if (!terminated || offset !== bytes.length)
     throw new Error('Invalid installer archive terminator.');
   const metadata = JSON.parse(
     entries.get('installer.json')?.toString() ?? 'null',

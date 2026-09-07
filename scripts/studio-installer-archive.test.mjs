@@ -100,6 +100,15 @@ test('refuses missing, linked, tampered, duplicate and truncated installer bytes
       readInstallerArchive(bytes.subarray(0, 700), f.release.current.digest),
     /Truncated|incomplete|terminator/,
   );
+  assert.throws(
+    () =>
+      readInstallerArchive(
+        bytes.subarray(0, bytes.length - 1024),
+        f.release.current.digest,
+      ),
+    /terminator/,
+  );
+  assert.throws(() => readInstallerArchive(bytes, 'f'.repeat(64)), /binding/);
 });
 test('refuses source mismatch and CLI failure leaves no output', (t) => {
   const f = fixture(t);
