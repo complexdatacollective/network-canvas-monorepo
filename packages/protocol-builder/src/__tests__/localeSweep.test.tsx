@@ -12,6 +12,12 @@ import InterviewerGuidanceSection from '../sections/InterviewerGuidanceSection.t
 import IntroductionSection from '../sections/IntroductionSection.tsx';
 import NetworkFilterSection from '../sections/NetworkFilterSection.tsx';
 import PageContentSection from '../sections/PageContentSection.tsx';
+import BoundaryOptionsSection from '../sections/pedigree/BoundaryOptionsSection.tsx';
+import CensusPromptSection from '../sections/pedigree/CensusPromptSection.tsx';
+import FramingConfigSection from '../sections/pedigree/FramingConfigSection.tsx';
+import NominationPromptsSection from '../sections/pedigree/NominationPromptsSection.tsx';
+import PedigreeEdgeConfigurationSection from '../sections/pedigree/PedigreeEdgeConfigurationSection.tsx';
+import PedigreeNodeConfigurationSection from '../sections/pedigree/PedigreeNodeConfigurationSection.tsx';
 import PromptsSection from '../sections/PromptsSection.tsx';
 import SkipLogicSection from '../sections/SkipLogicSection.tsx';
 import StageNameSection from '../sections/StageNameSection.tsx';
@@ -30,8 +36,8 @@ import {
  * The labels the row-editor stand-ins put on screen.
  *
  * `rowFixtures.tsx` names a family's fields in English on purpose — the tests
- * around it read those names back — and a real area may happen to have chosen
- * the same words for its own label. See `SweepAllowances`.
+ * around it read those names back — and one real area now happens to have
+ * chosen the same words for a label of its own. See `SweepAllowances`.
  */
 const FIXTURE_ROW_EDITOR_WORDS = [
   'Prompt text',
@@ -241,6 +247,48 @@ describe('the row dialogs under es', () => {
       'the add-a-content-block dialog',
       researcherWords(harness),
     );
+  });
+});
+
+/**
+ * The interface families this package edits, swept the same way.
+ *
+ * Each family owns a `sections/<family>/` directory and one `*Messages.ts`,
+ * and each is swept once because a family is the unit a leak belongs to: the
+ * sentences one family writes for itself are declared together, translated
+ * together, and are exactly the words no OTHER family's sweep would ever
+ * render. Sweeping one of a family's stage editors would leave the other
+ * family's message file with nothing looking at it at all.
+ *
+ * The sections mounted are the family-owned ones from that family's editor,
+ * without the shared sections above them — those are swept by the stages at
+ * the top of this file, and leaving them out is what makes a failure here name
+ * the family that caused it.
+ */
+describe('the interface families under es, at rest', () => {
+  const settled = async (harness: StageEditorHarness) => {
+    await waitFor(() => expect(harness.outline().length).toBeGreaterThan(0));
+    return harness;
+  };
+
+  it('sweeps a family pedigree', async () => {
+    const harness = renderStageEditor({
+      stageId: 'family-pedigree-1',
+      locale: 'es',
+      sections: (
+        <>
+          <FramingConfigSection />
+          <BoundaryOptionsSection />
+          <PedigreeNodeConfigurationSection />
+          <PedigreeEdgeConfigurationSection />
+          <CensusPromptSection />
+          <NominationPromptsSection />
+        </>
+      ),
+    });
+    await settled(harness);
+
+    expectNoLocaleLeaks('family pedigree at rest', researcherWords(harness));
   });
 });
 
