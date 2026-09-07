@@ -16,7 +16,9 @@ try {
   const allowedLogins = readMigrationAllowedLogins();
   pool = createBackupPool(readMigrationDatabase());
   await assertBackupAccess(pool, (client) =>
-    assertSafePostgresDatabaseEnrollment(client, allowedLogins),
+    assertSafePostgresDatabaseEnrollment(client, allowedLogins, {
+      allowClosedEnrolledLogins: true,
+    }),
   );
   if ((await checkSchema(pool)).kind !== 'current') {
     throw new Error('The backup image must match the database schema.');

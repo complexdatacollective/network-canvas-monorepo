@@ -2,6 +2,11 @@ import type pg from 'pg';
 
 import { validateRoleNames } from './role-bootstrap.ts';
 
+export type PostgresDatabaseEnrollmentOptions = {
+  /** Backup capture may verify an enrollment after writers are quarantined. */
+  allowClosedEnrolledLogins?: boolean;
+};
+
 export class UnsafePostgresDatabaseEnrollmentError extends Error {
   readonly reason: 'configuration' | 'grants' | 'outsider' | 'sessions';
 
@@ -18,14 +23,27 @@ export class UnsafePostgresDatabaseEnrollmentError extends Error {
 export async function assertSafePostgresDatabaseEnrollment(
   client: pg.PoolClient,
   allowedLogins: readonly string[],
+  options: PostgresDatabaseEnrollmentOptions = {},
 ): Promise<void> {
   let logins: string[];
+  let allowClosedEnrolledLogins: boolean;
   try {
     if (!Array.isArray(allowedLogins)) throw new Error();
     const copied: unknown[] = [...allowedLogins];
     if (!copied.every((login): login is string => typeof login === 'string'))
       throw new Error();
     validateRoleNames(copied);
+    if (
+      options === null ||
+      typeof options !== 'object' ||
+      !Object.keys(options).every(
+        (key) => key === 'allowClosedEnrolledLogins',
+      ) ||
+      (options.allowClosedEnrolledLogins !== undefined &&
+        typeof options.allowClosedEnrolledLogins !== 'boolean')
+    )
+      throw new Error();
+    allowClosedEnrolledLogins = options.allowClosedEnrolledLogins ?? false;
     logins = copied;
   } catch {
     throw new UnsafePostgresDatabaseEnrollmentError('configuration');
@@ -40,7 +58,7 @@ export async function assertSafePostgresDatabaseEnrollment(
         pg_catalog.aclexplode(COALESCE(database.datacl, pg_catalog.acldefault('d', database.datdba))) acl
       WHERE acl.privilege_type = 'CONNECT'
     ) SELECT
-      (SELECT count(*) FROM enrolled WHERE rolcanlogin) = pg_catalog.cardinality($1::pg_catalog.text[])
+      (SELECT count(*) FROM enrolled WHERE rolcanlogin OR $2::boolean) = pg_catalog.cardinality($1::pg_catalog.text[])
       AND EXISTS (SELECT 1 FROM enrolled, database WHERE enrolled.oid = database.datdba)
       AND NOT EXISTS (
         SELECT 1 FROM access LEFT JOIN pg_catalog.pg_roles grantee ON grantee.oid = access.grantee
@@ -48,7 +66,7 @@ export async function assertSafePostgresDatabaseEnrollment(
       ) AND NOT EXISTS (
         SELECT 1 FROM enrolled WHERE NOT EXISTS (SELECT 1 FROM access WHERE grantee = enrolled.oid)
       ) AS valid`,
-    [logins],
+    [logins, allowClosedEnrolledLogins],
   );
   if (enrollment.rows[0]?.valid !== true)
     throw new UnsafePostgresDatabaseEnrollmentError('grants');

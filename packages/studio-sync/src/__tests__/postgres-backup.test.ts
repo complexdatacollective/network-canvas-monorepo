@@ -8,7 +8,10 @@ import {
   createPostgresBackupVerifier,
   type PostgresBackupConfiguration,
 } from '../postgres-backup.ts';
-import { assertSafePostgresDatabaseEnrollment } from '../postgres-database-enrollment.ts';
+import {
+  assertSafePostgresDatabaseEnrollment,
+  UnsafePostgresDatabaseEnrollmentError,
+} from '../postgres-database-enrollment.ts';
 import { createPostgresPool } from '../postgres-pool.ts';
 import {
   RESTRICTED_LARGE_OBJECT_FUNCTIONS,
@@ -64,6 +67,7 @@ async function fixture() {
   const databaseName = `backup_contract_${suffix}`;
   const role = `registry_backup_${suffix}`;
   const login = `registry_capture_${suffix}`;
+  const quarantinedLogin = `registry_runtime_${suffix}`;
   const password = `synthetic-backup-${suffix}`;
   const admin = new pg.Pool({
     host: '127.0.0.1',
@@ -109,7 +113,7 @@ async function fixture() {
     ],
   };
   const verify = createPostgresBackupVerifier(config);
-  const allowedLogins = ['postgres', login];
+  const allowedLogins = ['postgres', login, quarantinedLogin];
   const dispose = async () => {
     await Promise.all([backup.end(), owner.end()]);
     try {
@@ -130,7 +134,7 @@ async function fixture() {
         `DROP DATABASE IF EXISTS ${escapeIdentifier(databaseName)}`,
       );
       await admin.query(
-        `DROP ROLE IF EXISTS ${escapeIdentifier(login)}, ${escapeIdentifier(role)}`,
+        `DROP ROLE IF EXISTS ${escapeIdentifier(login)}, ${escapeIdentifier(quarantinedLogin)}, ${escapeIdentifier(role)}`,
       );
     } finally {
       await admin.end();
@@ -139,11 +143,12 @@ async function fixture() {
   try {
     await admin.query(runtimeRolesSql([role]));
     await admin.query(`CREATE ROLE ${escapeIdentifier(login)} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD ${escapeLiteral(password)};
+      CREATE ROLE ${escapeIdentifier(quarantinedLogin)} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION;
       GRANT ${escapeIdentifier(role)} TO ${escapeIdentifier(login)} WITH INHERIT FALSE, SET TRUE`);
     await admin.query(`CREATE DATABASE ${escapeIdentifier(databaseName)}`);
     await owner.query(
-      `REVOKE CONNECT, TEMPORARY ON DATABASE ${escapeIdentifier(databaseName)} FROM PUBLIC, ${escapeIdentifier(role)}, ${escapeIdentifier(login)};
-      GRANT CONNECT ON DATABASE ${escapeIdentifier(databaseName)} TO postgres, ${escapeIdentifier(login)}`,
+      `REVOKE CONNECT, TEMPORARY ON DATABASE ${escapeIdentifier(databaseName)} FROM PUBLIC, ${escapeIdentifier(role)}, ${escapeIdentifier(login)}, ${escapeIdentifier(quarantinedLogin)};
+      GRANT CONNECT ON DATABASE ${escapeIdentifier(databaseName)} TO postgres, ${escapeIdentifier(login)}, ${escapeIdentifier(quarantinedLogin)}`,
     );
     await owner.query(revokeLargeObjectPrivilegesSql([role, login]));
     await owner.query(`REVOKE CREATE ON SCHEMA public FROM PUBLIC;
@@ -163,6 +168,7 @@ async function fixture() {
     owner,
     backup,
     login,
+    quarantinedLogin,
     allowedLogins,
     role,
     dataSchema,
@@ -177,33 +183,104 @@ async function fixture() {
   };
 }
 
-it('requires exact explicit database enrollment before capture', async () => {
+it('allows only a quarantined enrolled login during backup capture', async () => {
   const f = await fixture();
-  const guard = (client: pg.PoolClient) =>
+  const strictGuard = (client: pg.PoolClient) =>
     assertSafePostgresDatabaseEnrollment(client, f.allowedLogins);
+  const backupGuard = (client: pg.PoolClient) =>
+    assertSafePostgresDatabaseEnrollment(client, f.allowedLogins, {
+      allowClosedEnrolledLogins: true,
+    });
   try {
-    await expect(f.verify(f.backup, guard)).resolves.toBeUndefined();
-    await expect(
-      f.verify(f.backup, (client) =>
-        assertSafePostgresDatabaseEnrollment(client, ['postgres']),
-      ),
-    ).rejects.toThrow(configuration.failureCode);
+    await expect(f.verify(f.backup, strictGuard)).resolves.toBeUndefined();
+    await f.owner.query(
+      `ALTER ROLE ${escapeIdentifier(f.quarantinedLogin)} NOLOGIN`,
+    );
+    await expect(f.verify(f.backup, strictGuard)).rejects.toThrow(
+      configuration.failureCode,
+    );
+    await expect(f.verify(f.backup, backupGuard)).resolves.toBeUndefined();
+
     const outsider = `registry_outsider_${randomUUID().replaceAll('-', '')}`;
+    const outsiderPassword = `synthetic-outsider-${randomUUID()}`;
+    let outsiderPool: pg.Pool | undefined;
     try {
       await f.owner.query(
-        `CREATE ROLE ${escapeIdentifier(outsider)} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION;
+        `CREATE ROLE ${escapeIdentifier(outsider)} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD ${escapeLiteral(outsiderPassword)};
         GRANT CONNECT ON DATABASE ${escapeIdentifier(f.databaseName)} TO ${escapeIdentifier(outsider)}`,
       );
-      await expect(f.verify(f.backup, guard)).rejects.toThrow(
+      await expect(f.verify(f.backup, backupGuard)).rejects.toThrow(
+        configuration.failureCode,
+      );
+      const outsiderUrl = new URL(
+        `postgres://127.0.0.1:${PGPORT}/${f.databaseName}`,
+      );
+      outsiderUrl.username = outsider;
+      outsiderUrl.password = outsiderPassword;
+      outsiderPool = new pg.Pool({
+        connectionString: outsiderUrl.toString(),
+        max: 1,
+      });
+      await outsiderPool.query('SELECT 1');
+      await f.owner.query(
+        `REVOKE CONNECT ON DATABASE ${escapeIdentifier(f.databaseName)} FROM ${escapeIdentifier(outsider)}`,
+      );
+      await expect(f.verify(f.backup, backupGuard)).rejects.toThrow(
         configuration.failureCode,
       );
     } finally {
+      await outsiderPool?.end();
       await f.owner.query(
         `REVOKE CONNECT ON DATABASE ${escapeIdentifier(f.databaseName)} FROM ${escapeIdentifier(outsider)};
         DROP ROLE IF EXISTS ${escapeIdentifier(outsider)}`,
       );
     }
-    await expect(f.verify(f.backup, guard)).resolves.toBeUndefined();
+
+    const client = await f.backup.connect();
+    try {
+      const options = { allowClosedEnrolledLogins: true };
+      const captured = assertSafePostgresDatabaseEnrollment(
+        client,
+        f.allowedLogins,
+        options,
+      );
+      options.allowClosedEnrolledLogins = false;
+      await expect(captured).resolves.toBeUndefined();
+      await expect(
+        assertSafePostgresDatabaseEnrollment(client, f.allowedLogins, {
+          allowClosedEnrolledLogins: 'true',
+        } as never),
+      ).rejects.toMatchObject(
+        new UnsafePostgresDatabaseEnrollmentError('configuration'),
+      );
+      await expect(
+        assertSafePostgresDatabaseEnrollment(client, f.allowedLogins, {
+          allowClosedEnrolledLogins: true,
+          unexpected: true,
+        } as never),
+      ).rejects.toMatchObject(
+        new UnsafePostgresDatabaseEnrollmentError('configuration'),
+      );
+    } finally {
+      client.release();
+    }
+  } finally {
+    await f.dispose();
+  }
+});
+
+it('does not treat a closed backup login as usable', async () => {
+  const f = await fixture();
+  try {
+    await f.owner.query(`ALTER ROLE ${escapeIdentifier(f.login)} NOLOGIN`);
+    const closedBackup = f.openBackup();
+    try {
+      await expect(closedBackup.query('SELECT 1')).rejects.toMatchObject({
+        code: '28000',
+      });
+    } finally {
+      await closedBackup.end();
+    }
   } finally {
     await f.dispose();
   }

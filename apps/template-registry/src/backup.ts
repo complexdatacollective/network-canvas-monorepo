@@ -25,6 +25,7 @@ if (import.meta.main) {
         assertSafePostgresDatabaseEnrollment(
           client,
           configuration.allowedLogins,
+          { allowClosedEnrolledLogins: true },
         ),
       );
       await readRegistrySchemaIdentity(pool);

@@ -53,6 +53,7 @@ async function backupFixture(
     backup: pg.Pool;
     runtime: pg.Pool;
     backupLogin: string;
+    runtimeLogin: string;
     backupPassword: string;
     teams: string[];
     allowedLogins: string[];
@@ -165,6 +166,7 @@ async function backupFixture(
       backup,
       runtime,
       backupLogin,
+      runtimeLogin,
       backupPassword,
       teams,
       allowedLogins,
@@ -357,7 +359,13 @@ it('refuses drift that can omit rows or let the backup credentials write', async
 
 it('verifies the operator command without runtime credentials or secret output', async () => {
   await backupFixture(
-    async ({ source, backupLogin, backupPassword, allowedLogins }) => {
+    async ({
+      source,
+      backupLogin,
+      runtimeLogin,
+      backupPassword,
+      allowedLogins,
+    }) => {
       const url = new URL(source.db.url);
       url.username = backupLogin;
       url.password = backupPassword;
@@ -381,6 +389,9 @@ it('verifies the operator command without runtime credentials or secret output',
           maxBuffer: 1024 * 1024,
         });
       };
+      await source.pool.query(
+        `ALTER ROLE ${pg.escapeIdentifier(runtimeLogin)} NOLOGIN`,
+      );
       const good = run(url.toString());
       expect(good.error).toBeUndefined();
       expect(good.status).toBe(0);
