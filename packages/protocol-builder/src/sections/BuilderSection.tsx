@@ -41,6 +41,11 @@ export type SectionCapability = Readonly<{
    * extraction, absent from the catalogs and untranslatable, so the one place
    * a researcher is warned what they are about to lose would be the one place
    * that stayed English.
+   *
+   * Formatted with no values, like every named descriptor a shared section
+   * takes: one carrying a placeholder renders the pattern on screen, and
+   * nothing in the types can refuse it. See `PromptsSection`'s own note and
+   * `sections/__tests__/namedDescriptorProps.test.tsx`.
    */
   confirmClear: Readonly<{
     title: MessageDescriptor;
