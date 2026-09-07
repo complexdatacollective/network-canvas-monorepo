@@ -112,4 +112,17 @@ describe('the merged catalog a locale actually renders through', () => {
       'common.retry',
     );
   });
+
+  it('carries the protocol-builder catalog into the same merge', () => {
+    // The stage editors Studio mounts are that package's, and they declare
+    // their own ids. This one genuinely diverges in British English, so a
+    // merge that dropped the layer returns the American default rather than
+    // simply the same string twice.
+    expect(
+      enGb.formatMessage({
+        id: 'protocolBuilder.codebookEntity.colorLabel',
+        defaultMessage: 'Protocol color',
+      }),
+    ).toBe('Protocol colour');
+  });
 });
