@@ -1,14 +1,38 @@
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { v4 as uuid } from 'uuid';
 
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
+import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import type { VariableType } from '@codaco/protocol-validation';
 
 import VariableEditor from '../../codebook/components/VariableEditor.tsx';
 import { sectionIdForCodebookSubject } from '../../codebook/editing.ts';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
+
+/**
+ * Writes one value into the STAGE's form, from a control that may be rendered
+ * inside a dialog with a form store of its own.
+ *
+ * How a section finishes the job a codebook creation started: the attribute
+ * lands in the protocol through the compound-edit path, and choosing it is an
+ * ordinary unsaved form change the researcher can still undo or cancel — not
+ * part of that edit. `useFormStore` would address whichever form is nearest,
+ * which inside the creation dialog is the wrong one.
+ */
+export function useSetStageFieldValue(): (
+  path: string,
+  value: FieldValue,
+) => void {
+  const { storeApi } = useStageEditorForm();
+  return useCallback(
+    (path: string, value: FieldValue) => {
+      storeApi.getState().setFieldValue(path, value);
+    },
+    [storeApi],
+  );
+}
 
 export type CreateVariableActionProps = Readonly<{
   /** The entity the new attribute belongs to. */

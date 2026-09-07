@@ -8,6 +8,7 @@ import {
   excludeInterfaceOwned,
   excludeUnvalidatedUses,
   excludeValidatedUses,
+  type VariableRoleMap,
   type WriterClass,
 } from '../../codebook/variableRoles.ts';
 import type { VariablePickerOption } from '../../fields/VariablePicker.tsx';
@@ -35,6 +36,10 @@ export const LAYOUT_TYPES: readonly VariableType[] = Object.freeze(['layout']);
 export const BOOLEAN_TYPES: readonly VariableType[] = Object.freeze([
   'boolean',
 ]);
+export const CATEGORICAL_TYPES: readonly VariableType[] = Object.freeze([
+  'categorical',
+]);
+export const TEXT_TYPES: readonly VariableType[] = Object.freeze(['text']);
 
 const NO_OPTIONS: readonly VariablePickerOption[] = Object.freeze([]);
 const NO_VARIABLES: Readonly<Variables> = Object.freeze({});
@@ -182,6 +187,22 @@ export function useVariableOptions(
     types,
     writerClass,
   ]);
+}
+
+/**
+ * Every role each attribute already plays, apart from the ones this stage
+ * plays itself.
+ *
+ * The stage under edit is excluded because its own committed picks are claims
+ * made BY the pickers reading this map: counting them would make a stage
+ * refuse to re-save the configuration it arrived with.
+ */
+export function useVariableRoleMap(): VariableRoleMap {
+  const { protocolContext, identity } = useStageEditorForm();
+  return useMemo(
+    () => buildVariableRoleMap(protocolContext, identity.id),
+    [identity.id, protocolContext],
+  );
 }
 
 /** The subject's attributes, as the codebook holds them. */
