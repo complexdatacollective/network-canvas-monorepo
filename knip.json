@@ -93,6 +93,14 @@
       // never by an import — see createSearchWorker.ts.
       "entry": ["src/collection/filtering/createSearchWorker.inline.ts"]
     },
+    // The registry coverage probes in type-tests/ are COMPILED, never
+    // imported: stageEditorRegistry.test.tsx runs `tsc --noEmit -p
+    // type-tests/tsconfig.json` and asserts which of them the compiler
+    // refuses. A probe that anything imported would have to compile, which is
+    // the opposite of what it is for.
+    "packages/protocol-builder": {
+      "ignore": ["type-tests/**"]
+    },
     "packages/protocol-validation": {},
     "packages/network-exporters": {},
     "packages/interface-images": {},

@@ -47,6 +47,8 @@
     "./rules/ruleDescription": "./src/rules/ruleDescription.ts",
     "./session": "./src/session.ts",
     "./stage-editor-contract": "./src/stage-editor-contract.ts",
+    "./StageEditor": "./src/StageEditor.tsx",
+    "./stageEditorRegistry": "./src/stageEditorRegistry.ts",
     "./styles.css": "./src/styles.css",
     "./validation-attribution": "./src/validationAttribution.ts"
   },
