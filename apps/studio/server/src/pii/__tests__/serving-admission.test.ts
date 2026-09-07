@@ -1,11 +1,16 @@
+import { fileURLToPath } from 'node:url';
+
 import type pg from 'pg';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { enrollMigrationTestDatabase } from '../../__tests__/support/migrations.ts';
 import {
   createScratchDatabase,
-  provisionScratchSchema,
   reachableDb,
 } from '../../__tests__/support/postgres.ts';
+import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
+import { readMigrations } from '../../db/migrations/artifact.ts';
+import { migrateDatabase } from '../../db/migrations/migrate.ts';
 import { createMaintenancePool, createPool } from '../../db/pool.ts';
 import { createReadiness } from '../../observability/readiness.ts';
 import { initializeEncryption } from '../initialize.ts';
@@ -30,7 +35,26 @@ async function createProvisionedDatabase(): Promise<ProvisionedDatabase> {
   if (!database) throw new Error('A local PostgreSQL database is required.');
   const scratch = await createScratchDatabase(database);
   try {
-    await provisionScratchSchema(scratch.pool);
+    const allowedLogins = await enrollMigrationTestDatabase(
+      scratch.pool,
+      database,
+    );
+    const migrations = await readMigrations(
+      fileURLToPath(new URL('../../../migrations', import.meta.url)),
+    );
+    await migrateDatabase(
+      scratch.pool,
+      migrations,
+      SCHEMA_FINGERPRINT,
+      allowedLogins,
+    );
+    expect(
+      (
+        await scratch.pool.query(
+          'SELECT count(*)::integer AS count FROM studio_migrations.history',
+        )
+      ).rows,
+    ).toEqual([{ count: migrations.length }]);
     return {
       ...scratch,
       app: createPool(scratch.db),
