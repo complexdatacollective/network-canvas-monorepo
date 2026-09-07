@@ -102,7 +102,10 @@ describe.skipIf(!database)(
           get: async () => null,
         },
       });
-    const boot = (logins: readonly string[] | null = allowedLogins) =>
+    const boot = (
+      logins: readonly string[] | null = allowedLogins,
+      administrativeLogins: readonly string[] = [],
+    ) =>
       spawnSync(
         process.execPath,
         [
@@ -120,6 +123,8 @@ describe.skipIf(!database)(
             PORT: '0',
             HOST: '127.0.0.1',
             STUDIO_TELEMETRY: 'false',
+            STUDIO_DATABASE_ADMINISTRATIVE_LOGINS:
+              JSON.stringify(administrativeLogins),
             ...(logins
               ? { STUDIO_DATABASE_ALLOWED_LOGINS: JSON.stringify(logins) }
               : {}),
@@ -300,6 +305,27 @@ describe.skipIf(!database)(
       }
     });
 
+    it('refuses a configured administrative serving login despite otherwise-safe runtime capabilities', async () => {
+      const administrativeLogins = [runtimeLogin];
+      const probe = createReadiness({
+        pool: runtime,
+        maintenancePool: maintenance,
+        allowedLogins,
+        administrativeLogins,
+        cacheMs: 0,
+      });
+      try {
+        expect((await probe.check()).status).toBe('not_ready');
+      } finally {
+        probe.stop();
+      }
+      const result = boot(allowedLogins, administrativeLogins);
+      expect(result.error).toBeUndefined();
+      expect(result.status).toBe(1);
+      expect(result.stdout).toContain('STUDIO_DATABASE_IDENTITY_UNSAFE');
+      expect(result.stdout).not.toContain('admission-listener-started');
+    });
+
     it('refuses outside CONNECT drift at schema, readiness and actual startup admission', async () => {
       await scratch.pool.query(
         `GRANT CONNECT ON DATABASE ${escapeIdentifier(databaseName)} TO ${escapeIdentifier(outsideLogin)}`,
@@ -346,3 +372,191 @@ describe.skipIf(!database)(
     });
   },
 );
+
+it('admits healthy runtime evidence authored by a distinct enrolled non-superuser migration operator', async () => {
+  if (!database)
+    throw new Error('PostgreSQL is required for admission controls.');
+  const scratch = await createScratchDatabase(database);
+  const unique = randomUUID().replaceAll('-', '');
+  const migrationLogin = `separate_migrator_${unique}`;
+  const separateRuntimeLogin = `separate_runtime_${unique}`;
+  const ownerName = (
+    await scratch.pool.query<{ login: string }>('SELECT session_user AS login')
+  ).rows[0]!.login;
+  const databaseName = decodeURIComponent(
+    new URL(scratch.db.url).pathname.slice(1),
+  );
+  const operatorUrl = new URL(scratch.db.url);
+  operatorUrl.username = migrationLogin;
+  operatorUrl.password = password;
+  const runtimeUrl = new URL(operatorUrl);
+  runtimeUrl.username = separateRuntimeLogin;
+  const operator = createOwnerPool({ url: operatorUrl.href });
+  const runtime = createPool({ url: runtimeUrl.href });
+  const allowedLogins = [ownerName, migrationLogin, separateRuntimeLogin];
+  const administrativeLogins = [migrationLogin];
+  const scopedOperator = createMaintenancePool({ url: operatorUrl.href });
+  const migrationCommand = (administrators?: readonly string[]) =>
+    spawnSync(
+      process.execPath,
+      [fileURLToPath(new URL('../../migrate.ts', import.meta.url))],
+      {
+        env: {
+          DATABASE_URL: operatorUrl.href,
+          STUDIO_DATABASE_ALLOWED_LOGINS: JSON.stringify(allowedLogins),
+          ...(administrators
+            ? {
+                STUDIO_DATABASE_ADMINISTRATIVE_LOGINS:
+                  JSON.stringify(administrators),
+              }
+            : {}),
+        },
+        encoding: 'utf8',
+        timeout: 10_000,
+      },
+    );
+  try {
+    for (const login of [migrationLogin, separateRuntimeLogin])
+      await scratch.pool
+        .query(`CREATE ROLE ${escapeIdentifier(login)} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD '${password}';
+        GRANT studio_app, studio_maintenance TO ${escapeIdentifier(login)} WITH ADMIN FALSE, INHERIT FALSE, SET TRUE`);
+    await scratch.pool
+      .query(`GRANT CONNECT ON DATABASE ${escapeIdentifier(databaseName)} TO ${[migrationLogin, separateRuntimeLogin].map(escapeIdentifier).join(', ')};
+      GRANT CREATE ON DATABASE ${escapeIdentifier(databaseName)} TO ${escapeIdentifier(migrationLogin)};
+      GRANT USAGE, CREATE ON SCHEMA public TO ${escapeIdentifier(migrationLogin)}`);
+    const undeclared = migrationCommand();
+    expect(undeclared.error).toBeUndefined();
+    expect(undeclared.status).toBe(1);
+    expect(undeclared.stderr).toContain(
+      'STUDIO_DATABASE_ADMINISTRATIVE_LOGINS',
+    );
+    expect(undeclared.stderr).not.toContain(migrationLogin);
+    expect(
+      (
+        await scratch.pool.query(
+          "SELECT to_regclass('studio_migrations.history') AS history",
+        )
+      ).rows,
+    ).toEqual([{ history: null }]);
+    const migrations = await readMigrations(
+      fileURLToPath(new URL('../../../migrations', import.meta.url)),
+    );
+    expect(
+      await migrateDatabase(
+        operator,
+        migrations,
+        SCHEMA_FINGERPRINT,
+        allowedLogins,
+      ),
+    ).toEqual(migrations.map(({ manifest }) => manifest.id));
+    expect(
+      (
+        await operator.query(
+          `SELECT session_user <> pg_get_userbyid(datdba) AS separate, NOT rolsuper AS restricted FROM pg_database JOIN pg_roles ON rolname = session_user WHERE datname = current_database()`,
+        )
+      ).rows,
+    ).toEqual([{ separate: true, restricted: true }]);
+    expect(await checkSchema(runtime, { allowedLogins })).toMatchObject({
+      kind: 'stale',
+      reason: 'unsafe-evidence',
+    });
+    expect(
+      await checkSchema(runtime, { allowedLogins, administrativeLogins }),
+    ).toEqual({ kind: 'current' });
+    expect(
+      await checkSchema(operator, { allowedLogins, administrativeLogins }),
+    ).toEqual({ kind: 'current' });
+    expect(
+      await checkSchema(scopedOperator, {
+        allowedLogins,
+        administrativeLogins,
+      }),
+    ).toMatchObject({ kind: 'stale', reason: 'unsafe-evidence' });
+    const configured = migrationCommand(administrativeLogins);
+    expect(configured.error).toBeUndefined();
+    expect(configured.status).toBe(0);
+    expect(configured.stdout).toContain('already current');
+    const probe = createReadiness({
+      pool: runtime,
+      allowedLogins,
+      administrativeLogins,
+      cacheMs: 0,
+      assetStore: {
+        checkHealth: async () => {},
+        put: async () => {
+          throw new Error('unused');
+        },
+        get: async () => null,
+      },
+    });
+    try {
+      expect((await probe.check()).status).toBe('ready');
+    } finally {
+      probe.stop();
+    }
+    const boot = spawnSync(
+      process.execPath,
+      [
+        '--input-type=module',
+        '--eval',
+        `await import(${JSON.stringify(new URL('../../index.ts', import.meta.url).href)}); console.log('distinct-administrator-runtime-started'); process.exit(0);`,
+      ],
+      {
+        env: {
+          NODE_ENV: 'production',
+          DATABASE_URL: runtimeUrl.href,
+          STUDIO_DATABASE_ALLOWED_LOGINS: JSON.stringify(allowedLogins),
+          STUDIO_DATABASE_ADMINISTRATIVE_LOGINS:
+            JSON.stringify(administrativeLogins),
+          BETTER_AUTH_SECRET:
+            'distinct-administrator-local-secret-at-least-32-characters',
+          PUBLIC_URL: 'http://127.0.0.1:3000',
+          HOST: '127.0.0.1',
+          PORT: '0',
+          STUDIO_TELEMETRY: 'false',
+        },
+        encoding: 'utf8',
+        timeout: 10_000,
+      },
+    );
+    expect(boot.error).toBeUndefined();
+    expect(boot.status).toBe(0);
+    expect(boot.stdout).toContain('distinct-administrator-runtime-started');
+    // Configuring the actual serving login as administrative cannot hide its direct writes.
+    await operator.query(
+      `GRANT UPDATE(fingerprint) ON "schemaFingerprint" TO ${escapeIdentifier(separateRuntimeLogin)}`,
+    );
+    const serving = await runtime.connect();
+    try {
+      await serving.query('SET ROLE NONE');
+      expect(
+        (
+          await serving.query(
+            'UPDATE "schemaFingerprint" SET fingerprint = $1',
+            [SCHEMA_FINGERPRINT],
+          )
+        ).rowCount,
+      ).toBe(1);
+      await serving.query('SET ROLE studio_app');
+      expect(
+        await checkSchema(serving, {
+          allowedLogins,
+          administrativeLogins: [migrationLogin, separateRuntimeLogin],
+        }),
+      ).toMatchObject({ kind: 'stale', reason: 'unsafe-evidence' });
+    } finally {
+      serving.release();
+    }
+  } finally {
+    await Promise.all([operator.end(), runtime.end(), scopedOperator.end()]);
+    await scratch.dispose();
+    const cleanup = createOwnerPool(database);
+    try {
+      await cleanup.query(
+        `DROP ROLE IF EXISTS ${[migrationLogin, separateRuntimeLogin].map(escapeIdentifier).join(', ')}`,
+      );
+    } finally {
+      await cleanup.end();
+    }
+  }
+});

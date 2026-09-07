@@ -1,7 +1,10 @@
 import type pg from 'pg';
 
 import { assertSafePostgresCatalogPrivileges } from './postgres-catalog-privileges.ts';
-import { assertSafePostgresDatabaseEnrollment } from './postgres-database-enrollment.ts';
+import {
+  assertSafePostgresDatabaseEnrollment,
+  copyPostgresAdministrativeLogins,
+} from './postgres-database-enrollment.ts';
 import {
   RESTRICTED_LARGE_OBJECT_FUNCTIONS,
   validateRoleNames,
@@ -11,6 +14,7 @@ export type PostgresRuntimeIdentity = Readonly<{
   intendedRole: string;
   allowedRoles: readonly string[];
   allowedLogins: readonly string[];
+  administrativeLogins?: readonly string[];
 }>;
 
 /** Verify the real LOGIN as well as the pool's pinned role before runtime
@@ -27,6 +31,7 @@ export async function assertSafePostgresRuntimeIdentity(
   let roles: string[];
   let intendedRole: string;
   let logins: string[];
+  let administrators: string[];
   try {
     const candidateRole: unknown = configuration.intendedRole;
     const candidateRoles: unknown = configuration.allowedRoles;
@@ -39,6 +44,10 @@ export async function assertSafePostgresRuntimeIdentity(
       throw new Error();
     validateRoleNames(copiedLogins);
     logins = copiedLogins;
+    administrators = copyPostgresAdministrativeLogins(
+      logins,
+      configuration.administrativeLogins,
+    );
     if (!Array.isArray(candidateRoles)) throw new Error();
     const copied: unknown[] = [...candidateRoles];
     if (!copied.every((role): role is string => typeof role === 'string')) {
@@ -74,6 +83,8 @@ export async function assertSafePostgresRuntimeIdentity(
       ) SELECT session_user AS session_name,
         current_user = $2::pg_catalog.text AND session_user <> ALL($1::pg_catalog.text[])
         AND session_user = ANY($4::pg_catalog.text[])
+        AND session_user <> ALL($5::pg_catalog.text[])
+        AND current_user <> ALL($5::pg_catalog.text[])
         AND (SELECT count(*) FROM scoped) = pg_catalog.cardinality($1::pg_catalog.text[])
         AND EXISTS (SELECT 1 FROM login WHERE rolcanlogin AND NOT (
           rolsuper OR rolbypassrls OR rolcreaterole OR rolcreatedb OR rolreplication OR rolinherit))
@@ -142,7 +153,13 @@ export async function assertSafePostgresRuntimeIdentity(
               ELSE false END)
         AND NOT EXISTS (SELECT 1 FROM identities identity CROSS JOIN unnest($3::pg_catalog.regprocedure[]) routine
           WHERE pg_catalog.has_function_privilege(identity.oid, routine, 'EXECUTE')) AS safe`,
-      [roles, intendedRole, RESTRICTED_LARGE_OBJECT_FUNCTIONS, logins],
+      [
+        roles,
+        intendedRole,
+        RESTRICTED_LARGE_OBJECT_FUNCTIONS,
+        logins,
+        administrators,
+      ],
     );
     const identity = result.rows[0];
     if (identity?.safe !== true) throw new Error();

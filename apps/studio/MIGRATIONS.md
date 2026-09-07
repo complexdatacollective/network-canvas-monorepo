@@ -329,3 +329,13 @@ Runtime admission verifies login capabilities separately from this enrollment.
 Fingerprint/history ACL or owner-backed-action drift makes existing evidence
 untrusted and requires investigation and verified-backup recovery, not an
 in-process grant repair.
+
+When a separately provisioned migration or conversion login is not the database
+owner, declare it in `STUDIO_DATABASE_ADMINISTRATIVE_LOGINS` as well as the full
+`STUDIO_DATABASE_ALLOWED_LOGINS` enrollment. The optional administrative array
+defaults to empty. Its names must be unique and enrolled; evidence-table ownership
+never supplies this exception. The migration CLI refuses an undeclared non-owner
+operator before applying SQL. Serving app and maintenance connections refuse
+configured administrative logins even if their other capabilities appear safe.
+Offline conversion uses a separately owned, unpinned administrative connection
+for schema inspection while its row operations retain their scoped connection.
