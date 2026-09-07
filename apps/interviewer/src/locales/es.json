@@ -227,7 +227,7 @@
   "interviewer.resumePill.identity": "{protocol} – {caseId}",
   "interviewer.resumePill.resumeLastInterview": "Reanudar la última entrevista",
   "interviewer.resumePill.untitled": "Sin título",
-  "interviewer.sampleProtocol.description": "Un protocolo de referencia completo del equipo de Network Canvas, útil para explorar cómo se relacionan las etapas, las preguntas y los diccionarios de datos.",
+  "interviewer.sampleProtocol.description": "Un protocolo de referencia completo del equipo de Network Canvas, útil para explorar cómo se relacionan las etapas, las preguntas y los libros de códigos.",
   "interviewer.securityBehaviorControls.autoLockAfter": "Bloquear automáticamente tras",
   "interviewer.securityBehaviorControls.hours": "{count, plural, one {# hora} other {# horas}}",
   "interviewer.securityBehaviorControls.howLongTheAppMaySitIdle": "Tiempo que la aplicación puede permanecer inactiva antes de bloquearse automáticamente.",

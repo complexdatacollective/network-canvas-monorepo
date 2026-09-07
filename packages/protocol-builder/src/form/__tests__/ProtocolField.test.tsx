@@ -16,6 +16,7 @@ import {
   createStageIdentity,
   ProtocolBuilderSessionStore,
 } from '../../session.ts';
+import { fixtureMessage } from '../../testing/i18n.ts';
 import MultiSelect, {
   makeMultiSelectValidation,
   type OptionGetter,
@@ -154,18 +155,20 @@ const probedValue = (path: string): unknown =>
 const EXTRAS_CAPABILITY: SectionCapability = {
   fields: ['extras'],
   confirmClear: {
-    title: 'This will clear the extras',
-    description: 'Everything in this section will be removed.',
-    confirmLabel: 'Clear extras',
+    title: fixtureMessage('This will clear the extras'),
+    description: fixtureMessage('Everything in this section will be removed.'),
+    confirmLabel: fixtureMessage('Clear extras'),
   },
 };
 
 const CARDS_CAPABILITY: SectionCapability = {
   fields: ['cards'],
   confirmClear: {
-    title: 'This will clear the card details',
-    description: 'Every extra attribute the cards show will be removed.',
-    confirmLabel: 'Clear card details',
+    title: fixtureMessage('This will clear the card details'),
+    description: fixtureMessage(
+      'Every extra attribute the cards show will be removed.',
+    ),
+    confirmLabel: fixtureMessage('Clear card details'),
   },
 };
 
