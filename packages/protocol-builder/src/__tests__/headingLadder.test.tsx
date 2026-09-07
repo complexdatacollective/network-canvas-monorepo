@@ -20,6 +20,7 @@ import * as alterFormStories from '../editors/forms/AlterFormStageEditor.stories
 import * as egoFormStories from '../editors/forms/EgoFormStageEditor.stories.tsx';
 import * as informationStories from '../editors/forms/InformationStageEditor.stories.tsx';
 import * as quickAddStories from '../editors/nameGenerators/NameGeneratorQuickAddStageEditor.stories.tsx';
+import * as rosterStories from '../editors/nameGenerators/NameGeneratorRosterStageEditor.stories.tsx';
 import * as nameGeneratorStories from '../editors/nameGenerators/NameGeneratorStageEditor.stories.tsx';
 import { nameGeneratorStageEditors } from '../editors/nameGeneratorStageEditors.ts';
 import * as shellStories from '../form/StageEditorShell.stories.tsx';
@@ -72,11 +73,11 @@ const personDocument = (
  *
  * A `root` narrows it to one subtree, for a surface that is only ever met
  * inside a page with a ladder of its own — a dialog opened over a stage
- * editor. What is asked of those is where their own headings sit relative to
- * the heading they were opened under, and spelling out the whole page as well
- * would make the answer change every time a section is added to an editor
- * that is not what the test is about. A skip anywhere is still caught:
- * `expectHeadingOrder` reads the whole document either way.
+ * editor, a section of one. What is asked of those is where their own headings
+ * sit relative to the heading they were opened under, and spelling out the
+ * whole page as well would make the answer change every time a section is
+ * added to an editor that is not what the test is about. A skip anywhere is
+ * still caught: `expectHeadingOrder` reads the whole document either way.
  */
 const headingLadder = (root: ParentNode = document): string[] =>
   Array.from(root.querySelectorAll('h1, h2, h3, h4, h5, h6')).map(
@@ -335,6 +336,39 @@ describe('a row of a stage editor list, opened in its dialog', () => {
   });
 });
 
+describe('a section that speaks once a data file has been read', () => {
+  /**
+   * The roster editor reads the file its stage points at and then says what
+   * the file holds, in an alert raised inside the section that chose it — so
+   * that alert is one below that section's own heading rather than beside it.
+   *
+   * Asserted here rather than left to the story sweep below, which judges each
+   * story as it commits: this alert arrives a beat later, and a sweep that
+   * waited for it by a timer would be judging whatever had happened to render
+   * by then. Waited for by the words it puts on screen instead, so the rung it
+   * lands on is really the one under test.
+   */
+  it('puts what a data file holds one below the section that chose it', async () => {
+    renderStageEditor({
+      stageId: 'name-generator-roster-1',
+      registry: nameGeneratorStageEditors,
+    });
+
+    await screen.findByText(
+      'The people in it carry these attributes: age and name.',
+    );
+
+    expect(
+      headingLadder(screen.getByRole('region', { name: 'Roster source' })),
+    ).toEqual([
+      'h3: Roster source',
+      'h4: Roster',
+      'h4: What this data file holds',
+    ]);
+    await expectHeadingOrder(3);
+  });
+});
+
 /**
  * The stories are the surfaces a reviewer looks at and the ones Chromatic and
  * the Storybook a11y addon replay, so the rule is run over them here too —
@@ -378,6 +412,7 @@ describe('every story of a surface that writes its own heading', () => {
       'NameGeneratorQuickAddStageEditor',
       composeStories(quickAddStories),
     ),
+    ...from('NameGeneratorRosterStageEditor', composeStories(rosterStories)),
   ];
 
   it.each(stories)('has no heading skip in %s', async (_name, Story) => {
