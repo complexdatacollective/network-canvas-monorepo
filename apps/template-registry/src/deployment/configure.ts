@@ -38,6 +38,7 @@ const optionsSchema = z
     registryImage: image,
     minioImage: image,
     output: z.string().min(1),
+    previousConfigurationRoot: z.string().min(1).optional(),
     smtpUrl: dotenvValue.url().max(2048).optional(),
     postmarkServerToken: dotenvValue.min(1).max(1024).optional(),
     postmarkMessageStream: dotenvValue.min(1).max(256).optional(),
@@ -145,6 +146,46 @@ function retainedGenerated(values: Record<string, string | undefined>) {
   return retained as Record<(typeof generatedNames)[number], string>;
 }
 
+async function readRegistryConfiguration(
+  root: string,
+  lockName?: string,
+): Promise<Record<string, string | undefined>> {
+  const expected = [
+    'deployment',
+    'registry.env',
+    ...(lockName ? [lockName] : []),
+  ];
+  if (
+    (await readdir(root)).toSorted().join(',') !== expected.toSorted().join(',')
+  )
+    throw new Error('Registry configuration directory is incomplete.');
+  const environmentPath = join(root, 'registry.env');
+  const environmentInfo = await lstat(environmentPath);
+  if (
+    !environmentInfo.isFile() ||
+    environmentInfo.isSymbolicLink() ||
+    environmentInfo.mode & 0o077
+  )
+    throw new Error('Registry private configuration must be mode0600.');
+  const values = parseEnv(await readFile(environmentPath, 'utf8'));
+  retainedGenerated(values);
+  const deployment = join(root, 'deployment', 'registry');
+  const deploymentInfo = await lstat(deployment);
+  if (
+    !deploymentInfo.isDirectory() ||
+    deploymentInfo.isSymbolicLink() ||
+    (await readdir(deployment)).toSorted().join(',') !==
+      [...registryConfigurationFiles].toSorted().join(',')
+  )
+    throw new Error('Registry configuration directory is incomplete.');
+  for (const name of registryConfigurationFiles) {
+    const info = await lstat(join(deployment, name));
+    if (!info.isFile() || info.isSymbolicLink())
+      throw new Error('Registry configuration directory is incomplete.');
+  }
+  return values;
+}
+
 /** Configure only Registry-owned public templates and private Registry inputs.
  * It never reads or emits Studio encryption roots, credentials, or account data. */
 export async function configureRegistryDeployment(
@@ -162,6 +203,29 @@ export async function configureRegistryDeployment(
     })),
   );
   const output = resolve(options.output);
+  const publicEnvironment = {
+    REGISTRY_DOMAIN: options.domain,
+    REGISTRY_MAIL_FROM: options.mailFrom,
+    REGISTRY_IMAGE: options.registryImage,
+    MINIO_IMAGE: options.minioImage,
+    REGISTRY_SMTP_URL: options.smtpUrl ?? '',
+    REGISTRY_POSTMARK_SERVER_TOKEN: options.postmarkServerToken ?? '',
+    REGISTRY_POSTMARK_MESSAGE_STREAM: options.postmarkMessageStream ?? '',
+    REGISTRY_S3_REGION: 'us-east-1',
+  };
+  const retained = options.previousConfigurationRoot
+    ? await (async () => {
+        const supplied = await lstat(options.previousConfigurationRoot!);
+        if (!supplied.isDirectory() || supplied.isSymbolicLink())
+          throw new Error('Registry previous configuration is unsafe.');
+        const previous = resolve(options.previousConfigurationRoot!);
+        if (previous === output)
+          throw new Error(
+            'Registry transition requires a new configuration root.',
+          );
+        return retainedGenerated(await readRegistryConfiguration(previous));
+      })()
+    : null;
   await mkdir(output, { recursive: true, mode: 0o700 });
   const lockPath = join(output, '.registry-configure.lock');
   const lock = await open(lockPath, 'wx', 0o600);
@@ -175,57 +239,24 @@ export async function configureRegistryDeployment(
       existing.some((name) => name !== '.registry-configure.lock')
     )
       throw new Error('Registry configuration directory is incomplete.');
-    const publicEnvironment = {
-      REGISTRY_DOMAIN: options.domain,
-      REGISTRY_MAIL_FROM: options.mailFrom,
-      REGISTRY_IMAGE: options.registryImage,
-      MINIO_IMAGE: options.minioImage,
-      REGISTRY_SMTP_URL: options.smtpUrl ?? '',
-      REGISTRY_POSTMARK_SERVER_TOKEN: options.postmarkServerToken ?? '',
-      REGISTRY_POSTMARK_MESSAGE_STREAM: options.postmarkMessageStream ?? '',
-      REGISTRY_S3_REGION: 'us-east-1',
-    };
+    if (retained && hasEnvironment)
+      throw new Error('Registry transition requires a new configuration root.');
     if (hasEnvironment) {
       // This is a dedicated Registry configuration root. A generation rerun is
       // idempotent only; a changed public deployment belongs in a new root.
-      if (
-        existing.toSorted().join(',') !==
-        '.registry-configure.lock,deployment,registry.env'
-      )
-        throw new Error('Registry configuration directory is incomplete.');
-      const environmentInfo = await lstat(environmentPath);
-      if (
-        !environmentInfo.isFile() ||
-        environmentInfo.isSymbolicLink() ||
-        environmentInfo.mode & 0o077
-      )
-        throw new Error('Registry private configuration must be mode0600.');
-      const current = parseEnv(await readFile(environmentPath, 'utf8'));
-      retainedGenerated(current);
+      const current = await readRegistryConfiguration(
+        output,
+        '.registry-configure.lock',
+      );
       if (
         Object.entries(publicEnvironment).some(
           ([name, value]) => current[name] !== value,
         )
       )
         throw new Error('Registry configuration is already initialized.');
-      const deployment = join(output, 'deployment', 'registry');
-      const deploymentInfo = await lstat(deployment);
-      if (
-        !deploymentInfo.isDirectory() ||
-        deploymentInfo.isSymbolicLink() ||
-        (await readdir(deployment)).toSorted().join(',') !==
-          [...registryConfigurationFiles].toSorted().join(',')
-      )
-        throw new Error('Registry configuration directory is incomplete.');
-      for (const name of registryConfigurationFiles) {
-        const target = join(deployment, name);
-        const info = await lstat(target);
-        if (!info.isFile() || info.isSymbolicLink())
-          throw new Error('Registry configuration directory is incomplete.');
-      }
       return;
     }
-    const secrets = generatedEnvironment();
+    const secrets = retained ?? generatedEnvironment();
     const deployment = join(output, 'deployment', 'registry');
     await mkdir(deployment, { recursive: true, mode: 0o700 });
     for (const { name, bytes } of templates) {

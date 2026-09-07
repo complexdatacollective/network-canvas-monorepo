@@ -157,4 +157,75 @@ describe('Registry deployment configuration', () => {
       }
     });
   });
+
+  it('carries only validated generated credentials into a new Registry generation', async () => {
+    const previous = await mkdtemp(
+      join(tmpdir(), 'registry-configure-previous-'),
+    );
+    await fixture(async (output) => {
+      try {
+        await configureRegistryDeployment(
+          { ...options, output: previous },
+          templateRoot,
+        );
+        const before = await environment(previous);
+        const oldEnvironmentBytes = await readFile(
+          join(previous, 'registry.env'),
+        );
+        const oldTemplateBytes = await readFile(
+          join(previous, 'deployment/registry/postgres-init.sql'),
+        );
+        await configureRegistryDeployment(
+          {
+            ...options,
+            registryImage: `ghcr.io/example/registry@sha256:${'3'.repeat(64)}`,
+            output,
+            previousConfigurationRoot: previous,
+          },
+          templateRoot,
+        );
+        const after = await environment(output);
+        for (const name of generatedNames)
+          expect(after[name]).toBe(before[name]);
+        expect(after.REGISTRY_IMAGE).toMatch(/3{64}$/);
+        expect(await readFile(join(previous, 'registry.env'))).toEqual(
+          oldEnvironmentBytes,
+        );
+        expect(
+          await readFile(
+            join(previous, 'deployment/registry/postgres-init.sql'),
+          ),
+        ).toEqual(oldTemplateBytes);
+      } finally {
+        await rm(previous, { recursive: true, force: true });
+      }
+    });
+  });
+
+  it('refuses an unsafe previous Registry root without generating replacement credentials', async () => {
+    const previous = await mkdtemp(
+      join(tmpdir(), 'registry-configure-unsafe-'),
+    );
+    await fixture(async (output) => {
+      try {
+        await writeFile(
+          join(previous, 'registry.env'),
+          'REGISTRY_AUTH_SECRET=unsafe\n',
+        );
+        await expect(
+          configureRegistryDeployment(
+            {
+              ...options,
+              output,
+              previousConfigurationRoot: previous,
+            },
+            templateRoot,
+          ),
+        ).rejects.toThrow();
+        expect(await readdir(output)).toEqual([]);
+      } finally {
+        await rm(previous, { recursive: true, force: true });
+      }
+    });
+  });
 });
