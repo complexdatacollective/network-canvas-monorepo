@@ -36,7 +36,11 @@ import PromptsSection from '../sections/PromptsSection.tsx';
 import SkipLogicSection from '../sections/SkipLogicSection.tsx';
 import StageNameSection from '../sections/StageNameSection.tsx';
 import SubjectSection from '../sections/SubjectSection.tsx';
-import { expectNoLocaleLeaks, localeLeaks } from '../testing/localeSweep.ts';
+import {
+  expectNoLocaleLeaks,
+  localeLeaks,
+  protocolStrings,
+} from '../testing/localeSweep.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
@@ -55,6 +59,31 @@ const FIXTURE_ROW_EDITOR_WORDS = [
   'Block type',
   'Block text',
 ] as const;
+
+/**
+ * Everything on screen that belongs to the researcher rather than to this
+ * package: the WHOLE protocol the harness is mounted over, the stage's own
+ * seeded fields, and the codebook the sections read type and attribute names
+ * out of.
+ *
+ * The whole protocol, not this stage and the codebook: a section can show a
+ * researcher's words from anywhere in it. A narrative pedigree lists the
+ * pedigree stages it may read BY THEIR OWN LABELS, and the fixture protocol
+ * names one of them "Family Pedigree" — which is also what
+ * `protocolBuilder.interface.familyPedigree` says in English, so a sweep
+ * reading only this stage reports a researcher's own stage name as a
+ * translation defect.
+ *
+ * Read out of the documents the harness mounts rather than listed by hand, so
+ * a fixture that gains a stage or an attribute cannot quietly widen the
+ * sweep's blind spot — or start failing it.
+ */
+const researcherWords = (harness: StageEditorHarness) =>
+  protocolStrings(
+    harness.session.getSnapshot().protocolSections,
+    harness.seeded.fields,
+    harness.hostCodebook(),
+  );
 
 /**
  * What a Spanish researcher actually reads.
@@ -94,7 +123,7 @@ describe('the stage sections under es, at rest', () => {
     });
     await screen.findAllByRole('textbox');
 
-    expectNoLocaleLeaks('sociogram at rest', harness);
+    expectNoLocaleLeaks('sociogram at rest', researcherWords(harness));
   });
 
   it('sweeps an alter form', async () => {
@@ -110,7 +139,7 @@ describe('the stage sections under es, at rest', () => {
     });
     await screen.findAllByRole('textbox');
 
-    expectNoLocaleLeaks('alter form at rest', harness);
+    expectNoLocaleLeaks('alter form at rest', researcherWords(harness));
   });
 
   it('sweeps an information page', async () => {
@@ -129,7 +158,7 @@ describe('the stage sections under es, at rest', () => {
     });
     await screen.findAllByRole('textbox');
 
-    expectNoLocaleLeaks('information page at rest', harness);
+    expectNoLocaleLeaks('information page at rest', researcherWords(harness));
   });
 });
 
@@ -147,13 +176,13 @@ describe('the row dialogs under es', () => {
       ),
     });
     await screen.findAllByRole('button');
-    expectNoLocaleLeaks('prompt list at rest', harness);
+    expectNoLocaleLeaks('prompt list at rest', researcherWords(harness));
 
     await harness.user.click(
       await screen.findByRole('button', { name: 'Crear nueva pregunta' }),
     );
     await screen.findByRole('dialog');
-    expectNoLocaleLeaks('the add-a-prompt dialog', harness, {
+    expectNoLocaleLeaks('the add-a-prompt dialog', researcherWords(harness), {
       fixtureWords: FIXTURE_ROW_EDITOR_WORDS,
     });
 
@@ -164,7 +193,7 @@ describe('the row dialogs under es', () => {
       await screen.findByRole('button', { name: /^Editar pregunta$/ }),
     );
     await screen.findByRole('dialog');
-    expectNoLocaleLeaks('the edit-a-prompt dialog', harness, {
+    expectNoLocaleLeaks('the edit-a-prompt dialog', researcherWords(harness), {
       fixtureWords: FIXTURE_ROW_EDITOR_WORDS,
     });
 
@@ -175,9 +204,13 @@ describe('the row dialogs under es', () => {
       await screen.findByRole('button', { name: /^Eliminar pregunta$/ }),
     );
     await screen.findByRole('dialog');
-    expectNoLocaleLeaks('the remove-a-prompt confirmation', harness, {
-      fixtureWords: FIXTURE_ROW_EDITOR_WORDS,
-    });
+    expectNoLocaleLeaks(
+      'the remove-a-prompt confirmation',
+      researcherWords(harness),
+      {
+        fixtureWords: FIXTURE_ROW_EDITOR_WORDS,
+      },
+    );
   });
 
   it('sweeps the form-fields dialog, where the attribute picker lives', async () => {
@@ -198,7 +231,10 @@ describe('the row dialogs under es', () => {
       expect(screen.getAllByRole('combobox').length).toBeGreaterThan(0),
     );
 
-    expectNoLocaleLeaks('the add-a-form-field dialog', harness);
+    expectNoLocaleLeaks(
+      'the add-a-form-field dialog',
+      researcherWords(harness),
+    );
   });
 
   it('sweeps the page-content dialog', async () => {
@@ -221,7 +257,10 @@ describe('the row dialogs under es', () => {
     );
     await screen.findByRole('dialog');
 
-    expectNoLocaleLeaks('the add-a-content-block dialog', harness);
+    expectNoLocaleLeaks(
+      'the add-a-content-block dialog',
+      researcherWords(harness),
+    );
   });
 });
 
@@ -266,7 +305,10 @@ describe('the interface families under es, at rest', () => {
     });
     await settled(harness);
 
-    expectNoLocaleLeaks('sociogram canvas sections at rest', harness);
+    expectNoLocaleLeaks(
+      'sociogram canvas sections at rest',
+      researcherWords(harness),
+    );
   });
 
   it('sweeps a geospatial stage', async () => {
@@ -283,16 +325,7 @@ describe('the interface families under es, at rest', () => {
     });
     await settled(harness);
 
-    expectNoLocaleLeaks('geospatial stage at rest', harness, {
-      // `resources/components/resourceKinds.ts` still names each resource kind
-      // in English (`geojson: 'Map layer'`), and the chosen layer's summary
-      // shows that name as a badge. It is the one area `NOT_CONVERTED_YET`
-      // still excuses, and it goes when i18n-1 lands — at which point this
-      // entry stops matching and has to be deleted.
-      stillEnglish: [
-        'protocolBuilder.geospatial.layerTitle rendered in English: Map layer',
-      ],
-    });
+    expectNoLocaleLeaks('geospatial stage at rest', researcherWords(harness));
   });
 
   it('sweeps a family pedigree', async () => {
@@ -312,7 +345,7 @@ describe('the interface families under es, at rest', () => {
     });
     await settled(harness);
 
-    expectNoLocaleLeaks('family pedigree at rest', harness);
+    expectNoLocaleLeaks('family pedigree at rest', researcherWords(harness));
   });
 
   it('sweeps a narrative pedigree', async () => {
@@ -329,7 +362,7 @@ describe('the interface families under es, at rest', () => {
     });
     await settled(harness);
 
-    expectNoLocaleLeaks('narrative pedigree at rest', harness);
+    expectNoLocaleLeaks('narrative pedigree at rest', researcherWords(harness));
   });
 
   it('sweeps an anonymisation stage', async () => {
@@ -346,7 +379,10 @@ describe('the interface families under es, at rest', () => {
     });
     await settled(harness);
 
-    expectNoLocaleLeaks('anonymisation stage at rest', harness);
+    expectNoLocaleLeaks(
+      'anonymisation stage at rest',
+      researcherWords(harness),
+    );
   });
 });
 
@@ -361,6 +397,22 @@ describe('the sweep itself', () => {
 
     expect(localeLeaks()).toEqual([
       'common.cancel rendered in English: Cancel',
+    ]);
+  });
+
+  /**
+   * The half a whole-message comparison cannot see. A message carrying an ICU
+   * argument is never rendered as its pattern, so nothing matched
+   * `Node color {index, number}` — and a colour list rebuilt by hand as
+   * `` `Node color ${index + 1}` `` was reported by nothing at all. What
+   * survives formatting is the text between the arguments, so that is what is
+   * compared.
+   */
+  it('names a run of English from inside a message that takes an argument', () => {
+    document.body.innerHTML = '<option>Node color 1</option>';
+
+    expect(localeLeaks()).toEqual([
+      'protocolBuilder.codebookEntity.nodeColorOption rendered in English: Node color',
     ]);
   });
 

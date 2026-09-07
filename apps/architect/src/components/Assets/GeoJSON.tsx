@@ -1,10 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { getAssetById } from '~/utils/assetUtils';
 
 import Table, { type TableColumn } from './Table';
 import withAssetPath from './withAssetPath';
+const messages = defineMessages({
+  showingOfFeatures: {
+    id: 'architect.assets.geoJSON.showingOfFeatures',
+    defaultMessage: 'Showing {ROW_LIMIT} of {value2} features',
+    description: 'Visible text in components / Assets / GeoJSON.',
+  },
+});
+
 const ROW_LIMIT = 100;
 type GeoJSONFeature = {
   properties: Record<string, unknown>;
@@ -38,6 +48,7 @@ type GeoJSONTableProps = {
   assetId: string;
 };
 const GeoJSONTable = ({ assetId }: GeoJSONTableProps) => {
+  const intl = useAppIntl();
   const [content, setContent] = useState<GeoJSON>({ features: [] });
   useEffect(() => {
     if (!assetId) {
@@ -55,7 +66,10 @@ const GeoJSONTable = ({ assetId }: GeoJSONTableProps) => {
     <>
       {isTruncated && (
         <Paragraph className="mb-2 text-sm text-current/70">
-          Showing {ROW_LIMIT} of {totalRows.toLocaleString()} features
+          {intl.formatMessage(messages.showingOfFeatures, {
+            ROW_LIMIT: intl.formatNumber(ROW_LIMIT),
+            value2: intl.formatNumber(totalRows),
+          })}
         </Paragraph>
       )}
       <Table data={data} columns={columns} />

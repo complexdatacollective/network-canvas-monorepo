@@ -12,6 +12,7 @@ import type { AuthMode } from '~/lib/auth/api';
 import type { AuthStateKind } from '~/lib/auth/AuthContext';
 import { DEFAULT_SETTINGS } from '~/lib/db/types';
 import type { ProtocolWithCounts } from '~/lib/db/types';
+import { renderedMessage } from '~/testUtils/renderedMessage';
 
 // `@codaco/fresco-ui/Toast`'s `ToastData` isn't exported, so this mirrors
 // only the fields these tests assert on from `toast.add()`'s argument.
@@ -349,9 +350,10 @@ describe('SettingsDialog synthetic tab — protocol import race', () => {
     await waitFor(() =>
       expect(mockToastAdd).toHaveBeenCalledWith(
         expect.objectContaining({
-          title: 'Could not refresh synthetic session info',
-          description:
+          title: renderedMessage('Could not refresh synthetic session info'),
+          description: renderedMessage(
             'The protocol list and session count above may not match what is actually stored on this device. Reopen Settings to refresh them.',
+          ),
           variant: 'destructive',
           timeout: 0,
         }),
@@ -404,8 +406,10 @@ describe('SettingsDialog synthetic tab — generation failure toast', () => {
     await waitFor(() => expect(mockToastAdd).toHaveBeenCalled());
     expect(mockToastAdd).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        title: 'Generation failed',
-        description: 'Protocol not found for hash "hash-1".',
+        title: renderedMessage('Generation failed'),
+        description: renderedMessage(
+          'Synthetic data could not be generated. Please try again.',
+        ),
         variant: 'destructive',
         timeout: 0,
       }),
@@ -421,6 +425,7 @@ describe('SettingsDialog synthetic tab — generation failure toast', () => {
         variableIds: ['band-var'],
         variableNames: ['Band'],
         rules: ['unique'],
+        reasonCode: 'insufficientUniqueValues',
         reason:
           'only 2 distinct values are possible, but up to 5 nodes of this type can be generated',
       },
@@ -444,14 +449,14 @@ describe('SettingsDialog synthetic tab — generation failure toast', () => {
     render(<>{call?.description}</>);
     expect(
       screen.getByText(
-        /this protocol declares validation rules that cannot all be satisfied together/i,
+        /review the conflicting rules below and adjust the protocol in Architect/i,
       ),
     ).toBeInTheDocument();
     // `listitem` doesn't compute an accessible name from its content (ARIA
     // "name from content" is prohibited for this role), so assert on the
     // rendered <li> by its text content instead of an accessible-name query.
     const conflictItem = screen.getByText(
-      /node "Person", "Band" \(unique\): only 2 distinct values are possible/,
+      /Node "Person", Band \(Unique value\): Too few distinct values are available/,
     );
     expect(conflictItem.tagName).toBe('LI');
     // Bounding and scrolling long content is fresco-ui Toast's job, not this
@@ -556,7 +561,7 @@ describe('SettingsDialog synthetic tab — post-generation refresh failure', () 
     await waitFor(() =>
       expect(mockToastAdd).toHaveBeenCalledWith(
         expect.objectContaining({
-          title: 'Generated 5 synthetic sessions',
+          title: renderedMessage('Generated 5 synthetic sessions'),
           variant: 'success',
         }),
       ),
@@ -568,7 +573,7 @@ describe('SettingsDialog synthetic tab — post-generation refresh failure', () 
     await waitFor(() =>
       expect(mockToastAdd).toHaveBeenCalledWith(
         expect.objectContaining({
-          title: 'Could not refresh synthetic session info',
+          title: renderedMessage('Could not refresh synthetic session info'),
           variant: 'destructive',
           timeout: 0,
         }),
@@ -662,7 +667,7 @@ describe('SettingsDialog synthetic tab — delete failure', () => {
     await waitFor(() =>
       expect(mockToastAdd).toHaveBeenCalledWith(
         expect.objectContaining({
-          title: 'Deleted 5 synthetic sessions',
+          title: renderedMessage('Deleted 5 synthetic sessions'),
           variant: 'success',
         }),
       ),
@@ -676,7 +681,7 @@ describe('SettingsDialog synthetic tab — delete failure', () => {
     await waitFor(() =>
       expect(mockToastAdd).toHaveBeenCalledWith(
         expect.objectContaining({
-          title: 'Could not refresh synthetic session info',
+          title: renderedMessage('Could not refresh synthetic session info'),
           variant: 'destructive',
           timeout: 0,
         }),

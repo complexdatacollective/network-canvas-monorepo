@@ -2,11 +2,17 @@ import { get } from 'es-toolkit/compat';
 import { useCallback, useMemo, type ComponentType } from 'react';
 import { useSelector } from 'react-redux';
 
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import ComposerAttributeFields, {
   COMPOSER_CONTRADICTION_FIELD,
 } from '~/components/EditableAttributesList/ComposerAttributeFields';
 import ArchitectArrayField from '~/components/Form/ArchitectArrayField';
+import {
+  arrayItemMessages,
+  arrayValidationMessages,
+} from '~/components/Form/arrayFields/arrayMessages';
 import IssueAnchor from '~/components/IssueAnchor';
 import ComposerFieldPreview from '~/components/sections/Form/ComposerFieldPreview';
 import {
@@ -35,6 +41,20 @@ import { hasUnvalidatedUse } from '~/selectors/roleFilters';
 import DialogArrayField, {
   type DialogArrayItemSelector,
 } from './DialogArrayField';
+const defaultMessages = defineMessages({
+  title: {
+    id: 'architect.defaults.components.Form.arrayFields.EditableAttributesList.title',
+    defaultMessage: 'Edit attribute',
+    description:
+      'Default researcher-facing copy when the caller does not supply its own title.',
+  },
+  label: {
+    id: 'architect.defaults.components.Form.arrayFields.EditableAttributesList.label',
+    defaultMessage: 'Editable attributes',
+    description:
+      'Default researcher-facing copy when the caller does not supply its own label.',
+  },
+});
 
 /** Stable empty array: `initialValue` is a register-effect dependency. */
 const NO_FIELDS: Record<string, unknown>[] = [];
@@ -141,14 +161,18 @@ const EditableAttributesList = ({
   entity,
   type,
   editFormName = 'editable-list-form',
-  title = 'Edit attribute',
+  title: providedTitle,
   addButtonLabel,
-  label = 'Editable attributes',
+  label: providedLabel,
   handleChangeFields,
   siblingUnvalidatedVariableIds,
   value,
   onChange,
 }: EditableAttributesListProps) => {
+  const intl = useAppIntl();
+  const title = providedTitle ?? intl.formatMessage(defaultMessages.title);
+  const label = providedLabel ?? intl.formatMessage(defaultMessages.label);
+
   // Memoized on the primitives so the subject object identity is stable
   // across renders, matching getVariablesForSubjectSelector's reselect
   // memoization instead of defeating it every render.
@@ -250,8 +274,9 @@ const EditableAttributesList = ({
           isVariableUsedBySibling(composerFields, variable, props?.editIndex)
         ) {
           return {
-            variable:
-              'This attribute is already collected by another attribute in this list. Choose a different attribute, or edit the existing attribute instead.',
+            variable: createMessageError(
+              arrayValidationMessages.duplicateAttribute,
+            ),
           };
         }
         // `makeFieldEditorValidate` keys its messages at `validation`, which
@@ -321,7 +346,7 @@ const EditableAttributesList = ({
           editorPreviewProps={COMPOSER_PREVIEW_PROPS}
           editorProps={editorProps}
           editorValidate={editorValidate}
-          itemLabel="attribute"
+          itemLabelMessage={arrayItemMessages.attribute}
           itemSelector={itemSelector}
           normalizeItem={normalizeItem}
           onBeforeSave={onBeforeSave}
@@ -355,7 +380,7 @@ const EditableAttributesList = ({
       // and then rejected on save.
       editorProps={editorProps}
       editorValidate={editorValidate}
-      itemLabel="attribute"
+      itemLabelMessage={arrayItemMessages.attribute}
       itemSelector={itemSelector}
       normalizeItem={normalizeItem}
       onBeforeSave={onBeforeSave}

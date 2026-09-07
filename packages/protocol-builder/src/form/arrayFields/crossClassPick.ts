@@ -1,23 +1,27 @@
 import type { Variables } from '@codaco/protocol-validation';
 
+/**
+ * The two refusals this module answers with are the codebook's own words, so
+ * they are declared once, there.
+ *
+ * This file and `codebook/variableValidation.ts` have always carried the same
+ * two sentences — the same conflict, reported by the array field where the
+ * researcher picks the attribute and by the codebook editor where they change
+ * it. Left in two places as descriptors they would be two catalog entries for
+ * one sentence: a translator would answer the same question twice, and the two
+ * answers could drift apart with nothing to catch it. The functions stay here
+ * so this module's callers are unchanged.
+ */
+export {
+  draftValidatedElsewhereMessage,
+  validatedElsewhereMessage,
+} from '../../codebook/variableValidation.ts';
+
 /** A variable's codebook display name, falling back to its id when absent. */
 export const variableDisplayName = (
   variables: Readonly<Variables>,
   variableId: string,
 ): string => variables[variableId]?.name ?? variableId;
-
-/**
- * Refusal earned when an UNVALIDATED writer — a stamp, a bin, a highlight —
- * picks a variable a form elsewhere already collects. Values written here
- * would bypass that form's validation, and the export would mix validated and
- * unvalidated answers under one name.
- */
-export const validatedElsewhereMessage = (variableName: string): string =>
-  `"${variableName}" is collected by a form elsewhere in this protocol, so it cannot be written by this stage (values written here would bypass its validation)`;
-
-/** The same refusal, when the form doing the collecting is this stage's own. */
-export const draftValidatedElsewhereMessage = (variableName: string): string =>
-  `"${variableName}" is collected by this stage's form, so it cannot be assigned by this prompt (values assigned here would bypass its validation)`;
 
 /**
  * The save-time exclusivity gate for one pick.

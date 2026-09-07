@@ -1,6 +1,8 @@
 import { Plus } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import {
@@ -13,6 +15,27 @@ import { compose } from '@codaco/fresco-ui/utils/cva';
 import { cx } from '~/utils/cva';
 
 import AssetBrowserWindow from '../../AssetBrowser/AssetBrowserWindow';
+const defaultMessages = defineMessages({
+  selectButtonLabel: {
+    id: 'architect.defaults.components.Form.Fields.File.selectButtonLabel',
+    defaultMessage: 'Select resource',
+    description:
+      'Default researcher-facing copy when the caller does not supply its own selectButtonLabel.',
+  },
+  updateButtonLabel: {
+    id: 'architect.defaults.components.Form.Fields.File.updateButtonLabel',
+    defaultMessage: 'Update resource',
+    description:
+      'Default researcher-facing copy when the caller does not supply its own updateButtonLabel.',
+  },
+});
+const messages = defineMessages({
+  noResourceSelected: {
+    id: 'architect.form.fields.file.noResourceSelected',
+    defaultMessage: 'No resource selected.',
+    description: 'Visible text in components / Form / Fields / File.',
+  },
+});
 
 export type FileInputProps = CreateFormFieldProps<
   string,
@@ -59,8 +82,8 @@ const ResourcePicker = ({
   children,
   renderBrowser,
   supplementaryContent,
-  selectButtonLabel = 'Select resource',
-  updateButtonLabel = 'Update resource',
+  selectButtonLabel: providedSelectButtonLabel,
+  updateButtonLabel: providedUpdateButtonLabel,
   disabled = false,
   readOnly = false,
   'aria-describedby': ariaDescribedBy,
@@ -68,6 +91,14 @@ const ResourcePicker = ({
   'aria-label': ariaLabel,
   'aria-labelledby': ariaLabelledBy,
 }: FileInputProps) => {
+  const intl = useAppIntl();
+  const selectButtonLabel =
+    providedSelectButtonLabel ??
+    intl.formatMessage(defaultMessages.selectButtonLabel);
+  const updateButtonLabel =
+    providedUpdateButtonLabel ??
+    intl.formatMessage(defaultMessages.updateButtonLabel);
+
   const [browserOpen, setBrowserOpen] = useState(Boolean(showBrowser));
 
   useEffect(() => {
@@ -125,7 +156,7 @@ const ResourcePicker = ({
         {!value && (
           <div className="flex h-full w-full items-center justify-center">
             <div className="text-text/70 flex h-32 w-full items-center justify-center text-center font-semibold italic">
-              No resource selected.
+              {intl.formatMessage(messages.noResourceSelected)}
             </div>
           </div>
         )}

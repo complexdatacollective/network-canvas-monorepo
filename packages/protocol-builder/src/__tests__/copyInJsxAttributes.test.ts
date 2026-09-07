@@ -33,16 +33,24 @@ import { sourceFiles, sourcePath } from './packageSource.ts';
  * backstop, and finds anything this list has not learned about yet.
  */
 const COPY_PROP =
-  /^(?:aria-label|aria-description|label|placeholder|hint|title|description|term|alt|.*Label|.*Message|.*Text|.*Description|.*Placeholder|emptyState.*|addButton.*)$/;
+  /^(?:aria-label|aria-description|aria-placeholder|aria-roledescription|aria-valuetext|label|placeholder|hint|title|description|term|alt|caption|summary|.*Label|.*Message|.*Text|.*Description|.*Placeholder|emptyState.*|addButton.*)$/;
 
 /**
- * `prop="…"` and `prop={`…`}`, which is the same defect written two ways: the
- * template form is what an author reaches for the moment the sentence needs a
- * name in it, and it is the form that also loses the sentence's WORD ORDER to
- * whatever English happens to do.
+ * `prop="…"`, `prop={`…`}` and `prop={'…'}`, which is the same defect written
+ * three ways: the template form is what an author reaches for the moment the
+ * sentence needs a name in it, and it is the form that also loses the
+ * sentence's WORD ORDER to whatever English happens to do; the braced literal
+ * is what survives an editor that wraps a value in braces on its way to
+ * becoming an expression.
+ *
+ * `prop='…'` is deliberately absent. This is a line scan with no idea whether
+ * it is inside JSX, and `const label = 'Attribute name';` is that pattern
+ * exactly — so the form would report ordinary assignments. It costs nothing
+ * here: oxfmt writes JSX attribute strings with double quotes, so a
+ * single-quoted attribute does not survive `pnpm format`.
  */
 const ATTRIBUTE =
-  /(?<![\w$])([A-Za-z_][\w:-]*)\s*=\s*(?:"([^"]*)"|\{`([^`]*)`\})/g;
+  /(?<![\w$])([A-Za-z_][\w:-]*)\s*=\s*(?:"([^"]*)"|\{`([^`]*)`\}|\{\s*'([^']*)'\s*\}|\{\s*"([^"]*)"\s*\})/g;
 
 /**
  * Whether the value is words rather than a token.
@@ -57,26 +65,33 @@ const isCopy = (value: string): boolean =>
 
 type Finding = Readonly<{ file: string; line: number; text: string }>;
 
-const findingsIn = (path: string): Finding[] => {
-  const findings: Finding[] = [];
+/**
+ * The copy one line hands over, by every name and every literal form.
+ *
+ * Shared by the scan and by the fixture below, so the fixture holds the real
+ * reading in place rather than a paraphrase of it that could drift away from
+ * what the package is actually judged by.
+ */
+const copyInLine = (line: string): { name: string; value: string }[] =>
+  [...line.matchAll(ATTRIBUTE)].flatMap((match) => {
+    const [, name = '', ...literals] = match;
+    const value = literals.find((literal) => literal !== undefined);
+    if (value === undefined) return [];
+    if (!COPY_PROP.test(name)) return [];
+    if (!isCopy(value)) return [];
+    return [{ name, value }];
+  });
+
+const findingsIn = (path: string): Finding[] =>
   readFileSync(path, 'utf8')
     .split('\n')
-    .forEach((line, index) => {
-      for (const match of line.matchAll(ATTRIBUTE)) {
-        const [, name = '', quoted, templated] = match;
-        const value = quoted ?? templated;
-        if (value === undefined) continue;
-        if (!COPY_PROP.test(name)) continue;
-        if (!isCopy(value)) continue;
-        findings.push({
-          file: sourcePath(path),
-          line: index + 1,
-          text: `${name}=${JSON.stringify(value)}`,
-        });
-      }
-    });
-  return findings;
-};
+    .flatMap((line, index) =>
+      copyInLine(line).map(({ name, value }) => ({
+        file: sourcePath(path),
+        line: index + 1,
+        text: `${name}=${JSON.stringify(value)}`,
+      })),
+    );
 
 describe('copy written into a JSX attribute', () => {
   it('is looking at enough of the package to be worth trusting', () => {
@@ -92,12 +107,14 @@ describe('copy written into a JSX attribute', () => {
   });
 
   /**
-   * The scan can see both shapes, and does not fire on the tokens that share
+   * The scan can see every shape, and does not fire on the tokens that share
    * their syntax.
    *
    * Held in place because every line of it is a judgement that could silently
    * become wrong: a stricter `isCopy` would stop seeing `label="Label"`, and a
-   * looser `COPY_PROP` would start reporting `className`.
+   * looser `COPY_PROP` would start reporting `className`. The braced-literal
+   * and accessible-description rows are the ones a second pass added, and they
+   * are here so widening the reading stays as falsifiable as the reading was.
    */
   it('tells copy apart from the tokens written the same way', () => {
     const lines = [
@@ -106,31 +123,27 @@ describe('copy written into a JSX attribute', () => {
       '            label={`${subjectLabel} type name`}',
       '            aria-label={`Remove option ${index + 1}`}',
       '        emptyStateMessage="No options have been added yet."',
+      "        hint={'This name is exported'}",
+      '        aria-roledescription={"Sortable option"}',
+      '        summary="Two attributes need a value"',
       '        className="flex w-full flex-col gap-3"',
       '        data-attribute-type="boolean"',
       '        name="variable-name"',
       '        color="destructive"',
       '        label={intl.formatMessage(messages.nameLabel)}',
       '        aria-label={`${count}`}',
+      "        const label = 'Attribute name';",
     ];
 
-    const seen = lines.flatMap((line) => {
-      const found: string[] = [];
-      for (const match of line.matchAll(ATTRIBUTE)) {
-        const [, name = '', quoted, templated] = match;
-        const value = quoted ?? templated;
-        if (value === undefined) continue;
-        if (COPY_PROP.test(name) && isCopy(value)) found.push(name);
-      }
-      return found;
-    });
-
-    expect(seen).toEqual([
+    expect(lines.flatMap(copyInLine).map(({ name }) => name)).toEqual([
       'label',
       'placeholder',
       'label',
       'aria-label',
       'emptyStateMessage',
+      'hint',
+      'aria-roledescription',
+      'summary',
     ]);
   });
 });

@@ -3,6 +3,8 @@ import { Plus } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useRef, useState, type FocusEvent } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import type { VariableType } from '@codaco/protocol-validation';
@@ -10,6 +12,26 @@ import { ConnectedVariablePill, VariablePill } from '~/components/VariablePill';
 import { cx } from '~/utils/cva';
 
 import VariableSpotlight from './VariableSpotlight';
+const messages = defineMessages({
+  noAttributeSelected: {
+    id: 'architect.form.fields.variablePicker.variablePicker.noAttributeSelected',
+    defaultMessage: 'No attribute selected',
+    description:
+      'Visible text in components / Form / Fields / VariablePicker / VariablePicker.',
+  },
+  changeAttribute: {
+    id: 'architect.form.fields.variablePicker.variablePicker.changeAttribute',
+    defaultMessage: 'Change attribute',
+    description:
+      'Visible text in components / Form / Fields / VariablePicker / VariablePicker.',
+  },
+  selectAttribute: {
+    id: 'architect.form.fields.variablePicker.variablePicker.selectAttribute',
+    defaultMessage: 'Select attribute',
+    description:
+      'Visible text in components / Form / Fields / VariablePicker / VariablePicker.',
+  },
+});
 
 export type VariableOption = {
   label: string;
@@ -55,6 +77,7 @@ export const VariablePickerControl = ({
   'aria-invalid': ariaInvalid,
   'aria-labelledby': ariaLabelledBy,
 }: VariablePickerProps) => {
+  const intl = useAppIntl();
   const [showPicker, setShowPicker] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const answeredRef = useRef(false);
@@ -189,7 +212,7 @@ export const VariablePickerControl = ({
         >
           {!value && (
             <p className="w-full py-6 text-center text-sm text-current/70 italic">
-              No attribute selected
+              {intl.formatMessage(messages.noAttributeSelected)}
             </p>
           )}
           {value && (
@@ -229,7 +252,9 @@ export const VariablePickerControl = ({
           // field once a variable has been picked.
           data-field-focus-target=""
         >
-          {value ? 'Change attribute' : 'Select attribute'}
+          {value
+            ? intl.formatMessage(messages.changeAttribute)
+            : intl.formatMessage(messages.selectAttribute)}
         </Button>
       </div>
       <VariableSpotlight

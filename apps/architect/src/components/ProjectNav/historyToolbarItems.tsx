@@ -1,5 +1,7 @@
 import { Redo, Undo } from 'lucide-react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import {
   defineToolbarChild,
   ToolbarGroup,
@@ -7,6 +9,26 @@ import {
   ToolbarSeparator,
   type ToolbarGroupProps,
 } from '@codaco/fresco-ui/SegmentedToolbar';
+const messages = defineMessages({
+  historyControls: {
+    id: 'architect.projectNav.historyToolbarItems.historyControls',
+    defaultMessage: 'History controls',
+    description:
+      'The aria-label text in components / ProjectNav / historyToolbarItems.',
+  },
+  undo: {
+    id: 'architect.projectNav.historyToolbarItems.undo',
+    defaultMessage: 'Undo',
+    description:
+      'The aria-label text in components / ProjectNav / historyToolbarItems.',
+  },
+  redo: {
+    id: 'architect.projectNav.historyToolbarItems.redo',
+    defaultMessage: 'Redo',
+    description:
+      'The aria-label text in components / ProjectNav / historyToolbarItems.',
+  },
+});
 
 type HistoryToolbarControlsProps = {
   canUndo: boolean;
@@ -29,17 +51,21 @@ export const HistoryToolbarControls = defineToolbarChild(
     onRedo,
     ref,
   }: HistoryToolbarControlsProps) {
+    const intl = useAppIntl();
     return (
-      <ToolbarGroup ref={ref} aria-label="History controls">
+      <ToolbarGroup
+        ref={ref}
+        aria-label={intl.formatMessage(messages.historyControls)}
+      >
         <ToolbarIconButton
-          aria-label="Undo"
+          aria-label={intl.formatMessage(messages.undo)}
           icon={<Undo />}
           disabled={!canUndo}
           onClick={onUndo}
         />
         <ToolbarSeparator />
         <ToolbarIconButton
-          aria-label="Redo"
+          aria-label={intl.formatMessage(messages.redo)}
           icon={<Redo />}
           disabled={!canRedo}
           onClick={onRedo}

@@ -1,9 +1,38 @@
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+
 import {
-  getValidationLabel,
+  getValidationDescriptor,
   isValidationWithListValue,
   isValidationWithNumberValue,
   isValidationWithoutValue,
 } from './options';
+const localeMessages = defineMessages({
+  comparison: {
+    id: 'architect.validation.ruleValue.comparison',
+    defaultMessage:
+      'Choose a comparison attribute for "{label}", or switch the rule off.',
+    description:
+      'Validation rule completion errors; the rule label is localized independently from stable rule IDs.',
+  },
+  value: {
+    id: 'architect.validation.ruleValue.value',
+    defaultMessage: 'Enter a value for "{label}", or switch the rule off.',
+    description:
+      'Validation rule completion errors; the rule label is localized independently from stable rule IDs.',
+  },
+  whole: {
+    id: 'architect.validation.ruleValue.whole',
+    defaultMessage: '{label} must be a whole number',
+    description:
+      'Validation rule completion errors; the rule label is localized independently from stable rule IDs.',
+  },
+  floor: {
+    id: 'architect.validation.ruleValue.floor',
+    defaultMessage: '{label} must be at least {floor, number}',
+    description:
+      'Validation rule completion errors; the rule label is localized independently from stable rule IDs.',
+  },
+});
 
 export type ValidationValue = boolean | number | string | null;
 
@@ -105,11 +134,14 @@ export const incompleteRuleIssue = (
 ): string | undefined => {
   for (const [ruleKey, value] of Object.entries(rules)) {
     if (isRuleValueComplete(ruleKey, value)) continue;
-    const label = getValidationLabel(ruleKey);
+    const descriptor = getValidationDescriptor(ruleKey);
+    const label = descriptor
+      ? { messageError: createMessageError(descriptor) }
+      : ruleKey;
     if (isValidationWithListValue(ruleKey)) {
-      return `Choose a comparison attribute for "${label}", or switch the rule off.`;
+      return createMessageError(localeMessages.comparison, { label });
     }
-    return `Enter a value for "${label}", or switch the rule off.`;
+    return createMessageError(localeMessages.value, { label });
   }
   return undefined;
 };
@@ -143,13 +175,30 @@ export const floorIssue = (
     typeof value === 'number' &&
     !Number.isInteger(value)
   ) {
-    return `${ruleKey} must be a whole number`;
+    return createMessageError(localeMessages.whole, {
+      label: getValidationDescriptor(ruleKey)
+        ? {
+            messageError: createMessageError(getValidationDescriptor(ruleKey)!),
+          }
+        : ruleKey,
+    });
   }
   const floor = RULE_FLOORS[ruleKey];
   if (floor === undefined || typeof value !== 'number' || Number.isNaN(value)) {
     return undefined;
   }
-  return value < floor ? `${ruleKey} must be at least ${floor}` : undefined;
+  return value < floor
+    ? createMessageError(localeMessages.floor, {
+        label: getValidationDescriptor(ruleKey)
+          ? {
+              messageError: createMessageError(
+                getValidationDescriptor(ruleKey)!,
+              ),
+            }
+          : ruleKey,
+        floor,
+      })
+    : undefined;
 };
 
 /**

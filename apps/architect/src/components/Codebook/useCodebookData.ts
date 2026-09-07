@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useSelector } from 'react-redux';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import type { Asset, Codebook } from '@codaco/protocol-validation';
 import { getEdgeIndex, getNodeIndex } from '~/selectors/indexes';
 import { getNetworkAssets } from '~/selectors/protocol';
@@ -40,18 +41,19 @@ type CodebookData = {
 
 // Performance optimization: Create memoized processors for nodes and edges
 const useEntityProcessors = () => {
+  const intl = useAppIntl();
   const nodeIndex = useSelector(getNodeIndex);
   const edgeIndex = useSelector(getEdgeIndex);
 
   // Memoize selector creation to avoid recreating on every render
   const getNodeWithUsage = useMemo(
-    () => makeGetEntityWithUsage(nodeIndex, { entity: 'node' }),
-    [nodeIndex],
+    () => makeGetEntityWithUsage(nodeIndex, { entity: 'node' }, intl),
+    [nodeIndex, intl],
   );
 
   const getEdgeWithUsage = useMemo(
-    () => makeGetEntityWithUsage(edgeIndex, { entity: 'edge' }),
-    [edgeIndex],
+    () => makeGetEntityWithUsage(edgeIndex, { entity: 'edge' }, intl),
+    [edgeIndex, intl],
   );
 
   // Use the selectors

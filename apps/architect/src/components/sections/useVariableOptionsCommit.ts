@@ -1,6 +1,7 @@
 import { useCallback, useRef } from 'react';
 import { useStore } from 'react-redux';
 
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
 import {
   INTERFACE_OWNED_OPTION_SETS,
@@ -18,7 +19,10 @@ import {
 } from '~/selectors/indexes';
 import { interfaceOwnedPickIssue } from '~/selectors/roleFilters';
 
-import { findDraftContradictions } from '../Validations/contradictions';
+import {
+  describeDraftContradiction,
+  findDraftContradictions,
+} from '../Validations/contradictions';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -31,8 +35,15 @@ const isRecord = (value: unknown): value is UnknownRecord =>
  * the same refusal for the same protocol rule, and a second copy of the
  * sentence could drift from this one while both remained "correct".
  */
-const INTERFACE_OWNED_OPTIONS_REFUSAL =
-  'These options are set by the interface that uses this attribute and cannot be changed here. Close this dialog and reopen it to start from the current options.';
+const INTERFACE_OWNED_OPTIONS_REFUSAL = defineMessages({
+  message: {
+    id: 'architect.notice.interfaceOwnedOptionsRefusal',
+    defaultMessage:
+      'These options are set by the interface that uses this attribute and cannot be changed here. Close this dialog and reopen it to start from the current options.',
+    description:
+      'Researcher-facing explanation in components/sections/useVariableOptionsCommit.ts.',
+  },
+}).message;
 
 type OptionsCommitSubject = {
   entity: 'node' | 'edge' | 'ego';
@@ -149,7 +160,11 @@ export function useVariableOptionsCommit(config: VariableOptionsCommitConfig) {
         if (contradiction) {
           return {
             success: false,
-            fieldErrors: { [optionsField]: [contradiction.message] },
+            fieldErrors: {
+              [optionsField]: [
+                describeDraftContradiction(contradiction, allVariables),
+              ],
+            },
           };
         }
       }
@@ -163,6 +178,7 @@ export function useVariableOptionsCommit(config: VariableOptionsCommitConfig) {
         getExclusiveVariableSlotMap(state),
         subject,
         variableId,
+        undefined,
       );
       if (ownedIssue) {
         return {
@@ -191,7 +207,9 @@ export function useVariableOptionsCommit(config: VariableOptionsCommitConfig) {
           return {
             success: false,
             fieldErrors: {
-              [optionsField]: [INTERFACE_OWNED_OPTIONS_REFUSAL],
+              [optionsField]: [
+                createMessageError(INTERFACE_OWNED_OPTIONS_REFUSAL),
+              ],
             },
           };
         }

@@ -1,4 +1,3 @@
-import { startCase } from 'es-toolkit/compat';
 import { Trash2 } from 'lucide-react';
 import {
   createContext,
@@ -81,8 +80,14 @@ const CELL_VALIDATORS = [requiredRow()] as const;
 export type PropertyField = {
   fieldName: string;
   control?: 'input' | 'select';
-  /** Defaults to `startCase(fieldName)`. */
-  label?: string;
+  /**
+   * Visible text and accessible name of this column's control — REQUIRED, for
+   * the reason `addButtonLabel` below is. It used to default to
+   * `startCase(fieldName)`, which builds a label out of a code identifier by
+   * capitalising it: a word no translator is ever handed, and one that stays
+   * English in every language.
+   */
+  label: string;
   placeholder?: string;
 };
 
@@ -283,7 +288,10 @@ function MultiSelectRow({
             onMove={onMove}
             disabled={interactionDisabled}
             label={intl.formatMessage(messages.reorderItem, {
-              position: index + 1,
+              // The row's own place in the list, which the researcher reads as
+              // this row's number rather than as a quantity — so it is passed
+              // as they would say it, ungrouped.
+              position: String(index + 1),
               count: itemCount,
             })}
             className="text-sortable-contrast"
@@ -297,7 +305,7 @@ function MultiSelectRow({
             {
               fieldName: propertyFieldName,
               control = 'select',
-              label = startCase(propertyFieldName),
+              label,
               ...rest
             },
             propertyIndex,

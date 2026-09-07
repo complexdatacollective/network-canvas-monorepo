@@ -5,14 +5,28 @@ import { SkipLogicDestinationSchema } from '@codaco/protocol-validation';
 import {
   asSkipLogicDestination,
   destinationRoute,
-  EARLIER_DESTINATION_PROBLEM,
-  MISSING_DESTINATION_PROBLEM,
   routeDestination,
   skipLogicDestinationOptions,
   skipLogicDestinationProblem,
   stagePlacement,
-  UNREADABLE_DESTINATION_PROBLEM,
 } from '../skipLogicDestination.ts';
+
+/**
+ * The sentences the module used to export as constants.
+ *
+ * They are message descriptors now, formatted through whichever formatter the
+ * caller hands in — so a test importing them back would only be comparing the
+ * module against itself. Written out here instead, which is what a researcher
+ * reads and what a copy change has to be seen to change.
+ */
+const MISSING_DESTINATION_PROBLEM =
+  'The stage this skips to is no longer part of this interview. Choose where the interview should continue instead.';
+
+const EARLIER_DESTINATION_PROBLEM =
+  'The stage this skips to no longer comes after this one. Choose a later stage, or end the interview.';
+
+const UNREADABLE_DESTINATION_PROBLEM =
+  'The stage this skips to cannot be read. Choose where the interview should continue instead.';
 
 const stages = [
   { id: 'stage-1', label: 'Welcome' },
@@ -224,9 +238,9 @@ describe('what is wrong with a destination', () => {
    * cannot see is what the save is refused for.
    */
   it('reports a destination it cannot read as a problem, not as no destination', () => {
-    // Stated before the sweep so the sweep cannot pass by comparing one
+    // The sweep compares against the sentence written out above rather than
+    // against whatever the module returns, so it cannot pass by comparing one
     // absent verdict against another.
-    expect(UNREADABLE_DESTINATION_PROBLEM).toEqual(expect.any(String));
     for (const value of [
       { type: 'stage' },
       { type: 'stage', stageId: '' },

@@ -10,7 +10,11 @@ import {
   type ComponentType,
 } from 'react';
 
-import { defineMessage, defineMessages } from '@codaco/app-i18n/messages';
+import {
+  createMessageError,
+  defineMessage,
+  defineMessages,
+} from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import {
@@ -38,20 +42,20 @@ import {
   allowedVariableNameRow,
   requiredRow,
   uniqueRowAttribute,
+  variableNameSubjects,
 } from './rowValidators.ts';
 import {
   rowRemovalControlProps,
   useConfirmRowRemoval,
 } from './useConfirmRowRemoval.ts';
 
+export type OptionValue = VariableOptions[number];
+
 /**
- * What one row of this list is called inside sentences about it.
- *
- * A descriptor rather than a word, because every one of those sentences is
- * either formatted where it is read or encoded for a reader further on: a noun
- * resolved here would be resolved in whichever language happened to be current
- * when the row was rendered, not the one the sentence is read in. See
- * `arrayMessages`.
+ * The word this list uses for one of its rows, handed to everything that says
+ * something ABOUT a row — a refused removal, a refused write — as a descriptor
+ * rather than as a word, so the sentence and the noun in it are settled in the
+ * same language at the same moment. See `arrayMessages`.
  */
 const optionNoun = defineMessage({
   id: 'protocolBuilder.option.optionNoun',
@@ -61,6 +65,18 @@ const optionNoun = defineMessage({
 });
 
 const messages = defineMessages({
+  duplicateLabelRow: {
+    id: 'protocolBuilder.option.duplicateLabelRow',
+    defaultMessage: 'Labels must be unique',
+    description:
+      'Shown under one option’s label cell when another option in the same list already reads the same way. Terse because it sits inside a row.',
+  },
+  duplicateValueRow: {
+    id: 'protocolBuilder.option.duplicateValueRow',
+    defaultMessage: 'Values must be unique',
+    description:
+      'Shown under one option’s value cell when another option in the same list is stored as the same answer. Terse because it sits inside a row.',
+  },
   removeOption: {
     id: 'protocolBuilder.option.removeOption',
     defaultMessage: 'Remove option',
@@ -135,18 +151,24 @@ const messages = defineMessages({
   },
 });
 
-export type OptionValue = VariableOptions[number];
-
 const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
 const FrescoRichTextEditorField = RichTextEditorField as ComponentType<
   Record<string, unknown>
 >;
 
-const LABEL_VALIDATORS = [requiredRow(), uniqueRowAttribute()] as const;
-const VALUE_VALIDATORS = [
+const LABEL_VALIDATORS = [
   requiredRow(),
-  uniqueRowAttribute(),
-  allowedVariableNameRow('option value'),
+  uniqueRowAttribute(createMessageError(messages.duplicateLabelRow)),
+] as const;
+/**
+ * What an option's VALUE cell runs, exported so a spec exercising that cell
+ * runs the rules — and the wording — the cell really has rather than a
+ * plausible copy of them.
+ */
+export const VALUE_VALIDATORS = [
+  requiredRow(),
+  uniqueRowAttribute(createMessageError(messages.duplicateValueRow)),
+  allowedVariableNameRow(variableNameSubjects.optionValue),
 ] as const;
 
 const isNumberLike = (value: string) =>
@@ -292,7 +314,10 @@ export default function Option({
             onMove={onMove}
             disabled={interactionDisabled}
             label={intl.formatMessage(messages.reorderOption, {
-              position: index + 1,
+              // The option's own number, which the researcher reads as this
+              // option's name rather than as a quantity — so it is passed as
+              // they would say it, ungrouped.
+              position: String(index + 1),
               count: itemCount,
             })}
           />
@@ -317,7 +342,7 @@ export default function Option({
           <IconButton
             icon={<Pencil />}
             aria-label={intl.formatMessage(messages.editOption, {
-              position: index + 1,
+              position: String(index + 1),
             })}
             color="dynamic"
             disabled={interactionDisabled}
@@ -327,7 +352,7 @@ export default function Option({
             {...rowRemovalControlProps}
             icon={<Trash2 />}
             aria-label={intl.formatMessage(messages.removeOptionAt, {
-              position: index + 1,
+              position: String(index + 1),
             })}
             color="destructive"
             disabled={interactionDisabled}
@@ -365,7 +390,7 @@ export default function Option({
           {...rowRemovalControlProps}
           icon={<Trash2 />}
           aria-label={intl.formatMessage(messages.removeOptionAt, {
-            position: index + 1,
+            position: String(index + 1),
           })}
           color="destructive"
           disabled={interactionDisabled}

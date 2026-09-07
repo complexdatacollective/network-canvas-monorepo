@@ -1,7 +1,14 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
+import { createElement } from 'react';
+import type { ComponentType, PropsWithChildren } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { AppI18nProvider } from '@codaco/app-i18n/react';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
+import { interviewerProductionLocales } from '~/i18n/locales';
+import type * as Download from '~/lib/files/download';
+import { interviewerCatalogs } from '~/locales/catalogs';
+import { renderedMessage } from '~/testUtils/renderedMessage';
 
 import { useSessionMutations } from '../useSessionMutations';
 
@@ -57,15 +64,17 @@ vi.mock('~/lib/auth/StepUpAuthProvider', () => ({
   useStepUpAuth: () => ({ requireFreshUnlock }),
 }));
 
-function makeHook() {
-  return renderHook(() =>
-    useSessionMutations({
-      selectedCount: 1,
-      resolveSelectedIds: () => Promise.resolve(['s1']),
-      clearSelection,
-      onReload: () => Promise.resolve(),
-      reloadData: () => Promise.resolve(),
-    }),
+function makeHook(wrapper?: ComponentType<PropsWithChildren>) {
+  return renderHook(
+    () =>
+      useSessionMutations({
+        selectedCount: 1,
+        resolveSelectedIds: () => Promise.resolve(['s1']),
+        clearSelection,
+        onReload: () => Promise.resolve(),
+        reloadData: () => Promise.resolve(),
+      }),
+    { wrapper },
   );
 }
 
@@ -114,6 +123,7 @@ function hangingRunExport() {
 describe('useSessionMutations — export flow marks exported from the save outcome alone', () => {
   afterEach(() => {
     vi.clearAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it('marks exported and clears the selection when the save succeeds', async () => {
@@ -133,8 +143,73 @@ describe('useSessionMutations — export flow marks exported from the save outco
     expect(clearSelection).toHaveBeenCalledOnce();
     expect(result.current.exportFlow.phase).toBe('idle');
     expect(toastAdd).toHaveBeenCalledWith(
-      expect.objectContaining({ title: 'Export complete' }),
+      expect.objectContaining({ title: renderedMessage('Export complete') }),
     );
+  });
+
+  it('opens the native picker in the current language after cancelling and switching, without rebuilding the archive', async () => {
+    const actualDownload = await vi.importActual<typeof Download>(
+      '~/lib/files/download',
+    );
+    saveBlob.mockImplementation(actualDownload.saveBlob);
+    const write = vi.fn().mockResolvedValue(undefined);
+    const close = vi.fn().mockResolvedValue(undefined);
+    const createWritable = vi.fn().mockResolvedValue({ write, close });
+    const showSaveFilePicker = vi
+      .fn()
+      .mockRejectedValueOnce(new DOMException('Cancelled', 'AbortError'))
+      .mockResolvedValue({ createWritable });
+    vi.stubGlobal('showSaveFilePicker', showSaveFilePicker);
+    let locale = 'en';
+    function Wrapper({ children }: PropsWithChildren) {
+      return createElement(AppI18nProvider, {
+        locale,
+        locales: interviewerProductionLocales,
+        messages: interviewerCatalogs[locale],
+        // This .ts test supplies the provider's required children prop without JSX.
+        // eslint-disable-next-line react/no-children-prop
+        children,
+      });
+    }
+    const { result, rerender } = makeHook(Wrapper);
+    await buildReadyArchive(result);
+    const archive = result.current.exportFlow;
+    if (archive.phase !== 'ready') throw new Error('Expected a ready archive');
+    await act(async () => {
+      await result.current.handleShareReady();
+    });
+    expect(showSaveFilePicker).toHaveBeenNthCalledWith(1, {
+      suggestedName: 'export.zip',
+      types: [
+        { description: 'ZIP archive', accept: { 'application/zip': ['.zip'] } },
+      ],
+    });
+    expect(result.current.exportFlow.phase).toBe('ready');
+    expect(markSessionsExported).not.toHaveBeenCalled();
+    expect(write).not.toHaveBeenCalled();
+    locale = 'es';
+    rerender();
+    let pickerCallsBeforeYield = 0;
+    await act(async () => {
+      const saving = result.current.handleShareReady();
+      // Reaching the native API before the first await preserves the click's
+      // user activation even when the archive was built in another language.
+      pickerCallsBeforeYield = showSaveFilePicker.mock.calls.length;
+      await saving;
+    });
+    expect(pickerCallsBeforeYield).toBe(2);
+    expect(showSaveFilePicker).toHaveBeenNthCalledWith(2, {
+      suggestedName: 'export.zip',
+      types: [
+        { description: 'Archivo ZIP', accept: { 'application/zip': ['.zip'] } },
+      ],
+    });
+    expect(runExport).toHaveBeenCalledOnce();
+    expect(write).toHaveBeenCalledExactlyOnceWith(archive.blob);
+    expect(close).toHaveBeenCalledOnce();
+    expect(markSessionsExported).toHaveBeenCalledExactlyOnceWith(['s1']);
+    expect(clearSelection).toHaveBeenCalledOnce();
+    expect(result.current.exportFlow.phase).toBe('idle');
   });
 
   it('does NOT mark exported when the save is cancelled, and keeps the archive for a retry', async () => {
@@ -168,7 +243,7 @@ describe('useSessionMutations — export flow marks exported from the save outco
     expect(markSessionsExported).not.toHaveBeenCalled();
     expect(result.current.exportFlow.phase).toBe('ready');
     expect(toastAdd).toHaveBeenCalledWith(
-      expect.objectContaining({ title: 'Export failed' }),
+      expect.objectContaining({ title: renderedMessage('Export failed') }),
     );
   });
 
@@ -373,7 +448,7 @@ describe('useSessionMutations — export flow lifecycle', () => {
 
     expect(result.current.exportFlow).toMatchObject({
       phase: 'building',
-      stageMessage: 'Generating files...',
+      stage: 'generating',
       current: 3,
       total: 4,
     });
@@ -390,7 +465,7 @@ describe('useSessionMutations — export flow lifecycle', () => {
 
     expect(result.current.exportFlow).toMatchObject({
       phase: 'building',
-      stageMessage: 'Writing output...',
+      stage: 'outputting',
       current: null,
       total: null,
     });
@@ -518,10 +593,10 @@ describe('useSessionMutations — export flow lifecycle', () => {
     expect(result.current.exportFlow.phase).toBe('idle');
     expect(captureException).toHaveBeenCalledOnce();
     expect(toastAdd).toHaveBeenCalledWith(
-      expect.objectContaining({ title: 'Export complete' }),
+      expect.objectContaining({ title: renderedMessage('Export complete') }),
     );
     expect(toastAdd).not.toHaveBeenCalledWith(
-      expect.objectContaining({ title: 'Export failed' }),
+      expect.objectContaining({ title: renderedMessage('Export failed') }),
     );
   });
 });
@@ -549,12 +624,14 @@ describe('useSessionMutations — mark unfinished', () => {
 
     expect(openDialog).toHaveBeenCalledWith(
       expect.objectContaining({
-        title: 'Mark unfinished?',
+        title: renderedMessage('Mark unfinished?'),
       }),
     );
     expect(markSessionUnfinished).toHaveBeenCalledWith('s1', stages);
     expect(toastAdd).toHaveBeenCalledWith(
-      expect.objectContaining({ title: 'Interview marked unfinished' }),
+      expect.objectContaining({
+        title: renderedMessage('Interview marked unfinished'),
+      }),
     );
   });
 

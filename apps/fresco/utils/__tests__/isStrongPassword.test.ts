@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
+import { createAppIntl } from '@codaco/app-i18n/messages';
 import {
+  getPasswordRules,
   isStrongPassword,
   PASSWORD_CHARACTER_RULES,
   PASSWORD_MIN_LENGTH,
@@ -37,7 +39,9 @@ describe('isStrongPassword', () => {
 
   it('checks one character class per rule, each with its own message', () => {
     expect(PASSWORD_CHARACTER_RULES).toHaveLength(4);
-    for (const { pattern, message } of PASSWORD_CHARACTER_RULES) {
+    for (const { pattern, message } of getPasswordRules(
+      createAppIntl({ locale: 'en' }).formatMessage,
+    )) {
       expect(pattern.test('Passw0rd!')).toBe(true);
       expect(message).toMatch(/^Password must contain at least 1 /);
     }
