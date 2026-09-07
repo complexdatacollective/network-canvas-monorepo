@@ -181,6 +181,12 @@ for (const [name, mutate] of [
     },
   ],
   [
+    'partial retained image platform inventory',
+    (v) => {
+      delete v.images.studio.configurations['linux/arm64'];
+    },
+  ],
+  [
     'empty migration history',
     (v) => {
       v.schemas.studio.migrations = [];
@@ -196,6 +202,60 @@ for (const [name, mutate] of [
     'self ancestry',
     (v) => {
       v.ancestors.push(v.source);
+    },
+  ],
+  [
+    'missing SBOM evidence',
+    (v) => {
+      delete v.evidence;
+    },
+  ],
+  [
+    'partial SBOM inventory',
+    (v) => {
+      delete v.evidence.sboms.minio;
+    },
+  ],
+  [
+    'extra SBOM inventory',
+    (v) => {
+      v.evidence.sboms.unknown = v.evidence.sboms.studio;
+    },
+  ],
+  [
+    'SBOM for another image',
+    (v) => {
+      v.evidence.sboms.studio.subject = v.images.registry.reference;
+    },
+  ],
+  [
+    'SBOM without exact content identity',
+    (v) => {
+      v.evidence.sboms.studio.sha256 = 'latest';
+    },
+  ],
+  [
+    'unsupported SBOM format',
+    (v) => {
+      v.evidence.sboms.studio.format = 'text';
+    },
+  ],
+  [
+    'source archive without immutable revision',
+    (v) => {
+      v.evidence.minioSource.commit = 'main';
+    },
+  ],
+  [
+    'source archive without checksum',
+    (v) => {
+      delete v.evidence.minioSource.sha256;
+    },
+  ],
+  [
+    'source archive from another repository',
+    (v) => {
+      v.evidence.minioSource.repository = 'https://github.com/example/minio';
     },
   ],
 ])

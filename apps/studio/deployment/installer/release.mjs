@@ -93,6 +93,7 @@ export function readRelease(bytes) {
     'versions',
     'components',
     'images',
+    'evidence',
     'schemas',
     'postgresMajor',
     'upgrade',
@@ -150,16 +151,40 @@ export function readRelease(bytes) {
       !configurations ||
       typeof configurations !== 'object' ||
       Array.isArray(configurations) ||
-      !Object.keys(configurations).length ||
-      Object.entries(configurations).some(
-        ([platform, digest]) =>
-          !['linux/amd64', 'linux/arm64'].includes(platform) ||
-          typeof digest !== 'string' ||
-          !/^sha256:[a-f0-9]{64}$/.test(digest),
+      Object.keys(configurations).toSorted().join('\n') !==
+        ['linux/amd64', 'linux/arm64'].join('\n') ||
+      Object.values(configurations).some(
+        (digest) =>
+          typeof digest !== 'string' || !/^sha256:[a-f0-9]{64}$/.test(digest),
       )
     )
       throw new Error('Missing retained image configuration identity.');
   }
+  object(release.evidence, ['sboms', 'minioSource']);
+  object(release.evidence.sboms, Object.keys(IMAGE_REPOSITORIES));
+  for (const name of Object.keys(IMAGE_REPOSITORIES)) {
+    const sbom = release.evidence.sboms[name];
+    object(sbom, ['format', 'subject', 'sha256']);
+    if (
+      sbom.format !== 'cyclonedx-json' ||
+      sbom.subject !== release.images[name].reference ||
+      typeof sbom.sha256 !== 'string' ||
+      !HASH.test(sbom.sha256)
+    )
+      throw new Error('Every image requires its own exact CycloneDX SBOM.');
+  }
+  const material = release.evidence.minioSource;
+  object(material, ['repository', 'commit', 'sha256']);
+  if (
+    material.repository !== 'https://github.com/minio/minio' ||
+    typeof material.commit !== 'string' ||
+    !SOURCE.test(material.commit) ||
+    typeof material.sha256 !== 'string' ||
+    !HASH.test(material.sha256)
+  )
+    throw new Error(
+      'MinIO requires the immutable corresponding source archive.',
+    );
   object(release.schemas, ['studio', 'registry']);
   schema(release.schemas.studio);
   schema(release.schemas.registry);

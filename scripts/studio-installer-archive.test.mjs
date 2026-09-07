@@ -3,7 +3,6 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import fs, {
   existsSync,
   mkdirSync,
-  mkdtempSync,
   readFileSync,
   readdirSync,
   rmSync,
@@ -13,11 +12,9 @@ import fs, {
   writeFileSync,
 } from 'node:fs';
 import { syncBuiltinESMExports } from 'node:module';
-import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 import test from 'node:test';
 
-import configurationFiles from '../apps/studio/deployment/installer/configuration-files.json' with { type: 'json' };
 import {
   readInstallerBundle,
   readInstallerFiles,
@@ -27,60 +24,7 @@ import {
   buildInstallerArchive,
   readInstallerArchive,
 } from './studio-installer-archive.mjs';
-import { releasedDistribution } from './test-support/studio-release.mjs';
-
-function fixture(t, reverse = false) {
-  const root = mkdtempSync(join(tmpdir(), 'studio-installer-archive-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
-  const directory = join(root, 'bundle');
-  mkdirSync(directory);
-  const release = releasedDistribution();
-  const contents = new Map();
-  for (const name of [
-    'install.mjs',
-    'operation.mjs',
-    'files.mjs',
-    'release.mjs',
-    'verify.mjs',
-    'smoke.mjs',
-    'configuration-files.json',
-  ])
-    contents.set(
-      name,
-      readFileSync(
-        new URL(`../apps/studio/deployment/installer/${name}`, import.meta.url),
-      ),
-    );
-  contents.set('release.sigstore.json', Buffer.from('{}'));
-  contents.set('release.json', Buffer.from(JSON.stringify(release.value)));
-  for (const name of configurationFiles) {
-    const bytes = readFileSync(
-      new URL(`../apps/studio/${name}`, import.meta.url),
-    );
-    contents.set(`templates/${name}`, bytes);
-    // Generated configuration bytes are synthetic; no template is executed.
-    contents.set(
-      `configuration/${name}`,
-      Buffer.from(`# local fixture ${name}\n`),
-    );
-  }
-  contents.set('Z-order', Buffer.from('last uppercase'));
-  contents.set('a-order', Buffer.from('first lowercase'));
-  for (const [name, bytes] of reverse ? [...contents].reverse() : contents) {
-    mkdirSync(dirname(join(directory, name)), { recursive: true });
-    writeFileSync(join(directory, name), bytes);
-  }
-  const build = () =>
-    buildInstallerArchive({ directory, source: release.current.source });
-  return {
-    root,
-    directory,
-    release,
-    contents,
-    build,
-    output: join(root, 'installer.tar'),
-  };
-}
+import { installerFixture as fixture } from './test-support/studio-installer.mjs';
 
 function entries(bytes) {
   const result = [];

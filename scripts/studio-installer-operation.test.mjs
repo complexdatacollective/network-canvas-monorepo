@@ -42,6 +42,7 @@ const credentials = {
 function sameRuntimeRelease(generation, previous) {
   const next = releasedDistribution(generation, [previous]);
   next.value.images = structuredClone(previous.release.images);
+  next.value.evidence = structuredClone(previous.release.evidence);
   next.value.schemas.studio = structuredClone(previous.release.schemas.studio);
   next.value.postgresMajor = previous.release.postgresMajor;
   return {

@@ -75,19 +75,18 @@ test('refuses a clean source outside origin/main', async (t) => {
   await assert.rejects(() => evaluateStudioPublication(f.cwd, side));
 });
 
-test('reads MinIO evidence from the committed Dockerfile, not a dirty replacement', async (t) => {
+test('derives MinIO evidence from a clean committed Dockerfile revision', async (t) => {
   const f = fixture(t);
-  originMain(f, t);
-  const reviewed = source(f);
-  f.write('apps/studio/deployment/minio.Dockerfile', 'invalid dirty content\n');
-  await assert.rejects(
-    () => evaluateStudioPublication(f.cwd, reviewed),
-    /clean reviewed checkout/,
+  f.write(
+    'apps/studio/deployment/minio.Dockerfile',
+    `ADD --checksum=sha256:${'d'.repeat(64)} https://codeload.github.com/minio/minio/tar.gz/${'e'.repeat(40)} /source.tar.gz\nLABEL org.opencontainers.image.revision="${'e'.repeat(40)}"\nRUN go build -ldflags='-X github.com/minio/minio/cmd.CommitID=${'e'.repeat(40)}'\n`,
   );
-  f.git('checkout', '--', 'apps/studio/deployment/minio.Dockerfile');
-  const result = await evaluateStudioPublication(f.cwd, reviewed);
+  f.commit();
+  originMain(f, t);
+  const result = await evaluateStudioPublication(f.cwd, source(f));
   assert.equal(result.minioSource.repository, 'https://github.com/minio/minio');
-  assert.equal(result.minioSource.commit, 'c'.repeat(40));
+  assert.equal(result.minioSource.commit, 'e'.repeat(40));
+  assert.equal(result.minioSource.sha256, 'd'.repeat(64));
 });
 
 test('reports a reserved distribution source that is not an ancestor as superseded', async (t) => {

@@ -453,7 +453,14 @@ export function createGitHubDistributionStore({
         } catch (error) {
           if (error.status !== 422) throw error;
         }
-        await verifyTag({ tag: releaseTag, source: commit, manifestSha256 });
+        if (
+          !(await verifyTag({
+            tag: releaseTag,
+            source: commit,
+            manifestSha256,
+          }))
+        )
+          throw new Error('Studio release tag does not exist.');
       }
       const release = await exactRelease({
         tag: releaseTag,

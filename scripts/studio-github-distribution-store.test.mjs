@@ -130,6 +130,26 @@ function store(f) {
   });
 }
 
+test('does not create a release if its newly written final tag cannot be read back', async () => {
+  const f = fixture();
+  const request = f.request;
+  f.request = async (options) => {
+    const result = await request(options);
+    if (
+      options.method === 'POST' &&
+      options.path === `${api}/git/refs` &&
+      options.body.ref === `refs/tags/${tag}`
+    )
+      f.refs.delete(tag);
+    return result;
+  };
+  await assert.rejects(
+    () => store(f).ensureDraft({ tag, source, manifestSha256 }),
+    /tag does not exist/,
+  );
+  assert.equal(f.releases.size, 0);
+});
+
 test('reserves an immutable distribution ref and verifies exact retries', async () => {
   const f = fixture();
   const distribution = store(f);
