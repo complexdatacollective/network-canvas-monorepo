@@ -22,6 +22,7 @@
     "./postgres-pool": "./src/postgres-pool.ts",
     "./postgres-catalog-privileges": "./src/postgres-catalog-privileges.ts",
     "./postgres-runtime-identity": "./src/postgres-runtime-identity.ts",
+    "./postgres-migration-evidence": "./src/postgres-migration-evidence.ts",
     "./section-validation": "./src/section-validation.ts",
     "./template-metadata": "./src/template-metadata.ts",
     "./template-exchange": "./src/template-exchange.ts",
