@@ -2,6 +2,23 @@ import { oc } from '@orpc/contract';
 import { z } from 'zod';
 
 import {
+  AuditAlertAcknowledgeInputSchema,
+  AuditAlertListInputSchema,
+  AuditAlertListSchema,
+  AuditAlertReadInputSchema,
+  AuditAlertSettingsSchema,
+  UpdateAuditAlertSettingsSchema,
+} from './alerts.ts';
+export {
+  AUDIT_ALERT_MAX_RECIPIENTS,
+  AuditAlertPolicySchema,
+  AuditAlertRecipientsSchema,
+  type AuditAlertItem,
+  type AuditAlertRecipient,
+  type AuditAlertSettings,
+} from './alerts.ts';
+
+import {
   AcceptTeamInvitationInputSchema,
   AcceptTeamInvitationResultSchema,
   AcquireSectionInputSchema,
@@ -212,6 +229,15 @@ export const contract = {
    * per-team sequences, never timestamps.
    */
   audit: {
+    alerts: {
+      settings: oc.input(TeamScopedSchema).output(AuditAlertSettingsSchema),
+      updateSettings: oc
+        .input(UpdateAuditAlertSettingsSchema)
+        .output(z.object({ revision: z.uuid() })),
+      list: oc.input(AuditAlertListInputSchema).output(AuditAlertListSchema),
+      markRead: oc.input(AuditAlertReadInputSchema).output(z.void()),
+      acknowledge: oc.input(AuditAlertAcknowledgeInputSchema).output(z.void()),
+    },
     list: oc.input(AuditListInputSchema).output(AuditListOutputSchema),
     get: oc.input(AuditGetInputSchema).output(AuditEventDetailSchema),
     /**

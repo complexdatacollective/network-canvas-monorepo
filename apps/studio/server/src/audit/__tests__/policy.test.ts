@@ -282,6 +282,8 @@ describe('audit mutation policy', () => {
       'audit.list',
       'audit.get',
       'audit.filterOptions',
+      'audit.alerts.list',
+      'audit.alerts.settings',
     ]);
     const mutations = contractLeaves(contract).filter(
       (procedure) => !reads.has(procedure),

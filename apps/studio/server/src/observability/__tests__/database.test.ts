@@ -374,9 +374,11 @@ describe.skipIf(!db)(
         uncertain: 0,
       });
       await scratch.pool.query(
-        `INSERT INTO audit_alert_outbox (id, team_id, audit_event_id, audit_event_sequence, event_type, event_version, alert_policy_key, available_at)
-      SELECT $1, team_id, id, sequence, event_type, event_version, 'operator-test', now() - interval '10 minutes' FROM audit_events LIMIT 1`,
-        [randomUUID()],
+        `WITH parent AS (INSERT INTO audit_alert_outbox (id, team_id, audit_event_id, audit_event_sequence, event_type, event_version, alert_policy_key, available_at)
+      SELECT $1, team_id, id, sequence, event_type, event_version, 'operator-test', now() - interval '10 minutes' FROM audit_events LIMIT 1 RETURNING id, team_id)
+      INSERT INTO audit_alert_deliveries (id, team_id, outbox_id, recipient_id, member_id, user_id, channel, available_at)
+      SELECT $2, team_id, id, $3, $4, $4, 'email', now() - interval '10 minutes' FROM parent`,
+        [randomUUID(), randomUUID(), randomUUID(), CANARY],
       );
       expected.set('audit_alert_outbox', {
         pending: 1,

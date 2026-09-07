@@ -2123,6 +2123,76 @@ CREATE TRIGGER studio_instance_preserve_completion
   FOR EACH STATEMENT EXECUTE FUNCTION studio_instance_preserve_completion();
 
 
+DO 'DECLARE conflicting_constraint text;
+BEGIN
+  
+  -- A pre-created role must work for an operator without CREATEROLE. Role
+  -- names are cluster-wide; advisory locks serialize only one database.
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ''studio_backup'') THEN
+    BEGIN
+      CREATE ROLE "studio_backup" NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB NOREPLICATION;
+    EXCEPTION
+      WHEN duplicate_object THEN NULL;
+      WHEN unique_violation THEN
+        GET STACKED DIAGNOSTICS conflicting_constraint = CONSTRAINT_NAME;
+        IF conflicting_constraint <> ''pg_authid_rolname_index'' THEN RAISE; END IF;
+    END;
+  END IF;
+  -- Re-read and validate the winner after a duplicate-name race too. A safe
+  -- direct role can still assume or inherit an unsafe parent role.
+  IF (SELECT count(*) FROM pg_roles WHERE rolname IN (''studio_backup'')) <> 1
+    OR EXISTS (
+      SELECT 1 FROM pg_roles WHERE rolname IN (''studio_backup'')
+        AND (rolsuper OR rolbypassrls OR rolcanlogin OR rolcreaterole OR rolcreatedb OR rolreplication)
+    ) THEN
+    RAISE EXCEPTION ''Studio runtime roles must be NOLOGIN, NOSUPERUSER, NOBYPASSRLS, NOCREATEROLE, NOCREATEDB, and NOREPLICATION.'' USING ERRCODE = ''42501'';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM pg_auth_members membership JOIN pg_roles role ON role.oid = membership.member
+    WHERE role.rolname IN (''studio_backup'')
+  ) THEN
+    RAISE EXCEPTION ''Studio runtime roles must have no parent memberships.'' USING ERRCODE = ''42501'';
+  END IF;
+END;';
+DO $$ BEGIN
+  EXECUTE format('REVOKE ALL ON SCHEMA %I FROM studio_backup', current_schema());
+  EXECUTE format('GRANT USAGE ON SCHEMA %I TO studio_backup', current_schema());
+  EXECUTE format('REVOKE ALL ON ALL TABLES IN SCHEMA %I FROM studio_backup', current_schema());
+  EXECUTE format('GRANT SELECT ON ALL TABLES IN SCHEMA %I TO studio_backup', current_schema());
+  EXECUTE format('REVOKE ALL ON ALL SEQUENCES IN SCHEMA %I FROM studio_backup', current_schema());
+  -- SELECT reads sequence state for pg_dump; USAGE/UPDATE could advance it.
+  EXECUTE format('GRANT SELECT ON ALL SEQUENCES IN SCHEMA %I TO studio_backup', current_schema());
+  IF to_regclass('studio_migrations.history') IS NOT NULL THEN
+    REVOKE ALL ON SCHEMA studio_migrations FROM studio_backup;
+    GRANT USAGE ON SCHEMA studio_migrations TO studio_backup;
+    REVOKE ALL ON studio_migrations.history FROM studio_backup;
+    GRANT SELECT ON studio_migrations.history TO studio_backup;
+  END IF;
+END $$;
+
+
+ALTER TABLE audit_alert_settings FORCE ROW LEVEL SECURITY;
+ALTER TABLE audit_alert_recipients FORCE ROW LEVEL SECURITY;
+ALTER TABLE audit_alert_deliveries FORCE ROW LEVEL SECURITY;
+GRANT SELECT, INSERT, UPDATE, DELETE ON audit_alert_settings, audit_alert_recipients, audit_alert_deliveries TO studio_app, studio_maintenance;
+ALTER TABLE audit_alert_dispatch_budget ENABLE ROW LEVEL SECURITY;
+ALTER TABLE audit_alert_dispatch_budget FORCE ROW LEVEL SECURITY;
+REVOKE SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER, MAINTAIN
+  ON audit_alert_dispatch_budget FROM studio_app;
+REVOKE UPDATE, DELETE ON audit_alert_deliveries FROM studio_app;
+GRANT UPDATE (read_at, acknowledged_at) ON audit_alert_deliveries TO studio_app;
+CREATE OR REPLACE FUNCTION audit_alert_delivery_identity_immutable() RETURNS trigger AS $$
+BEGIN RAISE EXCEPTION 'audit alert delivery identity is immutable'; END;
+$$ LANGUAGE plpgsql;
+CREATE OR REPLACE TRIGGER audit_alert_delivery_identity_immutable
+  BEFORE UPDATE ON audit_alert_deliveries FOR EACH ROW
+  WHEN (NEW.id IS DISTINCT FROM OLD.id OR NEW.team_id IS DISTINCT FROM OLD.team_id
+    OR NEW.outbox_id IS DISTINCT FROM OLD.outbox_id OR NEW.recipient_id IS DISTINCT FROM OLD.recipient_id
+    OR NEW.member_id IS DISTINCT FROM OLD.member_id OR NEW.user_id IS DISTINCT FROM OLD.user_id
+    OR NEW.channel IS DISTINCT FROM OLD.channel OR NEW.created_at IS DISTINCT FROM OLD.created_at)
+  EXECUTE FUNCTION audit_alert_delivery_identity_immutable();
+
+
 CREATE OR REPLACE FUNCTION audit_events_are_immutable() RETURNS trigger AS $$
 BEGIN
   RAISE EXCEPTION 'audit events are immutable';

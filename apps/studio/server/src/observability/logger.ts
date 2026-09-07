@@ -3,6 +3,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import pino, { type DestinationStream } from 'pino';
 
 const DIAGNOSTICS = {
+  STUDIO_AUDIT_ALERT_WORKER_ERROR: 'error',
   STUDIO_CONFIGURATION_INVALID: 'error',
   STUDIO_ENCRYPTION_INVALID: 'error',
   STUDIO_ENCRYPTION_MAINTENANCE_FAILED: 'error',

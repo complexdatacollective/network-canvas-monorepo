@@ -44,6 +44,7 @@ import Setup, { SetupNotFound } from './routes/Setup.tsx';
 import SignIn from './routes/SignIn.tsx';
 import TeamActivity from './routes/TeamActivity.tsx';
 import TeamMembers from './routes/TeamMembers.tsx';
+import TeamSettings from './routes/TeamSettings.tsx';
 import TeamStudies from './routes/TeamStudies.tsx';
 import AccountArea from './shell/AccountArea.tsx';
 import NoTeamSignOut from './shell/NoTeamSignOut.tsx';
@@ -428,19 +429,6 @@ const screens = defineMessages({
       "The team's plan, the seats it is paying for, and its invoices.",
     description:
       'What the Billing screen at /billing will do, shown on it while it is not yet built.',
-  },
-  teamSettingsTitle: {
-    id: 'studio.screens.teamSettingsTitle',
-    defaultMessage: 'Team settings',
-    description:
-      'Name of the Team settings screen at /settings, used as its heading.',
-  },
-  teamSettingsDescription: {
-    id: 'studio.screens.teamSettingsDescription',
-    defaultMessage:
-      "The team's name, the defaults every new study inherits from it, and deleting the team.",
-    description:
-      'What the Team settings screen at /settings will do, shown on it while it is not yet built.',
   },
   teamSettingsApiTitle: {
     id: 'studio.screens.teamSettingsApiTitle',
@@ -1189,11 +1177,10 @@ const teamBillingRoute = createRoute({
 const teamSettingsRoute = createRoute({
   getParentRoute: () => teamLayoutRoute,
   path: '/settings',
-  component: areaPlaceholder({
-    title: screens.teamSettingsTitle,
-    description: screens.teamSettingsDescription,
-    issue: '#1249',
-  }),
+  component: () => {
+    const { teamId } = teamSettingsRoute.useParams();
+    return <TeamSettings key={teamId} teamId={teamId} />;
+  },
 });
 
 const teamSettingsApiRoute = createRoute({

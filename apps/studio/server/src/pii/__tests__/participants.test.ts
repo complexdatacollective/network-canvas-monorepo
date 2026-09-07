@@ -88,6 +88,22 @@ describe('authorized and audited participant PII', () => {
       expect(lookup.rows).toEqual([
         { details: { kind: 'email', resultCount: 1 }, resource_label: null },
       ]);
+      expect(
+        (
+          await scratch.pool.query(
+            'SELECT event_type, alert_policy_key FROM audit_alert_outbox ORDER BY audit_event_sequence',
+          )
+        ).rows,
+      ).toEqual([
+        ...fields.map(() => ({
+          event_type: 'participant.pii.read',
+          alert_policy_key: 'contact_access',
+        })),
+        {
+          event_type: 'participant.pii.lookup',
+          alert_policy_key: 'contact_access',
+        },
+      ]);
     });
   });
 

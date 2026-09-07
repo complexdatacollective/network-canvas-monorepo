@@ -624,6 +624,22 @@ describe('bounded encryption maintenance and retained suppression', () => {
       expect(await readWebhookSecret(keys, id, authority)).toEqual(
         signingSecret,
       );
+      expect(
+        (
+          await scratch.pool.query(
+            'SELECT event_type, alert_policy_key FROM audit_alert_outbox ORDER BY audit_event_sequence',
+          )
+        ).rows,
+      ).toEqual([
+        {
+          event_type: 'webhook.secret.updated',
+          alert_policy_key: 'credential_access',
+        },
+        {
+          event_type: 'webhook.secret.read',
+          alert_policy_key: 'credential_access',
+        },
+      ]);
       await expect(
         readWebhookSecret(keys, id, { ...authority, leaseOwner: randomUUID() }),
       ).rejects.toThrow(ProtectedDataError);

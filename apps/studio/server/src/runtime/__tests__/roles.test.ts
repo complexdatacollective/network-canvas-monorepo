@@ -12,17 +12,21 @@ import { fileURLToPath } from 'node:url';
 import { createORPCClient } from '@orpc/client';
 import { RPCLink } from '@orpc/client/fetch';
 import type { ContractRouterClient } from '@orpc/contract';
+import pg from 'pg';
 import { describe, expect, it } from 'vitest';
 import { WebSocket } from 'ws';
 
 import type { contract } from '@codaco/studio-rpc';
 import { createTenantDb } from '@codaco/studio-sync/tenant';
 
+import { enrollMigrationTestDatabase } from '../../__tests__/support/migrations.ts';
 import {
   createScratchDatabase,
-  provisionScratchSchema,
   reachableDb,
 } from '../../__tests__/support/postgres.ts';
+import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
+import { readMigrations } from '../../db/migrations/artifact.ts';
+import { migrateDatabase } from '../../db/migrations/migrate.ts';
 import { createPool } from '../../db/pool.ts';
 import type { DbEnv } from '../../env.ts';
 import { completeSetup } from '../../instance/bootstrap.ts';
@@ -31,7 +35,11 @@ import { enqueueInvitationDelivery } from '../../team/invitation-delivery-store.
 
 const database = await reachableDb();
 const entry = fileURLToPath(new URL('../../index.ts', import.meta.url));
+const migrations = await readMigrations(
+  fileURLToPath(new URL('../../../migrations', import.meta.url)),
+);
 const ownerPassword = 'test-only runtime owner password';
+const runtimePassword = 'test-only restricted runtime password';
 const token = randomBytes(32).toString('base64url');
 
 async function unusedPort() {
@@ -114,8 +122,35 @@ function launch(
 async function fixture() {
   if (!database) throw new Error('A local PostgreSQL instance is required.');
   const scratch = await createScratchDatabase(database);
-  await provisionScratchSchema(scratch.pool);
-  const app = createPool(scratch.db);
+  const login = `studio_runtime_test_${randomUUID().replaceAll('-', '')}`;
+  const identifier = pg.escapeIdentifier(login);
+  const administrator = new pg.Pool({ connectionString: database.url });
+  try {
+    await administrator.query(
+      `CREATE ROLE ${identifier} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS PASSWORD '${runtimePassword}'`,
+    );
+    await administrator.query(
+      `GRANT studio_app, studio_maintenance TO ${identifier} WITH SET TRUE, INHERIT FALSE`,
+    );
+  } finally {
+    await administrator.end();
+  }
+  const allowedLogins = await enrollMigrationTestDatabase(
+    scratch.pool,
+    database,
+    [login],
+  );
+  await migrateDatabase(
+    scratch.pool,
+    migrations,
+    SCHEMA_FINGERPRINT,
+    allowedLogins,
+  );
+  const runtimeUrl = new URL(scratch.db.url);
+  runtimeUrl.username = login;
+  runtimeUrl.password = runtimePassword;
+  const runtimeDb = { url: runtimeUrl.href };
+  const app = createPool(runtimeDb);
   const clientDist = await mkdtemp(join(tmpdir(), 'studio-runtime-client-'));
   await writeFile(
     join(clientDist, 'index.html'),
@@ -140,6 +175,7 @@ async function fixture() {
   ).rows[0]!;
   return {
     ...scratch,
+    db: runtimeDb,
     app,
     clientDist,
     async enqueue() {
@@ -167,6 +203,12 @@ async function fixture() {
       await app.end();
       await scratch.dispose();
       await rm(clientDist, { recursive: true });
+      const cleanup = new pg.Pool({ connectionString: database.url });
+      try {
+        await cleanup.query(`DROP ROLE IF EXISTS ${identifier}`);
+      } finally {
+        await cleanup.end();
+      }
     },
   };
 }
@@ -232,7 +274,7 @@ describe('actual runtime role separation and drain', () => {
     let worker: ReturnType<typeof launch> | undefined;
     let duplicate: ReturnType<typeof launch> | undefined;
     try {
-      expect(await web.started).toBe(true);
+      expect(await web.started, JSON.stringify(web.records())).toBe(true);
       const client = createORPCClient<ContractRouterClient<typeof contract>>(
         new RPCLink({
           origin: web.origin,
@@ -317,7 +359,9 @@ describe('actual runtime role separation and drain', () => {
     let ws: WebSocket | undefined;
     let slow: ReturnType<typeof request> | undefined;
     try {
-      expect(await runtime.started).toBe(true);
+      expect(await runtime.started, JSON.stringify(runtime.records())).toBe(
+        true,
+      );
       await expect.poll(() => smtp.messages.length).toBe(1);
       const signIn = await fetch(`${runtime.origin}/api/auth/sign-in/email`, {
         method: 'POST',
@@ -400,7 +444,9 @@ describe('actual runtime role separation and drain', () => {
     const scratch = await fixture();
     const runtime = launch(scratch.db, await unusedPort(), 'web');
     try {
-      expect(await runtime.started).toBe(true);
+      expect(await runtime.started, JSON.stringify(runtime.records())).toBe(
+        true,
+      );
       const killed = await scratch.pool.query(
         `SELECT pg_terminate_backend(pid) AS killed FROM pg_locks WHERE locktype='advisory' AND database=(SELECT oid FROM pg_database WHERE datname=current_database())`,
       );

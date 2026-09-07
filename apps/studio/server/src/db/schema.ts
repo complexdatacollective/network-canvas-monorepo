@@ -9,6 +9,10 @@ import {
 import { SYNC_SIDECAR_SQL, SYNC_TABLES } from '@codaco/studio-sync/schema';
 
 import { ASSET_SIDECAR_SQL, ASSET_TABLES } from '../asset/schema.ts';
+import {
+  AUDIT_ALERT_SIDECAR_SQL,
+  AUDIT_ALERT_TABLES,
+} from '../audit/alert-schema.ts';
 import { AUDIT_SIDECAR_SQL, AUDIT_TABLES } from '../audit/schema.ts';
 import { CONSENT_SIDECAR_SQL, CONSENT_TABLES } from '../consent/schema.ts';
 import {
@@ -76,6 +80,7 @@ export const SCHEMA = {
   ...FEEDBACK_TABLES,
   ...MONITORING_TABLES,
   ...AUDIT_TABLES,
+  ...AUDIT_ALERT_TABLES,
   ...INVITATION_DELIVERY_TABLES,
   ...PII_TABLES,
   ...INSTANCE_TABLES,
@@ -111,6 +116,7 @@ export const SIDECARS = [
   PII_SIDECAR_SQL,
   INSTANCE_SIDECAR_SQL,
   BACKUP_ACCESS_SIDECAR_SQL,
+  AUDIT_ALERT_SIDECAR_SQL,
   AUDIT_SIDECAR_SQL,
 ];
 

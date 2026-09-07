@@ -6,6 +6,14 @@ import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
 
 import { updateUserLocale } from './account/commands.ts';
 import {
+  acknowledgeAuditAlert,
+  AuditAlertError,
+  listAuditAlerts,
+  markAuditAlertRead,
+  readAuditAlertSettings,
+  updateAuditAlertSettings,
+} from './audit/alerts.ts';
+import {
   appendAuditedEvent,
   auditActorEventContext,
   AuditCommandTeamNotFoundError,
@@ -16,6 +24,7 @@ import {
   reserveDeniedAuditAttempt,
 } from './audit/denial-rate-limit.ts';
 import { createDeniedAuditSummaryWriter } from './audit/denial-summary.ts';
+import type { AuditEventInput } from './audit/events.ts';
 import { renderAuditFilterOptions } from './audit/facets.ts';
 import {
   authorizeAuditRead,
@@ -83,7 +92,10 @@ type TeamRpcContext = {
   tenantDb: TenantDb;
 };
 
-type AuditReadProcedure = 'audit.list' | 'audit.get' | 'audit.filterOptions';
+type AuditReadProcedure = Extract<
+  AuditEventInput,
+  { eventType: 'audit.read_denied' }
+>['details']['procedure'];
 
 /**
  * Thrown from inside the read transaction when the caller's locked membership
@@ -231,10 +243,14 @@ async function guardAuditRead<T>(
     reservation?.complete('other');
     return result;
   } catch (error) {
-    if (error instanceof AuditReadDeniedError) {
+    if (
+      error instanceof AuditReadDeniedError ||
+      (error instanceof AuditAlertError && error.code === 'FORBIDDEN')
+    ) {
       return denyAuditRead(context, procedure, reservation);
     }
     reservation?.complete('other');
+    if (error instanceof AuditAlertError) throw new ORPCError(error.code);
     throw error;
   }
 }
@@ -763,6 +779,53 @@ export function createRpcRouter(
         ),
     },
     audit: {
+      alerts: {
+        settings: os.audit.alerts.settings
+          .use(requireTeam)
+          .handler(({ context }) =>
+            guardAuditRead(context, 'audit.alerts.settings', () =>
+              readAuditAlertSettings(
+                auditedContextFor(context),
+                invitationDeliveryAvailable,
+              ),
+            ),
+          ),
+        updateSettings: os.audit.alerts.updateSettings
+          .use(requireTeam)
+          .handler(({ context, input }) =>
+            guardAuditRead(context, 'audit.alerts.updateSettings', () =>
+              updateAuditAlertSettings(
+                auditedContextFor(context),
+                input,
+                invitationDeliveryAvailable,
+              ),
+            ),
+          ),
+        list: os.audit.alerts.list
+          .use(requireTeam)
+          .handler(({ context, input }) =>
+            guardAuditRead(context, 'audit.alerts.list', () =>
+              listAuditAlerts(auditedContextFor(context), input.cursor),
+            ),
+          ),
+        markRead: os.audit.alerts.markRead
+          .use(requireTeam)
+          .handler(({ context, input }) =>
+            guardAuditRead(context, 'audit.alerts.markRead', () =>
+              markAuditAlertRead(auditedContextFor(context), input.alertId),
+            ),
+          ),
+        acknowledge: os.audit.alerts.acknowledge
+          .use(requireTeam)
+          .handler(({ context, input }) =>
+            guardAuditRead(context, 'audit.alerts.acknowledge', () =>
+              acknowledgeAuditAlert(
+                auditedContextFor(context),
+                input.deliveryId,
+              ),
+            ),
+          ),
+      },
       list: os.audit.list
         .use(requireTeam)
         .handler(async ({ context, input }) => {

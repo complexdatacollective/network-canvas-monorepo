@@ -1,7 +1,7 @@
 {
   "dialect": "postgres",
-  "id": "98ddb368-c738-47e9-b6e3-0b90f934db8b",
-  "prevIds": ["5e7f4778-a6c8-499b-a22b-4b4c206b059f"],
+  "id": "be47f5b4-f837-4a00-9355-23d23a819bfa",
+  "prevIds": ["00297fe5-fd38-48ca-a5ca-030a0a78d318"],
   "version": "8",
   "ddl": [
     {
@@ -331,6 +331,30 @@
     {
       "isRlsEnabled": true,
       "name": "audit_alert_outbox",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": true,
+      "name": "audit_alert_settings",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": true,
+      "name": "audit_alert_recipients",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": true,
+      "name": "audit_alert_deliveries",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": true,
+      "name": "audit_alert_dispatch_budget",
       "entityType": "tables",
       "schema": "public"
     },
@@ -8093,6 +8117,19 @@
       "default": null,
       "generated": null,
       "identity": null,
+      "name": "uncertain_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_alert_outbox"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
       "name": "failed_at",
       "entityType": "columns",
       "schema": "public",
@@ -8136,6 +8173,409 @@
       "entityType": "columns",
       "schema": "public",
       "table": "audit_alert_outbox"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "team_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_alert_settings"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "revision",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_alert_settings"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_alert_recipients"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "team_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_alert_recipients"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "member_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_alert_recipients"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "user_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_alert_recipients"
+    },
+    {
+      "type": "boolean",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "in_app",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_alert_recipients"
+    },
+    {
+      "type": "boolean",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "email",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_alert_recipients"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_alert_deliveries"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "team_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_alert_deliveries"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "outbox_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_alert_deliveries"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "recipient_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_alert_deliveries"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "member_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_alert_deliveries"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "user_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_alert_deliveries"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "channel",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_alert_deliveries"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "0",
+      "generated": null,
+      "identity": null,
+      "name": "attempt_count",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_alert_deliveries"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "available_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_alert_deliveries"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "lease_owner",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_alert_deliveries"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "lease_expires_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_alert_deliveries"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "send_started_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_alert_deliveries"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "delivered_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_alert_deliveries"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "failed_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_alert_deliveries"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "suppressed_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_alert_deliveries"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "uncertain_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_alert_deliveries"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "read_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_alert_deliveries"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "acknowledged_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_alert_deliveries"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "last_error",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_alert_deliveries"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_alert_deliveries"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "scope",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_alert_dispatch_budget"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "window_started_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_alert_dispatch_budget"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "attempts",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_alert_dispatch_budget"
     },
     {
       "type": "uuid",
@@ -10814,7 +11254,7 @@
         }
       ],
       "isUnique": false,
-      "where": "delivered_at IS NULL AND failed_at IS NULL AND suppressed_at IS NULL",
+      "where": "delivered_at IS NULL AND failed_at IS NULL AND suppressed_at IS NULL AND uncertain_at IS NULL",
       "with": "",
       "method": "btree",
       "concurrently": false,
@@ -10857,6 +11297,76 @@
       "entityType": "indexes",
       "schema": "public",
       "table": "audit_alert_outbox"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "available_at",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "created_at",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": "delivered_at IS NULL AND failed_at IS NULL AND suppressed_at IS NULL AND uncertain_at IS NULL",
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "audit_alert_deliveries_dispatch_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "audit_alert_deliveries"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "team_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "user_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "created_at",
+          "isExpression": false,
+          "asc": false,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "id",
+          "isExpression": false,
+          "asc": false,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "audit_alert_deliveries_feed_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "audit_alert_deliveries"
     },
     {
       "nameExplicit": true,
@@ -11819,6 +12329,19 @@
     },
     {
       "nameExplicit": true,
+      "columns": ["outbox_id", "team_id"],
+      "schemaTo": "public",
+      "tableTo": "audit_alert_outbox",
+      "columnsTo": ["id", "team_id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "audit_alert_deliveries_outbox_fk",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "audit_alert_deliveries"
+    },
+    {
+      "nameExplicit": true,
       "columns": ["invitation_id", "team_id"],
       "schemaTo": "public",
       "tableTo": "team_invitations",
@@ -12302,6 +12825,38 @@
       "name": "audit_alert_outbox_pkey",
       "schema": "public",
       "table": "audit_alert_outbox",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["team_id"],
+      "nameExplicit": false,
+      "name": "audit_alert_settings_pkey",
+      "schema": "public",
+      "table": "audit_alert_settings",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "audit_alert_recipients_pkey",
+      "schema": "public",
+      "table": "audit_alert_recipients",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "audit_alert_deliveries_pkey",
+      "schema": "public",
+      "table": "audit_alert_deliveries",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["scope"],
+      "nameExplicit": false,
+      "name": "audit_alert_dispatch_budget_pkey",
+      "schema": "public",
+      "table": "audit_alert_dispatch_budget",
       "entityType": "pks"
     },
     {
@@ -12828,6 +13383,33 @@
       "entityType": "uniques",
       "schema": "public",
       "table": "audit_export_jobs"
+    },
+    {
+      "nameExplicit": true,
+      "columns": ["id", "team_id"],
+      "nullsNotDistinct": false,
+      "name": "audit_alert_outbox_id_team_unique",
+      "entityType": "uniques",
+      "schema": "public",
+      "table": "audit_alert_outbox"
+    },
+    {
+      "nameExplicit": true,
+      "columns": ["team_id", "member_id"],
+      "nullsNotDistinct": false,
+      "name": "audit_alert_recipients_team_member_unique",
+      "entityType": "uniques",
+      "schema": "public",
+      "table": "audit_alert_recipients"
+    },
+    {
+      "nameExplicit": true,
+      "columns": ["outbox_id", "member_id", "channel"],
+      "nullsNotDistinct": false,
+      "name": "audit_alert_deliveries_identity_unique",
+      "entityType": "uniques",
+      "schema": "public",
+      "table": "audit_alert_deliveries"
     },
     {
       "nameExplicit": false,
@@ -14000,11 +14582,74 @@
       "table": "audit_alert_outbox"
     },
     {
-      "value": "num_nonnulls(\"delivered_at\", \"failed_at\", \"suppressed_at\") <= 1\n          AND (\n            num_nonnulls(\"delivered_at\", \"failed_at\", \"suppressed_at\") = 0\n            OR (\"lease_owner\" IS NULL AND \"lease_expires_at\" IS NULL)\n          )",
+      "value": "num_nonnulls(\"delivered_at\", \"failed_at\", \"suppressed_at\", \"uncertain_at\") <= 1\n          AND (\n            num_nonnulls(\"delivered_at\", \"failed_at\", \"suppressed_at\", \"uncertain_at\") = 0\n            OR (\"lease_owner\" IS NULL AND \"lease_expires_at\" IS NULL)\n          )",
       "name": "audit_alert_outbox_terminal_state_check",
       "entityType": "checks",
       "schema": "public",
       "table": "audit_alert_outbox"
+    },
+    {
+      "value": "\"in_app\" OR \"email\"",
+      "name": "audit_alert_recipients_channels_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "audit_alert_recipients"
+    },
+    {
+      "value": "\"channel\" IN ('in_app', 'email')",
+      "name": "audit_alert_deliveries_channel_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "audit_alert_deliveries"
+    },
+    {
+      "value": "\"attempt_count\" >= 0",
+      "name": "audit_alert_deliveries_attempt_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "audit_alert_deliveries"
+    },
+    {
+      "value": "(\"lease_owner\" IS NULL) = (\"lease_expires_at\" IS NULL)",
+      "name": "audit_alert_deliveries_lease_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "audit_alert_deliveries"
+    },
+    {
+      "value": "num_nonnulls(\"delivered_at\", \"failed_at\", \"suppressed_at\", \"uncertain_at\") <= 1 AND (num_nonnulls(\"delivered_at\", \"failed_at\", \"suppressed_at\", \"uncertain_at\") = 0 OR \"lease_owner\" IS NULL)",
+      "name": "audit_alert_deliveries_terminal_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "audit_alert_deliveries"
+    },
+    {
+      "value": "\"read_at\" IS NULL OR (\"channel\" = 'in_app' AND \"delivered_at\" IS NOT NULL)",
+      "name": "audit_alert_deliveries_read_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "audit_alert_deliveries"
+    },
+    {
+      "value": "\"acknowledged_at\" IS NULL OR \"uncertain_at\" IS NOT NULL",
+      "name": "audit_alert_deliveries_ack_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "audit_alert_deliveries"
+    },
+    {
+      "value": "\"last_error\" IS NULL OR \"last_error\" IN ('not_eligible', 'backlog_expired', 'attempts_exhausted', 'send_retryable', 'send_rejected', 'send_uncertain', 'handoff_interrupted')",
+      "name": "audit_alert_deliveries_error_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "audit_alert_deliveries"
+    },
+    {
+      "value": "\"attempts\" >= 0 AND char_length(\"scope\") BETWEEN 1 AND 300",
+      "name": "audit_alert_dispatch_budget_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "audit_alert_dispatch_budget"
     },
     {
       "value": "\"attempt_count\" >= 0",
@@ -14117,11 +14762,33 @@
     },
     {
       "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "drafts"
+    },
+    {
+      "as": "PERMISSIVE",
       "for": "ALL",
       "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "sections"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
       "entityType": "policies",
       "schema": "public",
       "table": "sections"
@@ -14139,11 +14806,33 @@
     },
     {
       "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "manifests"
+    },
+    {
+      "as": "PERMISSIVE",
       "for": "ALL",
       "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "leases"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
       "entityType": "policies",
       "schema": "public",
       "table": "leases"
@@ -14161,11 +14850,33 @@
     },
     {
       "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "command_log"
+    },
+    {
+      "as": "PERMISSIVE",
       "for": "ALL",
       "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "protocols"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
       "entityType": "policies",
       "schema": "public",
       "table": "protocols"
@@ -14183,11 +14894,33 @@
     },
     {
       "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "protocol_versions"
+    },
+    {
+      "as": "PERMISSIVE",
       "for": "ALL",
       "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "version_sections"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
       "entityType": "policies",
       "schema": "public",
       "table": "version_sections"
@@ -14205,11 +14938,33 @@
     },
     {
       "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "protocol_drafts"
+    },
+    {
+      "as": "PERMISSIVE",
       "for": "ALL",
       "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "assets"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
       "entityType": "policies",
       "schema": "public",
       "table": "assets"
@@ -14227,11 +14982,33 @@
     },
     {
       "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "asset_references"
+    },
+    {
+      "as": "PERMISSIVE",
       "for": "ALL",
       "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "studies"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
       "entityType": "policies",
       "schema": "public",
       "table": "studies"
@@ -14249,11 +15026,33 @@
     },
     {
       "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "study_waves"
+    },
+    {
+      "as": "PERMISSIVE",
       "for": "ALL",
       "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "participants"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
       "entityType": "policies",
       "schema": "public",
       "table": "participants"
@@ -14271,11 +15070,33 @@
     },
     {
       "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "interview_sessions"
+    },
+    {
+      "as": "PERMISSIVE",
       "for": "ALL",
       "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "interview_links"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
       "entityType": "policies",
       "schema": "public",
       "table": "interview_links"
@@ -14293,11 +15114,33 @@
     },
     {
       "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "session_snapshots"
+    },
+    {
+      "as": "PERMISSIVE",
       "for": "ALL",
       "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "nodes"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
       "entityType": "policies",
       "schema": "public",
       "table": "nodes"
@@ -14315,11 +15158,33 @@
     },
     {
       "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "edges"
+    },
+    {
+      "as": "PERMISSIVE",
       "for": "ALL",
       "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "session_stats"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
       "entityType": "policies",
       "schema": "public",
       "table": "session_stats"
@@ -14337,11 +15202,33 @@
     },
     {
       "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "session_degree_hist"
+    },
+    {
+      "as": "PERMISSIVE",
       "for": "ALL",
       "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "study_role_grants"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
       "entityType": "policies",
       "schema": "public",
       "table": "study_role_grants"
@@ -14359,11 +15246,33 @@
     },
     {
       "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "consent_documents"
+    },
+    {
+      "as": "PERMISSIVE",
       "for": "ALL",
       "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "consent_items"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
       "entityType": "policies",
       "schema": "public",
       "table": "consent_items"
@@ -14381,11 +15290,33 @@
     },
     {
       "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "participant_consents"
+    },
+    {
+      "as": "PERMISSIVE",
       "for": "ALL",
       "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "participant_consent_item_responses"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
       "entityType": "policies",
       "schema": "public",
       "table": "participant_consent_item_responses"
@@ -14403,11 +15334,33 @@
     },
     {
       "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "study_schedules"
+    },
+    {
+      "as": "PERMISSIVE",
       "for": "ALL",
       "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "schedule_occurrences"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
       "entityType": "policies",
       "schema": "public",
       "table": "schedule_occurrences"
@@ -14425,11 +15378,33 @@
     },
     {
       "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "message_templates"
+    },
+    {
+      "as": "PERMISSIVE",
       "for": "ALL",
       "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "message_deliveries"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
       "entityType": "policies",
       "schema": "public",
       "table": "message_deliveries"
@@ -14447,11 +15422,33 @@
     },
     {
       "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "message_delivery_events"
+    },
+    {
+      "as": "PERMISSIVE",
       "for": "ALL",
       "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "api_tokens"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
       "entityType": "policies",
       "schema": "public",
       "table": "api_tokens"
@@ -14469,11 +15466,33 @@
     },
     {
       "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "templates"
+    },
+    {
+      "as": "PERMISSIVE",
       "for": "ALL",
       "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "template_versions"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
       "entityType": "policies",
       "schema": "public",
       "table": "template_versions"
@@ -14491,11 +15510,33 @@
     },
     {
       "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "template_version_sections"
+    },
+    {
+      "as": "PERMISSIVE",
       "for": "ALL",
       "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "webhook_subscriptions"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
       "entityType": "policies",
       "schema": "public",
       "table": "webhook_subscriptions"
@@ -14513,11 +15554,33 @@
     },
     {
       "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "webhook_deliveries"
+    },
+    {
+      "as": "PERMISSIVE",
       "for": "ALL",
       "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "experiments"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
       "entityType": "policies",
       "schema": "public",
       "table": "experiments"
@@ -14535,11 +15598,33 @@
     },
     {
       "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "experiment_assignments"
+    },
+    {
+      "as": "PERMISSIVE",
       "for": "ALL",
       "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "experiment_exposures"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
       "entityType": "policies",
       "schema": "public",
       "table": "experiment_exposures"
@@ -14557,11 +15642,33 @@
     },
     {
       "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "feedback_reports"
+    },
+    {
+      "as": "PERMISSIVE",
       "for": "ALL",
       "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "study_wave_rollups"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
       "entityType": "policies",
       "schema": "public",
       "table": "study_wave_rollups"
@@ -14579,11 +15686,33 @@
     },
     {
       "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "study_stage_rollups"
+    },
+    {
+      "as": "PERMISSIVE",
       "for": "ALL",
       "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '')",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '')",
       "name": "audit_team_isolation",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "audit_events"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
       "entityType": "policies",
       "schema": "public",
       "table": "audit_events"
@@ -14601,6 +15730,17 @@
     },
     {
       "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "audit_export_jobs"
+    },
+    {
+      "as": "PERMISSIVE",
       "for": "ALL",
       "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
@@ -14612,11 +15752,121 @@
     },
     {
       "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "audit_alert_outbox"
+    },
+    {
+      "as": "PERMISSIVE",
       "for": "ALL",
       "roles": ["public"],
       "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
       "name": "team_isolation",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "audit_alert_settings"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "audit_alert_settings"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "ALL",
+      "roles": ["public"],
+      "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
+      "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
+      "name": "team_isolation",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "audit_alert_recipients"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "audit_alert_recipients"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "ALL",
+      "roles": ["public"],
+      "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
+      "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
+      "name": "team_isolation",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "audit_alert_deliveries"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "audit_alert_deliveries"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "ALL",
+      "roles": ["public"],
+      "using": "current_user = 'studio_maintenance'",
+      "withCheck": "current_user = 'studio_maintenance'",
+      "name": "maintenance_only",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "audit_alert_dispatch_budget"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "audit_alert_dispatch_budget"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "ALL",
+      "roles": ["public"],
+      "using": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
+      "withCheck": "team_id = NULLIF(current_setting('app.team_id', true), '') OR current_user = 'studio_maintenance'",
+      "name": "team_isolation",
+      "entityType": "policies",
+      "schema": "public",
+      "table": "team_invitation_deliveries"
+    },
+    {
+      "as": "PERMISSIVE",
+      "for": "SELECT",
+      "roles": ["public"],
+      "using": "current_user = 'studio_backup'",
+      "withCheck": null,
+      "name": "backup_read",
       "entityType": "policies",
       "schema": "public",
       "table": "team_invitation_deliveries"

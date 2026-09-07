@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { alertCandidate } from '../alert-policy.ts';
 import {
   AUDIT_EVENT_REGISTRY,
   auditEventDefinition,
@@ -18,6 +19,8 @@ void invalidCrossProductKey;
 describe('audit event registry', () => {
   it('has a complete valid definition and fixture for every event type', () => {
     expect(Object.keys(AUDIT_EVENT_REGISTRY).toSorted()).toEqual([
+      'audit.alert_delivery.acknowledged@1',
+      'audit.alert_settings.updated@1',
       'audit.read_denied@1',
       'participant.pii.denied@1',
       'participant.pii.lookup@1',
@@ -55,7 +58,7 @@ describe('audit event registry', () => {
       expect(definition.detailFields.length).toBeGreaterThan(0);
       expect(definition.sensitiveFields).toEqual([]);
       expect(definition.createsAlert).toBe(
-        key === 'security.denied_attempts.rate_limited@1',
+        alertCandidate(definition.fixture) !== null,
       );
       const parsed = parseAuditEventInput(definition.fixture);
       expect(auditEventKey(parsed)).toBe(key);
@@ -78,6 +81,18 @@ describe('audit event registry', () => {
         details: { ...fixture.details, suppressedCount: 0 },
       }),
     ).toThrow();
+  });
+
+  it('routes an authorized PII field read without depending on its value', () => {
+    const fixture = AUDIT_EVENT_REGISTRY['participant.pii.read@1'].fixture;
+    const parsed = parseAuditEventInput(fixture);
+
+    expect(parsed.details).toEqual({
+      studyId: 'fixture-study',
+      columns: ['email_ciphertext'],
+    });
+    expect(alertCandidate(parsed)).toBe('contact_access');
+    expect(JSON.stringify(parsed)).not.toContain('value');
   });
 
   it('rejects an unknown retained-event version instead of applying v1 rules', () => {

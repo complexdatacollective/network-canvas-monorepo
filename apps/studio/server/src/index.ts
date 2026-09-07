@@ -8,6 +8,10 @@ import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 
 import { createApp } from './app.ts';
 import { createAssetStore } from './assets.ts';
+import {
+  startAuditAlertWorker,
+  type AuditAlertWorker,
+} from './audit/alert-delivery.ts';
 import { flushDeniedAuditSummaries } from './audit/denial-rate-limit.ts';
 import { createMailer } from './auth/email.ts';
 import { mountClient } from './client-assets.ts';
@@ -82,25 +86,27 @@ const maintenancePool = env.db ? createMaintenancePool(env.db) : undefined;
 const schemaPool = pool ?? maintenancePool;
 const assetStore = env.s3 ? createAssetStore(env.s3) : undefined;
 let invitationDeliveryWorker: InvitationDeliveryWorker | undefined;
+let auditAlertWorker: AuditAlertWorker | undefined;
 
 function startDatabaseWorkers(): void {
-  if (
-    env.role === 'web' ||
-    invitationDeliveryWorker ||
-    !maintenancePool ||
-    !env.auth ||
-    !mailer ||
-    env.auth.mailer.kind === 'refuse'
-  ) {
-    return;
-  }
-  invitationDeliveryWorker = startInvitationDeliveryWorker({
+  if (env.role === 'web' || !maintenancePool || !env.auth) return;
+  const emailMailer = env.auth.mailer.kind === 'refuse' ? undefined : mailer;
+  auditAlertWorker ??= startAuditAlertWorker({
     pool: maintenancePool,
     observer: observability.metrics.observer,
     reportError: (error) => telemetry?.capture('server_worker', error),
-    mailer,
+    mailer: emailMailer,
     publicBaseUrl: env.auth.baseUrl,
   });
+  if (!invitationDeliveryWorker && emailMailer) {
+    invitationDeliveryWorker = startInvitationDeliveryWorker({
+      pool: maintenancePool,
+      observer: observability.metrics.observer,
+      reportError: (error) => telemetry?.capture('server_worker', error),
+      mailer: emailMailer,
+      publicBaseUrl: env.auth.baseUrl,
+    });
+  }
 }
 
 async function admitDatabaseRuntime(): Promise<boolean> {
@@ -252,6 +258,7 @@ stopServing = () => {
   if ('closeAllConnections' in server) server.closeAllConnections();
   for (const socket of wsServer?.clients ?? []) socket.terminate();
   void invitationDeliveryWorker?.stop();
+  void auditAlertWorker?.stop();
   mailer?.close();
   observability.stop();
 };
@@ -270,7 +277,10 @@ function shutdown() {
   setTimeout(() => process.exit(1), 10_000).unref();
   // Stop queue claims and accepting HTTP work immediately, before waiting
   // for active WebSocket close handshakes or an in-flight delivery attempt.
-  const workerStopped = invitationDeliveryWorker?.stop();
+  const workersStopped = Promise.all([
+    invitationDeliveryWorker?.stop(),
+    auditAlertWorker?.stop(),
+  ]);
   mailer?.close();
   const httpClosed = new Promise<void>((resolve, reject) => {
     server.close((error) => (error ? reject(error) : resolve()));
@@ -286,7 +296,7 @@ function shutdown() {
   void (async () => {
     let exitCode = 0;
     try {
-      await Promise.all([httpClosed, workerStopped, ...closing]);
+      await Promise.all([httpClosed, workersStopped, ...closing]);
       // Requests may append suppression summaries until HTTP has drained.
       // Keep the application pool open until that final bounded flush ends.
       if (!(await flushDeniedAuditSummaries()))

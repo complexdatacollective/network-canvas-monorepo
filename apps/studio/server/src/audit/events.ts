@@ -1,6 +1,10 @@
 import { z } from 'zod';
 
-import { STUDY_PARTICIPATION_MODES, TeamRoleSchema } from '@codaco/studio-rpc';
+import {
+  AuditAlertRecipientsSchema,
+  STUDY_PARTICIPATION_MODES,
+  TeamRoleSchema,
+} from '@codaco/studio-rpc';
 
 const LabelSchema = z.string().min(1).max(320);
 const IdentifierSchema = z.string().min(1).max(255);
@@ -216,7 +220,16 @@ const AuditReadDeniedV1EventSchema = CommonUserEventSchema.extend({
   resourceId: z.null(),
   resourceLabel: z.null(),
   details: z.strictObject({
-    procedure: z.enum(['audit.list', 'audit.get', 'audit.filterOptions']),
+    procedure: z.enum([
+      'audit.list',
+      'audit.get',
+      'audit.filterOptions',
+      'audit.alerts.settings',
+      'audit.alerts.updateSettings',
+      'audit.alerts.list',
+      'audit.alerts.markRead',
+      'audit.alerts.acknowledge',
+    ]),
     reason: z.literal('insufficient_permission'),
   }),
 }).strict();
@@ -413,7 +426,40 @@ const WebhookCredentialV1EventSchema = CommonUserEventSchema.extend({
 
 // A plain union is intentional: eventType alone cannot remain the
 // discriminator once two retained versions of the same immutable event exist.
+const AuditAlertSettingsUpdatedSchema = CommonUserEventSchema.extend({
+  eventVersion: z.literal(1),
+  eventType: z.literal('audit.alert_settings.updated'),
+  category: z.literal('audit'),
+  outcome: z.literal('succeeded'),
+  subjectType: z.null(),
+  subjectId: z.null(),
+  subjectLabel: z.null(),
+  resourceType: z.null(),
+  resourceId: z.null(),
+  resourceLabel: z.null(),
+  details: z.strictObject({
+    previousRecipients: AuditAlertRecipientsSchema,
+    recipients: AuditAlertRecipientsSchema,
+  }),
+});
+const AuditAlertAcknowledgedSchema = CommonUserEventSchema.extend({
+  eventVersion: z.literal(1),
+  eventType: z.literal('audit.alert_delivery.acknowledged'),
+  category: z.literal('audit'),
+  outcome: z.literal('succeeded'),
+  subjectType: z.literal('audit_alert_delivery'),
+  subjectId: z.uuid(),
+  subjectLabel: z.null(),
+  resourceType: z.null(),
+  resourceId: z.null(),
+  resourceLabel: z.null(),
+  details: z.strictObject({
+    disposition: z.literal('uncertainty_acknowledged_no_resend'),
+  }),
+});
 export const AuditEventInputSchema = z.union([
+  AuditAlertSettingsUpdatedSchema,
+  AuditAlertAcknowledgedSchema,
   AuditReadDeniedV1EventSchema,
   TeamCreatedV1EventSchema,
   TeamMemberRoleChangedV1EventSchema,
@@ -536,12 +582,57 @@ const FIXTURE_WEBHOOK_COMMON = {
 } as const;
 
 export const AUDIT_EVENT_REGISTRY = {
+  'audit.alert_settings.updated@1': {
+    inputSchema: AuditAlertSettingsUpdatedSchema,
+    title: 'Activity alert recipients updated',
+    detailFields: ['previousRecipients', 'recipients'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_USER_COMMON,
+      eventVersion: 1,
+      eventType: 'audit.alert_settings.updated',
+      category: 'audit',
+      outcome: 'succeeded',
+      subjectType: null,
+      subjectId: null,
+      subjectLabel: null,
+      resourceType: null,
+      resourceId: null,
+      resourceLabel: null,
+      details: {
+        previousRecipients: [],
+        recipients: [{ memberId: 'fixture-member', inApp: true, email: false }],
+      },
+    },
+  },
+  'audit.alert_delivery.acknowledged@1': {
+    inputSchema: AuditAlertAcknowledgedSchema,
+    title: 'Uncertain activity alert acknowledged',
+    detailFields: ['disposition'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_USER_COMMON,
+      eventVersion: 1,
+      eventType: 'audit.alert_delivery.acknowledged',
+      category: 'audit',
+      outcome: 'succeeded',
+      subjectType: 'audit_alert_delivery',
+      subjectId: '00000000-0000-4000-8000-000000000002',
+      subjectLabel: null,
+      resourceType: null,
+      resourceId: null,
+      resourceLabel: null,
+      details: { disposition: 'uncertainty_acknowledged_no_resend' },
+    },
+  },
   'participant.pii.lookup@1': {
     inputSchema: ParticipantPiiLookupV1EventSchema,
     title: 'Participant contact lookup',
     detailFields: ['kind', 'resultCount'],
     sensitiveFields: [],
-    createsAlert: false,
+    createsAlert: true,
     fixture: {
       ...FIXTURE_USER_COMMON,
       eventVersion: 1,
@@ -562,7 +653,7 @@ export const AUDIT_EVENT_REGISTRY = {
     title: 'Participant contact details viewed',
     detailFields: ['studyId', 'columns'],
     sensitiveFields: [],
-    createsAlert: false,
+    createsAlert: true,
     fixture: {
       ...FIXTURE_PII_COMMON,
       eventType: 'participant.pii.read',
@@ -586,7 +677,7 @@ export const AUDIT_EVENT_REGISTRY = {
     title: 'Participant contact access denied',
     detailFields: ['operation', 'reason'],
     sensitiveFields: [],
-    createsAlert: false,
+    createsAlert: true,
     fixture: {
       ...FIXTURE_USER_COMMON,
       eventVersion: 1,
@@ -637,7 +728,7 @@ export const AUDIT_EVENT_REGISTRY = {
     title: 'Webhook signing secret used',
     detailFields: ['purpose'],
     sensitiveFields: [],
-    createsAlert: false,
+    createsAlert: true,
     fixture: { ...FIXTURE_WEBHOOK_COMMON, eventType: 'webhook.secret.read' },
   },
   'webhook.secret.updated@1': {
@@ -645,7 +736,7 @@ export const AUDIT_EVENT_REGISTRY = {
     title: 'Webhook signing secret updated',
     detailFields: ['purpose'],
     sensitiveFields: [],
-    createsAlert: false,
+    createsAlert: true,
     fixture: { ...FIXTURE_WEBHOOK_COMMON, eventType: 'webhook.secret.updated' },
   },
   'webhook.secret.rotated@1': {
@@ -676,7 +767,7 @@ export const AUDIT_EVENT_REGISTRY = {
     title: 'Activity log access denied',
     detailFields: ['procedure', 'reason'],
     sensitiveFields: [],
-    createsAlert: false,
+    createsAlert: true,
     fixture: {
       ...FIXTURE_USER_COMMON,
       eventVersion: 1,
@@ -712,7 +803,7 @@ export const AUDIT_EVENT_REGISTRY = {
     title: 'Member role change denied',
     detailFields: ['requestedRoles', 'reason'],
     sensitiveFields: [],
-    createsAlert: false,
+    createsAlert: true,
     fixture: {
       ...FIXTURE_TEAM_ACCESS_V1_COMMON,
       outcome: 'denied',
