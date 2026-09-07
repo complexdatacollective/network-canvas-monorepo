@@ -15,6 +15,7 @@ export function createReadiness(options: {
   cacheMs?: number;
   allowUnversionedSchema?: boolean;
   allowedLogins?: readonly string[];
+  administrativeLogins?: readonly string[];
 }) {
   const {
     pool,
@@ -25,6 +26,9 @@ export function createReadiness(options: {
     allowUnversionedSchema,
   } = options;
   const allowedLogins = options.allowedLogins ? [...options.allowedLogins] : [];
+  const administrativeLogins = options.administrativeLogins
+    ? [...options.administrativeLogins]
+    : [];
   const database = new BoundedProbe<SchemaState>(
     pool
       ? (signal) =>
@@ -35,10 +39,12 @@ export function createReadiness(options: {
                 intendedRole: TENANT_ROLES.app,
                 allowedRoles: Object.values(TENANT_ROLES),
                 allowedLogins,
+                administrativeLogins,
               });
             const state = await checkSchema(client, {
               allowUnversioned: allowUnversionedSchema,
               allowedLogins,
+              administrativeLogins,
             });
             if (!allowUnversionedSchema && maintenancePool) {
               await withProbeClient(maintenancePool, signal, (maintenance) =>
@@ -46,6 +52,7 @@ export function createReadiness(options: {
                   intendedRole: TENANT_ROLES.maintenance,
                   allowedRoles: Object.values(TENANT_ROLES),
                   allowedLogins,
+                  administrativeLogins,
                 }),
               );
             }

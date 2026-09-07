@@ -83,6 +83,7 @@ const observability = createObservability({
   monitorProcess: true,
   allowUnversionedSchema: env.devDefaults,
   allowedLogins: env.databaseAllowedLogins,
+  administrativeLogins: env.databaseAdministrativeLogins,
 });
 let invitationDeliveryWorker: InvitationDeliveryWorker | undefined;
 
@@ -119,6 +120,7 @@ async function admitDatabaseRuntime(): Promise<boolean> {
           intendedRole,
           allowedRoles: roles,
           allowedLogins: env.databaseAllowedLogins ?? [],
+          administrativeLogins: env.databaseAdministrativeLogins,
         });
       } finally {
         client.release();
@@ -163,6 +165,7 @@ if (pool) {
       attempting = true;
       void checkSchema(pool, {
         allowedLogins: env.databaseAllowedLogins,
+        administrativeLogins: env.databaseAdministrativeLogins,
         allowUnversioned: env.devDefaults,
       })
         .then(async (state) => {
@@ -194,6 +197,7 @@ if (pool) {
   try {
     const state = await checkSchema(pool, {
       allowedLogins: env.databaseAllowedLogins,
+      administrativeLogins: env.databaseAdministrativeLogins,
       allowUnversioned: env.devDefaults,
     });
     if (state.kind === 'current') {

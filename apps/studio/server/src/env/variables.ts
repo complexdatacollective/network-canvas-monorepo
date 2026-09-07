@@ -55,6 +55,7 @@ export const serverSchemas = {
   DATABASE_URL: z.string().min(1).optional(),
   // Parsed and required only by the explicit migration entrypoint.
   STUDIO_DATABASE_ALLOWED_LOGINS: z.string().optional(),
+  STUDIO_DATABASE_ADMINISTRATIVE_LOGINS: z.string().optional(),
 
   /**
    * 32 bytes of base64 is 44 characters, so the documented

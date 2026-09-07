@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { escapeIdentifier, type Pool, type PoolClient } from 'pg';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { assertSafePostgresRuntimeIdentity } from '../postgres-runtime-identity.ts';
 import { revokeLargeObjectPrivilegesSql } from '../role-bootstrap.ts';
@@ -120,6 +120,53 @@ describe.skipIf(!reachable)('PostgreSQL runtime identity boundary', () => {
           ).resolves.toBeUndefined();
         },
       );
+    },
+  );
+
+  it.each([roles.app, roles.maintenance])(
+    'refuses an explicitly administrative session pinned to %s',
+    async (intendedRole) => {
+      await withClient(
+        runtimePool(roles.login, intendedRole),
+        async (client) => {
+          await expect(
+            assertSafePostgresRuntimeIdentity(client, {
+              intendedRole,
+              allowedRoles,
+              allowedLogins,
+              administrativeLogins: [roles.login],
+            }),
+          ).rejects.toThrow('POSTGRES_RUNTIME_IDENTITY_UNSAFE');
+        },
+      );
+    },
+  );
+
+  it.each([
+    null,
+    'not-an-array',
+    [1],
+    ['unenrolled-admin'],
+    [roles.owner, roles.owner],
+  ])(
+    'validates administrative inventory before any database query (%j)',
+    async (administrativeLogins) => {
+      await withClient(runtimePool(roles.login, roles.app), async (client) => {
+        const query = vi.spyOn(client, 'query');
+        try {
+          await expect(
+            assertSafePostgresRuntimeIdentity(client, {
+              intendedRole: roles.app,
+              allowedRoles,
+              allowedLogins,
+              administrativeLogins: administrativeLogins as never,
+            }),
+          ).rejects.toThrow('POSTGRES_RUNTIME_IDENTITY_INVALID');
+          expect(query).not.toHaveBeenCalled();
+        } finally {
+          query.mockRestore();
+        }
+      });
     },
   );
 
@@ -323,13 +370,20 @@ describe.skipIf(!reachable)('PostgreSQL runtime identity boundary', () => {
     await withClient(runtimePool(roles.login, roles.app), async (client) => {
       const mutable = [...allowedRoles];
       const mutableLogins = [...allowedLogins];
+      const mutableAdministrators = [roles.owner];
       const verification = assertSafePostgresRuntimeIdentity(client, {
         intendedRole: roles.app,
         allowedRoles: mutable,
         allowedLogins: mutableLogins,
+        administrativeLogins: mutableAdministrators,
       });
       mutable.splice(0, mutable.length, roles.outside);
       mutableLogins.splice(0, mutableLogins.length, roles.outside);
+      mutableAdministrators.splice(
+        0,
+        mutableAdministrators.length,
+        roles.login,
+      );
       await expect(verification).resolves.toBeUndefined();
       await expect(
         assertSafePostgresRuntimeIdentity(client, {

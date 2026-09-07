@@ -1,6 +1,9 @@
 import { createEnv } from '@t3-oss/env-core';
 
-import { parseDatabaseAllowedLogins } from './env/database-enrollment.ts';
+import {
+  parseDatabaseAllowedLogins,
+  parseDatabaseAdministrativeLogins,
+} from './env/database-enrollment.ts';
 import { resolve, type DbEnv, type StudioEnv } from './env/resolve.ts';
 import { serverSchemas, type VariableName } from './env/variables.ts';
 
@@ -119,4 +122,13 @@ export function readMigrationAllowedLogins(): string[] {
   /* oxlint-disable-next-line node/no-process-env -- the environment boundary */
   const source = process.env.STUDIO_DATABASE_ALLOWED_LOGINS;
   return parseDatabaseAllowedLogins(source);
+}
+
+/** Optional explicit administrative exceptions for offline operator commands. */
+export function readMigrationAdministrativeLogins(
+  allowedLogins: readonly string[],
+): string[] {
+  /* oxlint-disable-next-line node/no-process-env -- the environment boundary */
+  const source = process.env.STUDIO_DATABASE_ADMINISTRATIVE_LOGINS;
+  return parseDatabaseAdministrativeLogins(source, allowedLogins);
 }
