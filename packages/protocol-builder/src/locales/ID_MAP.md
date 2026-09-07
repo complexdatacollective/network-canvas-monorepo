@@ -309,7 +309,9 @@ strings and never as a `copy` bundle. `src/__tests__/hostCopyOverrides.test.ts`
 is the scan that keeps it that way, and it now covers these five directories:
 its `NOT_CONVERTED_YET` exclusion named them while the conversion was in
 flight and no longer does, so a section reintroducing a `copy?:` prop or a
-string-bearing `…Copy` type fails there. Only `resources/` is still excluded.
+string-bearing `…Copy` type fails there. `resources/` was the only other
+exclusion; i18n-1b converted it too, so `NOT_CONVERTED_YET` now excludes
+nothing.
 
 Three reserved areas turned out to need no ids at all, and two name files that
 do not exist yet. Recorded rather than dropped, so nobody re-reserves a name

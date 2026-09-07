@@ -1,7 +1,10 @@
 import { createElement, useMemo, useState } from 'react';
 import { v4 as uuid } from 'uuid';
 
-import { formatMessageError, type IntlShape } from '@codaco/app-i18n/messages';
+import {
+  createMessageError,
+  formatMessageError,
+} from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
@@ -97,25 +100,26 @@ function NodeTypeAttributes({
 }
 
 /**
- * Produces copy without rendering it, so it is handed the formatter rather
- * than reaching for one of its own.
+ * What is wrong, encoded rather than formatted.
  *
- * A refusal the host wrote arrives as a bare `message`, which is a string-only
- * contract: read back through the same decoder as every other one in this
- * package, so a host that encoded a descriptor reaches the researcher in their
- * own language and a host that wrote a plain sentence passes through as it
- * always did.
+ * The result stands in `failure` state from this submission until the next,
+ * which is longer than the language it was produced in is guaranteed to
+ * last — decoding it here would freeze it in whatever locale was active when
+ * the host answered. A refusal the host wrote arrives as a bare `message`,
+ * which is a string-only contract already carrying either a plain sentence or
+ * a descriptor `createMessageError` encoded on the other side of it; either
+ * way it is passed through untouched; the render site decodes both this and
+ * the `typeHeldRefusal` case the same way.
  */
 const editFailureMessage = (
   result:
     | Readonly<{ status: 'blocked'; blockedSections: readonly unknown[] }>
     | Readonly<{ status: 'failed'; message: string }>,
-  intl: IntlShape,
 ): string => {
   if (result.status === 'failed') {
-    return formatMessageError(result.message, intl) ?? result.message;
+    return result.message;
   }
-  return intl.formatMessage(anonymisationMessages.typeHeldRefusal);
+  return createMessageError(anonymisationMessages.typeHeldRefusal);
 };
 
 /**
@@ -137,7 +141,18 @@ const editFailureMessage = (
 export default function EncryptedVariablesSection() {
   const intl = useAppIntl();
   const { controller, readOnly } = useStageEditorForm();
+  /**
+   * What was announced last, encoded for the same reason `failure` below is:
+   * an announcement stays in its live region until another replaces it, so a
+   * sentence formatted when the choice was made would be the one thing left
+   * in the old language after the application changes its own.
+   */
   const [status, setStatus] = useState('');
+  /**
+   * Why the last edit was refused, encoded rather than formatted — it stands
+   * from this submission until the next, and the render site decodes it with
+   * whichever formatter is current then.
+   */
   const [failure, setFailure] = useState<string | undefined>(undefined);
   const [busy, setBusy] = useState(false);
 
@@ -176,7 +191,7 @@ export default function EncryptedVariablesSection() {
       variableId;
     if (authoritativeDocument === undefined) {
       setFailure(
-        intl.formatMessage(anonymisationMessages.typeUnavailableRefusal),
+        createMessageError(anonymisationMessages.typeUnavailableRefusal),
       );
       return;
     }
@@ -204,11 +219,11 @@ export default function EncryptedVariablesSection() {
       });
       const result = await controller.requestCompoundEdit(request);
       if (result.status !== 'applied') {
-        setFailure(editFailureMessage(result, intl));
+        setFailure(editFailureMessage(result));
         return;
       }
       setStatus(
-        intl.formatMessage(
+        createMessageError(
           encrypted
             ? anonymisationMessages.encryptedAnnouncement
             : anonymisationMessages.notEncryptedAnnouncement,
@@ -216,7 +231,7 @@ export default function EncryptedVariablesSection() {
         ),
       );
     } catch {
-      setFailure(intl.formatMessage(anonymisationMessages.editFailedRefusal));
+      setFailure(createMessageError(anonymisationMessages.editFailedRefusal));
     } finally {
       setBusy(false);
     }
@@ -248,7 +263,9 @@ export default function EncryptedVariablesSection() {
 
       {failure !== undefined && (
         <Alert variant="destructive" density="compact">
-          <AlertDescription>{failure}</AlertDescription>
+          <AlertDescription>
+            {formatMessageError(failure, intl) ?? failure}
+          </AlertDescription>
         </Alert>
       )}
 
@@ -270,7 +287,7 @@ export default function EncryptedVariablesSection() {
       {/* Mounted with the section rather than with the message, so the first
           announcement updates a region that was already there. */}
       <span className="sr-only" aria-live="polite" aria-atomic="true">
-        {status}
+        {formatMessageError(status, intl) ?? status}
       </span>
     </BuilderSection>
   );

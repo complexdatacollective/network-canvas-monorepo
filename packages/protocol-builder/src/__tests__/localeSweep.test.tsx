@@ -305,7 +305,10 @@ describe('the interface families under es, at rest', () => {
     });
     await settled(harness);
 
-    expectNoLocaleLeaks('sociogram canvas sections at rest', harness);
+    expectNoLocaleLeaks(
+      'sociogram canvas sections at rest',
+      researcherWords(harness),
+    );
   });
 
   it('sweeps a geospatial stage', async () => {
@@ -322,16 +325,7 @@ describe('the interface families under es, at rest', () => {
     });
     await settled(harness);
 
-    expectNoLocaleLeaks('geospatial stage at rest', harness, {
-      // `resources/components/resourceKinds.ts` still names each resource kind
-      // in English (`geojson: 'Map layer'`), and the chosen layer's summary
-      // shows that name as a badge. It is the one area `NOT_CONVERTED_YET`
-      // still excuses, and it goes when i18n-1 lands — at which point this
-      // entry stops matching and has to be deleted.
-      stillEnglish: [
-        'protocolBuilder.geospatial.layerTitle rendered in English: Map layer',
-      ],
-    });
+    expectNoLocaleLeaks('geospatial stage at rest', researcherWords(harness));
   });
 
   it('sweeps a family pedigree', async () => {
@@ -351,7 +345,7 @@ describe('the interface families under es, at rest', () => {
     });
     await settled(harness);
 
-    expectNoLocaleLeaks('family pedigree at rest', harness);
+    expectNoLocaleLeaks('family pedigree at rest', researcherWords(harness));
   });
 
   it('sweeps a narrative pedigree', async () => {
@@ -368,7 +362,7 @@ describe('the interface families under es, at rest', () => {
     });
     await settled(harness);
 
-    expectNoLocaleLeaks('narrative pedigree at rest', harness);
+    expectNoLocaleLeaks('narrative pedigree at rest', researcherWords(harness));
   });
 
   it('sweeps an anonymisation stage', async () => {
@@ -385,7 +379,10 @@ describe('the interface families under es, at rest', () => {
     });
     await settled(harness);
 
-    expectNoLocaleLeaks('anonymisation stage at rest', harness);
+    expectNoLocaleLeaks(
+      'anonymisation stage at rest',
+      researcherWords(harness),
+    );
   });
 });
 
