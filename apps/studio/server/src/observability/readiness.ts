@@ -1,7 +1,7 @@
 import type pg from 'pg';
 
 import { assertSafePostgresRuntimeIdentity } from '@codaco/studio-sync/postgres-runtime-identity';
-import { TENANT_ROLES } from '@codaco/studio-sync/rls';
+import { BACKUP_ROLE, TENANT_ROLES } from '@codaco/studio-sync/rls';
 
 import type { AssetStore } from '../assets.ts';
 import { checkSchema, type SchemaState } from '../db/schema.ts';
@@ -38,6 +38,8 @@ export function createReadiness(options: {
               await assertSafePostgresRuntimeIdentity(client, {
                 intendedRole: TENANT_ROLES.app,
                 allowedRoles: Object.values(TENANT_ROLES),
+                runtimeRoleSets: [Object.values(TENANT_ROLES)],
+                backupRole: BACKUP_ROLE,
                 allowedLogins,
                 administrativeLogins,
               });
@@ -51,6 +53,8 @@ export function createReadiness(options: {
                 assertSafePostgresRuntimeIdentity(maintenance, {
                   intendedRole: TENANT_ROLES.maintenance,
                   allowedRoles: Object.values(TENANT_ROLES),
+                  runtimeRoleSets: [Object.values(TENANT_ROLES)],
+                  backupRole: BACKUP_ROLE,
                   allowedLogins,
                   administrativeLogins,
                 }),

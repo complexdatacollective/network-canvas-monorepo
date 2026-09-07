@@ -11,6 +11,10 @@ import {
   assertSafePostgresMigrationEvidence,
   UnsafePostgresMigrationEvidenceError,
 } from '@codaco/studio-sync/postgres-migration-evidence';
+import {
+  assertSafePostgresRestrictedIdentities,
+  UnsafePostgresRestrictedIdentitiesError,
+} from '@codaco/studio-sync/postgres-restricted-identities';
 import { BACKUP_ROLE, TENANT_ROLES } from '@codaco/studio-sync/rls';
 import { SYNC_SIDECAR_SQL, SYNC_TABLES } from '@codaco/studio-sync/schema';
 
@@ -273,6 +277,21 @@ export async function checkSchema(
       found: null,
       appliedAt: null,
     };
+  }
+
+  if (!allowUnversioned && (stamped || tables)) {
+    try {
+      await assertSafePostgresRestrictedIdentities(pool, {
+        allowedLogins: allowedLogins ?? [],
+        administrativeLogins,
+        runtimeRoleSets: [Object.values(TENANT_ROLES)],
+        backupRole: BACKUP_ROLE,
+      });
+    } catch (error) {
+      if (!(error instanceof UnsafePostgresRestrictedIdentitiesError))
+        throw error;
+      return unsafe;
+    }
   }
 
   if (stamped) {

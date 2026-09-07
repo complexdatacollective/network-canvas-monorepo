@@ -5,6 +5,9 @@ import { fileURLToPath } from 'node:url';
 import { escapeIdentifier } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { BACKUP_ROLE } from '@codaco/studio-sync/rls';
+import { runtimeRolesSql } from '@codaco/studio-sync/role-bootstrap';
+
 import {
   createScratchDatabase,
   reachableDb,
@@ -88,11 +91,11 @@ describe.skipIf(!database)(
       }
     });
 
-    const readiness = () =>
+    const readiness = (logins: readonly string[] = allowedLogins) =>
       createReadiness({
         pool: runtime,
         maintenancePool: maintenance,
-        allowedLogins,
+        allowedLogins: logins,
         cacheMs: 0,
         assetStore: {
           checkHealth: async () => {},
@@ -304,6 +307,135 @@ describe.skipIf(!database)(
         REVOKE UPDATE(fingerprint) ON "schemaFingerprint" FROM ${escapeIdentifier(runtimeLogin)}`);
       }
     });
+
+    it.each(['runtime', 'backup'] as const)(
+      'refuses direct data grants held by another enrolled %s login',
+      async (kind) => {
+        await scratch.pool.query(runtimeRolesSql([BACKUP_ROLE]));
+        const enrolled = [...allowedLogins, outsideLogin];
+        await scratch.pool
+          .query(`GRANT CONNECT ON DATABASE ${escapeIdentifier(databaseName)} TO ${escapeIdentifier(outsideLogin)};
+          CREATE TABLE enrollment_data_canary (id integer, changed boolean);
+          INSERT INTO enrollment_data_canary VALUES (1, false);
+          GRANT UPDATE(changed) ON enrollment_data_canary TO ${escapeIdentifier(outsideLogin)}`);
+        if (kind === 'backup')
+          await scratch.pool
+            .query(`REVOKE studio_app, studio_maintenance FROM ${escapeIdentifier(outsideLogin)};
+            GRANT ${BACKUP_ROLE} TO ${escapeIdentifier(outsideLogin)} WITH ADMIN FALSE, INHERIT FALSE, SET TRUE`);
+        const otherUrl = new URL(runtimeUrl);
+        otherUrl.username = outsideLogin;
+        const other = createOwnerPool({ url: otherUrl.href });
+        try {
+          expect(
+            (
+              await other.query(
+                'UPDATE enrollment_data_canary SET changed = true',
+              )
+            ).rowCount,
+          ).toBe(1);
+          await scratch.pool.query(
+            "SELECT setval('evidence_read_canary', 1, false)",
+          );
+          const schema = await checkSchema(runtime, {
+            allowedLogins: enrolled,
+          });
+          const probe = readiness(enrolled);
+          let health: string;
+          try {
+            health = (await probe.check()).status;
+          } finally {
+            probe.stop();
+          }
+          const result = boot(enrolled);
+          expect(result.error).toBeUndefined();
+          expect({
+            schema: schema.kind,
+            health,
+            exit: result.status,
+            listener: result.stdout.includes('admission-listener-started'),
+            readEvidence: (
+              await scratch.pool.query(
+                'SELECT is_called FROM evidence_read_canary',
+              )
+            ).rows[0]?.is_called,
+          }).toEqual({
+            schema: 'stale',
+            health: 'not_ready',
+            exit: 1,
+            listener: false,
+            readEvidence: false,
+          });
+        } finally {
+          await other.end();
+          await scratch.pool.query(`DROP TABLE enrollment_data_canary;
+            REVOKE CONNECT ON DATABASE ${escapeIdentifier(databaseName)} FROM ${escapeIdentifier(outsideLogin)}`);
+          if (kind === 'backup')
+            await scratch.pool
+              .query(`REVOKE ${BACKUP_ROLE} FROM ${escapeIdentifier(outsideLogin)};
+              GRANT studio_app, studio_maintenance TO ${escapeIdentifier(outsideLogin)} WITH ADMIN FALSE, INHERIT FALSE, SET TRUE`);
+        }
+      },
+    );
+
+    it.each(['studio_app', 'studio_maintenance'] as const)(
+      'refuses an owner-backed automatically updatable evidence view granted to %s',
+      async (role) => {
+        await scratch.pool
+          .query(`CREATE VIEW evidence_owner_view AS SELECT fingerprint FROM "schemaFingerprint";
+          GRANT UPDATE(fingerprint) ON evidence_owner_view TO ${role};
+          UPDATE "schemaFingerprint" SET fingerprint = 'untrusted-before-view-write'`);
+        try {
+          const pool = role === 'studio_app' ? runtime : maintenance;
+          expect(
+            (
+              await pool.query(
+                'UPDATE evidence_owner_view SET fingerprint = $1',
+                [SCHEMA_FINGERPRINT],
+              )
+            ).rowCount,
+          ).toBe(1);
+          expect(
+            (
+              await pool.query(
+                `SELECT has_any_column_privilege(current_user, '"schemaFingerprint"', 'UPDATE') AS writable`,
+              )
+            ).rows,
+          ).toEqual([{ writable: false }]);
+          await scratch.pool.query(
+            "SELECT setval('evidence_read_canary', 1, false)",
+          );
+          const schema = await checkSchema(pool, { allowedLogins });
+          const probe = readiness();
+          let health: string;
+          try {
+            health = (await probe.check()).status;
+          } finally {
+            probe.stop();
+          }
+          const result = boot();
+          expect(result.error).toBeUndefined();
+          expect({
+            schema: schema.kind,
+            health,
+            exit: result.status,
+            listener: result.stdout.includes('admission-listener-started'),
+            readEvidence: (
+              await scratch.pool.query(
+                'SELECT is_called FROM evidence_read_canary',
+              )
+            ).rows[0]?.is_called,
+          }).toEqual({
+            schema: 'stale',
+            health: 'not_ready',
+            exit: 1,
+            listener: false,
+            readEvidence: false,
+          });
+        } finally {
+          await scratch.pool.query('DROP VIEW evidence_owner_view');
+        }
+      },
+    );
 
     it('refuses a configured administrative serving login despite otherwise-safe runtime capabilities', async () => {
       const administrativeLogins = [runtimeLogin];
