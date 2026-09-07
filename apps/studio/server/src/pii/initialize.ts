@@ -8,6 +8,12 @@ import {
   loadEncryptionKeys,
   type RootKeyLoader,
 } from './keys.ts';
+import {
+  CLASSIFIED_LEGACY_CONTACT_INDEX_ID,
+  RAW_LEGACY_CONTACT_INDEX_ID,
+  RAW_LEGACY_PARTICIPANT_INDEX_ID,
+  verifyLegacyIndexRemediationTransaction,
+} from './legacy-indexes.ts';
 
 const PURPOSES = ['pii-enc', 'integration-enc', 'pii-index'] as const;
 const KEY_REGISTRY_LOCK = 4021775688147141;
@@ -67,6 +73,38 @@ async function verifyExistingProofs(
   return knownProofs;
 }
 
+/** Read-only readiness gate for the keys already loaded by this process. A
+ * restored backend cannot acquire new proofs or be blessed by a health probe. */
+export async function verifyEncryptionReadiness(
+  client: pg.PoolClient,
+  keys: EncryptionKeys,
+): Promise<void> {
+  await verifyLegacyIndexRemediationTransaction(client);
+  const proofs = await verifyExistingProofs(client, keys);
+  for (const purpose of PURPOSES) {
+    for (const keyId of keys.ids(purpose)) {
+      if (!proofs.has(JSON.stringify([purpose, keyId])))
+        throw new EncryptionStartupError();
+    }
+  }
+  const references = await client.query<KeyReference>(
+    STORED_KEY_REFERENCES_SQL,
+  );
+  for (const { purpose, keyId } of references.rows) {
+    if (purpose === 'pii-index' && keyId === CLASSIFIED_LEGACY_CONTACT_INDEX_ID)
+      continue;
+    if (
+      !keys.has(purpose, keyId) ||
+      !proofs.has(JSON.stringify([purpose, keyId]))
+    )
+      throw new EncryptionStartupError();
+  }
+  const legacy = await client.query<{ exists: boolean }>(
+    'SELECT EXISTS (SELECT 1 FROM account WHERE legacy_tokens_present) AS exists',
+  );
+  if (legacy.rows[0]?.exists !== false) throw new EncryptionStartupError();
+}
+
 /** Internal transaction seam shared by startup and the explicit demo seeder. */
 export async function verifyEncryptionKeyTransaction(
   client: pg.PoolClient,
@@ -74,14 +112,39 @@ export async function verifyEncryptionKeyTransaction(
   allowLegacyCredentials: boolean,
 ): Promise<void> {
   await client.query('SELECT pg_advisory_xact_lock($1)', [KEY_REGISTRY_LOCK]);
+  if (!allowLegacyCredentials)
+    await verifyLegacyIndexRemediationTransaction(client);
   const knownProofs = await verifyExistingProofs(client, keys);
   const references = await client.query<KeyReference>(
     STORED_KEY_REFERENCES_SQL,
   );
+  const legacyPii = allowLegacyCredentials
+    ? await client.query<{ keyId: string }>(
+        `SELECT pii_key_id AS "keyId" FROM participants
+         WHERE pii_key_id IS NOT NULL GROUP BY pii_key_id
+         HAVING bool_and(blind_index_key_id = $1)`,
+        [RAW_LEGACY_PARTICIPANT_INDEX_ID],
+      )
+    : { rows: [] as { keyId: string }[] };
+  const unverifiedLegacyPiiIds = new Set(
+    legacyPii.rows
+      .map(({ keyId }) => keyId)
+      .filter((keyId) => !knownProofs.has(JSON.stringify(['pii-enc', keyId]))),
+  );
+  if (unverifiedLegacyPiiIds.has(keys.currentId('pii-enc')))
+    throw new EncryptionStartupError();
   for (const { purpose, keyId } of references.rows) {
+    const permittedLegacyIndex =
+      purpose === 'pii-index' &&
+      (keyId === CLASSIFIED_LEGACY_CONTACT_INDEX_ID ||
+        (allowLegacyCredentials &&
+          (keyId === RAW_LEGACY_CONTACT_INDEX_ID ||
+            keyId === RAW_LEGACY_PARTICIPANT_INDEX_ID)));
     if (
-      !keys.has(purpose, keyId) ||
-      !knownProofs.has(JSON.stringify([purpose, keyId]))
+      !permittedLegacyIndex &&
+      (!keys.has(purpose, keyId) ||
+        (!knownProofs.has(JSON.stringify([purpose, keyId])) &&
+          !(purpose === 'pii-enc' && unverifiedLegacyPiiIds.has(keyId))))
     )
       throw new EncryptionStartupError();
   }
@@ -94,12 +157,42 @@ export async function verifyEncryptionKeyTransaction(
   for (const purpose of PURPOSES) {
     for (const keyId of keys.ids(purpose)) {
       if (knownProofs.has(JSON.stringify([purpose, keyId]))) continue;
+      if (purpose === 'pii-enc' && unverifiedLegacyPiiIds.has(keyId)) continue;
       await client.query(
         'INSERT INTO encryption_key_verifications (purpose, key_id, proof) VALUES ($1, $2, $3)',
         [purpose, keyId, keyProof(keys, purpose, keyId)],
       );
     }
   }
+}
+
+/**
+ * Called only after AEAD authentication of a legacy participant row, in the
+ * same audited transaction that replaces every ciphertext and blind index.
+ */
+export async function registerAuthenticatedLegacyKeyProofTransaction(
+  client: pg.PoolClient,
+  keys: EncryptionKeys,
+  keyId: string,
+): Promise<void> {
+  if (!keys.has('pii-enc', keyId)) throw new EncryptionStartupError();
+  const proof = keyProof(keys, 'pii-enc', keyId);
+  const existing = await client.query<{ proof: Buffer }>(
+    `SELECT proof FROM encryption_key_verifications
+     WHERE purpose = 'pii-enc' AND key_id = $1`,
+    [keyId],
+  );
+  const stored = existing.rows[0]?.proof;
+  if (stored) {
+    if (stored.length !== proof.length || !timingSafeEqual(stored, proof))
+      throw new EncryptionStartupError();
+    return;
+  }
+  await client.query(
+    `INSERT INTO encryption_key_verifications (purpose, key_id, proof)
+     VALUES ('pii-enc', $1, $2)`,
+    [keyId, proof],
+  );
 }
 
 /**

@@ -2,6 +2,8 @@ import { createSecretKey, hkdfSync, type KeyObject } from 'node:crypto';
 
 import { z } from 'zod';
 
+import { isReservedLegacyIndexId } from './legacy-indexes.ts';
+
 const keyId = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/);
 const namespace = z.strictObject({
   current: keyId,
@@ -138,6 +140,7 @@ export async function loadEncryptionKeys(
     if (
       ids.size !== definition.keys.length ||
       !ids.has(definition.current) ||
+      definition.keys.some((key) => isReservedLegacyIndexId(key.id)) ||
       definition.keys.some((key) => !rootIds.has(key.rootId))
     ) {
       throw new KeyConfigurationError();

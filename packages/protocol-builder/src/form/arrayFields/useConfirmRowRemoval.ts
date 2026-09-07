@@ -32,6 +32,26 @@ export const rowRemovalControlProps = Object.freeze({
 const REMOVE_CONTROL = '[data-array-row-remove]';
 
 /**
+ * Whether `control` is in a row `ArrayField` has already taken out of `list`.
+ *
+ * A confirmed removal leaves its row mounted for as long as the row's exit
+ * animation runs, and a confirm's `finalFocus` is resolved as the confirm
+ * closes — inside that window. `ArrayField` marks such a row `aria-hidden` and
+ * `inert` for the rest of its life, so its controls are already out of the
+ * accessibility tree and can no longer take focus; counted as a row, the one
+ * just removed answers for the one that took its place, and focus sent to its
+ * control falls back to `<body>` when the animation ends.
+ *
+ * Only a hidden ancestor INSIDE the list says this. While a modal confirm is
+ * open everything outside it may be hidden the same way, and that marking is
+ * the dialog's to lift — not a reason to pass over every row.
+ */
+const isLeaving = (list: Element, control: HTMLElement) => {
+  const hidden = control.closest('[aria-hidden="true"]');
+  return hidden !== null && hidden !== list && list.contains(hidden);
+};
+
+/**
  * Where focus goes when the confirm closes.
  *
  * Cancel leaves the row where it was, so this answers with that row's own
@@ -54,7 +74,10 @@ const resolveRemovalFocus = (
     // Remove controls are inside this one's subtree.
     const remaining = [
       ...list.querySelectorAll<HTMLElement>(REMOVE_CONTROL),
-    ].filter((control) => control.closest('[role="list"]') === list);
+    ].filter(
+      (control) =>
+        control.closest('[role="list"]') === list && !isLeaving(list, control),
+    );
     const neighbour = remaining[Math.min(index, remaining.length - 1)];
     if (neighbour) return neighbour;
   }

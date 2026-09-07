@@ -1,6 +1,9 @@
 import { escapeLiteral } from 'pg';
 import type pg from 'pg';
 
+import { copyPostgresAdministrativeLogins } from '@codaco/studio-sync/postgres-database-enrollment';
+import { validateRoleNames } from '@codaco/studio-sync/role-bootstrap';
+
 import { SCHEMA_LOCK_KEY, stampFingerprint } from '../schema.ts';
 import type { Migration } from './artifact.ts';
 import {
@@ -84,7 +87,17 @@ export async function migrateDatabase(
   migrations: readonly Migration[],
   expectedFingerprint: string,
   allowedLogins: readonly string[],
+  administrativeLogins?: readonly string[],
 ): Promise<string[]> {
+  // Snapshot the deployment's explicit offline-administrator inventory before
+  // acquiring the client. Every security check in this transaction must use
+  // the same validated policy as migration-command admission.
+  const copiedAllowedLogins = [...allowedLogins];
+  validateRoleNames(copiedAllowedLogins);
+  const copiedAdministrativeLogins = copyPostgresAdministrativeLogins(
+    copiedAllowedLogins,
+    administrativeLogins,
+  );
   if (
     migrations.length === 0 ||
     migrations.at(-1)?.manifest.fingerprint !== expectedFingerprint
@@ -104,7 +117,11 @@ export async function migrateDatabase(
     await client.query("SELECT set_config('search_path', 'public', true)");
     // Catalog-only checks must precede every read of stored evidence. A valid
     // checksum cannot establish integrity while runtime identities can forge it.
-    await enforceMigrationSecurity(client, allowedLogins);
+    await enforceMigrationSecurity(
+      client,
+      copiedAllowedLogins,
+      copiedAdministrativeLogins,
+    );
     const probe = await client.query<{ present: boolean }>(
       'SELECT to_regclass($1) IS NOT NULL AS present',
       [HISTORY_TABLE],
@@ -162,7 +179,11 @@ export async function migrateDatabase(
       // Historical sidecars may grant broad evidence privileges. Contain those
       // uncommitted grants before another migration or evidence write executes.
       await protectMigrationEvidence(client);
-      await enforceMigrationSecurity(client, allowedLogins);
+      await enforceMigrationSecurity(
+        client,
+        copiedAllowedLogins,
+        copiedAdministrativeLogins,
+      );
       await stampFingerprint(client, migration.manifest.fingerprint);
       await client.query(
         `INSERT INTO ${HISTORY_TABLE} (position, id, checksum, fingerprint) VALUES ($1, $2, $3, $4)`,
@@ -178,7 +199,11 @@ export async function migrateDatabase(
     // Repeatable security is independent of historical schema checksums. It
     // runs on no-op migrations too and contains grants in every old sidecar.
     await protectMigrationEvidence(client);
-    await enforceMigrationSecurity(client, allowedLogins);
+    await enforceMigrationSecurity(
+      client,
+      copiedAllowedLogins,
+      copiedAdministrativeLogins,
+    );
     await verifyFingerprint(client, expectedFingerprint);
     // Refresh after SQL so a runtime that breaches the deployment drain
     // cannot remain connected while this transaction commits a new schema.

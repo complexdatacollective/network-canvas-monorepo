@@ -6,11 +6,14 @@ import { BACKUP_ROLE, TENANT_ROLES } from '@codaco/studio-sync/rls';
 
 import type { AssetStore } from '../assets.ts';
 import { checkSchema, type SchemaState } from '../db/schema.ts';
+import { verifyEncryptionReadiness } from '../pii/initialize.ts';
+import type { EncryptionKeys } from '../pii/keys.ts';
 import { BoundedProbe, withProbeClient } from './bounded-probe.ts';
 
 export function createReadiness(options: {
   pool?: pg.Pool;
   maintenancePool?: pg.Pool;
+  encryptionKeys?: EncryptionKeys;
   assetStore?: AssetStore;
   timeoutMs?: number;
   cacheMs?: number;
@@ -57,27 +60,35 @@ export function createReadiness(options: {
                 allowedLogins,
                 administrativeLogins,
               });
-              if (!allowUnversionedSchema && pool && maintenancePool) {
+              if (pool && maintenancePool) {
                 await withProbeClient(
                   maintenancePool,
                   signal,
                   async (maintenance) => {
                     try {
                       await maintenance.query('BEGIN READ ONLY');
-                      await assertSafePostgresRuntimeIdentity(maintenance, {
-                        intendedRole: TENANT_ROLES.maintenance,
-                        allowedRoles: [TENANT_ROLES.maintenance],
-                        runtimeRoleSets,
-                        backupRole: BACKUP_ROLE,
-                        allowedLogins,
-                        administrativeLogins,
-                      });
+                      if (!allowUnversionedSchema)
+                        await assertSafePostgresRuntimeIdentity(maintenance, {
+                          intendedRole: TENANT_ROLES.maintenance,
+                          allowedRoles: [TENANT_ROLES.maintenance],
+                          runtimeRoleSets,
+                          backupRole: BACKUP_ROLE,
+                          allowedLogins,
+                          administrativeLogins,
+                        });
                       await assertSamePostgresDatabase(client, maintenance);
+                      if (options.encryptionKeys)
+                        await verifyEncryptionReadiness(
+                          maintenance,
+                          options.encryptionKeys,
+                        );
                     } finally {
                       await maintenance.query('ROLLBACK');
                     }
                   },
                 );
+              } else if (maintenancePool && options.encryptionKeys) {
+                await verifyEncryptionReadiness(client, options.encryptionKeys);
               }
               return state;
             } finally {

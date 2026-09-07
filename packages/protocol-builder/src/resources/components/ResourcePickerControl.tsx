@@ -382,10 +382,15 @@ export default function ResourcePickerControl({
             // field is announced by the control saying so, with the message
             // reached through `aria-describedby`. With nothing on this group
             // saying so, a required picker whose submit was refused announces
-            // exactly like one that was accepted, and a picker that never says
-            // it is required announces as an optional one.
+            // exactly like one that was accepted.
             'aria-invalid': ariaInvalid,
-            'aria-required': ariaRequired,
+            // No `aria-required`, which `group` does not take (ARIA 1.2) —
+            // assistive technology is entitled to ignore it there, and axe
+            // reports it as a violation. The field says it is required in the
+            // way every field does instead: it renders a visually hidden
+            // "Required" beside its label and names it in the
+            // `aria-describedby` that arrives here, so the group is announced
+            // as required whether or not this attribute is on it.
           })}
       data-name={name}
       onBlur={onBlur}

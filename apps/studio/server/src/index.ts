@@ -3,10 +3,6 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { serve } from '@hono/node-server';
 import { WebSocketServer } from 'ws';
 
-import { assertSamePostgresDatabase } from '@codaco/studio-sync/postgres-database-identity';
-import { assertSafePostgresRuntimeIdentity } from '@codaco/studio-sync/postgres-runtime-identity';
-import { BACKUP_ROLE, TENANT_ROLES } from '@codaco/studio-sync/rls';
-
 import { createApp } from './app.ts';
 import { createAssetStore } from './assets.ts';
 import {
@@ -25,13 +21,15 @@ import { checkSchema, type SchemaState } from './db/schema.ts';
 import { readEncryptionEnv, readEnv } from './env.ts';
 import { installFatalErrorHandlers } from './fatal-errors.ts';
 import { getSetupStatus } from './instance/bootstrap.ts';
-import { withProbeClient } from './observability/bounded-probe.ts';
 import { logOperational } from './observability/logger.ts';
 import { createOperationalApp } from './observability/operational-app.ts';
 import { observeWebSocketServer } from './observability/requests.ts';
 import { createObservability } from './observability/runtime.ts';
-import { initializeEncryption } from './pii/initialize.ts';
 import type { EncryptionKeys } from './pii/keys.ts';
+import {
+  DatabaseRuntimeAdmissionError,
+  initializeServingEncryption,
+} from './pii/serving-admission.ts';
 import { acquireWebLease } from './runtime/web-lease.ts';
 import {
   type InvitationDeliveryWorker,
@@ -120,66 +118,6 @@ function startDatabaseWorkers(): void {
   }
 }
 
-async function admitDatabaseRuntime(): Promise<boolean> {
-  if (!schemaPool || env.devDefaults) return true;
-  const runtimeRoleSets = [
-    [TENANT_ROLES.app],
-    [TENANT_ROLES.maintenance],
-  ] as const;
-  try {
-    const signal = AbortSignal.timeout(10_000);
-    if (!pool) {
-      await withProbeClient(schemaPool, signal, async (maintenance) => {
-        try {
-          await maintenance.query('BEGIN READ ONLY');
-          await assertSafePostgresRuntimeIdentity(maintenance, {
-            intendedRole: TENANT_ROLES.maintenance,
-            allowedRoles: [TENANT_ROLES.maintenance],
-            runtimeRoleSets,
-            backupRole: BACKUP_ROLE,
-            allowedLogins: env.databaseAllowedLogins ?? [],
-            administrativeLogins: env.databaseAdministrativeLogins,
-          });
-        } finally {
-          await maintenance.query('ROLLBACK');
-        }
-      });
-      return true;
-    }
-    if (!maintenancePool) throw new Error('Missing maintenance pool.');
-    await withProbeClient(pool, signal, (app) =>
-      withProbeClient(maintenancePool, signal, async (maintenance) => {
-        try {
-          await app.query('BEGIN READ ONLY');
-          await maintenance.query('BEGIN READ ONLY');
-          for (const [client, intendedRole] of [
-            [app, TENANT_ROLES.app],
-            [maintenance, TENANT_ROLES.maintenance],
-          ] as const)
-            await assertSafePostgresRuntimeIdentity(client, {
-              intendedRole,
-              allowedRoles: [intendedRole],
-              runtimeRoleSets,
-              backupRole: BACKUP_ROLE,
-              allowedLogins: env.databaseAllowedLogins ?? [],
-              administrativeLogins: env.databaseAdministrativeLogins,
-            });
-          await assertSamePostgresDatabase(app, maintenance);
-        } finally {
-          await Promise.all([
-            app.query('ROLLBACK'),
-            maintenance.query('ROLLBACK'),
-          ]);
-        }
-      }),
-    );
-    return true;
-  } catch {
-    logOperational('STUDIO_DATABASE_IDENTITY_UNSAFE');
-    return process.exit(1);
-  }
-}
-
 // Outside development a stale or absent schema is a resolved answer, not a
 // transient failure: retrying re-reads the same fingerprint every three
 // seconds. The development lane waits instead, the same way it waits for the
@@ -226,19 +164,23 @@ if (schemaPool) {
   }
 }
 
-// Verify both actual serving logins before reading keys, constructing auth, or
-// admitting workers and requests.
-await admitDatabaseRuntime();
-
 let encryptionKeys: EncryptionKeys | undefined;
 if (maintenancePool) {
   try {
-    encryptionKeys = await initializeEncryption({
+    encryptionKeys = await initializeServingEncryption({
+      pool,
       maintenancePool,
+      allowUnversioned: env.devDefaults,
+      allowedLogins: env.databaseAllowedLogins,
+      administrativeLogins: env.databaseAdministrativeLogins,
       ...readEncryptionEnv(env),
     });
-  } catch {
-    logOperational('STUDIO_ENCRYPTION_INVALID');
+  } catch (error) {
+    logOperational(
+      error instanceof DatabaseRuntimeAdmissionError
+        ? 'STUDIO_DATABASE_IDENTITY_UNSAFE'
+        : 'STUDIO_ENCRYPTION_INVALID',
+    );
     process.exit(1);
   }
 }
@@ -254,6 +196,7 @@ const webLease = pool
   : undefined;
 
 const observability = createObservability({
+  encryptionKeys,
   pool: schemaPool,
   maintenancePool,
   assetStore,

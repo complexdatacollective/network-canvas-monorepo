@@ -10,7 +10,13 @@ import {
   type SystemAuditEventContext,
 } from '../audit/command.ts';
 import type { AuditEventInput } from '../audit/events.ts';
+import { createContactBlindIndex } from './contacts.ts';
+import { registerAuthenticatedLegacyKeyProofTransaction } from './initialize.ts';
 import type { EncryptionKeys } from './keys.ts';
+import {
+  classifyLegacyContactIndexBatch,
+  RAW_LEGACY_PARTICIPANT_INDEX_ID,
+} from './legacy-indexes.ts';
 import {
   appendCredentialAudit,
   credentialTransaction,
@@ -183,6 +189,193 @@ async function rotateParticipant(
       ],
     };
   });
+}
+
+type LegacyParticipantRow = ParticipantCiphertextRow & {
+  email_index: Buffer | null;
+  phone_index: Buffer | null;
+  blind_index_key_id: string | null;
+};
+
+function sameLegacyParticipant(
+  left: LegacyParticipantRow,
+  right: LegacyParticipantRow,
+): boolean {
+  return (
+    sameParticipant(left, right) &&
+    sameBytes(left.email_index, right.email_index) &&
+    sameBytes(left.phone_index, right.phone_index) &&
+    left.blind_index_key_id === right.blind_index_key_id
+  );
+}
+
+async function selectLegacyParticipant(
+  client: pg.PoolClient,
+  teamId: string,
+  id: string,
+): Promise<LegacyParticipantRow | undefined> {
+  const selected = await client.query<LegacyParticipantRow>(
+    `SELECT id, team_id, study_id, participant_code, pii_key_id, pii_algorithm,
+      email_ciphertext, phone_ciphertext, name_ciphertext, attributes_ciphertext,
+      email_index, phone_index, blind_index_key_id
+     FROM participants WHERE team_id = $1 AND id = $2 FOR UPDATE`,
+    [teamId, id],
+  );
+  return selected.rows[0];
+}
+
+async function migrateLegacyParticipantIndex(
+  pool: pg.Pool,
+  keys: EncryptionKeys,
+  row: LegacyParticipantRow,
+): Promise<void> {
+  if (
+    !row.pii_key_id ||
+    !row.pii_algorithm ||
+    row.blind_index_key_id !== RAW_LEGACY_PARTICIPANT_INDEX_ID ||
+    row.pii_key_id === keys.currentId('pii-enc')
+  )
+    throw new ProtectedDataError();
+  const tenant = createTenantDb(pool, row.team_id);
+  const command = {
+    tenantDb: tenant,
+    actorLabel: 'Encryption maintenance',
+    requestId: randomUUID(),
+  } as const;
+  const target = {
+    teamId: row.team_id,
+    studyId: row.study_id,
+    participantId: row.id,
+  };
+  const protection = createDataProtection(keys, {
+    participant: async (field, read) => {
+      await runAuditedSystemMutation(command, async (client, context) => {
+        const current = await selectLegacyParticipant(
+          client,
+          row.team_id,
+          row.id,
+        );
+        if (!current || !sameLegacyParticipant(row, current))
+          throw new ProtectedDataError();
+        read();
+        return {
+          result: undefined,
+          events: [
+            participantEvent(context, row, 'participant.pii.rotation_read', [
+              field.column,
+            ]),
+          ],
+        };
+      });
+    },
+    integration: async () => {
+      throw new ProtectedDataError();
+    },
+  });
+  const plaintexts = new Map<ParticipantField['column'], Buffer>();
+  const ciphertexts: (Buffer | null)[] = [];
+  try {
+    for (const column of PARTICIPANT_PII_COLUMNS) {
+      const stored = row[column];
+      if (stored === null) {
+        ciphertexts.push(null);
+        continue;
+      }
+      const field = { ...target, column };
+      const plaintext = await protection.readParticipant(field, {
+        keyId: row.pii_key_id,
+        algorithm: row.pii_algorithm,
+        envelope: stored,
+      });
+      plaintexts.set(column, plaintext);
+      ciphertexts.push(
+        protection.encryptParticipant(
+          field,
+          plaintext,
+          keys.currentId('pii-enc'),
+        ).envelope,
+      );
+    }
+    const email = plaintexts.get('email_ciphertext');
+    const phone = plaintexts.get('phone_ciphertext');
+    const emailIndex = email
+      ? createContactBlindIndex(keys, {
+          kind: 'email',
+          value: email.toString('utf8'),
+        })
+      : null;
+    const phoneIndex = phone
+      ? createContactBlindIndex(keys, {
+          kind: 'phone',
+          value: phone.toString('utf8'),
+        })
+      : null;
+    await runAuditedSystemMutation(command, async (client, context) => {
+      const current = await selectLegacyParticipant(
+        client,
+        row.team_id,
+        row.id,
+      );
+      if (!current || !sameLegacyParticipant(row, current))
+        throw new ProtectedDataError();
+      await client.query(
+        "SELECT set_config('app.legacy_index_remediation', 'v1', true)",
+      );
+      await registerAuthenticatedLegacyKeyProofTransaction(
+        client,
+        keys,
+        row.pii_key_id!,
+      );
+      const updated = await client.query(
+        `UPDATE participants SET email_ciphertext = $3, phone_ciphertext = $4,
+          name_ciphertext = $5, attributes_ciphertext = $6, email_index = $7,
+          phone_index = $8, blind_index_key_id = $9, pii_key_id = $10,
+          pii_algorithm = 'aes-256-gcm.v1', updated_at = now()
+         WHERE id = $1 AND team_id = $2`,
+        [
+          row.id,
+          row.team_id,
+          ...ciphertexts,
+          emailIndex?.value ?? null,
+          phoneIndex?.value ?? null,
+          emailIndex?.keyId ?? phoneIndex?.keyId ?? null,
+          keys.currentId('pii-enc'),
+        ],
+      );
+      if (updated.rowCount !== 1) throw new ProtectedDataError();
+      return {
+        result: undefined,
+        events: [
+          participantEvent(context, row, 'participant.pii.rotated', [
+            ...PARTICIPANT_PII_COLUMNS,
+          ]),
+        ],
+      };
+    });
+  } finally {
+    for (const plaintext of plaintexts.values()) plaintext.fill(0);
+  }
+}
+
+async function migrateLegacyParticipantIndexBatch(
+  pool: pg.Pool,
+  keys: EncryptionKeys,
+  limit: number,
+): Promise<{ processed: number; passComplete: boolean }> {
+  const selected = await readMaintenancePage<LegacyParticipantRow>(
+    pool,
+    `SELECT id, team_id, study_id, participant_code, pii_key_id, pii_algorithm,
+      email_ciphertext, phone_ciphertext, name_ciphertext, attributes_ciphertext,
+      email_index, phone_index, blind_index_key_id
+     FROM participants WHERE blind_index_key_id = $2 ORDER BY id LIMIT $1`,
+    [limit, RAW_LEGACY_PARTICIPANT_INDEX_ID],
+  );
+  for (const row of selected.rows)
+    await migrateLegacyParticipantIndex(pool, keys, row);
+  return {
+    processed: selected.rows.length,
+    passComplete: selected.rows.length < limit,
+  };
 }
 
 async function rotateWebhook(
@@ -577,5 +770,58 @@ export async function migrateLegacyOAuthBatch(
     scanned: ids.rows.length,
     passComplete,
     afterId: passComplete ? null : ids.rows.at(-1)!.id,
+  };
+}
+
+/**
+ * One bounded offline pass. Raw participant indexes are authenticated and
+ * rewritten first, irreversible public-HMAC values are classified second, and
+ * retained OAuth plaintext is touched only after both prerequisite phases are
+ * exhausted.
+ */
+export async function migrateLegacyDataBatch(
+  maintenancePool: pg.Pool,
+  legacyOperatorPool: pg.Pool,
+  keys: EncryptionKeys,
+  input: { limit: number; afterId?: string | null },
+): Promise<{
+  processed: number;
+  scanned: number;
+  afterId: string | null;
+  passComplete: boolean;
+}> {
+  const limit = limitSchema.parse(input.limit);
+  const afterId = parseLegacyCursor(input.afterId ?? null);
+  const participants = await migrateLegacyParticipantIndexBatch(
+    maintenancePool,
+    keys,
+    limit,
+  );
+  if (!participants.passComplete)
+    return {
+      processed: participants.processed,
+      scanned: participants.processed,
+      afterId,
+      passComplete: false,
+    };
+  let scanned = participants.processed;
+  let processed = participants.processed;
+  const classifications = await classifyLegacyContactIndexBatch(
+    legacyOperatorPool,
+    limit - scanned,
+  );
+  scanned += classifications.processed;
+  processed += classifications.processed;
+  if (!classifications.passComplete || scanned === limit)
+    return { processed, scanned, afterId, passComplete: false };
+  const oauth = await migrateLegacyOAuthBatch(legacyOperatorPool, keys, {
+    limit: limit - scanned,
+    afterId,
+  });
+  return {
+    processed: processed + oauth.processed,
+    scanned: scanned + oauth.scanned,
+    afterId: oauth.afterId,
+    passComplete: oauth.passComplete,
   };
 }

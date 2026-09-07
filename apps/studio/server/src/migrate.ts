@@ -37,6 +37,7 @@ try {
     migrations,
     SCHEMA_FINGERPRINT,
     allowedLogins,
+    administrativeLogins,
   );
   const message = completed.length
     ? `Applied Studio migrations: ${completed.join(', ')}`

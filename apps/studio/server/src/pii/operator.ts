@@ -10,7 +10,7 @@ import {
   resumeEncryptionMaintenance,
 } from './initialize.ts';
 import {
-  migrateLegacyOAuthBatch,
+  migrateLegacyDataBatch,
   parseLegacyCursor,
   parseRotationCursor,
   rotateEncryptionBatch,
@@ -94,9 +94,14 @@ export async function runEncryptionCommand(
     };
   return {
     operation,
-    ...(await migrateLegacyOAuthBatch(legacyOperatorPool!, keys, {
-      limit,
-      afterId,
-    })),
+    ...(await migrateLegacyDataBatch(
+      maintenancePool,
+      legacyOperatorPool!,
+      keys,
+      {
+        limit,
+        afterId,
+      },
+    )),
   };
 }

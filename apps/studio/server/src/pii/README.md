@@ -182,17 +182,33 @@ Migration `0002_pii_encryption` preserves old OAuth plaintext columns solely for
 an offline conversion, adds authenticated token columns, decodes delivery and
 opt-out hex indexes into identical binary bytes, and merges duplicate team
 opt-outs into global suppression using the earliest recorded decision. Legacy
-index IDs are explicitly unverified; startup refuses them rather than blessing
-an unknown historical key. Existing unversioned databases remain governed by
-the migration foundation's export/restore rule and are never silently adopted.
+participant index IDs and raw hex contact IDs are explicitly unverified;
+startup refuses them rather than blessing an unknown historical key. The old
+contact digest had one documented origin: the pre-encryption synthetic seed
+used HMAC-SHA256 with the public literal
+`studio-development-blind-index-key`. The offline command preserves its bytes,
+classifies that known algorithm under `legacy-public-hmac-v1`, and records an
+immutable migration event. Suppression checks the classified legacy candidate
+alongside configured keys, so a retained opt-out remains effective. Normal
+writers cannot create either raw or classified legacy IDs. Existing
+unversioned databases remain governed by the migration foundation's
+export/restore rule and are never silently adopted.
 
 Any legacy OAuth value refuses normal boot. Startup reads only the stored
 `legacy_tokens_present` generated column; an ordinary runtime update cannot
-forge that presence flag. `initializeCredentialMigration` permits only that
-legacy condition while retaining all key-proof checks.
-`migrateLegacyOAuthBatch` converts at most 100 accounts per call. It locks the
-row, seals the old values, clears plaintext and appends the immutable audit in
-one transaction; failure preserves the original data. Both `studio_app` and
+forge that presence flag. `initializeCredentialMigration` permits only the
+bounded remediation references. A legacy participant encryption key must be
+configured, but it receives no proof until AEAD authentication succeeds in the
+same audited transaction that rewrites the row. Configure a distinct, already
+proved current PII key for the replacement. A missing key, invalid tag, invalid
+normalized contact, concurrent change, or interrupted batch leaves that row
+marked legacy and normal startup blocked.
+
+`migrateLegacyDataBatch` processes at most 100 rows per call: participant
+ciphertext and indexes first, irreversible delivery and opt-out indexes second,
+and OAuth plaintext last. The OAuth phase locks the row, seals the old values,
+clears plaintext and appends the immutable audit in one transaction; failure
+preserves the original data. Both `studio_app` and
 `studio_maintenance` refuse SELECT, INSERT and UPDATE on every retained plaintext
 column, including SELECT *, predicates, explicit NULL/default assignments,
 upserts and COPY. The shared adapter projection grants runtime access only to
@@ -254,9 +270,14 @@ requires one more call to observe exhaustion. These are bounded progress values,
 not exact remaining-corpus counts. `passComplete` only declares traversal
 exhaustion, never safe key retirement or absence of concurrent old-key writes.
 
-The first CLI batch performs full stored-reference verification. Resumed batches
-verify every retained root against immutable proofs, refuse unregistered keys,
-and never register or remove proofs; they do not scan the corpus again. Run
+The first CLI batch verifies every ordinary stored reference and admits only the
+two exact raw legacy index sentinels to the offline path. It registers ordinary
+configured keys, but never registers an unverified participant key until a row
+authenticates successfully and never registers a key proof for the public legacy
+contact HMAC. Pre-OAuth phases remove their own raw marker, so an interrupted
+command safely resumes without a separate cursor. Once OAuth returns a non-null
+`afterId`, resumed batches verify every retained root against immutable proofs.
+Run
 `encryption verify` after the pass for full startup/restore verification. Removing
 historical roots remains unsupported and fails both resume and full verification.
 Failure exits nonzero with a fixed diagnostic and leaves the last returned
