@@ -214,6 +214,34 @@ const MAXIMAL_STAGES: MaximalStage[] = [
     },
     settle: () => screen.findByRole('textbox', { name: 'Form title' }),
   },
+  {
+    interfaceName: 'NameGeneratorQuickAdd',
+    type: 'NameGeneratorQuickAdd',
+    registry: nameGeneratorStageEditors,
+    fields: {
+      label: 'Name Generator Quick Add',
+      interviewScript: 'Guidance.',
+      skipLogic,
+      subject: { entity: 'node', type: 'person' },
+      quickAdd: 'name',
+      prompts: [
+        {
+          id: 'p1',
+          text: 'Quickly add people you know',
+          additionalAttributes: [{ variable: 'flagged', value: true }],
+        },
+      ],
+      panels: [
+        {
+          id: 'panel-1',
+          title: 'People you named earlier',
+          dataSource: 'existing',
+        },
+      ],
+      behaviours: { minNodes: 1, maxNodes: 8 },
+    },
+    settle: stageName,
+  },
 ];
 
 /**
