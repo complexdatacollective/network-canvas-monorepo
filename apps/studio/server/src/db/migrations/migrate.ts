@@ -91,8 +91,9 @@ export async function migrateDatabase(
   // Snapshot the deployment's explicit offline-administrator inventory before
   // acquiring the client. Every security check in this transaction must use
   // the same validated policy as migration-command admission.
+  const copiedAllowedLogins = [...allowedLogins];
   const copiedAdministrativeLogins = copyPostgresAdministrativeLogins(
-    allowedLogins,
+    copiedAllowedLogins,
     administrativeLogins,
   );
   if (
@@ -116,7 +117,7 @@ export async function migrateDatabase(
     // checksum cannot establish integrity while runtime identities can forge it.
     await enforceMigrationSecurity(
       client,
-      allowedLogins,
+      copiedAllowedLogins,
       copiedAdministrativeLogins,
     );
     const probe = await client.query<{ present: boolean }>(
@@ -176,7 +177,7 @@ export async function migrateDatabase(
       await protectMigrationEvidence(client);
       await enforceMigrationSecurity(
         client,
-        allowedLogins,
+        copiedAllowedLogins,
         copiedAdministrativeLogins,
       );
       await stampFingerprint(client, migration.manifest.fingerprint);
@@ -196,7 +197,7 @@ export async function migrateDatabase(
     await protectMigrationEvidence(client);
     await enforceMigrationSecurity(
       client,
-      allowedLogins,
+      copiedAllowedLogins,
       copiedAdministrativeLogins,
     );
     await verifyFingerprint(client, expectedFingerprint);

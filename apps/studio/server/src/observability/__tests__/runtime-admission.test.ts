@@ -631,6 +631,7 @@ it('admits healthy runtime evidence authored by a distinct enrolled non-superuse
   const scratch = await createScratchDatabase(database);
   const unique = randomUUID().replaceAll('-', '');
   const migrationLogin = `separate_migrator_${unique}`;
+  const conversionLogin = `separate_converter_${unique}`;
   const separateRuntimeLogin = `separate_runtime_${unique}`;
   const separateMaintenanceLogin = `separate_maintenance_${unique}`;
   const ownerName = (
@@ -652,10 +653,11 @@ it('admits healthy runtime evidence authored by a distinct enrolled non-superuse
   const allowedLogins = [
     ownerName,
     migrationLogin,
+    conversionLogin,
     separateRuntimeLogin,
     separateMaintenanceLogin,
   ];
-  const administrativeLogins = [migrationLogin];
+  const administrativeLogins = [migrationLogin, conversionLogin];
   const scopedOperator = createMaintenancePool({ url: operatorUrl.href });
   const migrationCommand = (administrators?: readonly string[]) =>
     spawnSync(
@@ -685,8 +687,11 @@ it('admits healthy runtime evidence authored by a distinct enrolled non-superuse
       await scratch.pool
         .query(`CREATE ROLE ${escapeIdentifier(login)} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD '${password}';
         GRANT ${grantedRoles} TO ${escapeIdentifier(login)} WITH ADMIN FALSE, INHERIT FALSE, SET TRUE`);
+    await scratch.pool.query(
+      `CREATE ROLE ${escapeIdentifier(conversionLogin)} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB CREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD '${password}'`,
+    );
     await scratch.pool
-      .query(`GRANT CONNECT ON DATABASE ${escapeIdentifier(databaseName)} TO ${[migrationLogin, separateRuntimeLogin, separateMaintenanceLogin].map(escapeIdentifier).join(', ')};
+      .query(`GRANT CONNECT ON DATABASE ${escapeIdentifier(databaseName)} TO ${[migrationLogin, conversionLogin, separateRuntimeLogin, separateMaintenanceLogin].map(escapeIdentifier).join(', ')};
       GRANT CREATE ON DATABASE ${escapeIdentifier(databaseName)} TO ${escapeIdentifier(migrationLogin)};
       GRANT USAGE, CREATE ON SCHEMA public TO ${escapeIdentifier(migrationLogin)}`);
     const undeclared = migrationCommand();
@@ -696,6 +701,27 @@ it('admits healthy runtime evidence authored by a distinct enrolled non-superuse
       'STUDIO_DATABASE_ADMINISTRATIVE_LOGINS',
     );
     expect(undeclared.stderr).not.toContain(migrationLogin);
+    expect(
+      (
+        await scratch.pool.query(
+          "SELECT to_regclass('studio_migrations.history') AS history",
+        )
+      ).rows,
+    ).toEqual([{ history: null }]);
+    expect(
+      (
+        await scratch.pool.query<{ canCreateRole: boolean }>(
+          'SELECT rolcreaterole AS "canCreateRole" FROM pg_roles WHERE rolname = $1',
+          [conversionLogin],
+        )
+      ).rows,
+    ).toEqual([{ canCreateRole: true }]);
+    const partiallyConfigured = migrationCommand([migrationLogin]);
+    expect(partiallyConfigured.error).toBeUndefined();
+    expect(partiallyConfigured.status).toBe(1);
+    expect(partiallyConfigured.stderr).toContain(
+      'Enrolled Studio identities must exist and allow LOGIN',
+    );
     expect(
       (
         await scratch.pool.query(
@@ -818,7 +844,7 @@ it('admits healthy runtime evidence authored by a distinct enrolled non-superuse
     const cleanup = createOwnerPool(database);
     try {
       await cleanup.query(
-        `DROP ROLE IF EXISTS ${[migrationLogin, separateRuntimeLogin, separateMaintenanceLogin].map(escapeIdentifier).join(', ')}`,
+        `DROP ROLE IF EXISTS ${[migrationLogin, conversionLogin, separateRuntimeLogin, separateMaintenanceLogin].map(escapeIdentifier).join(', ')}`,
       );
     } finally {
       await cleanup.end();
