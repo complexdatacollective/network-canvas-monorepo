@@ -275,18 +275,68 @@ process.stdin.on('end', () => process.stdout.write('HTTP/1.1 201 Created\r\nCont
     assert.equal(cliResponse.status, 201);
     assert.deepEqual(JSON.parse(cliResponse.bytes), { exact: 'stdin' });
 
-    const stalled = join(directory, 'gh-stalled');
+    const ignored = join(directory, 'gh-ignored-term');
     writeFileSync(
-      stalled,
-      '#!/usr/bin/env node\nsetTimeout(() => {}, 1000);\n',
+      ignored,
+      '#!/usr/bin/env node\nprocess.on("SIGTERM", () => {}); setInterval(() => {}, 1000);\n',
     );
-    chmodSync(stalled, 0o755);
+    chmodSync(ignored, 0o755);
+    const started = Date.now();
     await assert.rejects(
       () =>
-        createGhRequest({ executable: stalled, timeoutMs: 20 })({
+        createGhRequest({ executable: ignored, timeoutMs: 20 })({
           path: 'repos/fixed',
         }),
       /timed out/,
+    );
+    assert.ok(
+      Date.now() - started < 500,
+      'ignored SIGTERM must not delay request settlement',
+    );
+
+    const nonzero = join(directory, 'gh-nonzero');
+    writeFileSync(
+      nonzero,
+      String.raw`#!/usr/bin/env node
+process.stdout.write('HTTP/1.1 200 OK\r\n\r\n{}'); process.exit(1);
+`,
+    );
+    chmodSync(nonzero, 0o755);
+    await assert.rejects(
+      () =>
+        createGhRequest({ executable: nonzero, timeoutMs: 2_000 })({
+          path: 'repos/fixed',
+        }),
+      /process failed/,
+    );
+
+    const noisy = join(directory, 'gh-noisy');
+    writeFileSync(
+      noisy,
+      '#!/usr/bin/env node\nprocess.stderr.write("x".repeat(65537)); setTimeout(() => {}, 1000);\n',
+    );
+    chmodSync(noisy, 0o755);
+    await assert.rejects(
+      () =>
+        createGhRequest({ executable: noisy, timeoutMs: 2_000 })({
+          path: 'repos/fixed',
+        }),
+      /stderr exceeded its bound/,
+    );
+
+    const closedStdin = join(directory, 'gh-closed-stdin');
+    writeFileSync(
+      closedStdin,
+      '#!/usr/bin/env node\nprocess.stdin.destroy(); setTimeout(() => process.exit(0), 100);\n',
+    );
+    chmodSync(closedStdin, 0o755);
+    await assert.rejects(
+      () =>
+        createGhRequest({ executable: closedStdin, timeoutMs: 2_000 })({
+          path: 'repos/fixed',
+          bytes: Buffer.alloc(8 * 1024 * 1024),
+        }),
+      /stdin failed/,
     );
   } finally {
     rmSync(directory, { force: true, recursive: true });

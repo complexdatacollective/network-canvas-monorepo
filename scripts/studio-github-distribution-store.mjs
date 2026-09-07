@@ -5,6 +5,8 @@ const API = `repos/${REPOSITORY}`;
 const ASSET_LIMIT = 64 * 1024 * 1024;
 const PAGE_LIMIT = 10;
 const REQUEST_TIMEOUT_MS = 30_000;
+const STDERR_LIMIT = 64 * 1024;
+const OUTPUT_LIMIT = ASSET_LIMIT + 1024 * 1024;
 
 export class GitHubRequestError extends Error {
   constructor(status, message) {
@@ -111,68 +113,106 @@ export function createGhRequest({
       bytes ??
       (body === undefined ? undefined : Buffer.from(JSON.stringify(body)));
     if (input) args.push('--input', '-');
-    const output = await new Promise((resolve, reject) => {
+    return new Promise((resolve, reject) => {
       const child = spawn(executable, args, {
+        detached: true,
         stdio: ['pipe', 'pipe', 'pipe'],
       });
       const chunks = [];
-      const errors = [];
-      let size = 0;
-      let timedOut = false;
+      let outputSize = 0;
+      let stderrSize = 0;
+      let settled = false;
+      const settle = (callback, value) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        callback(value);
+      };
+      const terminate = () => {
+        if (!child.pid) return;
+        try {
+          process.kill(-child.pid, 'SIGKILL');
+        } catch {
+          child.kill('SIGKILL');
+        }
+      };
       const timer = setTimeout(() => {
-        timedOut = true;
-        child.kill('SIGTERM');
+        terminate();
+        settle(
+          reject,
+          new GitHubRequestError(undefined, 'GitHub CLI request timed out.'),
+        );
       }, timeoutMs);
       child.stdout.on('data', (chunk) => {
-        size += chunk.length;
-        if (size > ASSET_LIMIT + 1024 * 1024) child.kill('SIGTERM');
-        else chunks.push(chunk);
-      });
-      child.stderr.on('data', (chunk) => errors.push(chunk));
-      child.on('error', (error) => {
-        clearTimeout(timer);
-        reject(error);
-      });
-      child.on('close', () => {
-        clearTimeout(timer);
-        if (timedOut) {
-          reject(
-            new GitHubRequestError(undefined, 'GitHub CLI request timed out.'),
-          );
-          return;
-        }
-        if (size > ASSET_LIMIT + 1024 * 1024) {
-          reject(
+        outputSize += chunk.length;
+        if (outputSize > OUTPUT_LIMIT) {
+          terminate();
+          settle(
+            reject,
             new GitHubRequestError(
               undefined,
               'GitHub CLI response exceeded its bound.',
             ),
           );
+        } else chunks.push(chunk);
+      });
+      child.stderr.on('data', (chunk) => {
+        stderrSize += chunk.length;
+        if (stderrSize > STDERR_LIMIT) {
+          terminate();
+          settle(
+            reject,
+            new GitHubRequestError(
+              undefined,
+              'GitHub CLI stderr exceeded its bound.',
+            ),
+          );
+        }
+      });
+      child.stdin.on('error', () => {
+        terminate();
+        settle(
+          reject,
+          new GitHubRequestError(undefined, 'GitHub CLI stdin failed.'),
+        );
+      });
+      child.on('error', () =>
+        settle(
+          reject,
+          new GitHubRequestError(undefined, 'GitHub CLI process failed.'),
+        ),
+      );
+      child.on('close', (code) => {
+        if (settled) return;
+        if (code !== 0) {
+          settle(
+            reject,
+            new GitHubRequestError(undefined, 'GitHub CLI process failed.'),
+          );
           return;
         }
-        const combined = Buffer.concat(chunks);
         let response;
         try {
-          response = splitHttpResponse(combined);
+          response = splitHttpResponse(Buffer.concat(chunks));
         } catch (error) {
-          reject(error);
+          settle(reject, error);
           return;
         }
         if (response.status < 200 || response.status >= 300) {
-          reject(
+          settle(
+            reject,
             new GitHubRequestError(
               response.status,
-              Buffer.concat(errors).toString() || response.bytes.toString(),
+              'GitHub API request failed.',
             ),
           );
           return;
         }
-        resolve(response);
+        settle(resolve, response);
       });
       if (input) child.stdin.end(input);
       else child.stdin.end();
     });
-    return output;
   };
 }
 
