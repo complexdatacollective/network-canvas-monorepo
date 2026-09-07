@@ -10,6 +10,7 @@ import BackgroundSection from '../BackgroundSection.tsx';
 import ComposerEdgeConfigurationSection from '../ComposerEdgeConfigurationSection.tsx';
 import ComposerNodeConfigurationSection from '../ComposerNodeConfigurationSection.tsx';
 import NarrativeBehavioursSection from '../NarrativeBehavioursSection.tsx';
+import NarrativePresetsSection from '../NarrativePresetsSection.tsx';
 import { networkCanvasMessages } from '../networkCanvasMessages.ts';
 
 /**
@@ -103,6 +104,28 @@ describe('the canvas sections, read in Spanish', () => {
     expect(
       screen.getByText(
         'Elige lo que el participante ve detrás de los nodos en este lienzo: círculos concéntricos o una imagen tuya.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('names the preset list and what a narrative stage permits', () => {
+    renderStageEditor({
+      stageId: 'narrative-1',
+      locale: 'es',
+      sections: (
+        <>
+          <NarrativePresetsSection />
+          <NarrativeBehavioursSection />
+        </>
+      ),
+    });
+
+    expect(
+      screen.getByRole('button', { name: 'Crear nueva vista predefinida' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Elige lo que el participante puede hacer con la imagen mientras cuenta su historia.',
       ),
     ).toBeInTheDocument();
   });

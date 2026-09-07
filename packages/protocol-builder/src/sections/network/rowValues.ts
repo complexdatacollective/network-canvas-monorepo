@@ -16,7 +16,7 @@ export type CheckboxChoice = Readonly<{ value: string; label: string }>;
 export const asText = (value: unknown): string | undefined =>
   typeof value === 'string' && value !== '' ? value : undefined;
 
-const asIdList = (value: unknown): string[] | undefined =>
+export const asIdList = (value: unknown): string[] | undefined =>
   Array.isArray(value)
     ? value.filter((entry): entry is string => typeof entry === 'string')
     : undefined;
