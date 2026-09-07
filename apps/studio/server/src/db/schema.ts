@@ -137,13 +137,14 @@ export async function checkSchema(
   options: { allowUnversioned?: boolean } = {},
 ): Promise<SchemaState> {
   const probe = await pool.query<{
-    schemaName: string;
+    fingerprintSchema: string;
     stamped: boolean;
     tables: boolean;
     versioned: boolean;
   }>(
-    `select current_schema() as "schemaName",
-            to_regclass('"schemaFingerprint"') is not null as stamped,
+    `select coalesce(fingerprint_namespace.nspname, current_schema(), 'public')
+              as "fingerprintSchema",
+            fingerprint.oid is not null as stamped,
             ${SCHEMA_TABLES.map(
               (table) => `to_regclass('"${table}"') is not null`,
             ).join(' or ')} as tables,
@@ -152,10 +153,15 @@ export async function checkSchema(
               JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
               WHERE namespace.nspname = 'studio_migrations'
                 AND relation.relname = 'history' AND relation.relkind = 'r'
-            ) AS versioned`,
+            ) AS versioned
+       from (select to_regclass('"schemaFingerprint"')::oid as oid) fingerprint
+       left join pg_class fingerprint_relation
+         on fingerprint_relation.oid = fingerprint.oid
+       left join pg_namespace fingerprint_namespace
+         on fingerprint_namespace.oid = fingerprint_relation.relnamespace`,
   );
-  const { schemaName, stamped, tables, versioned } = probe.rows[0] ?? {
-    schemaName: 'public',
+  const { fingerprintSchema, stamped, tables, versioned } = probe.rows[0] ?? {
+    fingerprintSchema: 'public',
     stamped: false,
     tables: false,
     versioned: false,
@@ -164,7 +170,7 @@ export async function checkSchema(
   try {
     await assertSafePostgresMigrationEvidence(pool, {
       history: { schema: 'studio_migrations', name: 'history' },
-      fingerprint: { schema: schemaName, name: 'schemaFingerprint' },
+      fingerprint: { schema: fingerprintSchema, name: 'schemaFingerprint' },
     });
   } catch (error) {
     if (!(error instanceof UnsafePostgresMigrationEvidenceError)) throw error;

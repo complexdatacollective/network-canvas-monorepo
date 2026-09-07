@@ -421,6 +421,45 @@ describe.skipIf(!db)('schema verification', () => {
     });
   });
 
+  it('checks the exact resolved fingerprint namespace behind an empty search-path prefix before reading it', async () => {
+    await withScratch(createScratchDatabase, async (pool) => {
+      await provisionScratchSchema(pool);
+      await pool.query(`CREATE SCHEMA empty_search_path_prefix;
+        CREATE FUNCTION public.fingerprint_namespace_read_trap()
+          RETURNS text LANGUAGE plpgsql AS
+          'BEGIN RAISE EXCEPTION ''fingerprint view read before shape check''; END';
+        ALTER TABLE public."schemaFingerprint"
+          RENAME TO fingerprint_namespace_storage;
+        CREATE VIEW public."schemaFingerprint" AS
+          SELECT id, fingerprint_namespace_read_trap() AS fingerprint, "appliedAt"
+          FROM public.fingerprint_namespace_storage`);
+      const client = await pool.connect();
+      try {
+        await client.query(
+          'SET search_path = empty_search_path_prefix, public',
+        );
+        expect(
+          (
+            await client.query<{ schema: string }>(
+              `SELECT namespace.nspname AS schema
+                 FROM pg_class relation
+                 JOIN pg_namespace namespace ON namespace.oid = relation.relnamespace
+                WHERE relation.oid = to_regclass('"schemaFingerprint"')`,
+            )
+          ).rows,
+        ).toEqual([{ schema: 'public' }]);
+        await expect(
+          client.query('SELECT * FROM "schemaFingerprint"'),
+        ).rejects.toThrow('fingerprint view read before shape check');
+        expect(
+          await checkSchema(client, { allowUnversioned: true }),
+        ).toMatchObject({ kind: 'stale', reason: 'unsafe-evidence' });
+      } finally {
+        client.release();
+      }
+    });
+  });
+
   it('reads current on a provisioned schema carrying every table', async () => {
     await withScratch(createScratchSchema, async (pool) => {
       await provisionScratchSchema(pool);
