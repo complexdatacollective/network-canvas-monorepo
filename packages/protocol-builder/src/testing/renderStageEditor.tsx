@@ -302,27 +302,61 @@ type StageEditorMounting<T extends StageType> =
       registry?: Partial<StageEditorRegistry>;
     }>;
 
+/**
+ * Which stage the harness opens: one of three ways, and they are alternatives
+ * rather than settings that combine.
+ *
+ * `stageId` opens a stage the shared all-interfaces protocol already holds.
+ * `stage` builds one from a document the call writes. `create` opens a stage
+ * that does not exist yet, the way a host opens a new one. Each answers "which
+ * stage is under test?" with a different stage, so a call means exactly one.
+ *
+ * Written as a union so the compiler says that. They were three independent
+ * optionals, and `seedFrom` simply preferred `create`, then `stage`, then
+ * `stageId`: a call giving two opened one of them and dropped the other in
+ * silence — so a test could name the fixture stage it meant to exercise and be
+ * running against a document built beside it.
+ *
+ * `assertOneStageSource` refuses the same combination at runtime, for the same
+ * reason `assertOneMountingMode` does: the compiler only sees the calls it can
+ * type.
+ */
+type StageEditorSeeding<T extends StageType> =
+  | Readonly<{
+      /** Open this stage of the shared all-interfaces protocol. */
+      stageId?: string;
+      stage?: never;
+      create?: never;
+    }>
+  | Readonly<{
+      stageId?: never;
+      /** Or open a stage of this type holding these fields. */
+      stage?: Readonly<{ id?: string; type: T; fields: SectionDoc }>;
+      create?: never;
+    }>
+  | Readonly<{
+      stageId?: never;
+      stage?: never;
+      /**
+       * Or CREATE a stage of this type, the way a host opens a new one: it
+       * starts from the interface's own template, it is not in the interview
+       * yet, and `position` is where the host will insert it, counting from
+       * zero.
+       *
+       * The session is opened with that creation, so everything a section
+       * derives from it — the proposed name, the destinations a skip may
+       * continue at — is exercised here exactly as it will be in the host.
+       */
+      create?: Readonly<{
+        type: T;
+        position: number;
+        /** Fields on top of the interface's template. */
+        fields?: SectionDoc;
+      }>;
+    }>;
+
 export type RenderStageEditorOptions<T extends StageType = StageType> =
   Readonly<{
-    /** Open this stage of the shared all-interfaces protocol. */
-    stageId?: string;
-    /** Or open a stage of this type holding these fields. */
-    stage?: Readonly<{ id?: string; type: T; fields: SectionDoc }>;
-    /**
-     * Or CREATE a stage of this type, the way a host opens a new one: it starts
-     * from the interface's own template, it is not in the interview yet, and
-     * `position` is where the host will insert it, counting from zero.
-     *
-     * The session is opened with that creation, so everything a section derives
-     * from it — the proposed name, the destinations a skip may continue at — is
-     * exercised here exactly as it will be in the host.
-     */
-    create?: Readonly<{
-      type: T;
-      position: number;
-      /** Fields on top of the interface's template. */
-      fields?: SectionDoc;
-    }>;
     /**
      * Extra manifest entries this stage may reference, keyed by asset id.
      *
@@ -396,34 +430,58 @@ export type RenderStageEditorOptions<T extends StageType = StageType> =
      */
     applyLive?: boolean;
   }> &
-    StageEditorMounting<T>;
+    StageEditorMounting<T> &
+    StageEditorSeeding<T>;
 
-/** The three, in the order a refusal names them. */
+/** The three ways to mount, in the order a refusal names them. */
 const MOUNTING_OPTIONS = ['editor', 'sections', 'registry'] as const;
 
+/** The three ways to say which stage, in the order a refusal names them. */
+const STAGE_OPTIONS = ['stageId', 'stage', 'create'] as const;
+
 /**
- * Refuses a call that gave two ways of mounting the same thing.
+ * Refuses a call that gave two alternatives where one was meant.
  *
  * Named rather than resolved: there is no answer to which of them a test meant,
  * and the harness preferring one is how a test came to be about something
  * other than what it names. Both options are in the message, because the call
  * that has to change is the one that gave two.
+ *
+ * One function for both sets, because the mistake and its remedy are the same
+ * in both: the only thing that differs is which options are alternatives and
+ * what each of them does.
  */
-function assertOneMountingMode(
-  options: Readonly<{
-    editor?: unknown;
-    sections?: unknown;
-    registry?: unknown;
-  }>,
+function assertOneOf(
+  options: Readonly<Record<string, unknown>>,
+  alternatives: readonly string[],
+  explanation: string,
 ): void {
-  const given = MOUNTING_OPTIONS.filter(
-    (option) => options[option] !== undefined,
-  );
+  const given = alternatives.filter((option) => options[option] !== undefined);
   if (given.length < 2) return;
   throw new Error(
-    `renderStageEditor was given both \`${given[0]}\` and \`${given[1]}\`, which are alternative ways to mount what is under test: \`editor\` mounts a named editor, \`sections\` puts sections in the shared shell, and \`registry\` (or none of the three) mounts the package's dispatcher. Pass exactly one.`,
+    `renderStageEditor was given both \`${given[0]}\` and \`${given[1]}\`, which are alternative ${explanation}. Pass exactly one.`,
   );
 }
+
+const assertOneMountingMode = (
+  options: Readonly<Record<string, unknown>>,
+): void => {
+  assertOneOf(
+    options,
+    MOUNTING_OPTIONS,
+    "ways to mount what is under test: `editor` mounts a named editor, `sections` puts sections in the shared shell, and `registry` (or none of the three) mounts the package's dispatcher",
+  );
+};
+
+const assertOneStageSource = (
+  options: Readonly<Record<string, unknown>>,
+): void => {
+  assertOneOf(
+    options,
+    STAGE_OPTIONS,
+    'ways to say which stage the editor opens: `stageId` opens one the shared all-interfaces protocol holds, `stage` builds one from a document, and `create` opens a stage that does not exist yet',
+  );
+};
 
 /**
  * Mounts a stage editor over a real editing session.
@@ -469,6 +527,7 @@ export function renderStageEditor<T extends StageType = StageType>(
   options: RenderStageEditorOptions<T> = {},
 ): StageEditorHarness {
   assertOneMountingMode(options);
+  assertOneStageSource(options);
   const seeded = seedFrom(options);
   const stageSectionId = sectionId({ kind: 'stage', stageId: seeded.id });
   const finishRequests: FinishRequest[] = [];
@@ -875,6 +934,14 @@ function HarnessEditor<T extends StageType>({
   );
 }
 
+/**
+ * The stage the session is opened on, from whichever of the three the call
+ * gave.
+ *
+ * The order below is not a preference: `assertOneStageSource` has already
+ * refused a call that gave two, so at most one of these branches can be taken.
+ * See `StageEditorSeeding`.
+ */
 function seedFrom<T extends StageType>(
   options: RenderStageEditorOptions<T>,
 ): SeededStage {
