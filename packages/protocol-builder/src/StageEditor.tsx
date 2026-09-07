@@ -10,34 +10,22 @@ import type {
 } from './stage-editor-contract.ts';
 import { stageEditorRegistry } from './stageEditorRegistry.ts';
 
-/**
- * Thrown when the session holds a stage no family has claimed.
- *
- * A host cannot recover from this — there is no editor to fall back to, and
- * rendering nothing would leave a researcher looking at an empty page with no
- * account of why — so it is thrown rather than reported, and the message names
- * the interface so the report a host collects says which one is missing.
- */
-export class UnregisteredStageTypeError extends Error {
-  readonly stageType: StageType;
-
-  constructor(stageType: StageType) {
-    super(
-      `No stage editor is registered for the "${stageType}" interface, so it cannot be edited here.`,
-    );
-    this.stageType = stageType;
-    this.name = 'UnregisteredStageTypeError';
-  }
-}
-
 export type StageEditorProps = Readonly<{
   controller: StageEditorController;
   /**
    * The editors to dispatch through. Defaults to the package's own composed
    * registry; a host supplies its own only to add or replace an interface it
    * owns.
+   *
+   * A WHOLE registry, never a subset. There is no editor to fall back to and
+   * nothing sensible to render in place of one, so "this interface has no
+   * editor" is not a state a researcher can be put into — it is a state the
+   * type system refuses to describe. A host replacing one interface writes
+   * `{ ...stageEditorRegistry, Sociogram: itsOwn }`, which is still complete;
+   * a host that has genuinely lost an entry finds out where it composed its
+   * registry rather than where a researcher opened a stage.
    */
-  registry?: StageEditorRegistry | Partial<StageEditorRegistry>;
+  registry?: StageEditorRegistry;
   /**
    * The host's action chrome, handed to whichever editor this dispatches to.
    *
@@ -85,13 +73,15 @@ function NamedStageEditor<T extends StageType>({
   stageType,
   actions,
 }: Readonly<{
-  registry: Partial<StageEditorRegistry>;
+  registry: StageEditorRegistry;
   controller: StageEditorController;
   stageType: T;
   actions?: StageEditorActions;
 }>) {
-  const Editor: StageEditorComponent<T> | undefined = registry[stageType];
-  if (Editor === undefined) throw new UnregisteredStageTypeError(stageType);
+  // Total, so there is nothing to check: `StageEditorRegistry` has an entry
+  // for every `StageType`, and `stageEditorRegistry`'s own annotation is what
+  // proves the package's registry is one.
+  const Editor: StageEditorComponent<T> = registry[stageType];
   // `createElement` rather than JSX: the element type is still generic here,
   // and JSX resolves a component's accepted props through machinery that
   // cannot see through an unresolved type parameter.

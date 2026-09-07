@@ -63,6 +63,29 @@ export function loadFixtureStage(stageId: string): FixtureStage {
 }
 
 /**
+ * The fixture's stage of a given interface, found by its type.
+ *
+ * By type rather than by an id a caller spells out, so a test or a story
+ * written against an INTERFACE cannot drift from the protocol it opens: a
+ * fixture that renamed a stage is still found, and one that dropped an
+ * interface fails naming the interface rather than an id nobody recognises.
+ *
+ * The first, when the fixture holds more than one — a test that needs a
+ * particular configuration names the stage instead.
+ */
+export function fixtureStageOfType(stageType: StageType): string {
+  const stageId = fixtureStageIds().find(
+    (candidate) => loadFixtureStage(candidate).type === stageType,
+  );
+  if (stageId === undefined) {
+    throw new Error(
+      `The all-interfaces protocol has no "${stageType}" stage, so nothing here can open one.`,
+    );
+  }
+  return stageId;
+}
+
+/**
  * The fixture protocol as the client-safe section model holds it.
  *
  * A host stores a protocol as sections and a stage editor edits exactly one of

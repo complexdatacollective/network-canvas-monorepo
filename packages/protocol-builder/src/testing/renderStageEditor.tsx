@@ -48,6 +48,7 @@ import {
   openFixtureStageSession,
   type SeededStage,
 } from './fixtureSession.ts';
+import { dispatchThroughPart } from './incompleteRegistry.ts';
 import { loadFixtureStage } from './protocolFixture.ts';
 
 /**
@@ -765,7 +766,13 @@ function HarnessEditor<T extends StageType>({
     return (
       <StageEditor
         controller={controller}
-        {...(registry === undefined ? {} : { registry })}
+        // A part given here is dispatched through as if it were the whole
+        // registry, with every interface it does not claim refusing — see
+        // `dispatchThroughPart`. Nothing given at all is the package's own
+        // registry, which is how a host reaches an editor.
+        {...(registry === undefined
+          ? {}
+          : { registry: dispatchThroughPart(registry) })}
         {...(actions === undefined ? {} : { actions })}
       />
     );
