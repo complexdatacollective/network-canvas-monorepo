@@ -21,6 +21,7 @@ import * as narrativeEditorStories from '../editors/network/NarrativeStageEditor
 import * as composerEditorStories from '../editors/network/NetworkComposerStageEditor.stories.tsx';
 import { NetworkComposerStageEditor } from '../editors/network/NetworkComposerStageEditor.tsx';
 import * as sociogramEditorStories from '../editors/network/SociogramStageEditor.stories.tsx';
+import * as anonymisationEditorStories from '../editors/pedigree/AnonymisationStageEditor.stories.tsx';
 import * as familyPedigreeEditorStories from '../editors/pedigree/FamilyPedigreeStageEditor.stories.tsx';
 import * as narrativePedigreeEditorStories from '../editors/pedigree/NarrativePedigreeStageEditor.stories.tsx';
 import * as shellStories from '../form/StageEditorShell.stories.tsx';
@@ -358,6 +359,37 @@ describe('a heading a section writes inside itself', () => {
     ]);
     await expectHeadingOrder(9);
   });
+
+  /**
+   * The same for a heading a section writes once per thing it lists. Read
+   * under a host heading for the same reason: at the stories' own depth an
+   * `h4` written by hand is indistinguishable from one counted.
+   */
+  it('moves a per-entry heading down with the editor around it', async () => {
+    const { Editing } = composeStories(anonymisationEditorStories);
+
+    render(
+      <div>
+        <h2>Prompt configuration</h2>
+        <EnclosingHeadingLevel level="h2">
+          <Editing />
+        </EnclosingHeadingLevel>
+      </div>,
+    );
+
+    expect(headingLadder()).toEqual([
+      'h2: Prompt configuration',
+      'h3: Stage name',
+      'h4: Passphrase explanation',
+      'h4: Passphrase rules',
+      'h4: Encrypted attributes',
+      'h5: family member',
+      'h5: person',
+      'h4: Skip logic',
+      'h4: Interviewer guidance',
+    ]);
+    await expectHeadingOrder(9);
+  });
 });
 
 /**
@@ -408,6 +440,10 @@ describe('every story of a surface that writes its own heading', () => {
     ...from(
       'NarrativePedigreeStageEditor',
       composeStories(narrativePedigreeEditorStories),
+    ),
+    ...from(
+      'AnonymisationStageEditor',
+      composeStories(anonymisationEditorStories),
     ),
   ];
 

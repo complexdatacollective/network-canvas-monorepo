@@ -155,7 +155,6 @@ export type UnregisteredStageType = UnregisteredIn<typeof REGISTRY_PARTS>;
 export const AWAITING_STAGE_EDITORS = [
   'AlterEdgeForm',
   'AlterForm',
-  'Anonymisation',
   'CategoricalBin',
   'DyadCensus',
   'EgoForm',

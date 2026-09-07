@@ -2,6 +2,7 @@ import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 
 import type { StageEditorActionContext } from '../../../form/StageEditorShell.tsx';
 import type { StageEditorComponent } from '../../../stage-editor-contract.ts';
+import { AnonymisationStageEditor } from '../AnonymisationStageEditor.tsx';
 import { FamilyPedigreeStageEditor } from '../FamilyPedigreeStageEditor.tsx';
 import { NarrativePedigreeStageEditor } from '../NarrativePedigreeStageEditor.tsx';
 
@@ -25,6 +26,14 @@ const saveActions = ({ formId }: StageEditorActionContext) => (
  * interface it edits — so each is wrapped with the type it claims and the
  * host chrome a host would supply.
  */
+export const anonymisationEditor: StageEditorComponent = ({ controller }) => (
+  <AnonymisationStageEditor
+    controller={controller}
+    stageType="Anonymisation"
+    actions={saveActions}
+  />
+);
+
 export const familyPedigreeEditor: StageEditorComponent = ({ controller }) => (
   <FamilyPedigreeStageEditor
     controller={controller}
