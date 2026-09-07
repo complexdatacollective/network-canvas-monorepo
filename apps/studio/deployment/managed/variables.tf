@@ -40,7 +40,7 @@ variable "postgres_major_version" {
   description = "PostgreSQL major supported by the signed release."
   validation {
     condition     = var.postgres_major_version == 18
-    error_message = "This checkpoint is qualified only against PostgreSQL 18."
+    error_message = "This candidate targets PostgreSQL 18; other majors require a separate compatibility review."
   }
 }
 
@@ -93,8 +93,12 @@ variable "kms_admin_principal_arns" {
   type        = set(string)
   description = "Independently controlled AWS principals allowed to administer the two KMS keys."
   validation {
-    condition     = length(var.kms_admin_principal_arns) > 0 && alltrue([for arn in var.kms_admin_principal_arns : can(regex("^arn:aws:iam::[0-9]{12}:", arn))])
-    error_message = "At least one AWS IAM administrator ARN is required."
+    condition     = length(var.kms_admin_principal_arns) > 0 && alltrue([for arn in var.kms_admin_principal_arns : can(regex("^arn:aws:iam::[0-9]{12}:(role|user)/[A-Za-z0-9+=,.@_-]+(/[A-Za-z0-9+=,.@_-]+)*$", arn))])
+    error_message = "At least one complete AWS IAM user or role administrator ARN is required."
+  }
+  validation {
+    condition     = length(setintersection(var.kms_admin_principal_arns, toset(flatten([for arns in values(var.kms_runtime_decrypt_principal_arns) : tolist(arns)])))) == 0
+    error_message = "Runtime identities must not administer KMS keys."
   }
 }
 
@@ -102,8 +106,12 @@ variable "kms_runtime_decrypt_principal_arns" {
   type        = map(set(string))
   description = "Runtime decrypt principals keyed exactly by production and staging."
   validation {
-    condition     = length(setsubtract(toset(keys(var.kms_runtime_decrypt_principal_arns)), toset(["production", "staging"]))) == 0 && length(keys(var.kms_runtime_decrypt_principal_arns)) == 2 && alltrue([for arns in values(var.kms_runtime_decrypt_principal_arns) : length(arns) > 0]) && alltrue(flatten([for arns in values(var.kms_runtime_decrypt_principal_arns) : [for arn in arns : can(regex("^arn:aws:iam::[0-9]{12}:", arn))]]))
+    condition     = length(setsubtract(toset(keys(var.kms_runtime_decrypt_principal_arns)), toset(["production", "staging"]))) == 0 && length(keys(var.kms_runtime_decrypt_principal_arns)) == 2 && alltrue([for arns in values(var.kms_runtime_decrypt_principal_arns) : length(arns) > 0]) && alltrue(flatten([for arns in values(var.kms_runtime_decrypt_principal_arns) : [for arn in arns : can(regex("^arn:aws:iam::[0-9]{12}:(role|user)/[A-Za-z0-9+=,.@_-]+(/[A-Za-z0-9+=,.@_-]+)*$", arn))]]))
     error_message = "Provide production and staging sets containing only AWS IAM principal ARNs."
+  }
+  validation {
+    condition     = try(length(setintersection(var.kms_runtime_decrypt_principal_arns.production, var.kms_runtime_decrypt_principal_arns.staging)) == 0, false)
+    error_message = "Production and staging runtime decrypt identities must be disjoint."
   }
 }
 
@@ -111,8 +119,12 @@ variable "kms_wrapping_principal_arns" {
   type        = map(set(string))
   description = "Operator wrapping principals keyed exactly by production and staging."
   validation {
-    condition     = length(setsubtract(toset(keys(var.kms_wrapping_principal_arns)), toset(["production", "staging"]))) == 0 && length(keys(var.kms_wrapping_principal_arns)) == 2 && alltrue([for arns in values(var.kms_wrapping_principal_arns) : length(arns) > 0]) && alltrue(flatten([for arns in values(var.kms_wrapping_principal_arns) : [for arn in arns : can(regex("^arn:aws:iam::[0-9]{12}:", arn))]]))
+    condition     = length(setsubtract(toset(keys(var.kms_wrapping_principal_arns)), toset(["production", "staging"]))) == 0 && length(keys(var.kms_wrapping_principal_arns)) == 2 && alltrue([for arns in values(var.kms_wrapping_principal_arns) : length(arns) > 0]) && alltrue(flatten([for arns in values(var.kms_wrapping_principal_arns) : [for arn in arns : can(regex("^arn:aws:iam::[0-9]{12}:(role|user)/[A-Za-z0-9+=,.@_-]+(/[A-Za-z0-9+=,.@_-]+)*$", arn))]]))
     error_message = "Provide production and staging wrapping-principal sets."
+  }
+  validation {
+    condition     = length(setintersection(toset(flatten([for arns in values(var.kms_wrapping_principal_arns) : tolist(arns)])), toset(flatten([for arns in values(var.kms_runtime_decrypt_principal_arns) : tolist(arns)])))) == 0
+    error_message = "Runtime identities must not wrap roots for either environment."
   }
 }
 
@@ -134,10 +146,17 @@ variable "service_resources" {
     cpus      = number
     memory_mb = number
   }))
-  description = "Qualified Fly Machine sizes for each singleton."
+  description = "Fly Machine sizes, restricted to the shared reviewed cost candidate."
   validation {
-    condition     = length(setsubtract(toset(keys(var.service_resources)), toset(["studio-production", "studio-staging", "registry-production", "registry-staging"]))) == 0 && length(keys(var.service_resources)) == 4 && alltrue([for value in values(var.service_resources) : value.cpus >= 1 && value.memory_mb >= 512])
-    error_message = "Size all four exact singleton services with at least one CPU and 512 MB."
+    condition = try(
+      toset(keys(var.service_resources)) == toset(keys(jsondecode(file("${path.module}/candidate-sizing.json")).services)) &&
+      alltrue([for name, value in var.service_resources :
+        value.cpu_kind == jsondecode(file("${path.module}/candidate-sizing.json")).services[name].cpu_kind &&
+        value.cpus == jsondecode(file("${path.module}/candidate-sizing.json")).services[name].cpus &&
+        value.memory_mb == jsondecode(file("${path.module}/candidate-sizing.json")).services[name].memory_mb
+      ]), false
+    )
+    error_message = "All four services must match candidate-sizing.json; a larger estate requires a reviewed sizing and cost change."
   }
 }
 
@@ -147,4 +166,8 @@ variable "deployment_ids" {
     staging    = string
   })
   description = "Stable non-secret deployment ids bound into the AWS KMS encryption context."
+  validation {
+    condition     = var.deployment_ids.production != var.deployment_ids.staging && alltrue([for id in values(var.deployment_ids) : can(regex("^[a-z][a-z0-9-]{0,62}$", id))])
+    error_message = "Production and staging require distinct deployment ids of 1-63 lowercase letters, digits, or hyphens starting with a letter."
+  }
 }

@@ -4,7 +4,7 @@ output "candidate_inventory" {
     jurisdiction = "United States"
     fly = {
       region                 = local.fly_region
-      machine_api_specs      = local.fly_machine_specs
+      service_specs          = local.fly_machine_specs
       provisioning_supported = false
     }
     postgres = {

@@ -1,0 +1,26 @@
+{
+  "region": "iad",
+  "monthlyHours": 744,
+  "services": {
+    "studio-production": {
+      "cpu_kind": "shared",
+      "cpus": 1,
+      "memory_mb": 512
+    },
+    "studio-staging": {
+      "cpu_kind": "shared",
+      "cpus": 1,
+      "memory_mb": 512
+    },
+    "registry-production": {
+      "cpu_kind": "shared",
+      "cpus": 1,
+      "memory_mb": 512
+    },
+    "registry-staging": {
+      "cpu_kind": "shared",
+      "cpus": 1,
+      "memory_mb": 512
+    }
+  }
+}

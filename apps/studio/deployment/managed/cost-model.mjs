@@ -1,5 +1,9 @@
 import { readFile } from 'node:fs/promises';
 
+const sizing = JSON.parse(
+  await readFile(new URL('./candidate-sizing.json', import.meta.url), 'utf8'),
+);
+
 const REQUIRED_CATEGORIES = new Set([
   'compute',
   'database-plan',
@@ -19,7 +23,8 @@ const REQUIRED_CATEGORIES = new Set([
   'validator-transfer',
   'mail',
   'monitoring',
-  'dns-ingress',
+  'dns',
+  'primary-ingress',
   'reserve',
 ]);
 
@@ -36,10 +41,14 @@ function finiteNonNegative(value, path) {
 
 export function evaluateManagedEstateCost(
   input,
-  { requireQualification = false } = {},
+  { requireBudget = false, requireQualification = false } = {},
 ) {
   if (!input || typeof input !== 'object' || Array.isArray(input))
     fail('root must be an object');
+  if (requireQualification)
+    fail(
+      'a cost estimate cannot qualify deployment; independent authenticated operational evidence is required',
+    );
   if (input.monthlyCapUsd !== 100)
     fail('monthlyCapUsd must preserve the authorized $100 cap');
   if (input.freeCreditsUsd !== 0)
@@ -48,6 +57,24 @@ export function evaluateManagedEstateCost(
     );
   if (input.flySingletonCount !== 4)
     fail('flySingletonCount must be exactly four');
+  const resources = input.flyServiceResources;
+  if (
+    !resources ||
+    typeof resources !== 'object' ||
+    Array.isArray(resources) ||
+    Object.keys(resources).length !== Object.keys(sizing.services).length ||
+    !Object.entries(sizing.services).every(
+      ([name, expected]) =>
+        resources[name]?.cpu_kind === expected.cpu_kind &&
+        resources[name]?.cpus === expected.cpus &&
+        resources[name]?.memory_mb === expected.memory_mb,
+    )
+  )
+    fail(
+      'flyServiceResources must match candidate-sizing.json; changed sizes require a reviewed sizing and cost change',
+    );
+  if (input.flyMonthlyHours !== sizing.monthlyHours)
+    fail('flyMonthlyHours must price all 744 hours of a 31-day month');
   if (input.logicalDatabaseCount !== 4)
     fail('logicalDatabaseCount must be exactly four');
   for (const field of [
@@ -89,12 +116,17 @@ export function evaluateManagedEstateCost(
     'databaseTransferGb',
     'validatorRequestCount',
     'validatorRunCount',
+    'validatorMemoryGb',
+    'validatorDurationSeconds',
     'validatorTransferGb',
     'backupStoredGb',
     'backupRequestCount',
     'backupEgressGb',
   ])
     finiteNonNegative(input[field], field);
+
+  if (input.validatorMemoryGb === 0 || input.validatorDurationSeconds === 0)
+    fail('validator memory and duration must be positive');
 
   if (input.postgresStorageGb < 20)
     fail('postgresStorageGb must price at least the 20 GB resource minimum');
@@ -107,7 +139,7 @@ export function evaluateManagedEstateCost(
   // Keeping an independent editable quantity would let a four-service estate
   // claim zero compute cost or price only a fraction of its recovery traffic.
   const quantities = {
-    'compute': input.flySingletonCount,
+    'compute': input.flySingletonCount * input.flyMonthlyHours,
     'database-plan': 1,
     'database-storage': input.postgresStorageGb,
     'database-transfer': input.databaseTransferGb,
@@ -120,12 +152,16 @@ export function evaluateManagedEstateCost(
     'backup-storage': input.backupStoredGb / 1_000,
     'backup-requests': input.backupRequestCount,
     'backup-egress': input.backupEgressGb,
-    'validator-compute': input.validatorRunCount,
+    'validator-compute':
+      input.validatorRunCount *
+      input.validatorMemoryGb *
+      input.validatorDurationSeconds,
     'validator-requests': input.validatorRequestCount,
     'validator-transfer': input.validatorTransferGb,
     'mail': 1,
     'monitoring': 1,
-    'dns-ingress': 1,
+    'dns': 1,
+    'primary-ingress': input.primaryIngressGb,
     'reserve': 1,
   };
 
@@ -169,31 +205,11 @@ export function evaluateManagedEstateCost(
     'minimumHeadroomUsd',
   );
   const withinCap = subtotalUsd <= input.monthlyCapUsd;
-  const qualificationComplete = input.qualificationComplete === true;
-  const requiredEvidence = [
-    'providerQuotesCurrent',
-    'trafficMeasured',
-    'capacityQualified',
-    'recoveryQualified',
-    'retentionQualified',
-    'alertDeliveryQualified',
-  ];
-  if (!input.evidenceGates || typeof input.evidenceGates !== 'object')
-    fail('evidenceGates must be an object');
-  const evidenceComplete = requiredEvidence.every(
-    (name) => input.evidenceGates[name] === true,
-  );
-  if (requireQualification && !qualificationComplete)
-    fail(
-      'qualificationComplete must be true after live capacity, recovery, retention, alert, and billing evidence exists',
-    );
-  if (requireQualification && !evidenceComplete)
-    fail('every named live evidence gate must be true');
-  if (requireQualification && subtotals.get('reserve') === 0)
-    fail('the qualified estimate must price a non-zero recovery reserve');
-  if (requireQualification && !withinCap)
+  if (requireBudget && subtotals.get('reserve') === 0)
+    fail('the budget check must price a non-zero recovery reserve');
+  if (requireBudget && !withinCap)
     fail(`monthly total $${totalUsd.toFixed(2)} exceeds the $100.00 cap`);
-  if (requireQualification && headroomUsd < minimumHeadroomUsd)
+  if (requireBudget && input.monthlyCapUsd - subtotalUsd < minimumHeadroomUsd)
     fail(
       `monthly headroom $${headroomUsd.toFixed(2)} is below the explicit minimum`,
     );
@@ -202,16 +218,21 @@ export function evaluateManagedEstateCost(
     totalUsd,
     headroomUsd,
     withinCap,
-    qualificationComplete,
-    evidenceComplete,
+    qualificationComplete: false,
+    budgetAccepted: requireBudget,
   };
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const path = process.argv[2];
-  if (!path) fail('usage: node cost-model.mjs <input.json> [--gate]');
+  if (!path) fail('usage: node cost-model.mjs <input.json> [--budget]');
+  if (
+    process.argv.slice(3).some((arg) => arg !== '--budget' && arg !== '--gate')
+  )
+    fail('unsupported option');
   const input = JSON.parse(await readFile(path, 'utf8'));
   const result = evaluateManagedEstateCost(input, {
+    requireBudget: process.argv.includes('--budget'),
     requireQualification: process.argv.includes('--gate'),
   });
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);

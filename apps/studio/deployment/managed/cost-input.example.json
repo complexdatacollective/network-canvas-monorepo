@@ -2,15 +2,6 @@
   "monthlyCapUsd": 100,
   "minimumHeadroomUsd": 10,
   "freeCreditsUsd": 0,
-  "qualificationComplete": false,
-  "evidenceGates": {
-    "providerQuotesCurrent": false,
-    "trafficMeasured": false,
-    "capacityQualified": false,
-    "recoveryQualified": false,
-    "retentionQualified": false,
-    "alertDeliveryQualified": false
-  },
   "flySingletonCount": 4,
   "logicalDatabaseCount": 4,
   "postgresStorageGb": 20,
@@ -38,9 +29,9 @@
   "lineItems": [
     {
       "category": "compute",
-      "quantity": 4,
-      "unitPriceUsd": 3.294432,
-      "evidence": "candidate shared-cpu-1x 512 MB, 31 days"
+      "quantity": 2976,
+      "unitPriceUsd": 0.004428,
+      "evidence": "illustrative per-machine-hour price for the candidate-sizing.json shared CPU and memory, 744 hours"
     },
     {
       "category": "database-plan",
@@ -93,7 +84,7 @@
     {
       "category": "kms-requests",
       "quantity": 100000,
-      "unitPriceUsd": 0.000003,
+      "unitPriceUsd": 3e-6,
       "evidence": "illustrative request volume"
     },
     {
@@ -116,14 +107,14 @@
     },
     {
       "category": "validator-compute",
-      "quantity": 5952,
-      "unitPriceUsd": 0.001,
-      "evidence": "illustrative 5952 runs x 2 GB x 30 seconds"
+      "quantity": 357120,
+      "unitPriceUsd": 1.6666666666666667e-5,
+      "evidence": "illustrative GB-second price; independent 2 GB, 30-second execution requires a measured quote"
     },
     {
       "category": "validator-requests",
       "quantity": 11904,
-      "unitPriceUsd": 0.0000002,
+      "unitPriceUsd": 2e-7,
       "evidence": "illustrative Lambda invocation charge; independent execution location still requires qualification"
     },
     {
@@ -145,16 +136,47 @@
       "evidence": "New Relic Free candidate; hard stop required"
     },
     {
-      "category": "dns-ingress",
+      "category": "dns",
       "quantity": 1,
       "unitPriceUsd": 0,
-      "evidence": "explicit placeholder requiring traffic measurement"
+      "evidence": "placeholder for fixed DNS charges"
     },
     {
       "category": "reserve",
       "quantity": 1,
       "unitPriceUsd": 0,
       "evidence": "must be raised from zero before qualification"
+    },
+    {
+      "category": "primary-ingress",
+      "quantity": 0,
+      "unitPriceUsd": 0,
+      "evidence": "placeholder for primary ingress per GB; account quote and traffic measurement required"
     }
-  ]
+  ],
+  "flyServiceResources": {
+    "studio-production": {
+      "cpu_kind": "shared",
+      "cpus": 1,
+      "memory_mb": 512
+    },
+    "studio-staging": {
+      "cpu_kind": "shared",
+      "cpus": 1,
+      "memory_mb": 512
+    },
+    "registry-production": {
+      "cpu_kind": "shared",
+      "cpus": 1,
+      "memory_mb": 512
+    },
+    "registry-staging": {
+      "cpu_kind": "shared",
+      "cpus": 1,
+      "memory_mb": 512
+    }
+  },
+  "flyMonthlyHours": 744,
+  "validatorMemoryGb": 2,
+  "validatorDurationSeconds": 30
 }
