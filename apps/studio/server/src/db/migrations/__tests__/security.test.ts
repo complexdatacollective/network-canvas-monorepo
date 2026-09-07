@@ -673,6 +673,86 @@ describe.skipIf(!database)('migration security invariants', () => {
     },
   );
 
+  it.each([
+    [
+      'check constraint',
+      'value integer CHECK (value = stored_owner_value())',
+      '(value) VALUES (7)',
+    ],
+    [
+      'column default',
+      'value integer DEFAULT stored_owner_value()',
+      'DEFAULT VALUES',
+    ],
+    [
+      'generated column',
+      'input integer, value integer GENERATED ALWAYS AS (stored_owner_value()) STORED',
+      '(input) VALUES (1)',
+    ],
+  ])(
+    'enforces PostgreSQL function EXECUTE for a definer in a %s',
+    async (_label, columns, insertion) => {
+      await withDeployment(async ({ owner, url, logins }) => {
+        await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+        await owner.query(`CREATE FUNCTION stored_owner_value() RETURNS integer LANGUAGE plpgsql IMMUTABLE SECURITY DEFINER AS 'BEGIN RETURN 7; END';
+        REVOKE ALL ON FUNCTION stored_owner_value() FROM PUBLIC, studio_app, studio_maintenance;
+        CREATE TABLE stored_expression_probe (${columns});
+        GRANT INSERT, SELECT ON stored_expression_probe TO studio_app`);
+        await connectAs(
+          url,
+          logins[1],
+          '-c role=studio_app',
+          async (runtime) => {
+            await expect(
+              runtime.query('SELECT stored_owner_value()'),
+            ).rejects.toMatchObject({ code: '42501' });
+            await expect(
+              runtime.query(
+                `INSERT INTO stored_expression_probe ${insertion} RETURNING value`,
+              ),
+            ).rejects.toMatchObject({ code: '42501' });
+            expect(
+              (
+                await runtime.query(
+                  'SELECT count(*)::integer AS count FROM stored_expression_probe',
+                )
+              ).rows,
+            ).toEqual([{ count: 0 }]);
+          },
+        );
+        // The database expression executor checks the current caller's EXECUTE
+        // ACL. Granting that same privilege enables the identical insertion and
+        // is already refused by migration admission's executable-definer check.
+        await owner.query(
+          'GRANT EXECUTE ON FUNCTION stored_owner_value() TO studio_app',
+        );
+        await connectAs(
+          url,
+          logins[1],
+          '-c role=studio_app',
+          async (runtime) => {
+            expect(
+              (
+                await runtime.query(
+                  `INSERT INTO stored_expression_probe ${insertion} RETURNING value`,
+                )
+              ).rows,
+            ).toEqual([{ value: 7 }]);
+          },
+        );
+        await expect(
+          migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+        ).rejects.toThrow('executable SECURITY DEFINER');
+        await owner.query(
+          'REVOKE EXECUTE ON FUNCTION stored_owner_value() FROM studio_app',
+        );
+        expect(
+          await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+        ).toEqual([]);
+      });
+    },
+  );
+
   it('allows invoker triggers and standalone non-executable definer routines', async () => {
     await withDeployment(async ({ owner, url, logins }) => {
       await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
