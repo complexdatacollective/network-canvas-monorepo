@@ -63,7 +63,7 @@ docker compose up -d --wait postgres
 docker compose up -d minio-init
 docker compose -f docker-compose.yml -f deployment/migrate.yml \
   run --rm --no-deps studio migrate
-docker compose run --rm --no-deps studio encryption verify
+docker compose -f docker-compose.yml -f deployment/encryption.yml run --rm --no-deps encryption-verify
 docker compose up -d studio
 docker compose run --rm --no-deps studio diagnostics
 docker compose up -d traefik
@@ -72,7 +72,7 @@ docker compose up -d traefik
 Migrations are explicit and never run at boot. The migration overlay supplies
 the separate schema-owner login only to that one command.
 `STUDIO_DATABASE_ALLOWED_LOGINS` is a JSON array that explicitly enrolls
-`studio_migrator`, `studio_runtime` and `studio_backup_login` for this bundle.
+`studio_migrator`, `studio_runtime`, `studio_maintenance_runtime` and `studio_backup_login` for this bundle.
 It is supplied only by the migration
 overlay. Provisioning creates the database with connections disabled, commits
 the restricted CONNECT allowlist, then opens it. Migration validates that
@@ -195,12 +195,12 @@ sh deployment/backup.sh /absolute/private/pre-upgrade-backup \
 docker compose pull
 # If the release requires new database roles, run its administrator-only
 # role-provision step before invoking the NOCREATEROLE migrator.
-# Backup closed the two dedicated logins as well as stopping the services.
+# Backup closed all three writer/operator logins and stopped the services.
 docker compose exec -T postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres \
-  -c 'ALTER ROLE studio_migrator LOGIN; ALTER ROLE studio_runtime LOGIN;'
+  -c 'ALTER ROLE studio_migrator LOGIN; ALTER ROLE studio_runtime LOGIN; ALTER ROLE studio_maintenance_runtime LOGIN;'
 docker compose -f docker-compose.yml -f deployment/migrate.yml \
   run --rm --no-deps studio migrate
-docker compose run --rm --no-deps studio encryption verify
+docker compose -f docker-compose.yml -f deployment/encryption.yml run --rm --no-deps encryption-verify
 docker compose up -d studio
 docker compose run --rm --no-deps studio diagnostics
 # Run the release's authenticated smoke test against the private backend.
@@ -274,7 +274,7 @@ Restore requires this archive and refuses a populated or misrouted cache volume
 before changing the target. It verifies the restored generation against the
 retained image before admission.
 
-To resume the source after a successful backup, re-enable the two logins with
+To resume the source after a successful backup, re-enable the three logins with
 the administrator command shown above, start MinIO, run `encryption verify`,
 and start Studio privately. Check diagnostics and an authenticated smoke
 before starting the proxy and any separated workers. An unsuccessful capture
@@ -291,7 +291,7 @@ rewrite immutable history or triggers.
 export COMPOSE_PROJECT_NAME=studio-restore
 sh deployment/restore.sh "$BACKUP_DIR" "$KEY_CUSTODY"
 export COMPOSE_FILE=docker-compose.yml:deployment/recovery-images.yml:deployment/quarantine.yml
-docker compose run --rm --no-deps studio encryption verify
+docker compose -f docker-compose.yml -f deployment/encryption.yml run --rm --no-deps encryption-verify
 docker compose up -d studio
 docker compose run --rm --no-deps studio diagnostics
 ```

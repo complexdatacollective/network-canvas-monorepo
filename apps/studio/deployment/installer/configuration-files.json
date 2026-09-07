@@ -5,6 +5,7 @@
   "BACKUPS.md",
   "deployment/traefik.yml",
   "deployment/migrate.yml",
+  "deployment/encryption.yml",
   "deployment/postgres-init.sql",
   "deployment/postgres-privileges.sql",
   "deployment/minio-init.sh",

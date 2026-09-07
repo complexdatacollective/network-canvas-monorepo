@@ -1,12 +1,6 @@
 import { randomBytes } from 'node:crypto';
-import {
-  mkdir,
-  open,
-  readFile,
-  readdir,
-  rm,
-  writeFile,
-} from 'node:fs/promises';
+import { mkdir, open, readFile, readdir, rm } from 'node:fs/promises';
+import type { FileHandle } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 
 import { z } from 'zod';
@@ -41,6 +35,7 @@ const databaseRoles = ['studio_app', 'studio_maintenance', 'studio_backup'];
 const databaseLogins = [
   'studio_migrator',
   'studio_runtime',
+  'studio_maintenance_runtime',
   'studio_backup_login',
 ];
 
@@ -73,10 +68,30 @@ export function renderDeploymentTemplate(name: string, input: Buffer): Buffer {
   return bytes;
 }
 
+async function writeOwned(
+  path: string,
+  bytes: Buffer,
+  mode: number,
+  owned: string[],
+  write: (file: FileHandle, bytes: Buffer) => Promise<void>,
+) {
+  const file = await open(path, 'wx', mode);
+  owned.push(path);
+  try {
+    await write(file, bytes);
+    await file.sync();
+  } finally {
+    await file.close();
+  }
+}
+
 /** Offline only: no environment, listener, database or external service access. */
 export async function configureDeployment(
   input: z.input<typeof optionsSchema>,
   templateRoot: string,
+  {
+    write = (file, bytes) => file.writeFile(bytes),
+  }: { write?: (file: FileHandle, bytes: Buffer) => Promise<void> } = {},
 ): Promise<{ setupUrl: string; bootstrapToken: string }> {
   const options = optionsSchema.parse(input);
   // Validate inputs and read the complete shipped bundle before writing anything.
@@ -138,6 +153,7 @@ export async function configureDeployment(
       POSTGRES_PASSWORD: secret(),
       STUDIO_MIGRATION_PASSWORD: secret(),
       STUDIO_DATABASE_PASSWORD: secret(),
+      STUDIO_MAINTENANCE_DATABASE_PASSWORD: secret(),
       STUDIO_BACKUP_PASSWORD: secret(),
       BETTER_AUTH_SECRET: secret(),
       STUDIO_BOOTSTRAP_TOKEN: bootstrapToken,
@@ -160,20 +176,21 @@ export async function configureDeployment(
     // All generated fields exclude single quotes/newlines. Literal dotenv values
     // avoid Compose interpolation of credentials and the keyset's JSON.
     const dotenv = (values: Record<string, string>) =>
-      Object.entries(values)
-        .map(([name, value]) => `${name}='${value}'`)
-        .join('\n') + '\n';
+      Buffer.from(
+        Object.entries(values)
+          .map(([name, value]) => `${name}='${value}'`)
+          .join('\n') + '\n',
+      );
     for (const { name, bytes } of templates) {
       const target = join(output, name);
       if (dirname(target) !== output) {
         await mkdir(dirname(target), { recursive: true, mode: 0o700 });
         directories.add(dirname(target));
       }
-      await writeFile(target, bytes, { flag: 'wx', mode: 0o644 });
-      written.push(target);
+      await writeOwned(target, bytes, 0o644, written, write);
     }
     const encryptionPath = join(output, 'deployment/encryption.env');
-    await writeFile(
+    await writeOwned(
       encryptionPath,
       dotenv({
         STUDIO_ENCRYPTION_KEYSET: JSON.stringify(keyset),
@@ -184,13 +201,13 @@ export async function configureDeployment(
           ]),
         ),
       }),
-      { flag: 'wx', mode: 0o600 },
+      0o600,
+      written,
+      write,
     );
-    written.push(encryptionPath);
     // Credentials are the final file; a partial template copy cannot be booted.
     const envPath = join(output, '.env');
-    await writeFile(envPath, dotenv(environment), { flag: 'wx', mode: 0o600 });
-    written.push(envPath);
+    await writeOwned(envPath, dotenv(environment), 0o600, written, write);
     return { setupUrl: `https://${options.domain}/setup`, bootstrapToken };
   } catch (error) {
     await Promise.all(written.map((path) => rm(path, { force: true })));

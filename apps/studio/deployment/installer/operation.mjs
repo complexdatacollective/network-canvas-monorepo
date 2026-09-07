@@ -593,7 +593,7 @@ export function executeOperation(options, run = command) {
     // every HTTP/worker remains stopped; the backup's live-session guard stays.
     admin(
       oldConfiguration,
-      'ALTER ROLE studio_runtime LOGIN; ALTER ROLE studio_migrator LOGIN;\n',
+      'ALTER ROLE studio_runtime LOGIN; ALTER ROLE studio_maintenance_runtime LOGIN; ALTER ROLE studio_migrator LOGIN;\n',
     );
     const name = `${bundle.current.digest}-${Date.now()}`;
     const data = join(custody.data, name);
@@ -634,7 +634,7 @@ export function executeOperation(options, run = command) {
   );
   admin(
     configuration,
-    'ALTER ROLE studio_runtime LOGIN; ALTER ROLE studio_migrator LOGIN;\n',
+    'ALTER ROLE studio_runtime LOGIN; ALTER ROLE studio_maintenance_runtime LOGIN; ALTER ROLE studio_migrator LOGIN;\n',
   );
   compose(
     configuration,
@@ -643,8 +643,8 @@ export function executeOperation(options, run = command) {
   );
   compose(
     configuration,
-    ['run', '--rm', '--no-deps', '-T', 'studio', 'encryption', 'verify'],
-    ['deployment/quarantine.yml'],
+    ['run', '--rm', '--no-deps', '-T', 'encryption-verify'],
+    ['deployment/quarantine.yml', 'deployment/encryption.yml'],
   );
   compose(configuration, ['run', '--rm', '--no-deps', '-T', 'backup-verify']);
   compose(configuration, ['run', '--rm', '--no-deps', '-T', 'client-assets']);

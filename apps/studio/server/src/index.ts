@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { serve } from '@hono/node-server';
 import { WebSocketServer } from 'ws';
 
+import { assertSamePostgresDatabase } from '@codaco/studio-sync/postgres-database-identity';
 import { assertSafePostgresRuntimeIdentity } from '@codaco/studio-sync/postgres-runtime-identity';
 import { BACKUP_ROLE, TENANT_ROLES } from '@codaco/studio-sync/rls';
 
@@ -25,6 +26,7 @@ import {
 import { readEncryptionEnv, readEnv } from './env.ts';
 import { installFatalErrorHandlers } from './fatal-errors.ts';
 import { getSetupStatus } from './instance/bootstrap.ts';
+import { withProbeClient } from './observability/bounded-probe.ts';
 import { logOperational } from './observability/logger.ts';
 import { createOperationalApp } from './observability/operational-app.ts';
 import { observeWebSocketServer } from './observability/requests.ts';
@@ -57,6 +59,13 @@ installFatalErrorHandlers({
 const { env, mailer } = (() => {
   try {
     const resolvedEnv = readEnv();
+    if (
+      resolvedEnv.db &&
+      !resolvedEnv.devDefaults &&
+      !resolvedEnv.maintenanceDb
+    ) {
+      throw new Error('Missing maintenance database configuration.');
+    }
     // One owned transport serves authentication and the invitation worker.
     // Validate it before database work or request admission.
     return {
@@ -95,7 +104,9 @@ if (servesWeb && env.clientAssetCache) {
   }
 }
 const pool = env.db && servesWeb ? createPool(env.db) : undefined;
-const maintenancePool = env.db ? createMaintenancePool(env.db) : undefined;
+const maintenancePool = env.maintenanceDb
+  ? createMaintenancePool(env.maintenanceDb)
+  : undefined;
 const schemaPool = pool ?? maintenancePool;
 const assetStore = env.s3 ? createAssetStore(env.s3) : undefined;
 let invitationDeliveryWorker: InvitationDeliveryWorker | undefined;
@@ -121,28 +132,47 @@ function startDatabaseWorkers(): void {
 }
 
 async function admitDatabaseRuntime(): Promise<boolean> {
-  if (!schemaPool || env.devDefaults) return true;
-  const roles = Object.values(TENANT_ROLES);
+  if (!maintenancePool || env.devDefaults) return true;
+  const runtimeRoleSets = [
+    [TENANT_ROLES.app],
+    [TENANT_ROLES.maintenance],
+  ] as const;
+  const identity = (
+    intendedRole: typeof TENANT_ROLES.app | typeof TENANT_ROLES.maintenance,
+  ) => ({
+    intendedRole,
+    allowedRoles: [intendedRole],
+    runtimeRoleSets,
+    backupRole: BACKUP_ROLE,
+    allowedLogins: env.databaseAllowedLogins ?? [],
+    administrativeLogins: env.databaseAdministrativeLogins,
+  });
   try {
-    for (const [runtimePool, intendedRole] of [
-      [pool, TENANT_ROLES.app],
-      [maintenancePool, TENANT_ROLES.maintenance],
-    ] as const) {
-      if (!runtimePool) continue;
-      const client = await runtimePool.connect();
+    const signal = AbortSignal.timeout(10_000);
+    await withProbeClient(maintenancePool, signal, async (maintenance) => {
       try {
-        await assertSafePostgresRuntimeIdentity(client, {
-          intendedRole,
-          allowedRoles: roles,
-          runtimeRoleSets: [roles],
-          backupRole: BACKUP_ROLE,
-          allowedLogins: env.databaseAllowedLogins ?? [],
-          administrativeLogins: env.databaseAdministrativeLogins,
-        });
+        await maintenance.query('BEGIN READ ONLY');
+        await assertSafePostgresRuntimeIdentity(
+          maintenance,
+          identity(TENANT_ROLES.maintenance),
+        );
+        if (pool)
+          await withProbeClient(pool, signal, async (app) => {
+            try {
+              await app.query('BEGIN READ ONLY');
+              await assertSafePostgresRuntimeIdentity(
+                app,
+                identity(TENANT_ROLES.app),
+              );
+              await assertSamePostgresDatabase(app, maintenance);
+            } finally {
+              await app.query('ROLLBACK');
+            }
+          });
       } finally {
-        client.release();
+        await maintenance.query('ROLLBACK');
       }
-    }
+    });
     return true;
   } catch {
     logOperational('STUDIO_DATABASE_IDENTITY_UNSAFE');
@@ -224,7 +254,7 @@ const webLease = pool
   : undefined;
 
 const observability = createObservability({
-  pool: schemaPool,
+  pool,
   maintenancePool,
   assetStore,
   monitorProcess: true,

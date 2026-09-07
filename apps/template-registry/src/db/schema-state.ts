@@ -1,5 +1,3 @@
-import { randomBytes } from 'node:crypto';
-
 import { Pool, type PoolClient } from 'pg';
 import { z } from 'zod';
 
@@ -8,6 +6,7 @@ import {
   copyPostgresDatabaseEnrollmentOptions,
   type PostgresDatabaseEnrollmentOptions,
 } from '@codaco/studio-sync/postgres-database-enrollment';
+import { assertSamePostgresDatabase } from '@codaco/studio-sync/postgres-database-identity';
 import { assertSafePostgresMigrationEvidence } from '@codaco/studio-sync/postgres-migration-evidence';
 import { assertSafePostgresRestrictedIdentities } from '@codaco/studio-sync/postgres-restricted-identities';
 import { assertSafePostgresRuntimeIdentity } from '@codaco/studio-sync/postgres-runtime-identity';
@@ -155,14 +154,11 @@ export async function verifyRegistryDatabases(
       throw new Error('REGISTRY_DATABASES_DO_NOT_MATCH');
     // Restores retain their installation ID. A random database-scoped lock
     // proves both sockets reach the same live PostgreSQL lock manager.
-    const key = randomBytes(8).readBigInt64BE().toString();
-    await app.query('SELECT pg_advisory_xact_lock($1::bigint)', [key]);
-    const challenge = await operator.query<{ acquired: boolean }>(
-      'SELECT pg_try_advisory_xact_lock($1::bigint) AS acquired',
-      [key],
-    );
-    if (challenge.rows[0]?.acquired !== false)
+    try {
+      await assertSamePostgresDatabase(app, operator);
+    } catch {
       throw new Error('REGISTRY_DATABASES_DO_NOT_MATCH');
+    }
     return identities[0];
   } catch (error) {
     appDiscard = true;

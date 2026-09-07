@@ -941,7 +941,9 @@ describe.skipIf(!db)('SMTP invitation delivery outcomes', () => {
     const versioned = await createScratchDatabase(db);
     const scratch = { ...versioned, app: createPool(versioned.db) };
     const peer = await smtpFixture('silent_data');
-    const runtimeLogin = `smtp_runtime_${randomUUID().replaceAll('-', '')}`;
+    const runtimeSuffix = randomUUID().replaceAll('-', '');
+    const appRuntimeLogin = `smtp_app_${runtimeSuffix}`;
+    const maintenanceRuntimeLogin = `smtp_maintenance_${runtimeSuffix}`;
     const runtimePassword = 'smtp-runtime-synthetic-only';
     let runtimeCreated = false;
     let child: ReturnType<typeof spawn> | undefined;
@@ -966,17 +968,22 @@ describe.skipIf(!db)('SMTP invitation delivery outcomes', () => {
         ]),
       ).toEqual(migrations.map(({ manifest }) => manifest.id));
       await scratch.pool.query(
-        `CREATE ROLE ${escapeIdentifier(runtimeLogin)} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD '${runtimePassword}';
-         GRANT studio_app, studio_maintenance TO ${escapeIdentifier(runtimeLogin)} WITH ADMIN FALSE, SET TRUE, INHERIT FALSE;
-         GRANT CONNECT ON DATABASE ${escapeIdentifier(identity.database)} TO ${escapeIdentifier(runtimeLogin)}`,
+        `CREATE ROLE ${escapeIdentifier(appRuntimeLogin)} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD '${runtimePassword}';
+         CREATE ROLE ${escapeIdentifier(maintenanceRuntimeLogin)} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD '${runtimePassword}';
+         GRANT studio_app TO ${escapeIdentifier(appRuntimeLogin)} WITH ADMIN FALSE, SET TRUE, INHERIT FALSE;
+         GRANT studio_maintenance TO ${escapeIdentifier(maintenanceRuntimeLogin)} WITH ADMIN FALSE, SET TRUE, INHERIT FALSE;
+         GRANT CONNECT ON DATABASE ${escapeIdentifier(identity.database)} TO ${escapeIdentifier(appRuntimeLogin)}, ${escapeIdentifier(maintenanceRuntimeLogin)}`,
       );
       runtimeCreated = true;
       await seedInviter(scratch.pool);
       const invitation = await seedInvitation(scratch);
       await enqueue(scratch, invitation);
       const runtimeUrl = new URL(scratch.db.url);
-      runtimeUrl.username = runtimeLogin;
+      runtimeUrl.username = appRuntimeLogin;
       runtimeUrl.password = runtimePassword;
+      const maintenanceUrl = new URL(scratch.db.url);
+      maintenanceUrl.username = maintenanceRuntimeLogin;
+      maintenanceUrl.password = runtimePassword;
       const databaseUrl = runtimeUrl.href;
       if (typeof databaseUrl !== 'string')
         throw new Error('Missing fixture URL');
@@ -990,9 +997,11 @@ describe.skipIf(!db)('SMTP invitation delivery outcomes', () => {
             PORT: '0',
             DATABASE_URL: databaseUrl,
             ...encryptionEnvironment(),
+            STUDIO_MAINTENANCE_DATABASE_URL: maintenanceUrl.href,
             STUDIO_DATABASE_ALLOWED_LOGINS: JSON.stringify([
               identity.login,
-              runtimeLogin,
+              appRuntimeLogin,
+              maintenanceRuntimeLogin,
             ]),
             BETTER_AUTH_SECRET:
               'smtp-process-only-authentication-secret-32-characters',
@@ -1051,8 +1060,8 @@ describe.skipIf(!db)('SMTP invitation delivery outcomes', () => {
       await scratch.app.end();
       if (runtimeCreated)
         await scratch.pool.query(
-          `REVOKE CONNECT ON DATABASE ${escapeIdentifier(new URL(scratch.db.url).pathname.slice(1))} FROM ${escapeIdentifier(runtimeLogin)};
-           DROP ROLE ${escapeIdentifier(runtimeLogin)}`,
+          `REVOKE CONNECT ON DATABASE ${escapeIdentifier(new URL(scratch.db.url).pathname.slice(1))} FROM ${escapeIdentifier(appRuntimeLogin)}, ${escapeIdentifier(maintenanceRuntimeLogin)};
+           DROP ROLE ${escapeIdentifier(appRuntimeLogin)}, ${escapeIdentifier(maintenanceRuntimeLogin)}`,
         );
       await scratch.dispose();
     }

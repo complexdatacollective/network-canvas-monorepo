@@ -377,17 +377,18 @@ Row-level security is _forced_, so the table owner is not exempt; a superuser
 always is, which is why the server never runs as the connecting login.
 `createPool` starts every session as `studio_app`, a `NOLOGIN` role with
 neither `SUPERUSER` nor `BYPASSRLS` and no parent memberships. Operator
-provisioning grants the runtime login the right to assume it (`role=` is a startup parameter: a missing role
-refuses the connection, and `RESET ROLE` returns to it). That holds in
-development too, where the login is the container's superuser. Garbage
-collection is the one deliberately cross-team caller: it runs on a
-`studio_maintenance` pool — the one role the policies admit across every
-team, a policy clause rather than a `BYPASSRLS` role because only a superuser
-can create one of those and managed Postgres offers none — enumerates tenants
-from the swept tables, sweeps each under that team's `TenantDb`, and refuses
-any other role, under which it would report a clean sweep without having
-visited anyone. The study purge job and the outbox dispatchers will run the
-same way. Two tables beside the audit log — `audit_export_jobs` and
+provisioning grants the application login the right to assume only that role
+(`role=` is a startup parameter: a missing role refuses the connection, and
+`RESET ROLE` returns to the restricted login). That holds in development too,
+where the login is the container's superuser. Garbage collection is the one
+deliberately cross-team caller: it uses a distinct login permitted to assume
+only `studio_maintenance` — the one role the policies admit across every team,
+a policy clause rather than a `BYPASSRLS` role because only a superuser can
+create one of those and managed Postgres offers none — enumerates tenants from
+the swept tables, sweeps each under that team's `TenantDb`, and refuses any
+other role, under which it would report a clean sweep without having visited
+anyone. The study purge job and the outbox dispatchers will run the same way.
+Two tables beside the audit log — `audit_export_jobs` and
 `audit_alert_outbox` — carry the ordinary policy rather than the audit log's
 stricter `audit_team_isolation` (which admits no maintenance role at all),
 because their workers claim work across teams; they hold ids, event types and
@@ -535,8 +536,9 @@ fails `pnpm typecheck`.
 | `STUDIO_ENCRYPTION_KMS_ACCESS_KEY_ID`     | Dedicated KMS principal access key ID.                                                                         | —                                                      | Required for aws-kms. This identity is separate from R2/S3 and backup credentials. Supply through the deployment secret facility; ambient AWS profiles or metadata are never used.                                                                                                                                                                                                                                                                                                 |
 | `STUDIO_ENCRYPTION_KMS_SECRET_ACCESS_KEY` | Dedicated KMS principal secret access key.                                                                     | —                                                      | Required for aws-kms. Store in the deployment secret facility and rotate the credential independently of wrapped application roots. Never pass it as a command-line argument.                                                                                                                                                                                                                                                                                                      |
 | `STUDIO_ENCRYPTION_KMS_SESSION_TOKEN`     | Session token when the KMS principal uses temporary credentials.                                               | —                                                      | Set with the matching temporary access key and secret. Refresh the complete credential set before expiry; unavailable credentials cause a startup refusal.                                                                                                                                                                                                                                                                                                                         |
-| `DATABASE_URL`                            | Postgres connection string, `pg.Pool`’s native format.                                                         | `postgres://postgres:spike@127.0.0.1:54318/studio_dev` | Unset ⇒ no database; auth and sync refuse while the server still boots. Use a dedicated deployment login. The migration connection owns the database and schema; the runtime connection assumes `studio_app` or `studio_maintenance`.                                                                                                                                                                                                                                              |
-| `STUDIO_DATABASE_ALLOWED_LOGINS`          | JSON array of this deployment’s database login names.                                                          | —                                                      | Required by `migrate` and by every persistent server outside explicit local development. Enroll the database owner, migration login, runtime login, and any separately provisioned backup login. Provision explicit CONNECT before admitting database connections. Migration, startup, and readiness refuse PUBLIC, shared-role, missing, or unexpected access.                                                                                                                    |
+| `DATABASE_URL`                            | Postgres application connection string, `pg.Pool`’s native format.                                             | `postgres://postgres:spike@127.0.0.1:54318/studio_dev` | Unset ⇒ no database; auth and sync refuse while the server still boots. The persistent server uses a dedicated LOGIN permitted to SET only `studio_app`. Offline migration, reset, seed, backup and restore commands receive their separate administrative or backup `DATABASE_URL` for that invocation.                                                                                                                                                                           |
+| `STUDIO_MAINTENANCE_DATABASE_URL`         | Postgres maintenance-worker connection string, `pg.Pool`’s native format.                                      | —                                                      | Required by every persistent server with a database. Use a distinct dedicated LOGIN permitted to SET only `studio_maintenance`; never reuse the application, migration, restore, or backup LOGIN. Explicit local development alone falls back to `DATABASE_URL`.                                                                                                                                                                                                                   |
+| `STUDIO_DATABASE_ALLOWED_LOGINS`          | JSON array of this deployment’s database login names.                                                          | —                                                      | Required by `migrate` and by every persistent server outside explicit local development. Enroll the database owner, migration login, distinct application and maintenance runtime logins, and any separately provisioned backup login. Provision explicit CONNECT before admitting database connections. Migration, startup, and readiness refuse PUBLIC, shared-role, missing, or unexpected access.                                                                              |
 | `STUDIO_DATABASE_ADMINISTRATIVE_LOGINS`   | Optional JSON array of explicitly administrative database login names.                                         | —                                                      | Defaults to an empty array. Configure a separately provisioned non-owner migration or conversion login here and in STUDIO_DATABASE_ALLOWED_LOGINS. Database ownership is recognized separately. Serving app and maintenance connections must never use a configured administrative login.                                                                                                                                                                                          |
 
 ### Authentication
@@ -593,7 +595,9 @@ sequence in [Database migrations](MIGRATIONS.md).
 - **Provision database access before migration.** Use dedicated migration and
   runtime logins for each deployment. Commit their explicit CONNECT grants
   with database admission disabled, then enable admission and list those login
-  names in `STUDIO_DATABASE_ALLOWED_LOGINS`. Migration refuses unexpected
+  names in `STUDIO_DATABASE_ALLOWED_LOGINS`. The application and maintenance
+  runtime logins must be distinct and may assume only `studio_app` and
+  `studio_maintenance`, respectively. Migration refuses unexpected
   access and leftover outside connections; it never terminates sessions or
   repairs enrollment. Follow the SQL and recovery procedure in
   [Database migrations](MIGRATIONS.md#provision-database-access-before-migration).
@@ -606,7 +610,8 @@ sequence in [Database migrations](MIGRATIONS.md).
   ```sql
   CREATE ROLE studio_app NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB NOREPLICATION;
   CREATE ROLE studio_maintenance NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB NOREPLICATION;
-  GRANT studio_app, studio_maintenance TO <login> WITH SET TRUE, INHERIT FALSE;
+  GRANT studio_app TO <application_login> WITH SET TRUE, INHERIT FALSE;
+  GRANT studio_maintenance TO <maintenance_login> WITH SET TRUE, INHERIT FALSE;
   ```
 
 - **The Netlify lane has no automation.** Its build command does not touch the
@@ -736,12 +741,15 @@ The server reads its object store from `S3_ENDPOINT`, `S3_REGION`,
 none (partial configuration fails fast). Unset means asset routes refuse
 with 503. See [Environment](#environment).
 
-Set the server's `DATABASE_URL` to its dedicated, unprivileged runtime login.
-The explicit migration command uses the database owner's credentials in its
-own `DATABASE_URL` and verifies `STUDIO_DATABASE_ALLOWED_LOGINS` against the
-committed provisioning grants (see [Database migrations](MIGRATIONS.md)). The
-server runs as `studio_app` (see [Tenancy](#tenancy)). A self-host is one team,
-or a few, under the same enforcement as the managed service.
+Set the server's `DATABASE_URL` to its dedicated, unprivileged application
+login and `STUDIO_MAINTENANCE_DATABASE_URL` to a different, unprivileged
+maintenance login. The explicit migration command uses the database owner's
+credentials in its own `DATABASE_URL` and verifies
+`STUDIO_DATABASE_ALLOWED_LOGINS` against the committed provisioning grants
+(see [Database migrations](MIGRATIONS.md)). The server pins those connections
+to `studio_app` and `studio_maintenance`, respectively (see
+[Tenancy](#tenancy)). A self-host is one team, or a few, under the same
+enforcement as the managed service.
 
 ### What deploys when
 

@@ -124,6 +124,7 @@ describe('unconfigured auth', () => {
     clientDist: undefined,
     s3: undefined,
     db: undefined,
+    maintenanceDb: undefined,
     auth: undefined,
     devDefaults: false,
     deploymentMode: 'self-hosted',

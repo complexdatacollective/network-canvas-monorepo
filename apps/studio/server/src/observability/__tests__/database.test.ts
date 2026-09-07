@@ -48,19 +48,30 @@ describe.skipIf(!db)('readiness migration provenance', () => {
     expect(migrations.length).toBeGreaterThan(0);
     for (const versioned of [false, true]) {
       const scratch = await createScratchDatabase(db);
-      const runtimeLogin = `readiness_runtime_${randomUUID().replaceAll('-', '')}`;
+      const loginSuffix = randomUUID().replaceAll('-', '');
+      const appRuntimeLogin = `readiness_app_${loginSuffix}`;
+      const maintenanceRuntimeLogin = `readiness_maintenance_${loginSuffix}`;
       const runtimePassword = 'readiness-runtime-synthetic-only';
       const identity = (
         await scratch.pool.query<{ database: string; login: string }>(
           'SELECT current_database() AS database, session_user AS login',
         )
       ).rows[0]!;
-      const allowedLogins = [identity.login, runtimeLogin];
+      const allowedLogins = [
+        identity.login,
+        appRuntimeLogin,
+        maintenanceRuntimeLogin,
+      ];
       const runtimeUrl = new URL(scratch.db.url);
-      runtimeUrl.username = runtimeLogin;
+      runtimeUrl.username = appRuntimeLogin;
       runtimeUrl.password = runtimePassword;
+      const maintenanceUrl = new URL(scratch.db.url);
+      maintenanceUrl.username = maintenanceRuntimeLogin;
+      maintenanceUrl.password = runtimePassword;
       const pool = createPool({ url: runtimeUrl.href });
-      const maintenancePool = createMaintenancePool({ url: runtimeUrl.href });
+      const maintenancePool = createMaintenancePool({
+        url: maintenanceUrl.href,
+      });
       let created = false;
       try {
         if (versioned) {
@@ -79,9 +90,11 @@ describe.skipIf(!db)('readiness migration provenance', () => {
           await provisionScratchSchema(scratch.pool);
         }
         await scratch.pool
-          .query(`CREATE ROLE ${escapeIdentifier(runtimeLogin)} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD '${runtimePassword}';
-          GRANT studio_app, studio_maintenance TO ${escapeIdentifier(runtimeLogin)} WITH ADMIN FALSE, SET TRUE, INHERIT FALSE;
-          GRANT CONNECT ON DATABASE ${escapeIdentifier(identity.database)} TO ${escapeIdentifier(runtimeLogin)};
+          .query(`CREATE ROLE ${escapeIdentifier(appRuntimeLogin)} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD '${runtimePassword}';
+          CREATE ROLE ${escapeIdentifier(maintenanceRuntimeLogin)} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD '${runtimePassword}';
+          GRANT studio_app TO ${escapeIdentifier(appRuntimeLogin)} WITH ADMIN FALSE, SET TRUE, INHERIT FALSE;
+          GRANT studio_maintenance TO ${escapeIdentifier(maintenanceRuntimeLogin)} WITH ADMIN FALSE, SET TRUE, INHERIT FALSE;
+          GRANT CONNECT ON DATABASE ${escapeIdentifier(identity.database)} TO ${escapeIdentifier(appRuntimeLogin)}, ${escapeIdentifier(maintenanceRuntimeLogin)};
           REVOKE INSERT, UPDATE, DELETE ON "schemaFingerprint" FROM studio_app, studio_maintenance`);
         created = true;
         expect((await pool.query('SELECT current_user AS role')).rows).toEqual([
@@ -118,6 +131,7 @@ describe.skipIf(!db)('readiness migration provenance', () => {
             {
               ...readEnv(),
               db: { url: runtimeUrl.href },
+              maintenanceDb: { url: maintenanceUrl.href },
               devDefaults: development,
               databaseAllowedLogins: allowedLogins,
             },
@@ -132,7 +146,8 @@ describe.skipIf(!db)('readiness migration provenance', () => {
         await maintenancePool.end();
         if (created)
           await scratch.pool.query(
-            `REVOKE CONNECT ON DATABASE ${escapeIdentifier(identity.database)} FROM ${escapeIdentifier(runtimeLogin)}; DROP ROLE ${escapeIdentifier(runtimeLogin)}`,
+            `REVOKE CONNECT ON DATABASE ${escapeIdentifier(identity.database)} FROM ${escapeIdentifier(appRuntimeLogin)}, ${escapeIdentifier(maintenanceRuntimeLogin)};
+             DROP ROLE ${escapeIdentifier(appRuntimeLogin)}, ${escapeIdentifier(maintenanceRuntimeLogin)}`,
           );
         await scratch.dispose();
       }

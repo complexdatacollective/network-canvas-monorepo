@@ -207,6 +207,119 @@ describe('authorized and audited participant PII', () => {
     });
   });
 
+  it.each(['populated', 'deleted', 'renamed'] as const)(
+    'rechecks a null field after the participant is %s between read and audit',
+    async (change) => {
+      await fixture(async ({ scratch, keys, context, target }) => {
+        const base = context.tenantDb;
+        let changed = false;
+        const raced: typeof context = {
+          ...context,
+          tenantDb: {
+            ...base,
+            transaction: async (work, options) => {
+              const result = await base.transaction(work, options);
+              if (!changed) {
+                changed = true;
+                // Commit the competing operation after the unaudited read and
+                // before the audited transaction begins, with no timing sleep.
+                if (change === 'populated')
+                  await updateParticipantPii(keys, context, target, contacts);
+                else if (change === 'deleted')
+                  await scratch.maintenance.query(
+                    'DELETE FROM participants WHERE id = $1',
+                    [target.participantId],
+                  );
+                else
+                  await scratch.pool.query(
+                    "UPDATE participants SET participant_code = 'P-CURRENT' WHERE id = $1",
+                    [target.participantId],
+                  );
+              }
+              return result;
+            },
+          },
+        };
+        const result = readParticipantPiiField(keys, raced, {
+          ...target,
+          column: 'email_ciphertext',
+        });
+        if (change === 'renamed') await expect(result).resolves.toBeNull();
+        else await expect(result).rejects.toMatchObject({ code: 'CONFLICT' });
+        expect(changed).toBe(true);
+        const reads = await scratch.pool.query<{ resource_label: string }>(
+          "SELECT resource_label FROM audit_events WHERE event_type = 'participant.pii.read'",
+        );
+        expect(reads.rows).toEqual(
+          change === 'renamed' ? [{ resource_label: 'P-CURRENT' }] : [],
+        );
+        if (change === 'populated')
+          expect(
+            (
+              await readParticipantPiiField(keys, context, {
+                ...target,
+                column: 'email_ciphertext',
+              })
+            )?.toString(),
+          ).toBe('person@example.org');
+        else if (change === 'deleted')
+          expect(
+            (
+              await scratch.pool.query(
+                'SELECT id FROM participants WHERE id = $1',
+                [target.participantId],
+              )
+            ).rowCount,
+          ).toBe(0);
+      });
+    },
+  );
+
+  it('holds the null participant row lock until the audit transaction commits', async () => {
+    await fixture(async ({ scratch, keys, context, target }) => {
+      const base = context.tenantDb;
+      let transactions = 0;
+      let probes = 0;
+      const probing: typeof context = {
+        ...context,
+        tenantDb: {
+          ...base,
+          transaction: async (work, options) => {
+            const transaction = ++transactions;
+            return base.transaction(async (client) => {
+              const result = await work(client);
+              if (transaction === 2) {
+                probes += 1;
+                // An independent connection must observe the actual row lock
+                // before this audited transaction's COMMIT.
+                await expect(
+                  scratch.pool.query(
+                    'SELECT id FROM participants WHERE id = $1 FOR UPDATE NOWAIT',
+                    [target.participantId],
+                  ),
+                ).rejects.toMatchObject({ code: '55P03' });
+              }
+              return result;
+            }, options);
+          },
+        },
+      };
+      await expect(
+        readParticipantPiiField(keys, probing, {
+          ...target,
+          column: 'email_ciphertext',
+        }),
+      ).resolves.toBeNull();
+      expect({ transactions, probes }).toEqual({ transactions: 2, probes: 1 });
+      await expect(
+        scratch.pool.query(
+          'SELECT id FROM participants WHERE id = $1 FOR UPDATE NOWAIT',
+          [target.participantId],
+        ),
+      ).resolves.toMatchObject({ rowCount: 1 });
+    });
+  });
+
   it('audits an authorized null field without recording a PII value', async () => {
     await fixture(async ({ scratch, keys, context, target }) => {
       await expect(

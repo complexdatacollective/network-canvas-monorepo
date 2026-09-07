@@ -34,7 +34,8 @@
     "./postgres-migration-authoring": "./src/postgres-migration-authoring.ts",
     "./postmark-email-sender": "./src/postmark-email-sender.ts",
     "./postgres-backup": "./src/postgres-backup.ts",
-    "./postgres-restricted-identities": "./src/postgres-restricted-identities.ts"
+    "./postgres-restricted-identities": "./src/postgres-restricted-identities.ts",
+    "./postgres-database-identity": "./src/postgres-database-identity.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

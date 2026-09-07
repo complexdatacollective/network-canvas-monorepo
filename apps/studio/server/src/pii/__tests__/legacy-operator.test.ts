@@ -47,12 +47,15 @@ async function withDeployment(
     administrator: Pool;
     operator: Pool;
     rawRuntime: Pool;
+    rawMaintenance: Pool;
     app: Pool;
     maintenance: Pool;
     operatorName: string;
     runtimeName: string;
     operatorUrl: URL;
     runtimeUrl: URL;
+    maintenanceUrl: URL;
+    allowedLogins: string[];
     keys: Awaited<ReturnType<typeof initializeCredentialMigration>>;
   }) => Promise<void>,
 ) {
@@ -60,22 +63,27 @@ async function withDeployment(
   const scratch = await createScratchDatabase(database);
   const suffix = randomUUID().replaceAll('-', '');
   const operatorName = `legacy-operator-${suffix}`;
-  const runtimeName = `legacy-runtime-${suffix}`;
+  const runtimeName = `legacy-app-${suffix}`;
+  const maintenanceName = `legacy-maintenance-${suffix}`;
   const administrator = createOwnerPool(database);
   const pools: Pool[] = [];
   try {
-    for (const role of [operatorName, runtimeName]) {
+    for (const [role, scopedRoles] of [
+      [operatorName, ['studio_app', 'studio_maintenance']],
+      [runtimeName, ['studio_app']],
+      [maintenanceName, ['studio_maintenance']],
+    ] as const) {
       await administrator.query(
         `CREATE ROLE ${escapeIdentifier(role)} LOGIN NOINHERIT NOSUPERUSER NOCREATEROLE NOCREATEDB NOBYPASSRLS NOREPLICATION PASSWORD '${password}'`,
       );
       await administrator.query(
-        `GRANT studio_app, studio_maintenance TO ${escapeIdentifier(role)} WITH SET TRUE, INHERIT FALSE`,
+        `GRANT ${scopedRoles.map(escapeIdentifier).join(', ')} TO ${escapeIdentifier(role)} WITH ADMIN FALSE, SET TRUE, INHERIT FALSE`,
       );
     }
     const allowedLogins = await enrollMigrationTestDatabase(
       scratch.pool,
       database,
-      [operatorName, runtimeName],
+      [operatorName, runtimeName, maintenanceName],
     );
     const databaseName = decodeURIComponent(
       new URL(scratch.db.url).pathname.slice(1),
@@ -90,11 +98,14 @@ async function withDeployment(
     operatorUrl.password = password;
     const runtimeUrl = new URL(operatorUrl);
     runtimeUrl.username = runtimeName;
+    const maintenanceUrl = new URL(operatorUrl);
+    maintenanceUrl.username = maintenanceName;
     const operator = createOwnerPool({ url: operatorUrl.href });
     const rawRuntime = createOwnerPool({ url: runtimeUrl.href });
+    const rawMaintenance = createOwnerPool({ url: maintenanceUrl.href });
     const app = createPool({ url: runtimeUrl.href });
-    const maintenance = createMaintenancePool({ url: runtimeUrl.href });
-    pools.push(operator, rawRuntime, app, maintenance);
+    const maintenance = createMaintenancePool({ url: maintenanceUrl.href });
+    pools.push(operator, rawRuntime, rawMaintenance, app, maintenance);
     await migrateDatabase(
       operator,
       [history[0]!],
@@ -119,19 +130,22 @@ async function withDeployment(
       administrator: scratch.pool,
       operator,
       rawRuntime,
+      rawMaintenance,
       app,
       maintenance,
       operatorName,
       runtimeName,
       operatorUrl,
       runtimeUrl,
+      maintenanceUrl,
+      allowedLogins,
       keys,
     });
   } finally {
     await Promise.all(pools.map((pool) => pool.end()));
     await scratch.dispose();
     await administrator.query(
-      `DROP ROLE IF EXISTS ${escapeIdentifier(operatorName)}, ${escapeIdentifier(runtimeName)}`,
+      `DROP ROLE IF EXISTS ${escapeIdentifier(operatorName)}, ${escapeIdentifier(runtimeName)}, ${escapeIdentifier(maintenanceName)}`,
     );
     await administrator.end();
   }
@@ -312,28 +326,43 @@ describe('operator-only retained OAuth credentials', () => {
     async (field) => {
       await withDeployment(
         field,
-        async ({ operator, rawRuntime, app, maintenance, keys }) => {
-          const client = await rawRuntime.connect();
-          try {
-            for (const role of ['NONE', 'studio_app', 'studio_maintenance']) {
-              await client.query(`SET ROLE ${role}`);
-              for (const column of [...columns.map(escapeIdentifier), '*']) {
+        async ({
+          operator,
+          rawRuntime,
+          rawMaintenance,
+          app,
+          maintenance,
+          keys,
+        }) => {
+          for (const [pool, intendedRole, forbiddenRole] of [
+            [rawRuntime, 'studio_app', 'studio_maintenance'],
+            [rawMaintenance, 'studio_maintenance', 'studio_app'],
+          ] as const) {
+            const client = await pool.connect();
+            try {
+              await expect(
+                client.query(`SET ROLE ${forbiddenRole}`),
+              ).rejects.toMatchObject({ code: '42501' });
+              for (const role of ['NONE', intendedRole]) {
+                await client.query(`SET ROLE ${role}`);
+                for (const column of [...columns.map(escapeIdentifier), '*']) {
+                  await expect(
+                    client.query(`SELECT ${column} FROM account`),
+                  ).rejects.toMatchObject({ code: '42501' });
+                }
                 await expect(
-                  client.query(`SELECT ${column} FROM account`),
+                  client.query(
+                    `SELECT id FROM account WHERE ${escapeIdentifier(field)} = $1`,
+                    [tokenCanary],
+                  ),
                 ).rejects.toMatchObject({ code: '42501' });
               }
-              await expect(
-                client.query(
-                  `SELECT id FROM account WHERE ${escapeIdentifier(field)} = $1`,
-                  [tokenCanary],
-                ),
-              ).rejects.toMatchObject({ code: '42501' });
+            } finally {
+              await client.query('SET ROLE NONE');
+              client.release();
             }
-          } finally {
-            await client.query('SET ROLE NONE');
-            client.release();
           }
-          for (const pool of [rawRuntime, app, maintenance]) {
+          for (const pool of [rawRuntime, rawMaintenance, app, maintenance]) {
             await expect(
               migrateLegacyOAuthBatch(pool, keys, { limit: 1 }),
             ).rejects.toThrow(ProtectedDataError);
@@ -431,44 +460,71 @@ describe('operator-only retained OAuth credentials', () => {
   it('refuses the real converter process with runtime credentials and succeeds with the separate operator credentials', async () => {
     await withDeployment(
       'accessToken',
-      async ({ operator, maintenance, runtimeUrl, operatorUrl }) => {
+      async ({
+        operator,
+        maintenance,
+        runtimeUrl,
+        maintenanceUrl,
+        operatorUrl,
+        operatorName,
+        allowedLogins,
+      }) => {
         const entry = fileURLToPath(
           new URL('../../encryption.ts', import.meta.url),
         );
-        for (const [url, expectedStatus] of [
-          [runtimeUrl, 1],
-          [operatorUrl, 0],
-        ] as const) {
-          const child = spawnSync(
-            process.execPath,
-            [entry, 'migrate-legacy', '--limit', '1'],
-            {
-              env: {
-                NODE_ENV: 'production',
-                DATABASE_URL: url.href,
-                ...encryptionEnvironment(),
-              },
-              encoding: 'utf8',
-              timeout: 10_000,
+        const runCommand = (url: URL, args: string[]) => {
+          const child = spawnSync(process.execPath, [entry, ...args], {
+            env: {
+              NODE_ENV: 'production',
+              DATABASE_URL: url.href,
+              STUDIO_DATABASE_ALLOWED_LOGINS: JSON.stringify(allowedLogins),
+              STUDIO_DATABASE_ADMINISTRATIVE_LOGINS: JSON.stringify([
+                operatorName,
+              ]),
+              ...encryptionEnvironment(),
             },
-          );
+            encoding: 'utf8',
+            timeout: 10_000,
+          });
           expect(child.error).toBeUndefined();
           expect(child.signal).toBeNull();
           expect(child.stderr).toBe('');
-          expect(child.status).toBe(expectedStatus);
           const output: unknown = JSON.parse(child.stdout.trim());
-          expect(output).toMatchObject(
-            expectedStatus === 0
-              ? { operation: 'migrate-legacy', processed: 1 }
-              : { code: 'STUDIO_ENCRYPTION_MAINTENANCE_FAILED' },
-          );
           for (const value of [
             tokenCanary,
             password,
             rootOne.toString('base64'),
           ])
             expect(child.stdout).not.toContain(value);
+          return { status: child.status, output };
+        };
+        for (const url of [runtimeUrl, maintenanceUrl]) {
+          expect(
+            runCommand(url, ['migrate-legacy', '--limit', '1']),
+          ).toMatchObject({
+            status: 1,
+            output: { code: 'STUDIO_ENCRYPTION_MAINTENANCE_FAILED' },
+          });
+          expect(
+            (
+              await operator.query(
+                'SELECT "accessToken", legacy_tokens_present FROM account',
+              )
+            ).rows,
+          ).toEqual([
+            { accessToken: tokenCanary, legacy_tokens_present: true },
+          ]);
+          expect(
+            (await operator.query('SELECT action FROM credential_audit_events'))
+              .rows,
+          ).toEqual([]);
         }
+        expect(
+          runCommand(operatorUrl, ['migrate-legacy', '--limit', '1']),
+        ).toMatchObject({
+          status: 0,
+          output: { operation: 'migrate-legacy', processed: 1 },
+        });
         expect(
           (
             await operator.query(
@@ -476,6 +532,17 @@ describe('operator-only retained OAuth credentials', () => {
             )
           ).rows,
         ).toEqual([{ accessToken: null, legacy_tokens_present: false }]);
+        // Each offline invocation needs only its own DATABASE_URL. The restricted
+        // maintenance login and explicitly declared non-owner operator both work
+        // without a server maintenance URL, auth settings or provider credentials.
+        for (const url of [maintenanceUrl, operatorUrl]) {
+          for (const operation of ['verify', 'rotate']) {
+            expect(runCommand(url, [operation])).toMatchObject({
+              status: 0,
+              output: { operation },
+            });
+          }
+        }
         const refused = new Error('synthetic unused operator connection');
         const connect = vi
           .spyOn(operator, 'connect')
@@ -492,6 +559,7 @@ describe('operator-only retained OAuth credentials', () => {
                   configuration: configuration(),
                   loadRootKey: async () => rootOne,
                 },
+                { allowedLogins, administrativeLogins: [operatorName] },
                 operator,
               ),
             ).resolves.toMatchObject({ operation: command });
