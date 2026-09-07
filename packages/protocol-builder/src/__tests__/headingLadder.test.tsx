@@ -19,6 +19,7 @@ import * as alterEdgeFormStories from '../editors/forms/AlterEdgeFormStageEditor
 import * as alterFormStories from '../editors/forms/AlterFormStageEditor.stories.tsx';
 import * as egoFormStories from '../editors/forms/EgoFormStageEditor.stories.tsx';
 import * as informationStories from '../editors/forms/InformationStageEditor.stories.tsx';
+import * as quickAddStories from '../editors/nameGenerators/NameGeneratorQuickAddStageEditor.stories.tsx';
 import * as nameGeneratorStories from '../editors/nameGenerators/NameGeneratorStageEditor.stories.tsx';
 import { nameGeneratorStageEditors } from '../editors/nameGeneratorStageEditors.ts';
 import * as shellStories from '../form/StageEditorShell.stories.tsx';
@@ -373,6 +374,10 @@ describe('every story of a surface that writes its own heading', () => {
     ...from('EgoFormStageEditor', composeStories(egoFormStories)),
     ...from('InformationStageEditor', composeStories(informationStories)),
     ...from('NameGeneratorStageEditor', composeStories(nameGeneratorStories)),
+    ...from(
+      'NameGeneratorQuickAddStageEditor',
+      composeStories(quickAddStories),
+    ),
   ];
 
   it.each(stories)('has no heading skip in %s', async (_name, Story) => {
