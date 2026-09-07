@@ -9,6 +9,7 @@ import {
   provisionScratchSchema,
   reachableDb,
 } from '../../__tests__/support/postgres.ts';
+import { completeSetup, getSetupStatus } from '../../instance/bootstrap.ts';
 import { SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD, seed } from '../seed.ts';
 import { sha256Hex } from '../seed/rng.ts';
 
@@ -51,6 +52,7 @@ const SEED_BUDGET_MS = 60_000;
  * budget was written for.
  */
 const MAX_DEMO_ROWS = 80_000;
+const SETUP_TOKEN = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
 
 async function count(
   pool: pg.Pool,
@@ -989,6 +991,71 @@ describe.skipIf(!db)('the seeded dataset', () => {
 });
 
 describe.skipIf(!db)('seed', () => {
+  it(
+    'preserves an initialized setup marker while its replaced seed owners become null',
+    async () => {
+      if (!db) throw new Error('unreachable: probe guaranteed a database');
+      const { pool, dispose } = await createScratchSchema(db);
+      try {
+        await provisionScratchSchema(pool);
+        await completeSetup(
+          pool,
+          SETUP_TOKEN,
+          {
+            token: SETUP_TOKEN,
+            instanceName: 'Seeded setup',
+            ownerName: 'Initial owner',
+            ownerEmail: 'initial-owner@example.org',
+            ownerPassword: 'test-only setup password',
+          },
+          '00000000-0000-4000-8000-000000000001',
+        );
+        await seed(pool, { scale: 'tiny' });
+        await expect(
+          pool.query(
+            `SELECT name, initial_owner_user_id, initial_team_id
+             FROM studio_instance`,
+          ),
+        ).resolves.toMatchObject({
+          rows: [
+            {
+              name: 'Seeded setup',
+              initial_owner_user_id: null,
+              initial_team_id: null,
+            },
+          ],
+        });
+        await expect(getSetupStatus(pool, SETUP_TOKEN)).resolves.toEqual({
+          state: 'complete',
+        });
+      } finally {
+        await dispose();
+      }
+    },
+    SEEDING_TIMEOUT_MS,
+  );
+
+  it(
+    'does not create a setup marker for an uninitialized seeded database',
+    async () => {
+      if (!db) throw new Error('unreachable: probe guaranteed a database');
+      const { pool, dispose } = await createScratchSchema(db);
+      try {
+        await provisionScratchSchema(pool);
+        await seed(pool, { scale: 'tiny' });
+        await expect(
+          count(pool, 'SELECT count(*)::int AS n FROM studio_instance'),
+        ).resolves.toBe(0);
+        await expect(getSetupStatus(pool, SETUP_TOKEN)).resolves.toEqual({
+          state: 'unavailable',
+        });
+      } finally {
+        await dispose();
+      }
+    },
+    SEEDING_TIMEOUT_MS,
+  );
+
   it(
     'hashes a per-instance admin password when one is given',
     async () => {
