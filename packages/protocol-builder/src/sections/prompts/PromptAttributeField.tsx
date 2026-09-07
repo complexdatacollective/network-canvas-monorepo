@@ -193,11 +193,17 @@ export default function PromptAttributeField({
   const lockedOptions = useLockedOptions(subject, picked);
   const [editing, setEditing] = useState<{
     key: string;
-    /** The words on the control that opened it, which name what it does. */
-    label: string;
     mode: 'create' | 'update';
     variableId: string;
   } | null>(null);
+  /**
+   * The words on the control that opened the dialog, read live rather than
+   * captured into `editing` at the moment it opened: a label formatted then
+   * and held since is the one thing left in the old language after the
+   * researcher changes it while the dialog is still open.
+   */
+  const editingTitle =
+    editing?.mode === 'create' ? createLabel : (editLabel ?? createLabel);
   /** The validation surface for the pick, open on the key it was opened at. */
   const [validating, setValidating] = useState<{
     key: string;
@@ -268,7 +274,6 @@ export default function PromptAttributeField({
             onClick={() =>
               setEditing({
                 key: uuid(),
-                label: createLabel,
                 mode: 'create',
                 variableId: uuid(),
               })
@@ -285,7 +290,6 @@ export default function PromptAttributeField({
               onClick={() =>
                 setEditing({
                   key: uuid(),
-                  label: valuesEditor.label,
                   mode: 'update',
                   variableId: valuesEditor.variableId,
                 })
@@ -326,7 +330,7 @@ export default function PromptAttributeField({
       {editing !== null && codebookDocument !== null && subject !== null && (
         <Dialog
           open
-          title={editing.label}
+          title={editingTitle}
           size="readable"
           closeDialog={closeEditor}
           finalFocus={() =>
@@ -368,8 +372,8 @@ export default function PromptAttributeField({
                 createType,
               )}
               allowedVariableTypes={types}
-              description={editing.label}
-              title={editing.label}
+              description={editingTitle}
+              title={editingTitle}
               createRequestId={() => uuid()}
               onSubmitRequest={(request) =>
                 controller.requestCompoundEdit(request)
