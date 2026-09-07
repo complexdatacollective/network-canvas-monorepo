@@ -9,6 +9,9 @@ import {
   type ComponentType,
 } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import {
@@ -100,49 +103,96 @@ const useAssignAttributesContext = () => {
   return context;
 };
 
-const BOOLEAN_OPTIONS = [
-  { label: 'True', value: true },
-  { label: 'False', value: false },
-];
+const messages = defineMessages({
+  booleanTrue: {
+    id: 'protocolBuilder.assignAttributes.booleanTrue',
+    defaultMessage: 'True',
+    description:
+      'One of the two values a prompt can stamp onto every node it creates, for an attribute that records a yes/no answer. A prompt is the question a participant reads.',
+  },
+  booleanFalse: {
+    id: 'protocolBuilder.assignAttributes.booleanFalse',
+    defaultMessage: 'False',
+    description:
+      'The other of the two values a prompt can stamp onto every node it creates, for an attribute that records a yes/no answer.',
+  },
+  unassignedTitle: {
+    id: 'protocolBuilder.assignAttributes.unassignedTitle',
+    defaultMessage: '“{variableName}” was created but not assigned',
+    description:
+      'Title of the notice shown when a codebook attribute the researcher created from a row was created successfully but could not be put into that row. variableName is the name they typed and is not translated.',
+  },
+  rowReplaced: {
+    id: 'protocolBuilder.assignAttributes.rowReplaced',
+    defaultMessage:
+      'The row you created “{variableName}” from was replaced while it was being created, so nothing has been assigned to it. Select “{variableName}” in the row you want it in.',
+    description:
+      'Body of that notice, for when the row the researcher started from has been replaced by a different one. variableName is the attribute name they typed and is not translated.',
+  },
+  listClosed: {
+    id: 'protocolBuilder.assignAttributes.listClosed',
+    defaultMessage:
+      '“{variableName}” was created, but this list stopped accepting changes while it was being created, so nothing has been assigned to it. Select “{variableName}” in the row you want it in once the list can be edited.',
+    description:
+      'Body of that notice, for when the list stopped accepting changes while the attribute was being created. variableName is the attribute name the researcher typed and is not translated.',
+  },
+  rowGone: {
+    id: 'protocolBuilder.assignAttributes.rowGone',
+    defaultMessage:
+      '“{variableName}” was created, but the row it was created from is no longer in this list, so nothing has been assigned to it. Select “{variableName}” in the row you want it in.',
+    description:
+      'Body of that notice, for when the row the researcher started from has left the list altogether. variableName is the attribute name they typed and is not translated.',
+  },
+  variableLabel: {
+    id: 'protocolBuilder.assignAttributes.variableLabel',
+    defaultMessage: 'Create or select an attribute',
+    description:
+      'Label of the control that picks (or adds) the codebook attribute this row stamps onto every node the prompt creates.',
+  },
+  valueLabel: {
+    id: 'protocolBuilder.assignAttributes.valueLabel',
+    defaultMessage: 'Value to assign',
+    description:
+      'Label of the control that chooses which value this row stamps onto every node the prompt creates.',
+  },
+  valueHint: {
+    id: 'protocolBuilder.assignAttributes.valueHint',
+    defaultMessage: 'Every node created on this prompt is given this value.',
+    description:
+      'Hint under the value control, saying what stamping means: a node is a member of the interview network, and a prompt is the question a participant reads.',
+  },
+  deleteRow: {
+    id: 'protocolBuilder.assignAttributes.deleteRow',
+    defaultMessage: 'Delete attribute',
+    description:
+      'Accessible name of the button that removes one row from the list of attributes a prompt stamps onto the nodes it creates. It removes the row, not the attribute from the codebook.',
+  },
+});
 
 const REQUIRED_ONLY: readonly RowValidator[] = [requiredRow()];
 
 /**
- * Said when the row a new attribute was created from is no longer that row.
- * The attribute itself exists — creating it is the host's write, and it
- * succeeded — so this says where it went and what to do with it, rather than
- * reporting a failure.
- */
-const rowReplacedMessage = (variableName: string) =>
-  `The row you created “${variableName}” from was replaced while it was being created, so nothing has been assigned to it. Select “${variableName}” in the row you want it in.`;
-
-/**
- * Said when the list stopped accepting changes while the attribute was being
- * created — a lost lease, a section whose prerequisite stopped being chosen.
- * `ArrayField` withdraws the row's update handler when that happens, and it is
- * silent about it: an optional call here assigns nothing and says nothing,
- * which reads as an assignment that worked.
+ * The three things the creation round trip can outlive, in the words the
+ * researcher reads.
  *
- * Like `rowReplacedMessage` this reports where the attribute went rather than a
- * failure — creating it is the host's write, and it succeeded.
- */
-const listClosedMessage = (variableName: string) =>
-  `“${variableName}” was created, but this list stopped accepting changes while it was being created, so nothing has been assigned to it. Select “${variableName}” in the row you want it in once the list can be edited.`;
-
-/**
- * Said when the assignment reached no row at all.
+ * `rowReplaced` is said when the row a new attribute was created from is no
+ * longer that row. `listClosed` is said when the list stopped accepting
+ * changes while the attribute was being created — a lost lease, a section
+ * whose prerequisite stopped being chosen — which `ArrayField` reports only by
+ * withdrawing the row’s update handler: an optional call assigns nothing and
+ * says nothing, which reads as an assignment that worked. `rowGone` is said
+ * when the assignment reached no row at all, the one case re-checking this
+ * control cannot see for itself: a row that has left the list stops being
+ * rendered — `ArrayField` even keeps its editor mounted on frozen props while
+ * it animates out — so the row it last saw still reads as unchanged and the
+ * handler it last had still reads as live. `onUpdate` answering for itself is
+ * what turns that into something to say.
  *
- * The third thing the round trip can outlive, and the one re-checking this
- * control cannot see: the row leaving the list altogether. Both checks above
- * read values this control is handed on every render, and a row that has gone
- * stops being rendered — `ArrayField` even keeps its editor mounted on frozen
- * props while it animates out — so the row it last saw still reads as
- * unchanged and the handler it last had still reads as live. Both pass, and
- * the assignment lands on nothing. `onUpdate` answering for itself is what
- * turns that into something to say.
+ * All three report where the attribute WENT rather than a failure: creating it
+ * is the host’s write, and it succeeded. Formatted here rather than encoded,
+ * because they are handed straight to the notice as its description, which
+ * renders whatever it is given.
  */
-const rowGoneMessage = (variableName: string) =>
-  `“${variableName}” was created, but the row it was created from is no longer in this list, so nothing has been assigned to it. Select “${variableName}” in the row you want it in.`;
 
 /**
  * Every variable id an array's COMMITTED value holds.
@@ -254,8 +304,16 @@ export default function Attribute({
     committedVariableIds,
     forceShowErrors,
   } = useAssignAttributesContext();
+  const intl = useAppIntl();
   const { protocolContext, identity } = useStageEditorForm();
   const { openDialog } = useDialog();
+  const booleanOptions = useMemo(
+    () => [
+      { label: intl.formatMessage(messages.booleanTrue), value: true },
+      { label: intl.formatMessage(messages.booleanFalse), value: false },
+    ],
+    [intl],
+  );
   // Read when the creation COMPLETES, not when the row was drawn: the whole
   // point is that the two are different moments. The handler is read the same
   // way and for the same reason — `ArrayField` withdraws it while the list is
@@ -349,17 +407,25 @@ export default function Attribute({
           await openDialog({
             type: 'acknowledge',
             intent: 'warning',
-            title: `“${variableName}” was created but not assigned`,
+            title: intl.formatMessage(messages.unassignedTitle, {
+              variableName,
+            }),
             description,
-            actions: { primary: { label: 'Continue', value: true } },
+            actions: {
+              primary: {
+                label: intl.formatMessage(commonMessages.continue),
+                value: true,
+              },
+            },
           });
         };
 
         if (!stillTheSameRow || assign === undefined) {
           await unassigned(
-            stillTheSameRow
-              ? listClosedMessage(variableName)
-              : rowReplacedMessage(variableName),
+            intl.formatMessage(
+              stillTheSameRow ? messages.listClosed : messages.rowReplaced,
+              { variableName },
+            ),
           );
           return false;
         }
@@ -369,7 +435,9 @@ export default function Attribute({
         // guards read, so the write itself is what has to answer — see
         // `onUpdate` in fresco-ui's `ArrayFieldItemProps`.
         if (assign({ variable: created }) === false) {
-          await unassigned(rowGoneMessage(variableName));
+          await unassigned(
+            intl.formatMessage(messages.rowGone, { variableName }),
+          );
           return false;
         }
         return true;
@@ -382,7 +450,7 @@ export default function Attribute({
       <div>
         <RowField
           name={`${rowFieldName}.variable`}
-          label="Create or select an attribute"
+          label={intl.formatMessage(messages.variableLabel)}
           component={variablePickerComponent}
           value={variable}
           onChange={(value: unknown) =>
@@ -401,8 +469,8 @@ export default function Attribute({
         {variable && (
           <RowField
             name={`${rowFieldName}.value`}
-            label="Value to assign"
-            hint="Every node created on this prompt is given this value."
+            label={intl.formatMessage(messages.valueLabel)}
+            hint={intl.formatMessage(messages.valueHint)}
             component={FrescoBooleanControl}
             value={item.value}
             onChange={(value: unknown) =>
@@ -412,7 +480,7 @@ export default function Attribute({
             }
             validators={REQUIRED_ONLY}
             forceShowErrors={forceShowErrors}
-            options={BOOLEAN_OPTIONS}
+            options={booleanOptions}
             noReset
             disabled={disabled || readOnly}
           />
@@ -420,7 +488,7 @@ export default function Attribute({
       </div>
       <IconButton
         icon={<Trash2 />}
-        aria-label="Delete attribute"
+        aria-label={intl.formatMessage(messages.deleteRow)}
         color="destructive"
         disabled={disabled || readOnly}
         onClick={onDelete}

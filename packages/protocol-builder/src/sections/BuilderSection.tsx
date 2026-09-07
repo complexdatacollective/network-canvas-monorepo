@@ -1,5 +1,8 @@
 import { type ReactNode, useCallback, useRef, useState } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Section from '@codaco/fresco-ui/Section';
 
@@ -29,10 +32,17 @@ export type SectionCapability = Readonly<{
    * with the section expanded.
    */
   fields: readonly string[];
+  /**
+   * Descriptors rather than strings, because the section that owns the
+   * capability owns its words: a string handed in here is invisible to
+   * extraction, absent from the catalogs and untranslatable, so the one place
+   * a researcher is warned what they are about to lose would be the one place
+   * that stayed English.
+   */
   confirmClear: Readonly<{
-    title: string;
-    description: string;
-    confirmLabel: string;
+    title: MessageDescriptor;
+    description: MessageDescriptor;
+    confirmLabel: MessageDescriptor;
   }>;
 }>;
 
@@ -109,6 +119,7 @@ export default function BuilderSection({
   children,
 }: BuilderSectionProps) {
   const { readOnly } = useStageEditorForm();
+  const intl = useAppIntl();
   const { confirm } = useDialog();
   const clearStageValue = useClearStageValue();
   const configured = useStageHasAnyValue(capability?.fields ?? NO_FIELDS);
@@ -151,10 +162,19 @@ export default function BuilderSection({
       // it would be replayed into a capability the editor says is off.
       if (configured) {
         const confirmed = await confirm({
-          title: capability?.confirmClear.title ?? '',
-          description: capability?.confirmClear.description ?? '',
-          confirmLabel: capability?.confirmClear.confirmLabel ?? '',
-          cancelLabel: 'Cancel',
+          title:
+            capability === undefined
+              ? ''
+              : intl.formatMessage(capability.confirmClear.title),
+          description:
+            capability === undefined
+              ? ''
+              : intl.formatMessage(capability.confirmClear.description),
+          confirmLabel:
+            capability === undefined
+              ? ''
+              : intl.formatMessage(capability.confirmClear.confirmLabel),
+          cancelLabel: intl.formatMessage(commonMessages.cancel),
           intent: 'warning',
           onConfirm: () => undefined,
         });
@@ -172,7 +192,7 @@ export default function BuilderSection({
       setSwitchedOn(false);
       return true;
     },
-    [capability, clearStageValue, configured, confirm],
+    [capability, clearStageValue, configured, confirm, intl],
   );
 
   const body = (

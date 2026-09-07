@@ -11,6 +11,7 @@ import {
   useState,
 } from 'react';
 
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import FormErrorsList from '@codaco/fresco-ui/form/FormErrors';
 import { useForm } from '@codaco/fresco-ui/form/hooks/useForm';
 import FormStoreProvider, {
@@ -496,14 +497,53 @@ function useCommittedFields(
   return committed.current;
 }
 
-const READ_ONLY_MESSAGE =
-  'This stage is read-only, so your changes were not saved. Take over editing and try again.';
+/**
+ * What a save or a structural write that reached nothing is called on screen.
+ *
+ * Encoded rather than formatted, because none of the three is rendered where
+ * it is decided: they are handed to the form as `formErrors`, held there until
+ * something replaces them, and rendered by `FormErrors`, which decodes them —
+ * so a refusal already on screen follows a change of language.
+ */
+const messages = defineMessages({
+  readOnly: {
+    id: 'protocolBuilder.shell.readOnlyRefusal',
+    defaultMessage:
+      'This stage is read-only, so your changes were not saved. Take over editing and try again.',
+    description:
+      'Shown above a stage editor’s fields when the researcher no longer holds the right to edit this stage (a stage is one step of an interview) and something they did would have written to it. Taking over editing is an action offered elsewhere in the host application.',
+  },
+  formUnavailable: {
+    id: 'protocolBuilder.shell.formUnavailableRefusal',
+    defaultMessage:
+      'This stage could not be saved because its form is no longer available. Reopen the stage and try again.',
+    description:
+      'Shown above a stage editor’s fields when a save arrives after the editor’s own form has been taken down, so there are no values left to save.',
+  },
+  saveFailed: {
+    id: 'protocolBuilder.shell.saveFailedRefusal',
+    defaultMessage:
+      'This stage could not be saved. Wait a moment and try again.',
+    description:
+      'Shown above a stage editor’s fields when saving failed for a reason that carried no explanation of its own. The last resort, used only when the failure said nothing readable.',
+  },
+});
 
-const UNAVAILABLE_MESSAGE =
-  'This stage could not be saved because its form is no longer available. Reopen the stage and try again.';
+const READ_ONLY_MESSAGE = createMessageError(messages.readOnly);
 
+const UNAVAILABLE_MESSAGE = createMessageError(messages.formUnavailable);
+
+/**
+ * The failure's own account of itself where it has one, and this package's
+ * sentence where it does not.
+ *
+ * A host's message is passed through as it stands: it is already written for
+ * the researcher, and `FormErrors` renders either an encoded descriptor or a
+ * plain sentence — `formatMessageError(text, intl) ?? text` — so a host that
+ * localizes its own failures is carried too.
+ */
 function failureMessage(error: unknown): string {
   return error instanceof Error && error.message !== ''
     ? error.message
-    : 'This stage could not be saved. Wait a moment and try again.';
+    : createMessageError(messages.saveFailed);
 }

@@ -30,6 +30,7 @@ import DialogArrayField, {
   type DialogArrayEditorValidate,
 } from '../DialogArrayField.tsx';
 import { useArrayFieldCommands } from '../useArrayFieldCommands.ts';
+import { promptItemLabel } from './itemLabel.ts';
 
 /**
  * `layoutId` is a Motion prop, so it leaves no trace in the DOM: what the row
@@ -236,7 +237,7 @@ function renderPromptList(
             addButtonLabel="Create new prompt"
             editorTitle="Edit prompt"
             addTitle="Add prompt"
-            itemLabel="prompt"
+            itemLabel={promptItemLabel}
             disabled={disabled}
             previewComponent={PromptPreview}
             editorFieldsComponent={extra?.editorFieldsComponent ?? PromptFields}

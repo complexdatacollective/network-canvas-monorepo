@@ -8,6 +8,9 @@ import {
   useState,
 } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import Dialog, { type DialogProps } from '@codaco/fresco-ui/dialogs/Dialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
@@ -30,6 +33,15 @@ import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import { ResizableFlexPanel } from '@codaco/fresco-ui/ResizableFlexPanel';
 
 import { useDiscardDraftGuard } from './discardDraftGuard.ts';
+
+const dialogMessages = defineMessages({
+  resizeHandle: {
+    id: 'protocolBuilder.dialogForm.resizeHandle',
+    defaultMessage: 'Resize form and preview panes',
+    description:
+      'Accessible name of the divider a researcher drags to give more room either to the fields of an editing dialog or to the live preview beside them.',
+  },
+});
 
 /**
  * What a form-level check — or a save the host could not take — reports.
@@ -240,7 +252,7 @@ function DialogFormBody({
   validate,
   onSubmit,
   submitLabel,
-  cancelLabel = 'Cancel',
+  cancelLabel,
   size,
   layoutId,
   style,
@@ -248,6 +260,7 @@ function DialogFormBody({
   aside,
   children,
 }: DialogFormProps) {
+  const intl = useAppIntl();
   const storeApi = useContext(FormStoreContext);
   const { isSubmitting } = useFormMeta();
 
@@ -346,7 +359,7 @@ function DialogFormBody({
             onClick={requestClose}
             disabled={isSubmitting}
           >
-            {cancelLabel}
+            {cancelLabel ?? intl.formatMessage(commonMessages.cancel)}
           </Button>
           <SubmitButton form={domFormId}>{submitLabel}</SubmitButton>
         </>
@@ -365,7 +378,7 @@ function DialogFormBody({
             min={30}
             max={70}
             stickyHandle
-            aria-label="Resize form and preview panes"
+            aria-label={intl.formatMessage(dialogMessages.resizeHandle)}
             className="[&>button>span]:bg-text/30 @min-[60rem]:[&>button:hover>span]:bg-text/50 @min-[60rem]:[&>button:focus-visible>span]:bg-text/50 w-full min-w-0 flex-col items-start gap-8 @min-[60rem]:flex-row @min-[60rem]:gap-0 [&>button]:hidden @min-[60rem]:[&>button]:flex"
           >
             <FormWithoutProvider
