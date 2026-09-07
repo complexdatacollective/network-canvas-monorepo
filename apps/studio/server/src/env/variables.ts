@@ -57,7 +57,8 @@ export const serverSchemas = {
 
   DATABASE_URL: z.string().min(1).optional(),
   STUDIO_ENCRYPTION_KEYSET: z.string().min(1).max(32_768).optional(),
-  // Parsed and required only by the explicit migration entrypoint.
+  STUDIO_MAINTENANCE_DATABASE_URL: z.string().min(1).optional(),
+  // Parsed by production runtime admission and explicit operator entrypoints.
   STUDIO_DATABASE_ALLOWED_LOGINS: z.string().optional(),
   STUDIO_DATABASE_ADMINISTRATIVE_LOGINS: z.string().optional(),
 

@@ -147,21 +147,32 @@ describe('actual server encryption startup and operator entrypoints', () => {
         (await pool.query('SELECT * FROM encryption_key_verifications'))
           .rowCount,
       ).toBe(8);
-      const login = `pii_runtime_${randomUUID().replaceAll('-', '')}`;
+      const suffix = randomUUID().replaceAll('-', '');
+      const appLogin = `pii_app_${suffix}`;
+      const maintenanceLogin = `pii_maintenance_${suffix}`;
       const password = 'pii-runtime-synthetic-only';
       const url = new URL(db.url);
       const databaseName = escapeIdentifier(url.pathname.slice(1));
-      await pool.query(`CREATE ROLE ${escapeIdentifier(login)} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD ${escapeLiteral(password)};
-        GRANT studio_app, studio_maintenance TO ${escapeIdentifier(login)} WITH ADMIN FALSE, SET TRUE, INHERIT FALSE;
-        GRANT CONNECT ON DATABASE ${databaseName} TO ${escapeIdentifier(login)}`);
-      url.username = login;
+      for (const [login, role] of [
+        [appLogin, 'studio_app'],
+        [maintenanceLogin, 'studio_maintenance'],
+      ] as const) {
+        await pool.query(`CREATE ROLE ${escapeIdentifier(login)} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD ${escapeLiteral(password)};
+          GRANT ${escapeIdentifier(role)} TO ${escapeIdentifier(login)} WITH ADMIN FALSE, SET TRUE, INHERIT FALSE;
+          GRANT CONNECT ON DATABASE ${databaseName} TO ${escapeIdentifier(login)}`);
+      }
+      url.username = appLogin;
       url.password = password;
+      const maintenanceUrl = new URL(url);
+      maintenanceUrl.username = maintenanceLogin;
       const runtimeEnv = {
         ...env,
         DATABASE_URL: url.href,
+        STUDIO_MAINTENANCE_DATABASE_URL: maintenanceUrl.href,
         STUDIO_DATABASE_ALLOWED_LOGINS: JSON.stringify([
           ...allowedLogins,
-          login,
+          appLogin,
+          maintenanceLogin,
         ]),
       };
       try {
@@ -193,8 +204,10 @@ describe('actual server encryption startup and operator entrypoints', () => {
           );
         }
       } finally {
-        await pool.query(`REVOKE CONNECT ON DATABASE ${databaseName} FROM ${escapeIdentifier(login)};
-          DROP ROLE ${escapeIdentifier(login)}`);
+        for (const login of [appLogin, maintenanceLogin]) {
+          await pool.query(`REVOKE CONNECT ON DATABASE ${databaseName} FROM ${escapeIdentifier(login)};
+            DROP ROLE ${escapeIdentifier(login)}`);
+        }
       }
     });
   });

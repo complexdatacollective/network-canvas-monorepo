@@ -97,6 +97,7 @@ describe('development defaults', () => {
       vi.stubEnv(name, value);
     const env = readEnv();
     expect(env.db).toEqual({ url: DEV_DATABASE_URL });
+    expect(env.maintenanceDb).toEqual({ url: DEV_DATABASE_URL });
     expect(env.s3?.endpoint).toBe(DEV_S3_ENDPOINT);
     expect(env.s3?.bucket).toBe(DEV.s3Bucket);
     expect(env.auth?.baseUrl).toBe(DEV.baseUrl);
@@ -378,12 +379,38 @@ describe('database and auth', () => {
     expect(readEnv().db).toEqual({
       url: 'postgres://app@localhost:5433/other',
     });
+    expect(readEnv().maintenanceDb).toEqual({
+      url: 'postgres://app@localhost:5433/other',
+    });
+  });
+
+  it('keeps a separately configured maintenance login distinct from the app login', () => {
+    vi.stubEnv('DATABASE_URL', 'postgres://app@localhost:5433/other');
+    vi.stubEnv(
+      'STUDIO_MAINTENANCE_DATABASE_URL',
+      'postgres://maintenance@localhost:5433/other',
+    );
+    expect(readEnv().maintenanceDb).toEqual({
+      url: 'postgres://maintenance@localhost:5433/other',
+    });
+  });
+
+  it('refuses a maintenance login without an application database', () => {
+    vi.stubEnv('DATABASE_URL', '');
+    vi.stubEnv(
+      'STUDIO_MAINTENANCE_DATABASE_URL',
+      'postgres://maintenance@localhost:5433/other',
+    );
+    expect(() => readEnv()).toThrow(
+      'DATABASE_URL is required when STUDIO_MAINTENANCE_DATABASE_URL is set',
+    );
   });
 
   it('is unconfigured without DATABASE_URL, and auth follows it down', () => {
     vi.stubEnv('DATABASE_URL', '');
     const env = readEnv();
     expect(env.db).toBeUndefined();
+    expect(env.maintenanceDb).toBeUndefined();
     expect(env.auth).toBeUndefined();
   });
 

@@ -147,8 +147,10 @@ helper for disposable developer resets, demos and test fixtures.
   every enrolled non-administrative login remain protected regardless of evidence
   ownership; the actual runtime session is protected even if it becomes the
   database owner. An offline database owner or explicitly configured administrative login remains able to administer evidence; configuring the actual scoped serving login as administrative never exempts it.
-  Startup and readiness additionally verify the actual app and maintenance login
-  capabilities. Only `allowUnversioned: true`, passed from validated local
+  Startup and readiness additionally verify the actual app and maintenance
+  login capabilities. Production supplies those as distinct connections whose
+  logins may assume exactly their intended singleton runtime role. Only
+  `allowUnversioned: true`, passed from validated local
   development configuration, skips enrollment/ACL provenance requirements;
   relation-shape and owner-backed-action checks still apply.
 

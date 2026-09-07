@@ -161,19 +161,30 @@ export const CATALOGUE: Record<VariableName, VariableDoc> = {
 
   DATABASE_URL: {
     group: 'Database',
-    summary: 'Postgres connection string, `pg.Pool`’s native format.',
+    summary:
+      'Postgres application connection string, `pg.Pool`’s native format.',
     deployment:
-      'Unset ⇒ no database; auth and sync refuse while the server still boots. Use a dedicated deployment login. The migration connection owns the database and schema; the runtime connection assumes `studio_app` or `studio_maintenance`.',
+      'Unset ⇒ no database; auth and sync refuse while the server still boots. The persistent server uses a dedicated LOGIN permitted to SET only `studio_app`. Offline migration, reset, seed, backup and restore commands receive their separate administrative or backup `DATABASE_URL` for that invocation.',
     devDefault: DEV_DATABASE_URL,
     example: 'postgres://user:password@host:5432/studio',
+  },
+
+  STUDIO_MAINTENANCE_DATABASE_URL: {
+    group: 'Database',
+    summary:
+      'Postgres maintenance-worker connection string, `pg.Pool`’s native format.',
+    deployment:
+      'Required by every persistent server with a database. Use a distinct dedicated LOGIN permitted to SET only `studio_maintenance`; never reuse the application, migration, restore, or backup LOGIN. Explicit local development alone falls back to `DATABASE_URL`.',
+    example: 'postgres://maintenance:password@host:5432/studio',
   },
 
   STUDIO_DATABASE_ALLOWED_LOGINS: {
     group: 'Database',
     summary: 'JSON array of this deployment’s database login names.',
     deployment:
-      'Required by `migrate` and by every persistent server outside explicit local development. Enroll the database owner, migration login, runtime login, and any separately provisioned backup login. Provision explicit CONNECT before admitting database connections. Migration, startup, and readiness refuse PUBLIC, shared-role, missing, or unexpected access.',
-    example: '["studio_migrator","studio_runtime"]',
+      'Required by `migrate` and by every persistent server outside explicit local development. Enroll the database owner, migration login, distinct application and maintenance runtime logins, and any separately provisioned backup login. Provision explicit CONNECT before admitting database connections. Migration, startup, and readiness refuse PUBLIC, shared-role, missing, or unexpected access.',
+    example:
+      '["studio_migrator","studio_app_runtime","studio_maintenance_runtime"]',
   },
 
   STUDIO_DATABASE_ADMINISTRATIVE_LOGINS: {

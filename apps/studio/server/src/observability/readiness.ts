@@ -1,7 +1,7 @@
 import type pg from 'pg';
 
 import { assertSafePostgresRuntimeIdentity } from '@codaco/studio-sync/postgres-runtime-identity';
-import { TENANT_ROLES } from '@codaco/studio-sync/rls';
+import { BACKUP_ROLE, TENANT_ROLES } from '@codaco/studio-sync/rls';
 
 import type { AssetStore } from '../assets.ts';
 import { checkSchema, type SchemaState } from '../db/schema.ts';
@@ -29,6 +29,10 @@ export function createReadiness(options: {
   const administrativeLogins = options.administrativeLogins
     ? [...options.administrativeLogins]
     : [];
+  const runtimeRoleSets = [
+    [TENANT_ROLES.app],
+    [TENANT_ROLES.maintenance],
+  ] as const;
   const database = new BoundedProbe<SchemaState>(
     pool
       ? (signal) =>
@@ -37,7 +41,9 @@ export function createReadiness(options: {
             if (!allowUnversionedSchema)
               await assertSafePostgresRuntimeIdentity(client, {
                 intendedRole: TENANT_ROLES.app,
-                allowedRoles: Object.values(TENANT_ROLES),
+                allowedRoles: [TENANT_ROLES.app],
+                runtimeRoleSets,
+                backupRole: BACKUP_ROLE,
                 allowedLogins,
                 administrativeLogins,
               });
@@ -50,7 +56,9 @@ export function createReadiness(options: {
               await withProbeClient(maintenancePool, signal, (maintenance) =>
                 assertSafePostgresRuntimeIdentity(maintenance, {
                   intendedRole: TENANT_ROLES.maintenance,
-                  allowedRoles: Object.values(TENANT_ROLES),
+                  allowedRoles: [TENANT_ROLES.maintenance],
+                  runtimeRoleSets,
+                  backupRole: BACKUP_ROLE,
                   allowedLogins,
                   administrativeLogins,
                 }),
