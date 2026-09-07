@@ -50,6 +50,7 @@
     "./StageEditor": "./src/StageEditor.tsx",
     "./stageEditorRegistry": "./src/stageEditorRegistry.ts",
     "./styles.css": "./src/styles.css",
+    "./testing/renderStageEditor": "./src/testing/renderStageEditor.tsx",
     "./validation-attribution": "./src/validationAttribution.ts"
   },
   "scripts": {
