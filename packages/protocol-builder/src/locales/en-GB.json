@@ -13,5 +13,7 @@
   "protocolBuilder.narrativePedigree.diseaseNameHint": "Shown to the participant in the pedigree's key, so it should be a name they recognise.",
   "protocolBuilder.narrativePedigree.sourceDescription": "Choose the Family Pedigree stage whose family this stage visualises.",
   "protocolBuilder.narrativePedigree.sourceNotAPedigree": "The stage this one reads is no longer a Family Pedigree, so there is no family for it to visualise. Choose a Family Pedigree stage instead.",
+  "protocolBuilder.networkCanvas.backgroundSkewHint": "Gives the inner rings more room than the outer ones, so nodes placed near the centre overlap less.",
+  "protocolBuilder.networkCanvas.tapBehaviourLabel": "Tap behaviour",
   "protocolBuilder.pedigree.dependentStagesDescription": "These stages visualise this pedigree's network and map their own attributes onto its node type: {stageNames}. Changing the node type here will leave them pointing at attributes the new type does not have."
 }

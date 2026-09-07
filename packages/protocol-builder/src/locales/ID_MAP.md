@@ -118,6 +118,7 @@ name not here adds it here first, in the same pull request.
 | `pageContent`               | `sections/PageContentSection.tsx`                                                                                                                                                | sections  |
 | `contentBlock`              | `sections/contentBlocks/contentBlockTypes.ts`, `ContentBlockEditor.tsx`, `ContentBlockPreview.tsx`                                                                               | sections  |
 | `promptsSection`            | `sections/PromptsSection.tsx`                                                                                                                                                    | sections  |
+| `networkCanvas`             | `sections/network/`, `editors/network/SociogramStageEditor.tsx`                                                                                                                  | family F  |
 | `pedigree`                  | `sections/pedigree/`                                                                                                                                                             | family F  |
 | `narrativePedigree`         | `sections/narrativePedigree/`                                                                                                                                                    | family F  |
 
@@ -148,7 +149,8 @@ has to have exactly one:
   be the single home of each id.
 - `form/arrayFields/arrayMessages.ts` — the generic row noun every array-field
   sentence is built around.
-- `sections/pedigree/pedigreeMessages.ts` and
+- `sections/network/networkCanvasMessages.ts`,
+  `sections/pedigree/pedigreeMessages.ts` and
   `sections/narrativePedigree/narrativePedigreeMessages.ts` — one file per
   interface family, holding EVERYTHING that family says rather than only its
   shared strings. See "One file per family", below.
@@ -230,14 +232,15 @@ Named here so a later split takes the name rather than inventing a synonym.
 
 ### One file per family — the interface families
 
-| `<area>`            | Owns the copy in              | Declared in                                               |
-| ------------------- | ----------------------------- | --------------------------------------------------------- |
-| `pedigree`          | `sections/pedigree/`          | `sections/pedigree/pedigreeMessages.ts`                   |
-| `narrativePedigree` | `sections/narrativePedigree/` | `sections/narrativePedigree/narrativePedigreeMessages.ts` |
+| `<area>`            | Owns the copy in                                                | Declared in                                               |
+| ------------------- | --------------------------------------------------------------- | --------------------------------------------------------- |
+| `networkCanvas`     | `sections/network/`, `editors/network/SociogramStageEditor.tsx` | `sections/network/networkCanvasMessages.ts`               |
+| `pedigree`          | `sections/pedigree/`                                            | `sections/pedigree/pedigreeMessages.ts`                   |
+| `narrativePedigree` | `sections/narrativePedigree/`                                   | `sections/narrativePedigree/narrativePedigreeMessages.ts` |
 
-The remaining three families of the same series — `networkCanvas`,
-`geospatial` and `anonymisation` — keep their reserved names above and add a
-row here as each lands.
+The remaining two families of the same series — `geospatial` and
+`anonymisation` — keep their reserved names above and add a row here as each
+lands.
 
 A `*Messages.ts` per family, holding every id the family declares — rather than
 descriptors beside each section's markup, which is the rule everywhere else in
