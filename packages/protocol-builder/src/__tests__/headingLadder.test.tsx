@@ -16,6 +16,7 @@ import VariableEditor from '../codebook/components/VariableEditor.tsx';
 import * as validationEditorStories from '../codebook/validation/CodebookVariableValidationEditor.stories.tsx';
 import CodebookVariableValidationEditor from '../codebook/validation/CodebookVariableValidationEditor.tsx';
 import * as familyPedigreeEditorStories from '../editors/pedigree/FamilyPedigreeStageEditor.stories.tsx';
+import * as narrativePedigreeEditorStories from '../editors/pedigree/NarrativePedigreeStageEditor.stories.tsx';
 import * as shellStories from '../form/StageEditorShell.stories.tsx';
 import StageEditorShell from '../form/StageEditorShell.tsx';
 import type { ProtocolBuilderProtocolContext } from '../protocol-context.ts';
@@ -266,6 +267,50 @@ describe('the stage editor shell', () => {
   });
 });
 
+describe('a heading a section writes inside itself', () => {
+  /**
+   * A section can hold another section, and the prose and group headings
+   * inside one belong under whichever of them they sit in. Nothing on a story
+   * proves that: at the depth the stories open at, a heading written as a
+   * fixed `h4` happens to land on the rung the ladder wanted, and axe's
+   * `heading-order` only refuses a SKIP — a heading written as a peer of the
+   * section containing it reads to anyone navigating by headings as though
+   * that section had ended, and passes the rule.
+   *
+   * So the levels are read out here, from the arrangement that moves them: a
+   * host that mounts a whole editor under a heading of its own. The whole
+   * ladder moves together, the prose headings written inside a section
+   * included — fixed at `h4`, the two explanations below became peers of the
+   * section explaining them the moment a host stated a heading of its own, and
+   * a section is exactly what a host of this editor is.
+   */
+  it('moves prose inside a section down with the editor around it', async () => {
+    const { Editing } = composeStories(narrativePedigreeEditorStories);
+
+    render(
+      <div>
+        <h2>Prompt configuration</h2>
+        <EnclosingHeadingLevel level="h2">
+          <Editing />
+        </EnclosingHeadingLevel>
+      </div>,
+    );
+
+    expect(headingLadder()).toEqual([
+      'h2: Prompt configuration',
+      'h3: Stage name',
+      'h4: Pedigree source',
+      'h4: Diseases',
+      'h4: At-risk statuses',
+      'h5: How it is worked out',
+      'h5: Why this is off by default',
+      'h4: Skip logic',
+      'h4: Interviewer guidance',
+    ]);
+    await expectHeadingOrder(9);
+  });
+});
+
 /**
  * The stories are the surfaces a reviewer looks at and the ones Chromatic and
  * the Storybook a11y addon replay, so the rule is run over them here too —
@@ -303,6 +348,10 @@ describe('every story of a surface that writes its own heading', () => {
     ...from(
       'FamilyPedigreeStageEditor',
       composeStories(familyPedigreeEditorStories),
+    ),
+    ...from(
+      'NarrativePedigreeStageEditor',
+      composeStories(narrativePedigreeEditorStories),
     ),
   ];
 

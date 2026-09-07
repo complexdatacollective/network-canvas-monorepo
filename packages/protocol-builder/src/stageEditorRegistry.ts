@@ -163,7 +163,6 @@ export const AWAITING_STAGE_EDITORS = [
   'NameGeneratorQuickAdd',
   'NameGeneratorRoster',
   'Narrative',
-  'NarrativePedigree',
   'NetworkComposer',
   'OneToManyDyadCensus',
   'OrdinalBin',

@@ -10,6 +10,7 @@ import {
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import { shimMarkdownEditorMeasurement } from '../pedigree/__tests__/editorFixtures.tsx';
 import { FamilyPedigreeStageEditor } from '../pedigree/FamilyPedigreeStageEditor.tsx';
+import { NarrativePedigreeStageEditor } from '../pedigree/NarrativePedigreeStageEditor.tsx';
 
 shimMarkdownEditorMeasurement();
 
@@ -28,6 +29,11 @@ const CLAIMED = [
     stageType: 'FamilyPedigree',
     editor: FamilyPedigreeStageEditor,
     sections: ['Pedigree framing'],
+  },
+  {
+    stageType: 'NarrativePedigree',
+    editor: NarrativePedigreeStageEditor,
+    sections: ['Pedigree source'],
   },
 ] as const satisfies readonly {
   stageType: StageType;
@@ -81,9 +87,7 @@ describe('the interfaces the pedigree family claims', () => {
    *
    * One test rather than one per interface, because the claim is comparative
    * — each discriminator has to name exactly ONE of these editors, which
-   * cannot be asserted from inside a single render. It is written that way
-   * while the family claims one interface so that the interfaces still to
-   * land join the list rather than rewriting the assertion.
+   * cannot be asserted from inside a single render.
    */
   it('opens each of them on its own editor', () => {
     const outlines = new Map<StageType, Set<string>>();

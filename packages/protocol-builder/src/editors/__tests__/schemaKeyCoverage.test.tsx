@@ -7,6 +7,7 @@ import type { StageEditorComponent } from '../../stage-editor-contract.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import {
   familyPedigreeEditor,
+  narrativePedigreeEditor,
   shimMarkdownEditorMeasurement,
 } from '../pedigree/__tests__/editorFixtures.tsx';
 
@@ -104,6 +105,23 @@ const FAMILY_PEDIGREE_FIELDS: SectionDoc = {
   ],
 };
 
+const NARRATIVE_PEDIGREE_FIELDS: SectionDoc = {
+  label: 'Narrative Pedigree',
+  interviewScript: INTERVIEW_SCRIPT,
+  skipLogic: SKIP_LOGIC,
+  sourceStageId: 'family-pedigree-1',
+  showAtRiskStatuses: true,
+  diseases: [
+    {
+      id: 'disease-1',
+      label: 'Condition X',
+      color: 'node-color-seq-1',
+      variable: 'hasConditionX',
+      inheritancePattern: 'autosomalDominant',
+    },
+  ],
+};
+
 type MaximalStage = Readonly<{
   stageType: StageType;
   editor: StageEditorComponent;
@@ -123,15 +141,21 @@ type MaximalStage = Readonly<{
  * an unowned key and a section that mangles one shows up as a changed value.
  *
  * Everything they name is real in the fixture protocol: the attributes are the
- * codebook's and the assets are the manifest's. A stage that referred to
- * something absent would be refused by the session's validation rather than by
- * the editor, which proves nothing about either.
+ * codebook's, the assets are the manifest's, and the stage a narrative
+ * pedigree reads from is the fixture's own family pedigree. A stage that
+ * referred to something absent would be refused by the session's validation
+ * rather than by the editor, which proves nothing about either.
  */
 const MAXIMAL: readonly MaximalStage[] = [
   {
     stageType: 'FamilyPedigree',
     editor: familyPedigreeEditor,
     fields: FAMILY_PEDIGREE_FIELDS,
+  },
+  {
+    stageType: 'NarrativePedigree',
+    editor: narrativePedigreeEditor,
+    fields: NARRATIVE_PEDIGREE_FIELDS,
   },
 ];
 
@@ -171,7 +195,10 @@ describe.each(MAXIMAL)(
 const FIXTURE_STAGES: readonly Readonly<{
   stageId: string;
   editor: StageEditorComponent;
-}>[] = [{ stageId: 'family-pedigree-1', editor: familyPedigreeEditor }];
+}>[] = [
+  { stageId: 'family-pedigree-1', editor: familyPedigreeEditor },
+  { stageId: 'narrative-pedigree-1', editor: narrativePedigreeEditor },
+];
 
 /**
  * The other half of the round trip, which the stages above cannot ask.
