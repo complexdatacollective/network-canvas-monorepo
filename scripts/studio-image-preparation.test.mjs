@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import {
   chmodSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
@@ -17,18 +18,36 @@ import {
 } from '../apps/studio/deployment/installer/release.mjs';
 import { command } from '../apps/studio/deployment/installer/verify.mjs';
 import { prepareStudioImages } from './studio-image-preparation.mjs';
+import { releasedDistribution } from './test-support/studio-release.mjs';
 
-const cwd = new URL('..', import.meta.url).pathname;
-const source = execFileSync('git', ['rev-parse', 'HEAD'], {
-  cwd,
-  encoding: 'utf8',
-}).trim();
+const workspace = new URL('..', import.meta.url).pathname;
 
 function fixture(t) {
   const directory = mkdtempSync(join(tmpdir(), 'studio-image-preparation-'));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
   const log = join(directory, 'commands.jsonl');
   const tool = join(directory, 'tool');
+  const repository = join(directory, 'repository');
+  mkdirSync(join(repository, 'apps/studio'), { recursive: true });
+  writeFileSync(
+    join(repository, 'apps/studio/docker-compose.yml'),
+    readFileSync(join(workspace, 'apps/studio/docker-compose.yml')),
+  );
+  execFileSync('git', ['init', '-q', '-b', 'main'], { cwd: repository });
+  execFileSync('git', ['config', 'user.name', 'Joshua Melville'], {
+    cwd: repository,
+  });
+  execFileSync('git', ['config', 'user.email', 'joshua@northwestern.edu'], {
+    cwd: repository,
+  });
+  execFileSync('git', ['add', '.'], { cwd: repository });
+  execFileSync('git', ['commit', '-qm', 'Image preparation fixture'], {
+    cwd: repository,
+  });
+  const source = execFileSync('git', ['rev-parse', 'HEAD'], {
+    cwd: repository,
+    encoding: 'utf8',
+  }).trim();
   writeFileSync(
     tool,
     '#!/usr/bin/env node\n' +
@@ -46,8 +65,8 @@ function fixture(t) {
   chmodSync(tool, 0o755);
   const candidate = {
     commit: source,
-    cwd,
-    read: (path) => readFileSync(join(cwd, path), 'utf8'),
+    cwd: repository,
+    read: (path) => readFileSync(join(repository, path), 'utf8'),
   };
   const gate = {
     eligibility: {
@@ -72,12 +91,39 @@ function fixture(t) {
         'linux/arm64': 'sha256:' + sha256(name + 'arm64'),
       },
     }),
-    run: (executable, args, options) => {
-      if (executable === 'git' && args[0] === 'rev-parse') return source;
-      if (executable === 'git' && args[0] === 'status') return '';
-      return command(executable, args, options);
-    },
+    run: command,
   };
+}
+
+function authenticatedPriorRelease(gate) {
+  const prior = releasedDistribution().value;
+  prior.components.studio = gate.eligibility.components.studio.source;
+  prior.components.registry = gate.eligibility.components.registry.source;
+  const sboms = new Map();
+  for (const name of Object.keys(IMAGE_REPOSITORIES)) {
+    const image = prior.images[name].reference;
+    const bytes = Buffer.from(
+      JSON.stringify({
+        bomFormat: 'CycloneDX',
+        specVersion: '1.6',
+        metadata: {
+          component: {
+            'type': 'container',
+            'bom-ref': image,
+            'hashes': [
+              {
+                alg: 'SHA-256',
+                content: image.split('@sha256:')[1],
+              },
+            ],
+          },
+        },
+      }),
+    );
+    prior.evidence.sboms[name].sha256 = sha256(bytes);
+    sboms.set(name, bytes);
+  }
+  return { releaseBytes: Buffer.from(JSON.stringify(prior)), sboms, prior };
 }
 
 test('builds/copies immutable six-image inputs, then acquires digest evidence and CycloneDX bytes', async (t) => {
@@ -124,7 +170,108 @@ test('builds/copies immutable six-image inputs, then acquires digest evidence an
   );
 });
 
-test('refuses a candidate that differs from the checked-out reviewed source before invoking image tools', async (t) => {
+test('reuses authenticated component images and their bound SBOMs while preparing every other image', async (t) => {
+  const f = fixture(t);
+  const authenticated = authenticatedPriorRelease(f.gate);
+  const result = await prepareStudioImages(
+    {
+      candidate: f.candidate,
+      gate: f.gate,
+      authenticatedPriorRelease: authenticated,
+    },
+    {
+      docker: f.tool,
+      crane: f.tool,
+      syft: f.tool,
+      acquire: f.acquire,
+      run: f.run,
+      timeoutMs: 2_000,
+    },
+  );
+  assert.deepEqual(result.reused, ['registry', 'studio']);
+  for (const name of result.reused) {
+    assert.deepEqual(result.images[name], authenticated.prior.images[name]);
+    assert.deepEqual(result.sboms.get(name), authenticated.sboms.get(name));
+  }
+  const commands = readFileSync(f.log, 'utf8')
+    .trim()
+    .split('\n')
+    .map(JSON.parse);
+  assert.deepEqual(
+    commands
+      .filter((record) => record[0] === 'buildx')
+      .map((record) => record[record.indexOf('--file') + 1]),
+    ['apps/studio/deployment/minio.Dockerfile'],
+  );
+  assert.equal(commands.filter((record) => record[0] === 'digest').length, 4);
+  assert.equal(
+    commands.filter((record) => record.includes('--output')).length,
+    4,
+  );
+});
+
+test('build context contains only committed candidate bytes, excluding ignored and later working-tree changes', async (t) => {
+  const f = fixture(t);
+  const repository = join(f.directory, 'mutated-repository');
+  const deployment = join(repository, 'apps/studio/deployment');
+  mkdirSync(deployment, { recursive: true });
+  writeFileSync(join(repository, '.gitignore'), '*.pem\n');
+  writeFileSync(join(deployment, 'marker.txt'), 'committed\n');
+  execFileSync('git', ['init', '-q', '-b', 'main'], { cwd: repository });
+  execFileSync('git', ['config', 'user.name', 'Joshua Melville'], {
+    cwd: repository,
+  });
+  execFileSync('git', ['config', 'user.email', 'joshua@northwestern.edu'], {
+    cwd: repository,
+  });
+  execFileSync('git', ['add', '.'], { cwd: repository });
+  execFileSync('git', ['commit', '-qm', 'Committed image source'], {
+    cwd: repository,
+  });
+  const commit = execFileSync('git', ['rev-parse', 'HEAD'], {
+    cwd: repository,
+    encoding: 'utf8',
+  }).trim();
+  writeFileSync(join(deployment, 'marker.txt'), 'working tree mutation\n');
+  writeFileSync(join(deployment, 'private.pem'), 'ignored private bytes\n');
+  const candidate = { ...f.candidate, cwd: repository, commit };
+  const gate = {
+    ...f.gate,
+    eligibility: { ...f.gate.eligibility, source: commit },
+  };
+  let builds = 0;
+  const run = (executable, args, options) => {
+    if (executable === f.tool && args[0] === 'buildx') {
+      builds += 1;
+      assert.notEqual(options.cwd, repository);
+      assert.equal(
+        readFileSync(
+          join(options.cwd, 'apps/studio/deployment/marker.txt'),
+          'utf8',
+        ),
+        'committed\n',
+      );
+      assert.throws(() =>
+        readFileSync(join(options.cwd, 'apps/studio/deployment/private.pem')),
+      );
+    }
+    return command(executable, args, options);
+  };
+  await prepareStudioImages(
+    { candidate, gate },
+    {
+      docker: f.tool,
+      crane: f.tool,
+      syft: f.tool,
+      acquire: f.acquire,
+      run,
+      timeoutMs: 2_000,
+    },
+  );
+  assert.equal(builds, 3);
+});
+
+test('refuses a candidate that differs from its admitted gate before invoking image tools', async (t) => {
   const f = fixture(t);
   await assert.rejects(
     () =>
