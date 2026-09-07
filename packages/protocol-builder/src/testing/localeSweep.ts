@@ -145,6 +145,15 @@ const protocolContent = (harness: StageEditorHarness): ReadonlySet<string> => {
       }
     }
   };
+  // The WHOLE protocol, not this stage and the codebook: a section can show a
+  // researcher's words from anywhere in it. A narrative pedigree lists the
+  // pedigree stages it may read BY THEIR OWN LABELS, and the fixture protocol
+  // names one of them "Family Pedigree" — which is also what
+  // `protocolBuilder.interface.familyPedigree` says in English, so a sweep
+  // reading only this stage reports a researcher's own stage name as a
+  // translation defect. Every section is content for the same reason the
+  // codebook is.
+  collect(harness.session.getSnapshot().protocolSections);
   collect(harness.seeded.fields);
   collect(harness.hostCodebook());
   return strings;
@@ -191,6 +200,39 @@ export const localeLeaks = (
 };
 
 /**
+ * The two things a surface can put on screen that are English on purpose.
+ *
+ * Both are narrow and both are declared at the call site, because a sweep that
+ * quietly forgave either would be a green tick over the defect it exists to
+ * find.
+ */
+export type SweepAllowances = Readonly<{
+  /**
+   * Words a test FIXTURE renders, which are nobody's copy.
+   *
+   * `TestPromptEditor` labels a box "Prompt text" as a stand-in for a family's
+   * own field. Three real areas happen to say the same words
+   * (`networkCanvas`, `pedigree` and `geospatial` each declare a `Prompt text`
+   * label), so the sweep — which indexes by the English SENTENCE, not by where
+   * it was rendered — reports the fixture's stand-in under whichever id is
+   * spelled the same. Naming them here says "a fixture put this here", the
+   * same claim `packageSource.ts` makes about a fixture FILE.
+   */
+  fixtureWords?: readonly string[];
+  /**
+   * Leak lines an area that is not converted yet still produces, in full.
+   *
+   * Asserted as an equality rather than subtracted, so it is an expected
+   * FAILURE and not an exemption: when the area lands its conversion the leak
+   * stops, this stops matching, and whoever converted it deletes the entry.
+   * That is the same discipline `hostCopyOverrides.test.ts` applies to
+   * `NOT_CONVERTED_YET`, and it is the only reason a sweep may pass over a
+   * surface that is genuinely showing a reader English.
+   */
+  stillEnglish?: readonly string[];
+}>;
+
+/**
  * Assert that nothing on screen is English, raw or unformatted.
  *
  * `where` names the surface, because a sweep drives several and the failure
@@ -199,8 +241,13 @@ export const localeLeaks = (
 export const expectNoLocaleLeaks = (
   where: string,
   harness?: StageEditorHarness,
+  { fixtureWords = [], stillEnglish = [] }: SweepAllowances = {},
 ): void => {
-  const content =
-    harness === undefined ? new Set<string>() : protocolContent(harness);
-  expect(localeLeaks(content), `Spanish leaks at ${where}`).toEqual([]);
+  const content = new Set<string>(fixtureWords.map(collapse));
+  if (harness !== undefined) {
+    for (const text of protocolContent(harness)) content.add(text);
+  }
+  expect(localeLeaks(content), `Spanish leaks at ${where}`).toEqual(
+    [...stillEnglish].toSorted(),
+  );
 };
