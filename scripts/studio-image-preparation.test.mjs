@@ -19,7 +19,10 @@ import {
 } from '../apps/studio/deployment/installer/release.mjs';
 import { command } from '../apps/studio/deployment/installer/verify.mjs';
 import { buildMultiPlatformCycloneDx } from './studio-image-evidence.mjs';
-import { prepareStudioImages } from './studio-image-preparation.mjs';
+import {
+  prepareStudioImages,
+  publishStudioImageTags,
+} from './studio-image-preparation.mjs';
 import { releasedDistribution } from './test-support/studio-release.mjs';
 
 const workspace = new URL('..', import.meta.url).pathname;
@@ -63,6 +66,7 @@ function fixture(t) {
       'const tags = fs.existsSync(tagsFile) ? JSON.parse(fs.readFileSync(tagsFile)) : {};\n' +
       "if (args[0] === 'digest') { if (!tags[args[1]]) process.exit(1); process.stdout.write(tags[args[1]] + '\\n'); }\n" +
       "if (args[0] === 'buildx' || (args[0] === 'index' && args[1] === 'filter')) { const tag = args[args.indexOf('--tag') + 1]; tags[tag] = 'sha256:' + 'a'.repeat(64); fs.writeFileSync(tagsFile, JSON.stringify(tags)); }\n" +
+      "if (args[0] === 'copy') { const source = args[1]; tags[args[2]] = source.slice(source.lastIndexOf('@') + 1); fs.writeFileSync(tagsFile, JSON.stringify(tags)); }\n" +
       "if (args.includes('--output')) {\n" +
       "  const name = args[args.indexOf('--source-name') + 1];\n" +
       "  const version = args[args.indexOf('--source-version') + 1];\n" +
@@ -223,8 +227,8 @@ test('builds/copies immutable six-image inputs, then acquires digest evidence an
     commands
       .filter((record) => record.includes('--tag'))
       .every((record) =>
-        record[record.indexOf('--tag') + 1].endsWith(
-          `:sha-${f.candidate.commit}`,
+        new RegExp(`:preparation-${f.candidate.commit}-[a-f0-9]{32}$`).test(
+          record[record.indexOf('--tag') + 1],
         ),
       ),
   );
@@ -271,44 +275,45 @@ test('reuses authenticated component images and their bound SBOMs while preparin
   );
 });
 
-test('same-source retry reads retained immutable tags without overwriting them', async (t) => {
+test('publishes canonical tags only from authenticated image evidence and resumes exact matches', async (t) => {
   const f = fixture(t);
+  const evidence = await prepareStudioImages(
+    { candidate: f.candidate, gate: f.gate },
+    {
+      docker: f.tool,
+      crane: f.tool,
+      syft: f.tool,
+      acquire: f.acquire,
+      run: f.run,
+      timeoutMs: 2_000,
+    },
+  );
   const options = {
     docker: f.tool,
     crane: f.tool,
-    syft: f.tool,
-    acquire: f.acquire,
     probe: f.probe,
     run: f.run,
     timeoutMs: 2_000,
   };
-  const first = await prepareStudioImages(
-    { candidate: f.candidate, gate: f.gate },
-    options,
-  );
   const firstCommands = readFileSync(f.log, 'utf8').trim().split('\n').length;
-  const second = await prepareStudioImages(
-    { candidate: f.candidate, gate: f.gate },
-    options,
-  );
-  assert.deepEqual(second.images, first.images);
-  const retryCommands = readFileSync(f.log, 'utf8')
+  await publishStudioImageTags({ candidate: f.candidate, evidence }, options);
+  const publishedCommands = readFileSync(f.log, 'utf8')
     .trim()
     .split('\n')
     .slice(firstCommands)
     .map(JSON.parse);
   assert.equal(
-    retryCommands.filter((record) => record[0] === 'buildx').length,
-    0,
+    publishedCommands.filter(([action]) => action === 'copy').length,
+    6,
   );
-  assert.equal(
-    retryCommands.filter((record) => record[0] === 'index').length,
-    0,
-  );
-  assert.equal(
-    retryCommands.filter((record) => record[0] === 'digest').length,
-    0,
-  );
+  const beforeResume = readFileSync(f.log, 'utf8').trim().split('\n').length;
+  await publishStudioImageTags({ candidate: f.candidate, evidence }, options);
+  const resumed = readFileSync(f.log, 'utf8')
+    .trim()
+    .split('\n')
+    .slice(beforeResume)
+    .map(JSON.parse);
+  assert.equal(resumed.filter(([action]) => action === 'copy').length, 0);
 });
 
 for (const { label, failure, pattern } of [
@@ -325,11 +330,22 @@ for (const { label, failure, pattern } of [
   {
     label: 'malformed retained digest',
     failure: 'not-a-digest',
-    pattern: /retained tag/,
+    pattern: /authenticated evidence/,
   },
 ])
-  test(`${label} cannot authorize an image write after earlier conclusive probes`, async (t) => {
+  test(`${label} cannot authorize a canonical image write after earlier conclusive probes`, async (t) => {
     const f = fixture(t);
+    const evidence = await prepareStudioImages(
+      { candidate: f.candidate, gate: f.gate },
+      {
+        docker: f.tool,
+        crane: f.tool,
+        syft: f.tool,
+        acquire: f.acquire,
+        run: f.run,
+      },
+    );
+    const before = readFileSync(f.log, 'utf8').trim().split('\n').length;
     let probes = 0;
     const probe = async () => {
       probes += 1;
@@ -340,13 +356,10 @@ for (const { label, failure, pattern } of [
     };
     await assert.rejects(
       () =>
-        prepareStudioImages(
-          { candidate: f.candidate, gate: f.gate },
+        publishStudioImageTags(
+          { candidate: f.candidate, evidence },
           {
-            docker: f.tool,
             crane: f.tool,
-            syft: f.tool,
-            acquire: f.acquire,
             probe,
             run: f.run,
           },
@@ -354,34 +367,42 @@ for (const { label, failure, pattern } of [
       pattern,
     );
     assert.equal(probes, 3);
-    assert.equal(existsSync(f.log), false);
+    const commands = readFileSync(f.log, 'utf8')
+      .trim()
+      .split('\n')
+      .slice(before)
+      .map(JSON.parse);
+    assert.equal(commands.filter(([action]) => action === 'copy').length, 0);
   });
 
-test('refuses invalid retained tag evidence without overwriting the tag', async (t) => {
+test('refuses a substituted preexisting canonical tag before any canonical write', async (t) => {
   const f = fixture(t);
-  const options = {
-    docker: f.tool,
-    crane: f.tool,
-    syft: f.tool,
-    acquire: f.acquire,
-    probe: f.probe,
-    run: f.run,
-    timeoutMs: 2_000,
-  };
-  await prepareStudioImages({ candidate: f.candidate, gate: f.gate }, options);
+  const evidence = await prepareStudioImages(
+    { candidate: f.candidate, gate: f.gate },
+    {
+      docker: f.tool,
+      crane: f.tool,
+      syft: f.tool,
+      acquire: f.acquire,
+      run: f.run,
+    },
+  );
+  const tags = JSON.parse(readFileSync(join(f.directory, 'tags.json'), 'utf8'));
+  tags[`${IMAGE_REPOSITORIES.studio}:sha-${f.candidate.commit}`] =
+    `sha256:${'9'.repeat(64)}`;
+  writeFileSync(join(f.directory, 'tags.json'), JSON.stringify(tags));
   const firstCommands = readFileSync(f.log, 'utf8').trim().split('\n').length;
   await assert.rejects(
     () =>
-      prepareStudioImages(
-        { candidate: f.candidate, gate: f.gate },
+      publishStudioImageTags(
+        { candidate: f.candidate, evidence },
         {
-          ...options,
-          acquire: async () => {
-            throw new Error('substituted registry evidence');
-          },
+          crane: f.tool,
+          probe: f.probe,
+          run: f.run,
         },
       ),
-    /substituted registry evidence/,
+    /different authenticated evidence/,
   );
   const retryCommands = readFileSync(f.log, 'utf8')
     .trim()
@@ -389,13 +410,48 @@ test('refuses invalid retained tag evidence without overwriting the tag', async 
     .slice(firstCommands)
     .map(JSON.parse);
   assert.equal(
-    retryCommands.filter((record) => record[0] === 'buildx').length,
+    retryCommands.filter((record) => record[0] === 'copy').length,
     0,
   );
-  assert.equal(
-    retryCommands.filter((record) => record[0] === 'index').length,
-    0,
+});
+
+test('refuses a canonical tag that appears after preflight without overwriting it', async (t) => {
+  const f = fixture(t);
+  const evidence = await prepareStudioImages(
+    { candidate: f.candidate, gate: f.gate },
+    {
+      docker: f.tool,
+      crane: f.tool,
+      syft: f.tool,
+      acquire: f.acquire,
+      run: f.run,
+    },
   );
+  const before = readFileSync(f.log, 'utf8').trim().split('\n').length;
+  let probes = 0;
+  await assert.rejects(
+    () =>
+      publishStudioImageTags(
+        { candidate: f.candidate, evidence },
+        {
+          crane: f.tool,
+          run: f.run,
+          probe: async () => {
+            probes += 1;
+            return probes === Object.keys(IMAGE_REPOSITORIES).length + 1
+              ? `sha256:${'9'.repeat(64)}`
+              : null;
+          },
+        },
+      ),
+    /changed before publication/,
+  );
+  const commands = readFileSync(f.log, 'utf8')
+    .trim()
+    .split('\n')
+    .slice(before)
+    .map(JSON.parse);
+  assert.equal(commands.filter(([action]) => action === 'copy').length, 0);
 });
 
 test('build context contains only committed candidate bytes, excluding ignored and later working-tree changes', async (t) => {

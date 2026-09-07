@@ -302,6 +302,27 @@ test('preparation rereads its private identity before every operation', async ()
   assert.equal(f.calls.filter((call) => call.method === 'POST').length, writes);
 });
 
+test('preparation refuses unsigned legacy or unexpected checkpoint assets', async () => {
+  const f = fixture();
+  const distribution = store(f);
+  await distribution.reserve(source);
+  const preparation = await distribution.ensurePreparation({
+    source,
+    artifactSha256: manifestSha256,
+  });
+  const release = f.releases.get(`studio-distribution-${source}`);
+  f.assets.get(release.id).push({
+    id: 999,
+    name: 'image-preparation.json',
+    bytes: Buffer.from('unsigned'),
+    size: 8,
+  });
+  await assert.rejects(
+    preparation.read('image-preparation.checkpoint.json'),
+    /asset inventory is invalid/,
+  );
+});
+
 test('preparation reads back exact bytes and refuses a corrupt retained upload', async () => {
   const f = fixture();
   const request = f.request;
@@ -318,7 +339,7 @@ test('preparation reads back exact bytes and refuses a corrupt retained upload',
     artifactSha256: manifestSha256,
   });
   await assert.rejects(
-    preparation.write('image.json', Buffer.from('good')),
+    preparation.write('image-preparation.checkpoint.json', Buffer.from('good')),
     /failed exact readback/,
   );
   assert.ok([...f.releases.values()].every((release) => release.draft));

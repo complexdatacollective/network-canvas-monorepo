@@ -18,7 +18,10 @@ import {
 } from '../apps/studio/deployment/installer/release.mjs';
 import { command } from '../apps/studio/deployment/installer/verify.mjs';
 import { validateCycloneDx } from './studio-image-evidence.mjs';
-import { prepareStudioImages } from './studio-image-preparation.mjs';
+import {
+  prepareStudioImages,
+  publishStudioImageTags,
+} from './studio-image-preparation.mjs';
 import { readInstallerArchive } from './studio-installer-archive.mjs';
 import { buildStudioInstaller } from './studio-installer-bundle.mjs';
 import { buildStudioReleaseManifest } from './studio-release-manifest.mjs';
@@ -30,6 +33,7 @@ const PLATFORMS = ['linux/amd64', 'linux/arm64'];
 const IMAGE_NAMES = Object.keys(IMAGE_REPOSITORIES);
 const EVIDENCE_LIMIT = 336 * 1024 * 1024;
 const BUNDLE_LIMIT = 8 * 1024 * 1024;
+const CHECKPOINT_LIMIT = 64 * 1024 * 1024;
 
 function exactObject(value, keys, message) {
   if (
@@ -255,6 +259,69 @@ function readImageEvidence(bytes, identity) {
   return { images: value.images, sboms };
 }
 
+function imageCheckpointBytes(evidence, signature) {
+  if (
+    !Buffer.isBuffer(evidence) ||
+    !evidence.length ||
+    !Buffer.isBuffer(signature) ||
+    !signature.length
+  )
+    throw new Error('Image preparation checkpoint is invalid.');
+  let value;
+  try {
+    value = JSON.parse(evidence.toString('utf8'));
+  } catch {
+    throw new Error('Image preparation checkpoint is invalid.');
+  }
+  if (!Buffer.from(`${JSON.stringify(value)}\n`).equals(evidence))
+    throw new Error('Image preparation checkpoint is invalid.');
+  const bytes = Buffer.from(
+    `${JSON.stringify({
+      format: 1,
+      evidence: value,
+      signature: signature.toString('base64'),
+    })}\n`,
+  );
+  if (bytes.length > CHECKPOINT_LIMIT)
+    throw new Error('Image preparation checkpoint is invalid.');
+  return bytes;
+}
+
+function readImageCheckpoint(bytes, identity, signing) {
+  if (
+    !Buffer.isBuffer(bytes) ||
+    !bytes.length ||
+    bytes.length > CHECKPOINT_LIMIT
+  )
+    throw new Error('Image preparation checkpoint is invalid.');
+  let value;
+  try {
+    value = JSON.parse(bytes.toString('utf8'));
+  } catch {
+    throw new Error('Image preparation checkpoint is invalid.');
+  }
+  exactObject(
+    value,
+    ['format', 'evidence', 'signature'],
+    'Image preparation checkpoint is invalid.',
+  );
+  if (
+    value.format !== 1 ||
+    !value.evidence ||
+    typeof value.evidence !== 'object' ||
+    Array.isArray(value.evidence) ||
+    typeof value.signature !== 'string'
+  )
+    throw new Error('Image preparation checkpoint is invalid.');
+  const evidenceBytes = Buffer.from(`${JSON.stringify(value.evidence)}\n`);
+  const signature = Buffer.from(value.signature, 'base64');
+  if (signature.toString('base64') !== value.signature)
+    throw new Error('Image preparation checkpoint is invalid.');
+  const evidence = readImageEvidence(evidenceBytes, identity);
+  verifyBlob(evidenceBytes, signature, signing);
+  return { evidence, evidenceBytes };
+}
+
 function validateManifest(bytes, gate, evidence, upgradeFrom) {
   const manifest = readRelease(bytes);
   const { release, current } = manifest;
@@ -334,9 +401,13 @@ export function createStudioReleasePreparation(
   { candidate, store, authenticatedPriorRelease, upgradeFrom = [] },
   {
     cosign = 'cosign',
+    crane = 'crane',
+    docker = 'docker',
     run = command,
+    syft = 'syft',
     timeoutMs = 300_000,
     prepareImages = prepareStudioImages,
+    publishImages = publishStudioImageTags,
     buildManifest = buildStudioReleaseManifest,
     buildInstaller = buildStudioInstaller,
   } = {},
@@ -354,21 +425,42 @@ export function createStudioReleasePreparation(
     const identity = admitted(candidate, gate);
     const checkpoint = await store.ensurePreparation(identity);
     const signing = { cosign, run, timeoutMs };
-    let evidenceBytes = await checkpoint.read('image-preparation.json');
-    if (evidenceBytes === null) {
+    if ((await checkpoint.read('image-preparation.json')) !== null)
+      throw new Error(
+        'Unsigned retained image preparation evidence cannot be trusted.',
+      );
+    let checkpointBytes = await checkpoint.read(
+      'image-preparation.checkpoint.json',
+    );
+    if (checkpointBytes === null) {
       const prepared = await prepareImages(
         {
           candidate,
           gate,
           authenticatedPriorRelease,
         },
-        { timeoutMs },
+        { crane, docker, run, syft, timeoutMs },
       );
-      evidenceBytes = imageEvidenceBytes({ ...identity, ...prepared });
+      const evidenceBytes = imageEvidenceBytes({ ...identity, ...prepared });
       readImageEvidence(evidenceBytes, identity);
-      await retain(checkpoint, 'image-preparation.json', evidenceBytes);
+      checkpointBytes = imageCheckpointBytes(
+        evidenceBytes,
+        signBlob(evidenceBytes, signing),
+      );
+      readImageCheckpoint(checkpointBytes, identity, signing);
+      await retain(
+        checkpoint,
+        'image-preparation.checkpoint.json',
+        checkpointBytes,
+      );
     }
-    const evidence = readImageEvidence(evidenceBytes, identity);
+    const { evidence } = readImageCheckpoint(
+      checkpointBytes,
+      identity,
+      signing,
+    );
+
+    await publishImages({ candidate, evidence }, { crane, run, timeoutMs });
 
     for (const name of IMAGE_NAMES) {
       const reference = evidence.images[name].reference;
