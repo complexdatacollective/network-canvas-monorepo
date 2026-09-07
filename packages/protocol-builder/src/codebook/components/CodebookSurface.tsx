@@ -6,6 +6,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import Surface from '@codaco/fresco-ui/layout/Surface';
+import { EnclosingHeadingLevel } from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
@@ -350,136 +351,147 @@ export default function CodebookSurface({
   const ego = context.codebook.ego;
 
   return (
-    <section aria-labelledby={titleId} className="flex flex-col gap-8">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <Heading id={titleId} level="h2" margin="none">
-            {intl.formatMessage(messages.title)}
-          </Heading>
-          <Paragraph emphasis="muted" margin="none">
-            {intl.formatMessage(messages.description)}
-          </Paragraph>
-        </div>
-        {onCreateEntity !== undefined && (
-          <div
-            className="flex flex-wrap gap-3"
-            aria-label={intl.formatMessage(messages.createEntityGroupLabel)}
-          >
-            <Button
-              type="button"
-              color="primary"
-              onClick={() => onCreateEntity('node')}
+    // The page's own title is the `h2` below, and everything here sits under
+    // it — so the level is stated rather than left to be guessed. An alert
+    // derives its title's level from the nearest heading above it, and with
+    // nothing saying what that is it falls back to `h4`: the codebook's
+    // "some of this could not be read" warning rendered as an `h4` directly
+    // under an `h2`, which axe reports as `heading-order` and which reads, to
+    // anyone moving by headings, as a subsection that is not there.
+    <EnclosingHeadingLevel level="h2">
+      <section aria-labelledby={titleId} className="flex flex-col gap-8">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <Heading id={titleId} level="h2" margin="none">
+              {intl.formatMessage(messages.title)}
+            </Heading>
+            <Paragraph emphasis="muted" margin="none">
+              {intl.formatMessage(messages.description)}
+            </Paragraph>
+          </div>
+          {onCreateEntity !== undefined && (
+            <div
+              className="flex flex-wrap gap-3"
+              aria-label={intl.formatMessage(messages.createEntityGroupLabel)}
             >
-              {intl.formatMessage(messages.createNodeType)}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onCreateEntity('edge')}
-            >
-              {intl.formatMessage(messages.createEdgeType)}
-            </Button>
-            {ego === undefined && (
+              <Button
+                type="button"
+                color="primary"
+                onClick={() => onCreateEntity('node')}
+              >
+                {intl.formatMessage(messages.createNodeType)}
+              </Button>
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => onCreateEntity('ego')}
+                onClick={() => onCreateEntity('edge')}
               >
-                {intl.formatMessage(messages.addEgoAttributes)}
+                {intl.formatMessage(messages.createEdgeType)}
               </Button>
-            )}
-          </div>
+              {ego === undefined && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onCreateEntity('ego')}
+                >
+                  {intl.formatMessage(messages.addEgoAttributes)}
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {context.issues.length > 0 && (
+          <Alert variant="warning" appearance="soft">
+            <AlertTitle>{intl.formatMessage(messages.issuesTitle)}</AlertTitle>
+            <AlertDescription>
+              <ul
+                className="list-disc space-y-1 pl-5"
+                aria-label={intl.formatMessage(messages.issuesListLabel)}
+              >
+                {/* An issue's message is a plain string carrying either this
+                    package's own encoded descriptor or the protocol schema's own
+                    wording, so it is decoded below and passed through untouched
+                    when it is not one of ours. */}
+                {context.issues.map((issue, index) => (
+                  <li
+                    key={`${issue.sectionId}:${issue.path.join(':')}:${index}`}
+                  >
+                    <code>{issue.sectionId}</code>:{' '}
+                    {formatMessageError(issue.message, intl) ?? issue.message}
+                  </li>
+                ))}
+              </ul>
+            </AlertDescription>
+          </Alert>
         )}
-      </div>
 
-      {context.issues.length > 0 && (
-        <Alert variant="warning" appearance="soft">
-          <AlertTitle>{intl.formatMessage(messages.issuesTitle)}</AlertTitle>
-          <AlertDescription>
-            <ul
-              className="list-disc space-y-1 pl-5"
-              aria-label={intl.formatMessage(messages.issuesListLabel)}
-            >
-              {/* An issue's message is a plain string carrying either this
-                  package's own encoded descriptor or the protocol schema's own
-                  wording, so it is decoded below and passed through untouched
-                  when it is not one of ours. */}
-              {context.issues.map((issue, index) => (
-                <li key={`${issue.sectionId}:${issue.path.join(':')}:${index}`}>
-                  <code>{issue.sectionId}</code>:{' '}
-                  {formatMessageError(issue.message, intl) ?? issue.message}
-                </li>
-              ))}
-            </ul>
-          </AlertDescription>
-        </Alert>
-      )}
+        <div className="flex flex-col gap-5" aria-labelledby={nodeTypesId}>
+          <Heading id={nodeTypesId} level="h2" margin="none">
+            {intl.formatMessage(messages.nodeTypesHeading)}
+          </Heading>
+          {nodeEntries.length === 0 ? (
+            <Paragraph emphasis="muted" margin="none">
+              {intl.formatMessage(messages.noNodeTypes)}
+            </Paragraph>
+          ) : (
+            nodeEntries.map(([type, definition]) => (
+              <EntityCard
+                key={type}
+                subject={{ entity: 'node', type }}
+                name={definition.name}
+                variables={definition.variables ?? {}}
+                onEditEntity={onEditEntity}
+                onCreateVariable={onCreateVariable}
+                onEditVariable={onEditVariable}
+              />
+            ))
+          )}
+        </div>
 
-      <div className="flex flex-col gap-5" aria-labelledby={nodeTypesId}>
-        <Heading id={nodeTypesId} level="h2" margin="none">
-          {intl.formatMessage(messages.nodeTypesHeading)}
-        </Heading>
-        {nodeEntries.length === 0 ? (
-          <Paragraph emphasis="muted" margin="none">
-            {intl.formatMessage(messages.noNodeTypes)}
-          </Paragraph>
-        ) : (
-          nodeEntries.map(([type, definition]) => (
+        <div className="flex flex-col gap-5" aria-labelledby={edgeTypesId}>
+          <Heading id={edgeTypesId} level="h2" margin="none">
+            {intl.formatMessage(messages.edgeTypesHeading)}
+          </Heading>
+          {edgeEntries.length === 0 ? (
+            <Paragraph emphasis="muted" margin="none">
+              {intl.formatMessage(messages.noEdgeTypes)}
+            </Paragraph>
+          ) : (
+            edgeEntries.map(([type, definition]) => (
+              <EntityCard
+                key={type}
+                subject={{ entity: 'edge', type }}
+                name={definition.name}
+                variables={definition.variables ?? {}}
+                onEditEntity={onEditEntity}
+                onCreateVariable={onCreateVariable}
+                onEditVariable={onEditVariable}
+              />
+            ))
+          )}
+        </div>
+
+        <div className="flex flex-col gap-5" aria-labelledby={egoId}>
+          <Heading id={egoId} level="h2" margin="none">
+            {intl.formatMessage(messages.ego)}
+          </Heading>
+          {ego === undefined ? (
+            <Paragraph emphasis="muted" margin="none">
+              {intl.formatMessage(messages.noEgoDefinition)}
+            </Paragraph>
+          ) : (
             <EntityCard
-              key={type}
-              subject={{ entity: 'node', type }}
-              name={definition.name}
-              variables={definition.variables ?? {}}
+              subject={{ entity: 'ego' }}
+              name={intl.formatMessage(messages.ego)}
+              variables={ego.variables ?? {}}
               onEditEntity={onEditEntity}
               onCreateVariable={onCreateVariable}
               onEditVariable={onEditVariable}
             />
-          ))
-        )}
-      </div>
-
-      <div className="flex flex-col gap-5" aria-labelledby={edgeTypesId}>
-        <Heading id={edgeTypesId} level="h2" margin="none">
-          {intl.formatMessage(messages.edgeTypesHeading)}
-        </Heading>
-        {edgeEntries.length === 0 ? (
-          <Paragraph emphasis="muted" margin="none">
-            {intl.formatMessage(messages.noEdgeTypes)}
-          </Paragraph>
-        ) : (
-          edgeEntries.map(([type, definition]) => (
-            <EntityCard
-              key={type}
-              subject={{ entity: 'edge', type }}
-              name={definition.name}
-              variables={definition.variables ?? {}}
-              onEditEntity={onEditEntity}
-              onCreateVariable={onCreateVariable}
-              onEditVariable={onEditVariable}
-            />
-          ))
-        )}
-      </div>
-
-      <div className="flex flex-col gap-5" aria-labelledby={egoId}>
-        <Heading id={egoId} level="h2" margin="none">
-          {intl.formatMessage(messages.ego)}
-        </Heading>
-        {ego === undefined ? (
-          <Paragraph emphasis="muted" margin="none">
-            {intl.formatMessage(messages.noEgoDefinition)}
-          </Paragraph>
-        ) : (
-          <EntityCard
-            subject={{ entity: 'ego' }}
-            name={intl.formatMessage(messages.ego)}
-            variables={ego.variables ?? {}}
-            onEditEntity={onEditEntity}
-            onCreateVariable={onCreateVariable}
-            onEditVariable={onEditVariable}
-          />
-        )}
-      </div>
-    </section>
+          )}
+        </div>
+      </section>
+    </EnclosingHeadingLevel>
   );
 }
