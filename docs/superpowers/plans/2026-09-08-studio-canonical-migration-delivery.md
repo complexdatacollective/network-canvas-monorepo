@@ -41,13 +41,27 @@ Verification on Node 24.18.0:
   after the grant is revoked. Read-only and large-object controls verify effective
   privileges, not merely declared role flags.
 
+Live browser review used the production client/server builds with a separate
+freshly migrated PostgreSQL database, distinct restricted runtime logins,
+synthetic owner credentials, no mail transport and telemetry disabled. Chromium
+confirmed invalid-token refusal, successful owner creation and password sign-in,
+permanent setup closure, persisted in-app alert preferences after reload and
+disabled email preferences when delivery is unavailable. Desktop (1440px) and
+mobile (390px) screens were inspected; the mobile page had no horizontal overflow
+and the browser reported no uncaught page errors. No real email was sent.
+
+Review of the operator instructions also corrected the pre-OAuth continuation
+step: a legacy batch can return `passComplete: false` with a null `afterId` while
+participant conversion or contact-index classification remains. The documented
+loop now repeats without `--after-id` until those phases reach OAuth traversal.
+
 Visual classification conservatively selected all three existing PNG suites.
 Inspection dismissed those candidates: the global matches are Studio-only
 deployment/configuration/ERD files and Knip entry declarations; shared-package
 changes are PostgreSQL schemas, policies and server guards. There is no lockfile
 diff against main and no changed rendered dependency in Architect, Interview or
-Interviewer. Studio setup and alert-settings component tests pass; live Studio
-screen review remains separate from those three products' PNG baselines.
+Interviewer. Studio setup and alert-settings component tests and the live local
+screen review pass separately from those three products' PNG baselines.
 
 Current-head external review and required CI still gate the PR merge. KMS,
 Registry, final installer/recovery activation, immutable artifact publication,

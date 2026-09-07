@@ -220,7 +220,7 @@ For an existing deployment:
    in the restricted environment file instead of putting them in shell history.
 
 4. Keep all application containers stopped. Run the new image's bounded legacy
-   OAuth converter with a separate restricted environment file containing the
+   data converter with a separate restricted environment file containing the
    operator `DATABASE_URL`, `STUDIO_ENCRYPTION_KEYSET`, and every referenced root:
 
    ```sh
@@ -229,8 +229,16 @@ For an existing deployment:
      YOUR_STUDIO_IMAGE encryption migrate-legacy --limit 100
    ```
 
-   Save the returned JSON. If `passComplete` is false, copy its non-null `afterId`
-   unchanged into the next invocation's `--after-id` argument:
+   This command first authenticates and re-encrypts legacy participant data,
+   then classifies retained contact suppression and delivery indexes, and finally
+   converts OAuth credentials. Classification preserves the original contact
+   digest; it does not claim that an old public HMAC was secret or create a key
+   proof for it. See the [legacy-data contract](server/src/pii/README.md).
+
+   Save the returned JSON. If `passComplete` is false and `afterId` is null,
+   repeat the command without `--after-id`: the pre-OAuth phases resume from
+   their remaining raw markers. A null cursor alone does not mean completion.
+   If `afterId` is non-null, copy it unchanged into the next invocation:
 
    ```sh
    docker run --rm --network YOUR_DEPLOYMENT_NETWORK \
