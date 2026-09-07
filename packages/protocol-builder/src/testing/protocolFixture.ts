@@ -34,14 +34,7 @@ function fixtureStages(): Record<string, unknown>[] {
   return Array.isArray(stages) ? stages.filter(isRecord) : [];
 }
 
-/**
- * Every stage the fixture holds, in the order it holds them.
- *
- * Not exported yet: the only readers so far are this module's own error
- * message and the stage order it builds. It becomes part of the harness's
- * surface when the section tests that enumerate the fixture arrive.
- */
-function fixtureStageIds(): string[] {
+export function fixtureStageIds(): string[] {
   return fixtureStages().flatMap((stage) =>
     typeof stage.id === 'string' ? [stage.id] : [],
   );

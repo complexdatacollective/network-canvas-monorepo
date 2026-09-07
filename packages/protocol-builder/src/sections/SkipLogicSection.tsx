@@ -4,6 +4,7 @@ import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 
 import SkipLogicDestinationField from '../fields/SkipLogicDestinationField.tsx';
 import ProtocolField from '../form/ProtocolField.tsx';
+import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { NO_RULES_MESSAGE } from '../rules/ruleSet.ts';
 import { QueryRuleSetField } from '../rules/RuleSetField.tsx';
 import { useRuleSetValidation } from '../rules/useRuleSetValidation.ts';
@@ -120,6 +121,10 @@ export type SkipLogicSectionProps = Readonly<{
    * Only a stage the interview does not contain yet needs this: an existing
    * stage's position is read from the stage order. It decides which stages are
    * later than this one, and so which of them the interview may continue at.
+   *
+   * The session already knows it — the host said so when it opened a create
+   * session — so an editor leaves this out and gets the right destinations for
+   * both cases. Given, it overrides what the session says.
    */
   position?: number;
 }>;
@@ -138,6 +143,8 @@ export type SkipLogicSectionProps = Readonly<{
  */
 export default function SkipLogicSection({ position }: SkipLogicSectionProps) {
   const intl = useAppIntl();
+  const { creation } = useStageEditorForm();
+  const insertionPosition = position ?? creation?.position;
   const rulesValidation = useRuleSetValidation(SKIP_LOGIC_RULES_FIELD, 'query');
 
   return (
@@ -173,7 +180,7 @@ export default function SkipLogicSection({ position }: SkipLogicSectionProps) {
         label={intl.formatMessage(messages.destinationLabel)}
         hint={intl.formatMessage(messages.destinationHint)}
         component={SkipLogicDestinationField}
-        position={position}
+        position={insertionPosition}
       />
     </BuilderSection>
   );
