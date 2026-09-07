@@ -1,6 +1,13 @@
-import { createHash } from 'node:crypto';
-import { lstatSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import { dirname, join, relative, resolve } from 'node:path';
+import {
+  constants,
+  lstatSync,
+  openSync,
+  closeSync,
+  readFileSync,
+  readdirSync,
+  writeFileSync,
+} from 'node:fs';
+import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import configurationFiles from '../apps/studio/deployment/installer/configuration-files.json' with { type: 'json' };
@@ -98,7 +105,18 @@ export function buildInstallerArchive({ directory, source, output }) {
       .map(([name, body]) => entry(name, body))
       .concat(Buffer.alloc(block * 2)),
   );
-  if (output) writeFileSync(output, bytes, { mode: 0o600 });
+  if (output) {
+    const handle = openSync(
+      output,
+      constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY,
+      0o600,
+    );
+    try {
+      writeFileSync(handle, bytes);
+    } finally {
+      closeSync(handle);
+    }
+  }
   return {
     bytes,
     sha256: sha256(bytes),
@@ -112,7 +130,26 @@ export function readInstallerArchive(bytes, expectedManifestSha256) {
   let offset = 0;
   while (offset + block <= bytes.length) {
     const header = bytes.subarray(offset, offset + block);
-    if (header.every((byte) => byte === 0)) break;
+    if (header.every((byte) => byte === 0)) {
+      if (
+        offset + block * 2 !== bytes.length ||
+        !bytes.subarray(offset + block).every((byte) => byte === 0)
+      )
+        throw new Error('Invalid installer archive terminator.');
+      offset = bytes.length;
+      break;
+    }
+    const expected = Number.parseInt(
+      header.subarray(148, 156).toString().replace(/\0.*$/, ''),
+      8,
+    );
+    const checked = Buffer.from(header);
+    checked.fill(0x20, 148, 156);
+    if (
+      !Number.isSafeInteger(expected) ||
+      expected !== [...checked].reduce((n, byte) => n + byte, 0)
+    )
+      throw new Error('Tampered installer archive.');
     const name = header.subarray(0, 100).toString().replace(/\0.*$/, '');
     const size = Number.parseInt(
       header.subarray(124, 136).toString().replace(/\0.*$/, ''),
@@ -120,6 +157,8 @@ export function readInstallerArchive(bytes, expectedManifestSha256) {
     );
     if (
       !valid(name) ||
+      header.subarray(257, 263).toString() !== 'ustar\0' ||
+      header.subarray(263, 265).toString() !== '00' ||
       header[156] !== 48 ||
       !Number.isSafeInteger(size) ||
       size < 0 ||
@@ -128,9 +167,20 @@ export function readInstallerArchive(bytes, expectedManifestSha256) {
       throw new Error('Invalid installer archive.');
     const body = bytes.subarray(offset + block, offset + block + size);
     if (body.length !== size) throw new Error('Truncated installer archive.');
+    if (
+      !bytes
+        .subarray(
+          offset + block + size,
+          offset + block + Math.ceil(size / block) * block,
+        )
+        .every((byte) => byte === 0)
+    )
+      throw new Error('Invalid installer archive padding.');
     entries.set(name, body);
     offset += block + Math.ceil(size / block) * block;
   }
+  if (offset !== bytes.length)
+    throw new Error('Invalid installer archive terminator.');
   const metadata = JSON.parse(
     entries.get('installer.json')?.toString() ?? 'null',
   );
@@ -167,7 +217,10 @@ if (
     throw new Error(
       'Usage: studio-installer-archive <bundle-directory> <source-commit> <output.tar>',
     );
-  process.stdout.write(
-    `${JSON.stringify(buildInstallerArchive({ directory, source, output }))}\n`,
-  );
+  const {
+    bytes: _bytes,
+    entries: _entries,
+    ...metadata
+  } = buildInstallerArchive({ directory, source, output });
+  process.stdout.write(`${JSON.stringify(metadata)}\n`);
 }
