@@ -990,6 +990,112 @@ describe.skipIf(!database)('migration security invariants', () => {
     },
   );
 
+  it.each([
+    ['studio_migrations.history', 'parent'],
+    ['studio_migrations.history', 'child'],
+    ['public."schemaFingerprint"', 'parent'],
+    ['public."schemaFingerprint"', 'child'],
+  ] as const)(
+    'rejects migration evidence used as an ordinary inheritance %s: %s',
+    async (table, direction) => {
+      await withDeployment(async ({ administrator, owner, logins }) => {
+        await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+        if (direction === 'parent') {
+          await administrator.query(
+            `CREATE TABLE inherited_evidence () INHERITS (${table})`,
+          );
+        } else {
+          await administrator.query(
+            `CREATE TABLE evidence_parent (LIKE ${table} INCLUDING ALL);
+             ALTER TABLE ${table} INHERIT evidence_parent`,
+          );
+        }
+        await expect(
+          migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+        ).rejects.toThrow(
+          'migration evidence must be standalone ordinary tables',
+        );
+      });
+    },
+  );
+
+  it('rejects a partition edge that lets a runtime role forge fingerprint evidence through its parent', async () => {
+    await withDeployment(async ({ administrator, owner, url, logins }) => {
+      await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+      await administrator.query(`CREATE TABLE evidence_partition_parent
+          (LIKE public."schemaFingerprint" INCLUDING ALL) PARTITION BY LIST (id);
+        ALTER TABLE evidence_partition_parent
+          ATTACH PARTITION public."schemaFingerprint" DEFAULT;
+        GRANT SELECT, UPDATE ON evidence_partition_parent TO studio_app`);
+      await connectAs(url, logins[1], '-c role=studio_app', async (runtime) => {
+        expect(
+          (
+            await runtime.query(
+              `UPDATE evidence_partition_parent SET fingerprint = 'forged-through-parent'
+               RETURNING fingerprint`,
+            )
+          ).rows,
+        ).toEqual([{ fingerprint: 'forged-through-parent' }]);
+      });
+      expect(
+        (
+          await administrator.query(
+            'SELECT fingerprint FROM public."schemaFingerprint"',
+          )
+        ).rows,
+      ).toEqual([{ fingerprint: 'forged-through-parent' }]);
+      await expect(
+        migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+      ).rejects.toThrow(
+        'migration evidence must be standalone ordinary tables',
+      );
+    });
+  });
+
+  it.each(['studio_migrations.history', 'public."schemaFingerprint"'])(
+    'rejects unsupported relation kind for %s before reading evidence',
+    async (table) => {
+      await withDeployment(async ({ administrator, owner, logins }) => {
+        await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+        await administrator.query(`CREATE FUNCTION evidence_kind_read_trap()
+            RETURNS text LANGUAGE plpgsql AS
+            'BEGIN RAISE EXCEPTION ''unsupported evidence was read''; END';
+          ALTER TABLE ${table} RENAME TO evidence_storage`);
+        if (table === 'studio_migrations.history') {
+          await administrator.query(`CREATE VIEW studio_migrations.history AS
+            SELECT position, id, checksum,
+              evidence_kind_read_trap() AS fingerprint, applied_at
+            FROM studio_migrations.evidence_storage`);
+        } else {
+          await administrator.query(`CREATE VIEW public."schemaFingerprint" AS
+            SELECT id, evidence_kind_read_trap() AS fingerprint, "appliedAt"
+            FROM public.evidence_storage`);
+        }
+        await expect(
+          migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+        ).rejects.toThrow(
+          'migration evidence must be standalone ordinary tables',
+        );
+      });
+    },
+  );
+
+  it('rejects a partitioned migration evidence relation', async () => {
+    await withDeployment(async ({ administrator, owner, logins }) => {
+      await migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins);
+      await administrator.query(`ALTER TABLE public."schemaFingerprint"
+          RENAME TO partitioned_evidence_storage;
+        CREATE TABLE public."schemaFingerprint"
+          (LIKE public.partitioned_evidence_storage INCLUDING DEFAULTS INCLUDING CONSTRAINTS)
+          PARTITION BY LIST (id)`);
+      await expect(
+        migrateDatabase(owner, shipped, SCHEMA_FINGERPRINT, logins),
+      ).rejects.toThrow(
+        'migration evidence must be standalone ordinary tables',
+      );
+    });
+  });
+
   it('contains historical evidence grants before the next migration SQL executes', async () => {
     await withDeployment(async ({ administrator, owner, logins }) => {
       await administrator.query('BEGIN');

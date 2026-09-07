@@ -26,7 +26,8 @@
     "./section-validation": "./src/section-validation.ts",
     "./template-metadata": "./src/template-metadata.ts",
     "./template-exchange": "./src/template-exchange.ts",
-    "./postgres-catalog-privileges": "./src/postgres-catalog-privileges.ts"
+    "./postgres-catalog-privileges": "./src/postgres-catalog-privileges.ts",
+    "./postgres-runtime-identity": "./src/postgres-runtime-identity.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

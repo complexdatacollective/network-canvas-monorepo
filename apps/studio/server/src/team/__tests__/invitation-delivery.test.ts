@@ -940,6 +940,9 @@ describe.skipIf(!db)('SMTP invitation delivery outcomes', () => {
     const versioned = await createScratchDatabase(db);
     const scratch = { ...versioned, app: createPool(versioned.db) };
     const peer = await smtpFixture('silent_data');
+    const runtimeLogin = `smtp_runtime_${randomUUID().replaceAll('-', '')}`;
+    const runtimePassword = 'smtp-runtime-synthetic-only';
+    let runtimeCreated = false;
     let child: ReturnType<typeof spawn> | undefined;
     let exited: Promise<unknown[]> | undefined;
     try {
@@ -961,10 +964,19 @@ describe.skipIf(!db)('SMTP invitation delivery outcomes', () => {
           identity.login,
         ]),
       ).toEqual(migrations.map(({ manifest }) => manifest.id));
+      await scratch.pool.query(
+        `CREATE ROLE ${escapeIdentifier(runtimeLogin)} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD '${runtimePassword}';
+         GRANT studio_app, studio_maintenance TO ${escapeIdentifier(runtimeLogin)} WITH ADMIN FALSE, SET TRUE, INHERIT FALSE;
+         GRANT CONNECT ON DATABASE ${escapeIdentifier(identity.database)} TO ${escapeIdentifier(runtimeLogin)}`,
+      );
+      runtimeCreated = true;
       await seedInviter(scratch.pool);
       const invitation = await seedInvitation(scratch);
       await enqueue(scratch, invitation);
-      const databaseUrl = scratch.db.url;
+      const runtimeUrl = new URL(scratch.db.url);
+      runtimeUrl.username = runtimeLogin;
+      runtimeUrl.password = runtimePassword;
+      const databaseUrl = runtimeUrl.href;
       if (typeof databaseUrl !== 'string')
         throw new Error('Missing fixture URL');
       child = spawn(
@@ -1031,6 +1043,11 @@ describe.skipIf(!db)('SMTP invitation delivery outcomes', () => {
       await exited;
       await peer.close();
       await scratch.app.end();
+      if (runtimeCreated)
+        await scratch.pool.query(
+          `REVOKE CONNECT ON DATABASE ${escapeIdentifier(new URL(scratch.db.url).pathname.slice(1))} FROM ${escapeIdentifier(runtimeLogin)};
+           DROP ROLE ${escapeIdentifier(runtimeLogin)}`,
+        );
       await scratch.dispose();
     }
   }, 25_000);

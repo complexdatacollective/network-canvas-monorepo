@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 import { escapeIdentifier } from 'pg';
@@ -15,6 +16,7 @@ import { migrateDatabase } from '../../db/migrations/migrate.ts';
 import { readEnv } from '../../env.ts';
 
 const database = await reachableDb();
+const runtimePassword = 'startup-runtime-synthetic-only';
 
 describe.skipIf(!database)('startup migration provenance', () => {
   it('refuses an unversioned development database outside the explicit development lane', async () => {
@@ -58,6 +60,8 @@ describe.skipIf(!database)('startup migration provenance', () => {
       expect(deployed.stdout).toContain('"code":"STUDIO_SCHEMA_STALE"');
       expect(deployed.stdout).not.toContain('"marker":"startup-completed"');
       const versioned = await createScratchDatabase(database);
+      const runtimeLogin = `startup_runtime_${randomUUID().replaceAll('-', '')}`;
+      let runtimeCreated = false;
       try {
         const identity = (
           await versioned.pool.query<{ database: string; login: string }>(
@@ -79,12 +83,35 @@ describe.skipIf(!database)('startup migration provenance', () => {
             [identity.login],
           ),
         ).toEqual(migrations.map(({ manifest }) => manifest.id));
-        const current = run(false, versioned.db.url);
+        await versioned.pool.query(
+          `CREATE ROLE ${escapeIdentifier(runtimeLogin)} LOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION PASSWORD '${runtimePassword}';
+           GRANT studio_app, studio_maintenance TO ${escapeIdentifier(runtimeLogin)} WITH ADMIN FALSE, SET TRUE, INHERIT FALSE;
+           GRANT CONNECT ON DATABASE ${escapeIdentifier(identity.database)} TO ${escapeIdentifier(runtimeLogin)}`,
+        );
+        runtimeCreated = true;
+        const ownerBacked = run(false, versioned.db.url);
+        expect(ownerBacked.error).toBeUndefined();
+        expect(ownerBacked.status).toBe(1);
+        expect(ownerBacked.stdout).toContain(
+          '"code":"STUDIO_DATABASE_IDENTITY_UNSAFE"',
+        );
+        expect(ownerBacked.stdout).not.toContain(
+          '"marker":"startup-completed"',
+        );
+        const runtimeUrl = new URL(versioned.db.url);
+        runtimeUrl.username = runtimeLogin;
+        runtimeUrl.password = runtimePassword;
+        const current = run(false, runtimeUrl.href);
         expect(current.error).toBeUndefined();
         expect(current.status).toBe(0);
         expect(current.stdout).toContain('"marker":"startup-completed"');
         expect(current.stdout).not.toContain('"code":"STUDIO_SCHEMA_STALE"');
       } finally {
+        if (runtimeCreated)
+          await versioned.pool.query(
+            `REVOKE CONNECT ON DATABASE ${escapeIdentifier(new URL(versioned.db.url).pathname.slice(1))} FROM ${escapeIdentifier(runtimeLogin)};
+             DROP ROLE ${escapeIdentifier(runtimeLogin)}`,
+          );
         await versioned.dispose();
       }
     } finally {

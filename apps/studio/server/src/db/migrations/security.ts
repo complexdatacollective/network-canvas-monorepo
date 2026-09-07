@@ -221,6 +221,26 @@ export async function enforceMigrationSecurity(
       'Studio does not support owner-backed rewrite rules on application database relations. Their presence makes existing migration evidence untrusted; restore a verified backup before migrating.',
     );
   }
+  // Evidence is authored as standalone ordinary tables. Inheritance and
+  // partition routing authorize against a parent, bypassing these tables' own
+  // ACLs; inherited children also contribute rows to ordinary evidence reads.
+  // Reject either direction before the runner trusts any recorded history.
+  const evidenceShape = await client.query<{ safe: boolean }>(
+    `SELECT NOT EXISTS (
+      SELECT 1 FROM pg_catalog.pg_class evidence
+      WHERE evidence.oid IN (pg_catalog.to_regclass($1), pg_catalog.to_regclass($2))
+        AND (evidence.relkind <> 'r' OR evidence.relispartition OR EXISTS (
+          SELECT 1 FROM pg_catalog.pg_inherits inheritance
+          WHERE inheritance.inhrelid = evidence.oid OR inheritance.inhparent = evidence.oid
+        ))
+    ) AS safe`,
+    ['studio_migrations.history', 'public."schemaFingerprint"'],
+  );
+  if (evidenceShape.rows[0]?.safe !== true) {
+    throw new Error(
+      'Studio migration evidence must be standalone ordinary tables without inheritance or partitions. Existing evidence is untrusted; restore a verified backup before migrating.',
+    );
+  }
   const loginAccess = await client.query<{
     safe: boolean;
     evidence_safe: boolean;

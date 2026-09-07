@@ -1,6 +1,9 @@
 import { serve } from '@hono/node-server';
 import { WebSocketServer } from 'ws';
 
+import { assertSafePostgresRuntimeIdentity } from '@codaco/studio-sync/postgres-runtime-identity';
+import { TENANT_ROLES } from '@codaco/studio-sync/rls';
+
 import { createApp } from './app.ts';
 import { createAssetStore } from './assets.ts';
 import { flushDeniedAuditSummaries } from './audit/denial-rate-limit.ts';
@@ -101,6 +104,31 @@ function startDatabaseWorkers(): void {
   });
 }
 
+async function admitDatabaseRuntime(): Promise<boolean> {
+  if (!pool || !maintenancePool || env.devDefaults) return true;
+  const roles = Object.values(TENANT_ROLES);
+  try {
+    for (const [runtimePool, intendedRole] of [
+      [pool, TENANT_ROLES.app],
+      [maintenancePool, TENANT_ROLES.maintenance],
+    ] as const) {
+      const client = await runtimePool.connect();
+      try {
+        await assertSafePostgresRuntimeIdentity(client, {
+          intendedRole,
+          allowedRoles: roles,
+        });
+      } finally {
+        client.release();
+      }
+    }
+    return true;
+  } catch {
+    logOperational('STUDIO_DATABASE_IDENTITY_UNSAFE');
+    return process.exit(1);
+  }
+}
+
 // Outside development a stale or absent schema is a resolved answer, not a
 // transient failure: retrying re-reads the same fingerprint every three
 // seconds. The development lane waits instead, the same way it waits for the
@@ -132,10 +160,11 @@ if (pool) {
       if (attempting) return;
       attempting = true;
       void checkSchema(pool, { allowUnversioned: env.devDefaults })
-        .then((state) => {
+        .then(async (state) => {
           exitIfFatal(state);
           if (state.kind === 'current') {
             clearInterval(retry);
+            if (!(await admitDatabaseRuntime())) return undefined;
             startDatabaseWorkers();
             logOperational('STUDIO_SCHEMA_CURRENT');
           }
@@ -162,7 +191,7 @@ if (pool) {
       allowUnversioned: env.devDefaults,
     });
     if (state.kind === 'current') {
-      startDatabaseWorkers();
+      if (await admitDatabaseRuntime()) startDatabaseWorkers();
     } else {
       waitForSchema(state);
     }
