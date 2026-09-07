@@ -184,18 +184,16 @@ export function createGhRequest({
       );
       child.on('close', (code) => {
         if (settled) return;
-        if (code !== 0) {
-          settle(
-            reject,
-            new GitHubRequestError(undefined, 'GitHub CLI process failed.'),
-          );
-          return;
-        }
         let response;
         try {
           response = splitHttpResponse(Buffer.concat(chunks));
         } catch (error) {
-          settle(reject, error);
+          if (code !== 0)
+            settle(
+              reject,
+              new GitHubRequestError(undefined, 'GitHub CLI process failed.'),
+            );
+          else settle(reject, error);
           return;
         }
         if (response.status < 200 || response.status >= 300) {
@@ -205,6 +203,13 @@ export function createGhRequest({
               response.status,
               'GitHub API request failed.',
             ),
+          );
+          return;
+        }
+        if (code !== 0) {
+          settle(
+            reject,
+            new GitHubRequestError(undefined, 'GitHub CLI process failed.'),
           );
           return;
         }

@@ -310,6 +310,30 @@ process.stdout.write('HTTP/1.1 200 OK\r\n\r\n{}'); process.exit(1);
       /process failed/,
     );
 
+    for (const [status, body] of [
+      [404, 'missing'],
+      [403, 'body says HTTP 404 but status is forbidden'],
+      [500, 'server failure'],
+    ]) {
+      const httpError = join(directory, `gh-${status}`);
+      writeFileSync(
+        httpError,
+        String.raw`#!/usr/bin/env node
+process.stdout.write('HTTP/1.1 ${status} Error\r\n\r\n${body}'); process.exit(1);
+`,
+      );
+      chmodSync(httpError, 0o755);
+      await assert.rejects(
+        () =>
+          createGhRequest({ executable: httpError, timeoutMs: 2_000 })({
+            path: 'repos/fixed',
+          }),
+        (error) =>
+          error.status === status &&
+          error.message === 'GitHub API request failed.',
+      );
+    }
+
     const noisy = join(directory, 'gh-noisy');
     writeFileSync(
       noisy,
