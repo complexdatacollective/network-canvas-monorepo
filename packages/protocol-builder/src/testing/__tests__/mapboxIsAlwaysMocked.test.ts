@@ -1,9 +1,15 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { expectMapboxMocked } from '../mapboxMock.ts';
+import {
+  emitMapEvent,
+  expectMapboxMocked,
+  Map as MapboxMap,
+  mapsRemoved,
+  resetMapboxMock,
+} from '../mapboxMock.ts';
 
 /**
  * Nothing in this package may reach the real Mapbox SDK.
@@ -113,5 +119,66 @@ describe('the Mapbox SDK in this package', () => {
    */
   it('answers a live import with the mock, recording where a test can read it', async () => {
     await expectMapboxMocked();
+  });
+});
+
+/**
+ * A map that has been torn down answers for nothing.
+ *
+ * The recording is shared — one handler table for the whole file, because a
+ * preview holds one map at a time — so a `remove()` that left the handlers in
+ * it made the table outlive the map. Two things followed, and neither could be
+ * seen from the assertion that noticed them: an `emitMapEvent` after a
+ * teardown ran the callbacks of a component that had unmounted, which is
+ * exactly what a test asserting cleanup is trying to rule out; and the next map
+ * built inherited handlers it never registered, so a component that registers
+ * no `move` handler still had one answer for it.
+ *
+ * The Storybook mock's own `remove()` clears its table, as the SDK does. This
+ * is the same claim for the one the tests reach.
+ */
+describe('a map the mock has removed', () => {
+  const buildMap = () => new MapboxMap({ container: {} });
+
+  beforeEach(() => {
+    resetMapboxMock();
+  });
+
+  it('runs none of the handlers it registered', () => {
+    const load = vi.fn();
+    const map = buildMap();
+    map.on('load', load);
+
+    map.remove();
+
+    expect(mapsRemoved()).toBe(1);
+    expect(() => emitMapEvent('load')).toThrow(/registered no "load" handler/);
+    expect(load).not.toHaveBeenCalled();
+  });
+
+  it('leaves the map built after it holding no handler of its own', () => {
+    const removedMapLoad = vi.fn();
+    const first = buildMap();
+    first.on('load', removedMapLoad);
+    first.remove();
+
+    buildMap();
+
+    expect(() => emitMapEvent('load')).toThrow(/It registered: nothing\./);
+    expect(removedMapLoad).not.toHaveBeenCalled();
+  });
+
+  /**
+   * The control: a map nothing has removed still answers, so the two claims
+   * above are about the teardown rather than about `emitMapEvent` having
+   * stopped working.
+   */
+  it('is not how a map still standing behaves', () => {
+    const load = vi.fn();
+    buildMap().on('load', load);
+
+    emitMapEvent('load');
+
+    expect(load).toHaveBeenCalledTimes(1);
   });
 });

@@ -66,19 +66,28 @@ export function composeStageEditorRegistry(
   ...parts: readonly StageEditorRegistryPart[]
 ): StageEditorRegistryPart {
   const claimed = new Set<string>();
+  const composed: StageEditorRegistryPart = {};
   for (const part of parts) {
     for (const [stageType, editor] of Object.entries(part)) {
       // A key present but holding nothing claims nothing — the same reading
       // `missingStageEditors` takes of the composed registry.
+      //
+      // Which is why the entries are copied one at a time rather than by
+      // assigning whole parts: `Object.assign` copies an explicit `undefined`
+      // too, so a later part with an empty entry took the interface away from
+      // the family that had already claimed it — and the scan above, which
+      // reads an empty entry as no claim at all, reported no duplicate. The
+      // registry came out with the key present and nothing under it, which is
+      // the one state that renders as `UnregisteredStageTypeError` while every
+      // list of "who claims what" says the family owns it.
       if (editor === undefined) continue;
       if (claimed.has(stageType))
         throw new DuplicateStageEditorError(stageType);
       claimed.add(stageType);
+      Object.assign(composed, { [stageType]: editor });
     }
   }
 
-  const composed: StageEditorRegistryPart = {};
-  for (const part of parts) Object.assign(composed, part);
   return Object.freeze(composed);
 }
 
@@ -97,6 +106,42 @@ const REGISTRY_PARTS = [
 
 export const stageEditorRegistry: StageEditorRegistryPart =
   composeStageEditorRegistry(...REGISTRY_PARTS);
+
+/**
+ * A registry with a host's own editors over the top.
+ *
+ * A host supplies a registry to ADD an interface it owns or to REPLACE one the
+ * package ships. It never supplies one to take the rest away — and dispatching
+ * through what it handed over did exactly that: a host naming only
+ * `Information` would leave every other stage throwing
+ * `UnregisteredStageTypeError`, in the host, from the day the first family
+ * lands. Nothing shows it while the package's own registry is still empty,
+ * which is why it cannot wait for the families to be got right.
+ *
+ * Not `composeStageEditorRegistry`, which refuses a second claim on an
+ * interface: two FAMILIES claiming one is a mistake with no answer, while a
+ * host claiming one the package also ships is what the prop is FOR. So overlap
+ * here means the host wins, and an entry the host left empty claims nothing —
+ * a key holding `undefined` is not a way to delete an editor the package
+ * ships, here or in a family part.
+ *
+ * Takes the base rather than reading `stageEditorRegistry` itself, so it is a
+ * function of what it is given: the only caller passes the package's own, and
+ * a test can hand it a registry that HAS families in it, which is the state
+ * this exists for and the one this branch cannot otherwise produce.
+ */
+export function stageEditorsWithHostOverrides(
+  base: StageEditorRegistryPart,
+  hostRegistry: StageEditorRegistryPart | undefined,
+): StageEditorRegistryPart {
+  if (hostRegistry === undefined) return base;
+  const merged: StageEditorRegistryPart = { ...base };
+  for (const [stageType, editor] of Object.entries(hostRegistry)) {
+    if (editor === undefined) continue;
+    Object.assign(merged, { [stageType]: editor });
+  }
+  return Object.freeze(merged);
+}
 
 /** The intersection of a tuple of family parts. `keyof` it is the coverage. */
 type MergeAll<Parts extends readonly unknown[]> = Parts extends readonly [
